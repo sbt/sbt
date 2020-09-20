@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import org.jline.utils.InfoCmp.Capability
 import org.jline.utils.{ ClosedException, NonBlockingReader }
 import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
+import org.jline.terminal.Attributes.{ InputFlag, LocalFlag }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
 import org.jline.terminal.impl.jansi.JansiSupportImpl
@@ -24,12 +25,7 @@ import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
 
 private[sbt] object JLine3 {
-  private val capabilityMap = Capability
-    .values()
-    .map { c =>
-      c.toString -> c
-    }
-    .toMap
+  private[util] val initialAttributes = new AtomicReference[Attributes]
 
   private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
   private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
@@ -51,18 +47,24 @@ private[sbt] object JLine3 {
     term
   }
   private[util] def system: org.jline.terminal.Terminal = {
-    if (forceWindowsJansiHolder.get) windowsJansi()
-    else {
-      // Only use jna on windows. Both jna and jansi use illegal reflective
-      // accesses on posix system.
-      org.jline.terminal.TerminalBuilder
-        .builder()
-        .system(System.console != null)
-        .jna(Util.isNonCygwinWindows)
-        .jansi(false)
-        .paused(true)
-        .build()
+    val term =
+      if (forceWindowsJansiHolder.get) windowsJansi()
+      else {
+        // Only use jna on windows. Both jna and jansi use illegal reflective
+        // accesses on posix system.
+        org.jline.terminal.TerminalBuilder
+          .builder()
+          .system(System.console != null)
+          .jna(Util.isNonCygwinWindows)
+          .jansi(false)
+          .paused(true)
+          .build()
+      }
+    initialAttributes.get match {
+      case null => initialAttributes.set(term.getAttributes)
+      case _    =>
     }
+    term
   }
   private[sbt] def apply(term: Terminal): JTerminal = {
     if (System.getProperty("jline.terminal", "") == "none" || !Terminal.formatEnabledInEnv)
@@ -70,7 +72,12 @@ private[sbt] object JLine3 {
     else wrapTerminal(term)
   }
   private[this] def wrapTerminal(term: Terminal): JTerminal = {
-    new AbstractTerminal(term.name, "ansi", Charset.forName("UTF-8"), SignalHandler.SIG_DFL) {
+    new AbstractTerminal(
+      term.name,
+      "nocapabilities",
+      Charset.forName("UTF-8"),
+      SignalHandler.SIG_DFL
+    ) {
       val closed = new AtomicBoolean(false)
       setOnClose { () =>
         doClose()
@@ -84,7 +91,6 @@ private[sbt] object JLine3 {
           }
         }
       }
-      parseInfoCmp()
       override val input: InputStream = new InputStream {
         override def read: Int = {
           val res = term.inputStream match {
@@ -166,45 +172,47 @@ private[sbt] object JLine3 {
        * are the same.
        */
       override def getStringCapability(cap: Capability): String = {
-        term.getStringCapability(cap.toString, jline3 = true)
+        term.getStringCapability(cap.toString)
       }
-      override def getNumericCapability(cap: Capability): Integer = {
-        term.getNumericCapability(cap.toString, jline3 = true)
-      }
-      override def getBooleanCapability(cap: Capability): Boolean = {
-        term.getBooleanCapability(cap.toString, jline3 = true)
-      }
+      override def getNumericCapability(cap: Capability): Integer =
+        term.getNumericCapability(cap.toString)
+      override def getBooleanCapability(cap: Capability): Boolean =
+        term.getBooleanCapability(cap.toString)
       def getAttributes(): Attributes = attributesFromMap(term.getAttributes)
       def getSize(): Size = new Size(term.getWidth, term.getHeight)
-      def setAttributes(a: Attributes): Unit = term.setAttributes(toMap(a))
+      def setAttributes(a: Attributes): Unit = {} // don't allow the jline line reader to change attributes
       def setSize(size: Size): Unit = term.setSize(size.getColumns, size.getRows)
 
-      /**
-       * Override enterRawMode because the default implementation modifies System.in
-       * to be non-blocking which means it immediately returns -1 if there is no
-       * data available, which is not desirable for us.
-       */
-      override def enterRawMode(): Attributes = enterRawModeImpl(this)
+      override def enterRawMode(): Attributes = {
+        // don't actually modify the term, that is handled by LineReader
+        attributesFromMap(term.getAttributes)
+      }
     }
   }
   private def enterRawModeImpl(term: JTerminal): Attributes = {
     val prvAttr = term.getAttributes()
     val newAttr = new Attributes(prvAttr)
-    newAttr.setLocalFlags(
-      EnumSet
-        .of(Attributes.LocalFlag.ICANON, Attributes.LocalFlag.ECHO, Attributes.LocalFlag.IEXTEN),
-      false
-    )
-    newAttr.setInputFlags(
-      EnumSet
-        .of(Attributes.InputFlag.IXON, Attributes.InputFlag.ICRNL, Attributes.InputFlag.INLCR),
-      false
-    )
+    newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO, LocalFlag.IEXTEN), false)
+    newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
     term.setAttributes(newAttr)
     prvAttr
   }
-  private[util] def enterRawMode(term: JTerminal): Map[String, String] =
-    toMap(enterRawModeImpl(term))
+  private[util] def enterRawMode(term: JTerminal): Unit = {
+    val prevAttr = initialAttributes.get
+    val newAttr = new Attributes(prevAttr)
+    // These flags are copied from the jline3 enterRawMode but the jline implementation
+    // also puts the input stream in non blocking mode, which we do not want.
+    newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO), false)
+    newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
+    term.setAttributes(newAttr)
+    ()
+  }
+  private[util] def exitRawMode(term: JTerminal): Unit = {
+    val initAttr = initialAttributes.get
+    val newAttr = new Attributes(initAttr)
+    newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO), true)
+    term.setAttributes(newAttr)
+  }
   private[util] def toMap(jattributes: Attributes): Map[String, String] = {
     val result = new java.util.LinkedHashMap[String, String]
     result.put(
@@ -233,14 +241,14 @@ private[sbt] object JLine3 {
     )
     result.asScala.toMap
   }
-  private[this] val iflagMap: Map[String, Attributes.InputFlag] =
-    Attributes.InputFlag.values.map(f => f.name.toLowerCase -> f).toMap
+  private[this] val iflagMap: Map[String, InputFlag] =
+    InputFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private[this] val oflagMap: Map[String, Attributes.OutputFlag] =
     Attributes.OutputFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private[this] val cflagMap: Map[String, Attributes.ControlFlag] =
     Attributes.ControlFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val lflagMap: Map[String, Attributes.LocalFlag] =
-    Attributes.LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
+  private[this] val lflagMap: Map[String, LocalFlag] =
+    LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private[this] val charMap: Map[String, Attributes.ControlChar] =
     Attributes.ControlChar.values().map(f => f.name.toLowerCase -> f).toMap
   private[util] def attributesFromMap(map: Map[String, String]): Attributes = {

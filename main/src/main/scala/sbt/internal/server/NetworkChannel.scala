@@ -42,7 +42,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
-import Serialization.attach
+import Serialization.{ attach, cancelReadSystemIn, readSystemIn }
 
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
@@ -643,12 +643,19 @@ final class NetworkChannel(
 
   private[this] lazy val inputStream: InputStream = new InputStream {
     override def read(): Int = {
+      import sjsonnew.BasicJsonProtocol._
       try {
+        jsonRpcNotify(readSystemIn, "")
         inputBuffer.take & 0xFF match {
           case -1 => throw new ClosedChannelException()
           case b  => b
         }
-      } catch { case e: IOException => -1 }
+      } catch {
+        case e: IOException =>
+          try jsonRpcNotify(cancelReadSystemIn, "")
+          catch { case _: IOException => }
+          -1
+      }
     }
     override def available(): Int = inputBuffer.size
   }
@@ -816,34 +823,19 @@ final class NetworkChannel(
         Some(result(queue.take))
       }
     }
-    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
+    override def getBooleanCapability(capability: String): Boolean =
       getCapability(
-        TerminalCapabilitiesQuery(
-          boolean = Some(capability),
-          numeric = None,
-          string = None,
-          jline3
-        ),
+        TerminalCapabilitiesQuery(boolean = Some(capability), numeric = None, string = None),
         _.boolean.getOrElse(false)
       ).getOrElse(false)
-    override def getNumericCapability(capability: String, jline3: Boolean): Integer =
+    override def getNumericCapability(capability: String): Integer =
       getCapability(
-        TerminalCapabilitiesQuery(
-          boolean = None,
-          numeric = Some(capability),
-          string = None,
-          jline3
-        ),
+        TerminalCapabilitiesQuery(boolean = None, numeric = Some(capability), string = None),
         (_: TerminalCapabilitiesResponse).numeric.map(Integer.valueOf).getOrElse(-1: Integer)
       ).getOrElse(-1: Integer)
-    override def getStringCapability(capability: String, jline3: Boolean): String =
+    override def getStringCapability(capability: String): String =
       getCapability(
-        TerminalCapabilitiesQuery(
-          boolean = None,
-          numeric = None,
-          string = Some(capability),
-          jline3
-        ),
+        TerminalCapabilitiesQuery(boolean = None, numeric = None, string = Some(capability)),
         _.string.flatMap {
           case "null" => None
           case s      => Some(s)
@@ -898,6 +890,25 @@ final class NetworkChannel(
         val queue = VirtualTerminal.setTerminalSize(name, jsonRpcRequest, size)
         try queue.take
         catch { case _: InterruptedException => }
+      }
+    private[this] def setRawMode(toggle: Boolean): Unit = {
+      if (!closed.get || false) {
+        import sbt.protocol.codec.JsonProtocol._
+        val raw = TerminalSetRawModeCommand(toggle)
+        val queue = VirtualTerminal.setTerminalRawMode(name, jsonRpcRequest, raw)
+        try queue.take
+        catch { case _: InterruptedException => }
+      }
+    }
+    override private[sbt] def enterRawMode(): Unit = setRawMode(true)
+    override private[sbt] def exitRawMode(): Unit = setRawMode(false)
+    override def setEchoEnabled(toggle: Boolean): Unit =
+      if (!closed.get) {
+        import sbt.protocol.codec.JsonProtocol._
+        val echo = TerminalSetEchoCommand(toggle)
+        val queue = VirtualTerminal.setTerminalEcho(name, jsonRpcRequest, echo)
+        try queue.take
+        catch { case _: InterruptedException => () }
       }
 
     override def flush(): Unit = doFlush()

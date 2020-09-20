@@ -97,7 +97,6 @@ type TerminalCapabilitiesQuery implements CommandMessage {
   boolean: String
   numeric: String
   string: String
-  jline3: Boolean!
 }
 
 type TerminalCapabilitiesResponse implements EventMessage {
@@ -138,3 +137,15 @@ type TerminalSetSizeCommand implements CommandMessage {
 }
 
 type TerminalSetSizeResponse implements EventMessage {}
+
+type TerminalSetEchoCommand implements CommandMessage {
+  toggle: Boolean!
+}
+
+type TerminalSetEchoResponse implements EventMessage {}
+
+type TerminalSetRawModeCommand implements CommandMessage {
+  toggle: Boolean!
+}
+
+type TerminalSetRawModeResponse implements EventMessage {}

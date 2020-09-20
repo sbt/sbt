@@ -87,6 +87,7 @@ object Dependencies {
   val jline3Version = "3.16.0" // Once the base jline version is upgraded, we can use the official jline-terminal
   val jline3Terminal = "org.scala-sbt.jline3" % "jline-terminal" % s"$jline3Version-sbt-211a082ed6326908dc84ca017ce4430728f18a8a"
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
+  val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "1.18"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"

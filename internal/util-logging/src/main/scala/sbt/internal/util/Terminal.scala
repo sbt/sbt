@@ -13,7 +13,6 @@ import java.util.{ Arrays, Locale }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ Executors, LinkedBlockingQueue, TimeUnit }
 
-import jline.DefaultTerminal2
 import jline.console.ConsoleReader
 import scala.annotation.tailrec
 import scala.concurrent.duration._
@@ -104,6 +103,13 @@ trait Terminal extends AutoCloseable {
    */
   def isSupershellEnabled: Boolean
 
+  /**
+   * Toggles whether or not the terminal should echo characters back to stdout
+   *
+   * @return the previous value of the toggle
+   */
+  def setEchoEnabled(toggle: Boolean): Unit
+
   /*
    * The methods below this comment are implementation details that are in
    * some cases specific to jline2. These methods may need to change or be
@@ -126,15 +132,21 @@ trait Terminal extends AutoCloseable {
    */
   private[sbt] def getLines: Seq[String]
 
-  private[sbt] def getBooleanCapability(capability: String, jline3: Boolean): Boolean
-  private[sbt] def getNumericCapability(capability: String, jline3: Boolean): Integer
-  private[sbt] def getStringCapability(capability: String, jline3: Boolean): String
+  private[sbt] def getBooleanCapability(capability: String): Boolean
+  private[sbt] def getNumericCapability(capability: String): Integer
+  private[sbt] def getStringCapability(capability: String): String
   private[sbt] def getAttributes: Map[String, String]
   private[sbt] def setAttributes(attributes: Map[String, String]): Unit
   private[sbt] def setSize(width: Int, height: Int): Unit
 
   private[sbt] def name: String
-  private[sbt] def withRawInput[T](f: => T): T = f
+  private[sbt] final def withRawInput[T](f: => T): T = {
+    enterRawMode()
+    try f
+    catch { case e: InterruptedIOException => throw new InterruptedException } finally exitRawMode()
+  }
+  private[sbt] def enterRawMode(): Unit
+  private[sbt] def exitRawMode(): Unit
   private[sbt] def write(bytes: Int*): Unit
   private[sbt] def printStream: PrintStream
   private[sbt] def withPrintStream[T](f: PrintStream => T): T
@@ -188,7 +200,6 @@ object Terminal {
      * terminal.
      */
     private[sbt] def toJLine: jline.Terminal with jline.Terminal2 = term match {
-      case t: ConsoleTerminal => t.term
       case _ =>
         new jline.Terminal with jline.Terminal2 {
           override def init(): Unit = {}
@@ -206,15 +217,12 @@ object Terminal {
           override def disableInterruptCharacter(): Unit = {}
           override def enableInterruptCharacter(): Unit = {}
           override def getOutputEncoding: String = null
-          override def getBooleanCapability(capability: String): Boolean = {
-            term.getBooleanCapability(capability, jline3 = false)
-          }
-          override def getNumericCapability(capability: String): Integer = {
-            term.getNumericCapability(capability, jline3 = false)
-          }
-          override def getStringCapability(capability: String): String = {
-            term.getStringCapability(capability, jline3 = false)
-          }
+          override def getBooleanCapability(capability: String): Boolean =
+            term.getBooleanCapability(capability)
+          override def getNumericCapability(capability: String): Integer =
+            term.getNumericCapability(capability)
+          override def getStringCapability(capability: String): String =
+            term.getStringCapability(capability)
         }
     }
   }
@@ -318,7 +326,7 @@ object Terminal {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
     if (System.getProperty("sbt.io.virtual", "") == "true" || (logFormatEnabled.getOrElse(true) && !isCI)) {
       hasProgress.set(isServer)
-      consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
+      consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
@@ -333,7 +341,7 @@ object Terminal {
                * back to blocking mode. We can then close the console. We do
                * this on a background thread in case the read blocks indefinitely.
                */
-              val prev = c.system.enterRawMode()
+              c.system.enterRawMode()
               val runnable: Runnable = () => {
                 try Util.ignoreResult(c.inputStream.read)
                 catch { case _: InterruptedException => }
@@ -344,7 +352,6 @@ object Terminal {
               // The thread should exit almost instantly but give it 200ms to spin up
               thread.join(200)
               if (thread.isAlive) thread.interrupt()
-              c.system.setAttributes(prev)
               c.close()
             case c => c.close()
           }
@@ -357,6 +364,8 @@ object Terminal {
   private[this] object ProxyTerminal extends Terminal {
     private def t: Terminal = activeTerminal.get
     override private[sbt] def progressState: ProgressState = t.progressState
+    override private[sbt] def enterRawMode(): Unit = t.enterRawMode()
+    override private[sbt] def exitRawMode(): Unit = t.exitRawMode()
     override def getWidth: Int = t.getWidth
     override def getHeight: Int = t.getHeight
     override def getLineHeightAndWidth(line: String): (Int, Int) = t.getLineHeightAndWidth(line)
@@ -369,17 +378,17 @@ object Terminal {
     override def isEchoEnabled: Boolean = t.isEchoEnabled
     override def isSuccessEnabled: Boolean = t.isSuccessEnabled
     override def isSupershellEnabled: Boolean = t.isSupershellEnabled
-    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
-      t.getBooleanCapability(capability, jline3)
-    override def getNumericCapability(capability: String, jline3: Boolean): Integer =
-      t.getNumericCapability(capability, jline3)
-    override def getStringCapability(capability: String, jline3: Boolean): String =
-      t.getStringCapability(capability, jline3)
+    override def setEchoEnabled(toggle: Boolean): Unit = t.setEchoEnabled(toggle)
+    override def getBooleanCapability(capability: String): Boolean =
+      t.getBooleanCapability(capability)
+    override def getNumericCapability(capability: String): Integer =
+      t.getNumericCapability(capability)
+    override def getStringCapability(capability: String): String =
+      t.getStringCapability(capability)
     override private[sbt] def getAttributes: Map[String, String] = t.getAttributes
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
       t.setAttributes(attributes)
     override private[sbt] def setSize(width: Int, height: Int): Unit = t.setSize(width, height)
-    override def withRawInput[T](f: => T): T = t.withRawInput(f)
     override def printStream: PrintStream = t.printStream
     override def withPrintStream[T](f: PrintStream => T): T = t.withPrintStream(f)
     override private[sbt] def withRawOutput[R](f: => R): R = t.withRawOutput(f)
@@ -437,6 +446,10 @@ object Terminal {
       with AutoCloseable {
     final def write(bytes: Int*): Unit = readThread.synchronized {
       bytes.foreach(b => buffer.put(b))
+    }
+    def setRawMode(toggle: Boolean): Unit = in match {
+      case win: WindowsInputStream => win.setRawMode(toggle)
+      case _                       =>
     }
     private[this] val executor =
       Executors.newSingleThreadExecutor(r => new Thread(r, s"sbt-$name-input-reader"))
@@ -500,8 +513,10 @@ object Terminal {
       ()
     }
   }
-  private[this] lazy val nonBlockingIn: WriteableInputStream =
-    new WriteableInputStream(jline.TerminalFactory.get.wrapInIfNeeded(originalIn), "console")
+  private[this] def nonBlockingIn(term: org.jline.terminal.Terminal): WriteableInputStream = {
+    val in = if (Util.isNonCygwinWindows) new WindowsInputStream(term, originalIn) else originalIn
+    new WriteableInputStream(in, "console")
+  }
 
   private[this] val inputStream = new AtomicReference[InputStream](System.in)
   private[this] def withOut[T](f: => T): T = {
@@ -699,75 +714,16 @@ object Terminal {
   }
   private[sbt] def startedByRemoteClient = props.isDefined
 
-  /**
-   * Creates an instance of [[Terminal]] that delegates most of its methods to an underlying
-   * jline.Terminal2 instance. In the long run, sbt should upgrade to jline3, which has a
-   * completely different terminal interface so whereever possible, we should avoid
-   * directly referencing jline.Terminal. Wrapping jline Terminal in sbt terminal helps
-   * with that goal.
-   *
-   * @param terminal the jline terminal to wrap
-   * @return an sbt Terminal
-   */
-  private[this] def wrap(terminal: jline.Terminal): Terminal = {
-    val term: jline.Terminal with jline.Terminal2 = new jline.Terminal with jline.Terminal2 {
-      private[this] val hasConsole = System.console != null
-      private[this] def alive = hasConsole && attached.get
-      private[this] val term2: jline.Terminal2 = terminal match {
-        case t: jline.Terminal2 => t
-        case _                  => new DefaultTerminal2(terminal)
-      }
-      override def init(): Unit =
-        if (alive)
-          try terminal.init()
-          catch {
-            case _: InterruptedException | _: java.io.IOError =>
-          }
-      override def restore(): Unit =
-        try terminal.restore()
-        catch {
-          case _: InterruptedException | _: java.io.IOError =>
-        }
-      override def reset(): Unit =
-        try terminal.reset()
-        catch { case _: InterruptedException => }
-      override def isSupported: Boolean = terminal.isSupported
-      override def getWidth: Int = props.map(_.width).getOrElse(terminal.getWidth)
-      override def getHeight: Int = props.map(_.height).getOrElse(terminal.getHeight)
-      override val isAnsiSupported: Boolean = terminal.isAnsiSupported && formatEnabledInEnv
-      override def wrapOutIfNeeded(out: OutputStream): OutputStream = terminal.wrapOutIfNeeded(out)
-      override def wrapInIfNeeded(in: InputStream): InputStream = terminal.wrapInIfNeeded(in)
-      override def hasWeirdWrap: Boolean = terminal.hasWeirdWrap
-      override def isEchoEnabled: Boolean = terminal.isEchoEnabled
-
-      override def setEchoEnabled(enabled: Boolean): Unit =
-        if (alive) terminal.setEchoEnabled(enabled)
-      override def disableInterruptCharacter(): Unit =
-        if (alive) terminal.disableInterruptCharacter()
-      override def enableInterruptCharacter(): Unit =
-        if (alive) terminal.enableInterruptCharacter()
-      override def getOutputEncoding: String = terminal.getOutputEncoding
-      override def getBooleanCapability(capability: String): Boolean =
-        term2.getBooleanCapability(capability)
-      override def getNumericCapability(capability: String): Integer =
-        term2.getNumericCapability(capability)
-      override def getStringCapability(capability: String): String = {
-        term2.getStringCapability(capability)
-      }
-    }
-    term.restore()
-    term.setEchoEnabled(true)
-    new ConsoleTerminal(
-      term,
-      if (System.console == null) nullWriteableInputStream else nonBlockingIn,
-      originalOut
-    )
+  private[this] def newConsoleTerminal(): Terminal = {
+    val system = JLine3.system
+    val in = if (System.console == null) nullWriteableInputStream else nonBlockingIn(system)
+    new ConsoleTerminal(in, originalOut, system)
   }
 
   private[sbt] def reset(): Unit = {
     jline.TerminalFactory.reset()
     console.close()
-    consoleTerminalHolder.set(wrap(jline.TerminalFactory.get))
+    consoleTerminalHolder.set(newConsoleTerminal())
   }
 
   // translate explicit class names to type in order to support
@@ -813,52 +769,56 @@ object Terminal {
 
   @deprecated("For compatibility only", "1.4.0")
   private[sbt] def deprecatedTeminal: jline.Terminal = console.toJLine
-  private class ConsoleTerminal(
-      val term: jline.Terminal with jline.Terminal2,
+  private[util] class ConsoleTerminal(
       in: WriteableInputStream,
-      out: OutputStream
+      out: OutputStream,
+      private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
-    private[util] lazy val system = JLine3.system
+    private[this] val rawMode = new AtomicBoolean(false)
+    enterRawMode()
     override private[sbt] def getSizeImpl: (Int, Int) = {
       val size = system.getSize
       (size.getColumns, size.getRows)
     }
-    override lazy val isAnsiSupported: Boolean = term.isAnsiSupported && !isCI
+    override lazy val isAnsiSupported: Boolean = formatEnabledInEnv && !isCI
     override private[sbt] def progressState: ProgressState = consoleProgressState.get
-    override def isEchoEnabled: Boolean = system.echo()
+    override def isEchoEnabled: Boolean =
+      try system.echo()
+      catch { case _: InterruptedIOException => false }
     override def isSuccessEnabled: Boolean = true
-    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean =
-      if (jline3) capabilityMap.get(capability).fold(false)(system.getBooleanCapability)
-      else term.getBooleanCapability(capability)
-    override def getNumericCapability(capability: String, jline3: Boolean): Integer =
-      if (jline3) capabilityMap.get(capability).fold(null: Integer)(system.getNumericCapability)
-      else term.getNumericCapability(capability)
-    override def getStringCapability(capability: String, jline3: Boolean): String =
-      if (jline3) capabilityMap.get(capability).fold(null: String)(system.getStringCapability)
-      else term.getStringCapability(capability)
-    override private[sbt] def restore(): Unit = term.restore()
+    override def setEchoEnabled(toggle: Boolean): Unit =
+      try Util.ignoreResult(system.echo(toggle))
+      catch { case _: InterruptedIOException => }
+    override def getBooleanCapability(capability: String): Boolean =
+      capabilityMap.get(capability).fold(false)(system.getBooleanCapability)
+    override def getNumericCapability(capability: String): Integer =
+      capabilityMap.get(capability).fold(null: Integer)(system.getNumericCapability)
+    override def getStringCapability(capability: String): String = {
+      val res = capabilityMap.get(capability).fold(null: String)(system.getStringCapability)
+      res
+    }
+    override private[sbt] def restore(): Unit = exitRawMode()
 
     override private[sbt] def getAttributes: Map[String, String] =
       Try(JLine3.toMap(system.getAttributes)).getOrElse(Map.empty)
-    override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
+    override private[sbt] def setAttributes(attributes: Map[String, String]): Unit = {
       system.setAttributes(JLine3.attributesFromMap(attributes))
+    }
     override private[sbt] def setSize(width: Int, height: Int): Unit =
       system.setSize(new org.jline.terminal.Size(width, height))
 
-    override def withRawInput[T](f: => T): T = term.synchronized {
-      try {
-        term.init()
-        term.setEchoEnabled(false)
-        f
-      } catch { case _: InterruptedIOException => throw new InterruptedException } finally {
-        term.restore()
-        term.setEchoEnabled(true)
-      }
+    override private[sbt] def enterRawMode(): Unit = if (rawMode.compareAndSet(false, true)) {
+      in.setRawMode(true)
+      JLine3.enterRawMode(system)
+    }
+    override private[sbt] def exitRawMode(): Unit = if (rawMode.compareAndSet(true, false)) {
+      in.setRawMode(false)
+      JLine3.exitRawMode(system)
     }
     override def isColorEnabled: Boolean =
       props
         .map(_.color)
-        .getOrElse(isColorEnabledProp.getOrElse(term.isAnsiSupported && formatEnabledInEnv))
+        .getOrElse(isColorEnabledProp.getOrElse(formatEnabledInEnv))
 
     override def isSupershellEnabled: Boolean =
       props
@@ -871,8 +831,9 @@ object Terminal {
         })
     override def close(): Unit = {
       try {
+        system.setAttributes(JLine3.initialAttributes.get)
         system.close()
-        term.restore()
+        in.close()
       } catch { case NonFatal(_) => }
       super.close()
     }
@@ -972,13 +933,15 @@ object Terminal {
   private[sbt] class DefaultTerminal extends Terminal {
     override def close(): Unit = {}
     override private[sbt] def progressState: ProgressState = new ProgressState(1)
-    override def getBooleanCapability(capability: String, jline3: Boolean): Boolean = false
+    override private[sbt] def enterRawMode(): Unit = {}
+    override private[sbt] def exitRawMode(): Unit = {}
+    override def getBooleanCapability(capability: String): Boolean = false
     override def getHeight: Int = 0
     override def getLastLine: Option[String] = None
     override def getLines: Seq[String] = Nil
     override def getLineHeightAndWidth(line: String): (Int, Int) = (0, 0)
-    override def getNumericCapability(capability: String, jline3: Boolean): Integer = null
-    override def getStringCapability(capability: String, jline3: Boolean): String = null
+    override def getNumericCapability(capability: String): Integer = null
+    override def getStringCapability(capability: String): String = null
     override def getWidth: Int = 0
     override def inputStream: InputStream = nullInputStream
     override def isAnsiSupported: Boolean = false
@@ -986,6 +949,7 @@ object Terminal {
     override def isEchoEnabled: Boolean = false
     override def isSuccessEnabled: Boolean = true
     override def isSupershellEnabled: Boolean = false
+    override def setEchoEnabled(toggle: Boolean): Unit = {}
     override def outputStream: OutputStream = _ => {}
     override def errorStream: OutputStream = _ => {}
     override private[sbt] def getAttributes: Map[String, String] = Map.empty
@@ -1000,7 +964,7 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
-    override lazy val inputStream: InputStream = nonBlockingIn
+    override lazy val inputStream: InputStream = originalIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
   }

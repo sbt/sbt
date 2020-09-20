@@ -21,6 +21,7 @@ import org.jline.reader.{
   ParsedLine,
   UserInterruptException,
 }
+import org.jline.utils.ClosedException
 import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
@@ -87,7 +88,7 @@ object LineReader {
           case e: EndOfFileException =>
             if (terminal == Terminal.console && System.console == null) None
             else Some("exit")
-          case _: IOError => Some("exit")
+          case _: IOError | _: ClosedException => Some("exit")
           case _: UserInterruptException | _: ClosedByInterruptException |
               _: UncheckedIOException =>
             throw new InterruptedException

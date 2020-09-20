@@ -14,6 +14,8 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.protocol.codec.TerminalAttributesQueryFormats
   with sbt.protocol.codec.TerminalGetSizeQueryFormats
   with sbt.protocol.codec.TerminalSetSizeCommandFormats
+  with sbt.protocol.codec.TerminalSetEchoCommandFormats
+  with sbt.protocol.codec.TerminalSetRawModeCommandFormats
   with sbt.protocol.codec.CommandMessageFormats
   with sbt.protocol.codec.CompletionParamsFormats
   with sbt.protocol.codec.ChannelAcceptedEventFormats
@@ -28,6 +30,8 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.protocol.codec.TerminalAttributesResponseFormats
   with sbt.protocol.codec.TerminalGetSizeResponseFormats
   with sbt.protocol.codec.TerminalSetSizeResponseFormats
+  with sbt.protocol.codec.TerminalSetEchoResponseFormats
+  with sbt.protocol.codec.TerminalSetRawModeResponseFormats
   with sbt.protocol.codec.EventMessageFormats
   with sbt.protocol.codec.SettingQueryResponseFormats
   with sbt.protocol.codec.CompletionResponseFormats
