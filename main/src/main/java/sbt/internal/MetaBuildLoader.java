@@ -64,12 +64,13 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final Pattern pattern =
-        Pattern.compile(
-            "^(test-interface-[0-9.]+|jline-(terminal-)?[0-9.]+-sbt-.*|jansi-[0-9.]+)\\.jar");
+    final String jlineJars = "jline-(terminal-)?[0-9.]+-sbt-.*|jline-terminal-(jna|jansi)-[0-9.]+";
+    final String fullPattern =
+        "^(test-interface-[0-9.]+|" + jlineJars + "|jansi-[0-9.]+|jna-(platform-)?[0-9.]+)\\.jar";
+    final Pattern pattern = Pattern.compile(fullPattern);
     final File[] cp = appProvider.mainClasspath();
     final URL[] interfaceURLs = new URL[1];
-    final URL[] jlineURLs = new URL[3];
+    final URL[] jlineURLs = new URL[7];
     final File[] extra =
         appProvider.id().classpathExtra() == null ? new File[0] : appProvider.id().classpathExtra();
     final Set<File> bottomClasspath = new LinkedHashSet<>();

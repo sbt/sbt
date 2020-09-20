@@ -12,12 +12,13 @@ import java.nio.charset.Charset
 import java.util.{ Arrays, EnumSet }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import org.jline.utils.InfoCmp.Capability
-import org.jline.utils.{ ClosedException, NonBlockingReader, OSUtils }
+import org.jline.utils.{ ClosedException, NonBlockingReader }
 import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
 import org.jline.terminal.impl.jansi.JansiSupportImpl
 import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
+import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
@@ -30,47 +31,36 @@ private[sbt] object JLine3 {
     }
     .toMap
 
-  private[util] def system = {
-    /*
-     * For reasons that are unclear to me, TerminalBuilder fails to build
-     * windows terminals. The instructions about the classpath did not work:
-     * https://stackoverflow.com/questions/52851232/jline3-issues-with-windows-terminal
-     * We can deconstruct what TerminalBuilder does and inline it for now.
-     * It is possible that this workaround will break WSL but I haven't checked that.
-     */
-    if (Util.isNonCygwinWindows) {
-      val support = new JansiSupportImpl
-      val winConsole = support.isWindowsConsole();
-      try {
-        val term = JansiWinSysTerminal.createTerminal(
-          "console",
-          "ansi",
-          OSUtils.IS_CONEMU,
-          Charset.forName("UTF-8"),
-          -1,
-          false,
-          SignalHandler.SIG_DFL,
-          true
-        )
-        term.disableScrolling()
-        term
-      } catch {
-        case _: Exception =>
-          org.jline.terminal.TerminalBuilder
-            .builder()
-            .system(false)
-            .paused(true)
-            .jansi(true)
-            .streams(Terminal.console.inputStream, Terminal.console.outputStream)
-            .build()
-      }
-    } else {
+  private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
+  private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
+  private[this] def windowsJansi(): org.jline.terminal.Terminal = {
+    val support = new JansiSupportImpl
+    val winConsole = support.isWindowsConsole();
+    val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
+    val term = JansiWinSysTerminal.createTerminal(
+      "console",
+      termType,
+      OSUtils.IS_CONEMU,
+      Charset.forName("UTF-8"),
+      -1,
+      false,
+      SignalHandler.SIG_DFL,
+      true
+    )
+    term.disableScrolling()
+    term
+  }
+  private[util] def system: org.jline.terminal.Terminal = {
+    if (forceWindowsJansiHolder.get) windowsJansi()
+    else {
+      // Only use jna on windows. Both jna and jansi use illegal reflective
+      // accesses on posix system.
       org.jline.terminal.TerminalBuilder
         .builder()
         .system(System.console != null)
+        .jna(Util.isNonCygwinWindows)
+        .jansi(false)
         .paused(true)
-        .jna(false)
-        .jansi(true)
         .build()
     }
   }
