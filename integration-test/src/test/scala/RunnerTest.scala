@@ -69,8 +69,8 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   }
 
   test("sbt --sbt-version") {
-    val out = sbtProcess("--sbt-version", "1.3.0", "compile", "-v").!!.linesIterator.toList
-    assert(out.contains[String]("-Dsbt.version=1.3.0"))
+    val out = sbtProcess("--sbt-version", "1.3.13", "compile", "-v").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.version=1.3.13"))
     ()
   }
 
