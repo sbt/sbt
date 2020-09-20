@@ -27,6 +27,8 @@ lazy val scala212Jline = "jline" % "jline" % "2.14.6"
 // use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.10/versions.properties#L22
 lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
+val java9rtexportVersion = "0.1.0"
+lazy val java9rtexport = "org.scala-sbt.rt" % "java9-rt-export" % java9rtexportVersion % Runtime
 
 lazy val sbt013ExtraDeps = {
   if (sbtVersionToRelease startsWith "0.13.") Seq(scala210Jline)
@@ -207,7 +209,7 @@ val root = (project in file(".")).
 
     mappings in Universal ++= {
       val launchJar = sbtLaunchJar.value
-      val rtExportJar = (packageBin in Compile in java9rtexport).value
+      val rtExportJar = ((exportRepoCsrDirectory in dist).value / "org/scala-sbt/rt/java9-rt-export" / java9rtexportVersion / s"java9-rt-export-${java9rtexportVersion}.jar")
       Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
     },
     mappings in Universal ++= (Def.taskDyn {
@@ -258,18 +260,6 @@ lazy val integrationTest = (project in file("integration-test"))
       "org.scala-sbt" %% "io" % "1.3.1" % Test
     ),
     testFrameworks += new TestFramework("minitest.runner.Framework")
-  )
-
-lazy val java9rtexport = (project in file("java9-rt-export"))
-  .settings(
-    name := "java9-rt-export",
-    autoScalaLibrary := false,
-    crossPaths := false,
-    description := "Exports the contents of the Java 9. JEP-220 runtime image to a JAR for compatibility with older tools.",
-    homepage := Some(url("https://github.com/retronym/" + name.value)),
-    startYear := Some(2017),
-    licenses += ("Scala license", url(homepage.value.get.toString + "/blob/master/LICENSE")),
-    mainClass in Compile := Some("io.github.retronym.java9rtexport.Export")
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
@@ -357,7 +347,7 @@ lazy val dist = (project in file("dist"))
       if (sbtVersionToRelease startsWith "0.13.") scala210
       else scala212
     },
-    libraryDependencies ++= Seq(sbtActual, jansi, scala212Compiler, scala212Jline, scala212Xml) ++ sbt013ExtraDeps,
+    libraryDependencies ++= Seq(sbtActual, java9rtexport, jansi, scala212Compiler, scala212Jline, scala212Xml) ++ sbt013ExtraDeps,
     exportRepo := {
       val old = exportRepo.value
       sbtVersionToRelease match {
@@ -387,6 +377,7 @@ lazy val dist = (project in file("dist"))
       s"$csr fetch --cache $cache ${colonName(jansi)}".!
       s"$csr fetch --cache $cache ${colonName(scala212Compiler)}".!
       s"$csr fetch --cache $cache ${colonName(scala212Xml)}".!
+      s"$csr fetch --cache $cache ${colonName(java9rtexport)}".!
       val mavenCache = cache / "https" / "repo1.maven.org" / "maven2"
       val compilerBridgeVer = IO.listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter).toList.headOption
       compilerBridgeVer match {
