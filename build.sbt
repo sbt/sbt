@@ -41,6 +41,9 @@ val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
+val sbtnVersion = SettingKey[String]("sbtn-version")
+val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars", "Resolves sbtn JARs")
+val sbtnJarsBaseUrl = SettingKey[String]("sbtn-jars-base-url")
 
 lazy val bintrayDebianUrl = settingKey[String]("API point for Debian packages")
 lazy val bintrayDebianExperimentalUrl = settingKey[String]("API point for Debian experimental packages")
@@ -57,6 +60,13 @@ val debianBuildId = settingKey[Int]("build id for Debian")
 
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
+
+val x86MacPlatform = "x86_64-apple-darwin"
+val x86LinuxPlatform = "x86_64-pc-linux"
+val x86WindowsPlatform = "x86_64-pc-win32"
+val x86MacImageName = s"sbtn-$x86MacPlatform"
+val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
+val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -98,6 +108,54 @@ val root = (project in file(".")).
       }
       // TODO - GPG Trust validation.
       file
+    },
+    sbtnVersion := "1.4.0-M2",
+    sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
+    sbtnJarsMappings := {
+      val baseUrl = sbtnJarsBaseUrl.value
+      val v = sbtnVersion.value
+      val macosImageTar = s"sbtn-darwin-amd64-$v.tar.gz"
+      val linuxImageTar = s"sbtn-linux-amd64-$v.tar.gz"
+      val windowsImageZip = s"sbtn-windows-amd64-$v.zip"
+      val t = target.value
+      val macosTar = t / macosImageTar
+      val linuxTar = t / linuxImageTar
+      val windowsZip = t / windowsImageZip
+      import dispatch.classic._
+      if(!macosTar.exists && !isWindows) {
+         IO.touch(macosTar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosTar))
+         try Http(url(s"$baseUrl/v$v/$macosImageTar") >>> writer)
+         finally writer.close()
+         val platformDir = t / x86MacPlatform
+         IO.createDirectory(platformDir)
+         s"tar zxvf $macosTar --directory $platformDir".!
+         IO.move(platformDir / "sbtn", t / x86MacImageName)
+      }
+      if(!linuxTar.exists && !isWindows) {
+         IO.touch(linuxTar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxTar))
+         try Http(url(s"$baseUrl/v$v/$linuxImageTar") >>> writer)
+         finally writer.close()
+         val platformDir = t / x86LinuxPlatform
+         IO.createDirectory(platformDir)
+         s"""tar zxvf $linuxTar --directory $platformDir""".!
+         IO.move(platformDir / "sbtn", t / x86LinuxImageName)
+      }
+      if(!windowsZip.exists) {
+         IO.touch(windowsZip)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
+         try Http(url(s"$baseUrl/v$v/$windowsImageZip") >>> writer)
+         finally writer.close()
+         val platformDir = t / x86WindowsPlatform
+         IO.unzip(windowsZip, platformDir)
+         IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
+      }
+      if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
+      else
+        Seq(t / x86MacImageName -> s"bin/$x86MacImageName",
+          t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
+          t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
     },
 
     // GENERAL LINUX PACKAGING STUFFS
@@ -210,7 +268,10 @@ val root = (project in file(".")).
     mappings in Universal ++= {
       val launchJar = sbtLaunchJar.value
       val rtExportJar = ((exportRepoCsrDirectory in dist).value / "org/scala-sbt/rt/java9-rt-export" / java9rtexportVersion / s"java9-rt-export-${java9rtexportVersion}.jar")
-      Seq(launchJar -> "bin/sbt-launch.jar", rtExportJar -> "bin/java9-rt-export.jar")
+      Seq(
+        launchJar -> "bin/sbt-launch.jar",
+        rtExportJar -> "bin/java9-rt-export.jar"
+      ) ++ sbtnJarsMappings.value
     },
     mappings in Universal ++= (Def.taskDyn {
       if (sbtOfflineInstall && sbtVersionToRelease.startsWith("1."))
