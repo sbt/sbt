@@ -106,7 +106,10 @@ private[sbt] class TaskProgress(
 
   override def afterReady(task: Task[_]): Unit =
     if (!closed.get) {
-      Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
+      if (skipReportTasks.contains(getShortName(task))) {
+        lastTaskCount.set(-1) // force a report for remote clients
+        report()
+      } else Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
     } else {
       logger.debug(s"called afterReady for ${taskName(task)} after task progress was closed")
     }
@@ -175,19 +178,23 @@ private[sbt] class TaskProgress(
     }
   }
 
+  private[this] def getShortName(task: Task[_]): String = {
+    val name = taskName(task)
+    name.lastIndexOf('/') match {
+      case -1 => name
+      case i =>
+        var j = i + 1
+        while (name(j) == ' ') j += 1
+        name.substring(j)
+    }
+
+  }
   private[this] def filter(
       tasks: Vector[(Task[_], Long)]
   ): (Vector[(Task[_], Long)], Boolean) = {
     tasks.foldLeft((Vector.empty[(Task[_], Long)], false)) {
       case ((tasks, skip), pair @ (t, _)) =>
-        val n = taskName(t)
-        val shortName = n.lastIndexOf('/') match {
-          case -1 => n
-          case i =>
-            var j = i + 1
-            while (n(j) == ' ') j += 1
-            n.substring(j)
-        }
+        val shortName = getShortName(t)
         val newSkip = skip || skipReportTasks.contains(shortName)
         if (hiddenTasks.contains(shortName)) (tasks, newSkip) else (tasks :+ pair, newSkip)
     }

@@ -97,7 +97,7 @@ final class NetworkChannel(
       case t    => t.close()
     }
     interactive.set(value)
-    if (!isInteractive) terminal.setPrompt(Prompt.Batch)
+    if (isInteractive) terminal.setPrompt(Prompt.Pending)
     attached.set(true)
     pendingRequests.remove(id)
     jsonRpcRespond("", id)

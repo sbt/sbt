@@ -1035,6 +1035,7 @@ object BuiltinCommands {
     if (Terminal.startedByRemoteClient && !exchange.hasServer) {
       Exec(Shutdown, None) +: s1
     } else {
+      if (Terminal.console.prompt == Prompt.Batch) Terminal.console.setPrompt(Prompt.Pending)
       exchange prompt ConsolePromptEvent(s0)
       val minGCInterval = Project
         .extract(s1)
