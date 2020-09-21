@@ -998,6 +998,9 @@ object NetworkClient {
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
           sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
+        case "--sbt-script" if i + 1 < sanitized.length =>
+          i += 1
+          sbtScript = sanitized(i)
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
