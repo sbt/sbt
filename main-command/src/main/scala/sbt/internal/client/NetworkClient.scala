@@ -151,7 +151,7 @@ class NetworkClient(
     }
   }
 
-  private[this] val stdinBytes = new LinkedBlockingQueue[Int]
+  private[this] val stdinBytes = new LinkedBlockingQueue[Integer]
   private[this] val inLock = new Object
   private[this] val inputThread = new AtomicReference[RawInputThread]
   private[this] val exitClean = new AtomicBoolean(true)
@@ -174,8 +174,9 @@ class NetworkClient(
           else if (noTab) waitForServer(portfile, log = true, startServer = true)
           else {
             startInputThread()
-            stdinBytes.take match {
-              case 9 =>
+            stdinBytes.poll(5, TimeUnit.SECONDS) match {
+              case null => System.exit(0)
+              case i if i == 9 =>
                 errorStream.println("\nStarting server...")
                 waitForServer(portfile, !promptCompleteUsers, startServer = true)
               case _ => System.exit(0)
@@ -811,9 +812,10 @@ class NetworkClient(
         else {
           errorStream.print(s"\nNo cached $label names found. Press '<tab>' to compile: ")
           startInputThread()
-          stdinBytes.take match {
-            case 9 => updateCompletions()
-            case _ => Nil
+          stdinBytes.poll(5, TimeUnit.SECONDS) match {
+            case null        => Nil
+            case i if i == 9 => updateCompletions()
+            case _           => Nil
           }
         }
       }
