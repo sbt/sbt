@@ -788,7 +788,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           try {
             interrupted.set(false)
             terminal.inputStream.read match {
-              case -1   => Watch.Ignore
+              case -1   => throw new InterruptedException
               case 3    => Watch.CancelWatch // ctrl+c on windows
               case byte => inputHandler(byte.toChar.toString)
             }
@@ -800,7 +800,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         action match {
           case Watch.Ignore =>
             val stop = interrupted.get || Thread.interrupted
-            if ((!Terminal.systemInIsAttached || alternative.isDefined) && !stop) impl()
+            if (!stop) impl()
             else None
           case r => Some(r)
         }
