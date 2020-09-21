@@ -172,7 +172,12 @@ private[sbt] object JLine3 {
        * are the same.
        */
       override def getStringCapability(cap: Capability): String = {
-        term.getStringCapability(cap.toString)
+        term.getStringCapability(cap.toString) match {
+          case null if cap == Capability.key_dc && Util.isWindows  => "\\E[3~"
+          case null if cap == Capability.key_end && Util.isWindows => "\\E[4~"
+          case null if cap == Capability.key_ic && Util.isWindows  => "\\E[2~"
+          case c                                                   => c
+        }
       }
       override def getNumericCapability(cap: Capability): Integer =
         term.getNumericCapability(cap.toString)

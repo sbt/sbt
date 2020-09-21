@@ -77,14 +77,11 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
               val escapeSequence = keyEvent.keyCode match {
                 case 0x21 /* VK_PRIOR PageUp*/  => getCapability(Capability.key_ppage);
                 case 0x22 /* VK_NEXT PageDown*/ => getCapability(Capability.key_npage);
-                case 0x23 /* VK_END */          => getCapability(Capability.key_end)
                 case 0x24 /* VK_HOME */         => getCapability(Capability.key_home)
                 case 0x25 /* VK_LEFT */         => getCapability(Capability.key_left)
                 case 0x26 /* VK_UP */           => getCapability(Capability.key_up)
                 case 0x27 /* VK_RIGHT */        => getCapability(Capability.key_right)
                 case 0x28 /* VK_DOWN */         => getCapability(Capability.key_down)
-                case 0x2D /* VK_INSERT */       => getCapability(Capability.key_ic)
-                case 0x2E /* VK_DELETE */       => getCapability(Capability.key_dc)
                 case 0x70 /* VK_F1 */           => getCapability(Capability.key_f1)
                 case 0x71 /* VK_F2 */           => getCapability(Capability.key_f2)
                 case 0x72 /* VK_F3 */           => getCapability(Capability.key_f3)
@@ -97,7 +94,15 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
                 case 0x79 /* VK_F10 */          => getCapability(Capability.key_f10)
                 case 0x7A /* VK_F11 */          => getCapability(Capability.key_f11)
                 case 0x7B /* VK_F12 */          => getCapability(Capability.key_f12)
-                case _                          => null
+                // VK_END, VK_INSERT and VK_DELETE are not in the ansi key bindings so we
+                // have to manually apply the the sequences here and in JLine3.wrap
+                case 0x23 /* VK_END */ =>
+                  Option(getCapability(Capability.key_end)).getOrElse("\u001B[4!")
+                case 0x2D /* VK_INSERT */ =>
+                  Option(getCapability(Capability.key_ic)).getOrElse("\u001B[2~")
+                case 0x2E /* VK_DELETE */ =>
+                  Option(getCapability(Capability.key_dc)).getOrElse("\u001B[3~")
+                case _ => null
               }
               escapeSequence match {
                 case null =>
