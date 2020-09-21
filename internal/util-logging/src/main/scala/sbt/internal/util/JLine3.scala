@@ -46,6 +46,11 @@ private[sbt] object JLine3 {
     term.disableScrolling()
     term
   }
+  private val jansi = {
+    val (major, minor) =
+      (JansiSupportImpl.getJansiMajorVersion, JansiSupportImpl.getJansiMinorVersion)
+    (major > 1 || minor >= 18) && Util.isWindows
+  }
   private[util] def system: org.jline.terminal.Terminal = {
     val term =
       if (forceWindowsJansiHolder.get) windowsJansi()
@@ -55,8 +60,8 @@ private[sbt] object JLine3 {
         org.jline.terminal.TerminalBuilder
           .builder()
           .system(System.console != null)
-          .jna(Util.isNonCygwinWindows)
-          .jansi(false)
+          .jna(Util.isWindows && !jansi)
+          .jansi(jansi)
           .paused(true)
           .build()
       }
