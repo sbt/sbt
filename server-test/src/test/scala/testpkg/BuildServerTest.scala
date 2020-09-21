@@ -92,7 +92,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
-    assert(svr.waitForString(10.seconds) { s =>
+    assert(svr.waitForString(30.seconds) { s =>
       println(s)
       (s contains """"id":"16"""") &&
       (s contains """"class":"foo.FooMain"""")
