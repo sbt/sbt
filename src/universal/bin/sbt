@@ -9,6 +9,7 @@ declare -a sbt_options
 declare -a print_version
 declare -a print_sbt_version
 declare -a print_sbt_script_version
+declare -a original_args
 declare java_cmd=java
 declare java_version
 declare init_sbt_version=_to_be_replaced
@@ -17,6 +18,9 @@ declare -r default_sbt_opts=""
 declare -r default_java_opts="-Dfile.encoding=UTF-8"
 declare sbt_verbose=
 declare sbt_debug=
+declare build_props_sbt_version=
+declare use_sbtn=
+declare sbtn_command="$SBTN_CMD"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -350,25 +354,6 @@ copyRt() {
 }
 
 run() {
-  java_args=($JAVA_OPTS)
-  sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
-
-  # Split SBT_OPTS into options/commands
-  miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/options/sbt_options}" && \
-  eval "${miniscript/commands/sbt_additional_commands}"
-
-  # Combine command line options/commands and commands from SBT_OPTS
-  miniscript=$(map_args "$@") && eval "${miniscript/options/cli_options}" && eval "${miniscript/commands/cli_commands}"
-  args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}" )
-
-  # process the combined args, then reset "$@" to the residuals
-  process_args "${args1[@]}"
-  vlog "[sbt_options] $(declare -p sbt_options)"
-
-  addDefaultMemory
-  set -- "${residual_args[@]}"
-  argumentCount=$#
-
   # Copy preloaded repo to user's preloaded directory
   syncPreloaded
 
@@ -420,6 +405,7 @@ run() {
 
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r sbt_opts_file=".sbtopts"
+declare -r build_props_file="$(pwd)/project/build.properties"
 declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
 # this allows /etc/sbt/sbtopts location to be changed
 declare -r etc_file="${SBT_ETC_FILE:-$etc_sbt_opts_file}"
@@ -549,6 +535,8 @@ process_args () {
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
+                   --client) use_sbtn=1 && shift ;;
+                   --server) use_sbtn=0 && shift ;;
 
                  -ivy|--ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
@@ -587,6 +575,60 @@ loadConfigFile() {
   done
 }
 
+loadPropFile() {
+  while IFS='=' read -r k v; do
+    if [[ "$k" == "sbt.version" ]]; then
+      build_props_sbt_version="$v"
+    fi
+  done <<< "$(cat "$1" | sed $'/^\#/d;s/\r$//')"
+}
+
+detectNativeClient() {
+  if [[ "$sbtn_command" != "" ]]; then
+    :
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-linux"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-apple-darwin"
+  elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe"
+  elif [[ "$OSTYPE" == "freebsd"* ]]; then
+    :
+  else
+    :
+  fi
+}
+
+# Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
+isRunNativeClient() {
+  sbtV="$build_props_sbt_version"
+  [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
+  [[ "$sbtV" == "" ]] && sbtV="0.0.0"
+  sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
+  sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
+  if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
+    if [[ "$use_sbtn" == "1" ]] && [[ "$sbtn_command" != "" ]]; then
+      echo "true"
+    else
+      echo "false"
+    fi
+  else
+    echo "false"
+  fi
+}
+
+runNativeClient() {
+  vlog "[debug] running native client"
+  for i in "${!original_args[@]}"; do
+    if [[ "${original_args[i]}" = "--client" ]]; then
+      unset 'original_args[i]'
+    fi
+  done
+  execRunner "$sbtn_command" "${original_args[@]}"
+}
+
+original_args=("$@")
+
 # Here we pull in the default settings configuration.
 [[ -f "$dist_sbt_opts_file" ]] && set -- $(loadConfigFile "$dist_sbt_opts_file") "$@"
 
@@ -602,4 +644,34 @@ loadConfigFile() {
 # Pull in default JAVA_OPTS
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
 
-run "$@"
+[[ -f "$build_props_file" ]] && loadPropFile "$build_props_file"
+
+detectNativeClient
+
+java_args=($JAVA_OPTS)
+sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
+if [[ "$SBT_NATIVE_CLIENT" == "true" ]]; then
+  use_sbtn=1
+fi
+
+# Split SBT_OPTS into options/commands
+miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/options/sbt_options}" && \
+eval "${miniscript/commands/sbt_additional_commands}"
+
+# Combine command line options/commands and commands from SBT_OPTS
+miniscript=$(map_args "$@") && eval "${miniscript/options/cli_options}" && eval "${miniscript/commands/cli_commands}"
+args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}" )
+
+# process the combined args, then reset "$@" to the residuals
+process_args "${args1[@]}"
+vlog "[sbt_options] $(declare -p sbt_options)"
+
+addDefaultMemory
+set -- "${residual_args[@]}"
+argumentCount=$#
+
+if [[ "$(isRunNativeClient)" == "true" ]]; then
+  runNativeClient
+else
+  run
+fi

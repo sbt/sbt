@@ -11,11 +11,9 @@ lazy val root = (project in file("."))
       val xs = IO.readLines(file("output.txt")).toVector
 
       println(xs)
-      assert(xs(0) startsWith "[info] Loading project definition")
-      assert(xs(1) startsWith "[info] Loading settings")
-      assert(xs(2) startsWith "[info] Set current project to Hello")
-      assert(xs(3) startsWith "[info] This is sbt")
-      assert(xs(4) startsWith "[info] The current project")
+      assert(xs(0) contains "welcome to sbt")
+      assert(xs(1) contains "loading project definition")
+      assert(xs(2) contains "loading settings")
 
       val ys = IO.readLines(file("err.txt")).toVector.distinct
 

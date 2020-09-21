@@ -70,6 +70,9 @@ install:
   - $JABBA_HOME/bin/jabba install $TRAVIS_JDK && export JAVA_HOME="$JABBA_HOME/jdk/$TRAVIS_JDK" && export PATH="$JAVA_HOME/bin:$PATH"
   - java -Xmx32m -version
   - unset SBT_OPTS
+  - curl https://piccolo.link/sbt-$SBT_VER.zip -L --output /tmp/sbt.zip
+  - unzip /tmp/sbt.zip -d $HOME/sbt
+  - export PATH="$HOME/sbt/sbt/bin:$PATH"
 
 cache:
   directories:

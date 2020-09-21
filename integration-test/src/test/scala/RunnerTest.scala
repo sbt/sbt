@@ -213,4 +213,20 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=12345"))
     ()
   }
+
+  test("sbt --client") {
+    val out = sbtProcess("--client", "--no-colors", "compile").!!.linesIterator.toList
+    if (isWindows) {
+      println(out)
+    } else {
+      assert(out exists { _.contains("server was not detected") })
+    }
+    val out2 = sbtProcess("--client", "--no-colors", "shutdown").!!.linesIterator.toList
+    if (isWindows) {
+      println(out)
+    } else {
+      assert(out2 exists { _.contains("disconnected") })
+    }
+    ()
+  }
 }
