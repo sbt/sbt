@@ -17,6 +17,7 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.BuildClientCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildParamsFormats
   with sbt.internal.bsp.codec.CompileProviderFormats
+  with sbt.internal.bsp.codec.TestProviderFormats
   with sbt.internal.bsp.codec.RunProviderFormats
   with sbt.internal.bsp.codec.BuildServerCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildResultFormats
@@ -35,6 +36,8 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.BspCompileResultFormats
   with sbt.internal.bsp.codec.CompileTaskFormats
   with sbt.internal.bsp.codec.CompileReportFormats
+  with sbt.internal.bsp.codec.TestParamsFormats
+  with sbt.internal.bsp.codec.TestResultFormats
   with sbt.internal.bsp.codec.RunParamsFormats
   with sbt.internal.bsp.codec.RunResultFormats
   with sbt.internal.bsp.codec.ScalaBuildTargetFormats
@@ -44,8 +47,9 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.ScalacOptionsResultFormats
   with sbt.internal.bsp.codec.BspConnectionDetailsFormats
   with sbt.internal.bsp.codec.MetalsMetadataFormats
-  with sbt.internal.bsp.codec.ScalaTestClassesParamsFormats
   with sbt.internal.bsp.codec.ScalaTestClassesItemFormats
+  with sbt.internal.bsp.codec.ScalaTestParamsFormats
+  with sbt.internal.bsp.codec.ScalaTestClassesParamsFormats
   with sbt.internal.bsp.codec.ScalaTestClassesResultFormats
   with sbt.internal.bsp.codec.ScalaMainClassesParamsFormats
   with sbt.internal.bsp.codec.ScalaMainClassFormats

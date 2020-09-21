@@ -30,12 +30,15 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => 
 
 import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
+import sbt.Project._
+import sbt.std.TaskExtra
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
 
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
+    TestProvider(BuildServerConnection.languages),
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
     canReload = true
@@ -130,6 +133,8 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetCompile / aggregate := false,
+    bspBuildTargetTest := bspTestTask.evaluated,
+    bspBuildTargetTest / aggregate := false,
     bspBuildTargetScalacOptions := Def.inputTaskDyn {
       val s = state.value
       val workspace = bspWorkspace.value
@@ -254,6 +259,11 @@ object BuildServerProtocol {
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetCompile.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r: JsonRpcRequestMessage if r.method == "buildTarget/test" =>
+            val task = bspBuildTargetTest.key
+            val paramStr = CompactPrinter(json(r))
+            val _ = callback.appendExec(s"$task $paramStr", Some(r.id))
 
           case r if r.method == "buildTarget/run" =>
             val paramJson = json(r)
@@ -388,7 +398,7 @@ object BuildServerProtocol {
       config <- configs
       if dep != thisProjectRef || config.name != thisConfig.name
     } yield Keys.bspTargetIdentifier.in(dep, config)
-    val capabilities = BuildTargetCapabilities(canCompile = true, canTest = false, canRun = false)
+    val capabilities = BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
       BuildTarget(
@@ -441,7 +451,6 @@ object BuildServerProtocol {
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
-    import sbt.Project._
     Keys.compile.result.value match {
       case Value(_) => StatusCode.Success
       case Inc(_)   =>
@@ -494,6 +503,53 @@ object BuildServerProtocol {
     }
 
     runMainClassTask(mainClass, runParams.originId)
+  }
+
+  private def bspTestTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
+    val testParams = jsonParser
+      .map(_.flatMap(json => Converter.fromJson[TestParams](json)))
+      .parsed
+      .get
+    val workspace = bspWorkspace.value
+
+    val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {
+      case Some("scala-test") =>
+        val data = testParams.data.getOrElse(JNull)
+        val items = Converter.fromJson[ScalaTestParams](data) match {
+          case Failure(e) =>
+            throw LangServerError(ErrorCodes.ParseError, e.getMessage)
+          case Success(value) => value.testClasses
+        }
+        val testTasks: Seq[Def.Initialize[Task[Unit]]] = items.map { item =>
+          val scope = workspace(item.target)
+          item.classes.toList match {
+            case Nil => Def.task(())
+            case classes =>
+              (scope / testOnly).toTask(" " + classes.mkString(" "))
+          }
+        }
+        testTasks.joinWith(ts => TaskExtra.joinTasks(ts).join).result
+
+      case Some(dataKind) =>
+        throw LangServerError(
+          ErrorCodes.InvalidParams,
+          s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
+        )
+
+      case None =>
+        // run allTests in testParams.targets
+        val filter = ScopeFilter.in(testParams.targets.map(workspace))
+        test.all(filter).result
+    }
+
+    Def.task {
+      val state = Keys.state.value
+      val statusCode = resultTask.value match {
+        case Value(_) => StatusCode.Success
+        case Inc(_)   => StatusCode.Error
+      }
+      val _ = state.respondEvent(TestResult(testParams.originId, statusCode))
+    }
   }
 
   private def runMainClassTask(mainClass: ScalaMainClass, originId: Option[String]) = Def.task {
