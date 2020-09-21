@@ -85,6 +85,41 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/scalaMainClasses") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "16", "method": "buildTarget/scalaMainClasses", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(30.seconds) { s =>
+      println(s)
+      (s contains """"id":"16"""") &&
+      (s contains """"class":"foo.FooMain"""")
+    })
+  }
+
+  test("buildTarget/run") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "17", "method": "buildTarget/run", "params": {
+         |  "target": { "uri": "$x" },
+         |  "dataKind": "scala-main-class",
+         |  "data": { "class": "foo.FooMain" }
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains "build/logMessage") &&
+      (s contains """"message":"Hello World!"""")
+    })
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"17"""") &&
+      (s contains """"statusCode":1""")
+    })
+  }
+
   def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",

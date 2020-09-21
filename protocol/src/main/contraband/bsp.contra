@@ -172,7 +172,7 @@ type BuildServerCapabilities {
   # testProvider: TestProvider
 
   # The languages the server supports run via method buildTarget/run
-  # runProvider: RunProvider
+  runProvider: sbt.internal.bsp.RunProvider
 
   # The server can provide a list of targets that contain a
   # single text document via the method buildTarget/inverseSources
@@ -195,6 +195,10 @@ type BuildServerCapabilities {
 }
 
 type CompileProvider {
+  languageIds: [String]
+}
+
+type RunProvider {
   languageIds: [String]
 }
 
@@ -367,6 +371,39 @@ type CompileReport {
   time: Int
 }
 
+## Run Request
+## The run request is sent from the client to the server to run a build target.
+## The server communicates during the initialize handshake whether this method is supported or not.
+## An empty run request is valid.
+type RunParams {
+  ## The build target to run.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## An option identifier gnerated by the client to identify this request.
+  ## The server may include this id in triggered notifications or responses.
+  originId: String
+
+  ## Optional arguments to the executed application.
+  arguments: [String]
+
+  ## Kind of data to expect in the data field.
+  ## If this field is not set, the kind of data is not specified.
+  dataKind: String
+
+  ## Language-specific metadata for this execution.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Run Result
+type RunResult {
+  ## An optional request id to know the origin of this report.
+  originId: String
+
+  ## A status code fore the execution.
+  statusCode: Int!
+}
+
+
 # Scala Extension
 
 ## Contains scala-specific metadata for compiling a target containing Scala sources.
@@ -468,4 +505,39 @@ type MetalsMetadata {
 
   ## The list of scala versions that are supported by Metals
   supportedScalaVersions: [String]
+}
+
+## The build target main classes request is sent from the client to the server
+## to query for the list of main classes that can be fed as arguments to buildTarget/run.
+type ScalaMainClassesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## An optional number uniquely identifying a client request.
+  originId: String
+}
+
+type ScalaMainClassesResult {
+  items: [sbt.internal.bsp.ScalaMainClassesItem]
+
+  ## An optional id of the request that triggered this result.
+  originId: String
+}
+
+type ScalaMainClassesItem {
+  ## The build target that contains the test classes.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The main class items
+  classes: [sbt.internal.bsp.ScalaMainClass]
+}
+
+type ScalaMainClass {
+  ## The main class to run.
+  class: String!
+
+  ## The user arguments to the main entrypoint.
+  arguments: [String]
+
+  ## The jvm options for the application.
+  jvmOptions: [String]
 }

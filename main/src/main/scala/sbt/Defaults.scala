@@ -420,8 +420,13 @@ object Defaults extends BuildCommon {
     fullServerHandlers := {
       Seq(
         LanguageServerProtocol.handler(fileConverter.value),
-        BuildServerProtocol
-          .handler(sbtVersion.value, semanticdbEnabled.value, semanticdbVersion.value),
+        BuildServerProtocol.handler(
+          loadedBuild.value,
+          bspWorkspace.value,
+          sbtVersion.value,
+          semanticdbEnabled.value,
+          semanticdbVersion.value
+        ),
         VirtualTerminal.handler,
       ) ++ serverHandlers.value :+ ServerHandler.fallback
     },

@@ -21,12 +21,14 @@ import sbt.StandardMain.exchange
 import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
+import sbt.internal.util.Attributed
+import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.Configuration
 import sbt.util.Logger
-import sjsonnew.shaded.scalajson.ast.unsafe.JNull
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
-import sjsonnew.support.scalajson.unsafe.Converter
+import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 
+import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
 
 object BuildServerProtocol {
@@ -34,6 +36,7 @@ object BuildServerProtocol {
 
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
+    RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
     canReload = true
   )
@@ -138,7 +141,18 @@ object BuildServerProtocol {
         s.respondEvent(result)
       }
     }.evaluated,
-    bspBuildTargetScalacOptions / aggregate := false
+    bspBuildTargetScalacOptions / aggregate := false,
+    bspScalaMainClasses := Def.inputTaskDyn {
+      val s = state.value
+      val workspace = bspWorkspace.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val filter = ScopeFilter.in(targets.map(workspace))
+      Def.task {
+        val items = bspScalaMainClassesItem.all(filter).value
+        val result = ScalaMainClassesResult(items.toVector, None)
+        s.respondEvent(result)
+      }
+    }.evaluated
   )
 
   // This will be scoped to Compile, Test, IntegrationTest etc
@@ -163,69 +177,106 @@ object BuildServerProtocol {
     },
     bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
     bspBuildTargetCompileItem := bspCompileTask.value,
+    bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
-    bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value
+    bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
+    bspScalaMainClassesItem := scalaMainClassesTask.value
   )
 
   def handler(
+      loadedBuild: LoadedBuild,
+      workspace: Map[BuildTargetIdentifier, Scope],
       sbtVersion: String,
       semanticdbEnabled: Boolean,
       semanticdbVersion: String
-  ): ServerHandler = ServerHandler { callback =>
-    ServerIntent(
-      onRequest = {
-        case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
-          val params = Converter.fromJson[InitializeBuildParams](json(r)).get
-          checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
+  ): ServerHandler = {
+    val configurationMap: Map[ConfigKey, Configuration] =
+      loadedBuild.allProjectRefs
+        .flatMap { case (_, p) => p.configurations }
+        .distinct
+        .map(c => ConfigKey(c.name) -> c)
+        .toMap
+    ServerHandler { callback =>
+      ServerIntent(
+        onRequest = {
+          case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
+            val params = Converter.fromJson[InitializeBuildParams](json(r)).get
+            checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
 
-          val response = InitializeBuildResult(
-            "sbt",
-            sbtVersion,
-            BuildServerConnection.bspVersion,
-            capabilities,
-            None
-          )
-          callback.jsonRpcRespond(response, Some(r.id)); ()
+            val response = InitializeBuildResult(
+              "sbt",
+              sbtVersion,
+              BuildServerConnection.bspVersion,
+              capabilities,
+              None
+            )
+            callback.jsonRpcRespond(response, Some(r.id)); ()
 
-        case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
-          val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
+          case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
+            val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
-        case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
-          val _ = callback.appendExec(s"$bspReload ${r.id}", None)
+          case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
+            val _ = callback.appendExec(s"$bspReload ${r.id}", None)
 
-        case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
-          ()
+          case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
+            ()
 
-        case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-          val _ = callback.appendExec(Shutdown, Some(r.id))
+          case r: JsonRpcRequestMessage if r.method == "build/exit" =>
+            val _ = callback.appendExec(Shutdown, Some(r.id))
 
-        case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
-          val param = Converter.fromJson[SourcesParams](json(r)).get
-          val targets = param.targets.map(_.uri).mkString(" ")
-          val command = Keys.bspBuildTargetSources.key
-          val _ = callback.appendExec(s"$command $targets", Some(r.id))
+          case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
+            val param = Converter.fromJson[SourcesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetSources.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-        case r if r.method == "buildTarget/dependencySources" =>
-          val param = Converter.fromJson[DependencySourcesParams](json(r)).get
-          val targets = param.targets.map(_.uri).mkString(" ")
-          val command = Keys.bspBuildTargetDependencySources.key
-          val _ = callback.appendExec(s"$command $targets", Some(r.id))
+          case r if r.method == "buildTarget/dependencySources" =>
+            val param = Converter.fromJson[DependencySourcesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetDependencySources.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-        case r if r.method == "buildTarget/compile" =>
-          val param = Converter.fromJson[CompileParams](json(r)).get
-          val targets = param.targets.map(_.uri).mkString(" ")
-          val command = Keys.bspBuildTargetCompile.key
-          val _ = callback.appendExec(s"$command $targets", Some(r.id))
+          case r if r.method == "buildTarget/compile" =>
+            val param = Converter.fromJson[CompileParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetCompile.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-        case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
-          val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
-          val targets = param.targets.map(_.uri).mkString(" ")
-          val command = Keys.bspBuildTargetScalacOptions.key
-          val _ = callback.appendExec(s"$command $targets", Some(r.id))
-      },
-      onResponse = PartialFunction.empty,
-      onNotification = PartialFunction.empty,
-    )
+          case r if r.method == "buildTarget/run" =>
+            val paramJson = json(r)
+            val param = Converter.fromJson[RunParams](json(r)).get
+            val scope = workspace.getOrElse(
+              param.target,
+              throw LangServerError(
+                ErrorCodes.InvalidParams,
+                s"'${param.target}' is not a valid build target identifier"
+              )
+            )
+            val project = scope.project.toOption.get.asInstanceOf[ProjectRef].project
+            val config = configurationMap(scope.config.toOption.get).id
+            val task = bspBuildTargetRun.key
+            val paramStr = CompactPrinter(paramJson)
+            val _ = callback.appendExec(
+              s"$project / $config / $task $paramStr",
+              Some(r.id)
+            )
+
+          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
+            val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetScalacOptions.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaMainClasses" =>
+            val param = Converter.fromJson[ScalaMainClassesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspScalaMainClasses.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+        },
+        onResponse = PartialFunction.empty,
+        onNotification = PartialFunction.empty,
+      )
+    }
   }
 
   private def checkMetalsCompatibility(
@@ -380,6 +431,76 @@ object BuildServerProtocol {
     }
   }
 
+  private val jsonParser: Parser[Try[JValue]] = (Parsers.any *)
+    .map(_.mkString)
+    .map(JsonParser.parseFromString)
+
+  private def bspRunTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
+    val runParams = jsonParser
+      .map(_.flatMap(json => Converter.fromJson[RunParams](json)))
+      .parsed
+      .get
+    val defaultClass = Keys.mainClass.value
+    val defaultJvmOptions = Keys.javaOptions.value
+
+    val mainClass = runParams.dataKind match {
+      case Some("scala-main-class") =>
+        val data = runParams.data.getOrElse(JNull)
+        Converter.fromJson[ScalaMainClass](data) match {
+          case Failure(e) =>
+            throw LangServerError(
+              ErrorCodes.ParseError,
+              e.getMessage
+            )
+          case Success(value) => value
+        }
+
+      case Some(dataKind) =>
+        throw LangServerError(
+          ErrorCodes.InvalidParams,
+          s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
+        )
+
+      case None =>
+        ScalaMainClass(
+          defaultClass.getOrElse(
+            throw LangServerError(
+              ErrorCodes.InvalidParams,
+              "No default main class is defined"
+            )
+          ),
+          runParams.arguments,
+          defaultJvmOptions.toVector
+        )
+    }
+
+    runMainClassTask(mainClass, runParams.originId)
+  }
+
+  private def runMainClassTask(mainClass: ScalaMainClass, originId: Option[String]) = Def.task {
+    val state = Keys.state.value
+    val logger = Keys.streams.value.log
+    val classpath = Attributed.data(fullClasspath.value)
+    val forkOpts = ForkOptions(
+      javaHome = javaHome.value,
+      outputStrategy = outputStrategy.value,
+      // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
+      bootJars = Vector(),
+      workingDirectory = Some(baseDirectory.value),
+      runJVMOptions = mainClass.jvmOptions,
+      connectInput = connectInput.value,
+      envVars = envVars.value
+    )
+    val runner = new ForkRun(forkOpts)
+    val statusCode = runner
+      .run(mainClass.`class`, classpath, mainClass.arguments, logger)
+      .fold(
+        _ => StatusCode.Error,
+        _ => StatusCode.Success
+      )
+    state.respondEvent(RunResult(originId, statusCode))
+  }
+
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val directDependencies = Keys.internalDependencyConfigurations.value.map {
       case (project, rawConfigs) =>
@@ -401,6 +522,17 @@ object BuildServerProtocol {
         }
         .toSeq
     }
+  }
+
+  private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
+    val jvmOptions = Keys.javaOptions.value.toVector
+    val mainClasses = Keys.discoveredMainClasses.value.map(
+      ScalaMainClass(_, Vector(), jvmOptions)
+    )
+    ScalaMainClassesItem(
+      bspTargetIdentifier.value,
+      mainClasses.toVector
+    )
   }
 
   private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
