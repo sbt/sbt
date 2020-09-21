@@ -120,6 +120,57 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/scalaTestClasses") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "18", "method": "buildTarget/scalaTestClasses", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"18"""") &&
+      (s contains """"classes":["foo.FailingTest","foo.FooTest"]""")
+    })
+  }
+
+  test("buildTarget/test: run all tests") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "19", "method": "buildTarget/test", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"19"""") &&
+      (s contains """"statusCode":2""")
+    })
+  }
+
+  test("buildTarget/test: run one test class") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "20", "method": "buildTarget/test", "params": {
+         |  "targets": [{ "uri": "$x" }],
+         |  "dataKind": "scala-test",
+         |  "data": {
+         |    "testClasses": [
+         |      {
+         |        "target": { "uri": "$x" },
+         |        "classes": ["foo.FooTest"]
+         |      }
+         |    ]
+         |  }
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains """"id":"20"""") &&
+      (s contains """"statusCode":1""")
+    })
+  }
+
   def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",

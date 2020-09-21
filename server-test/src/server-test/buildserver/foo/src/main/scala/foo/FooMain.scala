@@ -1,5 +1,7 @@
 package foo
 
 object FooMain extends App {
-  println("Hello World!")
+  lazy val message = "Hello World!"
+
+  println(message)
 }

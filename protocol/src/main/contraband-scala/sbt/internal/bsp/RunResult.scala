@@ -7,7 +7,7 @@ package sbt.internal.bsp
 /**
  * Run Result
  * @param originId An optional request id to know the origin of this report.
- * @param statusCode A status code fore the execution.
+ * @param statusCode A status code for the execution.
  */
 final class RunResult private (
   val originId: Option[String],
