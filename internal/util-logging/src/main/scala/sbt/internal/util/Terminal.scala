@@ -809,11 +809,13 @@ object Terminal {
 
     override private[sbt] def enterRawMode(): Unit = if (rawMode.compareAndSet(false, true)) {
       in.setRawMode(true)
-      JLine3.enterRawMode(system)
+      try JLine3.enterRawMode(system)
+      catch { case _: java.io.IOError => }
     }
     override private[sbt] def exitRawMode(): Unit = if (rawMode.compareAndSet(true, false)) {
       in.setRawMode(false)
-      JLine3.exitRawMode(system)
+      try JLine3.exitRawMode(system)
+      catch { case _: java.io.IOError => }
     }
     override def isColorEnabled: Boolean =
       props
