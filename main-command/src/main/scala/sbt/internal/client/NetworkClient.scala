@@ -181,8 +181,13 @@ class NetworkClient(
         catch {
           // This catches a pipe busy exception which can happen if two windows clients
           // attempt to connect in rapid succession
-          case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 => None
-          case e: IOException                                                           => throw new ConnectionRefusedException(e)
+          case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
+            if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
+              errorStream.println(s"Access denied for portfile $portfile")
+              throw new NetworkClient.AccessDeniedException
+            }
+            None
+          case e: IOException => throw new ConnectionRefusedException(e)
         }
         res match {
           case Some(r) => r
@@ -1093,7 +1098,7 @@ object NetworkClient {
       System.exit(Terminal.withStreams(false) {
         val term = Terminal.console
         try client(base, restOfArgs, term.inputStream, System.err, term, useJNI)
-        finally {
+        catch { case _: AccessDeniedException => 1 } finally {
           Runtime.getRuntime.removeShutdownHook(hook)
           hook.run()
         }
@@ -1124,21 +1129,23 @@ object NetworkClient {
     val sbtArgs = args.takeWhile(!_.startsWith(NetworkClient.completions))
     val arguments = NetworkClient.parseArgs(sbtArgs)
     val noTab = args.contains("--no-tab")
-    val client =
-      simpleClient(
-        arguments.withBaseDirectory(baseDirectory),
-        inputStream = in,
-        errorStream = errorStream,
-        printStream = errorStream,
-        useJNI = useJNI,
-      )
     try {
-      val results =
-        if (client.connect(log = false, promptCompleteUsers = true)) client.getCompletions(cmd)
-        else Nil
-      out.println(results.sorted.distinct mkString "\n")
-      0
-    } catch { case _: Exception => 1 } finally client.close()
+      val client =
+        simpleClient(
+          arguments.withBaseDirectory(baseDirectory),
+          inputStream = in,
+          errorStream = errorStream,
+          printStream = errorStream,
+          useJNI = useJNI,
+        )
+      try {
+        val results =
+          if (client.connect(log = false, promptCompleteUsers = true)) client.getCompletions(cmd)
+          else Nil
+        out.println(results.sorted.distinct mkString "\n")
+        0
+      } catch { case _: Exception => 1 } finally client.close()
+    } catch { case _: AccessDeniedException => 1 }
   }
 
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
@@ -1153,4 +1160,5 @@ object NetworkClient {
         e.printStackTrace()
         1
     }
+  private class AccessDeniedException extends Throwable
 }
