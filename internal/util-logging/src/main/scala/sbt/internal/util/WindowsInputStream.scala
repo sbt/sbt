@@ -10,7 +10,6 @@ package sbt.internal.util
 import java.io.InputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import org.fusesource.jansi.internal.Kernel32.{ KEY_EVENT_RECORD }
 import org.fusesource.jansi.internal.WindowsSupport
 import org.jline.utils.InfoCmp.Capability
 import scala.annotation.tailrec
@@ -39,11 +38,14 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
   private val RIGHT_CTRL_PRESSED = 0x0004;
   private val LEFT_CTRL_PRESSED = 0x0008;
   private val SHIFT_PRESSED = 0x0010;
-  private val NUMLOCK_ON = 0x0020;
-  private val SCROLLLOCK_ON = 0x0040;
-  private val CAPSLOCK_ON = 0x0080;
-  private def getCapability(cap: Capability): String =
-    term.getStringCapability(cap)
+  private def getCapability(cap: Capability): String = term.getStringCapability(cap) match {
+    case null => null
+    case c    => c.replaceAllLiterally("\\E", "\u001B")
+  }
+  /*
+   * This function is a hybrid of jline 2 WindowsTerminal.readConsoleInput
+   * and jline3 AbstractTerminal.getEscapeSequence.
+   */
   private def readConsoleInput(): Array[Byte] = {
     WindowsSupport.readConsoleInput(1) match {
       case null => Array.empty
@@ -51,76 +53,55 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
         val sb = new StringBuilder();
         events.foreach { event =>
           val keyEvent = event.keyEvent
+          val controlKeyState = keyEvent.controlKeyState
+          val isCtrl = (controlKeyState & (RIGHT_CTRL_PRESSED | LEFT_CTRL_PRESSED)) > 0;
+          val isAlt = (controlKeyState & (RIGHT_ALT_PRESSED | LEFT_ALT_PRESSED)) > 0;
+          val isShift = (controlKeyState & SHIFT_PRESSED) > 0;
           if (keyEvent.keyDown) {
             if (keyEvent.uchar > 0) {
-              val altState = KEY_EVENT_RECORD.LEFT_ALT_PRESSED | KEY_EVENT_RECORD.RIGHT_ALT_PRESSED;
-              val ctrlState = KEY_EVENT_RECORD.LEFT_CTRL_PRESSED | KEY_EVENT_RECORD.RIGHT_CTRL_PRESSED;
               if (((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
-                  && ((keyEvent.controlKeyState & altState) != 0) && ((keyEvent.controlKeyState & ctrlState) == 0)) {
+                  && isAlt && !isCtrl) {
                 sb.append('\u001B') // ESC
               }
-
-              sb.append(keyEvent.uchar)
+              if (isShift && keyEvent.keyCode == 9) {
+                getCapability(Capability.key_btab) match {
+                  case null => sb.append(keyEvent.uchar)
+                  case cap  => sb.append(cap)
+                }
+              } else {
+                sb.append(keyEvent.uchar)
+              }
             } else {
-              val keyState = keyEvent.controlKeyState
               // virtual keycodes: http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx
               // just add support for basic editing keys (no control state, no numpad keys)
-              val escapeSequence: String = keyEvent.keyCode match {
-                case 0x08 => // VK_BACK BackSpace
-                  if ((keyState & ALT_FLAG) > 0) "\\E^H"
-                  else getCapability(Capability.key_backspace)
-                case 0x09 =>
-                  if ((keyState & SHIFT_FLAG) > 0) getCapability(Capability.key_btab)
-                  else null
-                case 0x21 => // VK_PRIOR PageUp
-                  getCapability(Capability.key_ppage);
-                case 0x22 => // VK_NEXT PageDown
-                  getCapability(Capability.key_npage);
-                case 0x23 => // VK_END
-                  if (keyState > 0) "\\E[1;%p1%dF" else getCapability(Capability.key_end)
-                case 0x24 => // VK_HOME
-                  if (keyState > 0) "\\E[1;%p1%dH" else getCapability(Capability.key_home)
-                case 0x25 => // VK_LEFT
-                  if (keyState > 0) "\\E[1;%p1%dD" else getCapability(Capability.key_left)
-                case 0x26 => // VK_UP
-                  if (keyState > 0) "\\E[1;%p1%dA" else getCapability(Capability.key_up)
-                case 0x27 => // VK_RIGHT
-                  if (keyState > 0) "\\E[1;%p1%dC" else getCapability(Capability.key_right)
-                case 0x28 => // VK_DOWN
-                  if (keyState > 0) "\\E[1;%p1%dB" else getCapability(Capability.key_down)
-                case 0x2D => // VK_INSERT
-                  getCapability(Capability.key_ic)
-                case 0x2E => // VK_DELETE
-                  getCapability(Capability.key_dc)
-                case 0x70 => // VK_F1
-                  if (keyState > 0) "\\E[1;%p1%dP" else getCapability(Capability.key_f1)
-                case 0x71 => // VK_F2
-                  if (keyState > 0) "\\E[1;%p1%dQ" else getCapability(Capability.key_f2)
-                case 0x72 => // VK_F3
-                  if (keyState > 0) "\\E[1;%p1%dR" else getCapability(Capability.key_f3)
-                case 0x73 => // VK_F4
-                  if (keyState > 0) "\\E[1;%p1%dS" else getCapability(Capability.key_f4)
-                case 0x74 => // VK_F5
-                  if (keyState > 0) "\\E[15;%p1%d~" else getCapability(Capability.key_f5)
-                case 0x75 => // VK_F6
-                  if (keyState > 0) "\\E[17;%p1%d~" else getCapability(Capability.key_f6)
-                case 0x76 => // VK_F7
-                  if (keyState > 0) "\\E[18;%p1%d~" else getCapability(Capability.key_f7)
-                case 0x77 => // VK_F8
-                  if (keyState > 0) "\\E[19;%p1%d~" else getCapability(Capability.key_f8)
-                case 0x78 => // VK_F9
-                  if (keyState > 0) "\\E[20;%p1%d~" else getCapability(Capability.key_f9)
-                case 0x79 => // VK_F10
-                  if (keyState > 0) "\\E[21;%p1%d~" else getCapability(Capability.key_f10)
-                case 0x7A => // VK_F11
-                  if (keyState > 0) "\\E[23;%p1%d~" else getCapability(Capability.key_f11)
-                case 0x7B => // VK_F12
-                  if (keyState > 0) "\\E[24;%p1%d~" else getCapability(Capability.key_f12)
-                case _ => null
+              val escapeSequence = keyEvent.keyCode match {
+                case 0x21 /* VK_PRIOR PageUp*/  => getCapability(Capability.key_ppage);
+                case 0x22 /* VK_NEXT PageDown*/ => getCapability(Capability.key_npage);
+                case 0x23 /* VK_END */          => getCapability(Capability.key_end)
+                case 0x24 /* VK_HOME */         => getCapability(Capability.key_home)
+                case 0x25 /* VK_LEFT */         => getCapability(Capability.key_left)
+                case 0x26 /* VK_UP */           => getCapability(Capability.key_up)
+                case 0x27 /* VK_RIGHT */        => getCapability(Capability.key_right)
+                case 0x28 /* VK_DOWN */         => getCapability(Capability.key_down)
+                case 0x2D /* VK_INSERT */       => getCapability(Capability.key_ic)
+                case 0x2E /* VK_DELETE */       => getCapability(Capability.key_dc)
+                case 0x70 /* VK_F1 */           => getCapability(Capability.key_f1)
+                case 0x71 /* VK_F2 */           => getCapability(Capability.key_f2)
+                case 0x72 /* VK_F3 */           => getCapability(Capability.key_f3)
+                case 0x73 /* VK_F4 */           => getCapability(Capability.key_f4)
+                case 0x74 /* VK_F5 */           => getCapability(Capability.key_f5)
+                case 0x75 /* VK_F6 */           => getCapability(Capability.key_f6)
+                case 0x76 /* VK_F7 */           => getCapability(Capability.key_f7)
+                case 0x77 /* VK_F8 */           => getCapability(Capability.key_f8)
+                case 0x78 /* VK_F9 */           => getCapability(Capability.key_f9)
+                case 0x79 /* VK_F10 */          => getCapability(Capability.key_f10)
+                case 0x7A /* VK_F11 */          => getCapability(Capability.key_f11)
+                case 0x7B /* VK_F12 */          => getCapability(Capability.key_f12)
+                case _                          => null
               }
-              if (escapeSequence != null) {
-                (0 until keyEvent.repeatCount.toInt)
-                  .foreach(_ => sb.append(escapeSequence.replaceAllLiterally("\\E", "\u001B")))
+              escapeSequence match {
+                case null =>
+                case es   => (0 until keyEvent.repeatCount.toInt).foreach(_ => sb.append(es))
               }
             }
           } else {
@@ -134,7 +115,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
         sb.toString().getBytes()
     }
   }
-  val raw: InputStream = new SimpleInputStream {
+  private[this] val raw: InputStream = new SimpleInputStream {
     val buffer = new LinkedBlockingQueue[Integer]
     @tailrec
     override def read(): Int = {
@@ -147,6 +128,6 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
     }
   }
   private[this] val isRaw = new AtomicBoolean(true)
-  def setRawMode(toggle: Boolean): Unit = isRaw.set(toggle)
+  private[sbt] def setRawMode(toggle: Boolean): Unit = isRaw.set(toggle)
   override def read(): Int = if (isRaw.get) raw.read() else in.read()
 }
