@@ -203,6 +203,14 @@ val root = (project in file(".")).
       })
       else stable
     },
+    // remove sbtn from RPM because it complains about it being noarch
+    linuxPackageMappings in Rpm := {
+      val orig = (linuxPackageMappings in Rpm).value
+      val nativeMappings = sbtnJarsMappings.value
+      orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
+        case (x, p) => p.contains("sbtn-x86_64")
+      }))
+    },
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("BSD"),
