@@ -1041,17 +1041,19 @@ object BuiltinCommands {
         .extract(s1)
         .getOpt(Keys.minForcegcInterval)
         .getOrElse(GCUtil.defaultMinForcegcInterval)
-      val exec: Exec = getExec(s1, minGCInterval)
-      val newState = s1
-        .copy(
-          onFailure = Some(Exec(Shell, None)),
-          remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
-        )
-        .setInteractive(true)
-      val res =
-        if (exec.commandLine.trim.isEmpty) newState
-        else newState.clearGlobalLog
-      res
+      try {
+        val exec: Exec = getExec(s1, minGCInterval)
+        val newState = s1
+          .copy(
+            onFailure = Some(Exec(Shell, None)),
+            remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
+          )
+          .setInteractive(true)
+        val res =
+          if (exec.commandLine.trim.isEmpty) newState
+          else newState.clearGlobalLog
+        res
+      } catch { case _: InterruptedException => s1.exit(true) }
     }
   }
 
