@@ -985,7 +985,7 @@ object NetworkClient {
   private[client] val noStdErr = "--no-stderr"
   private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
-    var sbtScript = if (Properties.isWin) "sbt.cmd" else "sbt"
+    var sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
     val completionArguments = new mutable.ArrayBuffer[String]
@@ -1003,6 +1003,9 @@ object NetworkClient {
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
           sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
+        case "--sbt-script" if i + 1 < sanitized.length =>
+          i += 1
+          sbtScript = sanitized(i)
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
