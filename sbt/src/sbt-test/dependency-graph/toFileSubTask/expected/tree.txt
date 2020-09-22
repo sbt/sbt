@@ -1,0 +1,5 @@
+org.example:blubber_2.12:0.1 [S]
+  +-org.typelevel:cats-effect_2.12:2.2.0 [S]
+    +-org.typelevel:cats-core_2.12:2.2.0 [S]
+      +-org.typelevel:cats-kernel_2.12:2.2.0 [S]
+      

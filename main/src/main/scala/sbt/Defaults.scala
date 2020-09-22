@@ -880,7 +880,7 @@ object Defaults extends BuildCommon {
     Seq(
       initialCommands :== "",
       cleanupCommands :== "",
-      asciiGraphWidth :== 40
+      asciiGraphWidth :== 80
     )
   )
 

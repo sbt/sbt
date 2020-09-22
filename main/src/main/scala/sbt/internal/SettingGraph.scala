@@ -81,8 +81,12 @@ object Graph {
   // [info]   | +-baz
   // [info]   |
   // [info]   +-quux
-  def toAscii[A](top: A, children: A => Seq[A], display: A => String, defaultWidth: Int): String = {
-    val maxColumn = math.max(Terminal.get.getWidth, defaultWidth) - 8
+  def toAscii[A](
+      top: A,
+      children: A => Seq[A],
+      display: A => String,
+      maxColumn: Int
+  ): String = {
     val twoSpaces = " " + " " // prevent accidentally being converted into a tab
     def limitLine(s: String): String =
       if (s.length > maxColumn) s.slice(0, maxColumn - 2) + ".."
@@ -96,21 +100,33 @@ object Graph {
           }) +
           s.slice(at + 1, s.length)
       else s
-    def toAsciiLines(node: A, level: Int): (String, Vector[String]) = {
-      val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
-      val cs = Vector(children(node): _*)
-      val childLines = cs map { toAsciiLines(_, level + 1) }
-      val withBar = childLines.zipWithIndex flatMap {
-        case ((line, withBar), pos) if pos < (cs.size - 1) =>
-          (line +: withBar) map { insertBar(_, 2 * (level + 1)) }
-        case ((line, withBar), _) if withBar.lastOption.getOrElse(line).trim != "" =>
-          (line +: withBar) ++ Vector(twoSpaces * (level + 1))
-        case ((line, withBar), _) => line +: withBar
+    def toAsciiLines(node: A, level: Int, parents: Set[A]): Vector[String] =
+      if (parents contains node) // cycle
+        Vector(limitLine((twoSpaces * level) + "#-" + display(node) + " (cycle)"))
+      else {
+        val line = limitLine((twoSpaces * level) + (if (level == 0) "" else "+-") + display(node))
+        val cs = Vector(children(node): _*)
+        val childLines = cs map {
+          toAsciiLines(_, level + 1, parents + node)
+        }
+        val withBar = childLines.zipWithIndex flatMap {
+          case (lines, pos) if pos < (cs.size - 1) =>
+            lines map {
+              insertBar(_, 2 * (level + 1))
+            }
+          case (lines, pos) =>
+            if (lines.last.trim != "") lines ++ Vector(twoSpaces * (level + 1))
+            else lines
+        }
+        line +: withBar
       }
-      (line, withBar)
-    }
 
-    val (line, withBar) = toAsciiLines(top, 0)
-    (line +: withBar).mkString("\n")
+    toAsciiLines(top, 0, Set.empty).mkString("\n")
+  }
+
+  def defaultColumnSize: Int = {
+    val termWidth = Terminal.console.getWidth
+    if (termWidth > 20) termWidth - 8
+    else 80 // ignore termWidth
   }
 }

@@ -308,6 +308,10 @@ object Terminal {
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
 
+  private[sbt] def red(str: String, doRed: Boolean): String =
+    if (formatEnabledInEnv && doRed) Console.RED + str + Console.RESET
+    else str
+
   /**
    *
    * @param isServer toggles whether or not this is a server of client process

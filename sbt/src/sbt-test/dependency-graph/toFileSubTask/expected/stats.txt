@@ -1,0 +1,12 @@
+   TotSize    JarSize #TDe #Dep Module
+ 11.177 MB ------- MB    3    1 org.example:blubber_2.12:0.1
+ 11.177 MB   1.185 MB    2    1 org.typelevel:cats-effect_2.12:2.2.0
+  9.992 MB   5.034 MB    1    1 org.typelevel:cats-core_2.12:2.2.0
+  4.958 MB   4.958 MB    0    0 org.typelevel:cats-kernel_2.12:2.2.0
+
+Columns are
+ - Jar-Size including dependencies
+ - Jar-Size
+ - Number of transitive dependencies
+ - Number of direct dependencies
+ - ModuleID
