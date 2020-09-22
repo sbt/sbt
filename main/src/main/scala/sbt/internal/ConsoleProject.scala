@@ -62,16 +62,14 @@ object ConsoleProject {
     val initCommands = importString + extra
 
     val terminal = Terminal.get
-    terminal.withCanonicalIn {
-      // TODO - Hook up dsl classpath correctly...
-      (new Console(compiler))(
-        unit.classpath,
-        options,
-        initCommands,
-        cleanupCommands,
-        terminal
-      )(Some(unit.loader), bindings).get
-    }
+    // TODO - Hook up dsl classpath correctly...
+    (new Console(compiler))(
+      unit.classpath,
+      options,
+      initCommands,
+      cleanupCommands,
+      terminal
+    )(Some(unit.loader), bindings).get
     ()
   }
 

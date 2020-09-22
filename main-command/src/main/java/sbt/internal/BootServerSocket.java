@@ -85,6 +85,7 @@ public class BootServerSocket implements AutoCloseable {
   private final Object lock = new Object();
   private final LinkedBlockingQueue<ClientSocket> clientSocketReads = new LinkedBlockingQueue<>();
   private final Path socketFile;
+  private final AtomicBoolean needInput = new AtomicBoolean(false);
 
   private class ClientSocket implements AutoCloseable {
     final Socket socket;
@@ -116,13 +117,20 @@ public class BootServerSocket implements AutoCloseable {
                     final InputStream inputStream = socket.getInputStream();
                     while (alive.get()) {
                       try {
-                        int b = inputStream.read();
-                        if (b != -1) {
-                          bytes.put(b);
-                          clientSocketReads.put(ClientSocket.this);
-                        } else {
-                          alive.set(false);
+                        synchronized (needInput) {
+                          while (!needInput.get() && alive.get()) needInput.wait();
                         }
+                        if (alive.get()) {
+                          socket.getOutputStream().write(5);
+                          int b = inputStream.read();
+                          if (b != -1) {
+                            bytes.put(b);
+                            clientSocketReads.put(ClientSocket.this);
+                          } else {
+                            alive.set(false);
+                          }
+                        }
+
                       } catch (IOException e) {
                         alive.set(false);
                       }
@@ -209,10 +217,18 @@ public class BootServerSocket implements AutoCloseable {
         @Override
         public int read() {
           try {
+            synchronized (needInput) {
+              needInput.set(true);
+              needInput.notifyAll();
+            }
             ClientSocket clientSocket = clientSocketReads.take();
             return clientSocket.bytes.take();
           } catch (final InterruptedException e) {
             return -1;
+          } finally {
+            synchronized (needInput) {
+              needInput.set(false);
+            }
           }
         }
       };

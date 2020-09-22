@@ -22,7 +22,9 @@ import sbt.protocol.Serialization.{
   terminalCapabilities,
   terminalGetSize,
   terminalPropertiesQuery,
+  terminalSetEcho,
   terminalSetSize,
+  terminalSetRawMode,
 }
 import sjsonnew.support.scalajson.unsafe.Converter
 import sbt.protocol.{
@@ -35,7 +37,9 @@ import sbt.protocol.{
   TerminalGetSizeQuery,
   TerminalGetSizeResponse,
   TerminalSetAttributesCommand,
+  TerminalSetEchoCommand,
   TerminalSetSizeCommand,
+  TerminalSetRawModeCommand,
 }
 import sbt.protocol.codec.JsonProtocol._
 import sbt.protocol.TerminalGetSizeResponse
@@ -53,6 +57,10 @@ object VirtualTerminal {
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[this] val pendingTerminalGetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalGetSizeResponse]]
+  private[this] val pendingTerminalSetEcho =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
+  private[this] val pendingTerminalSetRawMode =
+    new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[sbt] def sendTerminalPropertiesQuery(
       channelName: String,
       jsonRpcRequest: (String, String, String) => Unit
@@ -134,6 +142,30 @@ object VirtualTerminal {
     queue
   }
 
+  private[sbt] def setTerminalEcho(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalSetEchoCommand) => Unit,
+      query: TerminalSetEchoCommand
+  ): ArrayBlockingQueue[Unit] = {
+    val id = UUID.randomUUID.toString
+    val queue = new ArrayBlockingQueue[Unit](1)
+    pendingTerminalSetEcho.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalSetEcho, query)
+    queue
+  }
+
+  private[sbt] def setTerminalRawMode(
+      channelName: String,
+      jsonRpcRequest: (String, String, TerminalSetRawModeCommand) => Unit,
+      query: TerminalSetRawModeCommand
+  ): ArrayBlockingQueue[Unit] = {
+    val id = UUID.randomUUID.toString
+    val queue = new ArrayBlockingQueue[Unit](1)
+    pendingTerminalSetEcho.put((channelName, id), queue)
+    jsonRpcRequest(id, terminalSetRawMode, query)
+    queue
+  }
+
   val handler = ServerHandler { cb =>
     ServerIntent(requestHandler(cb), responseHandler(cb), notificationHandler(cb))
   }
@@ -192,6 +224,16 @@ object VirtualTerminal {
         pendingTerminalGetSize.remove((callback.name, r.id)) match {
           case null   =>
           case buffer => buffer.put(response.getOrElse(TerminalGetSizeResponse(1, 1)))
+        }
+      case r if pendingTerminalSetEcho.get((callback.name, r.id)) != null =>
+        pendingTerminalSetEcho.remove((callback.name, r.id)) match {
+          case null   =>
+          case buffer => buffer.put(())
+        }
+      case r if pendingTerminalSetRawMode.get((callback.name, r.id)) != null =>
+        pendingTerminalSetRawMode.remove((callback.name, r.id)) match {
+          case null   =>
+          case buffer => buffer.put(())
         }
     }
   private val notificationHandler: Handler[JsonRpcNotificationMessage] =

@@ -21,6 +21,7 @@ import org.jline.reader.{
   ParsedLine,
   UserInterruptException,
 }
+import org.jline.utils.ClosedException
 import sbt.internal.util.complete.Parser
 
 import scala.annotation.tailrec
@@ -87,7 +88,7 @@ object LineReader {
           case e: EndOfFileException =>
             if (terminal == Terminal.console && System.console == null) None
             else Some("exit")
-          case _: IOError => Some("exit")
+          case _: IOError | _: ClosedException => Some("exit")
           case _: UserInterruptException | _: ClosedByInterruptException |
               _: UncheckedIOException =>
             throw new InterruptedException
@@ -221,8 +222,7 @@ private[sbt] object JLine {
     "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
     "1.4.0"
   )
-  def usingTerminal[T](f: jline.Terminal => T): T =
-    Terminal.get.withCanonicalIn(f(Terminal.get.toJLine))
+  def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
 
   @deprecated("unused", "1.4.0")
   def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)

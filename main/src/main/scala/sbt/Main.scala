@@ -227,11 +227,11 @@ object StandardMain {
     // This is to workaround https://github.com/sbt/io/issues/110
     sys.props.put("jna.nosys", "true")
 
-    import BasicCommandStrings.isEarlyCommand
+    import BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, isEarlyCommand }
     val userCommands =
       configuration.arguments
         .map(_.trim)
-        .filterNot(_ == BasicCommandStrings.DashDashDetachStdio)
+        .filterNot(c => c == DashDashDetachStdio || c == DashDashServer)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
     val commands = (earlyCommands ++ normalCommands).toList map { x =>
       Exec(x, None)

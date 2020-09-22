@@ -24,6 +24,8 @@ import sbt.internal.protocol.{
 
 object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
+  val readSystemIn = "sbt/readSystemIn"
+  val cancelReadSystemIn = "sbt/cancelReadSystemIn"
   val systemIn = "sbt/systemIn"
   val systemOut = "sbt/systemOut"
   val systemErr = "sbt/systemErr"
@@ -41,6 +43,8 @@ object Serialization {
   val getTerminalAttributes = "sbt/getTerminalAttributes"
   val terminalGetSize = "sbt/terminalGetSize"
   val terminalSetSize = "sbt/terminalSetSize"
+  val terminalSetEcho = "sbt/terminalSetEcho"
+  val terminalSetRawMode = "sbt/terminalSetRawMode"
   val CancelAll = "__CancelAll"
 
   @deprecated("unused", since = "1.4.0")

@@ -38,8 +38,10 @@ import scala.util.{ Failure, Properties, Success, Try }
 import Serialization.{
   CancelAll,
   attach,
+  cancelReadSystemIn,
   cancelRequest,
   promptChannel,
+  readSystemIn,
   systemIn,
   systemErr,
   systemOut,
@@ -50,6 +52,8 @@ import Serialization.{
   terminalGetSize,
   terminalPropertiesQuery,
   terminalPropertiesResponse,
+  terminalSetEcho,
+  terminalSetRawMode,
   terminalSetSize,
   getTerminalAttributes,
   setTerminalAttributes,
@@ -147,13 +151,17 @@ class NetworkClient(
     }
   }
 
-  private[this] val stdinBytes = new LinkedBlockingQueue[Int]
+  private[this] val stdinBytes = new LinkedBlockingQueue[Integer]
   private[this] val inLock = new Object
-  private[this] val inputThread = new AtomicReference(new RawInputThread)
+  private[this] val inputThread = new AtomicReference[RawInputThread]
   private[this] val exitClean = new AtomicBoolean(true)
   private[this] val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
+  private[this] def startInputThread(): Unit = inputThread.get match {
+    case null => inputThread.set(new RawInputThread)
+    case _    =>
+  }
 
   // Open server connection based on the portfile
   def init(promptCompleteUsers: Boolean, retry: Boolean): ServerConnection =
@@ -165,8 +173,10 @@ class NetworkClient(
           if (noStdErr) System.exit(0)
           else if (noTab) waitForServer(portfile, log = true, startServer = true)
           else {
-            stdinBytes.take match {
-              case 9 =>
+            startInputThread()
+            stdinBytes.poll(5, TimeUnit.SECONDS) match {
+              case null => System.exit(0)
+              case i if i == 9 =>
                 errorStream.println("\nStarting server...")
                 waitForServer(portfile, !promptCompleteUsers, startServer = true)
               case _ => System.exit(0)
@@ -250,8 +260,13 @@ class NetworkClient(
                 Option(inputThread.get).foreach(_.close())
                 Option(interactiveThread.get).foreach(_.interrupt)
               }
-            case "readInput" =>
-            case _           => self.onNotification(msg)
+            case `readSystemIn` => startInputThread()
+            case `cancelReadSystemIn` =>
+              inputThread.get match {
+                case null =>
+                case t    => t.close()
+              }
+            case _ => self.onNotification(msg)
           }
         }
         override def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
@@ -289,9 +304,10 @@ class NetworkClient(
     var socket: Option[Socket] =
       if (!Properties.isLinux) Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
       else None
+    val term = Terminal.console
+    term.exitRawMode()
     val process = socket match {
       case None if startServer =>
-        val term = Terminal.console
         if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
 
         val props =
@@ -349,6 +365,7 @@ class NetworkClient(
                 s.getInputStream.read match {
                   case -1 | 0            => readThreadAlive.set(false)
                   case 2                 => gotInputBack = true
+                  case 5                 => term.enterRawMode(); startInputThread()
                   case 3 if gotInputBack => readThreadAlive.set(false)
                   case i if gotInputBack => stdinBytes.offer(i)
                   case i                 => printStream.write(i)
@@ -381,9 +398,6 @@ class NetworkClient(
             while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
               val out = s.getOutputStream
               val b = stdinBytes.poll
-              // echo stdin during boot
-              printStream.write(b)
-              printStream.flush()
               out.write(b)
               out.flush()
             }
@@ -610,18 +624,13 @@ class NetworkClient(
       case (`terminalCapabilities`, Some(json)) =>
         Converter.fromJson[TerminalCapabilitiesQuery](json) match {
           case Success(terminalCapabilitiesQuery) =>
-            val jline3 = terminalCapabilitiesQuery.jline3
             val response = TerminalCapabilitiesResponse(
               terminalCapabilitiesQuery.boolean
-                .map(Terminal.console.getBooleanCapability(_, jline3)),
+                .map(Terminal.console.getBooleanCapability(_)),
               terminalCapabilitiesQuery.numeric
-                .map(
-                  c => Option(Terminal.console.getNumericCapability(c, jline3)).fold(-1)(_.toInt)
-                ),
+                .map(c => Option(Terminal.console.getNumericCapability(c)).fold(-1)(_.toInt)),
               terminalCapabilitiesQuery.string
-                .map(
-                  s => Option(Terminal.console.getStringCapability(s, jline3)).getOrElse("null")
-                ),
+                .map(s => Option(Terminal.console.getStringCapability(s)).getOrElse("null")),
             )
             sendCommandResponse(
               terminalCapabilitiesResponse,
@@ -675,6 +684,21 @@ class NetworkClient(
           case Success(size) =>
             Terminal.console.setSize(size.width, size.height)
             sendCommandResponse("", TerminalSetSizeResponse(), msg.id)
+          case Failure(_) =>
+        }
+      case (`terminalSetEcho`, Some(json)) =>
+        Converter.fromJson[TerminalSetEchoCommand](json) match {
+          case Success(echo) =>
+            Terminal.console.setEchoEnabled(echo.toggle)
+            sendCommandResponse("", TerminalSetEchoResponse(), msg.id)
+          case Failure(_) =>
+        }
+      case (`terminalSetRawMode`, Some(json)) =>
+        Converter.fromJson[TerminalSetRawModeCommand](json) match {
+          case Success(raw) =>
+            if (raw.toggle) Terminal.console.enterRawMode()
+            else Terminal.console.exitRawMode()
+            sendCommandResponse("", TerminalSetRawModeResponse(), msg.id)
           case Failure(_) =>
         }
       case _ =>
@@ -787,9 +811,11 @@ class NetworkClient(
         else if (noTab) updateCompletions()
         else {
           errorStream.print(s"\nNo cached $label names found. Press '<tab>' to compile: ")
-          stdinBytes.take match {
-            case 9 => updateCompletions()
-            case _ => Nil
+          startInputThread()
+          stdinBytes.poll(5, TimeUnit.SECONDS) match {
+            case null        => Nil
+            case i if i == 9 => updateCompletions()
+            case _           => Nil
           }
         }
       }
@@ -901,17 +927,18 @@ class NetworkClient(
     start()
     val stopped = new AtomicBoolean(false)
     override final def run(): Unit = {
-      @tailrec def read(): Unit = {
+      def read(): Unit = {
         inputStream.read match {
           case -1 =>
           case b =>
             inLock.synchronized(stdinBytes.offer(b))
             if (attached.get()) drain()
-            if (!stopped.get()) read()
         }
       }
-      try Terminal.console.withRawInput(read())
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
+      try read()
+      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) } finally {
+        inputThread.set(null)
+      }
     }
 
     def drain(): Unit = inLock.synchronized {
@@ -1098,6 +1125,7 @@ object NetworkClient {
         System.out.flush()
       })
       Runtime.getRuntime.addShutdownHook(hook)
+      if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       System.exit(Terminal.withStreams(false) {
         val term = Terminal.console
         try client(base, restOfArgs, term.inputStream, System.err, term, useJNI)
