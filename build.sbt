@@ -648,6 +648,16 @@ lazy val scriptedPluginProj = (project in file("scripted-plugin"))
     ),
   )
 
+lazy val dependencyTreeProj = (project in file("dependency-tree"))
+  .dependsOn(sbtProj)
+  .settings(
+    sbtPlugin := true,
+    baseSettings,
+    name := "sbt-dependency-tree",
+    // mimaSettings,
+    mimaPreviousArtifacts := Set.empty,
+  )
+
 // Implementation and support code for defining actions.
 lazy val actionsProj = (project in file("main-actions"))
   .dependsOn(
@@ -1361,6 +1371,7 @@ def allProjects =
     scriptedSbtReduxProj,
     scriptedSbtOldProj,
     scriptedPluginProj,
+    dependencyTreeProj,
     protocolProj,
     actionsProj,
     commandProj,

@@ -4,7 +4,7 @@ libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.28"
 updateOptions := updateOptions.value.withCachedResolution(true)
 
 TaskKey[Unit]("check") := {
-  val report = (Test / ivyReport).value
+  val report = (Test / updateFull).value
   val graph = (Test / dependencyTree / asString).value
 
   def sanitize(str: String): String = str.split('\n').drop(1).mkString("\n")
