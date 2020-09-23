@@ -654,6 +654,7 @@ lazy val dependencyTreeProj = (project in file("dependency-tree"))
     sbtPlugin := true,
     baseSettings,
     name := "sbt-dependency-tree",
+    publishMavenStyle := true,
     // mimaSettings,
     mimaPreviousArtifacts := Set.empty,
   )
