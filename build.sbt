@@ -42,7 +42,7 @@ val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
 val sbtLaunchJar = TaskKey[File]("sbt-launch-jar", "Resolves SBT launch jar")
 val moduleID = (organization) apply { (o) => ModuleID(o, "sbt", sbtVersionToRelease) }
 val sbtnVersion = SettingKey[String]("sbtn-version")
-val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars", "Resolves sbtn JARs")
+val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars-mappings", "Resolves sbtn JARs")
 val sbtnJarsBaseUrl = SettingKey[String]("sbtn-jars-base-url")
 
 lazy val bintrayDebianUrl = settingKey[String]("API point for Debian packages")
@@ -109,14 +109,14 @@ val root = (project in file(".")).
       // TODO - GPG Trust validation.
       file
     },
-    sbtnVersion := "1.4.0-M2",
+    sbtnVersion := "1.4.0-RC2",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
       val v = sbtnVersion.value
-      val macosImageTar = s"sbtn-darwin-amd64-$v.tar.gz"
-      val linuxImageTar = s"sbtn-linux-amd64-$v.tar.gz"
-      val windowsImageZip = s"sbtn-windows-amd64-$v.zip"
+      val macosImageTar = s"sbtn-$x86MacPlatform-$v.tar.gz"
+      val linuxImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
+      val windowsImageZip = s"sbtn-$x86WindowsPlatform-$v.zip"
       val t = target.value
       val macosTar = t / macosImageTar
       val linuxTar = t / linuxImageTar
