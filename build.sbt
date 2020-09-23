@@ -655,6 +655,7 @@ lazy val dependencyTreeProj = (project in file("dependency-tree"))
     baseSettings,
     name := "sbt-dependency-tree",
     // mimaSettings,
+    mimaPreviousArtifacts := Set.empty,
   )
 
 // Implementation and support code for defining actions.
