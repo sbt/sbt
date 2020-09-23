@@ -8,12 +8,15 @@
 package sbt
 package plugins
 
+import java.io.File
+
 import Keys._
 import sbt.internal.SysProp
 import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.CrossVersion
 import Project.inConfig
 import sbt.internal.inc.ScalaInstance
+import sbt.SlashSyntax0._
 
 object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
@@ -37,32 +40,46 @@ object SemanticdbPlugin extends AutoPlugin {
       val sv = scalaVersion.value
       if (sdb && !ScalaInstance.isDotty(sv)) List(Build0.compilerPlugin(m))
       else Nil
+    },
+    semanticdbOptions += {
+      val sv = scalaVersion.value
+      if (ScalaInstance.isDotty(sv)) "-Ysemanticdb"
+      else "-Yrangepos"
     }
-  ) ++ inConfig(Compile)(configurationSettings) ++ inConfig(Test)(configurationSettings)
+  ) ++
+    inConfig(Compile)(configurationSettings) ++
+    inConfig(Test)(configurationSettings ++ testSettings)
 
   lazy val configurationSettings: Seq[Def.Setting[_]] = List(
-    scalacOptions := {
-      val old = scalacOptions.value
-      val sdb = semanticdbEnabled.value
-      val sdbOptions = semanticdbOptions.value
-      val sv = scalaVersion.value
-      if (sdb) {
-        (
-          old.toVector ++ sdbOptions ++
-            (if (ScalaInstance.isDotty(sv)) Some("-Ysemanticdb") else None)
-        ).distinct
-      } else old
-    },
     semanticdbTargetRoot := {
       val in = semanticdbIncludeInJar.value
       if (in) classDirectory.value
       else semanticdbTargetRoot.value
     },
-    semanticdbOptions ++= {
-      val tr = semanticdbTargetRoot.value
-      val sv = scalaVersion.value
-      if (ScalaInstance.isDotty(sv)) List("-semanticdb-target", tr.toString)
-      else List(s"-P:semanticdb:targetroot:$tr", "-Yrangepos")
+    semanticdbOptions ++=
+      targetRootOptions(scalaVersion.value, semanticdbTargetRoot.value),
+    scalacOptions ++= {
+      if (semanticdbEnabled.value)
+        semanticdbOptions.value
+      else Seq.empty
     }
   )
+
+  lazy val testSettings: Seq[Def.Setting[_]] = List(
+    // remove Compile targetRoot from Test config
+    semanticdbOptions --= targetRootOptions(
+      (Compile / scalaVersion).value,
+      (Compile / semanticdbTargetRoot).value
+    ),
+    // remove duplicated semanticdbOptions
+    scalacOptions --= (Compile / semanticdbOptions).value
+  )
+
+  def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] = {
+    if (ScalaInstance.isDotty(scalaVersion)) {
+      Seq("-semanticdb-target", targetRoot.toString)
+    } else {
+      Seq(s"-P:semanticdb:targetroot:$targetRoot")
+    }
+  }
 }
