@@ -48,8 +48,9 @@ private[sbt] class TaskProgress(
       val delay = duration.toMillis
       try {
         val future =
-          if (recurring) scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
-          else scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
+          if (recurring)
+            scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
+          else scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
         pending.add(future)
         () => Util.ignoreResult(future.cancel(true))
       } catch {
