@@ -13,43 +13,26 @@ import java.io.File
 import sbt.Def._
 import sbt.Keys._
 import sbt.SlashSyntax0._
-import sbt.PluginTrigger.AllRequirements
 import sbt.Project._
 import sbt.internal.graph._
-import sbt.internal.graph.backend.{ IvyReport, SbtUpdateReport }
+import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }
 import sbt.internal.librarymanagement._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.InlineIvyConfiguration
-import sbt.librarymanagement.Configurations.{
-  Compile,
-  IntegrationTest,
-  Optional,
-  Provided,
-  Runtime,
-  Test
-}
-// import Keys._
 
-object DependencyGraphPlugin extends AutoPlugin {
+object DependencyTreeSettings {
   import sjsonnew.BasicJsonProtocol._
+  import MiniDependencyTreeKeys._
+  import DependencyTreeKeys._
 
-  object autoImport extends DependencyGraphKeys
-
-  import autoImport._
-  override def trigger: PluginTrigger = AllRequirements
-  override def globalSettings: Seq[Def.Setting[_]] = Seq(
-    dependencyTreeIncludeScalaLibrary := false
-  )
-  override def projectSettings: Seq[Def.Setting[_]] = graphSettings
-  def graphSettings = baseSettings ++ reportSettings
-
-  def baseSettings =
+  /**
+   * Core settings needed for any graphing tasks.
+   */
+  def coreSettings =
     Seq(
-      ivyReportFunction := ivyReportFunctionTask.value,
       // disable the cached resolution engine (exposing a scoped `ivyModule` used directly by `updateTask`), as it
       // generates artificial module descriptors which are internal to sbt, making it hard to reconstruct the
       // dependency tree
@@ -73,102 +56,94 @@ object DependencyGraphPlugin extends AutoPlugin {
       },
     )
 
-  def reportSettings =
-    Seq(Compile, Test, IntegrationTest, Runtime, Provided, Optional).flatMap(ivyReportForConfig)
-
-  val renderingAlternatives: Seq[(TaskKey[Unit], ModuleGraph => String)] =
+  /**
+   * MiniDependencyTreePlugin includes these settings for Compile and Test scopes
+   * to provide dependencyTree task.
+   */
+  lazy val baseBasicReportingSettings: Seq[Def.Setting[_]] =
     Seq(
-      dependencyTree -> rendering.AsciiTree.asciiTree _,
-      dependencyList -> rendering.FlatList.render(_.id.idString),
-      dependencyStats -> rendering.Statistics.renderModuleStatsList _,
-      dependencyLicenseInfo -> rendering.LicenseInfo.render _
-    )
+      crossProjectId := CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(
+        projectID.value
+      ),
+      dependencyTreeModuleGraph := {
+        val sv = scalaVersion.value
+        val g = ignoreMissingUpdate.value
+          .configuration(configuration.value)
+          .map(report => SbtUpdateReport.fromConfigurationReport(report, crossProjectId.value))
+          .getOrElse(ModuleGraph.empty)
+        if (dependencyTreeIncludeScalaLibrary.value) g
+        else GraphTransformations.ignoreScalaLibrary(sv, g)
+      },
+      moduleGraphStore := (dependencyTreeModuleGraph storeAs moduleGraphStore triggeredBy dependencyTreeModuleGraph).value,
+    ) ++ renderingTaskSettings(dependencyTree, rendering.AsciiTree.asciiTree _)
 
-  def ivyReportForConfig(config: Configuration) =
-    inConfig(config)(
-      Seq(
-        ivyReport := {
-          Def
-            .task {
-              ivyReportFunction.value.apply(config.toString)
-            }
-            .dependsOn(ignoreMissingUpdate)
-        }.value,
-        crossProjectId := CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(
-          projectID.value
-        ),
-        moduleGraphSbt :=
-          ignoreMissingUpdate.value
-            .configuration(configuration.value)
-            .map(report => SbtUpdateReport.fromConfigurationReport(report, crossProjectId.value))
-            .getOrElse(ModuleGraph.empty),
-        moduleGraphIvyReport := IvyReport.fromReportFile(absoluteReportPath(ivyReport.value)),
-        moduleGraph := {
-          sbtVersion.value match {
-            case Version(0, 13, x, _) if x >= 6 => moduleGraphSbt.value
-            case Version(1, _, _, _)            => moduleGraphSbt.value
-          }
-        },
-        moduleGraph := {
-          // FIXME: remove busywork
-          val sv = scalaVersion.value
-          val moduleGraph = DependencyGraphKeys.moduleGraph.value
-          if (dependencyTreeIncludeScalaLibrary.value) moduleGraph
-          else GraphTransformations.ignoreScalaLibrary(sv, moduleGraph)
-        },
-        moduleGraphStore := (moduleGraph storeAs moduleGraphStore triggeredBy moduleGraph).value,
-        // browse
-        dependencyBrowseGraphTarget := { target.value / "browse-dependency-graph" },
-        dependencyBrowseGraphHTML := browseGraphHTMLTask.value,
-        dependencyBrowseGraph := openBrowser(dependencyBrowseGraphHTML).value,
-        dependencyBrowseTreeTarget := { target.value / "browse-dependency-tree" },
-        dependencyBrowseTreeHTML := browseTreeHTMLTask.value,
-        dependencyBrowseTree := openBrowser(dependencyBrowseTreeHTML).value,
-        // dot support
-        dependencyDotFile := { target.value / "dependencies-%s.dot".format(config.toString) },
-        dependencyDot / asString := rendering.DOT.dotGraph(
-          moduleGraph.value,
-          dependencyDotHeader.value,
-          dependencyDotNodeLabel.value,
-          rendering.DOT.AngleBrackets
-        ),
-        dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
-        dependencyDotHeader :=
-          """|digraph "dependency-graph" {
+  /**
+   * This is the maximum strength settings for DependencyTreePlugin.
+   */
+  lazy val baseFullReportingSettings: Seq[Def.Setting[_]] =
+    Seq(
+      // browse
+      dependencyBrowseGraphTarget := { target.value / "browse-dependency-graph" },
+      dependencyBrowseGraphHTML := browseGraphHTMLTask.value,
+      dependencyBrowseGraph := openBrowser(dependencyBrowseGraphHTML).value,
+      dependencyBrowseTreeTarget := { target.value / "browse-dependency-tree" },
+      dependencyBrowseTreeHTML := browseTreeHTMLTask.value,
+      dependencyBrowseTree := openBrowser(dependencyBrowseTreeHTML).value,
+      // dot support
+      dependencyDotFile := {
+        val config = configuration.value
+        target.value / "dependencies-%s.dot".format(config.toString)
+      },
+      dependencyDot / asString := rendering.DOT.dotGraph(
+        dependencyTreeModuleGraph.value,
+        dependencyDotHeader.value,
+        dependencyDotNodeLabel.value,
+        rendering.DOT.AngleBrackets
+      ),
+      dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
+      dependencyDotHeader :=
+        """|digraph "dependency-graph" {
          |    graph[rankdir="LR"]
          |    edge [
          |        arrowtail="none"
          |    ]""".stripMargin,
-        dependencyDotNodeLabel := { (organization: String, name: String, version: String) =>
-          """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
-        },
-        // GraphML support
-        dependencyGraphMLFile := {
-          target.value / "dependencies-%s.graphml".format(config.toString)
-        },
-        dependencyGraphML := dependencyGraphMLTask.value,
-        whatDependsOn := {
-          val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
-          val graph = moduleGraph.value
-          val modules =
-            versionFilter match {
-              case Some(version) => GraphModuleId(org, name, version) :: Nil
-              case None =>
-                graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
+      dependencyDotNodeLabel := { (organization: String, name: String, version: String) =>
+        """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
+      },
+      // GraphML support
+      dependencyGraphMLFile := {
+        val config = configuration.value
+        target.value / "dependencies-%s.graphml".format(config.toString)
+      },
+      dependencyGraphML := dependencyGraphMLTask.value,
+      whatDependsOn := {
+        val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
+        val graph = dependencyTreeModuleGraph.value
+        val modules =
+          versionFilter match {
+            case Some(version) => GraphModuleId(org, name, version) :: Nil
+            case None =>
+              graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
+          }
+        val output =
+          modules
+            .map { module =>
+              rendering.AsciiTree
+                .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
             }
-          val output =
-            modules
-              .map { module =>
-                rendering.AsciiTree
-                  .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
-              }
-              .mkString("\n")
+            .mkString("\n")
 
-          streams.value.log.info(output)
-          output
-        },
-      ) ++
-        renderingAlternatives.flatMap((renderingTaskSettings _).tupled)
+        streams.value.log.info(output)
+        output
+      },
+    ) ++
+      renderingAlternatives.flatMap((renderingTaskSettings _).tupled)
+
+  def renderingAlternatives: Seq[(TaskKey[Unit], ModuleGraph => String)] =
+    Seq(
+      dependencyList -> rendering.FlatList.render(_.id.idString),
+      dependencyStats -> rendering.Statistics.renderModuleStatsList _,
+      dependencyLicenseInfo -> rendering.LicenseInfo.render _
     )
 
   def renderingTaskSettings(key: TaskKey[Unit], renderer: ModuleGraph => String): Seq[Setting[_]] =
@@ -178,37 +153,27 @@ object DependencyGraphPlugin extends AutoPlugin {
         val str = (key / asString).value
         s.log.info(str)
       },
-      key / asString := renderer(moduleGraph.value),
+      key / asString := renderer(dependencyTreeModuleGraph.value),
       key / toFile := {
         val (targetFile, force) = targetFileAndForceParser.parsed
         writeToFile(key.key.label, (asString in key).value, targetFile, force, streams.value)
       },
     )
 
-  def ivyReportFunctionTask = Def.task {
-    val ivyConfig = Keys.ivyConfiguration.value.asInstanceOf[InlineIvyConfiguration]
-    val projectID = Keys.projectID.value
-    val ivyModule = Keys.ivyModule.value
-
-    (config: String) => {
-      val org = projectID.organization
-      val name = crossName(ivyModule)
-      new File(ivyConfig.resolutionCacheDir.get, s"reports/$org-$name-$config.xml")
-    }
-  }
-
   def dependencyGraphMLTask =
     Def.task {
       val resultFile = dependencyGraphMLFile.value
-      rendering.GraphML.saveAsGraphML(moduleGraph.value, resultFile.getAbsolutePath)
+      val graph = dependencyTreeModuleGraph.value
+      rendering.GraphML.saveAsGraphML(graph, resultFile.getAbsolutePath)
       streams.value.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
     }
 
   def browseGraphHTMLTask =
     Def.task {
+      val graph = dependencyTreeModuleGraph.value
       val dotGraph = rendering.DOT.dotGraph(
-        moduleGraph.value,
+        graph,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
         rendering.DOT.LabelTypeHtml
@@ -220,7 +185,8 @@ object DependencyGraphPlugin extends AutoPlugin {
 
   def browseTreeHTMLTask =
     Def.task {
-      val renderedTree = TreeView.createJson(moduleGraph.value)
+      val graph = dependencyTreeModuleGraph.value
+      val renderedTree = TreeView.createJson(graph)
       val link = TreeView.createLink(renderedTree, target.value)
       streams.value.log.info(s"HTML tree written to $link")
       link

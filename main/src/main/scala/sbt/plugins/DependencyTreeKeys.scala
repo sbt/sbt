@@ -6,23 +6,36 @@
  */
 
 package sbt
-package internal
-package graph
+package plugins
 
 import java.io.File
 import java.net.URI
+import sbt.internal.graph._
 import sbt.BuildSyntax._
 import sbt.librarymanagement.{ ModuleID, UpdateReport }
 
-trait DependencyGraphKeys {
+trait MiniDependencyTreeKeys {
+  val dependencyTreeIncludeScalaLibrary = settingKey[Boolean](
+    "Specifies if scala dependency should be included in dependencyTree output"
+  )
+  val dependencyTree = taskKey[Unit]("Prints an ascii tree of all the dependencies to the console")
   val asString = taskKey[String]("Provides the string value for the task it is scoped for")
   // val printToConsole = TaskKey[Unit]("printToConsole", "Prints the tasks value to the console")
   val toFile = inputKey[File]("Writes the task value to the given file")
 
-  val dependencyTreeIncludeScalaLibrary = settingKey[Boolean](
-    "Specifies if scala dependency should be included in dependencyTree output"
-  )
+  // internal
+  private[sbt] val ignoreMissingUpdate =
+    TaskKey[UpdateReport]("dependencyUpdate", "sbt-dependency-graph version of update")
+  private[sbt] val moduleGraphStore =
+    TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
+  val whatDependsOn =
+    InputKey[String]("what-depends-on", "Shows information about what depends on the given module")
+  private[sbt] val crossProjectId = SettingKey[ModuleID]("dependency-graph-cross-project-id")
+}
 
+object MiniDependencyTreeKeys extends MiniDependencyTreeKeys
+
+abstract class DependencyTreeKeys {
   val dependencyGraphMLFile =
     settingKey[File]("The location the graphml file should be generated at")
   val dependencyGraphML =
@@ -59,37 +72,15 @@ trait DependencyGraphKeys {
   val dependencyBrowseTree = taskKey[URI](
     "Opens an HTML page that can be used to view the dependency tree"
   )
-  val moduleGraph = taskKey[ModuleGraph]("The dependency graph for a project")
-  val moduleGraphIvyReport = taskKey[ModuleGraph](
-    "The dependency graph for a project as generated from an Ivy Report XML"
-  )
-  val moduleGraphSbt = taskKey[ModuleGraph](
-    "The dependency graph for a project as generated from SBT data structures."
-  )
-  val dependencyGraph = inputKey[Unit]("Prints the ascii graph to the console")
-  val dependencyTree = taskKey[Unit]("Prints an ascii tree of all the dependencies to the console")
+  val dependencyTreeModuleGraph = taskKey[ModuleGraph]("The dependency graph for a project")
+
   val dependencyList =
     taskKey[Unit]("Prints a list of all dependencies to the console")
   val dependencyStats =
     taskKey[Unit]("Prints statistics for all dependencies to the console")
-  val ivyReportFunction = taskKey[String => File](
-    "A function which returns the file containing the ivy report from the ivy cache for a given configuration"
-  )
-  val ivyReport = taskKey[File](
-    "A task which returns the location of the ivy report file for a given configuration (default `compile`)."
-  )
   val dependencyLicenseInfo = taskKey[Unit](
     "Aggregates and shows information about the licenses of dependencies"
   )
-
-  // internal
-  private[sbt] val ignoreMissingUpdate =
-    TaskKey[UpdateReport]("dependencyUpdate", "sbt-dependency-graph version of update")
-  private[sbt] val moduleGraphStore =
-    TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
-  val whatDependsOn =
-    InputKey[String]("what-depends-on", "Shows information about what depends on the given module")
-  private[sbt] val crossProjectId = SettingKey[ModuleID]("dependency-graph-cross-project-id")
 }
 
-object DependencyGraphKeys extends DependencyGraphKeys
+object DependencyTreeKeys extends DependencyTreeKeys
