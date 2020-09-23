@@ -107,10 +107,15 @@ private[sbt] class TaskProgress(
 
   override def afterReady(task: Task[_]): Unit =
     if (!closed.get) {
-      if (skipReportTasks.contains(getShortName(task))) {
-        lastTaskCount.set(-1) // force a report for remote clients
-        report()
-      } else Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
+      try {
+        Util.ignoreResult(executor.submit((() => {
+          if (skipReportTasks.contains(getShortName(task))) {
+            lastTaskCount.set(-1) // force a report for remote clients
+            report()
+          } else
+            Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
+        }): Runnable))
+      } catch { case _: RejectedExecutionException => }
     } else {
       logger.debug(s"called afterReady for ${taskName(task)} after task progress was closed")
     }
