@@ -229,4 +229,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     }
     ()
   }
+
+  test("sbt --no-share adds three system properties") {
+    val out = sbtProcess("--no-share").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.global.base=project/.sbtboot"))
+    assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
+    assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
+    ()
+  }
 }
