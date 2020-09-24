@@ -237,7 +237,7 @@ object BuildServerProtocol {
             val _ = callback.appendExec(s"$bspReload ${r.id}", None)
 
           case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
-            ()
+            callback.jsonRpcRespond(JNull, Some(r.id))
 
           case r: JsonRpcRequestMessage if r.method == "build/exit" =>
             val _ = callback.appendExec(Shutdown, Some(r.id))
