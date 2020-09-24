@@ -237,4 +237,10 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
     ()
   }
+
+  test("accept `--ivy` in `SBT_OPTS`") {
+    val out = sbtProcessWithOpts("")("", sbtOpts = "--ivy /ivy/dir").!!.linesIterator.toList
+    assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
+    ()
+  }
 }
