@@ -8,6 +8,7 @@
 package testpkg
 
 import java.io.{ InputStream, OutputStream, PrintStream }
+import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit, TimeoutException }
 import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 import scala.collection.mutable
@@ -41,27 +42,47 @@ object ClientTest extends AbstractServerTest {
       } else -1
     }
   }
-  private def client(args: String*) =
-    NetworkClient.client(
-      testPath.toFile,
-      args.toArray,
-      NullInputStream,
-      NullPrintStream,
-      NullPrintStream,
-      false
+  private[this] def background[R](f: => R): R = {
+    val result = new LinkedBlockingQueue[R]
+    val thread = new Thread("client-bg-thread") {
+      setDaemon(true)
+      start()
+      override def run(): Unit = result.put(f)
+    }
+    result.poll(1, TimeUnit.MINUTES) match {
+      case null =>
+        thread.interrupt()
+        thread.join(5000)
+        throw new TimeoutException
+      case r => r
+    }
+  }
+  private def client(args: String*): Int = {
+    background(
+      NetworkClient.client(
+        testPath.toFile,
+        args.toArray,
+        NullInputStream,
+        NullPrintStream,
+        NullPrintStream,
+        false
+      )
     )
+  }
   // This ensures that the completion command will send a tab that triggers
   // sbt to call definedTestNames or discoveredMainClasses if there hasn't
   // been a necessary compilation
   def tabs = new FixedInputStream('\t', '\t')
   private def complete(completionString: String): Seq[String] = {
     val cps = new CachingPrintStream
-    NetworkClient.complete(
-      testPath.toFile,
-      Array(s"--completions=sbtn $completionString"),
-      false,
-      tabs,
-      cps
+    background(
+      NetworkClient.complete(
+        testPath.toFile,
+        Array(s"--completions=sbtn $completionString"),
+        false,
+        tabs,
+        cps
+      )
     )
     cps.lines
   }

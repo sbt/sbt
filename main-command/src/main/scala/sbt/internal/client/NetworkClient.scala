@@ -59,6 +59,7 @@ import Serialization.{
   setTerminalAttributes,
 }
 import NetworkClient.Arguments
+import java.util.concurrent.TimeoutException
 
 trait ConsoleInterface {
   def appendLog(level: Level.Value, message: => String): Unit
@@ -799,7 +800,10 @@ class NetworkClient(
       val json = s"""{"query":"$query","level":1}"""
       val execId = sendJson("sbt/completion", json)
       pendingCompletions.put(execId, result.put)
-      val response = result.poll(30, TimeUnit.SECONDS)
+      val response = result.poll(30, TimeUnit.SECONDS) match {
+        case null => throw new TimeoutException("no response from server within 30 seconds")
+        case r    => r
+      }
       def fillCompletions(label: String, regex: String, command: String): Seq[String] = {
         def updateCompletions(): Seq[String] = {
           errorStream.println()
