@@ -72,8 +72,7 @@ private[sbt] final class ProgressState(
       if (!lines.endsWith(System.lineSeparator)) {
         val allLines = lines.split(System.lineSeparator)
         allLines.dropRight(1).foreach(appendLine)
-        allLines.lastOption
-          .foreach(currentLineBytes.get ++= _.getBytes("UTF-8"))
+        allLines.lastOption.foreach(currentLineBytes.get ++= _.getBytes("UTF-8"))
       } else if (lines.contains(System.lineSeparator)) {
         lines.split(System.lineSeparator).foreach(appendLine)
       }
@@ -92,11 +91,12 @@ private[sbt] final class ProgressState(
       printStream: PrintStream,
       hasProgress: Boolean
   ): Unit = {
+    val canClearPrompt = currentLineBytes.get.isEmpty
     addBytes(terminal, bytes)
     if (hasProgress) {
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
-        case a: Prompt.AskUser if a.render.nonEmpty =>
+        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt =>
           toWrite ++= (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
         case _ =>
       }
