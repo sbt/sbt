@@ -799,7 +799,7 @@ class NetworkClient(
       val json = s"""{"query":"$query","level":1}"""
       val execId = sendJson("sbt/completion", json)
       pendingCompletions.put(execId, result.put)
-      val response = result.take
+      val response = result.poll(30, TimeUnit.SECONDS)
       def fillCompletions(label: String, regex: String, command: String): Seq[String] = {
         def updateCompletions(): Seq[String] = {
           errorStream.println()
