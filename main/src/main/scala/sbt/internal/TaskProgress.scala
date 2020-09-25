@@ -48,8 +48,9 @@ private[sbt] class TaskProgress(
       val delay = duration.toMillis
       try {
         val future =
-          if (recurring) scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
-          else scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
+          if (recurring)
+            scheduler.scheduleAtFixedRate(runnable, delay, delay, TimeUnit.MILLISECONDS)
+          else scheduler.schedule(runnable, delay, TimeUnit.MILLISECONDS)
         pending.add(future)
         () => Util.ignoreResult(future.cancel(true))
       } catch {
@@ -106,10 +107,15 @@ private[sbt] class TaskProgress(
 
   override def afterReady(task: Task[_]): Unit =
     if (!closed.get) {
-      if (skipReportTasks.contains(getShortName(task))) {
-        lastTaskCount.set(-1) // force a report for remote clients
-        report()
-      } else Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
+      try {
+        Util.ignoreResult(executor.submit((() => {
+          if (skipReportTasks.contains(getShortName(task))) {
+            lastTaskCount.set(-1) // force a report for remote clients
+            report()
+          } else
+            Util.ignoreResult(active.put(task, schedule(threshold, recurring = false)(doReport())))
+        }): Runnable))
+      } catch { case _: RejectedExecutionException => }
     } else {
       logger.debug(s"called afterReady for ${taskName(task)} after task progress was closed")
     }
