@@ -12,7 +12,7 @@ import sbt.internal.util.{ SimpleReader, Terminal }
 trait CommandLineUIService extends InteractionService {
   override def readLine(prompt: String, mask: Boolean): Option[String] = {
     val maskChar = if (mask) Some('*') else None
-    SimpleReader.readLine(prompt, maskChar)
+    SimpleReader(Terminal.get).readLine(prompt, maskChar)
   }
   // TODO - Implement this better.
   override def confirm(msg: String): Boolean = {
@@ -21,7 +21,7 @@ trait CommandLineUIService extends InteractionService {
         (in == "y" || in == "yes")
       }
     }
-    SimpleReader.readLine(msg + " (yes/no): ", None) match {
+    SimpleReader(Terminal.get).readLine(msg + " (yes/no): ", None) match {
       case Some(Assent()) => true
       case _              => false
     }
