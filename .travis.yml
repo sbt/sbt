@@ -26,6 +26,7 @@ matrix:
         - curl https://piccolo.link/sbt-$SBT_VER.zip -L --output /tmp/sbt.zip
         - unzip /tmp/sbt.zip -d $HOME/sbt
         - export PATH="$HOME/sbt/sbt/bin:$PATH"
+        - bin/coursier.bat resolve
       script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest
@@ -45,6 +46,7 @@ matrix:
         - curl https://piccolo.link/sbt-$SBT_VER.zip -L --output /tmp/sbt.zip
         - unzip /tmp/sbt.zip -d $HOME/sbt
         - export PATH="$HOME/sbt/sbt/bin:$PATH"
+        - bin/coursier resolve
       script:
         - sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
         - cd citest && ./test.sh
@@ -73,6 +75,7 @@ install:
   - curl https://piccolo.link/sbt-$SBT_VER.zip -L --output /tmp/sbt.zip
   - unzip /tmp/sbt.zip -d $HOME/sbt
   - export PATH="$HOME/sbt/sbt/bin:$PATH"
+  - bin/coursier resolve
 
 cache:
   directories:
