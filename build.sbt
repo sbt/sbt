@@ -59,6 +59,7 @@ val windowsBuildId = settingKey[Int]("build id for Windows installer")
 val debianBuildId = settingKey[Int]("build id for Debian")
 
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
+val rtExportUsingCoursier = taskKey[File]("Grab RT export utility")
 val exportRepoCsrDirectory = settingKey[File]("")
 
 val x86MacPlatform = "x86_64-apple-darwin"
@@ -244,6 +245,15 @@ val root = (project in file(".")).
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
 
+    rtExportUsingCoursier := {
+      val csr =
+        if (isWindows) (baseDirectory in LocalRootProject).value / "bin" / "coursier.bat"
+        else (baseDirectory in LocalRootProject).value / "bin" / "coursier"
+      val cache = target.value / "coursier"
+      s"$csr fetch --cache $cache ${colonName(java9rtexport)}".!
+      (cache ** "*.jar").get.head
+    },
+
     mappings in Universal := {
       val t = (target in Universal).value
       val prev = (mappings in Universal).value
@@ -275,7 +285,7 @@ val root = (project in file(".")).
 
     mappings in Universal ++= {
       val launchJar = sbtLaunchJar.value
-      val rtExportJar = ((exportRepoCsrDirectory in dist).value / "org/scala-sbt/rt/java9-rt-export" / java9rtexportVersion / s"java9-rt-export-${java9rtexportVersion}.jar")
+      val rtExportJar = rtExportUsingCoursier.value
       Seq(
         launchJar -> "bin/sbt-launch.jar",
         rtExportJar -> "bin/java9-rt-export.jar"
@@ -446,7 +456,6 @@ lazy val dist = (project in file("dist"))
       s"$csr fetch --cache $cache ${colonName(jansi)}".!
       s"$csr fetch --cache $cache ${colonName(scala212Compiler)}".!
       s"$csr fetch --cache $cache ${colonName(scala212Xml)}".!
-      s"$csr fetch --cache $cache ${colonName(java9rtexport)}".!
       val mavenCache = cache / "https" / "repo1.maven.org" / "maven2"
       val compilerBridgeVer = IO.listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter).toList.headOption
       compilerBridgeVer match {
