@@ -18,7 +18,7 @@ import sbt.internal.util.{
   GlobalLogging,
   MainAppender,
   Settings,
-  Terminal
+  Terminal => ITerminal,
 }
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
@@ -77,7 +77,7 @@ object FakeState {
     val logFile = File.createTempFile("sbt", ".log")
     try {
       val state = FakeState(logFile, enabledPlugins: _*)
-      Terminal.withOut(new PrintStream(outBuffer, true)) {
+      ITerminal.withOut(new PrintStream(outBuffer, true)) {
         MainLoop.processCommand(Exec(input, None), state)
       }
       new String(outBuffer.toByteArray)

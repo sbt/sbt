@@ -15,7 +15,7 @@ import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal }
 import sbt.internal.{ ShutdownHooks, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
@@ -35,7 +35,7 @@ object MainLoop {
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
-    val shutdownHook = ShutdownHooks.add(Terminal.restore)
+    val shutdownHook = ShutdownHooks.add(ITerminal.restore)
 
     try {
       runLoggedLoop(state, state.globalLogging.backing)
@@ -219,19 +219,19 @@ object MainLoop {
         }
         exchange.setState(progressState)
         exchange.setExec(Some(exec))
-        val restoreTerminal = channelName.flatMap(exchange.channelForName) match {
+        val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
-            val prevTerminal = Terminal.set(c.terminal)
+            val prevTerminal = ITerminal.set(c.terminal)
             val prevPrompt = c.terminal.prompt
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
-            () => {
+            (() => {
               c.terminal.setPrompt(prevPrompt)
-              Terminal.set(prevTerminal)
+              ITerminal.set(prevTerminal)
               c.terminal.setPrompt(prevPrompt)
               c.terminal.flush()
-            }
-          case _ => () => ()
+            }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
+          case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))
         }
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
@@ -241,8 +241,8 @@ object MainLoop {
          */
         val newState = try {
           FastTrackCommands
-            .evaluate(progressState, exec.commandLine)
-            .getOrElse(Command.process(exec.commandLine, progressState))
+            .evaluate(termState, exec.commandLine)
+            .getOrElse(Command.process(exec.commandLine, termState))
         } finally {
           // Flush the terminal output after command evaluation to ensure that all output
           // is displayed in the thin client before we report the command status. Also
@@ -262,7 +262,7 @@ object MainLoop {
         }
         exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
-        newState.remove(sbt.Keys.currentTaskProgress)
+        newState.remove(sbt.Keys.currentTaskProgress).remove(Keys.terminalKey)
       }
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>

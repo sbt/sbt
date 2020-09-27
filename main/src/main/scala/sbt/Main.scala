@@ -26,7 +26,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
 import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.internal.util.complete.{ Parser, SizeParser }
 import sbt.io._
 import sbt.io.syntax._
@@ -78,8 +78,8 @@ private[sbt] object xMain {
       if (userCommands.exists(isBsp)) {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
-        bootServerSocket.foreach(l => Terminal.setBootStreams(l.inputStream, l.outputStream))
-        Terminal.withStreams(true) {
+        bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
+        ITerminal.withStreams(true) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
             NetworkClient.run(dealiasBaseDirectory(configuration), args)
@@ -105,7 +105,7 @@ private[sbt] object xMain {
     } finally {
       // Clear any stray progress lines
       ShutdownHooks.close()
-      if (Terminal.formatEnabledInEnv) {
+      if (ITerminal.formatEnabledInEnv) {
         System.out.print(ConsoleAppender.ClearScreenAfterCursor)
         System.out.flush()
       }
@@ -118,9 +118,9 @@ private[sbt] object xMain {
     try (Some(new BootServerSocket(configuration)) -> None)
     catch {
       case _: ServerAlreadyBootingException
-          if System.console != null && !Terminal.startedByRemoteClient =>
+          if System.console != null && !ITerminal.startedByRemoteClient =>
         println("sbt server is already booting. Create a new server? y/n (default y)")
-        val exit = Terminal.get.withRawInput(System.in.read) match {
+        val exit = ITerminal.get.withRawInput(System.in.read) match {
           case 110 => Some(Exit(1))
           case _   => None
         }
@@ -841,7 +841,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result = try Terminal.get.withRawInput(System.in.read) match {
+    val result = try ITerminal.get.withRawInput(System.in.read) match {
       case -1 => 'q'.toInt
       case b  => b
     } catch { case _: ClosedChannelException => 'q' }
@@ -957,7 +957,7 @@ object BuiltinCommands {
     val threshold =
       extracted.getOpt(Keys.superShellThreshold).getOrElse(SysProp.supershellThreshold)
     val maxItems = extracted.getOpt(Keys.superShellMaxTasks).getOrElse(SysProp.supershellMaxTasks)
-    Terminal.setConsoleProgressState(new ProgressState(1, maxItems))
+    ITerminal.setConsoleProgressState(new ProgressState(1, maxItems))
     s.put(Keys.superShellSleep.key, sleep)
       .put(Keys.superShellThreshold.key, threshold)
       .put(Keys.superShellMaxTasks.key, maxItems)
@@ -1032,10 +1032,10 @@ object BuiltinCommands {
      * by a remote client and only one is able to start a server. This seems to
      * happen primarily on windows.
      */
-    if (Terminal.startedByRemoteClient && !exchange.hasServer) {
+    if (ITerminal.startedByRemoteClient && !exchange.hasServer) {
       Exec(Shutdown, None) +: s1
     } else {
-      if (Terminal.console.prompt == Prompt.Batch) Terminal.console.setPrompt(Prompt.Pending)
+      if (ITerminal.console.prompt == Prompt.Batch) ITerminal.console.setPrompt(Prompt.Pending)
       exchange prompt ConsolePromptEvent(s0)
       val minGCInterval = Project
         .extract(s1)

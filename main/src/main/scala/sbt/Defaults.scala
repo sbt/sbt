@@ -57,7 +57,7 @@ import sbt.internal.server.{
 import sbt.internal.testing.TestLogger
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types._
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.internal.util.complete._
 import sbt.io.Path._
 import sbt.io._
@@ -333,7 +333,7 @@ object Defaults extends BuildCommon {
         if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
         else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
       },
-      useSuperShell := { if (insideCI.value) false else Terminal.console.isSupershellEnabled },
+      useSuperShell := { if (insideCI.value) false else ITerminal.console.isSupershellEnabled },
       superShellThreshold :== SysProp.supershellThreshold,
       superShellMaxTasks :== SysProp.supershellMaxTasks,
       superShellSleep :== SysProp.supershellSleep.millis,
@@ -388,6 +388,7 @@ object Defaults extends BuildCommon {
       pollInterval :== Watch.defaultPollInterval,
       canonicalInput :== true,
       echoInput :== true,
+      terminal := state.value.get(terminalKey).getOrElse(Terminal(ITerminal.get)),
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
@@ -1663,13 +1664,13 @@ object Defaults extends BuildCommon {
 
   def askForMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(
-      if (classes.length >= 10) Some(SimpleReader(Terminal.get).readLine(_))
+      if (classes.length >= 10) Some(SimpleReader(ITerminal.get).readLine(_))
       else
         Some(s => {
           def print(st: String) = { scala.Console.out.print(st); scala.Console.out.flush() }
           print(s)
-          Terminal.get.withRawInput {
-            try Terminal.get.inputStream.read match {
+          ITerminal.get.withRawInput {
+            try ITerminal.get.inputStream.read match {
               case -1 | -2 => None
               case b =>
                 val res = b.toChar.toString
@@ -1705,7 +1706,7 @@ object Defaults extends BuildCommon {
   private[this] def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
     (f: () => Unit) =>
       () => {
-        val term = Terminal.get
+        val term = ITerminal.get
         if (!canonical) {
           term.enterRawMode()
           if (echo) term.setEchoEnabled(echo)
@@ -3952,7 +3953,7 @@ object Classpaths {
     }
   }
 
-  def shellPromptFromState: State => String = shellPromptFromState(Terminal.console.isColorEnabled)
+  def shellPromptFromState: State => String = shellPromptFromState(ITerminal.console.isColorEnabled)
   def shellPromptFromState(isColorEnabled: Boolean): State => String = { s: State =>
     val extracted = Project.extract(s)
     (name in extracted.currentRef).get(extracted.structure.data) match {

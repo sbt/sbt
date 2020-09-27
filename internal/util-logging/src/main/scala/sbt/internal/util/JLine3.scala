@@ -261,6 +261,13 @@ private[sbt] object JLine3 {
     LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
   private[this] val charMap: Map[String, Attributes.ControlChar] =
     Attributes.ControlChar.values().map(f => f.name.toLowerCase -> f).toMap
+  private[sbt] def setMode(term: Terminal, canonical: Boolean, echo: Boolean): Unit = {
+    val prev = attributesFromMap(term.getAttributes)
+    val newAttrs = new Attributes(prev)
+    newAttrs.setLocalFlag(LocalFlag.ICANON, canonical)
+    newAttrs.setLocalFlag(LocalFlag.ECHO, echo)
+    term.setAttributes(toMap(newAttrs))
+  }
   private[util] def attributesFromMap(map: Map[String, String]): Attributes = {
     val attributes = new Attributes
     map.get("iflag").foreach { flags =>
