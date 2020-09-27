@@ -919,7 +919,9 @@ class NetworkClient(
       if (mainThread != null && mainThread != Thread.currentThread) mainThread.interrupt
       connectionHolder.get match {
         case null =>
-        case c    => c.shutdown()
+        case c =>
+          try sendExecCommand("exit")
+          finally c.shutdown()
       }
       Option(inputThread.get).foreach(_.interrupt())
     } catch {
