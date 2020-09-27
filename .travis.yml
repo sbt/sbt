@@ -30,6 +30,7 @@ matrix:
 before_install:
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
   - if [ $SBT_LOCAL == true ]; then sbt -Dsbt.io.virtual=false publishLocalBin; fi
+  - rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
 
 install:
   - $JABBA_HOME/bin/jabba install $TRAVIS_JDK
@@ -45,6 +46,7 @@ before_cache:
   - find $HOME/.cache/coursier/v1 -name "ivydata-*.properties" -delete
   - find $HOME/.ivy2              -name "ivydata-*.properties" -delete
   - find $HOME/.sbt               -name "*.lock"               -delete
+  - rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
 
 cache:
   directories:
