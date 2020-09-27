@@ -19,6 +19,8 @@ import sbt.internal.protocol.{
 import sbt.protocol.Serialization.{
   attach,
   systemIn,
+  getTerminalAttributes,
+  setTerminalAttributes,
   terminalCapabilities,
   terminalGetSize,
   terminalPropertiesQuery,
@@ -103,10 +105,10 @@ object VirtualTerminal {
     val id = UUID.randomUUID.toString
     val queue = new ArrayBlockingQueue[TerminalAttributesResponse](1)
     pendingTerminalAttributes.put((channelName, id), queue)
-    jsonRpcRequest(id, terminalCapabilities, TerminalAttributesQuery())
+    jsonRpcRequest(id, getTerminalAttributes, TerminalAttributesQuery())
     queue
   }
-  private[sbt] def setTerminalAttributes(
+  private[sbt] def setTerminalAttributesCommand(
       channelName: String,
       jsonRpcRequest: (String, String, TerminalSetAttributesCommand) => Unit,
       query: TerminalSetAttributesCommand
@@ -114,7 +116,7 @@ object VirtualTerminal {
     val id = UUID.randomUUID.toString
     val queue = new ArrayBlockingQueue[Unit](1)
     pendingTerminalSetAttributes.put((channelName, id), queue)
-    jsonRpcRequest(id, terminalCapabilities, query)
+    jsonRpcRequest(id, setTerminalAttributes, query)
     queue
   }
 

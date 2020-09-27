@@ -871,7 +871,7 @@ final class NetworkChannel(
           lflag = attributes.getOrElse("lflag", ""),
           cchars = attributes.getOrElse("cchars", ""),
         )
-        val queue = VirtualTerminal.setTerminalAttributes(name, jsonRpcRequest, attrs)
+        val queue = VirtualTerminal.setTerminalAttributesCommand(name, jsonRpcRequest, attrs)
         try queue.take
         catch { case _: InterruptedException => }
       }
