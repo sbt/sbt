@@ -37,10 +37,10 @@ object RunFromSourceMain {
   ): Process = {
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
-      .withRunJVMOptions(sys.props.get("sbt.ivy.home") match {
+      .withRunJVMOptions((sys.props.get("sbt.ivy.home") match {
         case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
         case _          => Vector()
-      })
+      }) ++ fo0.runJVMOptions)
     implicit val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
