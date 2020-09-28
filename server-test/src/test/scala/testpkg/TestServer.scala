@@ -14,7 +14,7 @@ import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.AtomicBoolean
 
 import verify._
-import sbt.RunFromSourceMain
+import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
@@ -43,18 +43,9 @@ trait AbstractServerTest extends TestSuite[Unit] {
       "server-test"
     )
     temp = base.toFile
-    val classpath = sys.props.get("sbt.server.classpath") match {
-      case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
-      case _               => throw new IllegalStateException("No server classpath was specified.")
-    }
-    val sbtVersion = sys.props.get("sbt.server.version") match {
-      case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server version was specified.")
-    }
-    val scalaVersion = sys.props.get("sbt.server.scala.version") match {
-      case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server scala version was specified.")
-    }
+    val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
+    val sbtVersion = TestProperties.version
+    val scalaVersion = TestProperties.scalaVersion
     svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath, temp)
   }
   override def tearDownSuite(): Unit = {
@@ -169,7 +160,12 @@ case class TestServer(
   import TestServer.hostLog
 
   hostLog("fork to a new sbt instance")
-  val process = RunFromSourceMain.fork(baseDirectory, scalaVersion, sbtVersion, classpath)
+  val forkOptions =
+    ForkOptions()
+      .withOutputStrategy(OutputStrategy.StdoutOutput)
+      .withRunJVMOptions(Vector("-Dsbt.ci=true", "-Dsbt.io.virtual=false"))
+  val process =
+    RunFromSourceMain.fork(forkOptions, baseDirectory, scalaVersion, sbtVersion, classpath)
 
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 

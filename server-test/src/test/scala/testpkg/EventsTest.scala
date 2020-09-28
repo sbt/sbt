@@ -55,6 +55,9 @@ object EventsTest extends AbstractServerTest {
       s"""{ "jsonrpc": "2.0", "id":$id, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
+      s contains "Compiled events"
+    })
+    assert(svr.waitForString(10.seconds) { s =>
       s contains "Waiting for"
     })
     val cancelID = currentID.getAndIncrement()
@@ -66,13 +69,15 @@ object EventsTest extends AbstractServerTest {
     })
   }
 
-  /* This test is timing out.
   test("cancel on-going task with string id") { _ =>
     import sbt.Exec
     val id = Exec.newExecId
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "$id", "method": "sbt/exec", "params": { "commandLine": "run" } }"""
     )
+    assert(svr.waitForString(10.seconds) { s =>
+      s contains "Compiled events"
+    })
     assert(svr.waitForString(10.seconds) { s =>
       s contains "Waiting for"
     })
@@ -84,5 +89,4 @@ object EventsTest extends AbstractServerTest {
       s contains """"result":{"status":"Task cancelled""""
     })
   }
- */
 }

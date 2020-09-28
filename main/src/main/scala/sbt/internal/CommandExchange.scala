@@ -91,7 +91,7 @@ private[sbt] final class CommandExchange {
           case s @ Seq(_, _) => Some(s.min)
           case s             => s.headOption
         }
-        Option(deadline match {
+        try Option(deadline match {
           case Some(d: Deadline) =>
             commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
               case null if idleDeadline.fold(false)(_.isOverdue) =>
@@ -106,6 +106,7 @@ private[sbt] final class CommandExchange {
             }
           case _ => commandQueue.take
         })
+        catch { case _: InterruptedException => None }
       }
       poll match {
         case Some(exec) if exec.source.fold(true)(s => channels.exists(_.name == s.channelName)) =>

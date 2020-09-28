@@ -157,7 +157,7 @@ object ConcurrentRestrictions {
       new Thread(r, s"sbt-completion-service-pool-$id-${i.getAndIncrement()}")
     }
     val service = completionService[A, R](pool, tags, warn)
-    (service, () => { service.close(); pool.shutdownNow(); () })
+    (service, () => { pool.shutdownNow(); () })
   }
 
   def completionService[A, R](
@@ -168,7 +168,20 @@ object ConcurrentRestrictions {
     val pool = Executors.newCachedThreadPool()
     val service = completionService[A, R](pool, tags, warn, isSentinel)
     (service, () => {
-      service.close()
+      pool.shutdownNow()
+      ()
+    })
+  }
+
+  def cancellableCompletionService[A, R](
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit,
+      isSentinel: A => Boolean
+  ): (CompletionService[A, R], Boolean => Unit) = {
+    val pool = Executors.newCachedThreadPool()
+    val service = completionService[A, R](pool, tags, warn, isSentinel)
+    (service, force => {
+      if (force) service.close()
       pool.shutdownNow()
       ()
     })

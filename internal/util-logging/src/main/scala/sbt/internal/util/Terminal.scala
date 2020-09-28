@@ -306,10 +306,10 @@ object Terminal {
     }
   }
   private[sbt] lazy val formatEnabledInEnv: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+  private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
-    val hasConsole = Option(java.lang.System.console).isDefined
     props.map(_.color).orElse(isColorEnabledProp).getOrElse(hasConsole)
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
@@ -779,7 +779,7 @@ object Terminal {
       private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private[this] val rawMode = new AtomicBoolean(false)
-    enterRawMode()
+    if (hasConsole) enterRawMode()
     override private[sbt] def getSizeImpl: (Int, Int) = {
       val size = system.getSize
       (size.getColumns, size.getRows)
@@ -811,16 +811,22 @@ object Terminal {
     override private[sbt] def setSize(width: Int, height: Int): Unit =
       system.setSize(new org.jline.terminal.Size(width, height))
 
-    override private[sbt] def enterRawMode(): Unit = if (rawMode.compareAndSet(false, true)) {
-      in.setRawMode(true)
-      try JLine3.enterRawMode(system)
-      catch { case _: java.io.IOError => }
+    override def inputStream: InputStream = {
+      if (hasConsole) in else BlockingInputStream
     }
-    override private[sbt] def exitRawMode(): Unit = if (rawMode.compareAndSet(true, false)) {
-      in.setRawMode(false)
-      try JLine3.exitRawMode(system)
-      catch { case _: java.io.IOError => }
-    }
+
+    override private[sbt] def enterRawMode(): Unit =
+      if (rawMode.compareAndSet(false, true) && hasConsole) {
+        in.setRawMode(true)
+        try JLine3.enterRawMode(system)
+        catch { case _: java.io.IOError => }
+      }
+    override private[sbt] def exitRawMode(): Unit =
+      if (rawMode.compareAndSet(true, false) && hasConsole) {
+        in.setRawMode(false)
+        try JLine3.exitRawMode(system)
+        catch { case _: java.io.IOError => }
+      }
     override def isColorEnabled: Boolean =
       props
         .map(_.color)
@@ -970,8 +976,17 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
-    override lazy val inputStream: InputStream = originalIn
+    override lazy val inputStream: InputStream =
+      if (isCI) BlockingInputStream
+      else originalIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
+  }
+  private[this] object BlockingInputStream extends SimpleInputStream {
+    override def read(): Int = {
+      try this.synchronized(this.wait)
+      catch { case _: InterruptedException => }
+      -1
+    }
   }
 }

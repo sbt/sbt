@@ -428,7 +428,7 @@ object EvaluateTask {
       triggers: Triggers[Task],
       config: EvaluateTaskConfig
   )(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
-    import ConcurrentRestrictions.{ completionService, tagged, tagsKey }
+    import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
 
     val log = state.log
     log.debug(
@@ -439,15 +439,15 @@ object EvaluateTask {
     val tags =
       tagged[Task[_]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      completionService[Task[_], Completed](
+      cancellableCompletionService[Task[_], Completed](
         tags,
         (s: String) => log.warn(s),
         (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
       )
 
-    def shutdown(): Unit = {
+    def shutdownImpl(force: Boolean): Unit = {
       // First ensure that all threads are stopped for task execution.
-      shutdownThreads()
+      shutdownThreads(force)
       config.progressReporter.stop()
 
       // Now we run the gc cleanup to force finalizers to clear out file handles (yay GC!)
@@ -455,6 +455,7 @@ object EvaluateTask {
         GCUtil.forceGcWithInterval(config.minForcegcInterval, log)
       }
     }
+    def shutdown(): Unit = shutdownImpl(false)
     // propagate the defining key for reporting the origin
     def overwriteNode(i: Incomplete): Boolean = i.node match {
       case Some(t: Task[_]) => transformNode(t).isEmpty
@@ -482,7 +483,7 @@ object EvaluateTask {
         log.warn("Canceling execution...")
         RunningProcesses.killAll()
         ConcurrentRestrictions.cancelAll()
-        shutdown()
+        shutdownImpl(true)
       }
     }
     currentlyRunningEngine.set((SafeState(state), runningEngine))
