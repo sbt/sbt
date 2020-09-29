@@ -97,7 +97,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
                 // VK_END, VK_INSERT and VK_DELETE are not in the ansi key bindings so we
                 // have to manually apply the the sequences here and in JLine3.wrap
                 case 0x23 /* VK_END */ =>
-                  Option(getCapability(Capability.key_end)).getOrElse("\u001B[4!")
+                  Option(getCapability(Capability.key_end)).getOrElse("\u001B[4~")
                 case 0x2D /* VK_INSERT */ =>
                   Option(getCapability(Capability.key_ic)).getOrElse("\u001B[2~")
                 case 0x2E /* VK_DELETE */ =>
