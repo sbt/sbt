@@ -12,7 +12,7 @@ import java.io.{ Closeable, File, FileInputStream, IOException }
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{ FileVisitResult, Files, Path, SimpleFileVisitor }
 import java.security.{ DigestInputStream, MessageDigest }
-import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.{ ConcurrentHashMap, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
 import sbt.Def.{ Classpath, ScopedKey, Setting }
@@ -24,20 +24,31 @@ import sbt.io.{ Hash, IO }
 import sbt.util.Logger
 
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 import scala.util.Try
 import sbt.util.LoggerContext
+import java.util.concurrent.TimeoutException
 
 /**
  * Interface between sbt and a thing running in the background.
  */
 private[sbt] abstract class BackgroundJob {
   def humanReadableName: String
-  def awaitTermination(): Unit
+  @deprecated("Use awaitTermination that takes a duration argument", "1.4.0")
+  final def awaitTermination(): Unit = awaitTermination(Duration.Inf)
+  def awaitTermination(duration: Duration): Unit
 
   /** This waits till the job ends, and returns inner error via `Try`. */
-  def awaitTerminationTry(): Try[Unit] = {
+  @deprecated("Use awaitTerminationTry that takes a duration argument", "1.4.0")
+  final def awaitTerminationTry(): Try[Unit] = {
     // This implementation is provided only for backward compatibility.
-    Try(awaitTermination())
+    Try(awaitTermination(Duration.Inf))
+  }
+
+  /** This waits till the job ends, and returns inner error via `Try`. */
+  def awaitTerminationTry(duration: Duration): Try[Unit] = {
+    // This implementation is provided only for backward compatibility.
+    Try(awaitTermination(duration))
   }
 
   def shutdown(): Unit
@@ -172,7 +183,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       jobSet.headOption.foreach {
         case handle: ThreadJobHandle @unchecked =>
           handle.job.shutdown()
-          handle.job.awaitTerminationTry()
+          handle.job.awaitTerminationTry(10.seconds)
         case _ => //
       }
     }
@@ -193,7 +204,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     withHandle(job)(_.job.shutdown())
 
   override def waitFor(job: JobHandle): Unit =
-    withHandle(job)(_.job.awaitTermination())
+    withHandle(job)(_.job.awaitTermination(Duration.Inf))
 
   override def toString(): String = s"BackgroundJobService(jobs=${jobs.map(_.id).mkString})"
 
@@ -394,9 +405,13 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
         stopListeners += result
         result
       }
-    override def awaitTermination(): Unit = {
-      finishedLatch.await()
+    override def awaitTermination(duration: Duration): Unit = {
+      val finished = duration match {
+        case fd: FiniteDuration => finishedLatch.await(fd.toMillis, TimeUnit.MILLISECONDS)
+        case _                  => finishedLatch.await(); true
+      }
       exitTry.foreach(_.fold(e => throw e, identity))
+      if (!finished) throw new TimeoutException
     }
 
     override def humanReadableName: String = taskName
@@ -432,8 +447,8 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       taskName: String,
       body: () => Unit
   ) extends BackgroundRunnable(taskName, body) {
-    override def awaitTermination(): Unit = {
-      try super.awaitTermination()
+    override def awaitTermination(duration: Duration): Unit = {
+      try super.awaitTermination(duration)
       finally loader.foreach {
         case ac: AutoCloseable   => ac.close()
         case cp: ClasspathFilter => cp.close()
