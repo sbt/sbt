@@ -293,4 +293,7 @@ private[sbt] object JLine3 {
     }
     attributes
   }
+  private[sbt] def isEchoEnabled(map: Map[String, String]): Boolean = {
+    attributesFromMap(map).getLocalFlag(LocalFlag.ECHO)
+  }
 }

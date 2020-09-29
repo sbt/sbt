@@ -805,7 +805,7 @@ final class NetworkChannel(
     override def getWidth: Int = getProperty(_.width, 0).getOrElse(0)
     override def getHeight: Int = getProperty(_.height, 0).getOrElse(0)
     override def isAnsiSupported: Boolean = getProperty(_.isAnsiSupported, false).getOrElse(false)
-    override def isEchoEnabled: Boolean = waitForPending(_.isEchoEnabled)
+    override def isEchoEnabled: Boolean = sbt.internal.util.JLine3.isEchoEnabled(getAttributes)
     override def isSuccessEnabled: Boolean =
       interactive.get ||
         StandardMain.exchange.withState(ContinuousCommands.isInWatch(_, NetworkChannel.this))
