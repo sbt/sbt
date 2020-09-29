@@ -31,8 +31,14 @@ private[sbt] object IvyUtil {
     }
   }
 
+  /**
+   * Currently transient network errors are defined as:
+   *  - a network timeout
+   *  - all server errors (response code 5xx)
+   *  - rate limiting (response code 429)
+   */
   object TransientNetworkException {
-    private val _r = """.*HTTP response code: (503|429).*""".r
+    private val _r = """.*HTTP response code: (5\d{2}|408|429).*""".r
 
     @inline private def check(s: String): Boolean = {
       if (s == null) return false
