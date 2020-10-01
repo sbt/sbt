@@ -36,23 +36,25 @@ object DependencyTreeSettings {
       // disable the cached resolution engine (exposing a scoped `ivyModule` used directly by `updateTask`), as it
       // generates artificial module descriptors which are internal to sbt, making it hard to reconstruct the
       // dependency tree
-      ignoreMissingUpdate / updateOptions := updateOptions.value.withCachedResolution(false),
-      ignoreMissingUpdate / ivyConfiguration := {
-        // inTask will make sure the new definition will pick up `updateOptions in ignoreMissingUpdate`
-        inTask(ignoreMissingUpdate, Classpaths.mkIvyConfiguration).value
+      dependencyTreeIgnoreMissingUpdate / updateOptions := updateOptions.value
+        .withCachedResolution(false),
+      dependencyTreeIgnoreMissingUpdate / ivyConfiguration := {
+        // inTask will make sure the new definition will pick up `updateOptions in dependencyTreeIgnoreMissingUpdate`
+        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
       },
-      ignoreMissingUpdate / ivyModule := {
+      dependencyTreeIgnoreMissingUpdate / ivyModule := {
         // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
         // NOT correctly force the scope when applied to `TaskKey.toTask` instances (as opposed to raw
         // implementations like `Classpaths.mkIvyConfiguration` or `Classpaths.updateTask`)
-        val is = new IvySbt((ivyConfiguration in ignoreMissingUpdate).value)
+        val is = new IvySbt((ivyConfiguration in dependencyTreeIgnoreMissingUpdate).value)
         new is.Module(moduleSettings.value)
       },
       // don't fail on missing dependencies
-      ignoreMissingUpdate / updateConfiguration := updateConfiguration.value.withMissingOk(true),
-      ignoreMissingUpdate := {
+      dependencyTreeIgnoreMissingUpdate / updateConfiguration := updateConfiguration.value
+        .withMissingOk(true),
+      dependencyTreeIgnoreMissingUpdate := {
         // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
-        inTask(ignoreMissingUpdate, Classpaths.updateTask).value
+        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
       },
     )
 
@@ -62,19 +64,22 @@ object DependencyTreeSettings {
    */
   lazy val baseBasicReportingSettings: Seq[Def.Setting[_]] =
     Seq(
-      crossProjectId := CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(
+      dependencyTreeCrossProjectId := CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(
         projectID.value
       ),
-      dependencyTreeModuleGraph := {
+      dependencyTreeModuleGraph0 := {
         val sv = scalaVersion.value
-        val g = ignoreMissingUpdate.value
+        val g = dependencyTreeIgnoreMissingUpdate.value
           .configuration(configuration.value)
-          .map(report => SbtUpdateReport.fromConfigurationReport(report, crossProjectId.value))
+          .map(
+            report =>
+              SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
+          )
           .getOrElse(ModuleGraph.empty)
         if (dependencyTreeIncludeScalaLibrary.value) g
         else GraphTransformations.ignoreScalaLibrary(sv, g)
       },
-      moduleGraphStore := (dependencyTreeModuleGraph storeAs moduleGraphStore triggeredBy dependencyTreeModuleGraph).value,
+      dependencyTreeModuleGraphStore := (dependencyTreeModuleGraph0 storeAs dependencyTreeModuleGraphStore triggeredBy dependencyTreeModuleGraph0).value,
     ) ++ renderingTaskSettings(dependencyTree, rendering.AsciiTree.asciiTree _)
 
   /**
@@ -95,7 +100,7 @@ object DependencyTreeSettings {
         target.value / "dependencies-%s.dot".format(config.toString)
       },
       dependencyDot / asString := rendering.DOT.dotGraph(
-        dependencyTreeModuleGraph.value,
+        dependencyTreeModuleGraph0.value,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
         rendering.DOT.AngleBrackets
@@ -118,7 +123,7 @@ object DependencyTreeSettings {
       dependencyGraphML := dependencyGraphMLTask.value,
       whatDependsOn := {
         val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
-        val graph = dependencyTreeModuleGraph.value
+        val graph = dependencyTreeModuleGraph0.value
         val modules =
           versionFilter match {
             case Some(version) => GraphModuleId(org, name, version) :: Nil
@@ -153,7 +158,7 @@ object DependencyTreeSettings {
         val str = (key / asString).value
         s.log.info(str)
       },
-      key / asString := renderer(dependencyTreeModuleGraph.value),
+      key / asString := renderer(dependencyTreeModuleGraph0.value),
       key / toFile := {
         val (targetFile, force) = targetFileAndForceParser.parsed
         writeToFile(key.key.label, (asString in key).value, targetFile, force, streams.value)
@@ -163,7 +168,7 @@ object DependencyTreeSettings {
   def dependencyGraphMLTask =
     Def.task {
       val resultFile = dependencyGraphMLFile.value
-      val graph = dependencyTreeModuleGraph.value
+      val graph = dependencyTreeModuleGraph0.value
       rendering.GraphML.saveAsGraphML(graph, resultFile.getAbsolutePath)
       streams.value.log.info("Wrote dependency graph to '%s'" format resultFile)
       resultFile
@@ -171,7 +176,7 @@ object DependencyTreeSettings {
 
   def browseGraphHTMLTask =
     Def.task {
-      val graph = dependencyTreeModuleGraph.value
+      val graph = dependencyTreeModuleGraph0.value
       val dotGraph = rendering.DOT.dotGraph(
         graph,
         dependencyDotHeader.value,
@@ -185,7 +190,7 @@ object DependencyTreeSettings {
 
   def browseTreeHTMLTask =
     Def.task {
-      val graph = dependencyTreeModuleGraph.value
+      val graph = dependencyTreeModuleGraph0.value
       val renderedTree = TreeView.createJson(graph)
       val link = TreeView.createLink(renderedTree, target.value)
       streams.value.log.info(s"HTML tree written to $link")
@@ -234,7 +239,7 @@ object DependencyTreeSettings {
   import sbt.internal.util.complete.DefaultParsers._
   val artifactPatternParser: Def.Initialize[State => Parser[ArtifactPattern]] =
     Keys.resolvedScoped { ctx => (state: State) =>
-      val graph = Defaults.loadFromContext(moduleGraphStore, ctx, state) getOrElse ModuleGraph(
+      val graph = Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
         Nil,
         Nil
       )
@@ -255,7 +260,7 @@ object DependencyTreeSettings {
         }
         .reduceOption(_ | _)
         .getOrElse {
-          // If the moduleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
+          // If the dependencyTreeModuleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
           ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
             StringBasic,
             "<module>"
