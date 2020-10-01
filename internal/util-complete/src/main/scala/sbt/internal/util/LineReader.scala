@@ -316,7 +316,7 @@ class SimpleReader private[sbt] (
 ) extends JLine {
   def this(historyPath: Option[File], handleCONT: Boolean, injectThreadSleep: Boolean) =
     this(historyPath, handleCONT, Terminal.console)
-  protected[this] val reader: ConsoleReader =
+  protected[this] lazy val reader: ConsoleReader =
     LineReader.createJLine2Reader(historyPath, terminal)
 }
 
