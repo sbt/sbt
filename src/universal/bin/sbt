@@ -403,7 +403,7 @@ run() {
   exit $exit_code
 }
 
-declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
+declare -ra noshare_opts=(-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy)
 declare -r sbt_opts_file=".sbtopts"
 declare -r build_props_file="$(pwd)/project/build.properties"
 declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
@@ -513,8 +513,9 @@ map_args () {
               -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
                   --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
                    -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
-       -no-share|--no-share) options=( "${options[@]}" "$noshare_opts" ) && shift ;;
+       -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
      -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
+                 -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;
        -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
          -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
              -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
@@ -538,7 +539,6 @@ process_args () {
                    --client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
 
-                 -ivy|--ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
      -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
              -batch|--batch) exec </dev/null && shift ;;
