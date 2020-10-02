@@ -24,13 +24,12 @@ trait MiniDependencyTreeKeys {
   val toFile = inputKey[File]("Writes the task value to the given file")
 
   // internal
-  private[sbt] val ignoreMissingUpdate =
-    TaskKey[UpdateReport]("dependencyUpdate", "sbt-dependency-graph version of update")
-  private[sbt] val moduleGraphStore =
-    TaskKey[ModuleGraph]("module-graph-store", "The stored module-graph from the last run")
-  val whatDependsOn =
-    InputKey[String]("what-depends-on", "Shows information about what depends on the given module")
-  private[sbt] val crossProjectId = SettingKey[ModuleID]("dependency-graph-cross-project-id")
+  private[sbt] val dependencyTreeIgnoreMissingUpdate =
+    taskKey[UpdateReport]("update used for dependencyTree task")
+  private[sbt] val dependencyTreeModuleGraphStore =
+    taskKey[ModuleGraph]("The stored module-graph from the last run")
+  val whatDependsOn = inputKey[String]("Shows information about what depends on the given module")
+  private[sbt] val dependencyTreeCrossProjectId = settingKey[ModuleID]("")
 }
 
 object MiniDependencyTreeKeys extends MiniDependencyTreeKeys
@@ -72,7 +71,9 @@ abstract class DependencyTreeKeys {
   val dependencyBrowseTree = taskKey[URI](
     "Opens an HTML page that can be used to view the dependency tree"
   )
-  val dependencyTreeModuleGraph = taskKey[ModuleGraph]("The dependency graph for a project")
+  // 0 was added to avoid conflict with sbt-dependency-tree
+  private[sbt] val dependencyTreeModuleGraph0 =
+    taskKey[ModuleGraph]("The dependency graph for a project")
 
   val dependencyList =
     taskKey[Unit]("Prints a list of all dependencies to the console")
