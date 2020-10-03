@@ -293,7 +293,7 @@ object Defaults extends BuildCommon {
       // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
       // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
       // directs the dependencies of the plugin to build to the specified sbt plugin version.
-      sbtVersion in pluginCrossBuild := sbtVersion.value,
+      sbtVersion in pluginCrossBuild := "1.2.8", // sbtVersion.value,
       onLoad := idFun[State],
       onUnload := idFun[State],
       onUnload := { s =>
