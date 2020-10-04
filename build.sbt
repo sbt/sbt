@@ -15,7 +15,7 @@ ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
-ThisBuild / SettingKey[Boolean]("usePipelining") := !(Global / insideCI).value
+ThisBuild / usePipelining := !(Global / insideCI).value
 
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
