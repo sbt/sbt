@@ -541,10 +541,13 @@ object Defaults extends BuildCommon {
     scalaSource := sourceDirectory.value / "scala",
     javaSource := sourceDirectory.value / "java",
     unmanagedSourceDirectories := {
+      val isDotty = ScalaInstance.isDotty(scalaVersion.value)
+      val epochVersion = if (isDotty) "3" else "2"
       makeCrossSources(
         scalaSource.value,
         javaSource.value,
         scalaBinaryVersion.value,
+        epochVersion,
         crossPaths.value
       ) ++
         makePluginCrossSources(
@@ -670,6 +673,24 @@ object Defaults extends BuildCommon {
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
     )
   )
+
+  def makeCrossSources(
+      scalaSrcDir: File,
+      javaSrcDir: File,
+      sv: String,
+      epochVersion: String,
+      cross: Boolean
+  ): Seq[File] = {
+    if (cross)
+      Seq(
+        scalaSrcDir,
+        scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv",
+        scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$epochVersion",
+        javaSrcDir,
+      )
+    else
+      Seq(scalaSrcDir, javaSrcDir)
+  }
 
   def makeCrossSources(
       scalaSrcDir: File,
