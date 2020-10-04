@@ -11,6 +11,7 @@ ThisBuild / version := {
   val v = "1.4.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
