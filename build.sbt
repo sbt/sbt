@@ -16,7 +16,7 @@ ThisBuild / version := {
       else old
   }
 }
-
+ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / organization := "org.scala-sbt"
 ThisBuild / bintrayPackage := "librarymanagement"
 ThisBuild / homepage := Some(url("https://github.com/sbt/librarymanagement"))
@@ -338,6 +338,7 @@ lazy val lmIvy = (project in file("ivy"))
       exclude[DirectMissingMethodProblem](
         "sbt.internal.librarymanagement.CustomPomParser.versionRangeFlag"
       ),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.FixedParser*"),
     ),
   )
 

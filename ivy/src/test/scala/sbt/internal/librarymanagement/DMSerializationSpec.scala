@@ -98,5 +98,5 @@ object DMSerializationSpec extends BasicTestSuite {
   }
 
   implicit val isoString: IsoString[JValue] =
-    IsoString.iso(CompactPrinter.apply, FixedParser.parseUnsafe)
+    IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 }
