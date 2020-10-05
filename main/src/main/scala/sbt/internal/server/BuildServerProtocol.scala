@@ -577,11 +577,22 @@ object BuildServerProtocol {
   }
 
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
-    val directDependencies = Keys.internalDependencyConfigurations.value.map {
-      case (project, rawConfigs) =>
-        val configs = rawConfigs.flatMap(_.split(",")).map(name => ConfigKey(name.trim))
-        (project, configs)
-    }
+    val allScopes = bspWorkspace.value.map { case (_, scope) => scope }.toSet
+    val directDependencies = Keys.internalDependencyConfigurations.value
+      .map {
+        case (project, rawConfigs) =>
+          val configs = rawConfigs
+            .flatMap(_.split(","))
+            .map(name => ConfigKey(name.trim))
+            .filter { config =>
+              val scope = Scope.Global.in(project, config)
+              allScopes.contains(scope)
+            }
+          (project, configs)
+      }
+      .filter {
+        case (_, configs) => configs.nonEmpty
+      }
     val ref = Keys.thisProjectRef.value
     val thisConfig = Keys.configuration.value
     val transitiveDependencies = for {
@@ -589,7 +600,8 @@ object BuildServerProtocol {
       config <- configs if dep != ref || config.name != thisConfig.name
     } yield Keys.bspInternalDependencyConfigurations.in(dep, config)
     Def.setting {
-      val allDependencies = directDependencies ++ transitiveDependencies.join.value.flatten
+      val allDependencies = directDependencies ++
+        transitiveDependencies.join.value.flatten
       allDependencies
         .groupBy(_._1)
         .mapValues { deps =>
