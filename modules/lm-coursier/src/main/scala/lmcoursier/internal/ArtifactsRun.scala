@@ -24,11 +24,6 @@ object ArtifactsRun {
       else
         ""
 
-    // Ensuring only one resolution / artifact fetching runs at a time when the logger
-    // may rely on progress bars, as two progress bar loggers can't display stuff at the
-    // same time.
-    val needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode
-
     val coursierLogger = params.loggerOpt.getOrElse {
       RefreshLogger.create(
         if (RefreshLogger.defaultFallbackMode)
@@ -45,12 +40,9 @@ object ArtifactsRun {
       )
     }
 
-    if (needsLock)
-      Lock.lock.synchronized {
-        result(params, coursierLogger)
-      }
-    else
+    Lock.maybeSynchronized(needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode){
       result(params, coursierLogger)
+    }
   }
 
   private def result(

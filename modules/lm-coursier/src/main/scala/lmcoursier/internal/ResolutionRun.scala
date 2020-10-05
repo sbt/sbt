@@ -137,10 +137,8 @@ object ResolutionRun {
     }
 
     SbtCoursierCache.default.resolutionOpt(params.resolutionKey).map(Right(_)).getOrElse {
-      // Let's update only one module at once, for a better output.
-      // Downloads are already parallel, no need to parallelize further, anyway.
       val resOrError =
-        Lock.lock.synchronized {
+        Lock.maybeSynchronized(needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode) {
           var map = new mutable.HashMap[Configuration, Resolution]
           val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](Right(())) {
             case (acc, (config, extends0)) =>

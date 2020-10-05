@@ -1,10 +1,10 @@
 package lmcoursier.internal
 
 private[lmcoursier] object Lock {
+  private val lock = new Object
 
-  // Wrap blocks downloading stuff (resolution / artifact downloads) in lock.synchronized.
-  // Downloads are already parallel, no need to parallelize further, and this results in
-  // a clearer output.
-  val lock = new Object
-
+  /* Progress bars require us to only work on one module at the time. Without those we can go faster */
+  def maybeSynchronized[T](needsLock: Boolean)(f: => T): T =
+    if (needsLock) lock.synchronized(f)
+    else f
 }

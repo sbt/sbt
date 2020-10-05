@@ -1,5 +1,6 @@
 package lmcoursier.internal
 
+import coursier.cache.loggers.RefreshLogger
 import coursier.core.Resolution.ModuleVersion
 import coursier.core._
 import coursier.util.Print
@@ -55,8 +56,7 @@ object UpdateRun {
     params: UpdateParams,
     verbosityLevel: Int,
     log: Logger
-  ): UpdateReport = Lock.lock.synchronized {
-
+  ): UpdateReport = Lock.maybeSynchronized(needsLock = !RefreshLogger.defaultFallbackMode) {
     val depsByConfig = grouped(params.dependencies)
 
     if (verbosityLevel >= 2) {
