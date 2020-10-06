@@ -814,6 +814,7 @@ object Terminal {
       Try(JLine3.toMap(system.getAttributes)).getOrElse(Map.empty)
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit = {
       system.setAttributes(JLine3.attributesFromMap(attributes))
+      JLine3.setEnableProcessInput()
     }
     override private[sbt] def setSize(width: Int, height: Int): Unit =
       system.setSize(new org.jline.terminal.Size(width, height))

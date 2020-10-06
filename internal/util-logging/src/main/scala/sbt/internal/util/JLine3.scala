@@ -23,6 +23,7 @@ import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
+import org.fusesource.jansi.internal.WindowsSupport
 
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
@@ -207,6 +208,12 @@ private[sbt] object JLine3 {
     term.setAttributes(newAttr)
     prvAttr
   }
+  // We need to set the ENABLE_PROCESS_INPUT flag for ctrl+c to be treated as a signal in windows
+  // https://docs.microsoft.com/en-us/windows/console/setconsolemode
+  private[this] val ENABLE_PROCESS_INPUT = 1
+  private[util] def setEnableProcessInput(): Unit = if (Util.isWindows) {
+    WindowsSupport.setConsoleMode(WindowsSupport.getConsoleMode | ENABLE_PROCESS_INPUT)
+  }
   private[util] def enterRawMode(term: JTerminal): Unit = {
     val prevAttr = initialAttributes.get
     val newAttr = new Attributes(prevAttr)
@@ -215,13 +222,14 @@ private[sbt] object JLine3 {
     newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.IEXTEN, LocalFlag.ECHO), false)
     newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
     term.setAttributes(newAttr)
-    ()
+    setEnableProcessInput()
   }
   private[util] def exitRawMode(term: JTerminal): Unit = {
     val initAttr = initialAttributes.get
     val newAttr = new Attributes(initAttr)
     newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO), true)
     term.setAttributes(newAttr)
+    setEnableProcessInput()
   }
   private[util] def toMap(jattributes: Attributes): Map[String, String] = {
     val result = new java.util.LinkedHashMap[String, String]
