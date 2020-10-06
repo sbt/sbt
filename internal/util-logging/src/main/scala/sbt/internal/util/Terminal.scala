@@ -608,9 +608,9 @@ object Terminal {
      */
     private class ReadThread extends Thread with AutoCloseable {
       val result = new LinkedBlockingQueue[Integer]
+      val running = new AtomicBoolean(true)
       setDaemon(true)
       start()
-      val running = new AtomicBoolean(true)
       override def run(): Unit = while (running.get) {
         bootInputStreamHolder.get match {
           case null =>
