@@ -25,7 +25,6 @@ private[sbt] final class ConsoleChannel(
 
   override val userThread: UserThread = new UserThread(this)
   private[sbt] def terminal = Terminal.console
-  if (System.console == null) terminal.setPrompt(Prompt.NoPrompt)
 }
 private[sbt] object ConsoleChannel {
   private[sbt] def defaultName = "console0"
