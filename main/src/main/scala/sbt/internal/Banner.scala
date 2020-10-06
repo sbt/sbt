@@ -17,7 +17,7 @@ private[sbt] object Banner {
                 |  - sbtn: a native thin client for sbt
                 |  - VirtualFile + RemoteCache: caches build artifacts across different machines
                 |  - ThisBuild / versionScheme to take the guessing out of eviction warning
-                |See http://eed3si9n.com/sbt-1.4.0-beta for full release notes.
+                |See http://eed3si9n.com/sbt-1.4.0 for full release notes.
                 |Hide the banner for this release by running `skipBanner`.
                 |""".stripMargin.linesIterator.mkString("\n"))
       case "1.3.0" =>

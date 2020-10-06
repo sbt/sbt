@@ -306,11 +306,12 @@ object Terminal {
     }
   }
   private[sbt] lazy val formatEnabledInEnv: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+  private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
-    props.map(_.color).orElse(isColorEnabledProp).getOrElse(hasConsole)
+    props.map(_.color).orElse(isColorEnabledProp).getOrElse(hasConsole && !isDumbTerminal)
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -720,8 +721,7 @@ object Terminal {
 
   private[this] def newConsoleTerminal(): Terminal = {
     val system = JLine3.system
-    val in = if (System.console == null) nullWriteableInputStream else nonBlockingIn(system)
-    new ConsoleTerminal(in, originalOut, system)
+    new ConsoleTerminal(nonBlockingIn(system), originalOut, system)
   }
 
   private[sbt] def reset(): Unit = {
@@ -743,6 +743,7 @@ object Terminal {
           case "jline.WindowsTerminal"                          => "windows"
           case "jline.AnsiWindowsTerminal"                      => "windows"
           case "jline.UnsupportedTerminal"                      => "none"
+          case null if isDumbTerminal                           => "none"
           case x                                                => x
         }
     if (newValue != null) {
@@ -784,7 +785,7 @@ object Terminal {
       val size = system.getSize
       (size.getColumns, size.getRows)
     }
-    override lazy val isAnsiSupported: Boolean = formatEnabledInEnv && !isCI
+    override lazy val isAnsiSupported: Boolean = !isDumbTerminal && formatEnabledInEnv && !isCI
     override private[sbt] def progressState: ProgressState = consoleProgressState.get
     override def isEchoEnabled: Boolean =
       try system.echo()
@@ -811,9 +812,7 @@ object Terminal {
     override private[sbt] def setSize(width: Int, height: Int): Unit =
       system.setSize(new org.jline.terminal.Size(width, height))
 
-    override def inputStream: InputStream = {
-      if (hasConsole) in else BlockingInputStream
-    }
+    override def inputStream: InputStream = in
 
     override private[sbt] def enterRawMode(): Unit =
       if (rawMode.compareAndSet(false, true) && hasConsole) {
@@ -940,8 +939,6 @@ object Terminal {
     catch { case _: InterruptedException => }
     -1
   }
-  private lazy val nullWriteableInputStream =
-    new WriteableInputStream(nullInputStream, "null-writeable-input-stream")
   private[sbt] class DefaultTerminal extends Terminal {
     override def close(): Unit = {}
     override private[sbt] def progressState: ProgressState = new ProgressState(1)
