@@ -179,6 +179,7 @@ trait Terminal extends AutoCloseable {
 }
 
 object Terminal {
+  val NO_BOOT_CLIENTS_CONNECTED: Int = -2
   // Disable noisy jline log spam
   if (System.getProperty("sbt.jline.verbose", "false") != "true")
     jline.internal.Log.setOutput(new PrintStream(_ => {}, false))
@@ -618,6 +619,11 @@ object Terminal {
                 if (running.get) {
                   inputStream.read match {
                     case -1 =>
+                    case `NO_BOOT_CLIENTS_CONNECTED` =>
+                      if (System.console == null) {
+                        result.put(-1)
+                        running.set(false)
+                      }
                     case i =>
                       result.put(i)
                       running.set(false)
