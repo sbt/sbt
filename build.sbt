@@ -8,7 +8,7 @@ import java.nio.file.{ Files, Path => JPath }
 import scala.util.Try
 
 ThisBuild / version := {
-  val v = "1.4.0-SNAPSHOT"
+  val v = "1.4.1-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / versionScheme := Some("early-semver")
