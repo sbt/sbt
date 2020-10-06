@@ -121,18 +121,35 @@ private[sbt] object PluginsDebug {
     if (Project.isProjectLoaded(s)) {
       val extracted = Project.extract(s)
       import extracted._
-      def helpBuild(uri: URI, build: LoadedBuildUnit): String = {
-        val pluginStrings = for (plugin <- availableAutoPlugins(build)) yield {
-          val activatedIn =
-            build.projects.toList.filter(_.autoPlugins.contains(plugin)).map(_.id)
-          val actString =
-            if (activatedIn.nonEmpty) activatedIn.mkString(": enabled in ", ", ", "")
-            else "" // TODO: deal with large builds
-          s"\n\t${plugin.label}$actString"
-        }
-        s"In $uri${pluginStrings.mkString}"
-      }
-      val buildStrings = for ((uri, build) <- structure.units) yield helpBuild(uri, build)
+
+      def helpBuild(build: LoadedBuildUnit): String =
+        build.projects.toList
+          .sortBy(_.id)
+          .map { p =>
+            import p.autoPlugins
+            val `s?` = if (autoPlugins.length > 1) "s" else ""
+
+            new StringBuilder()
+              .append(s"  Enabled plugin${`s?`} in ${Highlight.bold(p.id)}:\n")
+              .append {
+                autoPlugins.map(_.label).sorted.mkString("    ", s"\n    ", "")
+              }
+              .toString
+          }
+          .mkString("\n")
+          .concat {
+            val autoPlugins = availableAutoPlugins(build)
+            val notEnabledPlugins =
+              autoPlugins.filter(p => build.projects.forall(!_.autoPlugins.contains(p)))
+            if (notEnabledPlugins.nonEmpty) {
+              val message = notEnabledPlugins.map(_.label).sorted.mkString("  ", "\n  ", "")
+              "\nPlugins that are loaded to the build but not enabled in any subprojects:\n" + message
+            } else ""
+          }
+
+      val buildStrings = for {
+        (uri, build) <- structure.units
+      } yield s"In build ${uri.getPath}:\n${helpBuild(build)}"
       buildStrings.mkString("\n")
     } else "No project is currently loaded."
 
