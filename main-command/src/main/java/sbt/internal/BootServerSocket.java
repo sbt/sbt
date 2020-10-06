@@ -216,6 +216,7 @@ public class BootServerSocket implements AutoCloseable {
       new InputStream() {
         @Override
         public int read() {
+          if (clientSockets.isEmpty()) return Terminal.NO_BOOT_CLIENTS_CONNECTED();
           try {
             synchronized (needInput) {
               needInput.set(true);
