@@ -3,14 +3,42 @@
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@improving.org>
 # https://github.com/paulp/sbt-extras
+#
+# Generated from http://www.opensource.org/licenses/bsd-license.php
+# Copyright (c) 2011, Paul Phillips. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+# notice, this list of conditions and the following disclaimer in the
+# documentation and/or other materials provided with the distribution.
+#     * Neither the name of the author nor the names of its contributors
+# may be used to endorse or promote products derived from this software
+# without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+# TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+# LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 set -o pipefail
 
-declare -r sbt_release_version="1.3.10"
-declare -r sbt_unreleased_version="1.3.10"
+declare -r sbt_release_version="1.4.0"
+declare -r sbt_unreleased_version="1.4.0"
 
-declare -r latest_213="2.13.2"
-declare -r latest_212="2.12.11"
+declare -r latest_213="2.13.3"
+declare -r latest_212="2.12.12"
 declare -r latest_211="2.11.12"
 declare -r latest_210="2.10.7"
 declare -r latest_29="2.9.3"
@@ -26,7 +54,7 @@ declare -r sbt_launch_mvn_snapshot_repo="https://repo.scala-sbt.org/scalasbt/mav
 declare -r default_jvm_opts_common="-Xms512m -Xss2m -XX:MaxInlineLevel=18"
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy -Dsbt.coursier.home=project/.coursier"
 
-declare -r default_coursier_launcher_version="1.2.20"
+declare -r default_coursier_launcher_version="1.2.22"
 declare coursier_launcher_version="default"
 
 declare sbt_jar sbt_dir sbt_create sbt_version sbt_script sbt_new
@@ -38,7 +66,7 @@ declare sbt_launch_dir="$HOME/.sbt/launchers"
 declare sbt_launch_repo
 
 # pull -J and -D options to give to java.
-declare -a java_args coursier_args scalac_args sbt_commands residual_args
+declare -a java_args scalac_args sbt_commands residual_args
 
 # args to jvm/sbt via files or environment variables
 declare -a extra_jvm_opts extra_sbt_opts
@@ -102,6 +130,7 @@ init_default_option_file() {
 }
 
 sbt_opts_file="$(init_default_option_file SBT_OPTS .sbtopts)"
+sbtx_opts_file="$(init_default_option_file SBTX_OPTS .sbtxopts)"
 jvm_opts_file="$(init_default_option_file JVM_OPTS .jvmopts)"
 
 build_props_sbt() {
@@ -451,6 +480,12 @@ are not special.
                     Note: "@"-file is overridden by local '.sbtopts' or '-sbt-opts' argument.
   -sbt-opts <path>  file containing sbt args (if not given, .sbtopts in project root is used if present)
   -S-X              add -X to sbt's scalacOptions (-S is stripped)
+
+  # passing options exclusively to this runner
+  SBTX_OPTS         environment variable holding either the sbt-extras args directly, or
+                    the reference to a file containing sbt-extras args if given path is prepended by '@' (e.g. '@/etc/sbtxopts')
+                    Note: "@"-file is overridden by local '.sbtxopts' or '-sbtx-opts' argument.
+  -sbtx-opts <path> file containing sbt-extras args (if not given, .sbtxopts in project root is used if present)
 EOM
   exit 0
 }
@@ -511,12 +546,12 @@ process_args() {
       -scala-home)  require_arg path "$1" "$2" && setThisBuild scalaHome "_root_.scala.Some(file(\"$2\"))" && shift 2 ;;
       -java-home)   require_arg path "$1" "$2" && setJavaHome "$2" && shift 2 ;;
       -sbt-opts)    require_arg path "$1" "$2" && sbt_opts_file="$2" && shift 2 ;;
+      -sbtx-opts) require_arg path "$1" "$2" && sbtx_opts_file="$2" && shift 2 ;;
       -jvm-opts)    require_arg path "$1" "$2" && jvm_opts_file="$2" && shift 2 ;;
 
       -D*)          addJava "$1" && shift ;;
       -J*)          addJava "${1:2}" && shift ;;
       -S*)          addScalac "${1:2}" && shift ;;
-      -C*)          addCoursier "${1:2}" && shift ;;
 
       new)          sbt_new=true && : ${sbt_explicit_version:=$sbt_release_version} && addResidual "$1" && shift ;;
 
@@ -545,6 +580,18 @@ if [[ -r "$sbt_opts_file" ]]; then
 elif [[ -n "$SBT_OPTS" && ! ("$SBT_OPTS" =~ ^@.*) ]]; then
   vlog "Using sbt options defined in variable \$SBT_OPTS"
   IFS=" " read -r -a extra_sbt_opts <<<"$SBT_OPTS"
+else
+  vlog "No extra sbt options have been defined"
+fi
+
+# if there are file/environment sbtx_opts, process again so we
+# can supply args to this runner
+if [[ -r "$sbtx_opts_file" ]]; then
+  vlog "Using sbt options defined in file $sbtx_opts_file"
+  while read -r opt; do extra_sbt_opts+=("$opt"); done < <(readConfigFile "$sbtx_opts_file")
+elif [[ -n "$SBTX_OPTS" && ! ("$SBTX_OPTS" =~ ^@.*) ]]; then
+  vlog "Using sbt options defined in variable \$SBTX_OPTS"
+  IFS=" " read -r -a extra_sbt_opts <<<"$SBTX_OPTS"
 else
   vlog "No extra sbt options have been defined"
 fi
@@ -645,15 +692,13 @@ fi
 
 # options before a -- may be interpreted as options for itself by the
 # coursier-based launcher
-[[ -z "$coursier_launcher_version" ]] || [[ ${#coursier_args[@]} -eq 0 ]] || {
+[[ -z "$coursier_launcher_version" ]] || {
   addJava "-Dcoursier.sbt-launcher.parse-args=true"
-  addCoursier "--"
 }
 
 execRunner "$java_cmd" \
   "${extra_jvm_opts[@]}" \
   "${java_args[@]}" \
   -jar "$sbt_jar" \
-  "${coursier_args[@]}" \
   "${sbt_commands[@]}" \
   "${residual_args[@]}"
