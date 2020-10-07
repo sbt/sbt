@@ -1933,7 +1933,7 @@ object Defaults extends BuildCommon {
           val cp = data(dependencyClasspath.value).toList
           val label = nameForSrc(configuration.value.name)
           val fiOpts = fileInputOptions.value
-          val reporter = (compilerReporter in compile).value
+          val reporter = (compile / bspReporter).value
           val converter = fileConverter.value
           (hasScala, hasJava) match {
             case (true, _) =>
@@ -2096,7 +2096,8 @@ object Defaults extends BuildCommon {
       compileIncrementalTaskImpl(
         streams.value,
         (compile / compileInputs).value,
-        earlyOutputPing.value
+        earlyOutputPing.value,
+        (compile / bspReporter).value
       )
     }
   }
@@ -2106,6 +2107,7 @@ object Defaults extends BuildCommon {
     val r = compileScalaBackend.value
     val in0 = (compileJava / compileInputs).value
     val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
+    val reporter = (compile / bspReporter).value
     try {
       if (r.hasModified) {
         val result0 = incCompiler
@@ -2114,15 +2116,14 @@ object Defaults extends BuildCommon {
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
     } finally {
-      in.setup.reporter match {
-        case r: BuildServerReporter => r.sendFinalReport()
-      }
+      reporter.sendFinalReport()
     }
   }
   private[this] def compileIncrementalTaskImpl(
       s: TaskStreams,
       ci: Inputs,
-      promise: PromiseWrap[Boolean]
+      promise: PromiseWrap[Boolean],
+      reporter: BuildServerReporter
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) = {
@@ -2143,9 +2144,7 @@ object Defaults extends BuildCommon {
         ConcurrentRestrictions.cancelAllSentinels()
         throw e
     } finally {
-      i.setup.reporter match {
-        case r: BuildServerReporter => r.sendFinalReport()
-      }
+      reporter.sendFinalReport()
       x.close() // workaround for #937
     }
   }
@@ -2173,7 +2172,7 @@ object Defaults extends BuildCommon {
       compileAnalysisFile.value.toPath,
       compilerCache.value,
       incOptions.value,
-      (compilerReporter in compile).value,
+      (compile / bspReporter).value,
       Some((compile / compileProgress).value).toOptional,
       eaOpt.toOptional,
       extra.toArray,
@@ -2210,12 +2209,10 @@ object Defaults extends BuildCommon {
         )
       },
       compilerReporter := {
-        new BuildServerReporter(
-          bspTargetIdentifier.value,
+        new ManagedLoggedReporter(
           maxErrors.value,
           streams.value.log,
-          foldMappers(sourcePositionMappers.value),
-          sources.value
+          foldMappers(sourcePositionMappers.value)
         )
       },
       compileInputs := {

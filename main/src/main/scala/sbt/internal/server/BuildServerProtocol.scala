@@ -15,6 +15,7 @@ import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
+import sbt.Project._
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.StandardMain.exchange
@@ -24,14 +25,13 @@ import sbt.internal.protocol.JsonRpcRequestMessage
 import sbt.internal.util.Attributed
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.Configuration
+import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 
-import scala.util.{ Failure, Success, Try }
 import scala.util.control.NonFatal
-import sbt.Project._
-import sbt.std.TaskExtra
+import scala.util.{ Failure, Success, Try }
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -198,7 +198,18 @@ object BuildServerProtocol {
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
-    bspScalaMainClassesItem := scalaMainClassesTask.value
+    bspScalaMainClassesItem := scalaMainClassesTask.value,
+    Keys.compile / bspReporter := {
+      val targetId = bspTargetIdentifier.value
+      val underlying = (Keys.compile / compilerReporter).value
+      val logger = streams.value.log
+      val srcs = sources.value
+      if (bspEnabled.value) {
+        new BuildServerReporterImpl(targetId, logger, underlying, srcs)
+      } else {
+        new BuildServerForwarder(logger, underlying)
+      }
+    }
   )
 
   def handler(
