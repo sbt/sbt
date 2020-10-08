@@ -960,8 +960,8 @@ object Terminal {
     override def getStringCapability(capability: String): String = null
     override def getWidth: Int = 0
     override def inputStream: InputStream = nullInputStream
-    override def isAnsiSupported: Boolean = false
-    override def isColorEnabled: Boolean = false
+    override def isAnsiSupported: Boolean = formatEnabledInEnv
+    override def isColorEnabled: Boolean = isColorEnabledProp.getOrElse(formatEnabledInEnv)
     override def isEchoEnabled: Boolean = false
     override def isSuccessEnabled: Boolean = true
     override def isSupershellEnabled: Boolean = false
