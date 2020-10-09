@@ -291,7 +291,12 @@ object RemoteCache {
     IO.delete(output)
     IO.unzip(jar, output, preserveLastModified = preserveLastModified)
     processOutput(output)
-    IO.delete(output / "META-INF")
+
+    // preserve semanticdb dir
+    // https://github.com/scalameta/scalameta/blob/a7927ee8e012cfff/semanticdb/scalac/library/src/main/scala/scala/meta/internal/semanticdb/scalac/SemanticdbPaths.scala#L9
+    Option((output / "META-INF").listFiles).foreach(
+      _.iterator.filterNot(_.getName == "semanticdb").foreach(IO.delete)
+    )
   }
 
   private def extractAnalysis(output: File, analysisFile: File): Unit = {
@@ -300,7 +305,6 @@ object RemoteCache {
     if (expandedAnalysis.exists) {
       IO.move(expandedAnalysis, analysisFile)
     }
-    IO.delete(metaDir)
   }
 
   private def extractTestResult(output: File, testResult: File): Unit = {
