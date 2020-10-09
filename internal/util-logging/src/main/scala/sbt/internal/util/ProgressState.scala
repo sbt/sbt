@@ -91,9 +91,9 @@ private[sbt] final class ProgressState(
       printStream: PrintStream,
       hasProgress: Boolean
   ): Unit = {
-    val canClearPrompt = currentLineBytes.get.isEmpty
-    addBytes(terminal, bytes)
     if (hasProgress) {
+      val canClearPrompt = currentLineBytes.get.isEmpty
+      addBytes(terminal, bytes)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
         case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt =>
