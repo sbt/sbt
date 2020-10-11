@@ -11,37 +11,57 @@ import java.io.File
 
 import sbt.StandardMain
 import sbt.internal.bsp._
-import sbt.internal.inc.LoggedReporter
 import sbt.internal.util.ManagedLogger
-import xsbti.{ Problem, Severity, Position => XPosition }
+import xsbti.{ Problem, Reporter, Severity, Position => XPosition }
 
 import scala.collection.mutable
 
-/**
- * Defines a compiler reporter that uses event logging provided by a `ManagedLogger`.
- *
- * @param maximumErrors The maximum errors.
- * @param logger The event managed logger.
- * @param sourcePositionMapper The position mapper.
- */
-class BuildServerReporter(
-    buildTarget: BuildTargetIdentifier,
-    maximumErrors: Int,
-    logger: ManagedLogger,
-    sourcePositionMapper: XPosition => XPosition = identity[XPosition],
-    sources: Seq[File]
-) extends LoggedReporter(maximumErrors, logger, sourcePositionMapper) {
-  import LoggedReporter.problemFormats._
-  import LoggedReporter.problemStringFormats._
-  logger.registerStringCodec[Problem]
+sealed trait BuildServerReporter extends Reporter {
+  private final val sigFilesWritten = "[sig files written]"
 
+  protected def logger: ManagedLogger
+
+  protected def underlying: Reporter
+
+  protected def publishDiagnostic(problem: Problem): Unit
+
+  def sendFinalReport(): Unit
+
+  override def reset(): Unit = underlying.reset()
+
+  override def hasErrors: Boolean = underlying.hasErrors
+
+  override def hasWarnings: Boolean = underlying.hasWarnings
+
+  override def printSummary(): Unit = underlying.printSummary()
+
+  override def problems(): Array[Problem] = underlying.problems()
+
+  override def log(problem: Problem): Unit = {
+    if (problem.message == sigFilesWritten) {
+      logger.debug(sigFilesWritten)
+    } else {
+      publishDiagnostic(problem)
+      underlying.log(problem)
+    }
+  }
+
+  override def comment(pos: XPosition, msg: String): Unit = underlying.comment(pos, msg)
+}
+
+final class BuildServerReporterImpl(
+    buildTarget: BuildTargetIdentifier,
+    protected override val logger: ManagedLogger,
+    protected override val underlying: Reporter,
+    sources: Seq[File]
+) extends BuildServerReporter {
   import sbt.internal.bsp.codec.JsonProtocol._
   import sbt.internal.inc.JavaInterfaceUtil._
 
   private lazy val exchange = StandardMain.exchange
   private val problemsByFile = mutable.Map[File, Vector[Diagnostic]]()
 
-  private[sbt] def sendFinalReport(): Unit = {
+  override def sendFinalReport(): Unit = {
     for (source <- sources) {
       val diagnostics = problemsByFile.getOrElse(source, Vector())
       val params = PublishDiagnosticsParams(
@@ -55,34 +75,7 @@ class BuildServerReporter(
     }
   }
 
-  override def logError(problem: Problem): Unit = {
-    publishDiagnostic(problem)
-
-    // console channel can keep using the xsbi.Problem
-    logger.errorEvent(problem)
-  }
-
-  override def logWarning(problem: Problem): Unit = {
-    publishDiagnostic(problem)
-
-    // console channel can keep using the xsbi.Problem
-    logger.warnEvent(problem)
-  }
-
-  override def logInfo(problem: Problem): Unit = {
-    // demote this message https://github.com/scala/bug/issues/12097
-    val sigFilesWritten = "[sig files written]"
-    if (problem.message == sigFilesWritten) {
-      logger.debug(sigFilesWritten)
-    } else {
-      publishDiagnostic(problem)
-
-      // console channel can keep using the xsbi.Problem
-      logger.infoEvent(problem)
-    }
-  }
-
-  private def publishDiagnostic(problem: Problem): Unit = {
+  protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
       source <- problem.position.sourceFile.toOption
       diagnostic <- toDiagnostic(problem)
@@ -127,9 +120,19 @@ class BuildServerReporter(
     }
   }
 
-  private[sbt] def toDiagnosticSeverity(severity: Severity): Long = severity match {
+  private def toDiagnosticSeverity(severity: Severity): Long = severity match {
     case Severity.Info  => DiagnosticSeverity.Information
     case Severity.Warn  => DiagnosticSeverity.Warning
     case Severity.Error => DiagnosticSeverity.Error
   }
+}
+
+final class BuildServerForwarder(
+    protected override val logger: ManagedLogger,
+    protected override val underlying: Reporter
+) extends BuildServerReporter {
+
+  override def sendFinalReport(): Unit = ()
+
+  protected override def publishDiagnostic(problem: Problem): Unit = ()
 }

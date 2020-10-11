@@ -26,7 +26,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.remotecache.RemoteCacheArtifact
-import sbt.internal.server.ServerHandler
+import sbt.internal.server.{ BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
@@ -411,6 +411,7 @@ object Keys {
   val bspScalaTestClassesItem = taskKey[ScalaTestClassesItem]("").withRank(DTask)
   val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
   val bspScalaMainClassesItem = taskKey[ScalaMainClassesItem]("").withRank(DTask)
+  val bspReporter = taskKey[BuildServerReporter]("").withRank(DTask)
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
   val csrCacheDirectory = settingKey[File]("Coursier cache directory. Uses -Dsbt.coursier.home or Coursier's default.").withRank(CSetting)
