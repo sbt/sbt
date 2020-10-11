@@ -201,11 +201,11 @@ object BuildServerProtocol {
     bspScalaMainClassesItem := scalaMainClassesTask.value,
     Keys.compile / bspReporter := {
       val targetId = bspTargetIdentifier.value
+      val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
-      val srcs = sources.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, logger, underlying, srcs)
+        new BuildServerReporterImpl(targetId, converter, logger, underlying)
       } else {
         new BuildServerForwarder(logger, underlying)
       }

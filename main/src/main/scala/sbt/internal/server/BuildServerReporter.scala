@@ -7,13 +7,21 @@
 
 package sbt.internal.server
 
-import java.io.File
-
 import sbt.StandardMain
 import sbt.internal.bsp._
 import sbt.internal.util.ManagedLogger
-import xsbti.{ Problem, Reporter, Severity, Position => XPosition }
+import xsbti.compile.CompileAnalysis
+import xsbti.{
+  FileConverter,
+  Problem,
+  Reporter,
+  Severity,
+  VirtualFile,
+  VirtualFileRef,
+  Position => XPosition
+}
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 sealed trait BuildServerReporter extends Reporter {
@@ -25,7 +33,9 @@ sealed trait BuildServerReporter extends Reporter {
 
   protected def publishDiagnostic(problem: Problem): Unit
 
-  def sendFinalReport(): Unit
+  def sendSuccessReport(analysis: CompileAnalysis): Unit
+
+  def sendFailureReport(sources: Array[VirtualFile]): Unit
 
   override def reset(): Unit = underlying.reset()
 
@@ -51,21 +61,40 @@ sealed trait BuildServerReporter extends Reporter {
 
 final class BuildServerReporterImpl(
     buildTarget: BuildTargetIdentifier,
+    converter: FileConverter,
     protected override val logger: ManagedLogger,
-    protected override val underlying: Reporter,
-    sources: Seq[File]
+    protected override val underlying: Reporter
 ) extends BuildServerReporter {
   import sbt.internal.bsp.codec.JsonProtocol._
   import sbt.internal.inc.JavaInterfaceUtil._
 
   private lazy val exchange = StandardMain.exchange
-  private val problemsByFile = mutable.Map[File, Vector[Diagnostic]]()
+  private val problemsByFile = mutable.Map[VirtualFileRef, Vector[Diagnostic]]()
 
-  override def sendFinalReport(): Unit = {
-    for (source <- sources) {
-      val diagnostics = problemsByFile.getOrElse(source, Vector())
+  override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
+    for {
+      (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
+    } {
+      val filePath = converter.toPath(source)
+      val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
       val params = PublishDiagnosticsParams(
-        TextDocumentIdentifier(source.toURI),
+        textDocument = TextDocumentIdentifier(filePath.toUri),
+        buildTarget,
+        originId = None,
+        diagnostics.toVector,
+        reset = true
+      )
+      exchange.notifyEvent("build/publishDiagnostics", params)
+    }
+  }
+
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
+    for (source <- sources) {
+      val ref = VirtualFileRef.of(source.id())
+      val diagnostics = problemsByFile.getOrElse(ref, Vector())
+      val filePath = converter.toPath(source)
+      val params = PublishDiagnosticsParams(
+        textDocument = TextDocumentIdentifier(filePath.toUri),
         buildTarget,
         originId = None,
         diagnostics,
@@ -77,10 +106,12 @@ final class BuildServerReporterImpl(
 
   protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
+      path <- problem.position().sourcePath.toOption
       source <- problem.position.sourceFile.toOption
       diagnostic <- toDiagnostic(problem)
     } {
-      problemsByFile(source) = problemsByFile.getOrElse(source, Vector()) :+ diagnostic
+      val fileId = VirtualFileRef.of(path)
+      problemsByFile(fileId) = problemsByFile.getOrElse(fileId, Vector()) :+ diagnostic
       val params = PublishDiagnosticsParams(
         TextDocumentIdentifier(source.toURI),
         buildTarget,
@@ -132,7 +163,9 @@ final class BuildServerForwarder(
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
 
-  override def sendFinalReport(): Unit = ()
+  override def sendSuccessReport(analysis: CompileAnalysis): Unit = ()
+
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
 
   protected override def publishDiagnostic(problem: Problem): Unit = ()
 }

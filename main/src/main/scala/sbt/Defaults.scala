@@ -2113,10 +2113,13 @@ object Defaults extends BuildCommon {
         val result0 = incCompiler
           .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
           .compileAllJava(in, s.log)
+        reporter.sendSuccessReport(result0.analysis())
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
-    } finally {
-      reporter.sendFinalReport()
+    } catch {
+      case NonFatal(e) =>
+        reporter.sendFailureReport(in.options.sources)
+        throw e
     }
   }
   private[this] def compileIncrementalTaskImpl(
@@ -2137,14 +2140,19 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val i = ci.withCompilers(onArgs(compilers))
     try {
-      incCompiler.compile(i, s.log)
+      val result = incCompiler.compile(i, s.log)
+      reporter.sendSuccessReport(result.getAnalysis)
+      result
     } catch {
-      case e: Throwable if !promise.isCompleted =>
-        promise.failure(e)
-        ConcurrentRestrictions.cancelAllSentinels()
+      case e: Throwable =>
+        if (!promise.isCompleted) {
+          promise.failure(e)
+          ConcurrentRestrictions.cancelAllSentinels()
+        }
+        reporter.sendFailureReport(ci.options.sources)
+
         throw e
     } finally {
-      reporter.sendFinalReport()
       x.close() // workaround for #937
     }
   }
