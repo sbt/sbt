@@ -786,7 +786,6 @@ object Terminal {
       private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private[this] val rawMode = new AtomicBoolean(false)
-    if (hasConsole) enterRawMode()
     override private[sbt] def getSizeImpl: (Int, Int) = {
       val size = system.getSize
       (size.getColumns, size.getRows)
