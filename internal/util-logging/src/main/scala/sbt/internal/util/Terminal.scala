@@ -331,7 +331,7 @@ object Terminal {
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
     if (System.getProperty("sbt.io.virtual", "") == "true" || (logFormatEnabled.getOrElse(true) && !isCI)) {
-      hasProgress.set(isServer)
+      hasProgress.set(isServer && formatEnabledInEnv)
       consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
