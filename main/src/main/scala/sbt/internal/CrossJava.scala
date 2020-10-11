@@ -388,7 +388,7 @@ private[sbt] object CrossJava {
 
   object JavaDiscoverConfig {
     object JavaHomeDir {
-      private val regex = """(\w+-)?(java-|jdk-?)(bin-)?(1\.)?([0-9]+).*""".r
+      private val regex = """(\w+-)?(java-|(?:adoptopen)?jdk-?)(bin-)?(1\.)?([0-9]+).*""".r
       def unapply(s: CharSequence): Option[String] = {
         s match {
           case regex(vendor, _, _, m, n) => Some(JavaVersion(nullBlank(m) + n).toString)
