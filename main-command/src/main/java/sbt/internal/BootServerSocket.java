@@ -287,8 +287,8 @@ public class BootServerSocket implements AutoCloseable {
     final Path base = configuration.baseDirectory().toPath().toRealPath();
     final Path target = base.resolve("project").resolve("target");
     if (!isWindows) {
+      if (!Files.isDirectory(target)) Files.createDirectories(target);
       socketFile = Paths.get(socketLocation(base));
-      Files.createDirectories(target);
     } else {
       socketFile = null;
     }
