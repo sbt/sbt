@@ -23,10 +23,15 @@ import org.jline.reader.{
 }
 import org.jline.utils.ClosedException
 import sbt.internal.util.complete.Parser
+import sbt.io.syntax._
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 import java.nio.channels.ClosedByInterruptException
+import java.net.MalformedURLException
+
+import org.jline.builtins.InputRC
 
 trait LineReader extends AutoCloseable {
   def readLine(prompt: String, mask: Option[Char] = None): Option[String]
@@ -70,6 +75,29 @@ object LineReader {
       }
     }
   }
+  private[this] def inputrcFileUrl(): Option[URL] = {
+    // keep jline2 compatibility
+    // https://github.com/jline/jline2/blob/12b98d94589e3bd6a6/src/main/java/jline/console/ConsoleReader.java#L291-L306
+    sys.props
+      .get("jline.inputrc")
+      .flatMap { path =>
+        try {
+          Some(url(path))
+        } catch {
+          case _: MalformedURLException =>
+            Some(file(path).toURI.toURL)
+        }
+      }
+      .orElse {
+        sys.props.get("user.home").map { home =>
+          val f = file(home) / ".inputrc"
+          (if (f.isFile) f else file("/etc/inputrc")).toURI.toURL
+        }
+      }
+  }
+  // cache on memory.
+  private[this] lazy val inputrcFileContents: Option[Array[Byte]] =
+    inputrcFileUrl().map(in => sbt.io.IO.readBytes(in.openStream()))
   def createReader(
       historyPath: Option[File],
       parser: Parser[_],
@@ -81,6 +109,17 @@ object LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
         val term = JLine3(terminal)
         val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
+        try {
+          inputrcFileContents.foreach { bytes =>
+            InputRC.configure(
+              reader,
+              new ByteArrayInputStream(bytes)
+            )
+          }
+        } catch {
+          case NonFatal(_) =>
+          // ignore
+        }
         historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
         try terminal.withRawInput {
           Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
