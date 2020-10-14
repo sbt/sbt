@@ -307,6 +307,7 @@ val completeProj = (project in file("internal") / "util-complete")
     name := "Completion",
     libraryDependencies += jline,
     libraryDependencies += jline3Reader,
+    libraryDependencies += jline3Builtins,
     mimaSettings,
     // Parser is used publicly, so we can't break bincompat.
     mimaBinaryIssueFilters := Seq(
