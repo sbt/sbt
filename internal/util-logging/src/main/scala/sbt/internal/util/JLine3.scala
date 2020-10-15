@@ -117,9 +117,7 @@ private[sbt] object JLine3 {
           }
           res match {
             case 3 /* ctrl+c */ => throw new ClosedException
-            case 4 /* ctrl+d */ if term.prompt.render().endsWith(term.prompt.mkPrompt()) =>
-              throw new ClosedException
-            case r => r
+            case r              => r
           }
         }
       }
