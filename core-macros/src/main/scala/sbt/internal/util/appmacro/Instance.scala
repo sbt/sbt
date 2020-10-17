@@ -187,7 +187,9 @@ object Instance {
       qual.foreach(checkQual)
       val vd = util.freshValDef(tpe, qual.pos, functionSym)
       inputs ::= new Input(tpe, qual, vd)
-      util.refVal(selection, vd)
+      // try to workaround https://github.com/scala/bug/issues/12112 by calling Predef.identity(...)
+      val rv = util.refVal(selection, vd)
+      q"scala.Predef.identity[$tpe]($rv: $tpe)"
     }
     def sub(name: String, tpe: Type, qual: Tree, replace: Tree): Converted[c.type] = {
       val tag = c.WeakTypeTag[T](tpe)
