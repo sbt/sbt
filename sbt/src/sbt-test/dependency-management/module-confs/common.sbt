@@ -4,7 +4,7 @@ ivyScala ~= { (is: Option[IvyScala]) => is.map(_.copy(checkExplicit = false, ove
 
 ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
 
-libraryDependencies += "junit" % "junit" % "4.8"
+libraryDependencies += "junit" % "junit" % "4.13.1"
 
 autoScalaLibrary := false
 

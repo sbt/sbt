@@ -25,7 +25,7 @@ lazy val transitiveTest = project.
   settings(commonSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "junit" % "junit" % "4.11" % "test"
+      "junit" % "junit" % "4.13.1" % "test"
     )
   )
 
@@ -90,7 +90,7 @@ lazy val root = (project in file(".")).
       val atestcp = (externalDependencyClasspath in Test in a).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
       val btestcp = (externalDependencyClasspath in Test in b).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
       val ctestcp = (externalDependencyClasspath in Test in c).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"}
-      if (ctestcp contains "junit-4.11.jar") {
+      if (ctestcp contains "junit-4.13.1.jar") {
         sys.error("junit found when it should be excluded: " + ctestcp.toString)
       }
 
