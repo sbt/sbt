@@ -3594,13 +3594,15 @@ object Classpaths {
           depSBV <- (dep.project / scalaBinaryVersion).get(data)
           depCross <- (dep.project / crossVersion).get(data)
         } yield {
-          if (isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
-            depProjId
-              .withCrossVersion(CrossVersion.constant(depSBV))
-              .withConfigurations(dep.configuration)
-              .withExplicitArtifacts(Vector.empty)
-          else
-            depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+          depCross match {
+            case b: CrossVersion.Binary if isScala2Scala3Sandwich(sbv, depSBV) =>
+              depProjId
+                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
+                .withConfigurations(dep.configuration)
+                .withExplicitArtifacts(Vector.empty)
+            case _ =>
+              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+          }
         }
       }
     }
