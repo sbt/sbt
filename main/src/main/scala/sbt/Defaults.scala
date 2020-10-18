@@ -3590,7 +3590,6 @@ object Classpaths {
       deps.classpath(ref) flatMap { dep =>
         for {
           depProjId <- (dep.project / projectID).get(data)
-          depSV <- (dep.project / scalaVersion).get(data)
           depSBV <- (dep.project / scalaBinaryVersion).get(data)
           depCross <- (dep.project / crossVersion).get(data)
         } yield {
