@@ -1,1 +1,1 @@
-ThisBuild / scalaVersion := "0.26.0-RC1"
+ThisBuild / scalaVersion := "0.27.0-RC1"
