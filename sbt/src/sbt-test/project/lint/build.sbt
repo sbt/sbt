@@ -1,5 +1,7 @@
 ThisBuild / doc / scalacOptions += "-Xsomething"
 
+ThisBuild / shellPrompt := { state => "sbt> " }
+
 lazy val lintBuildTest = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
