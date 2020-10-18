@@ -1,4 +1,4 @@
-lazy val dottyVersion = "0.14.0-RC1"
+lazy val dottyVersion = "0.27.0-RC1"
 
 lazy val plugin = project
   .in(file("plugin"))
