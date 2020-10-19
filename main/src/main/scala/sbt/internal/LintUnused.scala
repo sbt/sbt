@@ -22,8 +22,9 @@ object LintUnused {
       keyName => includes(keyName)
     },
     lintExcludeFilter := {
+      val excludedPrefixes = List("release", "sonatype", "watch", "whitesource")
       val excludes = excludeLintKeys.value.map(_.scopedKey.key.label)
-      keyName => excludes(keyName) || keyName.startsWith("watch")
+      keyName => excludes(keyName) || excludedPrefixes.exists(keyName.startsWith(_))
     },
     excludeLintKeys := Set(
       aggregate,
