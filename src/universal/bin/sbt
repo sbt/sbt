@@ -563,9 +563,6 @@ process_args () {
     residual_args=()
     process_my_args "${myargs[@]}"
   }
-
-  java_version="$(jdk_version)"
-  vlog "[process_args] java_version = '$java_version'"
 }
 
 loadConfigFile() {
@@ -671,7 +668,14 @@ set -- "${residual_args[@]}"
 argumentCount=$#
 
 if [[ "$(isRunNativeClient)" == "true" ]]; then
+  set -- "${residual_args[@]}"
+  argumentCount=$#
   runNativeClient
 else
+  java_version="$(jdk_version)"
+  vlog "[process_args] java_version = '$java_version'"
+  addDefaultMemory
+  set -- "${residual_args[@]}"
+  argumentCount=$#
   run
 fi
