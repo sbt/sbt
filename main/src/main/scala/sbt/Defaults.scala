@@ -853,7 +853,7 @@ object Defaults extends BuildCommon {
             TransactionalManagerType
               .of( // https://github.com/sbt/sbt/issues/1673
                 crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
-                sbt.util.Logger.Null
+                streams.value.log
               ): ClassFileManagerType
           ).toOptional
         )
