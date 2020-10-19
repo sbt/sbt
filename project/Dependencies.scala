@@ -79,7 +79,7 @@ object Dependencies {
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.0"
 
   def sjsonNew(n: String) =
-    Def.setting("com.eed3si9n" %% n % "0.9.0") // contrabandSjsonNewVersion.value
+    Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
