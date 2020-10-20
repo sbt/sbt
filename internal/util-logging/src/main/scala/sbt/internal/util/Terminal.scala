@@ -306,8 +306,9 @@ object Terminal {
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
+  private[this] lazy val superShellEnabled = sys.props.get("sbt.supershell").map(_ == "true")
   private[sbt] lazy val isAnsiSupported: Boolean =
-    logFormatEnabled.getOrElse(useColorDefault && !isCI)
+    logFormatEnabled.orElse(superShellEnabled).getOrElse(useColorDefault && !isCI)
   private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
