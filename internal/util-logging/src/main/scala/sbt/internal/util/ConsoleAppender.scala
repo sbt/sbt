@@ -368,14 +368,7 @@ trait Appender extends AutoCloseable {
   private[util] def ansiCodesSupported: Boolean = properties.isAnsiSupported
   private[util] def useFormat: Boolean = properties.isColorEnabled
 
-  private def reset: String = {
-    if (ansiCodesSupported && useFormat) scala.Console.RESET
-    else ""
-  }
-  private def clearScreenAfterCursor: String = {
-    if (ansiCodesSupported && useFormat) ClearScreenAfterCursor
-    else ""
-  }
+  private def reset: String = scala.Console.RESET
 
   private val SUCCESS_LABEL_COLOR = GREEN
   private val SUCCESS_MESSAGE_COLOR = reset
@@ -465,19 +458,23 @@ trait Appender extends AutoCloseable {
       if (message == null) ()
       else {
         val len =
-          labelColor.length + label.length + messageColor.length + reset.length * 3 + clearScreenAfterCursor.length
+          labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
         val builder: StringBuilder = new StringBuilder(len)
         message.linesIterator.foreach { line =>
           builder.ensureCapacity(len + line.length + 4)
           builder.setLength(0)
 
-          def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
+          def fmted(a: String, b: String) = {
+            if (useFormat) builder.append(reset).append(a).append(b).append(reset)
+            else builder.append(b)
+          }
 
-          builder.append(reset).append('[')
+          if (useFormat) builder.append(reset)
+          builder.append('[')
           fmted(labelColor, label)
           builder.append("] ")
           fmted(messageColor, line)
-          builder.append(clearScreenAfterCursor)
+          if (ansiCodesSupported) builder.append(ClearScreenAfterCursor)
           write(builder.toString)
         }
       }
@@ -489,8 +486,15 @@ trait Appender extends AutoCloseable {
   }
 
   private def write(msg: String): Unit = {
-    val toWrite =
-      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
+    // There is no api for removing only colors but not other ansi escape sequences
+    // so we do nothing if useFormat is false but ansiCodesSupported is true which is
+    // a rare use case but if ansiCodesSupported is true, color codes should work so
+    // the output may have unwanted colors but it would still be legible. This should
+    // only be relevant if the log message string itself contains ansi escape sequences
+    // other than color codes which is very unlikely.
+    val toWrite = if (!ansiCodesSupported) {
+      if (useFormat) EscHelpers.stripMoves(msg) else EscHelpers.removeEscapeSequences(msg)
+    } else msg
     out.println(toWrite)
   }
 
