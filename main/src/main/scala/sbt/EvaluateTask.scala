@@ -17,7 +17,7 @@ import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal._
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
@@ -368,7 +368,7 @@ object EvaluateTask {
     for ((key, msg, ex) <- keyed if (msg.isDefined || ex.isDefined)) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
-      val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)
+      val display = contextDisplay(state, ITerminal.isColorEnabled)
       log.error("(" + display.show(key) + ") " + msgString)
     }
   }

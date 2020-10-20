@@ -10,13 +10,13 @@ package sbt
 import java.util.regex.Pattern
 import scala.Console.{ BOLD, RESET }
 
-import sbt.internal.util.ConsoleAppender
+import sbt.internal.util.Terminal
 
 object Highlight {
 
   def showMatches(pattern: Pattern)(line: String): Option[String] = {
     val matcher = pattern.matcher(line)
-    if (ConsoleAppender.formatEnabledInEnv) {
+    if (Terminal.isColorEnabled) {
       // ANSI codes like \033[39m (normal text color) don't work on Windows
       val highlighted = matcher.replaceAll(scala.Console.RED + "$0" + RESET)
       if (highlighted == line) None else Some(highlighted)
@@ -26,5 +26,5 @@ object Highlight {
       None
   }
   def bold(s: String) =
-    if (ConsoleAppender.formatEnabledInEnv) BOLD + s.replace(RESET, RESET + BOLD) + RESET else s
+    if (Terminal.isColorEnabled) BOLD + s.replace(RESET, RESET + BOLD) + RESET else s
 }

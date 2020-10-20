@@ -64,8 +64,8 @@ object ConsoleLogger {
    */
   def apply(
       out: ConsoleOut = ConsoleOut.systemOut,
-      ansiCodesSupported: Boolean = ConsoleAppender.formatEnabledInEnv,
-      useFormat: Boolean = ConsoleAppender.formatEnabledInEnv,
+      ansiCodesSupported: Boolean = Terminal.isAnsiSupported,
+      useFormat: Boolean = Terminal.isColorEnabled,
       suppressedMessage: SuppressedTraceContext => Option[String] =
         ConsoleAppender.noSuppressedMessage
   ): ConsoleLogger =
@@ -148,7 +148,8 @@ object ConsoleAppender {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  lazy val formatEnabledInEnv: Boolean = Terminal.formatEnabledInEnv
+  @deprecated("Use Terminal.isAnsiSupported or Terminal.isColorEnabled", "1.4.0")
+  lazy val formatEnabledInEnv: Boolean = Terminal.isAnsiSupported
 
   private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s) match {
     case Some(true)  => LogOption.Always
@@ -204,7 +205,7 @@ object ConsoleAppender {
    * @param out Where to write messages.
    * @return A new `ConsoleAppender` that writes to `out`.
    */
-  def apply(name: String, out: ConsoleOut): Appender = apply(name, out, formatEnabledInEnv)
+  def apply(name: String, out: ConsoleOut): Appender = apply(name, out, Terminal.isAnsiSupported)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -218,8 +219,10 @@ object ConsoleAppender {
       name: String,
       out: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender =
-    apply(name, out, formatEnabledInEnv, formatEnabledInEnv, suppressedMessage)
+  ): Appender = {
+    val ansi = Terminal.isAnsiSupported
+    apply(name, out, ansi, ansi, suppressedMessage)
+  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -230,7 +233,7 @@ object ConsoleAppender {
    * @return A new `ConsoleAppender` that writes to `out`.
    */
   def apply(name: String, out: ConsoleOut, useFormat: Boolean): Appender =
-    apply(name, out, useFormat || formatEnabledInEnv, useFormat, noSuppressedMessage)
+    apply(name, out, useFormat || Terminal.isAnsiSupported, useFormat, noSuppressedMessage)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.

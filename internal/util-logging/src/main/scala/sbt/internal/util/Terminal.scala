@@ -306,7 +306,8 @@ object Terminal {
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
-  private[sbt] lazy val formatEnabledInEnv: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+  private[sbt] lazy val isAnsiSupported: Boolean =
+    logFormatEnabled.getOrElse(useColorDefault && !isCI)
   private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
@@ -316,9 +317,10 @@ object Terminal {
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
+  private[sbt] lazy val isColorEnabled = useColorDefault
 
   private[sbt] def red(str: String, doRed: Boolean): String =
-    if (formatEnabledInEnv && doRed) Console.RED + str + Console.RESET
+    if (isColorEnabled && doRed) Console.RED + str + Console.RESET
     else str
 
   /**
@@ -331,7 +333,7 @@ object Terminal {
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
     if (System.getProperty("sbt.io.virtual", "") == "true" || (logFormatEnabled.getOrElse(true) && !isCI)) {
-      hasProgress.set(isServer && formatEnabledInEnv)
+      hasProgress.set(isServer && isAnsiSupported)
       consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
@@ -745,7 +747,7 @@ object Terminal {
   private[this] def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
     val newValue =
-      if (!formatEnabledInEnv) "none"
+      if (!isAnsiSupported) "none"
       else
         System.getProperty(terminalProperty) match {
           case "jline.UnixTerminal"                             => "unix"
@@ -794,7 +796,8 @@ object Terminal {
       val size = system.getSize
       (size.getColumns, size.getRows)
     }
-    override lazy val isAnsiSupported: Boolean = !isDumbTerminal && formatEnabledInEnv && !isCI
+    override lazy val isAnsiSupported: Boolean =
+      !isDumbTerminal && Terminal.isAnsiSupported && !isCI
     override private[sbt] def progressState: ProgressState = consoleProgressState.get
     override def isEchoEnabled: Boolean =
       try system.echo()
@@ -839,7 +842,7 @@ object Terminal {
     override def isColorEnabled: Boolean =
       props
         .map(_.color)
-        .getOrElse(isColorEnabledProp.getOrElse(formatEnabledInEnv))
+        .getOrElse(isColorEnabledProp.getOrElse(Terminal.isColorEnabled))
 
     override def isSupershellEnabled: Boolean =
       props
@@ -963,8 +966,8 @@ object Terminal {
     override def getStringCapability(capability: String): String = null
     override def getWidth: Int = 0
     override def inputStream: InputStream = nullInputStream
-    override def isAnsiSupported: Boolean = formatEnabledInEnv
-    override def isColorEnabled: Boolean = isColorEnabledProp.getOrElse(formatEnabledInEnv)
+    override def isAnsiSupported: Boolean = Terminal.isAnsiSupported
+    override def isColorEnabled: Boolean = isColorEnabledProp.getOrElse(Terminal.isColorEnabled)
     override def isEchoEnabled: Boolean = false
     override def isSuccessEnabled: Boolean = true
     override def isSupershellEnabled: Boolean = false
