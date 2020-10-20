@@ -333,7 +333,7 @@ object Terminal {
    */
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (System.getProperty("sbt.io.virtual", "") == "true" || (logFormatEnabled.getOrElse(true) && !isCI)) {
+    if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
       hasProgress.set(isServer && isAnsiSupported)
       consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
