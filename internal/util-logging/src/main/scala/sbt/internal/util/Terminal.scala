@@ -450,12 +450,16 @@ object Terminal {
   private[sbt] class WriteableInputStream(in: InputStream, name: String)
       extends SimpleInputStream
       with AutoCloseable {
+    private[this] val isRaw = new AtomicBoolean(false)
     final def write(bytes: Int*): Unit = readThread.synchronized {
       bytes.foreach(b => buffer.put(b))
     }
-    def setRawMode(toggle: Boolean): Unit = in match {
-      case win: WindowsInputStream => win.setRawMode(toggle)
-      case _                       =>
+    def setRawMode(toggle: Boolean): Unit = {
+      isRaw.set(toggle)
+      in match {
+        case win: WindowsInputStream => win.setRawMode(toggle)
+        case _                       =>
+      }
     }
     private[this] val executor =
       Executors.newSingleThreadExecutor(r => new Thread(r, s"sbt-$name-input-reader"))
@@ -479,8 +483,8 @@ object Terminal {
         val _ = readQueue.take
         val b = in.read
         buffer.put(b)
-        if (b != -1 && !Thread.interrupted()) impl()
-        else closed.set(true)
+        if (Thread.interrupted() || (b != -1 && !isRaw.get)) closed.set(true)
+        else impl()
       }
       try impl()
       catch { case _: InterruptedException => closed.set(true) }
