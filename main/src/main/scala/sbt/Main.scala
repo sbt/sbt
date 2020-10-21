@@ -105,7 +105,7 @@ private[sbt] object xMain {
     } finally {
       // Clear any stray progress lines
       ShutdownHooks.close()
-      if (ITerminal.formatEnabledInEnv) {
+      if (ITerminal.isAnsiSupported) {
         System.out.print(ConsoleAppender.ClearScreenAfterCursor)
         System.out.flush()
       }

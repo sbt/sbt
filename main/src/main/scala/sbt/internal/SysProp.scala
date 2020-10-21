@@ -12,7 +12,7 @@ import java.util.Locale
 
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
-import sbt.internal.util.ConsoleAppender
+import sbt.internal.util.{ Terminal => ITerminal }
 import sbt.internal.util.complete.SizeParser
 
 // See also BuildPaths.scala
@@ -106,7 +106,7 @@ object SysProp {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  lazy val color: Boolean = ConsoleAppender.formatEnabledInEnv
+  lazy val color: Boolean = ITerminal.isColorEnabled
 
   def closeClassLoaders: Boolean = getOrFalse("sbt.classloader.close")
 

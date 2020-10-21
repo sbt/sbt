@@ -64,8 +64,8 @@ object ConsoleLogger {
    */
   def apply(
       out: ConsoleOut = ConsoleOut.systemOut,
-      ansiCodesSupported: Boolean = ConsoleAppender.formatEnabledInEnv,
-      useFormat: Boolean = ConsoleAppender.formatEnabledInEnv,
+      ansiCodesSupported: Boolean = Terminal.isAnsiSupported,
+      useFormat: Boolean = Terminal.isColorEnabled,
       suppressedMessage: SuppressedTraceContext => Option[String] =
         ConsoleAppender.noSuppressedMessage
   ): ConsoleLogger =
@@ -148,7 +148,8 @@ object ConsoleAppender {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  lazy val formatEnabledInEnv: Boolean = Terminal.formatEnabledInEnv
+  @deprecated("Use Terminal.isAnsiSupported or Terminal.isColorEnabled", "1.4.0")
+  lazy val formatEnabledInEnv: Boolean = Terminal.isAnsiSupported
 
   private[sbt] def parseLogOption(s: String): LogOption = Terminal.parseLogOption(s) match {
     case Some(true)  => LogOption.Always
@@ -204,7 +205,7 @@ object ConsoleAppender {
    * @param out Where to write messages.
    * @return A new `ConsoleAppender` that writes to `out`.
    */
-  def apply(name: String, out: ConsoleOut): Appender = apply(name, out, formatEnabledInEnv)
+  def apply(name: String, out: ConsoleOut): Appender = apply(name, out, Terminal.isAnsiSupported)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -218,8 +219,10 @@ object ConsoleAppender {
       name: String,
       out: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender =
-    apply(name, out, formatEnabledInEnv, formatEnabledInEnv, suppressedMessage)
+  ): Appender = {
+    val ansi = Terminal.isAnsiSupported
+    apply(name, out, ansi, ansi, suppressedMessage)
+  }
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -230,7 +233,7 @@ object ConsoleAppender {
    * @return A new `ConsoleAppender` that writes to `out`.
    */
   def apply(name: String, out: ConsoleOut, useFormat: Boolean): Appender =
-    apply(name, out, useFormat || formatEnabledInEnv, useFormat, noSuppressedMessage)
+    apply(name, out, useFormat || Terminal.isAnsiSupported, useFormat, noSuppressedMessage)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
@@ -368,14 +371,7 @@ trait Appender extends AutoCloseable {
   private[util] def ansiCodesSupported: Boolean = properties.isAnsiSupported
   private[util] def useFormat: Boolean = properties.isColorEnabled
 
-  private def reset: String = {
-    if (ansiCodesSupported && useFormat) scala.Console.RESET
-    else ""
-  }
-  private def clearScreenAfterCursor: String = {
-    if (ansiCodesSupported && useFormat) ClearScreenAfterCursor
-    else ""
-  }
+  private def reset: String = scala.Console.RESET
 
   private val SUCCESS_LABEL_COLOR = GREEN
   private val SUCCESS_MESSAGE_COLOR = reset
@@ -465,19 +461,23 @@ trait Appender extends AutoCloseable {
       if (message == null) ()
       else {
         val len =
-          labelColor.length + label.length + messageColor.length + reset.length * 3 + clearScreenAfterCursor.length
+          labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
         val builder: StringBuilder = new StringBuilder(len)
         message.linesIterator.foreach { line =>
           builder.ensureCapacity(len + line.length + 4)
           builder.setLength(0)
 
-          def fmted(a: String, b: String) = builder.append(reset).append(a).append(b).append(reset)
+          def fmted(a: String, b: String) = {
+            if (useFormat) builder.append(reset).append(a).append(b).append(reset)
+            else builder.append(b)
+          }
 
-          builder.append(reset).append('[')
+          if (useFormat) builder.append(reset)
+          builder.append('[')
           fmted(labelColor, label)
           builder.append("] ")
           fmted(messageColor, line)
-          builder.append(clearScreenAfterCursor)
+          if (ansiCodesSupported) builder.append(ClearScreenAfterCursor)
           write(builder.toString)
         }
       }
@@ -489,8 +489,15 @@ trait Appender extends AutoCloseable {
   }
 
   private def write(msg: String): Unit = {
-    val toWrite =
-      if (!useFormat || !ansiCodesSupported) EscHelpers.removeEscapeSequences(msg) else msg
+    // There is no api for removing only colors but not other ansi escape sequences
+    // so we do nothing if useFormat is false but ansiCodesSupported is true which is
+    // a rare use case but if ansiCodesSupported is true, color codes should work so
+    // the output may have unwanted colors but it would still be legible. This should
+    // only be relevant if the log message string itself contains ansi escape sequences
+    // other than color codes which is very unlikely.
+    val toWrite = if (!ansiCodesSupported) {
+      if (useFormat) EscHelpers.stripMoves(msg) else EscHelpers.removeEscapeSequences(msg)
+    } else msg
     out.println(toWrite)
   }
 

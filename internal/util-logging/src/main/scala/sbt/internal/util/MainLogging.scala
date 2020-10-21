@@ -88,10 +88,10 @@ object MainAppender {
     ConsoleAppender(name, console, suppressedMessage = suppressedMessage)
 
   def defaultBacked: PrintWriter => Appender =
-    defaultBacked(generateGlobalBackingName, ConsoleAppender.formatEnabledInEnv)
+    defaultBacked(generateGlobalBackingName, Terminal.isAnsiSupported)
 
   def defaultBacked(loggerName: String): PrintWriter => Appender =
-    defaultBacked(loggerName, ConsoleAppender.formatEnabledInEnv)
+    defaultBacked(loggerName, Terminal.isAnsiSupported)
 
   def defaultBacked(useFormat: Boolean): PrintWriter => Appender =
     defaultBacked(generateGlobalBackingName, useFormat)

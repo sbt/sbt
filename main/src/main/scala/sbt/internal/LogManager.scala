@@ -14,7 +14,7 @@ import sbt.Def.ScopedKey
 import sbt.Keys._
 import sbt.Scope.GlobalScope
 import sbt.internal.util.MainAppender._
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.util.{ Level, LogExchange, Logger, LoggerContext }
 import org.apache.logging.log4j.core.{ Appender => XAppender }
 
@@ -319,7 +319,7 @@ object LogManager {
       private[this] def slog: Logger =
         Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
-      override val ansiCodesSupported = ConsoleAppender.formatEnabledInEnv
+      override val ansiCodesSupported = ITerminal.isAnsiSupported
       override def trace(t: => Throwable) = slog.trace(t)
       override def success(message: => String) = slog.success(message)
       override def log(level: Level.Value, message: => String) = slog.log(level, message)

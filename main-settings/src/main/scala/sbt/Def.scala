@@ -15,7 +15,7 @@ import sbt.KeyRanks.{ DTask, Invisible }
 import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import Util._
 import sbt.util.Show
 import xsbti.VirtualFile
@@ -173,7 +173,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
     Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
   def withColor(s: String, color: Option[String]): String =
-    withColor(s, color, useColor = ConsoleAppender.formatEnabledInEnv)
+    withColor(s, color, useColor = ITerminal.isColorEnabled)
   def withColor(s: String, color: Option[String], useColor: Boolean): String = color match {
     case Some(c) if useColor => c + s + scala.Console.RESET
     case _                   => s
