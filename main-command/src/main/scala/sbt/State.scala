@@ -72,12 +72,15 @@ final case class State(
  * @param currentExecId provide the execId extracted from the original State.
  * @param combinedParser the parser extracted from the original State.
  */
+@deprecated("unused", "1.4.2")
 private[sbt] final case class SafeState(
     currentExecId: Option[String],
     combinedParser: Parser[() => sbt.State]
 )
 
+@deprecated("unused", "1.4.2")
 private[sbt] object SafeState {
+  @deprecated("use StandardMain.exchange.withState", "1.4.2")
   def apply(s: State) = {
     new SafeState(
       currentExecId = s.currentCommand.map(_.execId).flatten,
