@@ -314,7 +314,7 @@ object Terminal {
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
-    props.map(_.color).orElse(isColorEnabledProp).getOrElse(hasConsole && !isDumbTerminal)
+    props.map(_.color).orElse(isColorEnabledProp).getOrElse((hasConsole && !isDumbTerminal) || isCI)
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
