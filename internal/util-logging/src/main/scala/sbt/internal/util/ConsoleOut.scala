@@ -64,7 +64,7 @@ object ConsoleOut {
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
       val s = current.toString
-      if (ConsoleAppender.formatEnabledInEnv && last.exists(lmsg => f(s, lmsg)))
+      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
         lockObject.print(OverwriteLine)
       lockObject.println(s)
       last = Some(s)
@@ -72,7 +72,7 @@ object ConsoleOut {
     }
     def flush(): Unit = synchronized {
       val s = current.toString
-      if (ConsoleAppender.formatEnabledInEnv && last.exists(lmsg => f(s, lmsg)))
+      if (Terminal.isAnsiSupported && last.exists(lmsg => f(s, lmsg)))
         lockObject.print(OverwriteLine)
       lockObject.print(s)
       last = Some(s)

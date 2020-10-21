@@ -10,7 +10,7 @@ package sbt.std
 import sbt.SettingKey
 import sbt.dsl.LinterLevel
 import sbt.dsl.LinterLevel.{ Abort, Warn }
-import sbt.internal.util.ConsoleAppender
+import sbt.internal.util.Terminal
 import sbt.internal.util.appmacro.{ Convert, LinterDSL }
 
 import scala.io.AnsiColor
@@ -191,10 +191,10 @@ object OnlyTaskDynLinterDSL extends BaseTaskLinterDSL {
 }
 
 object TaskLinterDSLFeedback {
-  private final val startBold = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.BOLD else ""
-  private final val startRed = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RED else ""
-  private final val startGreen = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.GREEN else ""
-  private final val reset = if (ConsoleAppender.formatEnabledInEnv) AnsiColor.RESET else ""
+  private final val startBold = if (Terminal.isColorEnabled) AnsiColor.BOLD else ""
+  private final val startRed = if (Terminal.isColorEnabled) AnsiColor.RED else ""
+  private final val startGreen = if (Terminal.isColorEnabled) AnsiColor.GREEN else ""
+  private final val reset = if (Terminal.isColorEnabled) AnsiColor.RESET else ""
 
   private final val ProblemHeader = s"${startRed}problem$reset"
   private final val SolutionHeader = s"${startGreen}solution$reset"

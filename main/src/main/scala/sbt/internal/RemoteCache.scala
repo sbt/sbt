@@ -114,10 +114,10 @@ object RemoteCache {
                   findJar(classifier, v, jars) match {
                     case Some(jar) =>
                       extractJar(art, jar)
-                      log.info(s"remote cache artifact extracted for $classifier")
+                      log.info(s"remote cache artifact extracted for $p $classifier")
 
                     case None =>
-                      log.info(s"remote cache artifact not found for $classifier")
+                      log.info(s"remote cache artifact not found for $p $classifier")
                   }
                 }
                 found = true
