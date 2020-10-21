@@ -413,8 +413,12 @@ object EvaluateTask {
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
+  @deprecated("use StandardMain.exchange.withState to obtain an instance of State", "1.4.2")
   val lastEvaluatedState: AtomicReference[SafeState] = new AtomicReference()
+  @deprecated("use currentlyRunningTaskEngine", "1.4.2")
   val currentlyRunningEngine: AtomicReference[(SafeState, RunningTaskEngine)] =
+    new AtomicReference()
+  private[sbt] val currentlyRunningTaskEngine: AtomicReference[RunningTaskEngine] =
     new AtomicReference()
 
   /**
@@ -486,7 +490,7 @@ object EvaluateTask {
         shutdownImpl(true)
       }
     }
-    currentlyRunningEngine.set((SafeState(state), runningEngine))
+    currentlyRunningTaskEngine.set(runningEngine)
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)
@@ -494,8 +498,7 @@ object EvaluateTask {
     try run()
     finally {
       strat.onTaskEngineFinish(cancelState)
-      currentlyRunningEngine.set(null)
-      lastEvaluatedState.set(SafeState(state))
+      currentlyRunningTaskEngine.set(null)
     }
   }
 
