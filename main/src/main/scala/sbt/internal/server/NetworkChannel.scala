@@ -11,7 +11,6 @@ package server
 
 import java.io.{ IOException, InputStream, OutputStream }
 import java.net.{ Socket, SocketTimeoutException }
-import java.nio.channels.ClosedChannelException
 import java.util.concurrent.{
   ConcurrentHashMap,
   Executors,
@@ -85,7 +84,7 @@ final class NetworkChannel(
   private var initialized = false
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
-  private[this] val inputBuffer = new LinkedBlockingQueue[Byte]()
+  private[this] val inputBuffer = new LinkedBlockingQueue[Int]()
   private[this] val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
   private[this] val attached = new AtomicBoolean(false)
   private[this] val alive = new AtomicBoolean(true)
@@ -107,7 +106,7 @@ final class NetworkChannel(
     interactive.set(true)
     jsonRpcNotify(promptChannel, "")
   }
-  private[sbt] def write(byte: Byte) = inputBuffer.add(byte)
+  private[sbt] def write(byte: Byte) = inputBuffer.add(byte.toInt)
 
   private[this] val terminalHolder = new AtomicReference[Terminal](Terminal.NullTerminal)
   override private[sbt] def terminal: Terminal = terminalHolder.get
@@ -634,15 +633,12 @@ final class NetworkChannel(
     )
   }
 
-  private[this] lazy val inputStream: InputStream = new InputStream {
+  private[this] lazy val inputStream: InputStream = new Terminal.SimpleInputStream {
     override def read(): Int = {
       import sjsonnew.BasicJsonProtocol._
       try {
         jsonRpcNotify(readSystemIn, "")
-        inputBuffer.take & 0xFF match {
-          case -1 => throw new ClosedChannelException()
-          case b  => b
-        }
+        inputBuffer.take
       } catch {
         case e: IOException =>
           try jsonRpcNotify(cancelReadSystemIn, "")
