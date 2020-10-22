@@ -128,10 +128,17 @@ object RemoteCache {
     },
     remoteCachePom := {
       val s = streams.value
-      val config = makePomConfiguration.value
+      val config = (remoteCachePom / makePomConfiguration).value
       val publisher = Keys.publisher.value
       publisher.makePomFile((pushRemoteCache / ivyModule).value, config, s.log)
       config.file.get
+    },
+    remoteCachePom / artifactPath := {
+      Defaults.prefixArtifactPathSetting(makePom / artifact, "remote-cache").value
+    },
+    remoteCachePom / makePomConfiguration := {
+      val config = makePomConfiguration.value
+      config.withFile((remoteCachePom / artifactPath).value)
     },
     remoteCachePom / remoteCacheArtifact := {
       PomRemoteCacheArtifact((makePom / artifact).value, remoteCachePom)
