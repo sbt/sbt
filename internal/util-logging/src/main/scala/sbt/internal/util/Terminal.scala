@@ -486,7 +486,7 @@ object Terminal {
         val _ = readQueue.take
         val b = in.read
         buffer.put(b)
-        if (Thread.interrupted() || (b != -1 && !isRaw.get)) closed.set(true)
+        if (Thread.interrupted() || (b == -1 && isRaw.get)) closed.set(true)
         else impl()
       }
       try impl()
@@ -596,9 +596,12 @@ object Terminal {
   private[sbt] trait SimpleInputStream extends InputStream {
     override def read(b: Array[Byte]): Int = read(b, 0, b.length)
     override def read(b: Array[Byte], off: Int, len: Int): Int = {
-      val byte = read()
-      b(off) = byte.toByte
-      1
+      read() match {
+        case -1 => -1
+        case byte =>
+          b(off) = byte.toByte
+          1
+      }
     }
   }
   private[this] object proxyInputStream extends SimpleInputStream {

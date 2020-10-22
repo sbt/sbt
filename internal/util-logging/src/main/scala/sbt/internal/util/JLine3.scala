@@ -16,7 +16,7 @@ import org.jline.utils.{ ClosedException, NonBlockingReader }
 import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Attributes.{ InputFlag, LocalFlag }
 import org.jline.terminal.Terminal.SignalHandler
-import org.jline.terminal.impl.AbstractTerminal
+import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
 import org.jline.terminal.impl.jansi.JansiSupportImpl
 import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
 import org.jline.utils.OSUtils
@@ -73,6 +73,11 @@ private[sbt] object JLine3 {
     term
   }
   private[sbt] def apply(term: Terminal): JTerminal = {
+    if (System.getProperty("jline.terminal", "") == "none")
+      new DumbTerminal(term.inputStream, term.outputStream)
+    else wrapTerminal(term)
+  }
+  private[this] def wrapTerminal(term: Terminal): JTerminal = {
     new AbstractTerminal(
       term.name,
       "nocapabilities",

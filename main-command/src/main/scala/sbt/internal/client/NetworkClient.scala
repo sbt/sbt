@@ -934,12 +934,9 @@ class NetworkClient(
     val stopped = new AtomicBoolean(false)
     override final def run(): Unit = {
       def read(): Unit = {
-        inputStream.read match {
-          case -1 =>
-          case b =>
-            inLock.synchronized(stdinBytes.offer(b))
-            if (attached.get()) drain()
-        }
+        val b = inputStream.read
+        inLock.synchronized(stdinBytes.offer(b))
+        if (attached.get()) drain()
       }
       try read()
       catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) } finally {
