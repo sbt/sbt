@@ -330,7 +330,7 @@ object BuildServerProtocol {
       // try parse metadata as MetalsMetadata
       metalsMetadata <- Converter.fromJson[MetalsMetadata](data).toOption
     } {
-      if (!semanticdbEnabled) {
+      if (metalsMetadata.semanticdbVersion.nonEmpty && !semanticdbEnabled) {
         log.warn(s"${params.displayName} requires the semanticdb compiler plugin")
         log.warn(
           s"consider setting 'Global / semanticdbEnabled := true' in your global sbt settings ($$HOME/.sbt/1.0)"
