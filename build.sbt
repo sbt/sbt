@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.0.0"
+val coursierVersion0 = "2.0.5"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -62,6 +62,7 @@ lazy val `lm-coursier-shaded` = project
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
       "io.github.alexarchambault" %% "data-class" % "0.2.3" % Provided,
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       "org.scala-sbt" %% "librarymanagement-ivy" % "1.3.4",
       "org.scalatest" %% "scalatest" % "3.2.2" % Test
