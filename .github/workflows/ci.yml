@@ -27,7 +27,9 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v4
+    - uses: coursier/cache-action@v5
+      with:
+        extraKey: ${{ matrix.PLUGIN }}-${{ matrix.TEST_GROUP }}
     - uses: olafurpg/setup-scala@v7
       with:
         java-version: adopt@1.8.0-232
@@ -46,7 +48,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
-      - uses: coursier/cache-action@v4
+      - uses: coursier/cache-action@v5
       - uses: olafurpg/setup-scala@v7
       - uses: olafurpg/setup-gpg@v2
       - name: Release
