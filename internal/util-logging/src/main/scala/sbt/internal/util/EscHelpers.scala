@@ -126,32 +126,76 @@ object EscHelpers {
     }
     index
   }
-  def stripMoves(s: String): String = {
-    val bytes = s.getBytes
+
+  /**
+   * Strips ansi escape and color codes from an input string.
+   *
+   * @param bytes the input bytes
+   * @param stripAnsi toggles whether or not to remove general ansi escape codes
+   * @param stripColor toggles whether or not to remove ansi color codes
+   * @return a string with the escape and color codes removed depending on the input
+   * parameter along with the length of the output string (which may be smaller than
+   * the returned array)
+   */
+  def strip(bytes: Array[Byte], stripAnsi: Boolean, stripColor: Boolean): (Array[Byte], Int) = {
     val res = Array.fill[Byte](bytes.length)(0)
+    var i = 0
     var index = 0
-    var lastEscapeIndex = -1
     var state = 0
-    def set(b: Byte) = {
-      res(index) = b
-      index += 1
-    }
+    var limit = 0
+    val digit = new ArrayBuffer[Byte]
+    var leftDigit = -1
+    var escIndex = -1
     bytes.foreach { b =>
-      set(b)
+      if (index < res.length) res(index) = b
+      index += 1
+      limit = math.max(limit, index)
+      if (state == 0) escIndex = -1
       b match {
         case 27 =>
+          escIndex = index - 1
           state = esc
-          lastEscapeIndex = math.max(0, index)
-        case b if b == '[' && state == esc => state = csi
-        case 'm'                           => state = 0
-        case b if state == csi && (b < 48 || b >= 58) && b != ';' =>
+        case b if (state == esc || state == csi) && b >= 48 && b < 58 =>
+          state = csi
+          digit += b
+        case '[' if state == esc => state = csi
+        case 8 =>
           state = 0
-          index = math.max(0, lastEscapeIndex - 1)
-        case b =>
+          index = math.max(index - 1, 0)
+        case b if state == csi =>
+          leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
+          state = 0
+          b.toChar match {
+            case 'h' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'J' | 'K' =>
+              if (stripAnsi) index = math.max(escIndex, 0)
+            case 'm'                   => if (stripColor) index = escIndex
+            case ';' | 's' | 'u' | '?' => state = csi
+            case b                     =>
+          }
+          digit.clear()
+        case b if state == esc => state = 0
+        case b                 =>
       }
     }
-    new String(res, 0, index)
+    (res, index)
   }
+  @deprecated("use EscHelpers.strip", "1.4.2")
+  def stripMoves(s: String): String = {
+    val (bytes, len) = strip(s.getBytes, stripAnsi = true, stripColor = false)
+    new String(bytes, 0, len)
+  }
+
+  /**
+   * Removes the ansi escape sequences from a string and makes a best attempt at
+   * calculating any ansi moves by hand. For example, if the string contains
+   * a backspace character followed by a character, the output string would
+   * replace the character preceding the backspaces with the character proceding it.
+   * This is in contrast to `strip` which just removes all ansi codes entirely.
+   *
+   * @param s the input string
+   * @return a string containing the original characters of the input stream with
+   * the ansi escape codes removed.
+   */
   def stripColorsAndMoves(s: String): String = {
     val bytes = s.getBytes
     val res = Array.fill[Byte](bytes.length)(0)
@@ -174,6 +218,7 @@ object EscHelpers {
         leftDigit = Try(new String(digit.toArray).toInt).getOrElse(0)
         state = 0
         b.toChar match {
+          case 'h' => index = math.max(index - 1, 0)
           case 'D' => index = math.max(index - leftDigit, 0)
           case 'C' => index = math.min(limit, math.min(index + leftDigit, res.length - 1))
           case 'K' | 'J' =>
@@ -190,6 +235,7 @@ object EscHelpers {
         index += 1
         limit = math.max(limit, index)
     }
+    (res, limit)
     new String(res, 0, limit)
   }
 

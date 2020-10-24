@@ -930,7 +930,14 @@ object Terminal {
       }
       override def flush(): Unit = combinedOutputStream.flush()
     }
-    private def doWrite(bytes: Array[Byte]): Unit = withPrintStream { ps =>
+    private def doWrite(rawBytes: Array[Byte]): Unit = withPrintStream { ps =>
+      val (toWrite, len) =
+        if (rawBytes.contains(27.toByte)) {
+          if (!isAnsiSupported || !isColorEnabled)
+            EscHelpers.strip(rawBytes, stripAnsi = !isAnsiSupported, stripColor = !isColorEnabled)
+          else (rawBytes, rawBytes.length)
+        } else (rawBytes, rawBytes.length)
+      val bytes = if (len < toWrite.length) toWrite.take(len) else toWrite
       progressState.write(TerminalImpl.this, bytes, ps, hasProgress.get && !rawMode.get)
     }
     override private[sbt] val printStream: PrintStream = new LinePrintStream(outputStream)

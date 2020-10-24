@@ -124,7 +124,12 @@ private[sbt] object JLine3 {
       override val output: OutputStream = new OutputStream {
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
         override def write(b: Array[Byte]): Unit = if (!closed.get) term.withPrintStream { ps =>
-          ps.write(b)
+          val (toWrite, len) = if (b.contains(27.toByte)) {
+            if (!term.isAnsiSupported || !term.isColorEnabled) {
+              EscHelpers.strip(b, !term.isAnsiSupported, !term.isColorEnabled)
+            } else (b, b.length)
+          } else (b, b.length)
+          if (len == toWrite.length) ps.write(toWrite) else ps.write(toWrite, 0, len)
           term.prompt match {
             case a: Prompt.AskUser => a.write(b)
             case _                 =>
