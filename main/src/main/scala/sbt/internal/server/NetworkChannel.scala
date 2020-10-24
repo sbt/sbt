@@ -565,6 +565,7 @@ final class NetworkChannel(
       logShutdown: Boolean,
       remainingCommands: Option[(String, String)]
   ): Unit = {
+    doFlush()
     terminal.close()
     StandardMain.exchange.removeChannel(this)
     super.shutdown(logShutdown)
