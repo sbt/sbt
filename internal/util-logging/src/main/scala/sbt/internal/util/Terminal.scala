@@ -799,6 +799,12 @@ object Terminal {
       private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private[this] val rawMode = new AtomicBoolean(false)
+    if (Util.isWindows && hasConsole) {
+      // It is necessary to enter and exit raw mode in order to get the windows
+      // console to echo input.
+      enterRawMode()
+      exitRawMode()
+    }
     override private[sbt] def getSizeImpl: (Int, Int) = {
       val size = system.getSize
       (size.getColumns, size.getRows)
