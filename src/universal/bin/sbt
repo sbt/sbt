@@ -621,7 +621,7 @@ runNativeClient() {
       unset 'original_args[i]'
     fi
   done
-  execRunner "$sbtn_command" "${original_args[@]}"
+  execRunner "$sbtn_command" "--sbt-script=$0" "${original_args[@]}"
 }
 
 original_args=("$@")
