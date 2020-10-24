@@ -1072,7 +1072,7 @@ object NetworkClient {
   }
   def client(
       baseDirectory: File,
-      args: Array[String],
+      args: Arguments,
       inputStream: InputStream,
       errorStream: PrintStream,
       terminal: Terminal,
@@ -1080,7 +1080,7 @@ object NetworkClient {
   ): Int = {
     val client =
       simpleClient(
-        NetworkClient.parseArgs(args).withBaseDirectory(baseDirectory),
+        args.withBaseDirectory(baseDirectory),
         inputStream,
         errorStream,
         useJNI,
@@ -1091,6 +1091,15 @@ object NetworkClient {
       else 1
     } catch { case _: Exception => 1 } finally client.close()
   }
+  def client(
+      baseDirectory: File,
+      args: Array[String],
+      inputStream: InputStream,
+      errorStream: PrintStream,
+      terminal: Terminal,
+      useJNI: Boolean
+  ): Int = client(baseDirectory, parseArgs(args), inputStream, errorStream, terminal, useJNI)
+
   private def simpleClient(
       arguments: Arguments,
       inputStream: InputStream,
@@ -1129,9 +1138,10 @@ object NetworkClient {
       })
       Runtime.getRuntime.addShutdownHook(hook)
       if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
+      val parsed = parseArgs(restOfArgs)
       System.exit(Terminal.withStreams(false) {
         val term = Terminal.console
-        try client(base, restOfArgs, term.inputStream, System.err, term, useJNI)
+        try client(base, parsed, term.inputStream, System.err, term, useJNI)
         catch { case _: AccessDeniedException => 1 } finally {
           Runtime.getRuntime.removeShutdownHook(hook)
           hook.run()
