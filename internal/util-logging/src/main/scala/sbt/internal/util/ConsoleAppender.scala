@@ -495,8 +495,10 @@ trait Appender extends AutoCloseable {
     // the output may have unwanted colors but it would still be legible. This should
     // only be relevant if the log message string itself contains ansi escape sequences
     // other than color codes which is very unlikely.
-    val toWrite = if (!ansiCodesSupported) {
-      if (useFormat) EscHelpers.stripMoves(msg) else EscHelpers.removeEscapeSequences(msg)
+    val toWrite = if (!ansiCodesSupported || !useFormat && msg.getBytes.contains(27.toByte)) {
+      val (bytes, len) =
+        EscHelpers.strip(msg.getBytes, stripAnsi = !ansiCodesSupported, stripColor = !useFormat)
+      new String(bytes, 0, len)
     } else msg
     out.println(toWrite)
   }
