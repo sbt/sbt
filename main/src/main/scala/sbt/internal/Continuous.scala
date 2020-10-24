@@ -1327,7 +1327,10 @@ private[sbt] object ContinuousCommands {
     }
 
   private[sbt] val preWatchCommand = watchCommand(preWatch) { (channel, state) =>
-    watchState(state, channel).beforeCommand(state)
+    val ws = watchState(state, channel)
+    val newState = ws.beforeCommand(state)
+    ws.callbacks.beforeCommand()
+    newState
   }
   private[sbt] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
     val cs = watchState(state, channel)
