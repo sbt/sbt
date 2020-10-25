@@ -139,6 +139,7 @@ private[sbt] class TaskProgress(
   }
   private[this] val skipReportTasks =
     Set(
+      "installSbtn",
       "run",
       "runMain",
       "bgRun",
