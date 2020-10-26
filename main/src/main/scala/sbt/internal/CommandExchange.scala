@@ -38,6 +38,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -173,7 +174,12 @@ private[sbt] final class CommandExchange {
   ): (State, CommandChannel) => UITask = { (state, channel) =>
     ContinuousCommands
       .watchUITaskFor(state, channel)
-      .getOrElse(new UITask.AskUserTask(state, channel))
+      .getOrElse {
+        channel.terminal.prompt match {
+          case _: Prompt.Blocked => new UITask.BlockedTerminalTask(channel)
+          case _                 => new UITask.AskUserTask(state, channel)
+        }
+      }
   }
 
   private[sbt] def currentExec = Option(currentExecRef.get)
@@ -438,14 +444,17 @@ private[sbt] final class CommandExchange {
 
   private[sbt] def shutdown(name: String): Unit = {
     Option(currentExecRef.get).foreach(cancel)
-    commandQueue.clear()
-    val exit = Exec(Shutdown, Some(Exec.newExecId), Some(CommandSource(name)))
-    commandQueue.add(exit)
+    commandQueue.synchronized {
+      commandQueue.clear()
+      val exit = Exec(Shutdown, Some(Exec.newExecId), Some(CommandSource(name)))
+      commandQueue.add(exit)
+    }
     ()
   }
   private[this] def cancel(e: Exec): Unit = {
     if (e.commandLine.startsWith("console")) {
-      val terminal = Terminal.get
+      val terminal =
+        e.source.flatMap(s => channelForName(s.channelName)).map(_.terminal).getOrElse(Terminal.get)
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
     } else {
@@ -478,7 +487,7 @@ private[sbt] final class CommandExchange {
                   case c: NetworkChannel if !c.isInteractive => exit(mt)
                   case _                                     =>
                 }
-                commandQueue.add(Exec(t, None, None))
+                commandQueue.synchronized(commandQueue.add(Exec(t, None, None)))
               case `TerminateAction` => exit(mt)
               case `Shutdown` =>
                 val console = Terminal.console
@@ -504,5 +513,19 @@ private[sbt] final class CommandExchange {
   }
   private[sbt] def channelForName(channelName: String): Option[CommandChannel] =
     channels.find(_.name == channelName)
+
+  /**
+   * Add a sequence of execs in one go. It is problematic to add them one by one
+   * because they will end up getting interlaced with calls to shell. Instead,
+   * store them all in a map and then evaluate a command that removes them from the
+   * map prepend them to the state.
+   */
+  private[sbt] def addBulk(execs: Seq[Exec]): Unit = commandQueue.synchronized {
+    val id = bulkId.getAndIncrement
+    bulkExecs.put(id, execs)
+    Util.ignoreResult(commandQueue.add(Exec(s"${BasicCommandStrings.BulkAppendExecs} $id", None)))
+  }
+  private[this] val bulkId = new AtomicInteger(0)
+  private[sbt] val bulkExecs = new ConcurrentHashMap[Int, Seq[Exec]]
   private[this] val fastTrackThread = new FastTrackThread
 }

@@ -319,6 +319,7 @@ object BuiltinCommands {
       NetworkChannel.disconnect,
       waitCmd,
       promptChannel,
+      bulkAppendExecsCommand,
     ) ++
       allBasicCommands ++
       ContinuousCommands.value ++
@@ -1187,4 +1188,15 @@ object BuiltinCommands {
     }
     state
   }
+  private[this] val bulkAppendExecsCommand =
+    Command.arb(_ => BulkAppendExecs.examples() ~> " ".examples() ~> matched(any.*)) { (s0, id) =>
+      scala.util.Try(id.toInt) match {
+        case scala.util.Success(i) =>
+          StandardMain.exchange.bulkExecs.remove(i) match {
+            case null => s0
+            case e    => e.toList ++: s0
+          }
+        case _ => s0
+      }
+    }
 }

@@ -268,8 +268,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       context: LoggerContext
   ): Callbacks = {
     implicit val extracted: Extracted = Project.extract(s)
-    implicit val logger: Logger =
-      context.logger(channel.name + "-watch", None, None)
+    implicit val logger: Logger = context.logger(channel.name + "-watch", None, None)
     validateCommands(s, commands)
     val configs = getAllConfigs(s, commands, dynamicInputs)
     val appender = ConsoleAppender(channel.name + "-watch", channel.terminal)
@@ -1207,7 +1206,10 @@ private[sbt] object ContinuousCommands {
             .channelForName(channelName)
             .getOrElse(throw new IllegalStateException(s"No channel with name $channelName"))
           val dynamicInputs = mutable.Set.empty[DynamicInput]
-          val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+          val context = LoggerContext(
+            useLog4J = state.get(Keys.useLog4J.key).getOrElse(false),
+            channel.terminal
+          )
           def cb: Continuous.Callbacks =
             Continuous.getCallbacks(state, channel, commands, cache, dynamicInputs, context)
 

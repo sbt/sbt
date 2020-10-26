@@ -114,4 +114,15 @@ private[sbt] object UITask {
       UITask.Reader.terminalReader(state.combinedParser)(channel.terminal, state)
     }
   }
+  private[sbt] class BlockedTerminalTask(override val channel: CommandChannel) extends UITask {
+    override private[sbt] lazy val reader: UITask.Reader = { () =>
+      {
+        channel.terminal.prompt match {
+          case b: Prompt.Blocked => b.join()
+          case _                 =>
+        }
+        Right("")
+      }
+    }
+  }
 }

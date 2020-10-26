@@ -253,4 +253,6 @@ $AliasCommand name=
 
   private[sbt] val networkExecPrefix = "__"
   private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
+
+  private[sbt] val BulkAppendExecs = s"${networkExecPrefix}bulkAppendExecs"
 }

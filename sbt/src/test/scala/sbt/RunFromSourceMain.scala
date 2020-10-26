@@ -9,12 +9,13 @@ package sbt
 
 import java.io.File.pathSeparator
 
+import sbt.internal.SysProp
 import sbt.internal.scriptedtest.ScriptedLauncher
+import sbt.internal.util.{ Terminal => ITerminal }
 import sbt.util.LoggerContext
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
-import sbt.internal.SysProp
 
 object RunFromSourceMain {
   def fork(
@@ -44,7 +45,7 @@ object RunFromSourceMain {
     implicit val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
-    val context = LoggerContext(useLog4J = SysProp.useLog4J)
+    val context = LoggerContext(useLog4J = SysProp.useLog4J, ITerminal.get)
     val log = context.logger("RunFromSourceMain.fork", None, None)
     try runner.fork("sbt.RunFromSourceMain", cp, options, log)
     finally context.close()
@@ -58,7 +59,7 @@ object RunFromSourceMain {
     case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
       System.setProperty("jna.nosys", "true")
       if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
-      val context = LoggerContext(useLog4J = SysProp.useLog4J)
+      val context = LoggerContext(useLog4J = SysProp.useLog4J, ITerminal.get)
       try run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
       finally context.close()
   }

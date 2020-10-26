@@ -314,12 +314,12 @@ object State {
                   !id.startsWith(networkExecPrefix) =>
               val newID = networkExecPrefix + Exec.newExecId
               val cmd = x.withExecId(newID)
-              val map = Exec(s"$MapExec $id $newID", None)
-              val complete = Exec(s"$CompleteExec $id", None)
+              val map = Exec(s"$MapExec $id $newID", None, x.source)
+              val complete = Exec(s"$CompleteExec $id", None, x.source)
               val report = Exec(s"$ReportResult $id", Some(id), x.source)
-              val stash = Exec(StashOnFailure, None)
-              val failureWall = Exec(FailureWall, None)
-              val pop = Exec(PopOnFailure, None)
+              val stash = Exec(StashOnFailure, None, x.source)
+              val failureWall = Exec(FailureWall, None, x.source)
+              val pop = Exec(PopOnFailure, None, x.source)
               val remaining = map :: cmd :: complete :: failureWall :: pop :: report :: xs
               runCmd(stash, remaining)
             case _ => runCmd(x, xs)

@@ -189,6 +189,7 @@ object Terminal {
     try Terminal.console.printStream.println(s"[info] $string")
     catch { case _: IOException => }
   }
+  private[sbt] def getActive: Terminal = activeTerminal.get
   private[sbt] def set(terminal: Terminal): Terminal = activeTerminal.getAndSet(terminal)
   implicit class TerminalOps(private val term: Terminal) extends AnyVal {
     def ansi(richString: => String, string: => String): String =
@@ -379,7 +380,7 @@ object Terminal {
   }
 
   private[this] object ProxyTerminal extends Terminal {
-    private def t: Terminal = activeTerminal.get
+    private def t: Terminal = getActiveOrThreadTerminal
     override private[sbt] def progressState: ProgressState = t.progressState
     override private[sbt] def enterRawMode(): Unit = t.enterRawMode()
     override private[sbt] def exitRawMode(): Unit = t.exitRawMode()
@@ -650,14 +651,14 @@ object Terminal {
                 }
               } catch { case _: InterruptedException => }
             readFrom(is)
-            readFrom(activeTerminal.get().inputStream)
+            readFrom(getActiveOrThreadTerminal.inputStream)
         }
       }
       override def close(): Unit = if (running.compareAndSet(true, false)) this.interrupt()
     }
     def read(): Int = {
       if (isScripted) -1
-      else if (bootInputStreamHolder.get == null) activeTerminal.get().inputStream.read()
+      else if (bootInputStreamHolder.get == null) getActiveOrThreadTerminal.inputStream.read()
       else {
         val thread = new ReadThread
         @tailrec def poll(): Int = thread.result.poll(10, TimeUnit.MILLISECONDS) match {
@@ -670,8 +671,14 @@ object Terminal {
       }
     }
   }
+  private[sbt] val threadLocalTerminal = new InheritableThreadLocal[Terminal]
+
+  private[this] def getActiveOrThreadTerminal: Terminal = threadLocalTerminal.get match {
+    case ProxyTerminal | null => activeTerminal.get
+    case t                    => t
+  }
   private[this] object proxyOutputStream extends OutputStream {
-    private[this] def os: OutputStream = activeTerminal.get().outputStream
+    private[this] def os: OutputStream = getActiveOrThreadTerminal.outputStream
     def write(byte: Int): Unit = {
       os.write(byte)
       os.flush()
@@ -688,7 +695,7 @@ object Terminal {
     override def toString: String = s"proxyPrintStream($proxyOutputStream)"
   }
   private[this] object proxyErrorOutputStream extends OutputStream {
-    private[this] def os: OutputStream = activeTerminal.get().errorStream
+    private[this] def os: OutputStream = getActiveOrThreadTerminal.errorStream
     def write(byte: Int): Unit = os.write(byte)
     override def write(bytes: Array[Byte]): Unit = write(bytes, 0, bytes.length)
     override def write(bytes: Array[Byte], offset: Int, len: Int): Unit =
