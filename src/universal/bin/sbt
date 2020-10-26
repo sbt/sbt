@@ -665,10 +665,6 @@ args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}"
 process_args "${args1[@]}"
 vlog "[sbt_options] $(declare -p sbt_options)"
 
-addDefaultMemory
-set -- "${residual_args[@]}"
-argumentCount=$#
-
 if [[ "$(isRunNativeClient)" == "true" ]]; then
   set -- "${residual_args[@]}"
   argumentCount=$#
