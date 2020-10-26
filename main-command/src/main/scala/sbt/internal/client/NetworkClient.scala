@@ -1032,10 +1032,14 @@ object NetworkClient {
         case a if a == noStdErr || a == noTab || a.startsWith(completions) =>
           completionArguments += a
         case a if a.startsWith("--sbt-script=") =>
-          sbtScript = a.split("--sbt-script=").lastOption.getOrElse(sbtScript)
+          sbtScript = a
+            .split("--sbt-script=")
+            .lastOption
+            .map(_.replaceAllLiterally("%20", " "))
+            .getOrElse(sbtScript)
         case "--sbt-script" if i + 1 < sanitized.length =>
           i += 1
-          sbtScript = sanitized(i)
+          sbtScript = sanitized(i).replaceAllLiterally("%20", " ")
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
