@@ -19,7 +19,6 @@ import scala.sys.process.Process
 import scala.util.control.NonFatal
 
 class BspClient private (sbtServer: Socket) {
-
   private def run(): Exit = Exit(BspClient.bspRun(sbtServer))
 }
 
