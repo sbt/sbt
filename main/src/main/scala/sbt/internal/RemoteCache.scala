@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.io.File
+import java.nio.file.Path
 import Keys._
 import SlashSyntax0._
 import Project._ // for tag and inTask()
@@ -17,11 +18,14 @@ import sbt.coursierint.LMCoursier
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.Credentials
 import sbt.librarymanagement.syntax._
+import sbt.nio.FileStamp
+import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.internal.librarymanagement._
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.internal.remotecache._
-import sbt.internal.inc.JarUtils
+import sbt.internal.inc.{ HashUtil, JarUtils }
+import sbt.util.InterfaceUtil.toOption
 import sbt.util.Logger
 
 object RemoteCache {
@@ -41,12 +45,30 @@ object RemoteCache {
       .map(_.take(commitLength))
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    remoteCacheId := gitCommitId,
-    remoteCacheIdCandidates := gitCommitIds(5),
+    remoteCacheId := "",
+    remoteCacheIdCandidates := Nil,
     pushRemoteCacheTo :== None
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
+    remoteCacheId := {
+      val compileExtraInc = (Compile / extraIncOptions).value
+      val compileInputs = (Compile / unmanagedSources / inputFileStamps).value
+      val compileCp = (Compile / externalDependencyClasspath / outputFileStamps).value
+      val testExtraInc = (Compile / extraIncOptions).value
+      val testInputs = (Test / unmanagedSources / inputFileStamps).value
+      val testCp = (Test / externalDependencyClasspath / outputFileStamps).value
+      val extraInc = (compileExtraInc.toVector ++ testExtraInc.toVector) flatMap {
+        case (k, v) =>
+          Vector(k, v)
+      }
+      combineHash(
+        extractHash(compileInputs) ++ extractHash(compileCp) ++ extractHash(testInputs) ++ extractHash(
+          testCp
+        ) ++ extraInc
+      )
+    },
+    remoteCacheIdCandidates := List(remoteCacheId.value),
     remoteCacheProjectId := {
       val o = organization.value
       val m = moduleName.value
@@ -332,4 +354,14 @@ object RemoteCache {
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect {
       case (a, true) => a
     })
+
+  private def extractHash(inputs: Seq[(Path, FileStamp)]): Vector[String] =
+    inputs.toVector map {
+      case (_, stamp0) => toOption(stamp0.stamp.getHash).getOrElse("cafe")
+    }
+
+  private def combineHash(vs: Vector[String]): String = {
+    val hashValue = HashUtil.farmHash(vs.sorted.mkString("").getBytes("UTF-8"))
+    java.lang.Long.toHexString(hashValue)
+  }
 }

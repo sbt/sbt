@@ -2519,6 +2519,14 @@ object Classpaths {
         excludeFilter in unmanagedJars value
       )
     ).map(exportClasspath) ++ Seq(
+      externalDependencyClasspath / outputFileStamps := {
+        val stamper = timeWrappedStamper.value
+        val converter = fileConverter.value
+        externalDependencyClasspath.value flatMap { file0 =>
+          val p = file0.data.toPath
+          FileStamp(stamper.library(converter.toVirtualFile(p))).map(p -> _)
+        }
+      },
       dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
       dependencyClasspathFiles / outputFileStamps := {
         val stamper = timeWrappedStamper.value
