@@ -644,11 +644,13 @@ set "_SBTNCMD=!SBT_BIN_DIR!sbtn-x86_64-pc-win32.exe"
 if defined sbt_args_verbose (
   echo # running native client
   if not "%~1" == "" ( call :echolist %* )
+  set "SBT_ARGS=-v !SBT_ARGS!"
 )
+set "SBT_ARGS=--sbt-script=!SBT_BIN_DIR!sbt.bat %SBT_ARGS%"
 
 rem Microsoft Visual C++ 2010 SP1 Redistributable Package (x64) is required
 rem https://www.microsoft.com/en-us/download/details.aspx?id=13523
-"!_SBTNCMD!" %*
+"!_SBTNCMD!" %SBT_ARGS%
 
 goto :eof
 
