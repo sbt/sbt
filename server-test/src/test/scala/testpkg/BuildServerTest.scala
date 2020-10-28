@@ -86,7 +86,7 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/scalaMainClasses") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Compile"
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Compile"
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "16", "method": "buildTarget/scalaMainClasses", "params": {
          |  "targets": [{ "uri": "$x" }]
@@ -95,17 +95,17 @@ object BuildServerTest extends AbstractServerTest {
     assert(svr.waitForString(30.seconds) { s =>
       println(s)
       (s contains """"id":"16"""") &&
-      (s contains """"class":"foo.FooMain"""")
+      (s contains """"class":"main.Main"""")
     })
   }
 
   test("buildTarget/run") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Compile"
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Compile"
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "17", "method": "buildTarget/run", "params": {
          |  "target": { "uri": "$x" },
          |  "dataKind": "scala-main-class",
-         |  "data": { "class": "foo.FooMain" }
+         |  "data": { "class": "main.Main" }
          |} }""".stripMargin
     )
     assert(svr.waitForString(10.seconds) { s =>
@@ -121,7 +121,7 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/scalaTestClasses") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "18", "method": "buildTarget/scalaTestClasses", "params": {
          |  "targets": [{ "uri": "$x" }]
@@ -130,12 +130,13 @@ object BuildServerTest extends AbstractServerTest {
     assert(svr.waitForString(10.seconds) { s =>
       println(s)
       (s contains """"id":"18"""") &&
-      (s contains """"classes":["foo.FailingTest","foo.FooTest"]""")
+      (s contains """"tests.FailingTest"""") &&
+      (s contains """"tests.PassingTest"""")
     })
   }
 
   test("buildTarget/test: run all tests") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "19", "method": "buildTarget/test", "params": {
          |  "targets": [{ "uri": "$x" }]
@@ -149,7 +150,7 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/test: run one test class") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#foo/Test"
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "20", "method": "buildTarget/test", "params": {
          |  "targets": [{ "uri": "$x" }],
@@ -158,7 +159,7 @@ object BuildServerTest extends AbstractServerTest {
          |    "testClasses": [
          |      {
          |        "target": { "uri": "$x" },
-         |        "classes": ["foo.FooTest"]
+         |        "classes": ["tests.PassingTest"]
          |      }
          |    ]
          |  }
@@ -168,6 +169,36 @@ object BuildServerTest extends AbstractServerTest {
       println(s)
       (s contains """"id":"20"""") &&
       (s contains """"statusCode":1""")
+    })
+  }
+
+  test("buildTarget/compile: report error") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#reportError/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "21", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains s""""buildTarget":{"uri":"$x"}""") &&
+      (s contains """"severity":1""") &&
+      (s contains """"reset":true""")
+    })
+  }
+
+  test("buildTarget/compile: report warning") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#reportWarning/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "22", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      println(s)
+      (s contains s""""buildTarget":{"uri":"$x"}""") &&
+      (s contains """"severity":2""") &&
+      (s contains """"reset":true""")
     })
   }
 
