@@ -12,6 +12,7 @@ import java.io.File
 import java.nio.file.Path
 import Keys._
 import SlashSyntax0._
+import ScopeFilter.Make._
 import Project._ // for tag and inTask()
 import std.TaskExtra._ // for join
 import sbt.coursierint.LMCoursier
@@ -51,23 +52,14 @@ object RemoteCache {
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
-    remoteCacheId := {
-      val compileExtraInc = (Compile / extraIncOptions).value
-      val compileInputs = (Compile / unmanagedSources / inputFileStamps).value
-      val compileCp = (Compile / externalDependencyClasspath / outputFileStamps).value
-      val testExtraInc = (Compile / extraIncOptions).value
-      val testInputs = (Test / unmanagedSources / inputFileStamps).value
-      val testCp = (Test / externalDependencyClasspath / outputFileStamps).value
-      val extraInc = (compileExtraInc.toVector ++ testExtraInc.toVector) flatMap {
-        case (k, v) =>
-          Vector(k, v)
+    remoteCacheId := (Def.taskDyn {
+      val filter =
+        ScopeFilter(configurations = inConfigurations(Compile, Test), tasks = inTasks(packageCache))
+      Def.task {
+        val allHashes = remoteCacheId.all(filter).value
+        combineHash(allHashes.toVector)
       }
-      combineHash(
-        extractHash(compileInputs) ++ extractHash(compileCp) ++ extractHash(testInputs) ++ extractHash(
-          testCp
-        ) ++ extraInc
-      )
-    },
+    }).value,
     remoteCacheIdCandidates := List(remoteCacheId.value),
     remoteCacheProjectId := {
       val o = organization.value
@@ -206,11 +198,20 @@ object RemoteCache {
   ) ++ inConfig(Compile)(packageCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
     ++ inConfig(Test)(packageCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
-  private def packageCacheSettings[A <: RemoteCacheArtifact](
+  def packageCacheSettings[A <: RemoteCacheArtifact](
       cacheArtifact: Def.Initialize[Task[A]]
   ): Seq[Def.Setting[_]] =
     inTask(packageCache)(
       Seq(
+        remoteCacheId := {
+          val inputs = (unmanagedSources / inputFileStamps).value
+          val cp = (externalDependencyClasspath / outputFileStamps).value
+          val extraInc = (extraIncOptions.value) flatMap {
+            case (k, v) =>
+              Vector(k, v)
+          }
+          combineHash(extractHash(inputs) ++ extractHash(cp) ++ extraInc)
+        },
         packageCache.in(Defaults.TaskZero) := {
           val original = packageBin.in(Defaults.TaskZero).value
           val artp = artifactPath.value
