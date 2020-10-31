@@ -1,21 +1,27 @@
 import sbt.internal.remotecache.CustomRemoteCacheArtifact
+import sbt.internal.inc.Analysis
+import complete.DefaultParsers._
+
+lazy val CustomArtifact = config("custom-artifact")
+
+// Reset compiler iterations, necessary because tests run in batch mode
+val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
+val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterations of incremental compilation.")
+
+ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / pushRemoteCacheTo := Some(
+  MavenCache("local-cache", (ThisBuild / baseDirectory).value / "remote-cache")
+)
 
 lazy val root = (project in file("."))
   .configs(CustomArtifact)
   .settings(
     name := "my-project",
-    scalaVersion := "2.12.12",
-    pushRemoteCacheTo := Some(
-      MavenCache("local-cache", (ThisBuild / baseDirectory).value / "remote-cache")
-    ),
-    remoteCacheId := "fixed-id",
-    remoteCacheIdCandidates := Seq("fixed-id"),
     pushRemoteCacheConfiguration := pushRemoteCacheConfiguration.value.withOverwrite(true),
     pushRemoteCacheConfiguration / remoteCacheArtifacts += {
       val art = (CustomArtifact / artifact).value
       val packaged = CustomArtifact / packageCache
       val extractDirectory = (CustomArtifact / sourceManaged).value
-
       CustomRemoteCacheArtifact(art, packaged, extractDirectory, preserveLastModified = false)
     },
     Compile / sourceGenerators += Def.task {
@@ -23,11 +29,27 @@ lazy val root = (project in file("."))
       val output = extractDirectory / "HelloWorld.scala"
       IO.write(output, "class HelloWorld")
       Seq(output)
-    }.taskValue
+    }.taskValue,
+    customArtifactSettings,
+    // test tasks
+    recordPreviousIterations := {
+      val log = streams.value.log
+      CompileState.previousIterations = {
+        val previousAnalysis = (previousCompile in Compile).value.analysis.asScala
+        previousAnalysis match {
+          case None =>
+            log.info("No previous analysis detected")
+            0
+          case Some(a: Analysis) => a.compilations.allCompilations.size
+        }
+      }
+    },
+    checkIterations := {
+      val expected: Int = (Space ~> NatBasic).parsed
+      val actual: Int = ((compile in Compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
+      assert(expected == actual, s"Expected $expected compilations, got $actual")
+    }
   )
-  .settings(customArtifactSettings)
-
-lazy val CustomArtifact = config("custom-artifact")
 
 def customArtifactSettings: Seq[Def.Setting[_]] = {
   val classifier = "custom-artifact"
