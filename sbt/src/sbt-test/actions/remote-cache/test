@@ -13,19 +13,19 @@ $ exists target/scala-2.12/test-classes/MyTest$.class
 $ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
 
 # Compile
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-compile.jar
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-compile.jar.md5
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-compile.jar.sha1
+$ exists r/my-project/my-project_2.12/0.0.0-789740d77fd44aa9/my-project_2.12-0.0.0-789740d77fd44aa9-cached-compile.jar
+$ exists r/my-project/my-project_2.12/0.0.0-789740d77fd44aa9/my-project_2.12-0.0.0-789740d77fd44aa9-cached-compile.jar.md5
+$ exists r/my-project/my-project_2.12/0.0.0-789740d77fd44aa9/my-project_2.12-0.0.0-789740d77fd44aa9-cached-compile.jar.sha1
 
 # Test
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-test.jar
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-test.jar.md5
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-cached-test.jar.sha1
+$ exists r/my-project/my-project_2.12/0.0.0-9cd077da3ad28ae5/my-project_2.12-0.0.0-9cd077da3ad28ae5-cached-test.jar
+$ exists r/my-project/my-project_2.12/0.0.0-9cd077da3ad28ae5/my-project_2.12-0.0.0-9cd077da3ad28ae5-cached-test.jar.md5
+$ exists r/my-project/my-project_2.12/0.0.0-9cd077da3ad28ae5/my-project_2.12-0.0.0-9cd077da3ad28ae5-cached-test.jar.sha1
 
 # Custom artifact
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-custom-artifact.jar
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-custom-artifact.jar.md5
-$ exists remote-cache/my-project/my-project_2.12/0.0.0-b63e5c6efa2d0fd2/my-project_2.12-0.0.0-b63e5c6efa2d0fd2-custom-artifact.jar.sha1
+$ exists r/my-project/my-project_2.12/0.0.0-1497188b634e2cd0/my-project_2.12-0.0.0-1497188b634e2cd0-custom-artifact.jar
+$ exists r/my-project/my-project_2.12/0.0.0-1497188b634e2cd0/my-project_2.12-0.0.0-1497188b634e2cd0-custom-artifact.jar.md5
+$ exists r/my-project/my-project_2.12/0.0.0-1497188b634e2cd0/my-project_2.12-0.0.0-1497188b634e2cd0-custom-artifact.jar.sha1
 
 > clean
 

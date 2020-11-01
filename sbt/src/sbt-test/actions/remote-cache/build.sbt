@@ -10,27 +10,27 @@ val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterati
 
 ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / pushRemoteCacheTo := Some(
-  MavenCache("local-cache", (ThisBuild / baseDirectory).value / "remote-cache")
+  MavenCache("local-cache", (ThisBuild / baseDirectory).value / "r")
 )
 
 lazy val root = (project in file("."))
   .configs(CustomArtifact)
   .settings(
     name := "my-project",
-    pushRemoteCacheConfiguration := pushRemoteCacheConfiguration.value.withOverwrite(true),
-    pushRemoteCacheConfiguration / remoteCacheArtifacts += {
-      val art = (CustomArtifact / artifact).value
-      val packaged = CustomArtifact / packageCache
-      val extractDirectory = (CustomArtifact / sourceManaged).value
-      CustomRemoteCacheArtifact(art, packaged, extractDirectory, preserveLastModified = false)
-    },
+
+    customArtifactSettings,
+    pushRemoteCacheConfiguration / remoteCacheArtifacts += (CustomArtifact / packageCache / remoteCacheArtifact).value,
+
+    Compile / pushRemoteCacheConfiguration := (Compile / pushRemoteCacheConfiguration).value.withOverwrite(true),
+    Test / pushRemoteCacheConfiguration := (Test / pushRemoteCacheConfiguration).value.withOverwrite(true),
+
     Compile / sourceGenerators += Def.task {
       val extractDirectory = (CustomArtifact / sourceManaged).value
       val output = extractDirectory / "HelloWorld.scala"
       IO.write(output, "class HelloWorld")
       Seq(output)
     }.taskValue,
-    customArtifactSettings,
+
     // test tasks
     recordPreviousIterations := {
       val log = streams.value.log
@@ -54,7 +54,14 @@ lazy val root = (project in file("."))
 def customArtifactSettings: Seq[Def.Setting[_]] = {
   val classifier = "custom-artifact"
 
+  def cachedArtifactTask = Def.task {
+    val art = (CustomArtifact / artifact).value
+    val packaged = CustomArtifact / packageCache
+    val extractDirectory = (CustomArtifact / sourceManaged).value
+    CustomRemoteCacheArtifact(art, packaged, extractDirectory, preserveLastModified = false)
+  }
   inConfig(CustomArtifact)(
+    sbt.internal.RemoteCache.configCacheSettings(cachedArtifactTask) ++
     Seq(
       packageOptions := {
         val n = name.value + "-" + classifier

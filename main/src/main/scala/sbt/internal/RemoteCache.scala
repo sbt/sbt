@@ -14,10 +14,15 @@ import Keys._
 import SlashSyntax0._
 import ScopeFilter.Make._
 import Project._ // for tag and inTask()
+
+import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact }
+import org.apache.ivy.core.resolve.DownloadOptions
+import org.apache.ivy.core.report.DownloadStatus
+import org.apache.ivy.plugins.resolver.DependencyResolver
 import std.TaskExtra._ // for join
 import sbt.coursierint.LMCoursier
 import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.Credentials
+import sbt.librarymanagement.ivy.{ Credentials, IvyPaths, UpdateOptions }
 import sbt.librarymanagement.syntax._
 import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
@@ -52,94 +57,43 @@ object RemoteCache {
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
-    remoteCacheId := (Def.taskDyn {
-      val filter =
-        ScopeFilter(configurations = inConfigurations(Compile, Test), tasks = inTasks(packageCache))
+    pushRemoteCache := (Def.taskDyn {
+      val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+      val configs = arts flatMap { art =>
+        art.packaged.scopedKey.scope match {
+          case Scope(_, Select(c), _, _) => Some(c)
+          case _                         => None
+        }
+      }
+      val filter = ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
       Def.task {
-        val allHashes = remoteCacheId.all(filter).value
-        combineHash(allHashes.toVector)
+        val _ = pushRemoteCache.all(filter).value
+        ()
       }
     }).value,
-    remoteCacheIdCandidates := List(remoteCacheId.value),
-    remoteCacheProjectId := {
-      val o = organization.value
-      val m = moduleName.value
-      val id = remoteCacheId.value
-      val c = (projectID / crossVersion).value
-      val v = toVersion(id)
-      ModuleID(o, m, v).cross(c)
-    },
-    pushRemoteCacheConfiguration / publishMavenStyle := true,
-    pushRemoteCacheConfiguration / packagedArtifacts := Def.taskDyn {
-      val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-
-      artifacts
-        .map(a => a.packaged.map(file => (a.artifact, file)))
-        .join
-        .apply(_.join.map(_.toMap))
-    }.value,
+    pullRemoteCache := (Def.taskDyn {
+      val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+      val configs = arts flatMap { art =>
+        art.packaged.scopedKey.scope match {
+          case Scope(_, Select(c), _, _) => Some(c)
+          case _                         => None
+        }
+      }
+      val filter = ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
+      Def.task {
+        val _ = pullRemoteCache.all(filter).value
+        ()
+      }
+    }).value,
     pushRemoteCacheConfiguration / remoteCacheArtifacts := {
       enabledOnly(remoteCacheArtifact.toSettingKey, defaultArtifactTasks).apply(_.join).value
     },
+    pushRemoteCacheConfiguration / publishMavenStyle := true,
     Compile / packageCache / pushRemoteCacheArtifact := true,
     Test / packageCache / pushRemoteCacheArtifact := true,
     Compile / packageCache / artifact := Artifact(moduleName.value, cachedCompileClassifier),
     Test / packageCache / artifact := Artifact(moduleName.value, cachedTestClassifier),
     remoteCachePom / pushRemoteCacheArtifact := true,
-    pushRemoteCacheConfiguration := {
-      Classpaths.publishConfig(
-        (pushRemoteCacheConfiguration / publishMavenStyle).value,
-        Classpaths.deliverPattern(crossTarget.value),
-        if (isSnapshot.value) "integration" else "release",
-        ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-        (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector,
-        (pushRemoteCacheConfiguration / checksums).value.toVector,
-        Classpaths.getPublishTo(pushRemoteCacheTo.value).name,
-        ivyLoggingLevel.value,
-        isSnapshot.value
-      )
-    },
-    pullRemoteCache := {
-      val log = streams.value.log
-      val smi = scalaModuleInfo.value
-      val dr = (pullRemoteCache / dependencyResolution).value
-      val is = (pushRemoteCache / ivySbt).value
-      val t = crossTarget.value / "cache-download"
-      val p = remoteCacheProjectId.value
-      val ids = remoteCacheIdCandidates.value
-      val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-      val applicable = artifacts.filterNot(isPomArtifact)
-      val classifiers = applicable.flatMap(_.artifact.classifier).toVector
-
-      var found = false
-      ids foreach {
-        id: String =>
-          val v = toVersion(id)
-          val modId = p.withRevision(v)
-          if (found) ()
-          else
-            pullFromMavenRepo0(modId, classifiers, smi, is, dr, t, log) match {
-              case Right(xs0) =>
-                val jars = xs0.distinct
-
-                applicable.foreach { art =>
-                  val classifier = art.artifact.classifier
-
-                  findJar(classifier, v, jars) match {
-                    case Some(jar) =>
-                      extractJar(art, jar)
-                      log.info(s"remote cache artifact extracted for $p $classifier")
-
-                    case None =>
-                      log.info(s"remote cache artifact not found for $p $classifier")
-                  }
-                }
-                found = true
-              case Left(unresolvedWarning) =>
-                log.info(s"remote cache not found for ${v}")
-            }
-      }
-    },
     remoteCachePom := {
       val s = streams.value
       val config = (remoteCachePom / makePomConfiguration).value
@@ -156,62 +110,43 @@ object RemoteCache {
     },
     remoteCachePom / remoteCacheArtifact := {
       PomRemoteCacheArtifact((makePom / artifact).value, remoteCachePom)
-    }
+    },
+    remoteCacheResolvers := pushRemoteCacheTo.value.toVector,
   ) ++ inTask(pushRemoteCache)(
     Seq(
+      ivyPaths := IvyPaths(baseDirectory.value, crossTarget.value / "remote-cache"),
       ivyConfiguration := {
-        val other = pushRemoteCacheTo.value.toVector
         val config0 = Classpaths.mkIvyConfiguration.value
         config0
-          .withOtherResolvers(other)
+          .withResolvers(remoteCacheResolvers.value.toVector)
+          .withOtherResolvers(pushRemoteCacheTo.value.toVector)
           .withResolutionCacheDir(crossTarget.value / "alt-resolution")
+          .withPaths(ivyPaths.value)
+          .withUpdateOptions(UpdateOptions().withGigahorse(true))
       },
       ivySbt := {
-        val config0 = ivyConfiguration.value
         Credentials.register(credentials.value, streams.value.log)
+        val config0 = ivyConfiguration.value
         new IvySbt(config0, CustomHttp.okhttpClient.value)
       },
-      ivyModule := {
-        val is = ivySbt.value
-        new is.Module(moduleSettings.value)
-      },
-      moduleSettings := {
-        val smi = scalaModuleInfo.value
-        ModuleDescriptorConfiguration(remoteCacheProjectId.value, projectInfo.value)
-          .withScalaModuleInfo(smi)
-      },
-      pushRemoteCache.in(Defaults.TaskZero) := (Def.task {
-        val s = streams.value
-        val config = pushRemoteCacheConfiguration.value
-        IvyActions.publish(ivyModule.value, config, s.log)
-      } tag (Tags.Publish, Tags.Network)).value
     )
   ) ++ inTask(pullRemoteCache)(
     Seq(
       dependencyResolution := Defaults.dependencyResolutionTask.value,
       csrConfiguration := {
-        val rs = pushRemoteCacheTo.value.toVector
+        val rs = pushRemoteCacheTo.value.toVector ++ remoteCacheResolvers.value.toVector
         LMCoursier.scalaCompilerBridgeConfigurationTask.value
           .withResolvers(rs)
       }
     )
-  ) ++ inConfig(Compile)(packageCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
-    ++ inConfig(Test)(packageCacheSettings(testArtifact(Test, cachedTestClassifier))))
+  ) ++ inConfig(Compile)(configCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
+    ++ inConfig(Test)(configCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
-  def packageCacheSettings[A <: RemoteCacheArtifact](
-      cacheArtifact: Def.Initialize[Task[A]]
+  def configCacheSettings[A <: RemoteCacheArtifact](
+      cacheArtifactTask: Def.Initialize[Task[A]]
   ): Seq[Def.Setting[_]] =
     inTask(packageCache)(
       Seq(
-        remoteCacheId := {
-          val inputs = (unmanagedSources / inputFileStamps).value
-          val cp = (externalDependencyClasspath / outputFileStamps).value
-          val extraInc = (extraIncOptions.value) flatMap {
-            case (k, v) =>
-              Vector(k, v)
-          }
-          combineHash(extractHash(inputs) ++ extractHash(cp) ++ extraInc)
-        },
         packageCache.in(Defaults.TaskZero) := {
           val original = packageBin.in(Defaults.TaskZero).value
           val artp = artifactPath.value
@@ -229,10 +164,128 @@ object RemoteCache {
           // }
           artp
         },
-        remoteCacheArtifact := cacheArtifact.value,
+        pushRemoteCacheArtifact := true,
+        remoteCacheArtifact := cacheArtifactTask.value,
         packagedArtifact := (artifact.value -> packageCache.value),
         artifactPath := Defaults.artifactPathSetting(artifact).value
       )
+    ) ++ inTask(pushRemoteCache)(
+      Seq(
+        moduleSettings := {
+          val smi = scalaModuleInfo.value
+          ModuleDescriptorConfiguration(remoteCacheProjectId.value, projectInfo.value)
+            .withScalaModuleInfo(smi)
+        },
+        pushRemoteCache.in(Defaults.TaskZero) := (Def.task {
+          val s = streams.value
+          val config = pushRemoteCacheConfiguration.value
+          val is = (pushRemoteCache / ivySbt).value
+          val m = new is.Module(moduleSettings.value)
+          IvyActions.publish(m, config, s.log)
+        } tag (Tags.Publish, Tags.Network)).value,
+      )
+    ) ++ Seq(
+      remoteCacheIdCandidates := List(remoteCacheId.value),
+      remoteCacheProjectId := {
+        val o = organization.value
+        val m = moduleName.value
+        val id = remoteCacheId.value
+        val c = (projectID / crossVersion).value
+        val v = toVersion(id)
+        ModuleID(o, m, v).cross(c)
+      },
+      remoteCacheId := {
+        val inputs = (unmanagedSources / inputFileStamps).value
+        val cp = (externalDependencyClasspath / outputFileStamps).?.value.getOrElse(Nil)
+        val extraInc = (extraIncOptions.value) flatMap {
+          case (k, v) =>
+            Vector(k, v)
+        }
+        combineHash(extractHash(inputs) ++ extractHash(cp) ++ extraInc)
+      },
+      pushRemoteCacheConfiguration := {
+        Classpaths.publishConfig(
+          (pushRemoteCacheConfiguration / publishMavenStyle).value,
+          Classpaths.deliverPattern(crossTarget.value),
+          if (isSnapshot.value) "integration" else "release",
+          ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
+          (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector,
+          (pushRemoteCacheConfiguration / checksums).value.toVector,
+          Classpaths.getPublishTo(pushRemoteCacheTo.value).name,
+          ivyLoggingLevel.value,
+          isSnapshot.value
+        )
+      },
+      pushRemoteCacheConfiguration / packagedArtifacts := Def.taskDyn {
+        val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+        artifacts
+          .map(a => a.packaged.map(file => (a.artifact, file)))
+          .join
+          .apply(_.join.map(_.toMap))
+      }.value,
+      pushRemoteCacheConfiguration / remoteCacheArtifacts := {
+        List((packageCache / remoteCacheArtifact).value)
+      },
+      pullRemoteCache := {
+        import scala.collection.JavaConverters._
+        val log = streams.value.log
+        val r = remoteCacheResolvers.value.head
+        val p = remoteCacheProjectId.value
+        val ids = remoteCacheIdCandidates.value
+        val is = (pushRemoteCache / ivySbt).value
+        val m = new is.Module((pushRemoteCache / moduleSettings).value)
+        val smi = scalaModuleInfo.value
+        val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+        val nonPom = artifacts.filterNot(isPomArtifact).toVector
+        m.withModule(log) {
+          case (ivy, md, _) =>
+            val resolver = ivy.getSettings.getResolver(r.name)
+            if (resolver eq null) sys.error(s"undefined resolver '${r.name}'")
+            val cross = CrossVersion(p, smi)
+            val crossf: String => String = cross.getOrElse(identity _)
+            var found = false
+            ids foreach {
+              id: String =>
+                val v = toVersion(id)
+                val modId = p.withRevision(v).withName(crossf(p.name))
+                val ivyId = IvySbt.toID(modId)
+                if (found) ()
+                else {
+                  val rawa = nonPom map { _.artifact }
+                  val seqa = CrossVersion.substituteCross(rawa, cross)
+                  val as = seqa map { a =>
+                    val extra = a.classifier match {
+                      case Some(c) => Map("e:classifier" -> c)
+                      case None    => Map.empty
+                    }
+                    new DefaultArtifact(ivyId, null, a.name, a.`type`, a.extension, extra.asJava)
+                  }
+                  pullFromMavenRepo0(as, resolver, log) match {
+                    case Right(xs0) =>
+                      val jars = xs0.distinct
+
+                      nonPom.foreach { art =>
+                        val classifier = art.artifact.classifier
+
+                        findJar(classifier, v, jars) match {
+                          case Some(jar) =>
+                            extractJar(art, jar)
+                            log.info(s"remote cache artifact extracted for $p $classifier")
+
+                          case None =>
+                            log.info(s"remote cache artifact not found for $p $classifier")
+                        }
+                      }
+                      found = true
+                    case Left(e) =>
+                      log.info(s"remote cache not found for ${v}")
+                      log.debug(e.getMessage)
+                  }
+                }
+            }
+            ()
+        }
+      },
     )
 
   def isPomArtifact(artifact: RemoteCacheArtifact): Boolean =
@@ -268,26 +321,35 @@ object RemoteCache {
 
   private def toVersion(v: String): String = s"0.0.0-$v"
 
+  private lazy val doption = new DownloadOptions
   private def pullFromMavenRepo0(
-      modId: ModuleID,
-      classifiers: Vector[String],
-      smi: Option[ScalaModuleInfo],
-      is: IvySbt,
-      dr: DependencyResolution,
-      cacheDir: File,
+      artifacts: Vector[IArtifact],
+      r: DependencyResolver,
       log: Logger
-  ): Either[UnresolvedWarning, Vector[File]] = {
-    def dummyModule(deps: Vector[ModuleID]): ModuleDescriptorConfiguration = {
-      val module = ModuleID("com.example.temp", "fake", "0.1.0-SNAPSHOT")
-      val info = ModuleInfo("fake", "", None, None, Vector(), "", None, None, Vector())
-      ModuleDescriptorConfiguration(module, info)
-        .withScalaModuleInfo(smi)
-        .withDependencies(deps)
+  ): Either[Throwable, Vector[File]] = {
+    try {
+      val files = r.download(artifacts.toArray, doption).getArtifactsReports.toVector map {
+        report =>
+          if (report == null) sys.error(s"failed to download $artifacts: " + r.toString)
+          else
+            report.getDownloadStatus match {
+              case DownloadStatus.NO =>
+                val o = report.getArtifactOrigin
+                if (o.isLocal) {
+                  val localFile = new File(o.getLocation)
+                  if (!localFile.exists) sys.error(s"$localFile doesn't exist")
+                  else localFile
+                } else report.getLocalFile
+              case DownloadStatus.SUCCESSFUL =>
+                report.getLocalFile
+              case DownloadStatus.FAILED =>
+                sys.error(s"failed to download $artifacts: " + r.toString)
+            }
+      }
+      Right(files)
+    } catch {
+      case e: Throwable => Left(e)
     }
-    val deps = classifiers.map(modId.classifier)
-    val mconfig = dummyModule(deps)
-    val m = new is.Module(mconfig)
-    dr.retrieve(m, cacheDir, log)
   }
 
   private def findJar(classifier: Option[String], ver: String, jars: Vector[File]): Option[File] = {
@@ -345,7 +407,7 @@ object RemoteCache {
   }
 
   private def defaultArtifactTasks: Seq[TaskKey[File]] =
-    Seq(remoteCachePom, Compile / packageCache, Test / packageCache)
+    Seq(Compile / packageCache, Test / packageCache)
 
   private def enabledOnly[A](
       key: SettingKey[A],
