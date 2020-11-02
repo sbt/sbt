@@ -84,7 +84,7 @@ for:
   - path: client\target\bin\sbtn.exe
     name: sbtn.exe
   install:
-    - cinst jdk8 -params 'installdir=C:\\jdk8'
+    - cinst adoptopenjdk8 -params 'installdir=C:\\jdk8'
     - SET CI=true
       #- choco install windows-sdk-7.1 kb2519277
     - call "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd"
@@ -132,7 +132,7 @@ for:
     except:
       - build-graal
   install:
-    - cinst jdk8 -params 'installdir=C:\\jdk8'
+    - cinst adoptopenjdk8 -params 'installdir=C:\\jdk8'
     - SET JAVA_HOME=C:\jdk8
     - SET PATH=C:\jdk8\bin;%PATH%
     - SET CI=true
