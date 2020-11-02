@@ -30,6 +30,13 @@ lazy val root = (project in file("."))
       IO.write(output, "class HelloWorld")
       Seq(output)
     }.taskValue,
+    // bring back fixed-id because JDK 8/11 would be different intentionally
+    Compile / remoteCacheId := "fixed-id",
+    Compile / remoteCacheIdCandidates := Seq((Compile / remoteCacheId).value),
+    Test / remoteCacheId := "fixed-id",
+    Test / remoteCacheIdCandidates := Seq((Test / remoteCacheId).value),
+    CustomArtifact / remoteCacheId := "fixed-id",
+    CustomArtifact / remoteCacheIdCandidates := Seq((CustomArtifact / remoteCacheId).value),
 
     // test tasks
     recordPreviousIterations := {
