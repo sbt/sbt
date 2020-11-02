@@ -110,7 +110,7 @@ val root = (project in file(".")).
       // TODO - GPG Trust validation.
       file
     },
-    sbtnVersion := "1.4.0",
+    sbtnVersion := "1.4.2",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
