@@ -50,6 +50,7 @@ private[sbt] final class CommandExchange {
     sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
+  private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
   private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
@@ -188,6 +189,7 @@ private[sbt] final class CommandExchange {
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
     lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
+    lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
@@ -204,7 +206,6 @@ private[sbt] final class CommandExchange {
       subscribe(channel)
     }
     if (server.isEmpty && firstInstance.get) {
-      val portfile = s.baseDir / "project" / "target" / "active.json"
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
       val serverDir =
         sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(s) / "server"
@@ -231,6 +232,7 @@ private[sbt] final class CommandExchange {
         case Some(Success(())) =>
           // remember to shutdown only when the server comes up
           server = Some(serverInstance)
+          s.log.info("started sbt server")
         case Some(Failure(_: AlreadyRunningException)) =>
           s.log.warn(
             "sbt server could not start because there's another instance of sbt running on this build."
@@ -253,6 +255,27 @@ private[sbt] final class CommandExchange {
       }
 
       s.get(Keys.bootServerSocket).foreach(_.close())
+    }
+    if (server.isEmpty && !monitoringActiveJson.get) {
+      s.get(sbt.nio.Keys.globalFileTreeRepository) match {
+        case Some(r) =>
+          r.register(sbt.nio.file.Glob(portfile)) match {
+            case Right(o) =>
+              o.addObserver { event =>
+                if (!event.exists) {
+                  firstInstance.set(true)
+                  monitoringActiveJson.set(false)
+                  // FailureWall is effectively a no-op command that will
+                  // cause shell to re-run which should start the server
+                  commandQueue.add(Exec(BasicCommandStrings.FailureWall, None))
+                  o.close()
+                }
+              }
+              monitoringActiveJson.set(true)
+            case _ =>
+          }
+        case _ =>
+      }
     }
     s.remove(Keys.bootServerSocket)
   }
