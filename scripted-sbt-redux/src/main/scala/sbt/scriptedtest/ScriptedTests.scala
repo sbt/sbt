@@ -96,12 +96,22 @@ final class ScriptedTests(
   }
 
   /** Returns a sequence of test runners that have to be applied in the call site. */
+  @deprecated("use the variant that takes a reuseServer parameter", "1.4.3")
   def batchScriptedRunner(
       testGroupAndNames: Seq[(String, String)],
       prescripted: File => Unit,
       sbtInstances: Int,
       prop: RemoteSbtCreatorProp,
       log: Logger
+  ): Seq[TestRunner] =
+    batchScriptedRunner(testGroupAndNames, prescripted, sbtInstances, prop, log, false)
+  def batchScriptedRunner(
+      testGroupAndNames: Seq[(String, String)],
+      prescripted: File => Unit,
+      sbtInstances: Int,
+      prop: RemoteSbtCreatorProp,
+      log: Logger,
+      reuseServer: Boolean,
   ): Seq[TestRunner] = {
     // Test group and names may be file filters (like '*')
     val groupAndNameDirs = {
@@ -141,7 +151,7 @@ final class ScriptedTests(
 
       def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests
-          .grouped(batchSize)
+          .grouped(if (reuseServer) batchSize else 1)
           .map { batch => () =>
             IO.withTemporaryDirectory {
               runBatchedTests(batch, _, prescripted, prop, log)
@@ -385,12 +395,13 @@ class ScriptedRunner {
       launchOpts,
       prescripted = new java.util.ArrayList[File],
       LauncherBased(launcherJar),
-      1
+      1,
+      false,
     )
   }
 
   /**
-   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
+   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x etc.
    * Removing this method will break scripted and sbt plugin cross building.
    * See https://github.com/sbt/sbt/issues/3245
    * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
@@ -412,12 +423,42 @@ class ScriptedRunner {
       launchOpts,
       prescripted,
       LauncherBased(launcherJar),
-      1
+      1,
+      false
     )
   }
 
   /**
-   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
+   * This is the entry point used by SbtPlugin in sbt 1.4.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
+   */
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      reuseServer: Boolean
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      1,
+      reuseServer,
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x etc.
    * Removing this method will break scripted and sbt plugin cross building.
    * See https://github.com/sbt/sbt/issues/3245
    * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
@@ -441,6 +482,37 @@ class ScriptedRunner {
       prescripted,
       LauncherBased(launcherJar),
       instance,
+      false
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 1.4.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   * See https://github.com/sbt/sbt/blob/v1.2.8/main/src/main/scala/sbt/ScriptedPlugin.scala#L109-L113
+   */
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instance: Int,
+      reuseServer: Boolean,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      instance,
+      reuseServer
     )
   }
 
@@ -466,9 +538,11 @@ class ScriptedRunner {
       launchOpts,
       prescripted,
       RunFromSourceBased(scalaVersion, sbtVersion, classpath),
-      instances
+      instances,
+      true,
     )
 
+  @deprecated("use the variant that takes the reuseServer parameter", "1.4.3")
   private[sbt] def runInParallel(
       baseDir: File,
       bufferLog: Boolean,
@@ -477,7 +551,29 @@ class ScriptedRunner {
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
-      instances: Int
+      instances: Int,
+  ): Unit =
+    runInParallel(
+      baseDir,
+      bufferLog,
+      tests,
+      logger,
+      launchOpts,
+      prescripted,
+      prop,
+      instances,
+      false
+    )
+  private[sbt] def runInParallel(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: Logger,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int,
+      reuseServer: Boolean,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, launchOpts)
@@ -492,7 +588,7 @@ class ScriptedRunner {
     val scriptedTests =
       get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
     val scriptedRunners =
-      runner.batchScriptedRunner(scriptedTests, addTestFile, instances, prop, logger)
+      runner.batchScriptedRunner(scriptedTests, addTestFile, instances, prop, logger, reuseServer)
     val parallelRunners = scriptedRunners.toParArray
     parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
     runAll(parallelRunners)

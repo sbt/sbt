@@ -47,6 +47,7 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedLaunchOpts =
       settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
     val scriptedDependencies = taskKey[Unit]("")
+    val scriptedReuseServer = settingKey[Boolean]("")
     val scripted = inputKey[Unit]("")
   }
   import autoImport._
@@ -80,6 +81,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedParallelInstances := 1,
     scriptedBatchExecution := false,
     scriptedRun := scriptedRunTask.value,
+    scriptedReuseServer := true,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
       val analysis = (Keys.compile in Test).value
@@ -112,9 +114,9 @@ object ScriptedPlugin extends AutoPlugin {
     val clazz = scriptedTests.value.getClass
     val method =
       if (scriptedBatchExecution.value)
-        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
+        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls, bCls)
       else
-        clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
+        clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls, bCls)
 
     Def.task(method)
   }
@@ -188,10 +190,22 @@ object ScriptedPlugin extends AutoPlugin {
       val opts = scriptedLaunchOpts.value.toArray
       val empty = new java.util.ArrayList[File]()
       val instances = Int box scriptedParallelInstances.value
+      val reuseServer = Boolean box scriptedReuseServer.value
 
       if (scriptedBatchExecution.value)
-        method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)
-      else method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty)
+        method.invoke(
+          scriptedInstance,
+          dir,
+          log,
+          args.toArray,
+          launcher,
+          opts,
+          empty,
+          instances,
+          reuseServer
+        )
+      else
+        method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, reuseServer)
       ()
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
   }
