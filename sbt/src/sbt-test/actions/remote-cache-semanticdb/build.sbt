@@ -10,8 +10,9 @@ pushRemoteCacheTo := Some(
   MavenCache("local-cache", (ThisBuild / baseDirectory).value / "remote-cache-semanticdb")
 )
 
-remoteCacheId := "fixed-id"
-
-remoteCacheIdCandidates := Seq(remoteCacheId.value)
-
-pushRemoteCacheConfiguration := pushRemoteCacheConfiguration.value.withOverwrite(true)
+Compile / remoteCacheId := "fixed-id"
+Compile / remoteCacheIdCandidates := Seq((Compile / remoteCacheId).value)
+Test / remoteCacheId := "fixed-id"
+Test / remoteCacheIdCandidates := Seq((Test / remoteCacheId).value)
+Compile / pushRemoteCacheConfiguration := (Compile / pushRemoteCacheConfiguration).value.withOverwrite(true)
+Test / pushRemoteCacheConfiguration := (Test / pushRemoteCacheConfiguration).value.withOverwrite(true)

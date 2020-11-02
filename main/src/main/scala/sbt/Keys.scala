@@ -386,6 +386,7 @@ object Keys {
   val pushRemoteCacheArtifact = settingKey[Boolean]("Enables publishing an artifact to remote cache.")
   val pushRemoteCacheConfiguration = taskKey[PublishConfiguration]("")
   val pushRemoteCacheTo = settingKey[Option[Resolver]]("The resolver to publish remote cache to.")
+  val remoteCacheResolvers = settingKey[Seq[Resolver]]("Resolvers for remote cache.")
   val remoteCachePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.")
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
   val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)

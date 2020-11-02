@@ -23,7 +23,7 @@ matrix:
   include:
     - env:
         - SBT_LOCAL=true
-        - SBT_VERSION_PROP=-Dsbt.version=1.4.1-SNAPSHOT
+        - SBT_VERSION_PROP=-Dsbt.version=1.4.2-SNAPSHOT
         - TRAVIS_JDK=adopt@1.8.0-222
         - SBT_CMD="++$SCALA_213; $UTIL_TESTS; ++$SCALA_212; $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
 
