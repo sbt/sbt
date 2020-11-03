@@ -376,7 +376,7 @@ class ScriptedRunner {
       launchOpts: Array[String],
   ): Unit = {
     val logger = TestConsoleLogger()
-    runInParallel(
+    run(
       resourceBaseDirectory,
       bufferLog,
       tests,
@@ -384,7 +384,8 @@ class ScriptedRunner {
       launchOpts,
       prescripted = new java.util.ArrayList[File],
       LauncherBased(launcherJar),
-      1
+      1,
+      parallelExecution = false,
     )
   }
 
@@ -403,7 +404,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
   ): Unit = {
     val logger = TestConsoleLogger()
-    runInParallel(
+    run(
       resourceBaseDirectory,
       bufferLog,
       tests,
@@ -411,7 +412,8 @@ class ScriptedRunner {
       launchOpts,
       prescripted,
       LauncherBased(launcherJar),
-      1
+      Int.MaxValue,
+      parallelExecution = false,
     )
   }
 
@@ -477,6 +479,18 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
       instances: Int
+  ) = run(baseDir, bufferLog, tests, logger, launchOpts, prescripted, prop, instances, true)
+
+  private[this] def run(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: Logger,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int,
+      parallelExecution: Boolean,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, launchOpts)
@@ -490,11 +504,17 @@ class ScriptedRunner {
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests =
       get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
+    // Choosing Int.MaxValue will make the groupSize 1 in batchScriptedRunner
+    val groupCount = if (parallelExecution) instances else Int.MaxValue
     val scriptedRunners =
-      runner.batchScriptedRunner(scriptedTests, addTestFile, instances, prop, logger)
-    val parallelRunners = scriptedRunners.toParArray
-    parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
-    runAll(parallelRunners)
+      runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
+    if (parallelExecution && instances > 1) {
+      val parallelRunners = scriptedRunners.toParArray
+      parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
+      runAll(parallelRunners)
+    } else {
+      runAll(scriptedRunners)
+    }
   }
   def runInParallel(
       baseDir: File,
