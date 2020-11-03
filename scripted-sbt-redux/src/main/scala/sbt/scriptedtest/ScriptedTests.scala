@@ -535,8 +535,10 @@ class ScriptedRunner {
       baseDirectory: File,
       accept: ScriptedTest => Boolean,
       log: Logger,
-  ): Seq[ScriptedTest] =
-    if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
+  ): Seq[ScriptedTest] = {
+    val unsorted = if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
+    unsorted.sortBy(t => (t.group, t.name))
+  }
 
   @deprecated("No longer used", "1.1.0")
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =
