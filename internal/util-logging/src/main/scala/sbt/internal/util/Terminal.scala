@@ -317,7 +317,7 @@ object Terminal {
     props
       .map(_.color)
       .orElse(isColorEnabledProp)
-      .getOrElse((hasConsole && !isDumbTerminal && logFormatEnabled.getOrElse(true)) || isCI)
+      .getOrElse(logFormatEnabled.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI))
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
