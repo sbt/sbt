@@ -10,11 +10,6 @@ $ exists target/scala-2.12/test-classes/MyTest$.class
 $ exists target/scala-2.12/test-classes/META-INF/semanticdb/src/test/scala/MyTest.scala.semanticdb
 $ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
 
-# Pom file
-$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom
-$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom.md5
-$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id.pom.sha1
-
 # Compile
 $ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar
 $ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar.md5

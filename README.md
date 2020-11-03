@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/sbt/sbt.svg?branch=develop)](https://travis-ci.org/sbt/sbt)
+[![Build Status](https://travis-ci.com/sbt/sbt.svg?branch=develop)](https://travis-ci.com/github/sbt/sbt)
 [![Latest version](https://img.shields.io/github/tag/sbt/sbt.svg)](https://index.scala-lang.org/sbt/sbt)
 [![Gitter Chat](https://badges.gitter.im/sbt/sbt.svg)](https://gitter.im/sbt/sbt)
 

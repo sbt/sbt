@@ -20,11 +20,13 @@ object JoinThread {
           t.interrupt()
           t.join(10)
         } catch { case e: InterruptedException => exception = Some(e) }
-        if (t.isAlive) impl()
+        if (t.isAlive && !deadline.isOverdue) impl()
       }
       impl()
-      if (t.isAlive) System.err.println(s"Unable to join thread $t after $duration")
-      exception.foreach(throw _)
+      if (t.isAlive) {
+        System.err.println(s"Unable to join thread $t after $duration")
+        exception.foreach(throw _)
+      }
     }
   }
 }

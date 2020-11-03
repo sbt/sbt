@@ -38,6 +38,7 @@ object LintUnused {
       onUnload,
       sbt.nio.Keys.watchTriggers,
       serverConnectionType,
+      serverIdleTimeout,
       shellPrompt,
     ),
     includeLintKeys := Set(

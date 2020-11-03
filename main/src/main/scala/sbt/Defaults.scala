@@ -21,6 +21,7 @@ import org.apache.logging.log4j.core.{ Appender => XAppender }
 import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
 import sbt.Keys._
+import sbt.OptionSyntax._
 import sbt.Project.{
   inConfig,
   inScope,
@@ -91,6 +92,7 @@ import xsbti.{ FileConverter, Position }
 
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
+import scala.util.Try
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
@@ -389,6 +391,8 @@ object Defaults extends BuildCommon {
       canonicalInput :== true,
       echoInput :== true,
       terminal := state.value.get(terminalKey).getOrElse(Terminal(ITerminal.get)),
+      InstallSbtn.installSbtn := InstallSbtn.installSbtnImpl.evaluated,
+      InstallSbtn.installSbtn / aggregate := false,
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
@@ -415,7 +419,7 @@ object Defaults extends BuildCommon {
     sourcePositionMappers ++= {
       val fc = fileConverter.value
       if (reportAbsolutePath.value) {
-        List(toAbsoluteSourceMapper(fc))
+        List(toAbsoluteSourceMapper(fc) _)
       } else Nil
     },
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
@@ -464,13 +468,21 @@ object Defaults extends BuildCommon {
     },
   )
 
-  private[sbt] def toAbsoluteSourceMapper(fc: FileConverter): Position => Option[Position] = {
-    pos =>
-      val newPath: Optional[String] = pos.sourcePath
-        .map { id =>
-          fc.toPath(VirtualFileRef.of(id)).toAbsolutePath.toString
-        }
-      Some(
+  private[sbt] def toAbsoluteSourceMapper(fc: FileConverter)(pos: Position): Option[Position] = {
+    def isValid(path: String): Boolean = {
+      Try(Paths.get(path)).map(_ => true).getOrElse(false)
+    }
+
+    val newPath: Option[String] = pos
+      .sourcePath()
+      .asScala
+      .filter(isValid)
+      .map { path =>
+        fc.toPath(VirtualFileRef.of(path)).toAbsolutePath.toString
+      }
+
+    newPath
+      .map { path =>
         new Position {
           override def line(): Optional[Integer] = pos.line()
 
@@ -482,11 +494,12 @@ object Defaults extends BuildCommon {
 
           override def pointerSpace(): Optional[String] = pos.pointerSpace()
 
-          override def sourcePath(): Optional[String] = newPath
+          override def sourcePath(): Optional[String] = Optional.of(path)
 
           override def sourceFile(): Optional[File] = pos.sourceFile()
         }
-      )
+      }
+      .orElse(Some(pos))
   }
 
   // csrCacheDirectory is scoped to ThisBuild to allow customization.
@@ -2519,6 +2532,14 @@ object Classpaths {
         excludeFilter in unmanagedJars value
       )
     ).map(exportClasspath) ++ Seq(
+      externalDependencyClasspath / outputFileStamps := {
+        val stamper = timeWrappedStamper.value
+        val converter = fileConverter.value
+        externalDependencyClasspath.value flatMap { file0 =>
+          val p = file0.data.toPath
+          FileStamp(stamper.library(converter.toVirtualFile(p))).map(p -> _)
+        }
+      },
       dependencyClasspathFiles := data(dependencyClasspath.value).map(_.toPath),
       dependencyClasspathFiles / outputFileStamps := {
         val stamper = timeWrappedStamper.value

@@ -9,6 +9,7 @@ package sbt.internal.client
 
 import java.io.{ File, InputStream, OutputStream }
 import java.net.Socket
+import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.Exit
 import sbt.io.syntax._
@@ -18,18 +19,37 @@ import scala.sys.process.Process
 import scala.util.control.NonFatal
 
 class BspClient private (sbtServer: Socket) {
-  private val lock = new AnyRef
-  private var terminated = false
+  private def run(): Exit = Exit(BspClient.bspRun(sbtServer))
+}
 
-  private def transferTo(input: InputStream, output: OutputStream): Thread = {
+object BspClient {
+  private[sbt] def bspRun(sbtServer: Socket): Int = {
+    val lock = new AnyRef
+    val terminated = new AtomicBoolean(false)
+    transferTo(terminated, lock, sbtServer.getInputStream, System.out).start()
+    transferTo(terminated, lock, System.in, sbtServer.getOutputStream).start()
+    try {
+      lock.synchronized {
+        while (!terminated.get) lock.wait()
+      }
+      0
+    } catch { case _: Throwable => 1 } finally sbtServer.close()
+  }
+
+  private[sbt] def transferTo(
+      terminated: AtomicBoolean,
+      lock: AnyRef,
+      input: InputStream,
+      output: OutputStream
+  ): Thread = {
     val thread = new Thread {
       override def run(): Unit = {
         val buffer = Array.ofDim[Byte](1024)
         try {
-          while (!terminated) {
+          while (!terminated.get) {
             val size = input.read(buffer)
             if (size == -1) {
-              terminated = true
+              terminated.set(true)
             } else {
               output.write(buffer, 0, size)
               output.flush()
@@ -38,10 +58,11 @@ class BspClient private (sbtServer: Socket) {
           input.close()
           output.close()
         } catch {
-          case NonFatal(_) => ()
+          case _: InterruptedException => terminated.set(true)
+          case NonFatal(_)             => ()
         } finally {
           lock.synchronized {
-            terminated = true
+            terminated.set(true)
             lock.notify()
           }
         }
@@ -50,24 +71,6 @@ class BspClient private (sbtServer: Socket) {
     thread.setDaemon(true)
     thread
   }
-
-  private def run(): Exit = {
-    try {
-      transferTo(sbtServer.getInputStream, System.out).start()
-      transferTo(System.in, sbtServer.getOutputStream).start()
-
-      lock.synchronized {
-        while (!terminated) lock.wait()
-      }
-
-      Exit(0)
-    } catch {
-      case NonFatal(_) => Exit(1)
-    }
-  }
-}
-
-object BspClient {
   def run(configuration: xsbti.AppConfiguration): Exit = {
     val baseDirectory = configuration.baseDirectory
     val portFile = baseDirectory / "project" / "target" / "active.json"

@@ -314,7 +314,10 @@ object Terminal {
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
-    props.map(_.color).orElse(isColorEnabledProp).getOrElse((hasConsole && !isDumbTerminal) || isCI)
+    props
+      .map(_.color)
+      .orElse(isColorEnabledProp)
+      .getOrElse((hasConsole && !isDumbTerminal && logFormatEnabled.getOrElse(true)) || isCI)
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -927,7 +930,14 @@ object Terminal {
       }
       override def flush(): Unit = combinedOutputStream.flush()
     }
-    private def doWrite(bytes: Array[Byte]): Unit = withPrintStream { ps =>
+    private def doWrite(rawBytes: Array[Byte]): Unit = withPrintStream { ps =>
+      val (toWrite, len) =
+        if (rawBytes.contains(27.toByte)) {
+          if (!isAnsiSupported || !isColorEnabled)
+            EscHelpers.strip(rawBytes, stripAnsi = !isAnsiSupported, stripColor = !isColorEnabled)
+          else (rawBytes, rawBytes.length)
+        } else (rawBytes, rawBytes.length)
+      val bytes = if (len < toWrite.length) toWrite.take(len) else toWrite
       progressState.write(TerminalImpl.this, bytes, ps, hasProgress.get && !rawMode.get)
     }
     override private[sbt] val printStream: PrintStream = new LinePrintStream(outputStream)

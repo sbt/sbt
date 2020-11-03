@@ -7,6 +7,8 @@
 
 package sbt.internal.server
 
+import java.nio.file.Path
+
 import sbt.StandardMain
 import sbt.internal.bsp._
 import sbt.internal.util.ManagedLogger
@@ -69,7 +71,7 @@ final class BuildServerReporterImpl(
   import sbt.internal.inc.JavaInterfaceUtil._
 
   private lazy val exchange = StandardMain.exchange
-  private val problemsByFile = mutable.Map[VirtualFileRef, Vector[Diagnostic]]()
+  private val problemsByFile = mutable.Map[Path, Vector[Diagnostic]]()
 
   override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
     for {
@@ -90,9 +92,8 @@ final class BuildServerReporterImpl(
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
     for (source <- sources) {
-      val ref = VirtualFileRef.of(source.id())
-      val diagnostics = problemsByFile.getOrElse(ref, Vector())
       val filePath = converter.toPath(source)
+      val diagnostics = problemsByFile.getOrElse(filePath, Vector())
       val params = PublishDiagnosticsParams(
         textDocument = TextDocumentIdentifier(filePath.toUri),
         buildTarget,
@@ -106,14 +107,13 @@ final class BuildServerReporterImpl(
 
   protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
-      path <- problem.position().sourcePath.toOption
-      source <- problem.position.sourceFile.toOption
+      id <- problem.position.sourcePath.toOption
       diagnostic <- toDiagnostic(problem)
     } {
-      val fileId = VirtualFileRef.of(path)
-      problemsByFile(fileId) = problemsByFile.getOrElse(fileId, Vector()) :+ diagnostic
+      val filePath = converter.toPath(VirtualFileRef.of(id))
+      problemsByFile(filePath) = problemsByFile.getOrElse(filePath, Vector()) :+ diagnostic
       val params = PublishDiagnosticsParams(
-        TextDocumentIdentifier(source.toURI),
+        TextDocumentIdentifier(filePath.toUri),
         buildTarget,
         originId = None,
         Vector(diagnostic),
