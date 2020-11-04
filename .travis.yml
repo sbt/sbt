@@ -43,6 +43,7 @@ script:
   - sbt -Dsbt.io.virtual=false $SBT_VERSION_PROP -Dsbt.ci=true -J-XX:ReservedCodeCacheSize=128m -J-Xmx800M -J-Xms800M -J-server "$SBT_CMD"
 
 before_cache:
+  - find $HOME/.cache/coursier/v1 -name "scalatest_2.11-3.0.5.jar" -delete
   - find $HOME/.cache/coursier/v1 -name "ivydata-*.properties" -delete
   - find $HOME/.ivy2              -name "ivydata-*.properties" -delete
   - find $HOME/.sbt               -name "*.lock"               -delete
