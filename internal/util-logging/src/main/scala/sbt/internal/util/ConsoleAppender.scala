@@ -460,8 +460,7 @@ trait Appender extends AutoCloseable {
       // according to https://github.com/sbt/sbt/issues/5608, sometimes we get a null message
       if (message == null) ()
       else {
-        val len =
-          labelColor.length + label.length + messageColor.length + reset.length * 3 + ClearScreenAfterCursor.length
+        val len = labelColor.length + label.length + messageColor.length + reset.length * 3
         val builder: StringBuilder = new StringBuilder(len)
         message.linesIterator.foreach { line =>
           builder.ensureCapacity(len + line.length + 4)
@@ -477,7 +476,6 @@ trait Appender extends AutoCloseable {
           fmted(labelColor, label)
           builder.append("] ")
           fmted(messageColor, line)
-          if (ansiCodesSupported) builder.append(ClearScreenAfterCursor)
           write(builder.toString)
         }
       }
@@ -495,7 +493,7 @@ trait Appender extends AutoCloseable {
     // the output may have unwanted colors but it would still be legible. This should
     // only be relevant if the log message string itself contains ansi escape sequences
     // other than color codes which is very unlikely.
-    val toWrite = if (!ansiCodesSupported || !useFormat && msg.getBytes.contains(27.toByte)) {
+    val toWrite = if ((!ansiCodesSupported || !useFormat) && msg.getBytes.contains(27.toByte)) {
       val (bytes, len) =
         EscHelpers.strip(msg.getBytes, stripAnsi = !ansiCodesSupported, stripColor = !useFormat)
       new String(bytes, 0, len)
