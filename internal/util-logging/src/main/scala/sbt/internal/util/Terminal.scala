@@ -306,9 +306,7 @@ object Terminal {
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
-  private[this] lazy val superShellEnabled = sys.props.get("sbt.supershell").map(_ == "true")
-  private[sbt] lazy val isAnsiSupported: Boolean =
-    logFormatEnabled.orElse(superShellEnabled).getOrElse(useColorDefault)
+  private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
   private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
@@ -754,7 +752,7 @@ object Terminal {
   private[this] def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
     val newValue =
-      if (!isAnsiSupported) "none"
+      if (!isAnsiSupported && System.getProperty("sbt.io.virtual", "") == "false") "none"
       else
         System.getProperty(terminalProperty) match {
           case "jline.UnixTerminal"                             => "unix"
