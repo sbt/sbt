@@ -11,6 +11,12 @@ lazy val sbtOfflineInstall =
     case "false" | "0" => false
     case _             => false
   }
+lazy val sbtIncludeSbtn =
+  sys.props.getOrElse("sbt.build.includesbtn", sys.env.getOrElse("sbt.build.includesbtn", "true")) match {
+    case "true" | "1"  => true
+    case "false" | "0" => false
+    case _             => false
+  }
 lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
         sys.error("-Dsbt.build.version must be set")
       }))
@@ -123,7 +129,7 @@ val root = (project in file(".")).
       val linuxTar = t / linuxImageTar
       val windowsZip = t / windowsImageZip
       import dispatch.classic._
-      if(!macosTar.exists && !isWindows) {
+      if(!macosTar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(macosTar)
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosTar))
          try Http(url(s"$baseUrl/v$v/$macosImageTar") >>> writer)
@@ -133,7 +139,7 @@ val root = (project in file(".")).
          s"tar zxvf $macosTar --directory $platformDir".!
          IO.move(platformDir / "sbtn", t / x86MacImageName)
       }
-      if(!linuxTar.exists && !isWindows) {
+      if(!linuxTar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxTar)
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxTar))
          try Http(url(s"$baseUrl/v$v/$linuxImageTar") >>> writer)
@@ -143,7 +149,7 @@ val root = (project in file(".")).
          s"""tar zxvf $linuxTar --directory $platformDir""".!
          IO.move(platformDir / "sbtn", t / x86LinuxImageName)
       }
-      if(!windowsZip.exists) {
+      if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
          try Http(url(s"$baseUrl/v$v/$windowsImageZip") >>> writer)
@@ -152,7 +158,8 @@ val root = (project in file(".")).
          IO.unzip(windowsZip, platformDir)
          IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
       }
-      if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
+      if (!sbtIncludeSbtn) Seq()
+      else if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
       else
         Seq(t / x86MacImageName -> s"bin/$x86MacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
