@@ -306,10 +306,10 @@ object Terminal {
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
-  private[this] lazy val superShellEnabled = sys.props.get("sbt.supershell").map(_ == "true")
-  private[sbt] lazy val isAnsiSupported: Boolean =
-    logFormatEnabled.orElse(superShellEnabled).getOrElse(useColorDefault && !isCI)
-  private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
+  private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+
+  private[this] val isDumb = "dumb" == System.getenv("TERM")
+  private[this] def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
@@ -338,7 +338,7 @@ object Terminal {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
     if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
       hasProgress.set(isServer && isAnsiSupported)
-      consoleTerminalHolder.set(newConsoleTerminal())
+      if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
@@ -746,7 +746,7 @@ object Terminal {
   private[sbt] def reset(): Unit = {
     jline.TerminalFactory.reset()
     console.close()
-    consoleTerminalHolder.set(newConsoleTerminal())
+    if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
   }
 
   // translate explicit class names to type in order to support
@@ -754,7 +754,7 @@ object Terminal {
   private[this] def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
     val newValue =
-      if (!isAnsiSupported) "none"
+      if (!isAnsiSupported && System.getProperty("sbt.io.virtual", "") == "false") "none"
       else
         System.getProperty(terminalProperty) match {
           case "jline.UnixTerminal"                             => "unix"
@@ -762,7 +762,7 @@ object Terminal {
           case "jline.WindowsTerminal"                          => "windows"
           case "jline.AnsiWindowsTerminal"                      => "windows"
           case "jline.UnsupportedTerminal"                      => "none"
-          case null if isDumbTerminal                           => "none"
+          case null if isDumb                                   => "none"
           case x                                                => x
         }
     if (newValue != null) {
