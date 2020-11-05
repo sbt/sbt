@@ -124,12 +124,7 @@ private[sbt] object JLine3 {
       override val output: OutputStream = new OutputStream {
         override def write(b: Int): Unit = write(Array[Byte](b.toByte))
         override def write(b: Array[Byte]): Unit = if (!closed.get) term.withPrintStream { ps =>
-          val (toWrite, len) = if (b.contains(27.toByte)) {
-            if (!term.isAnsiSupported || !term.isColorEnabled) {
-              EscHelpers.strip(b, !term.isAnsiSupported, !term.isColorEnabled)
-            } else (b, b.length)
-          } else (b, b.length)
-          if (len == toWrite.length) ps.write(toWrite) else ps.write(toWrite, 0, len)
+          ps.write(b)
           term.prompt match {
             case a: Prompt.AskUser => a.write(b)
             case _                 =>
@@ -188,8 +183,10 @@ private[sbt] object JLine3 {
           case c                                                   => c
         }
       }
-      override def getNumericCapability(cap: Capability): Integer =
-        term.getNumericCapability(cap.toString)
+      override def getNumericCapability(cap: Capability): Integer = {
+        if (cap == Capability.max_colors && !term.isColorEnabled) 1
+        else term.getNumericCapability(cap.toString)
+      }
       override def getBooleanCapability(cap: Capability): Boolean =
         term.getBooleanCapability(cap.toString)
       def getAttributes(): Attributes = attributesFromMap(term.getAttributes)
