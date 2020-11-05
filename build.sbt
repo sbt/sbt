@@ -9,7 +9,7 @@ import scala.util.Try
 
 ThisBuild / version := {
   // update .travis.yml too for dog fooding
-  val v = "1.4.2-SNAPSHOT"
+  val v = "1.4.3-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / versionScheme := Some("early-semver")
