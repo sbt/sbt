@@ -492,7 +492,6 @@ class NetworkClient(
         val message = timing(startTime, now)
         val ec = exitCode
         if (batchMode.get || !attached.get) {
-          console.appendLog(Level.Info, s"$name completed")
           if (ec == 0) console.success(message)
           else console.appendLog(Level.Error, message)
         }
