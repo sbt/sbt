@@ -457,7 +457,7 @@ object Terminal {
       extends SimpleInputStream
       with AutoCloseable {
     private[this] val isRaw = new AtomicBoolean(false)
-    final def write(bytes: Int*): Unit = readThread.synchronized {
+    final def write(bytes: Int*): Unit = buffer.synchronized {
       bytes.foreach(b => buffer.put(b))
     }
     def setRawMode(toggle: Boolean): Unit = {
@@ -488,7 +488,7 @@ object Terminal {
       @tailrec def impl(): Unit = {
         val _ = readQueue.take
         val b = in.read
-        buffer.put(b)
+        buffer.synchronized(buffer.put(b))
         if (Thread.interrupted() || (b == -1 && isRaw.get)) closed.set(true)
         else impl()
       }
