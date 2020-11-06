@@ -334,11 +334,11 @@ object Terminal {
    * @tparam T the result type of the thunk
    * @return the result of the thunk
    */
-  private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
+  private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
+    if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
     if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
       hasProgress.set(isServer && isAnsiSupported)
-      if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
@@ -372,6 +372,7 @@ object Terminal {
         }
       }
     } else f
+  }
 
   private[this] object ProxyTerminal extends Terminal {
     private def t: Terminal = activeTerminal.get
@@ -1006,17 +1007,8 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
-    override lazy val inputStream: InputStream =
-      if (isCI) BlockingInputStream
-      else originalIn
+    override lazy val inputStream: InputStream = originalIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
-  }
-  private[this] object BlockingInputStream extends SimpleInputStream {
-    override def read(): Int = {
-      try this.synchronized(this.wait)
-      catch { case _: InterruptedException => }
-      -1
-    }
   }
 }
