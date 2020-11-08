@@ -40,7 +40,6 @@ lazy val bazApp = (projectMatrix in file("baz-app"))
       val cp = (Compile / fullClasspath).value
         .map(_.data.getName)
 
-      streams.value.log.info(cp.toString)
       assert(cp.contains("baz-core_2.13-0.1.0-SNAPSHOT.jar"), s"$cp")
       assert(!cp.contains("baz-core_3.0.0-M1-0.1.0-SNAPSHOT.jar"), s"$cp")
     },
