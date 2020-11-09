@@ -15,6 +15,8 @@ jobs:
             java: 11
             jobtype: 1
     runs-on: ${{ matrix.os }}
+    env:
+      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
     steps:
     - name: Checkout
       uses: actions/checkout@v1
@@ -30,4 +32,18 @@ jobs:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
-      run: echo hello GitHub
+      run: |
+        case ${{ matrix.jobtype }} in
+          1)
+            sbt -v -Dfile.encoding=UTF8 scalafmtCheckAll whitesourceCheckPolicies test packagedArtifacts
+            ;;
+          *)
+            echo unknown jobtype
+            exit 1
+        esac
+        rm -rf "$HOME/.ivy2/local"
+        find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+        find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+        find $HOME/.ivy2/cache                       -name "*-LM-SNAPSHOT*"       -delete || true
+        find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+        find $HOME/.sbt                              -name "*.lock"               -delete || true
