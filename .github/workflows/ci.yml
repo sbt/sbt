@@ -9,14 +9,28 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: 8
+            java: 11
             jobtype: 1
           - os: ubuntu-latest
             java: 11
-            jobtype: 1
+            jobtype: 2
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 3
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 4
+          - os: ubuntu-latest
+            java: 8
+            jobtype: 5
     runs-on: ${{ matrix.os }}
     env:
-      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
+      JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
+      SCALA_212: 2.12.12
+      SCALA_213: 2.13.1
+      UTIL_TESTS: utilCache/test;utilControl/test;utilInterface/test;utilLogging/test;utilPosition/test;utilRelation/test;utilScripted/test;utilTracking/test
+      CURRENT_SNAPSHOT_VER: 1.4.3-SNAPSHOT
+      SBT_LOCAL: false
     steps:
     - name: Checkout
       uses: actions/checkout@v1
@@ -32,4 +46,32 @@ jobs:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
-      run: echo hello GitHub
+      run: |
+        case ${{ matrix.jobtype }} in
+          1)
+            sbt -v "mimaReportBinaryIssues ; javafmtCheck ; Test / javafmtCheck; scalafmtCheckAll ; scalafmtSbtCheck; serverTestProj/scalafmtCheckAll; headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal; test; serverTestProj/test; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
+            ;;
+          2)
+            sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
+            ;;
+          3)
+            sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
+            ;;
+          4)
+            sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
+            ;;
+          5)
+            sbt -v publishLocalBin
+            rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+            sbt -v -Dsbt.version=$CURRENT_SNAPSHOT_VER "++$SCALA_213; $UTIL_TESTS; ++$SCALA_212; $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+            ;;
+          *)
+            echo unknown jobtype
+            exit 1
+        esac
+        rm -rf "$HOME/.ivy2/local" || true
+        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+        find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+        find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+        find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+        find $HOME/.sbt                              -name "*.lock"               -delete || true
