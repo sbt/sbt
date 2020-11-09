@@ -1,0 +1,35 @@
+name: CI
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            java: 8
+            jobtype: 1
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 1
+    runs-on: ${{ matrix.os }}
+    env:
+      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v1
+    - name: Setup
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: "adopt@1.${{ matrix.java }}"
+    - name: Coursier cache
+      uses: coursier/cache-action@v5
+    - name: Cache sbt
+      uses: actions/cache@v1
+      with:
+        path: ~/.sbt
+        key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+    - name: Build and test
+      run: echo hello GitHub
