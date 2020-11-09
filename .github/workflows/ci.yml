@@ -31,6 +31,10 @@ jobs:
       uses: olafurpg/setup-scala@v10
       with:
         java-version: "adopt@1.${{ matrix.java }}"
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
     - name: Coursier cache
       uses: coursier/cache-action@v5
     - name: Cache sbt
