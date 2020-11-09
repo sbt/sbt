@@ -1,5 +1,6 @@
 # Validate that a bad dependency fails the compile
 $ copy-file changes/BadCommon.scala common/src/main/scala/Common.scala
+> common/compile
 > common/publish
 
 # Force dep resolution to be successful, then compilation to fail
