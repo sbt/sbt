@@ -16,7 +16,9 @@ jobs:
             jobtype: 1
     runs-on: ${{ matrix.os }}
     env:
+      # define Java options for both official sbt and sbt-extras
       JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
+      JVM_OPTS:  -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
     steps:
     - name: Checkout
       uses: actions/checkout@v1
@@ -29,7 +31,7 @@ jobs:
     - name: Cache sbt
       uses: actions/cache@v1
       with:
-        path: ~/.sbt
+        path: $HOME/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
       run: |
