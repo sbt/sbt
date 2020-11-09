@@ -6,17 +6,24 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             java: 8
             jobtype: 1
-          - os: ubuntu-latest
-            java: 11
-            jobtype: 1
+          - os: macos-latest
+            java: 8
+            jobtype: 2
+          - os: windows-latest
+            java: 8
+            jobtype: 3
     runs-on: ${{ matrix.os }}
     env:
-      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M
+      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+      SBT_VER: 1.4.2
+      SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
+      JDK11: adopt@1.11.0-9
     steps:
     - name: Checkout
       uses: actions/checkout@v1
@@ -24,6 +31,10 @@ jobs:
       uses: olafurpg/setup-scala@v10
       with:
         java-version: "adopt@1.${{ matrix.java }}"
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
     - name: Coursier cache
       uses: coursier/cache-action@v5
     - name: Cache sbt
@@ -32,4 +43,39 @@ jobs:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
-      run: echo hello GitHub
+      shell: bash
+      run: |
+        case ${{ matrix.jobtype }} in
+          1)
+            echo build using JDK 8 test using JDK 8 and JDK 11
+            sbt -Dsbt.build.version=$SBT_VER rpm:packageBin debian:packageBin
+            sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
+            cd citest && ./test.sh
+            $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
+            java -Xmx32m -version
+            ./test.sh
+            ;;
+          2)
+            echo build using JDK 8, test using JDK 8, on macOS
+            bin/coursier resolve
+            sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
+            cd citest && ./test.sh
+            ;;
+          3)
+            echo build using JDK 8, test using JDK 8, on Windows
+            bin/coursier.bat resolve
+            sbt -Dsbt.build.version=$SBT_VER universal:packageBin universal:stage integrationTest/test
+            cd citest
+            ./test.bat
+            test3/test3.bat
+            ;;
+          *)
+            echo unknown jobtype
+            exit 1
+        esac
+        rm -rf "$HOME/.ivy2/local" || true
+        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+        find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+        find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+        find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+        find $HOME/.sbt                              -name "*.lock"               -delete || true
