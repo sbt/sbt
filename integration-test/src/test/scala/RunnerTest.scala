@@ -70,6 +70,7 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
+  /*
   test("sbt --client") {
     val out = sbtProcess("--client", "--no-colors", "compile").!!.linesIterator.toList
     if (isWindows) {
@@ -85,4 +86,5 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     }
     ()
   }
+  */
 }
