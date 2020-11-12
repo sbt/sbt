@@ -38,25 +38,25 @@ class GCMonitorTest extends FunSuite {
     val simulate = simulateBy(identity)
     assertResult(List())(simulate(5000))
     assertResult(List(5100))(simulate(10000))
-    assertResult(List(5100, 10100))(simulate(20000))
-    assertResult(List(5100, 10100, 10100))(simulate(30000))
-    assertResult(List(5100, 10100, 10100, 10100))(simulate(40000))
+    assertResult(List(5100, 10000))(simulate(20000))
+    assertResult(List(5100, 10000, 10000))(simulate(30000))
+    assertResult(List(5100, 10000, 10000, 10000))(simulate(40000))
   }
 
   test("GC time = 0.5 * time") {
     val simulate = simulateBy(_ / 2)
     assertResult(List())(simulate(10000))
-    assertResult(List(5050))(simulate(20000))
-    assertResult(List(5050, 5050))(simulate(30000))
-    assertResult(List(5050, 5050, 5050))(simulate(40000))
+    assertResult(List())(simulate(20000))
+    assertResult(List())(simulate(30000))
+    assertResult(List())(simulate(40000))
   }
 
   test("GC time = 2 * time") {
     val simulate = simulateBy(_ * 2)
     assertResult(List(5200))(simulate(5000))
     assertResult(List(5200))(simulate(10000))
-    assertResult(List(5200, 20200))(simulate(20000))
-    assertResult(List(5200, 20200, 20200))(simulate(30000))
-    assertResult(List(5200, 20200, 20200, 20200))(simulate(40000))
+    assertResult(List(5200, 20000))(simulate(20000))
+    assertResult(List(5200, 20000, 20000))(simulate(30000))
+    assertResult(List(5200, 20000, 20000, 20000))(simulate(40000))
   }
 }
