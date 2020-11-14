@@ -8,7 +8,6 @@ import java.nio.file.{ Files, Path => JPath }
 import scala.util.Try
 
 ThisBuild / version := {
-  // update .travis.yml too for dog fooding
   val v = "1.4.3-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
@@ -1544,9 +1543,17 @@ def customCommands: Seq[Setting[_]] = Seq(
 
 ThisBuild / publishTo := {
   val old = (ThisBuild / publishTo).value
-  sys.props.get("sbt.build.localmaven") match {
-    case Some(path) => Some(MavenCache("local-maven", file(path)))
-    case _          => old
+  sys.env.get("RELEASE_GITHUB_PACKAGE_REGISTRY") match {
+    case Some(repo) =>
+      Some(s"GitHub Package Registry ($repo)" at s"https://maven.pkg.github.com/$repo")
+    case _ => old
+  }
+}
+ThisBuild / credentials ++= {
+  sys.env.get("GITHUB_TOKEN") match {
+    case Some(token) =>
+      List(Credentials("GitHub Package Registry", "maven.pkg.github.com", "unused", token))
+    case _ => Nil
   }
 }
 ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
