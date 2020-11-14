@@ -7,15 +7,6 @@ val _ = {
   sys.props += ("line.separator" -> "\n")
 }
 
-ThisBuild / version := {
-  val old = (ThisBuild / version).value
-  nightlyVersion match {
-    case Some(v) => v
-    case _ =>
-      if ((ThisBuild / isSnapshot).value) "1.4.0-SNAPSHOT"
-      else old
-  }
-}
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / organization := "org.scala-sbt"
 ThisBuild / bintrayPackage := "librarymanagement"
@@ -375,11 +366,29 @@ def customCommands: Seq[Setting[_]] = Seq(
   }
 )
 
+ThisBuild / version := {
+  val old = (ThisBuild / version).value
+  nightlyVersion match {
+    case Some(v) => v
+    case _ =>
+      if ((ThisBuild / isSnapshot).value) "1.4.0-SNAPSHOT"
+      else old
+  }
+}
+def githubPackageRegistry: Option[Resolver] =
+  sys.env.get("RELEASE_GITHUB_PACKAGE_REGISTRY") map { repo =>
+    s"GitHub Package Registry ($repo)" at s"https://maven.pkg.github.com/$repo"
+  }
 ThisBuild / publishTo := {
   val old = (ThisBuild / publishTo).value
-  sys.props.get("sbt.build.localmaven") match {
-    case Some(path) => Some(MavenCache("local-maven", file(path)))
-    case _          => old
+  githubPackageRegistry orElse old
+}
+ThisBuild / resolvers ++= githubPackageRegistry.toList
+ThisBuild / credentials ++= {
+  sys.env.get("GITHUB_TOKEN") match {
+    case Some(token) =>
+      List(Credentials("GitHub Package Registry", "maven.pkg.github.com", "unused", token))
+    case _ => Nil
   }
 }
 
