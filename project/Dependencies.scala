@@ -8,7 +8,8 @@ object Dependencies {
   val scala213 = "2.13.3"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
-  def nightlyVersion = sys.props.get("sbt.build.version")
+  def nightlyVersion: Option[String] =
+    sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.4.0")
