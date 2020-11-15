@@ -1,6 +1,7 @@
 name: Nightly
 on:
   workflow_dispatch:
+  push:
 
 jobs:
   deploy:
@@ -19,19 +20,19 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: sbt/io
-        ref: wip/nightly
+        ref: develop
         path: io
     - name: Checkout sbt/librarymanagement
       uses: actions/checkout@v2
       with:
         repository: sbt/librarymanagement
-        ref: wip/nightly
+        ref: develop
         path: librarymanagement
     - name: Checkout sbt/zinc
       uses: actions/checkout@v2
       with:
         repository: sbt/zinc
-        ref: wip/nightly
+        ref: develop
         path: zinc
     - name: Setup
       uses: olafurpg/setup-scala@v10
@@ -44,11 +45,10 @@ jobs:
         # build from fresh IO, LM, and Zinc
         TIMESTAMP=$(TZ=UTC date +%Y%m%dT%H%M%S)
         export BUILD_VERSION="1.4.0-bin-${TIMESTAMP}"
-        echo publishing to Package Registry $RELEASE_GITHUB_PACKAGE_REGISTRY
         cd io
-        sbt -v -Dsbt.sbtbintray=false +publish
+        sbt -v +publish
         cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.sbtbintray=false -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish"
+        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish"
         rm -rf "$HOME/.ivy2/local" || true
         rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
         find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
@@ -56,5 +56,7 @@ jobs:
         find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
         find $HOME/.sbt                              -name "*.lock"               -delete || true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        RELEASE_GITHUB_PACKAGE_REGISTRY: sbt/sbt
+        BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+        BINTRAY_PASS: ${{ secrets.BINTRAY_PASS }}
+        BINTRAY_REPOSITORY: maven-snapshots
+        BINTRAY_PACKAGE: sbt

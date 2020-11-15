@@ -12,7 +12,7 @@ object HouseRulesPlugin extends AutoPlugin {
 
   lazy val baseBuildSettings: Seq[Def.Setting[_]] = Seq(
     bintrayOrganization := Some("sbt"),
-    bintrayRepository := "maven-releases",
+    bintrayRepository := sys.env.get("BINTRAY_REPOSITORY").getOrElse("maven-releases"),
   )
 
   lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
