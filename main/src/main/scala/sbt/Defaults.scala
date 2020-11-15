@@ -2496,7 +2496,6 @@ object Classpaths {
       managedClasspath := {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
-        val csr = useCoursier.value
         val app = appConfiguration.value
         val sbtCp0 = app.provider.mainClasspath.toList
         val sbtCp = sbtCp0 map { Attributed.blank(_) }
@@ -2505,7 +2504,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force && !csr) mjars ++ sbtCp
+        if (isMeta && !force) mjars ++ sbtCp
         else mjars
       },
       exportedProducts := ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -3077,7 +3076,6 @@ object Classpaths {
       val isMeta = isMetaBuild.value
       val force = reresolveSbtArtifacts.value
       val excludes = excludeDependencies.value
-      val csr = useCoursier.value
       val o = sbtdeps.organization
       val sbtModulesExcludes = Vector[ExclusionRule](
         o % "sbt",
@@ -3088,7 +3086,7 @@ object Classpaths {
         o %% "util-position",
         o %% "io"
       )
-      if (isMeta && !force && !csr) excludes.toVector ++ sbtModulesExcludes
+      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
     },
     dependencyOverrides ++= {
