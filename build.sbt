@@ -18,7 +18,7 @@ ThisBuild / version := {
 }
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / organization := "org.scala-sbt"
-ThisBuild / bintrayPackage := "librarymanagement"
+ThisBuild / bintrayPackage := sys.env.get("BINTRAY_PACKAGE").getOrElse("librarymanagement")
 ThisBuild / homepage := Some(url("https://github.com/sbt/librarymanagement"))
 ThisBuild / description := "Library management module for sbt"
 ThisBuild / scmInfo := {
@@ -247,11 +247,16 @@ lazy val lmCore = (project in file("core"))
       exclude[ReversedMissingMethodProblem](
         "sbt.librarymanagement.MavenRepository.allowInsecureProtocol"
       ),
-      exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.ResolverFunctions.validateURLRepository"),
-      exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.ResolverFunctions.validateMavenRepo"),
-      exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.ResolverFunctions.validateArtifact"),
+      exclude[IncompatibleResultTypeProblem](
+        "sbt.librarymanagement.ResolverFunctions.validateURLRepository"
+      ),
+      exclude[IncompatibleResultTypeProblem](
+        "sbt.librarymanagement.ResolverFunctions.validateMavenRepo"
+      ),
+      exclude[IncompatibleResultTypeProblem](
+        "sbt.librarymanagement.ResolverFunctions.validateArtifact"
+      ),
       exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.*.validateProtocol"),
-
     ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
@@ -374,14 +379,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       state
   }
 )
-
-ThisBuild / publishTo := {
-  val old = (ThisBuild / publishTo).value
-  sys.props.get("sbt.build.localmaven") match {
-    case Some(path) => Some(MavenCache("local-maven", file(path)))
-    case _          => old
-  }
-}
 
 inThisBuild(
   Seq(

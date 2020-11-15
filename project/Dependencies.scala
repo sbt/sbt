@@ -5,7 +5,8 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   val scala212 = "2.12.10"
 
-  def nightlyVersion: Option[String] = sys.props.get("sbt.build.version")
+  def nightlyVersion: Option[String] =
+    sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   private val ioVersion = nightlyVersion.getOrElse("1.4.0")
   private val utilVersion = nightlyVersion.getOrElse("1.4.0")
