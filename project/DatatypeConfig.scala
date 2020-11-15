@@ -44,12 +44,12 @@ object DatatypeConfig {
 
     case "sbt.librarymanagement.CrossVersion" => { _ =>
       "sbt.librarymanagement.CrossVersionFormats" ::
-      "sbt.librarymanagement.DisabledFormats" ::
-      "sbt.librarymanagement.BinaryFormats" ::
-      "sbt.librarymanagement.ConstantFormats" ::
-      "sbt.librarymanagement.PatchFormats" ::
-      "sbt.librarymanagement.FullFormats" ::
-      Nil
+        "sbt.librarymanagement.DisabledFormats" ::
+        "sbt.librarymanagement.BinaryFormats" ::
+        "sbt.librarymanagement.ConstantFormats" ::
+        "sbt.librarymanagement.PatchFormats" ::
+        "sbt.librarymanagement.FullFormats" ::
+        Nil
     }
 
     // TODO: These are handled by BasicJsonProtocol, and sbt-datatype should handle them by default, imo
