@@ -46,7 +46,7 @@ jobs:
         export BUILD_VERSION="1.4.0-bin-${TIMESTAMP}"
         echo publishing to Package Registry $RELEASE_GITHUB_PACKAGE_REGISTRY
         cd io
-        sbt -v -Dsbt.sbtbintray=false +publishLocal +publish
+        sbt -v -Dsbt.sbtbintray=false +publish
         cd ../
         sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.sbtbintray=false -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish"
         rm -rf "$HOME/.ivy2/local" || true

@@ -1542,14 +1542,15 @@ def customCommands: Seq[Setting[_]] = Seq(
   }
 )
 
+def githubPackageRegistry: Option[Resolver] =
+  sys.env.get("RELEASE_GITHUB_PACKAGE_REGISTRY") map { repo =>
+    s"GitHub Package Registry ($repo)" at s"https://maven.pkg.github.com/$repo"
+  }
 ThisBuild / publishTo := {
   val old = (ThisBuild / publishTo).value
-  sys.env.get("RELEASE_GITHUB_PACKAGE_REGISTRY") match {
-    case Some(repo) =>
-      Some(s"GitHub Package Registry ($repo)" at s"https://maven.pkg.github.com/$repo")
-    case _ => old
-  }
+  githubPackageRegistry orElse old
 }
+ThisBuild / resolvers ++= githubPackageRegistry.toList
 ThisBuild / credentials ++= {
   sys.env.get("GITHUB_TOKEN") match {
     case Some(token) =>
