@@ -1,7 +1,8 @@
 name: Nightly
 on:
-  workflow_dispatch:
-  push:
+  schedule:
+    # 08:00 UTC = 03:00 EST
+    - cron:  '0 8 * * *'
 
 jobs:
   deploy:
