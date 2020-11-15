@@ -1268,7 +1268,10 @@ lazy val lowerUtils = (project in (file("internal") / "lower"))
   )
 
 lazy val upperModules = (project in (file("internal") / "upper"))
-  .aggregate((allProjects diff lowerUtilProjects).map(p => LocalProject(p.id)): _*)
+  .aggregate(
+    ((allProjects diff lowerUtilProjects)
+      diff Seq(bundledLauncherProj)).map(p => LocalProject(p.id)): _*
+  )
   .settings(
     publish / skip := true,
     crossScalaVersions := Nil,
