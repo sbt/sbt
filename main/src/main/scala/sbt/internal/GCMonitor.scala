@@ -64,12 +64,12 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
     val amountMsg = over.fold(totalSeconds + " seconds") { d =>
       "In the last " + (d / 1000.0).ceil.toInt + f" seconds, $totalSeconds (${total.toDouble / d * 100}%.1f%%)"
     }
-    val msg = s"$amountMsg were spent in garbage collection. " +
-      "You may want to increase the project heap size using `-Xmx` or try " +
-      "a different gc algorithm, e.g. `-XX:+UseG1GC`, for better performance. " +
-      s"Heap: ${gbString(runtime.freeMemory())} free " +
+    val msg = s"$amountMsg were spent in GC. " +
+      s"[Heap: ${gbString(runtime.freeMemory())} free " +
       s"of ${gbString(runtime.totalMemory())}, " +
-      s"max ${gbString(runtime.maxMemory())}"
+      s"max ${gbString(runtime.maxMemory())}] " +
+      "Consider increasing the JVM heap using `-Xmx` or try " +
+      "a different collector, e.g. `-XX:+UseG1GC`, for better performance."
     logger.warn(msg)
   }
 
