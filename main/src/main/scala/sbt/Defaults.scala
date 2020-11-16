@@ -167,7 +167,17 @@ object Defaults extends BuildCommon {
       fileOutputExcludeFilter :== NothingFilter.toNio,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
-      onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
+      onChangedBuildSource :== {
+        val sysPropKey = "sbt.build.onchange"
+        sys.props.getOrElse(sysPropKey, "warn") match {
+          case "reload" => sbt.nio.Keys.ReloadOnSourceChanges
+          case "warn"   => sbt.nio.Keys.WarnOnSourceChanges
+          case "ignore" => sbt.nio.Keys.IgnoreSourceChanges
+          case unknown =>
+            System.err.println(s"Unknown $sysPropKey: $unknown.\nUsing warn.")
+            sbt.nio.Keys.WarnOnSourceChanges
+        }
+      },
       clean := { () },
       unmanagedFileStampCache :=
         state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
