@@ -49,7 +49,7 @@ jobs:
         cd io
         sbt -v +publish
         cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish"
+        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish; bundledLauncherProj/publish"
         rm -rf "$HOME/.ivy2/local" || true
         rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
         find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
