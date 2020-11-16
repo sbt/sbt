@@ -79,14 +79,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
-    scriptedBatchExecution := {
-      CrossVersionUtil.binarySbtVersion(scriptedSbt.value) match {
-        case "0.13" =>
-          false
-        case _ =>
-          true
-      }
-    },
+    scriptedBatchExecution := CrossVersionUtil.binarySbtVersion(scriptedSbt.value) != "0.13",
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
