@@ -1523,6 +1523,7 @@ def customCommands: Seq[Setting[_]] = Seq(
       "conscriptConfigs" ::
       "upperModules/compile" ::
       "upperModules/publishSigned" ::
+      "bundledLauncherProj/publishSigned" ::
       "bundledLauncherProj/publishLauncher" ::
       state
   },
