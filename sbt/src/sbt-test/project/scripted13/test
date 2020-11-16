@@ -1,7 +1,6 @@
 # This tests that this sbt scripted plugin can launch the previous one
 
-> ++2.10.6
-> ^^0.13.16-M1
+> ^^0.13.18
 
 $ copy-file changes/A.scala src/sbt-test/a/b/A.scala
 > scripted

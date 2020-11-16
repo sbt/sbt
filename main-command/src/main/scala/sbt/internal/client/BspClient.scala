@@ -15,8 +15,8 @@ import sbt.Exit
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
 
-import scala.sys.process.Process
 import scala.util.control.NonFatal
+import java.lang.ProcessBuilder.Redirect
 
 class BspClient private (sbtServer: Socket) {
   private def run(): Exit = Exit(BspClient.bspRun(sbtServer))
@@ -90,8 +90,15 @@ object BspClient {
    * This instance must be shutdown explicitly via `sbt -client shutdown`
    */
   def forkServer(baseDirectory: File, portfile: File): Unit = {
-    val args = List[String]()
-    val launchOpts = List("-Xms2048M", "-Xmx2048M", "-Xss2M")
+    val args = List("--detach-stdio")
+    val launchOpts = List(
+      "-Dfile.encoding=UTF-8",
+      "-Dsbt.io.virtual=true",
+      "-Xms1024M",
+      "-Xmx1024M",
+      "-Xss4M",
+      "-XX:ReservedCodeCacheSize=128m"
+    )
 
     val launcherJarString = sys.props.get("java.class.path") match {
       case Some(cp) =>
@@ -102,10 +109,15 @@ object BspClient {
     }
 
     val cmd = "java" :: launchOpts ::: "-jar" :: launcherJarString :: args
-    val process = Process(cmd, baseDirectory).run()
+    val processBuilder =
+      new ProcessBuilder(cmd: _*)
+        .directory(baseDirectory)
+        .redirectInput(Redirect.PIPE)
 
-    while (process.isAlive() && !portfile.exists) Thread.sleep(100)
+    val process = processBuilder.start()
 
-    if (!process.isAlive()) sys.error("sbt server exited")
+    while (process.isAlive && !portfile.exists) Thread.sleep(100)
+
+    if (!process.isAlive) sys.error("sbt server exited")
   }
 }
