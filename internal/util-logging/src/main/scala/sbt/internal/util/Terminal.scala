@@ -327,6 +327,9 @@ object Terminal {
     if (isColorEnabled && doRed) Console.RED + str + Console.RESET
     else str
 
+  private[this] def hasVirtualIO = System.getProperty("sbt.io.virtual", "") == "true" || !isCI
+  private[sbt] def canPollSystemIn: Boolean = hasConsole && !isDumbTerminal && hasVirtualIO
+
   /**
    *
    * @param isServer toggles whether or not this is a server of client process
@@ -337,7 +340,7 @@ object Terminal {
   private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
     if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
-    if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
+    if (hasVirtualIO) {
       hasProgress.set(isServer && isAnsiSupported)
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
