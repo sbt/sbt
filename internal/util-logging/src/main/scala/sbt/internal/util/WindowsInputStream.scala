@@ -10,11 +10,27 @@ package sbt.internal.util
 import java.io.InputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import org.fusesource.jansi.internal.WindowsSupport
+import org.fusesource.jansi.internal.Kernel32
 import org.jline.utils.InfoCmp.Capability
 import scala.annotation.tailrec
 import Terminal.SimpleInputStream
 
+private object WindowsSupport {
+  def getConsoleMode = {
+    val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+    val mode = new Array[Int](1);
+    if (Kernel32.GetConsoleMode(console, mode) == 0) -1 else mode.head
+  }
+  def setConsoleMode(mode: Int): Unit = {
+    val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+    Kernel32.SetConsoleMode(console, mode)
+    ()
+  }
+  def readConsoleInput(count: Int) = {
+    val console = Kernel32.GetStdHandle(Kernel32.STD_INPUT_HANDLE);
+    Kernel32.readConsoleInputHelper(console, 1, false)
+  }
+}
 /*
  * We need a special input stream for windows because special key events
  * like arrow keys are not reported by System.in. What makes this extra
