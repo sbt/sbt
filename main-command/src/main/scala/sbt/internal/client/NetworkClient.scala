@@ -11,7 +11,7 @@ package client
 
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
-import java.net.Socket
+import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -888,6 +888,7 @@ class NetworkClient(
         status.set("Processing")
       }
     } catch {
+      case e: SocketException if command.toString.contains("exit") => running.set(false)
       case e: IOException =>
         errorStream.println(s"Caught exception writing command to server: $e")
         running.set(false)
