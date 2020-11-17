@@ -167,7 +167,7 @@ object Defaults extends BuildCommon {
       fileOutputExcludeFilter :== NothingFilter.toNio,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
-      onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
+      onChangedBuildSource :== SysProp.onChangedBuildSource,
       clean := { () },
       unmanagedFileStampCache :=
         state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),

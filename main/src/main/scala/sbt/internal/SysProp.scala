@@ -14,6 +14,7 @@ import scala.util.control.NonFatal
 import scala.concurrent.duration._
 import sbt.internal.util.{ Terminal => ITerminal }
 import sbt.internal.util.complete.SizeParser
+import sbt.nio.Keys._
 
 // See also BuildPaths.scala
 // See also LineReader.scala
@@ -162,4 +163,17 @@ object SysProp {
           case None       => true
         }
     }
+
+  def onChangedBuildSource: WatchBuildSourceOption = {
+    val sysPropKey = "sbt.build.onchange"
+    sys.props.getOrElse(sysPropKey, "warn") match {
+      case "reload" => ReloadOnSourceChanges
+      case "warn"   => WarnOnSourceChanges
+      case "ignore" => IgnoreSourceChanges
+      case unknown =>
+        System.err.println(s"Unknown $sysPropKey: $unknown.\nUsing warn.")
+        sbt.nio.Keys.WarnOnSourceChanges
+    }
+  }
+
 }
