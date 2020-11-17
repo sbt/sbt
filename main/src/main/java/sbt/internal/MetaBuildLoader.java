@@ -64,7 +64,7 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final String jlineJars = "jline-(terminal-)?[0-9.]+-sbt-.*|jline-terminal-(jna|jansi)-[0-9.]+";
+    final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
     final String fullPattern =
         "^(test-interface-[0-9.]+|" + jlineJars + "|jansi-[0-9.]+|jna-(platform-)?[0-9.]+)\\.jar";
     final Pattern pattern = Pattern.compile(fullPattern);
