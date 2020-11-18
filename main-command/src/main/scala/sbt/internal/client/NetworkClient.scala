@@ -1093,16 +1093,20 @@ object NetworkClient {
       terminal: Terminal,
       useJNI: Boolean
   ): Int = {
+    val printStream = if (args.bsp) errorStream else terminal.printStream
     val client =
       simpleClient(
         args.withBaseDirectory(baseDirectory),
         inputStream,
+        printStream,
         errorStream,
         useJNI,
-        terminal
       )
+    clientImpl(client, args.bsp)
+  }
+  private def clientImpl(client: NetworkClient, isBsp: Boolean): Int = {
     try {
-      if (args.bsp) {
+      if (isBsp) {
         val (socket, _) =
           client.connectOrStartServerAndConnect(promptCompleteUsers = false, retry = true)
         BspClient.bspRun(socket)
@@ -1214,16 +1218,18 @@ object NetworkClient {
   }
 
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
-    try {
-      val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
-      try {
-        if (client.connect(log = true, promptCompleteUsers = false)) client.run()
-        else 1
-      } catch { case _: Throwable => 1 } finally client.close()
-    } catch {
-      case NonFatal(e) =>
-        e.printStackTrace()
-        1
-    }
+    run(configuration, arguments, false)
+  def run(
+      configuration: xsbti.AppConfiguration,
+      arguments: List[String],
+      redirectOutput: Boolean
+  ): Int = {
+    val term = Terminal.console
+    val err = new PrintStream(term.errorStream)
+    val out = if (redirectOutput) err else new PrintStream(term.outputStream)
+    val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
+    val client = simpleClient(args, term.inputStream, out, err, useJNI = false)
+    clientImpl(client, args.bsp)
+  }
   private class AccessDeniedException extends Throwable
 }
