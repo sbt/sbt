@@ -337,9 +337,10 @@ object Terminal {
    * @tparam T the result type of the thunk
    * @return the result of the thunk
    */
-  private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T = {
+  private[sbt] def withStreams[T](isServer: Boolean, isSubProcess: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
+    if ((hasConsole && !isDumbTerminal) || isSubProcess)
+      consoleTerminalHolder.set(newConsoleTerminal())
     if (hasVirtualIO) {
       hasProgress.set(isServer && isAnsiSupported)
       activeTerminal.set(consoleTerminalHolder.get)

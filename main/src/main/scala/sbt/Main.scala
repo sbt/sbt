@@ -79,13 +79,13 @@ private[sbt] object xMain {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
         bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
-        ITerminal.withStreams(true) {
+        val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
+        ITerminal.withStreams(true, isSubProcess = detachStdio) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
             NetworkClient.run(dealiasBaseDirectory(configuration), args)
             Exit(0)
           } else {
-            val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
