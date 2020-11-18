@@ -100,7 +100,10 @@ private[sbt] final class ProgressState(
           toWrite ++= (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
         case _ =>
       }
-      toWrite ++= bytes
+      bytes.foreach { b =>
+        if (b == 10) toWrite ++= ClearScreenAfterCursor.getBytes("UTF-8")
+        toWrite += b
+      }
       toWrite ++= ClearScreenAfterCursor.getBytes("UTF-8")
       if (bytes.endsWith(lineSeparatorBytes)) {
         if (progressLines.get.nonEmpty) {
