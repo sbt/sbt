@@ -1160,7 +1160,7 @@ object NetworkClient {
       Runtime.getRuntime.addShutdownHook(hook)
       if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       val parsed = parseArgs(restOfArgs)
-      System.exit(Terminal.withStreams(false) {
+      System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
         try client(base, parsed, term.inputStream, System.err, term, useJNI)
         catch { case _: AccessDeniedException => 1 } finally {
