@@ -49,7 +49,7 @@ jobs:
           fetch-depth: 0
           submodules: true
       - uses: coursier/cache-action@v5
-      - uses: olafurpg/setup-scala@v7
+      - uses: olafurpg/setup-scala@v10
       - uses: olafurpg/setup-gpg@v2
       - name: Release
         run: ./sbt ci-release
