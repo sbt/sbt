@@ -54,7 +54,8 @@ lazy val `lm-coursier-shaded` = project
         "argonaut",
         "org.fusesource",
         "macrocompat",
-        "io.github.alexarchambault.windowsansi"
+        "io.github.alexarchambault.windowsansi",
+        "concurrentrefhashmap"
       )
       for (ns <- toShade)
         yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
