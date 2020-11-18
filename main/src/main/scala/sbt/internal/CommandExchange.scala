@@ -160,7 +160,9 @@ private[sbt] final class CommandExchange {
     channelBufferLock.synchronized {
       Util.ignoreResult(channelBuffer -= c)
     }
-    commandQueue.removeIf(_.source.map(_.channelName) == Some(c.name))
+    commandQueue.removeIf { e =>
+      e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
+    }
     currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
       Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
     }
