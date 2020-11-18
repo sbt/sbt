@@ -11,7 +11,7 @@ import java.io.IOException;
 
 public class ServerAlreadyBootingException extends Exception {
 
-    public ServerAlreadyBootingException(IOException e) {
-        super(e);
-    }
+  public ServerAlreadyBootingException(IOException e) {
+    super(e);
+  }
 }
