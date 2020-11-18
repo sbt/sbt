@@ -50,7 +50,7 @@ jobs:
           submodules: true
       - uses: coursier/cache-action@v5
       - uses: olafurpg/setup-scala@v10
-      - uses: olafurpg/setup-gpg@v2
+      - uses: olafurpg/setup-gpg@v3
       - name: Release
         run: ./sbt ci-release
         env:
