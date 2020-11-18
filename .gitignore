@@ -1,0 +1,17 @@
+.bloop
+.metals
+
+target
+
+project/.bloop
+project/target
+project/project/target
+
+*.class
+
+metals.sbt
+
+src/sbt-test/projectMatrix/projectAxes/target
+src/sbt-test/projectMatrix/projectAxes/project/target
+
+
