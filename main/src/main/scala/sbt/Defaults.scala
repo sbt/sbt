@@ -1059,8 +1059,17 @@ object Defaults extends BuildCommon {
       classLoaderCache: ClassLoaderCache,
       topLoader: ClassLoader,
   ): ScalaInstance = {
+    // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
+    // jansi version. Because of the shading, console does not work with the thin client for 2.10.x.
+    val jansiExclusionLoader = if (version.startsWith("2.10.")) new ClassLoader(topLoader) {
+      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+        if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name)
+        super.loadClass(name, resolve)
+      }
+    }
+    else topLoader
     val allJarsDistinct = allJars.distinct
-    val libraryLoader = classLoaderCache(libraryJars.toList, topLoader)
+    val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
     val fullLoader = classLoaderCache(allJarsDistinct.toList, libraryLoader)
     new ScalaInstance(
       version,
