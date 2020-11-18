@@ -783,11 +783,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     executor => {
       val interrupted = new AtomicBoolean(false)
+      @tailrec def read(): Int = {
+        if (terminal.name.startsWith("network")) terminal.inputStream.read
+        else if (Terminal.canPollSystemIn || terminal.inputStream.available > 0)
+          terminal.inputStream.read
+        else {
+          Thread.sleep(50)
+          read()
+        }
+      }
       @tailrec def impl(): Option[Watch.Action] = {
         val action =
           try {
             interrupted.set(false)
-            terminal.inputStream.read match {
+            read() match {
               case -1   => throw new InterruptedException
               case 3    => Watch.CancelWatch // ctrl+c on windows
               case byte => inputHandler(byte.toChar.toString)
