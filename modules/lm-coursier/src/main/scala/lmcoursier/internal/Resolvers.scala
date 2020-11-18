@@ -1,10 +1,11 @@
 package lmcoursier.internal
 
-import coursier.ivy.IvyRepository
 import java.net.MalformedURLException
+import java.nio.file.Paths
 
 import coursier.cache.CacheUrl
 import coursier.core.{Authentication, Repository}
+import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepository
 import org.apache.ivy.plugins.resolver.IBiblioResolver
 import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
@@ -54,7 +55,14 @@ object Resolvers {
 
   // this handles whitespace in path
   private def pathToUriString(path: String): String = {
-    "file://" + path.replaceAllLiterally(" ", "%20")
+    val stopAtIdx = path.indexWhere(c => c == '[' || c == '$' || c == '(')
+    if (stopAtIdx > 0) {
+      val (pathPart, patternPart) = path.splitAt(stopAtIdx)
+      Paths.get(pathPart).toUri.toASCIIString + patternPart
+    } else if (stopAtIdx == 0)
+      "file://" + path
+    else
+      Paths.get(path).toUri.toASCIIString
   }
 
   def repository(
