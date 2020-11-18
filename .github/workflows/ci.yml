@@ -79,7 +79,7 @@ jobs:
             ;;
           5)
             # build from fresh IO, LM, and Zinc
-            BUILD_VERSION="1.4.0-SNAPSHOT"
+            BUILD_VERSION="1.5.0-SNAPSHOT"
             cd io
             sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
             cd ../
