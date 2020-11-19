@@ -152,7 +152,7 @@ lazy val app = (projectMatrix in file("app"))
 
 This will create `appConfig1_22_11`, `appConfig1_22_12`, and `appConfig1_32_12` respectively producing `app_config1.3_2.12`, `app_config1.2_2.11`, and `app_config1.2_2.12` artifacts.
 
-### referncing the generated subprojects
+### referencing the generated subprojects
 
 You might want to reference to one of the projects within `build.sbt`.
 
@@ -163,6 +163,29 @@ lazy val appConfig12_212 = app.finder(config13, VirtualAxis.jvm)("2.12.8")
 ```
 
 In the above `core12` returns `Project` type.
+
+### accessing axes from subprojects
+
+Each generated subproject can access the values for all the axes using `virtualAxes` key:
+
+```scala
+lazy val platformTest = settingKey[String]("")
+
+lazy val core = (projectMatrix in file("core"))
+  .settings(
+    name := "core"
+  )
+  .jsPlatform(scalaVersions = Seq("2.12.12", "2.11.12"))
+  .jvmPlatform(scalaVersion = Seq("2.12.12", "2.13.3"))
+  .settings(
+    platformTest := {
+      if(virtualAxes.value.contains(VirtualAxis.jvm))
+        "JVM project"
+      else
+        "JS project"
+    }
+  )
+```
 
 credits
 -------

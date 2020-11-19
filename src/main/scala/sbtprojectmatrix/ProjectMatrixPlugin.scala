@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.language.experimental.macros
 
 trait ProjectMatrixKeys {
-    val projectAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
+    val virtualAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
 }
 
 object ProjectMatrixKeys extends ProjectMatrixKeys

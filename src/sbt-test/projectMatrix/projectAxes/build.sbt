@@ -40,16 +40,16 @@ lazy val custom =
 
 lazy val platformSettings = Seq[Def.Setting[_]](
     platformTest := {
-      if(projectAxes.value.contains(sbt.VirtualAxis.js)) "js-platform"
-      else if(projectAxes.value.contains(sbt.VirtualAxis.jvm)) "jvm-platform"
-      else throw new RuntimeException(s"Something must be wrong (built-in platforms test) - projectAxes value is ${projectAxes.value}")
+      if(virtualAxes.value.contains(sbt.VirtualAxis.js)) "js-platform"
+      else if(virtualAxes.value.contains(sbt.VirtualAxis.jvm)) "jvm-platform"
+      else throw new RuntimeException(s"Something must be wrong (built-in platforms test) - virtualAxes value is ${virtualAxes.value}")
     }
 )
 
 lazy val customSettings = Seq[Def.Setting[_]](
   configTest := {
-    if(projectAxes.value.contains(config12)) "config for 1.2"
-    else if (projectAxes.value.contains(config13)) "config for 1.3"
-    else throw new RuntimeException(s"Something must be wrong (custom axis test ) - projectAxes value is ${projectAxes.value}")
+    if(virtualAxes.value.contains(config12)) "config for 1.2"
+    else if (virtualAxes.value.contains(config13)) "config for 1.3"
+    else throw new RuntimeException(s"Something must be wrong (custom axis test ) - virtualAxes value is ${virtualAxes.value}")
   }
 )
