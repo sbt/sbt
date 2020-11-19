@@ -140,6 +140,7 @@ final class ScriptedTests(
 
       def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests
+          .sortBy(_._1)
           .grouped(batchSize)
           .map { batch => () =>
             IO.withTemporaryDirectory {
