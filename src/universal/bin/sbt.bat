@@ -52,10 +52,13 @@ rem users can set SBT_OPTS via .sbtopts
 if exist .sbtopts for /F %%A in (.sbtopts) do (
   set _sbtopts_line=%%A
   if not "!_sbtopts_line:~0,1!" == "#" (
+    if "!_sbtopts_line:~0,2!" == "-J" (
+      set _sbtopts_line=!_sbtopts_line:~2,1000!
+    )
     if defined _SBT_OPTS (
-      set _SBT_OPTS=!_SBT_OPTS! %%A
+      set _SBT_OPTS=!_SBT_OPTS! !_sbtopts_line!
     ) else (
-      set _SBT_OPTS=%%A
+      set _SBT_OPTS=!_sbtopts_line!
     )
   )
 )
