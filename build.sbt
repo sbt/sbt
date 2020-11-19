@@ -1410,7 +1410,7 @@ lazy val lowerUtilProjects =
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
-ThisBuild / scriptedBufferLog := true
+ThisBuild / scriptedBufferLog := false
 ThisBuild / scriptedPrescripted := { _ =>
 }
 
