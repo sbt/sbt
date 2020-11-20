@@ -167,7 +167,7 @@ object Defaults extends BuildCommon {
       fileOutputExcludeFilter :== NothingFilter.toNio,
       inputFileStamper :== sbt.nio.FileStamper.Hash,
       outputFileStamper :== sbt.nio.FileStamper.LastModified,
-      onChangedBuildSource :== sbt.nio.Keys.WarnOnSourceChanges,
+      onChangedBuildSource :== SysProp.onChangedBuildSource,
       clean := { () },
       unmanagedFileStampCache :=
         state.value.get(persistentFileStampCache).getOrElse(new sbt.nio.FileStamp.Cache),
@@ -1060,8 +1060,17 @@ object Defaults extends BuildCommon {
       classLoaderCache: ClassLoaderCache,
       topLoader: ClassLoader,
   ): ScalaInstance = {
+    // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
+    // jansi version. Because of the shading, console does not work with the thin client for 2.10.x.
+    val jansiExclusionLoader = if (version.startsWith("2.10.")) new ClassLoader(topLoader) {
+      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+        if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name)
+        super.loadClass(name, resolve)
+      }
+    }
+    else topLoader
     val allJarsDistinct = allJars.distinct
-    val libraryLoader = classLoaderCache(libraryJars.toList, topLoader)
+    val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
     val fullLoader = classLoaderCache(allJarsDistinct.toList, libraryLoader)
     new ScalaInstance(
       version,
@@ -2497,7 +2506,6 @@ object Classpaths {
       managedClasspath := {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
-        val csr = useCoursier.value
         val app = appConfiguration.value
         val sbtCp0 = app.provider.mainClasspath.toList
         val sbtCp = sbtCp0 map { Attributed.blank(_) }
@@ -2506,7 +2514,7 @@ object Classpaths {
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force && !csr) mjars ++ sbtCp
+        if (isMeta && !force) mjars ++ sbtCp
         else mjars
       },
       exportedProducts := ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -3078,7 +3086,6 @@ object Classpaths {
       val isMeta = isMetaBuild.value
       val force = reresolveSbtArtifacts.value
       val excludes = excludeDependencies.value
-      val csr = useCoursier.value
       val o = sbtdeps.organization
       val sbtModulesExcludes = Vector[ExclusionRule](
         o % "sbt",
@@ -3089,7 +3096,7 @@ object Classpaths {
         o %% "util-position",
         o %% "io"
       )
-      if (isMeta && !force && !csr) excludes.toVector ++ sbtModulesExcludes
+      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
       else excludes
     },
     dependencyOverrides ++= {

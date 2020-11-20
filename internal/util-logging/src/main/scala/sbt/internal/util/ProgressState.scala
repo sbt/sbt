@@ -85,6 +85,9 @@ private[sbt] final class ProgressState(
       prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
     } else Array.empty
   }
+  private[this] val cleanPrompt =
+    (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
+  private[this] val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
   private[util] def write(
       terminal: Terminal,
       bytes: Array[Byte],
@@ -96,20 +99,29 @@ private[sbt] final class ProgressState(
       addBytes(terminal, bytes)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
-        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt =>
-          toWrite ++= (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
-        case _ =>
+        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt => toWrite ++= cleanPrompt
+        case _                                                        =>
       }
-      toWrite ++= bytes
-      toWrite ++= ClearScreenAfterCursor.getBytes("UTF-8")
-      if (bytes.endsWith(lineSeparatorBytes)) {
+      val endsWithNewLine = bytes.endsWith(lineSeparatorBytes)
+      if (endsWithNewLine || bytes.containsSlice(lineSeparatorBytes)) {
+        val parts = new String(bytes, "UTF-8").split(System.lineSeparator)
+        def appendLine(l: String, appendNewline: Boolean): Unit = {
+          toWrite ++= l.getBytes("UTF-8")
+          toWrite ++= clearScreenBytes
+          if (appendNewline) toWrite ++= lineSeparatorBytes
+        }
+        parts.dropRight(1).foreach(appendLine(_, true))
+        parts.lastOption.foreach(appendLine(_, bytes.endsWith(lineSeparatorBytes)))
+      } else toWrite ++= bytes
+      toWrite ++= clearScreenBytes
+      if (endsWithNewLine) {
         if (progressLines.get.nonEmpty) {
           val lastLine = terminal.prompt match {
             case a: Prompt.AskUser => a.render()
             case _                 => currentLine.getOrElse("")
           }
           val lines = printProgress(terminal, lastLine)
-          toWrite ++= (ClearScreenAfterCursor + lines).getBytes("UTF-8")
+          toWrite ++= lines.getBytes("UTF-8")
         }
         toWrite ++= getPrompt(terminal)
       }

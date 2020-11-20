@@ -226,9 +226,8 @@ object MainLoop {
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
             (() => {
-              c.terminal.setPrompt(prevPrompt)
+              if (c.terminal.prompt != Prompt.Watch) c.terminal.setPrompt(prevPrompt)
               ITerminal.set(prevTerminal)
-              c.terminal.setPrompt(prevPrompt)
               c.terminal.flush()
             }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
           case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))

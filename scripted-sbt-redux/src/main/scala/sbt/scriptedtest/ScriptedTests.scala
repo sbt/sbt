@@ -57,8 +57,7 @@ final class ScriptedTests(
         val result = testResources.readWriteResourceDirectory(g, n) { testDirectory =>
           val buffer = new BufferedLogger(new FullLogger(log))
           val singleTestRunner = () => {
-            val handlers =
-              createScriptedHandlers(testDirectory, buffer, prop)
+            val handlers = createScriptedHandlers(testDirectory, buffer, prop)
             val runner = new BatchScriptRunner
             val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
             try commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
@@ -141,6 +140,7 @@ final class ScriptedTests(
 
       def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests
+          .sortBy(_._1)
           .grouped(batchSize)
           .map { batch => () =>
             IO.withTemporaryDirectory {
@@ -377,7 +377,7 @@ class ScriptedRunner {
       launchOpts: Array[String],
   ): Unit = {
     val logger = TestConsoleLogger()
-    runInParallel(
+    run(
       resourceBaseDirectory,
       bufferLog,
       tests,
@@ -385,7 +385,8 @@ class ScriptedRunner {
       launchOpts,
       prescripted = new java.util.ArrayList[File],
       LauncherBased(launcherJar),
-      1
+      1,
+      parallelExecution = false,
     )
   }
 
@@ -404,7 +405,7 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
   ): Unit = {
     val logger = TestConsoleLogger()
-    runInParallel(
+    run(
       resourceBaseDirectory,
       bufferLog,
       tests,
@@ -412,7 +413,8 @@ class ScriptedRunner {
       launchOpts,
       prescripted,
       LauncherBased(launcherJar),
-      1
+      Int.MaxValue,
+      parallelExecution = false,
     )
   }
 
@@ -478,6 +480,18 @@ class ScriptedRunner {
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
       instances: Int
+  ) = run(baseDir, bufferLog, tests, logger, launchOpts, prescripted, prop, instances, true)
+
+  private[this] def run(
+      baseDir: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      logger: Logger,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      prop: RemoteSbtCreatorProp,
+      instances: Int,
+      parallelExecution: Boolean,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, launchOpts)
@@ -491,11 +505,17 @@ class ScriptedRunner {
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests =
       get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
+    // Choosing Int.MaxValue will make the groupSize 1 in batchScriptedRunner
+    val groupCount = if (parallelExecution) instances else Int.MaxValue
     val scriptedRunners =
-      runner.batchScriptedRunner(scriptedTests, addTestFile, instances, prop, logger)
-    val parallelRunners = scriptedRunners.toParArray
-    parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
-    runAll(parallelRunners)
+      runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
+    if (parallelExecution && instances > 1) {
+      val parallelRunners = scriptedRunners.toParArray
+      parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
+      runAll(parallelRunners)
+    } else {
+      runAll(scriptedRunners)
+    }
   }
   def runInParallel(
       baseDir: File,
@@ -536,8 +556,10 @@ class ScriptedRunner {
       baseDirectory: File,
       accept: ScriptedTest => Boolean,
       log: Logger,
-  ): Seq[ScriptedTest] =
-    if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
+  ): Seq[ScriptedTest] = {
+    val unsorted = if (tests.isEmpty) listTests(baseDirectory, accept, log) else parseTests(tests)
+    unsorted.sortBy(t => (t.group, t.name))
+  }
 
   @deprecated("No longer used", "1.1.0")
   def listTests(baseDirectory: File, log: Logger): Seq[ScriptedTest] =

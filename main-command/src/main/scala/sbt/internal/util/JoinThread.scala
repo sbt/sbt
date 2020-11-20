@@ -9,23 +9,22 @@ package sbt.internal.util
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._
+import java.util.concurrent.TimeoutException
 
 object JoinThread {
   implicit class ThreadOps(val t: Thread) extends AnyVal {
     def joinFor(duration: FiniteDuration): Unit = {
       val deadline = duration.fromNow
-      var exception: Option[InterruptedException] = None
       @tailrec def impl(): Unit = {
         try {
           t.interrupt()
           t.join(10)
-        } catch { case e: InterruptedException => exception = Some(e) }
+        } catch { case e: InterruptedException => }
         if (t.isAlive && !deadline.isOverdue) impl()
       }
       impl()
       if (t.isAlive) {
-        System.err.println(s"Unable to join thread $t after $duration")
-        exception.foreach(throw _)
+        throw new TimeoutException(s"Unable to join thread $t after $duration")
       }
     }
   }

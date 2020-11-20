@@ -8,13 +8,14 @@ object Dependencies {
   val scala213 = "2.13.3"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
-  def nightlyVersion = sys.props.get("sbt.build.version")
+  def nightlyVersion: Option[String] =
+    sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.4.0")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.4.0")
-  val zincVersion = nightlyVersion.getOrElse("1.4.2")
+  val zincVersion = nightlyVersion.getOrElse("1.4.3")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -76,21 +77,21 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.0"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.3"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
-  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-5e51b9d4f9631ebfa29753ce4accc57808e7fd6b"
-  val jline3Version = "3.16.0" // Once the base jline version is upgraded, we can use the official jline-terminal
-  val jline3Terminal = "org.scala-sbt.jline3" % "jline-terminal" % s"$jline3Version-sbt-211a082ed6326908dc84ca017ce4430728f18a8a"
+  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-42b717d4418374417765c7651dca69b1b75d8b84"
+  val jline3Version = "3.17.1"
+  val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val jansi = "org.fusesource.jansi" % "jansi" % "1.18"
+  val jansi = "org.fusesource.jansi" % "jansi" % "2.0.1"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.10.0"

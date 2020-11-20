@@ -116,6 +116,7 @@ for:
     - SET PATH=C:\sbt\sbt\bin;%PATH%
     - SET JAVA_HOME=C:\jdk8
     - gu install native-image
+    - rm .sbtopts
 
   cache:
     - '%USERPROFILE%\.ivy2\cache'
@@ -148,6 +149,7 @@ for:
         }
     - SET PATH=C:\sbt\sbt\bin;%PATH%
     - SET SBT_OPTS=-Xmx4g -Dsbt.supershell=never -Dfile.encoding=UTF8
+    - rm .sbtopts
 
   cache:
     - '%USERPROFILE%\.ivy2\cache'

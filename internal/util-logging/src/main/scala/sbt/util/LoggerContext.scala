@@ -116,11 +116,13 @@ object LoggerContext {
     private class Log extends MiniLogger {
       private val consoleAppenders: java.util.Vector[(Appender, Level.Value)] =
         new java.util.Vector
-      def log(level: Level.Value, message: => String): Unit =
-        consoleAppenders.forEach {
-          case (a, l) =>
-            if (level.compare(l) >= 0) a.appendLog(level, message)
+      def log(level: Level.Value, message: => String): Unit = {
+        val toAppend = consoleAppenders.asScala.filter { case (a, l) => level.compare(l) >= 0 }
+        if (toAppend.nonEmpty) {
+          val m = message
+          toAppend.foreach { case (a, l) => a.appendLog(level, m) }
         }
+      }
       def log[T](level: Level.Value, message: ObjectEvent[T]): Unit = {
         consoleAppenders.forEach {
           case (a, l) =>

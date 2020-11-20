@@ -11,7 +11,7 @@ package client
 
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
-import java.net.Socket
+import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
@@ -492,7 +492,6 @@ class NetworkClient(
         val message = timing(startTime, now)
         val ec = exitCode
         if (batchMode.get || !attached.get) {
-          console.appendLog(Level.Info, s"$name completed")
           if (ec == 0) console.success(message)
           else console.appendLog(Level.Error, message)
         }
@@ -889,6 +888,7 @@ class NetworkClient(
         status.set("Processing")
       }
     } catch {
+      case e: SocketException if command.toString.contains("exit") => running.set(false)
       case e: IOException =>
         errorStream.println(s"Caught exception writing command to server: $e")
         running.set(false)
@@ -1093,16 +1093,20 @@ object NetworkClient {
       terminal: Terminal,
       useJNI: Boolean
   ): Int = {
+    val printStream = if (args.bsp) errorStream else terminal.printStream
     val client =
       simpleClient(
         args.withBaseDirectory(baseDirectory),
         inputStream,
+        printStream,
         errorStream,
         useJNI,
-        terminal
       )
+    clientImpl(client, args.bsp)
+  }
+  private def clientImpl(client: NetworkClient, isBsp: Boolean): Int = {
     try {
-      if (args.bsp) {
+      if (isBsp) {
         val (socket, _) =
           client.connectOrStartServerAndConnect(promptCompleteUsers = false, retry = true)
         BspClient.bspRun(socket)
@@ -1160,7 +1164,7 @@ object NetworkClient {
       Runtime.getRuntime.addShutdownHook(hook)
       if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       val parsed = parseArgs(restOfArgs)
-      System.exit(Terminal.withStreams(false) {
+      System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
         try client(base, parsed, term.inputStream, System.err, term, useJNI)
         catch { case _: AccessDeniedException => 1 } finally {
@@ -1214,16 +1218,18 @@ object NetworkClient {
   }
 
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
-    try {
-      val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
-      try {
-        if (client.connect(log = true, promptCompleteUsers = false)) client.run()
-        else 1
-      } catch { case _: Throwable => 1 } finally client.close()
-    } catch {
-      case NonFatal(e) =>
-        e.printStackTrace()
-        1
-    }
+    run(configuration, arguments, false)
+  def run(
+      configuration: xsbti.AppConfiguration,
+      arguments: List[String],
+      redirectOutput: Boolean
+  ): Int = {
+    val term = Terminal.console
+    val err = new PrintStream(term.errorStream)
+    val out = if (redirectOutput) err else new PrintStream(term.outputStream)
+    val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
+    val client = simpleClient(args, term.inputStream, out, err, useJNI = false)
+    clientImpl(client, args.bsp)
+  }
   private class AccessDeniedException extends Throwable
 }

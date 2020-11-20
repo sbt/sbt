@@ -64,7 +64,7 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final String jlineJars = "jline-(terminal-)?[0-9.]+-sbt-.*|jline-terminal-(jna|jansi)-[0-9.]+";
+    final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
     final String fullPattern =
         "^(test-interface-[0-9.]+|" + jlineJars + "|jansi-[0-9.]+|jna-(platform-)?[0-9.]+)\\.jar";
     final Pattern pattern = Pattern.compile(fullPattern);
@@ -117,6 +117,21 @@ public final class MetaBuildLoader extends URLClassLoader {
       if (!foundSBTLoader) topLoader = topLoader.getParent();
     }
     if (topLoader == null) topLoader = scalaProvider.launcher().topLoader();
+    // the bundled version of jansi with old versions of the launcher cause
+    // problems so we need to exclude it from classloading
+    topLoader =
+        new ClassLoader(topLoader) {
+          @Override
+          protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name);
+            return super.loadClass(name, resolve);
+          }
+
+          @Override
+          public String toString() {
+            return "JansiExclusionClassLoader";
+          }
+        };
 
     final TestInterfaceLoader interfaceLoader = new TestInterfaceLoader(interfaceURLs, topLoader);
     final JLineLoader jlineLoader = new JLineLoader(jlineURLs, interfaceLoader);

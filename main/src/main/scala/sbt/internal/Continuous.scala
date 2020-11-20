@@ -783,11 +783,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     executor => {
       val interrupted = new AtomicBoolean(false)
+      @tailrec def read(): Int = {
+        if (terminal.name.startsWith("network")) terminal.inputStream.read
+        else if (Terminal.canPollSystemIn || terminal.inputStream.available > 0)
+          terminal.inputStream.read
+        else {
+          Thread.sleep(50)
+          read()
+        }
+      }
       @tailrec def impl(): Option[Watch.Action] = {
         val action =
           try {
             interrupted.set(false)
-            terminal.inputStream.read match {
+            read() match {
               case -1   => throw new InterruptedException
               case 3    => Watch.CancelWatch // ctrl+c on windows
               case byte => inputHandler(byte.toChar.toString)
@@ -1335,8 +1344,7 @@ private[sbt] object ContinuousCommands {
   private[sbt] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
     val cs = watchState(state, channel)
     StandardMain.exchange.channelForName(channel).foreach { c =>
-      c.terminal.setPrompt(Prompt.Watch)
-      c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+      c.terminal.setPrompt(Prompt.Pending)
     }
     val postState = state.get(watchStates) match {
       case None     => state
@@ -1351,7 +1359,10 @@ private[sbt] object ContinuousCommands {
         cs.callbacks.onExit()
         StandardMain.exchange
           .channelForName(channel)
-          .foreach(_.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel)))))
+          .foreach { c =>
+            c.terminal.setPrompt(Prompt.Pending)
+            c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+          }
         afterWatchState.get(watchStates) match {
           case None    => afterWatchState
           case Some(w) => afterWatchState.put(watchStates, w - channel)

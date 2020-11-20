@@ -306,10 +306,10 @@ object Terminal {
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
     }
   }
-  private[this] lazy val superShellEnabled = sys.props.get("sbt.supershell").map(_ == "true")
-  private[sbt] lazy val isAnsiSupported: Boolean =
-    logFormatEnabled.orElse(superShellEnabled).getOrElse(useColorDefault && !isCI)
-  private[this] val isDumbTerminal = "dumb" == System.getenv("TERM")
+  private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
+
+  private[this] val isDumb = "dumb" == System.getenv("TERM")
+  private[this] def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
@@ -317,7 +317,7 @@ object Terminal {
     props
       .map(_.color)
       .orElse(isColorEnabledProp)
-      .getOrElse((hasConsole && !isDumbTerminal && logFormatEnabled.getOrElse(true)) || isCI)
+      .getOrElse(logFormatEnabled.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI))
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -327,6 +327,9 @@ object Terminal {
     if (isColorEnabled && doRed) Console.RED + str + Console.RESET
     else str
 
+  private[this] def hasVirtualIO = System.getProperty("sbt.io.virtual", "") == "true" || !isCI
+  private[sbt] def canPollSystemIn: Boolean = hasConsole && !isDumbTerminal && hasVirtualIO
+
   /**
    *
    * @param isServer toggles whether or not this is a server of client process
@@ -334,11 +337,12 @@ object Terminal {
    * @tparam T the result type of the thunk
    * @return the result of the thunk
    */
-  private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T =
+  private[sbt] def withStreams[T](isServer: Boolean, isSubProcess: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
-      hasProgress.set(isServer && isAnsiSupported)
+    if ((hasConsole && !isDumbTerminal) || isSubProcess)
       consoleTerminalHolder.set(newConsoleTerminal())
+    if (hasVirtualIO) {
+      hasProgress.set(isServer && isAnsiSupported)
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
@@ -372,6 +376,7 @@ object Terminal {
         }
       }
     } else f
+  }
 
   private[this] object ProxyTerminal extends Terminal {
     private def t: Terminal = activeTerminal.get
@@ -457,7 +462,7 @@ object Terminal {
       extends SimpleInputStream
       with AutoCloseable {
     private[this] val isRaw = new AtomicBoolean(false)
-    final def write(bytes: Int*): Unit = readThread.synchronized {
+    final def write(bytes: Int*): Unit = buffer.synchronized {
       bytes.foreach(b => buffer.put(b))
     }
     def setRawMode(toggle: Boolean): Unit = {
@@ -488,7 +493,7 @@ object Terminal {
       @tailrec def impl(): Unit = {
         val _ = readQueue.take
         val b = in.read
-        buffer.put(b)
+        buffer.synchronized(buffer.put(b))
         if (Thread.interrupted() || (b == -1 && isRaw.get)) closed.set(true)
         else impl()
       }
@@ -746,7 +751,7 @@ object Terminal {
   private[sbt] def reset(): Unit = {
     jline.TerminalFactory.reset()
     console.close()
-    consoleTerminalHolder.set(newConsoleTerminal())
+    if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
   }
 
   // translate explicit class names to type in order to support
@@ -754,7 +759,7 @@ object Terminal {
   private[this] def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
     val newValue =
-      if (!isAnsiSupported) "none"
+      if (!isAnsiSupported && System.getProperty("sbt.io.virtual", "") == "false") "none"
       else
         System.getProperty(terminalProperty) match {
           case "jline.UnixTerminal"                             => "unix"
@@ -762,7 +767,7 @@ object Terminal {
           case "jline.WindowsTerminal"                          => "windows"
           case "jline.AnsiWindowsTerminal"                      => "windows"
           case "jline.UnsupportedTerminal"                      => "none"
-          case null if isDumbTerminal                           => "none"
+          case null if isDumb                                   => "none"
           case x                                                => x
         }
     if (newValue != null) {
@@ -1006,17 +1011,8 @@ object Terminal {
   }
   private[sbt] object NullTerminal extends DefaultTerminal
   private[sbt] object SimpleTerminal extends DefaultTerminal {
-    override lazy val inputStream: InputStream =
-      if (isCI) BlockingInputStream
-      else originalIn
+    override lazy val inputStream: InputStream = originalIn
     override lazy val outputStream: OutputStream = originalOut
     override lazy val errorStream: OutputStream = originalErr
-  }
-  private[this] object BlockingInputStream extends SimpleInputStream {
-    override def read(): Int = {
-      try this.synchronized(this.wait)
-      catch { case _: InterruptedException => }
-      -1
-    }
   }
 }
