@@ -64,10 +64,6 @@ private[sbt] object xMain {
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       import sbt.internal.client.NetworkClient
 
-      val bootServerSocket = getSocketOrExit(configuration) match {
-        case (_, Some(e)) => return e
-        case (s, _)       => s
-      }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments
@@ -75,6 +71,12 @@ private[sbt] object xMain {
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+        case (_, Some(e)) => return e
+        case (s, _)       => s
+      }
+      else None
       if (userCommands.exists(isBsp)) {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
