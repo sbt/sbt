@@ -8,5 +8,9 @@
 package sbt;
 
 public enum ForkTags {
-	Error, Warn, Info, Debug, Done
+  Error,
+  Warn,
+  Info,
+  Debug,
+  Done
 }

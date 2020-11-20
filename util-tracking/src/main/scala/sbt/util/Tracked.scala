@@ -7,14 +7,14 @@
 
 package sbt.util
 
-import scala.util.{ Failure, Try, Success }
+import scala.util.{ Failure, Try, Success => USuccess }
 
 import java.io.File
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.internal.util.EmptyCacheError
 
-import sjsonnew.JsonFormat
+import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.murmurhash.Hasher
 
 object Tracked {
@@ -83,8 +83,8 @@ object Tracked {
    * Creates a tracker that indicates whether the output returned from `p` has changed or not.
    *
    * {{{
-   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
-   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
    *     if (inChanged || outChanged) {
    *       doSomething(label, sources, classpath, outputDirectory, options, log)
    *     }
@@ -94,6 +94,28 @@ object Tracked {
    * }}}
    */
   def outputChanged[A1: JsonFormat, A2](store: CacheStore)(
+      f: (Boolean, A1) => A2
+  ): (() => A1) => A2 = {
+    outputChangedW(store)(f)
+  }
+
+  /**
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   */
+  def outputChangedW[A1: JsonWriter, A2](store: CacheStore)(
       f: (Boolean, A1) => A2
   ): (() => A1) => A2 = p => {
     val cache: SingletonCache[Long] = {
@@ -128,8 +150,7 @@ object Tracked {
     outputChanged[A1, A2](CacheStore(cacheFile))(f)
 
   /**
-   * Creates a tracker that indicates whether the arguments given to f have changed since the most
-   * recent invocation.
+   * Creates a tracker that indicates whether the output returned from `p` has changed or not.
    *
    * {{{
    * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
@@ -141,8 +162,52 @@ object Tracked {
    * }
    * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
    * }}}
+   *
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   */
+  def outputChangedW[A1: JsonWriter, A2](
+      cacheFile: File
+  )(f: (Boolean, A1) => A2): (() => A1) => A2 =
+    outputChangedW[A1, A2](CacheStore(cacheFile))(f)
+
+  /**
+   * Creates a tracker that indicates whether the arguments given to f have changed since the most
+   * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
    */
   def inputChanged[I: JsonFormat: SingletonCache, O](store: CacheStore)(
+      f: (Boolean, I) => O
+  ): I => O =
+    inputChangedW(store)(f)
+
+  /**
+   * Creates a tracker that indicates whether the arguments given to f have changed since the most
+   * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cacheStoreFactory.make("output")) { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `inputChanged` that takes `I: JsonWriter` as opposed to `I: JsonFormat`.
+   */
+  def inputChangedW[I: JsonWriter, O](store: CacheStore)(
       f: (Boolean, I) => O
   ): I => O = { in =>
     val cache: SingletonCache[Long] = {
@@ -177,12 +242,34 @@ object Tracked {
   ): I => O =
     inputChanged(CacheStore(cacheFile))(f)
 
-  private final class CacheHelp[I: JsonFormat](val sc: SingletonCache[Long]) {
+  /**
+   * Creates a tracker that indicates whether the arguments given to f have changed since the most
+   * recent invocation.
+   *
+   * {{{
+   * val cachedTask = inputChanged(cache / "inputs") { (inChanged, in: Inputs) =>
+   *   Tracked.outputChanged(cache / "output") { (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+   *     if (inChanged || outChanged) {
+   *       doSomething(label, sources, classpath, outputDirectory, options, log)
+   *     }
+   *   }
+   * }
+   * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
+   * }}}
+   *
+   * This is a variant of `inputChanged` that takes `I: JsonWriter` as opposed to `I: JsonFormat`.
+   */
+  def inputChangedW[I: JsonWriter, O](cacheFile: File)(
+      f: (Boolean, I) => O
+  ): I => O =
+    inputChangedW(CacheStore(cacheFile))(f)
+
+  private final class CacheHelp[I: JsonWriter](val sc: SingletonCache[Long]) {
     import CacheImplicits.implicitHashWriter
     import CacheImplicits.LongJsonFormat
     def save(store: CacheStore, value: I): Unit = {
       Hasher.hash(value) match {
-        case Success(keyHash) => store.write[Long](keyHash.toLong)
+        case USuccess(keyHash) => store.write[Long](keyHash.toLong)
         case Failure(e) =>
           if (isStrictMode) throw e
           else ()
@@ -191,9 +278,9 @@ object Tracked {
 
     def changed(store: CacheStore, value: I): Boolean =
       Try { store.read[Long] } match {
-        case Success(prev: Long) =>
+        case USuccess(prev: Long) =>
           Hasher.hash(value) match {
-            case Success(keyHash: Int) => keyHash.toLong != prev
+            case USuccess(keyHash: Int) => keyHash.toLong != prev
             case Failure(e) =>
               if (isStrictMode) throw e
               else true

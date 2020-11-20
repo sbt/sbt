@@ -7,7 +7,7 @@ addCompilerPlugin("org.scala-lang.plugins" % "continuations" % "2.8.1")
 scalacOptions += "-P:continuations:enable"
 
 libraryDependencies ++= Seq(
-	"junit" % "junit" % "4.7" % "test",
+	"junit" % "junit" % "4.13.1" % "test",
 	"com.novocode" % "junit-interface" % "0.5" % "test"
 )
 

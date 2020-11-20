@@ -15,7 +15,8 @@ import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.Project._
 import sbt.internal.inc.ModuleUtilities
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
+import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io._
 import sbt.io.syntax._
@@ -78,7 +79,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
-    scriptedBatchExecution := false,
+    scriptedBatchExecution := CrossVersionUtil.binarySbtVersion(scriptedSbt.value) != "0.13",
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
@@ -92,7 +93,8 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
-      val loader = ClasspathUtilities.toLoader(scriptedClasspath.value, scalaInstance.value.loader)
+      val cp = scriptedClasspath.value.get.map(_.toPath)
+      val loader = ClasspathUtil.toLoader(cp, scalaInstance.value.loader)
       try {
         ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
       } catch {
@@ -177,7 +179,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
-    scriptedDependencies.value
+    Def.unit(scriptedDependencies.value)
     try {
       val method = scriptedRun.value
       val scriptedInstance = scriptedTests.value

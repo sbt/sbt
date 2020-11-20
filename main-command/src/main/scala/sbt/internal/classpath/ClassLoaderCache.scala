@@ -11,7 +11,7 @@ import java.io.File
 import java.lang.management.ManagementFactory
 import java.lang.ref.{ Reference, ReferenceQueue, SoftReference }
 import java.net.URLClassLoader
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.{ AtomicInteger, AtomicReference }
 
 import sbt.internal.inc.classpath.{
   AbstractClassLoaderCache,
@@ -30,9 +30,12 @@ private object ClassLoaderCache {
   private def threadID = new AtomicInteger(0)
 }
 private[sbt] class ClassLoaderCache(
-    override val commonParent: ClassLoader,
+    val parent: ClassLoader,
     private val miniProvider: Option[(File, ClassLoader)]
 ) extends AbstractClassLoaderCache {
+  private[this] val parentHolder = new AtomicReference(parent)
+  def commonParent = parentHolder.get()
+  def setParent(parent: ClassLoader): Unit = parentHolder.set(parent)
   def this(commonParent: ClassLoader) = this(commonParent, None)
   def this(scalaProvider: ScalaProvider) =
     this(scalaProvider.launcher.topLoader, {
@@ -51,8 +54,9 @@ private[sbt] class ClassLoaderCache(
       }
   }
   private class Key(val fileStamps: Seq[(File, Long)], val parent: ClassLoader) {
-    def this(files: List[File]) =
-      this(files.map(f => f -> IO.getModifiedTimeOrZero(f)), commonParent)
+    def this(files: List[File], parent: ClassLoader) =
+      this(files.map(f => f -> IO.getModifiedTimeOrZero(f)), parent)
+    def this(files: List[File]) = this(files, commonParent)
     lazy val files: Seq[File] = fileStamps.map(_._1)
     lazy val maxStamp: Long = fileStamps.maxBy(_._2)._2
     class CachedClassLoader
@@ -169,9 +173,18 @@ private[sbt] class ClassLoaderCache(
     val key = new Key(files, parent)
     get(key, mkLoader)
   }
-  override def apply(files: List[File]): ClassLoader = {
-    val key = new Key(files)
+  def apply(files: List[File], parent: ClassLoader): ClassLoader = {
+    val key = new Key(files, parent)
     get(key, () => key.toClassLoader)
+  }
+  override def apply(files: List[File]): ClassLoader = {
+    files match {
+      case d :: s :: Nil if d.getName.startsWith("dotty-library") =>
+        apply(files, classOf[org.jline.terminal.Terminal].getClassLoader)
+      case _ =>
+        val key = new Key(files)
+        get(key, () => key.toClassLoader)
+    }
   }
   override def cachedCustomClassloader(
       files: List[File],

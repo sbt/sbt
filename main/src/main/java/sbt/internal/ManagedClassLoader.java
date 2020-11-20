@@ -30,7 +30,11 @@ abstract class ManagedClassLoader extends URLClassLoader implements NativeLoader
   }
 
   ManagedClassLoader(
-      final URL[] urls, final ClassLoader parent, final boolean close, final boolean allowZombies, final Logger logger) {
+      final URL[] urls,
+      final ClassLoader parent,
+      final boolean close,
+      final boolean allowZombies,
+      final Logger logger) {
     super(urls, parent);
     this.close = close;
     this.allowZombies = allowZombies;

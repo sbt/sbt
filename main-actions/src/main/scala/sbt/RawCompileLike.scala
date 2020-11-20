@@ -9,22 +9,19 @@ package sbt
 
 import scala.annotation.tailrec
 import java.io.File
-import sbt.internal.inc.{ RawCompiler, ScalaInstance }
-
 import sbt.io.syntax._
 import sbt.io.IO
-
+import sbt.internal.inc.{ RawCompiler, ScalaInstance }
 import sbt.internal.util.Types.:+:
+import sbt.internal.util.HListFormats._
+import sbt.internal.util.HNil
 import sbt.internal.util.HListFormats._
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.inputChanged
 import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
-import sbt.internal.util.HNil
-import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, hash, lastModified }
-import xsbti.compile.ClasspathOptions
-
 import sbt.internal.util.ManagedLogger
+import xsbti.compile.ClasspathOptions
 
 object RawCompileLike {
   type Gen = (Seq[File], Seq[File], File, Seq[String], Int, ManagedLogger) => Unit
@@ -56,10 +53,9 @@ object RawCompileLike {
       type Inputs =
         FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+:
           Seq[String] :+: Int :+: HNil
-      val inputs
-          : Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+: lastModified(
-        classpath.toSet
-      ) :+: classpath :+: outputDirectory :+: options :+: maxErrors :+: HNil
+      val inputs: Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+:
+        FilesInfo(classpath.toSet.map(lastModified.fileOrDirectoryMax)) :+: classpath :+:
+        outputDirectory :+: options :+: maxErrors :+: HNil
       val cachedComp = inputChanged(cacheStoreFactory make "inputs") { (inChanged, in: Inputs) =>
         inputChanged(cacheStoreFactory make "output") {
           (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
@@ -92,7 +88,7 @@ object RawCompileLike {
   def rawCompile(instance: ScalaInstance, cpOptions: ClasspathOptions): Gen =
     (sources, classpath, outputDirectory, options, _, log) => {
       val compiler = new RawCompiler(instance, cpOptions, log)
-      compiler(sources, classpath, outputDirectory, options)
+      compiler(sources.map(_.toPath), classpath.map(_.toPath), outputDirectory.toPath, options)
     }
 
   def compile(

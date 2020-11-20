@@ -140,7 +140,7 @@ object InputWrapper {
             c.abort(
               pos,
               """`value` is removed from input tasks. Use `evaluated` or `inputTaskValue`.
-                           |See http://www.scala-sbt.org/1.0/docs/Input-Tasks.html for more details.""".stripMargin
+                           |See https://www.scala-sbt.org/1.0/docs/Input-Tasks.html for more details.""".stripMargin
             )
           }
           InputWrapper.wrapInit[T](c)(ts, pos)

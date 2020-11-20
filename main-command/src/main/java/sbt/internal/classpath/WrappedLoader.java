@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class WrappedLoader extends URLClassLoader {
   private final AtomicBoolean invalidated = new AtomicBoolean(false);
+
   static {
     ClassLoader.registerAsParallelCapable();
   }

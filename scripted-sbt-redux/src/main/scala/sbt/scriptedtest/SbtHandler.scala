@@ -14,12 +14,14 @@ import java.net.SocketException
 import scala.sys.process.Process
 
 import sbt.internal.scripted.{ StatementHandler, TestFailed }
+import sbt.internal.util.RunningProcesses
 
 import xsbt.IPC
 
 final case class SbtInstance(process: Process, server: IPC.Server)
 
 final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHandler {
+  Signals.register(() => RunningProcesses.killAll())
 
   type State = Option[SbtInstance]
 
@@ -27,7 +29,7 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
 
   def apply(command: String, arguments: List[String], i: Option[SbtInstance]): Option[SbtInstance] =
     onSbtInstance(i) { (_, server) =>
-      send((command :: arguments.map(escape)).mkString(" "), server)
+      send((command :: arguments).mkString(" "), server)
       receive(s"$command failed", server)
     }
 
@@ -63,6 +65,9 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
         ()
       } catch {
         case _: IOException => process.destroy()
+      } finally {
+        if (process.isAlive) process.destroy()
+        RunningProcesses.remove(process)
       }
   }
 
@@ -76,16 +81,9 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
 
   def newRemote(server: IPC.Server): Process = {
     val p = remoteSbtCreator.newRemote(server)
+    RunningProcesses.add(p)
     try receive("Remote sbt initialization failed", server)
     catch { case _: SocketException => throw new TestFailed("Remote sbt initialization failed") }
     p
-  }
-
-  // if the argument contains spaces, enclose it in quotes, quoting backslashes and quotes
-  def escape(argument: String) = {
-    import java.util.regex.Pattern.{ quote => q }
-    if (argument.contains(" "))
-      "\"" + argument.replaceAll(q("""\"""), """\\""").replaceAll(q("\""), "\\\"") + "\""
-    else argument
   }
 }

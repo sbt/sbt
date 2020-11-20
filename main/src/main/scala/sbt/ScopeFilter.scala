@@ -9,9 +9,7 @@ package sbt
 
 import sbt.internal.{ Load, LoadedBuildUnit }
 import sbt.internal.util.{ AttributeKey, Dag, Types }
-
-import sbt.librarymanagement.{ Configuration, ConfigRef }
-
+import sbt.librarymanagement.{ ConfigRef, Configuration }
 import Types.const
 import Def.Initialize
 import java.net.URI
@@ -22,6 +20,16 @@ object ScopeFilter {
   type ProjectFilter = AxisFilter[Reference]
   type ConfigurationFilter = AxisFilter[ConfigKey]
   type TaskFilter = AxisFilter[AttributeKey[_]]
+
+  /**
+   * Construct a Scope filter from a sequence of individual scopes.
+   */
+  def in(scopes: Seq[Scope]): ScopeFilter = {
+    val scopeSet = scopes.toSet
+    new ScopeFilter {
+      override private[ScopeFilter] def apply(data: Data): Scope => Boolean = scopeSet.contains
+    }
+  }
 
   /**
    * Constructs a Scope filter from filters for the individual axes.

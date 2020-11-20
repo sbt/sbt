@@ -1,6 +1,6 @@
 val scalcheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
 
-ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / version := "0.0.1" 
 ThisBuild / organization := "org.catastrophe"
 

@@ -47,7 +47,7 @@ object IvyXml {
   }
 
   // These are required for publish to be fine, later on.
-  private def writeFiles(
+  private[sbt] def writeFiles(
       currentProject: Project,
       shadedConfigOpt: Option[Configuration],
       ivySbt: IvySbt,

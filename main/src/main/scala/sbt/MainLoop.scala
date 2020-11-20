@@ -10,27 +10,32 @@ package sbt
 import java.io.PrintWriter
 import java.util.Properties
 
-import jline.TerminalFactory
-import sbt.internal.{ Aggregation, ShutdownHooks }
+import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
+import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
-import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking }
+import sbt.internal.protocol.JsonRpcResponseError
+import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal }
+import sbt.internal.{ ShutdownHooks, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
-import sbt.util.Logger
-import sbt.nio.Keys._
+import sbt.util.{ Logger, LoggerContext }
 
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 import scala.util.control.NonFatal
+import sbt.internal.FastTrackCommands
+import sbt.internal.SysProp
 
 object MainLoop {
 
   /** Entry point to run the remaining commands in State with managed global logging.*/
   def runLogged(state: State): xsbti.MainResult = {
+
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
     // the jline terminal in finally blocks, but hitting ctrl+c prevents finally blocks from being executed, in that
     // case the only way to restore the terminal is in a shutdown hook.
-    val shutdownHook = ShutdownHooks.add(() => TerminalFactory.get().restore())
+    val shutdownHook = ShutdownHooks.add(ITerminal.restore)
 
     try {
       runLoggedLoop(state, state.globalLogging.backing)
@@ -56,7 +61,7 @@ object MainLoop {
     }
 
   /** Runs the next sequence of commands, cleaning up global logging after any exceptions. */
-  def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext =
+  def runAndClearLast(state: State, logBacking: GlobalLogBacking): RunNext = {
     try runWithNewLog(state, logBacking)
     catch {
       case e: xsbti.FullReload =>
@@ -73,6 +78,7 @@ object MainLoop {
         deleteLastLog(logBacking)
         throw e
     }
+  }
 
   /** Deletes the previous global log file. */
   def deleteLastLog(logBacking: GlobalLogBacking): Unit =
@@ -95,22 +101,26 @@ object MainLoop {
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
     currentArtDirs.get foreach { dir =>
-      state.log.info(s"Deleting $dir")
+      state.log.info(s"deleting $dir")
       IO.delete(dir)
     }
   }
 
   /** Runs the next sequence of commands with global logging in place. */
-  def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext =
+  def runWithNewLog(state: State, logBacking: GlobalLogBacking): RunNext = {
     Using.fileWriter(append = true)(logBacking.file) { writer =>
       val out = new PrintWriter(writer)
       val full = state.globalLogging.full
-      val newLogging = state.globalLogging.newAppender(full, out, logBacking)
+      val newLogging =
+        state.globalLogging.newAppender(full, out, logBacking, LoggerContext.globalContext)
       // transferLevels(state, newLogging)
       val loggedState = state.copy(globalLogging = newLogging)
       try run(loggedState)
-      finally out.close()
+      finally {
+        out.close()
+      }
     }
+  }
 
   // /** Transfers logging and trace levels from the old global loggers to the new ones. */
   // private[this] def transferLevels(state: State, logging: GlobalLogging): Unit = {
@@ -136,18 +146,29 @@ object MainLoop {
       case ret: State.Return    => new Return(ret.result)
     }
 
-  def next(state: State): State =
+  def next(state: State): State = {
+    val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+    val superShellSleep =
+      state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
+    val superShellThreshold =
+      state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
+    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold, state.log)
+    val gcMonitor = if (SysProp.gcMonitor) Some(new sbt.internal.GCMonitor(state.log)) else None
     try {
       ErrorHandling.wideConvert {
-        state.process(processCommand)
+        state
+          .put(Keys.loggerContext, context)
+          .put(Keys.taskProgress, taskProgress)
+          .process(processCommand)
       } match {
-        case Right(s)                  => s
+        case Right(s)                  => s.remove(Keys.loggerContext)
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
-        case Left(t)                   => state.handleError(t)
+        case Left(t)                   => state.remove(Keys.loggerContext).handleError(t)
       }
     } catch {
-      case oom: OutOfMemoryError if oom.getMessage.contains("Metaspace") =>
+      case oom: OutOfMemoryError
+          if oom.getMessage != null && oom.getMessage.contains("Metaspace") =>
         System.gc() // Since we're under memory pressure, see if more can be freed with a manual gc.
         val isTestOrRun = state.remainingCommands.headOption.exists { exec =>
           val cmd = exec.commandLine
@@ -172,12 +193,18 @@ object MainLoop {
         state.log.error(msg)
         state.log.error("\n")
         state.handleError(oom)
+    } finally {
+      gcMonitor.foreach(_.close())
+      context.close()
+      taskProgress.close()
     }
+  }
 
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
-    StandardMain.exchange publishEventMessage
+    val exchange = StandardMain.exchange
+    exchange notifyStatus
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
     try {
       def process(): State = {
@@ -190,46 +217,62 @@ object MainLoop {
               state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
             } else state
         }
-        val newState = Command.process(exec.commandLine, progressState)
-        if (exec.commandLine.contains("session"))
-          newState.get(hasCheckedMetaBuild).foreach(_.set(false))
-        val doneEvent = ExecStatusEvent(
-          "Done",
-          channelName,
-          exec.execId,
-          newState.remainingCommands.toVector map (_.commandLine),
-          exitCode(newState, state),
-        )
-        if (doneEvent.execId.isDefined) { // send back a response or error
-          import sbt.protocol.codec.JsonProtocol._
-          StandardMain.exchange publishEvent doneEvent
-        } else { // send back a notification
-          StandardMain.exchange publishEventMessage doneEvent
+        exchange.setState(progressState)
+        exchange.setExec(Some(exec))
+        val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
+          case Some(c) =>
+            val prevTerminal = ITerminal.set(c.terminal)
+            val prevPrompt = c.terminal.prompt
+            // temporarily set the prompt to running during task evaluation
+            c.terminal.setPrompt(Prompt.Running)
+            (() => {
+              if (c.terminal.prompt != Prompt.Watch) c.terminal.setPrompt(prevPrompt)
+              ITerminal.set(prevTerminal)
+              c.terminal.flush()
+            }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
+          case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))
         }
+        /*
+         * FastTrackCommands.evaluate can be significantly faster than Command.process because
+         * it avoids an expensive parsing step for internal commands that are easy to parse.
+         * Dropping (FastTrackCommands.evaluate ... getOrElse) should be functionally identical
+         * but slower.
+         */
+        val newState = try {
+          FastTrackCommands
+            .evaluate(termState, exec.commandLine)
+            .getOrElse(Command.process(exec.commandLine, termState))
+        } finally {
+          // Flush the terminal output after command evaluation to ensure that all output
+          // is displayed in the thin client before we report the command status. Also
+          // set the promt to whatever it was before we started evaluating the task.
+          restoreTerminal()
+        }
+        if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
+            !exec.commandLine.startsWith(networkExecPrefix)) {
+          val doneEvent = ExecStatusEvent(
+            "Done",
+            channelName,
+            exec.execId,
+            newState.remainingCommands.toVector map (_.commandLine),
+            exitCode(newState, state),
+          )
+          exchange.respondStatus(doneEvent)
+        }
+        exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
-        newState.remove(sbt.Keys.currentTaskProgress)
+        newState.remove(sbt.Keys.currentTaskProgress).remove(Keys.terminalKey)
       }
-      // The split on space is to handle 'reboot full' and 'reboot'.
-      state.currentCommand.flatMap(_.commandLine.trim.split(" ").headOption) match {
-        case Some("reload") =>
-          // Reset the hasCheckedMetaBuild parameter so that the next call to checkBuildSources
-          // updates the previous cache for checkBuildSources / fileInputStamps but doesn't log.
-          state.get(hasCheckedMetaBuild).foreach(_.set(false))
-          process()
-        case Some("exit") | Some("reboot") => process()
-        case _ =>
-          val emptyState = state.copy(remainingCommands = Nil).put(Aggregation.suppressShow, true)
-          Parser.parse("checkBuildSources", emptyState.combinedParser) match {
-            case Right(cmd) =>
-              cmd() match {
-                case s if s.remainingCommands.headOption.map(_.commandLine).contains("reload") =>
-                  Exec("reload", None, None) +: exec +: state
-                case _ => process()
-              }
-            case _ => process()
-          }
+      state.get(CheckBuildSourcesKey) match {
+        case Some(cbs) =>
+          if (!cbs.needsReload(state, exec)) process()
+          else Exec("reload", None) +: exec +: state.remove(CheckBuildSourcesKey)
+        case _ => process()
       }
     } catch {
+      case err: JsonRpcResponseError =>
+        exchange.respondError(err, exec.execId, channelName.map(CommandSource(_)))
+        throw err
       case err: Throwable =>
         val errorEvent = ExecStatusEvent(
           "Error",
@@ -237,9 +280,9 @@ object MainLoop {
           exec.execId,
           Vector(),
           ExitCode(ErrorCodes.UnknownError),
+          Option(err.getMessage),
         )
-        import sbt.protocol.codec.JsonProtocol._
-        StandardMain.exchange publishEvent errorEvent
+        StandardMain.exchange.respondStatus(errorEvent)
         throw err
     }
   }
@@ -284,7 +327,8 @@ object MainLoop {
   // it's handled by executing the shell again, instead of the state failing
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
-    if (prevState.onFailure.isDefined && state.onFailure.isEmpty) ExitCode(ErrorCodes.UnknownError)
+    if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
+        state.currentCommand.fold(true)(_ != StashOnFailure)) ExitCode(ErrorCodes.UnknownError)
     else ExitCode.Success
 
 }

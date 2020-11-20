@@ -10,17 +10,18 @@ package internal
 
 import java.io.File
 import java.util.concurrent.Callable
+
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
-import sbt.util.{ CacheStore, CacheStoreFactory, Logger, Tracked, Level }
+import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
-import sbt.dsl.LinterLevel.Ignore
 import sjsonnew.JsonFormat
 
 private[sbt] object LibraryManagement {
+  implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
 

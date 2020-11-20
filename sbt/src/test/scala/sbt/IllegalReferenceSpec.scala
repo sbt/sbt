@@ -7,17 +7,17 @@
 
 package sbt
 
-import org.scalatest.FunSuite
+import org.scalatest
+import org.scalatest.{ TestData, fixture }
 
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
-class IllegalReferenceSpec extends FunSuite {
-  lazy val toolboxClasspath: String = {
-    val mainClassesDir = buildinfo.TestBuildInfo.classDirectory
-    val testClassesDir = buildinfo.TestBuildInfo.test_classDirectory
-    val depsClasspath = buildinfo.TestBuildInfo.dependencyClasspath
-    mainClassesDir +: testClassesDir +: depsClasspath mkString java.io.File.pathSeparator
-  }
+class IllegalReferenceSpec extends fixture.FunSuite with fixture.TestDataFixture {
+  private def toolboxClasspath(td: TestData): String =
+    td.configMap.get("sbt.server.classpath") match {
+      case Some(s: String) => s
+      case _               => throw new IllegalStateException("No classpath specified.")
+    }
   def eval(code: String, compileOptions: String = ""): Any = {
     val m = scala.reflect.runtime.currentMirror
     import scala.tools.reflect.ToolBox
@@ -26,11 +26,10 @@ class IllegalReferenceSpec extends FunSuite {
   }
   private def expectError(
       errorSnippet: String,
-      compileOptions: String = "",
-      baseCompileOptions: String = s"-cp $toolboxClasspath",
-  )(code: String) = {
+      compileOptions: String = ""
+  )(code: String)(implicit td: TestData): scalatest.Assertion = {
     val errorMessage = intercept[ToolBoxError] {
-      eval(code, s"$compileOptions $baseCompileOptions")
+      eval(code, s"$compileOptions -cp ${toolboxClasspath(td)}")
       println(s"Test failed -- compilation was successful! Expected:\n$errorSnippet")
     }.getMessage
     val userMessage =
@@ -40,7 +39,7 @@ class IllegalReferenceSpec extends FunSuite {
       """.stripMargin
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
-  private class CachingToolbox {
+  private class CachingToolbox(implicit td: TestData) {
     private[this] val m = scala.reflect.runtime.currentMirror
     private[this] var _infos: List[FrontEnd#Info] = Nil
     private[this] val frontEnd = new FrontEnd {
@@ -49,12 +48,12 @@ class IllegalReferenceSpec extends FunSuite {
     }
 
     import scala.tools.reflect.ToolBox
-    val toolbox = m.mkToolBox(frontEnd, options = s"-cp $toolboxClasspath")
+    val toolbox = m.mkToolBox(frontEnd, options = s"-cp ${toolboxClasspath(td)}")
     def eval(code: String): Any = toolbox.eval(toolbox.parse(code))
     def infos: List[FrontEnd#Info] = _infos
   }
 
-  test("Def.sequential should be legal within Def.taskDyn") {
+  test("Def.sequential should be legal within Def.taskDyn") { implicit td =>
     val toolbox = new CachingToolbox
     // This example was taken from @dos65 in https://github.com/sbt/sbt/issues/3110
     val build =
@@ -67,14 +66,14 @@ class IllegalReferenceSpec extends FunSuite {
          |  // `Def.toITask(sbt.Keys.baseDirectory)`. This, in turn, causes `Def` to be added
          |  // to a list of local definitions. Later on, we dereference `Def` with
          |  // `Def.sequential` which used to erroneously cause an illegal dynamic reference.
-         |  baseDirectory.value
+         |  Def.unit(baseDirectory.value)
          |  Def.sequential(Def.task(42))
          |}.dependencies.headOption.map(_.key.label)
        """.stripMargin
     assert(toolbox.eval(build) == Some("baseDirectory"))
     assert(toolbox.infos.isEmpty)
   }
-  test("Local task defs should be illegal within Def.task") {
+  test("Local task defs should be illegal within Def.task") { implicit td =>
     val build =
       s"""
          |import sbt._

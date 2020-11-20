@@ -11,7 +11,14 @@ object NightlyPlugin extends AutoPlugin {
 
     def testDependencies = libraryDependencies ++= (
       if (includeTestDependencies.value)
-        Seq(scalacheck % Test, specs2 % Test, junit % Test, scalatest % Test, hedgehog % Test)
+        Seq(
+          scalacheck % Test,
+          specs2 % Test,
+          junit % Test,
+          scalatest % Test,
+          scalaVerify % Test,
+          hedgehog % Test
+        )
       else Seq()
     )
   }
@@ -22,7 +29,6 @@ object NightlyPlugin extends AutoPlugin {
   )
 
   override def projectSettings: Seq[Setting[_]] = Seq(
-    crossVersion in update := CrossVersion.full,
     resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-alt-project-releases")
   )
 }

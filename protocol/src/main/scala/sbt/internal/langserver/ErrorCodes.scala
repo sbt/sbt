@@ -16,7 +16,7 @@ object ErrorCodes {
   // format: off
 
   // Defined by the JSON-RPC 2.0 Specification
-  // http://www.jsonrpc.org/specification#error_object
+  // https://www.jsonrpc.org/specification#error_object
   //
   // The error codes from and including -32768 to -32000 are reserved for pre-defined errors.
   // Any code within this range, but not defined explicitly below is reserved for future use.

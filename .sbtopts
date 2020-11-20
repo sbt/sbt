@@ -1,3 +1,1 @@
--J-Xms2048M
--J-Xmx2048M
--J-Xss2M
+-J-Xmx2G

@@ -10,7 +10,7 @@ package internal
 
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
-import sbt.internal.util.JLine
+import sbt.internal.util.Terminal
 import sbt.util.Logger
 import xsbti.compile.ClasspathOptionsUtil
 
@@ -28,7 +28,7 @@ object ConsoleProject {
       extracted.runTask(Keys.scalaCompilerBridgeBinaryJar.in(Keys.consoleProject), state1)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
-      ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+      ScalaInstance(scalaProvider.version, scalaProvider)
     }
     val g = BuildPaths.getGlobalBase(state)
     val zincDir = BuildPaths.getZincDirectory(state, g)
@@ -61,15 +61,15 @@ object ConsoleProject {
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
 
-    JLine.usingTerminal { _ =>
-      // TODO - Hook up dsl classpath correctly...
-      (new Console(compiler))(
-        unit.classpath,
-        options,
-        initCommands,
-        cleanupCommands
-      )(Some(unit.loader), bindings).get
-    }
+    val terminal = Terminal.get
+    // TODO - Hook up dsl classpath correctly...
+    (new Console(compiler))(
+      unit.classpath,
+      options,
+      initCommands,
+      cleanupCommands,
+      terminal
+    )(Some(unit.loader), bindings).get
     ()
   }
 

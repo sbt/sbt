@@ -18,7 +18,7 @@ import sbt.Project.inScope
 import sbt.Scope.GlobalScope
 import sbt.compiler.Eval
 import sbt.internal.BuildStreams._
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
@@ -251,12 +251,16 @@ private[sbt] object Load {
     val delegates = timed("Load.apply: config.delegates", log) {
       config.delegates(loaded)
     }
-    val data = timed("Load.apply: Def.make(settings)...", log) {
+    val (cMap, data) = timed("Load.apply: Def.make(settings)...", log) {
       // When settings.size is 100000, Def.make takes around 10s.
       if (settings.size > 10000) {
-        log.info(s"Resolving key references (${settings.size} settings) ...")
+        log.info(s"resolving key references (${settings.size} settings) ...")
       }
-      Def.make(settings)(delegates, config.scopeLocal, Project.showLoadingKey(loaded))
+      Def.makeWithCompiledMap(settings)(
+        delegates,
+        config.scopeLocal,
+        Project.showLoadingKey(loaded)
+      )
     }
     Project.checkTargets(data) foreach sys.error
     val index = timed("Load.apply: structureIndex", log) {
@@ -271,7 +275,8 @@ private[sbt] object Load {
       index,
       streams,
       delegates,
-      config.scopeLocal
+      config.scopeLocal,
+      cMap
     )
     (rootEval, bs)
   }
@@ -338,7 +343,8 @@ private[sbt] object Load {
       implicit display: Show[ScopedKey[_]]
   ): BuildStructure = {
     val transformed = finalTransforms(newSettings)
-    val newData = Def.make(transformed)(structure.delegates, structure.scopeLocal, display)
+    val (cMap, newData) =
+      Def.makeWithCompiledMap(transformed)(structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
     val newIndex = structureIndex(newData, transformed, extra, structure.units)
     val newStreams = mkStreams(structure.units, structure.root, newData)
@@ -350,7 +356,8 @@ private[sbt] object Load {
       index = newIndex,
       streams = newStreams,
       delegates = structure.delegates,
-      scopeLocal = structure.scopeLocal
+      scopeLocal = structure.scopeLocal,
+      compiledMap = cMap,
     )
   }
 
@@ -565,7 +572,7 @@ private[sbt] object Load {
     checkDirectory(projectBase)
     assert(
       buildBase == projectBase || IO.relativize(buildBase, projectBase).isDefined,
-      s"Directory $projectBase is not contained in build root $buildBase"
+      s"directory $projectBase is not contained in build root $buildBase"
     )
   }
 
@@ -669,12 +676,12 @@ private[sbt] object Load {
 
   def getBuild[T](map: Map[URI, T], uri: URI): T = map.getOrElse(uri, noBuild(uri))
 
-  def emptyBuild(uri: URI) = sys.error(s"No root project defined for build unit '$uri'")
-  def noBuild(uri: URI) = sys.error(s"Build unit '$uri' not defined.")
-  def noProject(uri: URI, id: String) = sys.error(s"No project '$id' defined in '$uri'.")
+  def emptyBuild(uri: URI) = sys.error(s"no root project defined for build unit '$uri'")
+  def noBuild(uri: URI) = sys.error(s"build unit '$uri' not defined.")
+  def noProject(uri: URI, id: String) = sys.error(s"no project '$id' defined in '$uri'.")
 
   def noConfiguration(uri: URI, id: String, conf: String) =
-    sys.error(s"No configuration '$conf' defined in project '$id' in '$uri'")
+    sys.error(s"no configuration '$conf' defined in project '$id' in '$uri'")
 
   // Called from builtinLoader
   def loadUnit(uri: URI, localBase: File, s: State, config: LoadBuildConfiguration): BuildUnit =
@@ -975,7 +982,7 @@ private[sbt] object Load {
       e: AutoPluginException,
       project: Project
   ): AutoPluginException =
-    e.withPrefix(s"Error determining plugins for project '${project.id}' in ${project.base}:\n")
+    e.withPrefix(s"error determining plugins for project '${project.id}' in ${project.base}:\n")
 
   /**
    * Represents the results of flushing out a directory and discovering all the projects underneath it.
@@ -1034,7 +1041,7 @@ private[sbt] object Load {
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)
             log.info(
-              s"${files.map(_.getName).mkString(s"Loading settings for project ${p.id} from ", ",", " ...")}"
+              s"${files.map(_.getName).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
             )
           for {
             file <- files
@@ -1163,7 +1170,7 @@ private[sbt] object Load {
           opts
         )
       },
-      onLoadMessage := ("Loading project definition from " + baseDirectory.value)
+      onLoadMessage := ("loading project definition from " + baseDirectory.value)
     )
   )
 
@@ -1285,7 +1292,7 @@ private[sbt] object Load {
 
     // Load the definition classpath separately to avoid conflicts, see #511.
     if (definitionClasspath.isEmpty) parentLoader
-    else ClasspathUtilities.toLoader(data(definitionClasspath), parentLoader)
+    else ClasspathUtil.toLoader(data(definitionClasspath).map(_.toPath), parentLoader)
   }
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData = {

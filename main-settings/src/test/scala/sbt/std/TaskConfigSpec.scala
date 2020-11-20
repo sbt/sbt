@@ -7,19 +7,18 @@
 
 package sbt.std
 
-import org.scalatest.FunSuite
+import org.scalatest.{ TestData, fixture }
 import sbt.std.TestUtil._
 
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
-class TaskConfigSpec extends FunSuite {
+class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
   private def expectError(
       errorSnippet: String,
       compileOptions: String = "",
-      baseCompileOptions: String = s"-cp $toolboxClasspath",
-  )(code: String) = {
+  )(code: String)(implicit td: TestData) = {
     val errorMessage = intercept[ToolBoxError] {
-      eval(code, s"$compileOptions $baseCompileOptions")
+      eval(code, s"$compileOptions -cp ${toolboxClasspath(td)}")
       println(s"Test failed -- compilation was successful! Expected:\n$errorSnippet")
     }.getMessage
     val userMessage =
@@ -29,7 +28,7 @@ class TaskConfigSpec extends FunSuite {
       """.stripMargin
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
-  private class CachingToolbox {
+  private class CachingToolbox(implicit td: TestData) {
     private[this] val m = scala.reflect.runtime.currentMirror
     private[this] var _infos: List[FrontEnd#Info] = Nil
     private[this] val frontEnd = new FrontEnd {
@@ -38,7 +37,7 @@ class TaskConfigSpec extends FunSuite {
     }
 
     import scala.tools.reflect.ToolBox
-    val toolbox = m.mkToolBox(frontEnd, options = s"-cp $toolboxClasspath")
+    val toolbox = m.mkToolBox(frontEnd, options = s"-cp ${toolboxClasspath(td)}")
     def eval(code: String): Any = toolbox.eval(toolbox.parse(code))
     def infos: List[FrontEnd#Info] = _infos
   }
@@ -53,22 +52,24 @@ class TaskConfigSpec extends FunSuite {
        |var condition = true
        |
        |val barNeg = Def.task[String] {
+       |  val s = 1
        |  if (condition) fooNeg.value
        |  else ""
        |}
       """.stripMargin
   private val fooNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
 
-  test("Fail on task invocation inside if it is used inside a regular task") {
+  test("Fail on task invocation inside if it is used inside a regular task") { implicit td =>
     val fooNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
-    expectError(List(fooNegError).mkString("\n"))(taskDef(Some("import sbt.dsl.LinterLevel.Abort")))
+    val code = taskDef(Some("import sbt.dsl.LinterLevel.Abort"))
+    expectError(List(fooNegError).mkString("\n"))(code)
   }
-  test("Succeed if the linter level is set to warn") {
+  test("Succeed if the linter level is set to warn") { implicit td =>
     val toolbox = new CachingToolbox
     assert(toolbox.eval(taskDef(None)) == ((): Unit))
     assert(toolbox.infos.exists(i => i.severity.count == 1 && i.msg.contains(fooNegError)))
   }
-  test("Succeed if the linter level is set to ignore") {
+  test("Succeed if the linter level is set to ignore") { implicit td =>
     val toolbox = new CachingToolbox
     assert(toolbox.eval(taskDef(Some("import sbt.dsl.LinterLevel.Ignore"))) == ((): Unit))
     assert(toolbox.infos.isEmpty)

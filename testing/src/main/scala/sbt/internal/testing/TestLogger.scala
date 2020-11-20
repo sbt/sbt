@@ -9,11 +9,10 @@ package sbt
 package internal.testing
 
 import testing.{ Logger => TLogger }
-import sbt.internal.util.{ BufferedAppender, ConsoleAppender, ManagedLogger }
-import sbt.util.{ Level, LogExchange, ShowLines }
+import sbt.internal.util.{ BufferedAppender, ManagedLogger, Terminal }
+import sbt.util.{ Level, ShowLines }
 import sbt.protocol.testing._
 import java.util.concurrent.atomic.AtomicInteger
-import scala.collection.JavaConverters._
 
 object TestLogger {
   import sbt.protocol.testing.codec.JsonProtocol._
@@ -35,20 +34,28 @@ object TestLogger {
       val buffered: Boolean
   )
 
-  def make(global: ManagedLogger, perTest: TestDefinition => PerTest): TestLogger = {
+  @deprecated("Use make variant that accepts a log level.", "1.4.0")
+  def make(
+      global: ManagedLogger,
+      perTest: TestDefinition => PerTest,
+  ): TestLogger = make(global, perTest, Level.Debug)
+
+  def make(
+      global: ManagedLogger,
+      perTest: TestDefinition => PerTest,
+      level: Level.Value
+  ): TestLogger = {
+    val context = global.context
+    val as = context.appenders(global.name)
     def makePerTest(tdef: TestDefinition): ContentLogger = {
       val per = perTest(tdef)
       val l0 = per.log
-      val config = LogExchange.loggerConfig(l0.name)
-      val as = config.getAppenders.asScala
-      val buffs: List[BufferedAppender] = (as map {
-        case (_, v) => BufferedAppender(generateBufferName, v)
-      }).toList
-      val newLog = LogExchange.logger(generateName, l0.channelName, l0.execId)
-      LogExchange.unbindLoggerAppenders(newLog.name)
-      LogExchange.bindLoggerAppenders(newLog.name, buffs map { x =>
-        (x, Level.Debug)
-      })
+      val buffs = as.map(a => BufferedAppender(generateBufferName, a)).toList
+      val newLog = context.logger(generateName, l0.channelName, l0.execId)
+      context.clearAppenders(newLog.name)
+      buffs.foreach { b =>
+        context.addAppender(newLog.name, b -> level)
+      }
       if (per.buffered) {
         buffs foreach { _.record() }
       }
@@ -89,7 +96,7 @@ object TestLogger {
       def debug(s: String) = log(Level.Debug, TestStringEvent(s))
       def trace(t: Throwable) = logger.trace(t)
       private def log(level: Level.Value, event: TestStringEvent) = logger.logEvent(level, event)
-      def ansiCodesSupported() = ConsoleAppender.formatEnabledInEnv
+      def ansiCodesSupported() = Terminal.isAnsiSupported
     }
 
   private[sbt] def toTestItemEvent(event: TestEvent): TestItemEvent =

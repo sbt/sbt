@@ -11,6 +11,7 @@ import org.scalatest.FlatSpec
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.util.CacheImplicits._
+import sjsonnew.{ Builder, JsonWriter }
 
 import scala.concurrent.Promise
 
@@ -54,6 +55,27 @@ class TrackedSpec extends FlatSpec {
 
       ()
     }
+  }
+
+  "inputChangedW" should "not require the input to have a JsonReader instance" in {
+    case class Input(v: Int)
+
+    implicit val writer = new JsonWriter[Input] {
+      override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
+    }
+
+    withStore { store =>
+      val input0 = Input(1)
+
+      val cachedFun = Tracked.inputChangedW[Input, Int](store) {
+        case (_, in) => in.v
+      }
+
+      val res0 = cachedFun(input0)
+      assert(res0 === input0.v)
+      ()
+    }
+
   }
 
   "inputChanged" should "detect that the input has not changed" in {
@@ -111,6 +133,27 @@ class TrackedSpec extends FlatSpec {
 
       ()
     }
+  }
+
+  "outputChangedW" should "not require the input to have a JsonReader instance" in {
+    case class Input(v: Int)
+
+    implicit val writer = new JsonWriter[Input] {
+      override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
+    }
+
+    withStore { store =>
+      val input0 = Input(1)
+
+      val cachedFun = Tracked.outputChangedW[Input, Int](store) {
+        case (_, in) => in.v
+      }
+
+      val res0 = cachedFun(() => input0)
+      assert(res0 === input0.v)
+      ()
+    }
+
   }
 
   "outputChanged" should "detect that the output has not changed" in {

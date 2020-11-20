@@ -16,7 +16,8 @@ final class ClassLoadingLock {
 
   private final ConcurrentHashMap<String, Object> locks = new ConcurrentHashMap<>();
 
-  <R> R withLock(final String name, final ThrowsClassNotFound<R> supplier) throws ClassNotFoundException {
+  <R> R withLock(final String name, final ThrowsClassNotFound<R> supplier)
+      throws ClassNotFoundException {
     final Object newLock = new Object();
     Object prevLock;
     synchronized (locks) {

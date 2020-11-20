@@ -1,6 +1,8 @@
 // https://github.com/sbt/sbt/issues/1710
 // https://github.com/sbt/sbt/issues/1760
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 inThisBuild(Seq(
   organization := "com.example",
   version := "0.1.0",

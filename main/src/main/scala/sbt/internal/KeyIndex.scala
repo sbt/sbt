@@ -22,7 +22,7 @@ object KeyIndex {
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
   ): ExtendableKeyIndex =
-    known.foldLeft(base(projects, configurations)) { _ add _ }
+    known.par.foldLeft(base(projects, configurations)) { _ add _ }
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],

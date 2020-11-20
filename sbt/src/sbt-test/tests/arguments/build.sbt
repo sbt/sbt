@@ -1,9 +1,17 @@
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
-ThisBuild / scalaVersion := "2.12.10"
+ThisBuild / scalaVersion := "2.12.12"
+
+val foo = settingKey[Seq[String]]("foo")
+val checkFoo = inputKey[Unit]("check contents of foo")
 
 lazy val root = (project in file("."))
   .settings(
+    foo := Nil,
+    checkFoo := {
+      val arguments = Def.spaceDelimited("").parsed.mkString(" ")
+      assert(foo.value.contains(arguments))
+    },
     libraryDependencies += scalatest % Test,
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-f", "result.txt", "-eNDXEHLO")
     testOptions in Configurations.Test ++= {

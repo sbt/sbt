@@ -17,7 +17,7 @@ import sbt.Scope.Global
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal._
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
@@ -154,6 +154,7 @@ object EvaluateTask {
   import Keys.state
   import std.Transform
 
+  @com.github.ghik.silencer.silent
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
@@ -254,20 +255,7 @@ object EvaluateTask {
           extracted,
           structure
         )
-        val progressReporter = extracted.getOpt(progressState in ThisBuild).flatMap {
-          case Some(ps) =>
-            ps.reset()
-            ConsoleAppender.setShowProgress(true)
-            val appender = MainAppender.defaultScreen(StandardMain.console)
-            appender match {
-              case c: ConsoleAppender => c.setProgressState(ps)
-              case _                  =>
-            }
-            val log = LogManager.progressLogger(appender)
-            Some(new TaskProgress(log))
-          case _ => None
-        }
-        val reporters = maker.map(_.progress) ++ progressReporter ++
+        val reporters = maker.map(_.progress) ++ state.get(Keys.taskProgress) ++
           (if (SysProp.taskTimings)
              new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
            else Nil)
@@ -380,7 +368,7 @@ object EvaluateTask {
     for ((key, msg, ex) <- keyed if (msg.isDefined || ex.isDefined)) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
       val log = getStreams(key, streams).log
-      val display = contextDisplay(state, ConsoleAppender.formatEnabledInEnv)
+      val display = contextDisplay(state, ITerminal.isColorEnabled)
       log.error("(" + display.show(key) + ") " + msgString)
     }
   }
@@ -425,8 +413,12 @@ object EvaluateTask {
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
 
+  @deprecated("use StandardMain.exchange.withState to obtain an instance of State", "1.4.2")
   val lastEvaluatedState: AtomicReference[SafeState] = new AtomicReference()
+  @deprecated("use currentlyRunningTaskEngine", "1.4.2")
   val currentlyRunningEngine: AtomicReference[(SafeState, RunningTaskEngine)] =
+    new AtomicReference()
+  private[sbt] val currentlyRunningTaskEngine: AtomicReference[RunningTaskEngine] =
     new AtomicReference()
 
   /**
@@ -440,20 +432,26 @@ object EvaluateTask {
       triggers: Triggers[Task],
       config: EvaluateTaskConfig
   )(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
-    import ConcurrentRestrictions.{ completionService, tagged, tagsKey }
+    import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
 
     val log = state.log
     log.debug(
       s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}"
     )
+    def tagMap(t: Task[_]): Tags.TagMap =
+      t.info.get(tagsKey).getOrElse(Map.empty)
     val tags =
-      tagged[Task[_]](_.info get tagsKey getOrElse Map.empty, Tags.predicate(config.restrictions))
+      tagged[Task[_]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      completionService[Task[_], Completed](tags, (s: String) => log.warn(s))
+      cancellableCompletionService[Task[_], Completed](
+        tags,
+        (s: String) => log.warn(s),
+        (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
+      )
 
-    def shutdown(): Unit = {
+    def shutdownImpl(force: Boolean): Unit = {
       // First ensure that all threads are stopped for task execution.
-      shutdownThreads()
+      shutdownThreads(force)
       config.progressReporter.stop()
 
       // Now we run the gc cleanup to force finalizers to clear out file handles (yay GC!)
@@ -461,6 +459,7 @@ object EvaluateTask {
         GCUtil.forceGcWithInterval(config.minForcegcInterval, log)
       }
     }
+    def shutdown(): Unit = shutdownImpl(false)
     // propagate the defining key for reporting the origin
     def overwriteNode(i: Incomplete): Boolean = i.node match {
       case Some(t: Task[_]) => transformNode(t).isEmpty
@@ -486,10 +485,12 @@ object EvaluateTask {
       def cancelAndShutdown(): Unit = {
         println("")
         log.warn("Canceling execution...")
-        shutdown()
+        RunningProcesses.killAll()
+        ConcurrentRestrictions.cancelAll()
+        shutdownImpl(true)
       }
     }
-    currentlyRunningEngine.set((SafeState(state), runningEngine))
+    currentlyRunningTaskEngine.set(runningEngine)
     // Register with our cancel handler we're about to start.
     val strat = config.cancelStrategy
     val cancelState = strat.onTaskEngineStart(runningEngine)
@@ -497,8 +498,7 @@ object EvaluateTask {
     try run()
     finally {
       strat.onTaskEngineFinish(cancelState)
-      currentlyRunningEngine.set(null)
-      lastEvaluatedState.set(SafeState(state))
+      currentlyRunningTaskEngine.set(null)
     }
   }
 

@@ -20,7 +20,7 @@ object Util {
 
   lazy val javaOnlySettings: Seq[Setting[_]] = Seq(
     // crossPaths := false,
-    compileOrder := CompileOrder.JavaThenScala,
+    // compileOrder := CompileOrder.JavaThenScala,
     unmanagedSourceDirectories in Compile := Seq((javaSource in Compile).value)
   )
 

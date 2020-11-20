@@ -8,49 +8,18 @@
 package sbt
 package internal
 
-import org.apache.logging.log4j.message._
-import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
-import org.apache.logging.log4j.core.appender.AbstractAppender
-import org.apache.logging.log4j.core.layout.PatternLayout
-import org.apache.logging.log4j.core.async.RingBufferLogEvent
-import org.apache.logging.log4j.core.config.Property
-import sbt.util.Level
 import sbt.internal.util._
 import sbt.protocol.LogEvent
-import sbt.internal.util.codec._
+import sbt.util.Level
 
-class RelayAppender(name: String)
-    extends AbstractAppender(
+class RelayAppender(override val name: String)
+    extends ConsoleAppender(
       name,
-      null,
-      PatternLayout.createDefaultLayout(),
-      true,
-      Property.EMPTY_ARRAY
+      ConsoleAppender.Properties.from(ConsoleOut.NullConsoleOut, true, true),
+      _ => None
     ) {
   lazy val exchange = StandardMain.exchange
-
-  def append(event: XLogEvent): Unit = {
-    val level = ConsoleAppender.toLevel(event.getLevel)
-    val message = event.getMessage
-    message match {
-      case o: ObjectMessage        => appendEvent(o.getParameter)
-      case p: ParameterizedMessage => appendLog(level, p.getFormattedMessage)
-      case r: RingBufferLogEvent   => appendLog(level, r.getFormattedMessage)
-      case _                       => appendLog(level, message.toString)
-    }
+  override def appendLog(level: Level.Value, message: => String): Unit = {
+    exchange.logMessage(LogEvent(level = level.toString, message = message))
   }
-  def appendLog(level: Level.Value, message: => String): Unit = {
-    exchange.publishEventMessage(LogEvent(level.toString, message))
-  }
-  def appendEvent(event: AnyRef): Unit =
-    event match {
-      case x: StringEvent => {
-        import JsonProtocol._
-        exchange.publishEvent(x: AbstractEntry)
-      }
-      case x: ObjectEvent[_] => exchange.publishObjectEvent(x)
-      case _ =>
-        println(s"appendEvent: ${event.getClass}")
-        ()
-    }
 }

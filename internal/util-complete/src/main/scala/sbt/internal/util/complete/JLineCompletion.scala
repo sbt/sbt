@@ -89,16 +89,13 @@ object JLineCompletion {
     (insert.toSeq, display.toSeq.sorted)
   }
 
-  def appendNonEmpty(set: Set[String], add: String) = {
-    val trimmed = add.trim
-    if (trimmed.isEmpty || trimmed == ";") set else set + add
-  }
+  def appendNonEmpty(set: Set[String], add: String) = if (add.trim.isEmpty) set else set + add
 
   def customCompletor(
       f: (String, Int) => (Seq[String], Seq[String])
   ): (ConsoleReader, Int) => Boolean =
     (reader, level) => {
-      val success = complete(beforeCursor(reader), reader => f(reader, level), reader)
+      val success = complete(beforeCursor(reader), string => f(string, level), reader)
       reader.flush()
       success
     }

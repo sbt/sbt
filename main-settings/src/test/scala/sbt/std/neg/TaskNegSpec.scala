@@ -8,19 +8,17 @@
 package sbt.std.neg
 
 import scala.tools.reflect.ToolBoxError
-
-import org.scalatest.FunSuite
-
-import sbt.std.TaskLinterDSLFeedback
+import org.scalatest.{ TestData, fixture }
+import sbt.std.{ TaskLinterDSLFeedback, TestUtil }
 import sbt.std.TestUtil._
 
-class TaskNegSpec extends FunSuite {
+class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
   def expectError(
       errorSnippet: String,
       compileOptions: String = "",
-      baseCompileOptions: String = s"-cp $toolboxClasspath",
-  )(code: String) = {
+  )(code: String)(implicit td: TestData) = {
     val errorMessage = intercept[ToolBoxError] {
+      val baseCompileOptions = s"-cp ${TestUtil.toolboxClasspath(td)}"
       eval(code, s"$compileOptions $baseCompileOptions")
       println(s"Test failed -- compilation was successful! Expected:\n$errorSnippet")
     }.getMessage
@@ -32,7 +30,7 @@ class TaskNegSpec extends FunSuite {
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
 
-  test("Fail on task invocation inside if it is used inside a regular task") {
+  test("Fail on task invocation inside if it is used inside a regular task") { implicit td =>
     val fooNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
     val barNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")
     expectError(List(fooNegError, barNegError).mkString("\n")) {
@@ -46,6 +44,7 @@ class TaskNegSpec extends FunSuite {
         |var condition = true
         |
         |val bazNeg = Def.task[String] {
+        |  val s = 1
         |  if (condition) fooNeg.value
         |  else barNeg.value
         |}
@@ -53,7 +52,7 @@ class TaskNegSpec extends FunSuite {
     }
   }
 
-  test("Fail on task invocation inside `if` if it is used inside a regular task") {
+  test("Fail on task invocation inside `if` if it is used inside a regular task") { implicit td =>
     val fooNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
     val barNegError = TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")
     expectError(List(fooNegError, barNegError).mkString("\n")) {
@@ -68,6 +67,7 @@ class TaskNegSpec extends FunSuite {
         |def bi(s: String) = s + "  "
         |
         |val bazNeg = Def.task[String] {
+        |  val s = 1
         |  if (condition) "" + fooNeg.value
         |  else bi(barNeg.value)
         |}
@@ -75,7 +75,7 @@ class TaskNegSpec extends FunSuite {
     }
   }
 
-  test("Fail on task invocation inside `if` of task returned by dynamic task") {
+  test("Fail on task invocation inside `if` of task returned by dynamic task") { implicit td =>
     expectError(TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")) {
       """
         |import sbt._
@@ -89,6 +89,7 @@ class TaskNegSpec extends FunSuite {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) {
         |        fooNeg.value
         |      } else ""
@@ -100,10 +101,11 @@ class TaskNegSpec extends FunSuite {
   }
 
   test("Fail on task invocation inside nested `if` of task returned by dynamic task") {
-    val fooNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
-    val barNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")
-    expectError(List(fooNegCatch, barNegCatch).mkString("\n")) {
-      """
+    implicit td =>
+      val fooNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("fooNeg")
+      val barNegCatch = TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")
+      expectError(List(fooNegCatch, barNegCatch).mkString("\n")) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -115,6 +117,7 @@ class TaskNegSpec extends FunSuite {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) {
         |        val first = if (!condition && condition) {
         |          fooNeg.value
@@ -128,10 +131,10 @@ class TaskNegSpec extends FunSuite {
         |  } else Def.task("")
         |}
       """.stripMargin
-    }
+      }
   }
 
-  test("Fail on task invocation inside else of task returned by dynamic task") {
+  test("Fail on task invocation inside else of task returned by dynamic task") { implicit td =>
     expectError(TaskLinterDSLFeedback.useOfValueInsideIfExpression("barNeg")) {
       """
         |import sbt._
@@ -145,6 +148,7 @@ class TaskNegSpec extends FunSuite {
         |val bazNeg = Def.taskDyn[String] {
         |  if (condition) {
         |    Def.task {
+        |      val s = 1
         |      if (condition) ""
         |      else barNeg.value
         |    }
@@ -155,9 +159,10 @@ class TaskNegSpec extends FunSuite {
   }
 
   test("Fail on task invocation inside anonymous function returned by regular task") {
-    val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
-    expectError(fooNegError) {
-      """
+    implicit td =>
+      val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
+      expectError(fooNegError) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -172,14 +177,15 @@ class TaskNegSpec extends FunSuite {
         |  else anon()
         |}
       """.stripMargin
-    }
+      }
   }
 
   test("Fail on task invocation inside nested anonymous function returned by regular task") {
-    val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
-    val barNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("barNeg")
-    expectError(List(fooNegError, barNegError).mkString("\n")) {
-      """
+    implicit td =>
+      val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
+      val barNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("barNeg")
+      expectError(List(fooNegError, barNegError).mkString("\n")) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -194,13 +200,14 @@ class TaskNegSpec extends FunSuite {
         |  else anon()
         |}
       """.stripMargin
-    }
+      }
   }
 
   test("Fail on task invocation inside complex anonymous function returned by regular task") {
-    val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
-    expectError(fooNegError) {
-      """
+    implicit td =>
+      val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
+      expectError(fooNegError) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -214,13 +221,14 @@ class TaskNegSpec extends FunSuite {
         |  else anon()
         |}
       """.stripMargin
-    }
+      }
   }
 
   test("Fail on task invocation inside anonymous function returned by dynamic task") {
-    val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
-    expectError(fooNegError) {
-      """
+    implicit td =>
+      val fooNegError = TaskLinterDSLFeedback.useOfValueInsideAnon("fooNeg")
+      expectError(fooNegError) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -236,10 +244,10 @@ class TaskNegSpec extends FunSuite {
         |  } else Def.task("")
         |}
       """.stripMargin
-    }
+      }
   }
 
-  test("Detect a missing `.value` inside a task") {
+  test("Detect a missing `.value` inside a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg")) {
       """
         |import sbt._
@@ -257,7 +265,7 @@ class TaskNegSpec extends FunSuite {
     }
   }
 
-  test("Detect a missing `.value` inside a val definition of a task") {
+  test("Detect a missing `.value` inside a val definition of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
       """
         |import sbt._
@@ -276,8 +284,9 @@ class TaskNegSpec extends FunSuite {
   }
 
   test("Detect a missing `.value` inside a val definition of an inner method of a task") {
-    expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
-      """
+    implicit td =>
+      expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
+        """
         |import sbt._
         |import sbt.Def._
         |import sbt.dsl.LinterLevel.Abort
@@ -293,10 +302,10 @@ class TaskNegSpec extends FunSuite {
         |  inner
         |}
       """.stripMargin
-    }
+      }
   }
 
-  test("Detect a missing `.value` inside an inner method of a task") {
+  test("Detect a missing `.value` inside an inner method of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
       """
         |import sbt._
@@ -316,7 +325,7 @@ class TaskNegSpec extends FunSuite {
     }
   }
 
-  test("Detect a missing `.value` inside a task whose return type is Unit") {
+  test("Detect a missing `.value` inside a task whose return type is Unit") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg4")) {
       """
         |import sbt._

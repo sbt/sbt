@@ -1,3 +1,5 @@
+import scala.concurrent.duration._
+
 val foo = inputKey[Unit]("broken task")
 foo := { throw new IllegalStateException("foo") }
 
@@ -8,5 +10,7 @@ exists := {
 }
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+ThisBuild / checkBuildSources / pollInterval := 0.seconds
 
 val sub = project

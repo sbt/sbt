@@ -17,15 +17,29 @@ import sbt.Def._
 
 object LintUnused {
   lazy val lintSettings: Seq[Setting[_]] = Seq(
+    lintIncludeFilter := {
+      val includes = includeLintKeys.value.map(_.scopedKey.key.label)
+      keyName => includes(keyName)
+    },
+    lintExcludeFilter := {
+      val excludedPrefixes = List("release", "sonatype", "watch", "whitesource")
+      val excludes = excludeLintKeys.value.map(_.scopedKey.key.label)
+      keyName => excludes(keyName) || excludedPrefixes.exists(keyName.startsWith(_))
+    },
     excludeLintKeys := Set(
       aggregate,
       concurrentRestrictions,
       commands,
       crossScalaVersions,
+      initialize,
+      lintUnusedKeysOnLoad,
       onLoad,
       onLoadMessage,
       onUnload,
       sbt.nio.Keys.watchTriggers,
+      serverConnectionType,
+      serverIdleTimeout,
+      shellPrompt,
     ),
     includeLintKeys := Set(
       scalacOptions,
@@ -49,8 +63,8 @@ object LintUnused {
     val _ = Def.spaceDelimited().parsed // not used yet
     val state = Keys.state.value
     val log = streams.value.log
-    val includeKeys = (includeLintKeys in Global).value map { _.scopedKey.key.label }
-    val excludeKeys = (excludeLintKeys in Global).value map { _.scopedKey.key.label }
+    val includeKeys = (lintIncludeFilter in Global).value
+    val excludeKeys = (lintExcludeFilter in Global).value
     val result = lintUnused(state, includeKeys, excludeKeys)
     if (result.isEmpty) log.success("ok")
     else lintResultLines(result) foreach { log.warn(_) }
@@ -60,8 +74,8 @@ object LintUnused {
   def lintUnusedFunc(s: State): State = {
     val log = s.log
     val extracted = Project.extract(s)
-    val includeKeys = extracted.get(includeLintKeys in Global) map { _.scopedKey.key.label }
-    val excludeKeys = extracted.get(excludeLintKeys in Global) map { _.scopedKey.key.label }
+    val includeKeys = extracted.get(lintIncludeFilter in Global)
+    val excludeKeys = extracted.get(lintExcludeFilter in Global)
     if (extracted.get(lintUnusedKeysOnLoad in Global)) {
       val result = lintUnused(s, includeKeys, excludeKeys)
       lintResultLines(result) foreach { log.warn(_) }
@@ -102,15 +116,13 @@ object LintUnused {
 
   def lintUnused(
       state: State,
-      includeKeys: Set[String],
-      excludeKeys: Set[String]
+      includeKeys: String => Boolean,
+      excludeKeys: String => Boolean
   ): Seq[(ScopedKey[_], String, Vector[SourcePosition])] = {
     val extracted = Project.extract(state)
     val structure = extracted.structure
     val display = Def.showShortKey(None) // extracted.showKey
-    val actual = true
-    val comp =
-      Def.compiled(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
+    val comp = structure.compiledMap
     val cMap = Def.flattenLocals(comp)
     val used: Set[ScopedKey[_]] = cMap.values.flatMap(_.dependencies).toSet
     val unused: Seq[ScopedKey[_]] = cMap.keys.filter(!used.contains(_)).toSeq

@@ -361,9 +361,12 @@ object Index {
       settings: Set[AttributeKey[_]]
   )(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
     val multiMap = settings.groupBy(label)
-    val duplicates = multiMap collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) } collect {
-      case (k, xs) if xs.size > 1                                   => (k, xs)
-    }
+    val duplicates = multiMap.iterator
+      .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) }
+      .collect {
+        case (k, xs) if xs.size > 1 => (k, xs)
+      }
+      .toVector
     if (duplicates.isEmpty)
       multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
     else

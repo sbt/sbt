@@ -121,7 +121,7 @@ This becomes:
 
     run := docsRunSetting.evaluated
 
-See [Migrating from sbt 0.12.x](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html) for more details.
+See [Migrating from sbt 0.12.x](https://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html) for more details.
 
 [#2716][2716]/[#2763][2763]/[#2764][2764] by [@eed3si9n][@eed3si9n] and [@dwijnand][@dwijnand]
 

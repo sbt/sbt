@@ -9,21 +9,25 @@ package sbt
 
 import java.io.{ File, IOException }
 import java.net.URI
-import java.nio.file.{ FileAlreadyExistsException, Files, FileSystems }
+import java.nio.channels.ClosedChannelException
+import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
+import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.{ Locale, Properties }
 
-import sbt.BasicCommandStrings.{ Shell, TemplateCommand }
+import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
+import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
+import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util._
-import sbt.internal.util.complete.{ SizeParser, Parser }
+import sbt.internal.util.{ Terminal => ITerminal, _ }
+import sbt.internal.util.complete.{ Parser, SizeParser }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
@@ -31,7 +35,10 @@ import xsbti.compile.CompilerCache
 
 import scala.annotation.tailrec
 import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
+import sbt.internal.io.Retry
+import xsbti.AppProvider
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -39,9 +46,19 @@ final class xMain extends xsbti.AppMain {
     new XMainConfiguration().run("xMain", configuration)
 }
 private[sbt] object xMain {
-  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
+  private[sbt] def dealiasBaseDirectory(config: xsbti.AppConfiguration): xsbti.AppConfiguration = {
+    val dealiasedBase = config.baseDirectory.getCanonicalFile
+    if (config.baseDirectory == dealiasedBase) config
+    else
+      new xsbti.AppConfiguration {
+        override def arguments: Array[String] = config.arguments()
+        override val baseDirectory: File = dealiasedBase
+        override def provider: AppProvider = config.provider()
+      }
+  }
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
-      import BasicCommandStrings.{ DashClient, DashDashClient, runEarly }
+      import BasicCommandStrings.{ DashClient, DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
@@ -49,25 +66,70 @@ private[sbt] object xMain {
 
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
-      val userCommands = configuration.arguments.map(_.trim)
-      if (clientModByEnv || (userCommands.exists { cmd =>
-            (cmd == DashClient) || (cmd == DashDashClient)
-          })) {
-        val args = userCommands.toList filterNot { cmd =>
-          (cmd == DashClient) || (cmd == DashDashClient)
-        }
-        NetworkClient.run(configuration, args)
-        Exit(0)
+      val userCommands = configuration.arguments
+        .map(_.trim)
+        .filterNot(_ == DashDashServer)
+      val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
+      val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+        case (_, Some(e)) => return e
+        case (s, _)       => s
+      }
+      else None
+      if (userCommands.exists(isBsp)) {
+        BspClient.run(dealiasBaseDirectory(configuration))
       } else {
-        val state = StandardMain.initialState(
-          configuration,
-          Seq(defaults, early),
-          runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
-        )
-        StandardMain.runManaged(state)
+        bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
+        val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
+        ITerminal.withStreams(true, isSubProcess = detachStdio) {
+          if (clientModByEnv || userCommands.exists(isClient)) {
+            val args = userCommands.toList.filterNot(isClient)
+            NetworkClient.run(dealiasBaseDirectory(configuration), args)
+            Exit(0)
+          } else {
+            val state0 = StandardMain
+              .initialState(
+                dealiasBaseDirectory(configuration),
+                Seq(defaults, early),
+                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+              )
+              .put(BasicKeys.detachStdio, detachStdio)
+            val state = bootServerSocket match {
+              case Some(l) => state0.put(Keys.bootServerSocket, l)
+              case _       => state0
+            }
+            try StandardMain.runManaged(state)
+            finally bootServerSocket.foreach(_.close())
+          }
+        }
       }
     } finally {
+      // Clear any stray progress lines
       ShutdownHooks.close()
+      if (ITerminal.isAnsiSupported) {
+        System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+        System.out.flush()
+      }
+    }
+  }
+
+  private def getSocketOrExit(
+      configuration: xsbti.AppConfiguration
+  ): (Option[BootServerSocket], Option[Exit]) =
+    try (Some(new BootServerSocket(configuration)) -> None)
+    catch {
+      case _: ServerAlreadyBootingException
+          if System.console != null && !ITerminal.startedByRemoteClient =>
+        println("sbt server is already booting. Create a new server? y/n (default y)")
+        val exit = ITerminal.get.withRawInput(System.in.read) match {
+          case 110 => Some(Exit(1))
+          case _   => None
+        }
+        (None, exit)
+      case _: ServerAlreadyBootingException =>
+        if (SysProp.forceServerStart) (None, None)
+        else (None, Some(Exit(2)))
     }
 }
 
@@ -79,7 +141,7 @@ private[sbt] object ScriptMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
     val state = StandardMain.initialState(
-      configuration,
+      xMain.dealiasBaseDirectory(configuration),
       BuiltinCommands.ScriptCommands,
       runEarly(Level.Error.toString) :: Script.Name :: Nil
     )
@@ -94,7 +156,7 @@ final class ConsoleMain extends xsbti.AppMain {
 private[sbt] object ConsoleMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     val state = StandardMain.initialState(
-      configuration,
+      xMain.dealiasBaseDirectory(configuration),
       BuiltinCommands.ConsoleCommands,
       IvyConsole.Name :: Nil
     )
@@ -104,8 +166,6 @@ private[sbt] object ConsoleMain {
 
 object StandardMain {
   private[sbt] lazy val exchange = new CommandExchange()
-  import scalacache.caffeine._
-  private[sbt] lazy val cache: scalacache.Cache[Any] = CaffeineCache[Any]
   // The access to the pool should be thread safe because lazy val instantiation is thread safe
   // and pool is only referenced directly in closeRunnable after the executionContext is sure
   // to have been instantiated
@@ -117,36 +177,44 @@ object StandardMain {
   })
 
   private[this] val closeRunnable = () => {
-    cache.close()(scalacache.modes.sync.mode)
-    cache.close()(scalacache.modes.scalaFuture.mode(executionContext))
     exchange.shutdown()
     pool.foreach(_.shutdownNow())
   }
 
+  private[this] val isShutdown = new AtomicBoolean(false)
   def runManaged(s: State): xsbti.MainResult = {
     val previous = TrapExit.installManager()
     try {
       val hook = ShutdownHooks.add(closeRunnable)
       try {
         MainLoop.runLogged(s)
+      } catch {
+        case _: InterruptedException if isShutdown.get =>
+          new xsbti.Exit { override def code(): Int = 0 }
       } finally {
         try DefaultBackgroundJobService.shutdown()
         finally hook.close()
         ()
       }
-    } finally TrapExit.uninstallManager(previous)
+    } finally {
+      TrapExit.uninstallManager(previous)
+    }
   }
 
   /** The common interface to standard output, used for all built-in ConsoleLoggers. */
   val console: ConsoleOut =
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
+  ConsoleOut.setGlobalProxy(console)
 
   private[this] def initialGlobalLogging(file: Option[File]): GlobalLogging = {
-    file.foreach(f => if (!f.exists()) IO.createDirectory(f))
+    def createTemp(attempt: Int = 0): File = Retry {
+      file.foreach(f => if (!f.exists()) IO.createDirectory(f))
+      File.createTempFile("sbt-global-log", ".log", file.orNull)
+    }
     GlobalLogging.initial(
-      MainAppender.globalDefault(console),
-      File.createTempFile("sbt-global-log", ".log", file.orNull),
-      console
+      MainAppender.globalDefault(ConsoleOut.globalProxy),
+      createTemp(),
+      ConsoleOut.globalProxy
     )
   }
   def initialGlobalLogging(file: File): GlobalLogging = initialGlobalLogging(Option(file))
@@ -161,8 +229,11 @@ object StandardMain {
     // This is to workaround https://github.com/sbt/io/issues/110
     sys.props.put("jna.nosys", "true")
 
-    import BasicCommandStrings.isEarlyCommand
-    val userCommands = configuration.arguments.map(_.trim)
+    import BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, isEarlyCommand }
+    val userCommands =
+      configuration.arguments
+        .map(_.trim)
+        .filterNot(c => c == DashDashDetachStdio || c == DashDashServer)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
     val commands = (earlyCommands ++ normalCommands).toList map { x =>
       Exec(x, None)
@@ -200,6 +271,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
+  @com.github.ghik.silencer.silent
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,
@@ -231,6 +303,7 @@ object BuiltinCommands {
       skipBanner,
       notifyUsersAboutShell,
       shell,
+      rebootNetwork,
       startServer,
       eval,
       last,
@@ -242,7 +315,13 @@ object BuiltinCommands {
       act,
       continuous,
       clearCaches,
-    ) ++ allBasicCommands
+      NetworkChannel.disconnect,
+      waitCmd,
+      promptChannel,
+    ) ++
+      allBasicCommands ++
+      ContinuousCommands.value ++
+      BuildServerProtocol.commands
 
   def DefaultBootCommands: Seq[String] =
     WriteSbtVersion :: LoadProject :: NotifyUsersAboutShell :: s"$IfLast $Shell" :: Nil
@@ -763,22 +842,22 @@ object BuiltinCommands {
 
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
-    val result = (SimpleReader.readLine(
-      "Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)"
-    ) getOrElse Quit)
-      .toLowerCase(Locale.ENGLISH)
-    def matches(s: String) = !result.isEmpty && (s startsWith result)
-    def retry = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
-    def ignoreMsg =
+    s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
+    val result = try ITerminal.get.withRawInput(System.in.read) match {
+      case -1 => 'q'.toInt
+      case b  => b
+    } catch { case _: ClosedChannelException => 'q' }
+    def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
+    def ignoreMsg: String =
       if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
-    result match {
-      case ""                     => retry
-      case _ if matches("retry")  => retry
-      case _ if matches(Quit)     => s.exit(ok = false)
-      case _ if matches("ignore") => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-      case _ if matches("last")   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case _                      => println("Invalid response."); doLoadFailed(s, loadArg)
+    result.toChar match {
+      case '\n' | '\r' => retry
+      case 'r' | 'R'   => retry
+      case 'q' | 'Q'   => s.exit(ok = false)
+      case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+      case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+      case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
     }
   }
 
@@ -823,17 +902,26 @@ object BuiltinCommands {
 
     val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)
 
-    val app = state.configuration.provider
-    sbtVersionOpt.foreach(
-      version =>
-        if (version != app.id.version()) {
-          state.log.warn(s"""sbt version mismatch, using: ${app.id
-            .version()}, in build.properties: "$version".""")
-        }
-    )
+    sbtVersionOpt.foreach { version =>
+      val appVersion = state.configuration.provider.id.version()
+      if (version != appVersion) {
+        state.log.warn(
+          s"sbt version mismatch, using: $appVersion, " +
+            s"""in build.properties: "$version", use 'reboot' to use the new value.""".stripMargin
+        )
+      }
+    }
+  }
+
+  private def welcomeBanner(state: State): Unit = {
+    import scala.util.Properties
+    val appVersion = state.configuration.provider.id.version()
+    val javaVersion = s"${Properties.javaVendor} Java ${Properties.javaVersion}"
+    state.log.info(s"welcome to sbt $appVersion ($javaVersion)")
   }
 
   def doLoadProject(s0: State, action: LoadAction.Value): State = {
+    welcomeBanner(s0)
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
@@ -851,14 +939,31 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
-    val s3 = addCacheStoreFactoryFactory(
-      Project
-        .setProject(session, structure, s2)
-        .put(sbt.nio.Keys.hasCheckedMetaBuild, new AtomicBoolean(false))
-    )
-    LintUnused.lintUnusedFunc(s3)
+    val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
+    val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
+    val s5 = setupGlobalFileTreeRepository(s4)
+    // This is a workaround for the console task in dotty which uses the classloader cache.
+    // We need to override the top loader in that case so that it gets the forked jline.
+    s5.extendedClassLoaderCache.setParent(Project.extract(s5).get(Keys.scalaInstanceTopLoader))
+    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s5)))
   }
 
+  private val setupGlobalFileTreeRepository: State => State = { state =>
+    state.get(sbt.nio.Keys.globalFileTreeRepository).foreach(_.close())
+    state.put(sbt.nio.Keys.globalFileTreeRepository, FileTreeRepository.default)
+  }
+  private val addSuperShellParams: State => State = (s: State) => {
+    val extracted = Project.extract(s)
+    import scala.concurrent.duration._
+    val sleep = extracted.getOpt(Keys.superShellSleep).getOrElse(SysProp.supershellSleep.millis)
+    val threshold =
+      extracted.getOpt(Keys.superShellThreshold).getOrElse(SysProp.supershellThreshold)
+    val maxItems = extracted.getOpt(Keys.superShellMaxTasks).getOrElse(SysProp.supershellMaxTasks)
+    ITerminal.setConsoleProgressState(new ProgressState(1, maxItems))
+    s.put(Keys.superShellSleep.key, sleep)
+      .put(Keys.superShellThreshold.key, threshold)
+      .put(Keys.superShellMaxTasks.key, maxItems)
+  }
   private val addCacheStoreFactoryFactory: State => State = (s: State) => {
     val size = Project
       .extract(s)
@@ -871,12 +976,7 @@ object BuiltinCommands {
 
   def registerCompilerCache(s: State): State = {
     s.get(Keys.stateCompilerCache).foreach(_.clear())
-
-    val maxCompilers: Int = SysProp.residentLimit
-    val cache =
-      if (maxCompilers <= 0) CompilerCache.fresh
-      else CompilerCache.createCacheFor(maxCompilers)
-    s.put(Keys.stateCompilerCache, cache)
+    s.put(Keys.stateCompilerCache, CompilerCache.fresh)
   }
 
   def clearCaches: Command = {
@@ -885,28 +985,90 @@ object BuiltinCommands {
     Command.command(ClearCaches, help)(f)
   }
 
+  private[sbt] def waitCmd: Command =
+    Command.arb(
+      _ => ContinuousCommands.waitWatch.examples() ~> " ".examples() ~> matched(any.*).examples()
+    ) { (s0, channel) =>
+      val exchange = StandardMain.exchange
+      exchange.channelForName(channel) match {
+        case Some(c) if ContinuousCommands.isInWatch(s0, c) =>
+          if (c.terminal.prompt != Prompt.Watch) {
+            c.terminal.setPrompt(Prompt.Watch)
+            c.prompt(ConsolePromptEvent(s0))
+          } else if (c.terminal.isSupershellEnabled) {
+            c.terminal.printStream.print(ConsoleAppender.ClearScreenAfterCursor)
+            c.terminal.printStream.flush()
+          }
+
+          val s1 = exchange.run(s0)
+          val exec: Exec = getExec(s1, Duration.Inf)
+          val remaining: List[Exec] =
+            Exec(FailureWall, None) :: Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
+              s1.remainingCommands
+          val newState = s1.copy(remainingCommands = exec +: remaining)
+          if (exec.commandLine.trim.isEmpty) newState
+          else newState.clearGlobalLog
+        case _ => s0
+      }
+    }
+
+  private[sbt] def promptChannel = Command.arb(_ => reportParser(PromptChannel)) {
+    (state, channel) =>
+      if (channel == ConsoleChannel.defaultName) {
+        if (!state.remainingCommands.exists(_.commandLine == Shell))
+          state.copy(remainingCommands = state.remainingCommands ::: (Exec(Shell, None) :: Nil))
+        else state
+      } else {
+        StandardMain.exchange.channelForName(channel) match {
+          case Some(nc: NetworkChannel) => nc.prompt()
+          case _                        =>
+        }
+        state
+      }
+  }
+
+  private def getExec(state: State, interval: Duration): Exec = {
+    StandardMain.exchange.blockUntilNextExec(interval, Some(state), state.globalLogging.full)
+  }
+
   def shell: Command = Command.command(Shell, Help.more(Shell, ShellDetailed)) { s0 =>
-    import sbt.internal.{ ConsolePromptEvent, ConsoleUnpromptEvent }
+    import sbt.internal.ConsolePromptEvent
     val exchange = StandardMain.exchange
     val welcomeState = displayWelcomeBanner(s0)
     val s1 = exchange run welcomeState
-    exchange publishEventMessage ConsolePromptEvent(s0)
-    val minGCInterval = Project
-      .extract(s1)
-      .getOpt(Keys.minForcegcInterval)
-      .getOrElse(GCUtil.defaultMinForcegcInterval)
-    val exec: Exec = exchange.blockUntilNextExec(minGCInterval, s1.globalLogging.full)
-    val newState = s1
-      .copy(
-        onFailure = Some(Exec(Shell, None)),
-        remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
-      )
-      .setInteractive(true)
-    exchange publishEventMessage ConsoleUnpromptEvent(exec.source)
-    if (exec.commandLine.trim.isEmpty) newState
-    else newState.clearGlobalLog
+    /*
+     * It is possible for sbt processes to leak if two are started simultaneously
+     * by a remote client and only one is able to start a server. This seems to
+     * happen primarily on windows.
+     */
+    if (ITerminal.startedByRemoteClient && !exchange.hasServer) {
+      Exec(Shutdown, None) +: s1
+    } else {
+      if (ITerminal.console.prompt == Prompt.Batch) ITerminal.console.setPrompt(Prompt.Pending)
+      exchange prompt ConsolePromptEvent(s0)
+      val minGCInterval = Project
+        .extract(s1)
+        .getOpt(Keys.minForcegcInterval)
+        .getOrElse(GCUtil.defaultMinForcegcInterval)
+      val exec: Exec = getExec(s1, minGCInterval)
+      val newState = s1
+        .copy(
+          onFailure = Some(Exec(Shell, None)),
+          remainingCommands = exec +: Exec(Shell, None) +: s1.remainingCommands
+        )
+        .setInteractive(true)
+      val res =
+        if (exec.commandLine.trim.isEmpty) newState
+        else newState.clearGlobalLog
+      res
+    }
   }
 
+  def rebootNetwork: Command = Command.arb(_ => (RebootNetwork: Parser[String]).examples()) {
+    (s, _) =>
+      StandardMain.exchange.reboot(s)
+      s
+  }
   def startServer: Command =
     Command.command(StartServer, Help.more(StartServer, StartServerDetailed)) { s0 =>
       val exchange = StandardMain.exchange
@@ -976,10 +1138,12 @@ object BuiltinCommands {
 
   private def intendsToInvokeCompile(state: State) =
     state.remainingCommands exists (_.commandLine == Keys.compile.key.label)
+  private def hasRebooted(state: State) =
+    state.remainingCommands exists (_.commandLine == StartServer)
 
   private def notifyUsersAboutShell(state: State): Unit = {
     val suppress = Project extract state getOpt Keys.suppressSbtShellNotification getOrElse false
-    if (!suppress && intendsToInvokeCompile(state))
+    if (!suppress && intendsToInvokeCompile(state) && !hasRebooted(state))
       state.log info "Executing in batch mode. For better performance use sbt's shell"
   }
 
@@ -1001,7 +1165,9 @@ object BuiltinCommands {
         val skipFile = skipWelcomeFile(state, version)
         Files.createDirectories(skipFile.getParent)
         val suppress = !SysProp.banner || Files.exists(skipFile)
-        if (!suppress) state.log.info(Banner(version))
+        if (!suppress) {
+          Banner(version).foreach(banner => state.log.info(banner))
+        }
       } catch { case _: IOException => /* Don't let errors in this command prevent startup */ }
       state.put(bannerHasBeenShown, true)
     } else state

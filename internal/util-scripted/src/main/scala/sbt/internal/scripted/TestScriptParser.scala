@@ -50,11 +50,22 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
   if (handlers.keys.exists(key => key == '+' || key == '-'))
     sys.error("Start characters cannot be '+' or '-'")
 
+  @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
   def parse(scriptFile: File): List[(StatementHandler, Statement)] =
-    parse(read(scriptFile), Some(scriptFile.getAbsolutePath))
-  def parse(script: String): List[(StatementHandler, Statement)] = parse(script, None)
-  private def parse(script: String, label: Option[String]): List[(StatementHandler, Statement)] = {
-    parseAll(statements, script) match {
+    parse(scriptFile, stripQuotes = true)
+  def parse(scriptFile: File, stripQuotes: Boolean): List[(StatementHandler, Statement)] =
+    parse(read(scriptFile), Some(scriptFile.getAbsolutePath), stripQuotes)
+  @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
+  def parse(script: String): List[(StatementHandler, Statement)] =
+    parse(script, None, stripQuotes = true)
+  def parse(script: String, stripQuotes: Boolean): List[(StatementHandler, Statement)] =
+    parse(script, None, stripQuotes)
+  private def parse(
+      script: String,
+      label: Option[String],
+      stripQuotes: Boolean
+  ): List[(StatementHandler, Statement)] = {
+    parseAll(statements(stripQuotes), script) match {
       case Success(result, next) => result
       case err: NoSuccess => {
         val labelString = label.map("'" + _ + "' ").getOrElse("")
@@ -63,15 +74,21 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
     }
   }
 
+  @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
   lazy val statements = rep1(space ~> statement <~ newline)
+  def statements(stripQuotes: Boolean): Parser[List[(StatementHandler, Statement)]] =
+    rep1(space ~> statement(stripQuotes) <~ newline)
 
-  def statement: Parser[(StatementHandler, Statement)] = {
+  @deprecated("Use variant that specifies whether to strip quotes or not", "1.4.0")
+  def statement: Parser[(StatementHandler, Statement)] = statement(stripQuotes = true)
+  def statement(stripQuotes: Boolean): Parser[(StatementHandler, Statement)] = {
     trait PositionalStatement extends Positional {
       def tuple: (StatementHandler, Statement)
     }
     positioned {
-      val command = (word | err("expected command"))
-      val arguments = rep(space ~> (word | failure("expected argument")))
+      val w = if (stripQuotes) word else rawWord
+      val command = w | err("expected command")
+      val arguments = rep(space ~> w | failure("expected argument"))
       (successParser ~ (space ~> startCharacterParser <~ space) ~! command ~! arguments) ^^ {
         case successExpected ~ start ~ command ~ arguments =>
           new PositionalStatement {
@@ -86,7 +103,9 @@ class TestScriptParser(handlers: Map[Char, StatementHandler]) extends RegexParse
   def space: Parser[String] = """[ \t]*""".r
 
   lazy val word: Parser[String] =
-    ("\'" ~> "[^'\n\r]*".r <~ "\'") | ("\"" ~> "[^\"\n\r]*".r <~ "\"") | WordRegex
+    ("\'" ~> "[^'\n\r]*".r <~ "\'") | "\"" ~> "[^\"\n\r]*".r <~ "\'" | WordRegex
+  private lazy val rawWord: Parser[String] =
+    ("\'" ~> "[^'\n\r]*".r <~ "\'") | "\"[^\"\n\r]*\"".r | WordRegex
 
   def startCharacterParser: Parser[Char] =
     elem("start character", handlers.contains _) |

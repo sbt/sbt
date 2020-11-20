@@ -67,6 +67,9 @@ object Keys {
   val watchAntiEntropyRetentionPeriod = settingKey[FiniteDuration](
     "Wall clock Duration for which a FileEventMonitor will store anti-entropy events. This prevents spurious triggers when a task takes a long time to run. Higher values will consume more memory but make spurious triggers less likely."
   ).withRank(BMinusSetting)
+  val watchAntiEntropyPollPeriod = settingKey[FiniteDuration](
+    "The duration for which sbt will poll for file events during the window in which sbt is buffering file events"
+  )
   val onChangedBuildSource = settingKey[WatchBuildSourceOption](
     "Determines what to do if the sbt meta build sources have changed"
   ).withRank(DSetting)
@@ -114,6 +117,7 @@ object Keys {
     "The message to show when triggered execution waits for sources to change. The parameters are the current watch iteration count, the current project name and the tasks that are being run with each build."
   ).withRank(DSetting)
   // The watchTasks key should really be named watch, but that is already taken by the deprecated watch key. I'd be surprised if there are any plugins that use it so I think we should consider breaking binary compatibility to rename this task.
+  @deprecated("The watch input task no longer has any effect.", "1.4.0")
   val watchTasks = InputKey[StateTransform](
     "watch",
     "Watch a task (or multiple tasks) and rebuild when its file inputs change or user input is received. The semantics are more or less the same as the `~` command except that it cannot transform the state on exit. This means that it cannot be used to reload the build."
@@ -177,12 +181,6 @@ object Keys {
   private[sbt] val dependencyClasspathFiles =
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
-  private[sbt] val compileSourceFileInputs =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
-      .withRank(Invisible)
-  private[sbt] val compileBinaryFileInputs =
-    taskKey[Map[String, Seq[(Path, FileStamp)]]]("Source file stamps stored by scala version")
-      .withRank(Invisible)
 
   private[this] val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +

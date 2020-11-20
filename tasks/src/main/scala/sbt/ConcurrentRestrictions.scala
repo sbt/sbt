@@ -7,7 +7,12 @@
 
 package sbt
 
+import java.util.concurrent.atomic.AtomicInteger
+
 import sbt.internal.util.AttributeKey
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.{ Future => JFuture, RejectedExecutionException }
+import scala.collection.mutable
 
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
@@ -41,11 +46,26 @@ trait ConcurrentRestrictions[A] {
   def valid(g: G): Boolean
 }
 
+private[sbt] sealed trait CancelSentiels {
+  def cancelSentinels(): Unit
+}
+
 import java.util.{ LinkedList, Queue }
 import java.util.concurrent.{ Executor, Executors, ExecutorCompletionService }
 import annotation.tailrec
 
 object ConcurrentRestrictions {
+  private[this] val completionServices = new java.util.WeakHashMap[CompletionService[_, _], Boolean]
+  import scala.collection.JavaConverters._
+  def cancelAll() = completionServices.keySet.asScala.toVector.foreach {
+    case a: AutoCloseable => a.close()
+    case _                =>
+  }
+
+  private[sbt] def cancelAllSentinels() = completionServices.keySet.asScala.toVector.foreach {
+    case a: CancelSentiels => a.cancelSentinels()
+    case _                 =>
+  }
 
   /**
    * A ConcurrentRestrictions instance that places no restrictions on concurrently executing tasks.
@@ -119,6 +139,8 @@ object ConcurrentRestrictions {
   private[this] def merge[A, B](m: Map[A, B], n: Map[A, B])(f: (B, B) => B): Map[A, B] =
     n.foldLeft(m) { case (acc, (a, b)) => update(acc, a, b)(f) }
 
+  private[this] val poolID = new AtomicInteger(1)
+
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution.
    * @return a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
@@ -129,11 +151,48 @@ object ConcurrentRestrictions {
       tags: ConcurrentRestrictions[A],
       warn: String => Unit
   ): (CompletionService[A, R], () => Unit) = {
+    val id = poolID.getAndIncrement
+    val i = new AtomicInteger(1)
+    val pool = Executors.newCachedThreadPool { r =>
+      new Thread(r, s"sbt-completion-service-pool-$id-${i.getAndIncrement()}")
+    }
+    val service = completionService[A, R](pool, tags, warn)
+    (service, () => { pool.shutdownNow(); () })
+  }
+
+  def completionService[A, R](
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit,
+      isSentinel: A => Boolean
+  ): (CompletionService[A, R], () => Unit) = {
     val pool = Executors.newCachedThreadPool()
-    (completionService[A, R](pool, tags, warn), () => {
+    val service = completionService[A, R](pool, tags, warn, isSentinel)
+    (service, () => {
       pool.shutdownNow()
       ()
     })
+  }
+
+  def cancellableCompletionService[A, R](
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit,
+      isSentinel: A => Boolean
+  ): (CompletionService[A, R], Boolean => Unit) = {
+    val pool = Executors.newCachedThreadPool()
+    val service = completionService[A, R](pool, tags, warn, isSentinel)
+    (service, force => {
+      if (force) service.close()
+      pool.shutdownNow()
+      ()
+    })
+  }
+
+  def completionService[A, R](
+      backing: Executor,
+      tags: ConcurrentRestrictions[A],
+      warn: String => Unit
+  ): CompletionService[A, R] with AutoCloseable = {
+    completionService[A, R](backing, tags, warn, (_: A) => false)
   }
 
   /**
@@ -143,13 +202,20 @@ object ConcurrentRestrictions {
   def completionService[A, R](
       backing: Executor,
       tags: ConcurrentRestrictions[A],
-      warn: String => Unit
-  ): CompletionService[A, R] = {
+      warn: String => Unit,
+      isSentinel: A => Boolean,
+  ): CompletionService[A, R] with CancelSentiels with AutoCloseable = {
 
     // Represents submitted work for a task.
     final class Enqueue(val node: A, val work: () => R)
 
-    new CompletionService[A, R] {
+    new CompletionService[A, R] with CancelSentiels with AutoCloseable {
+      completionServices.put(this, true)
+      private[this] val closed = new AtomicBoolean(false)
+      override def close(): Unit = if (closed.compareAndSet(false, true)) {
+        completionServices.remove(this)
+        ()
+      }
 
       /** Backing service used to manage execution on threads once all constraints are satisfied. */
       private[this] val jservice = new ExecutorCompletionService[R](backing)
@@ -163,18 +229,33 @@ object ConcurrentRestrictions {
       /** Tasks that cannot be run yet because they cannot execute concurrently with the currently running tasks.*/
       private[this] val pending = new LinkedList[Enqueue]
 
+      private[this] val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty
+
+      def cancelSentinels(): Unit = {
+        sentinels.toList foreach { s =>
+          s.cancel(true)
+        }
+        sentinels.clear
+      }
+
       def submit(node: A, work: () => R): Unit = synchronized {
-        val newState = tags.add(tagState, node)
-        // if the new task is allowed to run concurrently with the currently running tasks,
-        //   submit it to be run by the backing j.u.c.CompletionService
-        if (tags valid newState) {
-          tagState = newState
-          submitValid(node, work)
-          ()
+        if (closed.get) throw new RejectedExecutionException
+        else if (isSentinel(node)) {
+          // skip all checks for sentinels
+          sentinels += CompletionService.submitFuture(work, jservice)
         } else {
-          if (running == 0) errorAddingToIdle()
-          pending.add(new Enqueue(node, work))
-          ()
+          val newState = tags.add(tagState, node)
+          // if the new task is allowed to run concurrently with the currently running tasks,
+          //   submit it to be run by the backing j.u.c.CompletionService
+          if (tags valid newState) {
+            tagState = newState
+            submitValid(node, work)
+            ()
+          } else {
+            if (running == 0) errorAddingToIdle()
+            pending.add(new Enqueue(node, work))
+            ()
+          }
         }
         ()
       }
@@ -183,7 +264,7 @@ object ConcurrentRestrictions {
         val wrappedWork = () =>
           try work()
           finally cleanup(node)
-        CompletionService.submit(wrappedWork, jservice)
+        CompletionService.submitFuture(wrappedWork, jservice)
         ()
       }
       private[this] def cleanup(node: A): Unit = synchronized {
@@ -222,7 +303,11 @@ object ConcurrentRestrictions {
           submitValid(tried)
         }
 
-      def take(): R = jservice.take().get()
+      def take(): R = {
+        if (closed.get)
+          throw new IllegalStateException("Tried to get values for a closed completion service")
+        jservice.take().get()
+      }
     }
   }
 }

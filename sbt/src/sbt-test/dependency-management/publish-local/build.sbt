@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 lazy val root = (project in file(".")).
   dependsOn(sub).
   aggregate(sub).

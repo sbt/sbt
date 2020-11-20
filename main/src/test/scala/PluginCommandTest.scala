@@ -17,7 +17,8 @@ import sbt.internal.util.{
   ConsoleOut,
   GlobalLogging,
   MainAppender,
-  Settings
+  Settings,
+  Terminal => ITerminal,
 }
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
@@ -72,19 +73,21 @@ object PluginCommandTest extends Specification {
 object FakeState {
 
   def processCommand(input: String, enabledPlugins: AutoPlugin*): String = {
-    val previousOut = System.out
     val outBuffer = new ByteArrayOutputStream
+    val logFile = File.createTempFile("sbt", ".log")
     try {
-      System.setOut(new PrintStream(outBuffer, true))
-      val state = FakeState(enabledPlugins: _*)
-      MainLoop.processCommand(Exec(input, None), state)
+      val state = FakeState(logFile, enabledPlugins: _*)
+      ITerminal.withOut(new PrintStream(outBuffer, true)) {
+        MainLoop.processCommand(Exec(input, None), state)
+      }
       new String(outBuffer.toByteArray)
     } finally {
-      System.setOut(previousOut)
+      logFile.delete()
+      ()
     }
   }
 
-  def apply(plugins: AutoPlugin*) = {
+  def apply(logFile: File, plugins: AutoPlugin*) = {
 
     val base = new File("").getAbsoluteFile
     val testProject = Project("test-project", base).setAutoPlugins(plugins)
@@ -99,7 +102,8 @@ object FakeState {
     val delegates: (Scope) => Seq[Scope] = _ => Nil
     val scopeLocal: Def.ScopeLocal = _ => Nil
 
-    val data: Settings[Scope] = Def.make(settings)(delegates, scopeLocal, Def.showFullKey)
+    val (cMap, data: Settings[Scope]) =
+      Def.makeWithCompiledMap(settings)(delegates, scopeLocal, Def.showFullKey)
     val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
     val structureIndex: StructureIndex =
@@ -137,7 +141,8 @@ object FakeState {
       structureIndex,
       streams,
       delegates,
-      scopeLocal
+      scopeLocal,
+      cMap,
     )
 
     val attributes = AttributeMap.empty ++ AttributeMap(
@@ -154,9 +159,9 @@ object FakeState {
       State.newHistory,
       attributes,
       GlobalLogging.initial(
-        MainAppender.globalDefault(ConsoleOut.systemOut),
-        File.createTempFile("sbt", ".log"),
-        ConsoleOut.systemOut
+        MainAppender.globalDefault(ConsoleOut.globalProxy),
+        logFile,
+        ConsoleOut.globalProxy
       ),
       None,
       State.Continue

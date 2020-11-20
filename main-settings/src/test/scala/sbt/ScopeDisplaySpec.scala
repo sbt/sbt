@@ -47,4 +47,28 @@ class ScopeDisplaySpec extends FlatSpec {
     )
     assert(string == "blah")
   }
+
+  behavior of "Def.displayRelative2"
+
+  val b1 = project.build
+  val b2 = sbt.io.IO.toURI(file("other"))
+
+  val p1 = project
+  val p2 = ProjectRef(b1, "baz")
+  val p3 = ProjectRef(b2, "qux")
+
+  private def disp(r: Reference) = Def.displayRelative2(current = p1, r)
+
+  it should "ProjectRef curr proj" in assert(disp(p1) == "")
+  it should "ProjectRef same build" in assert(disp(p2) == "baz /")
+  it should "ProjectRef diff build" in assert(disp(p3) == """ProjectRef(uri("other"), "qux") /""")
+  it should "BuildRef same build" in assert(disp(BuildRef(b1)) == "ThisBuild /")
+  it should "BuildRef diff build" in assert(disp(BuildRef(b2)) == "{other} /")
+  it should "RootProject same build" in assert(disp(RootProject(b1)) == "<root> /")
+  it should "RootProject diff build" in assert(disp(RootProject(b2)) == "{other }<root> /")
+  it should "LocalProject curr proj" in assert(disp(LocalProject(p1.project)) == "")
+  it should "LocalProject diff proj" in assert(disp(LocalProject(p2.project)) == "baz /")
+  it should "ThisBuild" in assert(disp(ThisBuild) == "ThisBuild /")
+  it should "LocalRootProject" in assert(disp(LocalRootProject) == "<root> /")
+  it should "ThisProject" in assert(disp(ThisProject) == "<this> /")
 }

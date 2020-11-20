@@ -30,10 +30,23 @@ sealed trait Scoped extends Equals {
   override def hashCode() = (scope, key).##
 }
 
-/** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
-sealed trait ScopedTaskable[T] extends Scoped {
+/** A SettingKey, TaskKey or `Initialize[Task]` that can be converted into an `Initialize[Task]`. */
+sealed trait Taskable[T] {
   def toTask: Initialize[Task[T]]
 }
+
+sealed trait TaskableImplicits { self: Taskable.type =>
+  implicit def fromInit[T](x: Initialize[T]): Taskable[T] =
+    new Taskable[T] { def toTask = Def.toITask(x) }
+}
+
+object Taskable extends TaskableImplicits {
+  implicit def fromITask[T](x: Initialize[Task[T]]): Taskable[T] =
+    new Taskable[T] { def toTask = x }
+}
+
+/** A common type for SettingKey and TaskKey so that both can be used as inputs to tasks.*/
+sealed trait ScopedTaskable[T] extends Scoped with Taskable[T]
 
 /**
  * Identifies a setting.  It consists of three parts: the scope, the name, and the type of a value associated with this key.
@@ -302,6 +315,20 @@ object Scoped {
     final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
   }
 
+  // Duplicated with ProjectExtra.
+  private[sbt] object syntax {
+    implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
+      new Scoped.RichInitializeTask(init)
+
+    implicit def richInitializeInputTask[T](
+        init: Initialize[InputTask[T]]
+    ): Scoped.RichInitializeInputTask[T] =
+      new Scoped.RichInitializeInputTask(init)
+
+    implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] =
+      new Scoped.RichInitialize[T](i)
+  }
+
   /**
    * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
    */
@@ -457,19 +484,22 @@ object Scoped {
       Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
   }
 
-  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[ScopedTaskable])(
+  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[Taskable])(
       implicit a: AList[K]
   ) {
 
     type App[T] = Initialize[Task[T]]
+
+    /** A higher-kinded function, where each parameter shares the same type constructor `M[_]`. */
     type Fun[M[_], Ret]
 
+    /** Convert the higher-kinded function to a Function1.  For tuples that means call `.tupled`. */
     protected def convert[M[_], Ret](f: Fun[M, Ret]): K[M] => Ret
 
-    private[this] val inputs: K[App] = a.transform(keys, λ[ScopedTaskable ~> App](_.toTask))
+    private[this] val inputs: K[App] = a.transform(keys, λ[Taskable ~> App](_.toTask))
 
     private[this] def onTasks[T](f: K[Task] => Task[T]): App[T] =
-      Def.app[λ[L[x] => K[(L ∙ Task)#l]], Task[T]](inputs)(f)(AList.asplit[K, Task](a))
+      Def.app[AList.SplitK[K, Task]#l, Task[T]](inputs)(f)(AList.asplit[K, Task](a))
 
     def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
     def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))
@@ -481,7 +511,7 @@ object Scoped {
 
   // format: off
 
-  type ST[X] = ScopedTaskable[X]
+  type ST[X] = Taskable[X]
   final class RichTaskable2[A, B](t2: (ST[A], ST[B])) extends RichTaskables[AList.T2K[A, B]#l](t2)(AList.tuple2[A, B]) {
     type Fun[M[_], Ret] = (M[A], M[B]) => Ret
     def identityMap = map(mkTuple2)
@@ -597,7 +627,7 @@ object Scoped {
 
 /** The sbt 0.10 style DSL was deprecated in 0.13.13, favouring the use of the '.value' macro.
  *
- * See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
+ * See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
  */
 trait TupleSyntax {
   import Scoped._
@@ -605,16 +635,17 @@ trait TupleSyntax {
   // format: off
 
   // this is the least painful arrangement I came up with
-  implicit def t2ToTable2[A, B](t2: (ScopedTaskable[A], ScopedTaskable[B])): RichTaskable2[A, B] = new RichTaskable2(t2)
-  implicit def t3ToTable3[A, B, C](t3: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C])): RichTaskable3[A, B, C] = new RichTaskable3(t3)
-  implicit def t4ToTable4[A, B, C, D](t4: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D])): RichTaskable4[A, B, C, D] = new RichTaskable4(t4)
-  implicit def t5ToTable5[A, B, C, D, E](t5: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E])): RichTaskable5[A, B, C, D, E] = new RichTaskable5(t5)
-  implicit def t6ToTable6[A, B, C, D, E, F](t6: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F])): RichTaskable6[A, B, C, D, E, F] = new RichTaskable6(t6)
-  implicit def t7ToTable7[A, B, C, D, E, F, G](t7: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G])): RichTaskable7[A, B, C, D, E, F, G] = new RichTaskable7(t7)
-  implicit def t8ToTable8[A, B, C, D, E, F, G, H](t8: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H])): RichTaskable8[A, B, C, D, E, F, G, H] = new RichTaskable8(t8)
-  implicit def t9ToTable9[A, B, C, D, E, F, G, H, I](t9: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I])): RichTaskable9[A, B, C, D, E, F, G, H, I] = new RichTaskable9(t9)
-  implicit def t10ToTable10[A, B, C, D, E, F, G, H, I, J](t10: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J])): RichTaskable10[A, B, C, D, E, F, G, H, I, J] = new RichTaskable10(t10)
-  implicit def t11ToTable11[A, B, C, D, E, F, G, H, I, J, K](t11: (ScopedTaskable[A], ScopedTaskable[B], ScopedTaskable[C], ScopedTaskable[D], ScopedTaskable[E], ScopedTaskable[F], ScopedTaskable[G], ScopedTaskable[H], ScopedTaskable[I], ScopedTaskable[J], ScopedTaskable[K])): RichTaskable11[A, B, C, D, E, F, G, H, I, J, K] = new RichTaskable11(t11)
+  type ST[T] = Taskable[T]
+  implicit def t2ToTable2[A, B](t2: (ST[A], ST[B])): RichTaskable2[A, B] = new RichTaskable2(t2)
+  implicit def t3ToTable3[A, B, C](t3: (ST[A], ST[B], ST[C])): RichTaskable3[A, B, C] = new RichTaskable3(t3)
+  implicit def t4ToTable4[A, B, C, D](t4: (ST[A], ST[B], ST[C], ST[D])): RichTaskable4[A, B, C, D] = new RichTaskable4(t4)
+  implicit def t5ToTable5[A, B, C, D, E](t5: (ST[A], ST[B], ST[C], ST[D], ST[E])): RichTaskable5[A, B, C, D, E] = new RichTaskable5(t5)
+  implicit def t6ToTable6[A, B, C, D, E, F](t6: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F])): RichTaskable6[A, B, C, D, E, F] = new RichTaskable6(t6)
+  implicit def t7ToTable7[A, B, C, D, E, F, G](t7: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G])): RichTaskable7[A, B, C, D, E, F, G] = new RichTaskable7(t7)
+  implicit def t8ToTable8[A, B, C, D, E, F, G, H](t8: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H])): RichTaskable8[A, B, C, D, E, F, G, H] = new RichTaskable8(t8)
+  implicit def t9ToTable9[A, B, C, D, E, F, G, H, I](t9: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I])): RichTaskable9[A, B, C, D, E, F, G, H, I] = new RichTaskable9(t9)
+  implicit def t10ToTable10[A, B, C, D, E, F, G, H, I, J](t10: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J])): RichTaskable10[A, B, C, D, E, F, G, H, I, J] = new RichTaskable10(t10)
+  implicit def t11ToTable11[A, B, C, D, E, F, G, H, I, J, K](t11: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K])): RichTaskable11[A, B, C, D, E, F, G, H, I, J, K] = new RichTaskable11(t11)
 
   implicit def t2ToApp2[A, B](t2: (Initialize[A], Initialize[B])): Apply2[A, B] = new Apply2(t2)
   implicit def t3ToApp3[A, B, C](t3: (Initialize[A], Initialize[B], Initialize[C])): Apply3[A, B, C] = new Apply3(t3)

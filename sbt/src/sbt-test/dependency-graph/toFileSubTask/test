@@ -1,0 +1,5 @@
+> dependencyTree/toFile target/tree.txt
+> dependencyList/toFile target/list.txt
+> dependencyStats/toFile target/stats.txt
+> dependencyLicenseInfo/toFile target/licenses.txt
+> check

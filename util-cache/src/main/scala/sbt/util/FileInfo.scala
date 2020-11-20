@@ -13,6 +13,8 @@ import scala.util.control.NonFatal
 import sbt.io.{ Hash, IO }
 import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
 import CacheImplicits.{ arrayFormat => _, _ }
+import sbt.nio.file._
+import sbt.nio.file.syntax._
 
 sealed trait FileInfo { def file: File }
 sealed trait HashFileInfo extends FileInfo {
@@ -209,6 +211,26 @@ object FileInfo {
       FileModified(file.getAbsoluteFile, IO.getModifiedTimeOrZero(file))
     def apply(file: File, lastModified: Long): ModifiedFileInfo =
       FileModified(file.getAbsoluteFile, lastModified)
+
+    /**
+     * Returns an instance of [[FileModified]] where, for any directory, the maximum last
+     * modified time taken from its contents is used rather than the last modified time of the
+     * directory itself. The specific motivation was to prevent the doc task from re-running when
+     * the modified time changed for a directory classpath but none of the classfiles had changed.
+     *
+     * @param file the file or directory
+     * @return the [[FileModified]]
+     */
+    private[sbt] def fileOrDirectoryMax(file: File): ModifiedFileInfo = {
+      val maxLastModified =
+        if (file.isDirectory) FileTreeView.default.list(file.toGlob / **).foldLeft(0L) {
+          case (max, (path, attributes)) =>
+            val lm = if (!attributes.isDirectory) IO.getModifiedTimeOrZero(path.toFile) else 0L
+            if (lm > max) lm else max
+        }
+        else IO.getModifiedTimeOrZero(file)
+      FileModified(file, maxLastModified)
+    }
   }
 
   object exists extends Style {

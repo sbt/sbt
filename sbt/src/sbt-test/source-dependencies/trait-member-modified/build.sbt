@@ -1,5 +1,7 @@
+import xsbti.VirtualFileRef
 import sbt.internal.inc.Analysis
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
+import xsbti.compile.analysis.{ Compilation => XCompilation }
 
 previousCompile in Compile := {
   val previous = (previousCompile in Compile).value
@@ -17,20 +19,22 @@ previousCompile in Compile := {
 TaskKey[Unit]("checkCompilations") := {
   val analysis = (compile in Compile).value match { case a: Analysis => a }
   val srcDir = (scalaSource in Compile).value
-  def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
-  def findFile(className: String): File = {
-    relative(analysis.relations.definesClass(className).head)
+  def findFile(className: String): VirtualFileRef = {
+    analysis.relations.definesClass(className).head
   }
   val allCompilations = analysis.compilations.allCompilations
-  val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
+  val recompiledFiles: Seq[Set[VirtualFileRef]] = allCompilations map { c: XCompilation =>
     val recompiledFiles = analysis.apis.internal.collect {
       case (cn, api) if api.compilationTimestamp == c.getStartTime => findFile(cn)
     }
     recompiledFiles.toSet
   }
   def recompiledFilesInIteration(iteration: Int, fileNames: Set[String]) = {
-    val files = fileNames.map(new java.io.File(_))
-    assert(recompiledFiles(iteration) == files, "%s != %s".format(recompiledFiles(iteration), files))
+    assert(recompiledFiles(iteration).map(_.name) == fileNames,
+      s"""${recompiledFiles(iteration).map(_.name)} != $fileNames
+         |
+         |allCompilations = $allCompilations
+         |""".stripMargin)
   }
   assert(allCompilations.size == 2, s"All compilations is ${allCompilations.size}")
   // B.scala is just compiled at the beginning

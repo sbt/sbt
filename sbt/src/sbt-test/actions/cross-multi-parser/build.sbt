@@ -1,1 +1,1 @@
-crossScalaVersions := Seq[String]("2.11.12", "2.12.10")
+crossScalaVersions := Seq[String]("2.11.12", "2.12.12")

@@ -1,0 +1,48 @@
+> pushRemoteCache
+
+# Generated sources, compiled classes
+$ exists target/scala-2.12/classes/MyClass.class
+$ exists target/scala-2.12/classes/MyClass$.class
+$ exists target/scala-2.12/classes/META-INF/semanticdb/src/main/scala/MyClass.scala.semanticdb
+$ exists target/scala-2.12/zinc/inc_compile_2.12.zip
+$ exists target/scala-2.12/test-classes/MyTest.class
+$ exists target/scala-2.12/test-classes/MyTest$.class
+$ exists target/scala-2.12/test-classes/META-INF/semanticdb/src/test/scala/MyTest.scala.semanticdb
+$ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+# Compile
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar.md5
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-compile.jar.sha1
+
+# Test
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar.md5
+$ exists remote-cache-semanticdb/my-project/my-project_2.12/0.0.0-fixed-id/my-project_2.12-0.0.0-fixed-id-cached-test.jar.sha1
+
+> clean
+
+$ absent target/scala-2.12/classes/MyClass.class
+$ absent target/scala-2.12/classes/MyClass$.class
+$ absent target/scala-2.12/classes/META-INF
+$ absent target/scala-2.12/zinc/inc_compile_2.12.zip
+$ absent target/scala-2.12/test-classes/MyTest.class
+$ absent target/scala-2.12/test-classes/MyTest$.class
+$ absent target/scala-2.12/test-classes/META-INF
+$ absent target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+> pullRemoteCache
+
+# Files extracted from the cache artifacts
+$ exists target/scala-2.12/classes/MyClass.class
+$ exists target/scala-2.12/classes/MyClass$.class
+$ exists target/scala-2.12/classes/META-INF/semanticdb/src/main/scala/MyClass.scala.semanticdb
+$ exists target/scala-2.12/zinc/inc_compile_2.12.zip
+$ exists target/scala-2.12/test-classes/MyTest.class
+$ exists target/scala-2.12/test-classes/MyTest$.class
+$ exists target/scala-2.12/test-classes/META-INF/semanticdb/src/test/scala/MyTest.scala.semanticdb
+$ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
+
+# Artifacts can be pushed twice (enabled overriding)
+> pushRemoteCache
+

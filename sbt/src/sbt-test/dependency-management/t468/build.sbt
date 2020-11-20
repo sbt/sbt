@@ -1,3 +1,5 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 autoScalaLibrary := false
 
 ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))

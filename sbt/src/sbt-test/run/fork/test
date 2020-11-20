@@ -1,18 +1,18 @@
-> run "fork"
+> run fork
 $ exists flag
 $ delete flag
 
-$ mkdir "forked"
+$ mkdir forked
 > set fork := true
-> 'set baseDirectory in run := baseDirectory(_ / "forked").value'
+> set baseDirectory in run := baseDirectory(_ / "forked").value
 
-> run "forked"
+> run forked
 $ exists forked/flag
 $ absent flag
 $ delete forked/flag
 
-> 'set envVars += ("flag.name" -> "env.flag")'
-> run "forked"
+> set envVars += ("flag.name" -> "env.flag")
+> run forked
 $ exists forked/env.flag
 $ absent flag
 $ absent forked/flag

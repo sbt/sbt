@@ -11,25 +11,30 @@ import org.scalatest._
 import sbt.util._
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
+import com.github.ghik.silencer.silent
 
 class ManagedLoggerSpec extends FlatSpec with Matchers {
+  val context = LoggerContext(useLog4J = true)
+  @silent
+  val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
+  def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     log.info("test")
     log.debug("test")
   }
 
   it should "support event logging" in {
     import sjsonnew.BasicJsonProtocol._
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(1)
   }
 
   it should "validate performance improvement of disabling location calculation for async loggers" in {
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     val before = System.currentTimeMillis()
     1 to 10000 foreach { _ =>
       log.debug("test")
@@ -41,15 +46,15 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
 
   it should "support logging Throwable out of the box" in {
     import sbt.internal.util.codec.JsonProtocol._
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(SuccessEvent("yes"))
   }
 
   it should "allow registering Show[Int]" in {
     import sjsonnew.BasicJsonProtocol._
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     implicit val intShow: ShowLines[Int] =
       ShowLines((x: Int) => Vector(s"String representation of $x"))
     log.registerStringCodec[Int]
@@ -58,8 +63,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
 
   it should "allow registering Show[Array[Int]]" in {
     import sjsonnew.BasicJsonProtocol._
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     implicit val intArrayShow: ShowLines[Array[Int]] =
       ShowLines((x: Array[Int]) => Vector(s"String representation of ${x.mkString}"))
     log.registerStringCodec[Array[Int]]
@@ -68,8 +73,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
 
   it should "allow registering Show[Vector[Vector[Int]]]" in {
     import sjsonnew.BasicJsonProtocol._
-    val log = LogExchange.logger("foo")
-    LogExchange.bindLoggerAppenders("foo", List(LogExchange.asyncStdout -> Level.Info))
+    val log = newLogger("foo")
+    context.addAppender("foo", asyncStdout -> Level.Info)
     implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] =
       ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
@@ -84,9 +89,9 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     } {
       pool.submit(new Runnable {
         def run(): Unit = {
-          val stringTypeTag = StringTypeTag[List[Int]]
-          val log = LogExchange.logger(s"foo$i")
-          LogExchange.bindLoggerAppenders(s"foo$i", List(LogExchange.asyncStdout -> Level.Info))
+          val stringTypeTag = StringTypeTag.fast[List[Int]]
+          val log = newLogger(s"foo$i")
+          context.addAppender(s"foo$i", asyncStdout -> Level.Info)
           if (i % 100 == 0) {
             log.info(s"foo$i test $stringTypeTag")
           }
@@ -113,7 +118,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     val logBacking0 = global0.backing
     val global1 = Using.fileWriter(append = true)(logBacking0.file) { writer =>
       val out = new PrintWriter(writer)
-      val g = global0.newAppender(global0.full, out, logBacking0)
+      val g = global0.newAppender(global0.full, out, logBacking0, context)
       val full = g.full
       (1 to 3).toList foreach (x => full.info(s"newAppender $x"))
       assert(logBacking0.file.exists)
@@ -122,7 +127,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     val logBacking1 = global1.backing
     Using.fileWriter(append = true)(logBacking1.file) { writer =>
       val out = new PrintWriter(writer)
-      val g = global1.newAppender(global1.full, out, logBacking1)
+      val g = global1.newAppender(global1.full, out, logBacking1, context)
       val full = g.full
       (1 to 3).toList foreach (x => full.info(s"newAppender $x"))
       // println(logBacking.file)

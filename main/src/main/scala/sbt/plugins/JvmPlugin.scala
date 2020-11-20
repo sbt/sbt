@@ -30,6 +30,12 @@ object JvmPlugin extends AutoPlugin {
   override def requires = IvyPlugin
   override def trigger = allRequirements
 
+  override lazy val globalSettings: Seq[Setting[_]] =
+    Defaults.globalJvmCore
+
+  override lazy val buildSettings: Seq[Setting[_]] =
+    Defaults.buildLevelJvmSettings
+
   override lazy val projectSettings: Seq[Setting[_]] =
     Defaults.runnerSettings ++
       Defaults.paths ++
@@ -38,8 +44,6 @@ object JvmPlugin extends AutoPlugin {
       Defaults.baseTasks ++
       Defaults.compileBase ++
       Defaults.defaultConfigs
-  override lazy val globalSettings: Seq[Setting[_]] =
-    Defaults.globalJvmCore
 
   override def projectConfigurations: Seq[Configuration] =
     Configurations.default

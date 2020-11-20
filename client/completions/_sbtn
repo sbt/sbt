@@ -1,0 +1,5 @@
+#compdef sbtn
+
+COMPLETE="--completions=${words[@]}"
+COMPLETIONS=($(sbtn --no-tab ${COMPLETE}))
+_alternative 'arguments:custom arg:($COMPLETIONS)'

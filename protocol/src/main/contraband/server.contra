@@ -10,6 +10,7 @@ interface CommandMessage {
 type InitCommand implements CommandMessage {
   token: String
   execId: String
+  skipAnalysis: Boolean @since("1.4.0")
 }
 
 ## Command to execute sbt command.
@@ -22,8 +23,13 @@ type SettingQuery implements CommandMessage {
   setting: String!
 }
 
+type Attach implements CommandMessage {
+  interactive: Boolean!
+}
+
 type CompletionParams {
   query: String!
+  level: Int @since("1.4.0")
 }
 
 ## Message for events.
@@ -47,6 +53,7 @@ type ExecStatusEvent implements EventMessage {
   execId: String
   commandQueue: [String]
   exitCode: Long @since("1.1.2")
+  message: String @since("1.4.0")
 }
 
 interface SettingQueryResponse implements EventMessage {}
@@ -62,6 +69,8 @@ type SettingQueryFailure implements SettingQueryResponse {
 
 type CompletionResponse {
   items: [String]
+  cachedMainClassNames: Boolean @since("1.4.0")
+  cachedTestNames: Boolean @since("1.4.0")
 }
 
 # enum Status {
@@ -74,3 +83,69 @@ type ExecutionEvent {
   success: String!
   commandLine: String!
 }
+
+type TerminalPropertiesResponse implements EventMessage {
+  width: Int!
+  height: Int!
+  isAnsiSupported: Boolean!
+  isColorEnabled: Boolean!
+  isSupershellEnabled: Boolean!
+  isEchoEnabled: Boolean!
+}
+
+type TerminalCapabilitiesQuery implements CommandMessage {
+  boolean: String
+  numeric: String
+  string: String
+}
+
+type TerminalCapabilitiesResponse implements EventMessage {
+  boolean: Boolean
+  numeric: Int
+  string: String
+}
+
+type TerminalSetAttributesCommand implements CommandMessage {
+  iflag: String!,
+  oflag: String!,
+  cflag: String!,
+  lflag: String!,
+  cchars: String!,
+}
+
+type TerminalSetAttributesResponse implements EventMessage {}
+
+type TerminalAttributesQuery implements CommandMessage {}
+
+type TerminalAttributesResponse implements EventMessage {
+  iflag: String!,
+  oflag: String!,
+  cflag: String!,
+  lflag: String!,
+  cchars: String!,
+}
+
+type TerminalGetSizeQuery implements CommandMessage {}
+type TerminalGetSizeResponse implements EventMessage {
+  width: Int!
+  height: Int!
+}
+
+type TerminalSetSizeCommand implements CommandMessage {
+  width: Int!
+  height: Int!
+}
+
+type TerminalSetSizeResponse implements EventMessage {}
+
+type TerminalSetEchoCommand implements CommandMessage {
+  toggle: Boolean!
+}
+
+type TerminalSetEchoResponse implements EventMessage {}
+
+type TerminalSetRawModeCommand implements CommandMessage {
+  toggle: Boolean!
+}
+
+type TerminalSetRawModeResponse implements EventMessage {}

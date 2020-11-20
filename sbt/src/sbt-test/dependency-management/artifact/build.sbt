@@ -2,10 +2,20 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 
 lazy val checkFull = taskKey[Unit]("")
 lazy val check = taskKey[Unit]("")
+lazy val checkArtifact = taskKey[Unit]("")
 
 ThisBuild / useCoursier := false
+ThisBuild / scalaVersion     := "2.12.12"
+ThisBuild / version          := "0.1.0-SNAPSHOT"
+ThisBuild / organization     := "com.example"
+ThisBuild / organizationName := "example"
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
+lazy val Dev = config("dev").extend(Compile)
+  .describedAs("Dependencies required for development environments")
 
 lazy val root = (project in file("."))
+  .configs(Dev)
   .settings(
     ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
@@ -17,8 +27,22 @@ lazy val root = (project in file("."))
       // needed to add a jar with a different type to the managed classpath
     unmanagedClasspath in Compile ++= scalaInstance.value.libraryJars.toSeq,
     classpathTypes := Set(tpe),
+
+    // custom configuration artifacts
+    inConfig(Dev)(Defaults.compileSettings),
+    addArtifact(Dev / packageBin / artifact, Dev / packageBin),
+    addArtifact(Dev / packageDoc / artifact, Dev / packageDoc),
+    addArtifact(Dev / packageSrc / artifact, Dev / packageSrc),
+    Dev / publishArtifact := true,
     check := checkTask(dependencyClasspath).value,
-    checkFull := checkTask(fullClasspath).value
+    checkFull := checkTask(fullClasspath).value,
+    checkArtifact := {
+      val d = (Dev / packageSrc / artifact).value
+      assert(d.`type` == "src", s"${d.`type`} is not src")
+
+      val t = (Test / packageSrc / artifact).value
+      assert(t.`type` == "src", s"${t.`type`} is not src")
+    }
   )
 
 // define strings for defining the artifact

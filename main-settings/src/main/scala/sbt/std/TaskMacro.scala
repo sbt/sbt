@@ -93,22 +93,38 @@ object TaskMacro {
   final val InputTaskCreateDynName = "createDyn"
   final val InputTaskCreateFreeName = "createFree"
   final val append1Migration =
-    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
+    "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
   final val appendNMigration =
-    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
+    "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
   final val assignMigration =
     """`<<=` operator is removed. Use `key := { x.value }` or `key ~= (old => { newValue })`.
-      |See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html""".stripMargin
+      |See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html""".stripMargin
 
   import LinterDSL.{ Empty => EmptyLinter }
 
   def taskMacroImpl[T: c.WeakTypeTag](
       c: blackbox.Context
-  )(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] =
-    Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, TaskLinterDSL)(
-      Left(t),
-      Instance.idTransform[c.type]
-    )
+  )(t: c.Expr[T]): c.Expr[Initialize[Task[T]]] = {
+    import c.universe._
+    t.tree match {
+      // the tree matches `if` and only `if`
+      case If(cond, thenp, elsep) =>
+        c.Expr[Initialize[Task[T]]](mkIfS[T](c)(cond, thenp, elsep))
+      case _ =>
+        Instance.contImpl[T, Id](c, FullInstance, FullConvert, MixedBuilder, TaskLinterDSL)(
+          Left(t),
+          Instance.idTransform[c.type]
+        )
+    }
+  }
+
+  def mkIfS[A: c.WeakTypeTag](
+      c: blackbox.Context
+  )(cond: c.Tree, thenp: c.Tree, elsep: c.Tree): c.Tree = {
+    import c.universe._
+    val AA = implicitly[c.WeakTypeTag[A]].tpe
+    q"""_root_.sbt.Def.ifS[$AA](_root_.sbt.Def.task($cond))(_root_.sbt.Def.task[$AA]($thenp: $AA))(_root_.sbt.Def.task[$AA]($elsep: $AA))"""
+  }
 
   def taskDynMacroImpl[T: c.WeakTypeTag](
       c: blackbox.Context
@@ -117,6 +133,19 @@ object TaskMacro {
       Right(t),
       Instance.idTransform[c.type]
     )
+
+  def taskIfMacroImpl[A: c.WeakTypeTag](
+      c: blackbox.Context
+  )(a: c.Expr[A]): c.Expr[Initialize[Task[A]]] = {
+    import c.universe._
+    a.tree match {
+      case Block(stat, If(cond, thenp, elsep)) =>
+        c.Expr[Initialize[Task[A]]](mkIfS(c)(Block(stat, cond), thenp, elsep))
+      case If(cond, thenp, elsep) =>
+        c.Expr[Initialize[Task[A]]](mkIfS(c)(cond, thenp, elsep))
+      case x => ContextUtil.unexpectedTree(x)
+    }
+  }
 
   /** Implementation of := macro for settings. */
   def settingAssignMacroImpl[T: c.WeakTypeTag](

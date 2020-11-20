@@ -11,9 +11,9 @@ import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.net.URL
 import java.util.concurrent.{ ExecutorService, Executors }
+import ClassLoaderClose.close
 
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
-import sbt.util.LogExchange
 import xsbti._
 
 private[internal] object ClassLoaderWarmup {
@@ -28,7 +28,6 @@ private[internal] object ClassLoaderWarmup {
         ()
       }
 
-      submit(LogExchange.context)
       submit(Class.forName("sbt.internal.parser.SbtParserInit").getConstructor().newInstance())
       submit(CorePlugin.projectSettings)
       submit(IvyPlugin.projectSettings)
@@ -56,17 +55,22 @@ private[internal] object ClassLoaderWarmup {
  * in this file.
  */
 private[sbt] class XMainConfiguration {
-  private def close(classLoader: ClassLoader): Unit = classLoader match {
-    case a: AutoCloseable => a.close()
-    case _                =>
-  }
   def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     val updatedConfiguration =
-      if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
-            .contains("TestInterfaceLoader")) {
-        configuration
-      } else {
-        makeConfiguration(configuration)
+      try {
+        val method = topLoader.getClass.getMethod("getJLineJars")
+        val jars = method.invoke(topLoader).asInstanceOf[Array[URL]]
+        var canReuseConfiguration = jars.length == 3
+        var j = 0
+        while (j < jars.length && canReuseConfiguration) {
+          val s = jars(j).toString
+          canReuseConfiguration = s.contains("jline") || s.contains("jansi")
+          j += 1
+        }
+        if (canReuseConfiguration && j == 3) configuration else makeConfiguration(configuration)
+      } catch {
+        case _: NoSuchMethodException => makeConfiguration(configuration)
       }
     val loader = updatedConfiguration.provider.loader
     Thread.currentThread.setContextClassLoader(loader)
@@ -86,9 +90,11 @@ private[sbt] class XMainConfiguration {
 
   private def makeConfiguration(configuration: xsbti.AppConfiguration): xsbti.AppConfiguration = {
     val baseLoader = classOf[XMainConfiguration].getClassLoader
-    val url = baseLoader.getResource("sbt/internal/XMainConfiguration.class")
+    val className = "sbt/internal/XMainConfiguration.class"
+    val url = baseLoader.getResource(className)
+    val path = url.toString.replaceAll(s"$className$$", "")
     val urlArray = new Array[URL](1)
-    urlArray(0) = new URL(url.getPath.replaceAll("[!][^!]*class", ""))
+    urlArray(0) = new URL(path)
     val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     // This loader doesn't have the scala library in it so it's critical that none of the code
     // in this file use the scala library.

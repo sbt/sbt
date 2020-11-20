@@ -32,7 +32,19 @@ final class BuildStructure(
     val streams: State => Streams,
     val delegates: Scope => Seq[Scope],
     val scopeLocal: ScopeLocal,
+    private[sbt] val compiledMap: Map[ScopedKey[_], Def.Compiled[_]],
 ) {
+  @deprecated("Used the variant that takes a compiledMap", "1.4.0")
+  def this(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      settings: Seq[Setting[_]],
+      data: Settings[Scope],
+      index: StructureIndex,
+      streams: State => Streams,
+      delegates: Scope => Seq[Scope],
+      scopeLocal: ScopeLocal,
+  ) = this(units, root, settings, data, index, streams, delegates, scopeLocal, Map.empty)
 
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
 
@@ -78,7 +90,7 @@ final class StructureIndex(
  * A resolved build unit.  (`ResolvedBuildUnit` would be a better name to distinguish it from the loaded, but unresolved `BuildUnit`.)
  * @param unit The loaded, but unresolved [[BuildUnit]] this was resolved from.
  * @param defined The definitive map from project IDs to resolved projects.
- *                These projects have had [[Reference]]s resolved and [[AutoPlugin]]s evaluated.
+ *                These projects have had `Reference`s resolved and [[AutoPlugin]]s evaluated.
  * @param rootProjects The list of project IDs for the projects considered roots of this build.
  *                The first root project is used as the default in several situations where a project is not otherwise selected.
  */
@@ -91,7 +103,7 @@ final class LoadedBuildUnit(
 
   /**
    * The project to use as the default when one is not otherwise selected.
-   * [[LocalRootProject]] resolves to this from within the same build.
+   * `LocalRootProject` resolves to this from within the same build.
    */
   val root = rootProjects.headOption.getOrElse(
     throw new java.lang.AssertionError(

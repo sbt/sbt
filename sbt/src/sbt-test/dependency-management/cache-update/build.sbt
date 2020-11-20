@@ -1,5 +1,6 @@
-scalaVersion in ThisBuild        := "2.10.4"
-dependencyOverrides in ThisBuild += "com.github.nscala-time" %% "nscala-time" % "1.0.0"
+ThisBuild / scalaVersion        := "2.10.4"
+ThisBuild / dependencyOverrides += "com.github.nscala-time" %% "nscala-time" % "1.0.0"
+ThisBuild / csrCacheDirectory   := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 lazy val root = (project in file("."))
   .dependsOn(p1 % Compile)

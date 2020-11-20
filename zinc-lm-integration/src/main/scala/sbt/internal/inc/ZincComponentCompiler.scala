@@ -10,9 +10,10 @@ package internal
 package inc
 
 import java.io.File
+import java.nio.file.{ Files, Path }
 import java.util.concurrent.Callable
 
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.io.IO
 import sbt.internal.librarymanagement._
 import sbt.internal.util.{ BufferedLogger, FullLogger }
@@ -81,10 +82,16 @@ private[sbt] object ZincComponentCompiler {
       compiledBridge(bridgeSources, scalaInstance, logger)
     }
 
-    private case class ScalaArtifacts(compiler: File, library: File, others: Vector[File])
+    // internal representation of Scala artifacts
+    private case class ScalaArtifacts(
+        compilerJar: Path,
+        libraryJars: Vector[Path],
+        others: Vector[Path]
+    )
 
     private def getScalaArtifacts(scalaVersion: String, logger: Logger): ScalaArtifacts = {
-      def isPrefixedWith(artifact: File, prefix: String) = artifact.getName.startsWith(prefix)
+      def isPrefixedWith(artifact: Path, prefix: String) =
+        artifact.getFileName.toString.startsWith(prefix)
 
       val fullLogger = new FullLogger(logger)
       val CompileConf = Some(Configurations.Compile.name)
@@ -107,25 +114,29 @@ private[sbt] object ZincComponentCompiler {
         fullLogger,
         "Scala compiler and library",
       )
-      val isScalaCompiler = (f: File) => isPrefixedWith(f, "scala-compiler-")
-      val isScalaLibrary = (f: File) => isPrefixedWith(f, "scala-library-")
+      val isScalaCompiler = (f: Path) => isPrefixedWith(f, "scala-compiler-")
+      val isScalaLibrary = (f: Path) => isPrefixedWith(f, "scala-library-")
       val maybeScalaCompiler = allArtifacts.find(isScalaCompiler)
       val maybeScalaLibrary = allArtifacts.find(isScalaLibrary)
       val others = allArtifacts.filterNot(a => isScalaCompiler(a) || isScalaLibrary(a))
       val scalaCompilerJar = maybeScalaCompiler.getOrElse(throw MissingScalaJar.compiler)
       val scalaLibraryJar = maybeScalaLibrary.getOrElse(throw MissingScalaJar.library)
-      ScalaArtifacts(scalaCompilerJar, scalaLibraryJar, others)
+      ScalaArtifacts(scalaCompilerJar, Vector(scalaLibraryJar), others)
     }
 
     override def fetchScalaInstance(scalaVersion: String, logger: Logger): ScalaInstance = {
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
-      val scalaCompiler = scalaArtifacts.compiler
-      val scalaLibrary = scalaArtifacts.library
-      val jarsToLoad = (scalaCompiler +: scalaLibrary +: scalaArtifacts.others).toArray
-      assert(jarsToLoad.forall(_.exists), "One or more jar(s) in the Scala instance do not exist.")
-      val loaderLibraryOnly = ClasspathUtilities.toLoader(Vector(scalaLibrary))
-      val jarsToLoad2 = jarsToLoad.toVector.filterNot(_ == scalaLibrary)
-      val loader = ClasspathUtilities.toLoader(jarsToLoad2, loaderLibraryOnly)
+      val scalaCompilerJar = scalaArtifacts.compilerJar
+      val scalaLibraryJars = scalaArtifacts.libraryJars
+      val jarsToLoad: Vector[Path] =
+        (Vector(scalaCompilerJar) ++ scalaLibraryJars ++ scalaArtifacts.others)
+      assert(
+        jarsToLoad.forall(Files.exists(_)),
+        "One or more jar(s) in the Scala instance do not exist."
+      )
+      val loaderLibraryOnly = ClasspathUtil.toLoader(scalaLibraryJars)
+      val jarsToLoad2 = jarsToLoad diff scalaLibraryJars
+      val loader = ClasspathUtil.toLoader(jarsToLoad2, loaderLibraryOnly)
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
       val scalaV = loaderVersion.getOrElse("unknown")
@@ -133,9 +144,9 @@ private[sbt] object ZincComponentCompiler {
         scalaV,
         loader,
         loaderLibraryOnly,
-        scalaLibrary,
-        scalaCompiler,
-        jarsToLoad,
+        scalaLibraryJars.map(_.toFile).toArray,
+        scalaCompilerJar.toFile,
+        jarsToLoad.map(_.toFile).toArray,
         loaderVersion,
       )
     }
@@ -159,7 +170,13 @@ private[sbt] object ZincComponentCompiler {
   ): CompilerBridgeProvider =
     new ZincCompilerBridgeProvider(None, manager, dependencyResolution, scalaJarsTarget)
 
-  private final val LocalIvy = s"$${user.home}/.ivy2/local/${Resolver.localBasePattern}"
+  private final val LocalIvy =
+    (sys.props.get("sbt.ivy.home") match {
+      case Some(home) =>
+        if (home.endsWith("/")) home
+        else home + "/"
+      case _ => s"$${user.home}/.ivy2/"
+    }) + "local/" + Resolver.localBasePattern
 
   final val LocalResolver: Resolver = {
     val toUse = Vector(LocalIvy)
@@ -256,9 +273,17 @@ private[inc] class ZincComponentCompiler(
             buffered,
             s"compiler bridge sources $moduleForBridge",
           )
-          val (srcs, xsbtiJars) = allArtifacts.partition(_.getName.endsWith("-sources.jar"))
+          val (srcs, xsbtiJars) =
+            allArtifacts.partition(_.getFileName.toString.endsWith("-sources.jar"))
           val toCompileID = bridgeSources.name
-          AnalyzingCompiler.compileSources(srcs, target, xsbtiJars, toCompileID, compiler, log)
+          AnalyzingCompiler.compileSources(
+            srcs,
+            target.toPath,
+            xsbtiJars,
+            toCompileID,
+            compiler,
+            log
+          )
           manager.define(compilerBridgeId, Seq(target))
         }
       }
@@ -281,7 +306,7 @@ private object ZincLMHelper {
       noSource: Boolean,
       logger: sbt.util.Logger,
       desc: String,
-  ): Vector[File] = {
+  ): Vector[Path] = {
     val updateConfiguration = newUpdateConfiguration(retrieveDirectory, noSource)
     val dependencies = prettyPrintDependency(module)
     logger.info(s"Attempting to fetch $dependencies.")
@@ -292,7 +317,7 @@ private object ZincLMHelper {
         val unresolvedLines = UnresolvedWarning.unresolvedWarningLines.showLines(uw).mkString("\n")
         throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
       case Right(updateReport) =>
-        val allFiles = updateReport.allFiles
+        val allFiles = updateReport.allFiles.map(_.toPath)
         logger.debug(s"Files retrieved for ${prettyPrintDependency(module)}:")
         logger.debug(allFiles.mkString(", "))
         allFiles
