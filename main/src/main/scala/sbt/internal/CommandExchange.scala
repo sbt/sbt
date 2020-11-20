@@ -51,7 +51,6 @@ private[sbt] final class CommandExchange {
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
-  private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
@@ -60,6 +59,7 @@ private[sbt] final class CommandExchange {
   private[this] val lastState = new AtomicReference[State]
   private[this] val currentExecRef = new AtomicReference[Exec]
   private[sbt] def hasServer = server.isDefined
+  addConsoleChannel()
 
   def channels: List[CommandChannel] = channelBuffer.toList
 
@@ -141,11 +141,9 @@ private[sbt] final class CommandExchange {
   }
 
   private def addConsoleChannel(): Unit =
-    if (consoleChannel.isEmpty) {
+    if (!Terminal.startedByRemoteClient) {
       val name = ConsoleChannel.defaultName
-      val console0 = new ConsoleChannel(name, mkAskUser(name))
-      consoleChannel = Some(console0)
-      subscribe(console0)
+      subscribe(new ConsoleChannel(name, mkAskUser(name)))
     }
   def run(s: State): State = run(s, s.get(autoStartServer).getOrElse(true))
   def run(s: State, autoStart: Boolean): State = {
@@ -402,7 +400,6 @@ private[sbt] final class CommandExchange {
           .withChannelName(currentExec.flatMap(_.source.map(_.channelName)))
       case _ => pe
     }
-    if (channels.isEmpty) addConsoleChannel()
     channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
   }
 

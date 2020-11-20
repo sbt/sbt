@@ -64,10 +64,6 @@ private[sbt] object xMain {
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       import sbt.internal.client.NetworkClient
 
-      val bootServerSocket = getSocketOrExit(configuration) match {
-        case (_, Some(e)) => return e
-        case (s, _)       => s
-      }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments
@@ -75,6 +71,12 @@ private[sbt] object xMain {
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+        case (_, Some(e)) => return e
+        case (s, _)       => s
+      }
+      else None
       if (userCommands.exists(isBsp)) {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
@@ -990,12 +992,19 @@ object BuiltinCommands {
       val exchange = StandardMain.exchange
       exchange.channelForName(channel) match {
         case Some(c) if ContinuousCommands.isInWatch(s0, c) =>
-          c.prompt(ConsolePromptEvent(s0))
+          if (c.terminal.prompt != Prompt.Watch) {
+            c.terminal.setPrompt(Prompt.Watch)
+            c.prompt(ConsolePromptEvent(s0))
+          } else if (c.terminal.isSupershellEnabled) {
+            c.terminal.printStream.print(ConsoleAppender.ClearScreenAfterCursor)
+            c.terminal.printStream.flush()
+          }
+
           val s1 = exchange.run(s0)
           val exec: Exec = getExec(s1, Duration.Inf)
           val remaining: List[Exec] =
-            Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
-              Exec(FailureWall, None) :: s1.remainingCommands
+            Exec(FailureWall, None) :: Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
+              s1.remainingCommands
           val newState = s1.copy(remainingCommands = exec +: remaining)
           if (exec.commandLine.trim.isEmpty) newState
           else newState.clearGlobalLog
