@@ -32,10 +32,10 @@ trait JsonRpcResponseMessageFormats {
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
             val id = try {
-              unbuilder.readField[Option[String]]("id")
+              unbuilder.readField[String]("id")
             } catch {
               case _: DeserializationException =>
-                unbuilder.readField[Option[Long]]("id") map { _.toString }
+                unbuilder.readField[Long]("id").toString
             }
 
             val result = unbuilder.lookupField("result") map {
@@ -77,11 +77,9 @@ trait JsonRpcResponseMessageFormats {
         }
         builder.beginObject()
         builder.addField("jsonrpc", obj.jsonrpc)
-        obj.id foreach { id =>
-          parseId(id) match {
-            case Right(strId) => builder.addField("id", strId)
-            case Left(longId) => builder.addField("id", longId)
-          }
+        parseId(obj.id) match {
+          case Right(strId) => builder.addField("id", strId)
+          case Left(longId) => builder.addField("id", longId)
         }
         builder.addField("result", obj.result map parseResult)
         builder.addField("error", obj.error)

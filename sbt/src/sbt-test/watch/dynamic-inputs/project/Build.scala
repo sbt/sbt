@@ -16,6 +16,7 @@ object Build {
     val (stringFile, string) = ("foo.txt", "bar")
     val absoluteFile = baseDirectory.value.toPath.resolve(stringFile).toFile
     IO.write(absoluteFile, string)
+    println(s"wrote to $absoluteFile")
   }
   def checkStringValueImpl: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     val Seq(stringFile, string) = Def.spaceDelimited().parsed
@@ -37,9 +38,5 @@ object Build {
     }.value,
     checkStringValue := checkStringValueImpl.evaluated,
     watchOnFileInputEvent := { (_, _) => Watch.CancelWatch },
-    watchTasks := Def.inputTask {
-      watchTasks.evaluated
-      StateTransform(_.fail)
-    }.evaluated
   )
 }

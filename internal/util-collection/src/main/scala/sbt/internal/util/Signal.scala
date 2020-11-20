@@ -7,6 +7,8 @@
 
 package sbt.internal.util
 
+import sun.misc.{ Signal, SignalHandler }
+
 object Signals {
   val CONT = "CONT"
   val INT = "INT"
@@ -36,24 +38,14 @@ object Signals {
   def register(handler: () => Unit, signal: String = INT): Registration =
     // TODO - Maybe we can just ignore things if not is-supported.
     if (supported(signal)) {
-      import sun.misc.{ Signal, SignalHandler }
       val intSignal = new Signal(signal)
       val newHandler = new SignalHandler {
         def handle(sig: Signal): Unit = { handler() }
       }
       val oldHandler = Signal.handle(intSignal, newHandler)
-      object unregisterNewHandler extends Registration {
-        override def remove(): Unit = {
-          Signal.handle(intSignal, oldHandler)
-          ()
-        }
-      }
-      unregisterNewHandler
+      new UnregisterNewHandler(intSignal, oldHandler)
     } else {
       // TODO - Maybe we should just throw an exception if we don't support signals...
-      object NullUnregisterNewHandler extends Registration {
-        override def remove(): Unit = ()
-      }
       NullUnregisterNewHandler
     }
 
@@ -62,6 +54,17 @@ object Signals {
       val signals = new Signals0
       signals.supported(signal)
     } catch { case _: LinkageError => false }
+}
+
+private class UnregisterNewHandler(intSignal: Signal, oldHandler: SignalHandler)
+    extends Signals.Registration {
+  override def remove(): Unit = {
+    Signal.handle(intSignal, oldHandler)
+    ()
+  }
+}
+private object NullUnregisterNewHandler extends Signals.Registration {
+  override def remove(): Unit = ()
 }
 
 // Must only be referenced using a

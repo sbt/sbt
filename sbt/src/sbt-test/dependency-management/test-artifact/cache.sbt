@@ -1,4 +1,5 @@
 ThisBuild / useCoursier := false
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 ivyPaths := {
 	val base = baseDirectory.value

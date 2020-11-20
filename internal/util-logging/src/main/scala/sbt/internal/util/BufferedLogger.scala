@@ -9,10 +9,11 @@ package sbt.internal.util
 
 import sbt.util._
 import scala.collection.mutable.ListBuffer
-import org.apache.logging.log4j.core.{ LogEvent => XLogEvent, Appender }
+import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
 import org.apache.logging.log4j.core.appender.AbstractAppender
 import org.apache.logging.log4j.core.layout.PatternLayout
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 object BufferedAppender {
   def generateName: String =
@@ -23,11 +24,8 @@ object BufferedAppender {
   def apply(delegate: Appender): BufferedAppender =
     apply(generateName, delegate)
 
-  def apply(name: String, delegate: Appender): BufferedAppender = {
-    val appender = new BufferedAppender(name, delegate)
-    appender.start
-    appender
-  }
+  def apply(name: String, delegate: Appender): BufferedAppender =
+    new BufferedAppender(name, delegate)
 }
 
 /**
@@ -37,17 +35,52 @@ object BufferedAppender {
  *  The logging level set at the time a message is originally logged is used, not
  * the level at the time 'play' is called.
  */
-class BufferedAppender private[BufferedAppender] (name: String, delegate: Appender)
-    extends AbstractAppender(name, null, PatternLayout.createDefaultLayout(), true, Array.empty) {
+class BufferedAppender(override val name: String, delegate: Appender) extends Appender {
+  override def close(): Unit = log4j.get match {
+    case null =>
+    case a    => a.stop()
+  }
+  override private[sbt] def properties: ConsoleAppender.Properties = delegate.properties
+  override private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String] =
+    delegate.suppressedMessage
+  private[this] val log4j = new AtomicReference[AbstractAppender]
+  override private[sbt] def toLog4J = log4j.get match {
+    case null =>
+      val a = new AbstractAppender(
+        delegate.name + "-log4j",
+        null,
+        PatternLayout.createDefaultLayout(),
+        true,
+        Array.empty
+      ) {
+        start()
+        override def append(event: XLogEvent): Unit = {
+          if (recording) {
+            Util.ignoreResult(buffer.add(Left(event.toImmutable)))
+          } else {
+            delegate.toLog4J.append(event)
+          }
+        }
+      }
+      log4j.set(a)
+      a
+    case a => a
+  }
 
-  private[this] val buffer = new ListBuffer[XLogEvent]
+  private[this] val buffer =
+    new java.util.Vector[Either[XLogEvent, (Level.Value, Option[String], Option[ObjectEvent[_]])]]
   private[this] var recording = false
 
-  def append(event: XLogEvent): Unit = {
-    if (recording) {
-      buffer += event.toImmutable
-    } else delegate.append(event)
-    ()
+  override def appendLog(level: Level.Value, message: => String): Unit = {
+    if (recording) Util.ignoreResult(buffer.add(Right((level, Some(message), None))))
+    else delegate.appendLog(level, message)
+  }
+  override private[sbt] def appendObjectEvent[T](
+      level: Level.Value,
+      message: => ObjectEvent[T]
+  ): Unit = {
+    if (recording) Util.ignoreResult(buffer.add(Right(((level, None, Some(message))))))
+    else delegate.appendObjectEvent(level, message)
   }
 
   /** Enables buffering. */
@@ -80,8 +113,11 @@ class BufferedAppender private[BufferedAppender] (name: String, delegate: Append
    */
   def play(): Unit =
     synchronized {
-      buffer.toList foreach {
-        delegate.append
+      buffer.forEach {
+        case Right((l, Some(m), _))  => delegate.appendLog(l, m)
+        case Right((l, _, Some(oe))) => delegate.appendObjectEvent(l, oe)
+        case Left(x)                 => delegate.toLog4J.append(x)
+        case _                       =>
       }
       buffer.clear()
     }

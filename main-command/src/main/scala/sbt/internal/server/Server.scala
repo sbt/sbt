@@ -10,22 +10,25 @@ package internal
 package server
 
 import java.io.{ File, IOException }
-import java.net.{ SocketTimeoutException, InetAddress, ServerSocket, Socket }
-import java.util.concurrent.atomic.AtomicBoolean
-import java.nio.file.attribute.{ UserPrincipal, AclEntry, AclEntryPermission, AclEntryType }
+import java.net.{ InetAddress, ServerSocket, Socket, SocketException, SocketTimeoutException }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
+import java.nio.file.attribute.{ AclEntry, AclEntryPermission, AclEntryType, UserPrincipal }
 import java.security.SecureRandom
 import java.math.BigInteger
+
 import scala.concurrent.{ Future, Promise }
-import scala.util.{ Try, Success, Failure }
+import scala.util.{ Failure, Success, Try }
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
 import sbt.io.syntax._
-import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec._
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
 import org.scalasbt.ipcsocket._
+import sbt.internal.bsp.BuildServerConnection
+import xsbti.AppConfiguration
 
 private[sbt] sealed trait ServerInstance {
   def shutdown(): Unit
@@ -52,7 +55,7 @@ private[sbt] object Server {
       val ready: Future[Unit] = p.future
       private[this] val rand = new SecureRandom
       private[this] var token: String = nextToken
-      private[this] var serverSocketOpt: Option[ServerSocket] = None
+      private[this] val serverSocketHolder = new AtomicReference[ServerSocket]
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -60,7 +63,13 @@ private[sbt] object Server {
             connection.connectionType match {
               case ConnectionType.Local if isWindows =>
                 // Named pipe already has an exclusive lock.
-                addServerError(new Win32NamedPipeServerSocket(pipeName))
+                addServerError(
+                  new Win32NamedPipeServerSocket(
+                    pipeName,
+                    false,
+                    connection.windowsServerSecurityLevel
+                  )
+                )
               case ConnectionType.Local =>
                 val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
                 val path = socketfile.getAbsolutePath
@@ -82,9 +91,16 @@ private[sbt] object Server {
             case Failure(e) => p.failure(e)
             case Success(serverSocket) =>
               serverSocket.setSoTimeout(5000)
-              serverSocketOpt = Option(serverSocket)
+              serverSocketHolder.getAndSet(serverSocket) match {
+                case null =>
+                case s    => s.close()
+              }
               log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
+              BuildServerConnection.writeConnectionFile(
+                appConfiguration.provider.id.version,
+                appConfiguration.baseDirectory
+              )
               running.set(true)
               p.success(())
               while (running.get()) {
@@ -92,10 +108,15 @@ private[sbt] object Server {
                   val socket = serverSocket.accept()
                   onIncomingSocket(socket, self)
                 } catch {
-                  case _: SocketTimeoutException => // its ok
+                  case e: IOException if e.getMessage.contains("connect") =>
+                  case _: SocketTimeoutException                          => // its ok
+                  case _: SocketException if !running.get                 => // the server is shutting down
                 }
               }
-              serverSocket.close()
+              serverSocketHolder.get match {
+                case null =>
+                case s    => s.close()
+              }
           }
         }
       }
@@ -141,6 +162,10 @@ private[sbt] object Server {
           IO.delete(tokenfile)
         }
         running.set(false)
+        serverSocketHolder.getAndSet(null) match {
+          case null =>
+          case s    => s.close()
+        }
       }
 
       private[this] def writeTokenfile(): Unit = {
@@ -211,7 +236,9 @@ private[sbt] case class ServerConnection(
     portfile: File,
     tokenfile: File,
     socketfile: File,
-    pipeName: String
+    pipeName: String,
+    appConfiguration: AppConfiguration,
+    windowsServerSecurityLevel: Int
 ) {
   def shortName: String = {
     connectionType match {

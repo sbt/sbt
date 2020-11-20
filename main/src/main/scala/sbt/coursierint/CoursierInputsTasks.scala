@@ -28,6 +28,7 @@ import lmcoursier.definitions.{
 }
 import lmcoursier.credentials.DirectCredentials
 import lmcoursier.{ FallbackDependency, FromSbt, Inputs }
+import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.ivy.{
   FileCredentials,
   Credentials,
@@ -40,19 +41,17 @@ object CoursierInputsTasks {
   private def coursierProject0(
       projId: ModuleID,
       dependencies: Seq[ModuleID],
-      excludeDeps: Seq[InclExclRule],
       configurations: Seq[sbt.librarymanagement.Configuration],
       sv: String,
       sbv: String,
       auOpt: Option[URL],
       description: String,
       homepage: Option[URL],
+      vsOpt: Option[String],
       log: Logger
   ): CProject = {
 
-    val exclusions0 = Inputs.exclusions(excludeDeps, sv, sbv, log)
-
-    val configMap = Inputs.configExtends(configurations)
+    val configMap = Inputs.configExtendsSeq(configurations).toMap
 
     val proj0 = FromSbt.project(
       projId,
@@ -61,14 +60,14 @@ object CoursierInputsTasks {
       sv,
       sbv
     )
-    val proj1 = proj0.withDependencies(proj0.dependencies.map {
-      case (config, dep) =>
-        (config, dep.withExclusions(dep.exclusions ++ exclusions0))
-    })
-    val proj2 = auOpt match {
+    val proj1 = auOpt match {
       case Some(au) =>
-        val props = proj1.properties :+ ("info.apiURL" -> au.toString)
-        proj1.withProperties(props)
+        proj0.withProperties(proj0.properties :+ (SbtPomExtraProperties.POM_API_KEY -> au.toString))
+      case _ => proj0
+    }
+    val proj2 = vsOpt match {
+      case Some(vs) =>
+        proj1.withProperties(proj1.properties :+ (SbtPomExtraProperties.VERSION_SCHEME_KEY -> vs))
       case _ => proj1
     }
     proj2.withInfo(
@@ -81,13 +80,13 @@ object CoursierInputsTasks {
       coursierProject0(
         projectID.value,
         allDependencies.value,
-        allExcludeDependencies.value,
         ivyConfigurations.value,
         scalaVersion.value,
         scalaBinaryVersion.value,
         apiURL.value,
         description.value,
         homepage.value,
+        versionScheme.value,
         streams.value.log
       )
     }
@@ -231,7 +230,7 @@ object CoursierInputsTasks {
           .withHost(c.host)
           .withUsername(c.userName)
           .withPassword(c.passwd)
-          .withRealm(Some(c.realm).filter(_.nonEmpty))
+          .withRealm(Option(c.realm).filter(_.nonEmpty))
           .withHttpsOnly(false)
           .withMatchHost(true)
       }

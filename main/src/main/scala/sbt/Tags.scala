@@ -21,6 +21,8 @@ object Tags {
   val Update = Tag("update")
   val Publish = Tag("publish")
   val Clean = Tag("clean")
+  // special tag for waiting on a promise
+  val Sentinel = Tag("sentinel")
 
   val CPU = Tag("cpu")
   val Network = Tag("network")

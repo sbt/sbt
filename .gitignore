@@ -9,3 +9,6 @@ npm-debug.log
 .big
 .idea
 **/Coursier/cache
+.bloop
+.metals
+/project/metals.sbt

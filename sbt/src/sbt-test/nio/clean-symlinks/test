@@ -1,0 +1,9 @@
+> createSymlinkedDirectory
+
+$ exists target/foo/bar
+$ exists foo/bar
+
+> clean
+
+$ absent target/foo
+$ exists foo/bar

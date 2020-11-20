@@ -10,10 +10,11 @@ package sbt
 import java.io.File.pathSeparator
 
 import sbt.internal.scriptedtest.ScriptedLauncher
-import sbt.util.LogExchange
+import sbt.util.LoggerContext
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
+import sbt.internal.SysProp
 
 object RunFromSourceMain {
   def fork(
@@ -36,15 +37,17 @@ object RunFromSourceMain {
   ): Process = {
     val fo = fo0
       .withWorkingDirectory(workingDirectory)
-      .withRunJVMOptions(sys.props.get("sbt.ivy.home") match {
+      .withRunJVMOptions((sys.props.get("sbt.ivy.home") match {
         case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
         case _          => Vector()
-      })
+      }) ++ fo0.runJVMOptions)
     implicit val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
-    val log = LogExchange.logger("RunFromSourceMain.fork", None, None)
-    runner.fork("sbt.RunFromSourceMain", cp, options, log)
+    val context = LoggerContext(useLog4J = SysProp.useLog4J)
+    val log = context.logger("RunFromSourceMain.fork", None, None)
+    try runner.fork("sbt.RunFromSourceMain", cp, options, log)
+    finally context.close()
   }
 
   def main(args: Array[String]): Unit = args match {
@@ -54,7 +57,10 @@ object RunFromSourceMain {
       )
     case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
       System.setProperty("jna.nosys", "true")
-      run(file(wd), scalaVersion, sbtVersion, classpath, args)
+      if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
+      val context = LoggerContext(useLog4J = SysProp.useLog4J)
+      try run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
+      finally context.close()
   }
 
   // this arrangement is because Scala does not always properly optimize away
@@ -65,9 +71,10 @@ object RunFromSourceMain {
       sbtVersion: String,
       classpath: String,
       args: Seq[String],
+      context: LoggerContext
   ): Unit =
-    runImpl(baseDir, scalaVersion, sbtVersion, classpath, args) match {
-      case Some((baseDir, args)) => run(baseDir, scalaVersion, sbtVersion, classpath, args)
+    runImpl(baseDir, scalaVersion, sbtVersion, classpath, args, context: LoggerContext) match {
+      case Some((baseDir, args)) => run(baseDir, scalaVersion, sbtVersion, classpath, args, context)
       case None                  => ()
     }
 
@@ -77,8 +84,9 @@ object RunFromSourceMain {
       sbtVersion: String,
       classpath: String,
       args: Seq[String],
+      context: LoggerContext,
   ): Option[(File, Seq[String])] = {
-    try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args) map exit
+    try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args, context) map exit
     catch {
       case r: xsbti.FullReload            => Some((baseDir, r.arguments()))
       case scala.util.control.NonFatal(e) => e.printStackTrace(); errorAndExit(e.toString)
@@ -92,10 +100,11 @@ object RunFromSourceMain {
       sbtVersion: String,
       classpath: String,
       arguments: Seq[String],
+      context: LoggerContext,
   ): Option[Int] = {
     ScriptedLauncher
       .launch(
-        scalaHome(bootDirectory, scalaVersion),
+        scalaHome(bootDirectory, scalaVersion, context),
         sbtVersion,
         scalaVersion,
         bootDirectory,
@@ -112,8 +121,8 @@ object RunFromSourceMain {
 
   private lazy val defaultBootDirectory: File =
     file(sys.props("user.home")) / ".sbt" / "scripted" / "boot"
-  private def scalaHome(bootDirectory: File, scalaVersion: String): File = {
-    val log = sbt.util.LogExchange.logger("run-from-source")
+  private def scalaHome(bootDirectory: File, scalaVersion: String, context: LoggerContext): File = {
+    val log = context.logger("run-from-source", None, None)
     val scalaHome0 = bootDirectory / s"scala-$scalaVersion"
     if ((scalaHome0 / "lib" / "scala-library.jar").exists) scalaHome0
     else {

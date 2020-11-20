@@ -8,6 +8,20 @@
 package sbt.std
 
 class TaskPosSpec {
+  // Starting sbt 1.4.0, Def.task can have task value lookups inside
+  // if branches since tasks with single if-expressions are automatically
+  // converted into a conditional task.
+  locally {
+    import sbt._, Def._
+    val foo = taskKey[String]("")
+    val bar = taskKey[String]("")
+    val condition = true
+    Def.task[String] {
+      if (condition) foo.value
+      else bar.value
+    }
+  }
+
   // Dynamic tasks can have task invocations inside if branches
   locally {
     import sbt._, Def._
@@ -147,8 +161,12 @@ class TaskPosSpec {
 
   locally {
     import sbt._, Def._
-    def withKey(foo: => SettingKey[String]) = {
-      Def.task { if (true) foo.value }
+    def withKey(foo: => SettingKey[String]): Def.Initialize[Task[Unit]] = {
+      Def.task {
+        if (true) {
+          Def.unit(foo.value); ()
+        }
+      }
     }
     val foo = settingKey[String]("")
     withKey(foo)

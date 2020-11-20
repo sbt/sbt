@@ -22,16 +22,19 @@ public final class MetaBuildLoader extends URLClassLoader {
   private final URLClassLoader fullScalaLoader;
   private final URLClassLoader libraryLoader;
   private final URLClassLoader interfaceLoader;
+  private final URLClassLoader jlineLoader;
 
   MetaBuildLoader(
       final URL[] urls,
       final URLClassLoader fullScalaLoader,
       final URLClassLoader libraryLoader,
-      final URLClassLoader interfaceLoader) {
+      final URLClassLoader interfaceLoader,
+      final URLClassLoader jlineLoader) {
     super(urls, fullScalaLoader);
     this.fullScalaLoader = fullScalaLoader;
     this.libraryLoader = libraryLoader;
     this.interfaceLoader = interfaceLoader;
+    this.jlineLoader = jlineLoader;
   }
 
   @Override
@@ -45,6 +48,7 @@ public final class MetaBuildLoader extends URLClassLoader {
     fullScalaLoader.close();
     libraryLoader.close();
     interfaceLoader.close();
+    jlineLoader.close();
   }
 
   static {
@@ -60,17 +64,28 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final Pattern pattern = Pattern.compile("test-interface-[0-9.]+\\.jar");
+    final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
+    final String fullPattern =
+        "^(test-interface-[0-9.]+|" + jlineJars + "|jansi-[0-9.]+|jna-(platform-)?[0-9.]+)\\.jar";
+    final Pattern pattern = Pattern.compile(fullPattern);
     final File[] cp = appProvider.mainClasspath();
-    final URL[] interfaceURL = new URL[1];
+    final URL[] interfaceURLs = new URL[1];
+    final URL[] jlineURLs = new URL[7];
     final File[] extra =
         appProvider.id().classpathExtra() == null ? new File[0] : appProvider.id().classpathExtra();
     final Set<File> bottomClasspath = new LinkedHashSet<>();
 
     {
+      int interfaceIndex = 0;
+      int jlineIndex = 0;
       for (final File file : cp) {
-        if (pattern.matcher(file.getName()).find()) {
-          interfaceURL[0] = file.toURI().toURL();
+        final String name = file.getName();
+        if (name.contains("test-interface") && pattern.matcher(name).find()) {
+          interfaceURLs[interfaceIndex] = file.toURI().toURL();
+          interfaceIndex += 1;
+        } else if (pattern.matcher(name).find()) {
+          jlineURLs[jlineIndex] = file.toURI().toURL();
+          jlineIndex += 1;
         } else {
           bottomClasspath.add(file);
         }
@@ -88,11 +103,45 @@ public final class MetaBuildLoader extends URLClassLoader {
       }
     }
     final ScalaProvider scalaProvider = appProvider.scalaProvider();
-    final ClassLoader topLoader = scalaProvider.launcher().topLoader();
-    final TestInterfaceLoader interfaceLoader = new TestInterfaceLoader(interfaceURL, topLoader);
+    ClassLoader topLoader = scalaProvider.launcher().topLoader();
+    boolean foundSBTLoader = false;
+    while (!foundSBTLoader && topLoader != null) {
+      if (topLoader instanceof URLClassLoader) {
+        for (final URL u : ((URLClassLoader) topLoader).getURLs()) {
+          if (u.toString().contains("test-interface")) {
+            topLoader = topLoader.getParent();
+            foundSBTLoader = true;
+          }
+        }
+      }
+      if (!foundSBTLoader) topLoader = topLoader.getParent();
+    }
+    if (topLoader == null) topLoader = scalaProvider.launcher().topLoader();
+    // the bundled version of jansi with old versions of the launcher cause
+    // problems so we need to exclude it from classloading
+    topLoader =
+        new ClassLoader(topLoader) {
+          @Override
+          protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+            if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name);
+            return super.loadClass(name, resolve);
+          }
+
+          @Override
+          public String toString() {
+            return "JansiExclusionClassLoader";
+          }
+        };
+
+    final TestInterfaceLoader interfaceLoader = new TestInterfaceLoader(interfaceURLs, topLoader);
+    final JLineLoader jlineLoader = new JLineLoader(jlineURLs, interfaceLoader);
     final File[] siJars = scalaProvider.jars();
     final URL[] lib = new URL[1];
-    final URL[] scalaRest = new URL[Math.max(0, siJars.length - 1)];
+    int scalaRestCount = siJars.length - 1;
+    for (final File file : siJars) {
+      if (pattern.matcher(file.getName()).find()) scalaRestCount -= 1;
+    }
+    final URL[] scalaRest = new URL[Math.max(0, scalaRestCount)];
 
     {
       int i = 0;
@@ -101,7 +150,7 @@ public final class MetaBuildLoader extends URLClassLoader {
         final File file = siJars[i];
         if (file.getName().equals("scala-library.jar")) {
           lib[0] = file.toURI().toURL();
-        } else {
+        } else if (!pattern.matcher(file.getName()).find()) {
           scalaRest[j] = file.toURI().toURL();
           j += 1;
         }
@@ -109,8 +158,8 @@ public final class MetaBuildLoader extends URLClassLoader {
       }
     }
     assert lib[0] != null : "no scala-library.jar";
-    final ScalaLibraryClassLoader libraryLoader = new ScalaLibraryClassLoader(lib, interfaceLoader);
+    final ScalaLibraryClassLoader libraryLoader = new ScalaLibraryClassLoader(lib, jlineLoader);
     final FullScalaLoader fullScalaLoader = new FullScalaLoader(scalaRest, libraryLoader);
-    return new MetaBuildLoader(rest, fullScalaLoader, libraryLoader, interfaceLoader);
+    return new MetaBuildLoader(rest, fullScalaLoader, libraryLoader, interfaceLoader, jlineLoader);
   }
 }

@@ -1,5 +1,8 @@
 import sbt.internal.inc.Analysis
+import xsbti.VirtualFileRef
+import xsbti.api.AnalyzedClass
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
+import xsbti.compile.analysis.{ Compilation => XCompilation }
 
 logLevel := Level.Debug
 
@@ -19,27 +22,39 @@ previousCompile in Compile := {
 // which that heuristic would distort
 incOptions := incOptions.value.withRecompileAllFraction(1.0)
 
+Global / allowMachinePath := false
+
 /* Performs checks related to compilations:
  *  a) checks in which compilation given set of files was recompiled
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("checkCompilations") := {
+  val log = streams.value.log
+  val c = fileConverter.value
+  val vs = (Compile / sources).value.toVector map { x =>
+    c.toVirtualFile(x.toPath)
+  }
+  // log.info(vs.mkString(","))
+
   val analysis = (compile in Compile).value match { case a: Analysis => a }
   val srcDir = (scalaSource in Compile).value
-  def relative(f: java.io.File): java.io.File =  f.relativeTo(srcDir) getOrElse f
-  def findFile(className: String): File = {
-    relative(analysis.relations.definesClass(className).head)
+  def findFile(className: String): VirtualFileRef = {
+    analysis.relations.definesClass(className).head
   }
-  val allCompilations = analysis.compilations.allCompilations
-  val recompiledFiles: Seq[Set[java.io.File]] = allCompilations map { c =>
+  val allCompilations: Seq[XCompilation] = analysis.compilations.allCompilations
+  log.info(s"allCompilations: $allCompilations")
+  val recompiledFiles: Seq[Set[VirtualFileRef]] = allCompilations map { c: XCompilation =>
     val recompiledFiles = analysis.apis.internal.collect {
       case (cn, api) if api.compilationTimestamp == c.getStartTime => findFile(cn)
     }
     recompiledFiles.toSet
   }
   def recompiledFilesInIteration(iteration: Int, fileNames: Set[String]) = {
-    val files = fileNames.map(new java.io.File(_))
-    assert(recompiledFiles(iteration) == files, "%s != %s".format(recompiledFiles(iteration), files))
+    assert(recompiledFiles(iteration).map(_.name) == fileNames,
+      s"""${recompiledFiles(iteration).map(_.name)} != $fileNames
+         |
+         |allCompilations = $allCompilations
+         |""".stripMargin)
   }
   // Y.scala is compiled only at the beginning as changes to A.scala do not affect it
   recompiledFilesInIteration(0, Set("X.scala", "Y.scala"))

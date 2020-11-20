@@ -9,7 +9,6 @@ package sbt.internal.util
 
 import sbt.util._
 import java.io.PrintWriter
-import org.apache.logging.log4j.core.Appender
 
 object MainAppender {
   import java.util.concurrent.atomic.AtomicInteger
@@ -17,38 +16,36 @@ object MainAppender {
     "GlobalBacking" + generateId.incrementAndGet
   private val generateId: AtomicInteger = new AtomicInteger
 
-  def multiLogger(log: ManagedLogger, config: MainAppenderConfig): ManagedLogger = {
+  def multiLogger(
+      log: ManagedLogger,
+      config: MainAppenderConfig,
+      context: LoggerContext
+  ): ManagedLogger = {
     import config._
     // TODO
     // backed setTrace backingTrace
     // multi: Logger
 
-    LogExchange.unbindLoggerAppenders(log.name)
-    LogExchange.bindLoggerAppenders(
-      log.name,
-      (consoleOpt.toList map { appender =>
-        appender match {
-          case a: ConsoleAppender =>
-            a.setTrace(screenTrace)
-          case _ => ()
-        }
-        appender -> screenLevel
-      }) :::
-        List(backed -> backingLevel) :::
-        (extra map { x =>
-        (x -> Level.Info)
-      })
-    )
+    context.clearAppenders(log.name)
+    consoleOpt match {
+      case Some(a: ConsoleAppender) =>
+        a.setTrace(screenTrace)
+        context.addAppender(log.name, a -> screenLevel)
+      case _ =>
+    }
+    context.addAppender(log.name, backed -> backingLevel)
+    extra.foreach(a => context.addAppender(log.name, a -> Level.Info))
     log
   }
 
   def globalDefault(
       console: ConsoleOut
-  ): (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging = {
-    lazy val newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking) => GlobalLogging =
-      (log, writer, backing) => {
+  ): (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging = {
+    lazy val newAppender
+        : (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging =
+      (log, writer, backing, lc) => {
         val backed: Appender = defaultBacked(generateGlobalBackingName)(writer)
-        val full = multiLogger(log, defaultMultiConfig(Option(console), backed, Nil))
+        val full = multiLogger(log, defaultMultiConfig(Option(console), backed, Nil), lc)
         GlobalLogging(full, console, backed, backing, newAppender)
       }
     newAppender
@@ -75,8 +72,13 @@ object MainAppender {
   def defaultScreen(
       console: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
-  ): Appender =
-    ConsoleAppender(ConsoleAppender.generateName, console, suppressedMessage = suppressedMessage)
+  ): Appender = {
+    ConsoleAppender(
+      ConsoleAppender.generateName,
+      Terminal.get,
+      suppressedMessage = suppressedMessage
+    )
+  }
 
   def defaultScreen(
       name: String,
@@ -86,10 +88,10 @@ object MainAppender {
     ConsoleAppender(name, console, suppressedMessage = suppressedMessage)
 
   def defaultBacked: PrintWriter => Appender =
-    defaultBacked(generateGlobalBackingName, ConsoleAppender.formatEnabledInEnv)
+    defaultBacked(generateGlobalBackingName, Terminal.isAnsiSupported)
 
   def defaultBacked(loggerName: String): PrintWriter => Appender =
-    defaultBacked(loggerName, ConsoleAppender.formatEnabledInEnv)
+    defaultBacked(loggerName, Terminal.isAnsiSupported)
 
   def defaultBacked(useFormat: Boolean): PrintWriter => Appender =
     defaultBacked(generateGlobalBackingName, useFormat)

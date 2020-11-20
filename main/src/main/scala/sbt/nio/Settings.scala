@@ -15,7 +15,7 @@ import sbt.Keys._
 import sbt.internal.Clean.ToSeqPath
 import sbt.internal.Continuous.FileStampRepository
 import sbt.internal.util.AttributeKey
-import sbt.internal.{ Clean, Continuous, DynamicInput, SettingsGraph }
+import sbt.internal.{ Clean, Continuous, DynamicInput, WatchTransitiveDependencies }
 import sbt.nio.FileStamp.Formats._
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
@@ -108,7 +108,8 @@ private[sbt] object Settings {
       case transitiveDynamicInputs.key =>
         scopedKey.scope.task.toOption.toSeq.map { key =>
           val updatedKey = Def.ScopedKey(scopedKey.scope.copy(task = Zero), key)
-          transitiveDynamicInputs in scopedKey.scope := SettingsGraph.task(updatedKey).value
+          transitiveDynamicInputs in scopedKey.scope :=
+            WatchTransitiveDependencies.task(updatedKey).value
         }
       case dynamicDependency.key => (dynamicDependency in scopedKey.scope := { () }) :: Nil
       case transitiveClasspathDependency.key =>
@@ -148,7 +149,7 @@ private[sbt] object Settings {
       // This makes watch work by ensuring that the input glob is registered with the
       // repository used by the watch process.
       state.value.get(globalFileTreeRepository).foreach { repo =>
-        inputs.foreach(repo.register)
+        inputs.foreach(repo.register(_).foreach(_.close()))
       }
       dynamicInputs.foreach(_ ++= inputs.map(g => DynamicInput(g, stamper, forceTrigger)))
       view.list(inputs)
@@ -255,7 +256,7 @@ private[sbt] object Settings {
     addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
       // the clean file task needs to run first because the previous cache gets blown away
       // by the second task
-      Clean.cleanFileOutputTask(taskKey).value
+      Def.unit(Clean.cleanFileOutputTask(taskKey).value)
       Clean.task(taskScope, full = false)
     }.value)
   }
@@ -288,10 +289,10 @@ private[sbt] object Settings {
         }
       val filter =
         (fileInputIncludeFilter in scope).value && !(fileInputExcludeFilter in scope).value
-      (Keys.allInputPathsAndAttributes in scope).value.flatMap {
+      (Keys.allInputPathsAndAttributes in scope).value.par.flatMap {
         case (path, a) if filter.accept(path, a) => stampFile(path)
         case _                                   => None
-      }
+      }.toVector
     })
   }
 

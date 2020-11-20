@@ -1,14 +1,14 @@
 
   [@eed3si9n]: https://github.com/eed3si9n
   [@jsuereth]: https://github.com/jsuereth
-  [@dwijnand]: http://github.com/dwijnand
-  [@Duhemm]: http://github.com/Duhemm
+  [@dwijnand]: https://github.com/dwijnand
+  [@Duhemm]: https://github.com/Duhemm
   [@gkossakowski]: https://github.com/gkossakowski
   [@adriaanm]: https://github.com/adriaanm
   [@jrudolph]: https://github.com/jrudolph
   [@stuhood]: https://github.com/stuhood
   [@pdalpra]: https://github.com/pdalpra
-  [@fkorotkov]: http://github.com/fkorotkov
+  [@fkorotkov]: https://github.com/fkorotkov
   [@hgiddens]: https://github.com/hgiddens
   [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
   [@romanowski]: https://github.com/romanowski

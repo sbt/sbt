@@ -6,26 +6,32 @@
  */
 
 package sbt
-package internal
 
+package internal
 import java.io.IOException
 import java.net.Socket
-import java.util.concurrent.{ ConcurrentLinkedQueue, LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic._
+import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 
+import sbt.BasicCommandStrings.{
+  Cancel,
+  CompleteExec,
+  Shutdown,
+  TerminateAction,
+  networkExecPrefix
+}
 import sbt.BasicKeys._
-import sbt.nio.Watch.NullLogger
 import sbt.internal.protocol.JsonRpcResponseError
-import sbt.internal.langserver.{ LogMessageParams, MessageType }
 import sbt.internal.server._
-import sbt.internal.util.codec.JValueFormats
-import sbt.internal.util.{ MainAppender, ObjectEvent, StringEvent }
+import sbt.internal.ui.UITask
+import sbt.internal.util._
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
-import sbt.protocol.{ EventMessage, ExecStatusEvent }
-import sbt.util.{ Level, LogExchange, Logger }
+import sbt.nio.Watch.NullLogger
+import sbt.protocol.Serialization.attach
+import sbt.protocol.{ ExecStatusEvent, LogEvent }
+import sbt.util.Logger
 import sjsonnew.JsonFormat
-import sjsonnew.shaded.scalajson.ast.unsafe._
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -44,76 +50,133 @@ private[sbt] final class CommandExchange {
     sys.props get "sbt.server.autostart" forall (_.toLowerCase == "true")
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
-  private var consoleChannel: Option[ConsoleChannel] = None
-  private val commandQueue: ConcurrentLinkedQueue[Exec] = new ConcurrentLinkedQueue()
+  private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
+  private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
-  private val commandChannelQueue = new LinkedBlockingQueue[CommandChannel]
+  private val fastTrackChannelQueue = new LinkedBlockingQueue[FastTrackTask]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
-  private lazy val jsonFormat = new sjsonnew.BasicJsonProtocol with JValueFormats {}
+  private[this] val lastState = new AtomicReference[State]
+  private[this] val currentExecRef = new AtomicReference[Exec]
+  private[sbt] def hasServer = server.isDefined
+  addConsoleChannel()
 
   def channels: List[CommandChannel] = channelBuffer.toList
-  private[this] def removeChannels(toDel: List[CommandChannel]): Unit = {
-    toDel match {
-      case Nil => // do nothing
-      case xs =>
-        channelBufferLock.synchronized {
-          channelBuffer --= xs
-          ()
-        }
-    }
-  }
 
   def subscribe(c: CommandChannel): Unit = channelBufferLock.synchronized {
     channelBuffer.append(c)
-    c.register(commandChannelQueue)
+    c.register(commandQueue, fastTrackChannelQueue)
   }
 
+  private[sbt] def withState[T](f: State => T): T = f(lastState.get)
   def blockUntilNextExec: Exec = blockUntilNextExec(Duration.Inf, NullLogger)
   // periodically move all messages from all the channels
-  private[sbt] def blockUntilNextExec(interval: Duration, logger: Logger): Exec = {
-    @tailrec def impl(deadline: Option[Deadline]): Exec = {
-      @tailrec def slurpMessages(): Unit =
-        channels.foldLeft(Option.empty[Exec]) { _ orElse _.poll } match {
-          case None => ()
-          case Some(x) =>
-            commandQueue.add(x)
-            slurpMessages()
+  private[sbt] def blockUntilNextExec(interval: Duration, logger: Logger): Exec =
+    blockUntilNextExec(interval, None, logger)
+  private[sbt] def blockUntilNextExec(
+      interval: Duration,
+      state: Option[State],
+      logger: Logger
+  ): Exec = {
+    val idleDeadline = state.flatMap { s =>
+      lastState.set(s)
+      s.get(BasicKeys.serverIdleTimeout) match {
+        case Some(Some(d)) => Some(d.fromNow)
+        case _             => None
+      }
+    }
+    @tailrec def impl(gcDeadline: Option[Deadline], idleDeadline: Option[Deadline]): Exec = {
+      state.foreach(s => prompt(ConsolePromptEvent(s)))
+      def poll: Option[Exec] = {
+        val deadline = gcDeadline.toSeq ++ idleDeadline match {
+          case s @ Seq(_, _) => Some(s.min)
+          case s             => s.headOption
         }
-      commandChannelQueue.poll(1, TimeUnit.SECONDS)
-      slurpMessages()
-      Option(commandQueue.poll) match {
-        case Some(x) => x
+        try Option(deadline match {
+          case Some(d: Deadline) =>
+            commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
+              case null if idleDeadline.fold(false)(_.isOverdue) =>
+                state.foreach { s =>
+                  s.get(BasicKeys.serverIdleTimeout) match {
+                    case Some(Some(d)) => s.log.info(s"sbt idle timeout of $d expired")
+                    case _             =>
+                  }
+                }
+                Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName)))
+              case x => x
+            }
+          case _ => commandQueue.take
+        })
+        catch { case _: InterruptedException => None }
+      }
+      poll match {
+        case Some(exec) if exec.source.fold(true)(s => channels.exists(_.name == s.channelName)) =>
+          exec.commandLine match {
+            case `TerminateAction`
+                if exec.source.fold(false)(_.channelName.startsWith("network")) =>
+              channels.collectFirst {
+                case c: NetworkChannel if exec.source.fold(false)(_.channelName == c.name) => c
+              } match {
+                case Some(c) if c.isAttached =>
+                  c.shutdown(false)
+                  impl(gcDeadline, idleDeadline)
+                case _ => exec
+              }
+            case _ => exec
+          }
+        case Some(e) => e
         case None =>
-          val newDeadline = if (deadline.fold(false)(_.isOverdue())) {
+          val newDeadline = if (gcDeadline.fold(false)(_.isOverdue())) {
             GCUtil.forceGcWithInterval(interval, logger)
             None
-          } else deadline
-          impl(newDeadline)
+          } else gcDeadline
+          impl(newDeadline, idleDeadline)
       }
     }
     // Do not manually run GC until the user has been idling for at least the min gc interval.
     impl(interval match {
       case d: FiniteDuration => Some(d.fromNow)
       case _                 => None
-    })
+    }, idleDeadline)
   }
 
-  def run(s: State): State = {
-    if (consoleChannel.isEmpty) {
-      val console0 = new ConsoleChannel("console0")
-      consoleChannel = Some(console0)
-      subscribe(console0)
+  private def addConsoleChannel(): Unit =
+    if (!Terminal.startedByRemoteClient) {
+      val name = ConsoleChannel.defaultName
+      subscribe(new ConsoleChannel(name, mkAskUser(name)))
     }
-    val autoStartServerAttr = s get autoStartServer match {
-      case Some(bool) => bool
-      case None       => true
-    }
-    if (autoStartServerSysProp && autoStartServerAttr) runServer(s)
+  def run(s: State): State = run(s, s.get(autoStartServer).getOrElse(true))
+  def run(s: State, autoStart: Boolean): State = {
+    if (autoStartServerSysProp && autoStart) runServer(s)
     else s
   }
+  private[sbt] def setState(s: State): Unit = lastState.set(s)
 
   private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
+
+  private[sbt] def removeChannel(c: CommandChannel): Unit = {
+    channelBufferLock.synchronized {
+      Util.ignoreResult(channelBuffer -= c)
+    }
+    commandQueue.removeIf { e =>
+      e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
+    }
+    currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+    }
+    try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
+    catch { case _: InterruptedException => }
+  }
+
+  private[this] def mkAskUser(
+      name: String,
+  ): (State, CommandChannel) => UITask = { (state, channel) =>
+    ContinuousCommands
+      .watchUITaskFor(state, channel)
+      .getOrElse(new UITask.AskUserTask(state, channel))
+  }
+
+  private[sbt] def currentExec = Option(currentExecRef.get)
 
   /**
    * Check if a server instance is running already, and start one if it isn't.
@@ -124,25 +187,25 @@ private[sbt] final class CommandExchange {
     lazy val auth: Set[ServerAuthentication] =
       s.get(serverAuthentication).getOrElse(Set(ServerAuthentication.Token))
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
-    lazy val level = s.get(serverLogLevel).orElse(s.get(logLevel)).getOrElse(Level.Warn)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
+    lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
+    lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName
-      s.log.info(s"new client connected: $name")
-      val logger: Logger = {
-        val log = LogExchange.logger(name, None, None)
-        LogExchange.unbindLoggerAppenders(name)
-        val appender = MainAppender.defaultScreen(s.globalLogging.console)
-        LogExchange.bindLoggerAppenders(name, List(appender -> level))
-        log
-      }
+      Terminal.consoleLog(s"new client connected: $name")
       val channel =
-        new NetworkChannel(name, socket, Project structure s, auth, instance, handlers, logger)
+        new NetworkChannel(
+          name,
+          socket,
+          auth,
+          instance,
+          handlers,
+          mkAskUser(name),
+        )
       subscribe(channel)
     }
     if (server.isEmpty && firstInstance.get) {
-      val portfile = s.baseDir / "project" / "target" / "active.json"
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
       val serverDir =
         sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(s) / "server"
@@ -158,6 +221,8 @@ private[sbt] final class CommandExchange {
         tokenfile,
         socketfile,
         pipeName,
+        s.configuration,
+        win32Level,
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
@@ -167,6 +232,7 @@ private[sbt] final class CommandExchange {
         case Some(Success(())) =>
           // remember to shutdown only when the server comes up
           server = Some(serverInstance)
+          s.log.info("started sbt server")
         case Some(Failure(_: AlreadyRunningException)) =>
           s.log.warn(
             "sbt server could not start because there's another instance of sbt running on this build."
@@ -182,12 +248,41 @@ private[sbt] final class CommandExchange {
           server = None
           firstInstance.set(false)
       }
+      Terminal.setBootStreams(null, null)
+
+      if (s.get(BasicKeys.detachStdio).getOrElse(false)) {
+        Terminal.close()
+      }
+
+      s.get(Keys.bootServerSocket).foreach(_.close())
     }
-    s
+    if (server.isEmpty && !monitoringActiveJson.get) {
+      s.get(sbt.nio.Keys.globalFileTreeRepository) match {
+        case Some(r) =>
+          r.register(sbt.nio.file.Glob(portfile)) match {
+            case Right(o) =>
+              o.addObserver { event =>
+                if (!event.exists) {
+                  firstInstance.set(true)
+                  monitoringActiveJson.set(false)
+                  // FailureWall is effectively a no-op command that will
+                  // cause shell to re-run which should start the server
+                  commandQueue.add(Exec(BasicCommandStrings.FailureWall, None))
+                  o.close()
+                }
+              }
+              monitoringActiveJson.set(true)
+            case _ =>
+          }
+        case _ =>
+      }
+    }
+    s.remove(Keys.bootServerSocket)
   }
 
   def shutdown(): Unit = {
-    channels foreach (_.shutdown())
+    fastTrackThread.close()
+    channels foreach (_.shutdown(true))
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
@@ -200,19 +295,7 @@ private[sbt] final class CommandExchange {
       execId: Option[String],
       source: Option[CommandSource]
   ): Unit = {
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-    channels.foreach {
-      case _: ConsoleChannel =>
-      case c: NetworkChannel =>
-        try {
-          // broadcast to all network channels
-          c.respondError(code, message, execId, source)
-        } catch {
-          case _: IOException =>
-            toDel += c
-        }
-    }
-    removeChannels(toDel.toList)
+    respondError(JsonRpcResponseError(code, message), execId, source)
   }
 
   private[sbt] def respondError(
@@ -220,19 +303,13 @@ private[sbt] final class CommandExchange {
       execId: Option[String],
       source: Option[CommandSource]
   ): Unit = {
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-    channels.foreach {
-      case _: ConsoleChannel =>
-      case c: NetworkChannel =>
-        try {
-          // broadcast to all network channels
-          c.respondError(err, execId, source)
-        } catch {
-          case _: IOException =>
-            toDel += c
-        }
-    }
-    removeChannels(toDel.toList)
+    for {
+      source <- source.map(_.channelName)
+      channel <- channels.collectFirst {
+        // broadcast to the source channel only
+        case c: NetworkChannel if c.name == source => c
+      }
+    } tryTo(_.respondError(err, execId))(channel)
   }
 
   // This is an interface to directly respond events.
@@ -241,147 +318,189 @@ private[sbt] final class CommandExchange {
       execId: Option[String],
       source: Option[CommandSource]
   ): Unit = {
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-    channels.foreach {
-      case _: ConsoleChannel =>
-      case c: NetworkChannel =>
-        try {
-          // broadcast to all network channels
-          c.respondEvent(event, execId, source)
-        } catch {
-          case _: IOException =>
-            toDel += c
-        }
-    }
-    removeChannels(toDel.toList)
+    for {
+      source <- source.map(_.channelName)
+      channel <- channels.collectFirst {
+        // broadcast to the source channel only
+        case c: NetworkChannel if c.name == source => c
+      }
+    } tryTo(_.respondResult(event, execId))(channel)
   }
 
   // This is an interface to directly notify events.
   private[sbt] def notifyEvent[A: JsonFormat](method: String, params: A): Unit = {
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
     channels.foreach {
-      case _: ConsoleChannel =>
-      // c.publishEvent(event)
-      case c: NetworkChannel =>
-        try {
-          c.notifyEvent(method, params)
-        } catch {
-          case _: IOException =>
-            toDel += c
-        }
+      case c: NetworkChannel => tryTo(_.notifyEvent(method, params))(c)
+      case _                 =>
     }
-    removeChannels(toDel.toList)
   }
 
-  private def tryTo(x: => Unit, c: CommandChannel, toDel: ListBuffer[CommandChannel]): Unit =
-    try x
-    catch { case _: IOException => toDel += c }
+  private def tryTo(f: NetworkChannel => Unit)(
+      channel: NetworkChannel
+  ): Unit =
+    try f(channel)
+    catch { case _: IOException => removeChannel(channel) }
 
-  def publishEvent[A: JsonFormat](event: A): Unit = {
-    val broadcastStringMessage = true
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-
-    event match {
-      case entry: StringEvent =>
-        val params = toLogMessageParams(entry)
-        channels collect {
-          case c: ConsoleChannel =>
-            if (broadcastStringMessage || (entry.channelName forall (_ == c.name)))
-              c.publishEvent(event)
-          case c: NetworkChannel =>
-            tryTo(
-              {
-                // Note that language server's LogMessageParams does not hold the execid,
-                // so this is weaker than the StringMessage. We might want to double-send
-                // in case we have a better client that can utilize the knowledge.
-                import sbt.internal.langserver.codec.JsonProtocol._
-                if (broadcastStringMessage || (entry.channelName contains c.name))
-                  c.jsonRpcNotify("window/logMessage", params)
-              },
-              c,
-              toDel
-            )
+  def respondStatus(event: ExecStatusEvent): Unit = {
+    import sbt.protocol.codec.JsonProtocol._
+    for {
+      source <- event.channelName
+      channel <- channels.collectFirst {
+        case c: NetworkChannel if c.name == source => c
+      }
+    } {
+      if (event.execId.isEmpty) {
+        tryTo(_.notifyEvent(event))(channel)
+      } else {
+        event.exitCode match {
+          case None | Some(0) =>
+            tryTo(_.respondResult(event, event.execId))(channel)
+          case Some(code) =>
+            tryTo(_.respondError(code, event.message.getOrElse(""), event.execId))(channel)
         }
-      case entry: ExecStatusEvent =>
-        channels collect {
-          case c: ConsoleChannel =>
-            if (entry.channelName forall (_ == c.name)) c.publishEvent(event)
-          case c: NetworkChannel =>
-            if (entry.channelName contains c.name) tryTo(c.publishEvent(event), c, toDel)
-        }
-      case _ =>
-        channels foreach {
-          case c: ConsoleChannel => c.publishEvent(event)
-          case c: NetworkChannel =>
-            tryTo(c.publishEvent(event), c, toDel)
-        }
+      }
     }
-    removeChannels(toDel.toList)
   }
 
-  private[sbt] def toLogMessageParams(event: StringEvent): LogMessageParams = {
-    LogMessageParams(MessageType.fromLevelString(event.level), event.message)
+  private[sbt] def setExec(exec: Option[Exec]): Unit = currentExecRef.set(exec.orNull)
+
+  def prompt(event: ConsolePromptEvent): Unit = {
+    currentExecRef.set(null)
+    channels.foreach {
+      case c if ContinuousCommands.isInWatch(lastState.get, c) =>
+      case c                                                   => c.prompt(event)
+    }
+  }
+  def unprompt(event: ConsoleUnpromptEvent): Unit = channels.foreach(_.unprompt(event))
+
+  def logMessage(event: LogEvent): Unit = {
+    channels.foreach {
+      case c: NetworkChannel => tryTo(_.notifyEvent(event))(c)
+      case _                 =>
+    }
+  }
+
+  def notifyStatus(event: ExecStatusEvent): Unit = {
+    for {
+      source <- event.channelName
+      channel <- channels.collectFirst {
+        case c: NetworkChannel if c.name == source => c
+      }
+    } tryTo(_.notifyEvent(event))(channel)
+  }
+
+  private[sbt] def killChannel(channel: String): Unit = {
+    channels.find(_.name == channel).foreach(_.shutdown(false))
+  }
+  private[sbt] def updateProgress(pe: ProgressEvent): Unit = {
+    val newPE = currentExec match {
+      case Some(e) if !e.commandLine.startsWith(networkExecPrefix) =>
+        pe.withCommand(currentExec.map(_.commandLine))
+          .withExecId(currentExec.flatMap(_.execId))
+          .withChannelName(currentExec.flatMap(_.source.map(_.channelName)))
+      case _ => pe
+    }
+    channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
   }
 
   /**
-   * This publishes object events. The type information has been
-   * erased because it went through logging.
+   * When a reboot is initiated by a network client, we need to communicate
+   * to it which
+   *
+   * @param state
    */
-  private[sbt] def publishObjectEvent(event: ObjectEvent[_]): Unit = {
-    import jsonFormat._
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-    def json: JValue = JObject(
-      JField("type", JString(event.contentType)),
-      Vector(JField("message", event.json), JField("level", JString(event.level.toString))) ++
-        (event.channelName.toVector map { channelName =>
-          JField("channelName", JString(channelName))
-        }) ++
-        (event.execId.toVector map { execId =>
-          JField("execId", JString(execId))
-        }): _*
-    )
-    channels collect {
-      case c: ConsoleChannel =>
-        c.publishEvent(json)
-      case c: NetworkChannel =>
-        try {
-          c.publishObjectEvent(event)
-        } catch {
-          case _: IOException =>
-            toDel += c
-        }
-    }
-    removeChannels(toDel.toList)
+  private[sbt] def reboot(state: State): Unit = state.source match {
+    case Some(s) if s.channelName.startsWith("network") =>
+      channels.foreach {
+        case nc: NetworkChannel if nc.name == s.channelName =>
+          val remainingCommands =
+            state.remainingCommands
+              .takeWhile(!_.commandLine.startsWith(CompleteExec))
+              .map(_.commandLine)
+              .filterNot(_.startsWith("sbtReboot"))
+              .mkString(";")
+          val execId = state.remainingCommands.collectFirst {
+            case e if e.commandLine.startsWith(CompleteExec) =>
+              e.commandLine.split(CompleteExec).last.trim
+          }
+          nc.shutdown(true, execId.map(_ -> remainingCommands))
+        case nc: NetworkChannel => nc.shutdown(true, Some(("", "")))
+        case _                  =>
+      }
+    case _ =>
+      channels.foreach {
+        case nc: NetworkChannel => nc.shutdown(true, Some(("", "")))
+        case c                  => c.shutdown(false)
+      }
   }
 
-  // fanout publishEvent
-  def publishEventMessage(event: EventMessage): Unit = {
-    val toDel: ListBuffer[CommandChannel] = ListBuffer.empty
-
-    event match {
-      // Special treatment for ConsolePromptEvent since it's hand coded without codec.
-      case entry: ConsolePromptEvent =>
-        channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(entry)
-        }
-      case entry: ConsoleUnpromptEvent =>
-        channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(entry)
-        }
-      case entry: ExecStatusEvent =>
-        channels collect {
-          case c: ConsoleChannel =>
-            if (entry.channelName forall (_ == c.name)) c.publishEventMessage(event)
-          case c: NetworkChannel =>
-            if (entry.channelName contains c.name) tryTo(c.publishEventMessage(event), c, toDel)
-        }
-      case _ =>
-        channels collect {
-          case c: ConsoleChannel => c.publishEventMessage(event)
-          case c: NetworkChannel => tryTo(c.publishEventMessage(event), c, toDel)
-        }
-    }
-
-    removeChannels(toDel.toList)
+  private[sbt] def shutdown(name: String): Unit = {
+    Option(currentExecRef.get).foreach(cancel)
+    commandQueue.clear()
+    val exit = Exec(Shutdown, Some(Exec.newExecId), Some(CommandSource(name)))
+    commandQueue.add(exit)
+    ()
   }
+  private[this] def cancel(e: Exec): Unit = {
+    if (e.commandLine.startsWith("console")) {
+      val terminal = Terminal.get
+      terminal.write(13, 13, 13, 4)
+      terminal.printStream.println("\nconsole session killed by remote sbt client")
+    } else {
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+    }
+  }
+
+  private[this] class FastTrackThread
+      extends Thread("sbt-command-exchange-fastTrack")
+      with AutoCloseable {
+    setDaemon(true)
+    start()
+    private[this] val isStopped = new AtomicBoolean(false)
+    override def run(): Unit = {
+      def exit(mt: FastTrackTask): Unit = {
+        mt.channel.shutdown(false)
+        if (mt.channel.name.contains("console")) shutdown(mt.channel.name)
+      }
+      @tailrec def impl(): Unit = {
+        fastTrackChannelQueue.take match {
+          case null =>
+          case mt: FastTrackTask =>
+            mt.task match {
+              case `attach` | "" => mt.channel.prompt(ConsolePromptEvent(lastState.get))
+              case `Cancel` =>
+                Option(currentExecRef.get).foreach(cancel)
+                mt.channel.prompt(ConsolePromptEvent(lastState.get))
+              case t if t.startsWith(ContinuousCommands.stopWatch) =>
+                mt.channel match {
+                  case c: NetworkChannel if !c.isInteractive => exit(mt)
+                  case _                                     =>
+                }
+                commandQueue.add(Exec(t, None, None))
+              case `TerminateAction` => exit(mt)
+              case `Shutdown` =>
+                val console = Terminal.console
+                val needNewLine = console.prompt.isInstanceOf[Prompt.AskUser]
+                console.setPrompt(Prompt.Batch)
+                if (needNewLine) console.printStream.println()
+                channels.find(_.name == mt.channel.name) match {
+                  case Some(c: NetworkChannel) => c.shutdown(false)
+                  case _                       =>
+                }
+                shutdown(mt.channel.name)
+              case _ =>
+            }
+        }
+        if (!isStopped.get) impl()
+      }
+      try impl()
+      catch { case _: InterruptedException => }
+    }
+    override def close(): Unit = if (isStopped.compareAndSet(false, true)) {
+      interrupt()
+    }
+  }
+  private[sbt] def channelForName(channelName: String): Option[CommandChannel] =
+    channels.find(_.name == channelName)
+  private[this] val fastTrackThread = new FastTrackThread
 }

@@ -2,6 +2,7 @@
 lazy val check = taskKey[Unit]("Runs the check")
 
 ThisBuild / useCoursier := false
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(

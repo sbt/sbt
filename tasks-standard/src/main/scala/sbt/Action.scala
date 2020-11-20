@@ -57,6 +57,31 @@ final case class Join[T, U](in: Seq[Task[U]], f: Seq[Result[U]] => Either[Task[T
     Join[T, U](in.map(g.fn[U]), sr => f(sr).left.map(g.fn[T]))
 }
 
+/**
+ * A computation that conditionally falls back to a second transformation.
+ * This can be used to encode `if` conditions.
+ */
+final case class Selected[A, B](fab: Task[Either[A, B]], fin: Task[A => B]) extends Action[B] {
+  private def ml = AList.single[Either[A, B]]
+  type K[L[x]] = L[Either[A, B]]
+
+  private[sbt] def mapTask(g: Task ~> Task) =
+    Selected[A, B](g(fab), g(fin))
+
+  /**
+   * Encode this computation as a flatMap.
+   */
+  private[sbt] def asFlatMapped: FlatMapped[B, K] = {
+    val f: Either[A, B] => Task[B] = {
+      case Right(b) => std.TaskExtra.task(b)
+      case Left(a)  => std.TaskExtra.singleInputTask(fin).map(_(a))
+    }
+    FlatMapped[B, K](fab, {
+      f compose std.TaskExtra.successM
+    }, ml)
+  }
+}
+
 /** Combines metadata `info` and a computation `work` to define a task. */
 final case class Task[T](info: Info[T], work: Action[T]) {
   override def toString = info.name getOrElse ("Task(" + info + ")")
@@ -80,7 +105,7 @@ final case class Task[T](info: Info[T], work: Action[T]) {
  */
 final case class Info[T](
     attributes: AttributeMap = AttributeMap.empty,
-    post: T => AttributeMap = const(AttributeMap.empty)
+    post: T => AttributeMap = Info.defaultAttributeMap
 ) {
   import Info._
   def name = attributes.get(Name)
@@ -96,4 +121,5 @@ final case class Info[T](
 object Info {
   val Name = AttributeKey[String]("name")
   val Description = AttributeKey[String]("description")
+  val defaultAttributeMap = const(AttributeMap.empty)
 }

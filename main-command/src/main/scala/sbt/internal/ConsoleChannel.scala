@@ -8,32 +8,14 @@
 package sbt
 package internal
 
+import sbt.internal.ui.{ UITask, UserThread }
 import sbt.internal.util._
-import BasicKeys._
-import java.io.File
-import sbt.protocol.EventMessage
 import sjsonnew.JsonFormat
-import Util.AnyOps
 
-private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel {
-  private var askUserThread: Option[Thread] = None
-  def makeAskUserThread(s: State): Thread = new Thread("ask-user-thread") {
-    val history = (s get historyPath) getOrElse (new File(s.baseDir, ".history")).some
-    val prompt = (s get shellPrompt) match {
-      case Some(pf) => pf(s)
-      case None     => "> "
-    }
-    val reader = new FullReader(history, s.combinedParser, JLine.HandleCONT, true)
-    override def run(): Unit = {
-      // This internally handles thread interruption and returns Some("")
-      val line = reader.readLine(prompt)
-      line match {
-        case Some(cmd) => append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
-        case None      => append(Exec("exit", Some(Exec.newExecId), Some(CommandSource(name))))
-      }
-      askUserThread = None
-    }
-  }
+private[sbt] final class ConsoleChannel(
+    val name: String,
+    override private[sbt] val mkUIThread: (State, CommandChannel) => UITask
+) extends CommandChannel {
 
   def run(s: State): State = s
 
@@ -41,36 +23,9 @@ private[sbt] final class ConsoleChannel(val name: String) extends CommandChannel
 
   def publishEvent[A: JsonFormat](event: A, execId: Option[String]): Unit = ()
 
-  def publishEventMessage(event: EventMessage): Unit =
-    event match {
-      case e: ConsolePromptEvent =>
-        askUserThread match {
-          case Some(_) =>
-          case _ =>
-            val x = makeAskUserThread(e.state)
-            askUserThread = Some(x)
-            x.start()
-        }
-      case e: ConsoleUnpromptEvent =>
-        e.lastSource match {
-          case Some(src) if src.channelName != name =>
-            askUserThread match {
-              case Some(_) =>
-              // keep listening while network-origin command is running
-              // make sure to test Windows and Cygwin, if you uncomment
-              // shutdown()
-              case _ =>
-            }
-          case _ =>
-        }
-      case _ => //
-    }
-
-  def shutdown(): Unit =
-    askUserThread match {
-      case Some(x) if x.isAlive =>
-        x.interrupt()
-        askUserThread = None
-      case _ => ()
-    }
+  override val userThread: UserThread = new UserThread(this)
+  private[sbt] def terminal = Terminal.console
+}
+private[sbt] object ConsoleChannel {
+  private[sbt] def defaultName = "console0"
 }

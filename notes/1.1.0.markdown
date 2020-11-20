@@ -138,7 +138,7 @@ For all scripted tests in which `project/build.properties` exist, the value of t
 This allows you to define scripted tests that track the minimum supported sbt versions, e.g. 0.13.9 and 1.0.0-RC2. [#3564][3564]/[#3566][3566] by [@jonas][@jonas]
 
   [@eed3si9n]: https://github.com/eed3si9n
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@cunei]: https://github.com/cunei
   [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm

@@ -18,4 +18,5 @@ type TokenFile {
 
 type InitializeOption {
   token: String
+  skipAnalysis: Boolean @since("1.4.0")
 }

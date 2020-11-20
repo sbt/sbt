@@ -14,7 +14,6 @@ import java.util.concurrent.{ ExecutorService, Executors }
 import ClassLoaderClose.close
 
 import sbt.plugins.{ CorePlugin, IvyPlugin, JvmPlugin }
-import sbt.util.LogExchange
 import xsbti._
 
 private[internal] object ClassLoaderWarmup {
@@ -29,7 +28,6 @@ private[internal] object ClassLoaderWarmup {
         ()
       }
 
-      submit(LogExchange.context)
       submit(Class.forName("sbt.internal.parser.SbtParserInit").getConstructor().newInstance())
       submit(CorePlugin.projectSettings)
       submit(IvyPlugin.projectSettings)
@@ -58,12 +56,21 @@ private[internal] object ClassLoaderWarmup {
  */
 private[sbt] class XMainConfiguration {
   def run(moduleName: String, configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+    val topLoader = configuration.provider.scalaProvider.launcher.topLoader
     val updatedConfiguration =
-      if (configuration.provider.scalaProvider.launcher.topLoader.getClass.getCanonicalName
-            .contains("TestInterfaceLoader")) {
-        configuration
-      } else {
-        makeConfiguration(configuration)
+      try {
+        val method = topLoader.getClass.getMethod("getJLineJars")
+        val jars = method.invoke(topLoader).asInstanceOf[Array[URL]]
+        var canReuseConfiguration = jars.length == 3
+        var j = 0
+        while (j < jars.length && canReuseConfiguration) {
+          val s = jars(j).toString
+          canReuseConfiguration = s.contains("jline") || s.contains("jansi")
+          j += 1
+        }
+        if (canReuseConfiguration && j == 3) configuration else makeConfiguration(configuration)
+      } catch {
+        case _: NoSuchMethodException => makeConfiguration(configuration)
       }
     val loader = updatedConfiguration.provider.loader
     Thread.currentThread.setContextClassLoader(loader)

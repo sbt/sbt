@@ -8,7 +8,9 @@
 package sbt.internal;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
+import java.util.Enumeration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import sbt.util.Logger;
@@ -62,6 +64,31 @@ final class ReverseLookupClassLoader extends ManagedClassLoader {
   public URL findResource(String name) {
     final URL url = super.findResource(name);
     return url != null ? url : directDescendant.get().findResource(name);
+  }
+
+  @Override
+  public Enumeration<URL> findResources(String name) throws IOException {
+    final Enumeration<URL> parentResources = super.findResources(name);
+
+    if (directDescendant.get() == null) {
+      return parentResources;
+    }
+
+    final Enumeration<URL> directDescendantResources = directDescendant.get().findResources(name);
+    return new Enumeration<URL>() {
+      @Override
+      public boolean hasMoreElements() {
+        return parentResources.hasMoreElements() || directDescendantResources.hasMoreElements();
+      }
+
+      @Override
+      public URL nextElement() {
+        if (parentResources.hasMoreElements()) {
+          return parentResources.nextElement();
+        }
+        return directDescendantResources.nextElement();
+      }
+    };
   }
 
   void setup(final File tmpDir) {

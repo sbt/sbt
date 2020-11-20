@@ -3,14 +3,14 @@
   [@eed3si9n]: https://github.com/eed3si9n
   [@gkossakowski]: https://github.com/gkossakowski
   [@jsuereth]: https://github.com/jsuereth
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@ajsquared]: https://github.com/ajsquared
   [@jroper]: https://github.com/jroper
   [@kamilkloch]: https://github.com/kamilkloch
   [@DavidPerezIngeniero]: https://github.com/DavidPerezIngeniero
   [@PanAeon]: https://github.com/PanAeon
-  [@asflierl]: http://github.com/asflierl
-  [@matthewfarwell]: http://github.com/matthewfarwell
+  [@asflierl]: https://github.com/asflierl
+  [@matthewfarwell]: https://github.com/matthewfarwell
   [SI9027]: https://issues.scala-lang.org/browse/SI-9027
   [1950]: https://github.com/sbt/sbt/pull/1950
   [1987]: https://github.com/sbt/sbt/pull/1987

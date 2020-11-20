@@ -8,37 +8,44 @@
 package testpkg
 
 import java.io.{ File, IOException }
+import java.net.Socket
+import java.nio.file.{ Files, Path }
+import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
+import java.util.concurrent.atomic.AtomicBoolean
 
 import verify._
-import sbt.RunFromSourceMain
+import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
+
 import scala.annotation.tailrec
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Success, Try }
 
 trait AbstractServerTest extends TestSuite[Unit] {
-  implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global
   private var temp: File = _
   var svr: TestServer = _
   def testDirectory: String
+  def testPath: Path = temp.toPath.resolve(testDirectory)
+
+  private val targetDir: File = {
+    val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
+    val p1 = new File("target").getAbsoluteFile
+    if (p0.exists) p0
+    else p1
+  }
 
   override def setupSuite(): Unit = {
-    temp = IO.createTemporaryDirectory
-    val classpath = sys.props.get("sbt.server.classpath") match {
-      case Some(s: String) => s.split(java.io.File.pathSeparator).map(file)
-      case _               => throw new IllegalStateException("No server classpath was specified.")
-    }
-    val sbtVersion = sys.props.get("sbt.server.version") match {
-      case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server version was specified.")
-    }
-    val scalaVersion = sys.props.get("sbt.server.scala.version") match {
-      case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server scala version was specified.")
-    }
+    val base = Files.createTempDirectory(
+      Files.createDirectories(targetDir.toPath.resolve("test-server")),
+      "server-test"
+    )
+    temp = base.toFile
+    val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
+    val sbtVersion = TestProperties.version
+    val scalaVersion = TestProperties.scalaVersion
     svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath, temp)
   }
   override def tearDownSuite(): Unit = {
@@ -75,9 +82,9 @@ object TestServer {
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
       Try {
-        testServer.waitForString(30.seconds) { s =>
+        testServer.waitForString(10.seconds) { s =>
           println(s)
-          s contains """"message":"Done""""
+          s contains """"capabilities":{""""
         }
       }
     init.get
@@ -115,9 +122,9 @@ object TestServer {
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
       Try {
-        testServer.waitForString(30.seconds) { s =>
+        testServer.waitForString(10.seconds) { s =>
           if (s.nonEmpty) println(s)
-          s contains """"message":"Done""""
+          s contains """"capabilities":{""""
         }
       }
 
@@ -152,14 +159,13 @@ case class TestServer(
 ) {
   import TestServer.hostLog
 
-  val readBuffer = new Array[Byte](40960)
-  var buffer: Vector[Byte] = Vector.empty
-  var bytesRead = 0
-  private val delimiter: Byte = '\n'.toByte
-  private val RetByte = '\r'.toByte
-
   hostLog("fork to a new sbt instance")
-  val process = RunFromSourceMain.fork(baseDirectory, scalaVersion, sbtVersion, classpath)
+  val forkOptions =
+    ForkOptions()
+      .withOutputStrategy(OutputStrategy.StdoutOutput)
+      .withRunJVMOptions(Vector("-Djline.terminal=none", "-Dsbt.io.virtual=false"))
+  val process =
+    RunFromSourceMain.fork(forkOptions, baseDirectory, scalaVersion, sbtVersion, classpath)
 
   lazy val portfile = baseDirectory / "project" / "target" / "active.json"
 
@@ -174,40 +180,88 @@ case class TestServer(
         hostLog("waiting for the server...")
         nextLog = 10.seconds.fromNow
       }
+      Thread.sleep(10) // Don't spam the portfile
     }
     if (deadline.isOverdue) sys.error(s"Timeout. $portfile is not found.")
     if (!process.isAlive) sys.error(s"Server unexpectedly terminated.")
   }
-  private val waitDuration: FiniteDuration = 120.seconds
+  private val waitDuration: FiniteDuration = 1.minute
   hostLog(s"wait $waitDuration until the server is ready to respond")
-  waitForPortfile(90.seconds)
+  waitForPortfile(waitDuration)
 
+  @tailrec
+  private def connect(attempt: Int): Socket = {
+    val res = try Some(ClientSocket.socket(portfile)._1)
+    catch { case _: IOException if attempt < 10 => None }
+    res match {
+      case Some(s) => s
+      case _ =>
+        Thread.sleep(100)
+        connect(attempt + 1)
+    }
+  }
   // make connection to the socket described in the portfile
-  val (sk, tkn) = ClientSocket.socket(portfile)
+  val sk = connect(0)
   val out = sk.getOutputStream
   val in = sk.getInputStream
+  private val lines = new LinkedBlockingQueue[String]
+  val running = new AtomicBoolean(true)
+  val readThread =
+    new Thread(() => {
+      while (running.get) {
+        try lines.put(sbt.ReadJson(in, running))
+        catch { case _: Exception => running.set(false) }
+      }
+    }, "sbt-server-test-read-thread") {
+      setDaemon(true)
+      start()
+    }
 
   // initiate handshake
   sendJsonRpc(
-    """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { } } }"""
+    s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true } } }"""
   )
 
   def test(f: TestServer => Future[Assertion]): Future[Assertion] = {
     f(this)
   }
 
-  def bye(): Unit = {
-    hostLog("sending exit")
-    sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "exit" } }"""
-    )
-    val deadline = 10.seconds.fromNow
-    while (!deadline.isOverdue && process.isAlive) {
-      Thread.sleep(10)
+  def bye(): Unit =
+    try {
+      running.set(false)
+      hostLog("sending exit")
+      sendJsonRpc(
+        """{ "jsonrpc": "2.0", "id": 9, "method": "sbt/exec", "params": { "commandLine": "shutdown" } }"""
+      )
+      val deadline = 5.seconds.fromNow
+      while (!deadline.isOverdue && process.isAlive) {
+        Thread.sleep(10)
+      }
+      // We gave the server a chance to exit but it didn't within a reasonable time frame.
+      if (deadline.isOverdue && process.isAlive) {
+        process.destroy()
+        val newDeadline = 10.seconds.fromNow
+        while (!newDeadline.isOverdue && process.isAlive) {
+          Thread.sleep(10)
+        }
+      }
+      if (process.isAlive) throw new IllegalStateException(s"process $process failed to exit")
+    } finally {
+      readThread.interrupt()
+      /*
+       * The UnixDomainSocket input stream cannot be closed while a thread is
+       * reading from it (even if the UnixDomainSocket itself is closed):
+       * https://github.com/sbt/ipcsocket/blob/f02d29092f9f0c57e5c4b276a31fa16975ddf66e/src/main/java/org/scalasbt/ipcsocket/UnixDomainSocket.java#L111-L118
+       * This makes it impossible to interrupt the readThread until after the
+       * server process has exited which closes the ServerSocket which does
+       * cause the input stream to be closed. We could change the behavior of
+       * ipcsocket, but that seems risky without knowing exactly why the behavior
+       * exists. For now, ensure that we are able to interrupt and join the
+       * read thread and throw an exception if not.
+       */
+      readThread.join(5000)
+      if (readThread.isAlive) throw new IllegalStateException(s"Unable to join read thread")
     }
-    // We gave the server a chance to exit but it didn't within a reasonable time frame.
-    if (deadline.isOverdue) process.destroy()
-  }
 
   def sendJsonRpc(message: String): Unit = {
     writeLine(s"""Content-Length: ${message.size + 2}""")
@@ -230,61 +284,25 @@ case class TestServer(
     writeEndLine
   }
 
-  def readFrame: Option[String] = {
-    def getContentLength: Int = {
-      readLine map { line =>
-        line.drop(16).toInt
-      } getOrElse (0)
-    }
-    val l = getContentLength
-    readLine
-    readLine
-    readContentLength(l)
-  }
-
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
     val deadline = duration.fromNow
-    @tailrec
-    def impl(): Boolean = {
-      if (deadline.isOverdue || !process.isAlive) false
-      else
-        readFrame.fold(false)(f) || {
-          Thread.sleep(100)
-          impl
-        }
-    }
+    @tailrec def impl(): Boolean =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null => false
+        case s    => if (!f(s) && !deadline.isOverdue) impl() else !deadline.isOverdue()
+      }
     impl()
   }
 
-  def readLine: Option[String] = {
-    if (buffer.isEmpty) {
-      val bytesRead = in.read(readBuffer)
-      if (bytesRead > 0) {
-        buffer = buffer ++ readBuffer.toVector.take(bytesRead)
+  final def neverReceive(duration: FiniteDuration)(f: String => Boolean): Boolean = {
+    val deadline = duration.fromNow
+    @tailrec
+    def impl(): Boolean =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null => true
+        case s    => if (!f(s)) impl() else false
       }
-    }
-    val delimPos = buffer.indexOf(delimiter)
-    if (delimPos > 0) {
-      val chunk0 = buffer.take(delimPos)
-      buffer = buffer.drop(delimPos + 1)
-      // remove \r at the end of line.
-      val chunk1 = if (chunk0.lastOption contains RetByte) chunk0.dropRight(1) else chunk0
-      Some(new String(chunk1.toArray, "utf-8"))
-    } else None // no EOL yet, so skip this turn.
-  }
-
-  def readContentLength(length: Int): Option[String] = {
-    if (buffer.isEmpty) {
-      val bytesRead = in.read(readBuffer)
-      if (bytesRead > 0) {
-        buffer = buffer ++ readBuffer.toVector.take(bytesRead)
-      }
-    }
-    if (length <= buffer.size) {
-      val chunk = buffer.take(length)
-      buffer = buffer.drop(length)
-      Some(new String(chunk.toArray, "utf-8"))
-    } else None // have not read enough yet, so skip this turn.
+    impl()
   }
 
 }

@@ -1,0 +1,16 @@
+> foo
+> checkTrue
+
+$ delete output.txt
+> bar
+> checkNeg
+
+$ delete output.txt
+> set condition := false
+> foo
+> checkFalse
+
+$ delete output.txt
+> set number := 0
+> bar
+> checkZero

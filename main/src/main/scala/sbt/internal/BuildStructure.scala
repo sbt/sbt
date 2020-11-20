@@ -32,7 +32,19 @@ final class BuildStructure(
     val streams: State => Streams,
     val delegates: Scope => Seq[Scope],
     val scopeLocal: ScopeLocal,
+    private[sbt] val compiledMap: Map[ScopedKey[_], Def.Compiled[_]],
 ) {
+  @deprecated("Used the variant that takes a compiledMap", "1.4.0")
+  def this(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      settings: Seq[Setting[_]],
+      data: Settings[Scope],
+      index: StructureIndex,
+      streams: State => Streams,
+      delegates: Scope => Seq[Scope],
+      scopeLocal: ScopeLocal,
+  ) = this(units, root, settings, data, index, streams, delegates, scopeLocal, Map.empty)
 
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
 

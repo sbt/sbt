@@ -315,6 +315,20 @@ object Scoped {
     final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
   }
 
+  // Duplicated with ProjectExtra.
+  private[sbt] object syntax {
+    implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
+      new Scoped.RichInitializeTask(init)
+
+    implicit def richInitializeInputTask[T](
+        init: Initialize[InputTask[T]]
+    ): Scoped.RichInitializeInputTask[T] =
+      new Scoped.RichInitializeInputTask(init)
+
+    implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] =
+      new Scoped.RichInitialize[T](i)
+  }
+
   /**
    * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
    */
@@ -613,7 +627,7 @@ object Scoped {
 
 /** The sbt 0.10 style DSL was deprecated in 0.13.13, favouring the use of the '.value' macro.
  *
- * See http://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
+ * See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
  */
 trait TupleSyntax {
   import Scoped._

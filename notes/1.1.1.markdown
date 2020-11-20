@@ -22,7 +22,7 @@ When set to `true`, sbt shell will automatically start sbt server. Otherwise, it
 [#3922][3922] by [@swaldman][@swaldman]
 
   [@eed3si9n]: https://github.com/eed3si9n
-  [@dwijnand]: http://github.com/dwijnand
+  [@dwijnand]: https://github.com/dwijnand
   [@cunei]: https://github.com/cunei
   [@jvican]: https://github.com/jvican
   [@Duhemm]: https://github.com/Duhemm

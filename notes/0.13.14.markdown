@@ -58,7 +58,7 @@ since the resolution happens off of a local-preloaded repository.
 
 No changes should be necessary to your project definition and all plugins published for sbt 0.13.{x|x<14} should still work.
 
-See [Migrating from sbt 0.12.x](http://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html) for details on the old operator deprecation.
+See [Migrating from sbt 0.12.x](https://www.scala-sbt.org/0.13/docs/Migrating-from-sbt-012x.html) for details on the old operator deprecation.
 
 Special thanks to the contributors for making this release a success. According to `git shortlog -sn --no-merges v0.13.13..0.13`, compared to 0.13.13, there were 42 (non-merge) commits, by ten contributors: Dale Wijnand, Eugene Yokota,  Guillaume Martres, Jason Zaugg, Petro Verkhogliad, Eric Richardson, Claudio Bley, Haochi Chen, Paul Draper, Ashley Mercer. Thank you!
 

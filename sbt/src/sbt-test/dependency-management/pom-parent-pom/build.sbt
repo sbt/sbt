@@ -1,4 +1,5 @@
 ThisBuild / useCoursier := false
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
 

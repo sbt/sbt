@@ -11,20 +11,29 @@ package internal
 import java.util.Locale
 
 import scala.util.control.NonFatal
-import sbt.internal.util.ConsoleAppender
+import scala.concurrent.duration._
+import sbt.internal.util.{ Terminal => ITerminal }
 import sbt.internal.util.complete.SizeParser
+import sbt.nio.Keys._
 
 // See also BuildPaths.scala
 // See also LineReader.scala
 object SysProp {
   def booleanOpt(name: String): Option[Boolean] =
-    sys.props.get(name).flatMap { x =>
-      x.toLowerCase(Locale.ENGLISH) match {
-        case "1" | "always" | "true" => Some(true)
-        case "0" | "never" | "false" => Some(false)
-        case "auto"                  => None
-        case _                       => None
-      }
+    sys.props.get(name) match {
+      case Some(x) => parseBoolean(x)
+      case _ =>
+        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
+          case Some(x) => parseBoolean(x)
+          case _       => None
+        }
+    }
+  private def parseBoolean(value: String): Option[Boolean] =
+    value.toLowerCase(Locale.ENGLISH) match {
+      case "1" | "always" | "true" => Some(true)
+      case "0" | "never" | "false" => Some(false)
+      case "auto"                  => None
+      case _                       => None
     }
 
   def getOrFalse(name: String): Boolean = booleanOpt(name).getOrElse(false)
@@ -52,6 +61,17 @@ object SysProp {
       case _ => default
     }
 
+  def double(name: String, default: Double): Double =
+    sys.props.get(name) match {
+      case Some(str) =>
+        try {
+          str.toDouble
+        } catch {
+          case NonFatal(_) => default
+        }
+      case _ => default
+    }
+
   // System property style:
   //   1. use sbt. prefix
   //   2. prefer short nouns
@@ -71,10 +91,13 @@ object SysProp {
   def ci: Boolean = getOrFalse("sbt.ci")
   def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
+  def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
+  def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
 
+  @deprecated("Resident compilation is no longer supported", "1.4.0")
   def residentLimit: Int = int("sbt.resident.limit", 0)
 
   /**
@@ -84,17 +107,19 @@ object SysProp {
    * 3. -Dsbt.colour=always/auto/never/true/false
    * 4. -Dsbt.log.format=always/auto/never/true/false
    */
-  lazy val color: Boolean = ConsoleAppender.formatEnabledInEnv
+  lazy val color: Boolean = ITerminal.isColorEnabled
 
   def closeClassLoaders: Boolean = getOrFalse("sbt.classloader.close")
 
   def fileCacheSize: Long =
     SizeParser(System.getProperty("sbt.file.cache.size", "128M")).getOrElse(128L * 1024 * 1024)
-  def dumbTerm: Boolean = sys.env.get("TERM").filter(_ == "dumb").isDefined
+  def dumbTerm: Boolean = sys.env.get("TERM").contains("dumb")
   def supershell: Boolean = booleanOpt("sbt.supershell").getOrElse(!dumbTerm && color)
 
-  def supershellSleep: Long = long("sbt.supershell.sleep", 100L)
-  def supershellBlankZone: Int = int("sbt.supershell.blankzone", 5)
+  def supershellMaxTasks: Int = int("sbt.supershell.maxitems", 8)
+  def supershellSleep: Long = long("sbt.supershell.sleep", 500.millis.toMillis)
+  def supershellThreshold: FiniteDuration = long("sbt.supershell.threshold", 100L).millis
+  def supershellBlankZone: Int = int("sbt.supershell.blankzone", 1)
 
   def defaultUseCoursier: Boolean = {
     val coursierOpt = booleanOpt("sbt.coursier")
@@ -105,7 +130,9 @@ object SysProp {
 
   def banner: Boolean = getOrTrue("sbt.banner")
 
+  def useLog4J: Boolean = getOrFalse("sbt.log.uselog4j")
   def turbo: Boolean = getOrFalse("sbt.turbo")
+  def pipelining: Boolean = getOrFalse("sbt.pipelining")
 
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
   def taskTimingsOnShutdown: Boolean = getOrFalse("sbt.task.timings.on.shutdown")
@@ -122,6 +149,10 @@ object SysProp {
         ("ms", 6)
     }
 
+  def gcMonitor: Boolean = getOrTrue("sbt.gc.monitor")
+  def gcWindow: FiniteDuration = int("sbt.gc.monitor.window", 10).seconds
+  def gcRatio: Double = double("sbt.gc.monitor.ratio", 0.5)
+
   /** Generate build.properties if missing. */
   def genBuildProps: Boolean =
     booleanOpt("sbt.genbuildprops") match {
@@ -132,4 +163,17 @@ object SysProp {
           case None       => true
         }
     }
+
+  def onChangedBuildSource: WatchBuildSourceOption = {
+    val sysPropKey = "sbt.build.onchange"
+    sys.props.getOrElse(sysPropKey, "warn") match {
+      case "reload" => ReloadOnSourceChanges
+      case "warn"   => WarnOnSourceChanges
+      case "ignore" => IgnoreSourceChanges
+      case unknown =>
+        System.err.println(s"Unknown $sysPropKey: $unknown.\nUsing warn.")
+        sbt.nio.Keys.WarnOnSourceChanges
+    }
+  }
+
 }

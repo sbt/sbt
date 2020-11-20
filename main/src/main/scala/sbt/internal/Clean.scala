@@ -41,7 +41,7 @@ private[sbt] object Clean {
         .list(Glob(path, AnyPath))
         .filterNot { case (p, _) => exclude(p) }
         .foreach {
-          case (dir, attrs) if attrs.isDirectory =>
+          case (dir, attrs) if attrs.isDirectory && !attrs.isSymbolicLink =>
             deleteRecursive(dir)
             delete(dir)
           case (file, _) => delete(file)
@@ -89,15 +89,11 @@ private[sbt] object Clean {
         val excludeFilter = cleanFilter(scope).value
         val delete = cleanDelete(scope).value
         val targetDir = (target in scope).?.value.map(_.toPath)
-        def recursiveFiles(dir: Path): Seq[Path] =
-          view.list(dir.toGlob / **).collect { case (p, _) if !excludeFilter(p) => p }
-        val targetFiles = (if (full) targetDir else None).fold(Nil: Seq[Path])(recursiveFiles)
-        val cleanPaths = (cleanFiles in scope).?.value.getOrElse(Nil).flatMap { f =>
-          val path = f.toPath
-          if (Files.isDirectory(path)) path +: recursiveFiles(path) else path :: Nil
+
+        targetDir.filter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
+        (cleanFiles in scope).?.value.getOrElse(Nil).foreach { f =>
+          deleteContents(f.toPath, excludeFilter, view, delete)
         }
-        val allFiles = cleanPaths.view ++ targetFiles
-        allFiles.sorted.reverseIterator.foreach(delete)
 
         // This is the special portion of the task where we clear out the relevant streams
         // and file outputs of a task.

@@ -1,5 +1,5 @@
-  [StackOverflow]: http://stackoverflow.com/tags/sbt
-  [Setup]: http://www.scala-sbt.org/release/docs/Getting-Started/Setup
+  [StackOverflow]: https://stackoverflow.com/tags/sbt
+  [Setup]: https://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
   [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
   [327]: https://github.com/sbt/sbt/issues/327

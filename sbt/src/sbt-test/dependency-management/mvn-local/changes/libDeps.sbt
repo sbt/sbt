@@ -1,1 +1,1 @@
-libraryDependencies += "junit" % "junit" % "4.11"
+libraryDependencies += "junit" % "junit" % "4.13.1"

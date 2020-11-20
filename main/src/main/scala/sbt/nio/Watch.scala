@@ -13,9 +13,8 @@ import java.time.{ Instant, ZoneId, ZonedDateTime }
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
-import sbt.BasicCommandStrings.ContinuousExecutePrefix
+import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
 import sbt._
-import sbt.internal.Continuous
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
 import sbt.internal.util.complete.Parser
@@ -121,9 +120,9 @@ object Watch {
   }
 
   /**
-   * This trait is used to control the state of [[Watch.apply]]. The [[Watch.Trigger]] action
-   * indicates that [[Watch.apply]] should re-run the input task. The [[Watch.CancelWatch]]
-   * actions indicate that [[Watch.apply]] should exit and return the [[Watch.CancelWatch]]
+   * This trait is used to control the state of Watch. The [[Watch.Trigger]] action
+   * indicates that Watch should re-run the input task. The [[Watch.CancelWatch]]
+   * actions indicate that Watch should exit and return the [[Watch.CancelWatch]]
    * instance that caused the function to exit. The [[Watch.Ignore]] action is used to indicate
    * that the method should keep polling for new actions.
    */
@@ -199,6 +198,12 @@ object Watch {
             case _: HandleError => 0
             case _              => -1
           }
+        case Prompt =>
+          right match {
+            case Prompt                          => 0
+            case CancelWatch | Reload | (_: Run) => -1
+            case _                               => 1
+          }
         case _: Run =>
           right match {
             case _: Run               => 0
@@ -228,6 +233,9 @@ object Watch {
     override def hashCode: Int = throwable.hashCode
     override def toString: String = s"HandleError($throwable)"
   }
+  object HandleError {
+    def unapply(h: HandleError): Option[Throwable] = Some(h.throwable)
+  }
 
   /**
    * Action that indicates that an error has occurred. The watch will be terminated when this action
@@ -236,6 +244,9 @@ object Watch {
   private[sbt] final class HandleUnexpectedError(override val throwable: Throwable)
       extends HandleError(throwable) {
     override def toString: String = s"HandleUnexpectedError($throwable)"
+  }
+  object HandleUnexpectedError {
+    def unapply(h: HandleUnexpectedError): Option[Throwable] = Some(h.throwable)
   }
 
   /**
@@ -278,6 +289,8 @@ object Watch {
     def unapply(r: Run): Option[List[Exec]] = Some(r.commands.toList.map(Exec(_, None)))
   }
 
+  case object Prompt extends CancelWatch
+
   /**
    * Action that indicates that the watch process should re-run the command.
    */
@@ -285,7 +298,7 @@ object Watch {
 
   /**
    * A user defined Action. It is not sealed so that the user can create custom instances. If
-   * the onStart or nextAction function passed into [[Watch.apply]] returns [[Watch.Custom]], then
+   * the onStart or nextAction function passed into Watch returns [[Watch.Custom]], then
    * the watch will terminate.
    */
   trait Custom extends CancelWatch
@@ -329,7 +342,17 @@ object Watch {
       new impl(input, display, description, action)
   }
 
-  private type NextAction = () => Watch.Action
+  private type NextAction = Int => Watch.Action
+
+  @deprecated(
+    "Unused in sbt but left for binary compatibility. Use five argument version instead.",
+    "1.4.0"
+  )
+  def apply(
+      task: () => Unit,
+      onStart: () => Watch.Action,
+      nextAction: () => Watch.Action,
+  ): Watch.Action = apply(0, _ => task(), _ => onStart(), _ => nextAction(), recursive = true)
 
   /**
    * Runs a task and then blocks until the task is ready to run again or we no longer wish to
@@ -341,33 +364,49 @@ object Watch {
    * @return the exit [[Watch.Action]] that can be used to potentially modify the build state and
    *         the count of the number of iterations that were run. If
    */
-  def apply(task: () => Unit, onStart: NextAction, nextAction: NextAction): Watch.Action = {
-    def safeNextAction(delegate: NextAction): Watch.Action =
-      try delegate()
+  def apply(
+      initialCount: Int,
+      task: Int => Unit,
+      onStart: NextAction,
+      nextAction: NextAction,
+      recursive: Boolean
+  ): Watch.Action = {
+    def safeNextAction(count: Int, delegate: NextAction): Watch.Action =
+      try delegate(count)
       catch {
         case NonFatal(t) =>
           System.err.println(s"Watch caught unexpected error:")
           t.printStackTrace(System.err)
           new HandleError(t)
       }
-    @tailrec def next(): Watch.Action = safeNextAction(nextAction) match {
+    @tailrec def next(count: Int): Watch.Action = safeNextAction(count, nextAction) match {
       // This should never return Ignore due to this condition.
-      case Ignore => next()
+      case Ignore => next(count)
       case action => action
     }
-    @tailrec def impl(): Watch.Action = {
-      task()
-      safeNextAction(onStart) match {
+    @tailrec def impl(count: Int): Watch.Action = {
+      task(count)
+      safeNextAction(count, onStart) match {
         case Ignore =>
-          next() match {
-            case Trigger => impl()
-            case action  => action
+          next(count) match {
+            case Trigger =>
+              if (recursive) impl(count + 1)
+              else {
+                task(count)
+                Watch.Trigger
+              }
+            case action => action
           }
-        case Trigger => impl()
-        case a       => a
+        case Trigger =>
+          if (recursive) impl(count + 1)
+          else {
+            task(count)
+            Watch.Trigger
+          }
+        case a => a
       }
     }
-    try impl()
+    try impl(initialCount)
     catch { case NonFatal(t) => new HandleError(t) }
   }
 
@@ -391,9 +430,7 @@ object Watch {
    *         are non empty.
    */
   @inline
-  private[sbt] def aggregate(
-      events: Seq[(Action, Event)]
-  ): Option[(Action, Event)] =
+  private[sbt] def aggregate(events: Seq[(Action, Event)]): Option[(Action, Event)] =
     if (events.isEmpty) None else Some(events.minBy(_._1))
 
   private implicit class StringToExec(val s: String) extends AnyVal {
@@ -412,6 +449,14 @@ object Watch {
    * to have changed within this period from the last build trigger, the event will be discarded.
    */
   final val defaultAntiEntropy: FiniteDuration = 500.milliseconds
+
+  /**
+   * The duration for which we will poll for new file events when we are buffering events
+   * after an initial event has been detected to avoid spurious rebuilds.
+   *
+   * If this value is ever updated, please update the comment in Continuous.getFileEvents.
+   */
+  final val defaultAntiEntropyPollPeriod: FiniteDuration = 5.milliseconds
 
   /**
    * The duration in wall clock time for which a FileEventMonitor will retain anti-entropy
@@ -446,11 +491,12 @@ object Watch {
       case Seq(h, rest @ _*) => rest.foldLeft(h.parser)(_ | _.parser)
     }
   final val defaultInputOptions: Seq[Watch.InputOption] = Seq(
-    Watch.InputOption("<enter>", "interrupt (exits sbt in batch mode)", Run(""), '\n', '\r'),
-    Watch.InputOption(4.toChar, "<ctrl-d>", "interrupt (exits sbt in batch mode)", Run("")),
+    Watch.InputOption("<enter>", "interrupt (exits sbt in batch mode)", CancelWatch, '\n', '\r'),
+    Watch.InputOption(4.toChar, "<ctrl-d>", "interrupt (exits sbt in batch mode)", CancelWatch),
+    Watch.InputOption('l', "reload the build", Reload),
     Watch.InputOption('r', "re-run the command", Trigger),
-    Watch.InputOption('s', "return to shell", Run("iflast shell")),
-    Watch.InputOption('q', "quit sbt", Run("exit")),
+    Watch.InputOption('s', "return to shell", Prompt),
+    Watch.InputOption('q', "quit sbt", Run(TerminateAction)),
     Watch.InputOption('?', "print options", ShowOptions)
   )
 
@@ -572,11 +618,10 @@ object Watch {
     sbt.Keys.watchService :== Watched.newWatchService,
     watchInputOptions :== Watch.defaultInputOptions,
     watchStartMessage :== Watch.defaultStartWatch,
-    watchTasks := Continuous.continuousTask.evaluated,
-    sbt.Keys.aggregate in watchTasks :== false,
     watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     watchForceTriggerOnAnyChange :== false,
     watchPersistFileStamps := (sbt.Keys.turbo in ThisBuild).value,
     watchTriggers :== Nil,
+    watchAntiEntropyPollPeriod := Watch.defaultAntiEntropyPollPeriod,
   )
 }

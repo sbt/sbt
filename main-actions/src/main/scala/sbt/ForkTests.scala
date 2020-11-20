@@ -17,8 +17,8 @@ import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
-import sbt.internal.util.ConsoleAppender
 import sbt.internal.util.Util.{ AnyOps, none }
+import sbt.internal.util.{ RunningProcesses, Terminal }
 
 private[sbt] object ForkTests {
   def apply(
@@ -28,7 +28,7 @@ private[sbt] object ForkTests {
       classpath: Seq[File],
       fork: ForkOptions,
       log: Logger,
-      tag: Tag
+      tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
 
@@ -41,9 +41,21 @@ private[sbt] object ForkTests {
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
         mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
-    main.tag(tag).dependsOn(all(opts.setup): _*) flatMap { results =>
+    main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
+  }
+
+  def apply(
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
+      config: Execution,
+      classpath: Seq[File],
+      fork: ForkOptions,
+      log: Logger,
+      tag: Tag
+  ): Task[TestOutput] = {
+    apply(runners, tests, config, classpath, fork, log, tag -> 1)
   }
 
   private[this] def mainTestTask(
@@ -85,7 +97,7 @@ private[sbt] object ForkTests {
           val is = new ObjectInputStream(socket.getInputStream)
 
           try {
-            val config = new ForkConfiguration(ConsoleAppender.formatEnabledInEnv, parallel)
+            val config = new ForkConfiguration(Terminal.isAnsiSupported, parallel)
             os.writeObject(config)
 
             val taskdefs = opts.tests.map { t =>
@@ -135,7 +147,13 @@ private[sbt] object ForkTests {
           classOf[ForkMain].getCanonicalName,
           server.getLocalPort.toString
         )
-        val ec = Fork.java(fork, options)
+        val p = Fork.java.fork(fork, options)
+        RunningProcesses.add(p)
+        val ec = try p.exitValue()
+        finally {
+          if (p.isAlive) p.destroy()
+          RunningProcesses.remove(p)
+        }
         val result =
           if (ec != 0)
             TestOutput(

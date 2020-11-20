@@ -1,9 +1,10 @@
 // https://github.com/sbt/sbt/issues/1730
 lazy val check = taskKey[Unit]("Runs the check")
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
-val junit = "junit" % "junit" % "4.11"
+val junit = "junit" % "junit" % "4.13.1"
 
-ThisBuild / scalaVersion := "2.12.11"
+ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(

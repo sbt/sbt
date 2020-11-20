@@ -15,13 +15,15 @@ import sbt.KeyRanks.{ DTask, Invisible }
 import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
-import sbt.internal.util._
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import Util._
 import sbt.util.Show
+import xsbti.VirtualFile
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   type Classpath = Seq[Attributed[File]]
+  type VirtualClasspath = Seq[Attributed[VirtualFile]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 
@@ -170,12 +172,11 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   def displayMasked(scoped: ScopedKey[_], mask: ScopeMask, showZeroConfig: Boolean): String =
     Scope.displayMasked(scoped.scope, scoped.key.label, mask, showZeroConfig)
 
-  def withColor(s: String, color: Option[String]): String = {
-    val useColor = ConsoleAppender.formatEnabledInEnv
-    color match {
-      case Some(c) if useColor => c + s + scala.Console.RESET
-      case _                   => s
-    }
+  def withColor(s: String, color: Option[String]): String =
+    withColor(s, color, useColor = ITerminal.isColorEnabled)
+  def withColor(s: String, color: Option[String], useColor: Boolean): String = color match {
+    case Some(c) if useColor => c + s + scala.Console.RESET
+    case _                   => s
   }
 
   override def deriveAllowed[T](s: Setting[T], allowDynamic: Boolean): Option[String] =
@@ -221,6 +222,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
     inputTaskDynMacroImpl,
     inputTaskMacroImpl,
     taskDynMacroImpl,
+    taskIfMacroImpl,
     taskMacroImpl
   }
   import std._
@@ -234,6 +236,48 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
   def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] =
     macro inputTaskDynMacroImpl[T]
+  def taskIf[T](a: T): Def.Initialize[Task[T]] = macro taskIfMacroImpl[T]
+
+  private[sbt] def selectITask[A, B](
+      fab: Initialize[Task[Either[A, B]]],
+      fin: Initialize[Task[A => B]]
+  ): Initialize[Task[B]] =
+    fab.zipWith(fin)((ab, in) => TaskExtra.select(ab, in))
+
+  import Scoped.syntax._
+
+  // derived from select
+  private[sbt] def branchS[A, B, C](
+      x: Def.Initialize[Task[Either[A, B]]]
+  )(l: Def.Initialize[Task[A => C]])(r: Def.Initialize[Task[B => C]]): Def.Initialize[Task[C]] = {
+    val lhs = {
+      val innerLhs: Def.Initialize[Task[Either[A, Either[B, C]]]] =
+        x.map((fab: Either[A, B]) => fab.right.map(Left(_)))
+      val innerRhs: Def.Initialize[Task[A => Either[B, C]]] =
+        l.map((fn: A => C) => fn.andThen(Right(_)))
+      selectITask(innerLhs, innerRhs)
+    }
+    selectITask(lhs, r)
+  }
+
+  // derived from select
+  def ifS[A](
+      x: Def.Initialize[Task[Boolean]]
+  )(t: Def.Initialize[Task[A]])(e: Def.Initialize[Task[A]]): Def.Initialize[Task[A]] = {
+    val condition: Def.Initialize[Task[Either[Unit, Unit]]] =
+      x.map((p: Boolean) => if (p) Left(()) else Right(()))
+    val left: Def.Initialize[Task[Unit => A]] =
+      t.map((a: A) => { _ => a })
+    val right: Def.Initialize[Task[Unit => A]] =
+      e.map((a: A) => { _ => a })
+    branchS(condition)(left)(right)
+  }
+
+  /** Returns `PromiseWrap[A]`, which is a wrapper around `scala.concurrent.Promise`.
+   * When a task is typed promise (e.g. `Def.Initialize[Task[PromiseWrap[A]]]`),an implicit
+   * method called `await` is injected which will run in a thread outside of concurrent restriction budget.
+   */
+  def promise[A]: PromiseWrap[A] = new PromiseWrap[A]()
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T
@@ -275,6 +319,16 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   class InitTaskOps[T](private val x: Initialize[Task[T]]) extends AnyVal {
     def toTaskable: Taskable[T] = x
   }
+
+  /** This works around Scala 2.12.12's
+   * "a pure expression does nothing in statement position"
+   *
+   * {{{
+   * Def.unit(copyResources.value)
+   * Def.unit(compile.value)
+   * }}}
+   */
+  def unit(a: Any): Unit = ()
 
   private[sbt] def dummy[T: Manifest](name: String, description: String): (TaskKey[T], Task[T]) =
     (TaskKey[T](name, description, DTask), dummyTask(name))

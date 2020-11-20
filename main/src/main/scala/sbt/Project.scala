@@ -14,6 +14,7 @@ import Project._
 import BasicKeys.serverLogLevel
 import Keys.{
   stateBuildStructure,
+  colorShellPrompt,
   commands,
   configuration,
   historyPath,
@@ -23,12 +24,14 @@ import Keys.{
   templateResolverInfos,
   autoStartServer,
   serverHost,
+  serverIdleTimeout,
   serverLog,
   serverPort,
   serverAuthentication,
   serverConnectionType,
   fullServerHandlers,
   logLevel,
+  windowsServerSecurityLevel,
 }
 import Scope.{ Global, ThisScope }
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
@@ -50,6 +53,8 @@ import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
 
 import language.experimental.macros
+import scala.concurrent.TimeoutException
+import scala.concurrent.duration.FiniteDuration
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
 
@@ -508,30 +513,36 @@ object Project extends ProjectExtra {
     val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
+    val newPrompt = get(colorShellPrompt)
     val trs = (templateResolverInfos in Global get structure.data).toList.flatten
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
     val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
-    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers)
+    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers in ThisBuild)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(
       s.definedCommands,
       projectCommand
     )
+    val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
     val newAttrs =
       s.attributes
         .put(historyPath.key, history)
+        .put(windowsServerSecurityLevel.key, winSecurityLevel)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
         .setCond(serverAuthentication.key, authentication)
         .setCond(serverConnectionType.key, connectionType)
+        .setCond(serverIdleTimeout.key, timeout)
         .put(historyPath.key, history)
         .put(templateResolverInfos.key, trs)
         .setCond(shellPrompt.key, prompt)
+        .setCond(colorShellPrompt.key, newPrompt)
         .setCond(serverLogLevel, srvLogLevel)
         .setCond(fullServerHandlers.key, hs)
     s.copy(
@@ -865,6 +876,36 @@ object Project extends ProjectExtra {
     }
   }
 
+  /** implicitly injected to tasks that return PromiseWrap.
+   */
+  final class RichTaskPromise[A](i: Def.Initialize[Task[PromiseWrap[A]]]) {
+    import scala.concurrent.Await
+    import scala.concurrent.duration._
+
+    def await: Def.Initialize[Task[A]] = await(Duration.Inf)
+
+    def await(atMost: Duration): Def.Initialize[Task[A]] =
+      (Def
+        .task {
+          val p = i.value
+          var result: Option[A] = None
+          if (atMost == Duration.Inf) {
+            while (result.isEmpty) {
+              try {
+                result = Some(Await.result(p.underlying.future, Duration("1s")))
+                Thread.sleep(10)
+              } catch {
+                case _: TimeoutException => ()
+              }
+            }
+          } else {
+            result = Some(Await.result(p.underlying.future, atMost))
+          }
+          result.get
+        })
+        .tag(Tags.Sentinel)
+  }
+
   import scala.reflect.macros._
 
   def projectMacroImpl(c: blackbox.Context): c.Expr[Project] = {
@@ -906,6 +947,11 @@ trait ProjectExtra {
 
   implicit def richTaskSessionVar[T](init: Initialize[Task[T]]): Project.RichTaskSessionVar[T] =
     new Project.RichTaskSessionVar(init)
+
+  implicit def sbtRichTaskPromise[A](
+      i: Initialize[Task[PromiseWrap[A]]]
+  ): Project.RichTaskPromise[A] =
+    new Project.RichTaskPromise(i)
 
   def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)

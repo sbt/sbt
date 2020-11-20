@@ -16,7 +16,7 @@ import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.inc.classpath.ClasspathUtilities
+import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
@@ -52,7 +52,7 @@ private[sbt] object ClassLoaders {
       fullCP = fullCP,
       allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
       cache = extendedClassLoaderCache.value,
-      resources = ClasspathUtilities.createClasspathResources(fullCP.map(_._1), si),
+      resources = ClasspathUtil.createClasspathResources(fullCP.map(_._1.toPath), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
       scope = resolvedScoped.value.scope,
       logger = logger,
@@ -94,6 +94,7 @@ private[sbt] object ClassLoaders {
         val newLoader =
           (classpath: Seq[File]) => {
             val mappings = classpath.map(f => f.getName -> f).toMap
+            val cp = classpath.map(_.toPath)
             val transformedDependencies = allDeps.map(f => mappings.getOrElse(f.getName, f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
@@ -101,7 +102,7 @@ private[sbt] object ClassLoaders {
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
               allDependenciesSet = transformedDependencies.toSet,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
-              resources = ClasspathUtilities.createClasspathResources(classpath, instance),
+              resources = ClasspathUtil.createClasspathResources(cp, instance),
               tmp = taskTemporaryDirectory.value: @sbtUnchecked,
               scope = resolvedScope,
               logger = logger,
