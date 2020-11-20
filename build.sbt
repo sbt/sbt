@@ -1362,7 +1362,9 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
     scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
     scalaVersion.value,
     version.value,
-    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value.map(_.data),
+    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value
+      .map(_.data)
+      .filterNot(_.getName.contains("scala-compiler")),
     streams.value.log
   )
 }
