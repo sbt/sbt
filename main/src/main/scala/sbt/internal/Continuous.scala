@@ -1344,8 +1344,7 @@ private[sbt] object ContinuousCommands {
   private[sbt] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
     val cs = watchState(state, channel)
     StandardMain.exchange.channelForName(channel).foreach { c =>
-      c.terminal.setPrompt(Prompt.Watch)
-      c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+      c.terminal.setPrompt(Prompt.Pending)
     }
     val postState = state.get(watchStates) match {
       case None     => state
@@ -1360,7 +1359,10 @@ private[sbt] object ContinuousCommands {
         cs.callbacks.onExit()
         StandardMain.exchange
           .channelForName(channel)
-          .foreach(_.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel)))))
+          .foreach { c =>
+            c.terminal.setPrompt(Prompt.Pending)
+            c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+          }
         afterWatchState.get(watchStates) match {
           case None    => afterWatchState
           case Some(w) => afterWatchState.put(watchStates, w - channel)
