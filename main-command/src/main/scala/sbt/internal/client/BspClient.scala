@@ -7,20 +7,12 @@
 
 package sbt.internal.client
 
-import java.io.{ File, InputStream, OutputStream }
+import java.io.{ InputStream, OutputStream }
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.Exit
-import sbt.io.syntax._
-import sbt.protocol.ClientSocket
-
 import scala.util.control.NonFatal
-import java.lang.ProcessBuilder.Redirect
-
-class BspClient private (sbtServer: Socket) {
-  private def run(): Exit = Exit(BspClient.bspRun(sbtServer))
-}
 
 object BspClient {
   private[sbt] def bspRun(sbtServer: Socket): Int = {
@@ -72,52 +64,6 @@ object BspClient {
     thread
   }
   def run(configuration: xsbti.AppConfiguration): Exit = {
-    val baseDirectory = configuration.baseDirectory
-    val portFile = baseDirectory / "project" / "target" / "active.json"
-    try {
-      if (!portFile.exists) {
-        forkServer(baseDirectory, portFile)
-      }
-      val (socket, _) = ClientSocket.socket(portFile)
-      new BspClient(socket).run()
-    } catch {
-      case NonFatal(_) => Exit(1)
-    }
-  }
-
-  /**
-   * Forks another instance of sbt in the background.
-   * This instance must be shutdown explicitly via `sbt -client shutdown`
-   */
-  def forkServer(baseDirectory: File, portfile: File): Unit = {
-    val args = List("--detach-stdio")
-    val launchOpts = List(
-      "-Dfile.encoding=UTF-8",
-      "-Dsbt.io.virtual=true",
-      "-Xms1024M",
-      "-Xmx1024M",
-      "-Xss4M",
-      "-XX:ReservedCodeCacheSize=128m"
-    )
-
-    val launcherJarString = sys.props.get("java.class.path") match {
-      case Some(cp) =>
-        cp.split(File.pathSeparator)
-          .headOption
-          .getOrElse(sys.error("launcher JAR classpath not found"))
-      case _ => sys.error("property java.class.path expected")
-    }
-
-    val cmd = "java" :: launchOpts ::: "-jar" :: launcherJarString :: args
-    val processBuilder =
-      new ProcessBuilder(cmd: _*)
-        .directory(baseDirectory)
-        .redirectInput(Redirect.PIPE)
-
-    val process = processBuilder.start()
-
-    while (process.isAlive && !portfile.exists) Thread.sleep(100)
-
-    if (!process.isAlive) sys.error("sbt server exited")
+    Exit(NetworkClient.run(configuration, configuration.arguments.toList, redirectOutput = true))
   }
 }
