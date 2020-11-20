@@ -50,7 +50,6 @@ $ exists target/scala-2.12/test-classes/MyTest.class
 $ exists target/scala-2.12/test-classes/MyTest$.class
 $ exists target/scala-2.12/test-zinc/inc_compile_2.12.zip
 
-> debug
 > checkIterations 1
 
 # Artifacts can be pushed twice (enabled overriding)
