@@ -1,0 +1,2 @@
+> show sbtVersion
+# we just want to test that the project loads

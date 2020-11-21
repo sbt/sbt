@@ -2497,14 +2497,15 @@ object Classpaths {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
         val app = appConfiguration.value
-        val sbtCp0 = app.provider.mainClasspath.toList
-        val sbtCp = sbtCp0 map { Attributed.blank(_) }
+        def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
+        val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+        val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath).map(Attributed.blank)
         val mjars = managedJars(
           classpathConfiguration.value,
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force) mjars ++ sbtCp
+        if (isMeta && !force) (mjars ++ sbtCp).distinct
         else mjars
       },
       exportedProducts := ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value,
