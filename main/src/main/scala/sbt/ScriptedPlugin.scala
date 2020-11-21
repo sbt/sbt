@@ -23,6 +23,7 @@ import sbt.io.syntax._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.nio.file.{ Glob, RecursiveGlob }
+import scala.util.Try
 
 object ScriptedPlugin extends AutoPlugin {
 
@@ -79,7 +80,15 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
-    scriptedBatchExecution := CrossVersionUtil.binarySbtVersion(scriptedSbt.value) != "0.13",
+    scriptedBatchExecution := {
+      val binVersion = CrossVersionUtil.binarySbtVersion(scriptedSbt.value)
+      val versionParts =
+        binVersion.split("\\.").flatMap(p => Try(p.takeWhile(_.isDigit).toInt).toOption).take(2)
+      versionParts match {
+        case Array(major, minor) => major > 1 || (major == 1 && minor >= 4)
+        case _                   => false
+      }
+    },
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
