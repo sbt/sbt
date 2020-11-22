@@ -50,10 +50,19 @@ object RemoteCache {
       .toList
       .map(_.take(commitLength))
 
+  lazy val defaultCacheLocation: File = SysProp.globalLocalCache
+
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     remoteCacheId := "",
     remoteCacheIdCandidates := Nil,
-    pushRemoteCacheTo :== None
+    pushRemoteCacheTo :== None,
+    localCacheDirectory :== defaultCacheLocation,
+    pushRemoteCache / ivyPaths := {
+      val app = appConfiguration.value
+      val base = app.baseDirectory.getCanonicalFile
+      // base is used only to resolve relative paths, which should never happen
+      IvyPaths(base, localCacheDirectory.value),
+    },
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
@@ -114,7 +123,7 @@ object RemoteCache {
     remoteCacheResolvers := pushRemoteCacheTo.value.toVector,
   ) ++ inTask(pushRemoteCache)(
     Seq(
-      ivyPaths := IvyPaths(baseDirectory.value, crossTarget.value / "remote-cache"),
+      ivyPaths := (Scope.Global / pushRemoteCache / ivyPaths).value,
       ivyConfiguration := {
         val config0 = Classpaths.mkIvyConfiguration.value
         config0
