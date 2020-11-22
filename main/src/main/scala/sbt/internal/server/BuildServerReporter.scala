@@ -28,6 +28,9 @@ import scala.collection.mutable
 
 sealed trait BuildServerReporter extends Reporter {
   private final val sigFilesWritten = "[sig files written]"
+  private final val pureExpression = "a pure expression does nothing in statement position"
+
+  protected def isMetaBuild: Boolean
 
   protected def logger: ManagedLogger
 
@@ -52,6 +55,9 @@ sealed trait BuildServerReporter extends Reporter {
   override def log(problem: Problem): Unit = {
     if (problem.message == sigFilesWritten) {
       logger.debug(sigFilesWritten)
+    } else if (isMetaBuild && problem.message.startsWith(pureExpression)) {
+      // work around https://github.com/scala/bug/issues/12112 by ignoring it in the reporter
+      logger.debug(problem.message)
     } else {
       publishDiagnostic(problem)
       underlying.log(problem)
@@ -64,6 +70,7 @@ sealed trait BuildServerReporter extends Reporter {
 final class BuildServerReporterImpl(
     buildTarget: BuildTargetIdentifier,
     converter: FileConverter,
+    protected override val isMetaBuild: Boolean,
     protected override val logger: ManagedLogger,
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
@@ -159,6 +166,7 @@ final class BuildServerReporterImpl(
 }
 
 final class BuildServerForwarder(
+    protected override val isMetaBuild: Boolean,
     protected override val logger: ManagedLogger,
     protected override val underlying: Reporter
 ) extends BuildServerReporter {

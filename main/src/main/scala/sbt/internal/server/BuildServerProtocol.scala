@@ -204,10 +204,11 @@ object BuildServerProtocol {
       val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
+      val meta = isMetaBuild.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, converter, logger, underlying)
+        new BuildServerReporterImpl(targetId, converter, meta, logger, underlying)
       } else {
-        new BuildServerForwarder(logger, underlying)
+        new BuildServerForwarder(meta, logger, underlying)
       }
     }
   )
