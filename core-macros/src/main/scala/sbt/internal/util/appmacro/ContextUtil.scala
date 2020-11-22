@@ -312,16 +312,6 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
               case Converted.Failure(p, m)       => ctx.abort(p, m)
               case _: Converted.NotApplicable[_] => super.transform(tree)
             }
-          // try to workaround https://github.com/scala/bug/issues/12112 by removing raw Ident(_) in blocks
-          case Block(stats0, expr0) =>
-            val stats = stats0 flatMap { stat0 =>
-              val stat = super.transform(stat0)
-              stat match {
-                case Typed(ident @ Ident(_), _) if ident.symbol.isSynthetic => None
-                case _                                                      => Some(stat)
-              }
-            }
-            Block(stats, super.transform(expr0))
           case _ => super.transform(tree)
         }
     }
