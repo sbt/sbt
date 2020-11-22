@@ -321,8 +321,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
                 case _                                                      => Some(stat)
               }
             }
-            val expr = super.transform(expr0)
-            Block(stats, expr).setType(expr.tpe)
+            Block(stats, super.transform(expr0))
           case _ => super.transform(tree)
         }
     }
