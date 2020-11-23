@@ -162,7 +162,7 @@ private[sbt] final class CommandExchange {
       e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
     }
     currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
@@ -447,7 +447,7 @@ private[sbt] final class CommandExchange {
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
     } else {
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
     }
   }
 
