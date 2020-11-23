@@ -222,11 +222,9 @@ object MainLoop {
         val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = ITerminal.set(c.terminal)
-            val prevPrompt = c.terminal.prompt
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
             (() => {
-              if (c.terminal.prompt != Prompt.Watch) c.terminal.setPrompt(prevPrompt)
               ITerminal.set(prevTerminal)
               c.terminal.flush()
             }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
