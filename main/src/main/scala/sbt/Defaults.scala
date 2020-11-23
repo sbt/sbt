@@ -383,6 +383,7 @@ object Defaults extends BuildCommon {
       },
       serverHandlers :== Nil,
       windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
+      serverUseJni := BootServerSocket.requiresJNI || SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
