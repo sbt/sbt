@@ -130,6 +130,7 @@ private[sbt] object xMain {
       case _: ServerAlreadyBootingException =>
         if (SysProp.forceServerStart) (None, None)
         else (None, Some(Exit(2)))
+      case _: UnsatisfiedLinkError => (None, None)
     }
 }
 

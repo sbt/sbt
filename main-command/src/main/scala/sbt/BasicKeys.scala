@@ -83,6 +83,12 @@ object BasicKeys {
       "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
       10000
     )
+  val serverUseJni =
+    AttributeKey[Boolean](
+      "serverUseJni",
+      "Toggles whether to use the jna or jni implementation in ipcsocket.",
+      10000
+    )
 
   val serverIdleTimeout =
     AttributeKey[Option[FiniteDuration]](

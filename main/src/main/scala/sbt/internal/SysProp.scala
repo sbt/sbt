@@ -178,6 +178,8 @@ object SysProp {
     }
   }
 
+  def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
+
   private[this] def file(value: String): File = new File(value)
   private[this] def home: File = file(sys.props("user.home"))
 
