@@ -105,6 +105,7 @@ object Keys {
   val serverConnectionType = SettingKey(BasicKeys.serverConnectionType)
   val serverIdleTimeout = SettingKey(BasicKeys.serverIdleTimeout)
   val windowsServerSecurityLevel = SettingKey(BasicKeys.windowsServerSecurityLevel)
+  val serverUseJni = SettingKey(BasicKeys.serverUseJni)
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
