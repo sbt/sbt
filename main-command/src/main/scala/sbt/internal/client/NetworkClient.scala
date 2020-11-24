@@ -1228,7 +1228,8 @@ object NetworkClient {
     val err = new PrintStream(term.errorStream)
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
-    val client = simpleClient(args, term.inputStream, out, err, useJNI = false)
+    val useJNI = BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+    val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }
   private class AccessDeniedException extends Throwable
