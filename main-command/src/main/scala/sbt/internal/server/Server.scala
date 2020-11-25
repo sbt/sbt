@@ -71,7 +71,8 @@ private[sbt] object Server {
                   )
                 )
               case ConnectionType.Local =>
-                val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
+                val maxSocketLength =
+                  UnixDomainSocketLibraryProvider.maxSocketLength(connection.useJni) - 1
                 val path = socketfile.getAbsolutePath
                 if (path.length > maxSocketLength)
                   sys.error(
