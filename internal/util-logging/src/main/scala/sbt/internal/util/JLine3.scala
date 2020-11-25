@@ -172,7 +172,7 @@ private[sbt] object JLine3 {
           if (buffer.isEmpty && !peek) fillBuffer()
           (if (peek) buffer.peek else buffer.take) match {
             case null => -2
-            case i    => if (i == -3) throw new ClosedException else i
+            case i    => if (i == -3) throw new InterruptedException else i
           }
         }
         override def peek(timeout: Long): Int = buffer.peek() match {
