@@ -307,17 +307,11 @@ private[sbt] object LibraryManagement {
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
   ): UpdateReport = {
-    import sjsonnew.shaded.scalajson.ast.unsafe.JValue
     import sbt.librarymanagement.LibraryManagementCodec._
     import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[JValue] =
-      sjsonnew.IsoString.iso(
-        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
-        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
-      )
     val exclName = "exclude_classifiers"
     val file = out / exclName
-    val store = new FileBasedStore(file, sjsonnew.support.scalajson.unsafe.Converter)
+    val store = new FileBasedStore(file)
     lock(
       out / (exclName + ".lock"),
       new Callable[UpdateReport] {

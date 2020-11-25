@@ -12,16 +12,9 @@ import sbt.io.syntax._
 
 import CacheImplicits._
 
-import sjsonnew.IsoString
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-
-import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import org.scalatest.FlatSpec
 
 class CacheSpec extends FlatSpec {
-
-  implicit val isoString: IsoString[JValue] =
-    IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   "A cache" should "NOT throw an exception if read without being written previously" in {
     testCache[String, Int] {
@@ -80,7 +73,7 @@ class CacheSpec extends FlatSpec {
       implicit cache: Cache[K, V]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>
-      val store = new FileBasedStore(tmp / "cache-store", Converter)
+      val store = new FileBasedStore(tmp / "cache-store")
       f(cache, store)
     }
 
