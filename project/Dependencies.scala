@@ -12,7 +12,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.4.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.4.0") // revert the swoval library dependency in build.sbt mainProj when this is next bumped
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.4.1")
   val zincVersion = nightlyVersion.getOrElse("1.4.3")

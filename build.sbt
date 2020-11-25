@@ -917,6 +917,7 @@ lazy val mainProj = (project in file("main"))
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
       case _                          => List()
     }),
+    libraryDependencies += "com.swoval" % "file-tree-views" % "2.1.6",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
