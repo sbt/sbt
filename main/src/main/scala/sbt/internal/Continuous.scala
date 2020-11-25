@@ -116,7 +116,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           case None    => StandardMain.exchange.run(s) -> ConsoleChannel.defaultName
         }
         val ws = ContinuousCommands.setupWatchState(channel, initialCount, commands, s1)
-        s"${ContinuousCommands.runWatch} $channel" :: ws
+        s"${ContinuousCommands.runWatch} $channel" :: s"${ContinuousCommands.waitWatch} $channel" :: ws
     }
 
   @deprecated("The input task version of watch is no longer available", "1.4.0")
@@ -1279,7 +1279,7 @@ private[sbt] object ContinuousCommands {
       case None => state
       case Some(cs) =>
         val pre = StashOnFailure :: s"$preWatch $channel" :: Nil
-        val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: s"$waitWatch $channel" :: Nil
+        val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: Nil
         pre ::: cs.commands.toList ::: post ::: state
     }
   }
