@@ -7,7 +7,8 @@
 
 package sbt.util
 
-import java.io.{ Closeable, OutputStream }
+import java.io.{ Closeable, File, OutputStream }
+
 import sjsonnew.{ IsoString, JsonWriter, SupportConverter }
 import sbt.io.Using
 
@@ -30,4 +31,17 @@ class PlainOutput[J: IsoString](output: OutputStream, converter: SupportConverte
   }
 
   def close() = output.close()
+}
+
+class FileOutput(file: File) extends Output {
+  override def write[T: JsonWriter](value: T): Unit = {
+    val js = sjsonnew.support.scalajson.unsafe.Converter.toJson(value).get
+    Using.fileOutputStream(append = false)(file) { stream =>
+      val out = new java.io.PrintWriter(stream)
+      sjsonnew.support.scalajson.unsafe.CompactPrinter.print(js, out)
+      out.flush()
+    }
+  }
+
+  def close() = ()
 }

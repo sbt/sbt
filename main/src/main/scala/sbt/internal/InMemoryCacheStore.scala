@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicReference
 import com.github.benmanes.caffeine.cache.{ Cache, Caffeine, Weigher }
 import sbt.io.IO
 import sbt.util.{ CacheStore, CacheStoreFactory, DirectoryStoreFactory }
-import sjsonnew.{ IsoString, JsonReader, JsonWriter, SupportConverter }
+import sjsonnew.{ JsonReader, JsonWriter }
 
 private[sbt] object InMemoryCacheStore {
   private[this] class InMemoryCacheStore(maxSize: Long) extends AutoCloseable {
@@ -83,28 +83,26 @@ private[sbt] object InMemoryCacheStore {
       cacheStore.close()
     }
   }
-  private[this] def factory[J: IsoString](
+  private[this] def factory(
       store: InMemoryCacheStore,
-      path: Path,
-      converter: SupportConverter[J]
+      path: Path
   ): CacheStoreFactory = {
-    val delegate = new DirectoryStoreFactory(path.toFile, converter)
+    val delegate = new DirectoryStoreFactory(path.toFile)
     new CacheStoreFactory {
       override def make(identifier: String): CacheStore =
         new CacheStoreImpl(path.resolve(identifier), store, delegate.make(identifier))
       override def sub(identifier: String): CacheStoreFactory =
-        factory(store, path.resolve(identifier), converter)
+        factory(store, path.resolve(identifier))
     }
   }
   private[sbt] trait CacheStoreFactoryFactory extends AutoCloseable {
-    def apply[J: IsoString](path: Path, supportConverter: SupportConverter[J]): CacheStoreFactory
+    def apply(path: Path): CacheStoreFactory
   }
   private[this] class CacheStoreFactoryFactoryImpl(size: Long) extends CacheStoreFactoryFactory {
     private[this] val storeRef = new AtomicReference[InMemoryCacheStore]
     override def close(): Unit = Option(storeRef.get).foreach(_.close())
-    def apply[J: IsoString](
+    def apply(
         path: Path,
-        supportConverter: SupportConverter[J]
     ): CacheStoreFactory = {
       val store = storeRef.get match {
         case null =>
@@ -119,14 +117,13 @@ private[sbt] object InMemoryCacheStore {
           }
         case s => s
       }
-      factory(store, path, supportConverter)
+      factory(store, path)
     }
   }
   private[this] object DirectoryFactory extends CacheStoreFactoryFactory {
-    override def apply[J: IsoString](
+    override def apply(
         path: Path,
-        supportConverter: SupportConverter[J]
-    ): CacheStoreFactory = new DirectoryStoreFactory(path.toFile, supportConverter)
+    ): CacheStoreFactory = new DirectoryStoreFactory(path.toFile)
     override def close(): Unit = {}
   }
   def factory(size: Long): CacheStoreFactoryFactory =
