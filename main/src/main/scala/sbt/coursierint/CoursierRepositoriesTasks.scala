@@ -11,7 +11,6 @@ package coursierint
 import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.ScopeFilter.Make._
-import sbt.io.IO
 
 object CoursierRepositoriesTasks {
   private object CResolvers {
@@ -76,7 +75,7 @@ object CoursierRepositoriesTasks {
     val result2 =
       paths.ivyHome match {
         case Some(ivyHome) =>
-          val ivyHomeUri = IO.toURI(ivyHome).getPath
+          val ivyHomeUri = ivyHome.getPath
           result1 map {
             case r: FileRepository =>
               val ivyPatterns = r.patterns.ivyPatterns map {
