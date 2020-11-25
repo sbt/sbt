@@ -66,12 +66,13 @@ private[sbt] object Server {
                 addServerError(
                   new Win32NamedPipeServerSocket(
                     pipeName,
-                    false,
+                    connection.useJni,
                     connection.windowsServerSecurityLevel
                   )
                 )
               case ConnectionType.Local =>
-                val maxSocketLength = new UnixDomainSocketLibrary.SockaddrUn().sunPath.length - 1
+                val maxSocketLength =
+                  UnixDomainSocketLibraryProvider.maxSocketLength(connection.useJni) - 1
                 val path = socketfile.getAbsolutePath
                 if (path.length > maxSocketLength)
                   sys.error(
@@ -80,9 +81,9 @@ private[sbt] object Server {
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
                       s"Current path: ${path}"
                   )
-                tryClient(new UnixDomainSocket(path))
+                tryClient(new UnixDomainSocket(path, connection.useJni))
                 prepareSocketfile()
-                addServerError(new UnixDomainServerSocket(path))
+                addServerError(new UnixDomainServerSocket(path, connection.useJni))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
@@ -238,7 +239,8 @@ private[sbt] case class ServerConnection(
     socketfile: File,
     pipeName: String,
     appConfiguration: AppConfiguration,
-    windowsServerSecurityLevel: Int
+    windowsServerSecurityLevel: Int,
+    useJni: Boolean,
 ) {
   def shortName: String = {
     connectionType match {

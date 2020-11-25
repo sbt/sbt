@@ -12,7 +12,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.4.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.4.0") // revert the swoval library dependency in build.sbt mainProj when this is next bumped
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.4.1")
   val zincVersion = nightlyVersion.getOrElse("1.4.3")
@@ -26,7 +26,7 @@ object Dependencies {
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.1.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion

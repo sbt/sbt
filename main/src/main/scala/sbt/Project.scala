@@ -27,6 +27,7 @@ import Keys.{
   serverIdleTimeout,
   serverLog,
   serverPort,
+  serverUseJni,
   serverAuthentication,
   serverConnectionType,
   fullServerHandlers,
@@ -529,10 +530,12 @@ object Project extends ProjectExtra {
       projectCommand
     )
     val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
+    val useJni = get(serverUseJni).getOrElse(false)
     val newAttrs =
       s.attributes
         .put(historyPath.key, history)
         .put(windowsServerSecurityLevel.key, winSecurityLevel)
+        .put(serverUseJni.key, useJni)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
