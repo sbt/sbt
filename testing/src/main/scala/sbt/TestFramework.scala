@@ -288,14 +288,11 @@ object TestFramework {
     val interfaceJar = IO.classLocationPath(classOf[testing.Framework]).toFile
     val interfaceFilter = (name: String) =>
       name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.")
-    val notInterfaceFilter = (name: String) => !interfaceFilter(name)
     val dual = new DualLoader(
-      scalaInstance.loader,
-      notInterfaceFilter,
-      x => true,
+      scalaInstance.allJars.map(_.toURI.toURL),
       getClass.getClassLoader,
       interfaceFilter,
-      x => false
+      _ => false
     )
     val main = ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
     // TODO - There's actually an issue with the classpath facility such that unmanagedScalaInstances are not added
