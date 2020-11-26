@@ -1003,10 +1003,12 @@ object BuiltinCommands {
 
           val s1 = exchange.run(s0)
           val exec: Exec = getExec(s1, Duration.Inf)
-          val remaining: List[Exec] =
-            Exec(FailureWall, None) :: Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
-              s1.remainingCommands
-          val newState = s1.copy(remainingCommands = exec +: remaining)
+          val wait = s"${ContinuousCommands.waitWatch} $channel"
+          val onFailure =
+            s1.onFailure.map(of => if (of.commandLine == Shell) of.withCommandLine(wait) else of)
+          val waitExec = Exec(wait, None)
+          val remaining: List[Exec] = Exec(FailureWall, None) :: waitExec :: s1.remainingCommands
+          val newState = s1.copy(remainingCommands = exec +: remaining, onFailure = onFailure)
           if (exec.commandLine.trim.isEmpty) newState
           else newState.clearGlobalLog
         case _ => s0

@@ -121,6 +121,10 @@ object LineReader {
           // ignore
         }
         historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
+        val signalRegistration = terminal match {
+          case _: Terminal.ConsoleTerminal => Some(Signals.register(() => terminal.write(-1)))
+          case _                           => None
+        }
         try terminal.withRawInput {
           Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
         } catch {
@@ -132,6 +136,7 @@ object LineReader {
               _: UncheckedIOException =>
             throw new InterruptedException
         } finally {
+          signalRegistration.foreach(_.remove())
           terminal.prompt.reset()
           term.close()
         }
