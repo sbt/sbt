@@ -17,7 +17,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 
-import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
+import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.client.NetworkClient.Arguments
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
@@ -328,8 +328,15 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = List(arguments.sbtScript) ++ arguments.sbtArguments ++
-          List(BasicCommandStrings.DashDashDetachStdio, BasicCommandStrings.DashDashServer)
+        val cmd = arguments.sbtLaunchJar match {
+          case Some(lj) =>
+            List("java") ++ arguments.sbtArguments ++
+              List("-jar", lj, DashDashDetachStdio, DashDashServer)
+          case _ =>
+            List(arguments.sbtScript) ++ arguments.sbtArguments ++
+              List(DashDashDetachStdio, DashDashServer)
+        }
+
         val processBuilder =
           new ProcessBuilder(cmd: _*)
             .directory(arguments.baseDirectory)
@@ -1015,9 +1022,18 @@ object NetworkClient {
       val completionArguments: Seq[String],
       val sbtScript: String,
       val bsp: Boolean,
+      val sbtLaunchJar: Option[String],
   ) {
     def withBaseDirectory(file: File): Arguments =
-      new Arguments(file, sbtArguments, commandArguments, completionArguments, sbtScript, bsp)
+      new Arguments(
+        file,
+        sbtArguments,
+        commandArguments,
+        completionArguments,
+        sbtScript,
+        bsp,
+        sbtLaunchJar
+      )
   }
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"
@@ -1025,6 +1041,7 @@ object NetworkClient {
   private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
     var sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    var launchJar: Option[String] = None
     var bsp = false
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
@@ -1047,10 +1064,18 @@ object NetworkClient {
             .lastOption
             .map(_.replaceAllLiterally("%20", " "))
             .getOrElse(sbtScript)
-        case "-bsp" | "--bsp" => bsp = true
         case "--sbt-script" if i + 1 < sanitized.length =>
           i += 1
           sbtScript = sanitized(i).replaceAllLiterally("%20", " ")
+        case a if a.startsWith("--sbt-launch-jar=") =>
+          launchJar = a
+            .split("--sbt-launch-jar=")
+            .lastOption
+            .map(_.replaceAllLiterally("%20", " "))
+        case "--sbt-launch-jar" if i + 1 < sanitized.length =>
+          i += 1
+          launchJar = Option(sanitized(i).replaceAllLiterally("%20", " "))
+        case "-bsp" | "--bsp"        => bsp = true
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
@@ -1061,7 +1086,7 @@ object NetworkClient {
     }
     val base = new File("").getCanonicalFile
     if (!sbtArguments.contains("-Dsbt.io.virtual=true")) sbtArguments += "-Dsbt.io.virtual=true"
-    new Arguments(base, sbtArguments, commandArgs, completionArguments, sbtScript, bsp)
+    new Arguments(base, sbtArguments, commandArgs, completionArguments, sbtScript, bsp, launchJar)
   }
 
   def client(
