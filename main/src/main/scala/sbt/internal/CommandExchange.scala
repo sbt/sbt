@@ -190,6 +190,7 @@ private[sbt] final class CommandExchange {
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
     lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
     lazy val useJni = s.get(serverUseJni).getOrElse(false)
+    lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
@@ -225,6 +226,7 @@ private[sbt] final class CommandExchange {
         s.configuration,
         win32Level,
         useJni,
+        enableBsp,
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
