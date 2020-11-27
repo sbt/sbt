@@ -85,8 +85,7 @@ private[sbt] object xMain {
         ITerminal.withStreams(true, isSubProcess = detachStdio) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
-            NetworkClient.run(dealiasBaseDirectory(configuration), args)
-            Exit(0)
+            Exit(NetworkClient.run(dealiasBaseDirectory(configuration), args))
           } else {
             val state0 = StandardMain
               .initialState(
