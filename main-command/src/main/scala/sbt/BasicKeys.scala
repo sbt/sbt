@@ -97,6 +97,13 @@ object BasicKeys {
       10000
     )
 
+  val bspEnabled =
+    AttributeKey[Boolean](
+      "bspEnabled",
+      "Enable/Disable BSP for this build, project or configuration",
+      10000
+    )
+
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
   private[sbt] val serverLogLevel =

@@ -14,6 +14,7 @@ import Project._
 import BasicKeys.serverLogLevel
 import Keys.{
   stateBuildStructure,
+  bspEnabled,
   colorShellPrompt,
   commands,
   configuration,
@@ -519,6 +520,7 @@ object Project extends ProjectExtra {
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val enabledBsp: Option[Boolean] = get(bspEnabled)
     val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
@@ -536,6 +538,7 @@ object Project extends ProjectExtra {
         .put(historyPath.key, history)
         .put(windowsServerSecurityLevel.key, winSecurityLevel)
         .put(serverUseJni.key, useJni)
+        .setCond(bspEnabled.key, enabledBsp)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
