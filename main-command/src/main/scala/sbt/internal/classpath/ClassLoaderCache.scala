@@ -179,7 +179,8 @@ private[sbt] class ClassLoaderCache(
   }
   override def apply(files: List[File]): ClassLoader = {
     files match {
-      case d :: s :: Nil if d.getName.startsWith("dotty-library") =>
+      case d :: s :: Nil
+          if d.getName.startsWith("dotty-library") || d.getName.startsWith("scala3-library") =>
         apply(files, classOf[org.jline.terminal.Terminal].getClassLoader)
       case _ =>
         val key = new Key(files)
