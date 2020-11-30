@@ -26,6 +26,8 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import sbt.internal.FastTrackCommands
 import sbt.internal.SysProp
+import sbt.internal.util.DeprecatedJLine
+import sbt.internal.util.JLine3
 
 object MainLoop {
 
@@ -222,9 +224,18 @@ object MainLoop {
         val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = ITerminal.set(c.terminal)
+            val needsJLine3 =
+              if (Project.isProjectLoaded(state)) Project.extract(state).get(Keys.needsJLine3)
+              else Nil
+            val closeJLine = if (needsJLine3.contains(exec.commandLine)) {
+              val jlineTerminal = JLine3(c.terminal)
+              DeprecatedJLine.setTerminalOverride(jlineTerminal)
+              () => jlineTerminal.close()
+            } else () => ()
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
             (() => {
+              closeJLine()
               ITerminal.set(prevTerminal)
               c.terminal.flush()
             }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))

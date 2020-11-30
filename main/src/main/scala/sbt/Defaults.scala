@@ -335,6 +335,8 @@ object Defaults extends BuildCommon {
         if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
         else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
       },
+      inProcessTopClassLoader := classOf[sbt.testing.Framework].getClassLoader,
+      needsJLine3 := Nil,
       useSuperShell := { if (insideCI.value) false else ITerminal.console.isSupershellEnabled },
       superShellThreshold :== SysProp.supershellThreshold,
       superShellMaxTasks :== SysProp.supershellMaxTasks,
