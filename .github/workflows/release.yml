@@ -32,4 +32,8 @@ jobs:
         CI_RELEASE: publishSigned
         CI_SONATYPE_RELEASE: version
       run: |
+        echo use-agent >> ~/.gnupg/gpg.conf
+        echo pinentry-mode loopback >> ~/.gnupg/gpg.conf
+        echo allow-loopback-pinentry >> ~/.gnupg/gpg-agent.conf
+        echo RELOADAGENT | gpg-connect-agent
         sbt ci-release
