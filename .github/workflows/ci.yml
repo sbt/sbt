@@ -1,0 +1,26 @@
+name: CI
+on:
+  pull_request:
+  push:
+  schedule:
+  # 2am EST every Saturday
+  - cron: '0 7 * * 6'
+jobs:
+  build_scala2_12:
+    runs-on: ubuntu-latest
+    env:
+      # define Java options for both official sbt and sbt-extras
+      JAVA_OPTS: -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+      JVM_OPTS:  -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Setup Scala
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: "adopt@1.8"
+    - name: Coursier cache
+      uses: coursier/cache-action@v5
+    - name: Build and test
+      run: |
+        echo "hello"
