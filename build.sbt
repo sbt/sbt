@@ -1,17 +1,22 @@
 ThisBuild / organization := "com.eed3si9n"
-ThisBuild / version      := "0.6.1-SNAPSHOT"
+ThisBuild / dynverSonatypeSnapshots := true
+ThisBuild / version := {
+  val orig = (ThisBuild / version).value
+  if (orig.endsWith("-SNAPSHOT")) "0.7.0-SNAPSHOT"
+  else orig
+}
 ThisBuild / description  := "sbt plugin to define project matrix for cross building"
 ThisBuild / licenses     := Seq("MIT License" -> url("https://github.com/sbt/sbt-projectmatrix/blob/master/LICENSE"))
 
 lazy val root = (project in file("."))
   .enablePlugins(SbtPlugin)
   .settings(
-    sbtPlugin := true,
     name := "sbt-projectmatrix",
+    pluginCrossBuild / sbtVersion := "1.2.8",
     scalacOptions := Seq("-deprecation", "-unchecked"),
     publishMavenStyle := false,
-    bintrayOrganization in bintray := None,
     bintrayRepository := "sbt-plugins",
+    publishTo := (bintray / publishTo).value,
     scriptedLaunchOpts := { scriptedLaunchOpts.value ++
       Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
     },
