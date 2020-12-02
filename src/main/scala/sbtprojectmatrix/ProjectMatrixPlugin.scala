@@ -5,10 +5,16 @@ import internal._
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.language.experimental.macros
 
+trait ProjectMatrixKeys {
+    val virtualAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
+}
+
+object ProjectMatrixKeys extends ProjectMatrixKeys
+
 object ProjectMatrixPlugin extends AutoPlugin {
   override val requires = sbt.plugins.CorePlugin
   override val trigger = allRequirements
-  object autoImport {
+  object autoImport extends ProjectMatrixKeys {
     def projectMatrix: ProjectMatrix = macro ProjectMatrix.projectMatrixMacroImpl
 
     implicit def matrixClasspathDependency[T](

@@ -8,6 +8,8 @@ import Keys._
 import scala.util.Try
 import sbt.internal.inc.ReflectUtilities
 
+import sbtprojectmatrix.ProjectMatrixKeys
+
 /**
  * A project matrix is an implementation of a composite project
  * that represents cross building across some axis (such as platform)
@@ -261,6 +263,7 @@ object ProjectMatrix {
             inConfig(Compile)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             projectDependencies := projectDependenciesTask.value,
+            ProjectMatrixKeys.virtualAxes := axes
           )
           .settings(self.settings)
           .configure(transforms: _*)
