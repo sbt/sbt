@@ -1,16 +1,18 @@
 lazy val check = taskKey[Unit]("")
-
-val dottyVersion = "3.0.0-M1"
-ThisBuild / resolvers += "scala-integration" at "https://scala-ci.typesafe.com/artifactory/scala-integration/"
-// TODO use 2.13.4 when it's out
-lazy val scala213 = "2.13.4-bin-aeee8f0"
+lazy val scala3 = "3.0.0-M1"
+lazy val scala213 = "2.13.4"
 
 lazy val fooApp = (projectMatrix in file("foo-app"))
   .dependsOn(fooCore)
   .settings(
     name := "foo app",
   )
-  .jvmPlatform(scalaVersions = Seq(dottyVersion))
+  .jvmPlatform(scalaVersions = Seq(scala3))
+
+lazy val fooApp3 = fooApp.jvm(scala3)
+  .settings(
+    test := { () },
+  )
 
 lazy val fooCore = (projectMatrix in file("foo-core"))
   .settings(
@@ -29,7 +31,7 @@ lazy val barCore = (projectMatrix in file("bar-core"))
   .settings(
     name := "bar core",
   )
-  .jvmPlatform(scalaVersions = Seq(dottyVersion))
+  .jvmPlatform(scalaVersions = Seq(scala3))
 
 // choose 2.13 when bazCore offers both 2.13 and Dotty
 lazy val bazApp = (projectMatrix in file("baz-app"))
@@ -51,4 +53,4 @@ lazy val bazCore = (projectMatrix in file("baz-core"))
     name := "baz core",
     exportJars := true,
   )
-  .jvmPlatform(scalaVersions = Seq(scala213, dottyVersion))
+  .jvmPlatform(scalaVersions = Seq(scala213, scala3))

@@ -280,34 +280,22 @@ object ProjectMatrix {
       val ref = thisProjectRef.value
       val data = settingsData.value
       val deps = buildDependencies.value
-      val sbtV = VersionNumber(sbtVersion.value)
-
-      if (sbtV._1.getOrElse(0L) == 1 && (sbtV._2.getOrElse(0L) < 4)) {
-        deps.classpath(ref) flatMap { dep =>
-          val depProjIdOpt = (dep.project / projectID).get(data)
-          val depSVOpt = (dep.project / scalaVersion).get(data)
-          val depSBVOpt = (dep.project / scalaBinaryVersion).get(data)
-          val depCrossOpt = (dep.project / crossVersion).get(data)
-          (depProjIdOpt, depSVOpt, depSBVOpt, depCrossOpt) match {
-            case (Some(depProjId), Some(depSV), Some(depSBV), Some(depCross)) =>
-              if (sbv == depSBV || depCross != CrossVersion.binary)
-                Some(
-                  depProjId.withConfigurations(dep.configuration)
-                    .withExplicitArtifacts(Vector.empty)
-                )
-              else if (VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) && depCross == CrossVersion.binary)
-                Some(
-                  depProjId
-                    .withCrossVersion(CrossVersion.constant(depSBV))
-                    .withConfigurations(dep.configuration)
-                    .withExplicitArtifacts(Vector.empty)
-                )
-              else sys.error(s"scalaBinaryVersion mismatch: expected $sbv but found ${depSBV} in $depProjId")
-            case _ => None
+      deps.classpath(ref) flatMap { dep =>
+        for {
+          depProjId <- (dep.project / projectID).get(data)
+          depSBV <- (dep.project / scalaBinaryVersion).get(data)
+          depCross <- (dep.project / crossVersion).get(data)
+        } yield {
+          depCross match {
+            case b: CrossVersion.Binary if VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
+              depProjId
+                .withCrossVersion(CrossVersion.constant(depSBV))
+                .withConfigurations(dep.configuration)
+                .withExplicitArtifacts(Vector.empty)
+            case _ =>
+              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
           }
         }
-      } else {
-        orig
       }
     }
 
