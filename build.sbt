@@ -6,6 +6,7 @@ ThisBuild / version := {
   else orig
 }
 ThisBuild / description  := "sbt plugin to define project matrix for cross building"
+ThisBuild / homepage     := Some(url("https://github.com/sbt/sbt-projectmatrix")),
 ThisBuild / licenses     := Seq("MIT License" -> url("https://github.com/sbt/sbt-projectmatrix/blob/master/LICENSE"))
 
 lazy val root = (project in file("."))
