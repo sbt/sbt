@@ -1,5 +1,6 @@
 lazy val check = taskKey[Unit]("")
-lazy val scala3 = "3.0.0-M1"
+lazy val scala3M1 = "3.0.0-M1"
+lazy val scala3M2 = "3.0.0-M2"
 lazy val scala213 = "2.13.4"
 
 lazy val fooApp = (projectMatrix in file("foo-app"))
@@ -7,9 +8,9 @@ lazy val fooApp = (projectMatrix in file("foo-app"))
   .settings(
     name := "foo app",
   )
-  .jvmPlatform(scalaVersions = Seq(scala3))
+  .jvmPlatform(scalaVersions = Seq(scala3M1, scala3M2))
 
-lazy val fooApp3 = fooApp.jvm(scala3)
+lazy val fooApp3 = fooApp.jvm(scala3M1)
   .settings(
     test := { () },
   )
@@ -31,7 +32,7 @@ lazy val barCore = (projectMatrix in file("bar-core"))
   .settings(
     name := "bar core",
   )
-  .jvmPlatform(scalaVersions = Seq(scala3))
+  .jvmPlatform(scalaVersions = Seq(scala3M2))
 
 // choose 2.13 when bazCore offers both 2.13 and Dotty
 lazy val bazApp = (projectMatrix in file("baz-app"))
@@ -53,4 +54,4 @@ lazy val bazCore = (projectMatrix in file("baz-core"))
     name := "baz core",
     exportJars := true,
   )
-  .jvmPlatform(scalaVersions = Seq(scala213, scala3))
+  .jvmPlatform(scalaVersions = Seq(scala213, scala3M1))

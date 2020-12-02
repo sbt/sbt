@@ -434,7 +434,7 @@ object ProjectMatrix {
     private final class AxisBaseProjectFinder(axisValues: Seq[VirtualAxis]) extends ProjectFinder {
       def get: Seq[Project] = filterProjects(axisValues)
       def apply(sv: String): Project =
-        filterProjects(true, axisValues ++ Seq(VirtualAxis.scalaPartialVersion(sv))).headOption
+        filterProjects(true, axisValues ++ Seq(VirtualAxis.scalaABIVersion(sv))).headOption
         .getOrElse(sys.error(s"project matching $axisValues and $sv was not found"))
       def apply(autoScalaLibrary: Boolean): Project =
         filterProjects(autoScalaLibrary, axisValues).headOption
@@ -467,7 +467,7 @@ object ProjectMatrix {
     ): ProjectMatrix =
       if (autoScalaLibrary) {
         scalaVersions.foldLeft(this: ProjectMatrix) { (acc, sv) =>
-          acc.customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.scalaPartialVersion(sv)), process)
+          acc.customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.scalaABIVersion(sv)), process)
         }
       } else {
         customRow(autoScalaLibrary, Seq(VirtualAxis.jvm), process)
@@ -518,7 +518,7 @@ object ProjectMatrix {
 
   // called by macro
   def apply(id: String, base: sbt.File): ProjectMatrix = {
-    val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaPartialVersion("2.13.3"))
+    val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("2.13.3"))
     val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil, defaultDefAxes)
     allMatrices(id) = matrix
     matrix

@@ -1,6 +1,6 @@
 package sbt
 
-import sbt.librarymanagement.CrossVersion.partialVersion
+import sbt.librarymanagement.CrossVersion.{ binaryScalaVersion, partialVersion }
 
 /** Virtual Axis represents a parameter to a project matrix row. */
 sealed abstract class VirtualAxis {
@@ -106,6 +106,9 @@ object VirtualAxis {
       case Some((m, n)) => scalaVersionAxis(scalaVersion, s"$m.$n")
       case _            => scalaVersionAxis(scalaVersion, scalaVersion)
     }
+  def scalaABIVersion(scalaVersion: String): ScalaVersionAxis =
+    scalaVersionAxis(scalaVersion, binaryScalaVersion(scalaVersion))
+
   def scalaVersionAxis(scalaVersion: String, value: String) =
     ScalaVersionAxis(scalaVersion, value)
 
