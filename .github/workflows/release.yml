@@ -32,5 +32,5 @@ jobs:
         CI_RELEASE: publishSigned
         CI_SONATYPE_RELEASE: version
       run: |
-        echo $PGP_SECRET | base64 --decode | gpg --import --batch --yes --pinentry-mode loopback --passphrase $PGP_PASSPHRASE
+        .github/decodekey.sh
         sbt ci-release
