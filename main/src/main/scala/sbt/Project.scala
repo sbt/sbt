@@ -480,7 +480,7 @@ object Project extends ProjectExtra {
   }
 
   def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
-    setProject(session, structure, s, st => st)
+    setProject(session, structure, s, identity)
 
   def setProject(
       session: SessionSettings,
