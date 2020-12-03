@@ -65,15 +65,17 @@ final class Console(compiler: AnalyzingCompiler) {
         )
       } catch { case _: InterruptedException | _: ClosedChannelException => }
     val previous = sys.props.get("scala.color").getOrElse("auto")
+    val jline3term = sbt.internal.util.JLine3(terminal)
     try {
       sys.props("scala.color") = if (terminal.isColorEnabled) "true" else "false"
       terminal.withRawOutput {
         jline.TerminalFactory.set(terminal.toJLine)
-        DeprecatedJLine.setTerminalOverride(sbt.internal.util.JLine3(terminal))
+        DeprecatedJLine.setTerminalOverride(jline3term)
         terminal.withRawInput(Run.executeTrapExit(console0, log))
       }
     } finally {
       sys.props("scala.color") = previous
+      jline3term.close()
     }
   }
 }
