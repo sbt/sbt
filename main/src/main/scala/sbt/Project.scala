@@ -478,7 +478,15 @@ object Project extends ProjectExtra {
     previousOnUnload(s.runExitHooks())
   }
 
-  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State = {
+  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
+    setProject(session, structure, s, identity)
+
+  def setProject(
+      session: SessionSettings,
+      structure: BuildStructure,
+      s: State,
+      preOnLoad: State => State
+  ): State = {
     val unloaded = runUnloadHooks(s)
     val (onLoad, onUnload) = getHooks(structure.data)
     val newAttrs = unloaded.attributes
@@ -488,7 +496,7 @@ object Project extends ProjectExtra {
     val newState = unloaded.copy(attributes = newAttrs)
     // TODO: Fix this
     onLoad(
-      updateCurrent(newState) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
+      preOnLoad(updateCurrent(newState)) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
     )
   }
 
