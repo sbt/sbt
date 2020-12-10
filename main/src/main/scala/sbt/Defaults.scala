@@ -332,8 +332,10 @@ object Defaults extends BuildCommon {
       exportPipelining := usePipelining.value,
       useScalaReplJLine :== false,
       scalaInstanceTopLoader := {
-        if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
-        else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
+        // the JLineLoader contains the SbtInterfaceClassLoader
+        if (!useScalaReplJLine.value)
+          classOf[org.jline.terminal.Terminal].getClassLoader // the JLineLoader
+        else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
       },
       useSuperShell := { if (insideCI.value) false else ITerminal.console.isSupershellEnabled },
       superShellThreshold :== SysProp.supershellThreshold,

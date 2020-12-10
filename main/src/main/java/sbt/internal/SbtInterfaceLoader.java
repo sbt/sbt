@@ -10,14 +10,15 @@ package sbt.internal;
 import java.net.URL;
 import java.net.URLClassLoader;
 
-class TestInterfaceLoader extends URLClassLoader {
-  TestInterfaceLoader(final URL[] urls, final ClassLoader parent) {
+// This ClassLoader must contain pure  sbt java interfaces
+class SbtInterfaceLoader extends URLClassLoader {
+  SbtInterfaceLoader(final URL[] urls, final ClassLoader parent) {
     super(urls, parent);
   }
 
   @Override
   public String toString() {
-    return "SbtTestInterfaceClassLoader(" + getURLs()[0] + ")";
+    return "SbtInterfaceClassLoader(" + getURLs()[0] + ")";
   }
 
   static {
