@@ -1034,21 +1034,22 @@ object Defaults extends BuildCommon {
   }
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
+    val sv = scalaVersion.value
     val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
       sys.error(noToolConfiguration(managedScalaInstance.value))
     def files(id: String) =
       for {
-        m <- toolReport.modules if m.module.name == id;
+        m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
+    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing $id jar file")
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
-    val libraryJar = file(ScalaArtifacts.LibraryID)
-    val compilerJar = file(ScalaArtifacts.CompilerID)
+    val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
+    val compilerJar = file(ScalaArtifacts.compilerId(sv))
     mkScalaInstance(
-      scalaVersion.value,
+      sv,
       allJars,
-      Array(libraryJar),
+      libraryJars,
       compilerJar,
       state.value.extendedClassLoaderCache,
       scalaInstanceTopLoader.value,
@@ -3820,7 +3821,7 @@ object Classpaths {
       version: String
   ): Seq[ModuleID] =
     if (auto)
-      modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
+      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version)) :: Nil
     else
       Nil
 
