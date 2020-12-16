@@ -668,9 +668,13 @@ object Defaults extends BuildCommon {
     ),
     cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
     clean := clean.dependsOn(cleanIvy).value,
-    scalaCompilerBridgeBinaryJar := None,
-    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
-    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(
+    scalaCompilerBridgeBinaryJar := Def.settingDyn {
+      val sv = scalaVersion.value
+      if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
+      else Def.task[Option[File]](None)
+    }.value,
+    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
   )
@@ -735,6 +739,18 @@ object Defaults extends BuildCommon {
     val scalaBase = if (cross) t / ("scala-" + sv) else t
     if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
   }
+
+  private def fetchBridgeBinaryJarTask(scalaVersion: String): Initialize[Task[Option[File]]] =
+    Def.task {
+      val bridgeJar = ZincLmUtil.fetchDefaultBridgeModule(
+        scalaVersion,
+        dependencyResolution.value,
+        updateConfiguration.value,
+        (update / unresolvedWarningConfiguration).value,
+        streams.value.log
+      )
+      Some(bridgeJar)
+    }
 
   def compilersSetting = {
     compilers := {
