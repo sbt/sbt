@@ -8,27 +8,46 @@ object ScalaArtifacts {
   val ActorsID = "scala-actors"
   val ScalapID = "scalap"
   val Artifacts = Vector(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
-  val DottyIDPrefix = "dotty"
 
-  def dottyID(binaryVersion: String): String = s"${DottyIDPrefix}_${binaryVersion}"
+  val Scala3LibraryID = "scala3-library"
+  val Scala3CompilerID = "scala3-compiler"
 
-  def libraryDependency(version: String): ModuleID = ModuleID(Organization, LibraryID, version)
+  def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
+
+  def libraryIds(version: String): Array[String] = {
+    if (isScala3(version))
+      Array(Scala3LibraryID, LibraryID)
+    else Array(LibraryID)
+  }
+
+  def compilerId(version: String): String = {
+    if (isScala3(version)) Scala3CompilerID
+    else CompilerID
+  }
+
+  def libraryDependency(version: String): ModuleID = libraryDependency(Organization, version)
+
+  def libraryDependency(org: String, version: String): ModuleID = {
+    if (isScala3(version))
+      ModuleID(org, Scala3LibraryID, version).withCrossVersion(CrossVersion.binary)
+    else
+      ModuleID(org, LibraryID, version)
+  }
 
   private[sbt] def toolDependencies(
       org: String,
-      version: String,
-      isDotty: Boolean = false
+      version: String
   ): Seq[ModuleID] =
-    if (isDotty)
+    if (isScala3(version))
       Seq(
-        ModuleID(org, DottyIDPrefix, version)
+        ModuleID(org, Scala3CompilerID, version)
           .withConfigurations(Some(Configurations.ScalaTool.name + "->default(compile)"))
           .withCrossVersion(CrossVersion.binary)
       )
     else
       Seq(
-        scalaToolDependency(org, ScalaArtifacts.CompilerID, version),
-        scalaToolDependency(org, ScalaArtifacts.LibraryID, version)
+        scalaToolDependency(org, CompilerID, version),
+        scalaToolDependency(org, LibraryID, version)
       )
 
   private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
