@@ -3078,10 +3078,8 @@ object Classpaths {
       val version = scalaVersion.value
       if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
-      else {
-        val isDotty = ScalaInstance.isDotty(version)
-        ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
-      }
+      else
+        ScalaArtifacts.toolDependencies(sbtOrg, version) ++ pluginAdjust
     },
     // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
