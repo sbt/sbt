@@ -1,6 +1,8 @@
 package sbt.internal.librarymanagement
 package cross
 
+import sbt.librarymanagement.ScalaArtifacts
+
 object CrossVersionUtil {
   val trueString = "true"
   val falseString = "false"
@@ -8,7 +10,6 @@ object CrossVersionUtil {
   val noneString = "none"
   val disabledString = "disabled"
   val binaryString = "binary"
-  val TransitionDottyVersion = "" // Dotty always respects binary compatibility
   val TransitionScalaVersion = "2.10" // ...but scalac doesn't until Scala 2.10
   val TransitionSbtVersion = "0.12"
 
@@ -22,8 +23,9 @@ object CrossVersionUtil {
   private val longPattern = """\d{1,19}"""
   private val basicVersion = raw"""($longPattern)\.($longPattern)\.($longPattern)"""
   private val ReleaseV = raw"""$basicVersion(-\d+)?""".r
-  private val BinCompatV = raw"""$basicVersion-bin(-.*)?""".r
+  private val BinCompatV = raw"""$basicVersion(-\w+)?-bin(-.*)?""".r
   private val CandidateV = raw"""$basicVersion(-RC\d+)""".r
+  private val MilestonV = raw"""$basicVersion(-M\d+)""".r
   private val NonReleaseV_n = raw"""$basicVersion([-\w]*)""".r // 0-n word suffixes, with leading dashes
   private val NonReleaseV_1 = raw"""$basicVersion(-\w+)""".r // 1 word suffix, after a dash
   private[sbt] val PartialVersion = raw"""($longPattern)\.($longPattern)(?:\..+)?""".r
@@ -61,7 +63,7 @@ object CrossVersionUtil {
    */
   private[sbt] def scalaApiVersion(v: String): Option[(Long, Long)] = v match {
     case ReleaseV(x, y, _, _)                     => Some((x.toLong, y.toLong))
-    case BinCompatV(x, y, _, _)                   => Some((x.toLong, y.toLong))
+    case BinCompatV(x, y, _, _, _)                => Some((x.toLong, y.toLong))
     case NonReleaseV_1(x, y, z, _) if z.toInt > 0 => Some((x.toLong, y.toLong))
     case _                                        => None
   }
@@ -72,9 +74,18 @@ object CrossVersionUtil {
       case _                            => None
     }
 
+  private[sbt] def binaryScala3Version(full: String): String = full match {
+    case ReleaseV(maj, _, _, _)                       => maj
+    case CandidateV(maj, min, _, _) if min.toLong > 0 => maj
+    case MilestonV(maj, min, _, _) if min.toLong > 0  => maj
+    case BinCompatV(maj, min, patch, stage, _)        => binaryScala3Version(s"$maj.$min.$patch$stage")
+    case _                                            => full
+  }
+
   def binaryScalaVersion(full: String): String = {
-    val cutoff = if (full.startsWith("0.")) TransitionDottyVersion else TransitionScalaVersion
-    binaryVersionWithApi(full, cutoff)(scalaApiVersion)
+    if (ScalaArtifacts.isScala3(full)) binaryScala3Version(full)
+    else
+      binaryVersionWithApi(full, TransitionScalaVersion)(scalaApiVersion) // Scala 2 binary version
   }
 
   def binarySbtVersion(full: String): String =

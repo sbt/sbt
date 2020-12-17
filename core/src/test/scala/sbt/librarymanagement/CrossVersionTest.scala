@@ -207,8 +207,35 @@ class CrossVersionTest extends UnitSpec {
   it should "for 2.20170314093845.0-87654321 return 2.20170314093845" in {
     binaryScalaVersion("2.20170314093845.0-87654321") shouldBe "2.20170314093845"
   }
-  it should "for Dotty 0.1.1 return 0.1" in {
-    binaryScalaVersion("0.1.1") shouldBe "0.1"
+  it should "for 3.0.0-M2 return 3.0.0-M2" in {
+    binaryScalaVersion("3.0.0-M2") shouldBe "3.0.0-M2"
+  }
+  it should "for 3.0.0-M3-bin-SNAPSHOT return 3.0.0-M3" in {
+    binaryScalaVersion("3.0.0-M3-bin-SNAPSHOT") shouldBe "3.0.0-M3"
+  }
+  it should "for 3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY return 3.0.0-M3" in {
+    binaryScalaVersion("3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY") shouldBe "3.0.0-M3"
+  }
+  it should "for 3.0.0-RC1 return 3.0.0-RC1" in {
+    binaryScalaVersion("3.0.0-RC1") shouldBe "3.0.0-RC1"
+  }
+
+  // Not set in stone but 3 is the favorite candidate so far
+  // (see https://github.com/lampepfl/dotty/issues/10244)
+  it should "for 3.0.0 return 3" in {
+    binaryScalaVersion("3.0.0") shouldBe "3"
+  }
+  it should "for 3.1.0-M1 return 3" in {
+    binaryScalaVersion("3.1.0-M1") shouldBe "3"
+  }
+  it should "for 3.1.0-RC1-bin-SNAPSHOT return 3" in {
+    binaryScalaVersion("3.1.0-RC1-bin-SNAPSHOT") shouldBe "3"
+  }
+  it should "for 3.1.0-RC1 return 3" in {
+    binaryScalaVersion("3.1.0-RC1") shouldBe "3"
+  }
+  it should "for 3.1.0 return 3" in {
+    binaryScalaVersion("3.1.0") shouldBe "3"
   }
 
   private def patchVersion(fullVersion: String) =
