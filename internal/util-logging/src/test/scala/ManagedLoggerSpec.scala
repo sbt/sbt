@@ -14,7 +14,7 @@ import sbt.io.Using
 import com.github.ghik.silencer.silent
 
 class ManagedLoggerSpec extends FlatSpec with Matchers {
-  val context = LoggerContext(useLog4J = true)
+  val context = LoggerContext(useLog4J = true, Terminal.get)
   @silent
   val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)

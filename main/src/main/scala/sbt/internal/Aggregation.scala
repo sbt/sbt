@@ -72,13 +72,12 @@ object Aggregation {
   ): Unit = {
     import complete._
     val log = state.log
-    val extracted = Project.extract(state)
     val success = results match { case Value(_) => true; case Inc(_) => false }
     results.toEither.right.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
     if (show.success && !state.get(suppressShow).getOrElse(false))
-      printSuccess(start, stop, extracted, success, log)
+      printSuccess(start, stop, state, success, log)
   }
 
   def timedRun[T](
@@ -121,6 +120,34 @@ object Aggregation {
   def printSuccess(
       start: Long,
       stop: Long,
+      state: State,
+      success: Boolean,
+      log: Logger
+  ): Unit = {
+    val extracted = Project.extract(state)
+    val structure = extracted.structure
+    def get(key: SettingKey[Boolean]): Boolean =
+      key in extracted.currentRef get structure.data getOrElse true
+    val term = state.get(Keys.taskTerminal)
+
+    if (get(showSuccess)) {
+      def printResult(finish: Long, result: Boolean): Unit = {
+        if (get(showTiming)) {
+          val msg = timingString(start, finish, structure.data, extracted.currentRef)
+          if (result) log.success(msg)
+          else if (term.fold(true)(_.isSuccessEnabled)) log.error(msg)
+        } else if (result) log.success("")
+      }
+      term.map(_.prompt) match {
+        case Some(b: Prompt.Blocked) => b.addCompletionLogger(printResult _)
+        case _                       => printResult(stop, success)
+      }
+    }
+  }
+  @deprecated("use the variant that takes a state parameter", "1.4.2")
+  def printSuccess(
+      start: Long,
+      stop: Long,
       extracted: Extracted,
       success: Boolean,
       log: Logger
@@ -128,6 +155,7 @@ object Aggregation {
     import extracted._
     def get(key: SettingKey[Boolean]): Boolean =
       key in currentRef get structure.data getOrElse true
+
     if (get(showSuccess)) {
       if (get(showTiming)) {
         val msg = timingString(start, stop, structure.data, currentRef)

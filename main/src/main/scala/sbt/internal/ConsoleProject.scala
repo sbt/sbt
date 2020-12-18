@@ -10,8 +10,9 @@ package internal
 
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
-import sbt.internal.util.Terminal
+import sbt.internal.util.{ Terminal => ITerminal }
 import sbt.util.Logger
+import scala.util.Try
 import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
@@ -24,7 +25,7 @@ object ConsoleProject {
     val unit = extracted.currentUnit
     val (state1, dependencyResolution) =
       extracted.runTask(Keys.dependencyResolution, state)
-    val (_, scalaCompilerBridgeBinaryJar) =
+    val (st, scalaCompilerBridgeBinaryJar) =
       extracted.runTask(Keys.scalaCompilerBridgeBinaryJar.in(Keys.consoleProject), state1)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
@@ -61,16 +62,34 @@ object ConsoleProject {
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
 
-    val terminal = Terminal.get
-    // TODO - Hook up dsl classpath correctly...
-    (new Console(compiler))(
-      unit.classpath,
-      options,
-      initCommands,
-      cleanupCommands,
-      terminal
-    )(Some(unit.loader), bindings).get
-    ()
+    val terminal = state.get(Keys.taskTerminal)
+    def run(): Unit = {
+      // TODO - Hook up dsl classpath correctly...
+      (new Console(compiler, terminal))(
+        unit.classpath,
+        options,
+        initCommands,
+        cleanupCommands,
+      )(Some(unit.loader), bindings).get
+    }
+    val background = extracted.get(Keys.runInBackground) && StandardMain.exchange.hasServer
+    val scope = Def.ScopedKey(Scope.Global, Keys.consoleProject.key)
+    if (background) {
+      val service = extracted.get(Keys.bgJobService)
+      val handle = service.runInBackgroundWithLoader(scope, st) { (logger, workingDir) =>
+        def impl: Try[Unit] = Try {
+          terminal.foreach(ITerminal.threadLocalTerminal.set)
+          try run()
+          finally ITerminal.threadLocalTerminal.set(null)
+        }
+        (None, () => impl.get)
+      }
+      val term = terminal.getOrElse(ITerminal.get)
+      BackgroundRunTask(term, "console", log, st, scope)(() => service.waitForTry(handle))
+      ()
+    } else {
+      run()
+    }
   }
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */

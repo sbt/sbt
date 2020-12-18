@@ -76,7 +76,10 @@ object LogManager {
   ): (ScopedKey[_]) => ManagedLogger =
     (task: ScopedKey[_]) => {
       val manager: LogManager =
-        (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
+        (logManager in task.scope).get(data) getOrElse {
+          val term = state.get(Keys.taskTerminal).getOrElse(ITerminal.get)
+          defaultManager(ConsoleOut.terminalOut(term))
+        }
       val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
       manager.backgroundLog(data, state, task, context)
     }
@@ -90,10 +93,20 @@ object LogManager {
   )
   def defaults(extra: ScopedKey[_] => Seq[XAppender], console: ConsoleOut): LogManager =
     defaults((sk: ScopedKey[_]) => extra(sk).map(new ConsoleAppenderFromLog4J("extra", _)), console)
-  // This is called by Defaults.
+
+  @deprecated("use single argument version", "1.4.3")
   def defaults(extra: AppenderSupplier, console: ConsoleOut): LogManager =
     withLoggers(
       (task, state) => defaultScreen(console, suppressedMessage(task, state)),
+      extra = extra
+    )
+  // This is called by Defaults.
+  def defaults(extra: AppenderSupplier): LogManager =
+    withLoggers(
+      (task, state) => {
+        val term = state.get(Keys.taskTerminal).getOrElse(ITerminal.get)
+        defaultScreen(ConsoleOut.terminalOut(term), suppressedMessage(task, state)),
+      },
       extra = extra
     )
 

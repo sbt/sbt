@@ -396,6 +396,12 @@ object Defaults extends BuildCommon {
       terminal := state.value.get(terminalKey).getOrElse(Terminal(ITerminal.get)),
       InstallSbtn.installSbtn := InstallSbtn.installSbtnImpl.evaluated,
       InstallSbtn.installSbtn / aggregate := false,
+      runInBackground := {
+        // We only want to run console or run in the background if we are
+        // not in batch mode which can be implied by the absent of non-flag
+        // command arguments
+        appConfiguration.value.arguments.filterNot(a => a.startsWith("-")).isEmpty
+      },
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
@@ -524,7 +530,7 @@ object Defaults extends BuildCommon {
   // TODO: This should be on the new default settings for a project.
   def projectCore: Seq[Setting[_]] = Seq(
     name := thisProject.value.id,
-    logManager := LogManager.defaults(extraAppenders.value, ConsoleOut.terminalOut),
+    logManager := LogManager.defaults(extraAppenders.value),
     onLoadMessage := (onLoadMessage or
       Def.setting {
         s"set current project to ${name.value} (in build ${thisProjectRef.value.build})"
@@ -1769,16 +1775,22 @@ object Defaults extends BuildCommon {
   /** Implements `cleanFiles` task. */
   private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
 
-  private[this] def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
+  private[this] def termWrapper(
+      term: ITerminal,
+      canonical: Boolean,
+      echo: Boolean
+  ): (() => Unit) => (() => Unit) =
     (f: () => Unit) =>
       () => {
-        val term = ITerminal.get
         if (!canonical) {
           term.enterRawMode()
           if (echo) term.setEchoEnabled(echo)
         } else if (!echo) term.setEchoEnabled(false)
-        try f()
-        finally {
+        try {
+          ITerminal.threadLocalTerminal.set(term)
+          f()
+        } finally {
+          ITerminal.threadLocalTerminal.set(null)
           if (!canonical) term.exitRawMode()
           if (!echo) term.setEchoEnabled(true)
         }
@@ -1796,7 +1808,8 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val (mainClass, args) = parser.parsed
       val hashClasspath = (bgHashClasspath in bgRunMain).value
-      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+      val term = state.value.get(Keys.taskTerminal).getOrElse(ITerminal.get)
+      val wrapper = termWrapper(term, canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
           if (copyClasspath.value)
@@ -1827,7 +1840,8 @@ object Defaults extends BuildCommon {
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
       val hashClasspath = (bgHashClasspath in bgRun).value
-      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+      val term = state.value.get(Keys.taskTerminal).getOrElse(ITerminal.get)
+      val wrapper = termWrapper(term, canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
           if (copyClasspath.value)
@@ -1851,7 +1865,15 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
-      service.waitForTry(handle).get
+      val log = streams.value.log
+      val scope = resolvedScoped.value
+      val st = state.value
+      val background = runInBackground.value && StandardMain.exchange.hasServer
+      st.get(Keys.taskTerminal) match {
+        case Some(term) if background =>
+          BackgroundRunTask(term, "fg-run-main", log, st, scope)(() => service.waitForTry(handle))
+        case _ => service.waitForTry(handle).get
+      }
     }
 
   // run calls bgRun in the background and waits for the result.
@@ -1859,7 +1881,15 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
-      service.waitForTry(handle).get
+      val log = streams.value.log
+      val scope = resolvedScoped.value
+      val st = state.value
+      val background = runInBackground.value && StandardMain.exchange.hasServer
+      st.get(Keys.taskTerminal) match {
+        case Some(term) if background =>
+          BackgroundRunTask(term, "fg-run", log, st, scope)(() => service.waitForTry(handle))
+        case _ => service.waitForTry(handle).get
+      }
     }
 
   def runMainTask(
@@ -2042,16 +2072,16 @@ object Defaults extends BuildCommon {
       println()
     }
 
-  def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
+  def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspathAsJars, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
     Def.task {
       val si = (scalaInstance in task).value
       val s = streams.value
+      val cp = (classpath in task).value
       val cpFiles = data((classpath in task).value)
       val fullcp = (cpFiles ++ si.allJars).distinct
       val tempDir = IO.createUniqueDirectory((taskTemporaryDirectory in task).value).toPath
-      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
       val compiler =
         (compilers in task).value.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
@@ -2059,8 +2089,38 @@ object Defaults extends BuildCommon {
       val sc = (scalacOptions in task).value
       val ic = (initialCommands in task).value
       val cc = (cleanupCommands in task).value
-      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
-      println()
+      val st = state.value
+      implicit val log: Logger = streams.value.log
+      val scope = resolvedScoped.value
+      val terminal = st.get(taskTerminal)
+      val service = bgJobService.value
+      val hashClasspath = (bgHashClasspath in task).value
+      val copyClasspath = (bgCopyClasspath in task).value
+      val background = runInBackground.value && StandardMain.exchange.hasServer
+
+      if (background) {
+        val handle = service.runInBackgroundWithLoader(scope, st) { (logger, workingDir) =>
+          val files =
+            if (copyClasspath)
+              data(service.copyClasspath(Nil, cp, workingDir, hashClasspath))
+            else fullcp
+          val loader = ClasspathUtil.makeLoader(files.map(_.toPath), si, tempDir)
+          def impl: Try[Unit] = Try {
+            terminal.foreach(ITerminal.threadLocalTerminal.set)
+            try {
+              (new Console(compiler, terminal))(cpFiles, sc, loader, ic, cc)()(s.log).get
+              println()
+            } finally ITerminal.threadLocalTerminal.set(null)
+          }
+          (Some(loader), () => impl.get)
+        }
+        val term = terminal.getOrElse(ITerminal.get)
+        BackgroundRunTask(term, "console", log, st, scope)(() => service.waitForTry(handle))
+      } else {
+        val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
+        (new Console(compiler, terminal))(cpFiles, sc, loader, ic, cc)()(s.log).get
+        println()
+      }
     }
 
   private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =

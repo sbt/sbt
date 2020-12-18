@@ -15,7 +15,7 @@ import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal }
+import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal, Util }
 import sbt.internal.{ ShutdownHooks, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
@@ -26,6 +26,7 @@ import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import sbt.internal.FastTrackCommands
 import sbt.internal.SysProp
+import java.util.concurrent.ConcurrentHashMap
 
 object MainLoop {
 
@@ -147,7 +148,12 @@ object MainLoop {
     }
 
   def next(state: State): State = {
-    val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+    val exchange = StandardMain.exchange
+    val taskTerminal = state.remainingCommands.headOption
+      .flatMap(_.source.flatMap(s => exchange.channelForName(s.channelName).map(_.terminal)))
+      .getOrElse(ITerminal.get)
+    val context =
+      LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false), taskTerminal)
     val superShellSleep =
       state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
     val superShellThreshold =
@@ -159,12 +165,15 @@ object MainLoop {
         state
           .put(Keys.loggerContext, context)
           .put(Keys.taskProgress, taskProgress)
+          .put(Keys.taskTerminal, taskTerminal)
+          .put(Keys.terminalKey, Terminal(taskTerminal))
           .process(processCommand)
       } match {
-        case Right(s)                  => s.remove(Keys.loggerContext)
+        case Right(s) =>
+          s.remove(Keys.loggerContext).remove(Keys.taskTerminal).remove(Keys.terminalKey)
         case Left(t: xsbti.FullReload) => throw t
         case Left(t: RebootCurrent)    => throw t
-        case Left(t)                   => state.remove(Keys.loggerContext).handleError(t)
+        case Left(t)                   => state.handleError(t)
       }
     } catch {
       case oom: OutOfMemoryError
@@ -200,6 +209,27 @@ object MainLoop {
     }
   }
 
+  private[this] val pendingExecs = new ConcurrentHashMap[Exec, State]
+  private[sbt] def completeExec(exec: Exec, resultState: State): Unit = {
+    pendingExecs.remove(exec) match {
+      case null      =>
+      case prevState => completeExec(exec, prevState, resultState)
+    }
+  }
+  private[sbt] def completeExec(exec: Exec, prevState: State, newState: State): Unit = {
+    if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
+        !exec.commandLine.startsWith(networkExecPrefix)) {
+      val doneEvent = ExecStatusEvent(
+        "Done",
+        exec.source.map(_.channelName),
+        exec.execId,
+        newState.remainingCommands.toVector map (_.commandLine),
+        exitCode(newState, prevState),
+      )
+      StandardMain.exchange.respondStatus(doneEvent)
+    }
+  }
+
   /** This is the main function State transfer function of the sbt command processing. */
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
@@ -219,16 +249,20 @@ object MainLoop {
         }
         exchange.setState(progressState)
         exchange.setExec(Some(exec))
-        val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
+        val channel = channelName.flatMap(exchange.channelForName)
+        val restoreTerminal = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = ITerminal.set(c.terminal)
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
-            (() => {
+            () => {
               ITerminal.set(prevTerminal)
-              c.terminal.flush()
-            }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
-          case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))
+              c.terminal.prompt match {
+                case b: Prompt.Blocked => Util.ignoreResult(pendingExecs.put(exec, state))
+                case _                 => c.terminal.flush()
+              }
+            }
+          case _ => () => ()
         }
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
@@ -238,28 +272,35 @@ object MainLoop {
          */
         val newState = try {
           FastTrackCommands
-            .evaluate(termState, exec.commandLine)
-            .getOrElse(Command.process(exec.commandLine, termState))
+            .evaluate(progressState, exec.commandLine)
+            .getOrElse(Command.process(exec.commandLine, progressState))
         } finally {
           // Flush the terminal output after command evaluation to ensure that all output
           // is displayed in the thin client before we report the command status. Also
           // set the promt to whatever it was before we started evaluating the task.
           restoreTerminal()
         }
-        if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
-            !exec.commandLine.startsWith(networkExecPrefix)) {
-          val doneEvent = ExecStatusEvent(
-            "Done",
-            channelName,
-            exec.execId,
-            newState.remainingCommands.toVector map (_.commandLine),
-            exitCode(newState, state),
-          )
-          exchange.respondStatus(doneEvent)
+        pendingExecs.get(exec) match {
+          case null => completeExec(exec, state, newState)
+          case _    =>
         }
         exchange.setExec(None)
         newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
-        newState.remove(sbt.Keys.currentTaskProgress).remove(Keys.terminalKey)
+        val newState0 = newState.remove(sbt.Keys.currentTaskProgress)
+        channel match {
+          case Some(c) =>
+            c.terminal.prompt match {
+              case b: Prompt.Blocked =>
+                val (channelExecs, remainingExecs) = newState0.remainingCommands.partition(
+                  _.source.fold(false)(_.channelName == c.name)
+                )
+                channelExecs.foreach(e => b.appendExec((e.commandLine, e.execId)))
+                newState0.copy(remainingCommands = remainingExecs)
+              case _ => newState0
+            }
+          case _ => newState0
+        }
+
       }
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>

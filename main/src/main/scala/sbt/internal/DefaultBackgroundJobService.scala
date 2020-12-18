@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import sbt.Def.{ Classpath, ScopedKey, Setting }
 import sbt.Scope.GlobalScope
 import sbt.internal.inc.classpath.ClasspathFilter
-import sbt.internal.util.{ Attributed, ManagedLogger }
+import sbt.internal.util.{ Attributed, ManagedLogger, Terminal }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
 import sbt.util.Logger
@@ -89,7 +89,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
   protected def onRemoveJob(@deprecated("unused", "") job: JobHandle): Unit = ()
-  private val context = LoggerContext(useLog4J)
+  private val context = LoggerContext(useLog4J, Terminal.get)
 
   // this mutable state could conceptually go on State except
   // that then every task that runs a background job would have

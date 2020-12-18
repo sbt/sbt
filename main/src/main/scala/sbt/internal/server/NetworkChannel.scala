@@ -147,7 +147,8 @@ final class NetworkChannel(
   protected def authOptions: Set[ServerAuthentication] = auth
 
   override def mkUIThread: (State, CommandChannel) => UITask = (state, command) => {
-    if (interactive.get || ContinuousCommands.isInWatch(state, this)) mkUIThreadImpl(state, command)
+    if (interactive.get || ContinuousCommands.isInWatch(state, this) || terminal.prompt
+          .isInstanceOf[Prompt.Blocked]) mkUIThreadImpl(state, command)
     else
       new UITask {
         override private[sbt] val channel = NetworkChannel.this
@@ -479,14 +480,43 @@ final class NetworkChannel(
     }
   }
 
-  protected def onCancellationRequest(execId: Option[String], crp: CancelRequestParams) = {
-    if (initialized) {
+  private def handleBlockedCancellation(
+      execId: Option[String],
+      crp: CancelRequestParams
+  ): Boolean = {
+    import sbt.protocol.codec.JsonProtocol._
+    terminal.prompt match {
+      case b: Prompt.Blocked =>
+        execId.foreach { id =>
+          if (b.execID == Some(crp.id) || b.execID == Some(s"\u2668${crp.id}")) {
+            b.cancel()
+            b.join()
+            respondResult(
+              ExecStatusEvent(
+                "Task cancelled",
+                Some(name),
+                b.execID,
+                Vector(),
+                None,
+              ),
+              execId
+            )
+          } else respondError(execId, "Task ID not matched")
+        }
+        true
+      case _ => false
+    }
+  }
+  private def respondError(execId: Option[String], msg: String): Unit = respondError(
+    ErrorCodes.RequestCancelled,
+    msg,
+    execId
+  )
 
-      def errorRespond(msg: String) = respondError(
-        ErrorCodes.RequestCancelled,
-        msg,
-        execId
-      )
+  protected def onCancellationRequest(execId: Option[String], crp: CancelRequestParams) = {
+    if (initialized && !handleBlockedCancellation(execId, crp)) {
+
+      def errorRespond(msg: String): Unit = respondError(execId, msg)
 
       try {
         Option(EvaluateTask.currentlyRunningTaskEngine.get) match {
@@ -539,7 +569,7 @@ final class NetworkChannel(
         case NonFatal(_) =>
           errorRespond("Cancel request failed")
       }
-    } else {
+    } else if (!initialized) {
       log.warn(s"ignoring cancellation request $crp before initialization")
     }
   }
@@ -683,7 +713,7 @@ final class NetworkChannel(
       doFlush()
     }
     override def write(b: Int): Unit = outputBuffer.synchronized {
-      outputBuffer.put(b.toByte)
+      Util.ignoreResult(outputBuffer.offer(b.toByte))
     }
     override def flush(): Unit = {
       flushFuture.get match {
@@ -704,7 +734,7 @@ final class NetworkChannel(
       }
     }
     override def write(b: Array[Byte]): Unit = outputBuffer.synchronized {
-      b.foreach(outputBuffer.put)
+      b.foreach(outputBuffer.offer)
     }
     override def write(b: Array[Byte], off: Int, len: Int): Unit = {
       write(java.util.Arrays.copyOfRange(b, off, off + len))

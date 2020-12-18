@@ -75,7 +75,7 @@ object MainAppender {
   ): Appender = {
     ConsoleAppender(
       ConsoleAppender.generateName,
-      Terminal.get,
+      console,
       suppressedMessage = suppressedMessage
     )
   }

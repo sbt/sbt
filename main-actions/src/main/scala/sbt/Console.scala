@@ -16,7 +16,8 @@ import xsbti.compile.{ Compilers, Inputs }
 
 import scala.util.Try
 
-final class Console(compiler: AnalyzingCompiler) {
+final class Console(compiler: AnalyzingCompiler, term: Option[Terminal]) {
+  def this(compiler: AnalyzingCompiler) = this(compiler, None)
 
   /** Starts an interactive scala interpreter session with the given classpath.*/
   def apply(classpath: Seq[File], log: Logger): Try[Unit] =
@@ -46,7 +47,10 @@ final class Console(compiler: AnalyzingCompiler) {
       initialCommands: String,
       cleanupCommands: String
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
-    apply(classpath, options, initialCommands, cleanupCommands, Terminal.get)(loader, bindings)
+    apply(classpath, options, initialCommands, cleanupCommands, term.getOrElse(Terminal.get))(
+      loader,
+      bindings
+    )
   }
   def apply(
       classpath: Seq[File],

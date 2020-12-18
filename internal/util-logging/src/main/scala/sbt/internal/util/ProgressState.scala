@@ -175,7 +175,8 @@ private[sbt] object ProgressState {
     val isBatch = terminal.prompt == Prompt.Batch
     val isWatch = terminal.prompt == Prompt.Watch
     val noPrompt = terminal.prompt == Prompt.NoPrompt
-    if (terminal.isSupershellEnabled) {
+    val isBlocked = terminal.prompt.isInstanceOf[Prompt.Blocked]
+    if (terminal.isSupershellEnabled && !isBlocked) {
       setShowProgress(true) // used by Zinc to not show "done compiling"
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
         terminal.withPrintStream { ps =>
@@ -193,7 +194,7 @@ private[sbt] object ProgressState {
             pe.command.toSeq.flatMap { cmd =>
               val width = terminal.getWidth
               val sanitized = if ((cmd.length + SERVER_IS_RUNNING_LENGTH) > width) {
-                if (SERVER_IS_RUNNING_LENGTH + cmd.length < width) cmd
+                if ((SERVER_IS_RUNNING_LENGTH + cmd.length) < width) cmd
                 else cmd.take(cmd.length - 3 - SERVER_IS_RUNNING_LENGTH) + "..."
               } else cmd
               val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
