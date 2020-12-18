@@ -1,16 +1,30 @@
 package sbt.librarymanagement
 
 object ScalaArtifacts {
-  val Organization = "org.scala-lang"
-  val LibraryID = "scala-library"
-  val CompilerID = "scala-compiler"
-  val ReflectID = "scala-reflect"
-  val ActorsID = "scala-actors"
-  val ScalapID = "scalap"
-  val Artifacts = Vector(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
+  final val Organization = "org.scala-lang"
+  final val LibraryID = "scala-library"
+  final val CompilerID = "scala-compiler"
+  final val ReflectID = "scala-reflect"
+  final val ActorsID = "scala-actors"
+  final val ScalapID = "scalap"
+  final val Artifacts = Vector(LibraryID, CompilerID, ReflectID, ActorsID, ScalapID)
 
-  val Scala3LibraryID = "scala3-library"
-  val Scala3CompilerID = "scala3-compiler"
+  final val Scala3LibraryID = "scala3-library"
+  final val Scala3CompilerID = "scala3-compiler"
+  final val Scala3InterfacesID = "scala3-interfaces"
+  final val TastyCoreID = "tasty-core"
+
+  private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"
+  private[sbt] final val Scala3CompilerPrefix = Scala3CompilerID + "_"
+  private[sbt] final val TastyCorePrefix = TastyCoreID + "_"
+
+  def isScala2Artifact(name: String): Boolean = {
+    name == LibraryID || name == CompilerID || name == ReflectID || name == ActorsID || name == ScalapID
+  }
+  def isScala3Artifact(name: String): Boolean = {
+    name.startsWith(Scala3LibraryPrefix) || name.startsWith(Scala3CompilerPrefix) ||
+    name.startsWith(TastyCorePrefix) || name == Scala3InterfacesID
+  }
 
   def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
 
