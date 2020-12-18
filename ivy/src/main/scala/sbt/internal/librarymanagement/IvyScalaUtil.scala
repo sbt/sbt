@@ -12,7 +12,7 @@ import org.apache.ivy.plugins.matcher.ExactPatternMatcher
 import org.apache.ivy.plugins.namespace.NamespaceTransformer
 import sbt.util.Logger
 import sbt.librarymanagement.ScalaArtifacts._
-import sbt.librarymanagement.{ ScalaModuleInfo, CrossVersion, Configuration }
+import sbt.librarymanagement.{ Configuration, CrossVersion, ScalaModuleInfo }
 
 object IvyScalaUtil {
 
@@ -48,38 +48,43 @@ object IvyScalaUtil {
       scalaVersionConfigs0: Vector[String]
   ) extends DependencyDescriptorMediator {
     private[this] val scalaVersionConfigs = scalaVersionConfigs0.toSet
+    private val binaryVersion = CrossVersion.binaryScalaVersion(scalaVersion)
     def mediate(dd: DependencyDescriptor): DependencyDescriptor = {
       // Mediate only for the dependencies in scalaVersion configurations. https://github.com/sbt/sbt/issues/2786
       def configQualifies: Boolean =
-        (dd.getModuleConfigurations exists { scalaVersionConfigs })
+        dd.getModuleConfigurations exists { scalaVersionConfigs }
       // Do not rewrite the dependencies of Scala dependencies themselves, this prevents bootstrapping
       // a Scala compiler using another Scala compiler.
       def dependeeQualifies: Boolean =
-        dd.getParentRevisionId == null || (
-          dd.getParentRevisionId.getName match {
-            case _ @(CompilerID | LibraryID | ReflectID | ActorsID | ScalapID) =>
-              false
-            case _ =>
-              true
-          }
-        )
+        dd.getParentRevisionId == null ||
+          !isScala2Artifact(dd.getParentRevisionId.getName) ||
+          !isScala3Artifact(dd.getParentRevisionId.getName)
+
+      def matchBinaryVersion(version: String): Boolean =
+        CrossVersion.binaryScalaVersion(version) == binaryVersion
+
       val transformer =
         new NamespaceTransformer {
           def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
             if (mrid == null) mrid
-            else
-              mrid.getName match {
-                case name @ (CompilerID | LibraryID | ReflectID | ActorsID | ScalapID)
-                    if configQualifies && dependeeQualifies =>
-                  ModuleRevisionId.newInstance(
-                    scalaOrganization,
-                    name,
-                    mrid.getBranch,
-                    scalaVersion,
-                    mrid.getQualifiedExtraAttributes
-                  )
-                case _ => mrid
-              }
+            else if ((isScala2Artifact(mrid.getName) || isScala3Artifact(mrid.getName)) &&
+                     configQualifies &&
+                     dependeeQualifies) {
+              // do not override the binary incompatible Scala version because:
+              //  - the artifacts compiled with Scala 3 depends on the Scala 2.13 scala-library
+              //  - the Scala 2 TASTy reader can consume the Scala 3 artifacts
+              val newScalaVersion =
+                if (matchBinaryVersion(mrid.getRevision)) scalaVersion
+                else mrid.getRevision
+
+              ModuleRevisionId.newInstance(
+                scalaOrganization,
+                mrid.getName,
+                mrid.getBranch,
+                newScalaVersion,
+                mrid.getQualifiedExtraAttributes
+              )
+            } else mrid
           }
 
           def isIdentity: Boolean = false
