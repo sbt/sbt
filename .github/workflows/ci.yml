@@ -6,6 +6,7 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -37,19 +38,19 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: sbt/io
-        ref: develop
+        ref: 1.4.x
         path: io
     - name: Checkout sbt/librarymanagement
       uses: actions/checkout@v2
       with:
         repository: sbt/librarymanagement
-        ref: develop
+        ref: 1.4.x
         path: librarymanagement
     - name: Checkout sbt/zinc
       uses: actions/checkout@v2
       with:
         repository: sbt/zinc
-        ref: develop
+        ref: 1.4.x
         path: zinc
     - name: Setup
       uses: olafurpg/setup-scala@v10
