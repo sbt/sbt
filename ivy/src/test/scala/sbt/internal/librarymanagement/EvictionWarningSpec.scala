@@ -283,6 +283,24 @@ object EvictionWarningSpec extends BaseIvySpecification {
     )
   }
 
+  test("Comparing 2.13 libraries with pvp under Scala 3.0.0-M3 should work") {
+    val m1 = "org.scodec" % "scodec-bits_2.13" % "1.1.21"
+    val m2 = "org.scodec" % "scodec-bits_2.13" % "1.1.22"
+    assert(
+      EvictionWarningOptions
+        .evalPvp((m1, Option(m2), Option(dummyScalaModuleInfo("3.0.0-M3"))))
+    )
+  }
+
+  test("Comparing 2.13 libraries with guessSecondSegment under Scala 3.0.0-M3 should work") {
+    val m1 = "org.scodec" % "scodec-bits_2.13" % "1.1.21"
+    val m2 = "org.scodec" % "scodec-bits_2.13" % "1.1.22"
+    assert(
+      EvictionWarningOptions
+        .guessSecondSegment((m1, Option(m2), Option(dummyScalaModuleInfo("3.0.0-M3"))))
+    )
+  }
+
   def akkaActor214 =
     ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(Some("compile")) cross CrossVersion.binary
   def akkaActor230 =

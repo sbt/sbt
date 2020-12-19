@@ -98,12 +98,25 @@ object EvictionWarningOptions {
   lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
     guessSbtOne orElse guessSecondSegment orElse guessSemVer orElse guessFalse
 
+  private def isNameScalaSuffixed(name: String): Boolean =
+    name.contains("_2.") || name.contains("_3") || name.contains("_4")
+
+  /** A partial function that checks if given m2 is suffixed, and use pvp to evaluate. */
   lazy val guessSecondSegment
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
-    case (m1, Some(m2), Some(scalaModuleInfo))
-        if m2.name.endsWith("_" + scalaModuleInfo.scalaFullVersion) || m2.name.endsWith(
-          "_" + scalaModuleInfo.scalaBinaryVersion
-        ) =>
+    case (m1, Some(m2), Some(_)) if isNameScalaSuffixed(m2.name) =>
+      (m1.revision, m2.revision) match {
+        case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
+          VersionNumber.SecondSegment
+            .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
+        case _ => false
+      }
+  }
+
+  /** A partial function that checks two versions match pvp. */
+  private[sbt] lazy val evalPvp
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+    case (m1, Some(m2), _) =>
       (m1.revision, m2.revision) match {
         case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
           VersionNumber.SecondSegment
