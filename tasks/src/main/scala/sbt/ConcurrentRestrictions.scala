@@ -305,7 +305,9 @@ object ConcurrentRestrictions {
 
       def take(): R = {
         if (closed.get)
-          throw new IllegalStateException("Tried to get values for a closed completion service")
+          throw new RejectedExecutionException(
+            "Tried to get values for a closed completion service"
+          )
         jservice.take().get()
       }
     }
