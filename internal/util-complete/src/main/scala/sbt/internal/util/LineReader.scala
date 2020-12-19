@@ -63,14 +63,11 @@ object LineReader {
          * `testOnly testOnly\ com.foo.FooSpec` instead of `testOnly com.foo.FooSpec`.
          */
         if (c.append.nonEmpty) {
-          val comp =
-            if (!pl.line().endsWith(" ")) pl.line().split(" ").last + c.append else c.append
-          // tell jline to append a " " if the completion would be valid with a " " appended
-          // which can be the case for input tasks and some commands. We need to exclude
-          // the empty string and ";" which always seem to be present.
-          val complete = (Parser.completions(parser, comp + " ", 10).get.map(_.display) --
-            Set(";", "")).nonEmpty
-          candidates.add(new Candidate(comp, comp, null, null, null, null, complete))
+          if (!pl.line().endsWith(" ")) {
+            candidates.add(new Candidate(pl.line().split(" ").last + c.append))
+          } else {
+            candidates.add(new Candidate(c.append))
+          }
         }
       }
     }
