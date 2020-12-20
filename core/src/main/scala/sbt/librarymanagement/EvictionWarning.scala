@@ -330,7 +330,7 @@ object EvictionWarning {
           case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
             EvictionWarningOptions.guessSemVer
           case (Some(_), Some(VersionSchemes.PackVer)) =>
-            EvictionWarningOptions.guessSecondSegment
+            EvictionWarningOptions.evalPvp
           case _ => options.guessCompatible(_)
         }
         f((r.module, winnerOpt, module.scalaModuleInfo))
