@@ -9,10 +9,10 @@ final class TerminalSetRawModeCommand private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TerminalSetRawModeCommand => (this.toggle == x.toggle)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.protocol.TerminalSetRawModeCommand".##) + toggle.##)
   }

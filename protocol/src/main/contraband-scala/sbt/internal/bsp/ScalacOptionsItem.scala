@@ -21,10 +21,10 @@ final class ScalacOptionsItem private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalacOptionsItem => (this.target == x.target) && (this.options == x.options) && (this.classpath == x.classpath) && (this.classDirectory == x.classDirectory)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalacOptionsItem".##) + target.##) + options.##) + classpath.##) + classDirectory.##)
   }

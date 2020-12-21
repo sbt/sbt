@@ -11,10 +11,10 @@ final class EndTestGroupErrorEvent private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: EndTestGroupErrorEvent => (this.name == x.name) && (this.error == x.error)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.protocol.testing.EndTestGroupErrorEvent".##) + name.##) + error.##)
   }

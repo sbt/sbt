@@ -22,10 +22,10 @@ final class TaskFinishParams private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TaskFinishParams => (this.taskId == x.taskId) && (this.eventTime == x.eventTime) && (this.message == x.message) && (this.status == x.status) && (this.dataKind == x.dataKind) && (this.data == x.data)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.TaskFinishParams".##) + taskId.##) + eventTime.##) + message.##) + status.##) + dataKind.##) + data.##)
   }

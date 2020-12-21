@@ -13,10 +13,10 @@ final class JavaVersion private (
   private def this() = this(Vector(), Vector(), None)
   private def this(numbers: Vector[Long], vendor: Option[String]) = this(numbers, Vector(), vendor)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: JavaVersion => (this.numbers == x.numbers) && (this.tags == x.tags) && (this.vendor == x.vendor)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.JavaVersion".##) + numbers.##) + tags.##) + vendor.##)
   }

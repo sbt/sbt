@@ -10,10 +10,10 @@ final class InitializeOption private (
   
   private def this(token: Option[String]) = this(token, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InitializeOption => (this.token == x.token) && (this.skipAnalysis == x.skipAnalysis)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.protocol.InitializeOption".##) + token.##) + skipAnalysis.##)
   }

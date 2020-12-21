@@ -24,10 +24,10 @@ final class Diagnostic private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Diagnostic => (this.range == x.range) && (this.severity == x.severity) && (this.code == x.code) && (this.source == x.source) && (this.message == x.message)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.Diagnostic".##) + range.##) + severity.##) + code.##) + source.##) + message.##)
   }

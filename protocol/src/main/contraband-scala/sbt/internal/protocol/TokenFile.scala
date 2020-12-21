@@ -10,10 +10,10 @@ final class TokenFile private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TokenFile => (this.uri == x.uri) && (this.token == x.token)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.protocol.TokenFile".##) + uri.##) + token.##)
   }

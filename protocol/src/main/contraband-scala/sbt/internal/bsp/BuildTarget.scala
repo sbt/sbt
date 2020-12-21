@@ -42,10 +42,10 @@ final class BuildTarget private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: BuildTarget => (this.id == x.id) && (this.displayName == x.displayName) && (this.baseDirectory == x.baseDirectory) && (this.tags == x.tags) && (this.capabilities == x.capabilities) && (this.languageIds == x.languageIds) && (this.dependencies == x.dependencies) && (this.dataKind == x.dataKind) && (this.data == x.data)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildTarget".##) + id.##) + displayName.##) + baseDirectory.##) + tags.##) + capabilities.##) + languageIds.##) + dependencies.##) + dataKind.##) + data.##)
   }

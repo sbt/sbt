@@ -13,10 +13,10 @@ final class TextDocumentSyncOptions private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TextDocumentSyncOptions => (this.openClose == x.openClose) && (this.change == x.change) && (this.willSave == x.willSave) && (this.willSaveWaitUntil == x.willSaveWaitUntil) && (this.save == x.save)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.langserver.TextDocumentSyncOptions".##) + openClose.##) + change.##) + willSave.##) + willSaveWaitUntil.##) + save.##)
   }
