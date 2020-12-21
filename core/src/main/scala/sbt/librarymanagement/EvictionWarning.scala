@@ -161,9 +161,25 @@ object EvictionWarningOptions {
       }
   }
 
+  lazy val guessStrict
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+    case (m1, Some(m2), _) =>
+      (m1.revision, m2.revision) match {
+        case (VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2)) =>
+          VersionNumber.Strict
+            .isCompatible(VersionNumber(ns1, ts1, es1), VersionNumber(ns2, ts2, es2))
+        case _ => false
+      }
+  }
+
   lazy val guessFalse
       : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
     case (_, _, _) => false
+  }
+
+  lazy val guessTrue
+      : PartialFunction[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] = {
+    case (_, _, _) => true
   }
 }
 
@@ -325,6 +341,10 @@ object EvictionWarning {
         })
         val schemeOpt = VersionSchemes.extractFromExtraAttributes(extraAttributes)
         val f = (winnerOpt, schemeOpt) match {
+          case (Some(_), Some(VersionSchemes.Always)) =>
+            EvictionWarningOptions.guessTrue
+          case (Some(_), Some(VersionSchemes.Strict)) =>
+            EvictionWarningOptions.guessStrict
           case (Some(_), Some(VersionSchemes.EarlySemVer)) =>
             EvictionWarningOptions.guessEarlySemVer
           case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
