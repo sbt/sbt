@@ -1,4 +1,5 @@
 import sbt.internal.inc.classpath.ClasspathUtilities
+import xsbti.AppConfiguration
 
 lazy val checkFull = taskKey[Unit]("")
 lazy val check = taskKey[Unit]("")
@@ -19,7 +20,8 @@ lazy val root = (project in file("."))
   .settings(
     ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
-    resolvers += (baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }).value,
+    scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
+    resolvers += baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }.value,
     moduleName := artifactID,
     projectID := (if (baseDirectory.value / "retrieve" exists) retrieveID else publishedID),
     artifact in (Compile, packageBin) := mainArtifact,
@@ -66,4 +68,10 @@ def checkTask(classpath: TaskKey[Classpath]) = Def.task {
   val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
   try { Class.forName("test.Test", false, loader); () }
   catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }
+}
+
+// use the user local resolver to fetch the SNAPSHOT version of the compiler-bridge
+def userLocalFileResolver(appConfig: AppConfiguration): Resolver = {
+  val ivyHome = appConfig.provider.scalaProvider.launcher.ivyHome
+  Resolver.file("User Local", ivyHome / "local")(Resolver.defaultIvyPatterns)
 }
