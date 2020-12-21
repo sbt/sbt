@@ -11,10 +11,10 @@ final class CompletionResponse private (
   
   private def this(items: Vector[String]) = this(items, None, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: CompletionResponse => (this.items == x.items) && (this.cachedMainClassNames == x.cachedMainClassNames) && (this.cachedTestNames == x.cachedTestNames)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.protocol.CompletionResponse".##) + items.##) + cachedMainClassNames.##) + cachedTestNames.##)
   }

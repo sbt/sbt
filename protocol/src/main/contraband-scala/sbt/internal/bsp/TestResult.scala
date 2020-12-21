@@ -15,10 +15,10 @@ final class TestResult private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TestResult => (this.originId == x.originId) && (this.statusCode == x.statusCode)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.bsp.TestResult".##) + originId.##) + statusCode.##)
   }

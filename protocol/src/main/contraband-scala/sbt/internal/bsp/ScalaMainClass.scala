@@ -16,10 +16,10 @@ final class ScalaMainClass private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalaMainClass => (this.`class` == x.`class`) && (this.arguments == x.arguments) && (this.jvmOptions == x.jvmOptions)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalaMainClass".##) + `class`.##) + arguments.##) + jvmOptions.##)
   }

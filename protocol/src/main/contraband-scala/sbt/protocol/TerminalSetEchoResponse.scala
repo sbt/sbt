@@ -8,10 +8,10 @@ final class TerminalSetEchoResponse private () extends sbt.protocol.EventMessage
 
 
 
-override def equals(o: Any): Boolean = o match {
+override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
   case _: TerminalSetEchoResponse => true
   case _ => false
-}
+})
 override def hashCode: Int = {
   37 * (17 + "sbt.protocol.TerminalSetEchoResponse".##)
 }
