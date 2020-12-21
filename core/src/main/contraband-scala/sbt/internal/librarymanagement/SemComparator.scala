@@ -21,10 +21,10 @@ final class SemComparator private (
 }
 
 
-override def equals(o: Any): Boolean = o match {
+override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
   case x: SemComparator => (this.op == x.op) && (this.major == x.major) && (this.minor == x.minor) && (this.patch == x.patch) && (this.tags == x.tags)
   case _ => false
-}
+})
 override def hashCode: Int = {
   37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.librarymanagement.SemComparator".##) + op.##) + major.##) + minor.##) + patch.##) + tags.##)
 }

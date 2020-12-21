@@ -22,10 +22,10 @@ final class OrganizationArtifactReport private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: OrganizationArtifactReport => (this.organization == x.organization) && (this.name == x.name) && (this.modules == x.modules)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.OrganizationArtifactReport".##) + organization.##) + name.##) + modules.##)
   }

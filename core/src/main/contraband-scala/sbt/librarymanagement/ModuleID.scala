@@ -21,10 +21,10 @@ final class ModuleID private (
   
   private def this(organization: String, name: String, revision: String) = this(organization, name, revision, None, false, true, false, Vector.empty, Vector.empty, Vector.empty, Map.empty, sbt.librarymanagement.Disabled(), None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ModuleID => (this.organization == x.organization) && (this.name == x.name) && (this.revision == x.revision) && (this.configurations == x.configurations) && (this.isChanging == x.isChanging) && (this.isTransitive == x.isTransitive) && (this.isForce == x.isForce) && (this.explicitArtifacts == x.explicitArtifacts) && (this.inclusions == x.inclusions) && (this.exclusions == x.exclusions) && (this.extraAttributes == x.extraAttributes) && (this.crossVersion == x.crossVersion) && (this.branchName == x.branchName)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleID".##) + organization.##) + name.##) + revision.##) + configurations.##) + isChanging.##) + isTransitive.##) + isForce.##) + explicitArtifacts.##) + inclusions.##) + exclusions.##) + extraAttributes.##) + crossVersion.##) + branchName.##)
   }

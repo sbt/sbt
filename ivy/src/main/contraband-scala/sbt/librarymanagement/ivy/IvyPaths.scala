@@ -10,10 +10,10 @@ final class IvyPaths private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: IvyPaths => (this.baseDirectory == x.baseDirectory) && (this.ivyHome == x.ivyHome)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.IvyPaths".##) + baseDirectory.##) + ivyHome.##)
   }

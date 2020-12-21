@@ -12,10 +12,10 @@ final class Developer private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Developer => (this.id == x.id) && (this.name == x.name) && (this.email == x.email) && (this.url == x.url)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Developer".##) + id.##) + name.##) + email.##) + url.##)
   }

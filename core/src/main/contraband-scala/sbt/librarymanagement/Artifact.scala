@@ -18,10 +18,10 @@ final class Artifact private (
   private def this(name: String) = this(name, Artifact.DefaultType, Artifact.DefaultExtension, None, Vector.empty, None, Map.empty, None, false)
   private def this(name: String, `type`: String, extension: String, classifier: Option[String], configurations: Vector[sbt.librarymanagement.ConfigRef], url: Option[java.net.URL], extraAttributes: Map[String, String], checksum: Option[sbt.librarymanagement.Checksum]) = this(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum, false)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Artifact => (this.name == x.name) && (this.`type` == x.`type`) && (this.extension == x.extension) && (this.classifier == x.classifier) && (this.configurations == x.configurations) && (this.url == x.url) && (this.extraAttributes == x.extraAttributes) && (this.checksum == x.checksum) && (this.allowInsecureProtocol == x.allowInsecureProtocol)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Artifact".##) + name.##) + `type`.##) + extension.##) + classifier.##) + configurations.##) + url.##) + extraAttributes.##) + checksum.##) + allowInsecureProtocol.##)
   }

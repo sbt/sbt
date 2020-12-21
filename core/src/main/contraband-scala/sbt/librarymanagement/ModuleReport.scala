@@ -30,10 +30,10 @@ final class ModuleReport private (
   
   private def this(module: sbt.librarymanagement.ModuleID, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]], missingArtifacts: Vector[sbt.librarymanagement.Artifact]) = this(module, artifacts, missingArtifacts, None, None, None, None, false, None, None, None, None, Map.empty, None, None, Vector.empty, Vector.empty, Vector.empty)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ModuleReport => (this.module == x.module) && (this.artifacts == x.artifacts) && (this.missingArtifacts == x.missingArtifacts) && (this.status == x.status) && (this.publicationDate == x.publicationDate) && (this.resolver == x.resolver) && (this.artifactResolver == x.artifactResolver) && (this.evicted == x.evicted) && (this.evictedData == x.evictedData) && (this.evictedReason == x.evictedReason) && (this.problem == x.problem) && (this.homepage == x.homepage) && (this.extraAttributes == x.extraAttributes) && (this.isDefault == x.isDefault) && (this.branch == x.branch) && (this.configurations == x.configurations) && (this.licenses == x.licenses) && (this.callers == x.callers)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleReport".##) + module.##) + artifacts.##) + missingArtifacts.##) + status.##) + publicationDate.##) + resolver.##) + artifactResolver.##) + evicted.##) + evictedData.##) + evictedReason.##) + problem.##) + homepage.##) + extraAttributes.##) + isDefault.##) + branch.##) + configurations.##) + licenses.##) + callers.##)
   }

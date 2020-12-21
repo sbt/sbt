@@ -19,10 +19,10 @@ final class ModuleDescriptorConfiguration private (
   
   private def this(module: sbt.librarymanagement.ModuleID, moduleInfo: sbt.librarymanagement.ModuleInfo) = this(false, None, module, moduleInfo, Vector.empty, Vector.empty, Vector.empty, scala.xml.NodeSeq.Empty, sbt.librarymanagement.Configurations.default, Option(sbt.librarymanagement.Configurations.Compile), sbt.librarymanagement.ConflictManager.default)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ModuleDescriptorConfiguration => (this.validate == x.validate) && (this.scalaModuleInfo == x.scalaModuleInfo) && (this.module == x.module) && (this.moduleInfo == x.moduleInfo) && (this.dependencies == x.dependencies) && (this.overrides == x.overrides) && (this.excludes == x.excludes) && (this.ivyXML == x.ivyXML) && (this.configurations == x.configurations) && (this.defaultConfiguration == x.defaultConfiguration) && (this.conflictManager == x.conflictManager)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleDescriptorConfiguration".##) + validate.##) + scalaModuleInfo.##) + module.##) + moduleInfo.##) + dependencies.##) + overrides.##) + excludes.##) + ivyXML.##) + configurations.##) + defaultConfiguration.##) + conflictManager.##)
   }

@@ -10,10 +10,10 @@ final class ConfigurationReportLite private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ConfigurationReportLite => (this.configuration == x.configuration) && (this.details == x.details)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.librarymanagement.ConfigurationReportLite".##) + configuration.##) + details.##)
   }

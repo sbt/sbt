@@ -13,10 +13,10 @@ final class Patterns private (
   
   private def this() = this(Vector.empty, Vector.empty, true, false, false)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Patterns => (this.ivyPatterns == x.ivyPatterns) && (this.artifactPatterns == x.artifactPatterns) && (this.isMavenCompatible == x.isMavenCompatible) && (this.descriptorOptional == x.descriptorOptional) && (this.skipConsistencyCheck == x.skipConsistencyCheck)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Patterns".##) + ivyPatterns.##) + artifactPatterns.##) + isMavenCompatible.##) + descriptorOptional.##) + skipConsistencyCheck.##)
   }

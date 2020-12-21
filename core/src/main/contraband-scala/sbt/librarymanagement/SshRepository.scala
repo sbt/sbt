@@ -14,10 +14,10 @@ final class SshRepository private (
   this(name, patterns, connection, publishPermissions)
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: SshRepository => (this.name == x.name) && (this.patterns == x.patterns) && (this.connection == x.connection) && (this.publishPermissions == x.publishPermissions)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.SshRepository".##) + name.##) + patterns.##) + connection.##) + publishPermissions.##)
   }

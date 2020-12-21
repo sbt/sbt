@@ -11,10 +11,10 @@ final class URLRepository private (
   private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateURLRepository(this, logger)
   private def this(name: String, patterns: sbt.librarymanagement.Patterns) = this(name, patterns, false)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: URLRepository => (this.name == x.name) && (this.patterns == x.patterns) && (this.allowInsecureProtocol == x.allowInsecureProtocol)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.URLRepository".##) + name.##) + patterns.##) + allowInsecureProtocol.##)
   }

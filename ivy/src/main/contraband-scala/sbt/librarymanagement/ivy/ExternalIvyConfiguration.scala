@@ -14,10 +14,10 @@ final class ExternalIvyConfiguration private (
   
   private def this() = this(None, None, sbt.librarymanagement.ivy.UpdateOptions(), None, None, Vector())
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ExternalIvyConfiguration => (this.lock == x.lock) && (this.log == x.log) && (this.updateOptions == x.updateOptions) && (this.baseDirectory == x.baseDirectory) && (this.uri == x.uri) && (this.extraResolvers == x.extraResolvers)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.ExternalIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + baseDirectory.##) + uri.##) + extraResolvers.##)
   }

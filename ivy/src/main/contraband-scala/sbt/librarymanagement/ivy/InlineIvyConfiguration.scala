@@ -18,10 +18,10 @@ final class InlineIvyConfiguration private (
   
   private def this() = this(None, None, sbt.librarymanagement.ivy.UpdateOptions(), None, sbt.librarymanagement.Resolver.defaults, Vector.empty, Vector.empty, sbt.librarymanagement.ivy.IvyDefaults.defaultChecksums, false, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InlineIvyConfiguration => (this.lock == x.lock) && (this.log == x.log) && (this.updateOptions == x.updateOptions) && (this.paths == x.paths) && (this.resolvers == x.resolvers) && (this.otherResolvers == x.otherResolvers) && (this.moduleConfigurations == x.moduleConfigurations) && (this.checksums == x.checksums) && (this.managedChecksums == x.managedChecksums) && (this.resolutionCacheDir == x.resolutionCacheDir)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ivy.InlineIvyConfiguration".##) + lock.##) + log.##) + updateOptions.##) + paths.##) + resolvers.##) + otherResolvers.##) + moduleConfigurations.##) + checksums.##) + managedChecksums.##) + resolutionCacheDir.##)
   }

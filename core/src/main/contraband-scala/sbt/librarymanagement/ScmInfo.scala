@@ -12,10 +12,10 @@ final class ScmInfo private (
   
   private def this(browseUrl: java.net.URL, connection: String) = this(browseUrl, connection, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScmInfo => (this.browseUrl == x.browseUrl) && (this.connection == x.connection) && (this.devConnection == x.devConnection)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ScmInfo".##) + browseUrl.##) + connection.##) + devConnection.##)
   }

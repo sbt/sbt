@@ -11,10 +11,10 @@ final class FileConfiguration private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: FileConfiguration => (this.isLocal == x.isLocal) && (this.isTransactional == x.isTransactional)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.librarymanagement.FileConfiguration".##) + isLocal.##) + isTransactional.##)
   }
