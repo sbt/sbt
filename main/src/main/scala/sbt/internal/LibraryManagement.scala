@@ -19,6 +19,7 @@ import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
 import sjsonnew.JsonFormat
+import scala.compat.Platform.EOL
 
 private[sbt] object LibraryManagement {
   implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
@@ -36,7 +37,8 @@ private[sbt] object LibraryManagement {
       force: Boolean,
       depsUpdated: Boolean,
       uwConfig: UnresolvedWarningConfiguration,
-      ewo: EvictionWarningOptions,
+      evictionLevel: Level.Value,
+      versionSchemeOverrides: Seq[ModuleID],
       mavenStyle: Boolean,
       compatWarning: CompatibilityWarningOptions,
       includeCallers: Boolean,
@@ -61,9 +63,19 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val ew = EvictionWarning(module, ewo, report1)
-      ew.lines.foreach(log.warn(_))
-      ew.infoAllTheThings.foreach(log.info(_))
+      val evictionError = EvictionError(report1, module, versionSchemeOverrides)
+      if (evictionError.incompatibleEvictions.isEmpty) ()
+      else
+        evictionLevel match {
+          case Level.Error =>
+            val msgs = List(
+              "",
+              "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
+            )
+            sys.error((evictionError.lines ++ msgs).mkString(EOL))
+          case _ =>
+            evictionError.lines.foreach(log.log(evictionLevel, _: String))
+        }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
       report2
@@ -245,11 +257,6 @@ private[sbt] object LibraryManagement {
           // logical clock is folded into UpdateConfiguration
           conf1.withLogicalClock(LogicalClock(state0.hashCode))
         }
-        val evictionOptions = Def.taskDyn {
-          if (executionRoots.value.exists(_.key == evicted.key))
-            Def.task(EvictionWarningOptions.empty)
-          else Def.task((evictionWarningOptions in update).value)
-        }.value
         cachedUpdate(
           // LM API
           lm = lm,
@@ -263,7 +270,8 @@ private[sbt] object LibraryManagement {
           force = shouldForce,
           depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
           uwConfig = (unresolvedWarningConfiguration in update).value,
-          ewo = evictionOptions,
+          evictionLevel = Level.Debug,
+          versionSchemeOverrides = Nil,
           mavenStyle = publishMavenStyle.value,
           compatWarning = compatibilityWarningOptions.value,
           includeCallers = false,

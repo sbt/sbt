@@ -2689,6 +2689,8 @@ object Classpaths {
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
+        libraryDependencySchemes :== Nil,
+        evictionErrorLevel :== Level.Error,
         excludeDependencies :== Nil,
         ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
         if (insideCI.value)
@@ -3460,13 +3462,7 @@ object Classpaths {
         .withMetadataDirectory(dependencyCacheDirectory.value)
     }
 
-    val evictionOptions = Def.taskDyn {
-      if (executionRoots.value.exists(_.key == evicted.key))
-        Def.task(EvictionWarningOptions.empty)
-      else Def.task((evictionWarningOptions in update).value)
-    }.value
-
-    val extracted = (Project extract state0)
+    val extracted = Project.extract(state0)
     val isPlugin = sbtPlugin.value
     val thisRef = thisProjectRef.value
     val label =
@@ -3486,7 +3482,8 @@ object Classpaths {
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      ewo = evictionOptions,
+      evictionLevel = evictionErrorLevel.value,
+      versionSchemeOverrides = libraryDependencySchemes.value,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
       includeCallers = includeCallers,
