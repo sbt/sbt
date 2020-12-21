@@ -15,10 +15,10 @@ final class Caller private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Caller => (this.caller == x.caller) && (this.callerConfigurations == x.callerConfigurations) && (this.callerExtraAttributes == x.callerExtraAttributes) && (this.isForceDependency == x.isForceDependency) && (this.isChangingDependency == x.isChangingDependency) && (this.isTransitiveDependency == x.isTransitiveDependency) && (this.isDirectlyForceDependency == x.isDirectlyForceDependency)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.Caller".##) + caller.##) + callerConfigurations.##) + callerExtraAttributes.##) + isForceDependency.##) + isChangingDependency.##) + isTransitiveDependency.##) + isDirectlyForceDependency.##)
   }

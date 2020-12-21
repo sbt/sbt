@@ -18,10 +18,10 @@ final class ModuleInfo private (
   
   private def this(nameFormal: String) = this(nameFormal, "", None, None, Vector.empty, "", None, None, Vector.empty)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ModuleInfo => (this.nameFormal == x.nameFormal) && (this.description == x.description) && (this.homepage == x.homepage) && (this.startYear == x.startYear) && (this.licenses == x.licenses) && (this.organizationName == x.organizationName) && (this.organizationHomepage == x.organizationHomepage) && (this.scmInfo == x.scmInfo) && (this.developers == x.developers)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.ModuleInfo".##) + nameFormal.##) + description.##) + homepage.##) + startYear.##) + licenses.##) + organizationName.##) + organizationHomepage.##) + scmInfo.##) + developers.##)
   }

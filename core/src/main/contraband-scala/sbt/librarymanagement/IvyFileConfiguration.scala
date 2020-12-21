@@ -12,10 +12,10 @@ final class IvyFileConfiguration private (
   
   private def this(file: java.io.File, autoScalaTools: Boolean) = this(false, None, file, autoScalaTools)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: IvyFileConfiguration => (this.validate == x.validate) && (this.scalaModuleInfo == x.scalaModuleInfo) && (this.file == x.file) && (this.autoScalaTools == x.autoScalaTools)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.IvyFileConfiguration".##) + validate.##) + scalaModuleInfo.##) + file.##) + autoScalaTools.##)
   }

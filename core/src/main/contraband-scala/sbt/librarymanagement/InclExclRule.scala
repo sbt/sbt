@@ -22,10 +22,10 @@ final class InclExclRule private (
   
   private def this() = this("*", "*", "*", Vector.empty, sbt.librarymanagement.Disabled())
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InclExclRule => (this.organization == x.organization) && (this.name == x.name) && (this.artifact == x.artifact) && (this.configurations == x.configurations) && (this.crossVersion == x.crossVersion)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.InclExclRule".##) + organization.##) + name.##) + artifact.##) + configurations.##) + crossVersion.##)
   }

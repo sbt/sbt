@@ -13,10 +13,10 @@ final class RetrieveConfiguration private (
   private def this() = this(None, None, false, None)
   private def this(retrieveDirectory: Option[java.io.File], outputPattern: Option[String]) = this(retrieveDirectory, outputPattern, false, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: RetrieveConfiguration => (this.retrieveDirectory == x.retrieveDirectory) && (this.outputPattern == x.outputPattern) && (this.sync == x.sync) && (this.configurationsToRetrieve == x.configurationsToRetrieve)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.RetrieveConfiguration".##) + retrieveDirectory.##) + outputPattern.##) + sync.##) + configurationsToRetrieve.##)
   }

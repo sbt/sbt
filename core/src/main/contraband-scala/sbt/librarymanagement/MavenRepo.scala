@@ -16,10 +16,10 @@ final class MavenRepo private (
   private def this(name: String, root: String) = this(name, root, true, false)
   private def this(name: String, root: String, localIfFile: Boolean) = this(name, root, localIfFile, false)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: MavenRepo => (this.name == x.name) && (this.root == x.root) && (this.localIfFile == x.localIfFile) && (this._allowInsecureProtocol == x._allowInsecureProtocol)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MavenRepo".##) + name.##) + root.##) + localIfFile.##) + _allowInsecureProtocol.##)
   }

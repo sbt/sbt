@@ -17,10 +17,10 @@ final class PublishConfiguration private (
   
   private def this() = this(true, None, None, None, None, Vector(), Vector("sha1", "md5"), None, false)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: PublishConfiguration => (this.publishMavenStyle == x.publishMavenStyle) && (this.deliverIvyPattern == x.deliverIvyPattern) && (this.status == x.status) && (this.configurations == x.configurations) && (this.resolverName == x.resolverName) && (this.artifacts == x.artifacts) && (this.checksums == x.checksums) && (this.logging == x.logging) && (this.overwrite == x.overwrite)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.PublishConfiguration".##) + publishMavenStyle.##) + deliverIvyPattern.##) + status.##) + configurations.##) + resolverName.##) + artifacts.##) + checksums.##) + logging.##) + overwrite.##)
   }

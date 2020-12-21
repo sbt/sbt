@@ -16,10 +16,10 @@ final class MakePomConfiguration private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: MakePomConfiguration => (this.file == x.file) && (this.moduleInfo == x.moduleInfo) && (this.configurations == x.configurations) && (this.extra == x.extra) && (this.process == x.process) && (this.filterRepositories == x.filterRepositories) && (this.allRepositories == x.allRepositories) && (this.includeTypes == x.includeTypes)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MakePomConfiguration".##) + file.##) + moduleInfo.##) + configurations.##) + extra.##) + process.##) + filterRepositories.##) + allRepositories.##) + includeTypes.##)
   }

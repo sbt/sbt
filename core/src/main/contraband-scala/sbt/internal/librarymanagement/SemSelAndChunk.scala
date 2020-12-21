@@ -9,10 +9,10 @@ final class SemSelAndChunk private (
   def matches(version: sbt.librarymanagement.VersionNumber): Boolean = comparators.forall(_.matches(version))
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: SemSelAndChunk => (this.comparators == x.comparators)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.internal.librarymanagement.SemSelAndChunk".##) + comparators.##)
   }

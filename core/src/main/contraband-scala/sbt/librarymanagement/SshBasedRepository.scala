@@ -13,10 +13,10 @@ abstract class SshBasedRepository(
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: SshBasedRepository => (this.name == x.name) && (this.patterns == x.patterns) && (this.connection == x.connection)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.SshBasedRepository".##) + name.##) + patterns.##) + connection.##)
   }

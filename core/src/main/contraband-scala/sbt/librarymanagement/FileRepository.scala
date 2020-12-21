@@ -13,10 +13,10 @@ final class FileRepository private (
   this(name, patterns, configuration)
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: FileRepository => (this.name == x.name) && (this.patterns == x.patterns) && (this.configuration == x.configuration)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.FileRepository".##) + name.##) + patterns.##) + configuration.##)
   }

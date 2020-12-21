@@ -18,10 +18,10 @@ final class MavenCache private (
   override def allowInsecureProtocol: Boolean = false
   private def this(name: String, root: String, rootFile: java.io.File) = this(name, root, true, rootFile)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: MavenCache => (this.name == x.name) && (this.root == x.root) && (this.localIfFile == x.localIfFile) && (this.rootFile == x.rootFile)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (17 + "sbt.librarymanagement.MavenCache".##) + name.##) + root.##) + localIfFile.##) + rootFile.##)
   }
