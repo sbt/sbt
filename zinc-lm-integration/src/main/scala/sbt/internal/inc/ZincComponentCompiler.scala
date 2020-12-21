@@ -36,6 +36,7 @@ private[sbt] object ZincComponentCompiler {
   private[sbt] final lazy val incrementalVersion: String = ZincComponentManager.version
 
   private val CompileConf = Some(Configurations.Compile.name)
+  private val lock: AnyRef = new {}
 
   private[sbt] def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
     val compilerBridgeId = scalaVersion match {
@@ -68,7 +69,7 @@ private[sbt] object ZincComponentCompiler {
         bridgeSources: ModuleID,
         scalaInstance: ScalaInstance,
         logger: Logger,
-    ): File = {
+    ): File = lock.synchronized {
       val raw = new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, logger)
       val zinc =
         new ZincComponentCompiler(raw, manager, dependencyResolution, bridgeSources, logger)
@@ -312,7 +313,7 @@ private object ZincLMHelper {
     logger.info(s"Attempting to fetch $dependencies.")
     dependencyResolution.update(module, updateConfiguration, warningConf, logger) match {
       case Left(uw) =>
-        logger.debug(s"Couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
+        logger.debug(s"couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
         val unretrievedMessage = s"The $desc could not be retrieved."
         val unresolvedLines = UnresolvedWarning.unresolvedWarningLines.showLines(uw).mkString("\n")
         throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")
