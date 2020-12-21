@@ -17,10 +17,12 @@ private[sbt] object VersionSchemes {
   final val EarlySemVer = "early-semver"
   final val SemVerSpec = "semver-spec"
   final val PackVer = "pvp"
+  final val Strict = "strict"
+  final val Always = "always"
 
   def validateScheme(value: String): Unit =
     value match {
-      case EarlySemVer | SemVerSpec | PackVer => ()
+      case EarlySemVer | SemVerSpec | PackVer | Strict | Always => ()
       case "semver" =>
         sys.error(
           s"""'semver' is ambiguous.
