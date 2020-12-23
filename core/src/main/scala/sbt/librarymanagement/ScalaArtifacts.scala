@@ -13,17 +13,20 @@ object ScalaArtifacts {
   final val Scala3CompilerID = "scala3-compiler"
   final val Scala3InterfacesID = "scala3-interfaces"
   final val TastyCoreID = "tasty-core"
+  final val Scala3DocID = "scala3doc"
 
   private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"
   private[sbt] final val Scala3CompilerPrefix = Scala3CompilerID + "_"
   private[sbt] final val TastyCorePrefix = TastyCoreID + "_"
+  private[sbt] final val Scala3DocPrefix = Scala3DocID + "_"
 
   def isScala2Artifact(name: String): Boolean = {
     name == LibraryID || name == CompilerID || name == ReflectID || name == ActorsID || name == ScalapID
   }
   def isScala3Artifact(name: String): Boolean = {
     name.startsWith(Scala3LibraryPrefix) || name.startsWith(Scala3CompilerPrefix) ||
-    name.startsWith(TastyCorePrefix) || name == Scala3InterfacesID
+    name.startsWith(TastyCorePrefix) || name == Scala3InterfacesID ||
+    name.startsWith(Scala3DocPrefix)
   }
 
   def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
@@ -48,6 +51,18 @@ object ScalaArtifacts {
       ModuleID(org, LibraryID, version)
   }
 
+  private[sbt] def docToolDependencies(
+      org: String,
+      version: String
+  ): Seq[ModuleID] =
+    if (isScala3(version)) {
+      Seq(
+        ModuleID(org, Scala3DocID, version)
+          .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
+          .withCrossVersion(CrossVersion.binary)
+      )
+    } else Seq.empty
+
   private[sbt] def toolDependencies(
       org: String,
       version: String
@@ -60,11 +75,11 @@ object ScalaArtifacts {
       )
     else
       Seq(
-        scalaToolDependency(org, CompilerID, version),
-        scalaToolDependency(org, LibraryID, version)
+        scala2ToolDependency(org, CompilerID, version),
+        scala2ToolDependency(org, LibraryID, version)
       )
 
-  private[this] def scalaToolDependency(org: String, id: String, version: String): ModuleID =
+  private[this] def scala2ToolDependency(org: String, id: String, version: String): ModuleID =
     ModuleID(org, id, version).withConfigurations(
       Some(Configurations.ScalaTool.name + "->default,optional(default)")
     )
