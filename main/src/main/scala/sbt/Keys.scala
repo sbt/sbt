@@ -455,6 +455,7 @@ object Keys {
   val updateFull = taskKey[UpdateReport]("Resolves and optionally retrieves dependencies, producing a full report with callers.").withRank(CTask)
   val evicted = taskKey[EvictionWarning]("Display detailed eviction warnings.").withRank(CTask)
   val evictionWarningOptions = settingKey[EvictionWarningOptions]("Options on eviction warnings after resolving managed dependencies.").withRank(DSetting)
+  val evictionErrorLevel = settingKey[Level.Value]("The log level for detected eviction errors. Level.Error will throw an error.")
   val transitiveUpdate = taskKey[Seq[UpdateReport]]("UpdateReports for the internal dependencies of this project.").withRank(DTask)
   val updateClassifiers = TaskKey[UpdateReport]("updateClassifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = settingKey[Seq[String]]("List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.").withRank(BSetting)
@@ -533,6 +534,7 @@ object Keys {
   val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.").withRank(BSetting)
   val forceUpdatePeriod = settingKey[Option[FiniteDuration]]("Duration after which to force a full update to occur").withRank(CSetting)
   val versionScheme = settingKey[Option[String]]("""Version scheme used for the subproject: Supported values are Some("early-semver"), Some("pvp"), and Some("semver-spec")""").withRank(BSetting)
+  val libraryDependencySchemes = settingKey[Seq[ModuleID]]("""Version scheme to use for specific modules set as "org" %% "name" % "<scheme>": Supported values are "early-semver", "pvp", "semver-spec", "always", and "strict".""").withRank(BSetting)
 
   val classifiersModule = taskKey[GetClassifiersModule]("classifiers-module").withRank(CTask)
   val compatibilityWarningOptions = settingKey[CompatibilityWarningOptions]("Configures warnings around Maven incompatibility.").withRank(CSetting)

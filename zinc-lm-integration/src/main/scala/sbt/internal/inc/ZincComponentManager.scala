@@ -39,7 +39,9 @@ class ZincComponentManager(
     def notFound = invalid(s"Could not find required component '$id'")
     def getOrElse(orElse: => Iterable[File]): Iterable[File] = {
       val existing = provider.component(id)
-      if (existing.isEmpty) orElse else existing
+      // log.info(s"[zinc-lm] existing = ${existing.toList}")
+      if (existing.isEmpty) orElse
+      else existing
     }
 
     def createAndCache = {

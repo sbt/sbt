@@ -1,15 +1,10 @@
-// ThisBuild / useCoursier := false
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths(
-      (ThisBuild / baseDirectory).value,
-      Some((LocalRootProject / target).value / "ivy-cache")
-    ),
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     publishTo := Some(MavenCache("local-maven", (LocalRootProject / target).value / "local-maven")),
     resolvers += MavenCache("local-maven", (LocalRootProject / target).value / "local-maven"),
@@ -56,7 +51,17 @@ val use = project
         }
       log.info(s"extraAttributes = $extraAttributes")
       assert(extraAttributes.nonEmpty, s"$extraAttributes is empty")
-      val ew = EvictionWarning(ivyModule.value, (evicted / evictionWarningOptions).value, report)
-      assert(ew.directEvictions.isEmpty, s"${ew.directEvictions} is not empty")
     },
+  )
+
+val use2 = project
+  .settings(commonSettings)
+  .settings(
+    name := "use2",
+    libraryDependencies ++= Seq(
+      "org.http4s" %% "http4s-blaze-server" % "0.21.11",
+      // https://repo1.maven.org/maven2/org/typelevel/cats-effect_2.13/3.0.0-M4/cats-effect_2.13-3.0.0-M4.pom
+      // is published with early-semver
+      "org.typelevel" %% "cats-effect" % "3.0.0-M4",
+    ),
   )
