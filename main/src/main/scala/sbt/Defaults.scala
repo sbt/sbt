@@ -675,6 +675,7 @@ object Defaults extends BuildCommon {
       else Def.task[Option[File]](None)
     }.value,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeBinaryJar := None,
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
