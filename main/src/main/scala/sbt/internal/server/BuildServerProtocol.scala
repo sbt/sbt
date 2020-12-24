@@ -78,10 +78,18 @@ object BuildServerProtocol {
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    bspConfig := BuildServerConnection.writeConnectionFile(
-      sbtVersion.value,
-      (ThisBuild / baseDirectory).value
-    ),
+    bspConfig := {
+      if (bspEnabled.value) {
+        BuildServerConnection.writeConnectionFile(
+          sbtVersion.value,
+          (ThisBuild / baseDirectory).value
+        )
+      } else {
+        val logger = streams.value.log
+        logger.warn("BSP is disabled for this build")
+        logger.info("add 'Global / bspEnabled := true' to enable BSP")
+      }
+    },
     bspEnabled := true,
     bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
@@ -204,10 +212,11 @@ object BuildServerProtocol {
       val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
+      val meta = isMetaBuild.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, converter, logger, underlying)
+        new BuildServerReporterImpl(targetId, converter, meta, logger, underlying)
       } else {
-        new BuildServerForwarder(logger, underlying)
+        new BuildServerForwarder(meta, logger, underlying)
       }
     }
   )

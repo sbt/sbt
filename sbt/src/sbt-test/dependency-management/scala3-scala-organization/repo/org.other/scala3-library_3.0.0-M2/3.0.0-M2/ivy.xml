@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="org.other" module="scala3-library_3.0.0-M2" revision="3.0.0-M2" status="integration" publication="20201021102715">
+    <description homepage="https://github.com/lampepfl/dotty">scala3-library-bootstrapped</description>
+  </info>
+  <configurations>
+    <conf name="plugin" visibility="public" description=""/>
+    <conf name="pom" visibility="public" description=""/>
+    <conf extends="runtime" name="test" visibility="public" description=""/>
+    <conf name="provided" visibility="public" description=""/>
+    <conf extends="compile,optional,provided" name="compile-internal" visibility="public" description=""/>
+    <conf name="docs" visibility="public" description=""/>
+    <conf name="optional" visibility="public" description=""/>
+    <conf name="compile" visibility="public" description=""/>
+    <conf extends="test,optional,provided" name="test-internal" visibility="public" description=""/>
+    <conf name="sources" visibility="public" description=""/>
+    <conf extends="compile" name="runtime" visibility="public" description=""/>
+    <conf extends="runtime,optional" name="runtime-internal" visibility="public" description=""/>
+  </configurations>
+  <publications>
+    <artifact name="scala3-library_3.0.0-M2" type="pom" ext="pom" conf="pom"/>
+    <artifact e:classifier="sources" name="scala3-library_3.0.0-M2" type="src" ext="jar" conf="sources"/>
+    <artifact e:classifier="javadoc" name="scala3-library_3.0.0-M2" type="doc" ext="jar" conf="docs"/>
+    <artifact name="scala3-library_3.0.0-M2" type="jar" ext="jar" conf="compile"/>
+  </publications>
+  <dependencies>
+    <dependency org="com.novocode" name="junit-interface" rev="0.11" conf="test->default(compile)"> </dependency>
+    <dependency org="org.other" name="scala-library" rev="2.13.4" conf="compile->default(compile)"> </dependency>
+  </dependencies>
+</ivy-module>

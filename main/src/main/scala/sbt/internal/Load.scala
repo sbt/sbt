@@ -85,7 +85,7 @@ private[sbt] object Load {
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
       dependencyResolution = dependencyResolution,
-      compilerBridgeSource = ZincLmUtil.getDefaultBridgeModule(scalaProvider.version),
+      compilerBridgeSource = ZincLmUtil.getDefaultBridgeSourceModule(scalaProvider.version),
       scalaJarsTarget = zincDir,
       state.get(BasicKeys.classLoaderCache),
       log = log

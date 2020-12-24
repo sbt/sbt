@@ -14,10 +14,10 @@ final class TerminalPropertiesResponse private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TerminalPropertiesResponse => (this.width == x.width) && (this.height == x.height) && (this.isAnsiSupported == x.isAnsiSupported) && (this.isColorEnabled == x.isColorEnabled) && (this.isSupershellEnabled == x.isSupershellEnabled) && (this.isEchoEnabled == x.isEchoEnabled)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.protocol.TerminalPropertiesResponse".##) + width.##) + height.##) + isAnsiSupported.##) + isColorEnabled.##) + isSupershellEnabled.##) + isEchoEnabled.##)
   }

@@ -47,6 +47,9 @@ object Util {
 
   def ignoreResult[T](f: => T): Unit = macro Macro.ignore
 
+  lazy val isMac: Boolean =
+    System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
+
   lazy val isWindows: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 

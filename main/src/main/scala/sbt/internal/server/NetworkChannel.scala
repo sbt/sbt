@@ -923,7 +923,8 @@ object NetworkChannel {
   case object InBody extends ChannelState
   private[sbt] def cancel(
       execID: Option[String],
-      id: String
+      id: String,
+      force: Boolean
   ): Either[String, String] = {
 
     Option(EvaluateTask.currentlyRunningTaskEngine.get) match {
@@ -945,7 +946,7 @@ object NetworkChannel {
 
         // direct comparison on strings and
         // remove hotspring unicode added character for numbers
-        if (checkId) {
+        if (checkId || force) {
           runningEngine.cancelAndShutdown()
           Right(runningExecId)
         } else {

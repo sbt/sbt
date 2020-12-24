@@ -24,10 +24,10 @@ final class ScalaBuildTarget private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalaBuildTarget => (this.scalaOrganization == x.scalaOrganization) && (this.scalaVersion == x.scalaVersion) && (this.scalaBinaryVersion == x.scalaBinaryVersion) && (this.platform == x.platform) && (this.jars == x.jars)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalaBuildTarget".##) + scalaOrganization.##) + scalaVersion.##) + scalaBinaryVersion.##) + platform.##) + jars.##)
   }

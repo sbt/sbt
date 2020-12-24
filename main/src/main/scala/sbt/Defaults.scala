@@ -88,6 +88,7 @@ import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
+import xsbti.compile.TastyFiles
 import xsbti.{ FileConverter, Position }
 
 import scala.collection.immutable.ListMap
@@ -332,8 +333,10 @@ object Defaults extends BuildCommon {
       exportPipelining := usePipelining.value,
       useScalaReplJLine :== false,
       scalaInstanceTopLoader := {
-        if (!useScalaReplJLine.value) classOf[org.jline.terminal.Terminal].getClassLoader
-        else appConfiguration.value.provider.scalaProvider.launcher.topLoader.getParent
+        // the JLineLoader contains the SbtInterfaceClassLoader
+        if (!useScalaReplJLine.value)
+          classOf[org.jline.terminal.Terminal].getClassLoader // the JLineLoader
+        else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
       },
       useSuperShell := { if (insideCI.value) false else ITerminal.console.isSupershellEnabled },
       superShellThreshold :== SysProp.supershellThreshold,
@@ -383,6 +386,7 @@ object Defaults extends BuildCommon {
       },
       serverHandlers :== Nil,
       windowsServerSecurityLevel := Win32SecurityLevel.OWNER_DACL, // allows any owner logon session to access the server
+      serverUseJni := BootServerSocket.requiresJNI || SysProp.serverUseJni,
       fullServerHandlers := Nil,
       insideCI :== sys.env.contains("BUILD_NUMBER") ||
         sys.env.contains("CI") || SysProp.ci,
@@ -666,15 +670,21 @@ object Defaults extends BuildCommon {
     ),
     cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
     clean := clean.dependsOn(cleanIvy).value,
-    scalaCompilerBridgeBinaryJar := None,
-    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
-    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(
+    scalaCompilerBridgeBinaryJar := Def.settingDyn {
+      val sv = scalaVersion.value
+      if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
+      else Def.task[Option[File]](None)
+    }.value,
+    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeBinaryJar := None,
+    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
+      auxiliaryClassFiles := Nil,
       incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
       classpathOptions in console :== ClasspathOptionsUtil.repl,
@@ -733,6 +743,18 @@ object Defaults extends BuildCommon {
     val scalaBase = if (cross) t / ("scala-" + sv) else t
     if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
   }
+
+  private def fetchBridgeBinaryJarTask(scalaVersion: String): Initialize[Task[Option[File]]] =
+    Def.task {
+      val bridgeJar = ZincLmUtil.fetchDefaultBridgeModule(
+        scalaVersion,
+        dependencyResolution.value,
+        updateConfiguration.value,
+        (update / unresolvedWarningConfiguration).value,
+        streams.value.log
+      )
+      Some(bridgeJar)
+    }
 
   def compilersSetting = {
     compilers := {
@@ -858,9 +880,14 @@ object Defaults extends BuildCommon {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     externalHooks := IncOptions.defaultExternal,
+    auxiliaryClassFiles ++= {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
+      else Nil
+    },
     incOptions := {
       val old = incOptions.value
       old
+        .withAuxiliaryClassFiles(auxiliaryClassFiles.value.toArray)
         .withExternalHooks(externalHooks.value)
         .withClassfileManagerType(
           Option(
@@ -1032,21 +1059,22 @@ object Defaults extends BuildCommon {
   }
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
+    val sv = scalaVersion.value
     val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
       sys.error(noToolConfiguration(managedScalaInstance.value))
     def files(id: String) =
       for {
-        m <- toolReport.modules if m.module.name == id;
+        m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
+    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing $id jar file")
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
-    val libraryJar = file(ScalaArtifacts.LibraryID)
-    val compilerJar = file(ScalaArtifacts.CompilerID)
+    val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
+    val compilerJar = file(ScalaArtifacts.compilerId(sv))
     mkScalaInstance(
-      scalaVersion.value,
+      sv,
       allJars,
-      Array(libraryJar),
+      libraryJars,
       compilerJar,
       state.value.extendedClassLoaderCache,
       scalaInstanceTopLoader.value,
@@ -2507,14 +2535,15 @@ object Classpaths {
         val isMeta = isMetaBuild.value
         val force = reresolveSbtArtifacts.value
         val app = appConfiguration.value
-        val sbtCp0 = app.provider.mainClasspath.toList
-        val sbtCp = sbtCp0 map { Attributed.blank(_) }
+        def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
+        val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+        val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath).map(Attributed.blank)
         val mjars = managedJars(
           classpathConfiguration.value,
           classpathTypes.value,
           update.value
         )
-        if (isMeta && !force) mjars ++ sbtCp
+        if (isMeta && !force) (mjars ++ sbtCp).distinct
         else mjars
       },
       exportedProducts := ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value,
@@ -2686,6 +2715,8 @@ object Classpaths {
         defaultConfiguration :== Some(Configurations.Compile),
         dependencyOverrides :== Vector.empty,
         libraryDependencies :== Nil,
+        libraryDependencySchemes :== Nil,
+        evictionErrorLevel :== Level.Error,
         excludeDependencies :== Nil,
         ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
         if (insideCI.value)
@@ -3075,10 +3106,8 @@ object Classpaths {
       val version = scalaVersion.value
       if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
         pluginAdjust
-      else {
-        val isDotty = ScalaInstance.isDotty(version)
-        ScalaArtifacts.toolDependencies(sbtOrg, version, isDotty) ++ pluginAdjust
-      }
+      else
+        ScalaArtifacts.toolDependencies(sbtOrg, version) ++ pluginAdjust
     },
     // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
@@ -3410,11 +3439,10 @@ object Classpaths {
     val s = streams.value
     val cacheDirectory = crossTarget.value / cacheLabel / updateCacheName.value
 
-    import CacheStoreFactory.jvalueIsoString
     val cacheStoreFactory: CacheStoreFactory = {
       val factory =
         state.value.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
-      factory(cacheDirectory.toPath, Converter)
+      factory(cacheDirectory.toPath)
     }
 
     val isRoot = executionRoots.value contains resolvedScoped.value
@@ -3460,13 +3488,7 @@ object Classpaths {
         .withMetadataDirectory(dependencyCacheDirectory.value)
     }
 
-    val evictionOptions = Def.taskDyn {
-      if (executionRoots.value.exists(_.key == evicted.key))
-        Def.task(EvictionWarningOptions.empty)
-      else Def.task((evictionWarningOptions in update).value)
-    }.value
-
-    val extracted = (Project extract state0)
+    val extracted = Project.extract(state0)
     val isPlugin = sbtPlugin.value
     val thisRef = thisProjectRef.value
     val label =
@@ -3486,7 +3508,8 @@ object Classpaths {
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
       uwConfig = (unresolvedWarningConfiguration in update).value,
-      ewo = evictionOptions,
+      evictionLevel = evictionErrorLevel.value,
+      versionSchemeOverrides = libraryDependencySchemes.value,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
       includeCallers = includeCallers,
@@ -3823,7 +3846,7 @@ object Classpaths {
       version: String
   ): Seq[ModuleID] =
     if (auto)
-      modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
+      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version)) :: Nil
     else
       Nil
 

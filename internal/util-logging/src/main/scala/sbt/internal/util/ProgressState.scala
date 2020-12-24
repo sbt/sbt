@@ -111,7 +111,10 @@ private[sbt] final class ProgressState(
           if (appendNewline) toWrite ++= lineSeparatorBytes
         }
         parts.dropRight(1).foreach(appendLine(_, true))
-        parts.lastOption.foreach(appendLine(_, bytes.endsWith(lineSeparatorBytes)))
+        parts.lastOption match {
+          case Some(l) => appendLine(l, bytes.endsWith(lineSeparatorBytes))
+          case None    => toWrite ++= lineSeparatorBytes
+        }
       } else toWrite ++= bytes
       toWrite ++= clearScreenBytes
       if (endsWithNewLine) {

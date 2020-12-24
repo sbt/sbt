@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="org.other" module="scala-library" revision="2.13.4" status="integration" publication="20200731084418" e:info.apiURL="https://www.scala-lang.org/api/2.13.4-bin-SNAPSHOT/">
+    <description homepage="https://www.scala-lang.org">Scala Standard Library</description>
+  </info>
+  <configurations>
+    <conf name="plugin" visibility="public" description=""/>
+    <conf name="pom" visibility="public" description=""/>
+    <conf extends="runtime" name="test" visibility="public" description=""/>
+    <conf name="provided" visibility="public" description=""/>
+    <conf extends="compile,optional,provided" name="compile-internal" visibility="public" description=""/>
+    <conf name="docs" visibility="public" description=""/>
+    <conf name="optional" visibility="public" description=""/>
+    <conf name="compile" visibility="public" description=""/>
+    <conf extends="test,optional,provided" name="test-internal" visibility="public" description=""/>
+    <conf extends="runtime" name="default" visibility="public" description=""/>
+    <conf name="sources" visibility="public" description=""/>
+    <conf extends="compile" name="runtime" visibility="public" description=""/>
+    <conf extends="runtime,optional" name="runtime-internal" visibility="public" description=""/>
+  </configurations>
+  <publications>
+    <artifact name="scala-library" type="pom" ext="pom" conf="pom"/>
+    <artifact e:classifier="sources" name="scala-library" type="src" ext="jar" conf="sources"/>
+    <artifact e:classifier="javadoc" name="scala-library" type="doc" ext="jar" conf="docs"/>
+    <artifact name="scala-library" type="jar" ext="jar" conf="compile"/>
+  </publications>
+  <dependencies/>
+</ivy-module>

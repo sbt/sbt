@@ -6,6 +6,7 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -25,7 +26,7 @@ jobs:
             jobtype: 5
     runs-on: ${{ matrix.os }}
     env:
-      JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
+      JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SCALA_212: 2.12.12
       SCALA_213: 2.13.1
       UTIL_TESTS: utilCache/test;utilControl/test;utilInterface/test;utilLogging/test;utilPosition/test;utilRelation/test;utilScripted/test;utilTracking/test

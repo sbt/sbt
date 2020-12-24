@@ -52,5 +52,5 @@ checkDependencies := {
       if !m.evicted
     } yield m.module.withExtraAttributes(Map.empty)).toSet
 
-  assert(resolved == expected)
+  assert(resolved == expected, s"$resolved != $expected")
 }

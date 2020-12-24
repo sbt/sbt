@@ -8,11 +8,12 @@
 package sbt.util
 
 import java.io.{ File, InputStream, OutputStream }
+
 import sbt.io.syntax.fileToRichFile
-import sbt.io.{ IO, Using }
-import sjsonnew.{ IsoString, JsonReader, JsonWriter, SupportConverter }
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sbt.io.IO
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Parser }
+import sjsonnew.{ IsoString, JsonReader, JsonWriter, SupportConverter }
 
 /** A `CacheStore` is used by the caching infrastructure to persist cached information. */
 abstract class CacheStore extends Input with Output {
@@ -23,6 +24,7 @@ abstract class CacheStore extends Input with Output {
 }
 
 object CacheStore {
+  @deprecated("Create your own IsoString[JValue]", "1.4")
   implicit lazy val jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
@@ -30,7 +32,7 @@ object CacheStore {
   def apply(cacheFile: File): CacheStore = file(cacheFile)
 
   /** Returns file-based CacheStore using standard JSON converter. */
-  def file(cacheFile: File): CacheStore = new FileBasedStore[JValue](cacheFile, Converter)
+  def file(cacheFile: File): CacheStore = new FileBasedStore(cacheFile)
 }
 
 /** Factory that can make new stores. */
@@ -47,6 +49,7 @@ abstract class CacheStoreFactory {
 }
 
 object CacheStoreFactory {
+  @deprecated("Create your own IsoString[JValue]", "1.4")
   implicit lazy val jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
@@ -54,31 +57,36 @@ object CacheStoreFactory {
   def apply(base: File): CacheStoreFactory = directory(base)
 
   /** Returns directory-based CacheStoreFactory using standard JSON converter. */
-  def directory(base: File): CacheStoreFactory = new DirectoryStoreFactory[JValue](base, Converter)
+  def directory(base: File): CacheStoreFactory = new DirectoryStoreFactory(base)
 }
 
 /** A factory that creates new stores persisted in `base`. */
-class DirectoryStoreFactory[J: IsoString](base: File, converter: SupportConverter[J])
-    extends CacheStoreFactory {
+class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory {
   IO.createDirectory(base)
 
-  def make(identifier: String): CacheStore = new FileBasedStore(base / identifier, converter)
+  @deprecated("Use constructor without converter", "1.4")
+  def this(base: File, converter: sjsonnew.SupportConverter[J])(implicit e: sjsonnew.IsoString[J]) =
+    this(base)
+
+  def make(identifier: String): CacheStore = new FileBasedStore(base / identifier)
 
   def sub(identifier: String): CacheStoreFactory =
-    new DirectoryStoreFactory(base / identifier, converter)
+    new DirectoryStoreFactory(base / identifier)
 }
 
 /** A `CacheStore` that persists information in `file`. */
-class FileBasedStore[J: IsoString](file: File, converter: SupportConverter[J]) extends CacheStore {
+class FileBasedStore[J](file: File) extends CacheStore {
   IO.touch(file, setModified = false)
 
+  @deprecated("Use constructor without converter", "1.4")
+  def this(file: File, converter: sjsonnew.SupportConverter[J])(implicit e: sjsonnew.IsoString[J]) =
+    this(file)
+
   def read[T: JsonReader]() =
-    Using.fileInputStream(file)(stream => new PlainInput(stream, converter).read())
+    new FileInput(file).read()
 
   def write[T: JsonWriter](value: T) =
-    Using.fileOutputStream(append = false)(file) { stream =>
-      new PlainOutput(stream, converter).write(value)
-    }
+    new FileOutput(file).write(value)
 
   def delete() = IO.delete(file)
   def close() = ()

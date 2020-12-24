@@ -13,10 +13,10 @@ final class TestRemoteCacheArtifact private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TestRemoteCacheArtifact => (this.artifact == x.artifact) && (this.packaged == x.packaged) && (this.extractDirectory == x.extractDirectory) && (this.analysisFile == x.analysisFile) && (this.testResult == x.testResult)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.remotecache.TestRemoteCacheArtifact".##) + artifact.##) + packaged.##) + extractDirectory.##) + analysisFile.##) + testResult.##)
   }

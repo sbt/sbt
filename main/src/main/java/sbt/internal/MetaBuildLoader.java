@@ -65,11 +65,17 @@ public final class MetaBuildLoader extends URLClassLoader {
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
     final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
+    final String testInterfaceJars = "test-interface-[0-9.]+";
+    final String compilerInterfaceJars = "compiler-interface(-.*)?";
+    final String jansiJars = "jansi-[0-9.]+";
+    final String jnaJars = "jna-(platform-)?[0-9.]+";
     final String fullPattern =
-        "^(test-interface-[0-9.]+|" + jlineJars + "|jansi-[0-9.]+|jna-(platform-)?[0-9.]+)\\.jar";
+        String.format(
+            "^(%s|%s|%s|%s|%s)\\.jar",
+            jlineJars, testInterfaceJars, compilerInterfaceJars, jansiJars, jnaJars);
     final Pattern pattern = Pattern.compile(fullPattern);
     final File[] cp = appProvider.mainClasspath();
-    final URL[] interfaceURLs = new URL[1];
+    final URL[] interfaceURLs = new URL[2];
     final URL[] jlineURLs = new URL[7];
     final File[] extra =
         appProvider.id().classpathExtra() == null ? new File[0] : appProvider.id().classpathExtra();
@@ -80,7 +86,8 @@ public final class MetaBuildLoader extends URLClassLoader {
       int jlineIndex = 0;
       for (final File file : cp) {
         final String name = file.getName();
-        if (name.contains("test-interface") && pattern.matcher(name).find()) {
+        if ((name.contains("test-interface") || name.contains("compiler-interface"))
+            && pattern.matcher(name).find()) {
           interfaceURLs[interfaceIndex] = file.toURI().toURL();
           interfaceIndex += 1;
         } else if (pattern.matcher(name).find()) {
@@ -133,7 +140,7 @@ public final class MetaBuildLoader extends URLClassLoader {
           }
         };
 
-    final TestInterfaceLoader interfaceLoader = new TestInterfaceLoader(interfaceURLs, topLoader);
+    final SbtInterfaceLoader interfaceLoader = new SbtInterfaceLoader(interfaceURLs, topLoader);
     final JLineLoader jlineLoader = new JLineLoader(jlineURLs, interfaceLoader);
     final File[] siJars = scalaProvider.jars();
     final URL[] lib = new URL[1];

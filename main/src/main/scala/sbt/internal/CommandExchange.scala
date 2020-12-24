@@ -162,7 +162,7 @@ private[sbt] final class CommandExchange {
       e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
     }
     currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
@@ -189,6 +189,8 @@ private[sbt] final class CommandExchange {
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
     lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
+    lazy val useJni = s.get(serverUseJni).getOrElse(false)
+    lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
@@ -223,6 +225,8 @@ private[sbt] final class CommandExchange {
         pipeName,
         s.configuration,
         win32Level,
+        useJni,
+        enableBsp,
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
@@ -447,7 +451,7 @@ private[sbt] final class CommandExchange {
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
     } else {
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
     }
   }
 

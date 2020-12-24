@@ -21,10 +21,10 @@ final class BspConnectionDetails private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: BspConnectionDetails => (this.name == x.name) && (this.version == x.version) && (this.bspVersion == x.bspVersion) && (this.languages == x.languages) && (this.argv == x.argv)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BspConnectionDetails".##) + name.##) + version.##) + bspVersion.##) + languages.##) + argv.##)
   }

@@ -20,10 +20,10 @@ final class InitializeBuildResult private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InitializeBuildResult => (this.displayName == x.displayName) && (this.version == x.version) && (this.bspVersion == x.bspVersion) && (this.capabilities == x.capabilities) && (this.data == x.data)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.InitializeBuildResult".##) + displayName.##) + version.##) + bspVersion.##) + capabilities.##) + data.##)
   }
