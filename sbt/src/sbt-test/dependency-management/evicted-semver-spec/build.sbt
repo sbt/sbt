@@ -1,3 +1,5 @@
+import xsbti.AppConfiguration
+// ThisBuild / useCoursier := false
 ThisBuild / organization := "com.example"
 ThisBuild / scalaVersion := "2.13.3"
 ThisBuild / versionScheme := Some("semver-spec")
@@ -7,6 +9,7 @@ def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     publishTo := Some(MavenCache("local-maven", (LocalRootProject / target).value / "local-maven")),
+    scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
     resolvers += MavenCache("local-maven", (LocalRootProject / target).value / "local-maven"),
   )
 
@@ -65,3 +68,8 @@ val use2 = project
       "org.typelevel" %% "cats-effect" % "3.0.0-M4",
     ),
   )
+// use the user local resolver to fetch the SNAPSHOT version of the compiler-bridge
+def userLocalFileResolver(appConfig: AppConfiguration): Resolver = {
+  val ivyHome = appConfig.provider.scalaProvider.launcher.ivyHome
+  Resolver.file("User Local", ivyHome / "local")(Resolver.defaultIvyPatterns)
+}

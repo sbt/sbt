@@ -88,6 +88,7 @@ import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.Converter
+import xsbti.compile.TastyFiles
 import xsbti.{ FileConverter, Position }
 
 import scala.collection.immutable.ListMap
@@ -668,15 +669,21 @@ object Defaults extends BuildCommon {
     ),
     cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
     clean := clean.dependsOn(cleanIvy).value,
-    scalaCompilerBridgeBinaryJar := None,
-    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(scalaVersion.value),
-    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeModule(
+    scalaCompilerBridgeBinaryJar := Def.settingDyn {
+      val sv = scalaVersion.value
+      if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
+      else Def.task[Option[File]](None)
+    }.value,
+    scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    consoleProject / scalaCompilerBridgeBinaryJar := None,
+    consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
+      auxiliaryClassFiles := Nil,
       incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
       classpathOptions in console :== ClasspathOptionsUtil.repl,
@@ -735,6 +742,18 @@ object Defaults extends BuildCommon {
     val scalaBase = if (cross) t / ("scala-" + sv) else t
     if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
   }
+
+  private def fetchBridgeBinaryJarTask(scalaVersion: String): Initialize[Task[Option[File]]] =
+    Def.task {
+      val bridgeJar = ZincLmUtil.fetchDefaultBridgeModule(
+        scalaVersion,
+        dependencyResolution.value,
+        updateConfiguration.value,
+        (update / unresolvedWarningConfiguration).value,
+        streams.value.log
+      )
+      Some(bridgeJar)
+    }
 
   def compilersSetting = {
     compilers := {
@@ -860,9 +879,14 @@ object Defaults extends BuildCommon {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     externalHooks := IncOptions.defaultExternal,
+    auxiliaryClassFiles ++= {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
+      else Nil
+    },
     incOptions := {
       val old = incOptions.value
       old
+        .withAuxiliaryClassFiles(auxiliaryClassFiles.value.toArray)
         .withExternalHooks(externalHooks.value)
         .withClassfileManagerType(
           Option(
@@ -1034,21 +1058,22 @@ object Defaults extends BuildCommon {
   }
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
+    val sv = scalaVersion.value
     val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
       sys.error(noToolConfiguration(managedScalaInstance.value))
     def files(id: String) =
       for {
-        m <- toolReport.modules if m.module.name == id;
+        m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing ${id}.jar")
+    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing $id jar file")
     val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
-    val libraryJar = file(ScalaArtifacts.LibraryID)
-    val compilerJar = file(ScalaArtifacts.CompilerID)
+    val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
+    val compilerJar = file(ScalaArtifacts.compilerId(sv))
     mkScalaInstance(
-      scalaVersion.value,
+      sv,
       allJars,
-      Array(libraryJar),
+      libraryJars,
       compilerJar,
       state.value.extendedClassLoaderCache,
       scalaInstanceTopLoader.value,
@@ -3820,7 +3845,7 @@ object Classpaths {
       version: String
   ): Seq[ModuleID] =
     if (auto)
-      modifyForPlugin(plugin, ModuleID(org, ScalaArtifacts.LibraryID, version)) :: Nil
+      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version)) :: Nil
     else
       Nil
 
