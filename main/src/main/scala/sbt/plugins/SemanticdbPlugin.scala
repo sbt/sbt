@@ -43,7 +43,9 @@ object SemanticdbPlugin extends AutoPlugin {
     },
     semanticdbOptions += {
       val sv = scalaVersion.value
-      if (ScalaInstance.isDotty(sv)) "-Ysemanticdb"
+      if (sv.startsWith("0.") || sv.startsWith("3.0.0-M1") || sv.startsWith("3.0.0-M2"))
+        "-Ysemanticdb"
+      else if (sv.startsWith("3.")) "-Xsemanticdb"
       else "-Yrangepos"
     }
   ) ++
