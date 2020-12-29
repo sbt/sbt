@@ -154,14 +154,14 @@ addMemory () {
   local xs=("${java_args[@]}")
   java_args=()
   for i in "${xs[@]}"; do
-    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-Xss* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
       java_args+=("${i}")
     fi
   done
   local ys=("${sbt_options[@]}")
   sbt_options=()
   for i in "${ys[@]}"; do
-    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-Xss* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
       sbt_options+=("${i}")
     fi
   done
@@ -187,6 +187,7 @@ addDefaultMemory() {
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
   if [[ "${java_args[@]}" == *-Xmx* ]] || \
      [[ "${java_args[@]}" == *-Xms* ]] || \
+     [[ "${java_args[@]}" == *-Xss* ]] || \
      [[ "${java_args[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
      [[ "${java_args[@]}" == *-XX:MaxRAM* ]] || \
      [[ "${java_args[@]}" == *-XX:InitialRAMPercentage* ]] || \
@@ -195,6 +196,7 @@ addDefaultMemory() {
     :
   elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-Xss* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAM* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:InitialRAMPercentage* ]] || \
@@ -203,6 +205,7 @@ addDefaultMemory() {
     :
   elif [[ "${sbt_options[@]}" == *-Xmx* ]] || \
        [[ "${sbt_options[@]}" == *-Xms* ]] || \
+       [[ "${sbt_options[@]}" == *-Xss* ]] || \
        [[ "${sbt_options[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
        [[ "${sbt_options[@]}" == *-XX:MaxRAM* ]] || \
        [[ "${sbt_options[@]}" == *-XX:InitialRAMPercentage* ]] || \
