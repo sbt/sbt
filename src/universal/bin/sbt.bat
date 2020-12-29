@@ -726,7 +726,7 @@ exit /B 0
   if "!_old_java_opts!" == "" goto :done_java_opt
   for /F "tokens=1,*" %%g in ("!_old_java_opts!") do (
     set "p=%%g"
-    if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
+    if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,4!" == "-Xss" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
       set _new_java_opts=!_new_java_opts! %%g
     )
     set "_old_java_opts=%%h"
@@ -741,7 +741,7 @@ exit /B 0
   if "!_old_sbt_opts!" == "" goto :done_sbt_opt
   for /F "tokens=1,*" %%g in ("!_old_sbt_opts!") do (
     set "p=%%g"
-    if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
+    if not "!p:~0,4!" == "-Xmx" if not "!p:~0,4!" == "-Xms" if not "!p:~0,4!" == "-Xss" if not "!p:~0,15!" == "-XX:MaxPermSize" if not "!p:~0,20!" == "-XX:MaxMetaspaceSize" if not "!p:~0,25!" == "-XX:ReservedCodeCacheSize" (
       set _new_sbt_opts=!_new_sbt_opts! %%g
     )
     set "_old_sbt_opts=%%h"
@@ -779,18 +779,21 @@ exit /B 0
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
+    if "!p:~0,4!" == "-Xss" set _has_memory_args=1
   )
 
   if defined JAVA_TOOL_OPTIONS for /F %%g in ("%JAVA_TOOL_OPTIONS%") do (
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
+    if "!p:~0,4!" == "-Xss" set _has_memory_args=1
   )
 
   if defined _SBT_OPTS for /F %%g in ("!_SBT_OPTS!") do (
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
+    if "!p:~0,4!" == "-Xss" set _has_memory_args=1
   )
 
   if not defined _has_memory_args (
