@@ -2019,6 +2019,25 @@ object Defaults extends BuildCommon {
           else Map.empty[File, URL]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
+        scalacOptions := {
+          val compileOptions = scalacOptions.value
+          val sv = scalaVersion.value
+          val config = configuration.value
+          val projectName = name.value
+          if (ScalaArtifacts.isScala3(sv)) {
+            val project = if (config == Compile) projectName else s"$projectName-$config"
+            Seq("-project", project)
+          } else compileOptions
+        },
+        sources := Def.taskDyn {
+          val originalSources = sources.value
+          val sv = scalaVersion.value
+          if (ScalaArtifacts.isScala3(sv) && originalSources.nonEmpty) Def.task {
+            val _ = compile.value
+            val tastyFiles = classDirectory.value.**("*.tasty").get
+            tastyFiles.map(_.getAbsoluteFile)
+          } else Def.task(originalSources)
+        }.value,
         key in TaskZero := {
           val s = streams.value
           val cs: Compilers = compilers.value
@@ -2026,7 +2045,9 @@ object Defaults extends BuildCommon {
           val out = target.value
           val sOpts = scalacOptions.value
           val xapis = apiMappings.value
-          val hasScala = srcs.exists(_.name.endsWith(".scala"))
+          val hasScala =
+            srcs.exists(_.name.endsWith(".scala")) ||
+              srcs.exists(_.name.endsWith(".tasty"))
           val hasJava = srcs.exists(_.name.endsWith(".java"))
           val cp = data(dependencyClasspath.value).toList
           val label = nameForSrc(configuration.value.name)
@@ -2047,7 +2068,7 @@ object Defaults extends BuildCommon {
                 srcs.toList map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
-                cp.toList map { x =>
+                cp map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
                 converter,
