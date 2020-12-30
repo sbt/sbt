@@ -1,0 +1,4 @@
+> doc
+$ exists target/scala-3.0.0-M3/api/index.html
+$ exists target/scala-3.0.0-M3/api/api/foo/A$.html
+$ exists target/scala-3.0.0-M3/api/api/foo.html
