@@ -14,11 +14,13 @@ object ScalaArtifacts {
   final val Scala3InterfacesID = "scala3-interfaces"
   final val TastyCoreID = "tasty-core"
   final val Scala3DocID = "scala3doc"
+  final val Scala3TastyInspectorID = "scala3-tasty-inspector"
 
   private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"
   private[sbt] final val Scala3CompilerPrefix = Scala3CompilerID + "_"
   private[sbt] final val TastyCorePrefix = TastyCoreID + "_"
   private[sbt] final val Scala3DocPrefix = Scala3DocID + "_"
+  private[sbt] final val Scala3TastyInspectorPrefix = Scala3TastyInspectorID + "_"
 
   def isScala2Artifact(name: String): Boolean = {
     name == LibraryID || name == CompilerID || name == ReflectID || name == ActorsID || name == ScalapID
@@ -26,7 +28,7 @@ object ScalaArtifacts {
   def isScala3Artifact(name: String): Boolean = {
     name.startsWith(Scala3LibraryPrefix) || name.startsWith(Scala3CompilerPrefix) ||
     name.startsWith(TastyCorePrefix) || name == Scala3InterfacesID ||
-    name.startsWith(Scala3DocPrefix)
+    name.startsWith(Scala3DocPrefix) || name.startsWith(Scala3TastyInspectorPrefix)
   }
 
   def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
