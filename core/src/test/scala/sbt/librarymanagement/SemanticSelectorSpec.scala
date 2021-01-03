@@ -1,8 +1,9 @@
 package sbt.librarymanagement
 
-import org.scalatest.{ FreeSpec, Matchers }
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
-class SemanticSelectorSpec extends FreeSpec with Matchers {
+class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
   semsel("<=1.2.3") { sel =>
     assertMatches(sel, "1.2.3")
     assertMatches(sel, "1.2-beta")

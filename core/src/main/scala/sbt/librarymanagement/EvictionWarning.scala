@@ -332,10 +332,10 @@ object EvictionWarning {
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
         val winnerOpt = p.winner map { _.module }
-        val extraAttributes = (p.winner match {
+        val extraAttributes = ((p.winner match {
           case Some(r) => r.extraAttributes
           case _       => Map.empty
-        }) ++ (winnerOpt match {
+        }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
           case Some(w) => w.extraAttributes
           case _       => Map.empty
         })

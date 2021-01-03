@@ -2,10 +2,10 @@ package sbt.internal.librarymanagement
 
 import java.io.IOException
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 import sbt.internal.librarymanagement.IvyUtil._
 
-class IvyUtilSpec extends FunSuite {
+class IvyUtilSpec extends AnyFunSuite {
   test("503 should be a TransientNetworkException") {
     val statusCode503Exception =
       new IOException("Server returned HTTP response code: 503 for URL:")

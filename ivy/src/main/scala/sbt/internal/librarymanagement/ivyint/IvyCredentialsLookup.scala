@@ -47,20 +47,20 @@ private[sbt] object IvyCredentialsLookup {
     val map = credKeyringField.get(null).asInstanceOf[java.util.HashMap[String, Any]]
     // make a clone of the set...
     (map.keySet.asScala.map {
-      case KeySplit(realm, host) => Realm(host, realm)
-      case host                  => Host(host)
-    })(collection.breakOut)
+      case KeySplit(realm, host) => (Realm(host, realm): CredentialKey)
+      case host                  => (Host(host): CredentialKey)
+    }).toSet
   }
 
   /**
    * A mapping of host -> realms in the ivy credentials store.
    */
   def realmsForHost: Map[String, Set[String]] =
-    keyringKeys collect {
+    (keyringKeys collect {
       case x: Realm => x
     } groupBy { realm =>
       realm.host
     } mapValues { realms =>
       realms map (_.realm)
-    }
+    }).toMap
 }

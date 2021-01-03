@@ -3,7 +3,8 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala212 = "2.12.10"
+  val scala212 = "2.12.12"
+  val scala213 = "2.13.4"
 
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
@@ -51,7 +52,7 @@ object Dependencies {
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.0.6-SNAP5"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.0"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "0.1.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val sjsonnew = Def.setting {

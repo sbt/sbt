@@ -80,7 +80,7 @@ object PomExtraDependencyAttributes {
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
     (qualifiedExtra(item) filterKeys { k =>
       qualifiedIsExtra(k) == include
-    })
+    }).toMap
 
   def qualifiedIsExtra(k: String): Boolean =
     k.endsWith(ScalaVersionKey) || k.endsWith(SbtVersionKey)
