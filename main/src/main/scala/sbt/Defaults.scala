@@ -223,6 +223,7 @@ object Defaults extends BuildCommon {
       bgCopyClasspath :== true,
       closeClassLoaders :== SysProp.closeClassLoaders,
       allowZombieClassLoaders :== true,
+      packageTimestamp :== Package.defaultTimestamp,
     ) ++ BuildServerProtocol.globalSettings
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -1599,20 +1600,27 @@ object Defaults extends BuildCommon {
           val org = organization.value
           val orgName = organizationName.value
           val main = mainClass.value
+          val ts = packageTimestamp.value
           val old = packageOptions.value
+
           Package.addSpecManifestAttributes(n, ver, orgName) +:
             Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
+            Package.setFixedTimestamp(ts) +:
             main.map(Package.MainClass.apply) ++: old
         }
       )
     ) ++
       inTask(packageSrc)(
         Seq(
-          packageOptions := Package.addSpecManifestAttributes(
-            name.value,
-            version.value,
-            organizationName.value
-          ) +: packageOptions.value
+          packageOptions := {
+            val old = packageOptions.value
+            val ts = packageTimestamp.value
+            Package.addSpecManifestAttributes(
+              name.value,
+              version.value,
+              organizationName.value
+            ) +: Package.setFixedTimestamp(ts) +: old
+          }
         )
       ) ++
       packageTaskSettings(packageBin, packageBinMappings) ++
@@ -1778,10 +1786,7 @@ object Defaults extends BuildCommon {
         config,
         s.cacheStoreFactory,
         s.log,
-        sys.env
-          .get("SOURCE_DATE_EPOCH")
-          .map(_.toLong * 1000)
-          .orElse(Some(1262304000000L)) // 2010-01-01
+        Package.timeFromConfiguration(config)
       )
       config.jar
     }
