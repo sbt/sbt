@@ -2,6 +2,7 @@ package sbt
 package internal
 package librarymanagement
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-abstract class UnitSpec extends FlatSpec with Matchers
+abstract class UnitSpec extends AnyFlatSpec with Matchers

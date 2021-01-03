@@ -237,7 +237,7 @@ object IvyActions {
     }.toMap
 
   def grouped[T](grouping: ModuleID => T)(mods: Seq[ModuleID]): Map[T, Set[String]] =
-    mods groupBy (grouping) mapValues (_.map(_.revision).toSet)
+    mods.groupBy(grouping).mapValues(_.map(_.revision).toSet).toMap
 
   def addExcluded(
       report: UpdateReport,

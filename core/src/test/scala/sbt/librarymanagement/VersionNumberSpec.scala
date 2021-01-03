@@ -1,9 +1,11 @@
 package sbt.librarymanagement
 
-import org.scalatest.{ FreeSpec, Inside, Matchers }
+import org.scalatest.Inside
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 // This is a specification to check VersionNumber and VersionNumberCompatibility.
-class VersionNumberSpec extends FreeSpec with Matchers with Inside {
+class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
   import VersionNumber.{ EarlySemVer, SemVer, PackVer }
 
   version("1") { v =>

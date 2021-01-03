@@ -2,9 +2,10 @@ package sbt.librarymanagement
 
 import java.io.File
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class UpdateReportSpec extends FlatSpec with Matchers {
+class UpdateReportSpec extends AnyFlatSpec with Matchers {
   "UpdateReport.toString" should "have a nice toString" in {
     assert(updateReport.toString === s"""
       |Update report:

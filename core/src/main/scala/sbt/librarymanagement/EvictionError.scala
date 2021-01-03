@@ -59,11 +59,11 @@ object EvictionError {
     }: _*)
     def calculateCompatible(p: EvictionPair): (Boolean, String) = {
       val winnerOpt = p.winner map { _.module }
-      val extraAttributes = (p.winner match {
-        case Some(r) => r.extraAttributes
+      val extraAttributes = ((p.winner match {
+        case Some(r) => r.extraAttributes.toMap
         case _       => Map.empty
-      }) ++ (winnerOpt match {
-        case Some(w) => w.extraAttributes
+      }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
+        case Some(w) => w.extraAttributes.toMap
         case _       => Map.empty
       })
       // prioritize user-defined version scheme to allow overriding the real scheme

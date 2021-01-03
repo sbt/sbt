@@ -154,7 +154,7 @@ object CustomPomParser {
     (propertyAttributes - ExtraAttributesKey) map { case (k, v) => ("e:" + k, v) }
 
   private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
-    m.filterKeys(unqualifiedKeys)
+    m.filterKeys(unqualifiedKeys).toMap
 
   private[this] def addExtra(
       properties: Map[String, String],
@@ -182,7 +182,7 @@ object CustomPomParser {
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
     (qualifiedExtra(item) filterKeys { k =>
       qualifiedIsExtra(k) == include
-    })
+    }).toMap
 
   def writeDependencyExtra(s: Seq[DependencyDescriptor]): Seq[String] =
     PomExtraDependencyAttributes.writeDependencyExtra(s)

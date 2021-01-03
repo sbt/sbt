@@ -63,7 +63,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
 
   /** Returns the extra attributes except for ones marked as information only (ones that typically would not be used for dependency resolution). */
   def extraDependencyAttributes: Map[String, String] =
-    extraAttributes.filterKeys(!_.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX))
+    extraAttributes.filterKeys(!_.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)).toMap
 
   @deprecated(
     "Use `cross(CrossVersion)`, the variant accepting a CrossVersion value constructed by a member of the CrossVersion object instead.",
