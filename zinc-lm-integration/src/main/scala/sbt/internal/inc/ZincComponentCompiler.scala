@@ -128,13 +128,15 @@ private[sbt] object ZincComponentCompiler {
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
       val scalaV = loaderVersion.getOrElse("unknown")
+      val allJars = jarsToLoad.map(_.toFile).toArray
       new ScalaInstance(
         scalaV,
         loader,
+        loader,
         loaderLibraryOnly,
         scalaLibraryJars.map(_.toFile).toArray,
-        scalaCompilerJar.toFile,
-        jarsToLoad.map(_.toFile).toArray,
+        allJars,
+        allJars,
         loaderVersion,
       )
     }

@@ -835,6 +835,13 @@ object Defaults extends BuildCommon {
       }) :+ compileAnalysisFile.value.toPath
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
+    tastyFiles := Def.taskIf {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+        val _ = compile.value
+        val tastyFiles = classDirectory.value.**("*.tasty").get
+        tastyFiles.map(_.getAbsoluteFile)
+      } else Nil
+    }.value,
     clean := (compileOutputs / clean).value,
     earlyOutputPing := Def.promise[Boolean],
     compileProgress := {
@@ -1027,9 +1034,9 @@ object Defaults extends BuildCommon {
                 val cache = state.value.extendedClassLoaderCache
                 mkScalaInstance(
                   version,
-                  allJars,
                   libraryJars,
-                  compilerJar,
+                  allJars,
+                  Seq.empty,
                   cache,
                   scalaInstanceTopLoader.value
                 )
@@ -1059,31 +1066,43 @@ object Defaults extends BuildCommon {
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
     val sv = scalaVersion.value
-    val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
-      sys.error(noToolConfiguration(managedScalaInstance.value))
-    def files(id: String) =
-      for {
+    val fullReport = update.value
+
+    val toolReport = fullReport
+      .configuration(Configurations.ScalaTool)
+      .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+
+    def file(id: String): File = {
+      val files = for {
         m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing $id jar file")
-    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
+      files.headOption getOrElse sys.error(s"Missing $id jar file")
+    }
+
+    val allCompilerJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allDocJars =
+      fullReport
+        .configuration(Configurations.ScalaDocTool)
+        .toSeq
+        .flatMap(_.modules)
+        .flatMap(_.artifacts.map(_._2))
     val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
-    val compilerJar = file(ScalaArtifacts.compilerId(sv))
+
     mkScalaInstance(
       sv,
-      allJars,
       libraryJars,
-      compilerJar,
+      allCompilerJars,
+      allDocJars,
       state.value.extendedClassLoaderCache,
       scalaInstanceTopLoader.value,
     )
   }
   private[this] def mkScalaInstance(
       version: String,
-      allJars: Seq[File],
       libraryJars: Array[File],
-      compilerJar: File,
+      allCompilerJars: Seq[File],
+      allDocJars: Seq[File],
       classLoaderCache: ClassLoaderCache,
       topLoader: ClassLoader,
   ): ScalaInstance = {
@@ -1096,17 +1115,33 @@ object Defaults extends BuildCommon {
       }
     }
     else topLoader
-    val allJarsDistinct = allJars.distinct
+
+    val compilerJars = allCompilerJars.filterNot(libraryJars.contains).distinct.toArray
+    val docJars = allDocJars
+      .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
+      .distinct
+      .toArray
+    val allJars = libraryJars ++ compilerJars ++ docJars
+
     val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
-    val fullLoader = classLoaderCache(allJarsDistinct.toList, libraryLoader)
+    val compilerLoader = classLoaderCache(
+      // It should be `compilerJars` but it would break on `3.0.0-M2` because of
+      // https://github.com/lampepfl/dotty/blob/d932af954ef187d7bdb87500d49ed0ff530bd1e7/sbt-bridge/src/xsbt/CompilerClassLoader.java#L108-L117
+      allCompilerJars.toList,
+      libraryLoader
+    )
+    val fullLoader =
+      if (docJars.isEmpty) compilerLoader
+      else classLoaderCache(docJars.distinct.toList, compilerLoader)
     new ScalaInstance(
-      version,
-      fullLoader,
-      libraryLoader,
-      libraryJars,
-      compilerJar,
-      allJarsDistinct.toArray,
-      Some(version)
+      version = version,
+      loader = fullLoader,
+      loaderCompilerOnly = compilerLoader,
+      loaderLibraryOnly = libraryLoader,
+      libraryJars = libraryJars,
+      compilerJars = compilerJars,
+      allJars = allJars,
+      explicitActual = Some(version)
     )
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
@@ -1117,9 +1152,9 @@ object Defaults extends BuildCommon {
     }
     mkScalaInstance(
       dummy.version,
-      dummy.allJars,
       dummy.libraryJars,
-      dummy.compilerJar,
+      dummy.compilerJars,
+      dummy.allJars,
       state.value.extendedClassLoaderCache,
       scalaInstanceTopLoader.value,
     )
@@ -1991,6 +2026,16 @@ object Defaults extends BuildCommon {
           else Map.empty[File, URL]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
+        scalacOptions := {
+          val compileOptions = scalacOptions.value
+          val sv = scalaVersion.value
+          val config = configuration.value
+          val projectName = name.value
+          if (ScalaArtifacts.isScala3(sv)) {
+            val project = if (config == Compile) projectName else s"$projectName-$config"
+            Seq("-project", project)
+          } else compileOptions
+        },
         key in TaskZero := {
           val s = streams.value
           val cs: Compilers = compilers.value
@@ -2005,13 +2050,16 @@ object Defaults extends BuildCommon {
           val fiOpts = fileInputOptions.value
           val reporter = (compile / bspReporter).value
           val converter = fileConverter.value
+          val tFiles = tastyFiles.value
+          val sv = scalaVersion.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val options = sOpts ++ Opts.doc.externalAPI(xapis)
               val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               }, fiOpts)
-              runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
+              runDoc(docSrcs, cp, out, options, maxErrors.value, s.log)
             case (_, true) =>
               val javadoc =
                 sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
@@ -2019,7 +2067,7 @@ object Defaults extends BuildCommon {
                 srcs.toList map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
-                cp.toList map { x =>
+                cp map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
                 converter,
@@ -2913,7 +2961,8 @@ object Classpaths {
     },
     ivyConfigurations ++= Configurations.auxiliary,
     ivyConfigurations ++= {
-      if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil
+      if (managedScalaInstance.value && scalaHome.value.isEmpty)
+        Configurations.ScalaTool :: Configurations.ScalaDocTool :: Nil
       else Nil
     },
     // Coursier needs these
@@ -3103,10 +3152,15 @@ object Classpaths {
         else base
       val sbtOrg = scalaOrganization.value
       val version = scalaVersion.value
-      if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
-        pluginAdjust
-      else
-        ScalaArtifacts.toolDependencies(sbtOrg, version) ++ pluginAdjust
+      val extResolvers = externalResolvers.value
+      val allToolDeps =
+        if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
+          Nil
+        else if (extResolvers.contains(Resolver.JCenterRepository)) {
+          ScalaArtifacts.toolDependencies(sbtOrg, version) ++
+            ScalaArtifacts.docToolDependencies(sbtOrg, version)
+        } else ScalaArtifacts.toolDependencies(sbtOrg, version)
+      allToolDeps ++ pluginAdjust
     },
     // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
