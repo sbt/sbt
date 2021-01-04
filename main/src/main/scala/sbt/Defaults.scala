@@ -835,6 +835,13 @@ object Defaults extends BuildCommon {
       }) :+ compileAnalysisFile.value.toPath
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
+    tastyFiles := Def.taskIf {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+        val _ = compile.value
+        val tastyFiles = classDirectory.value.**("*.tasty").get
+        tastyFiles.map(_.getAbsoluteFile)
+      } else Nil
+    }.value,
     clean := (compileOutputs / clean).value,
     earlyOutputPing := Def.promise[Boolean],
     compileProgress := {
@@ -2029,15 +2036,6 @@ object Defaults extends BuildCommon {
             Seq("-project", project)
           } else compileOptions
         },
-        sources := Def.taskDyn {
-          val originalSources = sources.value
-          val sv = scalaVersion.value
-          if (ScalaArtifacts.isScala3(sv) && originalSources.nonEmpty) Def.task {
-            val _ = compile.value
-            val tastyFiles = classDirectory.value.**("*.tasty").get
-            tastyFiles.map(_.getAbsoluteFile)
-          } else Def.task(originalSources)
-        }.value,
         key in TaskZero := {
           val s = streams.value
           val cs: Compilers = compilers.value
@@ -2045,22 +2043,23 @@ object Defaults extends BuildCommon {
           val out = target.value
           val sOpts = scalacOptions.value
           val xapis = apiMappings.value
-          val hasScala =
-            srcs.exists(_.name.endsWith(".scala")) ||
-              srcs.exists(_.name.endsWith(".tasty"))
+          val hasScala = srcs.exists(_.name.endsWith(".scala"))
           val hasJava = srcs.exists(_.name.endsWith(".java"))
           val cp = data(dependencyClasspath.value).toList
           val label = nameForSrc(configuration.value.name)
           val fiOpts = fileInputOptions.value
           val reporter = (compile / bspReporter).value
           val converter = fileConverter.value
+          val tFiles = tastyFiles.value
+          val sv = scalaVersion.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val options = sOpts ++ Opts.doc.externalAPI(xapis)
               val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               }, fiOpts)
-              runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
+              runDoc(docSrcs, cp, out, options, maxErrors.value, s.log)
             case (_, true) =>
               val javadoc =
                 sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
