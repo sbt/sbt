@@ -279,4 +279,29 @@ class CrossVersionTest extends UnitSpec {
   "CrossVersion.constant" should "have structural equality" in {
     CrossVersion.constant("duck") shouldBe CrossVersion.constant("duck")
   }
+
+  "CrossVersion.for3Use2_13" should "have structural equality" in {
+    CrossVersion.for3Use2_13 shouldBe CrossVersion.for3Use2_13
+    CrossVersion.for3Use2_13With("_sjs1", "") shouldBe CrossVersion.for3Use2_13With("_sjs1", "")
+  }
+  it should "use the cross version 2.13 instead of 3" in {
+    CrossVersion(CrossVersion.for3Use2_13, "3.0.0", "3").map(_("artefact")) shouldBe Some(
+      "artefact_2.13"
+    )
+  }
+  it should "use the cross version 2.13 instead of 3.0.0-M3" in {
+    CrossVersion(CrossVersion.for3Use2_13, "3.0.0-M3", "3.0.0-M3").map(_("artefact")) shouldBe Some(
+      "artefact_2.13"
+    )
+  }
+
+  "CrossVersion.for2_13Use3" should "have structural equality" in {
+    CrossVersion.for2_13Use3 shouldBe CrossVersion.for2_13Use3
+    CrossVersion.for2_13Use3With("_sjs1", "") shouldBe CrossVersion.for2_13Use3With("_sjs1", "")
+  }
+  it should "use the cross version 3 instead of 2.13" in {
+    CrossVersion(CrossVersion.for2_13Use3, "2.13.4", "2.13").map(_("artefact")) shouldBe Some(
+      "artefact_3"
+    )
+  }
 }

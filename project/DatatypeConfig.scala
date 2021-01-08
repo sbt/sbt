@@ -49,6 +49,8 @@ object DatatypeConfig {
         "sbt.librarymanagement.ConstantFormats" ::
         "sbt.librarymanagement.PatchFormats" ::
         "sbt.librarymanagement.FullFormats" ::
+        "sbt.librarymanagement.For3Use2_13Formats" ::
+        "sbt.librarymanagement.For2_13Use3Formats" ::
         Nil
     }
 
