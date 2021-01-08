@@ -17,10 +17,14 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   final val Constant = sbt.librarymanagement.Constant
   final val Full = sbt.librarymanagement.Full
   final val Patch = sbt.librarymanagement.Patch
+  final val For3Use2_13 = sbt.librarymanagement.For3Use2_13
+  final val For2_13Use3 = sbt.librarymanagement.For2_13Use3
   type Binary = sbt.librarymanagement.Binary
   type Constant = sbt.librarymanagement.Constant
   type Full = sbt.librarymanagement.Full
   type Patch = sbt.librarymanagement.Patch
+  type For3Use2_13 = sbt.librarymanagement.For3Use2_13
+  type For2_13Use3 = sbt.librarymanagement.For2_13Use3
 
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
@@ -57,6 +61,32 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    */
   def patch: CrossVersion = Patch()
 
+  /**
+   * Cross-versions a module with the binary version but
+   * if the binary version is 3 (or of the form 3.0.0-x), cross-versions it with 2.13 instead
+   */
+  def for3Use2_13: CrossVersion = For3Use2_13()
+
+  /**
+   * Cross-versions a module with the binary version but
+   * if the binary version is 3 (or of the form 3.0.0-x), cross-versions it with 2.13 instead
+   * Always prepend `prefix` and append `suffix`
+   */
+  def for3Use2_13With(prefix: String, suffix: String): CrossVersion = For3Use2_13(prefix, suffix)
+
+  /**
+   * Cross-versions a module with the binary version but
+   * if the binary version is 2.13 cross-versions it with 3 instead
+   */
+  def for2_13Use3: CrossVersion = For2_13Use3()
+
+  /**
+   * Cross-versions a module with the binary version but
+   * if the binary version is 2.13 cross-versions it with 3 instead
+   * Always prepend `prefix` and append `suffix`
+   */
+  def for2_13Use3With(prefix: String, suffix: String): CrossVersion = For2_13Use3(prefix, suffix)
+
   private[sbt] def patchFun(fullVersion: String): String = {
     val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r
     fullVersion match {
@@ -83,6 +113,16 @@ private[librarymanagement] abstract class CrossVersionFunctions {
       case c: Constant => append(c.value)
       case _: Patch    => append(patchFun(fullVersion))
       case f: Full     => append(f.prefix + fullVersion + f.suffix)
+      case c: For3Use2_13 =>
+        val compat =
+          if (binaryVersion == "3" || binaryVersion.startsWith("3.0.0")) "2.13"
+          else binaryVersion
+        append(c.prefix + compat + c.suffix)
+      case c: For2_13Use3 =>
+        val compat =
+          if (binaryVersion == "2.13") "3"
+          else binaryVersion
+        append(c.prefix + compat + c.suffix)
     }
 
   /** Constructs the cross-version function defined by `module` and `is`, if one is configured. */

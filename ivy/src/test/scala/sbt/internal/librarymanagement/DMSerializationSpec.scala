@@ -18,6 +18,14 @@ object DMSerializationSpec extends BasicTestSuite {
     roundtripStr(CrossVersion.binary: CrossVersion)
   }
 
+  test("CrossVersion.for3Use2_13 should roundtrip") {
+    roundtripStr(CrossVersion.for3Use2_13: CrossVersion)
+  }
+
+  test("CrossVersion.for2_13Use3 with prefix should roundtrip") {
+    roundtripStr(CrossVersion.for2_13Use3With("_sjs1", ""): CrossVersion)
+  }
+
   test("CrossVersion.Disabled should roundtrip") {
     roundtrip(Disabled(): CrossVersion)
   }

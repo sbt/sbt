@@ -172,6 +172,82 @@ object Full {
   def apply(prefix: String, suffix: String): Full = new Full(prefix, suffix)
 }
 
+/**
+ * Similar to Binary except that if the binary version is 3
+ * (or if it is of the form 3.0.0-x) it uses 2.13 instead.
+ * For example, if `prefix = "foo_"` and `suffix = "_bar"` and the binary version is "3",
+ * the module is cross-versioned with "foo_2.13_bar".
+ */
+final class For3Use2_13 private (val prefix: String, val suffix: String)
+    extends sbt.librarymanagement.CrossVersion()
+    with Serializable {
+
+  private def this() = this("", "")
+
+  override def equals(o: Any): Boolean = o match {
+    case x: For3Use2_13 => (this.prefix == x.prefix) && (this.suffix == x.suffix)
+    case _              => false
+  }
+  override def hashCode: Int = {
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.For3Use2_13".##) + prefix.##) + suffix.##)
+  }
+  override def toString: String = {
+    "For3Use2_13(" + prefix + ", " + suffix + ")"
+  }
+  private[this] def copy(prefix: String = prefix, suffix: String = suffix): For3Use2_13 = {
+    new For3Use2_13(prefix, suffix)
+  }
+  def withPrefix(prefix: String): For3Use2_13 = {
+    copy(prefix = prefix)
+  }
+  def withSuffix(suffix: String): For3Use2_13 = {
+    copy(suffix = suffix)
+  }
+}
+object For3Use2_13 {
+
+  def apply(): For3Use2_13 = new For3Use2_13()
+  def apply(prefix: String, suffix: String): For3Use2_13 = new For3Use2_13(prefix, suffix)
+}
+
+/**
+ * Similar to Binary except that if the binary version is 2.13
+ * it uses 3 instead.
+ * For example, if `prefix = "foo_"` and `suffix = "_bar"` and the binary version is "2.13",
+ * the module is cross-versioned with "foo_3_bar".
+ */
+final class For2_13Use3 private (val prefix: String, val suffix: String)
+    extends sbt.librarymanagement.CrossVersion()
+    with Serializable {
+
+  private def this() = this("", "")
+
+  override def equals(o: Any): Boolean = o match {
+    case x: For2_13Use3 => (this.prefix == x.prefix) && (this.suffix == x.suffix)
+    case _              => false
+  }
+  override def hashCode: Int = {
+    37 * (37 * (37 * (17 + "sbt.librarymanagement.For3Use2_13".##) + prefix.##) + suffix.##)
+  }
+  override def toString: String = {
+    "For3Use2_13(" + prefix + ", " + suffix + ")"
+  }
+  private[this] def copy(prefix: String = prefix, suffix: String = suffix): For2_13Use3 = {
+    new For2_13Use3(prefix, suffix)
+  }
+  def withPrefix(prefix: String): For2_13Use3 = {
+    copy(prefix = prefix)
+  }
+  def withSuffix(suffix: String): For2_13Use3 = {
+    copy(suffix = suffix)
+  }
+}
+object For2_13Use3 {
+
+  def apply(): For2_13Use3 = new For2_13Use3()
+  def apply(prefix: String, suffix: String): For2_13Use3 = new For2_13Use3(prefix, suffix)
+}
+
 trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
   implicit lazy val DisabledFormat: JsonFormat[sbt.librarymanagement.Disabled] =
     new JsonFormat[sbt.librarymanagement.Disabled] {
@@ -324,22 +400,80 @@ trait FullFormats { self: sjsonnew.BasicJsonProtocol =>
     }
 }
 
+trait For3Use2_13Formats { self: sjsonnew.BasicJsonProtocol =>
+  implicit lazy val For3Use2_13Format: JsonFormat[sbt.librarymanagement.For3Use2_13] =
+    new JsonFormat[sbt.librarymanagement.For3Use2_13] {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.For3Use2_13 = {
+        jsOpt match {
+          case Some(js) =>
+            unbuilder.beginObject(js)
+            val prefix = unbuilder.readField[String]("prefix")
+            val suffix = unbuilder.readField[String]("suffix")
+            unbuilder.endObject()
+            sbt.librarymanagement.For3Use2_13(prefix, suffix)
+          case None =>
+            deserializationError("Expected JsObject but found None")
+        }
+      }
+      override def write[J](obj: sbt.librarymanagement.For3Use2_13, builder: Builder[J]): Unit = {
+        builder.beginObject()
+        builder.addField("prefix", obj.prefix)
+        builder.addField("suffix", obj.suffix)
+        builder.endObject()
+      }
+    }
+}
+
+trait For2_13Use3Formats { self: sjsonnew.BasicJsonProtocol =>
+  implicit lazy val For2_13Use3Format: JsonFormat[sbt.librarymanagement.For2_13Use3] =
+    new JsonFormat[sbt.librarymanagement.For2_13Use3] {
+      override def read[J](
+          jsOpt: Option[J],
+          unbuilder: Unbuilder[J]
+      ): sbt.librarymanagement.For2_13Use3 = {
+        jsOpt match {
+          case Some(js) =>
+            unbuilder.beginObject(js)
+            val prefix = unbuilder.readField[String]("prefix")
+            val suffix = unbuilder.readField[String]("suffix")
+            unbuilder.endObject()
+            sbt.librarymanagement.For2_13Use3(prefix, suffix)
+          case None =>
+            deserializationError("Expected JsObject but found None")
+        }
+      }
+      override def write[J](obj: sbt.librarymanagement.For2_13Use3, builder: Builder[J]): Unit = {
+        builder.beginObject()
+        builder.addField("prefix", obj.prefix)
+        builder.addField("suffix", obj.suffix)
+        builder.endObject()
+      }
+    }
+}
+
 trait CrossVersionFormats {
   self: sjsonnew.BasicJsonProtocol
     with sbt.librarymanagement.DisabledFormats
     with sbt.librarymanagement.BinaryFormats
     with sbt.librarymanagement.ConstantFormats
     with sbt.librarymanagement.PatchFormats
-    with sbt.librarymanagement.FullFormats =>
+    with sbt.librarymanagement.FullFormats
+    with sbt.librarymanagement.For3Use2_13Formats
+    with sbt.librarymanagement.For2_13Use3Formats =>
   implicit lazy val CrossVersionFormat: JsonFormat[CrossVersion] = {
-    val format = flatUnionFormat6[
+    val format = flatUnionFormat8[
       CrossVersion,
       Disabled,
       Disabled.type,
       Binary,
       Constant,
       Patch,
-      Full
+      Full,
+      For3Use2_13,
+      For2_13Use3
     ]("type")
     // This is a hand-crafted formatter to avoid Disabled$ showing up in JSON
     new JsonFormat[CrossVersion] {
