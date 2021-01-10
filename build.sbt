@@ -105,6 +105,10 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   crossScalaVersions := Seq(baseScalaVersion),
   publishArtifact in Test := false,
   fork in run := true,
+  libraryDependencies ++= {
+    if (autoScalaLibrary.value) List(silencerLib)
+    else Nil
+  },
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
@@ -324,6 +328,10 @@ val logicProj = (project in file("internal") / "util-logic")
     testedBaseSettings,
     name := "Logic",
     mimaSettings,
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -613,6 +621,10 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
     baseSettings,
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     mimaSettings,
     scriptedSbtReduxMimaSettings,
   )
