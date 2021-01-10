@@ -20,7 +20,7 @@ object DOT {
       labelRendering: HTMLLabelRendering
   ): String = {
     val nodes = {
-      for (n ← graph.nodes) yield {
+      for (n <- graph.nodes) yield {
         val style = if (n.isEvicted) EvictedStyle else ""
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
         """    "%s"[%s style="%s"]""".format(
@@ -56,7 +56,7 @@ object DOT {
         .filterNot(e => originWasEvicted(e) || evictionTargetEdges(e)) ++ evictedByEdges
 
     val edges = {
-      for (e ← filteredEdges) yield {
+      for (e <- filteredEdges) yield {
         val extra =
           if (graph.module(e._1).isEvicted)
             s""" [label="Evicted By" style="$EvictedStyle"]"""

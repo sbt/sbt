@@ -17,6 +17,7 @@ ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 
+Global / semanticdbEnabled := !(Global / insideCI).value
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -1029,7 +1030,11 @@ lazy val mainProj = (project in file("main"))
       // internal logging apis,
       exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
       exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread")
+      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
+      // internal implementation
+      exclude[MissingClassProblem](
+        "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
+      ),
     )
   )
   .configure(
@@ -1317,6 +1322,7 @@ def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = 
 
 lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   .settings(
+    bspEnabled := false,
     crossPaths := false,
     crossScalaVersions := Seq(baseScalaVersion),
     skip in publish := true,
