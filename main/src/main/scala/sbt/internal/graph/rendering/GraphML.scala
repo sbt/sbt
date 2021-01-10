@@ -15,7 +15,7 @@ import scala.xml.XML
 object GraphML {
   def saveAsGraphML(graph: ModuleGraph, outputFile: String): Unit = {
     val nodesXml =
-      for (n ← graph.nodes)
+      for (n <- graph.nodes)
         yield <node id={n.id.idString}><data key="d0">
                                            <y:ShapeNode>
                                              <y:NodeLabel>{n.id.idString}</y:NodeLabel>
@@ -23,7 +23,7 @@ object GraphML {
                                          </data></node>
 
     val edgesXml =
-      for (e ← graph.edges)
+      for (e <- graph.edges)
         yield <edge source={e._1.idString} target={e._2.idString}/>
 
     val xml =
