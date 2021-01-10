@@ -1029,7 +1029,11 @@ lazy val mainProj = (project in file("main"))
       // internal logging apis,
       exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
       exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread")
+      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
+      // internal implementation
+      exclude[MissingClassProblem](
+        "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
+      ),
     )
   )
   .configure(
