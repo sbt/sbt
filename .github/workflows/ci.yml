@@ -54,6 +54,7 @@ jobs:
       - name: Release
         run: ./sbt ci-release
         env:
+          CI_RELEASE: "++2.13.3 publishSigned"
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
           SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
