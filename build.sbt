@@ -17,7 +17,7 @@ ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 
-Global / semanticdbEnabled := true
+Global / semanticdbEnabled := !(Global / insideCI).value
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
