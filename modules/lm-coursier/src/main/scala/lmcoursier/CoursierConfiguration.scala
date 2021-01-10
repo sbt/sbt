@@ -47,8 +47,8 @@ import scala.concurrent.duration.Duration
   @since
   verbosityLevel: Int = 0,
   ttl: Option[Duration] = CacheDefaults.ttl,
-  checksums: Vector[Option[String]] = CacheDefaults.checksums.to[Vector],
-  cachePolicies: Vector[CachePolicy] = CacheDefaults.cachePolicies.to[Vector].map(FromCoursier.cachePolicy),
+  checksums: Vector[Option[String]] = CacheDefaults.checksums.toVector,
+  cachePolicies: Vector[CachePolicy] = CacheDefaults.cachePolicies.toVector.map(FromCoursier.cachePolicy),
   @since
   missingOk: Boolean = false,
   @since

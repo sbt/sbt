@@ -31,8 +31,8 @@ runLmCoursierTests() {
   ./metadata/scripts/with-test-repo.sh $SBT \
     evictionCheck \
     compatibilityCheck \
-    lm-coursier-shaded/publishLocal \
-    lm-coursier/test \
+    +lm-coursier-shaded/publishLocal \
+    +lm-coursier/test \
     "sbt-lm-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
 }
 
