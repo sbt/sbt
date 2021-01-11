@@ -15,10 +15,10 @@ final class InitializeParams private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InitializeParams => (this.processId == x.processId) && (this.rootPath == x.rootPath) && (this.rootUri == x.rootUri) && (this.initializationOptions == x.initializationOptions) && (this.capabilities == x.capabilities) && (this.trace == x.trace)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.langserver.InitializeParams".##) + processId.##) + rootPath.##) + rootUri.##) + initializationOptions.##) + capabilities.##) + trace.##)
   }

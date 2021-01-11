@@ -368,7 +368,7 @@ object Tests {
       testFun: TestFunction,
       nestedTasks: Seq[TestTask]
   ): Seq[(String, TestFunction)] =
-    nestedTasks.view.zipWithIndex map {
+    (nestedTasks.view.zipWithIndex map {
       case (nt, idx) =>
         val testFunDef = testFun.taskDef
         (
@@ -385,7 +385,7 @@ object Tests {
             nt
           )
         )
-    }
+    }).toSeq
 
   def makeParallel(
       loader: ClassLoader,
@@ -405,9 +405,11 @@ object Tests {
       case (sum, e) =>
         val merged = sum.toSeq ++ e.toSeq
         val grouped = merged.groupBy(_._1)
-        grouped.mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) {
-          case (resultSum, result) => resultSum + result
-        })
+        grouped
+          .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) {
+            case (resultSum, result) => resultSum + result
+          })
+          .toMap
     })
   }
 

@@ -1086,7 +1086,15 @@ object NetworkClient {
     }
     val base = new File("").getCanonicalFile
     if (!sbtArguments.contains("-Dsbt.io.virtual=true")) sbtArguments += "-Dsbt.io.virtual=true"
-    new Arguments(base, sbtArguments, commandArgs, completionArguments, sbtScript, bsp, launchJar)
+    new Arguments(
+      base,
+      sbtArguments.toSeq,
+      commandArgs.toSeq,
+      completionArguments.toSeq,
+      sbtScript,
+      bsp,
+      launchJar
+    )
   }
 
   def client(

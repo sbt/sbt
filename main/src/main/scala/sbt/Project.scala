@@ -14,6 +14,7 @@ import Project._
 import BasicKeys.serverLogLevel
 import Keys.{
   stateBuildStructure,
+  bspEnabled,
   colorShellPrompt,
   commands,
   configuration,
@@ -478,7 +479,15 @@ object Project extends ProjectExtra {
     previousOnUnload(s.runExitHooks())
   }
 
-  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State = {
+  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
+    setProject(session, structure, s, identity)
+
+  def setProject(
+      session: SessionSettings,
+      structure: BuildStructure,
+      s: State,
+      preOnLoad: State => State
+  ): State = {
     val unloaded = runUnloadHooks(s)
     val (onLoad, onUnload) = getHooks(structure.data)
     val newAttrs = unloaded.attributes
@@ -488,7 +497,7 @@ object Project extends ProjectExtra {
     val newState = unloaded.copy(attributes = newAttrs)
     // TODO: Fix this
     onLoad(
-      updateCurrent(newState) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
+      preOnLoad(updateCurrent(newState)) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
     )
   }
 
@@ -519,6 +528,7 @@ object Project extends ProjectExtra {
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val enabledBsp: Option[Boolean] = get(bspEnabled)
     val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
@@ -536,6 +546,7 @@ object Project extends ProjectExtra {
         .put(historyPath.key, history)
         .put(windowsServerSecurityLevel.key, winSecurityLevel)
         .put(serverUseJni.key, useJni)
+        .setCond(bspEnabled.key, enabledBsp)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
@@ -572,7 +583,7 @@ object Project extends ProjectExtra {
   private[this] def overlappingTargets(
       targets: Seq[(ProjectRef, File)]
   ): Map[File, Seq[ProjectRef]] =
-    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1))
+    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
 
   private[this] def allTargets(data: Settings[Scope]): Seq[(ProjectRef, File)] = {
     import ScopeFilter._

@@ -15,10 +15,10 @@ final class JsonRpcNotificationMessage private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: JsonRpcNotificationMessage => (this.jsonrpc == x.jsonrpc) && (this.method == x.method) && (this.params == x.params)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.internal.protocol.JsonRpcNotificationMessage".##) + jsonrpc.##) + method.##) + params.##)
   }

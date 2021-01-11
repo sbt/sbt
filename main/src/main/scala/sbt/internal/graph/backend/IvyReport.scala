@@ -20,13 +20,13 @@ object IvyReport {
   def fromReportXML(doc: Document): ModuleGraph = {
     def edgesForModule(id: GraphModuleId, revision: NodeSeq): Seq[Edge] =
       for {
-        caller ← revision \ "caller"
+        caller <- revision \ "caller"
         callerModule = moduleIdFromElement(caller, caller.attribute("callerrev").get.text)
       } yield (moduleIdFromElement(caller, caller.attribute("callerrev").get.text), id)
 
     val moduleEdges: Seq[(Module, Seq[Edge])] = for {
-      mod ← doc \ "dependencies" \ "module"
-      revision ← mod \ "revision"
+      mod <- doc \ "dependencies" \ "module"
+      revision <- mod \ "revision"
       rev = revision.attribute("name").get.text
       moduleId = moduleIdFromElement(mod, rev)
       module = Module(

@@ -259,6 +259,7 @@ private[sbt] object Definition {
     result.future
   }
 
+  @com.github.ghik.silencer.silent
   def lspDefinition(
       jsonDefinition: JValue,
       requestId: String,
@@ -287,6 +288,7 @@ private[sbt] object Definition {
         log.debug(s"symbol $sym")
         analyses
           .map { analyses =>
+            import sbt.internal.CompatParColls.Converters._
             val locations = analyses.par.flatMap { analysis =>
               val selectPotentials = textProcessor.potentialClsOrTraitOrObj(sym)
               val classes =

@@ -61,7 +61,7 @@ object RemoteCache {
       val app = appConfiguration.value
       val base = app.baseDirectory.getCanonicalFile
       // base is used only to resolve relative paths, which should never happen
-      IvyPaths(base, localCacheDirectory.value),
+      IvyPaths(base, localCacheDirectory.value)
     },
   )
 
@@ -136,7 +136,7 @@ object RemoteCache {
       ivySbt := {
         Credentials.register(credentials.value, streams.value.log)
         val config0 = ivyConfiguration.value
-        new IvySbt(config0, CustomHttp.okhttpClient.value)
+        new IvySbt(config0, sbt.internal.CustomHttp.okhttpClient.value)
       },
     )
   ) ++ inTask(pullRemoteCache)(

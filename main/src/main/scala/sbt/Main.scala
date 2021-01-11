@@ -939,13 +939,17 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
-    val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
+    val s3 = Project.setProject(
+      session,
+      structure,
+      s2,
+      st => setupGlobalFileTreeRepository(addCacheStoreFactoryFactory(st))
+    )
     val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
-    val s5 = setupGlobalFileTreeRepository(s4)
     // This is a workaround for the console task in dotty which uses the classloader cache.
     // We need to override the top loader in that case so that it gets the forked jline.
-    s5.extendedClassLoaderCache.setParent(Project.extract(s5).get(Keys.scalaInstanceTopLoader))
-    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s5)))
+    s4.extendedClassLoaderCache.setParent(Project.extract(s4).get(Keys.scalaInstanceTopLoader))
+    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s4)))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
@@ -1078,7 +1082,7 @@ object BuiltinCommands {
     }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
-  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir

@@ -88,8 +88,9 @@ object RunFromSourceMain {
   ): Option[(File, Seq[String])] = {
     try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args, context) map exit
     catch {
-      case r: xsbti.FullReload            => Some((baseDir, r.arguments()))
-      case scala.util.control.NonFatal(e) => e.printStackTrace(); errorAndExit(e.toString)
+      case r: xsbti.FullReload => Some((baseDir, r.arguments()))
+      case scala.util.control.NonFatal(e) =>
+        e.printStackTrace(); errorAndExit(e.toString)
     }
   }
 

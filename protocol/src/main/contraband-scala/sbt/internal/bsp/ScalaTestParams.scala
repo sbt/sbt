@@ -15,10 +15,10 @@ final class ScalaTestParams private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalaTestParams => (this.testClasses == x.testClasses)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.internal.bsp.ScalaTestParams".##) + testClasses.##)
   }

@@ -14,10 +14,10 @@ final class ScalacOptionsParams private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalacOptionsParams => (this.targets == x.targets)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.internal.bsp.ScalacOptionsParams".##) + targets.##)
   }

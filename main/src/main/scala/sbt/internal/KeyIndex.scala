@@ -17,12 +17,16 @@ import sbt.librarymanagement.Configuration
 
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
+  @com.github.ghik.silencer.silent
   def apply(
       known: Iterable[ScopedKey[_]],
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
-  ): ExtendableKeyIndex =
+  ): ExtendableKeyIndex = {
+    import sbt.internal.CompatParColls.Converters._
     known.par.foldLeft(base(projects, configurations)) { _ add _ }
+  }
+  @com.github.ghik.silencer.silent
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],
@@ -37,6 +41,7 @@ object KeyIndex {
      * This was a significant serial bottleneck during project loading that we can work around by
      * computing the aggregations in parallel and then bulk adding them to the index.
      */
+    import sbt.internal.CompatParColls.Converters._
     val toAggregate = known.par.map {
       case key if validID(key.key.label) =>
         Aggregation.aggregate(key, ScopeMask(), extra, reverse = true)
@@ -92,6 +97,7 @@ object KeyIndex {
   private[sbt] val emptyConfigIndex = new ConfigIndex(Map.empty, Map.empty, emptyAKeyIndex)
   private[sbt] val emptyProjectIndex = new ProjectIndex(Map.empty)
   private[sbt] val emptyBuildIndex = new BuildIndex(Map.empty)
+
 }
 import KeyIndex._
 

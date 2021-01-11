@@ -98,10 +98,13 @@ private[sbt] object Server {
               }
               log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
-              BuildServerConnection.writeConnectionFile(
-                appConfiguration.provider.id.version,
-                appConfiguration.baseDirectory
-              )
+              if (connection.bspEnabled) {
+                log.debug("Writing bsp connection file")
+                BuildServerConnection.writeConnectionFile(
+                  appConfiguration.provider.id.version,
+                  appConfiguration.baseDirectory
+                )
+              }
               running.set(true)
               p.success(())
               while (running.get()) {
@@ -241,6 +244,7 @@ private[sbt] case class ServerConnection(
     appConfiguration: AppConfiguration,
     windowsServerSecurityLevel: Int,
     useJni: Boolean,
+    bspEnabled: Boolean,
 ) {
   def shortName: String = {
     connectionType match {

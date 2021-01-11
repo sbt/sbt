@@ -269,7 +269,9 @@ private[sbt] object Settings {
    * @return a task definition that retrieves the input files and their file stamps scoped to the
    *         input key.
    */
+  @com.github.ghik.silencer.silent
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] = {
+    import sbt.internal.CompatParColls.Converters._
     val scope = scopedKey.scope
     addTaskDefinition(Keys.inputFileStamps in scope := {
       val cache = (unmanagedFileStampCache in scope).value

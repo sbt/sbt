@@ -11,10 +11,10 @@ final class Exec private (
   
   private def this(commandLine: String, source: Option[sbt.CommandSource]) = this(commandLine, None, source)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: Exec => (this.commandLine == x.commandLine) && (this.execId == x.execId) && (this.source == x.source)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.Exec".##) + commandLine.##) + execId.##) + source.##)
   }

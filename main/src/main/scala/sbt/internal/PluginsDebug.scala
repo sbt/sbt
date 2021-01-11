@@ -171,7 +171,7 @@ private[sbt] object PluginsDebug {
     def definesPlugin(p: ResolvedProject): Boolean = p.autoPlugins.contains(plugin)
     def projectForRef(ref: ProjectRef): ResolvedProject = get(Keys.thisProject in ref)
     val perBuild: Map[URI, Set[AutoPlugin]] =
-      structure.units.mapValues(unit => availableAutoPlugins(unit).toSet)
+      structure.units.mapValues(unit => availableAutoPlugins(unit).toSet).toMap
     val pluginsThisBuild = perBuild.getOrElse(currentRef.build, Set.empty).toList
     lazy val context = Context(
       currentProject.plugins,

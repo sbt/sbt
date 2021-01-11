@@ -19,10 +19,10 @@ final class TestItemDetail private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TestItemDetail => (this.fullyQualifiedName == x.fullyQualifiedName) && (this.status == x.status) && (this.duration == x.duration)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.protocol.testing.TestItemDetail".##) + fullyQualifiedName.##) + status.##) + duration.##)
   }

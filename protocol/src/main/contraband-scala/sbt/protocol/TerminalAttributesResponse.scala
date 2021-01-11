@@ -13,10 +13,10 @@ final class TerminalAttributesResponse private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: TerminalAttributesResponse => (this.iflag == x.iflag) && (this.oflag == x.oflag) && (this.cflag == x.cflag) && (this.lflag == x.lflag) && (this.cchars == x.cchars)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.protocol.TerminalAttributesResponse".##) + iflag.##) + oflag.##) + cflag.##) + lflag.##) + cchars.##)
   }

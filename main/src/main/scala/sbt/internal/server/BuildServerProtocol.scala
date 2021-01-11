@@ -78,10 +78,18 @@ object BuildServerProtocol {
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    bspConfig := BuildServerConnection.writeConnectionFile(
-      sbtVersion.value,
-      (ThisBuild / baseDirectory).value
-    ),
+    bspConfig := {
+      if (bspEnabled.value) {
+        BuildServerConnection.writeConnectionFile(
+          sbtVersion.value,
+          (ThisBuild / baseDirectory).value
+        )
+      } else {
+        val logger = streams.value.log
+        logger.warn("BSP is disabled for this build")
+        logger.info("add 'Global / bspEnabled := true' to enable BSP")
+      }
+    },
     bspEnabled := true,
     bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
@@ -459,7 +467,7 @@ object BuildServerProtocol {
       (artifact, file) <- module.artifacts
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
-    DependencySourcesItem(targetId, sources.distinct.toVector)
+    DependencySourcesItem(targetId, sources.toVector.distinct)
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {

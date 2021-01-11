@@ -16,10 +16,10 @@ final class ExecStatusEvent private (
   private def this(status: String, channelName: Option[String], execId: Option[String], commandQueue: Vector[String]) = this(status, channelName, execId, commandQueue, None, None)
   private def this(status: String, channelName: Option[String], execId: Option[String], commandQueue: Vector[String], exitCode: Option[Long]) = this(status, channelName, execId, commandQueue, exitCode, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ExecStatusEvent => (this.status == x.status) && (this.channelName == x.channelName) && (this.execId == x.execId) && (this.commandQueue == x.commandQueue) && (this.exitCode == x.exitCode) && (this.message == x.message)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.protocol.ExecStatusEvent".##) + status.##) + channelName.##) + execId.##) + commandQueue.##) + exitCode.##) + message.##)
   }

@@ -14,15 +14,15 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.4.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.4.0")
-  val zincVersion = nightlyVersion.getOrElse("1.4.3")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.0-M3")
+  val zincVersion = nightlyVersion.getOrElse("1.5.0-M2")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.1.5"
+  val launcherVersion = "1.1.6"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -77,7 +77,7 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.4"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.5"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
@@ -102,6 +102,7 @@ object Dependencies {
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
   val scalaReflect = Def.setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.11.2"

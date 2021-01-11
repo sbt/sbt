@@ -16,10 +16,10 @@ final class BuildTargetCapabilities private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: BuildTargetCapabilities => (this.canCompile == x.canCompile) && (this.canTest == x.canTest) && (this.canRun == x.canRun)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildTargetCapabilities".##) + canCompile.##) + canTest.##) + canRun.##)
   }

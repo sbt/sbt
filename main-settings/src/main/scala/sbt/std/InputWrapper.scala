@@ -33,32 +33,32 @@ object InputWrapper {
   @compileTimeOnly(
     "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
   )
-  def wrapTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
   )
-  def wrapInit_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapInit_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
   )
-  def wrapInitTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapInitTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask."
   )
-  def wrapInputTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapInputTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask."
   )
-  def wrapInitInputTask_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapInitInputTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
     "`previous` can only be called on a task within a task or input task definition macro, such as :=, +=, ++=, Def.task, or Def.inputTask."
   )
-  def wrapPrevious_\u2603\u2603[T](@deprecated("unused", "") in: Any): T = implDetailError
+  def `wrapPrevious_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   private[this] def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
@@ -240,13 +240,13 @@ object ParserInput {
   @compileTimeOnly(
     "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
   )
-  def parser_\u2603\u2603[T](@deprecated("unused", "") i: Any): T =
+  def `parser_\u2603\u2603`[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
 
   @compileTimeOnly(
     "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
   )
-  def initParser_\u2603\u2603[T](@deprecated("unused", "") i: Any): T =
+  def `initParser_\u2603\u2603`[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
 
   private[std] def wrap[T: c.WeakTypeTag](

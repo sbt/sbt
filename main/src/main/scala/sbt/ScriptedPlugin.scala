@@ -144,7 +144,7 @@ object ScriptedPlugin extends AutoPlugin {
     val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
 
     val id = charClass(c => !c.isWhitespace && c != '/', "not whitespace and not '/'").+.string
-    val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
+    val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
 
     // A parser for page definitions
     val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>

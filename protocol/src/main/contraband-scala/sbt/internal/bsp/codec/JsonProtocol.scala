@@ -9,6 +9,8 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.BuildTargetCapabilitiesFormats
   with sbt.internal.util.codec.JValueFormats
   with sbt.internal.bsp.codec.BuildTargetFormats
+  with sbt.internal.bsp.codec.DebugSessionAddressFormats
+  with sbt.internal.bsp.codec.DebugSessionParamsFormats
   with sbt.internal.bsp.codec.TaskIdFormats
   with sbt.internal.bsp.codec.TextDocumentIdentifierFormats
   with sbt.internal.bsp.codec.PositionFormats

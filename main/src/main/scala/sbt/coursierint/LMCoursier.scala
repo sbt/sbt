@@ -173,6 +173,7 @@ object LMCoursier {
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    val sv = scalaVersion.value
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
@@ -182,9 +183,9 @@ object LMCoursier {
       None,
       csrMavenProfiles.value,
       scalaOrganization.value,
-      scalaVersion.value,
+      sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value,
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -200,6 +201,7 @@ object LMCoursier {
   }
 
   def updateClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    val sv = scalaVersion.value
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
@@ -209,9 +211,9 @@ object LMCoursier {
       Some(transitiveClassifiers.value.map(Classifier(_))),
       csrMavenProfiles.value,
       scalaOrganization.value,
-      scalaVersion.value,
+      sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value,
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -227,6 +229,7 @@ object LMCoursier {
   }
 
   def updateSbtClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    val sv = scalaVersion.value
     coursierConfiguration(
       csrSbtResolvers.value,
       Vector(),
@@ -236,9 +239,9 @@ object LMCoursier {
       None,
       csrMavenProfiles.value,
       scalaOrganization.value,
-      scalaVersion.value,
+      sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value,
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -254,6 +257,7 @@ object LMCoursier {
   }
 
   def scalaCompilerBridgeConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
+    val sv = scalaVersion.value
     coursierConfiguration(
       csrResolvers.value,
       Vector(),
@@ -263,9 +267,9 @@ object LMCoursier {
       None,
       csrMavenProfiles.value,
       scalaOrganization.value,
-      scalaVersion.value,
+      sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value,
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,

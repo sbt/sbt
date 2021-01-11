@@ -213,15 +213,31 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     // "t/pollInterval" in qok("500", "Int")
     "t/sourcesInBase" in qok("true", "Boolean")
     "t/startYear" in qok("null", "scala.Option[Int]")
-    "t/scalaArtifacts" in qok(
-      """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
-      "scala.collection.Seq[java.lang.String]"
-    )
+    "t/scalaArtifacts" in {
+      if (scala.util.Properties.versionNumberString.startsWith("2.12"))
+        qok(
+          """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
+          "scala.collection.Seq[java.lang.String]"
+        )
+      else
+        qok(
+          """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
+          "scala.collection.immutable.Seq[java.lang.String]"
+        )
+    }
 
-    "t/libraryDependencies" in qok(
-      """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
-      "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
-    )
+    "t/libraryDependencies" in {
+      if (scala.util.Properties.versionNumberString.startsWith("2.12"))
+        qok(
+          """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
+          "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
+        )
+      else
+        qok(
+          """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
+          "scala.collection.immutable.Seq[sbt.librarymanagement.ModuleID]"
+        )
+    }
 
     "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
     "t/scalacOptions" in qko(
