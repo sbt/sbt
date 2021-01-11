@@ -18,11 +18,16 @@ object BuildServerConnection {
   final val bspVersion = "2.0.0-M5"
   final val languages = Vector("scala")
 
+  private final val SbtLaunchJar = "sbt-launch(-.*)?\\.jar".r
+
   private[sbt] def writeConnectionFile(sbtVersion: String, baseDir: File): Unit = {
     import bsp.codec.JsonProtocol._
     val bspConnectionFile = new File(baseDir, ".bsp/sbt.json")
     val javaHome = System.getProperty("java.home")
     val classPath = System.getProperty("java.class.path")
+    val sbtLaunchJar = classPath
+      .split(File.pathSeparator)
+      .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
     val argv =
       Vector(
         s"$javaHome/bin/java",
@@ -32,7 +37,7 @@ object BuildServerConnection {
         classPath,
         "xsbt.boot.Boot",
         "-bsp"
-      )
+      ) ++ sbtLaunchJar.map(jar => s"--sbt-launch-jar=$jar")
     val details = BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
     val json = Converter.toJson(details).get
     IO.write(bspConnectionFile, CompactPrinter(json), append = false)
