@@ -408,7 +408,7 @@ final class NetworkChannel(
       import sbt.protocol.codec.JsonProtocol._
       StandardMain.exchange.withState { s =>
         val structure = Project.extract(s).structure
-        SettingQuery.handleSettingQueryEither(req, structure) match {
+        sbt.internal.server.SettingQuery.handleSettingQueryEither(req, structure) match {
           case Right(x) => respondResult(x, execId)
           case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
         }

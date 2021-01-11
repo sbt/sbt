@@ -85,13 +85,14 @@ object VirtualTerminal {
     queue
   }
   private[sbt] def cancelRequests(name: String): Unit = {
-    pendingTerminalCapabilities.forEach {
+    import scala.collection.JavaConverters._
+    pendingTerminalCapabilities.asScala.foreach {
       case (k @ (`name`, _), q) =>
         pendingTerminalCapabilities.remove(k)
         q.put(TerminalCapabilitiesResponse(None, None, None))
       case _ =>
     }
-    pendingTerminalProperties.forEach {
+    pendingTerminalProperties.asScala.foreach {
       case (k @ (`name`, _), q) =>
         pendingTerminalProperties.remove(k)
         q.put(TerminalPropertiesResponse(0, 0, false, false, false, false))

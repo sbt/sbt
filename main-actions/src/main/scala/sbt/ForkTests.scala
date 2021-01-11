@@ -8,7 +8,7 @@
 package sbt
 
 import scala.collection.mutable
-import testing.{ Logger => _, _ }
+import testing.{ Logger => _, Task => _, _ }
 import scala.util.control.NonFatal
 import java.net.ServerSocket
 import java.io._

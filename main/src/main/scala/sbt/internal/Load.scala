@@ -324,7 +324,7 @@ private[sbt] object Load {
     val keys = Index.allKeys(settings)
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
-    val projectsMap = projects.mapValues(_.defined.keySet)
+    val projectsMap = projects.mapValues(_.defined.keySet).toMap
     val configsMap: Map[String, Seq[Configuration]] =
       projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
@@ -638,7 +638,7 @@ private[sbt] object Load {
     val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
     new LoadedBuildUnit(
       unit.unit,
-      unit.defined mapValues resolve,
+      unit.defined.mapValues(resolve).toMap,
       unit.rootProjects,
       unit.buildSettings
     )

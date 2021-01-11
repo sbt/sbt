@@ -467,7 +467,7 @@ object BuildServerProtocol {
       (artifact, file) <- module.artifacts
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
-    DependencySourcesItem(targetId, sources.distinct.toVector)
+    DependencySourcesItem(targetId, sources.toVector.distinct)
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {

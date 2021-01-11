@@ -22,8 +22,11 @@ jobs:
             java: 11
             jobtype: 4
           - os: ubuntu-latest
-            java: 8
+            java: 11
             jobtype: 5
+          - os: ubuntu-latest
+            java: 8
+            jobtype: 6
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -79,6 +82,9 @@ jobs:
             sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
             ;;
           5)
+            sbt -v "++$SCALA_213!; test;"
+            ;;
+          6)
             # build from fresh IO, LM, and Zinc
             BUILD_VERSION="1.5.0-SNAPSHOT"
             cd io

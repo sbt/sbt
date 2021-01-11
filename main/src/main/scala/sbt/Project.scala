@@ -583,7 +583,7 @@ object Project extends ProjectExtra {
   private[this] def overlappingTargets(
       targets: Seq[(ProjectRef, File)]
   ): Map[File, Seq[ProjectRef]] =
-    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1))
+    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
 
   private[this] def allTargets(data: Settings[Scope]): Seq[(ProjectRef, File)] = {
     import ScopeFilter._

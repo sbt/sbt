@@ -27,7 +27,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
     else {
       val pivot = a(0)
       val (lt, gte) = a.view.drop(1).partition(_ < pivot)
-      sortDirect(lt) ++ List(pivot) ++ sortDirect(gte)
+      sortDirect(lt.toSeq) ++ List(pivot) ++ sortDirect(gte.toSeq)
     }
   }
   final def sort(a: Seq[Int]): Task[Seq[Int]] = {
@@ -37,7 +37,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
       task(a) flatMap { a =>
         val pivot = a(0)
         val (lt, gte) = a.view.drop(1).partition(_ < pivot)
-        Test.t2(sort(lt), sort(gte)) map {
+        sbt.Test.t2(sort(lt.toSeq), sort(gte.toSeq)) map {
           case (l, g) => l ++ List(pivot) ++ g
         }
       }

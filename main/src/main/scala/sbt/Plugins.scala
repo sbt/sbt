@@ -200,6 +200,10 @@ object Plugins extends PluginsFunctions {
           val clauses = Clauses((allRequirementsClause ::: allEnabledByClause) filterNot {
             _.head subsetOf knowledge0
           })
+          // println(s"allRequirementsClause = $allRequirementsClause")
+          // println(s"allEnabledByClause = $allEnabledByClause")
+          // println(s"clauses = $clauses")
+          // println("")
           log.debug(
             s"deducing auto plugins based on known facts ${knowledge0.toString} and clauses ${clauses.toString}"
           )
@@ -266,7 +270,10 @@ object Plugins extends PluginsFunctions {
     lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString (", ")
 
   private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
-    val dupsByAtom = byAtom.groupBy(_._1).mapValues(_.map(_._2))
+    val dupsByAtom = Map(byAtom.groupBy(_._1).toSeq.map {
+      case (k, v) =>
+        k -> v.map(_._2)
+    }: _*)
     val dupStrings =
       for ((atom, dups) <- dupsByAtom if dups.size > 1)
         yield s"${atom.label} by ${dups.mkString(", ")}"

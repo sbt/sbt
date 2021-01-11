@@ -516,7 +516,7 @@ object Watch {
     }).reverse.foreach { o =>
       if (distinctOpts.add(o.input)) opts += o
     }
-    opts.reverse
+    opts.toSeq.reverse
   }
   private def waitMessage(project: ProjectRef, commands: Seq[String]): Seq[String] = {
     val cmds = commands.map(project.project + "/" + _.trim).mkString("; ")

@@ -336,7 +336,11 @@ private[sbt] object LibraryManagement {
             .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
           IvyActions
-            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
+            .addExcluded(
+              report,
+              classifiers.toVector,
+              allExcludes.mapValues(_.map(_.name).toSet).toMap
+            )
         }
       }
     )
