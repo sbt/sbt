@@ -218,7 +218,7 @@ private[sbt] class ClassLoaderCache(
     }
   }
   private def clear(lock: Object): Unit = {
-    delegate.forEach {
+    delegate.asScala.foreach {
       case (_, ClassLoaderReference(_, classLoader)) => close(classLoader)
       case (_, r: Reference[ClassLoader]) =>
         r.get match {

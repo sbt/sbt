@@ -1083,7 +1083,7 @@ object BuiltinCommands {
     }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
-  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir

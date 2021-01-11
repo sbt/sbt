@@ -5,6 +5,7 @@ import Keys._
 import sbt.internal.inc.Analysis
 
 object Util {
+  val version2_13 = settingKey[String]("version number")
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
   val componentID: SettingKey[Option[String]] = settingKey[Option[String]]("")

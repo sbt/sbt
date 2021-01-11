@@ -44,7 +44,7 @@ class IllegalReferenceSpec extends fixture.FunSuite with fixture.TestDataFixture
     private[this] var _infos: List[FrontEnd#Info] = Nil
     private[this] val frontEnd = new FrontEnd {
       override def display(info: Info): Unit = _infos ::= info
-      override def interactive(): Unit = {}
+      def interactive(): Unit = {}
     }
 
     import scala.tools.reflect.ToolBox

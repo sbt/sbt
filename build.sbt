@@ -11,6 +11,7 @@ ThisBuild / version := {
   val v = "1.5.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -102,9 +103,13 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
     (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmtOnCompile).value,
   Test / unmanagedSources / inputFileStamps :=
     (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmtOnCompile).value,
-  crossScalaVersions := Seq(baseScalaVersion),
+  crossScalaVersions := List(scala212, scala213),
   publishArtifact in Test := false,
   fork in run := true,
+  libraryDependencies ++= {
+    if (autoScalaLibrary.value) List(silencerLib)
+    else Nil
+  },
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
@@ -168,7 +173,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+// .enablePlugins(ScriptedPlugin)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
@@ -324,6 +329,10 @@ val logicProj = (project in file("internal") / "util-logic")
     testedBaseSettings,
     name := "Logic",
     mimaSettings,
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -613,6 +622,10 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
     baseSettings,
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
+      case _                          => List()
+    }),
     mimaSettings,
     scriptedSbtReduxMimaSettings,
   )
@@ -909,11 +922,16 @@ lazy val mainProj = (project in file("main"))
     checkPluginCross := {
       val sv = scalaVersion.value
       val f = baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala"
-      if (!IO.readLines(f).exists(_.contains(s""""$sv"""")))
+      if (sv.startsWith("2.12") && !IO.readLines(f).exists(_.contains(s""""$sv""""))) {
         sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
+      }
     },
     libraryDependencies ++=
       (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
+    libraryDependencies ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List()
+      case _                          => List(scalaPar)
+    }),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
       case _                          => List()
@@ -1054,8 +1072,13 @@ lazy val sbtProj = (project in file("sbt"))
     testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    version := {
+      if (scalaVersion.value == baseScalaVersion) version.value
+      else version2_13.value
+    },
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,

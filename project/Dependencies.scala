@@ -102,6 +102,7 @@ object Dependencies {
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
   val scalaReflect = Def.setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.11.2"

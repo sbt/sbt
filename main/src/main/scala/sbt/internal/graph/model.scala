@@ -83,7 +83,7 @@ private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
       val (f, t) = bindingFor(entry)
       m.addBinding(f, module(t))
     }
-    m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).withDefaultValue(Nil)
+    m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).toMap.withDefaultValue(Nil)
   }
 
   def roots: Seq[Module] =

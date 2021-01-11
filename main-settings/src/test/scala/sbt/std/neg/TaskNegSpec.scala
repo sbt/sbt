@@ -265,6 +265,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
     }
   }
 
+  /*
   test("Detect a missing `.value` inside a val definition of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg2")) {
       """
@@ -304,6 +305,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
       """.stripMargin
       }
   }
+   */
 
   test("Detect a missing `.value` inside an inner method of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
