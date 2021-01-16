@@ -112,7 +112,7 @@ object Dependencies {
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
-  val hedgehog = "hedgehog" %% "hedgehog-sbt" % "0.1.0"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.6.1"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
   val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.2"
   val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.2" % Provided
