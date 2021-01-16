@@ -13,7 +13,6 @@ object NightlyPlugin extends AutoPlugin {
       if (includeTestDependencies.value)
         Seq(
           scalacheck % Test,
-          specs2 % Test,
           junit % Test,
           scalatest % Test,
           scalaVerify % Test,

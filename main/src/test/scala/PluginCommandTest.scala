@@ -9,7 +9,6 @@ package sbt
 
 import java.io._
 
-import org.specs2.mutable.Specification
 import sbt.internal._
 import sbt.internal.util.{
   AttributeEntry,
@@ -29,45 +28,41 @@ package subpackage {
 
 }
 
-object PluginCommandTest extends Specification {
-  sequential
-
+object PluginCommandTest extends verify.BasicTestSuite {
   import subpackage._
   import FakeState._
 
-  "The `plugin` command" should {
-
-    "should work for plugins within nested in one package" in {
-      val output = processCommand(
-        "plugin sbt.PluginCommandTestPlugin0",
-        PluginCommandTestPlugin0,
-        PluginCommandTestPlugin1
-      )
-      output must contain("sbt.PluginCommandTestPlugin0 is activated.")
-    }
-
-    "should work for plugins nested more than one package" in {
-      val output = processCommand(
-        "plugin sbt.subpackage.PluginCommandTestPlugin1",
-        PluginCommandTestPlugin0,
-        PluginCommandTestPlugin1
-      )
-      output must contain("sbt.subpackage.PluginCommandTestPlugin1 is activated.")
-    }
-
-    "suggest a plugin when given an incorrect plugin with a similar name" in {
-      val output = processCommand(
-        "plugin PluginCommandTestPlugin0",
-        PluginCommandTestPlugin0,
-        PluginCommandTestPlugin1
-      )
-      output must contain(
-        "Not a valid plugin: PluginCommandTestPlugin0 (similar: sbt.PluginCommandTestPlugin0, sbt.subpackage.PluginCommandTestPlugin1)"
-      )
-    }
-
+  test("`plugin` command should work for plugins within nested in one package") {
+    val output = processCommand(
+      "plugin sbt.PluginCommandTestPlugin0",
+      PluginCommandTestPlugin0,
+      PluginCommandTestPlugin1
+    )
+    assert(output.contains("sbt.PluginCommandTestPlugin0 is activated."))
   }
 
+  test("it should work for plugins nested more than one package") {
+    val output = processCommand(
+      "plugin sbt.subpackage.PluginCommandTestPlugin1",
+      PluginCommandTestPlugin0,
+      PluginCommandTestPlugin1
+    )
+    assert(output.contains("sbt.subpackage.PluginCommandTestPlugin1 is activated."))
+  }
+
+  test("it should suggest a plugin when given an incorrect plugin with a similar name") {
+
+    val output = processCommand(
+      "plugin PluginCommandTestPlugin0",
+      PluginCommandTestPlugin0,
+      PluginCommandTestPlugin1
+    )
+    assert(
+      output.contains(
+        "Not a valid plugin: PluginCommandTestPlugin0 (similar: sbt.PluginCommandTestPlugin0, sbt.subpackage.PluginCommandTestPlugin1)"
+      )
+    )
+  }
 }
 
 object FakeState {
