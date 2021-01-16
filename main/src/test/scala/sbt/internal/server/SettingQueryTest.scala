@@ -15,6 +15,7 @@ import java.nio.file._
 import java.util.concurrent._
 
 import scala.collection.mutable
+import scala.util.Properties.versionNumberString
 
 import xsbti.{ Logger => _, _ }
 import sbt.io.IO
@@ -25,7 +26,7 @@ import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting }
 import sbt.Keys._
 
-object SettingQueryTest extends org.specs2.mutable.Specification {
+object SettingQueryTest extends verify.BasicTestSuite {
   implicit class PathOps(val path: Path) extends AnyVal {
     def /(other: String): Path = if (other == ".") path else path resolve other
   }
@@ -201,50 +202,87 @@ object SettingQueryTest extends org.specs2.mutable.Specification {
     payload
   }
 
-  // -.- avoid specs2's ko/ok
-  import org.specs2.matcher.MatchResult
-  def qok(x: String, t: String): String => MatchResult[Any] =
-    query(_) must_== """{"type":"SettingQuerySuccess","value":""" + x + ""","contentType":"""" + t + """"}"""
-  def qko(msg: String): String => MatchResult[Any] =
-    query(_) must_== """{"type":"SettingQueryFailure","message":"""" + msg + """"}"""
+  def qok(x: String, t: String): String =
+    s"""{"type":"SettingQuerySuccess","value":$x,"contentType":"$t"}"""
+  def qko(msg: String): String =
+    s"""{"type":"SettingQueryFailure","message":"$msg"}"""
 
-  "setting query" should {
-    "t/scalaVersion" in qok("\"2.12.1\"", "java.lang.String")
-    // "t/pollInterval" in qok("500", "Int")
-    "t/sourcesInBase" in qok("true", "Boolean")
-    "t/startYear" in qok("null", "scala.Option[Int]")
-    "t/scalaArtifacts" in {
-      if (scala.util.Properties.versionNumberString.startsWith("2.12"))
+  test("t/scalaVersion") {
+    assertEquals(qok("\"2.12.1\"", "java.lang.String"), query("t/scalaVersion"))
+  }
+
+  // test("t/pollInterval") {
+  //   assertEquals(qok("500", "Int"), query("t/pollInterval"))
+  // }
+
+  test("t/sourcesInBase") {
+    assertEquals(qok("true", "Boolean"), query("t/sourcesInBase"))
+  }
+
+  test("t/startYear") {
+    assertEquals(qok("null", "scala.Option[Int]"), query("t/startYear"))
+  }
+
+  test("t/scalaArtifacts") {
+    if (versionNumberString.startsWith("2.12"))
+      assertEquals(
         qok(
           """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
           "scala.collection.Seq[java.lang.String]"
-        )
-      else
+        ),
+        query("t/scalaArtifacts"),
+      )
+    else
+      assertEquals(
         qok(
           """["scala-library","scala-compiler","scala-reflect","scala-actors","scalap"]""",
           "scala.collection.immutable.Seq[java.lang.String]"
-        )
-    }
+        ),
+        query("t/scalaArtifacts"),
+      )
+  }
 
-    "t/libraryDependencies" in {
-      if (scala.util.Properties.versionNumberString.startsWith("2.12"))
+  test("t/libraryDependencies") {
+    if (versionNumberString.startsWith("2.12"))
+      assertEquals(
         qok(
           """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
           "scala.collection.Seq[sbt.librarymanagement.ModuleID]"
-        )
-      else
+        ),
+        query("t/libraryDependencies"),
+      )
+    else
+      assertEquals(
         qok(
           """[{"organization":"org.scala-lang","name":"scala-library","revision":"2.12.1","isChanging":false,"isTransitive":true,"isForce":false,"explicitArtifacts":[],"inclusions":[],"exclusions":[],"extraAttributes":{},"crossVersion":{"type":"Disabled"}}]""",
           "scala.collection.immutable.Seq[sbt.librarymanagement.ModuleID]"
-        )
-    }
+        ),
+        query("t/libraryDependencies"),
+      )
+  }
 
-    "scalaVersion" in qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^")
-    "t/scalacOptions" in qko(
-      s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings"""
+  test("scalaVersion") {
+    assertEquals(
+      qko("Not a valid project ID: scalaVersion\\nscalaVersion\\n            ^"),
+      query("scalaVersion"),
     )
-    "t/fooo" in qko(
-      "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^"
+  }
+
+  test("t/scalacOptions") {
+    assertEquals(
+      qko(
+        s"""Key ProjectRef(uri(\\"$baseUri\\"), \\"t\\") / Compile / scalacOptions is a task, can only query settings"""
+      ),
+      query("t/scalacOptions"),
+    )
+  }
+
+  test("t/fooo") {
+    assertEquals(
+      qko(
+        "Expected ':' (if selecting a configuration)\\nNot a valid key: fooo (similar: fork)\\nt/fooo\\n      ^"
+      ),
+      query("t/fooo"),
     )
   }
 }

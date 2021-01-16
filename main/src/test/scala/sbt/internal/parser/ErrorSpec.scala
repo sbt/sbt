@@ -13,29 +13,29 @@ import java.io.File
 import sbt.internal.util.MessageOnlyException
 import scala.io.Source
 
-class ErrorSpec extends AbstractSpec {
+object ErrorSpec extends AbstractSpec {
   implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
-  "Parser " should {
-
-    "contains file name and line number" in {
-      val rootPath = getClass.getResource("/error-format/").getPath
-      println(s"Reading files from: $rootPath")
-      foreach(new File(rootPath).listFiles) { file =>
-        print(s"Processing ${file.getName}: ")
-        val buildSbt = Source.fromFile(file).getLines().mkString("\n")
-        SbtParser(file, buildSbt.linesIterator.toSeq) must throwA[MessageOnlyException]
-          .like {
-            case exp =>
-              val message = exp.getMessage
-              println(s"${exp.getMessage}")
-              message must contain(file.getName)
-          }
-        containsLineNumber(buildSbt)
+  test("Parser should contains file name and line number") {
+    val rootPath = getClass.getResource("/error-format/").getPath
+    println(s"Reading files from: $rootPath")
+    new File(rootPath).listFiles foreach { file =>
+      print(s"Processing ${file.getName}: ")
+      val buildSbt = Source.fromFile(file).getLines().mkString("\n")
+      try {
+        SbtParser(file, buildSbt.linesIterator.toSeq)
+      } catch {
+        case exp: MessageOnlyException =>
+          val message = exp.getMessage
+          println(s"${exp.getMessage}")
+          assert(message.contains(file.getName))
       }
+      containsLineNumber(buildSbt)
     }
+  }
 
-    "handle wrong parsing " in {
+  test("it should handle wrong parsing") {
+    intercept[MessageOnlyException] {
       val buildSbt =
         """
           |libraryDependencies ++= Seq("a" % "b" % "2") map {
@@ -50,25 +50,25 @@ class ErrorSpec extends AbstractSpec {
         2,
         "fake.txt",
         new MessageOnlyException("fake")
-      ) must throwA[MessageOnlyException]
+      )
+      ()
     }
+  }
 
-    "handle xml error " in {
+  test("it should handle xml error") {
+    try {
       val buildSbt =
         """
           |val a = <a/><b/>
           |val s = '
         """.stripMargin
-      SbtParser(SbtParser.FAKE_FILE, buildSbt.linesIterator.toSeq) must throwA[
-        MessageOnlyException
-      ].like {
-        case exp =>
-          val message = exp.getMessage
-          println(s"${exp.getMessage}")
-          message must contain(SbtParser.FAKE_FILE.getName)
-      }
+      SbtParser(SbtParser.FAKE_FILE, buildSbt.linesIterator.toSeq)
+    } catch {
+      case exp: MessageOnlyException =>
+        val message = exp.getMessage
+        println(s"${exp.getMessage}")
+        assert(message.contains(SbtParser.FAKE_FILE.getName))
     }
-
   }
 
   private def containsLineNumber(buildSbt: String) = {
