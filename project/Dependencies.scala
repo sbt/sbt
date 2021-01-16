@@ -94,9 +94,8 @@ object Dependencies {
   val jansi = "org.fusesource.jansi" % "jansi" % "2.0.1"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
-  val specs2 = "org.specs2" %% "specs2-junit" % "4.10.0"
   val junit = "junit" % "junit" % "4.13.1"
-  val scalaVerify = "com.eed3si9n.verify" %% "verify" % "0.2.0"
+  val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"

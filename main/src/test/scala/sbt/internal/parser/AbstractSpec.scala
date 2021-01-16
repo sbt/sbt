@@ -7,6 +7,4 @@
 
 package sbt.internal.parser
 
-import org.specs2.mutable._
-
-trait AbstractSpec extends Specification with SplitExpression
+trait AbstractSpec extends verify.BasicTestSuite with SplitExpression

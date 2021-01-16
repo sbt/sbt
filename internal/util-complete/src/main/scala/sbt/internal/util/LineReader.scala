@@ -63,11 +63,14 @@ object LineReader {
          * `testOnly testOnly\ com.foo.FooSpec` instead of `testOnly com.foo.FooSpec`.
          */
         if (c.append.nonEmpty) {
-          if (!pl.line().endsWith(" ")) {
-            candidates.add(new Candidate(pl.line().split(" ").last + c.append))
-          } else {
-            candidates.add(new Candidate(c.append))
+          val cand = pl.line() match {
+            case line if line.endsWith(" ") => c.append
+            case line                       => line.split(" ").last + c.append
           }
+          // https://github.com/jline/jline3/blob/9a4971868e4bdd29a36e454de01f54d3cd6071e0/reader/src/main/java/org/jline/reader/Candidate.java#L123-L131
+          // "If the candidate is complete and is selected, a space separator will be added."
+          val complete = false
+          candidates.add(new Candidate(cand, cand, null, null, null, null, complete))
         }
       }
     }
