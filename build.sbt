@@ -1129,14 +1129,12 @@ lazy val sbtClientProj = (project in file("client"))
   .dependsOn(commandProj)
   .settings(
     commonBaseSettings,
-    scalaVersion := "2.12.11", // The thin client does not build with 2.12.12
     publish / skip := true,
     name := "sbt-client",
     mimaPreviousArtifacts := Set.empty,
     crossPaths := false,
     exportJars := true,
-    libraryDependencies += jansi,
-    libraryDependencies += scalatest % "test",
+    libraryDependencies ++= Seq(jansi, svmStubs % "compile-internal", scalatest % Test),
     /*
      * On windows, the raw classpath is too large to be a command argument to an
      * external process so we create symbolic links with short names to get the

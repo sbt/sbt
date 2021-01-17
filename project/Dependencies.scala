@@ -115,4 +115,5 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.6.1"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
+  val svmStubs = "org.scalameta" %% "svm-subs" % "20.1.0"
 }
