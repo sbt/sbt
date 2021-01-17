@@ -54,8 +54,9 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
       case sv if sv.startsWith("2.10") =>
         old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
       case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
-      case sv if sv.startsWith("2.12") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
-      case _                           => old
+      case sv if sv.startsWith("2.12") =>
+        old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
+      case _ => old
     }
   },
   inCompileAndTest(
@@ -119,10 +120,6 @@ lazy val lmCore = (project in file("core"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     libraryDependencies += scalaXml,
     resourceGenerators in Compile += Def
       .task(
