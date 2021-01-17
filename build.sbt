@@ -114,8 +114,6 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+ addCompilerPlugin(kindProjector)
-def utilCommonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
@@ -123,6 +121,9 @@ def minimalSettings: Seq[Setting[_]] =
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
+
+def utilCommonSettings: Seq[Setting[_]] =
+  baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
