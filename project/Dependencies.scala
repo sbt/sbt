@@ -3,13 +3,13 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala212 = "2.12.12"
+  val scala212 = "2.12.13"
   val scala213 = "2.13.4"
 
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.4.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.5.0-M1")
   private val utilVersion = nightlyVersion.getOrElse("1.4.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -63,5 +63,4 @@ object Dependencies {
   }
   val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.5.0"
   val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
-  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.1"
 }
