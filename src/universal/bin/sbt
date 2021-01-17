@@ -106,7 +106,7 @@ acquire_sbt_jar () {
 }
 
 rt_export_file () {
-  echo "${sbt_bin_dir}/java9-rt-export.jar"
+  echo "$(cygwinpath "${sbt_bin_dir}/java9-rt-export.jar")"
 }
 
 # execRunner should be called only once to give up control to java
@@ -340,7 +340,7 @@ copyRt() {
     rtexport=$(rt_export_file)
     # The grep for java9-rt-ext- matches the filename prefix printed in Export.java
     java9_ext=$("$java_cmd" "${sbt_options[@]}" "${java_args[@]}" \
-      -jar "$rtexport" --rt-ext-dir | grep java9-rt-ext-)
+      -jar "$rtexport" --rt-ext-dir | grep java9-rt-ext- | tr -d '\r')
     java9_rt=$(echo "$java9_ext/rt.jar")
     vlog "[copyRt] java9_rt = '$java9_rt'"
     if [[ ! -f "$java9_rt" ]]; then
