@@ -12,7 +12,7 @@ package server
 import java.net.URI
 import java.nio.file._
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
@@ -259,7 +259,7 @@ private[sbt] object Definition {
     result.future
   }
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   def lspDefinition(
       jsonDefinition: JValue,
       requestId: String,

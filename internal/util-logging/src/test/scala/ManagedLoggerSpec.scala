@@ -11,11 +11,11 @@ import org.scalatest._
 import sbt.util._
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
-import com.github.ghik.silencer.silent
+import scala.annotation.nowarn
 
 class ManagedLoggerSpec extends FlatSpec with Matchers {
   val context = LoggerContext(useLog4J = true)
-  @silent
+  @nowarn
   val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {

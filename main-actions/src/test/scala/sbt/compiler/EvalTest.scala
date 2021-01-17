@@ -8,15 +8,16 @@
 package sbt
 package compiler
 
-import scala.language.reflectiveCalls
 import org.scalacheck._
 import Prop._
+import scala.annotation.nowarn
+import scala.language.reflectiveCalls
 import scala.tools.nsc.reporters.StoreReporter
 
 import sbt.io.IO
 
 class EvalTest extends Properties("eval") {
-  private[this] lazy val reporter = new StoreReporter
+  @nowarn private[this] lazy val reporter = new StoreReporter
   import reporter.{ ERROR, Info }
   private[this] lazy val eval = new Eval(_ => reporter, None)
 
@@ -100,7 +101,7 @@ val p = {
     ("Has errors" |: is.nonEmpty) &&
     all(is.toSeq.map(validPosition(line, src)): _*)
   }
-  private[this] def validPosition(line: Int, src: String)(i: Info) = {
+  @nowarn private[this] def validPosition(line: Int, src: String)(i: Info) = {
     val nme = i.pos.source.file.name
     (label("Severity", i.severity) |: (i.severity == ERROR)) &&
     (label("Line", i.pos.line) |: (i.pos.line == line)) &&

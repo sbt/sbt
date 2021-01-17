@@ -15,9 +15,11 @@ import sbt.internal.util.Types.some
 import sbt.internal.util.{ AttributeKey, Relation }
 import sbt.librarymanagement.Configuration
 
+import scala.annotation.nowarn
+
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
-  @com.github.ghik.silencer.silent
+  @nowarn
   def apply(
       known: Iterable[ScopedKey[_]],
       projects: Map[URI, Set[String]],
@@ -26,7 +28,7 @@ object KeyIndex {
     import sbt.internal.CompatParColls.Converters._
     known.par.foldLeft(base(projects, configurations)) { _ add _ }
   }
-  @com.github.ghik.silencer.silent
+  @nowarn
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],

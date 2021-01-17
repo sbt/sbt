@@ -23,6 +23,7 @@ import sbt.nio.file.{ AllPass, FileAttributes, Glob, RecursiveGlob }
 import sbt.std.TaskExtra._
 import sjsonnew.JsonFormat
 
+import scala.annotation.nowarn
 import scala.collection.immutable.VectorBuilder
 
 private[sbt] object Settings {
@@ -269,7 +270,7 @@ private[sbt] object Settings {
    * @return a task definition that retrieves the input files and their file stamps scoped to the
    *         input key.
    */
-  @com.github.ghik.silencer.silent
+  @nowarn
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] = {
     import sbt.internal.CompatParColls.Converters._
     val scope = scopedKey.scope

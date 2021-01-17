@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.parser.SbtParser._
 
+import scala.annotation.nowarn
 import scala.compat.Platform.EOL
 import scala.reflect.internal.util.{ BatchSourceFile, Position }
 import scala.reflect.io.VirtualDirectory
@@ -63,6 +64,7 @@ private[sbt] object SbtParser {
 
     private val reporters = new ConcurrentHashMap[String, StoreReporter]()
 
+    @nowarn
     override def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = {
       val reporter = getReporter(pos.source.file.name)
       severity.id match {
@@ -72,6 +74,7 @@ private[sbt] object SbtParser {
       }
     }
 
+    @nowarn
     def getOrCreateReporter(uniqueFileName: String): StoreReporter = {
       val reporter = reporters.get(uniqueFileName)
       if (reporter == null) {

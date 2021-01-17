@@ -91,6 +91,7 @@ import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.compile.TastyFiles
 import xsbti.{ FileConverter, Position }
 
+import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
 import scala.util.Try
@@ -4066,7 +4067,7 @@ object Classpaths {
       ivyRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
@@ -4321,7 +4322,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     // I tried "Def.spaceDelimited().parsed" (after importing Def.parserToInput)
     // but it broke actions/run-task
     // Maybe it needs to be defined inside a Def.inputTask?
-    @com.github.ghik.silencer.silent
+    @nowarn
     def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
       InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 

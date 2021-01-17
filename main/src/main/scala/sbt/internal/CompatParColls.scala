@@ -7,9 +7,11 @@
 
 package sbt.internal
 
+import scala.annotation.nowarn
+
 // https://github.com/scala/scala-parallel-collections/issues/22
 private[sbt] object CompatParColls {
-  @com.github.ghik.silencer.silent
+  @nowarn
   val Converters = {
     import Compat._
     {
