@@ -2055,13 +2055,25 @@ object Defaults extends BuildCommon {
           val converter = fileConverter.value
           val tFiles = tastyFiles.value
           val sv = scalaVersion.value
+          val allDeps = allDependencies.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val options = sOpts ++ Opts.doc.externalAPI(xapis)
               val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               }, fiOpts)
-              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
+              val isScala3 = ScalaArtifacts.isScala3(sv)
+              def isScala3Doc(module: ModuleID): Boolean = {
+                module.configurations.exists(_.startsWith(Configurations.ScalaDocTool.name)) &&
+                module.name == ScalaArtifacts.Scala3DocID
+              }
+              if (isScala3 && !allDeps.exists(isScala3Doc)) {
+                Array(
+                  "Unresolved scala3doc artifact",
+                  "Add 'resolvers += Resolver.JCenterRepository'"
+                ).foreach(m => s.log.error(m))
+              }
+              val docSrcs = if (isScala3) tFiles else srcs
               runDoc(docSrcs, cp, out, options, maxErrors.value, s.log)
             case (_, true) =>
               val javadoc =
