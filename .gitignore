@@ -10,4 +10,5 @@ npm-debug.log
 .idea
 .bloop
 .metals
+.bsp/
 /project/metals.sbt
