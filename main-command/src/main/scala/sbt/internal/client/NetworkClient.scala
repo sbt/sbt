@@ -330,8 +330,14 @@ class NetworkClient(
 
         val cmd = List(arguments.sbtScript) ++ arguments.sbtArguments ++
           List(BasicCommandStrings.DashDashDetachStdio, BasicCommandStrings.DashDashServer)
+
+        // https://github.com/sbt/sbt/issues/6271
+        val nohup =
+          if (Util.isEmacs && !Util.isWindows) List("nohup")
+          else Nil
+
         val processBuilder =
-          new ProcessBuilder(cmd: _*)
+          new ProcessBuilder((nohup ++ cmd): _*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
