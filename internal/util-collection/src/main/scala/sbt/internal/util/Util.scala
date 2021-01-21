@@ -64,6 +64,8 @@ object Util {
   lazy val isNonCygwinWindows: Boolean = isWindows && !isCygwin
   lazy val isCygwinWindows: Boolean = isWindows && isCygwin
 
+  lazy val isEmacs: Boolean = Option(System.getenv("INSIDE_EMACS")).isDefined
+
   def nil[A]: List[A] = List.empty[A]
   def nilSeq[A]: Seq[A] = Seq.empty[A]
   def none[A]: Option[A] = (None: Option[A])

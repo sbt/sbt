@@ -317,7 +317,10 @@ object Terminal {
     props
       .map(_.color)
       .orElse(isColorEnabledProp)
-      .getOrElse(logFormatEnabled.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI))
+      .getOrElse(
+        logFormatEnabled
+          .getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || Util.isEmacs)
+      )
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -867,7 +870,8 @@ object Terminal {
         .map(_.supershell)
         .getOrElse(System.getProperty("sbt.supershell") match {
           case null =>
-            !(sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")) && isColorEnabled
+            !(sys.env.contains("BUILD_NUMBER") || sys.env
+              .contains("CI")) && isColorEnabled && !Util.isEmacs
           case "true" => true
           case _      => false
         })
