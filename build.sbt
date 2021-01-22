@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.0.8"
+val coursierVersion0 = "2.0.9"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
 
