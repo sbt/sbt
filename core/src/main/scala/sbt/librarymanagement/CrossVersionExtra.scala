@@ -17,14 +17,10 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   final val Constant = sbt.librarymanagement.Constant
   final val Full = sbt.librarymanagement.Full
   final val Patch = sbt.librarymanagement.Patch
-  final val For3Use2_13 = sbt.librarymanagement.For3Use2_13
-  final val For2_13Use3 = sbt.librarymanagement.For2_13Use3
   type Binary = sbt.librarymanagement.Binary
   type Constant = sbt.librarymanagement.Constant
   type Full = sbt.librarymanagement.Full
   type Patch = sbt.librarymanagement.Patch
-  type For3Use2_13 = sbt.librarymanagement.For3Use2_13
-  type For2_13Use3 = sbt.librarymanagement.For2_13Use3
 
   /** The first `major.minor` Scala version that the Scala binary version should be used for cross-versioning instead of the full version. */
   val TransitionScalaVersion = CrossVersionUtil.TransitionScalaVersion
@@ -86,6 +82,24 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    * Always prepend `prefix` and append `suffix`
    */
   def for2_13Use3With(prefix: String, suffix: String): CrossVersion = For2_13Use3(prefix, suffix)
+
+  private[sbt] def getPrefixSuffix(value: CrossVersion): (String, String) =
+    value match {
+      case (_: Disabled | _: Constant | _: Patch) => ("", "")
+      case b: Binary                              => (b.prefix, b.suffix)
+      case f: Full                                => (f.prefix, f.suffix)
+      case c: For3Use2_13                         => (c.prefix, c.suffix)
+      case c: For2_13Use3                         => (c.prefix, c.suffix)
+    }
+
+  private[sbt] def setPrefixSuffix(value: CrossVersion, p: String, s: String): CrossVersion =
+    value match {
+      case (_: Disabled | _: Constant | _: Patch) => value
+      case b: Binary                              => b.withPrefix(p).withSuffix(s)
+      case f: Full                                => f.withPrefix(p).withSuffix(s)
+      case c: For3Use2_13                         => c.withPrefix(p).withSuffix(s)
+      case c: For2_13Use3                         => c.withPrefix(p).withSuffix(s)
+    }
 
   private[sbt] def patchFun(fullVersion: String): String = {
     val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r

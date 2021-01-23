@@ -71,8 +71,28 @@ private[librarymanagement] abstract class ModuleIDExtra {
   )
   def cross(v: Boolean): ModuleID = cross(if (v) CrossVersion.binary else Disabled())
 
-  /** Specifies the cross-version behavior for this module.  See [CrossVersion] for details.*/
-  def cross(v: CrossVersion): ModuleID = withCrossVersion(v)
+  /**
+   * Specifies the cross-version behavior for this module. See [CrossVersion] for details.
+   * Unlike `withCrossVersion(...)`, `cross(...)` will preserve the prefix and suffix
+   * values from the existing `crossVersion` value.
+   *
+   * {{{
+   * ModuleID("com.example", "foo", "1.0")
+   *     .cross(CrossVersion.binaryWith("sjs1_", ""))
+   *     .cross(CrossVersion.for3Use2_13)
+   * }}}
+   *
+   * This allows `.cross(...)` to play well with `%%%` operator provided by sbt-platform-deps.
+   */
+  def cross(v: CrossVersion): ModuleID =
+    withCrossVersion(CrossVersion.getPrefixSuffix(this.crossVersion) match {
+      case ("", "") => v
+      case (prefix, suffix) =>
+        CrossVersion.getPrefixSuffix(v) match {
+          case ("", "") => CrossVersion.setPrefixSuffix(v, prefix, suffix)
+          case _        => v
+        }
+    })
 
   // () required for chaining
   /** Do not follow dependencies of this module.  Synonym for `intransitive`.*/
