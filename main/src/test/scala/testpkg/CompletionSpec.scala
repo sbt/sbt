@@ -28,13 +28,13 @@ object CompletionSpec extends Properties {
       property("can complete any project", TestBuild.nonEmptyId.forAll.map { id =>
         complete(projectID = id, line = id.head.toString, expected = id)
       }),
-      // property(
-      //   "can complete any configuration",
-      //   TestBuild.nonEmptyId.forAll.map { name =>
-      //     val cap = name.capitalize
-      //     complete(configName = name, line = cap.head.toString, expected = cap)
-      //   }
-      // ),
+      property(
+        "can complete any configuration",
+        TestBuild.nonEmptyId.forAll.map { name =>
+          val cap = name.capitalize
+          complete(configName = name, line = cap.head.toString, expected = cap)
+        }
+      ),
       // property("can complete any attribute", TestBuild.kebabIdGen.forAll.map { name =>
       //   complete(attributeName = name, line = name.head.toString, expected = name)
       // })

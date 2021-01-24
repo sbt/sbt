@@ -78,8 +78,8 @@ object Act {
         rawProject <- optProjectRef(index, current)
         proj = resolveProject(rawProject, current)
         confAmb <- configIdent(
-          index configs proj,
-          index configIdents proj,
+          index.configs(proj),
+          index.configIdents(proj),
           index.fromConfigIdent(proj)
         )
         partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
