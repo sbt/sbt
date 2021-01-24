@@ -2070,7 +2070,7 @@ object Defaults extends BuildCommon {
               if (isScala3 && !allDeps.exists(isScala3Doc)) {
                 Array(
                   "Unresolved scala3doc artifact",
-                  "Add 'resolvers += Resolver.JCenterRepository'"
+                  "add 'ThisBuild / resolvers += Resolver.JCenterRepository'"
                 ).foreach(m => s.log.error(m))
               }
               val docSrcs = if (isScala3) tFiles else srcs
