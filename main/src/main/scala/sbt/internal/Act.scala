@@ -18,6 +18,7 @@ import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
 import sbt.util.Show
+import scala.collection.mutable
 
 final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
 
@@ -73,14 +74,19 @@ object Act {
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[_]]
   ): Parser[Seq[Parser[ParsedKey]]] = {
+    val confParserCache: mutable.Map[Option[sbt.ResolvedReference], Parser[ParsedAxis[String]]] =
+      mutable.Map.empty
     def fullKey =
       for {
         rawProject <- optProjectRef(index, current)
         proj = resolveProject(rawProject, current)
-        confAmb <- configIdent(
-          index configs proj,
-          index configIdents proj,
-          index.fromConfigIdent(proj)
+        confAmb <- confParserCache.getOrElseUpdate(
+          proj,
+          configIdent(
+            index.configs(proj),
+            index.configIdents(proj),
+            index.fromConfigIdent(proj)
+          )
         )
         partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
       } yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)

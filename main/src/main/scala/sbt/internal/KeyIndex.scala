@@ -194,6 +194,7 @@ private[sbt] final class ConfigIndex(
   }
 
   def configs: Set[String] = data.keySet
+  private[sbt] lazy val idents: Set[String] = configIdentToName.keySet
 
   // guess Configuration name from an identifier.
   // There's a guessing involved because we could have scoped key that Project is not aware of.
@@ -201,6 +202,7 @@ private[sbt] final class ConfigIndex(
     configIdentToName.getOrElse(ident, Scope.unguessConfigIdent(ident))
 }
 private[sbt] object ConfigIndex
+
 private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(
       id: Option[String],
@@ -234,7 +236,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
   def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
 
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String] =
-    confIndex(project).configs
+    confIndex(project).idents
 
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
     confIndex(proj).fromConfigIdent(configIdent)
