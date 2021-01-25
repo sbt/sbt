@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.time.OffsetDateTime
 import java.util.jar.{ Attributes, Manifest }
 import scala.collection.JavaConverters._
 import sbt.internal.util.Types.:+:
@@ -23,6 +24,7 @@ import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.{ inputChanged, outputChanged }
+import scala.sys.process.Process
 
 sealed trait PackageOption
 
@@ -43,6 +45,40 @@ object Package {
     val converted = for ((name, value) <- attributes) yield (new Attributes.Name(name), value)
     new ManifestAttributes(converted: _*)
   }
+  // 2010-01-01
+  private val default2010Timestamp: Long = 1262304000000L
+  final case class FixedTimestamp(value: Option[Long]) extends PackageOption
+  val keepTimestamps: Option[Long] = None
+  val fixed2010Timestamp: Option[Long] = Some(default2010Timestamp)
+  def gitCommitDateTimestamp: Option[Long] =
+    try {
+      Some(
+        OffsetDateTime
+          .parse(Process("git show -s --format=%cI").!!.trim)
+          .toInstant()
+          .toEpochMilli()
+      )
+    } catch {
+      case e: Exception if e.getMessage.startsWith("Nonzero") =>
+        sys.error(
+          s"git repository was expected for package timestamp; use Package.fixed2010Timestamp or Package.keepTimestamps instead"
+        )
+    }
+  def setFixedTimestamp(value: Option[Long]): PackageOption =
+    FixedTimestamp(value)
+
+  /** by default we overwrite all timestamps in JAR to epoch time 2010-01-01 for repeatable build */
+  lazy val defaultTimestamp: Option[Long] =
+    sys.env
+      .get("SOURCE_DATE_EPOCH")
+      .map(_.toLong * 1000)
+      .orElse(Some(default2010Timestamp))
+
+  def timeFromConfiguration(config: Configuration): Option[Long] =
+    (config.options.collect { case t: FixedTimestamp => t }).headOption match {
+      case Some(FixedTimestamp(value)) => value
+      case _                           => defaultTimestamp
+    }
 
   def mergeAttributes(a1: Attributes, a2: Attributes) = a1.asScala ++= a2.asScala
   // merges `mergeManifest` into `manifest` (mutating `manifest` in the process)
@@ -70,9 +106,14 @@ object Package {
       val options: Seq[PackageOption]
   )
 
-  @deprecated("Please specify whether to use a static timestamp", "1.4.0")
+  /**
+   *
+   * @param conf the package configuration that should be build
+   * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
+   * @param log feedback for the user
+   */
   def apply(conf: Configuration, cacheStoreFactory: CacheStoreFactory, log: Logger): Unit =
-    apply(conf, cacheStoreFactory, log, None)
+    apply(conf, cacheStoreFactory, log, timeFromConfiguration(conf))
 
   /**
    *
@@ -94,6 +135,7 @@ object Package {
         case JarManifest(mergeManifest)          => mergeManifests(manifest, mergeManifest); ()
         case MainClass(mainClassName)            => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
         case ManifestAttributes(attributes @ _*) => main.asScala ++= attributes; ()
+        case FixedTimestamp(value)               => ()
         case _                                   => log.warn("Ignored unknown package option " + option)
       }
     }
@@ -163,7 +205,8 @@ object Package {
       homepage map (h => (IMPLEMENTATION_URL, h.toString))
     }: _*)
   }
-  @deprecated("Please specify whether to use a static timestamp", "1.4.0")
+
+  @deprecated("Specify whether to use a static timestamp", "1.4.0")
   def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit =
     makeJar(sources, jar, manifest, log, None)
 
