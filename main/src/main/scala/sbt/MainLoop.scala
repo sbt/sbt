@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.PrintWriter
+import java.util.concurrent.RejectedExecutionException
 import java.util.Properties
 
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
@@ -240,6 +241,13 @@ object MainLoop {
           FastTrackCommands
             .evaluate(termState, exec.commandLine)
             .getOrElse(Command.process(exec.commandLine, termState))
+        } catch {
+          case _: RejectedExecutionException =>
+            // No stack trace since this is just to notify the user which command they cancelled
+            object Cancelled extends Throwable(exec.commandLine, null, true, false) {
+              override def toString: String = s"Cancelled: ${exec.commandLine}"
+            }
+            throw Cancelled
         } finally {
           // Flush the terminal output after command evaluation to ensure that all output
           // is displayed in the thin client before we report the command status. Also
@@ -328,5 +336,4 @@ object MainLoop {
     if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
         state.currentCommand.fold(true)(_ != StashOnFailure)) ExitCode(ErrorCodes.UnknownError)
     else ExitCode.Success
-
 }

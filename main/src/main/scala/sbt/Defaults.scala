@@ -4175,6 +4175,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
     baseDirectory.value / name
   }
 
+  @deprecated(
+    "externalIvyFile is not supported by Couriser, and will be removed in the future",
+    since = "1.5.0"
+  )
   def externalIvyFile(
       file: Initialize[File] = inBase("ivy.xml"),
       iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo
@@ -4186,6 +4190,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
       managedScalaInstance.value
     )
 
+  @deprecated(
+    "externalPom is not supported by Coursier, and will be removed in the future",
+    since = "1.5.0"
+  )
   def externalPom(
       file: Initialize[File] = inBase("pom.xml"),
       iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo,
