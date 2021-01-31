@@ -113,7 +113,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+    addCompilerPlugin(kindProjector)
 def utilCommonSettings: Seq[Setting[_]] =
   commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
