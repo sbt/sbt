@@ -19,8 +19,8 @@ import scala.compat.Platform.EOL
 import scala.reflect.internal.util.{ BatchSourceFile, Position }
 import scala.reflect.io.VirtualDirectory
 import scala.reflect.internal.Positions
-import scala.tools.nsc.{ CompilerCommand, Global }
-import scala.tools.nsc.reporters.{ ConsoleReporter, Reporter, StoreReporter }
+import scala.tools.nsc.{ CompilerCommand, Global, Settings }
+import scala.tools.nsc.reporters.{ ConsoleReporter, FilteringReporter, StoreReporter }
 import scala.util.Random
 import scala.util.{ Failure, Success }
 
@@ -59,33 +59,44 @@ private[sbt] object SbtParser {
    * when we know for a fact that the user-provided snippet doesn't
    * parse.
    */
-  private[sbt] class UniqueParserReporter extends Reporter {
+  private[sbt] class UniqueParserReporter(val settings: Settings) extends FilteringReporter {
 
     private val reporters = new ConcurrentHashMap[String, StoreReporter]()
 
-    override def info0(pos: Position, msg: String, severity: Severity, force: Boolean): Unit = {
+    override def doReport(pos: Position, msg: String, severity: Severity): Unit = {
       val reporter = getReporter(pos.source.file.name)
       severity.id match {
-        case 0 => reporter.info(pos, msg, force)
+        case 0 => reporter.echo(pos, msg)
         case 1 => reporter.warning(pos, msg)
         case 2 => reporter.error(pos, msg)
       }
     }
 
+    override def warning(pos: Position, msg: String): Unit =
+      getReporter(pos.source.file.name).warning(pos, msg)
+
+    // error must be overridden to increment the error counts
+    // see https://github.com/scala/bug/issues/12317
+    override def error(pos: Position, msg: String): Unit =
+      getReporter(pos.source.file.name).error(pos, msg)
+
+    def createReporter(uniqueFileName: String): StoreReporter = {
+      val r = new StoreReporter(settings)
+      reporters.put(uniqueFileName, r)
+      r
+    }
+
     def getOrCreateReporter(uniqueFileName: String): StoreReporter = {
-      val reporter = reporters.get(uniqueFileName)
-      if (reporter == null) {
-        val newReporter = new StoreReporter
-        reporters.put(uniqueFileName, newReporter)
-        newReporter
-      } else reporter
+      val r = reporters.get(uniqueFileName)
+      if (r == null) createReporter(uniqueFileName)
+      else r
     }
 
     private def getReporter(fileName: String) = {
       val reporter = reporters.get(fileName)
       if (reporter == null) {
         scalacGlobalInitReporter.getOrElse(
-          sys.error(s"Sbt forgot to initialize `scalacGlobalInitReporter`.")
+          sys.error(s"sbt forgot to initialize `scalacGlobalInitReporter`.")
         )
       } else reporter
     }
@@ -105,10 +116,9 @@ private[sbt] object SbtParser {
     }
   }
 
-  private[sbt] final val globalReporter = new UniqueParserReporter
   private[sbt] var scalacGlobalInitReporter: Option[ConsoleReporter] = None
 
-  private[sbt] final val defaultGlobalForParser = {
+  private[sbt] final val (defaultGlobalForParser, globalReporter) = {
     val options = "-cp" :: s"$defaultClasspath" :: "-Yrangepos" :: Nil
     val reportError = (msg: String) => System.err.println(msg)
     val command = new CompilerCommand(options, reportError)
@@ -116,14 +126,15 @@ private[sbt] object SbtParser {
     settings.outputDirs.setSingleOutput(new VirtualDirectory("(memory)", None))
     scalacGlobalInitReporter = Some(new ConsoleReporter(settings))
 
+    val reporter = new UniqueParserReporter(settings)
     // Mix Positions, otherwise global ignores -Yrangepos
-    val global = new Global(settings, globalReporter) with Positions
+    val global = new Global(settings, reporter) with Positions
     val run = new global.Run
     // Add required dummy unit for initialization...
     val initFile = new BatchSourceFile("<wrapper-init>", "")
     val _ = new global.CompilationUnit(initFile)
     global.phase = run.parserPhase
-    global
+    (global, reporter)
   }
 
   import defaultGlobalForParser.Tree
