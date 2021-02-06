@@ -13,10 +13,10 @@ import java.io.File
 import Keys._
 import sbt.internal.SysProp
 import sbt.librarymanagement.syntax._
-import sbt.librarymanagement.CrossVersion
+import sbt.librarymanagement.{ Configuration, CrossVersion }
 import Project.inConfig
 import sbt.internal.inc.ScalaInstance
-import sbt.SlashSyntax0._
+import sbt.ScopeFilter.Make._
 
 object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
@@ -50,7 +50,7 @@ object SemanticdbPlugin extends AutoPlugin {
     }
   ) ++
     inConfig(Compile)(configurationSettings) ++
-    inConfig(Test)(configurationSettings ++ testSettings)
+    inConfig(Test)(configurationSettings)
 
   lazy val configurationSettings: Seq[Def.Setting[_]] = List(
     semanticdbTargetRoot := {
@@ -58,8 +58,22 @@ object SemanticdbPlugin extends AutoPlugin {
       if (in) classDirectory.value
       else semanticdbTargetRoot.value
     },
+    semanticdbOptions --= Def.settingDyn {
+      val scalaV = scalaVersion.value
+      val config = configuration.value
+      Def.setting {
+        semanticdbTargetRoot.?.all(ancestorConfigs(config)).value.flatten
+          .flatMap(targetRootOptions(scalaV, _))
+      }
+    }.value,
     semanticdbOptions ++=
       targetRootOptions(scalaVersion.value, semanticdbTargetRoot.value),
+    scalacOptions --= Def.settingDyn {
+      val config = configuration.value
+      Def.setting {
+        semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten
+      }
+    }.value,
     scalacOptions ++= {
       if (semanticdbEnabled.value)
         semanticdbOptions.value
@@ -67,15 +81,8 @@ object SemanticdbPlugin extends AutoPlugin {
     }
   )
 
-  lazy val testSettings: Seq[Def.Setting[_]] = List(
-    // remove Compile targetRoot from Test config
-    semanticdbOptions --= targetRootOptions(
-      (Compile / scalaVersion).value,
-      (Compile / semanticdbTargetRoot).value
-    ),
-    // remove duplicated semanticdbOptions
-    scalacOptions --= (Compile / semanticdbOptions).value
-  )
+  @deprecated("use configurationSettings only", "1.5.0")
+  lazy val testSettings: Seq[Def.Setting[_]] = List()
 
   def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] = {
     if (ScalaInstance.isDotty(scalaVersion)) {
@@ -83,5 +90,12 @@ object SemanticdbPlugin extends AutoPlugin {
     } else {
       Seq(s"-P:semanticdb:targetroot:$targetRoot")
     }
+  }
+
+  private def ancestorConfigs(config: Configuration) = {
+    def ancestors(configs: Vector[Configuration]): Vector[Configuration] =
+      configs ++ configs.flatMap(conf => ancestors(conf.extendsConfigs))
+
+    ScopeFilter(configurations = inConfigurations(ancestors(config.extendsConfigs): _*))
   }
 }
