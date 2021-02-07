@@ -72,13 +72,22 @@ private[sbt] object SbtParser {
       }
     }
 
-    override def warning(pos: Position, msg: String): Unit =
-      getReporter(pos.source.file.name).warning(pos, msg)
-
-    // error must be overridden to increment the error counts
+    // weird hack to make sure errors are counted by the underlying
+    // reporters in both Scala 2.12 and 2.13.x
     // see https://github.com/scala/bug/issues/12317
-    override def error(pos: Position, msg: String): Unit =
-      getReporter(pos.source.file.name).error(pos, msg)
+    override def filter(pos: Position, msg: String, severity: Severity): Int = {
+      val reporter = getReporter(pos.source.file.name)
+      val result = reporter.filter(pos, msg, severity)
+      if (result <= 1) reporter.increment(severity)
+      if (result == 0) reporter.doReport(pos, msg, severity)
+      result
+    }
+
+    override def hasErrors: Boolean = {
+      var result = false
+      reporters.forEachValue(100, r => if (r.hasErrors) result = true)
+      result
+    }
 
     def createReporter(uniqueFileName: String): StoreReporter = {
       val r = new StoreReporter(settings)
