@@ -21,13 +21,13 @@ lazy val test_project = project
             |    edge [
             |        arrowtail="none"
             |    ]
-            |    "test_project:test_project_2.9.2:0.1-SNAPSHOT"[label=<test_project<BR/><B>test_project_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
+            |    "justadependencyproject:justadependencyproject_2.9.2:0.1-SNAPSHOT"[label=<justadependencyproject<BR/><B>justadependencyproject_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
             |    "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT"[label=<justatransitivedependencyproject<BR/><B>justatransitivedependencyproject_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
             |    "justatransivitedependencyendpointproject:justatransivitedependencyendpointproject_2.9.2:0.1-SNAPSHOT"[label=<justatransivitedependencyendpointproject<BR/><B>justatransivitedependencyendpointproject_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
-            |    "justadependencyproject:justadependencyproject_2.9.2:0.1-SNAPSHOT"[label=<justadependencyproject<BR/><B>justadependencyproject_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
-            |    "test_project:test_project_2.9.2:0.1-SNAPSHOT" -> "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT"
+            |    "test_project:test_project_2.9.2:0.1-SNAPSHOT"[label=<test_project<BR/><B>test_project_2.9.2</B><BR/>0.1-SNAPSHOT> style=""]
             |    "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT" -> "justatransivitedependencyendpointproject:justatransivitedependencyendpointproject_2.9.2:0.1-SNAPSHOT"
             |    "test_project:test_project_2.9.2:0.1-SNAPSHOT" -> "justadependencyproject:justadependencyproject_2.9.2:0.1-SNAPSHOT"
+            |    "test_project:test_project_2.9.2:0.1-SNAPSHOT" -> "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT"
             |}
           """.stripMargin
 

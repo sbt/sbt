@@ -29,7 +29,7 @@ object DOT {
           style
         )
       }
-    }.mkString("\n")
+    }.sorted.mkString("\n")
 
     def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).isEvicted
     def targetWasEvicted(edge: Edge): Boolean = graph.module(edge._2).isEvicted
@@ -63,9 +63,9 @@ object DOT {
           else ""
         """    "%s" -> "%s"%s""".format(e._1.idString, e._2.idString, extra)
       }
-    }.mkString("\n")
+    }.sorted.mkString("\n")
 
-    "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
+    s"$dotHead\n$nodes\n$edges\n}"
   }
 
   sealed trait HTMLLabelRendering {
