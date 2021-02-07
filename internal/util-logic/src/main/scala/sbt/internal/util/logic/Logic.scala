@@ -8,7 +8,7 @@
 package sbt.internal.util
 package logic
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import Formula.{ And, True }
 
 /*
@@ -152,7 +152,7 @@ object Logic {
     if (contradictions.nonEmpty) Some(new InitialContradictions(contradictions)) else None
   }
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   private[this] def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
     val deps = dependencyMap(clauses)
     // println(s"deps = $deps")

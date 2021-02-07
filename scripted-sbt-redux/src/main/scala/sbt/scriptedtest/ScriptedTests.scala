@@ -18,6 +18,7 @@ import sbt.internal.io.Resources
 import sbt.internal.scripted._
 import RemoteSbtCreatorProp._
 
+import scala.annotation.nowarn
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.{ GenSeq, mutable }
 import scala.util.control.NonFatal
@@ -482,7 +483,7 @@ class ScriptedRunner {
       instances: Int
   ) = run(baseDir, bufferLog, tests, logger, launchOpts, prescripted, prop, instances, true)
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   private[this] def run(
       baseDir: File,
       bufferLog: Boolean,
