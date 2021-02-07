@@ -33,7 +33,7 @@ import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
@@ -271,7 +271,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,

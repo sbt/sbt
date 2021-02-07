@@ -16,11 +16,10 @@ import java.net.URI
 import graph.{ Module, ModuleGraph }
 import sbt.io.IO
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.util.parsing.json.{ JSONArray, JSONObject }
-import com.github.ghik.silencer.silent
 
-@silent object TreeView {
+@nowarn object TreeView {
   def createJson(graph: ModuleGraph): String = {
     val trees = graph.roots
       .map(module => processSubtree(graph, module))

@@ -106,16 +106,12 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   crossScalaVersions := List(scala212, scala213),
   publishArtifact in Test := false,
   fork in run := true,
-  libraryDependencies ++= {
-    if (autoScalaLibrary.value) List(silencerLib)
-    else Nil
-  },
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+    addCompilerPlugin(kindProjector)
 def utilCommonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
+  baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
@@ -329,10 +325,6 @@ val logicProj = (project in file("internal") / "util-logic")
     testedBaseSettings,
     name := "Logic",
     mimaSettings,
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
   )
 
 // defines Java structures used across Scala versions, such as the API structures and relationships extracted by
@@ -382,10 +374,6 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         scalaReflect.value
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
@@ -622,10 +610,6 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
     baseSettings,
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     mimaSettings,
     scriptedSbtReduxMimaSettings,
   )
@@ -753,10 +737,6 @@ lazy val commandProj = (project in file("main-command"))
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -931,10 +911,6 @@ lazy val mainProj = (project in file("main"))
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List()
       case _                          => List(scalaPar)
-    }),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
     }),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",

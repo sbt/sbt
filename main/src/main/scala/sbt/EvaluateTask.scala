@@ -22,6 +22,7 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 
+import scala.annotation.nowarn
 import scala.Console.RED
 import scala.concurrent.duration.Duration
 
@@ -154,7 +155,7 @@ object EvaluateTask {
   import Keys.state
   import std.Transform
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)

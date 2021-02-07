@@ -5,5 +5,5 @@ Apache-2.0
 	 org.typelevel:cats-effect_2.12:2.2.0
 
 MIT
-	 org.typelevel:cats-kernel_2.12:2.2.0
 	 org.typelevel:cats-core_2.12:2.2.0
+	 org.typelevel:cats-kernel_2.12:2.2.0
