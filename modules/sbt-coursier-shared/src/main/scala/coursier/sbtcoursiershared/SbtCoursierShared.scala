@@ -85,6 +85,10 @@ object SbtCoursierShared extends AutoPlugin {
         val noWarningPlz = clean.value
         SbtCoursierCache.default.clear()
       },
+      onUnload := {
+        SbtCoursierCache.default.clear()
+        onUnload.value
+      },
       coursierGenerateIvyXml := true,
       coursierWriteIvyXml := IvyXmlGeneration.writeIvyXml.value,
       coursierProject := InputsTasks.coursierProjectTask.value,
