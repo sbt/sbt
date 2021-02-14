@@ -13,12 +13,14 @@ object ScalaArtifacts {
   final val Scala3CompilerID = "scala3-compiler"
   final val Scala3InterfacesID = "scala3-interfaces"
   final val TastyCoreID = "tasty-core"
+  final val ScaladocID = "scaladoc"
   final val Scala3DocID = "scala3doc"
   final val Scala3TastyInspectorID = "scala3-tasty-inspector"
 
   private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"
   private[sbt] final val Scala3CompilerPrefix = Scala3CompilerID + "_"
   private[sbt] final val TastyCorePrefix = TastyCoreID + "_"
+  private[sbt] final val ScaladocPrefix = ScaladocID + "_"
   private[sbt] final val Scala3DocPrefix = Scala3DocID + "_"
   private[sbt] final val Scala3TastyInspectorPrefix = Scala3TastyInspectorID + "_"
 
@@ -26,12 +28,21 @@ object ScalaArtifacts {
     name == LibraryID || name == CompilerID || name == ReflectID || name == ActorsID || name == ScalapID
   }
   def isScala3Artifact(name: String): Boolean = {
-    name.startsWith(Scala3LibraryPrefix) || name.startsWith(Scala3CompilerPrefix) ||
-    name.startsWith(TastyCorePrefix) || name == Scala3InterfacesID ||
-    name.startsWith(Scala3DocPrefix) || name.startsWith(Scala3TastyInspectorPrefix)
+    name.startsWith(Scala3LibraryPrefix) ||
+    name.startsWith(Scala3CompilerPrefix) ||
+    name.startsWith(TastyCorePrefix) ||
+    name == Scala3InterfacesID ||
+    name.startsWith(ScaladocPrefix) ||
+    name.startsWith(Scala3DocPrefix) ||
+    name.startsWith(Scala3TastyInspectorPrefix)
   }
 
   def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
+
+  private[sbt] def isScala3M123(scalaVersion: String): Boolean =
+    (scalaVersion == "3.0.0-M1") ||
+      (scalaVersion == "3.0.0-M2") ||
+      (scalaVersion == "3.0.0-M3")
 
   def libraryIds(version: String): Array[String] = {
     if (isScala3(version))
@@ -57,13 +68,19 @@ object ScalaArtifacts {
       org: String,
       version: String
   ): Seq[ModuleID] =
-    if (isScala3(version)) {
+    if (isScala3M123(version))
       Seq(
         ModuleID(org, Scala3DocID, version)
           .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
           .withCrossVersion(CrossVersion.binary)
       )
-    } else Seq.empty
+    else if (isScala3(version))
+      Seq(
+        ModuleID(org, ScaladocID, version)
+          .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
+          .withCrossVersion(CrossVersion.binary)
+      )
+    else Seq.empty
 
   private[sbt] def toolDependencies(
       org: String,
