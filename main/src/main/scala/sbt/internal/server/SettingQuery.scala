@@ -58,7 +58,7 @@ object SettingQuery {
       proj = resolveProject(rawProject)
       confAmb <- Act.config(index configs proj)
       partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
-    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
+    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask, Nil)
   }
 
   def scopedKeySelected(
