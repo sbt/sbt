@@ -4,3 +4,8 @@
 > checkNotEmpty
 > clean
 > checkEmpty
+
+> update
+> checkNotEmpty
+> reload
+> checkEmpty
