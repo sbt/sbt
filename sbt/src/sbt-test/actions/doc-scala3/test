@@ -1,0 +1,17 @@
+> doc
+
+# there shouldn't be two api/ directories
+# see https://github.com/lampepfl/dotty/issues/11412
+$ exists target/scala-3.0.0-M4/api/api/index.html
+$ exists target/scala-3.0.0-M4/api/api/foo/A$.html
+$ exists target/scala-3.0.0-M4/api/api/foo.html
+
+> ++3.0.0-M3!
+> clean
+> doc
+
+# there shouldn't be two api/ directories
+# see https://github.com/lampepfl/dotty/issues/11412
+$ exists target/scala-3.0.0-M3/api/index.html
+$ exists target/scala-3.0.0-M3/api/api/foo/A$.html
+$ exists target/scala-3.0.0-M3/api/api/foo.html
