@@ -27,16 +27,16 @@ for:
   - mkdir ~/sbt
   - tar -xf ~/sbt-bin.tgz --directory ~/sbt
   - curl -sL https://raw.githubusercontent.com/shyiko/jabba/0.11.0/install.sh | bash && . ~/.jabba/jabba.sh
-  - jabba install adopt@1.8.0-222
-  - jabba use adopt@1.8.0-222
+  - jabba install adopt@1.8.0-275
+  - jabba use adopt@1.8.0-275
   - curl -sL https://github.com/graalvm/graalvm-ce-builds/releases/download/vm-20.1.0/graalvm-ce-java8-linux-amd64-20.1.0.tar.gz > graalvm.tar.gz
   - tar -xf graalvm.tar.gz
   - export PATH="~/sbt/sbt/bin:$PATH"
-  - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-222/bin"
-  - export JAVA_HOME="~/.jabba/jdk/adopt@1.8.0-222"
+  - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-275/bin"
+  - export JAVA_HOME="~/.jabba/jdk/adopt@1.8.0-275"
 
   test_script:
-    - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-222/bin"
+    - export PATH="$PATH:~/.jabba/jdk/adopt@1.8.0-275/bin"
     - export PATH="$PATH:graalvm-ce-java8-20.1.0/bin"
     - gu install native-image
     - sbt "-Dsbt.io.virtual=false" "-Dsbt.native-image=$(pwd)/graalvm-ce-java8-20.1.0/bin/native-image" "sbtClientProj/buildNativeThinClient"
