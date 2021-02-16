@@ -1029,6 +1029,9 @@ lazy val mainProj = (project in file("main"))
       exclude[MissingClassProblem](
         "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
       ),
+      // internal impl
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
     )
   )
   .configure(
