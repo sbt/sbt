@@ -70,9 +70,11 @@ object SemanticdbPlugin extends AutoPlugin {
       targetRootOptions(scalaVersion.value, semanticdbTargetRoot.value),
     scalacOptions --= Def.settingDyn {
       val config = configuration.value
-      Def.setting {
-        semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten
-      }
+      val enabled = semanticdbEnabled.value
+      if (enabled)
+        Def.setting {
+          semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten
+        } else Def.setting { Nil }
     }.value,
     scalacOptions ++= {
       if (semanticdbEnabled.value)
