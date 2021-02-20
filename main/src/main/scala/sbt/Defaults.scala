@@ -661,6 +661,23 @@ object Defaults extends BuildCommon {
     sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
       (sbtVersion in pluginCrossBuild).value
     ),
+    // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
+    // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
+    // this setting needs to be set here too.
+    sbtDependency in pluginCrossBuild := {
+      val app = appConfiguration.value
+      val id = app.provider.id
+      val sv = (sbtVersion in pluginCrossBuild).value
+      val scalaV = (scalaVersion in pluginCrossBuild).value
+      val binVersion = (scalaBinaryVersion in pluginCrossBuild).value
+      val cross = id.crossVersionedValue match {
+        case CrossValue.Disabled => Disabled()
+        case CrossValue.Full     => CrossVersion.full
+        case CrossValue.Binary   => CrossVersion.binary
+      }
+      val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
+      CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
+    },
     crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
     crossTarget := makeCrossTarget(
       target.value,
@@ -2512,23 +2529,6 @@ object Defaults extends BuildCommon {
       // Missing but core settings
       baseDirectory := thisProject.value.base,
       target := baseDirectory.value / "target",
-      // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
-      // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
-      // this setting needs to be set here too.
-      sbtDependency in pluginCrossBuild := {
-        val app = appConfiguration.value
-        val id = app.provider.id
-        val sv = (sbtVersion in pluginCrossBuild).value
-        val scalaV = (scalaVersion in pluginCrossBuild).value
-        val binVersion = (scalaBinaryVersion in pluginCrossBuild).value
-        val cross = id.crossVersionedValue match {
-          case CrossValue.Disabled => Disabled()
-          case CrossValue.Full     => CrossVersion.full
-          case CrossValue.Binary   => CrossVersion.binary
-        }
-        val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
-        CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      },
       bgHashClasspath := !turbo.value,
       classLoaderLayeringStrategy := {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
