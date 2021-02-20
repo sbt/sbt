@@ -28,9 +28,6 @@ lazy val projI = project.enablePlugins(TopC)
 // Tests that we can disable an auto-enabled root plugin
 lazy val disableAutoNoRequirePlugin = project.disablePlugins(OrgPlugin)
 
-
-disablePlugins(plugins.IvyPlugin)
-
 check := {
     // Ensure organization on root is overridable.
     val rorg = (organization).value // Should be None
@@ -38,8 +35,7 @@ check := {
     // this will pass when the raw disablePlugin works.
     val dversion = (projectID in projD).?.value // Should be None
     same(dversion, None, "projectID in projD")
-    val rversion = projectID.?.value // Should be None
-    same(rversion, None, "projectID")
+
 //  Ensure with multiple .sbt files that disabling/enabling works across them
     val fDel = (del in Quux in projF).?.value
     same(fDel, Some(" Q"), "del in Quux in projF")
