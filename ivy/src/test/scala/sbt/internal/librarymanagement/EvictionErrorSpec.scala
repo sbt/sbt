@@ -3,6 +3,7 @@ package sbt.internal.librarymanagement
 import sbt.librarymanagement._
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.librarymanagement.syntax._
+import sbt.util.Level
 
 object EvictionErrorSpec extends BaseIvySpecification {
   // This is a specification to check the eviction errors
@@ -42,6 +43,24 @@ object EvictionErrorSpec extends BaseIvySpecification {
           "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
           "",
           "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp) is selected over 2.1.4",
+          "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
+          "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
+          "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",
+          ""
+        )
+    )
+  }
+
+  test("it should be able to emulate eviction warnings") {
+    val deps = Vector(`scala2.10.4`, `bananaSesame0.4`, `akkaRemote2.3.4`)
+    val m = module(defaultModuleId, deps, Some("2.10.4"))
+    val report = ivyUpdate(m)
+    assert(
+      EvictionError(report, m, Nil, "pvp", "early-semver", Level.Warn).toAssumedLines ==
+        List(
+          "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:",
+          "",
+          "\t* com.typesafe.akka:akka-actor_2.10:2.3.4 (pvp?) is selected over 2.1.4",
           "\t    +- com.typesafe.akka:akka-remote_2.10:2.3.4           (depends on 2.3.4)",
           "\t    +- org.w3:banana-rdf_2.10:0.4                         (depends on 2.1.4)",
           "\t    +- org.w3:banana-sesame_2.10:0.4                      (depends on 2.1.4)",

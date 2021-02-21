@@ -98,7 +98,7 @@ object EvictionWarningOptions {
   lazy val defaultGuess: Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
     guessSbtOne orElse guessSecondSegment orElse guessSemVer orElse guessFalse
 
-  private def isNameScalaSuffixed(name: String): Boolean =
+  private[sbt] def isNameScalaSuffixed(name: String): Boolean =
     name.contains("_2.") || name.contains("_3") || name.contains("_4")
 
   /** A partial function that checks if given m2 is suffixed, and use pvp to evaluate. */

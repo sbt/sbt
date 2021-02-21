@@ -3,7 +3,8 @@ package librarymanagement
 
 import scala.collection.mutable
 import sbt.internal.librarymanagement.VersionSchemes
-import sbt.util.ShowLines
+import sbt.util.{ Level, ShowLines }
+import EvictionWarningOptions.isNameScalaSuffixed
 
 object EvictionError {
   def apply(
@@ -11,15 +12,38 @@ object EvictionError {
       module: ModuleDescriptor,
       schemes: Seq[ModuleID],
   ): EvictionError = {
+    apply(report, module, schemes, "always", "always", Level.Debug)
+  }
+
+  def apply(
+      report: UpdateReport,
+      module: ModuleDescriptor,
+      schemes: Seq[ModuleID],
+      assumedVersionScheme: String,
+      assumedVersionSchemeJava: String,
+      assumedEvictionErrorLevel: Level.Value,
+  ): EvictionError = {
     val options = EvictionWarningOptions.full
     val evictions = EvictionWarning.buildEvictions(options, report)
-    processEvictions(module, options, evictions, schemes)
+    processEvictions(
+      module,
+      options,
+      evictions,
+      schemes,
+      assumedVersionScheme,
+      assumedVersionSchemeJava,
+      assumedEvictionErrorLevel,
+    )
   }
+
   private[sbt] def processEvictions(
       module: ModuleDescriptor,
       options: EvictionWarningOptions,
       reports: Seq[OrganizationArtifactReport],
       schemes: Seq[ModuleID],
+      assumedVersionScheme: String,
+      assumedVersionSchemeJava: String,
+      assumedEvictionErrorLevel: Level.Value,
   ): EvictionError = {
     val directDependencies = module.directDependencies
     val pairs = reports map { detail =>
@@ -35,6 +59,7 @@ object EvictionError {
       )
     }
     val incompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
+    val assumedIncompatEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
     val sbvOpt = module.scalaModuleInfo.map(_.scalaBinaryVersion)
     val userDefinedSchemes: Map[(String, String), String] = Map(schemes flatMap { s =>
       val organization = s.organization
@@ -57,7 +82,8 @@ object EvictionError {
           List((s.organization, s.name) -> versionScheme)
       }
     }: _*)
-    def calculateCompatible(p: EvictionPair): (Boolean, String) = {
+
+    def calculateCompatible(p: EvictionPair): (Boolean, String, Boolean, String) = {
       val winnerOpt = p.winner map { _.module }
       val extraAttributes = ((p.winner match {
         case Some(r) => r.extraAttributes.toMap
@@ -73,36 +99,34 @@ object EvictionError {
         .orElse(VersionSchemes.extractFromExtraAttributes(extraAttributes))
         .orElse(userDefinedSchemes.get(("*", "*")))
       val f = (winnerOpt, schemeOpt) match {
-        case (Some(_), Some(VersionSchemes.Always)) =>
-          EvictionWarningOptions.guessTrue
-        case (Some(_), Some(VersionSchemes.Strict)) =>
-          EvictionWarningOptions.guessStrict
-        case (Some(_), Some(VersionSchemes.EarlySemVer)) =>
-          EvictionWarningOptions.guessEarlySemVer
-        case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
-          EvictionWarningOptions.guessSemVer
-        case (Some(_), Some(VersionSchemes.PackVer)) =>
-          EvictionWarningOptions.evalPvp
-        case _ => EvictionWarningOptions.guessTrue
+        case (Some(_), Some(scheme)) => VersionSchemes.evalFunc(scheme)
+        case _                       => EvictionWarningOptions.guessTrue
       }
+      val scheme =
+        if (isNameScalaSuffixed(p.name)) assumedVersionScheme
+        else assumedVersionSchemeJava
+      val guess = VersionSchemes.evalFunc(scheme)
       (p.evicteds forall { r =>
         f((r.module, winnerOpt, module.scalaModuleInfo))
-      }, schemeOpt.getOrElse("?"))
+      }, schemeOpt.getOrElse("?"), p.evicteds forall { r =>
+        guess((r.module, winnerOpt, module.scalaModuleInfo))
+      }, scheme)
     }
     pairs foreach {
+      // don't report on a transitive eviction that does not have a winner
+      // https://github.com/sbt/sbt/issues/4946
       case p if p.winner.isDefined =>
-        // don't report on a transitive eviction that does not have a winner
-        // https://github.com/sbt/sbt/issues/4946
-        if (p.winner.isDefined) {
-          val r = calculateCompatible(p)
-          if (!r._1) {
-            incompatibleEvictions += (p -> r._2)
-          }
+        val r = calculateCompatible(p)
+        if (!r._1) {
+          incompatibleEvictions += (p -> r._2)
+        } else if (!r._3) {
+          assumedIncompatEvictions += (p -> r._4)
         }
       case _ => ()
     }
     new EvictionError(
       incompatibleEvictions.toList,
+      assumedIncompatEvictions.toList,
     )
   }
 
@@ -113,17 +137,22 @@ object EvictionError {
 
 final class EvictionError private[sbt] (
     val incompatibleEvictions: Seq[(EvictionPair, String)],
+    val assumedIncompatibleEvictions: Seq[(EvictionPair, String)],
 ) {
   def run(): Unit =
     if (incompatibleEvictions.nonEmpty) {
       sys.error(toLines.mkString("\n"))
     }
 
-  def toLines: List[String] = {
+  def toLines: List[String] = toLines(incompatibleEvictions, false)
+
+  def toAssumedLines: List[String] = toLines(assumedIncompatibleEvictions, true)
+
+  def toLines(evictions: Seq[(EvictionPair, String)], assumed: Boolean): List[String] = {
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
     out += "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
     out += ""
-    incompatibleEvictions.foreach({
+    evictions.foreach({
       case (a, scheme) =>
         val revs = a.evicteds map { _.module.revision }
         val revsStr = if (revs.size <= 1) revs.mkString else "{" + revs.mkString(", ") + "}"
@@ -138,8 +167,9 @@ final class EvictionError private[sbt] (
             }
           }
         }
+        val que = if (assumed) "?" else ""
         val winnerRev = a.winner match {
-          case Some(r) => s":${r.module.revision} ($scheme) is selected over ${revsStr}"
+          case Some(r) => s":${r.module.revision} ($scheme$que) is selected over ${revsStr}"
           case _       => " is evicted for all versions"
         }
         val title = s"\t* ${a.organization}:${a.name}$winnerRev"
