@@ -10,7 +10,7 @@ package internal
 package librarymanagement
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.librarymanagement.ModuleID
+import sbt.librarymanagement.{ EvictionWarningOptions, ModuleID, ScalaModuleInfo }
 
 // See APIMappings.scala
 private[sbt] object VersionSchemes {
@@ -42,4 +42,15 @@ private[sbt] object VersionSchemes {
 
   def extractFromExtraAttributes(extraAttributes: Map[String, String]): Option[String] =
     extraAttributes.get(SbtPomExtraProperties.VERSION_SCHEME_KEY)
+
+  def evalFunc(
+      scheme: String
+  ): Function1[(ModuleID, Option[ModuleID], Option[ScalaModuleInfo]), Boolean] =
+    scheme match {
+      case EarlySemVer => EvictionWarningOptions.guessEarlySemVer
+      case SemVerSpec  => EvictionWarningOptions.guessSemVer
+      case PackVer     => EvictionWarningOptions.evalPvp
+      case Strict      => EvictionWarningOptions.guessStrict
+      case Always      => EvictionWarningOptions.guessTrue
+    }
 }
