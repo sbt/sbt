@@ -8,6 +8,7 @@
 package sbt
 package internal
 
+import sbt.SlashSyntax0._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
 import sbt.internal.util.Terminal
@@ -25,7 +26,7 @@ object ConsoleProject {
     val (state1, dependencyResolution) =
       extracted.runTask(Keys.dependencyResolution, state)
     val (_, scalaCompilerBridgeBinaryJar) =
-      extracted.runTask(Keys.scalaCompilerBridgeBinaryJar.in(Keys.consoleProject), state1)
+      extracted.runTask(Keys.consoleProject / Keys.scalaCompilerBridgeBinaryJar, state1)
     val scalaInstance = {
       val scalaProvider = state.configuration.provider.scalaProvider
       ScalaInstance(scalaProvider.version, scalaProvider)
@@ -50,8 +51,7 @@ object ConsoleProject {
           componentProvider = app.provider.components,
           secondaryCacheDir = Option(zincDir),
           dependencyResolution = dependencyResolution,
-          compilerBridgeSource =
-            extracted.get(Keys.scalaCompilerBridgeSource.in(Keys.consoleProject)),
+          compilerBridgeSource = extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
           scalaJarsTarget = zincDir,
           classLoaderCache = state1.get(BasicKeys.classLoaderCache),
           log = log

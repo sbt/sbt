@@ -315,8 +315,8 @@ object LMCoursier {
       }
     }
     import scala.collection.JavaConverters._
-    (Keys.credentials in ThisBuild).value foreach registerCredentials
-    (Keys.credentials in LocalRootProject).value foreach registerCredentials
+    (ThisBuild / Keys.credentials).value foreach registerCredentials
+    (LocalRootProject / Keys.credentials).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials
     credentialRegistry.values.asScala.toVector
   }

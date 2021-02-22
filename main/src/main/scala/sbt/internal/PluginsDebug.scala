@@ -12,6 +12,7 @@ import sbt.internal.util.{ AttributeKey, Dag, Relation, Util }
 import sbt.util.Logger
 
 import Def.Setting
+import sbt.SlashSyntax0._
 import Plugins._
 import PluginsDebug._
 import java.net.URI
@@ -169,7 +170,7 @@ private[sbt] object PluginsDebug {
     val extracted = Project.extract(s)
     import extracted._
     def definesPlugin(p: ResolvedProject): Boolean = p.autoPlugins.contains(plugin)
-    def projectForRef(ref: ProjectRef): ResolvedProject = get(Keys.thisProject in ref)
+    def projectForRef(ref: ProjectRef): ResolvedProject = get(ref / Keys.thisProject)
     val perBuild: Map[URI, Set[AutoPlugin]] =
       structure.units.mapValues(unit => availableAutoPlugins(unit).toSet).toMap
     val pluginsThisBuild = perBuild.getOrElse(currentRef.build, Set.empty).toList

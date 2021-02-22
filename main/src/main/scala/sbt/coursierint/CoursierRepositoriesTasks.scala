@@ -11,6 +11,7 @@ package coursierint
 import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.ScopeFilter.Make._
+import sbt.SlashSyntax0._
 
 object CoursierRepositoriesTasks {
   private object CResolvers {
@@ -108,7 +109,7 @@ object CoursierRepositoriesTasks {
         .bootRepositories(appConfiguration.value)
         .toSeq
         .flatten ++ // required because of the hack above it seems
-        externalResolvers.in(updateSbtClassifiers).value
+        (updateSbtClassifiers / externalResolvers).value
 
     val pluginIvySnapshotsFound = resolvers.exists {
       case repo: URLRepository =>

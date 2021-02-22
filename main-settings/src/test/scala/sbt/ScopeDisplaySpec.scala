@@ -10,10 +10,13 @@ package sbt
 import org.scalatest.FlatSpec
 import sbt.internal.util.{ AttributeKey, AttributeMap }
 import sbt.io.syntax.file
+import scala.annotation.nowarn
 
 class ScopeDisplaySpec extends FlatSpec {
   val project = ProjectRef(file("foo/bar"), "bar")
   val mangledName = "bar_slash_blah_blah_blah"
+
+  @nowarn
   val scopedKey = Def.ScopedKey(Scope.Global in project, AttributeKey[Task[String]](mangledName))
   val am = AttributeMap.empty.put(Scope.customShowString, "blah")
   val sanitizedKey = scopedKey.copy(scope = scopedKey.scope.copy(extra = Select(am)))

@@ -14,6 +14,7 @@ import java.nio.file.Path
 
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
+import sbt.SlashSyntax0._
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.ClasspathUtil
@@ -36,7 +37,7 @@ private[sbt] object ClassLoaders {
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
     val cp = fullClasspath.value.map(_.data)
-    val dependencyStamps = modifiedTimes((outputFileStamps in dependencyClasspathFiles).value).toMap
+    val dependencyStamps = modifiedTimes((dependencyClasspathFiles / outputFileStamps).value).toMap
     def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
     val rawCP = cp.map(f => f -> getLm(f))
     val fullCP =
@@ -75,13 +76,13 @@ private[sbt] object ClassLoaders {
         if (options.nonEmpty) {
           val mask = ScopeMask(project = false)
           val showJavaOptions = Scope.displayMasked(
-            (javaOptions in resolvedScope).scopedKey.scope,
-            (javaOptions in resolvedScope).key.label,
+            (resolvedScope / javaOptions).scopedKey.scope,
+            (resolvedScope / javaOptions).key.label,
             mask
           )
           val showFork = Scope.displayMasked(
-            (fork in resolvedScope).scopedKey.scope,
-            (fork in resolvedScope).key.label,
+            (resolvedScope / fork).scopedKey.scope,
+            (resolvedScope / fork).key.label,
             mask
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")

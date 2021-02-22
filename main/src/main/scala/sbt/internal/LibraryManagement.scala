@@ -11,6 +11,7 @@ package internal
 import java.io.File
 import java.util.concurrent.Callable
 
+import sbt.SlashSyntax0._
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
@@ -265,7 +266,7 @@ private[sbt] object LibraryManagement {
         val updateConf = {
           import UpdateLogging.{ Full, DownloadOnly, Default }
           val conf = updateConfiguration.value
-          val maybeUpdateLevel = (logLevel in update).?.value
+          val maybeUpdateLevel = (update / logLevel).?.value
           val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
             case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
             case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
@@ -283,10 +284,10 @@ private[sbt] object LibraryManagement {
           Reference.display(thisProjectRef.value),
           updateConf,
           identity,
-          skip = (skip in update).value,
+          skip = (update / skip).value,
           force = shouldForce,
           depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-          uwConfig = (unresolvedWarningConfiguration in update).value,
+          uwConfig = (update / unresolvedWarningConfiguration).value,
           evictionLevel = Level.Debug,
           versionSchemeOverrides = Nil,
           assumedEvictionErrorLevel = Level.Debug,
@@ -310,7 +311,7 @@ private[sbt] object LibraryManagement {
         val app = appConfiguration.value
         val srcTypes = sourceArtifactTypes.value
         val docTypes = docArtifactTypes.value
-        val uwConfig = (unresolvedWarningConfiguration in update).value
+        val uwConfig = (update / unresolvedWarningConfiguration).value
         val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
         withExcludes(out, mod.classifiers, lock(app)) { excludes =>
           lm.updateClassifiers(

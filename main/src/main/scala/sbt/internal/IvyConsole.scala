@@ -25,6 +25,7 @@ import Configurations.Compile
 import Def.Setting
 import Keys._
 import Scope.Global
+import sbt.SlashSyntax0._
 
 import sbt.io.IO
 
@@ -46,9 +47,9 @@ object IvyConsole {
       val depSettings: Seq[Setting[_]] = Seq(
         libraryDependencies ++= managed.reverse,
         resolvers ++= repos.reverse.toVector,
-        unmanagedJars in Compile ++= Attributed blankSeq unmanaged.reverse,
-        logLevel in Global := Level.Warn,
-        showSuccess in Global := false
+        Compile / unmanagedJars ++= Attributed blankSeq unmanaged.reverse,
+        Global / logLevel := Level.Warn,
+        Global / showSuccess := false
       )
       val append = Load.transformSettings(
         Load.projectScope(currentRef),

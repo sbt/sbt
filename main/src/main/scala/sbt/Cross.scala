@@ -11,6 +11,7 @@ import java.io.File
 
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.Keys._
+import sbt.SlashSyntax0._
 import sbt.internal.Act
 import sbt.internal.CommandStrings._
 import sbt.internal.inc.ScalaInstance
@@ -102,9 +103,9 @@ object Cross {
 
   private def crossVersions(extracted: Extracted, proj: ResolvedReference): Seq[String] = {
     import extracted._
-    (crossScalaVersions in proj get structure.data) getOrElse {
+    ((proj / crossScalaVersions) get structure.data) getOrElse {
       // reading scalaVersion is a one-time deal
-      (scalaVersion in proj get structure.data).toSeq
+      ((proj / scalaVersion) get structure.data).toSeq
     }
   }
 
@@ -358,16 +359,16 @@ object Cross {
         instance match {
           case Some((home, inst)) =>
             Seq(
-              scalaVersion in scope := version,
-              crossScalaVersions in scope := scalaVersions,
-              scalaHome in scope := Some(home),
-              scalaInstance in scope := inst
+              scope / scalaVersion := version,
+              scope / crossScalaVersions := scalaVersions,
+              scope / scalaHome := Some(home),
+              scope / scalaInstance := inst
             )
           case None =>
             Seq(
-              scalaVersion in scope := version,
-              crossScalaVersions in scope := scalaVersions,
-              scalaHome in scope := None
+              scope / scalaVersion := version,
+              scope / crossScalaVersions := scalaVersions,
+              scope / scalaHome := None
             )
         }
     }

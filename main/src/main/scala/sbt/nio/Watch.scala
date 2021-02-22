@@ -14,6 +14,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
+import sbt.SlashSyntax0._
 import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
@@ -620,7 +621,7 @@ object Watch {
     watchStartMessage :== Watch.defaultStartWatch,
     watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     watchForceTriggerOnAnyChange :== false,
-    watchPersistFileStamps := (sbt.Keys.turbo in ThisBuild).value,
+    watchPersistFileStamps := (ThisBuild / sbt.Keys.turbo).value,
     watchTriggers :== Nil,
     watchAntiEntropyPollPeriod := Watch.defaultAntiEntropyPollPeriod,
   )

@@ -36,6 +36,7 @@ import Keys.{
   windowsServerSecurityLevel,
 }
 import Scope.{ Global, ThisScope }
+import sbt.SlashSyntax0._
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
   Load,
@@ -504,7 +505,7 @@ object Project extends ProjectExtra {
   def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
 
   def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T =
-    orIdentity(key in Global get data)
+    orIdentity((Global / key) get data)
 
   def getHooks(data: Settings[Scope]): (State => State, State => State) =
     (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
@@ -515,16 +516,16 @@ object Project extends ProjectExtra {
     val structure = Project.structure(s)
     val ref = Project.current(s)
     Load.getProject(structure.units, ref.build, ref.project)
-    val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
+    val msg = (ref / Keys.onLoadMessage) get structure.data getOrElse ""
     if (!msg.isEmpty) s.log.info(msg)
-    def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
-    def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList
+    def get[T](k: SettingKey[T]): Option[T] = (ref / k) get structure.data
+    def commandsIn(axis: ResolvedReference) = (axis / commands) get structure.data toList
 
-    val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
+    val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ ((Global / commands) get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
     val newPrompt = get(colorShellPrompt)
-    val trs = (templateResolverInfos in Global get structure.data).toList.flatten
+    val trs = ((Global / templateResolverInfos) get structure.data).toList.flatten
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
@@ -532,8 +533,8 @@ object Project extends ProjectExtra {
     val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
-    val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
-    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers in ThisBuild)
+    val srvLogLevel: Option[Level.Value] = (ref / serverLog / logLevel).get(structure.data)
+    val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(
       s.definedCommands,
