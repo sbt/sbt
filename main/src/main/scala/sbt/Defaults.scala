@@ -1375,7 +1375,7 @@ object Defaults extends BuildCommon {
       }
       def noSuccessYet(test: String) = succeeded.get(test) match {
         case None     => true
-        case Some(ts) => stamp(test) > ts
+        case Some(ts) => stamps.synchronized(stamp(test)) > ts
       }
       args =>
         for (filter <- selectedFilter(args))
