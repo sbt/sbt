@@ -10,6 +10,7 @@ package sbt
 import sbt.Def.{ Initialize, ScopedKey }
 import sbt.Previous._
 import sbt.Scope.Global
+import sbt.SlashSyntax0._
 import sbt.internal.util._
 import sbt.std.TaskExtra._
 import sbt.util.StampedFormat
@@ -146,7 +147,7 @@ object Previous {
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] = {
-    val inputs = (cache in Global) zip Def.validated(skey, selfRefOk = true) zip (references in Global)
+    val inputs = (Global / cache) zip Def.validated(skey, selfRefOk = true) zip (Global / references)
     inputs {
       case ((prevTask, resolved), refs) =>
         val key = Key(resolved, resolved)
@@ -159,9 +160,9 @@ object Previous {
   def runtimeInEnclosingTask[T](skey: TaskKey[T])(
       implicit format: JsonFormat[T]
   ): Initialize[Task[Option[T]]] = {
-    val inputs = (cache in Global)
+    val inputs = (Global / cache)
       .zip(Def.validated(skey, selfRefOk = true))
-      .zip(references in Global)
+      .zip(Global / references)
       .zip(Def.resolvedScoped)
     inputs {
       case (((prevTask, resolved), refs), inTask: ScopedKey[Task[_]] @unchecked) =>
