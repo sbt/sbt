@@ -20,9 +20,11 @@ import sbt.internal.util.Attributed
 import Def.{ ScopedKey, Setting }
 import Keys._
 import Configurations.{ Compile, Runtime }
+import sbt.SlashSyntax0._
 import java.io.File
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
+import scala.annotation.nowarn
 
 object GlobalPlugin {
   // constructs a sequence of settings that may be appended to a project's settings to
@@ -45,7 +47,7 @@ object GlobalPlugin {
       config: Configuration,
       cp: Seq[Attributed[File]]
   ): Setting[_] =
-    internalDependencyClasspath in config ~= { prev =>
+    (config / internalDependencyClasspath) ~= { prev =>
       (prev ++ cp).distinct
     }
 
@@ -66,13 +68,15 @@ object GlobalPlugin {
     Project.runUnloadHooks(newS) // discard state
     GlobalPlugin(data, structure, inject(data), base)
   }
+
+  @nowarn
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) = {
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
 
     val taskInit = Def.task {
-      val intcp = (internalDependencyClasspath in Runtime).value
-      val prods = (exportedProducts in Runtime).value
+      val intcp = (Runtime / internalDependencyClasspath).value
+      val prods = (Runtime / exportedProducts).value
       val depMap = projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
       // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
       val updateReport = Def.taskDyn { Def.task { update.value } }.value
@@ -82,7 +86,7 @@ object GlobalPlugin {
         projectDependencies.value,
         depMap,
         resolvers.value.toVector,
-        (fullClasspath in Runtime).value,
+        (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct
       )(updateReport)
     }
@@ -105,6 +109,8 @@ object GlobalPlugin {
       (newS, processResult2(result))
     }
   }
+
+  @nowarn
   val globalPluginSettings = Project.inScope(Scope.GlobalScope in LocalRootProject)(
     Seq(
       organization := SbtArtifacts.Organization,

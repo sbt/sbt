@@ -30,8 +30,10 @@ import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 
+// import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
+import scala.annotation.nowarn
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -369,6 +371,7 @@ object BuildServerProtocol {
       )
     )
 
+  @nowarn
   private def bspWorkspaceSetting: Def.Initialize[Map[BuildTargetIdentifier, Scope]] =
     Def.settingDyn {
       val loadedBuild = Keys.loadedBuild.value
@@ -417,7 +420,7 @@ object BuildServerProtocol {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
       config <- configs
       if dep != thisProjectRef || config.name != thisConfig.name
-    } yield Keys.bspTargetIdentifier.in(dep, config)
+    } yield (dep / config / Keys.bspTargetIdentifier)
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
@@ -444,7 +447,7 @@ object BuildServerProtocol {
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
-    } yield Keys.classDirectory.in(ref, config)
+    } yield ref / config / Keys.classDirectory
 
     Def.task {
       val classpath = internalDependencyClasspath.join.value.distinct ++
@@ -596,6 +599,7 @@ object BuildServerProtocol {
     state.respondEvent(RunResult(originId, statusCode))
   }
 
+  @nowarn
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val allScopes = bspWorkspace.value.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
@@ -618,7 +622,7 @@ object BuildServerProtocol {
     val transitiveDependencies = for {
       (dep, configs) <- directDependencies
       config <- configs if dep != ref || config.name != thisConfig.name
-    } yield Keys.bspInternalDependencyConfigurations.in(dep, config)
+    } yield dep / config / Keys.bspInternalDependencyConfigurations
     Def.setting {
       val allDependencies = directDependencies ++
         transitiveDependencies.join.value.flatten

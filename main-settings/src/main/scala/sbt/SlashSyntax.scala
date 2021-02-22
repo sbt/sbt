@@ -92,7 +92,7 @@ object SlashSyntax {
   }
 
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(protected val scope: Scope) extends HasSlashKey
+  final class RichScope(protected val scope: Scope) extends HasSlashKeyOrAttrKey
 
 }
 

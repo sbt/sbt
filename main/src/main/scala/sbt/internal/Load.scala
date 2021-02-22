@@ -16,6 +16,7 @@ import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
 import sbt.Scope.GlobalScope
+import sbt.SlashSyntax0._
 import sbt.compiler.Eval
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
@@ -30,7 +31,7 @@ import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
 import scala.tools.nsc.reporters.ConsoleReporter
 
@@ -128,7 +129,7 @@ private[sbt] object Load {
     }
 
   def injectGlobal(state: State): Seq[Setting[_]] =
-    (appConfiguration in GlobalScope :== state.configuration) +:
+    ((GlobalScope / appConfiguration) :== state.configuration) +:
       LogManager.settingsLogger(state) +:
       EvaluateTask.injectSettings
 
@@ -375,7 +376,7 @@ private[sbt] object Load {
       rootProject: URI => String,
       injectSettings: InjectSettings
   ): Seq[Setting[_]] = {
-    ((loadedBuild in GlobalScope :== loaded) +:
+    (((GlobalScope / loadedBuild) :== loaded) +:
       transformProjectOnly(loaded.root, rootProject, injectSettings.global)) ++
       inScope(GlobalScope)(loaded.autos.globalSettings) ++
       loaded.units.toSeq.flatMap {
@@ -386,7 +387,7 @@ private[sbt] object Load {
               val ref = ProjectRef(uri, id)
               val defineConfig: Seq[Setting[_]] =
                 for (c <- project.configurations)
-                  yield ((configuration in (ref, ConfigKey(c.name))) :== c)
+                  yield ((ref / ConfigKey(c.name) / configuration) :== c)
               val builtin: Seq[Setting[_]] =
                 (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
               val settings = builtin ++ project.settings ++ injectSettings.project
@@ -1154,14 +1155,15 @@ private[sbt] object Load {
     }
 
   /** These are the settings defined when loading a project "meta" build. */
+  @nowarn
   val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
     Seq(
       sbtPlugin :== true,
       isMetaBuild :== true,
       pluginData := {
-        val prod = (exportedProducts in Configurations.Runtime).value
-        val cp = (fullClasspath in Configurations.Runtime).value
-        val opts = (scalacOptions in Configurations.Compile).value
+        val prod = (Configurations.Runtime / exportedProducts).value
+        val cp = (Configurations.Runtime / fullClasspath).value
+        val opts = (Configurations.Compile / scalacOptions).value
         PluginData(
           removeEntries(cp, prod),
           prod,

@@ -13,6 +13,7 @@ import Def.{ Setting, ScopedKey }
 import sbt.internal.util.{ FilePosition, NoPosition, SourcePosition }
 import java.io.File
 import Scope.Global
+import sbt.SlashSyntax0._
 import sbt.Def._
 
 object LintUnused {
@@ -63,8 +64,8 @@ object LintUnused {
     val _ = Def.spaceDelimited().parsed // not used yet
     val state = Keys.state.value
     val log = streams.value.log
-    val includeKeys = (lintIncludeFilter in Global).value
-    val excludeKeys = (lintExcludeFilter in Global).value
+    val includeKeys = (Global / lintIncludeFilter).value
+    val excludeKeys = (Global / lintExcludeFilter).value
     val result = lintUnused(state, includeKeys, excludeKeys)
     if (result.isEmpty) log.success("ok")
     else lintResultLines(result) foreach { log.warn(_) }
@@ -74,9 +75,9 @@ object LintUnused {
   def lintUnusedFunc(s: State): State = {
     val log = s.log
     val extracted = Project.extract(s)
-    val includeKeys = extracted.get(lintIncludeFilter in Global)
-    val excludeKeys = extracted.get(lintExcludeFilter in Global)
-    if (extracted.get(lintUnusedKeysOnLoad in Global)) {
+    val includeKeys = extracted.get((Global / lintIncludeFilter))
+    val excludeKeys = extracted.get((Global / lintExcludeFilter))
+    if (extracted.get((Global / lintUnusedKeysOnLoad))) {
       val result = lintUnused(s, includeKeys, excludeKeys)
       lintResultLines(result) foreach { log.warn(_) }
     }

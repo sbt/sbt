@@ -16,7 +16,9 @@ import sbt.ConfigKey
 import sbt.internal.util.AttributeKey
 
 import BuildSettingsInstances._
+import scala.annotation.nowarn
 
+@nowarn
 object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   property("Global / key == key in Global") = {
     forAll((k: Key) => expectValue(k in Global)(Global / k))

@@ -12,11 +12,13 @@ import java.io.PrintWriter
 
 import sbt.Def.ScopedKey
 import sbt.Keys._
-import sbt.Scope.GlobalScope
+import sbt.Scope.Global
+import sbt.SlashSyntax0._
 import sbt.internal.util.MainAppender._
 import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.util.{ Level, LogExchange, Logger, LoggerContext }
 import org.apache.logging.log4j.core.{ Appender => XAppender }
+import scala.annotation.nowarn
 
 sealed abstract class LogManager {
   def apply(
@@ -59,6 +61,7 @@ object LogManager {
 
   // This is called by mkStreams
   //
+  @nowarn
   def construct(
       data: Settings[Scope],
       state: State
@@ -70,6 +73,7 @@ object LogManager {
       manager(data, state, task, to, context)
     }
 
+  @nowarn
   def constructBackgroundLog(
       data: Settings[Scope],
       state: State
@@ -309,7 +313,7 @@ object LogManager {
 
   private[sbt] def settingsLogger(state: State): Def.Setting[_] =
     // strict to avoid retaining a reference to `state`
-    sLog in GlobalScope :== globalWrapper(state)
+    Global / sLog :== globalWrapper(state)
 
   // construct a Logger that delegates to the global logger, but only holds a weak reference
   //  this is an approximation to the ideal that would invalidate the delegate after loading completes

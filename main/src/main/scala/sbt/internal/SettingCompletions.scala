@@ -18,6 +18,7 @@ import Scope.Global
 import Types.idFun
 import complete._
 import DefaultParsers._
+import scala.annotation.nowarn
 
 /**
  * The resulting `session` and verbose and quiet summaries of the result of a set operation.
@@ -53,6 +54,8 @@ private[sbt] object SettingCompletions {
     val projectScope = Load.projectScope(currentRef)
     def resolve(s: Setting[_]): Seq[Setting[_]] =
       Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
+
+    @nowarn
     def rescope[T](setting: Setting[T]): Seq[Setting[_]] = {
       val akey = setting.key.key
       val global = ScopedKey(Global, akey)

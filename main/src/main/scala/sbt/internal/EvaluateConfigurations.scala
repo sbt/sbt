@@ -22,6 +22,7 @@ import compiler.{ Eval, EvalImports }
 import sbt.internal.util.complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
 import Scope.GlobalScope
+import sbt.SlashSyntax0._
 import sbt.internal.parser.SbtParser
 
 import sbt.io.IO
@@ -389,7 +390,7 @@ object Index {
         case _ => ()
       }
     )
-    val onComplete = Keys.onComplete in GlobalScope get ss getOrElse (() => ())
+    val onComplete = (GlobalScope / Keys.onComplete) get ss getOrElse (() => ())
     new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
   }
 

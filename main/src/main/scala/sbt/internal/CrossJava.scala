@@ -16,6 +16,7 @@ import sbt.io.Path
 import sbt.io.syntax._
 import sbt.Cross._
 import sbt.Def.{ ScopedKey, Setting }
+import sbt.SlashSyntax0._
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
@@ -169,7 +170,7 @@ private[sbt] object CrossJava {
       proj: ResolvedReference
   ): Map[String, File] = {
     import extracted._
-    (Keys.fullJavaHomes in proj get structure.data).get
+    ((proj / Keys.fullJavaHomes) get structure.data).get
   }
 
   private def getJavaHomesTyped(
@@ -185,14 +186,14 @@ private[sbt] object CrossJava {
   ): Seq[String] = {
     import extracted._
     import Keys._
-    (crossJavaVersions in proj get structure.data).getOrElse(Nil)
+    ((proj / crossJavaVersions) get structure.data).getOrElse(Nil)
   }
 
   private def getCrossJavaHomes(extracted: Extracted, proj: ResolvedReference): Seq[File] = {
     import extracted._
     import Keys._
-    val fjh = (fullJavaHomes in proj get structure.data).get
-    (crossJavaVersions in proj get structure.data) map { jvs =>
+    val fjh = ((proj / fullJavaHomes) get structure.data).get
+    ((proj / crossJavaVersions) get structure.data) map { jvs =>
       jvs map { jv =>
         lookupJavaHome(jv, fjh)
       }
@@ -235,7 +236,7 @@ private[sbt] object CrossJava {
           }
           val scope = Scope(Select(proj), Zero, Zero, Zero)
           Seq(
-            javaHome in scope := Some(home)
+            (scope / javaHome) := Some(home)
           )
       }
 

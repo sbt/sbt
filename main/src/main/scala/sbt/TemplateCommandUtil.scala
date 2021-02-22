@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.io.File
 
 import sbt.BasicCommandStrings.TerminateAction
+import sbt.SlashSyntax0._
 import sbt.io._, syntax._
 import sbt.util._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
@@ -48,7 +49,7 @@ private[sbt] object TemplateCommandUtil {
     val log = state.globalLogging.full
     val extracted = (Project extract state)
     val (s2, ivyConf) = extracted.runTask(Keys.ivyConfiguration, state)
-    val scalaModuleInfo = extracted.get(Keys.scalaModuleInfo in Keys.updateSbtClassifiers)
+    val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
     val arguments = inputArg.toList ++
       (state.remainingCommands match {
         case exec :: Nil if exec.commandLine == "shell" => Nil
