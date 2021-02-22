@@ -2785,6 +2785,9 @@ object Classpaths {
         libraryDependencies :== Nil,
         libraryDependencySchemes :== Nil,
         evictionErrorLevel :== Level.Error,
+        assumedEvictionErrorLevel :== Level.Info,
+        assumedVersionScheme :== VersionScheme.Always,
+        assumedVersionSchemeJava :== VersionScheme.Always,
         excludeDependencies :== Nil,
         ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
         if (insideCI.value)
@@ -3592,6 +3595,9 @@ object Classpaths {
       uwConfig = (unresolvedWarningConfiguration in update).value,
       evictionLevel = evictionErrorLevel.value,
       versionSchemeOverrides = libraryDependencySchemes.value,
+      assumedEvictionErrorLevel = assumedEvictionErrorLevel.value,
+      assumedVersionScheme = assumedVersionScheme.value,
+      assumedVersionSchemeJava = assumedVersionSchemeJava.value,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
       includeCallers = includeCallers,
