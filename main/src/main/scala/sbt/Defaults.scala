@@ -2087,18 +2087,17 @@ object Defaults extends BuildCommon {
               val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               }, fiOpts)
-              val isScala3 = ScalaArtifacts.isScala3(sv)
               def isScala3Doc(module: ModuleID): Boolean = {
                 module.configurations.exists(_.startsWith(Configurations.ScalaDocTool.name)) &&
                 module.name == ScalaArtifacts.Scala3DocID
               }
-              if (isScala3 && !allDeps.exists(isScala3Doc)) {
+              if (ScalaArtifacts.isScala3M123(sv) && !allDeps.exists(isScala3Doc)) {
                 Array(
                   "Unresolved scala3doc artifact",
                   "add 'ThisBuild / resolvers += Resolver.JCenterRepository'"
                 ).foreach(m => s.log.error(m))
               }
-              val docSrcs = if (isScala3) tFiles else srcs
+              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
               runDoc(docSrcs, cp, out, options, maxErrors.value, s.log)
             case (_, true) =>
               val javadoc =
@@ -3188,10 +3187,11 @@ object Classpaths {
       val sbtOrg = scalaOrganization.value
       val version = scalaVersion.value
       val extResolvers = externalResolvers.value
+      val isScala3M123 = ScalaArtifacts.isScala3M123(version)
       val allToolDeps =
         if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
           Nil
-        else if (extResolvers.contains(Resolver.JCenterRepository)) {
+        else if (!isScala3M123 || extResolvers.contains(Resolver.JCenterRepository)) {
           ScalaArtifacts.toolDependencies(sbtOrg, version) ++
             ScalaArtifacts.docToolDependencies(sbtOrg, version)
         } else ScalaArtifacts.toolDependencies(sbtOrg, version)
