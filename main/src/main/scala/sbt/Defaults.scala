@@ -694,6 +694,10 @@ object Defaults extends BuildCommon {
       else Def.task[Option[File]](None)
     }.value,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    auxiliaryClassFiles ++= {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
+      else Nil
+    },
     consoleProject / scalaCompilerBridgeBinaryJar := None,
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
@@ -702,7 +706,7 @@ object Defaults extends BuildCommon {
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
-      auxiliaryClassFiles := Nil,
+      auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
       console / classpathOptions :== ClasspathOptionsUtil.repl,
@@ -905,10 +909,6 @@ object Defaults extends BuildCommon {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     externalHooks := IncOptions.defaultExternal,
-    auxiliaryClassFiles ++= {
-      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
-      else Nil
-    },
     incOptions := {
       val old = incOptions.value
       old
