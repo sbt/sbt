@@ -1,46 +1,41 @@
-import java.util.Optional
-import xsbti.Position
+import sbt.internal.util.ConsoleAppender
+
+extraAppenders := { s => Seq(ConsoleAppender(FakePrintWriter)) }
+
+val assertEmptySourcePositionMappers = taskKey[Unit]("checks that sourcePositionMappers is empty")
 
 val assertAbsolutePathConversion = taskKey[Unit]("checks source mappers convert to absolute path")
 
-val assertHandleFakePos = taskKey[Unit]("checks source mappers handle fake position")
+val assertVirtualFile = taskKey[Unit]("checks source mappers handle virtual files")
+
+val resetMessages = taskKey[Unit]("empties the messages list")
+
+assertEmptySourcePositionMappers := {
+  assert {
+    sourcePositionMappers.value.isEmpty
+  }
+}
 
 assertAbsolutePathConversion := {
-  val converter = fileConverter.value
   val source = (Compile/sources).value.head
-  val position = newPosition(converter.toVirtualFile(source.toPath).id, source)
-  val mappedPos = sourcePositionMappers.value
-    .foldLeft(Option(position)) {
-      case (pos, mapper) => pos.flatMap(mapper)
-    }
   assert {
-    mappedPos.get.sourcePath.asScala.contains(source.getAbsolutePath)
+    FakePrintWriter.messages.exists(_.contains(s"${source.getAbsolutePath}:3:15: comparing values of types Int and String using `==' will always yield false"))
+  }
+  assert {
+    FakePrintWriter.messages.forall(!_.contains("${BASE}"))
   }
 }
 
-assertHandleFakePos := {
-  val position = newPosition("<macro>", new File("<macro>"))
-  val mappedPos = sourcePositionMappers.value
-    .foldLeft(Option(position)) {
-      case (pos, mapper) => pos.flatMap(mapper)
-    }
+assertVirtualFile := {
+  val source = (Compile/sources).value.head
   assert {
-    mappedPos.get.sourcePath.asScala.get.contains("<macro>")
+    FakePrintWriter.messages.exists(_.contains("${BASE}/src/main/scala/Foo.scala:3:15: comparing values of types Int and String using `==' will always yield false"))
+  }
+  assert {
+    FakePrintWriter.messages.forall(!_.contains(source.getAbsolutePath))
   }
 }
 
-def newPosition(path: String, file: File): Position = new Position {
-  override def line(): Optional[Integer] = Optional.empty()
-
-  override def lineContent() = ""
-
-  override def offset(): Optional[Integer] = Optional.empty()
-
-  override def pointer(): Optional[Integer] = Optional.empty()
-
-  override def pointerSpace(): Optional[String] = Optional.empty()
-
-  override def sourcePath(): Optional[String] = Optional.of(path)
-
-  override def sourceFile(): Optional[File] = Optional.of(file)
+resetMessages := {
+  FakePrintWriter.resetMessages
 }

@@ -1030,7 +1030,9 @@ lazy val mainProj = (project in file("main"))
       // internal logging apis,
       exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
       exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread")
+      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
+      // private[sbt] method, used to call the correct sourcePositionMapper
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.foldMappers"),
     )
   )
   .configure(
