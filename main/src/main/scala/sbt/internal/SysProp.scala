@@ -93,8 +93,10 @@ object SysProp {
   def ci: Boolean = getOrFalse("sbt.ci")
   def allowRootDir: Boolean = getOrFalse("sbt.rootdir")
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
-  def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
+
+  def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
+  def semanticdbVersion: Option[String] = sys.props.get("sbt.semanticdb.version")
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
