@@ -422,12 +422,7 @@ object Defaults extends BuildCommon {
       )
     },
     fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
-    sourcePositionMappers ++= {
-      val fc = fileConverter.value
-      if (reportAbsolutePath.value) {
-        List(toAbsoluteSourceMapper(fc) _)
-      } else Nil
-    },
+    sourcePositionMappers := Nil, // Never set a default sourcePositionMapper, see #6352! Whatever you are trying to solve, do it in the foldMappers method.
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
     classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     fullServerHandlers := {
@@ -474,7 +469,7 @@ object Defaults extends BuildCommon {
     },
   )
 
-  private[sbt] def toAbsoluteSourceMapper(fc: FileConverter)(pos: Position): Option[Position] = {
+  private[sbt] def toAbsoluteSource(fc: FileConverter)(pos: Position): Position = {
     def isValid(path: String): Boolean = {
       Try(Paths.get(path)).map(_ => true).getOrElse(false)
     }
@@ -503,9 +498,21 @@ object Defaults extends BuildCommon {
           override def sourcePath(): Optional[String] = Optional.of(path)
 
           override def sourceFile(): Optional[File] = pos.sourceFile()
+
+          override def startOffset(): Optional[Integer] = pos.startOffset()
+
+          override def endOffset(): Optional[Integer] = pos.endOffset()
+
+          override def startLine(): Optional[Integer] = pos.startLine()
+
+          override def startColumn(): Optional[Integer] = pos.startColumn()
+
+          override def endLine(): Optional[Integer] = pos.endLine()
+
+          override def endColumn(): Optional[Integer] = pos.endColumn()
         }
       }
-      .orElse(Some(pos))
+      .getOrElse(pos)
   }
 
   // csrCacheDirectory is scoped to ThisBuild to allow customization.
@@ -2365,7 +2372,9 @@ object Defaults extends BuildCommon {
           scalacOptions.value.toArray,
           javacOptions.value.toArray,
           maxErrors.value,
-          f1(foldMappers(sourcePositionMappers.value)),
+          f1(
+            foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
+          ),
           compileOrder.value,
           None.toOptional: Optional[NioPath],
           Some(fileConverter.value).toOptional,
@@ -2377,7 +2386,7 @@ object Defaults extends BuildCommon {
         new ManagedLoggedReporter(
           maxErrors.value,
           streams.value.log,
-          foldMappers(sourcePositionMappers.value)
+          foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
         )
       },
       compileInputs := {
@@ -2394,15 +2403,25 @@ object Defaults extends BuildCommon {
     )
   }
 
-  private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
-    mappers.foldRight({ p: A =>
-      p
+  private[sbt] def foldMappers(
+      mappers: Seq[Position => Option[Position]],
+      reportAbsolutePath: Boolean,
+      fc: FileConverter
+  ) = {
+    def withAbsoluteSource(p: Position): Position =
+      if (reportAbsolutePath) toAbsoluteSource(fc)(p) else p
+
+    mappers.foldRight({ p: Position =>
+      withAbsoluteSource(p) // Fallback if sourcePositionMappers is empty
     }) {
-      (mapper, mappers) =>
-        { p: A =>
-          mapper(p).getOrElse(mappers(p))
+      (mapper, previousPosition) =>
+        { p: Position =>
+          // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
+          mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
         }
     }
+  }
+
   private[sbt] def none[A]: Option[A] = (None: Option[A])
   private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
@@ -2429,7 +2448,11 @@ object Defaults extends BuildCommon {
       val problems =
         analysis.infos.allInfos.values
           .flatMap(i => i.getReportedProblems ++ i.getUnreportedProblems)
-      val reporter = new ManagedLoggedReporter(max, streams.value.log, foldMappers(spms))
+      val reporter = new ManagedLoggedReporter(
+        max,
+        streams.value.log,
+        foldMappers(spms, reportAbsolutePath.value, fileConverter.value)
+      )
       problems.foreach(p => reporter.log(p))
     }
 
