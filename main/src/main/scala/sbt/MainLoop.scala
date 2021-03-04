@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.PrintWriter
+import java.util.concurrent.RejectedExecutionException
 import java.util.Properties
 
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
@@ -222,13 +223,10 @@ object MainLoop {
         val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
             val prevTerminal = ITerminal.set(c.terminal)
-            val prevPrompt = c.terminal.prompt
             // temporarily set the prompt to running during task evaluation
             c.terminal.setPrompt(Prompt.Running)
             (() => {
-              c.terminal.setPrompt(prevPrompt)
               ITerminal.set(prevTerminal)
-              c.terminal.setPrompt(prevPrompt)
               c.terminal.flush()
             }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
           case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))
@@ -243,10 +241,17 @@ object MainLoop {
           FastTrackCommands
             .evaluate(termState, exec.commandLine)
             .getOrElse(Command.process(exec.commandLine, termState))
+        } catch {
+          case _: RejectedExecutionException =>
+            // No stack trace since this is just to notify the user which command they cancelled
+            object Cancelled extends Throwable(exec.commandLine, null, true, false) {
+              override def toString: String = s"Cancelled: ${exec.commandLine}"
+            }
+            throw Cancelled
         } finally {
           // Flush the terminal output after command evaluation to ensure that all output
           // is displayed in the thin client before we report the command status. Also
-          // set the promt to whatever it was before we started evaluating the task.
+          // set the prompt to whatever it was before we started evaluating the task.
           restoreTerminal()
         }
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
@@ -329,7 +334,7 @@ object MainLoop {
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
     if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
-        state.currentCommand.fold(true)(_ != StashOnFailure)) ExitCode(ErrorCodes.UnknownError)
-    else ExitCode.Success
-
+        state.currentCommand.fold(true)(_.commandLine != StashOnFailure)) {
+      ExitCode(ErrorCodes.UnknownError)
+    } else ExitCode.Success
 }

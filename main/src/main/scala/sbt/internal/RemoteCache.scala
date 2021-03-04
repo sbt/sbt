@@ -33,6 +33,7 @@ import sbt.internal.remotecache._
 import sbt.internal.inc.{ HashUtil, JarUtils }
 import sbt.util.InterfaceUtil.toOption
 import sbt.util.Logger
+import scala.annotation.nowarn
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
@@ -50,10 +51,19 @@ object RemoteCache {
       .toList
       .map(_.take(commitLength))
 
+  lazy val defaultCacheLocation: File = SysProp.globalLocalCache
+
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
     remoteCacheId := "",
     remoteCacheIdCandidates := Nil,
-    pushRemoteCacheTo :== None
+    pushRemoteCacheTo :== None,
+    localCacheDirectory :== defaultCacheLocation,
+    pushRemoteCache / ivyPaths := {
+      val app = appConfiguration.value
+      val base = app.baseDirectory.getCanonicalFile
+      // base is used only to resolve relative paths, which should never happen
+      IvyPaths(base, localCacheDirectory.value)
+    },
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
@@ -114,7 +124,7 @@ object RemoteCache {
     remoteCacheResolvers := pushRemoteCacheTo.value.toVector,
   ) ++ inTask(pushRemoteCache)(
     Seq(
-      ivyPaths := IvyPaths(baseDirectory.value, crossTarget.value / "remote-cache"),
+      ivyPaths := (Scope.Global / pushRemoteCache / ivyPaths).value,
       ivyConfiguration := {
         val config0 = Classpaths.mkIvyConfiguration.value
         config0
@@ -127,7 +137,7 @@ object RemoteCache {
       ivySbt := {
         Credentials.register(credentials.value, streams.value.log)
         val config0 = ivyConfiguration.value
-        new IvySbt(config0, CustomHttp.okhttpClient.value)
+        new IvySbt(config0, sbt.internal.CustomHttp.okhttpClient.value)
       },
     )
   ) ++ inTask(pullRemoteCache)(
@@ -142,6 +152,7 @@ object RemoteCache {
   ) ++ inConfig(Compile)(configCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
     ++ inConfig(Test)(configCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
+  @nowarn
   def configCacheSettings[A <: RemoteCacheArtifact](
       cacheArtifactTask: Def.Initialize[Task[A]]
   ): Seq[Def.Setting[_]] =

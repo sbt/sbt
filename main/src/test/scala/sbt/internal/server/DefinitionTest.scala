@@ -10,169 +10,233 @@ package internal
 package server
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import sbt.internal.inc.Analysis
 
-class DefinitionTest extends org.specs2.mutable.Specification {
+object DefinitionTest extends verify.BasicTestSuite {
   import Definition.textProcessor
-
-  "text processor" should {
-    "find valid standard scala identifier when caret is set at the start of it" in {
-      textProcessor.identifier("val identifier = 0", 4) must beSome("identifier")
-    }
-    "not find valid standard scala identifier because it is '='" in {
-      textProcessor.identifier("val identifier = 0", 15) must beNone
-    }
-    "find valid standard scala identifier when caret is set in the middle of it" in {
-      textProcessor.identifier("val identifier = 0", 11) must beSome("identifier")
-    }
-    "find valid standard scala identifier with comma" in {
-      textProcessor.identifier("def foo(a: identifier, b: other) = ???", 13) must beSome(
-        "identifier"
-      )
-    }
-    "find valid standard short scala identifier when caret is set at the start of it" in {
-      textProcessor.identifier("val a = 0", 4) must beSome("a")
-    }
-    "find valid standard short scala identifier when caret is set at the end of it" in {
-      textProcessor.identifier("def foo(f: Int) = Foo(f)", 19) must beSome("Foo")
-    }
-    "find valid non-standard short scala identifier when caret is set at the start of it" in {
-      textProcessor.identifier("val == = 0", 4) must beSome("==")
-    }
-    "find valid non-standard short scala identifier when caret is set in the middle of it" in {
-      textProcessor.identifier("val == = 0", 5) must beSome("==")
-    }
-    "find valid non-standard short scala identifier when caret is set at the end of it" in {
-      textProcessor.identifier("val == = 0", 6) must beSome("==")
-    }
-    "choose longest valid standard scala identifier from scala keyword when caret is set at the start of it" in {
-      textProcessor.identifier("val k = 0", 0) must beSome("va") or beSome("al")
-    }
-    "choose longest valid standard scala identifier from scala keyword when caret is set in the middle of it" in {
-      textProcessor.identifier("val k = 0", 1) must beSome("va") or beSome("al")
-    }
-    "match symbol as class name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A") must be_==("com.acme.A")
-    }
-    "match symbol as object name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$") must be_==("com.acme.A$")
-    }
-    "match symbol as inner class name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$A") must be_==("com.acme.A$A")
-    }
-    "match symbol as inner object name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$A$") must be_==("com.acme.A$A$")
-    }
-    "match symbol as default package class name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("A") must be_==("A")
-    }
-    "match symbol as default package object name" in {
-      textProcessor.potentialClsOrTraitOrObj("A")("A$") must be_==("A$")
-    }
-    "match object in line version 1" in {
-      textProcessor.classTraitObjectInLine("A")("   object A  ") must contain(("object A", 3))
-    }
-    "match object in line version 2" in {
-      textProcessor.classTraitObjectInLine("A")("   object    A  ") must contain(("object    A", 3))
-    }
-    "match object in line version 3" in {
-      textProcessor.classTraitObjectInLine("A")("object A {") must contain(("object A", 0))
-    }
-    "not match object in line" in {
-      textProcessor.classTraitObjectInLine("B")("object A  ") must be empty
-    }
-    "match class in line version 1" in {
-      textProcessor.classTraitObjectInLine("A")("   class A  ") must contain(("class A", 3))
-    }
-    "match class in line version 2" in {
-      textProcessor.classTraitObjectInLine("A")("   class    A  ") must contain(("class    A", 3))
-    }
-    "match class in line version 3" in {
-      textProcessor.classTraitObjectInLine("A")("class A {") must contain(("class A", 0))
-    }
-    "match class in line version 4" in {
-      textProcessor.classTraitObjectInLine("A")("   class    A[A]  ") must contain(
-        ("class    A", 3)
-      )
-    }
-    "match class in line version 5" in {
-      textProcessor.classTraitObjectInLine("A")("   class    A  [A] ") must contain(
-        ("class    A", 3)
-      )
-    }
-    "match class in line version 6" in {
-      textProcessor.classTraitObjectInLine("A")("class A[A[_]] {") must contain(("class A", 0))
-    }
-    "not match class in line" in {
-      textProcessor.classTraitObjectInLine("B")("class A  ") must be empty
-    }
-    "match trait in line version 1" in {
-      textProcessor.classTraitObjectInLine("A")("   trait A  ") must contain(("trait A", 3))
-    }
-    "match trait in line version 2" in {
-      textProcessor.classTraitObjectInLine("A")("   trait    A  ") must contain(("trait    A", 3))
-    }
-    "match trait in line version 3" in {
-      textProcessor.classTraitObjectInLine("A")("trait A {") must contain(("trait A", 0))
-    }
-    "match trait in line version 4" in {
-      textProcessor.classTraitObjectInLine("A")("   trait    A[A]  ") must contain(
-        ("trait    A", 3)
-      )
-    }
-    "match trait in line version 5" in {
-      textProcessor.classTraitObjectInLine("A")("   trait    A  [A] ") must contain(
-        ("trait    A", 3)
-      )
-    }
-    "match trait in line version 6" in {
-      textProcessor.classTraitObjectInLine("A")("trait A[A[_]] {") must contain(("trait A", 0))
-    }
-    "not match trait in line" in {
-      textProcessor.classTraitObjectInLine("B")("trait A  ") must be empty
-    }
+  test(
+    "text processor should find valid standard scala identifier when caret is set at the start of it"
+  ) {
+    assert(textProcessor.identifier("val identifier = 0", 4) == Some("identifier"))
   }
 
-  "definition" should {
+  test("it should not find valid standard scala identifier because it is '='") {
+    assert(textProcessor.identifier("val identifier = 0", 15) == None)
+  }
 
-    "cache data in cache" in {
-      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
-      val cacheFile = "Test.scala"
-      val useBinary = true
+  test("it should find valid standard scala identifier when caret is set in the middle of it") {
+    assert(textProcessor.identifier("val identifier = 0", 11) == Some("identifier"))
+  }
 
-      Definition.updateCache(cache)(cacheFile, useBinary)
+  test("it should find valid standard scala identifier with comma") {
+    assert(
+      textProcessor.identifier("def foo(a: identifier, b: other) = ???", 13) == Some("identifier")
+    )
+  }
 
-      val actual = Definition.AnalysesAccess.getFrom(cache)
+  test("it should find valid standard short scala identifier when caret is set at the start of it") {
+    assert(textProcessor.identifier("val a = 0", 4) == Some("a"))
+  }
 
-      actual.get should contain("Test.scala" -> true -> None)
-    }
+  test("it should find valid standard short scala identifier when caret is set at the end of it") {
+    assert(textProcessor.identifier("def foo(f: Int) = Foo(f)", 19) == Some("Foo"))
+  }
 
-    "replace cache data in cache" in {
-      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
-      val cacheFile = "Test.scala"
-      val useBinary = true
-      val falseUseBinary = false
+  test(
+    "it should find valid non-standard short scala identifier when caret is set at the start of it"
+  ) {
+    assert(textProcessor.identifier("val == = 0", 4) == Some("=="))
+  }
 
-      Definition.updateCache(cache)(cacheFile, falseUseBinary)
-      Definition.updateCache(cache)(cacheFile, useBinary)
+  test(
+    "it should find valid non-standard short scala identifier when caret is set in the middle of it"
+  ) {
+    assert(textProcessor.identifier("val == = 0", 5) == Some("=="))
+  }
 
-      val actual = Definition.AnalysesAccess.getFrom(cache)
+  test(
+    "it should find valid non-standard short scala identifier when caret is set at the end of it"
+  ) {
+    assert(textProcessor.identifier("val == = 0", 6) == Some("=="))
+  }
 
-      actual.get should contain("Test.scala" -> true -> None)
-    }
+  test(
+    "it should choose longest valid standard scala identifier from scala keyword when caret is set at the start of it"
+  ) {
+    assert(
+      textProcessor.identifier("val k = 0", 0) == Some("va") || textProcessor
+        .identifier("val k = 0", 0) == Some("al")
+    )
+  }
 
-    "cache more data in cache" in {
-      val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
-      val cacheFile = "Test.scala"
-      val useBinary = true
-      val otherCacheFile = "OtherTest.scala"
-      val otherUseBinary = false
+  test(
+    "it should choose longest valid standard scala identifier from scala keyword when caret is set in the middle of it"
+  ) {
+    assert(
+      textProcessor.identifier("val k = 0", 1) == Some("va") || textProcessor
+        .identifier("val k = 0", 1) == Some("al")
+    )
+  }
 
-      Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
-      Definition.updateCache(cache)(cacheFile, useBinary)
+  test("it should match symbol as class name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A") == "com.acme.A")
+  }
 
-      val actual = Definition.AnalysesAccess.getFrom(cache)
+  test("it should match symbol as object name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$") == "com.acme.A$")
+  }
 
-      actual.get should contain("Test.scala" -> true -> None, "OtherTest.scala" -> false -> None)
-    }
+  test("it should match symbol as inner class name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$A") == "com.acme.A$A")
+  }
+
+  test("it should match symbol as inner object name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("com.acme.A$A$") == "com.acme.A$A$")
+  }
+
+  test("it should match symbol as default package class name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("A") == "A")
+  }
+
+  test("it should match symbol as default package object name") {
+    assert(textProcessor.potentialClsOrTraitOrObj("A")("A$") == "A$")
+  }
+
+  test("it should match object in line version 1") {
+    assert(textProcessor.classTraitObjectInLine("A")("   object A  ").contains(("object A", 3)))
+  }
+
+  test("it should match object in line version 2") {
+    assert(
+      textProcessor.classTraitObjectInLine("A")("   object    A  ").contains(("object    A", 3))
+    )
+  }
+
+  test("it should match object in line version 3") {
+    assert(textProcessor.classTraitObjectInLine("A")("object A {").contains(("object A", 0)))
+  }
+
+  test("it should not match object in line") {
+    assert(textProcessor.classTraitObjectInLine("B")("object A  ").isEmpty)
+  }
+
+  test("it should match class in line version 1") {
+    assert(textProcessor.classTraitObjectInLine("A")("   class A  ").contains(("class A", 3)))
+  }
+
+  test("it should match class in line version 2") {
+    assert(textProcessor.classTraitObjectInLine("A")("   class    A  ").contains(("class    A", 3)))
+  }
+
+  test("it should match class in line version 3") {
+    assert(textProcessor.classTraitObjectInLine("A")("class A {").contains(("class A", 0)))
+  }
+
+  test("it should match class in line version 4") {
+    assert(
+      textProcessor.classTraitObjectInLine("A")("   class    A[A]  ").contains(("class    A", 3))
+    )
+  }
+
+  test("it should match class in line version 5") {
+    assert(
+      textProcessor
+        .classTraitObjectInLine("A")("   class    A  [A] ")
+        .contains(
+          ("class    A", 3)
+        )
+    )
+  }
+
+  test("it should match class in line version 6") {
+    assert(textProcessor.classTraitObjectInLine("A")("class A[A[_]] {").contains(("class A", 0)))
+  }
+
+  test("it should not match class in line") {
+    assert(textProcessor.classTraitObjectInLine("B")("class A  ").isEmpty)
+  }
+
+  test("match trait in line version 1") {
+    assert(textProcessor.classTraitObjectInLine("A")("   trait A  ").contains(("trait A", 3)))
+  }
+
+  test("it should match trait in line version 2") {
+    assert(textProcessor.classTraitObjectInLine("A")("   trait    A  ").contains(("trait    A", 3)))
+  }
+
+  test("it should match trait in line version 3") {
+    assert(textProcessor.classTraitObjectInLine("A")("trait A {").contains(("trait A", 0)))
+  }
+
+  test("it should match trait in line version 4") {
+    assert(
+      textProcessor
+        .classTraitObjectInLine("A")("   trait    A[A]  ")
+        .contains(
+          ("trait    A", 3)
+        )
+    )
+  }
+
+  test("it should match trait in line version 5") {
+    assert(
+      textProcessor
+        .classTraitObjectInLine("A")("   trait    A  [A] ")
+        .contains(
+          ("trait    A", 3)
+        )
+    )
+  }
+
+  test("it should match trait in line version 6") {
+    assert(textProcessor.classTraitObjectInLine("A")("trait A[A[_]] {").contains(("trait A", 0)))
+  }
+
+  test("it should not match trait in line") {
+    assert(textProcessor.classTraitObjectInLine("B")("trait A  ").isEmpty)
+  }
+
+  test("definition should cache data in cache") {
+    val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
+    val cacheFile = "Test.scala"
+    val useBinary = true
+
+    Definition.updateCache(cache)(cacheFile, useBinary)
+
+    val actual = Definition.AnalysesAccess.getFrom(cache)
+
+    assert(actual.get.contains(("Test.scala" -> true -> None)))
+  }
+
+  test("it should replace cache data in cache") {
+    val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
+    val cacheFile = "Test.scala"
+    val useBinary = true
+    val falseUseBinary = false
+
+    Definition.updateCache(cache)(cacheFile, falseUseBinary)
+    Definition.updateCache(cache)(cacheFile, useBinary)
+
+    val actual = Definition.AnalysesAccess.getFrom(cache)
+
+    assert(actual.get.contains(("Test.scala" -> true -> None)))
+  }
+
+  test("it should cache more data in cache") {
+    val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
+    val cacheFile = "Test.scala"
+    val useBinary = true
+    val otherCacheFile = "OtherTest.scala"
+    val otherUseBinary = false
+
+    Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
+    Definition.updateCache(cache)(cacheFile, useBinary)
+
+    val actual = Definition.AnalysesAccess.getFrom(cache)
+
+    assert(
+      actual.get.contains("Test.scala" -> true -> Option.empty[Analysis]) &&
+        actual.get.contains("OtherTest.scala" -> false -> Option.empty[Analysis])
+    )
   }
 }

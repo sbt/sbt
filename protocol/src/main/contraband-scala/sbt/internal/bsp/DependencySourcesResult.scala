@@ -10,10 +10,10 @@ final class DependencySourcesResult private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: DependencySourcesResult => (this.items == x.items)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.internal.bsp.DependencySourcesResult".##) + items.##)
   }

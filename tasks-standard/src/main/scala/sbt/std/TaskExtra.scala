@@ -94,7 +94,18 @@ sealed trait ProcessPipe {
   def pipe(sid: String)(p: ProcessBuilder): Task[Int]
 }
 
-trait TaskExtra {
+trait TaskExtra0 {
+  final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] =
+    joinTasks0[Any](existToAny(in))
+  private[sbt] def joinTasks0[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
+    def join: Task[Seq[S]] =
+      Task[Seq[S]](Info(), new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s))))
+    def reduced(f: (S, S) => S): Task[S] = TaskExtra.reduced(in.toIndexedSeq, f)
+  }
+  private[sbt] def existToAny(in: Seq[Task[_]]): Seq[Task[Any]] = in.asInstanceOf[Seq[Task[Any]]]
+}
+
+trait TaskExtra extends TaskExtra0 {
   final def nop: Task[Unit] = constant(())
   final def constant[T](t: T): Task[T] = task(t)
 
@@ -111,10 +122,8 @@ trait TaskExtra {
     def tasks: Seq[Task[S]] = fork(idFun)
   }
 
-  import TaskExtra.{ allM, anyFailM, existToAny, failM, successM }
+  import TaskExtra.{ allM, anyFailM, failM, successM }
 
-  final implicit def joinAnyTasks(in: Seq[Task[_]]): JoinTask[Any, Seq] =
-    joinTasks[Any](existToAny(in))
   final implicit def joinTasks[S](in: Seq[Task[S]]): JoinTask[S, Seq] = new JoinTask[S, Seq] {
     def join: Task[Seq[S]] =
       Task[Seq[S]](Info(), new Join(in, (s: Seq[Result[S]]) => Right(TaskExtra.all(s))))
@@ -289,6 +298,4 @@ object TaskExtra extends TaskExtra {
   // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
   private[sbt] def newInfo[A](info: Info[_]): Info[A] =
     Info[A](AttributeMap(info.attributes.entries.filter(_.key.label != "taskDefinitionKey")))
-
-  private[sbt] def existToAny(in: Seq[Task[_]]): Seq[Task[Any]] = in.asInstanceOf[Seq[Task[Any]]]
 }

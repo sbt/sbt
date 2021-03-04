@@ -31,31 +31,33 @@ private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable
   private[sbt] def reset(state: State): Unit = if (!isClosed.get) {
     uiThread.synchronized {
       val task = channel.makeUIThread(state)
-      def submit(): Thread = {
+      def submit(): Unit = {
         val thread: Thread = new Thread(s"sbt-$name-ui-thread") {
           setDaemon(true)
           override def run(): Unit =
             try task.run()
-            finally uiThread.get match {
-              case (_, t) if t == this => uiThread.set(null)
-              case _                   =>
+            finally {
+              uiThread.getAndSet(null) match {
+                case prev @ (_, th) if th != this => uiThread.set(prev)
+                case _                            =>
+              }
             }
         }
         uiThread.getAndSet((task, thread)) match {
           case null => thread.start()
-          case (task, t) if t.getClass != task.getClass =>
-            stopThreadImpl()
+          case (prevTask, prevThread) if prevTask.getClass != task.getClass =>
+            prevTask.close()
+            prevThread.joinFor(1.second)
             thread.start()
           case t => uiThread.set(t)
         }
-        thread
       }
       uiThread.get match {
-        case null                                  => uiThread.set((task, submit()))
-        case (t, _) if t.getClass == task.getClass =>
+        case null                                                => submit()
+        case (prevTask, _) if prevTask.getClass == task.getClass =>
         case (t, thread) =>
           stopThreadImpl()
-          uiThread.set((task, submit()))
+          submit()
       }
     }
     Option(lastProgressEvent.get).foreach(onProgressEvent)

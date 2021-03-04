@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import sbt.BasicCommandStrings._
 import sbt.Def._
 import sbt.Keys._
+import sbt.SlashSyntax0._
 import sbt.internal.Continuous.{ ContinuousState, FileStampRepository }
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState
@@ -116,7 +117,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
           case None    => StandardMain.exchange.run(s) -> ConsoleChannel.defaultName
         }
         val ws = ContinuousCommands.setupWatchState(channel, initialCount, commands, s1)
-        s"${ContinuousCommands.runWatch} $channel" :: ws
+        s"${ContinuousCommands.runWatch} $channel" :: s"${ContinuousCommands.waitWatch} $channel" :: ws
     }
 
   @deprecated("The input task version of watch is no longer available", "1.4.0")
@@ -379,18 +380,18 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         (settings.inputOptionsMessage, parser, alt)
       case _ =>
         val options =
-          extracted.getOpt(watchInputOptions in ThisBuild).getOrElse(Watch.defaultInputOptions)
+          extracted.getOpt((ThisBuild / watchInputOptions)).getOrElse(Watch.defaultInputOptions)
         val message = extracted
-          .getOpt(watchInputOptionsMessage in ThisBuild)
+          .getOpt((ThisBuild / watchInputOptionsMessage))
           .getOrElse(Watch.defaultInputOptionsMessage(options))
         val parser = extracted
-          .getOpt(watchInputParser in ThisBuild)
+          .getOpt((ThisBuild / watchInputParser))
           .getOrElse(Watch.defaultInputParser(options))
         val alt = extracted
-          .getOpt(watchInputStream in ThisBuild)
+          .getOpt((ThisBuild / watchInputStream))
           .map { _ =>
-            (watchInputStream in ThisBuild) -> extracted
-              .getOpt(watchInputHandler in ThisBuild)
+            (ThisBuild / watchInputStream) -> extracted
+              .getOpt((ThisBuild / watchInputHandler))
               .getOrElse(defaultInputHandler(parser))
           }
         (message, parser, alt)
@@ -425,7 +426,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       // Print the default watch message if there are multiple tasks
       if (configs.size > 1) {
         val onStartWatch =
-          extracted.getOpt(watchStartMessage in project).getOrElse(Watch.defaultStartWatch)
+          extracted.getOpt((project / watchStartMessage)).getOrElse(Watch.defaultStartWatch)
         onStartWatch(count, project, commands).foreach(logger.info(_))
       }
       res
@@ -442,7 +443,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   )(implicit extracted: Extracted): (Int => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
-      if (trackMetaBuild) extracted.getOpt(fileInputs in checkBuildSources).getOrElse(Nil)
+      if (trackMetaBuild) extracted.getOpt((checkBuildSources / fileInputs)).getOrElse(Nil)
       else Nil
 
     val retentionPeriod = configs.map(_.watchSettings.antiEntropyRetentionPeriod).max
@@ -783,11 +784,20 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
     executor => {
       val interrupted = new AtomicBoolean(false)
+      @tailrec def read(): Int = {
+        if (terminal.name.startsWith("network")) terminal.inputStream.read
+        else if (Terminal.canPollSystemIn || terminal.inputStream.available > 0)
+          terminal.inputStream.read
+        else {
+          Thread.sleep(50)
+          read()
+        }
+      }
       @tailrec def impl(): Option[Watch.Action] = {
         val action =
           try {
             interrupted.set(false)
-            terminal.inputStream.read match {
+            read() match {
               case -1   => throw new InterruptedException
               case 3    => Watch.CancelWatch // ctrl+c on windows
               case byte => inputHandler(byte.toChar.toString)
@@ -1032,9 +1042,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       lazy val taskScope = Project.fillTaskAxis(scopedKey).scope
       scopedKey.scope match {
         case scope if scope.task.toOption.isDefined =>
-          extracted.getOpt(settingKey in scope) orElse extracted.getOpt(settingKey in taskScope)
+          extracted.getOpt((scope / settingKey)) orElse extracted.getOpt((taskScope / settingKey))
         case scope =>
-          extracted.getOpt(settingKey in taskScope) orElse extracted.getOpt(settingKey in scope)
+          extracted.getOpt((taskScope / settingKey)) orElse extracted.getOpt((scope / settingKey))
       }
     }
 
@@ -1054,12 +1064,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       lazy val taskScope = Project.fillTaskAxis(scopedKey).scope
       scopedKey.scope match {
         case scope if scope.task.toOption.isDefined =>
-          if (extracted.getOpt(taskKey in scope).isDefined) Some(taskKey in scope)
-          else if (extracted.getOpt(taskKey in taskScope).isDefined) Some(taskKey in taskScope)
+          if (extracted.getOpt((scope / taskKey)).isDefined) Some((scope / taskKey))
+          else if (extracted.getOpt((taskScope / taskKey)).isDefined) Some((taskScope / taskKey))
           else None
         case scope =>
-          if (extracted.getOpt(taskKey in taskScope).isDefined) Some(taskKey in taskScope)
-          else if (extracted.getOpt(taskKey in scope).isDefined) Some(taskKey in scope)
+          if (extracted.getOpt((taskScope / taskKey)).isDefined) Some((taskScope / taskKey))
+          else if (extracted.getOpt((scope / taskKey)).isDefined) Some((scope / taskKey))
           else None
       }
     }
@@ -1270,7 +1280,7 @@ private[sbt] object ContinuousCommands {
       case None => state
       case Some(cs) =>
         val pre = StashOnFailure :: s"$preWatch $channel" :: Nil
-        val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: s"$waitWatch $channel" :: Nil
+        val post = FailureWall :: PopOnFailure :: s"$postWatch $channel" :: Nil
         pre ::: cs.commands.toList ::: post ::: state
     }
   }
@@ -1335,8 +1345,7 @@ private[sbt] object ContinuousCommands {
   private[sbt] val postWatchCommand = watchCommand(postWatch) { (channel, state) =>
     val cs = watchState(state, channel)
     StandardMain.exchange.channelForName(channel).foreach { c =>
-      c.terminal.setPrompt(Prompt.Watch)
-      c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+      c.terminal.setPrompt(Prompt.Pending)
     }
     val postState = state.get(watchStates) match {
       case None     => state
@@ -1351,7 +1360,10 @@ private[sbt] object ContinuousCommands {
         cs.callbacks.onExit()
         StandardMain.exchange
           .channelForName(channel)
-          .foreach(_.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel)))))
+          .foreach { c =>
+            c.terminal.setPrompt(Prompt.Pending)
+            c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+          }
         afterWatchState.get(watchStates) match {
           case None    => afterWatchState
           case Some(w) => afterWatchState.put(watchStates, w - channel)

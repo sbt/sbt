@@ -14,15 +14,22 @@ import sbt.internal.util.complete.DefaultParsers.validID
 import sbt.internal.util.Types.some
 import sbt.internal.util.{ AttributeKey, Relation }
 import sbt.librarymanagement.Configuration
+import scala.annotation.nowarn
 
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
+
+  @nowarn
   def apply(
       known: Iterable[ScopedKey[_]],
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
-  ): ExtendableKeyIndex =
+  ): ExtendableKeyIndex = {
+    import sbt.internal.CompatParColls.Converters._
     known.par.foldLeft(base(projects, configurations)) { _ add _ }
+  }
+
+  @nowarn
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],
@@ -37,6 +44,7 @@ object KeyIndex {
      * This was a significant serial bottleneck during project loading that we can work around by
      * computing the aggregations in parallel and then bulk adding them to the index.
      */
+    import sbt.internal.CompatParColls.Converters._
     val toAggregate = known.par.map {
       case key if validID(key.key.label) =>
         Aggregation.aggregate(key, ScopeMask(), extra, reverse = true)
@@ -92,6 +100,7 @@ object KeyIndex {
   private[sbt] val emptyConfigIndex = new ConfigIndex(Map.empty, Map.empty, emptyAKeyIndex)
   private[sbt] val emptyProjectIndex = new ProjectIndex(Map.empty)
   private[sbt] val emptyBuildIndex = new BuildIndex(Map.empty)
+
 }
 import KeyIndex._
 
@@ -188,6 +197,7 @@ private[sbt] final class ConfigIndex(
   }
 
   def configs: Set[String] = data.keySet
+  private[sbt] lazy val idents: Set[String] = configIdentToName.keySet
 
   // guess Configuration name from an identifier.
   // There's a guessing involved because we could have scoped key that Project is not aware of.
@@ -195,6 +205,7 @@ private[sbt] final class ConfigIndex(
     configIdentToName.getOrElse(ident, Scope.unguessConfigIdent(ident))
 }
 private[sbt] object ConfigIndex
+
 private[sbt] final class ProjectIndex(val data: Map[Option[String], ConfigIndex]) {
   def add(
       id: Option[String],
@@ -228,7 +239,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
   def configs(project: Option[ResolvedReference]): Set[String] = confIndex(project).configs
 
   private[sbt] def configIdents(project: Option[ResolvedReference]): Set[String] =
-    confIndex(project).configs
+    confIndex(project).idents
 
   private[sbt] def fromConfigIdent(proj: Option[ResolvedReference])(configIdent: String): String =
     confIndex(proj).fromConfigIdent(configIdent)

@@ -14,6 +14,7 @@ import Project._
 import BasicKeys.serverLogLevel
 import Keys.{
   stateBuildStructure,
+  bspEnabled,
   colorShellPrompt,
   commands,
   configuration,
@@ -27,6 +28,7 @@ import Keys.{
   serverIdleTimeout,
   serverLog,
   serverPort,
+  serverUseJni,
   serverAuthentication,
   serverConnectionType,
   fullServerHandlers,
@@ -34,6 +36,7 @@ import Keys.{
   windowsServerSecurityLevel,
 }
 import Scope.{ Global, ThisScope }
+import sbt.SlashSyntax0._
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
   Load,
@@ -477,7 +480,15 @@ object Project extends ProjectExtra {
     previousOnUnload(s.runExitHooks())
   }
 
-  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State = {
+  def setProject(session: SessionSettings, structure: BuildStructure, s: State): State =
+    setProject(session, structure, s, identity)
+
+  def setProject(
+      session: SessionSettings,
+      structure: BuildStructure,
+      s: State,
+      preOnLoad: State => State
+  ): State = {
     val unloaded = runUnloadHooks(s)
     val (onLoad, onUnload) = getHooks(structure.data)
     val newAttrs = unloaded.attributes
@@ -487,14 +498,14 @@ object Project extends ProjectExtra {
     val newState = unloaded.copy(attributes = newAttrs)
     // TODO: Fix this
     onLoad(
-      updateCurrent(newState) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
+      preOnLoad(updateCurrent(newState)) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
     )
   }
 
   def orIdentity[T](opt: Option[T => T]): T => T = opt getOrElse idFun
 
   def getHook[T](key: SettingKey[T => T], data: Settings[Scope]): T => T =
-    orIdentity(key in Global get data)
+    orIdentity((Global / key) get data)
 
   def getHooks(data: Settings[Scope]): (State => State, State => State) =
     (getHook(Keys.onLoad, data), getHook(Keys.onUnload, data))
@@ -505,34 +516,38 @@ object Project extends ProjectExtra {
     val structure = Project.structure(s)
     val ref = Project.current(s)
     Load.getProject(structure.units, ref.build, ref.project)
-    val msg = Keys.onLoadMessage in ref get structure.data getOrElse ""
+    val msg = (ref / Keys.onLoadMessage) get structure.data getOrElse ""
     if (!msg.isEmpty) s.log.info(msg)
-    def get[T](k: SettingKey[T]): Option[T] = k in ref get structure.data
-    def commandsIn(axis: ResolvedReference) = commands in axis get structure.data toList
+    def get[T](k: SettingKey[T]): Option[T] = (ref / k) get structure.data
+    def commandsIn(axis: ResolvedReference) = (axis / commands) get structure.data toList
 
-    val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ (commands in Global get structure.data toList)
+    val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ ((Global / commands) get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
     val newPrompt = get(colorShellPrompt)
-    val trs = (templateResolverInfos in Global get structure.data).toList.flatten
+    val trs = ((Global / templateResolverInfos) get structure.data).toList.flatten
     val startSvr: Option[Boolean] = get(autoStartServer)
     val host: Option[String] = get(serverHost)
     val port: Option[Int] = get(serverPort)
+    val enabledBsp: Option[Boolean] = get(bspEnabled)
     val timeout: Option[Option[FiniteDuration]] = get(serverIdleTimeout)
     val authentication: Option[Set[ServerAuthentication]] = get(serverAuthentication)
     val connectionType: Option[ConnectionType] = get(serverConnectionType)
-    val srvLogLevel: Option[Level.Value] = (logLevel in (ref, serverLog)).get(structure.data)
-    val hs: Option[Seq[ServerHandler]] = get(fullServerHandlers in ThisBuild)
+    val srvLogLevel: Option[Level.Value] = (ref / serverLog / logLevel).get(structure.data)
+    val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
     val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
     val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(
       s.definedCommands,
       projectCommand
     )
     val winSecurityLevel = get(windowsServerSecurityLevel).getOrElse(2)
+    val useJni = get(serverUseJni).getOrElse(false)
     val newAttrs =
       s.attributes
         .put(historyPath.key, history)
         .put(windowsServerSecurityLevel.key, winSecurityLevel)
+        .put(serverUseJni.key, useJni)
+        .setCond(bspEnabled.key, enabledBsp)
         .setCond(autoStartServer.key, startSvr)
         .setCond(serverPort.key, port)
         .setCond(serverHost.key, host)
@@ -569,7 +584,7 @@ object Project extends ProjectExtra {
   private[this] def overlappingTargets(
       targets: Seq[(ProjectRef, File)]
   ): Map[File, Seq[ProjectRef]] =
-    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1))
+    targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
 
   private[this] def allTargets(data: Settings[Scope]): Seq[(ProjectRef, File)] = {
     import ScopeFilter._

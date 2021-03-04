@@ -12,7 +12,7 @@ package server
 import java.net.URI
 import java.nio.file._
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
@@ -259,6 +259,7 @@ private[sbt] object Definition {
     result.future
   }
 
+  @nowarn
   def lspDefinition(
       jsonDefinition: JValue,
       requestId: String,
@@ -287,6 +288,7 @@ private[sbt] object Definition {
         log.debug(s"symbol $sym")
         analyses
           .map { analyses =>
+            import sbt.internal.CompatParColls.Converters._
             val locations = analyses.par.flatMap { analysis =>
               val selectPotentials = textProcessor.potentialClsOrTraitOrObj(sym)
               val classes =

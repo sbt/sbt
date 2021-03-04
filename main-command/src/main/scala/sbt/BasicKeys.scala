@@ -9,13 +9,13 @@ package sbt
 
 import java.io.File
 
-import com.github.ghik.silencer.silent
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
 import sbt.util.Level
+import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 
 object BasicKeys {
@@ -41,7 +41,7 @@ object BasicKeys {
     "The function that constructs the command prompt from the current build state for a given terminal.",
     10000
   )
-  @silent val watch =
+  @nowarn val watch =
     AttributeKey[Watched]("watched", "Continuous execution configuration.", 1000)
   val serverPort =
     AttributeKey[Int]("server-port", "The port number used by server command.", 10000)
@@ -83,11 +83,24 @@ object BasicKeys {
       "Configures the security level of the named pipe. Values: 0 - No security; 1 - Logon user only; 2 - Process owner only",
       10000
     )
+  val serverUseJni =
+    AttributeKey[Boolean](
+      "serverUseJni",
+      "Toggles whether to use the jna or jni implementation in ipcsocket.",
+      10000
+    )
 
   val serverIdleTimeout =
     AttributeKey[Option[FiniteDuration]](
       "serverIdleTimeOut",
       "If set to a defined value, sbt server will exit if it goes at least the specified duration without receiving any commands.",
+      10000
+    )
+
+  val bspEnabled =
+    AttributeKey[Boolean](
+      "bspEnabled",
+      "Enable/Disable BSP for this build, project or configuration",
       10000
     )
 

@@ -11,10 +11,10 @@ final class InitCommand private (
   
   private def this(token: Option[String], execId: Option[String]) = this(token, execId, None)
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: InitCommand => (this.token == x.token) && (this.execId == x.execId) && (this.skipAnalysis == x.skipAnalysis)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.protocol.InitCommand".##) + token.##) + execId.##) + skipAnalysis.##)
   }

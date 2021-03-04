@@ -11,6 +11,7 @@ package internal
 import java.io.File
 import java.util.concurrent.Callable
 
+import sbt.SlashSyntax0._
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
@@ -19,6 +20,7 @@ import sbt.io.IO
 import sbt.io.syntax._
 import sbt.Project.richInitializeTask
 import sjsonnew.JsonFormat
+import scala.compat.Platform.EOL
 
 private[sbt] object LibraryManagement {
   implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
@@ -36,7 +38,11 @@ private[sbt] object LibraryManagement {
       force: Boolean,
       depsUpdated: Boolean,
       uwConfig: UnresolvedWarningConfiguration,
-      ewo: EvictionWarningOptions,
+      evictionLevel: Level.Value,
+      versionSchemeOverrides: Seq[ModuleID],
+      assumedEvictionErrorLevel: Level.Value,
+      assumedVersionScheme: String,
+      assumedVersionSchemeJava: String,
       mavenStyle: Boolean,
       compatWarning: CompatibilityWarningOptions,
       includeCallers: Boolean,
@@ -61,9 +67,33 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val ew = EvictionWarning(module, ewo, report1)
-      ew.lines.foreach(log.warn(_))
-      ew.infoAllTheThings.foreach(log.info(_))
+      val evictionError = EvictionError(
+        report1,
+        module,
+        versionSchemeOverrides,
+        assumedVersionScheme,
+        assumedVersionSchemeJava,
+        assumedEvictionErrorLevel
+      )
+      def extraLines = List(
+        "",
+        "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
+      )
+      val errorLines: Seq[String] =
+        (if (evictionError.incompatibleEvictions.isEmpty
+             || evictionLevel != Level.Error) Nil
+         else evictionError.lines) ++
+          (if (evictionError.assumedIncompatibleEvictions.isEmpty
+               || assumedEvictionErrorLevel != Level.Error) Nil
+           else evictionError.toAssumedLines)
+      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(EOL))
+      else {
+        if (evictionError.incompatibleEvictions.isEmpty) ()
+        else evictionError.lines.foreach(log.log(evictionLevel, _: String))
+
+        if (evictionError.assumedIncompatibleEvictions.isEmpty) ()
+        else evictionError.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+      }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
       report2
@@ -236,7 +266,7 @@ private[sbt] object LibraryManagement {
         val updateConf = {
           import UpdateLogging.{ Full, DownloadOnly, Default }
           val conf = updateConfiguration.value
-          val maybeUpdateLevel = (logLevel in update).?.value
+          val maybeUpdateLevel = (update / logLevel).?.value
           val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
             case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
             case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
@@ -245,11 +275,6 @@ private[sbt] object LibraryManagement {
           // logical clock is folded into UpdateConfiguration
           conf1.withLogicalClock(LogicalClock(state0.hashCode))
         }
-        val evictionOptions = Def.taskDyn {
-          if (executionRoots.value.exists(_.key == evicted.key))
-            Def.task(EvictionWarningOptions.empty)
-          else Def.task((evictionWarningOptions in update).value)
-        }.value
         cachedUpdate(
           // LM API
           lm = lm,
@@ -259,11 +284,15 @@ private[sbt] object LibraryManagement {
           Reference.display(thisProjectRef.value),
           updateConf,
           identity,
-          skip = (skip in update).value,
+          skip = (update / skip).value,
           force = shouldForce,
           depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-          uwConfig = (unresolvedWarningConfiguration in update).value,
-          ewo = evictionOptions,
+          uwConfig = (update / unresolvedWarningConfiguration).value,
+          evictionLevel = Level.Debug,
+          versionSchemeOverrides = Nil,
+          assumedEvictionErrorLevel = Level.Debug,
+          assumedVersionScheme = VersionScheme.Always,
+          assumedVersionSchemeJava = VersionScheme.Always,
           mavenStyle = publishMavenStyle.value,
           compatWarning = compatibilityWarningOptions.value,
           includeCallers = false,
@@ -282,7 +311,7 @@ private[sbt] object LibraryManagement {
         val app = appConfiguration.value
         val srcTypes = sourceArtifactTypes.value
         val docTypes = docArtifactTypes.value
-        val uwConfig = (unresolvedWarningConfiguration in update).value
+        val uwConfig = (update / unresolvedWarningConfiguration).value
         val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
         withExcludes(out, mod.classifiers, lock(app)) { excludes =>
           lm.updateClassifiers(
@@ -307,17 +336,11 @@ private[sbt] object LibraryManagement {
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
   ): UpdateReport = {
-    import sjsonnew.shaded.scalajson.ast.unsafe.JValue
     import sbt.librarymanagement.LibraryManagementCodec._
     import sbt.util.FileBasedStore
-    implicit val isoString: sjsonnew.IsoString[JValue] =
-      sjsonnew.IsoString.iso(
-        sjsonnew.support.scalajson.unsafe.CompactPrinter.apply,
-        sjsonnew.support.scalajson.unsafe.Parser.parseUnsafe
-      )
     val exclName = "exclude_classifiers"
     val file = out / exclName
-    val store = new FileBasedStore(file, sjsonnew.support.scalajson.unsafe.Converter)
+    val store = new FileBasedStore(file)
     lock(
       out / (exclName + ".lock"),
       new Callable[UpdateReport] {
@@ -334,7 +357,11 @@ private[sbt] object LibraryManagement {
             .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
           IvyActions
-            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
+            .addExcluded(
+              report,
+              classifiers.toVector,
+              allExcludes.mapValues(_.map(_.name).toSet).toMap
+            )
         }
       }
     )

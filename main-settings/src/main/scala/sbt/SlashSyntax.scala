@@ -9,6 +9,7 @@ package sbt
 
 import sbt.librarymanagement.Configuration
 import sbt.internal.util.AttributeKey
+import scala.annotation.nowarn
 
 /**
  * SlashSyntax implements the slash syntax to scope keys for build.sbt DSL.
@@ -60,19 +61,25 @@ object SlashSyntax {
 
   sealed trait HasSlashKey {
     protected def scope: Scope
+    @nowarn
     final def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
   }
 
   sealed trait HasSlashKeyOrAttrKey extends HasSlashKey {
+    @nowarn
     final def /(key: AttributeKey[_]): RichScope = new RichScope(scope in key)
   }
 
   /** RichReference wraps a reference to provide the `/` operator for scoping. */
   final class RichReference(protected val scope: Scope) extends HasSlashKeyOrAttrKey {
+    @nowarn
     def /(c: ConfigKey): RichConfiguration = new RichConfiguration(scope in c)
+
+    @nowarn
     def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
     // This is for handling `Zero / Zero / name`.
+    @nowarn
     def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
       new RichConfiguration(scope.copy(config = configAxis))
   }
@@ -85,7 +92,7 @@ object SlashSyntax {
   }
 
   /** RichScope wraps a general scope to provide the `/` operator for scoping. */
-  final class RichScope(protected val scope: Scope) extends HasSlashKey
+  final class RichScope(protected val scope: Scope) extends HasSlashKeyOrAttrKey
 
 }
 

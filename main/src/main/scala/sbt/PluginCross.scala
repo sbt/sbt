@@ -12,16 +12,19 @@ import DefaultParsers._
 import sbt.Keys._
 import Scope.GlobalScope
 import Def.ScopedKey
+import sbt.SlashSyntax0._
 import sbt.internal.Load
 import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
 import sbt.librarymanagement.VersionNumber
 import Project.inScope
+import scala.annotation.nowarn
 
 /**
  * Module responsible for plugin cross building.
  */
 private[sbt] object PluginCross {
+  @nowarn
   lazy val pluginSwitch: Command = {
     def switchParser(state: State): Parser[(String, String)] = {
       lazy val switchArgs = token(NotSpace.examples()) ~ (token(
@@ -68,14 +71,14 @@ private[sbt] object PluginCross {
     def crossVersions(state: State): List[String] = {
       val x = Project.extract(state)
       import x._
-      ((crossSbtVersions in currentRef) get structure.data getOrElse Nil).toList
+      ((currentRef / crossSbtVersions) get structure.data getOrElse Nil).toList
     }
     Command.arb(requireSession(crossParser), pluginCrossHelp) {
       case (state, command) =>
         val x = Project.extract(state)
         import x._
         val versions = crossVersions(state)
-        val current = (sbtVersion in pluginCrossBuild)
+        val current = (pluginCrossBuild / sbtVersion)
           .get(structure.data)
           .map(PluginSwitchCommand + " " + _)
           .toList
@@ -86,7 +89,7 @@ private[sbt] object PluginCross {
 
   def scalaVersionSetting: Def.Initialize[String] = Def.setting {
     val scalaV = scalaVersion.value
-    val sv = (sbtBinaryVersion in pluginCrossBuild).value
+    val sv = (pluginCrossBuild / sbtBinaryVersion).value
     val isPlugin = sbtPlugin.value
     if (isPlugin) scalaVersionFromSbtBinaryVersion(sv)
     else scalaV
@@ -96,7 +99,7 @@ private[sbt] object PluginCross {
     VersionNumber(sv) match {
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.7"
-      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.12"
+      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.13"
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
     }
 }

@@ -20,10 +20,10 @@ final class CompileReport private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: CompileReport => (this.target == x.target) && (this.originId == x.originId) && (this.errors == x.errors) && (this.warnings == x.warnings) && (this.time == x.time)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.CompileReport".##) + target.##) + originId.##) + errors.##) + warnings.##) + time.##)
   }

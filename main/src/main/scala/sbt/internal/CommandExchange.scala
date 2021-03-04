@@ -51,7 +51,6 @@ private[sbt] final class CommandExchange {
   private var server: Option[ServerInstance] = None
   private val firstInstance: AtomicBoolean = new AtomicBoolean(true)
   private val monitoringActiveJson: AtomicBoolean = new AtomicBoolean(false)
-  private var consoleChannel: Option[ConsoleChannel] = None
   private val commandQueue: LinkedBlockingQueue[Exec] = new LinkedBlockingQueue[Exec]
   private val channelBuffer: ListBuffer[CommandChannel] = new ListBuffer()
   private val channelBufferLock = new AnyRef {}
@@ -60,6 +59,7 @@ private[sbt] final class CommandExchange {
   private[this] val lastState = new AtomicReference[State]
   private[this] val currentExecRef = new AtomicReference[Exec]
   private[sbt] def hasServer = server.isDefined
+  addConsoleChannel()
 
   def channels: List[CommandChannel] = channelBuffer.toList
 
@@ -141,11 +141,9 @@ private[sbt] final class CommandExchange {
   }
 
   private def addConsoleChannel(): Unit =
-    if (consoleChannel.isEmpty) {
+    if (!Terminal.startedByRemoteClient) {
       val name = ConsoleChannel.defaultName
-      val console0 = new ConsoleChannel(name, mkAskUser(name))
-      consoleChannel = Some(console0)
-      subscribe(console0)
+      subscribe(new ConsoleChannel(name, mkAskUser(name)))
     }
   def run(s: State): State = run(s, s.get(autoStartServer).getOrElse(true))
   def run(s: State, autoStart: Boolean): State = {
@@ -160,9 +158,11 @@ private[sbt] final class CommandExchange {
     channelBufferLock.synchronized {
       Util.ignoreResult(channelBuffer -= c)
     }
-    commandQueue.removeIf(_.source.map(_.channelName) == Some(c.name))
+    commandQueue.removeIf { e =>
+      e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
+    }
     currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
@@ -189,6 +189,8 @@ private[sbt] final class CommandExchange {
     lazy val connectionType = s.get(serverConnectionType).getOrElse(ConnectionType.Tcp)
     lazy val handlers = s.get(fullServerHandlers).getOrElse(Nil)
     lazy val win32Level = s.get(windowsServerSecurityLevel).getOrElse(2)
+    lazy val useJni = s.get(serverUseJni).getOrElse(false)
+    lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
@@ -223,6 +225,8 @@ private[sbt] final class CommandExchange {
         pipeName,
         s.configuration,
         win32Level,
+        useJni,
+        enableBsp,
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
@@ -400,7 +404,6 @@ private[sbt] final class CommandExchange {
           .withChannelName(currentExec.flatMap(_.source.map(_.channelName)))
       case _ => pe
     }
-    if (channels.isEmpty) addConsoleChannel()
     channels.foreach(c => ProgressState.updateProgressState(newPE, c.terminal))
   }
 
@@ -448,7 +451,7 @@ private[sbt] final class CommandExchange {
       terminal.write(13, 13, 13, 4)
       terminal.printStream.println("\nconsole session killed by remote sbt client")
     } else {
-      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0")))
+      Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
     }
   }
 

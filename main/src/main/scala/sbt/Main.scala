@@ -33,7 +33,7 @@ import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
 import xsbti.compile.CompilerCache
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
@@ -64,10 +64,6 @@ private[sbt] object xMain {
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       import sbt.internal.client.NetworkClient
 
-      val bootServerSocket = getSocketOrExit(configuration) match {
-        case (_, Some(e)) => return e
-        case (s, _)       => s
-      }
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments
@@ -75,17 +71,22 @@ private[sbt] object xMain {
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+        case (_, Some(e)) => return e
+        case (s, _)       => s
+      }
+      else None
       if (userCommands.exists(isBsp)) {
         BspClient.run(dealiasBaseDirectory(configuration))
       } else {
         bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
-        ITerminal.withStreams(true) {
+        val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
+        ITerminal.withStreams(true, isSubProcess = detachStdio) {
           if (clientModByEnv || userCommands.exists(isClient)) {
             val args = userCommands.toList.filterNot(isClient)
-            NetworkClient.run(dealiasBaseDirectory(configuration), args)
-            Exit(0)
+            Exit(NetworkClient.run(dealiasBaseDirectory(configuration), args))
           } else {
-            val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
@@ -135,6 +136,7 @@ private[sbt] object xMain {
       case _: ServerAlreadyBootingException =>
         if (SysProp.forceServerStart) (None, None)
         else (None, Some(Exit(2)))
+      case _: UnsatisfiedLinkError => (None, None)
     }
 }
 
@@ -276,7 +278,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,
@@ -944,13 +946,17 @@ object BuiltinCommands {
 
     val session = Load.initialSession(structure, eval, s0)
     SessionSettings.checkSession(session, s2)
-    val s3 = addCacheStoreFactoryFactory(Project.setProject(session, structure, s2))
+    val s3 = Project.setProject(
+      session,
+      structure,
+      s2,
+      st => setupGlobalFileTreeRepository(addCacheStoreFactoryFactory(st))
+    )
     val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
-    val s5 = setupGlobalFileTreeRepository(s4)
     // This is a workaround for the console task in dotty which uses the classloader cache.
     // We need to override the top loader in that case so that it gets the forked jline.
-    s5.extendedClassLoaderCache.setParent(Project.extract(s5).get(Keys.scalaInstanceTopLoader))
-    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s5)))
+    s4.extendedClassLoaderCache.setParent(Project.extract(s4).get(Keys.scalaInstanceTopLoader))
+    addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s4)))
   }
 
   private val setupGlobalFileTreeRepository: State => State = { state =>
@@ -997,13 +1003,22 @@ object BuiltinCommands {
       val exchange = StandardMain.exchange
       exchange.channelForName(channel) match {
         case Some(c) if ContinuousCommands.isInWatch(s0, c) =>
-          c.prompt(ConsolePromptEvent(s0))
+          if (c.terminal.prompt != Prompt.Watch) {
+            c.terminal.setPrompt(Prompt.Watch)
+            c.prompt(ConsolePromptEvent(s0))
+          } else if (c.terminal.isSupershellEnabled) {
+            c.terminal.printStream.print(ConsoleAppender.ClearScreenAfterCursor)
+            c.terminal.printStream.flush()
+          }
+
           val s1 = exchange.run(s0)
           val exec: Exec = getExec(s1, Duration.Inf)
-          val remaining: List[Exec] =
-            Exec(s"${ContinuousCommands.waitWatch} $channel", None) ::
-              Exec(FailureWall, None) :: s1.remainingCommands
-          val newState = s1.copy(remainingCommands = exec +: remaining)
+          val wait = s"${ContinuousCommands.waitWatch} $channel"
+          val onFailure =
+            s1.onFailure.map(of => if (of.commandLine == Shell) of.withCommandLine(wait) else of)
+          val waitExec = Exec(wait, None)
+          val remaining: List[Exec] = Exec(FailureWall, None) :: waitExec :: s1.remainingCommands
+          val newState = s1.copy(remainingCommands = exec +: remaining, onFailure = onFailure)
           if (exec.commandLine.trim.isEmpty) newState
           else newState.clearGlobalLog
         case _ => s0
@@ -1074,7 +1089,7 @@ object BuiltinCommands {
     }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
-  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir

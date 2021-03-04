@@ -1,0 +1,15 @@
+> rc1 / doc
+
+# there shouldn't be two api/ directories
+# see https://github.com/lampepfl/dotty/issues/11412
+$ exists rc1/target/scala-3.0.0-RC1/api/api/index.html
+$ exists rc1/target/scala-3.0.0-RC1/api/api/foo/A$.html
+$ exists rc1/target/scala-3.0.0-RC1/api/api/foo.html
+
+> m3 / doc
+
+# there shouldn't be two api/ directories
+# see https://github.com/lampepfl/dotty/issues/11412
+$ exists m3/target/scala-3.0.0-M3/api/index.html
+$ exists m3/target/scala-3.0.0-M3/api/api/foo/A$.html
+$ exists m3/target/scala-3.0.0-M3/api/api/foo.html

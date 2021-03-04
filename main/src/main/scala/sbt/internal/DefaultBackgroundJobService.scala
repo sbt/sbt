@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
 import sbt.Def.{ Classpath, ScopedKey, Setting }
 import sbt.Scope.GlobalScope
+import sbt.SlashSyntax0._
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.util.{ Attributed, ManagedLogger }
 import sbt.io.syntax._
@@ -179,11 +180,15 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
 
   override final def close(): Unit = shutdown()
   override def shutdown(): Unit = {
-    while (jobSet.nonEmpty) {
+    val deadline = 10.seconds.fromNow
+    while (jobSet.nonEmpty && !deadline.isOverdue) {
       jobSet.headOption.foreach {
         case handle: ThreadJobHandle @unchecked =>
-          handle.job.shutdown()
-          handle.job.awaitTerminationTry(10.seconds)
+          if (handle.job.isRunning) {
+            handle.job.shutdown()
+            handle.job.awaitTerminationTry(10.seconds)
+          }
+          jobSet = jobSet - handle
         case _ => //
       }
     }
@@ -510,9 +515,9 @@ private[sbt] object DefaultBackgroundJobService {
     backgroundJobServices.clear()
   }
   private[sbt] lazy val backgroundJobServiceSetting: Setting[_] =
-    (Keys.bgJobService in GlobalScope) := {
-      val path = (sbt.Keys.bgJobServiceDirectory in GlobalScope).value
-      val useLog4J = (Keys.useLog4J in GlobalScope).value
+    (GlobalScope / Keys.bgJobService) := {
+      val path = (GlobalScope / sbt.Keys.bgJobServiceDirectory).value
+      val useLog4J = (GlobalScope / Keys.useLog4J).value
       val newService = new DefaultBackgroundJobService(path, useLog4J)
       backgroundJobServices.putIfAbsent(path, newService) match {
         case null => newService
@@ -522,7 +527,7 @@ private[sbt] object DefaultBackgroundJobService {
       }
     }
   private[sbt] lazy val backgroundJobServiceSettings: Seq[Def.Setting[_]] = Def.settings(
-    Keys.bgJobServiceDirectory in GlobalScope := {
+    (GlobalScope / Keys.bgJobServiceDirectory) := {
       sbt.Keys.appConfiguration.value.baseDirectory / "target" / "bg-jobs"
     },
     backgroundJobServiceSetting

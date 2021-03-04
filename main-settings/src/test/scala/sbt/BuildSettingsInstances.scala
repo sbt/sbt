@@ -26,6 +26,7 @@ import sbt.ConfigKey
 import sbt.librarymanagement.syntax._
 import sbt.{ InputKey, SettingKey, TaskKey }
 import sbt.internal.util.{ AttributeKey, AttributeMap }
+import scala.annotation.nowarn
 
 object BuildSettingsInstances {
   val genFile: Gen[File] = Gen.oneOf(new File("."), new File("/tmp")) // for now..
@@ -99,6 +100,7 @@ object BuildSettingsInstances {
   def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = genLabel map (x => SettingKey[A](x.value))
   def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = genLabel map (x => TaskKey[A](x.value))
 
+  @nowarn
   def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] = Arbitrary {
     Gen.frequency(
       5 -> keyGen,

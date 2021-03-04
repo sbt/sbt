@@ -23,6 +23,7 @@ import sbt.nio.file.{ AllPass, FileAttributes, Glob, RecursiveGlob }
 import sbt.std.TaskExtra._
 import sjsonnew.JsonFormat
 
+import scala.annotation.nowarn
 import scala.collection.immutable.VectorBuilder
 
 private[sbt] object Settings {
@@ -62,6 +63,7 @@ private[sbt] object Settings {
    * @param fileOutputScopes the set of scopes for which the fileOutputs setting is defined
    * @return the injected settings
    */
+  @nowarn
   private[this] def maybeAddOutputsAndFileStamps(
       setting: Def.Setting[_],
       fileOutputScopes: Set[Scope]
@@ -103,6 +105,8 @@ private[sbt] object Settings {
       case _ => Nil
     }
   }
+
+  @nowarn
   private[sbt] val inject: Def.ScopedKey[_] => Seq[Def.Setting[_]] = scopedKey =>
     scopedKey.key match {
       case transitiveDynamicInputs.key =>
@@ -137,6 +141,7 @@ private[sbt] object Settings {
    * @return a task definition that retrieves the file input files and their attributes scoped
    *         to a particular task.
    */
+  @nowarn
   private[sbt] def inputPathSettings(setting: Def.Setting[_]): Seq[Def.Setting[_]] = {
     val scopedKey = setting.key
     val scope = scopedKey.scope
@@ -167,6 +172,7 @@ private[sbt] object Settings {
    * @param scope the key whose file inputs we are seeking
    * @return a task definition that retrieves all of the input paths scoped to the input key.
    */
+  @nowarn
   private[this] def allFilesImpl(scope: Scope): Def.Setting[_] = {
     addTaskDefinition(Keys.allInputFiles in scope := {
       val filter =
@@ -186,6 +192,7 @@ private[sbt] object Settings {
    * @param scope the scope corresponding to the task whose fileInputs we are seeking
    * @return a task definition that retrieves the changed input files scoped to the key.
    */
+  @nowarn
   private[this] def changedInputFilesImpl(scope: Scope): List[Def.Setting[_]] =
     changedFilesImpl(scope, changedInputFiles, inputFileStamps) ::
       (watchForceTriggerOnAnyChange in scope := {
@@ -194,6 +201,8 @@ private[sbt] object Settings {
           case None    => false
         }
       }) :: Nil
+
+  @nowarn
   private[this] def changedFilesImpl(
       scope: Scope,
       changeKey: TaskKey[Seq[(Path, FileStamp)] => FileChanges],
@@ -241,6 +250,7 @@ private[sbt] object Settings {
    * @param scope the scope to add the custom clean
    * @return a task specific clean implementation
    */
+  @nowarn
   private[sbt] def cleanImpl(scope: Scope): Def.Setting[_] = addTaskDefinition {
     sbt.Keys.clean in scope := Clean.task(scope, full = false).value
   }
@@ -251,6 +261,7 @@ private[sbt] object Settings {
    * @param taskKey the task for which we add a custom clean implementation
    * @return a task specificic clean implementation
    */
+  @nowarn
   private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Def.Setting[_] = {
     val taskScope = taskKey.scope in taskKey.key
     addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
@@ -269,7 +280,9 @@ private[sbt] object Settings {
    * @return a task definition that retrieves the input files and their file stamps scoped to the
    *         input key.
    */
+  @nowarn
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] = {
+    import sbt.internal.CompatParColls.Converters._
     val scope = scopedKey.scope
     addTaskDefinition(Keys.inputFileStamps in scope := {
       val cache = (unmanagedFileStampCache in scope).value
@@ -296,6 +309,7 @@ private[sbt] object Settings {
     })
   }
 
+  @nowarn
   private[this] def outputsAndStamps[T: JsonFormat: ToSeqPath](
       taskKey: TaskKey[T]
   ): List[Def.Setting[_]] = {
@@ -303,6 +317,8 @@ private[sbt] object Settings {
     val changes = changedFilesImpl(scope, changedOutputFiles, outputFileStamps) :: Nil
     allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(taskKey) :: changes
   }
+
+  @nowarn
   private[this] def allOutputPathsImpl(scope: Scope): Def.Setting[_] =
     addTaskDefinition(allOutputFiles in scope := {
       val filter =
@@ -328,6 +344,8 @@ private[sbt] object Settings {
         fileOutputGlobs.exists(_.matches(p)) || !attributeFilter(p)
       }
     })
+
+  @nowarn
   private[this] def outputFileStampsImpl(scope: Scope): Def.Setting[_] =
     addTaskDefinition(outputFileStamps in scope := {
       val stamper: Path => Option[FileStamp] = (outputFileStamper in scope).value match {

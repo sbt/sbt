@@ -30,8 +30,10 @@ import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 
+// import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
+import scala.annotation.nowarn
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -78,10 +80,18 @@ object BuildServerProtocol {
   )
 
   lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
-    bspConfig := BuildServerConnection.writeConnectionFile(
-      sbtVersion.value,
-      (ThisBuild / baseDirectory).value
-    ),
+    bspConfig := {
+      if (bspEnabled.value) {
+        BuildServerConnection.writeConnectionFile(
+          sbtVersion.value,
+          (ThisBuild / baseDirectory).value
+        )
+      } else {
+        val logger = streams.value.log
+        logger.warn("BSP is disabled for this build")
+        logger.info("add 'Global / bspEnabled := true' to enable BSP")
+      }
+    },
     bspEnabled := true,
     bspWorkspace := bspWorkspaceSetting.value,
     bspWorkspaceBuildTargets := Def.taskDyn {
@@ -204,10 +214,11 @@ object BuildServerProtocol {
       val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
+      val meta = isMetaBuild.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, converter, logger, underlying)
+        new BuildServerReporterImpl(targetId, converter, meta, logger, underlying)
       } else {
-        new BuildServerForwarder(logger, underlying)
+        new BuildServerForwarder(meta, logger, underlying)
       }
     }
   )
@@ -360,6 +371,7 @@ object BuildServerProtocol {
       )
     )
 
+  @nowarn
   private def bspWorkspaceSetting: Def.Initialize[Map[BuildTargetIdentifier, Scope]] =
     Def.settingDyn {
       val loadedBuild = Keys.loadedBuild.value
@@ -408,7 +420,7 @@ object BuildServerProtocol {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
       config <- configs
       if dep != thisProjectRef || config.name != thisConfig.name
-    } yield Keys.bspTargetIdentifier.in(dep, config)
+    } yield (dep / config / Keys.bspTargetIdentifier)
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
@@ -435,7 +447,7 @@ object BuildServerProtocol {
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
-    } yield Keys.classDirectory.in(ref, config)
+    } yield ref / config / Keys.classDirectory
 
     Def.task {
       val classpath = internalDependencyClasspath.join.value.distinct ++
@@ -458,7 +470,7 @@ object BuildServerProtocol {
       (artifact, file) <- module.artifacts
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
-    DependencySourcesItem(targetId, sources.distinct.toVector)
+    DependencySourcesItem(targetId, sources.toVector.distinct)
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
@@ -587,6 +599,7 @@ object BuildServerProtocol {
     state.respondEvent(RunResult(originId, statusCode))
   }
 
+  @nowarn
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val allScopes = bspWorkspace.value.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
@@ -609,7 +622,7 @@ object BuildServerProtocol {
     val transitiveDependencies = for {
       (dep, configs) <- directDependencies
       config <- configs if dep != ref || config.name != thisConfig.name
-    } yield Keys.bspInternalDependencyConfigurations.in(dep, config)
+    } yield dep / config / Keys.bspInternalDependencyConfigurations
     Def.setting {
       val allDependencies = directDependencies ++
         transitiveDependencies.join.value.flatten

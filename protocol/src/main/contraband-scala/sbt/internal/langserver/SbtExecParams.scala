@@ -10,10 +10,10 @@ final class SbtExecParams private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: SbtExecParams => (this.commandLine == x.commandLine)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (17 + "sbt.internal.langserver.SbtExecParams".##) + commandLine.##)
   }

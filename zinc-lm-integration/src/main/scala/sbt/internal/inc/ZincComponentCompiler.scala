@@ -9,46 +9,33 @@ package sbt
 package internal
 package inc
 
-import java.io.File
-import java.nio.file.{ Files, Path }
-import java.util.concurrent.Callable
-
 import sbt.internal.inc.classpath.ClasspathUtil
-import sbt.io.IO
 import sbt.internal.librarymanagement._
 import sbt.internal.util.{ BufferedLogger, FullLogger }
+import sbt.io.IO
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.util.InterfaceUtil.{ toSupplier => f0 }
 import xsbti.ArtifactInfo._
+import xsbti.compile.{
+  ClasspathOptionsUtil,
+  CompilerBridgeProvider,
+  ScalaInstance => XScalaInstance
+}
 import xsbti.{ ComponentProvider, GlobalLock, Logger }
-import xsbti.compile.{ ClasspathOptionsUtil, CompilerBridgeProvider }
+
+import java.io.File
+import java.nio.file.{ Files, Path }
+import java.util.concurrent.Callable
 
 private[sbt] object ZincComponentCompiler {
-  import xsbti.compile.ScalaInstance
-
   final val binSeparator = "-bin_"
   final val javaClassVersion = System.getProperty("java.class.version")
 
   private[inc] final val sbtOrgTemp = JsonUtil.sbtOrgTemp
   private[inc] final val modulePrefixTemp = "temp-module-"
 
-  private[sbt] final lazy val incrementalVersion: String = ZincComponentManager.version
-
-  private val CompileConf = Some(Configurations.Compile.name)
-
-  private[sbt] def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
-    val compilerBridgeId = scalaVersion match {
-      case sc if (sc startsWith "2.10.") => "compiler-bridge_2.10"
-      case sc if (sc startsWith "2.11.") => "compiler-bridge_2.11"
-      case sc if (sc startsWith "2.12.") => "compiler-bridge_2.12"
-      case "2.13.0-M1"                   => "compiler-bridge_2.12"
-      case _                             => "compiler-bridge_2.13"
-    }
-    ModuleID(SbtOrganization, compilerBridgeId, incrementalVersion)
-      .withConfigurations(CompileConf)
-      .sources()
-  }
+  private val lock: AnyRef = new {}
 
   /** Defines the internal implementation of a bridge provider. */
   private class ZincCompilerBridgeProvider(
@@ -66,9 +53,9 @@ private[sbt] object ZincComponentCompiler {
      */
     def compiledBridge(
         bridgeSources: ModuleID,
-        scalaInstance: ScalaInstance,
+        scalaInstance: XScalaInstance,
         logger: Logger,
-    ): File = {
+    ): File = lock.synchronized {
       val raw = new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, logger)
       val zinc =
         new ZincComponentCompiler(raw, manager, dependencyResolution, bridgeSources, logger)
@@ -76,9 +63,10 @@ private[sbt] object ZincComponentCompiler {
       zinc.compiledBridgeJar
     }
 
-    override def fetchCompiledBridge(scalaInstance: ScalaInstance, logger: Logger): File = {
+    override def fetchCompiledBridge(scalaInstance: XScalaInstance, logger: Logger): File = {
       val scalaVersion = scalaInstance.actualVersion()
-      val bridgeSources = userProvidedBridgeSources.getOrElse(getDefaultBridgeModule(scalaVersion))
+      val bridgeSources = userProvidedBridgeSources
+        .getOrElse(ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion))
       compiledBridge(bridgeSources, scalaInstance, logger)
     }
 
@@ -124,7 +112,7 @@ private[sbt] object ZincComponentCompiler {
       ScalaArtifacts(scalaCompilerJar, Vector(scalaLibraryJar), others)
     }
 
-    override def fetchScalaInstance(scalaVersion: String, logger: Logger): ScalaInstance = {
+    override def fetchScalaInstance(scalaVersion: String, logger: Logger): XScalaInstance = {
       val scalaArtifacts = getScalaArtifacts(scalaVersion, logger)
       val scalaCompilerJar = scalaArtifacts.compilerJar
       val scalaLibraryJars = scalaArtifacts.libraryJars
@@ -140,13 +128,15 @@ private[sbt] object ZincComponentCompiler {
       val properties = ResourceLoader.getSafePropertiesFor("compiler.properties", loader)
       val loaderVersion = Option(properties.getProperty("version.number"))
       val scalaV = loaderVersion.getOrElse("unknown")
-      new inc.ScalaInstance(
+      val allJars = jarsToLoad.map(_.toFile).toArray
+      new ScalaInstance(
         scalaV,
+        loader,
         loader,
         loaderLibraryOnly,
         scalaLibraryJars.map(_.toFile).toArray,
-        scalaCompilerJar.toFile,
-        jarsToLoad.map(_.toFile).toArray,
+        allJars,
+        allJars,
         loaderVersion,
       )
     }
@@ -312,7 +302,7 @@ private object ZincLMHelper {
     logger.info(s"Attempting to fetch $dependencies.")
     dependencyResolution.update(module, updateConfiguration, warningConf, logger) match {
       case Left(uw) =>
-        logger.debug(s"Couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
+        logger.debug(s"couldn't retrieve module(s) ${prettyPrintDependency(module)}.")
         val unretrievedMessage = s"The $desc could not be retrieved."
         val unresolvedLines = UnresolvedWarning.unresolvedWarningLines.showLines(uw).mkString("\n")
         throw new InvalidComponent(s"$unretrievedMessage\n$unresolvedLines")

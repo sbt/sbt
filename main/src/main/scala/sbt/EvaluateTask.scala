@@ -14,6 +14,7 @@ import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
 import sbt.Project.richInitializeTask
 import sbt.Scope.Global
+import sbt.SlashSyntax0._
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal._
@@ -22,6 +23,7 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 
+import scala.annotation.nowarn
 import scala.Console.RED
 import scala.concurrent.duration.Duration
 
@@ -154,7 +156,7 @@ object EvaluateTask {
   import Keys.state
   import std.Transform
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
@@ -268,11 +270,11 @@ object EvaluateTask {
   }
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def forcegc(extracted: Extracted, structure: BuildStructure): Boolean =
-    getSetting(Keys.forcegc in Global, GCUtil.defaultForceGarbageCollection, extracted, structure)
+    getSetting((Global / Keys.forcegc), GCUtil.defaultForceGarbageCollection, extracted, structure)
   // TODO - Should this pull from Global or from the project itself?
   private[sbt] def minForcegcInterval(extracted: Extracted, structure: BuildStructure): Duration =
     getSetting(
-      Keys.minForcegcInterval in Global,
+      (Global / Keys.minForcegcInterval),
       GCUtil.defaultMinForcegcInterval,
       extracted,
       structure
@@ -284,12 +286,12 @@ object EvaluateTask {
       extracted: Extracted,
       structure: BuildStructure
   ): T =
-    (key in extracted.currentRef).get(structure.data).getOrElse(default)
+    (extracted.currentRef / key).get(structure.data).getOrElse(default)
 
   def injectSettings: Seq[Setting[_]] = Seq(
-    (state in Global) ::= dummyState,
-    (streamsManager in Global) ::= Def.dummyStreamsManager,
-    (executionRoots in Global) ::= dummyRoots,
+    Global / state ::= dummyState,
+    Global / streamsManager ::= Def.dummyStreamsManager,
+    Global / executionRoots ::= dummyRoots,
   )
 
   @deprecated("Use variant which doesn't take a logger", "1.1.1")
@@ -507,7 +509,7 @@ object EvaluateTask {
       state: State,
       streams: Streams
   ): Unit =
-    for (referenced <- Previous.references in Global get Project.structure(state).data)
+    for (referenced <- (Global / Previous.references) get Project.structure(state).data)
       Previous.complete(referenced, results, streams)
 
   def applyResults[T](
@@ -588,7 +590,7 @@ object EvaluateTask {
   // if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
   val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
     if (scoped.key == streams.key) {
-      Seq(streams in scoped.scope := {
+      Seq(scoped.scope / streams := {
         (streamsManager map { mgr =>
           val stream = mgr(scoped)
           stream.open()

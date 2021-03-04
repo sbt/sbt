@@ -36,7 +36,7 @@ import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.protocol._
 import sbt.util.Logger
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
@@ -408,7 +408,7 @@ final class NetworkChannel(
       import sbt.protocol.codec.JsonProtocol._
       StandardMain.exchange.withState { s =>
         val structure = Project.extract(s).structure
-        SettingQuery.handleSettingQueryEither(req, structure) match {
+        sbt.internal.server.SettingQuery.handleSettingQueryEither(req, structure) match {
           case Right(x) => respondResult(x, execId)
           case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
         }
@@ -418,6 +418,7 @@ final class NetworkChannel(
     }
   }
 
+  @nowarn
   protected def onCompletionRequest(execId: Option[String], cp: CompletionParams) = {
     if (initialized) {
       try {
@@ -923,7 +924,8 @@ object NetworkChannel {
   case object InBody extends ChannelState
   private[sbt] def cancel(
       execID: Option[String],
-      id: String
+      id: String,
+      force: Boolean
   ): Either[String, String] = {
 
     Option(EvaluateTask.currentlyRunningTaskEngine.get) match {
@@ -945,7 +947,7 @@ object NetworkChannel {
 
         // direct comparison on strings and
         // remove hotspring unicode added character for numbers
-        if (checkId) {
+        if (checkId || force) {
           runningEngine.cancelAndShutdown()
           Right(runningExecId)
         } else {

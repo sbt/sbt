@@ -11,10 +11,10 @@ final class ExecutionEvent private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ExecutionEvent => (this.success == x.success) && (this.commandLine == x.commandLine)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.protocol.ExecutionEvent".##) + success.##) + commandLine.##)
   }

@@ -317,7 +317,10 @@ object Terminal {
     props
       .map(_.color)
       .orElse(isColorEnabledProp)
-      .getOrElse(logFormatEnabled.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI))
+      .getOrElse(
+        logFormatEnabled
+          .getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || Util.isEmacs)
+      )
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -327,6 +330,9 @@ object Terminal {
     if (isColorEnabled && doRed) Console.RED + str + Console.RESET
     else str
 
+  private[this] def hasVirtualIO = System.getProperty("sbt.io.virtual", "") == "true" || !isCI
+  private[sbt] def canPollSystemIn: Boolean = hasConsole && !isDumbTerminal && hasVirtualIO
+
   /**
    *
    * @param isServer toggles whether or not this is a server of client process
@@ -334,10 +340,11 @@ object Terminal {
    * @tparam T the result type of the thunk
    * @return the result of the thunk
    */
-  private[sbt] def withStreams[T](isServer: Boolean)(f: => T): T = {
+  private[sbt] def withStreams[T](isServer: Boolean, isSubProcess: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
-    if (hasConsole && !isDumbTerminal) consoleTerminalHolder.set(newConsoleTerminal())
-    if (System.getProperty("sbt.io.virtual", "") == "true" || !isCI) {
+    if ((hasConsole && !isDumbTerminal) || isSubProcess)
+      consoleTerminalHolder.set(newConsoleTerminal())
+    if (hasVirtualIO) {
       hasProgress.set(isServer && isAnsiSupported)
       activeTerminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
@@ -863,7 +870,8 @@ object Terminal {
         .map(_.supershell)
         .getOrElse(System.getProperty("sbt.supershell") match {
           case null =>
-            !(sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")) && isColorEnabled
+            !(sys.env.contains("BUILD_NUMBER") || sys.env
+              .contains("CI")) && isColorEnabled && !Util.isEmacs
           case "true" => true
           case _      => false
         })

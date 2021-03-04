@@ -63,14 +63,14 @@ object LineReader {
          * `testOnly testOnly\ com.foo.FooSpec` instead of `testOnly com.foo.FooSpec`.
          */
         if (c.append.nonEmpty) {
-          val comp =
-            if (!pl.line().endsWith(" ")) pl.line().split(" ").last + c.append else c.append
-          // tell jline to append a " " if the completion would be valid with a " " appended
-          // which can be the case for input tasks and some commands. We need to exclude
-          // the empty string and ";" which always seem to be present.
-          val complete = (Parser.completions(parser, comp + " ", 10).get.map(_.display) --
-            Set(";", "")).nonEmpty
-          candidates.add(new Candidate(comp, comp, null, null, null, null, complete))
+          val cand = pl.line() match {
+            case line if line.endsWith(" ") => c.append
+            case line                       => line.split(" ").last + c.append
+          }
+          // https://github.com/jline/jline3/blob/9a4971868e4bdd29a36e454de01f54d3cd6071e0/reader/src/main/java/org/jline/reader/Candidate.java#L123-L131
+          // "If the candidate is complete and is selected, a space separator will be added."
+          val complete = false
+          candidates.add(new Candidate(cand, cand, null, null, null, null, complete))
         }
       }
     }
@@ -121,6 +121,10 @@ object LineReader {
           // ignore
         }
         historyPath.foreach(f => reader.setVariable(JLineReader.HISTORY_FILE, f))
+        val signalRegistration = terminal match {
+          case _: Terminal.ConsoleTerminal => Some(Signals.register(() => terminal.write(-1)))
+          case _                           => None
+        }
         try terminal.withRawInput {
           Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
         } catch {
@@ -132,6 +136,7 @@ object LineReader {
               _: UncheckedIOException =>
             throw new InterruptedException
         } finally {
+          signalRegistration.foreach(_.remove())
           terminal.prompt.reset()
           term.close()
         }

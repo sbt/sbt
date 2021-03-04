@@ -13,11 +13,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.io.DeferredWriter
 import sbt.internal.util.ManagedLogger
-import sbt.internal.util.Util.{ nil }
+import sbt.internal.util.Util.nil
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.util._
-import sjsonnew.{ IsoString, SupportConverter }
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
@@ -120,25 +119,39 @@ object Streams {
       synchronized { streams.values.foreach(_.close()); streams.clear() }
   }
 
-  def apply[Key, J: IsoString](
+  @deprecated("Use constructor without converter", "1.4")
+  def apply[Key, J: sjsonnew.IsoString](
       taskDirectory: Key => File,
       name: Key => String,
       mkLogger: (Key, PrintWriter) => ManagedLogger,
-      converter: SupportConverter[J]
+      converter: sjsonnew.SupportConverter[J],
+  ): Streams[Key] = apply[Key](taskDirectory, name, mkLogger)
+
+  @deprecated("Use constructor without converter", "1.4")
+  private[sbt] def apply[Key, J: sjsonnew.IsoString](
+      taskDirectory: Key => File,
+      name: Key => String,
+      mkLogger: (Key, PrintWriter) => ManagedLogger,
+      converter: sjsonnew.SupportConverter[J],
+      mkFactory: (File, sjsonnew.SupportConverter[J]) => CacheStoreFactory
+  ): Streams[Key] = apply[Key](taskDirectory, name, mkLogger, mkFactory(_, converter))
+
+  def apply[Key](
+      taskDirectory: Key => File,
+      name: Key => String,
+      mkLogger: (Key, PrintWriter) => ManagedLogger,
   ): Streams[Key] =
     apply(
       taskDirectory,
       name,
       mkLogger,
-      converter,
-      (file, s: SupportConverter[J]) => new DirectoryStoreFactory[J](file, s)
+      file => new DirectoryStoreFactory(file)
     )
-  private[sbt] def apply[Key, J: IsoString](
+  private[sbt] def apply[Key](
       taskDirectory: Key => File,
       name: Key => String,
       mkLogger: (Key, PrintWriter) => ManagedLogger,
-      converter: SupportConverter[J],
-      mkFactory: (File, SupportConverter[J]) => CacheStoreFactory
+      mkFactory: File => CacheStoreFactory
   ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
@@ -146,10 +159,10 @@ object Streams {
       private[this] var closed = false
 
       def getInput(a: Key, sid: String = default): Input =
-        make(a, sid)(f => new PlainInput(new FileInputStream(f), converter))
+        make(a, sid)(f => new FileInput(f))
 
       def getOutput(sid: String = default): Output =
-        make(a, sid)(f => new PlainOutput(new FileOutputStream(f), converter))
+        make(a, sid)(f => new FileOutput(f))
 
       def readText(a: Key, sid: String = default): BufferedReader =
         make(a, sid)(
@@ -180,7 +193,7 @@ object Streams {
         dir
       }
 
-      lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory, converter)
+      lazy val cacheStoreFactory: CacheStoreFactory = mkFactory(cacheDirectory)
 
       def log(sid: String): ManagedLogger = mkLogger(a, text(sid))
 

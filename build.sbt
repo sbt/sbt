@@ -8,15 +8,18 @@ import java.nio.file.{ Files, Path => JPath }
 import scala.util.Try
 
 ThisBuild / version := {
-  val v = "1.4.3-SNAPSHOT"
+  val v = "1.5.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 
+Global / semanticdbEnabled := !(Global / insideCI).value
+Global / semanticdbVersion := "4.4.8"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -101,15 +104,15 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
     (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmtOnCompile).value,
   Test / unmanagedSources / inputFileStamps :=
     (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmtOnCompile).value,
-  crossScalaVersions := Seq(baseScalaVersion),
+  crossScalaVersions := List(scala212, scala213),
   publishArtifact in Test := false,
   fork in run := true,
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+    addCompilerPlugin(kindProjector)
 def utilCommonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
+  baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
@@ -167,7 +170,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+// .enablePlugins(ScriptedPlugin)
   .aggregate(nonRoots: _*)
   .settings(
     buildLevelSettings,
@@ -372,10 +375,6 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         scalaReflect.value
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
@@ -739,10 +738,6 @@ lazy val commandProj = (project in file("main-command"))
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -908,14 +903,15 @@ lazy val mainProj = (project in file("main"))
     checkPluginCross := {
       val sv = scalaVersion.value
       val f = baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala"
-      if (!IO.readLines(f).exists(_.contains(s""""$sv"""")))
+      if (sv.startsWith("2.12") && !IO.readLines(f).exists(_.contains(s""""$sv""""))) {
         sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
+      }
     },
     libraryDependencies ++=
       (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
+      case v if v.startsWith("2.12.") => List()
+      case _                          => List(scalaPar)
     }),
     managedSourceDirectories in Compile +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -1029,7 +1025,14 @@ lazy val mainProj = (project in file("main"))
       // internal logging apis,
       exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
       exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread")
+      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
+      // internal implementation
+      exclude[MissingClassProblem](
+        "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
+      ),
+      // internal impl
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
     )
   )
   .configure(
@@ -1049,8 +1052,13 @@ lazy val sbtProj = (project in file("sbt"))
     testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    version := {
+      if (scalaVersion.value == baseScalaVersion) version.value
+      else version2_13.value
+    },
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
@@ -1317,6 +1325,7 @@ def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = 
 
 lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   .settings(
+    bspEnabled := false,
     crossPaths := false,
     crossScalaVersions := Seq(baseScalaVersion),
     skip in publish := true,
@@ -1362,7 +1371,9 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
     scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
     scalaVersion.value,
     version.value,
-    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value.map(_.data),
+    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value
+      .map(_.data)
+      .filterNot(_.getName.contains("scala-compiler")),
     streams.value.log
   )
 }

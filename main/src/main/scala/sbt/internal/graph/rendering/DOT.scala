@@ -20,7 +20,7 @@ object DOT {
       labelRendering: HTMLLabelRendering
   ): String = {
     val nodes = {
-      for (n ← graph.nodes) yield {
+      for (n <- graph.nodes) yield {
         val style = if (n.isEvicted) EvictedStyle else ""
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
         """    "%s"[%s style="%s"]""".format(
@@ -29,7 +29,7 @@ object DOT {
           style
         )
       }
-    }.mkString("\n")
+    }.sorted.mkString("\n")
 
     def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).isEvicted
     def targetWasEvicted(edge: Edge): Boolean = graph.module(edge._2).isEvicted
@@ -56,16 +56,16 @@ object DOT {
         .filterNot(e => originWasEvicted(e) || evictionTargetEdges(e)) ++ evictedByEdges
 
     val edges = {
-      for (e ← filteredEdges) yield {
+      for (e <- filteredEdges) yield {
         val extra =
           if (graph.module(e._1).isEvicted)
             s""" [label="Evicted By" style="$EvictedStyle"]"""
           else ""
         """    "%s" -> "%s"%s""".format(e._1.idString, e._2.idString, extra)
       }
-    }.mkString("\n")
+    }.sorted.mkString("\n")
 
-    "%s\n%s\n%s\n}".format(dotHead, nodes, edges)
+    s"$dotHead\n$nodes\n$edges\n}"
   }
 
   sealed trait HTMLLabelRendering {

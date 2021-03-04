@@ -18,8 +18,20 @@ import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
 import sbt.util.Show
+import scala.collection.mutable
 
-final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask)
+final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask, val separaters: Seq[String]) {
+  def this(key: ScopedKey[_], mask: ScopeMask) = this(key, mask, Nil)
+
+  override def equals(o: Any): Boolean =
+    this.eq(o.asInstanceOf[AnyRef]) || (o match {
+      case x: ParsedKey => (this.key == x.key) && (this.mask == x.mask)
+      case _            => false
+    })
+  override def hashCode: Int = {
+    37 * (37 * (37 * (17 + "sbt.internal.ParsedKey".##) + this.key.##)) + this.mask.##
+  }
+}
 
 object Act {
   val ZeroString = "*"
@@ -30,6 +42,10 @@ object Act {
   // new separator for unified shell syntax. this allows optional whitespace around /.
   private[sbt] val spacedSlash: Parser[Unit] =
     token(OptSpace ~> '/' <~ OptSpace).examples("/").map(_ => ())
+
+  private[sbt] val slashSeq: Seq[String] = Seq("/")
+  private[sbt] val colonSeq: Seq[String] = Seq(":")
+  private[sbt] val colonColonSeq: Seq[String] = Seq("::")
 
   // this does not take aggregation into account
   def scopedKey(
@@ -56,6 +72,22 @@ object Act {
          ))
       yield Aggregation.aggregate(selected.key, selected.mask, structure.extra)
 
+  def scopedKeyAggregatedSep(
+      current: ProjectRef,
+      defaultConfigs: Option[ResolvedReference] => Seq[String],
+      structure: BuildStructure
+  ): KeysParserSep =
+    for (selected <- scopedKeySelected(
+           structure.index.aggregateKeyIndex,
+           current,
+           defaultConfigs,
+           structure.index.keyMap,
+           structure.data
+         ))
+      yield Aggregation
+        .aggregate(selected.key, selected.mask, structure.extra)
+        .map(k => k -> selected.separaters)
+
   def scopedKeySelected(
       index: KeyIndex,
       current: ProjectRef,
@@ -73,17 +105,24 @@ object Act {
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[_]]
   ): Parser[Seq[Parser[ParsedKey]]] = {
+    val confParserCache
+        : mutable.Map[Option[sbt.ResolvedReference], Parser[(ParsedAxis[String], Seq[String])]] =
+      mutable.Map.empty
     def fullKey =
       for {
         rawProject <- optProjectRef(index, current)
         proj = resolveProject(rawProject, current)
-        confAmb <- configIdent(
-          index configs proj,
-          index configIdents proj,
-          index.fromConfigIdent(proj)
+        confPair <- confParserCache.getOrElseUpdate(
+          proj,
+          configIdent(
+            index.configs(proj),
+            index.configIdents(proj),
+            index.fromConfigIdent(proj)
+          )
         )
+        (confAmb, seps) = confPair
         partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
-      } yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
+      } yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask, seps)
 
     val globalIdent = token(GlobalIdent ~ spacedSlash) ^^^ ParsedGlobal
     def globalKey =
@@ -95,7 +134,8 @@ object Act {
         keyMap,
         None,
         ParsedZero,
-        ScopeMask(true, true, false, false)
+        ScopeMask(true, true, false, false),
+        Nil
       )
 
     globalKey | fullKey
@@ -107,18 +147,21 @@ object Act {
       keyMap: Map[String, AttributeKey[_]],
       proj: Option[ResolvedReference],
       confAmb: ParsedAxis[String],
-      baseMask: ScopeMask
+      baseMask: ScopeMask,
+      baseSeps: Seq[String]
   ): Seq[Parser[ParsedKey]] =
     for {
       conf <- configs(confAmb, defaultConfigs, proj, index)
     } yield for {
-      taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
+      taskPair <- taskAxis(index.tasks(proj, conf), keyMap)
+      (taskAmb, taskSeps) = taskPair
       task = resolveTask(taskAmb)
       key <- key(index, proj, conf, task, keyMap)
       extra <- extraAxis(keyMap, IMap.empty)
     } yield {
       val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
-      new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
+      val seps = baseSeps ++ taskSeps
+      new ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask, seps)
     }
 
   def makeScopedKey(
@@ -200,16 +243,17 @@ object Act {
       confs: Set[String],
       idents: Set[String],
       fromIdent: String => String
-  ): Parser[ParsedAxis[String]] = {
+  ): Parser[(ParsedAxis[String], Seq[String])] = {
     val oldSep: Parser[Char] = ':'
     val sep: Parser[Unit] = spacedSlash !!! "Expected '/'"
     token(
-      ((ZeroString ^^^ ParsedZero) <~ oldSep)
-        | ((ZeroString ^^^ ParsedZero) <~ sep)
-        | ((ZeroIdent ^^^ ParsedZero) <~ sep)
-        | (value(examples(ID, confs, "configuration")) <~ oldSep)
-        | (value(examples(CapitalizedID, idents, "configuration ident") map fromIdent) <~ sep)
-    ) ?? Omitted
+      ((ZeroString ^^^ (ParsedZero -> colonSeq)) <~ oldSep)
+        | ((ZeroString ^^^ (ParsedZero -> slashSeq)) <~ sep)
+        | ((ZeroIdent ^^^ (ParsedZero -> slashSeq)) <~ sep)
+        | (value(examples(ID, confs, "configuration")).map(_ -> colonSeq) <~ oldSep)
+        | (value(examples(CapitalizedID, idents, "configuration ident").map(fromIdent))
+          .map(_ -> slashSeq) <~ sep)
+    ) ?? (Omitted -> Nil)
   }
 
   def configs(
@@ -288,7 +332,7 @@ object Act {
   def taskAxis(
       tasks: Set[AttributeKey[_]],
       allKnown: Map[String, AttributeKey[_]],
-  ): Parser[ParsedAxis[AttributeKey[_]]] = {
+  ): Parser[(ParsedAxis[AttributeKey[_]], Seq[String])] = {
     val taskSeq = tasks.toSeq
     def taskKeys(f: AttributeKey[_] => String): Seq[(String, AttributeKey[_])] =
       taskSeq.map(key => (f(key), key))
@@ -296,11 +340,17 @@ object Act {
     val valid = allKnown ++ normKeys
     val suggested = normKeys.map(_._1).toSet
     val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
-    (token(
-      value(keyP)
-        | ZeroString ^^^ ParsedZero
-        | ZeroIdent ^^^ ParsedZero
-    ) <~ (token("::".id) | spacedSlash)) ?? Omitted
+
+    ((token(
+      value(keyP).map(_ -> slashSeq)
+        | ZeroString ^^^ (ParsedZero -> slashSeq)
+        | ZeroIdent ^^^ (ParsedZero -> slashSeq)
+    ) <~ spacedSlash) |
+      (token(
+        value(keyP).map(_ -> colonColonSeq)
+          | ZeroString ^^^ (ParsedZero -> colonColonSeq)
+          | ZeroIdent ^^^ (ParsedZero -> colonColonSeq)
+      ) <~ token("::".id))) ?? (Omitted -> Nil)
   }
 
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
@@ -420,19 +470,27 @@ object Act {
     import extracted.{ showKey, structure }
     import Aggregation.evaluatingParser
     actionParser.flatMap { action =>
-      val akp = aggregatedKeyParser(extracted)
-      def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] = {
+      val akp = aggregatedKeyParserSep(extracted)
+      def warnOldShellSyntax(seps: Seq[String], keyStrings: String): Unit =
+        if (seps.contains(":") || seps.contains("::")) {
+          state.log.warn(
+            s"sbt 0.13 shell syntax is deprecated; use slash syntax instead: $keyStrings"
+          )
+        } else ()
+      def evaluate(pairs: Seq[(ScopedKey[_], Seq[String])]): Parser[() => State] = {
+        val kvs = pairs.map(_._1)
+        val seps = pairs.headOption.map(_._2).getOrElse(Nil)
         val preparedPairs = anyKeyValues(structure, kvs)
         val showConfig = if (action == PrintAction) {
           Aggregation.ShowConfig(true, true, println, false)
         } else {
           Aggregation.defaultShow(state, showTasks = action == ShowAction)
         }
-
         evaluatingParser(state, showConfig)(preparedPairs) map { evaluate => () =>
           {
             val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
             state.log.debug("Evaluating tasks: " + keyStrings)
+            warnOldShellSyntax(seps, keyStrings)
             evaluate()
           }
         }
@@ -440,7 +498,13 @@ object Act {
       action match {
         case SingleAction => akp flatMap evaluate
         case ShowAction | PrintAction | MultiAction =>
-          rep1sep(akp, token(Space)).flatMap(kvss => evaluate(kvss.flatten))
+          rep1sep(akp, token(Space)) flatMap { pairs =>
+            val flat: mutable.ListBuffer[(ScopedKey[_], Seq[String])] = mutable.ListBuffer.empty
+            pairs foreach { xs =>
+              flat ++= xs
+            }
+            evaluate(flat.toList)
+          }
       }
     }
   }
@@ -468,11 +532,21 @@ object Act {
     )
 
   type KeysParser = Parser[Seq[ScopedKey[T]] forSome { type T }]
+  type KeysParserSep = Parser[Seq[(ScopedKey[T], Seq[String])] forSome { type T }]
+
   def aggregatedKeyParser(state: State): KeysParser = aggregatedKeyParser(Project extract state)
   def aggregatedKeyParser(extracted: Extracted): KeysParser =
     aggregatedKeyParser(extracted.structure, extracted.currentRef)
   def aggregatedKeyParser(structure: BuildStructure, currentRef: ProjectRef): KeysParser =
     scopedKeyAggregated(currentRef, structure.extra.configurationsForAxis, structure)
+
+  private[sbt] def aggregatedKeyParserSep(extracted: Extracted): KeysParserSep =
+    aggregatedKeyParserSep(extracted.structure, extracted.currentRef)
+  private[sbt] def aggregatedKeyParserSep(
+      structure: BuildStructure,
+      currentRef: ProjectRef
+  ): KeysParserSep =
+    scopedKeyAggregatedSep(currentRef, structure.extra.configurationsForAxis, structure)
 
   def keyValues[T](state: State)(keys: Seq[ScopedKey[T]]): Values[T] =
     keyValues(Project extract state)(keys)

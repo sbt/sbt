@@ -47,6 +47,9 @@ object Util {
 
   def ignoreResult[T](f: => T): Unit = macro Macro.ignore
 
+  lazy val isMac: Boolean =
+    System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
+
   lazy val isWindows: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 
@@ -60,6 +63,8 @@ object Util {
 
   lazy val isNonCygwinWindows: Boolean = isWindows && !isCygwin
   lazy val isCygwinWindows: Boolean = isWindows && isCygwin
+
+  lazy val isEmacs: Boolean = Option(System.getenv("INSIDE_EMACS")).isDefined
 
   def nil[A]: List[A] = List.empty[A]
   def nilSeq[A]: Seq[A] = Seq.empty[A]

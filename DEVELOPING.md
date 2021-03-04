@@ -8,6 +8,16 @@ sbt uses two branches for development:
 - Development branch: `develop` (this is also called "master")
 - Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
 
+
+### Instruction to build just sbt
+
+If the change you are making is contained in sbt/sbt, you could publishLocal on sbt/sbt:
+
+```
+$ sbt
+sbt:sbtRoot> publishLocal
+```
+
 ### Instruction to build all modules from source
 
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
@@ -16,7 +26,7 @@ sbt uses two branches for development:
    ```
    $ mkdir sbt-modules
    $ cd sbt-modules
-   $ for i in sbt io util librarymanagement zinc; do \
+   $ for i in sbt io librarymanagement zinc; do \
      git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b develop origin/develop)
    done
    $ cd sbt
@@ -29,15 +39,6 @@ sbt uses two branches for development:
    $ ./sbt-allsources.sh
    sbt:sbtRoot> publishLocalAllModule
    ```
-
-### Instruction to build just sbt
-
-If the change you are making is contained in sbt/sbt, you could publishLocal on sbt/sbt:
-
-```
-$ sbt
-sbt:sbtRoot> publishLocal
-```
 
 ### Using the locally built sbt
 
@@ -53,16 +54,14 @@ $ sbt
 
 ### Nightly builds
 
-The latest development versions are available as nightly builds on sbt-maven-snapshots (<https://repo.scala-sbt.org/scalasbt/maven-snapshots>) repo.
-
-Note that currently following the URL would lead you to Bintray, but [/org/scala-sbt/sbt/](https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt/) would actually point to a Jenkins server.
+The latest development versions are available as nightly builds on sbt-maven-snapshots (<https://repo.scala-sbt.org/scalasbt/maven-snapshots>) repo, which is a redirect proxy whose underlying repository is subject to change it could be Bintray, Linux box, etc.
 
 To use a nightly build:
 
 1. Find out a version from [/org/scala-sbt/sbt/](https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt/).
-2. Put the version, for example `sbt.version=1.3.0-bin-20190813T192012` in `project/build.properties`.
+2. Put the version, for example `sbt.version=1.5.0-bin-20201121T081131` in `project/build.properties`.
 
-sbt launcher will resolve the sbt core artifacts based on the specification.
+sbt launcher will resolve the specified sbt core artifacts. Because of the aforementioned redirection, this resolution is going to be very slow for the first time you run sbt, and then it should be ok for subsequent runs.
 
 Unless you're debugging the `sbt` script or the launcher JAR, you should be able to use any recent stable version of sbt installation as the launcher following the [Setup][Setup] instructions first.
 

@@ -8,13 +8,15 @@
 package sbt
 package internal
 
+import java.io.File
 import java.util.Locale
 
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
-import sbt.internal.util.{ Terminal => ITerminal }
+import sbt.internal.util.{ Terminal => ITerminal, Util }
 import sbt.internal.util.complete.SizeParser
 import sbt.nio.Keys._
+import sbt.io.syntax._
 
 // See also BuildPaths.scala
 // See also LineReader.scala
@@ -176,4 +178,42 @@ object SysProp {
     }
   }
 
+  def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
+
+  private[this] def file(value: String): File = new File(value)
+  private[this] def home: File = file(sys.props("user.home"))
+
+  /** Operating system specific cache directory, similar to Coursier cache.
+   */
+  def globalLocalCache: File = {
+    val appName = "sbt"
+    def propCacheDir: Option[File] = sys.props.get("sbt.global.localcache").map(file)
+    def propCacheDir2: Option[File] =
+      sys.props.get(BuildPaths.GlobalBaseProperty) match {
+        case Some(base) => Some(file(base) / "cache")
+        case _          => None
+      }
+    def envCacheDir: Option[File] = sys.env.get("SBT_LOCAL_CACHE").map(file)
+    def windowsCacheDir: Option[File] =
+      sys.env.get("LOCALAPPDATA") match {
+        case Some(app) if Util.isWindows => Some(file(app) / appName)
+        case _                           => None
+      }
+    def macCacheDir: Option[File] =
+      if (Util.isMac) Some(home / "Library" / "Caches" / appName)
+      else None
+    def linuxCache: File =
+      sys.env.get("XDG_CACHE_HOME") match {
+        case Some(cache) => file(cache) / appName
+        case _           => home / ".cache" / appName
+      }
+    def baseCache: File =
+      propCacheDir
+        .orElse(propCacheDir2)
+        .orElse(envCacheDir)
+        .orElse(windowsCacheDir)
+        .orElse(macCacheDir)
+        .getOrElse(linuxCache)
+    baseCache.getAbsoluteFile / "v1"
+  }
 }

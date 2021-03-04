@@ -17,6 +17,7 @@ import lmcoursier.definitions.{
 }
 import sbt.librarymanagement._
 import sbt.Keys._
+import sbt.SlashSyntax0._
 
 object CoursierArtifactsTasks {
   def coursierPublicationsTask(
@@ -48,18 +49,12 @@ object CoursierArtifactsTasks {
         for ((config, targetConfig) <- configsMap) yield {
 
           val publish = getOpt(
-            publishArtifact
-              .in(projectRef)
-              .in(packageBin)
-              .in(config)
+            projectRef / config / packageBin / publishArtifact
           ).getOrElse(false)
 
           if (publish)
             getOpt(
-              artifact
-                .in(projectRef)
-                .in(packageBin)
-                .in(config)
+              projectRef / config / packageBin / artifact
             ).map(targetConfig -> _)
           else
             None
@@ -69,18 +64,12 @@ object CoursierArtifactsTasks {
         for ((config, targetConfig) <- configsMap) yield {
 
           val publish = getOpt(
-            publishArtifact
-              .in(projectRef)
-              .in(packageSrc)
-              .in(config)
+            projectRef / config / packageSrc / publishArtifact
           ).getOrElse(false)
 
           if (publish)
             getOpt(
-              artifact
-                .in(projectRef)
-                .in(packageSrc)
-                .in(config)
+              projectRef / config / packageSrc / artifact
             ).map(sourcesConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
@@ -91,18 +80,12 @@ object CoursierArtifactsTasks {
 
           val publish =
             getOpt(
-              publishArtifact
-                .in(projectRef)
-                .in(packageDoc)
-                .in(config)
+              projectRef / config / packageDoc / publishArtifact
             ).getOrElse(false)
 
           if (publish)
             getOpt(
-              artifact
-                .in(projectRef)
-                .in(packageDoc)
-                .in(config)
+              projectRef / config / packageDoc / artifact
             ).map(docsConfigOpt.getOrElse(targetConfig) -> _)
           else
             None
@@ -134,8 +117,7 @@ object CoursierArtifactsTasks {
       // No obvious way of getting the corresponding  publishArtifact  value for the ones
       // only here, it seems.
       val extraSbtArtifacts = getOpt(
-        sbt.Keys.artifacts
-          .in(projectRef)
+        projectRef / sbt.Keys.artifacts
       ).getOrElse(Nil)
         .filterNot(stdArtifactsSet)
 

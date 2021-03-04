@@ -15,10 +15,10 @@ final class ServerCapabilities private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ServerCapabilities => (this.textDocumentSync == x.textDocumentSync) && (this.hoverProvider == x.hoverProvider) && (this.definitionProvider == x.definitionProvider)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (37 * (17 + "sbt.internal.langserver.ServerCapabilities".##) + textDocumentSync.##) + hoverProvider.##) + definitionProvider.##)
   }

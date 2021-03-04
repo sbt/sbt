@@ -11,13 +11,13 @@ package client
 
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
-import java.net.Socket
+import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 
-import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
+import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.client.NetworkClient.Arguments
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
 import sbt.internal.protocol._
@@ -328,10 +328,22 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = List(arguments.sbtScript) ++ arguments.sbtArguments ++
-          List(BasicCommandStrings.DashDashDetachStdio, BasicCommandStrings.DashDashServer)
+        val cmd = arguments.sbtLaunchJar match {
+          case Some(lj) =>
+            List("java") ++ arguments.sbtArguments ++
+              List("-jar", lj, DashDashDetachStdio, DashDashServer)
+          case _ =>
+            List(arguments.sbtScript) ++ arguments.sbtArguments ++
+              List(DashDashDetachStdio, DashDashServer)
+        }
+
+        // https://github.com/sbt/sbt/issues/6271
+        val nohup =
+          if (Util.isEmacs && !Util.isWindows) List("nohup")
+          else Nil
+
         val processBuilder =
-          new ProcessBuilder(cmd: _*)
+          new ProcessBuilder((nohup ++ cmd): _*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
@@ -888,6 +900,7 @@ class NetworkClient(
         status.set("Processing")
       }
     } catch {
+      case e: SocketException if command.toString.contains("exit") => running.set(false)
       case e: IOException =>
         errorStream.println(s"Caught exception writing command to server: $e")
         running.set(false)
@@ -1014,9 +1027,18 @@ object NetworkClient {
       val completionArguments: Seq[String],
       val sbtScript: String,
       val bsp: Boolean,
+      val sbtLaunchJar: Option[String],
   ) {
     def withBaseDirectory(file: File): Arguments =
-      new Arguments(file, sbtArguments, commandArguments, completionArguments, sbtScript, bsp)
+      new Arguments(
+        file,
+        sbtArguments,
+        commandArguments,
+        completionArguments,
+        sbtScript,
+        bsp,
+        sbtLaunchJar
+      )
   }
   private[client] val completions = "--completions"
   private[client] val noTab = "--no-tab"
@@ -1024,6 +1046,7 @@ object NetworkClient {
   private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
     var sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    var launchJar: Option[String] = None
     var bsp = false
     val commandArgs = new mutable.ArrayBuffer[String]
     val sbtArguments = new mutable.ArrayBuffer[String]
@@ -1046,10 +1069,18 @@ object NetworkClient {
             .lastOption
             .map(_.replaceAllLiterally("%20", " "))
             .getOrElse(sbtScript)
-        case "-bsp" | "--bsp" => bsp = true
         case "--sbt-script" if i + 1 < sanitized.length =>
           i += 1
           sbtScript = sanitized(i).replaceAllLiterally("%20", " ")
+        case a if a.startsWith("--sbt-launch-jar=") =>
+          launchJar = a
+            .split("--sbt-launch-jar=")
+            .lastOption
+            .map(_.replaceAllLiterally("%20", " "))
+        case "--sbt-launch-jar" if i + 1 < sanitized.length =>
+          i += 1
+          launchJar = Option(sanitized(i).replaceAllLiterally("%20", " "))
+        case "-bsp" | "--bsp"        => bsp = true
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
@@ -1060,7 +1091,15 @@ object NetworkClient {
     }
     val base = new File("").getCanonicalFile
     if (!sbtArguments.contains("-Dsbt.io.virtual=true")) sbtArguments += "-Dsbt.io.virtual=true"
-    new Arguments(base, sbtArguments, commandArgs, completionArguments, sbtScript, bsp)
+    new Arguments(
+      base,
+      sbtArguments.toSeq,
+      commandArgs.toSeq,
+      completionArguments.toSeq,
+      sbtScript,
+      bsp,
+      launchJar
+    )
   }
 
   def client(
@@ -1092,16 +1131,20 @@ object NetworkClient {
       terminal: Terminal,
       useJNI: Boolean
   ): Int = {
+    val printStream = if (args.bsp) errorStream else terminal.printStream
     val client =
       simpleClient(
         args.withBaseDirectory(baseDirectory),
         inputStream,
+        printStream,
         errorStream,
         useJNI,
-        terminal
       )
+    clientImpl(client, args.bsp)
+  }
+  private def clientImpl(client: NetworkClient, isBsp: Boolean): Int = {
     try {
-      if (args.bsp) {
+      if (isBsp) {
         val (socket, _) =
           client.connectOrStartServerAndConnect(promptCompleteUsers = false, retry = true)
         BspClient.bspRun(socket)
@@ -1159,7 +1202,7 @@ object NetworkClient {
       Runtime.getRuntime.addShutdownHook(hook)
       if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       val parsed = parseArgs(restOfArgs)
-      System.exit(Terminal.withStreams(false) {
+      System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
         try client(base, parsed, term.inputStream, System.err, term, useJNI)
         catch { case _: AccessDeniedException => 1 } finally {
@@ -1213,16 +1256,19 @@ object NetworkClient {
   }
 
   def run(configuration: xsbti.AppConfiguration, arguments: List[String]): Int =
-    try {
-      val client = new NetworkClient(configuration, parseArgs(arguments.toArray))
-      try {
-        if (client.connect(log = true, promptCompleteUsers = false)) client.run()
-        else 1
-      } catch { case _: Throwable => 1 } finally client.close()
-    } catch {
-      case NonFatal(e) =>
-        e.printStackTrace()
-        1
-    }
+    run(configuration, arguments, false)
+  def run(
+      configuration: xsbti.AppConfiguration,
+      arguments: List[String],
+      redirectOutput: Boolean
+  ): Int = {
+    val term = Terminal.console
+    val err = new PrintStream(term.errorStream)
+    val out = if (redirectOutput) err else new PrintStream(term.outputStream)
+    val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
+    val useJNI = BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+    val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
+    clientImpl(client, args.bsp)
+  }
   private class AccessDeniedException extends Throwable
 }

@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.openhft.hashing.LongHashFunction;
 import org.scalasbt.ipcsocket.UnixDomainServerSocket;
-import org.scalasbt.ipcsocket.UnixDomainSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeServerSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeSocket;
 import org.scalasbt.ipcsocket.Win32SecurityLevel;
@@ -337,16 +336,22 @@ public class BootServerSocket implements AutoCloseable {
   static ServerSocket newSocket(final String sock) throws ServerAlreadyBootingException {
     ServerSocket socket = null;
     String name = socketName(sock);
+    boolean jni = requiresJNI() || System.getProperty("sbt.ipcsocket.jni", "false").equals("true");
     try {
       if (!isWindows) Files.deleteIfExists(Paths.get(sock));
       socket =
           isWindows
-              ? new Win32NamedPipeServerSocket(name, false, Win32SecurityLevel.OWNER_DACL)
-              : new UnixDomainServerSocket(name);
+              ? new Win32NamedPipeServerSocket(name, jni, Win32SecurityLevel.OWNER_DACL)
+              : new UnixDomainServerSocket(name, jni);
       return socket;
     } catch (final IOException e) {
       throw new ServerAlreadyBootingException(e);
     }
+  }
+
+  public static Boolean requiresJNI() {
+    final boolean isMac = System.getProperty("os.name").toLowerCase().startsWith("mac");
+    return isMac && !System.getProperty("os.arch", "").equals("x86_64");
   }
 
   private static String socketName(String sock) {

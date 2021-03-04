@@ -85,6 +85,9 @@ private[sbt] final class ProgressState(
       prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
     } else Array.empty
   }
+  private[this] val cleanPrompt =
+    (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
+  private[this] val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
   private[util] def write(
       terminal: Terminal,
       bytes: Array[Byte],
@@ -96,20 +99,32 @@ private[sbt] final class ProgressState(
       addBytes(terminal, bytes)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
-        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt =>
-          toWrite ++= (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
-        case _ =>
+        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt => toWrite ++= cleanPrompt
+        case _                                                        =>
       }
-      toWrite ++= bytes
-      toWrite ++= ClearScreenAfterCursor.getBytes("UTF-8")
-      if (bytes.endsWith(lineSeparatorBytes)) {
+      val endsWithNewLine = bytes.endsWith(lineSeparatorBytes)
+      if (endsWithNewLine || bytes.containsSlice(lineSeparatorBytes)) {
+        val parts = new String(bytes, "UTF-8").split(System.lineSeparator)
+        def appendLine(l: String, appendNewline: Boolean): Unit = {
+          toWrite ++= l.getBytes("UTF-8")
+          toWrite ++= clearScreenBytes
+          if (appendNewline) toWrite ++= lineSeparatorBytes
+        }
+        parts.dropRight(1).foreach(appendLine(_, true))
+        parts.lastOption match {
+          case Some(l) => appendLine(l, bytes.endsWith(lineSeparatorBytes))
+          case None    => toWrite ++= lineSeparatorBytes
+        }
+      } else toWrite ++= bytes
+      toWrite ++= clearScreenBytes
+      if (endsWithNewLine) {
         if (progressLines.get.nonEmpty) {
           val lastLine = terminal.prompt match {
             case a: Prompt.AskUser => a.render()
             case _                 => currentLine.getOrElse("")
           }
           val lines = printProgress(terminal, lastLine)
-          toWrite ++= (ClearScreenAfterCursor + lines).getBytes("UTF-8")
+          toWrite ++= lines.getBytes("UTF-8")
         }
         toWrite ++= getPrompt(terminal)
       }
@@ -141,7 +156,7 @@ private[sbt] final class ProgressState(
 private[sbt] object ProgressState {
   private val SERVER_IS_RUNNING = "sbt server is running "
   // the + 2 is for the quotation marks
-  private val SERVER_IS_RUNNING_LENGTH = SERVER_IS_RUNNING.length + 2
+  private val SERVER_IS_RUNNING_LENGTH = SERVER_IS_RUNNING.length + 3
 
   /**
    * Receives a new task report and replaces the old one. In the event that the new
@@ -159,7 +174,6 @@ private[sbt] object ProgressState {
     val isRunning = terminal.prompt == Prompt.Running
     val isBatch = terminal.prompt == Prompt.Batch
     val isWatch = terminal.prompt == Prompt.Watch
-    val noPrompt = terminal.prompt == Prompt.NoPrompt
     if (terminal.isSupershellEnabled) {
       setShowProgress(true) // used by Zinc to not show "done compiling"
       if (!pe.skipIfActive.getOrElse(false) || (!isRunning && !isBatch)) {
@@ -178,8 +192,7 @@ private[sbt] object ProgressState {
             pe.command.toSeq.flatMap { cmd =>
               val width = terminal.getWidth
               val sanitized = if ((cmd.length + SERVER_IS_RUNNING_LENGTH) > width) {
-                if (SERVER_IS_RUNNING_LENGTH + cmd.length < width) cmd
-                else cmd.take(cmd.length - 3 - SERVER_IS_RUNNING_LENGTH) + "..."
+                cmd.take(width - 3 - SERVER_IS_RUNNING_LENGTH) + "..."
               } else cmd
               val tail = if (isWatch) Nil else "enter 'cancel' to stop evaluation" :: Nil
               s"$SERVER_IS_RUNNING '$sanitized'" :: tail

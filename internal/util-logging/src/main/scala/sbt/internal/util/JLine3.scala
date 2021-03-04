@@ -8,7 +8,8 @@
 package sbt.internal.util
 
 import java.io.{ InputStream, OutputStream, PrintWriter }
-import java.nio.charset.Charset
+import java.nio.ByteBuffer
+import java.nio.charset.{ CharacterCodingException, Charset, CharsetDecoder }
 import java.util.{ Arrays, EnumSet }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import org.jline.utils.InfoCmp.Capability
@@ -23,7 +24,6 @@ import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
-import org.fusesource.jansi.internal.WindowsSupport
 
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
@@ -76,6 +76,27 @@ private[sbt] object JLine3 {
     if (System.getProperty("jline.terminal", "") == "none")
       new DumbTerminal(term.inputStream, term.outputStream)
     else wrapTerminal(term)
+  }
+  private[util] def decodeInput(decoder: CharsetDecoder, inputStream: InputStream): Int = {
+    val bytes = new Array[Byte](4)
+    var i = 0
+    var res = -2
+    do {
+      inputStream.read() match {
+        case -1 => res = -1
+        case byte =>
+          bytes(i) = byte.toByte
+          i += 1
+          val bb = ByteBuffer.wrap(bytes, 0, i)
+          try {
+            val cb = decoder.decode(bb)
+            val it = cb.codePoints().iterator
+            if (it.hasNext) res = it.next
+          } catch { case _: CharacterCodingException => }
+      }
+
+    } while (i < 4 && res == -2)
+    res
   }
   private[this] def wrapTerminal(term: Terminal): JTerminal = {
     new AbstractTerminal(
@@ -140,10 +161,8 @@ private[sbt] object JLine3 {
         val thread = new AtomicReference[Thread]
         private def fillBuffer(): Unit = thread.synchronized {
           thread.set(Thread.currentThread)
-          buffer.put(
-            try input.read()
-            catch { case _: InterruptedException => -3 }
-          )
+          try buffer.put(decodeInput(encoding.newDecoder, term.inputStream))
+          catch { case _: InterruptedException => buffer.put(-3) }
         }
         override def close(): Unit = thread.get match {
           case null =>
@@ -153,7 +172,7 @@ private[sbt] object JLine3 {
           if (buffer.isEmpty && !peek) fillBuffer()
           (if (peek) buffer.peek else buffer.take) match {
             case null => -2
-            case i    => if (i == -3) throw new ClosedException else i
+            case i    => if (i == -3) throw new InterruptedException else i
           }
         }
         override def peek(timeout: Long): Int = buffer.peek() match {

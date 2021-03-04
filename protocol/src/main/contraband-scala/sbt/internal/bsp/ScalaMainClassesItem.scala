@@ -14,10 +14,10 @@ final class ScalaMainClassesItem private (
   
   
   
-  override def equals(o: Any): Boolean = o match {
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ScalaMainClassesItem => (this.target == x.target) && (this.classes == x.classes)
     case _ => false
-  }
+  })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalaMainClassesItem".##) + target.##) + classes.##)
   }
