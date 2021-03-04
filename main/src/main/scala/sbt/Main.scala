@@ -120,16 +120,9 @@ private[sbt] object xMain {
     catch {
       case e: ServerAlreadyBootingException
           if System.console != null && !ITerminal.startedByRemoteClient =>
-        println(
-          "sbt server is already booting. To explain, enter e. Create a new server? y/n/e (default y)"
-        )
+        println(s"sbt thinks that server is already booting because of this exception:\n${e.getCause}\nCreate a new server? y/n (default y)")
         val exit = ITerminal.get.withRawInput(System.in.read) match {
           case 110 => Some(Exit(1))
-          case 101 =>
-            println(
-              s"sbt thought that server is already booting because of this exception: ${e.getCause}"
-            )
-            Some(Exit(1))
           case _ => None
         }
         (None, exit)
