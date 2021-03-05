@@ -345,7 +345,7 @@ public class BootServerSocket implements AutoCloseable {
               : new UnixDomainServerSocket(name, jni);
       return socket;
     } catch (final IOException e) {
-      throw new ServerAlreadyBootingException();
+      throw new ServerAlreadyBootingException(e);
     }
   }
 
