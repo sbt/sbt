@@ -14,6 +14,7 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.Project._
+import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.inc.classpath.ClasspathUtil
@@ -94,7 +95,7 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
       val analysis = (Test / Keys.compile).value
-      val pub = (publishLocal).value
+      val pub = publishLocal.all(ScopeFilter(projects = inDependencies(ThisProject))).value
       use(analysis, pub)
     },
     scripted := scriptedTask.evaluated,
