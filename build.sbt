@@ -1033,6 +1033,8 @@ lazy val mainProj = (project in file("main"))
       // internal impl
       exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
+      // private[sbt] method, used to call the correct sourcePositionMapper
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.foldMappers"),
     )
   )
   .configure(
