@@ -1,2 +1,12 @@
+> assertEmptySourcePositionMappers
+
+> printWarnings
 > assertAbsolutePathConversion
-> assertHandleFakePos
+
+> resetMessages
+
+> set reportAbsolutePath := false
+> printWarnings
+> assertVirtualFile
+
+> resetMessages
