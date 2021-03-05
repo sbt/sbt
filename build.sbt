@@ -19,7 +19,7 @@ ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
 
 Global / semanticdbEnabled := !(Global / insideCI).value
-Global / semanticdbVersion := "4.4.8"
+Global / semanticdbVersion := "4.4.10"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -1033,6 +1033,8 @@ lazy val mainProj = (project in file("main"))
       // internal impl
       exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
+      // private[sbt] method, used to call the correct sourcePositionMapper
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.foldMappers"),
     )
   )
   .configure(
