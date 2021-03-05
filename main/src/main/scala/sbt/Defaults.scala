@@ -469,16 +469,16 @@ object Defaults extends BuildCommon {
       Try(Paths.get(path)).map(_ => true).getOrElse(false)
     }
 
-    val newPath: Option[String] = pos
+    val absSource: Option[File] = pos
       .sourcePath()
       .asScala
       .filter(isValid)
       .map { path =>
-        fc.toPath(VirtualFileRef.of(path)).toAbsolutePath.toString
+        fc.toPath(VirtualFileRef.of(path)).toAbsolutePath.toFile
       }
 
-    newPath
-      .map { path =>
+    absSource
+      .map { file =>
         new Position {
           override def line(): Optional[Integer] = pos.line()
 
@@ -490,9 +490,9 @@ object Defaults extends BuildCommon {
 
           override def pointerSpace(): Optional[String] = pos.pointerSpace()
 
-          override def sourcePath(): Optional[String] = Optional.of(path)
+          override def sourcePath(): Optional[String] = Optional.of(file.getAbsolutePath)
 
-          override def sourceFile(): Optional[File] = pos.sourceFile()
+          override def sourceFile(): Optional[File] = Optional.of(file)
 
           override def startOffset(): Optional[Integer] = pos.startOffset()
 
