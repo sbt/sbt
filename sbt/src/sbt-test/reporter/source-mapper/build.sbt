@@ -11,7 +11,7 @@ lazy val root = (project in file("."))
   .settings(
     extraAppenders := { s => Seq(ConsoleAppender(FakePrintWriter)) },
     Compile / compile / compileOptions ~= { old: CompileOptions =>
-      old.withSources(StringVirtualFile("<>::A.scala",
+      old.withSources(StringVirtualFile("/tmp/A.scala",
         """object X""") +: old.sources) },
     assertEmptySourcePositionMappers := {
       assert {
