@@ -24,7 +24,6 @@ import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
-import org.fusesource.jansi.internal.WindowsSupport
 
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
