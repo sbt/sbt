@@ -201,7 +201,8 @@ object Instance {
     val tx = util.transformWrappers(tree, (n, tpe, t, replace) => sub(n, tpe, t, replace))
     // resetting attributes must be: a) local b) done here and not wider or else there are obscure errors
     val tr = makeApp(inner(tx))
-    c.Expr[i.M[N[T]]](tr)
+    val noWarn = q"""($tr: @scala.annotation.nowarn("cat=other-pure-statement"))"""
+    c.Expr[i.M[N[T]]](noWarn)
   }
 
   import Types._
