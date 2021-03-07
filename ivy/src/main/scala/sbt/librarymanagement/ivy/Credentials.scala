@@ -47,9 +47,13 @@ object Credentials {
           .headOption
           .toRight(keys.head + " not specified in credentials file: " + path)
 
-      IvyUtil.separate(List(RealmKeys, HostKeys, UserKeys, PasswordKeys).map(get)) match {
-        case (Nil, List(realm, host, user, pass)) =>
-          Right(new DirectCredentials(realm, host, user, pass))
+      IvyUtil.separate(List(HostKeys, UserKeys, PasswordKeys).map(get)) match {
+        case (Nil, List(host, user, pass)) =>
+          IvyUtil.separate(List(RealmKeys).map(get)) match {
+            case (_, List(realm)) => Right(new DirectCredentials(realm, host, user, pass))
+            case _                => Right(new DirectCredentials(null, host, user, pass))
+          }
+
         case (errors, _) => Left(errors.mkString("\n"))
       }
     } else
