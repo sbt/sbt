@@ -94,7 +94,6 @@ import xsbti.{ FileConverter, Position }
 import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
-import scala.util.Try
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
@@ -470,16 +469,16 @@ object Defaults extends BuildCommon {
   )
 
   private[sbt] def toAbsoluteSource(fc: FileConverter)(pos: Position): Position = {
-    def isValid(path: String): Boolean = {
-      Try(Paths.get(path)).map(_ => true).getOrElse(false)
-    }
-
-    val newPath: Option[String] = pos
+    val newPath: Option[NioPath] = pos
       .sourcePath()
       .asScala
-      .filter(isValid)
-      .map { path =>
-        fc.toPath(VirtualFileRef.of(path)).toAbsolutePath.toString
+      .flatMap { path =>
+        try {
+          Some(fc.toPath(VirtualFileRef.of(path)))
+        } catch {
+          // catch all to trap wierd path injected by compiler, users, or plugins
+          case NonFatal(_) => None
+        }
       }
 
     newPath
@@ -495,9 +494,14 @@ object Defaults extends BuildCommon {
 
           override def pointerSpace(): Optional[String] = pos.pointerSpace()
 
-          override def sourcePath(): Optional[String] = Optional.of(path)
+          override def sourcePath(): Optional[String] = Optional.of(path.toAbsolutePath.toString)
 
-          override def sourceFile(): Optional[File] = pos.sourceFile()
+          override def sourceFile(): Optional[File] =
+            (try {
+              Some(path.toFile.getAbsoluteFile)
+            } catch {
+              case NonFatal(_) => None
+            }).toOptional
 
           override def startOffset(): Optional[Integer] = pos.startOffset()
 
