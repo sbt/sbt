@@ -7,6 +7,8 @@ import java.nio.file.{ Files, Path => JPath }
 
 import scala.util.Try
 
+// ThisBuild settings take lower precedence,
+// but can be shared across the multi projects.
 ThisBuild / version := {
   val v = "1.4.3-SNAPSHOT"
   nightlyVersion.getOrElse(v)
@@ -16,6 +18,30 @@ ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
+ThisBuild / organization := "org.scala-sbt"
+ThisBuild / description := "sbt is an interactive build tool"
+ThisBuild / licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE"))
+ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+ThisBuild / Compile / doc / javacOptions := Nil
+ThisBuild / developers := List(
+  Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
+  Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
+  Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+  Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
+  Developer(
+    "gkossakowski",
+    "Grzegorz Kossakowski",
+    "@gkossakowski",
+    url("https://github.com/gkossakowski")
+  ),
+  Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+)
+ThisBuild / homepage := Some(url("https://github.com/sbt/sbt"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
+)
+ThisBuild / resolvers += Resolver.mavenLocal
 
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
@@ -23,37 +49,6 @@ Global / excludeLint += componentID
 Global / excludeLint += whitesourceIgnoredScopes
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
-
-// ThisBuild settings take lower precedence,
-// but can be shared across the multi projects.
-def buildLevelSettings: Seq[Setting[_]] =
-  inThisBuild(
-    Seq(
-      organization := "org.scala-sbt",
-      description := "sbt is an interactive build tool",
-      bintrayPackage := sys.env.get("BINTRAY_PACKAGE").getOrElse("sbt"),
-      licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE")),
-      javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
-      Compile / doc / javacOptions := Nil,
-      developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
-        Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
-        Developer(
-          "gkossakowski",
-          "Grzegorz Kossakowski",
-          "@gkossakowski",
-          url("https://github.com/gkossakowski")
-        ),
-        Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
-      ),
-      homepage := Some(url("https://github.com/sbt/sbt")),
-      scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
-      resolvers += Resolver.mavenLocal,
-    )
-  )
 
 def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(
@@ -69,7 +64,6 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   resolvers += Resolver.url(
     "bintray-scala-hedgehog",
     url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
@@ -113,7 +107,7 @@ def utilCommonSettings: Seq[Setting[_]] =
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
-    publishPomSettings ++ Release.javaVersionCheckSettings
+    publishPomSettings
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
@@ -170,7 +164,6 @@ lazy val sbtRoot: Project = (project in file("."))
   .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
   .aggregate(nonRoots: _*)
   .settings(
-    buildLevelSettings,
     minimalSettings,
     onLoadMessage := {
       val version = sys.props("java.specification.version")
@@ -225,21 +218,17 @@ lazy val sbtRoot: Project = (project in file("."))
 // This is used to configure an sbt-launcher for this version of sbt.
 lazy val bundledLauncherProj =
   (project in file("launch"))
+    .enablePlugins(SbtLauncherPlugin)
     .settings(
       minimalSettings,
       inConfig(Compile)(Transform.configSettings),
-      Release.launcherSettings(sbtLaunchJar)
     )
-    .enablePlugins(SbtLauncherPlugin)
     .settings(
       name := "sbt-launch",
       moduleName := "sbt-launch",
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
-      // mimaSettings, // TODO: Configure MiMa, deal with Proguard
-      publish := Release.deployLauncher.value,
-      publishLauncher := Release.deployLauncher.value,
       packageBin in Compile := sbtLaunchJar.value,
       mimaSettings,
       mimaPreviousArtifacts := Set()
@@ -1434,7 +1423,6 @@ def otherRootSettings =
     publishLocalBinAll := {
       val _ = (Compile / publishLocalBin).all(scriptedProjects).value
     },
-    aggregate in bintrayRelease := false,
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
       scriptedLaunchOpts := List(
@@ -1534,6 +1522,15 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
 )
 
+ThisBuild / pomIncludeRepository := { _ =>
+  false
+}
+ThisBuild / publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
 ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
 ThisBuild / whitesourceAggregateProjectName := {
   // note this can get detached on tag build etc
