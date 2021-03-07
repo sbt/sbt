@@ -85,7 +85,7 @@ object Dependencies {
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
   val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-42b717d4418374417765c7651dca69b1b75d8b84"
-  val jline3Version = "3.17.1"
+  val jline3Version = "3.19.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
