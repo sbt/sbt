@@ -38,7 +38,7 @@ lazy val `lm-coursier` = project
         if (scalaBinaryVersion.value == "2.12") lmVersion
         else lm2_13Version
       },
-      "org.scalatest" %% "scalatest" % "3.2.4" % Test
+      "org.scalatest" %% "scalatest" % "3.2.6" % Test
     )
   )
 
@@ -76,7 +76,7 @@ lazy val `lm-coursier-shaded` = project
         if (scalaBinaryVersion.value == "2.12") lmVersion
         else lm2_13Version
       },
-      "org.scalatest" %% "scalatest" % "3.2.4" % Test
+      "org.scalatest" %% "scalatest" % "3.2.6" % Test
     )
   )
 
