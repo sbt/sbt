@@ -353,8 +353,7 @@ def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(
   case Array(0, 11, x, _*) if x >= 3 => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
   case Array(0, y, _*) if y >= 12    => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
   case Array(1, _, _*) if v contains ("-20") => "https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(1, _, _*)               => "https://repo.scala-sbt.org/scalasbt/maven-releases/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case _                             => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-tools.sbt/sbt-launch/"+v+"/sbt-launch.jar"
+  case _                             => "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/"+v+"/sbt-launch"+v+".jar"
 }
 
 def makePublishToForConfig(config: Configuration) = {
