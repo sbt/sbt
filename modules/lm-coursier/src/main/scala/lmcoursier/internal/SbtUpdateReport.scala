@@ -5,6 +5,7 @@ import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 
+import coursier.cache.CacheUrl
 import coursier.{Attributes, Dependency, Module, Project, Resolution}
 import coursier.core.{Classifier, Configuration, Extension, Publication, Type}
 import coursier.maven.MavenAttributes
@@ -69,8 +70,7 @@ private[internal] object SbtUpdateReport {
             .orElse(MavenAttributes.typeDefaultClassifierOpt(pub.`type`))
             .map(_.value)
         )
-        // .withConfigurations(Vector())
-        .withUrl(Some(new URL(artifact.url)))
+        .withUrl(Some(CacheUrl.url(artifact.url)))
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
