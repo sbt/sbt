@@ -58,6 +58,10 @@ object FileChangesMacro {
       c.universe.reify(outputFileStamps)
     )
   }
+  def rescope[T](left: TaskKey[_], right: TaskKey[T]): TaskKey[T] =
+    Scoped.scopedTask(left.scope.copy(task = Select(left.key)), right.key)
+  def rescope[T](left: Scope, right: TaskKey[T]): TaskKey[T] =
+    Scoped.scopedTask(left, right.key)
   private def impl[T: c.WeakTypeTag](
       c: blackbox.Context
   )(
@@ -68,20 +72,20 @@ object FileChangesMacro {
     import c.universe._
     val taskScope = getTaskScope(c)
     reify {
-      val changes = (changeKey.splice in taskScope.splice).value
-      val current = (currentKey.splice in taskScope.splice).value
+      val changes = rescope(taskScope.splice, changeKey.splice).value
+      val current = rescope(taskScope.splice, currentKey.splice).value
       import sbt.nio.FileStamp.Formats._
-      val previous = Previous.runtimeInEnclosingTask(mapKey.splice in taskScope.splice).value
+      val previous = Previous.runtimeInEnclosingTask(rescope(taskScope.splice, mapKey.splice)).value
       previous.map(changes).getOrElse(FileChanges.noPrevious(current))
     }
   }
   def inputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Seq[NioPath]] = {
     val taskKey = getTaskScope(c)
-    c.universe.reify((allInputFiles in taskKey.splice).value)
+    c.universe.reify(rescope(taskKey.splice, allInputFiles).value)
   }
   def outputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Seq[NioPath]] = {
     val taskKey = getTaskScope(c)
-    c.universe.reify((allOutputFiles in taskKey.splice).value)
+    c.universe.reify(rescope(taskKey.splice, allOutputFiles).value)
   }
   private def getTaskScope[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[sbt.Scope] = {
     import c.universe._
@@ -92,7 +96,7 @@ object FileChangesMacro {
         val expr = c.Expr[TaskKey[T]](k)
         c.universe.reify {
           if (expr.splice.scope.task.toOption.isDefined) expr.splice.scope
-          else expr.splice.scope in expr.splice.key
+          else expr.splice.scope.copy(task = sbt.Select(expr.splice.key))
         }
       case _ => c.abort(c.enclosingPosition, err)
     }
