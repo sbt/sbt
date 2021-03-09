@@ -84,14 +84,16 @@ object Dependencies {
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
-  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-42b717d4418374417765c7651dca69b1b75d8b84"
+  // JLine 3 version must be coordinated together with JAnsi version
+  // and the JLine 2 fork version, which uses the same JAnsi
+  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
   val jline3Version = "3.19.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val jansi = "org.fusesource.jansi" % "jansi" % "2.0.1"
+  val jansi = "org.fusesource.jansi" % "jansi" % "2.1.0"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val specs2 = "org.specs2" %% "specs2-junit" % "4.10.0"
