@@ -88,5 +88,11 @@ final class DirectCredentials(
     val userName: String,
     val passwd: String
 ) extends Credentials {
-  override def toString = s"""DirectCredentials("$realm", "$host", "$userName", ****)"""
+  override def toString = {
+    val dq = '"'
+    val r =
+      if (realm == null) "null"
+      else dq + realm + dq
+    s"""DirectCredentials($r, "$host", "$userName", ****)"""
+  }
 }
