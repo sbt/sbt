@@ -11,7 +11,7 @@ import com.jsuereth.sbtpgp._
 
 object Settings {
 
-  def scala212 = "2.12.12"
+  def scala212 = "2.12.13"
   def scala213 = "2.13.5"
 
   def targetSbtVersion = "1.2.8"
