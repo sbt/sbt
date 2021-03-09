@@ -256,7 +256,7 @@ object BuildServerProtocol {
             val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
           case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
-            val _ = callback.appendExec(s"$bspReload ${r.id}", None)
+            val _ = callback.appendExec(s"$bspReload ${r.id}", Some(r.id))
 
           case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
             callback.jsonRpcRespond(JNull, Some(r.id))

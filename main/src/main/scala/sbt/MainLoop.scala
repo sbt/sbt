@@ -205,8 +205,10 @@ object MainLoop {
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
     val exchange = StandardMain.exchange
-    exchange notifyStatus
+    exchange.setState(state)
+    exchange.notifyStatus(
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
+    )
     try {
       def process(): State = {
         val progressState = state.get(sbt.Keys.currentTaskProgress) match {

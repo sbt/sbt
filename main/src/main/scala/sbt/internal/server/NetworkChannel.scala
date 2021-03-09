@@ -255,23 +255,25 @@ final class NetworkChannel(
       err: JsonRpcResponseError,
       execId: Option[String]
   ): Unit = this.synchronized {
-    def respond(id: String) = {
-      pendingRequests -= id
-      jsonRpcRespondError(id, err)
+    getPendingRequest(execId) match {
+      case Some(request) =>
+        pendingRequests -= request.id
+        jsonRpcRespondError(request.id, err)
+      case _ => logMessage("error", s"Error ${err.code}: ${err.message}")
     }
-    def error(): Unit = logMessage("error", s"Error ${err.code}: ${err.message}")
-    execId match {
-      case Some(id) if pendingRequests.contains(id) => respond(id)
+  }
+
+  private[sbt] def getPendingRequest(execId: Option[String]): Option[JsonRpcRequestMessage] = {
+    execId.flatMap {
       // This handles multi commands from the network that were remapped to a different
       // exec id for reporting purposes.
-      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
+      case id if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
         StandardMain.exchange.withState { s =>
-          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
-            case Some(id) if pendingRequests.contains(id) => respond(id)
-            case _                                        => error()
-          }
+          s.get(BasicCommands.execMap)
+            .flatMap(_.collectFirst { case (k, `id`) => k })
+            .flatMap(pendingRequests.get)
         }
-      case _ => error()
+      case id => pendingRequests.get(id)
     }
   }
 
@@ -287,27 +289,14 @@ final class NetworkChannel(
       event: A,
       execId: Option[String]
   ): Unit = this.synchronized {
-    def error(): Unit = {
-      val msg =
-        s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
-      log.debug(msg)
-    }
-    def respond(id: String): Unit = {
-      pendingRequests -= id
-      jsonRpcRespond(event, id)
-    }
-    execId match {
-      case Some(id) if pendingRequests.contains(id) => respond(id)
-      // This handles multi commands from the network that were remapped to a different
-      // exec id for reporting purposes.
-      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
-        StandardMain.exchange.withState { s =>
-          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
-            case Some(id) if pendingRequests.contains(id) => respond(id)
-            case _                                        => error()
-          }
-        }
-      case _ => error()
+    getPendingRequest(execId) match {
+      case Some(request) =>
+        pendingRequests -= request.id
+        jsonRpcRespond(event, request.id)
+      case _ =>
+        val msg =
+          s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
+        log.debug(msg)
     }
   }
 
@@ -323,9 +312,17 @@ final class NetworkChannel(
 
   def notifyEvent(event: EventMessage): Unit = {
     event match {
-      case entry: LogEvent        => logMessage(entry.level, entry.message)
-      case entry: ExecStatusEvent => logMessage("debug", entry.status)
-      case _                      => ()
+      case entry: LogEvent => logMessage(entry.level, entry.message)
+      case entry: ExecStatusEvent =>
+        getPendingRequest(entry.execId) match {
+          case Some(request) =>
+            logMessage("debug", s"${entry.status} ${request.method}")
+          case None =>
+            log.debug(
+              s"unmatched ${entry.status} event for requestId ${entry.execId}: ${entry.message}"
+            )
+        }
+      case _ => ()
     }
   }
 
