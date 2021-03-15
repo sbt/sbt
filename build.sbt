@@ -18,7 +18,6 @@ ThisBuild / version := {
 }
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / organization := "org.scala-sbt"
-ThisBuild / bintrayPackage := sys.env.get("BINTRAY_PACKAGE").getOrElse("librarymanagement")
 ThisBuild / homepage := Some(url("https://github.com/sbt/librarymanagement"))
 ThisBuild / description := "Library management module for sbt"
 ThisBuild / scmInfo := {
@@ -32,6 +31,11 @@ ThisBuild / developers := List(
   Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("http://eed3si9n.com/")),
   Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
 )
+ThisBuild / pomIncludeRepository := (_ => false) // drop repos other than Maven Central from POM
+ThisBuild / publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
 
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
