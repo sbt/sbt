@@ -521,7 +521,8 @@ object BuildServerProtocol {
             )
           ),
           runParams.arguments,
-          defaultJvmOptions.toVector
+          defaultJvmOptions.toVector,
+          Vector.empty
         )
     }
 
@@ -587,7 +588,12 @@ object BuildServerProtocol {
       workingDirectory = Some(baseDirectory.value),
       runJVMOptions = mainClass.jvmOptions,
       connectInput = connectInput.value,
-      envVars = envVars.value
+      envVars = envVars.value ++ mainClass.environmentVariables
+        .flatMap(_.split("=", 2).toList match {
+          case key :: value :: Nil => Some(key -> value)
+          case _                   => None
+        })
+        .toMap
     )
     val runner = new ForkRun(forkOpts)
     val statusCode = runner
@@ -649,7 +655,7 @@ object BuildServerProtocol {
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
     val jvmOptions = Keys.javaOptions.value.toVector
     val mainClasses = Keys.discoveredMainClasses.value.map(
-      ScalaMainClass(_, Vector(), jvmOptions)
+      ScalaMainClass(_, Vector(), jvmOptions, Vector.empty)
     )
     ScalaMainClassesItem(
       bspTargetIdentifier.value,
