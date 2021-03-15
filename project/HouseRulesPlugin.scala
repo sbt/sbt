@@ -2,24 +2,14 @@ package lmbuild
 
 import sbt._
 import Keys._
-import bintray.BintrayPlugin
-import bintray.BintrayPlugin.autoImport._
 
 object HouseRulesPlugin extends AutoPlugin {
-  override def requires = plugins.JvmPlugin && BintrayPlugin
+  override def requires = plugins.JvmPlugin
   override def trigger = allRequirements
 
-  override def buildSettings: Seq[Def.Setting[_]] = baseBuildSettings
   override def projectSettings: Seq[Def.Setting[_]] = baseSettings
 
-  lazy val baseBuildSettings: Seq[Def.Setting[_]] = Seq(
-    bintrayOrganization := Some("sbt"),
-    bintrayRepository := sys.env.get("BINTRAY_REPOSITORY").getOrElse("maven-releases"),
-  )
-
   lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
-    bintrayPackage := (ThisBuild / bintrayPackage).value,
-    bintrayRepository := (ThisBuild / bintrayRepository).value,
     scalacOptions ++= Seq("-encoding", "utf8"),
     scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlint"),
     scalacOptions += "-language:higherKinds",
