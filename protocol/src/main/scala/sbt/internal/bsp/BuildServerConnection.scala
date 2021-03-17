@@ -28,6 +28,7 @@ object BuildServerConnection {
     val sbtLaunchJar = classPath
       .split(File.pathSeparator)
       .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
+      .map(_.replaceAllLiterally(" ", "%20"))
     val argv =
       Vector(
         s"$javaHome/bin/java",
