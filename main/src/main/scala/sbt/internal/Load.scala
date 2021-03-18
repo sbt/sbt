@@ -1172,6 +1172,7 @@ private[sbt] object Load {
           opts
         )
       },
+      scalacOptions += "-Wconf:cat=unused-nowarn:s",
       onLoadMessage := ("loading project definition from " + baseDirectory.value)
     )
   )
