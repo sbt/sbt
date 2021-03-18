@@ -144,7 +144,13 @@ object IvyScalaUtil {
       val depBinaryVersion = CrossVersion.binaryScalaVersion(id.getRevision)
       def isScalaLangOrg = id.getOrganisation == scalaOrganization
       def isScalaArtifact = scalaArtifacts.contains[String](id.getName)
-      def hasBinVerMismatch = depBinaryVersion != scalaBinaryVersion
+
+      def hasBinVerMismatch =
+        depBinaryVersion != scalaBinaryVersion &&
+          // scala 2.13 is compatible with scala 3.x
+          Seq(depBinaryVersion, scalaBinaryVersion)
+            .forall(bv => bv.startsWith("3") || bv.startsWith("2.13"))
+
       def matchesOneOfTheConfigs = dep.getModuleConfigurations exists { scalaVersionConfigs }
       val mismatched = isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs
       if (mismatched)
