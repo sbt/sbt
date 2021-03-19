@@ -631,4 +631,7 @@ type ScalaMainClass {
 
   ## The jvm options for the application.
   jvmOptions: [String]
+
+  ## Additional environment variables for the application.
+  environmentVariables: [String]
 }

@@ -503,7 +503,10 @@ object BuildServerProtocol {
               ErrorCodes.ParseError,
               e.getMessage
             )
-          case Success(value) => value
+          case Success(value) =>
+            value.withEnvironmentVariables(
+              envVars.value.map { case (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
+            )
         }
 
       case Some(dataKind) =>
@@ -521,7 +524,8 @@ object BuildServerProtocol {
             )
           ),
           runParams.arguments,
-          defaultJvmOptions.toVector
+          defaultJvmOptions.toVector,
+          envVars.value.map { case (k, v) => s"$k=$v" }.toVector
         )
     }
 
@@ -587,7 +591,12 @@ object BuildServerProtocol {
       workingDirectory = Some(baseDirectory.value),
       runJVMOptions = mainClass.jvmOptions,
       connectInput = connectInput.value,
-      envVars = envVars.value
+      envVars = mainClass.environmentVariables
+        .flatMap(_.split("=", 2).toList match {
+          case key :: value :: Nil => Some(key -> value)
+          case _                   => None
+        })
+        .toMap
     )
     val runner = new ForkRun(forkOpts)
     val statusCode = runner
@@ -649,7 +658,12 @@ object BuildServerProtocol {
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
     val jvmOptions = Keys.javaOptions.value.toVector
     val mainClasses = Keys.discoveredMainClasses.value.map(
-      ScalaMainClass(_, Vector(), jvmOptions)
+      ScalaMainClass(
+        _,
+        Vector(),
+        jvmOptions,
+        envVars.value.map { case (k, v) => s"$k=$v" }.toVector
+      )
     )
     ScalaMainClassesItem(
       bspTargetIdentifier.value,
