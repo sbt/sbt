@@ -40,7 +40,7 @@ jobs:
       with:
         java-version: "adopt@1.${{ matrix.java }}"
     - name: Coursier cache
-      uses: coursier/cache-action@v5
+      uses: coursier/cache-action@v6
     - name: Build and deploy
       run: |
         # build from fresh IO, LM, and Zinc

@@ -60,7 +60,7 @@ jobs:
       with:
         java-version: "adopt@1.${{ matrix.java }}"
     - name: Coursier cache
-      uses: coursier/cache-action@v5
+      uses: coursier/cache-action@v6
     - name: Cache sbt
       uses: actions/cache@v2.1.3
       with:
