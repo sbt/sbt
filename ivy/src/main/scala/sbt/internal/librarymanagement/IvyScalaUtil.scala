@@ -148,7 +148,7 @@ object IvyScalaUtil {
       def hasBinVerMismatch =
         depBinaryVersion != scalaBinaryVersion &&
           // scala 2.13 is compatible with scala 3.x
-          Seq(depBinaryVersion, scalaBinaryVersion)
+          !Seq(depBinaryVersion, scalaBinaryVersion)
             .forall(bv => bv.startsWith("3") || bv.startsWith("2.13"))
 
       def matchesOneOfTheConfigs = dep.getModuleConfigurations exists { scalaVersionConfigs }
