@@ -530,6 +530,14 @@ if !run_native_client! equ 1 (
 
 call :checkjava
 
+if defined sbt_args_sbt_jar (
+  set "sbt_jar=!sbt_args_sbt_jar!"
+) else (
+  set "sbt_jar=!SBT_HOME!\bin\sbt-launch.jar"
+)
+
+set sbt_jar=!sbt_jar:"=!
+
 call :copyrt
 
 if defined JVM_DEBUG_PORT (
@@ -600,14 +608,6 @@ if defined sbt_args_timings (
 if defined sbt_args_traces (
   set _SBT_OPTS=-Dsbt.traces=true !_SBT_OPTS!
 )
-
-if defined sbt_args_sbt_jar (
-  set "sbt_jar=!sbt_args_sbt_jar!"
-) else (
-  set "sbt_jar=!SBT_HOME!\bin\sbt-launch.jar"
-)
-
-set sbt_jar=!sbt_jar:"=!
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
 
@@ -872,15 +872,13 @@ exit /B 1
 
 :copyrt
 if /I !JAVA_VERSION! GEQ 9 (
-  set "rtexport=!SBT_BIN_DIR!java9-rt-export.jar"
-
-  "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -jar "!rtexport!" --rt-ext-dir > "%TEMP%.\rtext.txt"
+  "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -jar "!sbt_jar!" --rt-ext-dir > "%TEMP%.\rtext.txt"
   set /p java9_ext= < "%TEMP%.\rtext.txt"
   set "java9_rt=!java9_ext!\rt.jar"
 
   if not exist "!java9_rt!" (
     mkdir "!java9_ext!"
-    "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -jar "!rtexport!" "!java9_rt!"
+    "!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -jar "!sbt_jar!" --export-rt "!java9_rt!"
   )
   set _JAVA_OPTS=!_JAVA_OPTS! -Dscala.ext.dirs="!java9_ext!"
 )
