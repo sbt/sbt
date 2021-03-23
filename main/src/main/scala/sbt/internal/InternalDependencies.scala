@@ -14,19 +14,21 @@ private[sbt] object InternalDependencies {
   def configurations: Def.Initialize[Seq[(ProjectRef, Set[String])]] = Def.setting {
     val allConfigs = Classpaths.allConfigs(configuration.value).map(_.name).toSet
     val ref = thisProjectRef.value
+    val projectDependencies = buildDependencies.value.classpath.get(ref).toSeq.flatten
     val applicableConfigs = allConfigs + "*"
-    ((ref -> allConfigs) +: buildDependencies.value.classpath
-      .get(ref)
-      .toSeq
-      .flatMap(_.flatMap {
+    ((ref -> allConfigs) +:
+      projectDependencies.flatMap {
         case ResolvedClasspathDependency(p, rawConfigs) =>
           val configs = rawConfigs.getOrElse("*->compile").split(";").flatMap { config =>
             config.split("->") match {
               case Array(n, c) if applicableConfigs.contains(n) => Some(c)
-              case _                                            => None
+              case Array(n) if applicableConfigs.contains(n)    =>
+                // "test" is equivalent to "compile->test"
+                Some("compile")
+              case _ => None
             }
           }
           if (configs.isEmpty) None else Some(p -> configs.toSet)
-      })).distinct
+      }).distinct
   }
 }
