@@ -325,6 +325,18 @@ object Tests {
     )
   }
 
+  def apply(
+      frameworks: Map[TestFramework, Framework],
+      testLoader: ClassLoader,
+      runners: Map[TestFramework, Runner],
+      discovered: Vector[TestDefinition],
+      config: Execution,
+      log: ManagedLogger
+  ): Task[Output] = {
+    val o = processOptions(config.options, discovered, log)
+    apply(frameworks, testLoader, runners, o, config, log)
+  }
+
   def testTask(
       loader: ClassLoader,
       frameworks: Map[TestFramework, Framework],

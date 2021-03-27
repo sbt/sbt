@@ -46,14 +46,27 @@ private[sbt] object ForkTests {
 
   def apply(
       runners: Map[TestFramework, Runner],
-      opts: ProcessedOptions,
+      tests: Vector[TestDefinition],
+      config: Execution,
+      classpath: Seq[File],
+      fork: ForkOptions,
+      log: Logger,
+      tags: (Tag, Int)*
+  ): Task[TestOutput] = {
+    val opts: Tests.ProcessedOptions = processOptions(config.options, tests, log)
+    apply(runners, opts, config, classpath, fork, log, tags: _*)
+  }
+
+  def apply(
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
       config: Execution,
       classpath: Seq[File],
       fork: ForkOptions,
       log: Logger,
       tag: Tag
   ): Task[TestOutput] = {
-    apply(runners, opts, config, classpath, fork, log, tag -> 1)
+    apply(runners, tests, config, classpath, fork, log, tag -> 1)
   }
 
   private[this] def mainTestTask(
