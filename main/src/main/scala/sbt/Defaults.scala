@@ -3081,7 +3081,7 @@ object Classpaths {
       val vs = versionScheme.value
       if (vs.isEmpty)
         s.log.warn(
-          s"""versionScheme setting is empty; set `ThisBuild / versionScheme := Some("early-semver")` or `Some("pvp")`
+          s"""versionScheme setting is empty; set `ThisBuild / versionScheme := Some("early-semver")`, `Some("semver-spec")` or `Some("pvp")`
              |so tooling can use it for evction errors etc - https://www.scala-sbt.org/1.x/docs/Publishing.html""".stripMargin
         )
       else ()
