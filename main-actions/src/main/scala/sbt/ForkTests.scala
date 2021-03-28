@@ -23,15 +23,13 @@ import sbt.internal.util.{ RunningProcesses, Terminal => UTerminal }
 private[sbt] object ForkTests {
   def apply(
       runners: Map[TestFramework, Runner],
-      tests: Vector[TestDefinition],
+      opts: ProcessedOptions,
       config: Execution,
       classpath: Seq[File],
       fork: ForkOptions,
       log: Logger,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
-    val opts = processOptions(config, tests, log)
-
     import std.TaskExtra._
     val dummyLoader = this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
     def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
@@ -44,6 +42,19 @@ private[sbt] object ForkTests {
     main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
+  }
+
+  def apply(
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
+      config: Execution,
+      classpath: Seq[File],
+      fork: ForkOptions,
+      log: Logger,
+      tags: (Tag, Int)*
+  ): Task[TestOutput] = {
+    val opts = processOptions(config, tests, log)
+    apply(runners, opts, config, classpath, fork, log, tags: _*)
   }
 
   def apply(
