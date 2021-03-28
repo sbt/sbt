@@ -1423,7 +1423,7 @@ object Defaults extends BuildCommon {
     val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
       groups
         .map(
-          group => group -> Tests.processOptions(config.options, group.tests.toVector, s.log)
+          group => group -> Tests.processOptions(config, group.tests.toVector, s.log)
         )
         .toMap
 

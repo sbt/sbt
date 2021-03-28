@@ -249,7 +249,7 @@ object Tests {
       val testListeners: Vector[TestReportListener]
   )
   private[sbt] def processOptions(
-      options: Seq[TestOption],
+      config: Execution,
       discovered: Vector[TestDefinition],
       log: Logger
   ): ProcessedOptions = {
@@ -261,7 +261,7 @@ object Tests {
     val testListeners = new ListBuffer[TestReportListener]
     val undefinedFrameworks = new ListBuffer[String]
 
-    for (option <- options) {
+    for (option <- config.options) {
       option match {
         case Filter(include) => testFilters += include; ()
         case Filters(includes) =>
@@ -333,7 +333,7 @@ object Tests {
       config: Execution,
       log: ManagedLogger
   ): Task[Output] = {
-    val o = processOptions(config.options, discovered, log)
+    val o = processOptions(config, discovered, log)
     apply(frameworks, testLoader, runners, o, config, log)
   }
 

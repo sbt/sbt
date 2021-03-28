@@ -53,7 +53,7 @@ private[sbt] object ForkTests {
       log: Logger,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
-    val opts: Tests.ProcessedOptions = processOptions(config.options, tests, log)
+    val opts: Tests.ProcessedOptions = processOptions(config, tests, log)
     apply(runners, opts, config, classpath, fork, log, tags: _*)
   }
 
