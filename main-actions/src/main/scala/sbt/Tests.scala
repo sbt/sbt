@@ -308,11 +308,10 @@ object Tests {
       frameworks: Map[TestFramework, Framework],
       testLoader: ClassLoader,
       runners: Map[TestFramework, Runner],
-      discovered: Vector[TestDefinition],
+      o: ProcessedOptions,
       config: Execution,
       log: ManagedLogger
   ): Task[Output] = {
-    val o = processOptions(config, discovered, log)
     testTask(
       testLoader,
       frameworks,
@@ -324,6 +323,18 @@ object Tests {
       o.testListeners,
       config
     )
+  }
+
+  def apply(
+      frameworks: Map[TestFramework, Framework],
+      testLoader: ClassLoader,
+      runners: Map[TestFramework, Runner],
+      discovered: Vector[TestDefinition],
+      config: Execution,
+      log: ManagedLogger
+  ): Task[Output] = {
+    val o = processOptions(config, discovered, log)
+    apply(frameworks, testLoader, runners, o, config, log)
   }
 
   def testTask(

@@ -1502,7 +1502,26 @@ object Defaults extends BuildCommon {
       strategy: ClassLoaderLayeringStrategy,
       projectId: String
   ): Initialize[Task[Tests.Output]] = {
-    val runners = createTestRunners(frameworks, loader, config)
+    val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
+      groups
+        .map(
+          group => group -> Tests.processOptions(config, group.tests.toVector, s.log)
+        )
+        .toMap
+
+    val testDefinitions: Iterable[TestDefinition] = processedOptions.values.flatMap(_.tests)
+
+    val filteredFrameworks: Map[TestFramework, Framework] = frameworks.filter {
+      case (_, framework) =>
+        TestFramework.getFingerprints(framework).exists { t =>
+          testDefinitions.exists { test =>
+            TestFramework.matches(t, test.fingerprint)
+          }
+        }
+    }
+
+    val runners = createTestRunners(filteredFrameworks, loader, config)
+
     val groupTasks = groups map { group =>
       group.runPolicy match {
         case Tests.SubProcess(opts) =>
@@ -1511,7 +1530,7 @@ object Defaults extends BuildCommon {
           s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
           ForkTests(
             runners,
-            group.tests.toVector,
+            processedOptions(group),
             forkedConfig,
             cp.files,
             opts,
@@ -1526,7 +1545,7 @@ object Defaults extends BuildCommon {
             frameworks,
             loader,
             runners,
-            group.tests.toVector,
+            processedOptions(group),
             config.copy(tags = config.tags ++ group.tags),
             s.log
           )

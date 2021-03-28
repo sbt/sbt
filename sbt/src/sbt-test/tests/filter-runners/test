@@ -1,0 +1,2 @@
+> testOnly example.MunitSpec example.ScalaTestSpec
+> testOnly example.MunitSpec -- "--tests=munit"
