@@ -1,3 +1,4 @@
 > clean
 
 $ absent foo/bar/baz.txt
+$ absent a.txt
