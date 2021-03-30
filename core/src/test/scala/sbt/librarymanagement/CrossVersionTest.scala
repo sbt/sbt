@@ -237,6 +237,15 @@ class CrossVersionTest extends UnitSpec {
   it should "for 3.1.0 return 3" in {
     binaryScalaVersion("3.1.0") shouldBe "3"
   }
+  it should "for 3.0.1-RC1 return 3" in {
+    binaryScalaVersion("3.0.1-RC1") shouldBe "3"
+  }
+  it should "for 3.0.1-M1 return 3" in {
+    binaryScalaVersion("3.0.1-M1") shouldBe "3"
+  }
+  it should "for 3.0.1-RC1-bin-SNAPSHOT return 3" in {
+    binaryScalaVersion("3.0.1-RC1") shouldBe "3"
+  }
 
   private def patchVersion(fullVersion: String) =
     CrossVersion(CrossVersion.patch, fullVersion, "dummy") map (fn => fn("artefact"))
