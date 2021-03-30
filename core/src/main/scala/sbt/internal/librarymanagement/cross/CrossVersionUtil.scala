@@ -75,11 +75,11 @@ object CrossVersionUtil {
     }
 
   private[sbt] def binaryScala3Version(full: String): String = full match {
-    case ReleaseV(maj, _, _, _)                       => maj
-    case CandidateV(maj, min, _, _) if min.toLong > 0 => maj
-    case MilestonV(maj, min, _, _) if min.toLong > 0  => maj
-    case BinCompatV(maj, min, patch, stage, _)        => binaryScala3Version(s"$maj.$min.$patch$stage")
-    case _                                            => full
+    case ReleaseV(maj, _, _, _)                                               => maj
+    case CandidateV(maj, min, patch, _) if min.toLong > 0 || patch.toLong > 0 => maj
+    case MilestonV(maj, min, patch, _) if min.toLong > 0 || patch.toLong > 0  => maj
+    case BinCompatV(maj, min, patch, stage, _)                                => binaryScala3Version(s"$maj.$min.$patch$stage")
+    case _                                                                    => full
   }
 
   def binaryScalaVersion(full: String): String = {
