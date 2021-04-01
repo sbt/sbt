@@ -692,6 +692,7 @@ object Defaults extends BuildCommon {
     crossSbtVersions := Vector((pluginCrossBuild / sbtVersion).value),
     crossTarget := makeCrossTarget(
       target.value,
+      scalaVersion.value,
       scalaBinaryVersion.value,
       (pluginCrossBuild / sbtBinaryVersion).value,
       sbtPlugin.value,
@@ -772,8 +773,23 @@ object Defaults extends BuildCommon {
     else Vector()
   }
 
-  def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File = {
-    val scalaBase = if (cross) t / ("scala-" + sv) else t
+  @deprecated("Use constructor with scalaVersion and scalaBinaryVersion", "1.5.0")
+  def makeCrossTarget(t: File, bv: String, sbtv: String, plugin: Boolean, cross: Boolean): File = {
+    val scalaBase = if (cross) t / ("scala-" + bv) else t
+    if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
+  }
+
+  def makeCrossTarget(
+      t: File,
+      scalaVersion: String,
+      scalaBinaryVersion: String,
+      sbtv: String,
+      plugin: Boolean,
+      cross: Boolean
+  ): File = {
+    val scalaSuffix =
+      if (ScalaArtifacts.isScala3(scalaVersion)) scalaVersion else scalaBinaryVersion
+    val scalaBase = if (cross) t / ("scala-" + scalaSuffix) else t
     if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
   }
 
