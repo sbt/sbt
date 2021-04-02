@@ -1,0 +1,15 @@
+> java+ run
+> check 8
+
+> java++ 10!
+> run
+> check 10
+
+# test safe switching
+$ copy-file changes/build.sbt build.sbt
+$ delete out.txt
+> reload
+> clean
+> java++ 10
+> run
+> check 10

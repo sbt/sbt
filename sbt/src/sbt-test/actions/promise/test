@@ -1,0 +1,8 @@
+> joinTwo
+> check
+
+$ delete output.txt
+# check that we won't thread starve
+> set Global / concurrentRestrictions := Seq(Tags.limitAll(1))
+> joinTwo
+> check2

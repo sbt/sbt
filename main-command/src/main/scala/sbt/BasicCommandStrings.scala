@@ -1,50 +1,76 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 
 import sbt.util.Level
 import sbt.internal.util.complete.HistoryCommands
 
 object BasicCommandStrings {
-  val HelpCommand = "help"
-  val CompletionsCommand = "completions"
-  val Exit = "exit"
-  val Quit = "quit"
+  val HelpCommand: String = "help"
+  val CompletionsCommand: String = "completions"
+  val Exit: String = "exit"
+  val Shutdown: String = "shutdown"
+  val Quit: String = "quit"
+  val TemplateCommand: String = "new"
+  val Cancel: String = "cancel"
 
   /** The command name to terminate the program.*/
   val TerminateAction: String = Exit
 
-  def helpBrief = (HelpCommand, s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>').")
-  def helpDetailed = HelpCommand + """
+  def helpBrief: (String, String) =
+    (
+      HelpCommand,
+      s"Displays this help message or prints detailed help on requested commands (run '$HelpCommand <command>')."
+    )
+  def helpDetailed: String = s"""$HelpCommand
 
 	Prints a help summary.
 
-""" + HelpCommand + """ <command>
+$HelpCommand <command>
 
 	Prints detailed help for command <command>.
 
-""" + HelpCommand + """ <regular expression>
+$HelpCommand <regular expression>
 
 	Searches the help according to the provided regular expression.
 """
 
-  def CompletionsDetailed = "Displays a list of completions for the given argument string (run 'completions <string>')."
-  def CompletionsBrief = (CompletionsCommand, CompletionsDetailed)
+  def CompletionsDetailed: String =
+    "Displays a list of completions for the given argument string (run 'completions <string>')."
+  def CompletionsBrief: (String, String) = (CompletionsCommand, CompletionsDetailed)
 
-  def HistoryHelpBrief = (HistoryCommands.Start -> "History command help.  Lists and describes all history commands.")
-  def historyHelp = Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
+  def templateBrief: (String, String) = (TemplateCommand, "Creates a new sbt build.")
+  def templateDetailed: String =
+    TemplateCommand + """ [--options] <template>
+  Create a new sbt build based on the given template.
+  sbt provides out-of-the-box support for Giter8 templates. See foundweekends.org/giter8/ for details.
+  
+  Example:
+    sbt new scala/scala-seed.g8
+  """
 
-  def exitBrief = "Terminates the build."
+  def HistoryHelpBrief: (String, String) =
+    (HistoryCommands.Start, "History command help.  Lists and describes all history commands.")
+  def historyHelp =
+    Help(Nil, (HistoryHelpBrief +: HistoryCommands.descriptions).toMap, Set(HistoryCommands.Start))
 
-  def logLevelHelp =
-    {
-      val levels = Level.values.toSeq
-      val levelList = levels.mkString(", ")
-      val brief = ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
-      val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
-      Help(brief, detailed)
-    }
+  def exitBrief: String = "Terminates the remote client or the build when called from the console."
+  def shutdownBrief: String = "Terminates the build."
+
+  def logLevelHelp: Help = {
+    val levels = Level.values.toSeq
+    val levelList = levels.mkString(", ")
+    val brief =
+      ("<log-level>", "Sets the logging level to 'log-level'.  Valid levels: " + levelList)
+    val detailed = levels.map(l => (l.toString, logLevelDetail(l))).toMap
+    Help(brief, detailed)
+  }
+
   private[this] def logLevelDetail(level: Level.Value): String =
     s"""$level
 
@@ -52,7 +78,7 @@ object BasicCommandStrings {
 	This will be used as the default level for logging from commands, settings, and tasks.
 	Any explicit `logLevel` configuration in a project overrides this setting.
 
--$level
+-$level OR --$level
 
 	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
 	This is useful as a startup option:
@@ -60,25 +86,37 @@ object BasicCommandStrings {
 		* if no other commands are passed, interactive mode is still entered
 """
 
-  def runEarly(command: String) = s"$EarlyCommand($command)"
+  def runEarly(command: String): String = s"$EarlyCommand($command)"
   private[sbt] def isEarlyCommand(s: String): Boolean = {
-    val levelOptions = Level.values.toSeq map { "-" + _ }
+    val levelOptions = Level.values.toSeq flatMap { elem =>
+      List("-" + elem, "--" + elem)
+    }
     (s.startsWith(EarlyCommand + "(") && s.endsWith(")")) ||
-      (levelOptions contains s)
+    (levelOptions contains s) ||
+    (s.startsWith("-" + AddPluginSbtFileCommand) || s.startsWith("--" + AddPluginSbtFileCommand))
   }
 
-  val EarlyCommand = "early"
-  val EarlyCommandBrief = (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
-  val EarlyCommandDetailed =
+  val EarlyCommand: String = "early"
+  val EarlyCommandBrief: (String, String) =
+    (s"$EarlyCommand(<command>)", "Schedules a command to run before other commands on startup.")
+  val EarlyCommandDetailed: String =
     s"""$EarlyCommand(<command>)
 
 	Schedules an early command, which will be run before other commands on the command line.
 	The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
 
-  def ReadCommand = "<"
-  def ReadFiles = " file1 file2 ..."
-  def ReadDetailed =
+  def addPluginSbtFileHelp(): Help = {
+    val brief =
+      (s"--$AddPluginSbtFileCommand=<file>", "Adds the given *.sbt file to the plugin build.")
+    Help(brief)
+  }
+
+  val AddPluginSbtFileCommand: String = "addPluginSbtFile"
+
+  def ReadCommand: String = "<"
+  def ReadFiles: String = " file1 file2 ..."
+  def ReadDetailed: String =
     ReadCommand + ReadFiles + """
 
 	Reads the lines from the given files and inserts them as commands.
@@ -91,88 +129,104 @@ object BasicCommandStrings {
 
 	You probably need to escape this command if entering it at your shell."""
 
-  def ApplyCommand = "apply"
-  def ApplyDetailed =
+  def ApplyCommand: String = "apply"
+  def ApplyDetailed: String =
     ApplyCommand + """ [-cp|-classpath <classpath>] <module-name>*
 	Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
 	Here, currentState is of type sbt.State.
    If a classpath is provided, modules are loaded from a new class loader for this classpath.
 """
 
-  def RebootCommand = "reboot"
-  def RebootDetailed =
-    RebootCommand + """ [full]
+  private[sbt] def RebootNetwork: String = "sbtRebootNetwork"
+  private[sbt] def RebootImpl: String = "sbtRebootImpl"
+  def RebootCommand: String = "reboot"
+  def RebootDetailed: String =
+    RebootCommand + """ [dev | full]
 
 	This command is equivalent to exiting sbt, restarting, and running the
 	  remaining commands with the exception that the JVM is not shut down.
 
-	If 'full' is specified, the boot directory (`~/.sbt/boot` by default)
-	  is deleted before restarting.  This forces an update of sbt and Scala
-	  and is useful when working with development versions of sbt or Scala."""
+	If 'dev' is specified, the current sbt artifacts from the boot directory
+	  (`~/.sbt/boot` by default) are deleted before restarting.
+	This forces an update of sbt and Scala, which is useful when working with development
+	  versions of sbt.
+	If 'full' is specified, the boot directory is wiped out before restarting.
+"""
 
-  def Multi = ";"
-  def MultiBrief = (Multi + " <command> (" + Multi + " <command>)*", "Runs the provided semicolon-separated commands.")
-  def MultiDetailed =
+  def Multi: String = ";"
+  def MultiBrief: (String, String) =
+    (
+      "<command> (" + Multi + " <command>)*",
+      "Runs the provided semicolon-separated commands."
+    )
+  def MultiDetailed: String =
     Multi + " command1 " + Multi + """ command2 ...
 
 	Runs the specified commands."""
 
-  def AppendCommand = "append"
-  def AppendLastDetailed =
+  def AppendCommand: String = "append"
+  def AppendLastDetailed: String =
     AppendCommand + """ <command>
 	Appends 'command' to list of commands to run.
 """
 
-  val AliasCommand = "alias"
-  def AliasDetailed =
-    AliasCommand + """
+  val AliasCommand: String = "alias"
+  def AliasDetailed: String =
+    s"""$AliasCommand
 
 	Prints a list of defined aliases.
 
-""" +
-      AliasCommand + """ name
+$AliasCommand name
 
 	Prints the alias defined for `name`.
 
-""" +
-      AliasCommand + """ name=value
+$AliasCommand name=value
 
 	Sets the alias `name` to `value`, replacing any existing alias with that name.
 	Whenever `name` is entered, the corresponding `value` is run.
 	If any argument is provided to `name`, it is appended as argument to `value`.
 
-""" +
-      AliasCommand + """ name=
+$AliasCommand name=
 
 	Removes the alias for `name`."""
 
   def Shell = "shell"
-  def ShellDetailed = "Provides an interactive prompt from which commands can be run."
+  def ShellDetailed: String =
+    "Provides an interactive prompt and network server from which commands can be run."
 
-  def Server = "server"
-  def ServerDetailed = "Provides a network server and an interactive prompt from which commands can be run."
+  def StartServer = "startServer"
+  def StartServerDetailed: String =
+    s"""$StartServer
+	Starts the server if it has not been started. This is intended to be used with
+	-Dsbt.server.autostart=false."""
 
-  def StashOnFailure = "sbtStashOnFailure"
-  def PopOnFailure = "sbtPopOnFailure"
+  def ServerDetailed: String =
+    "--server always runs sbt in not-daemon mode."
+  def DashDashServer: String = "--server"
 
-  // commands with poor choices for names since they clash with the usual conventions for command line options
-  //   these are not documented and are mainly internal commands and can be removed without a full deprecation cycle
-  object Compat {
-    def OnFailure = "-"
-    def ClearOnFailure = "--"
-    def FailureWall = "---"
-    def OnFailureDeprecated = deprecatedAlias(OnFailure, BasicCommandStrings.OnFailure)
-    def ClearOnFailureDeprecated = deprecatedAlias(ClearOnFailure, BasicCommandStrings.ClearOnFailure)
-    def FailureWallDeprecated = deprecatedAlias(FailureWall, BasicCommandStrings.FailureWall)
-    private[this] def deprecatedAlias(oldName: String, newName: String): String =
-      s"The `$oldName` command is deprecated in favor of `$newName` and will be removed in 0.14.0"
-  }
+  def OldShell: String = "oldshell"
+  def OldShellDetailed = "Provides an interactive prompt from which commands can be run."
 
-  def FailureWall = "resumeFromFailure"
+  def Client: String = "client"
+  def ClientDetailed: String =
+    "Provides an interactive prompt from which commands can be run on a server."
+  def DashClient: String = "-client"
+  def DashDashClient: String = "--client"
+  def DashDashDetachStdio: String = "--detach-stdio"
 
-  def ClearOnFailure = "sbtClearOnFailure"
-  def OnFailure = "onFailure"
-  def OnFailureDetailed =
+  def StashOnFailure: String = "sbtStashOnFailure"
+  def PopOnFailure: String = "sbtPopOnFailure"
+
+  def FailureWall: String = "resumeFromFailure"
+
+  def ReportResult = "sbtReportResult"
+  def CompleteExec = "sbtCompleteExec"
+  def MapExec = "sbtMapExec"
+  def PromptChannel = "sbtPromptChannel"
+
+  def ClearOnFailure: String = "sbtClearOnFailure"
+  def OnFailure: String = "onFailure"
+  def OnFailureDetailed: String =
     OnFailure + """ command
 
 	Registers 'command' to run when a command fails to complete normally.
@@ -186,11 +240,17 @@ object BasicCommandStrings {
   def IfLast = "iflast"
   def IfLastCommon = "If there are no more commands after this one, 'command' is run."
   def IfLastDetailed =
-    IfLast + """ <command>
+    s"""$IfLast <command>
 
-	""" + IfLastCommon
+	$IfLastCommon"""
 
   val ContinuousExecutePrefix = "~"
-  def continuousDetail = "Executes the specified command whenever source files change."
-  def continuousBriefHelp = (ContinuousExecutePrefix + " <command>", continuousDetail)
+  def continuousDetail: String = "Executes the specified command whenever source files change."
+  def continuousBriefHelp: (String, String) =
+    (ContinuousExecutePrefix + " <command>", continuousDetail)
+  def ClearCaches: String = "clearCaches"
+  def ClearCachesDetailed: String = "Clears all of sbt's internal caches."
+
+  private[sbt] val networkExecPrefix = "__"
+  private[sbt] val DisconnectNetworkChannel = s"${networkExecPrefix}disconnectNetworkChannel"
 }

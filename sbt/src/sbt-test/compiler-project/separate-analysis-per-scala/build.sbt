@@ -1,12 +1,15 @@
-name := "foo"
+lazy val scala212 = "2.12.12"
+lazy val scala213 = "2.13.1"
+ThisBuild / scalaVersion := scala212
 
-scalaVersion := "2.10.4"
-
-crossScalaVersions := List("2.10.4", "2.11.0")
-
-incOptions := incOptions.value.withClassfileManagerType(
-  xsbti.Maybe.just(new xsbti.compile.TransactionalManagerType(
-    crossTarget.value / "classes.bak",
-    (streams in (Compile, compile)).value.log
-  ))
-)
+lazy val root = (project in file("."))
+  .settings(
+    name := "foo",
+    crossScalaVersions := List(scala212, scala213),
+    incOptions := incOptions.value.withClassfileManagerType(
+      Option(xsbti.compile.TransactionalManagerType.of(
+        crossTarget.value / "classes.bak",
+        (streams in (Compile, compile)).value.log
+      ): xsbti.compile.ClassFileManagerType).asJava
+    )
+  )

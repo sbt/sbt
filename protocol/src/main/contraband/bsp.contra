@@ -1,0 +1,637 @@
+package sbt.internal.bsp
+@target(Scala)
+@codecPackage("sbt.internal.bsp.codec")
+@fullCodec("JsonProtocol")
+
+## Build target
+type BuildTarget {
+  ## The target’s unique identifier
+  id: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## A human readable name for this target.
+  ## May be presented in the user interface.
+  ## Should be unique if possible.
+  ## The id.uri is used if None.
+  displayName: String
+
+  ## The directory where this target belongs to. Multiple build targets are allowed to map
+  ## to the same base directory, and a build target is not required to have a base directory.
+  ## A base directory does not determine the sources of a target, see buildTarget/sources.
+  baseDirectory: java.net.URI
+
+  ## Free-form string tags to categorize or label this build target.
+  ## For example, can be used by the client to:
+  ## - customize how the target should be translated into the client's project model.
+  ## - group together different but related targets in the user interface.
+  ## - display icons or colors in the user interface.
+  ## Pre-defined tags are listed in `BuildTargetTag` but clients and servers
+  ## are free to define new tags for custom purposes.
+  tags: [String]
+
+  ## The capabilities of this build target.
+  capabilities: sbt.internal.bsp.BuildTargetCapabilities!
+
+  ## The set of languages that this target contains.
+  ## The ID string for each language is defined in the LSP.
+  languageIds: [String]
+
+  ## The direct upstream build target dependencies of this build target
+  dependencies: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## Kind of data to expect in the `data` field. If this field is not set, the kind of data is not specified.
+  dataKind: String
+
+  ## Language-specific metadata about this target.
+  ## See ScalaBuildTarget as an example.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Build Target Identifier
+type BuildTargetIdentifier {
+  ## The target's Uri
+  uri: java.net.URI!
+}
+
+type BuildTargetCapabilities {
+  ## This target can be compiled by the BSP server.
+  canCompile: Boolean!
+
+  ## This target can be tested by the BSP server.
+  canTest: Boolean!
+
+  ## This target can be run by the BSP server.
+  canRun: Boolean!
+}
+
+type DebugSessionAddress {
+  ## The target's Uri
+  uri: java.net.URI!
+}
+
+type DebugSessionParams {
+  ## A sequence of build targets affected by the debugging action.
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## The kind of data to expect in the `data` field.
+  dataKind: String
+
+  ## A language-agnostic JSON object interpreted by the server.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+type TaskId {
+  ## A unique identifier
+  id: String!
+
+  ## The parent task ids, if any. A non-empty parents field means
+  ## this task is a sub-task of every parent task.
+  parents: [String]
+}
+
+type TextDocumentIdentifier {
+  ## The file's Uri
+  uri: java.net.URI!
+}
+
+## Position in a text document expressed as zero-based line and zero-based character offset.
+## A position is between two characters like an 'insert' cursor in a editor.
+type Position {
+  ## Line position in a document (zero-based).
+  line: Long!
+
+  ## Character offset on a line in a document (zero-based).
+  character: Long!
+}
+
+## A range in a text document expressed as (zero-based) start and end positions. A range is comparable to a selection in an editor.
+## Therefore the end position is exclusive.
+type Range {
+  ## The range's start position.
+  start: sbt.internal.bsp.Position!
+
+  ## The range's end position.
+  end: sbt.internal.bsp.Position!
+}
+
+## Represents a diagnostic, such as a compiler error or warning.
+## Diagnostic objects are only valid in the scope of a resource.
+type Diagnostic {
+  ## The range at which the message applies.
+  range: sbt.internal.bsp.Range!
+
+  ## The diagnostic's severity. Can be omitted. If omitted it is up to the
+  ## client to interpret diagnostics as error, warning, info or hint.
+  severity: Long
+
+  ## The diagnostic's code. Can be omitted.
+  code: String
+
+  ## A human-readable string describing the source of this
+  ## diagnostic, e.g. 'typescript' or 'super lint'.
+  source: String
+
+  ## The diagnostic's message.
+  message: String!
+}
+
+## Initialize Build Request
+type InitializeBuildParams {
+  ## Name of the client
+  displayName: String!
+
+  ## The version of the client
+  version: String!
+
+  ## The BSP version that the client speaks
+  bspVersion: String!
+
+  ## The rootUri of the workspace
+  rootUri: java.net.URI!
+
+  ## The capabilities of the client
+  capabilities: sbt.internal.bsp.BuildClientCapabilities!
+
+  ## Additional metadata about the client
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+type BuildClientCapabilities {
+  ## The languages that this client supports.
+  ## The ID strings for each language is defined in the LSP.
+  ## The server must never respond with build targets for other
+  ## languages than those that appear in this list.
+  languageIds: [String]
+}
+
+type InitializeBuildResult {
+  ## Name of the server
+  displayName: String!
+
+  ## The version of the server
+  version: String!
+
+  ## The BSP version that the server speaks
+  bspVersion: String!
+
+  ## The capabilities of the build server
+  capabilities: sbt.internal.bsp.BuildServerCapabilities!
+
+  ## Additional metadata about the server
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+type BuildServerCapabilities {
+  ## The languages the server supports compilation via method buildTarget/compile.
+  compileProvider: sbt.internal.bsp.CompileProvider
+
+  ## The languages the server supports test execution via method buildTarget/test
+  testProvider: sbt.internal.bsp.TestProvider
+
+  # The languages the server supports run via method buildTarget/run
+  runProvider: sbt.internal.bsp.RunProvider
+
+  # The server can provide a list of targets that contain a
+  # single text document via the method buildTarget/inverseSources
+  # inverseSourcesProvider: Boolean
+
+  ## The server provides sources for library dependencies
+  ## via method buildTarget/dependencySources
+  dependencySourcesProvider: Boolean
+
+  # The server provides all the resource dependencies
+  # via method buildTarget/resources
+  # resourcesProvider: Boolean
+
+  ## Reloading the workspace state through workspace/reload is supported
+  canReload: Boolean
+
+  # The server sends notifications to the client on build
+  # target change events via buildTarget/didChange
+  # buildTargetChangedProvider: Boolean
+}
+
+type CompileProvider {
+  languageIds: [String]
+}
+
+type TestProvider {
+  languageIds: [String]
+}
+
+type RunProvider {
+  languageIds: [String]
+}
+
+## Publish Diagnostics
+type PublishDiagnosticsParams {
+  ## The document where the diagnostics are published.
+  textDocument: sbt.internal.bsp.TextDocumentIdentifier!
+
+  ## The build target where the diagnostics origin.
+  ## It is valid for one text to belong to multiple build targets,
+  ## for example sources that are compiled against multiple platforms (JVM, JavaScript).
+  buildTarget: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The request id that originated this notification
+  originId: String
+
+  ## The diagnostics to be published by the client
+  diagnostics: [sbt.internal.bsp.Diagnostic]
+
+  ## Whether the client should clear the previous diagnostics
+  ## mapped to the same `textDocument` and buildTarget
+  reset: Boolean!
+}
+
+## Workspace Build Targets response
+type WorkspaceBuildTargetsResult {
+  ## The build targets in this workspace that
+  ## contain sources with the given language ids.
+  targets: [sbt.internal.bsp.BuildTarget]
+}
+
+## Build Target Sources Request
+type SourcesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+## Build Target Sources response
+type SourcesResult {
+  items: [sbt.internal.bsp.SourcesItem]
+}
+
+type SourcesItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+  ## The text documents or and directories that belong to this build target.
+  sources: [sbt.internal.bsp.SourceItem]
+}
+
+type SourceItem {
+  ## Either a text document or a directory. A directory entry must end with a forward
+  ## slash "/" and a directory entry implies that every nested text document within the
+  ## directory belongs to this source item.
+  ##
+  uri: java.net.URI!
+
+  ## Type of file of the source item, such as whether it is file or directory.
+  kind: Int!
+
+  ## Indicates if this source is automatically generated by the build and is not
+  ## intended to be manually edited by the user.
+  generated: Boolean!
+}
+
+## Dependency Sources Request
+type DependencySourcesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+## Dependency Sources Result
+type DependencySourcesResult {
+  items: [sbt.internal.bsp.DependencySourcesItem]
+}
+
+type DependencySourcesItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier
+
+  ## List of resources containing source files of the target's dependencies.
+  ## Can be source files, jar files, zip files, or directories
+  sources: [java.net.URI]
+}
+
+## Task Notifications
+
+type TaskStartParams {
+    ## Unique id of the task with optional reference to parent task id.
+    taskId: sbt.internal.bsp.TaskId!
+
+    ## Optional timestamp of when the event started in milliseconds since Epoch.
+    eventTime: Long
+
+    ## Optional message describing the task.
+    message: String
+
+    ## Kind of data to expect in the `data` field.
+    dataKind: String
+
+    ## Optional metadata about the task.
+    data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+type TaskFinishParams {
+    ## Unique id of the task with optional reference to parent task id.
+    taskId: sbt.internal.bsp.TaskId!
+
+    ## Optional timestamp of when the event started in milliseconds since Epoch.
+    eventTime: Long
+
+    ## Optional message describing the task.
+    message: String
+
+    ## Task completion status: 1 -> success, 2 -> error, 3 -> cancelled
+    status: Int!
+
+    ## Kind of data to expect in the `data` field.
+    dataKind: String
+
+    ## Optional metadata about the task.
+    data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Compile Request
+type CompileParams {
+  ## A sequence of build targets to compile
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+  
+  ## An optional unique identifier generated by the client to identify this request.
+  ## The server may include this id in triggered notifications or response.
+  originId: String
+  
+  ## Optional arguments to the compilation process
+  arguments: [String]
+}
+
+## Compile Response
+type BspCompileResult {
+  ## An optional request id to know the origin of this report.
+  originId: String
+  
+  ## A status code for the execution.
+  statusCode: Int!
+
+  # Kind of data to expect in the `data` field.
+  # If this field is not set, the kind of data is not specified.
+  # dataKind: String
+
+  # A field containing language-specific information, like products
+  # of compilation or compiler-specific metadata the client needs to know.
+  # data: any
+}
+
+## Compile Notifications
+
+type CompileTask {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+}
+
+type CompileReport {
+  ## The build target that was compiled
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## An optional request id to know the origin of this report
+  originId: String
+
+  ## The total number of reported errors compiling this target.
+  errors: Int!
+
+  ## The total number of reported warnings compiling the target.
+  warnings: Int!
+
+  ## The total number of milliseconds it took to compile the target.
+  time: Int
+}
+
+## Test Request
+## The test build target request is sent from the client to the server to test the given list of build targets.
+## The server communicates during the initialize handshake whether this method is supported or not.
+type TestParams {
+  ## A sequence of build targets to test.
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## An option identifier generated by the client to identify this request.
+  ## The server may include this id in triggered notifications or responses.
+  originId: String
+
+  ## Optional arguments to the test execution engine.
+  arguments: [String]
+
+  ## Kind of data to expect in the `data` field.
+  ## If this field is not set, the kind of data is not specified.
+  dataKind: String
+
+  ## Language-specific metadata for this test execution.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Test Result
+type TestResult {
+  ## An optional request id to know the origin of this report.
+  originId: String
+
+  ## A status code for the execution.
+  statusCode: Int!
+
+  # Kind of data to expect in the `data` field.
+  # If this field is not set, the kind of data is not specified.
+  # dataKind: String
+
+  # data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Run Request
+## The run request is sent from the client to the server to run a build target.
+## The server communicates during the initialize handshake whether this method is supported or not.
+## An empty run request is valid.
+type RunParams {
+  ## The build target to run.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## An option identifier gnerated by the client to identify this request.
+  ## The server may include this id in triggered notifications or responses.
+  originId: String
+
+  ## Optional arguments to the executed application.
+  arguments: [String]
+
+  ## Kind of data to expect in the data field.
+  ## If this field is not set, the kind of data is not specified.
+  dataKind: String
+
+  ## Language-specific metadata for this execution.
+  data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
+## Run Result
+type RunResult {
+  ## An optional request id to know the origin of this report.
+  originId: String
+
+  ## A status code for the execution.
+  statusCode: Int!
+}
+
+
+# Scala Extension
+
+## Contains scala-specific metadata for compiling a target containing Scala sources.
+## This metadata is embedded in the data: Option[Json] field of the BuildTarget definition,
+## when the dataKind field contains "scala".
+type ScalaBuildTarget {
+  ## The Scala organization that is used for a target.
+  scalaOrganization: String!
+
+  ## The scala version to compile this target
+  scalaVersion: String!
+
+  ## The binary version of scalaVersion.
+  ## For example, 2.12 if scalaVersion is 2.12.4.
+  scalaBinaryVersion: String!
+
+  ## The target platform for this target
+  platform: Int!
+
+  ## A sequence of Scala jars such as scala-library, scala-compiler and scala-reflect.
+  jars: [String]!
+}
+
+# sbt Extension
+
+## Contains sbt-specific metadata for providing editor support for sbt build files.
+## This metadata is embedded in the data: Option[Json] field of the BuildTarget definition
+## when the dataKind field contains "sbt".
+type SbtBuildTarget {
+  ## The sbt version. Useful to support version-dependent syntax.
+  sbtVersion: String!
+
+  ## A sequence of Scala imports that are automatically imported in the sbt build files.
+  autoImports: [String]!
+
+  ## The Scala build target describing the scala
+  ## version and scala jars used by this sbt version.
+  scalaBuildTarget: sbt.internal.bsp.ScalaBuildTarget!
+
+  ## An optional parent if the target has an sbt meta project.
+  parent: sbt.internal.bsp.BuildTargetIdentifier
+
+  ## The inverse of parent, list of targets that have this build target
+  ## defined as their parent. It can contain normal project targets or
+  ## sbt build targets if this target represents an sbt meta-meta build.
+  children: [sbt.internal.bsp.BuildTargetIdentifier]!
+}
+
+## Scalac options
+## The build target scalac options request is sent from the client to the server
+## to query for the list of compiler options necessary to compile in a given list of targets.
+type ScalacOptionsParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+type ScalacOptionsResult {
+  items: [sbt.internal.bsp.ScalacOptionsItem]
+}
+
+type ScalacOptionsItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## Additional arguments to the compiler.
+  ## For example, -deprecation.
+  options: [String]
+
+  ## The dependency classpath for this target, must be
+  ## identical to what is passed as arguments to
+  ## the -classpath flag in the command line interface
+  ## of scalac.
+  classpath: [java.net.URI]
+
+  ## The output directory for classfiles produced by this target
+  classDirectory: java.net.URI
+}
+
+## https://build-server-protocol.github.io/docs/server-discovery.html
+type BspConnectionDetails {
+  ## The name of the build tool
+  name: String!
+
+  ## The version of the build tool
+  version: String!
+
+  ## The bsp version of the build tool
+  bspVersion: String!
+
+  ## A collection of languages supported by this BSP server
+  languages: [String]
+
+  ## Command arguments runnable via system processes to start a BSP server
+  argv: [String]
+}
+
+## Metals metadata in the initialization request
+type MetalsMetadata {
+  ## The semanticdb plugin version that should be enabled for Metals code navigation
+  semanticdbVersion: String!
+
+  ## The list of scala versions that are supported by Metals
+  supportedScalaVersions: [String]
+}
+
+## Scala Test Params
+## ScalaTestParams contains scala-specific metadata for testing Scala targets.
+## This metadata is embedded in the data field of the buildTarget/test request
+## when the dataKind field contains "scala-test".
+type ScalaTestParams {
+  testClasses: [sbt.internal.bsp.ScalaTestClassesItem]
+}
+
+## Scala Test Class Request
+## The build target scala test options request is sent from the client to the server
+## to query for the list of fully qualified names of test clases in a given list of targets.
+type ScalaTestClassesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## An optional number uniquely identifying a client request.
+  originId: String
+}
+
+type ScalaTestClassesResult {
+  items: [sbt.internal.bsp.ScalaTestClassesItem]
+
+  ## An optional id of the request that triggered this result.
+  originId: String
+}
+
+type ScalaTestClassesItem {
+  ## The build target that contains the test classes.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The fully qualified names of the test classes in this target
+  classes: [String]
+}
+
+## Scala Main Class Request
+## The build target main classes request is sent from the client to the server
+## to query for the list of main classes that can be fed as arguments to buildTarget/run.
+type ScalaMainClassesParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+
+  ## An optional number uniquely identifying a client request.
+  originId: String
+}
+
+type ScalaMainClassesResult {
+  items: [sbt.internal.bsp.ScalaMainClassesItem]
+
+  ## An optional id of the request that triggered this result.
+  originId: String
+}
+
+type ScalaMainClassesItem {
+  ## The build target that contains the test classes.
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## The main class items
+  classes: [sbt.internal.bsp.ScalaMainClass]
+}
+
+type ScalaMainClass {
+  ## The main class to run.
+  class: String!
+
+  ## The user arguments to the main entrypoint.
+  arguments: [String]
+
+  ## The jvm options for the application.
+  jvmOptions: [String]
+
+  ## Additional environment variables for the application.
+  environmentVariables: [String]
+}

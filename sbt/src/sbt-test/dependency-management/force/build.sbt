@@ -1,6 +1,8 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     libraryDependencies ++= baseDirectory (libraryDeps).value,
     TaskKey[Unit]("checkForced") := check("1.2.14").value,
     TaskKey[Unit]("checkDepend") := check("1.2.13").value
@@ -17,5 +19,5 @@ def check(ver: String) =
       case f if f.getName contains "log4j-" => f.getName
     }
     if (log4j.size != 1 || !log4j.head.contains(ver))
-      error("Did not download the correct jar.")
+      sys.error("Did not download the correct jar.")
   }

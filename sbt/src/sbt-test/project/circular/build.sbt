@@ -5,14 +5,14 @@ lazy val root = (project in file(".")).
   )
 
 lazy val sub: Project = project.
-  dependsOn(root).
-  settingsLazy(
-    name := (name in root).value + "sub"
+  dependsOn(LocalProject("root")).
+  settings(
+    name := (name in LocalProject("root")).value + "sub"
   )
 
 lazy val foo: Project = project.
-  aggregateSeq(List(root)).
-  dependsOnSeq(List(root)).
+  aggregate(LocalProject("root")).
+  dependsOn(LocalProject("root")).
   settings(List(
-    name := (name in root).value + "foo"
+    name := (name in LocalProject("root")).value + "foo"
   ): _*)

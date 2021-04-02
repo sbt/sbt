@@ -1,6 +1,5 @@
 package sbt
 
-import sbt.syntax._
 import sbt.Keys._
 import xsbti.{Position, Severity}
 
@@ -31,6 +30,9 @@ class CollectingReporter extends xsbti.Reporter {
   def hasWarnings: Boolean = buffer.exists(_.severity == Severity.Warn)
   def printSummary(): Unit = ()
   def problems: Array[xsbti.Problem] = buffer.toArray
+
+  def log(problem: xsbti.Problem): Unit =
+    log(problem.position, problem.message, problem.severity)
 
   /** Logs a message. */
   def log(pos: xsbti.Position, msg: String, sev: xsbti.Severity): Unit = {

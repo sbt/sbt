@@ -1,5 +1,3 @@
-> debug
-
 > checkNext 1 2
 > checkNext 2 3
 > checkNext 3 5

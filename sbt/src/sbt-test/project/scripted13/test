@@ -1,0 +1,8 @@
+# This tests that this sbt scripted plugin can launch the previous one
+
+> ^^0.13.18
+
+$ copy-file changes/A.scala src/sbt-test/a/b/A.scala
+> scripted
+$ copy-file changes/Fail.scala src/sbt-test/a/b/Fail.scala
+-> scripted

@@ -1,11 +1,13 @@
 def ivyHome = Def.setting((target in LocalRootProject).value / "ivy")
 def localRepo = Def.setting((target in LocalRootProject).value / "local-repo")
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 val commonSettings = Seq[Def.Setting[_]](
   organization := "org.example",
   version := "1.0-SNAPSHOT",
   scalaVersion := "2.11.7",
-  ivyPaths := new IvyPaths((baseDirectory in ThisBuild).value, Some(ivyHome.value)),
+  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some(ivyHome.value)),
   fullResolvers := fullResolvers.value.filterNot(_ == projectResolver.value)
 )
 

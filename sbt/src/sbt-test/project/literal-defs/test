@@ -1,0 +1,12 @@
+# This test verifies that top-level literal identifiers, like `return`, are loaded correctly
+
+# Initial load should succeed
+
+# Check that we can modify project properties
+> 'set version := "1.0.0"'
+
+# Check that we can run command defined in back-quotes
+> return
+
+# Check that we can define unicode commands
+> ї

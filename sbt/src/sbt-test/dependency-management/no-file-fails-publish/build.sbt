@@ -1,4 +1,6 @@
-ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
 organization := "org.example"
 

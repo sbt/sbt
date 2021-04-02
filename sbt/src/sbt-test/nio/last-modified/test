@@ -1,0 +1,32 @@
+> fileInputTask
+
+$ touch base/Bar.md
+
+# The change to Bar.md should be detected since we set last modified instead of hash
+> setExpected Bar.md
+
+> fileInputTask
+
+$ copy-file changes/Bar.md base/Bar.md
+
+# the last modified should change due to the copy
+> fileInputTask
+
+> setLastModified
+
+> fileInputTask
+
+$ copy-file changes/Bar2.md base/Bar.md
+
+> setLastModified
+
+# Since we reverted to the previous last modified time, there should be no changes
+> setExpected
+
+> fileInputTask
+
+$ touch base/Bar.md
+
+> setExpected Bar.md
+
+> fileInputTask

@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object ExtraProjectPluginExample2 extends AutoPlugin {
   // Enable this plugin by default

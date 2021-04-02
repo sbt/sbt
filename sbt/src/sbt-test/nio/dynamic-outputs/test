@@ -1,0 +1,11 @@
+> foo / clean
+
+> checkOutputFiles empty
+
+> foo
+
+> checkOutputFiles foo.txt
+
+> foo / clean
+
+> checkOutputFiles empty

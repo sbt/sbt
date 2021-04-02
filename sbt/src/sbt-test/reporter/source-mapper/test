@@ -1,0 +1,14 @@
+> compile
+
+> assertEmptySourcePositionMappers
+
+> printWarnings
+> assertAbsolutePathConversion
+
+> resetMessages
+
+> set reportAbsolutePath := false
+> printWarnings
+> assertVirtualFile
+
+> resetMessages

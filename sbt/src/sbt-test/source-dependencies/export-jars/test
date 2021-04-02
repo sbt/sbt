@@ -5,11 +5,9 @@ $ copy-file changes/A1.scala a/A.scala
 $ copy-file changes/A2.scala a/A.scala
 
 # done this way because last modified times often have ~1s resolution
-$ sleep 2000
 > run 2
 $ copy-file changes/A3.scala a/A.scala
 
-$ sleep 2000
 > run 3
 
 $ copy-file changes/build2.sbt build2.sbt
@@ -19,9 +17,7 @@ $ copy-file changes/A1.scala a/A.scala
 > run 1
 $ copy-file changes/A2.scala a/A.scala
 
-$ sleep 2000
 > run 2
 $ copy-file changes/A3.scala a/A.scala
 
-$ sleep 2000
 > run 3

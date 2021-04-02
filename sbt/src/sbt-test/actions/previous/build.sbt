@@ -1,4 +1,4 @@
-import sbinary.DefaultProtocol._
+import sjsonnew.BasicJsonProtocol._
 
 lazy val a0 = 1
 lazy val b0 = 1

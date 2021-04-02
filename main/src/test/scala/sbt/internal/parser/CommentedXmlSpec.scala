@@ -1,6 +1,13 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt.internal.parser
 
-class CommentedXmlSpec extends CheckIfParsedSpec {
+object CommentedXmlSpec extends CheckIfParsedSpec {
 
   override protected val files = Seq(
     (
@@ -13,7 +20,11 @@ class CommentedXmlSpec extends CheckIfParsedSpec {
          |
          |val tra = "</scm>"
          |
-       """.stripMargin, "Xml in string", false, true),
+       """.stripMargin,
+      "Xml in string",
+      false,
+      true
+    ),
     ("""
         |val scmpom = taskKey[xml.NodeBuffer]("Node buffer")
         |
@@ -62,6 +73,5 @@ class CommentedXmlSpec extends CheckIfParsedSpec {
     ("""
         |// a/>
       """.stripMargin, "Xml in comment2", false, false)
-
   )
 }

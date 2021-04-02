@@ -1,0 +1,3 @@
+package sources
+
+class Bar

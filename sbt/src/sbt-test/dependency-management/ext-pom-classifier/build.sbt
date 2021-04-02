@@ -1,3 +1,7 @@
-scalaVersion := "2.10.6"
+ThisBuild / useCoursier := false
 
-externalPom()
+lazy val root = (project in file("."))
+  .settings(
+    scalaVersion := "2.12.6",
+    externalPom()
+  )

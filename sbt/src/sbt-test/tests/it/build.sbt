@@ -1,9 +1,10 @@
-lazy val root = (project in file(".")).
-  configs(IntegrationTest).
-  settings(
-    scalaVersion := "2.10.6",
-    Defaults.itSettings,
-    libraryDependencies += specs
-  )
+ThisBuild / scalaVersion := "2.12.12"
 
-lazy val specs = "org.specs2" % "specs2_2.10" % "1.12.3" % IntegrationTest
+val specs = "org.specs2" %% "specs2-core" % "4.3.4"
+
+lazy val root = (project in file("."))
+  .configs(IntegrationTest)
+  .settings(
+    Defaults.itSettings,
+    libraryDependencies += specs % IntegrationTest
+  )

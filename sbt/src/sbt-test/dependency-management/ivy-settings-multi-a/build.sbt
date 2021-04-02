@@ -1,3 +1,5 @@
+ThisBuild / useCoursier := false
+
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
   unmanagedJars in Compile ++= (scalaInstance map (_.allJars.toSeq)).value
@@ -14,6 +16,6 @@ lazy val use = project.
   dependsOn(dep).
   settings(
     commonSettings,
-    libraryDependencies += "junit" % "junit" % "4.5",
+    libraryDependencies += "junit" % "junit" % "4.13.1",
     externalIvySettings()
   )

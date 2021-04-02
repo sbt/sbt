@@ -1,0 +1,30 @@
+package sbt
+@target(Scala)
+
+## Configures forking.
+type ForkOptions {
+  ## The Java installation to use.  If not defined, the Java home for the current process is used.
+  javaHome: java.io.File @since("0.1.0")
+
+  ## Configures the forked standard output and error streams.
+  ## If not defined, StdoutOutput is used, which maps the forked output to the output of
+  ## this process and the forked error to the error stream of the forking process.
+  outputStrategy: sbt.OutputStrategy @since("0.1.0")
+
+  ## The Vector of jars to put on the forked boot classpath.  By default, this is empty.
+  bootJars: [java.io.File] @since("0.1.0")
+
+  ## The directory to use as the working directory for the forked process.
+  ## By default, this is the working directory of the forking process.
+  workingDirectory: java.io.File @since("0.1.0")
+
+  ## The options to prepend to all user-specified arguments.  By default, this is empty.
+  runJVMOptions: [String] @since("0.1.0")
+
+  ## If true, the standard input of the forked process is connected to the standard input of this process.  Otherwise, it is connected to an empty input stream.
+  ## Connecting input streams can be problematic, especially on versions before Java 7.
+  connectInput: Boolean! = false @since("0.1.0")
+
+  ## The environment variables to provide to the forked process.  By default, none are provided.
+  envVars: StringStringMap! = raw"Map()" @since("0.1.0")
+}

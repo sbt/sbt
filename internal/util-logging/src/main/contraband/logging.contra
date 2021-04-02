@@ -1,0 +1,53 @@
+package sbt.internal.util
+@target(Scala)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("JsonProtocol")
+
+interface AbstractEntry {
+  channelName: String
+  execId: String
+}
+
+type StringEvent implements sbt.internal.util.AbstractEntry {
+  level: String!
+  message: String!
+  channelName: String
+  execId: String
+}
+
+type TraceEvent implements sbt.internal.util.AbstractEntry {
+  level: String!
+  message: Throwable!
+  channelName: String
+  execId: String
+}
+
+## used by super shell
+type ProgressEvent implements sbt.internal.util.AbstractEntry {
+  level: String!
+  items: [sbt.internal.util.ProgressItem]
+  lastTaskCount: Int
+  channelName: String
+  execId: String
+  command: String @since("1.4.0")
+  skipIfActive: Boolean @since("1.4.0")
+}
+
+## used by super shell
+type ProgressItem {
+  ## name of a task
+  name: String!
+  ## current elapsed time in micro seconds
+  elapsedMicros: Long!
+}
+
+type SuccessEvent {
+  message: String!
+}
+
+## value for logging options like color
+enum LogOption {
+  Always
+  Never
+  Auto
+}

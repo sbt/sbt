@@ -1,6 +1,6 @@
 
 TaskKey[Unit]("checkName", "") := {
-	assert(name.value == "hello-world", "Name is not hello-worled, failed to set!")
+	assert(name.value == "hello-world", "Name is not hello-world, failed to set!")
 }
 
 val notExistingThing = settingKey[Int]("Something new")

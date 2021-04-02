@@ -1,54 +1,114 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 package internal
 
 import java.io.File
 import java.net.URI
-import Def.{ displayFull, ScopedKey, ScopeLocal, Setting }
+
+import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
+import sbt.LocalRootProject
 import sbt.io.syntax._
-import sbt.internal.util.{ Attributed, AttributeEntry, AttributeKey, AttributeMap, Settings }
+import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
+import scala.annotation.nowarn
 
-final class BuildStructure(val units: Map[URI, LoadedBuildUnit], val root: URI, val settings: Seq[Setting[_]], val data: Settings[Scope], val index: StructureIndex, val streams: State => Streams, val delegates: Scope => Seq[Scope], val scopeLocal: ScopeLocal) {
-  val rootProject: URI => String = Load getRootProject units
-  def allProjects: Seq[ResolvedProject] = units.values.flatMap(_.defined.values).toSeq
-  def allProjects(build: URI): Seq[ResolvedProject] = units.get(build).toList.flatMap(_.defined.values)
-  def allProjectRefs: Seq[ProjectRef] = units.toSeq flatMap { case (build, unit) => refs(build, unit.defined.values.toSeq) }
-  def allProjectRefs(build: URI): Seq[ProjectRef] = refs(build, allProjects(build))
+final class BuildStructure(
+    val units: Map[URI, LoadedBuildUnit],
+    val root: URI,
+    val settings: Seq[Setting[_]],
+    val data: Settings[Scope],
+    val index: StructureIndex,
+    val streams: State => Streams,
+    val delegates: Scope => Seq[Scope],
+    val scopeLocal: ScopeLocal,
+    private[sbt] val compiledMap: Map[ScopedKey[_], Def.Compiled[_]],
+) {
+  @deprecated("Used the variant that takes a compiledMap", "1.4.0")
+  def this(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      settings: Seq[Setting[_]],
+      data: Settings[Scope],
+      index: StructureIndex,
+      streams: State => Streams,
+      delegates: Scope => Seq[Scope],
+      scopeLocal: ScopeLocal,
+  ) = this(units, root, settings, data, index, streams, delegates, scopeLocal, Map.empty)
+
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
-  private[this] def refs(build: URI, projects: Seq[ResolvedProject]): Seq[ProjectRef] = projects.map { p => ProjectRef(build, p.id) }
+
+  /** The root project for the specified build.  Throws if no build or empty build. */
+  val rootProject: URI => String = extra.rootProjectID
+
+  /** All the projects in all builds. */
+  def allProjects: Seq[ResolvedProject] = eachBuild((_, p) => p)
+
+  /** References to all the projects in all the builds. */
+  def allProjectRefs: Seq[ProjectRef] = eachBuild((b, p) => ProjectRef(b, p.id))
+
+  /** Both the projects and the projects reference of all the projects in all the builds. */
+  def allProjectPairs: Seq[(ResolvedProject, ProjectRef)] =
+    eachBuild((b, p) => p -> ProjectRef(b, p.id))
+
+  /** All the projects in the specified build. */
+  def allProjects(build: URI): Seq[ResolvedProject] = eachProject(build, identity)
+
+  /** The references to all the projects in the specified build. */
+  def allProjectRefs(build: URI): Seq[ProjectRef] = eachProject(build, p => ProjectRef(build, p.id))
+
+  /** Foreach project in each build apply the specified function. */
+  private[this] def eachBuild[A](f: (URI, ResolvedProject) => A): Seq[A] =
+    units.iterator.flatMap { case (build, unit) => unit.projects.map(f(build, _)) }.toIndexedSeq
+
+  /** Foreach project in the specified build apply the specified function. */
+  private[this] def eachProject[A](build: URI, f: ResolvedProject => A): Seq[A] =
+    units.get(build).iterator.flatMap(_.projects).map(f).toIndexedSeq
+
 }
+
 // information that is not original, but can be reconstructed from the rest of BuildStructure
 final class StructureIndex(
-  val keyMap: Map[String, AttributeKey[_]],
-  val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
-  val triggers: Triggers[Task],
-  val keyIndex: KeyIndex,
-  val aggregateKeyIndex: KeyIndex)
+    val keyMap: Map[String, AttributeKey[_]],
+    val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
+    val triggers: Triggers[Task],
+    val keyIndex: KeyIndex,
+    val aggregateKeyIndex: KeyIndex,
+)
 
 /**
  * A resolved build unit.  (`ResolvedBuildUnit` would be a better name to distinguish it from the loaded, but unresolved `BuildUnit`.)
  * @param unit The loaded, but unresolved [[BuildUnit]] this was resolved from.
  * @param defined The definitive map from project IDs to resolved projects.
- *                These projects have had [[Reference]]s resolved and [[AutoPlugin]]s evaluated.
+ *                These projects have had `Reference`s resolved and [[AutoPlugin]]s evaluated.
  * @param rootProjects The list of project IDs for the projects considered roots of this build.
  *                The first root project is used as the default in several situations where a project is not otherwise selected.
  */
-final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, ResolvedProject], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase {
+final class LoadedBuildUnit(
+    val unit: BuildUnit,
+    val defined: Map[String, ResolvedProject],
+    val rootProjects: Seq[String],
+    val buildSettings: Seq[Setting[_]]
+) extends BuildUnitBase {
+
   /**
    * The project to use as the default when one is not otherwise selected.
-   * [[LocalRootProject]] resolves to this from within the same build.
+   * `LocalRootProject` resolves to this from within the same build.
    */
-  val root = rootProjects match {
-    case Nil           => throw new java.lang.AssertionError("assertion failed: No root projects defined for build unit " + unit)
-    case Seq(root, _*) => root
-  }
+  val root = rootProjects.headOption.getOrElse(
+    throw new java.lang.AssertionError(
+      s"assertion failed: No root projects defined for build unit $unit"
+    )
+  )
 
   /** The base directory of the build unit (not the build definition).*/
   def localBase = unit.localBase
@@ -57,7 +117,8 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
    * The classpath to use when compiling against this build unit's publicly visible code.
    * It includes build definition and plugin classes and classes for .sbt file statements and expressions.
    */
-  def classpath: Seq[File] = unit.definitions.target ++ unit.plugins.classpath ++ unit.definitions.dslDefinitions.classpath
+  def classpath: Seq[File] =
+    unit.definitions.target ++ unit.plugins.classpath ++ unit.definitions.dslDefinitions.classpath
 
   /**
    * The class loader to use for this build unit's publicly visible code.
@@ -67,6 +128,9 @@ final class LoadedBuildUnit(val unit: BuildUnit, val defined: Map[String, Resolv
 
   /** The imports to use for .sbt files, `consoleProject` and other contexts that use code from the build definition. */
   def imports = BuildUtil.getImports(unit)
+
+  def projects: Iterable[ResolvedProject] = defined.values
+
   override def toString = unit.toString
 }
 
@@ -92,17 +156,21 @@ final class LoadedDefinitions(
     val builds: Seq[BuildDef],
     val projects: Seq[Project],
     val buildNames: Seq[String],
-    val dslDefinitions: DefinedSbtValues) {
-  def this(base: File,
-    target: Seq[File],
-    loader: ClassLoader,
-    builds: Seq[BuildDef],
-    projects: Seq[Project],
-    buildNames: Seq[String]) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
+    val dslDefinitions: DefinedSbtValues
+) {
+  def this(
+      base: File,
+      target: Seq[File],
+      loader: ClassLoader,
+      builds: Seq[BuildDef],
+      projects: Seq[Project],
+      buildNames: Seq[String]
+  ) = this(base, target, loader, builds, projects, buildNames, DefinedSbtValues.empty)
 }
 
 /** Auto-detected top-level modules (as in `object X`) of type `T` paired with their source names. */
 final class DetectedModules[T](val modules: Seq[(String, T)]) {
+
   /**
    * The source names of the modules.  This is "X" in `object X`, as opposed to the implementation class name "X$".
    * The names are returned in a stable order such that `names zip values` pairs a name with the actual module.
@@ -123,9 +191,14 @@ case class DetectedAutoPlugin(name: String, value: AutoPlugin, hasAutoImport: Bo
  * Auto-discovered modules for the build definition project.  These include modules defined in build definition sources
  * as well as modules in binary dependencies.
  *
- * @param builds The [[Build]]s detected in the build definition.  This does not include the default [[Build]] that sbt creates if none is defined.
+ * @param builds The [[BuildDef]]s detected in the build definition.
+ *               This does not include the default [[BuildDef]] that sbt creates if none is defined.
  */
-final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds: DetectedModules[BuildDef]) {
+final class DetectedPlugins(
+    val autoPlugins: Seq[DetectedAutoPlugin],
+    val builds: DetectedModules[BuildDef]
+) {
+
   /**
    * Sequence of import expressions for the build definition.
    *  This includes the names of the [[BuildDef]], and [[DetectedAutoPlugin]] modules,
@@ -137,32 +210,26 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
     BuildUtil.importNamesRoot(autoPlugins.map(_.name).filter(nonTopLevelPlugin))
 
   private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
-    autoPlugins.flatMap {
-      case DetectedAutoPlugin(name, ap, hasAutoImport) =>
-        if (hasAutoImport) Some(name)
-        else None
-    }.partition(nonTopLevelPlugin)
-
-  /** A function to select the right [[AutoPlugin]]s from [[autoPlugins]] for a [[Project]]. */
-  @deprecated("Use deducePluginsFromProject", "0.13.8")
-  lazy val deducePlugins: (Plugins, Logger) => Seq[AutoPlugin] = Plugins.deducer(autoPlugins.toList map { _.value })
+    autoPlugins
+      .flatMap {
+        case DetectedAutoPlugin(name, _, hasAutoImport) => if (hasAutoImport) Some(name) else None
+      }
+      .partition(nonTopLevelPlugin)
 
   /** Selects the right [[AutoPlugin]]s from a [[Project]]. */
-  def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] =
-    {
-      val ps0 = p.plugins
-      val allDetected = autoPlugins.toList map { _.value }
-      val detected = p match {
-        case _: GeneratedRootProject => allDetected filterNot { _ == sbt.plugins.IvyPlugin }
-        case _                       => allDetected
-      }
-      Plugins.deducer(detected)(ps0, log)
+  def deducePluginsFromProject(p: Project, log: Logger): Seq[AutoPlugin] = {
+    val ps0 = p.plugins
+    val allDetected = autoPlugins.toList map { _.value }
+    val detected = p match {
+      case _: GeneratedRootProject => allDetected filterNot { _ == sbt.plugins.IvyPlugin }
+      case _                       => allDetected
     }
+    Plugins.deducer(detected)(ps0, log)
+  }
 
   private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
   private[this] def nonTopLevelPlugin(name: String) = name.contains('.')
-
 }
 
 /**
@@ -173,78 +240,165 @@ final class DetectedPlugins(val autoPlugins: Seq[DetectedAutoPlugin], val builds
  * @param loader The class loader for the build definition project, notably excluding classes used for .sbt files.
  * @param detected Auto-detected modules in the build definition.
  */
-final class LoadedPlugins(val base: File, val pluginData: PluginData, val loader: ClassLoader, val detected: DetectedPlugins) {
+final class LoadedPlugins(
+    val base: File,
+    val pluginData: PluginData,
+    val loader: ClassLoader,
+    val detected: DetectedPlugins
+) {
   def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
   def classpath = data(fullClasspath)
 }
+
 /**
  * The loaded, but unresolved build unit.
  * @param uri The uniquely identifying URI for the build.
  * @param localBase The working location of the build on the filesystem.
  *        For local URIs, this is the same as `uri`, but for remote URIs, this is the local copy or workspace allocated for the build.
  */
-final class BuildUnit(val uri: URI, val localBase: File, val definitions: LoadedDefinitions, val plugins: LoadedPlugins) {
-  override def toString = if (uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase + ")")
+final class BuildUnit(
+    val uri: URI,
+    val localBase: File,
+    val definitions: LoadedDefinitions,
+    val plugins: LoadedPlugins
+) {
+  override def toString =
+    if (uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase + ")")
 }
 
 final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
   BuildUtil.checkCycles(units)
-  def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] = for ((uri, unit) <- units.toSeq; (id, proj) <- unit.defined) yield ProjectRef(uri, id) -> proj
-  def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] = BuildUtil(root, units, keyIndex, data)
+
+  def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] =
+    units.iterator.flatMap {
+      case (build, unit) => unit.projects.map(p => ProjectRef(build, p.id) -> p)
+    }.toIndexedSeq
+
+  def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] =
+    BuildUtil(root, units, keyIndex, data)
 
   private[sbt] def autos = GroupedAutoPlugins(units)
 }
+
 final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
+
 sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
-final class PartBuildUnit(val unit: BuildUnit, val defined: Map[String, Project], val rootProjects: Seq[String], val buildSettings: Seq[Setting[_]]) extends BuildUnitBase {
-  def resolve(f: Project => ResolvedProject): LoadedBuildUnit = new LoadedBuildUnit(unit, defined mapValues f toMap, rootProjects, buildSettings)
+
+final class PartBuildUnit(
+    val unit: BuildUnit,
+    val defined: Map[String, Project],
+    val rootProjects: Seq[String],
+    val buildSettings: Seq[Setting[_]]
+) extends BuildUnitBase {
+
+  def resolve(f: Project => ResolvedProject): LoadedBuildUnit =
+    new LoadedBuildUnit(unit, defined.mapValues(f).toMap, rootProjects, buildSettings)
+
   def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
 }
 
 object BuildStreams {
-  type Streams = std.Streams[ScopedKey[_]]
+  type Streams = sbt.std.Streams[ScopedKey[_]]
 
-  final val GlobalPath = "$global"
-  final val BuildUnitPath = "$build"
+  final val GlobalPath = "_global"
+  final val BuildUnitPath = "_build"
   final val StreamsDirectory = "streams"
+  private final val RootPath = "_root"
 
-  def mkStreams(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope]): State => Streams = s =>
-    s get Keys.stateStreams getOrElse std.Streams(path(units, root, data), displayFull, LogManager.construct(data, s))
+  def mkStreams(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      data: Settings[Scope]
+  ): State => Streams = s => {
+    (s get Keys.stateStreams) getOrElse {
+      std.Streams(
+        path(units, root, data)(_),
+        displayFull: ScopedKey[_] => String,
+        LogManager.construct(data, s), {
+          val factory =
+            s.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
+          (file: File) => factory(file.toPath)
+        }
+      )
+    }
+  }
 
-  def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(scoped: ScopedKey[_]): File =
+  def path(units: Map[URI, LoadedBuildUnit], root: URI, data: Settings[Scope])(
+      scoped: ScopedKey[_]
+  ): File =
     resolvePath(projectPath(units, root, scoped, data), nonProjectPath(scoped))
 
   def resolvePath(base: File, components: Seq[String]): File =
-    (base /: components)((b, p) => new File(b, p))
+    components.foldLeft(base)((b, p) => new File(b, p))
 
-  def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(show: T => String): String =
+  def pathComponent[T](axis: ScopeAxis[T], scoped: ScopedKey[_], label: String)(
+      show: T => String
+  ): String =
     axis match {
-      case Global    => GlobalPath
-      case This      => sys.error("Unresolved This reference for " + label + " in " + displayFull(scoped))
+      case Zero      => GlobalPath
+      case This      => sys.error(s"Unresolved This reference for $label in ${displayFull(scoped)}")
       case Select(t) => show(t)
     }
-  def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] =
-    {
-      val scope = scoped.scope
-      pathComponent(scope.config, scoped, "config")(_.name) ::
-        pathComponent(scope.task, scoped, "task")(_.label) ::
-        pathComponent(scope.extra, scoped, "extra")(showAMap) ::
-        scoped.key.label ::
-        Nil
+
+  def nonProjectPath[T](scoped: ScopedKey[T]): Seq[String] = {
+    val scope = scoped.scope
+    pathComponent(scope.config, scoped, "config")(_.name) ::
+      pathComponent(scope.task, scoped, "task")(_.label) ::
+      pathComponent(scope.extra, scoped, "extra")(showAMap) ::
+      scoped.key.label :: previousComponent(scope.extra)
+  }
+
+  private def previousComponent(value: ScopeAxis[AttributeMap]): List[String] =
+    value match {
+      case Select(am) =>
+        am.get(Previous.scopedKeyAttribute) match {
+          case Some(sk) =>
+            val project = sk.scope.project match {
+              case Zero                                           => GlobalPath
+              case Select(BuildRef(_))                            => BuildUnitPath
+              case Select(ProjectRef(_, id))                      => id
+              case Select(LocalProject(id))                       => id
+              case Select(RootProject(_))                         => RootPath
+              case Select(LocalRootProject)                       => LocalRootProject.toString
+              case Select(ThisBuild) | Select(ThisProject) | This =>
+                // Don't want to crash if somehow an unresolved key makes it in here.
+                This.toString
+            }
+            List(Previous.DependencyDirectory, project) ++ nonProjectPath(sk)
+          case _ => Nil
+        }
+      case _ => Nil
     }
   def showAMap(a: AttributeMap): String =
-    a.entries.toSeq.sortBy(_.key.label).map { case AttributeEntry(key, value) => key.label + "=" + value.toString } mkString (" ")
-  def projectPath(units: Map[URI, LoadedBuildUnit], root: URI, scoped: ScopedKey[_], data: Settings[Scope]): File =
+    a.entries.toStream
+      .sortBy(_.key.label)
+      .flatMap {
+        // The Previous.scopedKeyAttribute is an implementation detail that allows us to get a
+        // more specific cache directory for a task stream.
+        case AttributeEntry(key, _) if key == Previous.scopedKeyAttribute => Nil
+        case AttributeEntry(key, value)                                   => s"${key.label}=$value" :: Nil
+      }
+      .mkString(" ")
+
+  def projectPath(
+      units: Map[URI, LoadedBuildUnit],
+      root: URI,
+      scoped: ScopedKey[_],
+      data: Settings[Scope]
+  ): File =
     scoped.scope.project match {
-      case Global                           => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
+      case Zero                             => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
       case Select(br @ BuildRef(uri))       => refTarget(br, units(uri).localBase, data) / BuildUnitPath
       case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
-      case Select(pr)                       => sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
-      case This                             => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
+      case Select(pr) =>
+        sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))
+      case This => sys.error("Unresolved project reference (This) in " + displayFull(scoped))
     }
 
   def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
     refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
+
+  @nowarn
   def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =
-    (Keys.target in scope get data getOrElse outputDirectory(fallbackBase).asFile) / StreamsDirectory
+    (Keys.target in scope get data getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
 }

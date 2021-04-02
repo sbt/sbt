@@ -9,5 +9,5 @@ $ delete bad.sbt
 
 # due to the previous reload failing, this will force the project to be reloaded first
 # and this should then succeed
-> help
+> about
 

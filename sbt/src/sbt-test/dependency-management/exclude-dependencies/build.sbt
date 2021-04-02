@@ -1,6 +1,6 @@
 import scala.xml.{ Node, _ }
 import scala.xml.Utility.trim
-import sbt.internal.librarymanagement.{ IvySbt, MakePomConfiguration, MakePom }
+import sbt.internal.librarymanagement.{ IvySbt, MakePom }
 
 lazy val check = taskKey[Unit]("check")
 
@@ -9,14 +9,14 @@ val repatchTwitter = "com.eed3si9n" %% "repatch-twitter-core" % "dispatch0.11.1_
 
 lazy val a = (project in file("a")).
   settings(
-    scalaVersion := "2.11.4",
+    scalaVersion := "2.11.12",
     libraryDependencies += dispatch,
     excludeDependencies += "org.slf4j"
   )
 
 lazy val b = (project in file("b")).
   settings(
-    scalaVersion := "2.11.4",
+    scalaVersion := "2.11.12",
     libraryDependencies += repatchTwitter,
     excludeDependencies += "net.databinder.dispatch" %% "dispatch-core"
   )
@@ -59,6 +59,6 @@ def makePomXml(log: Logger, makePomConfig: MakePomConfiguration, ivyModule: IvyS
   ivyModule.withModule[Node](log) { (ivy, md, default) =>
     import makePomConfig._
     new MakePom(log).toPom(
-      ivy, md, moduleInfo, configurations, includeTypes, extra, filterRepositories, allRepositories)
+      ivy, md, moduleInfo.get, configurations, includeTypes, extra.get, filterRepositories, allRepositories)
   }
 }

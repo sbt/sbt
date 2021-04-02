@@ -1,2 +1,2 @@
 > compile
-$ exists target/scala-2.11/classes/ch/epfl/scala/Client.class
+$ exists target/scala-2.12/classes/ch/epfl/scala/Client.class

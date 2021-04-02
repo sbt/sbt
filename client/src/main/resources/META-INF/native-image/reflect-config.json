@@ -1,0 +1,18 @@
+[
+  {
+    "name":"java.lang.ProcessBuilder",
+    "methods":[{"name":"redirectInput","parameterTypes":["java.lang.ProcessBuilder$Redirect"] }]
+  },
+  {
+    "name":"java.lang.ProcessBuilder$Redirect",
+    "fields":[{"name":"INHERIT"}]
+  },
+  {
+    "name":"java.lang.System",
+    "methods":[{"name":"console","parameterTypes":[] }]
+  },
+  {
+    "name":"jline.UnixTerminal",
+    "methods":[{"name":"<init>","parameterTypes":[] }]
+  }
+]

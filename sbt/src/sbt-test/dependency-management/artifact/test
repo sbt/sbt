@@ -15,5 +15,7 @@
 $ touch retrieve
 > reload
 
-# verify that artifact with extension, type, and classifier can be retreieved
+# verify that artifact with extension, type, and classifier can be retrieved
 > check
+
+> checkArtifact

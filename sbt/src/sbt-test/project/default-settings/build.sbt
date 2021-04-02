@@ -2,7 +2,7 @@ val root = (project in file("."))
 
 TaskKey[Unit]("checkScalaVersion", "test") := {
   val sv = scalaVersion.value
-  assert(sv startsWith "2.11.", s"Found $sv!")
+  assert(sv startsWith "2.12.", s"Found $sv!")
 }
 
 TaskKey[Unit]("checkArtifacts", "test") := {

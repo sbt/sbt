@@ -1,0 +1,27 @@
+> checkModified
+
+$ copy-file changes/Bar.md base/Bar.md
+
+> checkModified
+
+$ copy-file changes/Foo-bad.txt base/Foo.txt
+
+-> checkModified
+
+-> checkModified
+
+$ copy-file changes/Foo.txt base/Foo.txt
+
+> checkModified
+
+> checkRemoved
+
+$ delete base/Bar.md
+
+> checkRemoved
+
+> checkAdded
+
+$ copy-file original/Bar.md base/Bar.md
+
+> checkAdded

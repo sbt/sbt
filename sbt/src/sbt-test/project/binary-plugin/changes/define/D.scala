@@ -1,6 +1,6 @@
 // no package declaration
 
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object D extends AutoPlugin {
   object autoImport {

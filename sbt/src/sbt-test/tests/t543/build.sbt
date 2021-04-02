@@ -4,14 +4,14 @@ import java.io.{ CharArrayWriter, PrintWriter }
 
 val marker = new File("marker")
 val check = TaskKey[Unit]("check", "Check correct error has been returned.")
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+val scalaxml = "org.scala-lang.modules" %% "scala-xml" % "1.1.1"
+
+ThisBuild / scalaVersion := "2.12.12"
 
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies ++= List(
-      "org.scala-lang.modules" %% "scala-xml" % "1.0.1",
-      "org.scalatest" %% "scalatest" % "2.2.6"
-    ),
-    scalaVersion := "2.11.8",
+    libraryDependencies ++= List(scalaxml, scalatest),
     fork := true,
     testListeners += new TestReportListener {
       def testEvent(event: TestEvent): Unit = {
@@ -26,7 +26,7 @@ lazy val root = (project in file(".")).
       }
       def startGroup(name: String): Unit = ()
       def endGroup(name: String, t: Throwable): Unit = ()
-      def endGroup(name: String, result: TestResult.Value): Unit = ()
+      def endGroup(name: String, result: TestResult): Unit = ()
     },
     check := {
       val exists = marker.exists

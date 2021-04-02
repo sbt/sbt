@@ -1,4 +1,6 @@
-ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / ".ivy2"))).value
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / ".ivy2"))
 
 // not in the default repositories
 libraryDependencies += "com.sun.jmx" % "jmxri" % "1.2.1"

@@ -1,0 +1,65 @@
+package sbt.protocol.testing
+@target(Scala)
+@codecPackage("sbt.protocol.testing.codec")
+@fullCodec("JsonProtocol")
+
+## Events for testing
+interface TestMessage {
+}
+
+type TestStringEvent implements TestMessage {
+  value: String!
+  #xtostring value
+}
+
+## Called once, at beginning of the testing.
+type TestInitEvent implements TestMessage {}
+
+## Called once, at end of the testing.
+type TestCompleteEvent implements TestMessage {
+  result: sbt.protocol.testing.TestResult!
+}
+
+## Called for each class or equivalent grouping.
+type StartTestGroupEvent implements TestMessage {
+  name: String!
+}
+
+## Called if test completed.
+type EndTestGroupEvent implements TestMessage {
+  name: String!
+  result: sbt.protocol.testing.TestResult!
+}
+
+## Called if test completed with an error.
+type EndTestGroupErrorEvent implements TestMessage {
+  name: String!
+  error: String!
+}
+
+## Called for each test method or equivalent.
+type TestItemEvent implements TestMessage {
+  result: sbt.protocol.testing.TestResult
+  detail: [sbt.protocol.testing.TestItemDetail]
+}
+
+## Mini version of sbt.testing.Event
+type TestItemDetail {
+  ## The fully qualified name of a class that can rerun the suite or test
+  ## about which an event was fired.
+  fullyQualifiedName: String!
+
+  ## Indicates whether the event represents a test success, failure, error, skipped, ignored, canceled, pending.
+  status: sbt.testing.Status!
+
+  ## An amount of time, in milliseconds, that was required to complete the action reported by this event.
+  ## None, if no duration was available.
+  duration: Long
+}
+
+## Testing result
+enum TestResult {
+  Passed
+  Failed
+  Error
+}

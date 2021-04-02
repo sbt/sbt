@@ -1,2 +1,2 @@
 lazy val root = (project in file(".")).
-  dependsOn(file("../plugin"))
+  dependsOn(RootProject(file("../plugin")))

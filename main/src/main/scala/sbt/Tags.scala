@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 
 import annotation.tailrec
@@ -13,6 +20,9 @@ object Tags {
   val Test = Tag("test")
   val Update = Tag("update")
   val Publish = Tag("publish")
+  val Clean = Tag("clean")
+  // special tag for waiting on a promise
+  val Sentinel = Tag("sentinel")
 
   val CPU = Tag("cpu")
   val Network = Tag("network")
@@ -24,7 +34,7 @@ object Tags {
    * Describes a restriction on concurrently executing tasks.
    * A Rule is constructed using one of the Tags.limit* methods.
    */
-  sealed trait Rule { // TODO: make this an abstract class for 0.14
+  abstract class Rule {
     def apply(m: TagMap): Boolean
     def ||(r: Rule): Rule = new Or(this, r)
     def &&(r: Rule): Rule = new And(this, r)
@@ -40,7 +50,7 @@ object Tags {
   }
   private[this] final class Sum(tags: Seq[Tag], max: Int) extends Rule {
     checkMax(max)
-    def apply(m: TagMap) = (0 /: tags)((sum, t) => sum + getInt(m, t)) <= max
+    def apply(m: TagMap) = tags.foldLeft(0)((sum, t) => sum + getInt(m, t)) <= max
     override def toString = tags.mkString("Limit sum of ", ", ", " to " + max)
   }
   private[this] final class Or(a: Rule, b: Rule) extends Rule {
@@ -82,16 +92,17 @@ object Tags {
   /** Returns a Rule that limits the maximum number of concurrently executing tasks without a tag to `max`.  */
   def limitUntagged(max: Int): Rule = limit(Untagged, max)
 
-  /** Returns a Rule that limits the maximum number of concurrent executings tasks tagged with `tag` to `max`.*/
+  /** Returns a Rule that limits the maximum number of concurrent executing tasks tagged with `tag` to `max`.*/
   def limit(tag: Tag, max: Int): Rule = new Single(tag, max)
 
   def limitSum(max: Int, tags: Tag*): Rule = new Sum(tags, max)
+
   /** Ensure that a task with the given tag always executes in isolation.*/
   def exclusive(exclusiveTag: Tag): Rule = customLimit { (tags: Map[Tag, Int]) =>
     // if there are no exclusive tasks in this group, this rule adds no restrictions
     tags.getOrElse(exclusiveTag, 0) == 0 ||
-      // If there is only one task, allow it to execute.
-      tags.getOrElse(Tags.All, 0) == 1
+    // If there is only one task, allow it to execute.
+    tags.getOrElse(Tags.All, 0) == 1
   }
 
   /** Ensure that a task with the given tag only executes with tasks also tagged with the given tag.*/
@@ -100,10 +111,10 @@ object Tags {
     val allCount = tags.getOrElse(Tags.All, 0)
     // If there are no exclusive tasks in this group, this rule adds no restrictions.
     exclusiveCount == 0 ||
-      // If all tasks have this tag, allow them to execute.
-      exclusiveCount == allCount ||
-      // Always allow a group containing only one task to execute (fallthrough case).
-      allCount == 1
+    // If all tasks have this tag, allow them to execute.
+    exclusiveCount == allCount ||
+    // Always allow a group containing only one task to execute (fallthrough case).
+    allCount == 1
   }
 
   /** A task tagged with one of `exclusiveTags` will not execute with another task with any of the other tags in `exclusiveTags`.*/

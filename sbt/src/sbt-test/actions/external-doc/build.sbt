@@ -1,3 +1,6 @@
+// https://github.com/coursier/coursier/issues/1123
+ThisBuild / useCoursier := false
+
 Seq(
 	autoAPIMappings in ThisBuild := true,
 	publishArtifact in (ThisBuild, packageDoc) := false,
@@ -21,7 +24,7 @@ val bResolver = Def.setting {
 
 val apiBaseSetting = apiURL := Some(apiBase(name.value))
 def apiBase(projectName: String) = url(s"http://example.org/${projectName}")
-def scalaLibraryBase(v: String) = url(s"http://www.scala-lang.org/api/$v/")
+def scalaLibraryBase(v: String) = url(s"https://www.scala-lang.org/api/$v/")
 def addDep(projectName: String) =
 	libraryDependencies += organization.value %% projectName % version.value
 
@@ -29,12 +32,14 @@ def addDep(projectName: String) =
 val checkApiMappings = taskKey[Unit]("Verifies that the API mappings are collected as expected.")
 
 def expectedMappings = Def.task {
-	val ms = update.value.configuration(Compile.name).get.modules.flatMap { mod => 
+  val version = scalaVersion.value
+  val binVersion = scalaBinaryVersion.value
+	val ms = update.value.configuration(Compile).get.modules.flatMap { mod => 
 		mod.artifacts.flatMap { case (a,f) =>
-			val n = a.name.stripSuffix("_" + scalaBinaryVersion.value)
+			val n = a.name.stripSuffix("_" + binVersion)
 			n match {
 				case "a" | "b" | "c" => (f, apiBase(n)) :: Nil
-				case "scala-library" => (f, scalaLibraryBase(scalaVersion.value)) :: Nil
+				case "scala-library" => (f, scalaLibraryBase(version)) :: Nil
 				case _ => Nil
 			}
 		}

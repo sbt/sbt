@@ -1,46 +1,43 @@
 > + compile
-
-$ exists lib/target/scala-2.11
-$ exists lib/target/scala-2.10
-$ exists sbt-foo/target/scala-2.10
--$ exists sbt-foo/target/scala-2.11
+$ exists lib/target/scala-2.12
+$ exists lib/target/scala-2.13
+$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13
 
 > clean
 > + libProj/compile
+$ exists lib/target/scala-2.12
+$ exists lib/target/scala-2.13
+-$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13
 
-$ exists lib/target/scala-2.11
-$ exists lib/target/scala-2.10
--$ exists sbt-foo/target/scala-2.10
--$ exists sbt-foo/target/scala-2.11
-
+# test safe switching
 > clean
-> ++ 2.11.1 compile
+> ++ 2.12.12 -v compile
+$ exists lib/target/scala-2.12
+-$ exists lib/target/scala-2.13
+$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13
 
-$ exists lib/target/scala-2.11
--$ exists lib/target/scala-2.10
-$ exists sbt-foo/target/scala-2.10
--$ exists sbt-foo/target/scala-2.11
+# Test legacy cross build with command support
+# > clean
+# > + build
+# $ exists lib/target/scala-2.12
+# $ exists lib/target/scala-2.13
+# $ exists sbt-foo/target/scala-2.12
+# -$ exists sbt-foo/target/scala-2.13
 
+# Test ++ leaves crossScalaVersions unchanged
 > clean
-> ++ 2.10.4 compile
+> ++2.12.12
+> +extrasProj/compile
+$ exists extras/target/scala-2.13
+$ exists extras/target/scala-2.12
 
--$ exists lib/target/scala-2.11
-$ exists lib/target/scala-2.10
-$ exists sbt-foo/target/scala-2.10
--$ exists sbt-foo/target/scala-2.11
-
+# test safe switching
 > clean
-> ++ 2.11.5 compile
-
-$ exists lib/target/scala-2.11
--$ exists lib/target/scala-2.10
-$ exists sbt-foo/target/scala-2.10
--$ exists sbt-foo/target/scala-2.11
-
-> clean
-> ++ 2.11.5! compile
-
-$ exists lib/target/scala-2.11
--$ exists lib/target/scala-2.10
--$ exists sbt-foo/target/scala-2.10
-$ exists sbt-foo/target/scala-2.11
+> ++ 2.13.1 -v compile
+$ exists lib/target/scala-2.13
+-$ exists lib/target/scala-2.12
+# -$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13

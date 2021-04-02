@@ -1,2 +1,14 @@
 target/
 __pycache__
+out
+node_modules
+vscode-sbt-scala/client/server
+npm-debug.log
+*.vsix
+!sbt/src/server-test/completions/target
+.big
+.idea
+.bloop
+.metals
+.bsp/
+metals.sbt

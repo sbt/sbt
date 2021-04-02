@@ -1,141 +1,198 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 
-import Def.{ displayFull, displayMasked, ScopedKey }
-import sbt.internal.{ TestBuild, Resolve }
-import TestBuild._
-import sbt.internal.util.complete._
-
-import org.scalacheck._
-import Gen._
-import Prop._
-import Arbitrary.arbBool
+import sbt.Def.{ ScopedKey, displayFull, displayMasked }
+import sbt.internal.TestBuild._
+import sbt.internal.util.complete.Parser
+import sbt.internal.{ Resolve, TestBuild }
+import hedgehog._
+import hedgehog.core.{ ShrinkLimit, SuccessCount }
+import hedgehog.runner._
 
 /**
  * Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
  * This includes properly resolving omitted components.
  */
-object ParseKey extends Properties("Key parser test") {
-  final val MaxKeys = 5
-  final val MaxScopedKeys = 100
+object ParseKey extends Properties {
+  val exampleCount = 1000
 
-  implicit val gstructure = genStructure
+  override def tests: List[Test] = List(
+    propertyN(
+      "An explicitly specified axis is always parsed to that explicit value",
+      arbStructureKeyMask.forAll.map(roundtrip),
+      5000
+    ),
+    propertyN(
+      "An unspecified project axis resolves to the current project",
+      arbStructureKeyMask.forAll.map(noProject),
+      5000
+    ),
+    propertyN(
+      "An unspecified task axis resolves to Zero",
+      arbStructureKeyMask.forAll.map(noTask),
+      exampleCount
+    ),
+    propertyN(
+      "An unspecified configuration axis resolves to the first configuration directly defining the key or else Zero",
+      arbStructureKeyMask.forAll.map(noConfig),
+      exampleCount
+    )
+  )
 
-  property("An explicitly specified axis is always parsed to that explicit value") =
-    forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key, mask }
+  def propertyN(name: String, result: => Property, n: Int): Test =
+    Test(name, result)
+      .config(_.copy(testLimit = SuccessCount(n), shrinkLimit = ShrinkLimit(n * 10)))
 
-      val expected = resolve(structure, key, mask)
-      val string = displayMasked(key, mask)
+  def roundtrip(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
 
-      ("Key: " + displayFull(key)) |:
-        parseExpected(structure, string, expected, mask)
-    }
+    // if the configuration axis == Zero
+    // then a scoped key like `proj/Zero/Zero/name` could render potentially as `Zero/name`
+    // which would be interpreted as `Zero/Zero/Zero/name` (Global/name)
+    // so we mitigate this by explicitly displaying the configuration axis set to Zero
+    val hasZeroConfig = key.scope.config == Zero
 
-  property("An unspecified project axis resolves to the current project or the build of the current project") =
-    forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
+    val showZeroConfig = hasZeroConfig || hasAmbiguousLowercaseAxes(key, structure)
+    val mask = if (showZeroConfig) skm.mask.copy(project = true) else skm.mask
 
-      val mask = skm.mask.copy(project = false)
-      val string = displayMasked(key, mask)
-
-      ("Key: " + displayFull(key)) |:
-        ("Mask: " + mask) |:
-        ("Current: " + structure.current) |:
-        parse(structure, string) {
-          case Left(err) => false
-          case Right(sk) => sk.scope.project == Select(structure.current) || sk.scope.project == Select(BuildRef(structure.current.build))
-        }
-    }
-
-  property("An unspecified task axis resolves to Global") =
-    forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
-      val mask = skm.mask.copy(task = false)
-      val string = displayMasked(key, mask)
-
-      ("Key: " + displayFull(key)) |:
-        ("Mask: " + mask) |:
-        parse(structure, string) {
-          case Left(err) => false
-          case Right(sk) => sk.scope.task == Global
-        }
-    }
-
-  property("An unspecified configuration axis resolves to the first configuration directly defining the key or else Global") =
-    forAllNoShrink(structureDefinedKey) { (skm: StructureKeyMask) =>
-      import skm.{ structure, key }
-      val mask = ScopeMask(config = false)
-      val string = displayMasked(key, mask)
-      val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
-
-      ("Key: " + displayFull(key)) |:
-        ("Mask: " + mask) |:
-        ("Expected configuration: " + resolvedConfig.map(_.name)) |:
-        parse(structure, string) {
-          case Right(sk) => sk.scope.config == resolvedConfig
-          case Left(err) => false
-        }
-    }
-
-  lazy val structureDefinedKey: Gen[StructureKeyMask] = structureKeyMask { s =>
-    for (scope <- TestBuild.scope(s.env); key <- oneOf(s.allAttributeKeys.toSeq)) yield ScopedKey(scope, key)
+    val expected = resolve(structure, key, mask)
+    parseCheck(structure, key, mask, showZeroConfig)(
+      sk =>
+        hedgehog.Result
+          .assert(Project.equal(sk, expected, mask))
+          .log(s"$sk.key == $expected.key: ${sk.key == expected.key}")
+          .log(s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}")
+    ).log(s"Expected: ${displayFull(expected)}")
   }
-  def structureKeyMask(genKey: Structure => Gen[ScopedKey[_]])(implicit maskGen: Gen[ScopeMask], structureGen: Gen[Structure]): Gen[StructureKeyMask] =
-    for (mask <- maskGen; structure <- structureGen; key <- genKey(structure)) yield new StructureKeyMask(structure, key, mask)
-  final class StructureKeyMask(val structure: Structure, val key: ScopedKey[_], val mask: ScopeMask)
 
-  def resolve(structure: Structure, key: ScopedKey[_], mask: ScopeMask): ScopedKey[_] =
-    ScopedKey(Resolve(structure.extra, Select(structure.current), key.key, mask)(key.scope), key.key)
+  def noProject(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
+    val mask = skm.mask.copy(project = false)
+    // skip when config axis is set to Zero
+    val hasZeroConfig = key.scope.config ==== Zero
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
+    parseCheck(structure, key, mask, showZeroConfig)(
+      sk =>
+        (hasZeroConfig or sk.scope.project ==== Select(structure.current))
+          .log(s"parsed subproject: ${sk.scope.project}")
+          .log(s"current subproject: ${structure.current}")
+    )
+  }
 
-  def parseExpected(structure: Structure, s: String, expected: ScopedKey[_], mask: ScopeMask): Prop =
-    ("Expected: " + displayFull(expected)) |:
-      ("Mask: " + mask) |:
-      parse(structure, s) {
-        case Left(err) => false
-        case Right(sk) => Project.equal(sk, expected, mask)
-      }
+  def noTask(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
+    val mask = skm.mask.copy(task = false)
+    parseCheck(structure, key, mask)(_.scope.task ==== Zero)
+  }
 
-  def parse(structure: Structure, s: String)(f: Either[String, ScopedKey[_]] => Prop): Prop =
-    {
-      val parser = makeParser(structure)
-      val parsed = DefaultParsers.result(parser, s).left.map(_().toString)
-      val showParsed = parsed.right.map(displayFull)
-      ("Key string: '" + s + "'") |:
-        ("Parsed: " + showParsed) |:
-        ("Structure: " + structure) |:
-        f(parsed)
-    }
+  def noConfig(skm: StructureKeyMask) = {
+    import skm.{ structure, key }
+    val mask = ScopeMask(config = false)
+    val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
+    val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
+    parseCheck(structure, key, mask, showZeroConfig)(
+      sk => (sk.scope.config ==== resolvedConfig) or (sk.scope ==== Scope.GlobalScope)
+    ).log(s"Expected configuration: ${resolvedConfig map (_.name)}")
+  }
 
-  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
-  // so that it will use the passed-in `Gen` rather than the one imported
-  // from TestBuild.
-  def genStructure(implicit mkEnv: Gen[Env]): Gen[Structure] =
-    structureGenF { (scopes: Seq[Scope], env: Env, current: ProjectRef) =>
-      val settings =
-        for {
-          scope <- scopes
-          t <- env.tasks
-        } yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
+  val arbStructure: Gen[Structure] =
+    for {
+      env <- mkEnv
+      loadFactor <- Gen.double(Range.linearFrac(0.0, 1.0))
+      scopes <- pickN(loadFactor, env.allFullScopes)
+      current <- oneOf(env.allProjects.unzip._1)
+    } yield {
+      val settings = structureSettings(scopes, env)
       TestBuild.structure(env, settings, current)
     }
 
-  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
-  // so that it will use the passed-in `Gen` rather than the one imported
-  // from TestBuild.
-  def structureGenF(f: (Seq[Scope], Env, ProjectRef) => Structure)(implicit mkEnv: Gen[Env]): Gen[Structure] =
-    structureGen((s, e, p) => Gen.const(f(s, e, p)))
-  // Here we're shadowing the in-scope implicit called `mkEnv` for this method
-  // so that it will use the passed-in `Gen` rather than the one imported
-  // from TestBuild.
-  def structureGen(f: (Seq[Scope], Env, ProjectRef) => Gen[Structure])(implicit mkEnv: Gen[Env]): Gen[Structure] =
+  def structureSettings(scopes: Seq[Scope], env: Env): Seq[Def.Setting[String]] = {
     for {
-      env <- mkEnv
-      loadFactor <- choose(0.0, 1.0)
-      scopes <- pickN(loadFactor, env.allFullScopes)
-      current <- oneOf(env.allProjects.unzip._1)
-      structure <- f(scopes, env, current)
-    } yield structure
+      scope <- scopes
+      t <- env.tasks
+    } yield Def.setting(ScopedKey(scope, t.key), Def.value(""))
+  }
 
+  final case class StructureKeyMask(structure: Structure, key: ScopedKey[_], mask: ScopeMask)
+
+  val arbStructureKeyMask: Gen[StructureKeyMask] =
+    (for {
+      structure <- arbStructure
+      // NOTE: Generating this after the structure improves shrinking
+      mask <- maskGen
+      key <- for {
+        scope <- TestBuild.scope(structure.env)
+        key <- oneOf(structure.allAttributeKeys.toSeq)
+      } yield ScopedKey(scope, key)
+      skm = StructureKeyMask(structure, key, mask)
+    } yield skm)
+      .filter(configExistsInIndex)
+
+  private def configExistsInIndex(skm: StructureKeyMask): Boolean = {
+    import skm._
+    val resolvedKey = resolve(structure, key, mask)
+    val proj = resolvedKey.scope.project.toOption
+    val maybeResolvedProj = proj.collect {
+      case ref: ResolvedReference => ref
+    }
+    val checkName = for {
+      configKey <- resolvedKey.scope.config.toOption
+    } yield {
+      val configID = Scope.display(configKey)
+      // This only works for known configurations or those that were guessed correctly.
+      val name = structure.keyIndex.fromConfigIdent(maybeResolvedProj)(configID)
+      name == configKey.name
+    }
+    checkName.getOrElse(true)
+  }
+
+  def resolve(structure: Structure, key: ScopedKey[_], mask: ScopeMask): ScopedKey[_] =
+    ScopedKey(
+      Resolve(structure.extra, Select(structure.current), key.key, mask)(key.scope),
+      key.key
+    )
+
+  def parseCheck(
+      structure: Structure,
+      key: ScopedKey[_],
+      mask: ScopeMask,
+      showZeroConfig: Boolean = false,
+  )(f: ScopedKey[_] => hedgehog.Result): hedgehog.Result = {
+    val s = displayMasked(key, mask, showZeroConfig)
+    val parser = makeParser(structure)
+    val parsed = Parser.result(parser, s).left.map(_().toString)
+    (
+      parsed
+        .fold(_ => hedgehog.Result.failure, f)
+        .log(s"Key: ${Scope.displayPedantic(key.scope, key.key.label)}")
+        .log(s"Mask: $mask")
+        .log(s"Key string: '$s'")
+        .log(s"Parsed: ${parsed.right.map(displayFull)}")
+        .log(s"Structure: $structure")
+      )
+  }
+
+  // pickN is a function that randomly picks load % items from the "from" sequence.
+  // The rest of the tests expect at least one item, so I changed it to return 1 in case of 0.
   def pickN[T](load: Double, from: Seq[T]): Gen[Seq[T]] =
-    pick((load * from.size).toInt, from)
+    pick((load * from.size).toInt max 1, from)
+
+  // if both a project and a key share the same name (e.g. "foo")
+  // then a scoped key like `foo/<conf>/foo/name` would render as `foo/name`
+  // which would be interpreted as `foo/Zero/Zero/name`
+  // so we mitigate this by explicitly displaying the configuration axis set to Zero
+  def hasAmbiguousLowercaseAxes(key: ScopedKey[_], structure: Structure): Boolean = {
+    val label = key.key.label
+    val allProjects = for {
+      uri <- structure.keyIndex.buildURIs
+      project <- structure.keyIndex.projects(uri)
+    } yield project
+    allProjects(label)
+  }
 }

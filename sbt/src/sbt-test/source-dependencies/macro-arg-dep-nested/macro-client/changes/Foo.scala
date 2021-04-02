@@ -1,3 +1,3 @@
-package macro
+package macros
 object Foo {
 }

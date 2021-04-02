@@ -1,7 +1,9 @@
-testOptions in Test +=
+testOptions in Test += {
+  val baseDir = baseDirectory.value
 	Tests.Setup { () =>
-		IO.touch(baseDirectory.value / "setup")
+		IO.touch(baseDir / "setup")
 	}
+}
 
 testOptions in Test += {
 	val t = baseDirectory.value / "tested"

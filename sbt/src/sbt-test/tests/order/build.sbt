@@ -1,3 +1,5 @@
-parallelExecution in Test := false
+val scalcheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
 
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.0" % "test"
+ThisBuild / scalaVersion := "2.12.12"
+Test / parallelExecution := false
+libraryDependencies += scalcheck % Test

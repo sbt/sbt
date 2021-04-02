@@ -1,12 +1,15 @@
-/* sbt -- Simple Build Tool
- * Copyright 2009, 2010 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 
 import org.scalacheck._
 import Prop._
 import TaskGen._
-import Task._
 
 object ExecuteSpec extends Properties("Execute") {
   val iGen = Arbitrary.arbInt.arbitrary
@@ -23,25 +26,25 @@ object ExecuteSpec extends Properties("Execute") {
 		}
 	}*/
 
-  property("evaluates simple mapped task") = forAll(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
-    ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
-      {
+  property("evaluates simple mapped task") = forAll(iGen, MaxTasksGen, MaxWorkersGen) {
+    (i: Int, times: Int, workers: Int) =>
+      ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |: {
         def result = tryRun(task(i).map(_ * times), false, workers)
         checkResult(result, i * times)
       }
   }
-  property("evaluates chained mapped task") = forAllNoShrink(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
-    ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
-      {
+  property("evaluates chained mapped task") = forAllNoShrink(iGen, MaxTasksGen, MaxWorkersGen) {
+    (i: Int, times: Int, workers: Int) =>
+      ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |: {
         val initial = task(0) map (identity[Int])
-        def t = (initial /: (0 until times))((t, ignore) => t.map(_ + i))
+        def t = (0 until times).foldLeft(initial)((t, ignore) => t.map(_ + i))
         checkResult(tryRun(t, false, workers), i * times)
       }
   }
 
-  property("evaluates simple bind") = forAll(iGen, MaxTasksGen, MaxWorkersGen) { (i: Int, times: Int, workers: Int) =>
-    ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |:
-      {
+  property("evaluates simple bind") = forAll(iGen, MaxTasksGen, MaxWorkersGen) {
+    (i: Int, times: Int, workers: Int) =>
+      ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |: {
         def result = tryRun(task(i).flatMap(x => task(x * times)), false, workers)
         checkResult(result, i * times)
       }

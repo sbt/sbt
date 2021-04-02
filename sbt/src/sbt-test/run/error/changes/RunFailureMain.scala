@@ -2,6 +2,6 @@ object Spawn
 {
 	def main(args: Array[String])
 	{
-		error("Test error main")
+		sys.error("Test error main")
 	}
 }

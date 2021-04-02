@@ -1,0 +1,1 @@
+object Test extends A with B

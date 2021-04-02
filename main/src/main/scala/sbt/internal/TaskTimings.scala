@@ -1,41 +1,85 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package internal
 
-import sbt.internal.util.RMap
+import sbt.internal.util.{ ConsoleOut, RMap }
+import sbt.util.{ Level, Logger }
 
-import java.util.concurrent.ConcurrentHashMap
-import TaskName._
-
-private[sbt] final class TaskTimings extends ExecuteProgress[Task] {
-  private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
-  private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
-  private[this] val timings = new ConcurrentHashMap[Task[_], Long]
+/**
+ * Measure the time elapsed for running tasks.
+ * This class is activated by adding -Dsbt.task.timings=true to the JVM options.
+ * Formatting options:
+ * - -Dsbt.task.timings.on.shutdown=true|false
+ * - -Dsbt.task.timings.unit=ns|us|ms|s
+ * - -Dsbt.task.timings.threshold=number
+ * @param reportOnShutdown    Should the report be given when exiting the JVM (true) or immediately (false)?
+ */
+private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
+    extends AbstractTaskExecuteProgress
+    with ExecuteProgress[Task] {
+  @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
+  def this(reportOnShutdown: Boolean) =
+    this(reportOnShutdown, new Logger {
+      override def trace(t: => Throwable): Unit = {}
+      override def success(message: => String): Unit = {}
+      override def log(level: Level.Value, message: => String): Unit =
+        ConsoleOut.systemOut.println(message)
+    })
   private[this] var start = 0L
+  private[this] val threshold = SysProp.taskTimingsThreshold
+  private[this] val omitPaths = SysProp.taskTimingsOmitPaths
+  private[this] val (unit, divider) = SysProp.taskTimingsUnit
 
-  type S = Unit
+  if (reportOnShutdown) {
+    start = System.nanoTime
+    ShutdownHooks.add(() => report())
+  }
 
-  def initial = { start = System.nanoTime }
-  def registered(state: Unit, task: Task[_], allDeps: Iterable[Task[_]], pendingDeps: Iterable[Task[_]]) = {
-    pendingDeps foreach { t => if (transformNode(t).isEmpty) anonOwners.put(t, task) }
+  override def initial(): Unit = {
+    if (!reportOnShutdown)
+      start = System.nanoTime
   }
-  def ready(state: Unit, task: Task[_]) = ()
-  def workStarting(task: Task[_]) = timings.put(task, System.nanoTime)
-  def workFinished[T](task: Task[T], result: Either[Task[T], Result[T]]) = {
-    timings.put(task, System.nanoTime - timings.get(task))
-    result.left.foreach { t => calledBy.put(t, task) }
-  }
-  def completed[T](state: Unit, task: Task[T], result: Result[T]) = ()
-  def allCompleted(state: Unit, results: RMap[Task, Result]) =
-    {
-      val total = System.nanoTime - start
-      println("Total time: " + (total * 1e-6) + " ms")
-      import collection.JavaConverters._
-      def sumTimes(in: Seq[(Task[_], Long)]) = in.map(_._2).sum
-      val timingsByName = timings.asScala.toSeq.groupBy { case (t, time) => mappedName(t) } mapValues (sumTimes)
-      for ((taskName, time) <- timingsByName.toSeq.sortBy(_._2).reverse)
-        println("  " + taskName + ": " + (time * 1e-6) + " ms")
+
+  override def afterReady(task: Task[_]): Unit = ()
+  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[Task, Result]): Unit =
+    if (!reportOnShutdown) {
+      report()
     }
-  private[this] def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map mappedName
-  private[this] def nameDelegate(t: Task[_]): Option[Task[_]] = Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
-  private[this] def mappedName(t: Task[_]): String = definedName(t) orElse inferredName(t) getOrElse anonymousName(t)
+
+  override def stop(): Unit = ()
+
+  private[this] val reFilePath = raw"\{[^}]+\}".r
+
+  private[this] def report() = {
+    val total = divide(System.nanoTime - start)
+    logger.info(s"Total time: $total $unit")
+    val times = timingsByName.toSeq
+      .sortBy(_._2.get)
+      .reverse
+      .map {
+        case (name, time) =>
+          (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
+      }
+      .filter { _._2 > threshold }
+    if (times.size > 0) {
+      val maxTaskNameLength = times.map { _._1.length }.max
+      val maxTime = times.map { _._2 }.max.toString.length
+      times.foreach {
+        case (taskName, time) =>
+          logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
+            .padTo(maxTime - time.toString.length, ' ')}$time $unit")
+      }
+    }
+  }
+
+  private[this] def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
+    a / 10L
+  }
 }

@@ -1,6 +1,6 @@
 // https://github.com/sbt/sbt/issues/1818
 
-scalaVersion := "2.11.5"
+ThisBuild / scalaVersion := "2.11.12"
 libraryDependencies += "org.scala-lang" %% "scala-actors-migration" % "1.1.0"
 libraryDependencies += "org.scala-lang" %% "scala-pickling" % "0.9.1"
 

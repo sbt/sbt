@@ -1,11 +1,12 @@
-scalaSource in Configurations.Compile := sourceDirectory( _ / " scala test " ).value
+scalaSource in Configurations.Compile := (sourceDirectory.value / " scala test ")
+ javaSource in Configurations.Compile := (sourceDirectory.value / " java test ")
 
-javaSource in Configurations.Compile := sourceDirectory( _ / " java test " ).value
-
-TaskKey[Unit]("init") := ((scalaSource in Configurations.Compile, javaSource in Configurations.Compile) map { (ss, js) =>
-	import IO._
-	createDirectories(ss :: js :: Nil)
-	copyFile(file("changes") / "Test.scala", ss / " Test s.scala")
-	copyFile(file("changes") / "A.java", js / "a" / "A.java")
-	delete(file("changes"))
-}).value
+TaskKey[Unit]("init") := {
+  val ss = (scalaSource in Configurations.Compile).value
+  val js = ( javaSource in Configurations.Compile).value
+  import IO._
+  createDirectories(ss :: js :: Nil)
+  copyFile(file("changes") / "Test.scala", ss / " Test s.scala")
+  copyFile(file("changes") / "A.java", js / "a" / "A.java")
+  delete(file("changes"))
+}

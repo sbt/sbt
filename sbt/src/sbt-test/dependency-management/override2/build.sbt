@@ -1,11 +1,14 @@
-sbtBinaryVersion := "0.11.2"
+lazy val check = taskKey[Unit]("Runs the check")
 
-addSbtPlugin("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.0", sbtVersion = "0.11.2", scalaVersion = "2.9.1")
-
-scalaBinaryVersion := "2.9.1"
-
-resolvers += Classpaths.typesafeResolver
-
-dependencyOverrides := Set("com.typesafe.sbtscalariform" % "sbtscalariform" % "0.3.1")
-
-autoScalaLibrary := false
+lazy val root = (project in file("."))
+  .settings(
+    autoScalaLibrary := false, 
+    libraryDependencies += "org.webjars.npm" % "is-odd" % "2.0.0",
+    dependencyOverrides += "org.webjars.npm" % "is-number" % "5.0.0",
+    check := {
+      val cp = (Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
+      if (!(cp contains "is-number-5.0.0.jar")) {
+        sys.error("is-number-5.0.0 not found when it should be included: " + cp.toString)
+      }
+    }
+  )

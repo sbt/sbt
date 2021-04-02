@@ -1,0 +1,27 @@
+> + clean
+
+## verbose
+> + -v compile
+
+## test scoped task
+## this should not force any Scala version changes to other subprojects
+> + baz/check
+
+## test input task
+> + foo / testOnly foo.FooSpec
+> + testOnly foo.FooSpec
+
+## test + with task in multi-project with different Scala versions
+> + check
+
+## test + with command or alias
+> clean
+## for command cross building you do need crossScalaVerions on root
+> set root/crossScalaVersions := Seq("2.12.13", "2.13.1")
+> + build
+$ exists foo/target/scala-2.12
+$ exists foo/target/scala-2.13
+$ exists bar/target/scala-2.12
+$ exists bar/target/scala-2.13
+$ exists client/target/scala-2.12
+$ exists client/target/scala-2.13

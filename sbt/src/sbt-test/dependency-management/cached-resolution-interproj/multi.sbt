@@ -1,24 +1,28 @@
 // https://github.com/sbt/sbt/issues/1730
 lazy val check = taskKey[Unit]("Runs the check")
+val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
+val junit = "junit" % "junit" % "4.13.1"
+
+ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
-    scalaVersion := "2.11.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
 lazy val transitiveTest = project.
   settings(
     commonSettings,
-    libraryDependencies += "junit" % "junit" % "4.11" % Test
+    libraryDependencies += junit % Test
   )
 
 lazy val transitiveTestDefault = project.
   settings(
     commonSettings,
-    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
+    libraryDependencies += scalatest
   )
 
 lazy val a = project.

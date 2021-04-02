@@ -1,0 +1,59 @@
+> checkOutDirectoryIsEmpty
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 1
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 1
+
+> copyFile / clean
+
+> checkOutDirectoryIsEmpty
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 1
+
+$ copy-file changes/Foo.txt base/Foo.txt
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 2
+
+> clean
+
+> checkOutDirectoryIsEmpty
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 1
+
+> copyFile
+
+> checkOutDirectoryHasFile
+
+> checkCount 1
+
+> copyFile / clean
+
+> checkOutDirectoryIsEmpty
+
+> checkCount 0
+
+> copyFile / allOutputFiles
+
+> checkCount 1
+
+> checkOutDirectoryHasFile

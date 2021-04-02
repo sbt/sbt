@@ -1,0 +1,3 @@
+> test
+> set concurrentRestrictions in Global := Seq(Tags.limitAll(4))
+> testFailure

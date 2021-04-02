@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
+  <info organisation="org.other" module="scala3-compiler_3.0.0-M2" revision="3.0.0-M2" status="integration" publication="20201202164220">
+    <description homepage="https://github.com/lampepfl/dotty">scala3-compiler</description>
+  </info>
+  <configurations>
+    <conf name="plugin" visibility="public" description=""/>
+    <conf name="pom" visibility="public" description=""/>
+    <conf extends="runtime" name="test" visibility="public" description=""/>
+    <conf name="provided" visibility="public" description=""/>
+    <conf extends="compile,optional,provided" name="compile-internal" visibility="public" description=""/>
+    <conf name="docs" visibility="public" description=""/>
+    <conf name="optional" visibility="public" description=""/>
+    <conf name="compile" visibility="public" description=""/>
+    <conf extends="test,optional,provided" name="test-internal" visibility="public" description=""/>
+    <conf name="sourcedeps" visibility="public" description=""/>
+    <conf name="sources" visibility="public" description=""/>
+    <conf extends="compile" name="runtime" visibility="public" description=""/>
+    <conf extends="runtime,optional" name="runtime-internal" visibility="public" description=""/>
+  </configurations>
+  <publications>
+    <artifact name="scala3-compiler_3.0.0-M2" type="pom" ext="pom" conf="pom"/>
+    <artifact e:classifier="sources" name="scala3-compiler_3.0.0-M2" type="src" ext="jar" conf="sources"/>
+    <artifact e:classifier="javadoc" name="scala3-compiler_3.0.0-M2" type="doc" ext="jar" conf="docs"/>
+    <artifact name="scala3-compiler_3.0.0-M2" type="jar" ext="jar" conf="compile"/>
+  </publications>
+  <dependencies>
+    <dependency org="org.other" name="scala3-interfaces" rev="3.0.0-M2" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.other" name="scala3-library_3.0.0-M2" rev="3.0.0-M2" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.other" name="tasty-core_3.0.0-M2" rev="3.0.0-M2" conf="compile->default(compile)"> </dependency>
+    <dependency org="com.novocode" name="junit-interface" rev="0.11" conf="test->default(compile)"> </dependency>
+    <dependency org="org.scala-lang.modules" name="scala-asm" rev="7.3.1-scala-1" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.scala-sbt" name="compiler-interface" rev="1.3.5" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.jline" name="jline-reader" rev="3.15.0" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.jline" name="jline-terminal" rev="3.15.0" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.jline" name="jline-terminal-jna" rev="3.15.0" conf="compile->default(compile)"> </dependency>
+    <dependency org="org.scala-js" name="scalajs-ir_2.13" rev="1.3.1" conf="sourcedeps->default(compile)"> </dependency>
+  </dependencies>
+</ivy-module>

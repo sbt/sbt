@@ -1,16 +1,22 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 autoScalaLibrary := false
 
-ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value
+ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
-ivyScala := ((scalaVersion in update, scalaBinaryVersion in update) { (fv, bv) =>
-	Some(new IvyScala(fv, bv, Nil, filterImplicit = false, checkExplicit = false, overrideScalaVersion = false))
-}).value
+scalaModuleInfo := Some(sbt.librarymanagement.ScalaModuleInfo(
+  (scalaVersion in update).value,
+  (scalaBinaryVersion in update).value,
+  Vector.empty,
+  checkExplicit = false,
+  filterImplicit = false,
+  overrideScalaVersion = false
+))
 
-InputKey[Unit]("check") := (inputTask { args => 
-	(update, args) map {
-		case (report, Seq(expected, _*)) =>
-			report.allModules.forall(_.revision == expected)
-	}
-}).evaluated
+InputKey[Unit]("check") := {
+  val args = Def.spaceDelimited().parsed
+  val Seq(expected, _*) = args
+  update.value.allModules.forall(_.revision == expected)
+}
 
 scalaVersion := "2.9.1"

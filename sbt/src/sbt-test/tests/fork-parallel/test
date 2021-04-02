@@ -1,6 +1,7 @@
+# Note: this test is meaningless on less than four cores
+
 > test
 -> check
-
 > clean
 > set testForkedParallel := true
 > test

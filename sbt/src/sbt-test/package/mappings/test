@@ -1,0 +1,3 @@
+> unzipPackage
+$ exists target/extracted/test2
+$ exists target/extracted/test1

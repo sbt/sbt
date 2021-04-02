@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 import Def.Initialize
 
 object Marker extends AutoPlugin {
@@ -11,7 +11,7 @@ object Marker extends AutoPlugin {
     final def mark(baseKey: SettingKey[File]): Initialize[Task[Unit]] = baseKey map { base =>
       val toMark = base / "ran"
       if(toMark.exists)
-        error("Already ran (" + toMark + " exists)")
+        sys.error("Already ran (" + toMark + " exists)")
       else
         IO touch toMark
     }

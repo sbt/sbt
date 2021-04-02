@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -11,15 +18,20 @@ import java.io.File
 sealed abstract class AddSettings
 
 object AddSettings {
-  private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings
+  private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings {
+    override def toString: String = s"Sequence($sequence)"
+  }
   private[sbt] final object User extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
   private[sbt] final class DefaultSbtFiles(val include: File => Boolean) extends AddSettings
-  private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings
+  private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings {
+    override def toString: String = s"SbtFiles($files)"
+  }
   private[sbt] final object BuildScalaFiles extends AddSettings
 
   /** Adds all settings from autoplugins. */
-  val autoPlugins: AddSettings = new AutoPlugins(const(true)) // Note: We do not expose fine-grained autoplugins because
+  val autoPlugins
+      : AddSettings = new AutoPlugins(const(true)) // Note: We do not expose fine-grained autoplugins because
   // it's dangerous to control at that level right now.
   // Leaving the hook in place in case we need to expose
   // it, but most likely it will remain locked out
@@ -55,19 +67,22 @@ object AddSettings {
     case _                            => seq(a, b)
   }
 
-  def clearSbtFiles(a: AddSettings): AddSettings = tx(a) {
-    case _: DefaultSbtFiles | _: SbtFiles => None
-    case x                                => Some(x)
-  } getOrElse seq()
+  def clearSbtFiles(a: AddSettings): AddSettings =
+    tx(a) {
+      case _: DefaultSbtFiles | _: SbtFiles => None
+      case x                                => Some(x)
+    } getOrElse seq()
 
-  private[sbt] def tx(a: AddSettings)(f: AddSettings => Option[AddSettings]): Option[AddSettings] = a match {
-    case s: Sequence =>
-      s.sequence.flatMap { b => tx(b)(f) } match {
-        case Seq()  => None
-        case Seq(x) => Some(x)
-        case ss     => Some(new Sequence(ss))
-      }
-    case x => f(x)
-  }
+  private[sbt] def tx(a: AddSettings)(f: AddSettings => Option[AddSettings]): Option[AddSettings] =
+    a match {
+      case s: Sequence =>
+        s.sequence.flatMap { b =>
+          tx(b)(f)
+        } match {
+          case Seq()  => None
+          case Seq(x) => Some(x)
+          case ss     => Some(new Sequence(ss))
+        }
+      case x => f(x)
+    }
 }
-

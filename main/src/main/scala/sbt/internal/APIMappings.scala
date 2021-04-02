@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -17,7 +24,10 @@ private[sbt] object APIMappings {
   def extractFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
     entry.get(Keys.entryApiURL) match {
       case Some(u) => Some((entry.data, u))
-      case None    => entry.get(Keys.moduleID.key).flatMap { mid => extractFromID(entry.data, mid, log) }
+      case None =>
+        entry.get(Keys.moduleID.key).flatMap { mid =>
+          extractFromID(entry.data, mid, log)
+        }
     }
 
   private[this] def extractFromID(entry: File, mid: ModuleID, log: Logger): Option[(File, URL)] =
@@ -27,7 +37,8 @@ private[sbt] object APIMappings {
     } yield (entry, u)
 
   private[this] def parseURL(s: String, forEntry: File, log: Logger): Option[URL] =
-    try Some(new URL(s)) catch {
+    try Some(new URL(s))
+    catch {
       case e: MalformedURLException =>
         log.warn(s"Invalid API base URL '$s' for classpath entry '$forEntry': ${e.toString}")
         None

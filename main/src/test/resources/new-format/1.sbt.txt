@@ -7,7 +7,7 @@ checkPom := {
 	val tpe = pom \\ "type"
 
 	if(!tpe.isEmpty)
-		error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
+		sys.error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)
 }
 val b = ( <b/>)
 val a = <aaa

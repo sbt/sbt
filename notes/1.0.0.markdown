@@ -1,0 +1,323 @@
+### Features, fixes, changes with compatibility implications
+
+See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
+
+- sbt 1.0 uses **Scala 2.12** for build definitions and plugins. This also requires JDK 8.
+- Many of the case classes are replaced with pseudo case classes generated using Contraband. Migrate `.copy(foo = xxx)` to `withFoo(xxx)`.
+  For example, `UpdateConfiguration`, `RetrieveConfiguration`, `PublishConfiguration` are refactored to use builder pattern.
+- Zinc 1 drops support for Scala 2.9 and earlier. Scala 2.10 must use 2.10.2 and above. Scala 2.11 must use 2.11.2 and above. (latest patch releases are recommended)
+- `config("xyz")` must be directly assigned to a *capitalized* `val`, like `val Xyz = config("xyz")`. This captures the lhs identifier into the configuration so we can use it from the shell later.
+- Changes `publishTo` and `otherResolvers` from SettingKeys to TaskKeys. [#2059][2059]/[#2662][2662] by [@dwijnand][@dwijnand]
+- `Path.relativizeFile(baseFile, file)` is renamed to `IO.relativizeFile(baseFile, file)`.
+- `PathFinder`'s `.***` method is renamed to `.allPaths` method.
+- `PathFinder.x_!(mapper)` is moved to `def pair` on `PathFinder`.
+- A number of the methods on `sbt.Path` (such as `relativeTo` and `rebase` and `flat`) are now no longer in the
+    default namespace by virtue of being mixed into the sbt package object. Use `sbt.io.Path` to access them
+    again.
+- sbt 1.0 renames `Global` as scope component to `Zero` to disambiguate from `GlobalScope`. [@eed3si9n][@eed3si9n]
+- sbt 1.0 uses `ConfigRef` in places where `String` was used to reference configuration, such as `update.value.configuration(...)`. Pass in `Configuration`, which implicitly converts to `ConfigRef`.
+- Changes `sourceArtifactTypes` and `docArtifactTypes` from `Set[String]` to `Seq[String]` settings.
+- Renames early command feature from `--<command>` to `early(<command>)`.
+- Drops sbt 0.12 style hyphen-separated key names (use `publishLocal` instead of `publish-local`).
+- Log options `-error`, `-warn`, `-info`, `-debug` are added as shorthand for `"early(error)"` etc.
+- `sbt.Process` and `sbt.ProcessExtra` are dropped. Use `scala.sys.process` instead.
+- `incOptions.value.withNameHashing(...)` option is removed because name hashing is always on.
+- `TestResult.Value` is now called `TestResult`.
+- The scripted plugin is cross-versioned now, so you must use `%%` when depending on it.
+
+**Dropped deprecations**:
+
+- sbt 0.12 style `Build` trait that was deprecated in sbt 0.13.12, is removed. Please [migrate to build.sbt](Migrating-from-sbt-013x.html#Migrating+from+the+Build+trait). Auto plugins and `Build` trait do not work well together, and its feature is now largely subsumed by multi-project build.sbt.
+- sbt 0.12 style `Project(...)` constructor is restricted down to two parameters. This is because `settings` parameter does not work well with Auto Plugins. Use `project` instead.
+- sbt 0.12 style key dependency operators `<<=`, `<+=`, `<++=` are removed. Please [migrate to :=, +=, and ++=](Migrating-from-sbt-013x.html#Migrating+simple+expressions). These operators have been sources of confusion for many users, and have long been removed from 0.13 docs, and have been formally deprecated since sbt 0.13.13.
+- Non-auto `sbt.Plugin` trait is dropped. Please migrate to AutoPlugin. Auto plugins are easier to configure, and work better with each other.
+- Removes the `settingsSets` method from `Project` (along with `add/setSbtFiles`).
+- Drops deprecated `InputTask` `apply` method and `inputTask` DSL method. Use `Def.inputTask` and `Def.spaceDelimited().parsed`.
+- Drops deprecated `ProjectReference` implicit lifts. Use `RootProject(<uri>)`, `RootProject(<file>)` or `LocalProject(<string>)`.
+- Drops deprecated `seq(..)` DSL method. Use `Seq` or pass in the settings without wrapping.
+- Drops deprecated `File`/`Seq[File]` setting enrichments. Use `.value` and `Def.setting`.
+- Drops deprecated `SubProcess` `apply` overload. Use `SubProcess(ForkOptions(runJVMOptions = ..))`.
+- Drops `toError(opt: Option[String]): Unit` (equivalent to `opt foreach sys.error`); if used to wrap
+    `ScalaRun#run` then the replacement is `scalaRun.run(...).failed foreach (sys error _.getMessage)`
+
+### Features
+
+- New incremental compiler called Zinc 1. Details below.
+- The interactive shell adds network API. Details below.
+- Library management API and parallel artifact download. See below.
+- sbt 1.0's logging supports event logging. See below.
+- Scala Center contributed static validation of `build.sbt`. See below
+- Ports sbt-cross-building's `^` and `^^` commands for plugin cross building. See below.
+
+### Fixes
+
+- Fixes test content log not showing up. [#3198][3198]/[util#80][util80] by [@eed3si9n][@eed3si9n]
+- Fixes confusing log about "Unable to parse". [lm#98][lm98] by [@jvican][@jvican]
+- Fixes `console` task. [zinc#295][zinc295] by [@dwijnand][@dwijnand]
+- Fixes spurious recompilations when unrelated constructor changes. [zinc#288][zinc288] by [@smarter][@smarter]
+- Fixes restligeist macro for old operators. [#3218][3218] by [@eed3si9n][@eed3si9n]
+- Fixes task caching of `update` task. [#3233][3233] by [@eed3si9n][@eed3si9n]
+- Fixes ncurses-JLine issue by updating to JLine 2.14.4. [util#81][util81] by [@Rogach][@Rogach]
+
+### Improvements
+
+- Scala Center contributed a Java-friendly Zinc API. This was a overhaul of the Zinc internal API for a good Scala integration with other build tools. [zinc#304][zinc304] by [@jvican][@jvican]
+- Scala Center contributed a binary format for Zinc's internal storage. See below
+- The startup log level is dropped to `-error` in script mode using `scalas`. [#840][840] by [@eed3si9n][@eed3si9n]
+- Replace cross building support with sbt-doge. This allows builds with projects that have multiple different combinations of cross scala versions to be cross built correctly.  The behaviour of ++ is changed so that it only updates the Scala version of projects that support that Scala version, but the Scala version can be post fixed with ! to force it to change for all projects. A -v argument has been added that prints verbose information about which projects are having their settings changed along with their cross scala versions. [#2613][2613] by [@jroper][@jroper]
+- `ivyLoggingLevel` is dropped to `UpdateLogging.Quiet` when CI environment is detected. [@eed3si9n][@eed3si9n]
+- Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
+- Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
+- Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
+- Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
+- Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
+- Adds new offline mode to the Ivy-based library management. [lm#92][lm92] by [@jvican][@jvican]
+- A number of features related to dependency locking. See below.
+- Improved eviction warning presentation. See below.
+- A better main class detection. [zinc#287][zinc287] by [@smarter][@smarter]
+- For faster startup, sbt will use Java refection to discover `autoImport` . [#3115][3115] by [@jvican][@jvican]
+- For faster startup, reuse the same global instance for parsing. [#3115][3115] by [@jvican][@jvican]
+- Adds `InteractionService` from sbt-core-next to keep compatibility with sbt 0.13. [#3182][3182] by [@eed3si9n][@eed3si9n]
+- Adds new `WatchService` that abstracts `PollingWatchService` and Java NIO. [io#47][io47] by [@Duhemm][@Duhemm] on behalf of The Scala Center.
+- Adds variants of `IO.copyFile` and `IO.copyDirectory` that accept `sbt.io.CopyOptions()`. See below for details.
+- `Path.directory` and `Path.contentOf` are donated from sbt-native-packager [io#38][io38] by [@muuki88][@muuki88]
+- ApiDiff feature used to debug Zinc uses Scala implementation borrowed from Dotty. [zinc#346][zinc346] by [@Krever][@Krever]
+- In Zinc internal, make ExtractAPI use perRunCaches. [zinc#347][zinc347] by [@gheine][@gheine]
+
+#### Internals
+
+- Adopted Scalafmt for formatting the source code using neo-scalafmt.
+- Scala Center contributed a redesign of the scripted test framework that has batch mode execution. Scripted now reuses the same sbt instance to run sbt tests, which reduces the CI build times by 50% [#3151][3151] by [@jvican][@jvican]
+- sbt 1.0.0-M6 is built using sbt 1.0.0-M5. [#3184][3184] by [@dwijnand][@dwijnand]
+
+### Details of major changes
+
+### Zinc 1: Class-based name hashing
+
+A major improvement brought into Zinc 1.0 by Grzegorz Kossakowski (commissioned by Lightbend) is class-based name hashing, which will speed up the incremental compilation of Scala in large projects.
+
+Zinc 1.0's name hashing tracks your code dependendencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
+
+```
+ScalaTest   AndHaveWord class:          Before 49s, After 4s (12x)
+Specs2      OptionResultMatcher class:  Before 48s, After 1s (48x)
+scala/scala Platform class:             Before 59s, After 15s (3.9x)
+scala/scala MatchCodeGen class:         Before 48s, After 17s (2.8x)
+```
+
+This depends on some factors such as how your classes are organized, but you can see 3x ~ 40x improvements. The reason for the speedup is because it compiles fewer source files than before by untangling the classes from source files. In the example adding a method to scala/scala's Platform class, sbt 0.13's name hashing used to compile 72 sources, but the new Zinc compiles 6 sources.
+
+#### Zinc API changes
+
+- Java classes under the `xsbti.compile` package such as `IncOptions` hides the constructor. Use the factory method `xsbti.compile.Foo.of(...)`.
+- Renames `ivyScala: IvyScala` key to `scalaModuleInfo: ScalaModuleInfo`.
+- `xsbti.Reporter#log(...)` takes `xsbti.Problem` as the parameter. Call `log(problem.position, problem.message, problem.severity)` to delegate to the older `log(...)`.
+- `xsbi.Maybe`, `xsbti.F0`, and `sxbti.F1` are changed to corresponding Java 8 classes `java.util.Optional`, `java.util.Supplier` and `java.util.Function`.
+- Removes unused "resident" option. [zinc#345][zinc345] by [@lukeindykiewicz][@lukeindykiewicz]
+
+#### sbt server: JSON API for tooling integration
+
+sbt 1.0 includes server feature, which allows IDEs and other tools to query the build for settings, and invoke commands via a JSON API. Similar to the way that the interactive shell in sbt 0.13 is implemented with `shell` command, "server" is also just `shell` command that listens to both human input and network input. As a user, there should be minimal impact because of the server.
+
+In March 2016, we [rebooted](http://eed3si9n.com/sbt-server-reboot) the "server" feature to make it as small as possible. We worked in collaboration with JetBrains' @jastice who works on IntelliJ's sbt interface to narrow down the feature list. sbt 1.0 will not have all the things we originally wanted, but in the long term, we hope to see better integration between IDE and sbt ecosystem using this system. For example, IDEs will be able to issue the compile task and retrieve compiler warning as JSON events:
+
+```
+{"type":"xsbti.Problem","message":{"category":"","severity":"Warn","message":"a pure expression does nothing in statement position; you may be omitting necessary parentheses","position":{"line":2,"lineContent":"  1","offset":29,"pointer":2,"pointerSpace":"  ","sourcePath":"/tmp/hello/Hello.scala","sourceFile":"file:/tmp/hello/Hello.scala"}},"level":"warn"}
+```
+
+Another related feature that was added is the `bgRun` task which, for example, enables a server process to be run in the background while you run tests against it.
+
+#### Event logging
+
+sbt 1.0 introduces event logging implemented using Log4J 2 and sjson-new.
+In addition to the regular String-based logging, you can now send case classes and Contraband-generated pseudo case classes to the logger:
+
+    def registerStringCodec[A: ShowLines: TypeTag]: Unit = ...
+    final def debugEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Debug, event)
+    final def infoEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Info, event)
+    final def warnEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Warn, event)
+    final def errorEvent[A: JsonFormat: TypeTag](event: => A): Unit = logEvent(Level.Error, event)
+
+Various events such as `[success]` message are sent internally via event logging.
+We are hoping that this mechanism can be used in conjunction with server so plugins and compilers can publish JSON events.
+
+Since the logger uses Log4J 2 internally, we now provide SLF4J binding.
+
+#### Static validation of build.sbt
+
+sbt 1.0 prohibits `.value` calls inside the bodies of if expressions and anonymous functions in a task, `@sbtUnchecked` annotation can be used to override the check.
+
+The static validation also catches if you forget to call `.value` in a body of a task.
+
+[#3216][3216] and [#3225][3225] by [@jvican][@jvican]
+
+#### Eviction warning presentation
+
+sbt 1.0 improves the eviction warning presetation.
+
+Before:
+
+    [warn] There may be incompatibilities among your library dependencies.
+    [warn] Here are some of the libraries that were evicted:
+    [warn]  * com.google.code.findbugs:jsr305:2.0.1 -> 3.0.0
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+After:
+
+    [warn] Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:
+    [warn]
+    [warn]      * com.typesafe.akka:akka-actor_2.12:2.5.0 is selected over 2.4.17
+    [warn]          +- de.heikoseeberger:akka-log4j_2.12:1.4.0            (depends on 2.5.0)
+    [warn]          +- com.typesafe.akka:akka-parsing_2.12:10.0.6         (depends on 2.4.17)
+    [warn]          +- com.typesafe.akka:akka-stream_2.12:2.4.17 ()       (depends on 2.4.17)
+    [warn]
+    [warn] Run 'evicted' to see detailed eviction warnings
+
+[#3202][3202] by [@eed3si9n][@eed3si9n]
+
+#### sbt-cross-building
+
+[@jrudolph][@jrudolph]'s sbt-cross-building is a plugin author's plugin.
+It adds cross command `^` and sbtVersion switch command `^^`, similar to `+` and `++`,
+but for switching between multiple sbt versions across major versions.
+sbt 0.13.16 merges these commands into sbt because the feature it provides is useful as we migrate plugins to sbt 1.0.
+
+To switch the `sbtVersion in pluginCrossBuild` from the shell use:
+
+```
+^^ 1.0.0-M5
+```
+
+Your plugin will now build with sbt 1.0.0-M5 (and its Scala version 2.12.2).
+
+If you need to make changes specific to a sbt version, you can now include them into `src/main/scala-sbt-0.13`,
+and `src/main/scala-sbt-1.0.0-M5`, where the binary sbt version number is used as postfix.
+
+To run a command across multiple sbt versions, set:
+
+```scala
+crossSbtVersions := Vector("0.13.15", "1.0.0-M5")
+```
+
+Then, run:
+
+```
+^ compile
+```
+
+[#3133][3133] by [@eed3si9n][@eed3si9n] (forward ported from 0.13.16-M1)
+
+#### CopyOptions
+
+sbt IO 1.0 add variant of `IO.copyFile` and `IO.copyDirectory` that accept `sbt.io.CopyOptions()`.
+`CopyOptions()` is an example of pseudo case class similar to the builder pattern.
+
+```scala
+import sbt.io.{ IO, CopyOptions }
+
+IO.copyDirectory(source, target)
+
+// The above is same as the following
+IO.copyDirectory(source, target, CopyOptions()
+  .withOverwrite(false)
+  .withPreserveLastModified(true)
+  .withPreserveExecutable(true))
+```
+
+[io#53][io53] by [@dwijnand][@dwijnand]
+
+#### Library management API and parallel artifact download
+
+sbt 1.0 adds Library management API co-authored by Eugene Yokota ([@eed3si9n][@eed3si9n]) from Lightbend and Martin Duhem ([@Duhemm][@Duhemm]) from Scala Center.
+This API aims to abstract Apache Ivy as well as alternative dependency resolution engines Ivy, cached resolution, and Coursier.
+
+Parallel artifact download for Ivy engine was contributed by Jorge ([@jvican][@jvican]) from Scala Center.
+It also introduces Gigahorse OkHttp as the Network API, and it uses Square OkHttp for artifact download as well.
+
+[lm#124][lm124] by [@eed3si9n][@eed3si9n]/[@Duhemm][@Duhemm],
+[lm#90][lm90] by [@jvican][@jvican]/[@jsuereth][@jsuereth]
+and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
+
+#### Binary format for Zinc's internal storage
+
+Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Procol Buffer.
+The new format provides us with three main advantages:
+
+1. Backwards and forwards binary compatibility at the analysis format level.
+2. Faster (1.5 ~ 2x) serialization/deserialization of the analysis file.
+3. Provides a better way to make the analysis file machine-independent.
+
+[zinc#351][zinc351] by [@jvican][@jvican]
+
+#### Dependency locking
+
+Dependency locking feature is still in progress, but Jorge ([@jvican][@jvican]) from Scala Center has added a number of related features
+that would should work together to allow dependency locking.
+
+- Frozen mode to the Ivy-based library management, which makes sure that the resolution is always intransitive. [lm#100][lm100]
+- Adds support to specify a resolver for dependencies. [lm#97][lm97]
+- Adds "managed checksums", which tells Ivy to skip the checksum process. [lm#111][lm111]
+
+#### Contributors
+
+Too many people to thank here. See [Credits][Credits]
+
+  [Credits]: https://www.scala-sbt.org/1.x/docs/Credits.html
+  [Migrating-from-sbt-013x]: https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@dwijnand]: https://github.com/dwijnand
+  [@jvican]: https://github.com/jvican
+  [@Duhemm]: https://github.com/Duhemm
+  [@jsuereth]: https://github.com/jsuereth
+  [@gkossakowski]: https://github.com/gkossakowski
+  [sbt-1-0-roadmap]: https://developer.lightbend.com/blog/2017-04-18-sbt-1-0-roadmap-and-beta1/
+  [@eed3si9n]: https://github.com/eed3si9n
+  [@jroper]: https://github.com/jroper
+  [@valydia]: https://github.com/valydia
+  [@RomanIakovlev]: https://github.com/RomanIakovlev
+  [@smarter]: https://github.com/smarter
+  [@jrudolph]: https://github.com/jrudolph
+  [@muuki88]: https://github.com/muuki88
+  [@Rogach]: https://github.com/Rogach
+  [@Krever]: https://github.com/Krever
+  [@lukeindykiewicz]: https://github.com/lukeindykiewicz
+  [@gheine]: https://github.com/gheine
+  [840]: https://github.com/sbt/sbt/issues/840
+  [2613]: https://github.com/sbt/sbt/pull/2613
+  [1911]: https://github.com/sbt/sbt/issues/1911
+  [2059]: https://github.com/sbt/sbt/issues/2059
+  [2662]: https://github.com/sbt/sbt/pull/2662
+  [3133]: https://github.com/sbt/sbt/pull/3133
+  [util80]: https://github.com/sbt/util/pull/80
+  [3198]: https://github.com/sbt/sbt/issues/3198
+  [lm88]: https://github.com/sbt/librarymanagement/pull/88
+  [1518]: https://github.com/sbt/sbt/issues/1518
+  [lm90]: https://github.com/sbt/librarymanagement/pull/90
+  [lm92]: https://github.com/sbt/librarymanagement/pull/92
+  [lm98]: https://github.com/sbt/librarymanagement/pull/98
+  [lm100]: https://github.com/sbt/librarymanagement/pull/100
+  [lm111]: https://github.com/sbt/librarymanagement/pull/111
+  [lm104]: https://github.com/sbt/librarymanagement/pull/104
+  [lm97]: https://github.com/sbt/librarymanagement/pull/97
+  [lm124]: https://github.com/sbt/librarymanagement/pull/124
+  [3202]: https://github.com/sbt/sbt/pull/3202
+  [zinc295]: https://github.com/sbt/zinc/pull/295
+  [zinc287]: https://github.com/sbt/zinc/pull/287
+  [zinc288]: https://github.com/sbt/zinc/pull/288
+  [zinc304]: https://github.com/sbt/zinc/pull/304
+  [zinc346]: https://github.com/sbt/zinc/pull/346
+  [zinc345]: https://github.com/sbt/zinc/pull/345
+  [zinc347]: https://github.com/sbt/zinc/pull/347
+  [zinc351]: https://github.com/sbt/zinc/pull/351
+  [3115]: https://github.com/sbt/sbt/pull/3115
+  [3182]: https://github.com/sbt/sbt/pull/3182
+  [3151]: https://github.com/sbt/sbt/pull/3151
+  [3184]: https://github.com/sbt/sbt/pull/3184
+  [3216]: https://github.com/sbt/sbt/pull/3216
+  [3218]: https://github.com/sbt/sbt/pull/3218
+  [3225]: https://github.com/sbt/sbt/pull/3225
+  [3233]: https://github.com/sbt/sbt/pull/3233
+  [io47]: https://github.com/sbt/io/pull/47
+  [io53]: https://github.com/sbt/io/pull/53
+  [io38]: https://github.com/sbt/io/pull/38
+  [util81]: https://github.com/sbt/util/pull/81

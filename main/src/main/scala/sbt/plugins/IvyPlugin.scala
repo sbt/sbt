@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package plugins
 
@@ -19,8 +26,11 @@ object IvyPlugin extends AutoPlugin {
   override def requires = CorePlugin
   override def trigger = allRequirements
 
-  override lazy val projectSettings: Seq[Setting[_]] = 
-    Classpaths.ivyPublishSettings ++ Classpaths.ivyBaseSettings
   override lazy val globalSettings: Seq[Setting[_]] =
-     Defaults.globalIvyCore
+    Defaults.globalIvyCore
+  override lazy val buildSettings: Seq[Setting[_]] =
+    Defaults.buildLevelIvySettings
+  override lazy val projectSettings: Seq[Setting[_]] =
+    Classpaths.ivyPublishSettings ++ Classpaths.ivyBaseSettings
+
 }

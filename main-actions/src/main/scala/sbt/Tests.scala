@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 
 import std._
@@ -9,16 +13,32 @@ import sbt.internal.inc.Analysis
 import TaskExtra._
 import sbt.internal.util.FeedbackProvidedException
 import xsbti.api.Definition
+import xsbti.api.ClassLike
 import xsbti.compile.CompileAnalysis
 import ConcurrentRestrictions.Tag
+import testing.{
+  AnnotatedFingerprint,
+  Fingerprint,
+  Framework,
+  Runner,
+  Selector,
+  SubclassFingerprint,
+  SuiteSelector,
+  TaskDef,
+  Task => TestTask
+}
 
-import testing.{ AnnotatedFingerprint, Fingerprint, Framework, SubclassFingerprint, Runner, TaskDef, SuiteSelector, Task => TestTask }
 import scala.annotation.tailrec
-
+import sbt.internal.util.ManagedLogger
 import sbt.util.Logger
+import sbt.protocol.testing.TestResult
+
+import scala.runtime.AbstractFunction3
 
 sealed trait TestOption
+
 object Tests {
+
   /**
    * The result of a test run.
    *
@@ -26,7 +46,11 @@ object Tests {
    * @param events The result of each test group (suite) executed during this test run.
    * @param summaries Explicit summaries directly provided by test frameworks.  This may be empty, in which case a default summary will be generated.
    */
-  final case class Output(overall: TestResult.Value, events: Map[String, SuiteResult], summaries: Iterable[Summary])
+  final case class Output(
+      overall: TestResult,
+      events: Map[String, SuiteResult],
+      summaries: Iterable[Summary]
+  )
 
   /**
    * Summarizes a test run.
@@ -108,113 +132,308 @@ object Tests {
 
   /** Configures a group of tests to be forked in a new JVM with forking options specified by `config`. */
   final case class SubProcess(config: ForkOptions) extends TestRunPolicy
-  object SubProcess {
-    @deprecated("Construct SubProcess with a ForkOptions argument.", "0.13.0")
-    def apply(javaOptions: Seq[String]): SubProcess = SubProcess(ForkOptions(runJVMOptions = javaOptions))
-  }
 
   /** A named group of tests configured to run in the same JVM or be forked. */
-  final case class Group(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy)
+  final class Group(
+      val name: String,
+      val tests: Seq[TestDefinition],
+      val runPolicy: TestRunPolicy,
+      val tags: Seq[(Tag, Int)]
+  ) extends Product
+      with Serializable {
+
+    def this(name: String, tests: Seq[TestDefinition], runPolicy: TestRunPolicy) = {
+      this(name, tests, runPolicy, Seq.empty)
+    }
+
+    def withName(name: String): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withTests(tests: Seq[TestDefinition]): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withRunPolicy(runPolicy: TestRunPolicy): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    def withTags(tags: Seq[(Tag, Int)]): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def copy(
+        name: String = this.name,
+        tests: Seq[TestDefinition] = this.tests,
+        runPolicy: TestRunPolicy = this.runPolicy
+    ): Group = {
+      new Group(name, tests, runPolicy, this.tags)
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    override def productElement(x$1: Int): Any = x$1 match {
+      case 0 => Group.this.name
+      case 1 => Group.this.tests
+      case 2 => Group.this.runPolicy
+      case 3 => Group.this.tags
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    override def productArity: Int = 4
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def canEqual(x$1: Any): Boolean = x$1.isInstanceOf[Group]
+
+    override def hashCode(): Int = {
+      scala.runtime.ScalaRunTime._hashCode(Group.this)
+    }
+
+    override def toString(): String = scala.runtime.ScalaRunTime._toString(Group.this)
+
+    override def equals(x$1: Any): Boolean = {
+      this.eq(x$1.asInstanceOf[Object]) || (x$1.isInstanceOf[Group] && ({
+        val Group$1: Group = x$1.asInstanceOf[Group]
+        name == Group$1.name && tests == Group$1.tests &&
+        runPolicy == Group$1.runPolicy && tags == Group$1.tags
+      }))
+    }
+    //- EXPANDED CASE CLASS METHOD END -//
+  }
+
+  object Group
+      extends AbstractFunction3[String, Seq[TestDefinition], TestRunPolicy, Group]
+      with Serializable {
+    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    final override def toString(): String = "Group"
+    def apply(
+        name: String,
+        tests: Seq[TestDefinition],
+        runPolicy: TestRunPolicy
+    ): Group = {
+      new Group(name, tests, runPolicy, Seq.empty)
+    }
+
+    def apply(
+        name: String,
+        tests: Seq[TestDefinition],
+        runPolicy: TestRunPolicy,
+        tags: Seq[(Tag, Int)]
+    ): Group = {
+      new Group(name, tests, runPolicy, tags)
+    }
+
+    @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
+    def unapply(
+        x$0: Group
+    ): Option[(String, Seq[TestDefinition], TestRunPolicy)] = {
+      if (x$0 == null) None
+      else
+        Some.apply[(String, Seq[TestDefinition], TestRunPolicy)](
+          Tuple3.apply[String, Seq[TestDefinition], TestRunPolicy](
+            x$0.name,
+            x$0.tests,
+            x$0.runPolicy
+          )
+        )
+    }
+    private def readResolve(): Object = Group
+    //- EXPANDED CASE CLASS METHOD END -//
+  }
 
   private[sbt] final class ProcessedOptions(
-    val tests: Seq[TestDefinition],
-    val setup: Seq[ClassLoader => Unit],
-    val cleanup: Seq[ClassLoader => Unit],
-    val testListeners: Seq[TestReportListener])
-  private[sbt] def processOptions(config: Execution, discovered: Seq[TestDefinition], log: Logger): ProcessedOptions =
-    {
-      import collection.mutable.{ HashSet, ListBuffer }
-      val testFilters = new ListBuffer[String => Boolean]
-      var orderedFilters = Seq[String => Boolean]()
-      val excludeTestsSet = new HashSet[String]
-      val setup, cleanup = new ListBuffer[ClassLoader => Unit]
-      val testListeners = new ListBuffer[TestReportListener]
-      val undefinedFrameworks = new ListBuffer[String]
+      val tests: Vector[TestDefinition],
+      val setup: Vector[ClassLoader => Unit],
+      val cleanup: Vector[ClassLoader => Unit],
+      val testListeners: Vector[TestReportListener]
+  )
+  private[sbt] def processOptions(
+      config: Execution,
+      discovered: Vector[TestDefinition],
+      log: Logger
+  ): ProcessedOptions = {
+    import collection.mutable.{ HashSet, ListBuffer }
+    val testFilters = new ListBuffer[String => Boolean]
+    var orderedFilters = Seq[String => Boolean]()
+    val excludeTestsSet = new HashSet[String]
+    val setup, cleanup = new ListBuffer[ClassLoader => Unit]
+    val testListeners = new ListBuffer[TestReportListener]
+    val undefinedFrameworks = new ListBuffer[String]
 
-      for (option <- config.options) {
-        option match {
-          case Filter(include)          => testFilters += include
-          case Filters(includes)        => if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.") else orderedFilters = includes
-          case Exclude(exclude)         => excludeTestsSet ++= exclude
-          case Listeners(listeners)     => testListeners ++= listeners
-          case Setup(setupFunction)     => setup += setupFunction
-          case Cleanup(cleanupFunction) => cleanup += cleanupFunction
-          case a: Argument              => // now handled by whatever constructs `runners`
+    for (option <- config.options) {
+      option match {
+        case Filter(include) => testFilters += include; ()
+        case Filters(includes) =>
+          if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.")
+          else orderedFilters = includes
+          ()
+        case Exclude(exclude)         => excludeTestsSet ++= exclude; ()
+        case Listeners(listeners)     => testListeners ++= listeners; ()
+        case Setup(setupFunction)     => setup += setupFunction; ()
+        case Cleanup(cleanupFunction) => cleanup += cleanupFunction; ()
+        case _: Argument              => // now handled by whatever constructs `runners`
+      }
+    }
+
+    if (excludeTestsSet.nonEmpty)
+      log.debug(excludeTestsSet.mkString("Excluding tests: \n\t", "\n\t", ""))
+    if (undefinedFrameworks.nonEmpty)
+      log.warn(
+        "Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks
+          .mkString("\n\t")
+      )
+
+    def includeTest(test: TestDefinition) =
+      !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
+    val filtered0 = discovered.filter(includeTest).toList.distinct
+    val tests =
+      if (orderedFilters.isEmpty) filtered0
+      else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
+    val uniqueTests = distinctBy(tests)(_.name)
+    new ProcessedOptions(
+      uniqueTests.toVector,
+      setup.toVector,
+      cleanup.toVector,
+      testListeners.toVector
+    )
+  }
+
+  private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] = {
+    val seen = new collection.mutable.HashSet[K]
+    in.filter(t => seen.add(f(t)))
+  }
+
+  def apply(
+      frameworks: Map[TestFramework, Framework],
+      testLoader: ClassLoader,
+      runners: Map[TestFramework, Runner],
+      o: ProcessedOptions,
+      config: Execution,
+      log: ManagedLogger
+  ): Task[Output] = {
+    testTask(
+      testLoader,
+      frameworks,
+      runners,
+      o.tests,
+      o.setup,
+      o.cleanup,
+      log,
+      o.testListeners,
+      config
+    )
+  }
+
+  def apply(
+      frameworks: Map[TestFramework, Framework],
+      testLoader: ClassLoader,
+      runners: Map[TestFramework, Runner],
+      discovered: Vector[TestDefinition],
+      config: Execution,
+      log: ManagedLogger
+  ): Task[Output] = {
+    val o = processOptions(config, discovered, log)
+    apply(frameworks, testLoader, runners, o, config, log)
+  }
+
+  def testTask(
+      loader: ClassLoader,
+      frameworks: Map[TestFramework, Framework],
+      runners: Map[TestFramework, Runner],
+      tests: Vector[TestDefinition],
+      userSetup: Iterable[ClassLoader => Unit],
+      userCleanup: Iterable[ClassLoader => Unit],
+      log: ManagedLogger,
+      testListeners: Vector[TestReportListener],
+      config: Execution
+  ): Task[Output] = {
+    def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_()): _*)
+    def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () =>
+      a(loader)
+    }
+
+    val (frameworkSetup, runnables, frameworkCleanup) =
+      TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners)
+
+    val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
+    val mainTasks =
+      if (config.parallel)
+        makeParallel(loader, runnables, setupTasks, config.tags).map(_.toList)
+      else
+        makeSerial(loader, runnables, setupTasks)
+    val taggedMainTasks = mainTasks.tagw(config.tags: _*)
+    taggedMainTasks
+      .map(processResults)
+      .flatMap { results =>
+        val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
+        cleanupTasks map { _ =>
+          results
         }
       }
-
-      if (excludeTestsSet.nonEmpty)
-        log.debug(excludeTestsSet.mkString("Excluding tests: \n\t", "\n\t", ""))
-      if (undefinedFrameworks.nonEmpty)
-        log.warn("Arguments defined for test frameworks that are not present:\n\t" + undefinedFrameworks.mkString("\n\t"))
-
-      def includeTest(test: TestDefinition) = !excludeTestsSet.contains(test.name) && testFilters.forall(filter => filter(test.name))
-      val filtered0 = discovered.filter(includeTest).toList.distinct
-      val tests = if (orderedFilters.isEmpty) filtered0 else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
-      val uniqueTests = distinctBy(tests)(_.name)
-      new ProcessedOptions(uniqueTests, setup.toList, cleanup.toList, testListeners.toList)
-    }
-
-  private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] =
-    {
-      val seen = new collection.mutable.HashSet[K]
-      in.filter(t => seen.add(f(t)))
-    }
-
-  def apply(frameworks: Map[TestFramework, Framework], testLoader: ClassLoader, runners: Map[TestFramework, Runner], discovered: Seq[TestDefinition], config: Execution, log: Logger): Task[Output] =
-    {
-      val o = processOptions(config, discovered, log)
-      testTask(testLoader, frameworks, runners, o.tests, o.setup, o.cleanup, log, o.testListeners, config)
-    }
-
-  def testTask(loader: ClassLoader, frameworks: Map[TestFramework, Framework], runners: Map[TestFramework, Runner], tests: Seq[TestDefinition],
-    userSetup: Iterable[ClassLoader => Unit], userCleanup: Iterable[ClassLoader => Unit],
-    log: Logger, testListeners: Seq[TestReportListener], config: Execution): Task[Output] =
-    {
-      def fj(actions: Iterable[() => Unit]): Task[Unit] = nop.dependsOn(actions.toSeq.fork(_()): _*)
-      def partApp(actions: Iterable[ClassLoader => Unit]) = actions.toSeq map { a => () => a(loader) }
-
-      val (frameworkSetup, runnables, frameworkCleanup) =
-        TestFramework.testTasks(frameworks, runners, loader, tests, log, testListeners)
-
-      val setupTasks = fj(partApp(userSetup) :+ frameworkSetup)
-      val mainTasks =
-        if (config.parallel)
-          makeParallel(loader, runnables, setupTasks, config.tags) //.toSeq.join
-        else
-          makeSerial(loader, runnables, setupTasks, config.tags)
-      val taggedMainTasks = mainTasks.tagw(config.tags: _*)
-      taggedMainTasks map processResults flatMap { results =>
-        val cleanupTasks = fj(partApp(userCleanup) :+ frameworkCleanup(results.overall))
-        cleanupTasks map { _ => results }
-      }
-    }
+  }
   type TestRunnable = (String, TestFunction)
 
-  private def createNestedRunnables(loader: ClassLoader, testFun: TestFunction, nestedTasks: Seq[TestTask]): Seq[(String, TestFunction)] =
-    nestedTasks.view.zipWithIndex map {
+  private def createNestedRunnables(
+      loader: ClassLoader,
+      testFun: TestFunction,
+      nestedTasks: Seq[TestTask]
+  ): Seq[(String, TestFunction)] =
+    (nestedTasks.view.zipWithIndex map {
       case (nt, idx) =>
         val testFunDef = testFun.taskDef
-        (testFunDef.fullyQualifiedName, TestFramework.createTestFunction(loader, new TaskDef(testFunDef.fullyQualifiedName + "-" + idx, testFunDef.fingerprint, testFunDef.explicitlySpecified, testFunDef.selectors), testFun.runner, nt))
-    }
+        (
+          testFunDef.fullyQualifiedName,
+          TestFramework.createTestFunction(
+            loader,
+            new TaskDef(
+              testFunDef.fullyQualifiedName + "-" + idx,
+              testFunDef.fingerprint,
+              testFunDef.explicitlySpecified,
+              testFunDef.selectors
+            ),
+            testFun.runner,
+            nt
+          )
+        )
+    }).toSeq
 
-  def makeParallel(loader: ClassLoader, runnables: Iterable[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] =
+  def makeParallel(
+      loader: ClassLoader,
+      runnables: Iterable[TestRunnable],
+      setupTasks: Task[Unit],
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] =
     toTasks(loader, runnables.toSeq, tags).dependsOn(setupTasks)
 
-  def toTasks(loader: ClassLoader, runnables: Seq[TestRunnable], tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] = {
+  def toTasks(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] = {
     val tasks = runnables.map { case (name, test) => toTask(loader, name, test, tags) }
     tasks.join.map(_.foldLeft(Map.empty[String, SuiteResult]) {
       case (sum, e) =>
         val merged = sum.toSeq ++ e.toSeq
         val grouped = merged.groupBy(_._1)
-        grouped.mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) {
-          case (resultSum, result) => resultSum + result
-        })
+        grouped
+          .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) {
+            case (resultSum, result) => resultSum + result
+          })
+          .toMap
     })
   }
 
-  def toTask(loader: ClassLoader, name: String, fun: TestFunction, tags: Seq[(Tag, Int)]): Task[Map[String, SuiteResult]] = {
-    val base = task { (name, fun.apply()) }
+  def toTask(
+      loader: ClassLoader,
+      name: String,
+      fun: TestFunction,
+      tags: Seq[(Tag, Int)]
+  ): Task[Map[String, SuiteResult]] = {
+    val base = Task[(String, (SuiteResult, Seq[TestTask]))](
+      Info[(String, (SuiteResult, Seq[TestTask]))]().setName(name),
+      Pure(() => (name, fun.apply()), `inline` = false)
+    )
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
     taggedBase flatMap {
       case (name, (result, nested)) =>
@@ -230,44 +449,89 @@ object Tests {
     }
   }
 
-  def makeSerial(loader: ClassLoader, runnables: Seq[TestRunnable], setupTasks: Task[Unit], tags: Seq[(Tag, Int)]): Task[List[(String, SuiteResult)]] =
-    {
-      @tailrec
-      def processRunnable(runnableList: List[TestRunnable], acc: List[(String, SuiteResult)]): List[(String, SuiteResult)] =
-        runnableList match {
-          case hd :: rst =>
-            val testFun = hd._2
-            val (result, nestedTasks) = testFun.apply()
-            val nestedRunnables = createNestedRunnables(loader, testFun, nestedTasks)
-            processRunnable(nestedRunnables.toList ::: rst, (hd._1, result) :: acc)
-          case Nil => acc
-        }
+  @deprecated("Use the variant without tags", "1.1.1")
+  def makeSerial(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      setupTasks: Task[Unit],
+      tags: Seq[(Tag, Int)],
+  ): Task[List[(String, SuiteResult)]] =
+    makeSerial(loader, runnables, setupTasks)
 
-      task { processRunnable(runnables.toList, List.empty) } dependsOn (setupTasks)
-    }
+  def makeSerial(
+      loader: ClassLoader,
+      runnables: Seq[TestRunnable],
+      setupTasks: Task[Unit],
+  ): Task[List[(String, SuiteResult)]] = {
+    @tailrec
+    def processRunnable(
+        runnableList: List[TestRunnable],
+        acc: List[(String, SuiteResult)]
+    ): List[(String, SuiteResult)] =
+      runnableList match {
+        case hd :: rst =>
+          val testFun = hd._2
+          val (result, nestedTasks) = testFun.apply()
+          val nestedRunnables = createNestedRunnables(loader, testFun, nestedTasks)
+          processRunnable(nestedRunnables.toList ::: rst, (hd._1, result) :: acc)
+        case Nil => acc
+      }
+
+    task { processRunnable(runnables.toList, List.empty) } dependsOn (setupTasks)
+  }
 
   def processResults(results: Iterable[(String, SuiteResult)]): Output =
     Output(overall(results.map(_._2.result)), results.toMap, Iterable.empty)
+
+  private def severity(r: TestResult): Int =
+    r match {
+      case TestResult.Passed => 0
+      case TestResult.Failed => 1
+      case TestResult.Error  => 2
+    }
+
   def foldTasks(results: Seq[Task[Output]], parallel: Boolean): Task[Output] =
-    if (results.isEmpty)
+    if (results.isEmpty) {
       task { Output(TestResult.Passed, Map.empty, Nil) }
-    else if (parallel)
-      reduced(results.toIndexedSeq, {
-        case (Output(v1, m1, _), Output(v2, m2, _)) => Output(if (v1.id < v2.id) v2 else v1, m1 ++ m2, Iterable.empty)
-      })
-    else {
-      def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] = tasks match {
-        case Nil      => task(acc.reverse)
-        case hd :: tl => hd flatMap { out => sequence(tl, out :: acc) }
-      }
+    } else if (parallel) {
+      reduced[Output](
+        results.toIndexedSeq, {
+          case (Output(v1, m1, _), Output(v2, m2, _)) =>
+            Output(
+              (if (severity(v1) < severity(v2)) v2 else v1): TestResult,
+              Map((m1.toSeq ++ m2.toSeq): _*),
+              Iterable.empty[Summary]
+            )
+        }
+      )
+    } else {
+      def sequence(tasks: List[Task[Output]], acc: List[Output]): Task[List[Output]] =
+        tasks match {
+          case Nil => task(acc.reverse)
+          case hd :: tl =>
+            hd flatMap { out =>
+              sequence(tl, out :: acc)
+            }
+        }
       sequence(results.toList, List()) map { ress =>
-        val (rs, ms) = ress.unzip { e => (e.overall, e.events) }
-        Output(overall(rs), ms reduce (_ ++ _), Iterable.empty)
+        val (rs, ms) = ress.unzip { e =>
+          (e.overall, e.events)
+        }
+        val m = ms reduce { (m1: Map[String, SuiteResult], m2: Map[String, SuiteResult]) =>
+          Map((m1.toSeq ++ m2.toSeq): _*)
+        }
+        Output(overall(rs), m, Iterable.empty)
       }
     }
-  def overall(results: Iterable[TestResult.Value]): TestResult.Value =
-    (TestResult.Passed /: results) { (acc, result) => if (acc.id < result.id) result else acc }
-  def discover(frameworks: Seq[Framework], analysis: CompileAnalysis, log: Logger): (Seq[TestDefinition], Set[String]) =
+  def overall(results: Iterable[TestResult]): TestResult =
+    results.foldLeft(TestResult.Passed: TestResult) { (acc, result) =>
+      if (severity(acc) < severity(result)) result else acc
+    }
+  def discover(
+      frameworks: Seq[Framework],
+      analysis: CompileAnalysis,
+      log: Logger
+  ): (Seq[TestDefinition], Set[String]) =
     discover(frameworks flatMap TestFramework.getFingerprints, allDefs(analysis), log)
 
   def allDefs(analysis: CompileAnalysis) = analysis match {
@@ -276,39 +540,57 @@ object Tests {
       acs.flatMap { ac =>
         val companions = ac.api
         val all =
-          Seq(companions.classApi, companions.objectApi) ++
-            companions.classApi.structure.declared ++ companions.classApi.structure.inherited ++
-            companions.objectApi.structure.declared ++ companions.objectApi.structure.inherited
+          Seq(companions.classApi: Definition, companions.objectApi: Definition) ++
+            (companions.classApi.structure.declared.toSeq: Seq[Definition]) ++
+            (companions.classApi.structure.inherited.toSeq: Seq[Definition]) ++
+            (companions.objectApi.structure.declared.toSeq: Seq[Definition]) ++
+            (companions.objectApi.structure.inherited.toSeq: Seq[Definition])
 
         all
       }.toSeq
   }
-  def discover(fingerprints: Seq[Fingerprint], definitions: Seq[Definition], log: Logger): (Seq[TestDefinition], Set[String]) =
-    {
-      val subclasses = fingerprints collect { case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub) };
-      val annotations = fingerprints collect { case ann: AnnotatedFingerprint => (ann.annotationName, ann.isModule, ann) };
-      log.debug("Subclass fingerprints: " + subclasses)
-      log.debug("Annotation fingerprints: " + annotations)
+  def discover(
+      fingerprints: Seq[Fingerprint],
+      definitions: Seq[Definition],
+      log: Logger
+  ): (Seq[TestDefinition], Set[String]) = {
+    val subclasses = fingerprints collect {
+      case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub)
+    };
+    val annotations = fingerprints collect {
+      case ann: AnnotatedFingerprint => (ann.annotationName, ann.isModule, ann)
+    };
+    log.debug("Subclass fingerprints: " + subclasses)
+    log.debug("Annotation fingerprints: " + annotations)
 
-      def firsts[A, B, C](s: Seq[(A, B, C)]): Set[A] = s.map(_._1).toSet
-      def defined(in: Seq[(String, Boolean, Fingerprint)], names: Set[String], IsModule: Boolean): Seq[Fingerprint] =
-        in collect { case (name, IsModule, print) if names(name) => print }
+    def firsts[A, B, C](s: Seq[(A, B, C)]): Set[A] = s.map(_._1).toSet
+    def defined(
+        in: Seq[(String, Boolean, Fingerprint)],
+        names: Set[String],
+        IsModule: Boolean
+    ): Seq[Fingerprint] =
+      in collect { case (name, IsModule, print) if names(name) => print }
 
-      def toFingerprints(d: Discovered): Seq[Fingerprint] =
-        defined(subclasses, d.baseClasses, d.isModule) ++
-          defined(annotations, d.annotations, d.isModule)
+    def toFingerprints(d: Discovered): Seq[Fingerprint] =
+      defined(subclasses, d.baseClasses, d.isModule) ++
+        defined(annotations, d.annotations, d.isModule)
 
-      val discovered = Discovery(firsts(subclasses), firsts(annotations))(definitions)
-      // TODO: To pass in correct explicitlySpecified and selectors
-      val tests = for ((df, di) <- discovered; fingerprint <- toFingerprints(di)) yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector))
-      val mains = discovered collect { case (df, di) if di.hasMain => df.name }
-      (tests, mains.toSet)
-    }
-
-  @deprecated("Tests.showResults() has been superseded with TestResultLogger and setting 'testResultLogger'.", "0.13.5")
-  def showResults(log: Logger, results: Output, noTestsMessage: => String): Unit =
-    TestResultLogger.Default.copy(printNoTests = TestResultLogger.const(_ info noTestsMessage))
-      .run(log, results, "")
+    val discovered = Discovery(firsts(subclasses), firsts(annotations))(definitions.filter {
+      case c: ClassLike =>
+        c.topLevel
+      case _ => false
+    })
+    // TODO: To pass in correct explicitlySpecified and selectors
+    val tests =
+      for {
+        (df, di) <- discovered
+        fingerprint <- toFingerprints(di)
+      } yield new TestDefinition(df.name, fingerprint, false, Array(new SuiteSelector: Selector))
+    val mains = discovered collect { case (df, di) if di.hasMain => df.name }
+    (tests, mains.toSet)
+  }
 }
 
-final class TestsFailedException extends RuntimeException("Tests unsuccessful") with FeedbackProvidedException
+final class TestsFailedException
+    extends RuntimeException("Tests unsuccessful")
+    with FeedbackProvidedException

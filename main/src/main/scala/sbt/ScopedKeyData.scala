@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 
 import Def.ScopedKey
@@ -8,8 +15,12 @@ final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
   val scope = scoped.scope
   def typeName: String = fold(fmtMf("Task[%s]"), fmtMf("InputTask[%s]"), key.manifest.toString)
   def settingValue: Option[Any] = fold(const(None), const(None), Some(value))
-  def description: String = fold(fmtMf("Task: %s"), fmtMf("Input task: %s"),
-    "Setting: %s = %s" format (key.manifest.toString, value.toString))
+  def description: String =
+    fold(
+      fmtMf("Task: %s"),
+      fmtMf("Input task: %s"),
+      "Setting: %s = %s" format (key.manifest.toString, value.toString)
+    )
   def fold[T](targ: OptManifest[_] => T, itarg: OptManifest[_] => T, s: => T): T =
     key.manifest.runtimeClass match {
       case TaskClass      => targ(key.manifest.typeArguments.head)

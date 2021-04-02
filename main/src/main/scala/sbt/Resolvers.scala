@@ -1,5 +1,8 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Sanjin Sehic
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
@@ -17,6 +20,7 @@ import java.util.Locale
 
 import scala.sys.process.Process
 import scala.util.control.NonFatal
+import sbt.internal.util.Util
 
 object Resolvers {
   type Resolver = BuildLoader.Resolver
@@ -26,15 +30,18 @@ object Resolvers {
     val from = new File(uri)
     val to = uniqueSubdirectoryFor(uri, in = info.staging)
 
-    if (from.isDirectory) Some { () => if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) } }
-    else None
+    if (from.isDirectory) Some { () =>
+      if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) }
+    } else None
   }
 
   val remote: Resolver = (info: ResolveInfo) => {
     val url = info.uri.toURL
     val to = uniqueSubdirectoryFor(info.uri, in = info.staging)
 
-    Some { () => creates(to) { IO.unzipURL(url, to) } }
+    Some { () =>
+      creates(to) { IO.unzipURL(url, to); () }
+    }
   }
 
   val subversion: Resolver = (info: ResolveInfo) => {
@@ -47,18 +54,16 @@ object Resolvers {
 
     if (uri.hasFragment) {
       val revision = uri.getFragment
-      Some {
-        () =>
-          creates(localCopy) {
-            run("svn", "checkout", "-q", "-r", revision, from, to)
-          }
+      Some { () =>
+        creates(localCopy) {
+          run("svn", "checkout", "-q", "-r", revision, from, to)
+        }
       }
     } else
-      Some {
-        () =>
-          creates(localCopy) {
-            run("svn", "checkout", "-q", from, to)
-          }
+      Some { () =>
+        creates(localCopy) {
+          run("svn", "checkout", "-q", from, to)
+        }
       }
   }
 
@@ -87,11 +92,12 @@ object Resolvers {
           run(Some(localCopy), "git", "checkout", "-q", branch)
         }
       }
-    } else Some { () =>
-      creates(localCopy) {
-        run("git", "clone", "--depth", "1", from, localCopy.getAbsolutePath)
+    } else
+      Some { () =>
+        creates(localCopy) {
+          run("git", "clone", "--depth", "1", from, localCopy.getAbsolutePath)
+        }
       }
-    }
   }
 
   abstract class DistributedVCS {
@@ -108,24 +114,19 @@ object Resolvers {
 
       if (uri.hasFragment) {
         val branch = uri.getFragment
-        Some {
-          () =>
-            creates(localCopy) {
-              clone(from, to = localCopy)
-              checkout(branch, in = localCopy)
-            }
+        Some { () =>
+          creates(localCopy) {
+            clone(from, to = localCopy)
+            checkout(branch, in = localCopy)
+          }
         }
-      } else Some { () => creates(localCopy) { clone(from, to = localCopy) } }
+      } else
+        Some { () =>
+          creates(localCopy) { clone(from, to = localCopy) }
+        }
     }
 
     private def normalized(uri: URI) = uri.copy(scheme = scheme)
-  }
-
-  private lazy val onWindows = {
-    val os = System.getenv("OSTYPE")
-    val isCygwin = (os != null) && os.toLowerCase(Locale.ENGLISH).contains("cygwin")
-    val isWindows = System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).contains("windows")
-    isWindows && !isCygwin
   }
 
   def run(command: String*): Unit =
@@ -133,7 +134,7 @@ object Resolvers {
 
   def run(cwd: Option[File], command: String*): Unit = {
     val result = Process(
-      if (onWindows) "cmd" +: "/c" +: command
+      if (Util.isNonCygwinWindows) "cmd" +: "/c" +: command
       else command,
       cwd
     ) !;
@@ -141,23 +142,24 @@ object Resolvers {
       sys.error("Nonzero exit code (" + result + "): " + command.mkString(" "))
   }
 
-  def creates(file: File)(f: => Unit) =
-    {
-      if (!file.exists)
-        try {
-          f
-        } catch {
-          case NonFatal(e) =>
-            IO.delete(file)
-            throw e
-        }
-      file
-    }
+  def creates(file: File)(f: => Unit) = {
+    if (!file.exists)
+      try {
+        f
+      } catch {
+        case NonFatal(e) =>
+          IO.delete(file)
+          throw e
+      }
+    file
+  }
 
   def uniqueSubdirectoryFor(uri: URI, in: File) = {
     in.mkdirs()
     val base = new File(in, Hash.halfHashString(uri.normalize.toASCIIString))
-    val last = shortName(uri) match { case Some(n) => normalizeDirectoryName(n); case None => "root" }
+    val last = shortName(uri) match {
+      case Some(n) => normalizeDirectoryName(n); case None => "root"
+    }
     new File(base, last)
   }
 

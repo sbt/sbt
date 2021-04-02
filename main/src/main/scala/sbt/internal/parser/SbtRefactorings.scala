@@ -1,8 +1,13 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package internal
 package parser
-
-import scala.reflect.runtime.universe._
 
 private[sbt] object SbtRefactorings {
 
@@ -21,17 +26,23 @@ private[sbt] object SbtRefactorings {
    *                 the first will be replaced and the other will be removed.
    * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
    */
-  def applySessionSettings(configFile: SbtConfigFile, commands: Seq[SessionSetting]): SbtConfigFile = {
+  def applySessionSettings(
+      configFile: SbtConfigFile,
+      commands: Seq[SessionSetting]
+  ): SbtConfigFile = {
     val (file, lines) = configFile
     val split = SbtParser(FAKE_FILE, lines)
     val recordedCommands = recordCommands(commands, split)
     val sortedRecordedCommands = recordedCommands.sortBy(_._1)(reverseOrderingInt)
 
     val newContent = replaceFromBottomToTop(lines.mkString(END_OF_LINE), sortedRecordedCommands)
-    (file, newContent.lines.toList)
+    (file, newContent.linesIterator.toList)
   }
 
-  private def replaceFromBottomToTop(modifiedContent: String, sortedRecordedCommands: Seq[(Int, String, String)]) = {
+  private def replaceFromBottomToTop(
+      modifiedContent: String,
+      sortedRecordedCommands: Seq[(Int, String, String)]
+  ) = {
     sortedRecordedCommands.foldLeft(modifiedContent) {
       case (acc, (from, old, replacement)) =>
         val before = acc.substring(0, from)
@@ -50,10 +61,7 @@ private[sbt] object SbtRefactorings {
     commands.flatMap {
       case (_, command) =>
         val map = toTreeStringMap(command)
-        map.flatMap {
-          case (name, statement) =>
-            treesToReplacements(split, name, command)
-        }
+        map.flatMap { case (name, _) => treesToReplacements(split, name, command) }
     }
 
   private def treesToReplacements(split: SbtParser, name: String, command: Seq[String]) =
@@ -80,7 +88,8 @@ private[sbt] object SbtRefactorings {
     seq.toMap
   }
 
-  private def extractSettingName(tree: Tree): String =
+  import scala.tools.nsc.Global
+  private def extractSettingName(tree: Global#Tree): String =
     tree.children match {
       case h :: _ =>
         extractSettingName(h)

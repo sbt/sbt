@@ -1,4 +1,4 @@
-import sbinary.DefaultProtocol._
+import sjsonnew.BasicJsonProtocol._
 
 lazy val x = taskKey[Int]("x")
 lazy val y = taskKey[Int]("y")

@@ -1,6 +1,10 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011 Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 package internal
 
@@ -9,18 +13,17 @@ import java.net.URI
 import sbt.internal.BuildLoader.ResolveInfo
 
 object RetrieveUnit {
-  def apply(info: ResolveInfo): Option[() => File] =
-    {
-      info.uri match {
-        case Scheme("svn") | Scheme("svn+ssh") => Resolvers.subversion(info)
-        case Scheme("hg") => Resolvers.mercurial(info)
-        case Scheme("git") => Resolvers.git(info)
-        case Path(path) if path.endsWith(".git") => Resolvers.git(info)
-        case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
-        case Scheme("file") => Resolvers.local(info)
-        case _ => None
-      }
+  def apply(info: ResolveInfo): Option[() => File] = {
+    info.uri match {
+      case Scheme("svn") | Scheme("svn+ssh")                => Resolvers.subversion(info)
+      case Scheme("hg")                                     => Resolvers.mercurial(info)
+      case Scheme("git")                                    => Resolvers.git(info)
+      case Path(path) if path.endsWith(".git")              => Resolvers.git(info)
+      case Scheme("http") | Scheme("https") | Scheme("ftp") => Resolvers.remote(info)
+      case Scheme("file")                                   => Resolvers.local(info)
+      case _                                                => None
     }
+  }
 
   object Scheme {
     def unapply(uri: URI) = Option(uri.getScheme)

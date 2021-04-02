@@ -1,18 +1,31 @@
-/* sbt -- Simple Build Tool
- * Copyright 2011  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 package internal
 
 import sbt.internal.util.Attributed
 import sbt.util.{ Level, Logger }
 
-import sbt.librarymanagement.{ Configurations, CrossVersion, MavenRepository, ModuleID, Resolver }
+import sbt.librarymanagement.{
+  Configurations,
+  CrossVersion,
+  Disabled,
+  MavenRepository,
+  ModuleID,
+  Resolver
+}
 
 import java.io.File
 import Configurations.Compile
 import Def.Setting
 import Keys._
+import Scope.Global
+import sbt.SlashSyntax0._
 
 import sbt.io.IO
 
@@ -20,7 +33,9 @@ object IvyConsole {
   final val Name = "ivy-console"
   lazy val command =
     Command.command(Name) { state =>
-      val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands, state.log)
+      val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands map {
+        _.commandLine
+      }, state.log)
       val base = new File(CommandUtil.bootDirectory(state), Name)
       IO.createDirectory(base)
 
@@ -31,20 +46,30 @@ object IvyConsole {
 
       val depSettings: Seq[Setting[_]] = Seq(
         libraryDependencies ++= managed.reverse,
-        resolvers ++= repos.reverse,
-        unmanagedJars in Compile ++= Attributed blankSeq unmanaged.reverse,
-        logLevel in Global := Level.Warn,
-        showSuccess in Global := false
+        resolvers ++= repos.reverse.toVector,
+        Compile / unmanagedJars ++= Attributed blankSeq unmanaged.reverse,
+        Global / logLevel := Level.Warn,
+        Global / showSuccess := false
       )
-      val append = Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, depSettings)
+      val append = Load.transformSettings(
+        Load.projectScope(currentRef),
+        currentRef.build,
+        rootProject,
+        depSettings
+      )
 
       val newStructure = Load.reapply(session.original ++ append, structure)
-      val newState = state.copy(remainingCommands = "console-quick" :: Nil)
+      val newState = state.copy(remainingCommands = Exec(Keys.consoleQuick.key.label, None) :: Nil)
       Project.setProject(session, newStructure, newState)
     }
 
-  final case class Dependencies(managed: Seq[ModuleID], resolvers: Seq[Resolver], unmanaged: Seq[File])
-  def parseDependencies(args: Seq[String], log: Logger): Dependencies = (Dependencies(Nil, Nil, Nil) /: args)(parseArgument(log))
+  final case class Dependencies(
+      managed: Seq[ModuleID],
+      resolvers: Seq[Resolver],
+      unmanaged: Seq[File]
+  )
+  def parseDependencies(args: Seq[String], log: Logger): Dependencies =
+    args.foldLeft(Dependencies(Nil, Nil, Nil))(parseArgument(log))
   def parseArgument(log: Logger)(acc: Dependencies, arg: String): Dependencies =
     arg match {
       case _ if arg contains " at " => acc.copy(resolvers = parseResolver(arg) +: acc.resolvers)
@@ -52,18 +77,17 @@ object IvyConsole {
       case _                        => acc.copy(managed = parseManaged(arg, log) ++ acc.managed)
     }
 
-  private[this] def parseResolver(arg: String): MavenRepository =
-    {
-      val Array(name, url) = arg.split(" at ")
-      new MavenRepository(name.trim, url.trim)
-    }
+  private[this] def parseResolver(arg: String): MavenRepository = {
+    val Array(name, url) = arg.split(" at ")
+    MavenRepository(name.trim, url.trim)
+  }
 
   val DepPattern = """([^%]+)%(%?)([^%]+)%([^%]+)""".r
   def parseManaged(arg: String, log: Logger): Seq[ModuleID] =
     arg match {
       case DepPattern(group, cross, name, version) =>
-        val crossV = if (cross.trim.isEmpty) CrossVersion.Disabled else CrossVersion.binary
-        ModuleID(group.trim, name.trim, version.trim, crossVersion = crossV) :: Nil
+        val crossV = if (cross.trim.isEmpty) Disabled() else CrossVersion.binary
+        ModuleID(group.trim, name.trim, version.trim).withCrossVersion(crossV) :: Nil
       case _ => log.warn("Ignoring invalid argument '" + arg + "'"); Nil
     }
 }

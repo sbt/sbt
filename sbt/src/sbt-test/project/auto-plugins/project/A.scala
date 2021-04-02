@@ -1,7 +1,7 @@
 // no package
 // plugins declared within no package should be visible to other plugins in the _root_ package
 
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object TopLevelImports {
   lazy val topLevelDemo = settingKey[String]("A top level demo setting.")

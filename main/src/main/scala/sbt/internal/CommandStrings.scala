@@ -1,12 +1,17 @@
-/* sbt -- Simple Build Tool
- * Copyright 2010  Mark Harrah
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
  */
+
 package sbt
 package internal
 
 import sbt.io.Path
 
 object CommandStrings {
+
   /** The prefix used to identify a request to execute the remaining input on source changes.*/
   val AboutCommand = "about"
   val TasksCommand = "tasks"
@@ -14,20 +19,17 @@ object CommandStrings {
   val ProjectCommand = "project"
   val ProjectsCommand = "projects"
   val ShowCommand = "show"
+  val PrintCommand = "print"
   val MultiTaskCommand = "all"
   val BootCommand = "boot"
 
   val EvalCommand = "eval"
-  val evalBrief = (EvalCommand + " <expression>", "Evaluates a Scala expression and prints the result and type.")
+  val evalBrief =
+    (s"$EvalCommand <expression>", "Evaluates a Scala expression and prints the result and type.")
   val evalDetailed =
-    EvalCommand + """ <expression>
+    s"""$EvalCommand <expression>
 
 	Evaluates the given Scala expression and prints the result and type."""
-
-  @deprecated("Misnomer: was only for `show`.  Use showBrief.", "0.13.2")
-  def actBrief = showBrief
-  @deprecated("Misnomer: was only for `show`.  Use showDetailed.", "0.13.2")
-  def actDetailed = showDetailed
 
   def actHelp = showHelp ++ multiTaskHelp
 
@@ -36,8 +38,8 @@ object CommandStrings {
     s"""$multiTaskSyntax
 
 	$multiTaskBrief"""
-  def multiTaskSyntax = s"""$MultiTaskCommand <task>+"""
-  def multiTaskBrief = """Executes all of the specified tasks concurrently."""
+  def multiTaskSyntax = s"$MultiTaskCommand <task>+"
+  def multiTaskBrief = "Executes all of the specified tasks concurrently."
 
   def showHelp = Help(ShowCommand, (s"$ShowCommand <key>", showBrief), showDetailed)
   def showBrief = "Displays the result of evaluating the setting or task associated with 'key'."
@@ -50,38 +52,66 @@ $ShowCommand <task>
 
 	Evaluates the specified task and display the value returned by the task."""
 
+  def printHelp = Help(PrintCommand, (s"$PrintCommand <key>", printBrief), printDetailed)
+  def printBrief =
+    "Prints the result of evaluating the setting or task associated with 'key' to standard output."
+  def printDetailed =
+    s"""$PrintCommand <setting>
+
+	Prints the value of the specified setting.
+
+$PrintCommand <task>
+
+	Evaluates the specified task and print the value returned by the task."""
+
   val PluginsCommand = "plugins"
   val PluginCommand = "plugin"
   def pluginsBrief = "Lists currently available plugins."
   def pluginsDetailed = pluginsBrief // TODO: expand
 
   val LastCommand = "last"
-  val LastGrepCommand = "last-grep"
+  val OldLastGrepCommand = "last-grep"
+  val LastGrepCommand = "lastGrep"
   val ExportCommand = "export"
   val ExportStream = "export"
 
-  val lastGrepBrief = (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
-  val lastGrepDetailed =
-    LastGrepCommand + """ <pattern>
+  val oldLastGrepBrief =
+    (OldLastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
+  val oldLastGrepDetailed =
+    s"""$OldLastGrepCommand <pattern>
 	Displays lines from the logging of previous commands that match `pattern`.
 
-""" + LastGrepCommand + """ <pattern> [key]
+$OldLastGrepCommand <pattern> [key]
 	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
-	See also '""" + LastCommand + "'."
+	See also '$LastCommand'."""
 
-  val lastBrief = (LastCommand, "Displays output from a previous command or the output from a specific task.")
+  val lastGrepBrief =
+    (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
+  val lastGrepDetailed =
+    s"""$LastGrepCommand <pattern>
+	Displays lines from the logging of previous commands that match `pattern`.
+
+$LastGrepCommand <pattern> [key]
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+
+	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
+	See also '$LastCommand'."""
+
+  val lastBrief =
+    (LastCommand, "Displays output from a previous command or the output from a specific task.")
   val lastDetailed =
-    LastCommand + """
+    s"""$LastCommand
 	Prints the logging for the previous command, typically at a more verbose level.
 
-""" + LastCommand + """ <key>
+$LastCommand <key>
 	Prints the logging associated with the provided key.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
 
-	See also '""" + LastGrepCommand + "'."
+	See also '$LastGrepCommand'."""
 
-  val exportBrief = (ExportCommand + " <tasks>+", "Executes tasks and displays the equivalent command lines.")
+  val exportBrief =
+    (s"$ExportCommand <tasks>+", "Executes tasks and displays the equivalent command lines.")
   val exportDetailed =
     s"""$ExportCommand [--last] <task>+
 	Runs the specified tasks and prints the equivalent command lines or other exportable information for those runs.
@@ -97,12 +127,17 @@ $ShowCommand <task>
 """
 
   val InspectCommand = "inspect"
-  val inspectBrief = (InspectCommand + " [uses|tree|definitions] <key>", "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies.")
+  val inspectBrief =
+    (
+      s"$InspectCommand [tree|uses|definitions|actual] <key>",
+      "Prints the value for 'key', the defining scope, delegates, related definitions, and dependencies."
+    )
   val inspectDetailed = s"""
-    |$InspectCommand <key>
+    |$InspectCommand [-] <key>
     |
     |	For a plain setting, the value bound to the key argument is displayed using its toString method.
-    |	Otherwise, the type of task ("Task" or "Input task") is displayed.
+    |	For an alias, the command bound to the alias is displayed.
+    |	Otherwise, the type of the key ("Task" or "Input task") is displayed.
     |
     |	"Dependencies" shows the settings that this setting depends on.
     |
@@ -136,9 +171,10 @@ $ShowCommand <task>
   """.stripMargin.trim
 
   val SetCommand = "set"
-  val setBrief = (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
+  val setBrief =
+    (s"$SetCommand [every] <setting>", "Evaluates a Setting and applies it to the current project.")
   val setDetailed =
-    SetCommand + """ [every] <setting-expression>
+    s"""$SetCommand [every] <setting-expression>
 
 	Applies the given setting to the current project:
 	  1) Constructs the expression provided as an argument by compiling and loading it.
@@ -155,68 +191,84 @@ $ShowCommand <task>
 """
 
   def SessionCommand = "session"
-  def sessionBrief = (SessionCommand, "Manipulates session settings.  For details, run 'help " + SessionCommand + "'.")
+
+  def sessionBrief =
+    (SessionCommand, s"Manipulates session settings.  For details, run 'help $SessionCommand'.")
 
   def settingsPreamble = commonPreamble("settings")
-  def tasksPreamble = commonPreamble("tasks") + """
+
+  def tasksPreamble =
+    commonPreamble("tasks") + """
 Tasks produce values.  Use the 'show' command to run the task and print the resulting value."""
 
-  def commonPreamble(label: String) = """
-This is a list of %s defined for the current project.
-It does not list the scopes the %<s are defined in; use the 'inspect' command for that.""".format(label)
+  def commonPreamble(label: String) = s"""
+This is a list of $label defined for the current project.
+It does not list the scopes the $label are defined in; use the 'inspect' command for that."""
 
-  def settingsBrief(label: String) = (label, "Lists the " + label + " defined for the current project.")
+  def settingsBrief(label: String) = (label, s"Lists the $label defined for the current project.")
+
+  import BasicCommandStrings.HelpCommand
+
   def settingsDetailed(label: String) =
-    """
+    s"""
 Syntax summary
-	%s [-(v|-vv|...|-V)] [<filter>]
+	$label [-(v|-vv|...|-V)] [<filter>]
 
-%<s
-	Displays the main %<s defined directly or indirectly for the current project.
+$label
+	Displays the main $label defined directly or indirectly for the current project.
 
 -v
-	Displays additional %<s.  More 'v's increase the number of %<s displayed.
+	Displays additional $label.  More 'v's increase the number of $label displayed.
 
 -V
-	displays all %<s
+	displays all $label
 
 <filter>
-	Restricts the %<s that are displayed.  The names of %<s are searched for an exact match against the filter, in which case only the description of the exact match is displayed.  Otherwise, the filter is interpreted as a regular expression and all %<s whose name or description match the regular expression are displayed.  Note that this is an additional filter on top of the %<s selected by the -v style switches, so you must specify -V to search all %<s.  Use the %s command to search all commands, tasks, and settings at once.
-""".format(label, BasicCommandStrings.HelpCommand)
+	Restricts the $label that are displayed.  The names of $label are searched for
+	an exact match against the filter, in which case only the description of the
+	exact match is displayed.  Otherwise, the filter is interpreted as a regular
+	expression and all $label whose name or description match the regular
+	expression are displayed.  Note that this is an additional filter on top of
+	the $label selected by the -v style switches, so you must specify -V to search
+	all $label.  Use the $HelpCommand command to search all commands, tasks, and
+	settings at once.
+"""
 
-  def moreAvailableMessage(label: String, search: Boolean) =
-    "More %s may be %s by increasing verbosity.  See '%s %s'.\n".format(label, if (search) "searched" else "viewed", BasicCommandStrings.HelpCommand, label)
+  def moreAvailableMessage(label: String, search: Boolean) = {
+    val verb = if (search) "searched" else "viewed"
+    s"More $label may be $verb by increasing verbosity.  See '$HelpCommand $label'\n"
+  }
 
   def aboutBrief = "Displays basic information about sbt and the build."
   def aboutDetailed = aboutBrief
 
-  def projectBrief = (ProjectCommand, "Displays the current project or changes to the provided `project`.")
+  def projectBrief =
+    (ProjectCommand, "Displays the current project or changes to the provided `project`.")
   def projectDetailed =
-    ProjectCommand +
-      """
+    s"""$ProjectCommand
 
 	Displays the name of the current project.
 
-""" + ProjectCommand + """ name
+$ProjectCommand name
 
 	Changes to the project with the provided name.
 	This command fails if there is no project with the given name.
 
-""" + ProjectCommand + """ {uri}
+$ProjectCommand {uri}
 
 	Changes to the root project in the build defined by `uri`.
 	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
 
-""" + ProjectCommand + """ {uri}name
+$ProjectCommand {uri}name
 
 	Changes to the project `name` in the build defined by `uri`.
 	`uri` must have already been declared as part of the build, such as with Project.dependsOn.
 
-""" + ProjectCommand + """ /
+$ProjectCommand /
 
 	Changes to the initial project.
 
-""" + ProjectCommand + """ ..
+$ProjectCommand ..
 
 	Changes to the parent project of the current project.
 	If there is no parent project, the current project is unchanged.
@@ -224,39 +276,37 @@ Syntax summary
 	Use n+1 dots to change to the nth parent.
 	For example, 'project ....' is equivalent to three consecutive 'project ..' commands."""
 
-  def projectsBrief = "Lists the names of available projects or temporarily adds/removes extra builds to the session."
+  def projectsBrief =
+    "Lists the names of available projects or temporarily adds/removes extra builds to the session."
   def projectsDetailed =
-    ProjectsCommand + """
+    s"""$ProjectsCommand
 	List the names of available builds and the projects defined in those builds.
 
-""" + ProjectsCommand + """ add <URI>+
+$ProjectsCommand add <URI>+
 	Adds the builds at the provided URIs to this session.
-	These builds may be selected using the """ + ProjectCommand + """ command.
+	These builds may be selected using the $ProjectCommand command.
 	Alternatively, tasks from these builds may be run using the explicit syntax {URI}project/task
 
-""" + ProjectsCommand + """ remove <URI>+
+$ProjectsCommand remove <URI>+
 	Removes extra builds from this session.
 	Builds explicitly listed in the build definition are not affected by this command.
 """
 
   def sbtrc = ".sbtrc"
 
-  def DefaultsCommand = "add-default-commands"
+  def DefaultsCommand = "addDefaultCommands"
   def DefaultsBrief = (DefaultsCommand, DefaultsDetailed)
   def DefaultsDetailed = "Registers default built-in commands"
 
-  def Load = "load"
-  def LoadLabel = "a project"
-  def LoadCommand = "load-commands"
-  def LoadCommandLabel = "commands"
-
-  def LoadFailed = "load-failed"
+  def LoadFailed = "loadFailed"
+  def OldLoadFailed = "load-failed"
 
   def LoadProjectImpl = "loadp"
   def LoadProject = "reload"
-  def LoadProjectBrief = (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
-  def LoadProjectDetailed = LoadProject +
-    s"""
+  def LoadProjectBrief =
+    (LoadProject, "(Re)loads the current project or changes to plugins project or returns from it.")
+  def LoadProjectDetailed =
+    s"""$LoadProject
 
 \t(Re)loads the project in the current directory.
 
@@ -271,7 +321,7 @@ $LoadProject return
   def InitCommand = "initialize"
   def InitBrief = (InitCommand, "Initializes command processing.")
   def InitDetailed =
-    InitCommand + """
+    s"""$InitCommand
 	Initializes command processing.
 
 Runs the following commands.
@@ -289,7 +339,7 @@ defaults
 
   def sbtRCs(s: State): Seq[File] =
     (Path.userHome / sbtrc) ::
-      (s.baseDir / sbtrc asFile) ::
+      (s.baseDir / sbtrc) ::
       Nil
 
   val CrossCommand = "+"
@@ -350,5 +400,58 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
 	If <command> is provided, it is then executed.
 
 	See also `help $CrossCommand`
+"""
+
+  val PluginCrossCommand = "^"
+  val PluginSwitchCommand = "^^"
+
+  def pluginCrossHelp: Help = Help.more(PluginCrossCommand, PluginCrossDetailed)
+  def pluginSwitchHelp: Help = Help.more(PluginSwitchCommand, PluginSwitchDetailed)
+
+  def PluginCrossDetailed =
+    s"""$PluginCrossCommand <command>
+  Runs <command> for each sbt version specified for cross-building.
+
+  For each string in `crossSbtVersions` in the current project, this command sets the
+  `sbtVersion in pluginCrossBuild` of all projects to that version, reloads the build,
+  and executes <command>.  When finished, it reloads the build with the original
+  Scala version.
+
+  See also `help $PluginSwitchCommand`
+"""
+
+  def PluginSwitchDetailed =
+    s"""$PluginSwitchCommand <sbt-version> [<command>]
+  Changes the sbt version and runs a command.
+
+  Sets the `sbtVersion in pluginCrossBuild` of all projects to <sbt-version> and
+  reloads the build. If <command> is provided, it is then executed.
+
+  See also `help $CrossCommand`
+"""
+
+  val JavaCrossCommand = "java+"
+  val JavaSwitchCommand = "java++"
+
+  def javaCrossHelp: Help = Help.more(JavaCrossCommand, JavaCrossDetailed)
+  def javaSwitchHelp: Help = Help.more(JavaSwitchCommand, JavaSwitchDetailed)
+
+  def JavaCrossDetailed =
+    s"""$JavaCrossCommand <command>
+  Runs <command> for each JDK version specified for cross-JDK testing.
+  For each string in `crossJavaVersions` in the current project, this command sets the
+  `javaHome` of all projects to the corresponding Java home, reloads the build,
+  and executes <command>.  When finished, it reloads the build with the original
+  `javaHome`.
+  Note that `Test / fork := true` is needed for `javaHome` to be effective.
+  See also `help $JavaSwitchCommand`
+"""
+
+  def JavaSwitchDetailed =
+    s"""$JavaSwitchCommand <java-version>
+  Changes the JDK version and runs a command.
+  Sets the `javaHome` of all projects to <java-version> and
+  reloads the build. If <command> is provided, it is then executed.
+  See also `help $JavaSwitchCommand`
 """
 }

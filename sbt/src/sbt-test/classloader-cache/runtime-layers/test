@@ -1,0 +1,25 @@
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> run
+
+> set Compile / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> run
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> Test / runMain sbt.scripted.TestAkkaTest
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> Test / runMain sbt.scripted.TestAkkaTest

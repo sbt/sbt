@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 
 import scala.util.control.NonFatal
@@ -25,13 +32,14 @@ object ProjectMacro extends Properties("ProjectMacro") {
   lazy val pd = new ProjectDefs
   import pd._
 
-  def secure(f: => Prop): Prop = try {
-    Prop.secure(f)
-  } catch {
-    case NonFatal(e) =>
-      e.printStackTrace
-      throw e
-  }
+  def secure(f: => Prop): Prop =
+    try {
+      Prop.secure(f)
+    } catch {
+      case NonFatal(e) =>
+        e.printStackTrace
+        throw e
+    }
 
   property("Explicit type on lazy val supported") = secure {
     check(aa, "aa", "aa")
@@ -53,13 +61,12 @@ object ProjectMacro extends Properties("ProjectMacro") {
     check(z, "z", "dir")
   }
 
-  def check(p: Project, id: String, dir: String): Prop =
-    {
-      s"Expected id: $id" |:
-        s"Expected dir: $dir" |:
-        s"Actual id: ${p.id}" |:
-        s"Actual dir: ${p.base}" |:
-        (p.id == id) &&
-        (p.base.getName == dir)
-    }
+  def check(p: Project, id: String, dir: String): Prop = {
+    s"Expected id: $id" |:
+      s"Expected dir: $dir" |:
+      s"Actual id: ${p.id}" |:
+      s"Actual dir: ${p.base}" |:
+      (p.id == id) &&
+    (p.base.getName == dir)
+  }
 }

@@ -1,0 +1,23 @@
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+
+> test
+
+$ copy-file changes/bad.scala src/test/scala/sbt/ScalatestTest.scala
+
+-> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
+-> test
+
+> set Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.AllLibraryJars
+
+-> test

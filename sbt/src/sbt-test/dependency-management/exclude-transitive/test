@@ -1,4 +1,3 @@
-> debug
 # load the project definition with transitive dependencies enabled
 # and check that they are not downloaded
 #$ pause
@@ -15,6 +14,7 @@ $ touch transitive
 # load the project definition with transitive dependencies disabled
 # and check that they are not downloaded
 
+$ delete coursier-cache
 $ delete ivy-cache
 $ delete transitive
 > reload

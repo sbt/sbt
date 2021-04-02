@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object DatabasePlugin extends AutoPlugin {
   override def requires: Plugins = sbt.plugins.JvmPlugin

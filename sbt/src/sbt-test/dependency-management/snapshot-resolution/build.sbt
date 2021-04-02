@@ -1,33 +1,41 @@
+ThisBuild / organization := "com.example"
+ThisBuild / scalaVersion := "2.12.12"
+
+// TTL is 24h so we can't detect the change
+ThisBuild / useCoursier := false
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := new IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
+  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
 )
 
-lazy val sharedResolver: Resolver =
-  Resolver.defaultShared.nonlocal()
+lazy val sharedResolver: Resolver = {
+  val r = Resolver.defaultShared
+  r withConfiguration (r.configuration withIsLocal false)
   //MavenRepository("example-shared-repo", "file:///tmp/shared-maven-repo-bad-example")
   //Resolver.file("example-shared-repo", repoDir)(Resolver.defaultPatterns)
+}
 
-lazy val common = project.
-  settings(customIvyPaths: _*).
-  settings(
+lazy val common = project
+  .settings(customIvyPaths)
+  .settings(
     organization := "com.badexample",
     name := "badexample",
     version := "1.0-SNAPSHOT",
     publishTo := Some(sharedResolver),
-    crossVersion := CrossVersion.Disabled,
+    crossVersion := Disabled(),
     publishMavenStyle := (sharedResolver match {
       case repo: PatternsBasedRepository => repo.patterns.isMavenCompatible
       case _: RawRepository => false // TODO - look deeper
       case _: MavenRepository => true
-      case _: MavenCache => true
       case _ => false  // TODO - Handle chain repository?
     })
     // updateOptions := updateOptions.value.withLatestSnapshots(true)
   )
 
-lazy val dependent = project.
-  settings(customIvyPaths: _*).
-  settings(
+lazy val dependent = project
+  .settings(customIvyPaths)
+  .settings(
     // Uncomment the following to test the before/after
     // updateOptions := updateOptions.value.withLatestSnapshots(false),
     // Ignore the inter-project resolver, so we force to look remotely.
@@ -39,8 +47,9 @@ lazy val dependent = project.
   )
 
 TaskKey[Unit]("dumpResolvers") := {
-  streams.value.log.info(s" -- dependent/fullResolvers -- ")
+  val log = streams.value.log
+  log.info(s" -- dependent/fullResolvers -- ")
   (fullResolvers in dependent).value foreach { r =>
-    streams.value.log.info(s" * ${r}")
+    log.info(s" * ${r}")
   }
 }

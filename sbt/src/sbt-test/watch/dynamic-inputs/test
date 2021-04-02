@@ -1,0 +1,7 @@
+# This tests that we can override the state transformation in the watch task
+# In the build, watchOnEvent should return CancelWatch which should be successful, but we
+# override watchTasks to fail the state instead
+
+> ~ root / setStringValue
+
+> checkStringValue foo.txt bar

@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt
 package internal
 
@@ -5,12 +12,16 @@ import sbt.internal.util.Types.idFun
 import sbt.internal.util.Dag
 import BuildDependencies._
 
-final class BuildDependencies private (val classpath: DependencyMap[ClasspathDep[ProjectRef]], val aggregate: DependencyMap[ProjectRef]) {
+final class BuildDependencies private (
+    val classpath: DependencyMap[ClasspathDep[ProjectRef]],
+    val aggregate: DependencyMap[ProjectRef]
+) {
   def classpathRefs(ref: ProjectRef): Seq[ProjectRef] = classpath(ref) map getID
   def classpathTransitiveRefs(ref: ProjectRef): Seq[ProjectRef] = classpathTransitive(ref)
 
   lazy val classpathTransitive: DependencyMap[ProjectRef] = transitive(classpath, getID)
-  lazy val aggregateTransitive: DependencyMap[ProjectRef] = transitive(aggregate, idFun[ProjectRef])
+  lazy val aggregateTransitive: DependencyMap[ProjectRef] =
+    transitive(aggregate, idFun[ProjectRef])
 
   def addClasspath(ref: ProjectRef, deps: ClasspathDep[ProjectRef]*): BuildDependencies =
     new BuildDependencies(classpath.updated(ref, deps ++ classpath.getOrElse(ref, Nil)), aggregate)
@@ -18,7 +29,10 @@ final class BuildDependencies private (val classpath: DependencyMap[ClasspathDep
     new BuildDependencies(classpath, aggregate.updated(ref, deps ++ aggregate.getOrElse(ref, Nil)))
 }
 object BuildDependencies {
-  def apply(classpath: DependencyMap[ClasspathDep[ProjectRef]], aggregate: DependencyMap[ProjectRef]): BuildDependencies =
+  def apply(
+      classpath: DependencyMap[ClasspathDep[ProjectRef]],
+      aggregate: DependencyMap[ProjectRef]
+  ): BuildDependencies =
     new BuildDependencies(classpath, aggregate)
 
   type DependencyMap[D] = Map[ProjectRef, Seq[D]]

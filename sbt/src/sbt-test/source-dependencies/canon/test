@@ -5,6 +5,7 @@
 # This also verifies that compilation does not get repeatedly triggered by a mismatch in
 #  paths.
 
+> recordPreviousIterations
 > compile
 > compile
 > checkIterations 1

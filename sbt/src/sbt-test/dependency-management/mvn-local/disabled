@@ -3,7 +3,7 @@
 
 > library/publishM2
 
-# should suceed because local Ivy repository works
+# should succeed because local Ivy repository works
 > main/update
 
 # should succeed when local Maven repository is added
@@ -19,7 +19,6 @@ $ copy-file changes/mainB1.scala main/B.scala
 -> main/compile
 
 $ copy-file changes/libA.scala library/A.scala
-> debug
 > library/publishM2
 # should succeed even without 'update' because Ivy should use the jar from the origin and not copy it to its cache
 > main/compile

@@ -1,5 +1,5 @@
 package sbttest
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object Imports {
   object A extends AutoPlugin

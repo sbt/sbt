@@ -1,8 +1,10 @@
 lazy val check = taskKey[Unit]("Runs the check")
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     libraryDependencies := Seq(
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
@@ -16,7 +18,7 @@ def commonSettings: Seq[Def.Setting[_]] =
 
 def consolidatedResolutionSettings: Seq[Def.Setting[_]] =
   commonSettings ++ Seq(
-    updateOptions := updateOptions.value.withConsolidatedResolution(true)
+    updateOptions := updateOptions.value.withCachedResolution(true)
   )
 
 // overrides cached

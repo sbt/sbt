@@ -1,4 +1,5 @@
-lazy val a,b = project
+lazy val a = project
+lazy val b = project
 
 def now = System.currentTimeMillis
 

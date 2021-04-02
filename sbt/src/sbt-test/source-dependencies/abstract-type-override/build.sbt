@@ -1,9 +1,25 @@
 import sbt.internal.inc.Analysis
+import complete.DefaultParsers._
 
-InputKey[Unit]("checkNumberOfCompilerIterations") := (inputTask { (argTask: TaskKey[Seq[String]]) =>
-  (argTask, compile in Compile) map { case (args: Seq[String], a: Analysis) =>
-    assert(args.size == 1)
-    val expectedIterationsNumber = args(0).toInt
-    assert(a.compilations.allCompilations.size == expectedIterationsNumber, "a.compilations.allCompilations.size = %d (expected %d)".format(a.compilations.allCompilations.size, expectedIterationsNumber))
+// Reset compiler iterations, necessary because tests run in batch mode
+val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
+recordPreviousIterations := {
+  val log = streams.value.log
+  CompileState.previousIterations = {
+    val previousAnalysis = (previousCompile in Compile).value.analysis.asScala
+    previousAnalysis match {
+      case None =>
+        log.info("No previous analysis detected")
+        0
+      case Some(a: Analysis) => a.compilations.allCompilations.size
+    }
   }
-}).evaluated
+}
+
+val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterations of incremental compilation.")
+
+checkIterations := {
+  val expected: Int = (Space ~> NatBasic).parsed
+  val actual: Int = ((compile in Compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
+  assert(expected == actual, s"Expected $expected compilations, got $actual")
+}

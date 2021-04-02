@@ -1,90 +1,50 @@
 import sbt._
-import Keys._
+import sbt.Keys._
 
 object Transform {
-  lazy val transformSources = TaskKey[Seq[File]]("transform-sources")
-  lazy val inputSourceDirectories = SettingKey[Seq[File]]("input-source-directories")
-  lazy val inputSourceDirectory = SettingKey[File]("input-source-directory")
-  lazy val inputSources = TaskKey[Seq[File]]("input-sources")
-  lazy val sourceProperties = TaskKey[Map[String, String]]("source-properties")
-
-  lazy val transformResources = TaskKey[Seq[File]]("transform-resources")
-  lazy val inputResourceDirectories = SettingKey[Seq[File]]("input-resource-directories")
-  lazy val inputResourceDirectory = SettingKey[File]("input-resource-directory")
-  lazy val inputResources = TaskKey[Seq[File]]("input-resources")
-  lazy val resourceProperties = TaskKey[Map[String, String]]("resource-properties")
-
-  lazy val conscriptConfigs = TaskKey[Unit]("conscript-configs")
+  private val conscriptConfigs = taskKey[Unit]("")
 
   def conscriptSettings(launch: Reference) = Seq(
-    conscriptConfigs <<= (managedResources in launch in Compile, sourceDirectory in Compile).map { (res, src) =>
-      val source = res.find(_.getName == "sbt.boot.properties") getOrElse sys.error("No managed boot.properties file.")
-      copyConscriptProperties(source, src / "conscript")
-      ()
-    }
-  )
-  def copyConscriptProperties(source: File, conscriptBase: File): Seq[File] =
-    {
+    conscriptConfigs := {
+      val sourceFile = (launch / Compile / managedResources).value
+        .find(_.getName == "sbt.boot.properties")
+        .getOrElse(sys.error("No managed boot.properties file."))
+      val source = IO.readLines(sourceFile)
+      val conscriptBase = (Compile / sourceDirectory).value / "conscript"
       IO.delete(conscriptBase)
       val pairs = Seq(
         "sbt.xMain" -> "xsbt",
         "sbt.ScriptMain" -> "scalas",
-        "sbt.ConsoleMain" -> "screpl"
+        "sbt.ConsoleMain" -> "screpl",
       )
-      for ((main, dir) <- pairs) yield {
-        val file = conscriptBase / dir / "launchconfig"
-        copyPropertiesFile(source, main, file)
-        file
+      for ((main, dir) <- pairs) {
+        val lines = source.map(l => if (l.trim.startsWith("class:")) s"  class: $main" else l)
+        IO.writeLines(conscriptBase / dir / "launchconfig", lines)
       }
-    }
-  def copyPropertiesFile(source: File, newMain: String, target: File): Unit = {
-    def subMain(line: String): String = if (line.trim.startsWith("class:")) "  class: " + newMain else line
-    IO.writeLines(target, IO.readLines(source) map subMain)
-  }
-
-  def crossGenSettings = transSourceSettings ++ Seq(
-    sourceProperties := Map("cross.package0" -> "sbt", "cross.package1" -> "cross")
-  )
-  def transSourceSettings = Seq(
-    inputSourceDirectory := sourceDirectory.value / "input_sources",
-    inputSourceDirectories <<= Seq(inputSourceDirectory).join,
-    inputSources <<= inputSourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get),
-    fileMappings in transformSources <<= transformSourceMappings,
-    transformSources <<= (fileMappings in transformSources, sourceProperties) map { (rs, props) =>
-      rs map { case (in, out) => transform(in, out, props) }
     },
-    sourceGenerators <+= transformSources
   )
-  def transformSourceMappings = (inputSources, inputSourceDirectories, sourceManaged) map { (ss, sdirs, sm) =>
-    ((ss --- sdirs) pair (rebase(sdirs, sm) | flat(sm))).toSeq
-  }
-  def configSettings = transResourceSettings ++ Seq(
-    resourceProperties <<= (organization, version, scalaVersion, isSnapshot) map { (org, v, sv, isSnapshot) =>
-      Map("org" -> org, "sbt.version" -> v, "scala.version" -> sv)
-    }
-  )
-  def transResourceSettings = Seq(
-    inputResourceDirectory := sourceDirectory.value / "input_resources",
-    inputResourceDirectories <<= Seq(inputResourceDirectory).join,
-    inputResources <<= inputResourceDirectories.map(dirs => (dirs ** (-DirectoryFilter)).get),
-    fileMappings in transformResources <<= transformResourceMappings,
-    transformResources <<= (fileMappings in transformResources, resourceProperties) map { (rs, props) =>
-      rs map { case (in, out) => transform(in, out, props) }
-    },
-    resourceGenerators <+= transformResources
-  )
-  def transformResourceMappings = (inputResources, inputResourceDirectories, resourceManaged) map { (rs, rdirs, rm) =>
-    ((rs --- rdirs) pair (rebase(rdirs, rm) | flat(rm))).toSeq
-  }
 
-  def transform(in: File, out: File, map: Map[String, String]): File =
-    {
-      def get(key: String): String = map.getOrElse(key, sys.error("No value defined for key '" + key + "'"))
-      val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
-      if (Some(newString) != read(out))
-        IO.write(out, newString)
-      out
-    }
-  def read(file: File): Option[String] = try { Some(IO.read(file)) } catch { case _: java.io.IOException => None }
-  lazy val Property = """\$\{\{([\w.-]+)\}\}""".r
+  def configSettings = Seq(
+    resourceGenerators += Def.task {
+      val rdirs = Seq(sourceDirectory.value / "input_resources")
+      val rm = resourceManaged.value
+      val paths = (rdirs ** (-DirectoryFilter)).get --- rdirs
+      val rs = paths.pair(Path.rebase(rdirs, rm) | Path.flat(rm))
+      val props = Map(
+        "org" -> organization.value,
+        "sbt.version" -> version.value,
+        "scala.version" -> scalaVersion.value,
+      )
+      def get(key: String) = props.getOrElse(key, sys.error(s"No value defined for key '$key'"))
+      val Property = """\$\{\{([\w.-]+)\}\}""".r
+      val catcher = scala.util.control.Exception.catching(classOf[java.io.IOException])
+      rs.map {
+        case (in, out) =>
+          val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
+          if (Some(newString) != catcher.opt(IO.read(out)))
+            IO.write(out, newString)
+          out
+      }
+    }.taskValue,
+  )
 }

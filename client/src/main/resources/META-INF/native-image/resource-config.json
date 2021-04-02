@@ -1,0 +1,22 @@
+{
+    "resources":[
+        {"pattern":"jline/console/completer/CandidateListCompletionHandler.properties"},
+        {"pattern":"org/jline/utils/ansi.caps"},
+        {"pattern":"org/jline/utils/capabilities.txt"},
+        {"pattern":"org/jline/utils/colors.txt"},
+	{"pattern":"org/jline/utils/dumb-color.caps"},
+	{"pattern":"org/jline/utils/xterm.caps"},
+	{"pattern":"org/jline/utils/xterm-256color.caps"},
+	{"pattern":"org/jline/utils/windows-256color.caps"},
+	{"pattern":"org/jline/utils/screen-256color.caps"},
+	{"pattern":"org/jline/utils/windows.caps"},
+	{"pattern":"org/jline/utils/windows-conemu.caps"},
+	{"pattern":"org/jline/utils/dumb.caps"},
+	{"pattern":"org/jline/utils/windows-vtp.caps"},
+	{"pattern":"org/jline/utils/screen.caps"},
+	{"pattern":"library.properties"},
+        {"pattern":"darwin/x86_64/libsbtipcsocket.dylib"},
+        {"pattern":"linux/x86_64/libsbtipcsocket.so"},
+        {"pattern":"win32/x86_64/sbtipcsocket.dll"}
+    ]
+}

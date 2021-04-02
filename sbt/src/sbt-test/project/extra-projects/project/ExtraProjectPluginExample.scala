@@ -1,4 +1,4 @@
-import sbt._, syntax._, Keys._
+import sbt._, Keys._
 
 object ExtraProjectPluginExample extends AutoPlugin {
   override def extraProjects: Seq[Project] =

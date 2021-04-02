@@ -1,0 +1,31 @@
+package sbt
+@target(Scala)
+
+## Indicate whether the project was created organically, synthesized by a plugin,
+## or is a "generic root" project supplied by sbt when a project doesn't exist for `file(".")`.
+enum ProjectOrigin {
+  Organic
+  ExtraProject
+  DerivedProject
+  GenericRoot
+}
+
+## Type for AutoPlugin's trigger method.
+## Determines whether an AutoPlugin will be activated for a project when the
+## `requires` clause is satisfied.
+enum PluginTrigger {
+  AllRequirements
+  NoTrigger
+}
+
+type JavaVersion {
+  numbers: [Long] @since("1.2.0")
+  tags: [String] @since("1.3.0")
+  vendor: String @since("1.2.0")
+
+  #x def numberStr: String = numbers.mkString(".")
+  #x private def tagStr: String = if (tags.isEmpty) "" else tags.mkString("-", "-", "")
+  #xtostring vendor.map(_ + "@").getOrElse("") + numberStr + tagStr
+
+  #xcompanion def apply(version: String): JavaVersion = sbt.internal.CrossJava.parseJavaVersion(version)
+}

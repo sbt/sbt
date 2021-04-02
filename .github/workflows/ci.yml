@@ -1,0 +1,108 @@
+name: CI
+on:
+  pull_request:
+  push:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 1
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 2
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 3
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 4
+          - os: ubuntu-latest
+            java: 11
+            jobtype: 5
+          - os: ubuntu-latest
+            java: 8
+            jobtype: 6
+    runs-on: ${{ matrix.os }}
+    env:
+      JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
+      SCALA_212: 2.12.13
+      SCALA_213: 2.13.3
+      UTIL_TESTS: utilCache/test;utilControl/test;utilInterface/test;utilLogging/test;utilPosition/test;utilRelation/test;utilScripted/test;utilTracking/test
+      SBT_LOCAL: false
+    steps:
+    - name: Checkout sbt/sbt
+      uses: actions/checkout@v2
+    - name: Checkout sbt/io
+      uses: actions/checkout@v2
+      with:
+        repository: sbt/io
+        ref: develop
+        path: io
+    - name: Checkout sbt/librarymanagement
+      uses: actions/checkout@v2
+      with:
+        repository: sbt/librarymanagement
+        ref: develop
+        path: librarymanagement
+    - name: Checkout sbt/zinc
+      uses: actions/checkout@v2
+      with:
+        repository: sbt/zinc
+        ref: develop
+        path: zinc
+    - name: Setup
+      uses: olafurpg/setup-scala@v10
+      with:
+        java-version: "adopt@1.${{ matrix.java }}"
+    - name: Coursier cache
+      uses: coursier/cache-action@v6
+    - name: Cache sbt
+      uses: actions/cache@v2.1.3
+      with:
+        path: ~/.sbt
+        key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+    - name: Build and test
+      run: |
+        rm -rf "$HOME/.sbt/scripted/" || true
+        case ${{ matrix.jobtype }} in
+          1)
+            sbt -v "mimaReportBinaryIssues ; javafmtCheck ; Test / javafmtCheck; scalafmtCheckAll ; scalafmtSbtCheck; serverTestProj/scalafmtCheckAll; headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal; test; serverTestProj/test; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
+            ;;
+          2)
+            sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
+            ;;
+          3)
+            sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
+            ;;
+          4)
+            sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
+            ;;
+          5)
+            sbt -v "++$SCALA_213!; test;"
+            ;;
+          6)
+            # build from fresh IO, LM, and Zinc
+            BUILD_VERSION="1.5.0-SNAPSHOT"
+            cd io
+            sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
+            cd ../
+            sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+            rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+            sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; $UTIL_TESTS; ++$SCALA_212; $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+            ;;
+          *)
+            echo unknown jobtype
+            exit 1
+        esac
+        rm -rf "$HOME/.sbt/scripted/" || true
+        rm -rf "$HOME/.ivy2/local" || true
+        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+        find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+        find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+        find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+        find $HOME/.sbt                              -name "*.lock"               -delete || true

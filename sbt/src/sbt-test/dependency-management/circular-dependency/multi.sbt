@@ -1,8 +1,10 @@
 lazy val check = taskKey[Unit]("Runs the check")
 
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := new IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
     scalaVersion := "2.10.4",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
   )

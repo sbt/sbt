@@ -1,4 +1,4 @@
-# test case for http://github.com/sbt/sbt/issues/676
+# test case for https://github.com/sbt/sbt/issues/676
 > compile
 # fails with StackOverflowException
 > showApis

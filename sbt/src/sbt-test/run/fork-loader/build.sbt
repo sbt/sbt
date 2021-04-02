@@ -1,5 +1,10 @@
-name := "forked-test"
+val scalcheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
 
-organization := "org.example"
+ThisBuild / scalaVersion := "2.12.12"
 
-libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.10.0" % "test"
+lazy val root = (project in file("."))
+  .settings(
+    name := "forked-test",
+    organization := "org.example",
+    libraryDependencies += scalcheck % Test
+  )

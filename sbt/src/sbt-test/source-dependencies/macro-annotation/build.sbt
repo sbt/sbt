@@ -1,12 +1,12 @@
-val paradiseVersion = "2.0.1"
+ThisBuild / scalaVersion := "2.12.12"
+
+val paradiseVersion = "2.1.1"
 val commonSettings = Seq(
   version := "1.0.0",
   scalacOptions ++= Seq(""),
-  scalaVersion := "2.11.4",
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sonatypeRepo("releases"),
-  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full),
-  incOptions := incOptions.value.withNameHashing(true)
+  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
 )
 
 lazy val root = (project in file(".")).

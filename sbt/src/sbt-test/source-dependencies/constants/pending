@@ -1,5 +1,4 @@
 # Marked as pending, see https://github.com/sbt/sbt/issues/1543
-#
 # Tests if source dependencies are tracked properly
 # for compile-time constants (like final vals in top-level objects)
 # see https://issues.scala-lang.org/browse/SI-7173 for details

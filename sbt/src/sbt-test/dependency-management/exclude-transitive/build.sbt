@@ -1,6 +1,8 @@
+ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := (baseDirectory, target)( (dir, t) => new IvyPaths(dir, Some(t / "ivy-cache"))).value,
+    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
     libraryDependencies += baseDirectory(transitive("javax.mail" % "mail" % "1.4.1")).value,
     TaskKey[Unit]("checkTransitive") := check(true).value,
     TaskKey[Unit]("checkIntransitive") := check(false).value
