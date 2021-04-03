@@ -325,6 +325,7 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   crossScalaVersions := List(scala212),
   javaOnlySettings,
   crossPaths := false,
+  autoScalaLibrary := false,
   name := "Util Interface",
   exportJars := true,
   utilMimaSettings,
@@ -1535,8 +1536,7 @@ ThisBuild / pomIncludeRepository := { _ =>
 }
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
-  else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+  Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
 ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
