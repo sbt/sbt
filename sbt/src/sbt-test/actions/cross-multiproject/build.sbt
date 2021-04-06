@@ -1,5 +1,4 @@
 lazy val scala212 = "2.12.12"
-// keep this at M5 to test full version
 lazy val scala213 = "2.13.1"
 
 ThisBuild / crossScalaVersions := Seq(scala212, scala213)
