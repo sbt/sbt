@@ -31,13 +31,19 @@ import sbt.protocol.testing.TestResult
 /**
  * A tests listener that outputs the results it receives in junit xml
  * report format.
- * @param outputDir path to the dir in which a folder with results is generated
+ * @param targetDir directory in which test reports are generated
  */
-class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, logger: Logger)
+class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logger: Logger)
     extends TestsListener {
-  // These constructors are for binary compatibility with older versions of sbt.
+  // These constructors are for binary compatibility with older versions of sbt
+  // Use old hard-coded behaviour for constructing `targetDir` from `outputDir`
+  def this(outputDir: String, legacyTestReport: Boolean, logger: Logger) =
+    this(new File(outputDir, "test-reports"), legacyTestReport, logger)
   def this(outputDir: String, logger: Logger) = this(outputDir, false, logger)
   def this(outputDir: String) = this(outputDir, false, null)
+
+  @deprecated("Provided for binary compatibility: please use `targetDir` instead", "1.6.0")
+  def outputDir: String = targetDir.getParent
 
   /**Current hostname so we know which machine executed the tests*/
   val hostname: String = {
@@ -56,9 +62,6 @@ class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, lo
     }
     name
   }
-
-  /**The dir in which we put all result files. Is equal to the given dir + "/test-reports"*/
-  val targetDir = new File(outputDir + "/test-reports/")
 
   /**all system properties as XML*/
   val properties: Elem =
@@ -114,8 +117,8 @@ class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, lo
         } skipped={ignoredSkippedPending + ""} time={(duration / 1000.0).toString} timestamp={
           formatISO8601DateTime(timestamp)
         }>
-                     {properties}
-                     {
+          {properties}
+          {
           for (e <- events)
             yield <testcase classname={
               e.selector match {
@@ -132,7 +135,7 @@ class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, lo
                 case other                      => s"(It is not a test it is a ${other.getClass.getCanonicalName})"
               }
             } time={(e.duration() / 1000.0).toString}>
-                                                 {
+                      {
               val trace: String = if (e.throwable.isDefined) {
                 val stringWriter = new StringWriter()
                 val writer = new PrintWriter(stringWriter)
@@ -157,12 +160,12 @@ class JUnitXmlTestsListener(val outputDir: String, legacyTestReport: Boolean, lo
                 case _                                                   => {}
               }
             }
-                                               </testcase>
+                    </testcase>
 
         }
-                     <system-out><![CDATA[]]></system-out>
-                     <system-err><![CDATA[]]></system-err>
-                   </testsuite>
+          <system-out><![CDATA[]]></system-out>
+          <system-err><![CDATA[]]></system-err>
+        </testsuite>
 
       result
     }
