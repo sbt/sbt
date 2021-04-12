@@ -8,9 +8,16 @@
 package sbt
 package plugins
 
-import Def.Setting
+import java.io.File
+
+import Def.{ Setting, settingKey }
+import Defaults._
 import Keys._
-import sbt.internal.SysProp
+import KeyRanks._
+import sbt.Project.inConfig
+import sbt.internal._
+import sbt.io.syntax._
+import sbt.librarymanagement.Configurations.{ IntegrationTest, Test }
 
 /**
  * An experimental plugin that adds the ability for junit-xml to be generated.
@@ -27,14 +34,23 @@ object JUnitXmlReportPlugin extends AutoPlugin {
   override def requires = JvmPlugin
   override def trigger = allRequirements
 
-  // Right now we add to the global test listeners which should capture *all* tests.
-  // It might be a good idea to derive this setting into specific test scopes.
-  override lazy val projectSettings: Seq[Setting[_]] =
-    Seq(
+  object autoImport {
+    val testReportsDirectory =
+      settingKey[File]("Directory for outputting junit test reports.").withRank(AMinusSetting)
+
+    lazy val testReportSettings: Seq[Setting[_]] = Seq(
+      testReportsDirectory := target.value / (prefix(configuration.value.name) + "reports"),
       testListeners += new JUnitXmlTestsListener(
-        target.value.getAbsolutePath,
+        testReportsDirectory.value,
         SysProp.legacyTestReport,
         streams.value.log
       )
     )
+  }
+
+  import autoImport._
+
+  override lazy val projectSettings: Seq[Setting[_]] =
+    inConfig(Test)(testReportSettings) ++
+      inConfig(IntegrationTest)(testReportSettings)
 }
