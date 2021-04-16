@@ -4238,7 +4238,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   }
 
   /**
-   * Adds Maven resolver plugin.
+   * Adds Dependency tree plugin.
    */
   def addDependencyTreePlugin: Setting[Seq[ModuleID]] =
     libraryDependencies += sbtPluginExtra(
