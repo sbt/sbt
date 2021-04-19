@@ -152,6 +152,18 @@ object IvyXml {
 
     val dependencyElems = project.dependencies.toVector.map {
       case (conf, dep) =>
+        val classifier = {
+          val pub = dep.publication
+          if (pub.classifier.value.nonEmpty)
+            Seq(
+              <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf="*" e:classifier={
+                pub.classifier.value
+              } />
+            )
+          else
+            Seq.empty
+        }
+
         val excludes = dep.exclusions.toSeq.map {
           case (org, name) =>
             <exclude org={org.value} module={name.value} name="*" type="*" ext="*" conf="" matcher="exact"/>
@@ -161,6 +173,7 @@ object IvyXml {
           <dependency org={dep.module.organization.value} name={dep.module.name.value} rev={
             dep.version
           } conf={s"${conf.value}->${dep.configuration.value}"}>
+          {classifier}
           {excludes}
         </dependency>
 
