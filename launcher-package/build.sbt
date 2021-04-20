@@ -218,7 +218,7 @@ val root = (project in file(".")).
     },
     rpmVendor := "lightbend",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
-    rpmLicense := Some("BSD"),
+    rpmLicense := Some("Apache-2.0"),
     // This is intentionally empty. java-devel could bring in JDK 9-ea on Fedora,
     // and java-1.8.0-devel doesn't work on CentOS 6 and 7.
     // https://github.com/sbt/sbt-launcher-package/issues/151
@@ -304,7 +304,7 @@ val root = (project in file(".")).
     mappings in Universal ++= {
       val base = baseDirectory.value
       if (sbtVersionToRelease startsWith "0.13.") Nil
-      else Seq[(File, String)](base / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
+      else Seq[(File, String)](base.getParentFile / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
     },
 
     // Misccelaneous publishing stuff...
