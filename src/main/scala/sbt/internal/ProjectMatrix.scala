@@ -121,6 +121,7 @@ sealed trait ProjectMatrix extends CompositeProject {
   def filterProjects(axisValues: Seq[VirtualAxis]): Seq[Project]
   def filterProjects(autoScalaLibrary: Boolean, axisValues: Seq[VirtualAxis]): Seq[Project]
   def finder(axisValues: VirtualAxis*): ProjectFinder
+  def findAll(): Map[Project, Seq[VirtualAxis]]
 
   // resolve to the closest match for the given row
   private[sbt] def resolveMatch(thatRow: ProjectMatrix.ProjectRow): ProjectReference
@@ -484,6 +485,11 @@ object ProjectMatrix {
 
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
       new AxisBaseProjectFinder(axisValues.toSeq)
+
+    override def findAll(): Map[Project, Seq[VirtualAxis]] =
+      resolvedMappings.map { case(row, project) =>
+        project -> row.axisValues
+      }
 
     def copy(
         id: String = id,
