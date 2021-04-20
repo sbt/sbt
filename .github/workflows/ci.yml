@@ -47,6 +47,7 @@ jobs:
       TEST_SBT_VER: 1.5.0
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
       JDK11: adopt@1.11.0-9
+      SPARK_LOCAL_IP: "127.0.0.1"
     steps:
     - name: Checkout sbt/sbt
       uses: actions/checkout@v2
@@ -72,6 +73,10 @@ jobs:
       uses: olafurpg/setup-scala@v10
       with:
         java-version: "adopt@1.${{ matrix.java }}"
+    - name: Set up Python 3.7
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.7
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Cache sbt
