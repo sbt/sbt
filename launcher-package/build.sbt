@@ -249,6 +249,10 @@ val root = (project in file(".")).
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
     version in Universal := sbtVersionToRelease,
 
+    mappings in Universal += {
+      (baseDirectory.value.getParentFile / "sbt") -> ("bin" + java.io.File.separator + "sbt")
+    },
+
     mappings in Universal := {
       val t = (target in Universal).value
       val prev = (mappings in Universal).value

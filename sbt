@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
+declare builtin_sbt_version="1.5.0"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -96,12 +97,55 @@ jar_file () {
   echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
 }
 
-acquire_sbt_jar () {
-  sbt_jar="$(jar_file)"
+jar_url () {
+  echo "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/$1/sbt-launch-$1.jar"
+}
 
-  if [[ ! -f "$sbt_jar" ]]; then
-    echoerr "Could not find launcher jar: $sbt_jar"
-    exit 2
+download_url () {
+  local url="$1"
+  local jar="$2"
+  mkdir -p $(dirname "$jar") && {
+    if command -v curl > /dev/null; then
+      curl --silent -L "$url" --output "$jar"
+    elif command -v wget > /dev/null; then
+      wget --quiet -O "$jar" "$url"
+    fi
+  } && [[ -f "$jar" ]]
+}
+
+acquire_sbt_jar () {
+  local launcher_sv="$1"
+  if [[ "$launcher_sv" == "" ]]; then
+    if [[ "$init_sbt_version" != "_to_be_replaced" ]]; then
+      launcher_sv="$init_sbt_version"
+    else
+      launcher_sv="$builtin_sbt_version"
+    fi
+  fi
+  download_jar="$HOME/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  if [[ -f "$download_jar" ]]; then
+    sbt_jar="$download_jar"
+  else
+    sbt_url=$(jar_url "$launcher_sv")
+    echoerr "downloading sbt launcher $launcher_sv"
+    download_url "$sbt_url" "${download_jar}.temp"
+    download_url "${sbt_url}.sha1" "${download_jar}.sha1"
+    if command -v shasum > /dev/null; then
+      if echo "$(cat "${download_jar}.sha1")  ${download_jar}.temp" | shasum -c - > /dev/null; then
+        mv "${download_jar}.temp" "${download_jar}"
+      else
+        echoerr "failed to download launcher jar: $sbt_url (shasum mismatch)"
+        exit 2
+      fi
+    else
+      mv "${download_jar}.temp" "${download_jar}"
+    fi
+    if [[ -f "$download_jar" ]]; then
+      sbt_jar="$download_jar"
+    else
+      echoerr "failed to download launcher jar: $sbt_url"
+      exit 2
+    fi
   fi
 }
 
@@ -358,8 +402,6 @@ run() {
 
   # no jar? download it.
   [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
-    # still no jar? uh-oh.
-    echo "Download failed. Obtain the sbt-launch.jar manually and place it at $sbt_jar"
     exit 1
   }
 
@@ -410,6 +452,7 @@ declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
 declare -r etc_file="${SBT_ETC_FILE:-$etc_sbt_opts_file}"
 declare -r dist_sbt_opts_file="${sbt_home}/conf/sbtopts"
 declare -r win_sbt_opts_file="${sbt_home}/conf/sbtconfig.txt"
+declare sbt_jar="$(jar_file)"
 
 usage() {
  cat <<EOM

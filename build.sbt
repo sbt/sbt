@@ -1038,7 +1038,7 @@ lazy val mainProj = (project in file("main"))
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
-lazy val sbtProj = (project in file("sbt"))
+lazy val sbtProj = (project in file("sbt-app"))
   .dependsOn(mainProj)
   .settings(
     testedBaseSettings,
