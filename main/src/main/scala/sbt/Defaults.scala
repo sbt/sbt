@@ -2561,11 +2561,8 @@ object Defaults extends BuildCommon {
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
-  private[this] lazy val newRunnerSettings: Seq[Setting[_]] = {
-    val unscoped: Seq[Def.Setting[_]] =
-      Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
-    inConfig(Compile)(unscoped) ++ inConfig(Test)(unscoped)
-  }
+  private[this] lazy val newRunnerSettings: Seq[Setting[_]] =
+    Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
