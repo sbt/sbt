@@ -85,6 +85,7 @@ jobs:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
+      shell: bash
       run: |
         rm -rf "$HOME/.sbt/scripted/" || true
         case ${{ matrix.jobtype }} in
