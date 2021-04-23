@@ -1,8 +1,8 @@
 name: Release
 on:
   push:
-    tags:
-      - '*'
+    tags: ["*"]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,13 +24,12 @@ jobs:
         sbt test packagedArtifacts
     - name: Release
       env:
-        BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
-        BINTRAY_PASS: ${{ secrets.BINTRAY_PASS }}
+        SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
         PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         PGP_SECRET: ${{ secrets.PGP_SECRET }}
         CI_CLEAN: clean
         CI_RELEASE: publishSigned
         CI_SONATYPE_RELEASE: version
       run: |
-        .github/decodekey.sh
         sbt ci-release

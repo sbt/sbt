@@ -15,9 +15,6 @@ lazy val root = (project in file("."))
     name := "sbt-projectmatrix",
     pluginCrossBuild / sbtVersion := "1.2.8",
     scalacOptions := Seq("-deprecation", "-unchecked"),
-    publishMavenStyle := false,
-    bintrayRepository := "sbt-plugins",
-    publishTo := (bintray / publishTo).value,
     scriptedLaunchOpts := { scriptedLaunchOpts.value ++
       Seq("-Xmx1024M", "-Dplugin.version=" + version.value)
     },
