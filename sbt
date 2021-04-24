@@ -98,7 +98,11 @@ jar_file () {
 }
 
 jar_url () {
-  echo "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/$1/sbt-launch-$1.jar"
+  local repo_base="$SBT_LAUNCH_REPO"
+  if [[ $repo_base == "" ]]; then
+    repo_base="https://repo1.maven.org/maven2"
+  fi
+  echo "$repo_base/org/scala-sbt/sbt-launch/$1/sbt-launch-$1.jar"
 }
 
 download_url () {
