@@ -1,16 +1,16 @@
 import sbt._
 import Keys._
-import com.typesafe.sbt.SbtPgp
+import com.jsuereth.sbtpgp.SbtPgp
 import com.typesafe.sbt.packager.universal.{ UniversalPlugin, UniversalDeployPlugin }
 import com.typesafe.sbt.packager.debian.{ DebianPlugin, DebianDeployPlugin }
 import com.typesafe.sbt.packager.rpm.{ RpmPlugin, RpmDeployPlugin }
-import com.typesafe.sbt.pgp.gpgExtension
+import com.jsuereth.sbtpgp.gpgExtension
 
 object PackageSignerPlugin extends sbt.AutoPlugin {
   override def trigger = allRequirements
   override def requires = SbtPgp && UniversalDeployPlugin && DebianDeployPlugin && RpmDeployPlugin
 
-  import com.typesafe.sbt.pgp.PgpKeys._
+  import com.jsuereth.sbtpgp.PgpKeys._
   import UniversalPlugin.autoImport._
   import DebianPlugin.autoImport._
   import RpmPlugin.autoImport._
