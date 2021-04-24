@@ -4,13 +4,19 @@ import com.typesafe.sbt.packager.SettingsHelper._
 import DebianConstants._
 
 lazy val sbtOfflineInstall =
-  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "true")) match {
+  sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
     case "true" | "1"  => true
     case "false" | "0" => false
     case _             => false
   }
 lazy val sbtIncludeSbtn =
   sys.props.getOrElse("sbt.build.includesbtn", sys.env.getOrElse("sbt.build.includesbtn", "true")) match {
+    case "true" | "1"  => true
+    case "false" | "0" => false
+    case _             => false
+  }
+lazy val sbtIncludeSbtLaunch =
+  sys.props.getOrElse("sbt.build.includesbtlaunch", sys.env.getOrElse("sbt.build.includesbtlaunch", "true")) match {
     case "true" | "1"  => true
     case "false" | "0" => false
     case _             => false
@@ -70,7 +76,7 @@ val x86MacImageName = s"sbtn-$x86MacPlatform"
 val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
-organization in ThisBuild := "org.scal-sbt"
+organization in ThisBuild := "org.scala-sbt"
 version in ThisBuild := "0.1.0"
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
@@ -279,13 +285,16 @@ val root = (project in file(".")).
         case (k, v) => (k, v)
       }
     },
-
-    mappings in Universal ++= {
-      val launchJar = sbtLaunchJar.value
-      Seq(
-        launchJar -> "bin/sbt-launch.jar"
-      ) ++ sbtnJarsMappings.value
-    },
+    mappings in Universal ++= (Def.taskDyn {
+      if (sbtIncludeSbtLaunch)
+        Def.task {
+          Seq(
+            sbtLaunchJar.value -> "bin/sbt-launch.jar"
+          )
+        }
+      else Def.task { Seq[(File, String)]() }
+    }).value,
+    mappings in Universal ++= sbtnJarsMappings.value,
     mappings in Universal ++= (Def.taskDyn {
       if (sbtOfflineInstall && sbtVersionToRelease.startsWith("1."))
         Def.task {

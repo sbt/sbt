@@ -12,3 +12,4 @@ npm-debug.log
 .metals
 .bsp/
 metals.sbt
+launcher-package/citest/freshly-baked
