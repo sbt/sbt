@@ -1,6 +1,4 @@
 import scala.util.control.Exception.catching
-import _root_.bintray.InternalBintrayKeys._
-import _root_.bintray.{BintrayRepo, Bintray}
 import NativePackagerHelper._
 import com.typesafe.sbt.packager.SettingsHelper._
 import DebianConstants._
@@ -72,15 +70,16 @@ val x86MacImageName = s"sbtn-$x86MacPlatform"
 val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
+organization in ThisBuild := "org.scal-sbt"
+version in ThisBuild := "0.1.0"
+
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
   enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin,
     UniversalDeployPlugin, DebianDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
-    organization := "org.scala-sbt",
     name := "sbt-launcher-packaging",
     packageName := "sbt",
-    version := "0.1.0",
     crossTarget := target.value,
     clean := {
       val _ = (clean in dist).value
@@ -92,7 +91,6 @@ val root = (project in file(".")).
         case _ => Nil
       }
     },
-    useGpg := true,
     usePgpKeyHex("642AC823"),
     pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
     pgpPublicRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.pub",
@@ -352,54 +350,31 @@ def makePublishToForConfig(config: Configuration) = {
   // Add the publish to and ensure global resolvers has the resolver we just configured.
   inConfig(config)(Seq(
     name := "sbt",
-    bintrayOrganization := {
-      // offline installation exceeds 50MB file limit for OSS organization
-      if (sbtOfflineInstall) Some("sbt")
-      else Some("sbt")
-    },
-    bintrayRepository := bintrayTripple.value._1,
-    bintrayRepo := Bintray.cachedRepo(bintrayEnsureCredentials.value,
-      bintrayOrganization.value,
-      bintrayRepository.value),
-    bintrayPackage := "sbt",
-
-    bintrayDebianUrl             := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/debian/",
-    bintrayDebianExperimentalUrl := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/debian-experimental/",
-    bintrayRpmUrl                := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/rpm/",
-    bintrayRpmExperimentalUrl    := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/rpm-experimental/",
-    bintrayGenericPackagesUrl    := s"https://api.bintray.com/content/${bintrayOrganization.value.get}/native-packages/",
+    bintrayDebianUrl             := s"https://scala.jfrog.io/artifactory/debian/",
+    bintrayDebianExperimentalUrl := s"https://scala.jfrog.io/artifactory/debian-experimental/",
+    bintrayRpmUrl                := s"https://scala.jfrog.io/artifactory/rpm/",
+    bintrayRpmExperimentalUrl    := s"https://scala.jfrog.io/artifactory/rpm-experimental/",
+    bintrayGenericPackagesUrl    := s"https://scala.jfrog.io/artifactory/native-packages/",
     bintrayTripple := {
       config.name match {
         case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, bintrayLinuxPattern)
         case Debian.name                   => ("debian", bintrayDebianUrl.value, bintrayLinuxPattern)
         case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, bintrayLinuxPattern)
         case Rpm.name                      => ("rpm", bintrayRpmUrl.value, bintrayLinuxPattern)
-        case _                             => ("native-packages", bintrayGenericPackagesUrl.value, bintrayGenericPattern)
       }
     },
     publishTo := {
       val (id, url, pattern) = bintrayTripple.value
       val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
       Some(resolver)
-    },
-    bintrayReleaseAllStaged := bintrayRelease(bintrayRepo.value, bintrayPackage.value, version.value, sLog.value)
-    // Uncomment to release right after publishing
-    // publish <<= (publish, bintrayRepo, bintrayPackage, version, sLog) apply { (publish, bintrayRepo, bintrayPackage, version, sLog) =>
-    //   for {
-    //     pub <- publish
-    //     repo <- bintrayRepo
-    //   } yield bintrayRelease(repo, bintrayPackage, version, sLog)
-    // }
+    }
   )) ++ Seq(
      resolvers ++= ((publishTo in config) apply (_.toSeq)).value
   )
 }
 
 def publishToSettings =
-  Seq[Configuration](Debian, Universal, Windows, Rpm) flatMap makePublishToForConfig
-
-def bintrayRelease(repo: BintrayRepo, pkg: String, version: String, log: Logger): Unit =
-  repo.release(pkg, version, log)
+  Seq[Configuration](Debian, Rpm) flatMap makePublishToForConfig
 
 def downloadUrl(uri: URI, out: File): Unit =
   {
