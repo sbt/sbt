@@ -60,7 +60,7 @@ lazy val bintrayRpmExperimentalUrl = settingKey[String]("API point for RPM exper
 lazy val bintrayGenericPackagesUrl = settingKey[String]("API point for generic packages")
 lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pattern")
 
-val bintrayLinuxPattern = "[module]/[revision]/[module]-[revision].[ext]"
+val artifactoryLinuxPattern = "[module]-[revision].[ext]"
 val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
@@ -366,10 +366,10 @@ def makePublishToForConfig(config: Configuration) = {
     bintrayGenericPackagesUrl    := s"https://scala.jfrog.io/artifactory/native-packages/",
     bintrayTripple := {
       config.name match {
-        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, bintrayLinuxPattern)
-        case Debian.name                   => ("debian", bintrayDebianUrl.value, bintrayLinuxPattern)
-        case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, bintrayLinuxPattern)
-        case Rpm.name                      => ("rpm", bintrayRpmUrl.value, bintrayLinuxPattern)
+        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, artifactoryLinuxPattern)
+        case Debian.name                   => ("debian", bintrayDebianUrl.value, artifactoryLinuxPattern)
+        case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, artifactoryLinuxPattern)
+        case Rpm.name                      => ("rpm", bintrayRpmUrl.value, artifactoryLinuxPattern)
       }
     },
     publishTo := {
