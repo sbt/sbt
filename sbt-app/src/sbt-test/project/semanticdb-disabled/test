@@ -1,0 +1,21 @@
+> compile
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb
+$ absent target/scala-2.12/classes/META-INF/semanticdb/src/main/scala/foo/Compile.scala.semanticdb
+
+> test:compile
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb
+$ absent target/scala-2.12/test-classes/META-INF/semanticdb/src/test/scala/foo/Test.scala.semanticdb
+
+> it:compile
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb
+$ absent target/scala-2.12/it-classes/META-INF/semanticdb/src/it/scala/foo/IntegrationTest.scala.semanticdb
+
+> custom:compile
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb
+$ absent target/scala-2.12/custom-classes/META-INF/semanticdb/src/custom/scala/foo/Custom.scala.semanticdb
+
+> st:compile
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb
+$ absent target/scala-2.12/st-classes/META-INF/semanticdb/src/st/scala/foo/SystemTest.scala.semanticdb
+
+> check
