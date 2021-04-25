@@ -15,14 +15,14 @@ object Dependencies {
   private val ioVersion = nightlyVersion.getOrElse("1.5.0")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.0")
-  val zincVersion = nightlyVersion.getOrElse("1.5.0")
+  val zincVersion = nightlyVersion.getOrElse("1.5.1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.3.0"
+  val launcherVersion = "1.3.1"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
