@@ -61,6 +61,7 @@ lazy val bintrayGenericPackagesUrl = settingKey[String]("API point for generic p
 lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pattern")
 
 val artifactoryLinuxPattern = "[module]-[revision].[ext]"
+val artifactoryDebianPattern = "[module]-[revision].[ext];deb.distribution=all;deb.component=main;deb.architecture=all"
 val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
 val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
@@ -82,7 +83,7 @@ version in ThisBuild := "0.1.0"
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
   enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin,
-    UniversalDeployPlugin, DebianDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
+    UniversalDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
     name := "sbt-launcher-packaging",
     packageName := "sbt",
@@ -200,6 +201,9 @@ val root = (project in file(".")).
     debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, packageBin in Debian, "deb"),
     debianNativeBuildOptions in Debian := Seq("-Zgzip", "-z3"),
+
+    // use the following instead of DebianDeployPlugin to skip changelog
+    makeDeploymentSettings(Debian, packageBin in Debian, "deb"),
 
     // RPM SPECIFIC
     rpmRelease := debianBuildId.value.toString,
@@ -366,8 +370,8 @@ def makePublishToForConfig(config: Configuration) = {
     bintrayGenericPackagesUrl    := s"https://scala.jfrog.io/artifactory/native-packages/",
     bintrayTripple := {
       config.name match {
-        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, artifactoryLinuxPattern)
-        case Debian.name                   => ("debian", bintrayDebianUrl.value, artifactoryLinuxPattern)
+        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, artifactoryDebianPattern)
+        case Debian.name                   => ("debian", bintrayDebianUrl.value, artifactoryDebianPattern)
         case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, artifactoryLinuxPattern)
         case Rpm.name                      => ("rpm", bintrayRpmUrl.value, artifactoryLinuxPattern)
       }
