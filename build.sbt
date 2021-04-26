@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.5.0-SNAPSHOT"
+  val v = "1.5.2-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -1521,12 +1521,9 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release") { state =>
     // TODO - Any sort of validation
-    "clean" ::
-      "conscriptConfigs" ::
       "upperModules/compile" ::
       "upperModules/publishSigned" ::
       "bundledLauncherProj/publishSigned" ::
-      "bundledLauncherProj/publishLauncher" ::
       state
   },
 )
