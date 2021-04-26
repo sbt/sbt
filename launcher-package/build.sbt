@@ -255,6 +255,7 @@ val root = (project in file(".")).
 
     // Universal ZIP download install.
     packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
+    name in Windows := packageName.value,
     packageName in Windows := packageName.value,
     version in Universal := sbtVersionToRelease,
 
