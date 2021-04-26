@@ -1521,7 +1521,7 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release") { state =>
     // TODO - Any sort of validation
-      "upperModules/compile" ::
+    "upperModules/compile" ::
       "upperModules/publishSigned" ::
       "bundledLauncherProj/publishSigned" ::
       state
