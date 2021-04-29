@@ -332,13 +332,6 @@ object Defaults extends BuildCommon {
       turbo :== SysProp.turbo,
       usePipelining :== SysProp.pipelining,
       exportPipelining := usePipelining.value,
-      useScalaReplJLine :== false,
-      scalaInstanceTopLoader := {
-        // the JLineLoader contains the SbtInterfaceClassLoader
-        if (!useScalaReplJLine.value)
-          classOf[org.jline.terminal.Terminal].getClassLoader // the JLineLoader
-        else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
-      },
       useSuperShell := { if (insideCI.value) false else ITerminal.console.isSupershellEnabled },
       superShellThreshold :== SysProp.supershellThreshold,
       superShellMaxTasks :== SysProp.supershellMaxTasks,
@@ -667,6 +660,13 @@ object Defaults extends BuildCommon {
 
   // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
+    useScalaReplJLine :== false,
+    scalaInstanceTopLoader := {
+      // the JLineLoader contains the SbtInterfaceClassLoader
+      if (!useScalaReplJLine.value)
+        classOf[org.jline.terminal.Terminal].getClassLoader // the JLineLoader
+      else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
+    },
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
     pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
