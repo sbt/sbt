@@ -662,10 +662,20 @@ object Defaults extends BuildCommon {
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     useScalaReplJLine :== false,
     scalaInstanceTopLoader := {
-      // the JLineLoader contains the SbtInterfaceClassLoader
-      if (!useScalaReplJLine.value)
-        classOf[org.jline.terminal.Terminal].getClassLoader // the JLineLoader
-      else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
+      val topLoader = if (!useScalaReplJLine.value) {
+        // the JLineLoader contains the SbtInterfaceClassLoader
+        classOf[org.jline.terminal.Terminal].getClassLoader
+      } else classOf[Compilers].getClassLoader // the SbtInterfaceClassLoader
+
+      // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
+      // jansi version. Because of the shading, console does not work with the thin client for 2.10.x.
+      if (scalaVersion.value.startsWith("2.10.")) new ClassLoader(topLoader) {
+        override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
+          if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name)
+          super.loadClass(name, resolve)
+        }
+      }
+      else topLoader
     },
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
@@ -1163,16 +1173,6 @@ object Defaults extends BuildCommon {
       state: State,
       topLoader: ClassLoader,
   ): ScalaInstance = {
-    // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
-    // jansi version. Because of the shading, console does not work with the thin client for 2.10.x.
-    val jansiExclusionLoader = if (version.startsWith("2.10.")) new ClassLoader(topLoader) {
-      override protected def loadClass(name: String, resolve: Boolean): Class[_] = {
-        if (name.startsWith("org.fusesource")) throw new ClassNotFoundException(name)
-        super.loadClass(name, resolve)
-      }
-    }
-    else topLoader
-
     val classLoaderCache = state.extendedClassLoaderCache
     val compilerJars = allCompilerJars.filterNot(libraryJars.contains).distinct.toArray
     val docJars = allDocJars
@@ -1181,7 +1181,7 @@ object Defaults extends BuildCommon {
       .toArray
     val allJars = libraryJars ++ compilerJars ++ docJars
 
-    val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
+    val libraryLoader = classLoaderCache(libraryJars.toList, topLoader)
     val compilerLoader = classLoaderCache(compilerJars.toList, libraryLoader)
     val fullLoader =
       if (docJars.isEmpty) compilerLoader
