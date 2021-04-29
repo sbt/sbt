@@ -35,7 +35,7 @@ import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.coursierint._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
-import sbt.internal.classpath.{ AlternativeZincUtil, ClassLoaderCache }
+import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
@@ -1077,13 +1077,12 @@ object Defaults extends BuildCommon {
             val libraryJars = allJars.filter(_.getName == "scala-library.jar")
             allJars.filter(_.getName == "scala-compiler.jar") match {
               case Array(compilerJar) if libraryJars.nonEmpty =>
-                val cache = state.value.extendedClassLoaderCache
-                mkScalaInstance(
+                makeScalaInstance(
                   version,
                   libraryJars,
                   allJars,
                   Seq.empty,
-                  cache,
+                  state.value,
                   scalaInstanceTopLoader.value
                 )
               case _ => ScalaInstance(version, scalaProvider)
@@ -1135,21 +1134,21 @@ object Defaults extends BuildCommon {
         .flatMap(_.artifacts.map(_._2))
     val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
 
-    mkScalaInstance(
+    makeScalaInstance(
       sv,
       libraryJars,
       allCompilerJars,
       allDocJars,
-      state.value.extendedClassLoaderCache,
+      state.value,
       scalaInstanceTopLoader.value,
     )
   }
-  private[this] def mkScalaInstance(
+  private def makeScalaInstance(
       version: String,
       libraryJars: Array[File],
       allCompilerJars: Seq[File],
       allDocJars: Seq[File],
-      classLoaderCache: ClassLoaderCache,
+      state: State,
       topLoader: ClassLoader,
   ): ScalaInstance = {
     // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
@@ -1162,6 +1161,7 @@ object Defaults extends BuildCommon {
     }
     else topLoader
 
+    val classLoaderCache = state.extendedClassLoaderCache
     val compilerJars = allCompilerJars.filterNot(libraryJars.contains).distinct.toArray
     val docJars = allDocJars
       .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
@@ -1196,12 +1196,12 @@ object Defaults extends BuildCommon {
       case a: AutoCloseable => a.close()
       case _                =>
     }
-    mkScalaInstance(
+    makeScalaInstance(
       dummy.version,
       dummy.libraryJars,
       dummy.compilerJars,
       dummy.allJars,
-      state.value.extendedClassLoaderCache,
+      state.value,
       scalaInstanceTopLoader.value,
     )
   }
