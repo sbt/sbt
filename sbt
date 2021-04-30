@@ -126,7 +126,8 @@ acquire_sbt_jar () {
       launcher_sv="$builtin_sbt_version"
     fi
   fi
-  download_jar="$HOME/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  local user_home && user_home=$(findProperty user.home)
+  download_jar="${user_home:-$HOME}/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
   if [[ -f "$download_jar" ]]; then
     sbt_jar="$download_jar"
   else
@@ -301,39 +302,49 @@ jdk_version() {
   echo "$result"
 }
 
-# Extracts the preloaded directory from either -Dsbt.preloaded or -Dsbt.global.base
-# properties by looking at:
-#   - _JAVA_OPTIONS environment variable,
+# Find the first occurrence of the given property name and returns its value by looking at:
+#   - properties set by command-line options,
+#   - JAVA_OPTS environment variable,
 #   - SBT_OPTS environment variable,
-#   - JAVA_OPTS environment variable and
-#   - properties set by command-line options
-# in that order. The last one will be chosen such that `sbt.preloaded` is
-# always preferred over `sbt.global.base`.
-getPreloaded() {
-  local -a _java_options_array
-  local -a sbt_opts_array
+#   - _JAVA_OPTIONS environment variable and
+#   - JAVA_TOOL_OPTIONS environment variable
+# in that order.
+findProperty() {
   local -a java_opts_array
-  read -a _java_options_array <<< "$_JAVA_OPTIONS"
-  read -a sbt_opts_array <<< "$SBT_OPTS"
+  local -a sbt_opts_array
+  local -a _java_options_array
+  local -a java_tool_options_array
   read -a java_opts_array <<< "$JAVA_OPTS"
+  read -a sbt_opts_array <<< "$SBT_OPTS"
+  read -a _java_options_array <<< "$_JAVA_OPTIONS"
+  read -a java_tool_options_array <<< "$JAVA_TOOL_OPTIONS"
 
   local args_to_check=(
-    "${_java_options_array[@]}"
-    "${sbt_opts_array[@]}"
+    "${java_args[@]}"
     "${java_opts_array[@]}"
-    "${java_args[@]}")
-  local via_global_base="$HOME/.sbt/preloaded"
-  local via_explicit=""
+    "${sbt_opts_array[@]}"
+    "${_java_options_array[@]}"
+    "${java_tool_options_array[@]}")
 
   for opt in "${args_to_check[@]}"; do
-    if [[ "$opt" == -Dsbt.preloaded=* ]]; then
-      via_explicit="${opt#-Dsbt.preloaded=}"
-    elif [[ "$opt" == -Dsbt.global.base=* ]]; then
-      via_global_base="${opt#-Dsbt.global.base=}/preloaded"
+    if [[ "$opt" == -D$1=* ]]; then
+      echo "${opt#-D$1=}"
+      return
     fi
   done
+}
 
-  echo "${via_explicit:-${via_global_base}}"
+# Extracts the preloaded directory from either -Dsbt.preloaded, -Dsbt.global.base or -Duser.home
+# in that order.
+getPreloaded() {
+  local preloaded && preloaded=$(findProperty sbt.preloaded)
+  [ "$preloaded" ] && echo "$preloaded" && return
+
+  local global_base && global_base=$(findProperty sbt.global.base)
+  [ "$global_base" ] && echo "$global_base/preloaded" && return
+
+  local user_home && user_home=$(findProperty user.home)
+  echo "${user_home:-$HOME}/.sbt/preloaded}}"
 }
 
 syncPreloaded() {
