@@ -1,13 +1,11 @@
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.9.1"
+ThisBuild / scalaVersion := "2.13.5"
 
 name := "whatDependsOn"
 
-resolvers += "typesafe maven" at "https://repo.typesafe.com/typesafe/maven-releases/"
-
 libraryDependencies ++= Seq(
-  "com.codahale" % "jerkson_2.9.1" % "0.5.0",
-  "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.10" // as another version of asl
+  "co.fs2" %% "fs2-core" % "1.0.4",
+  "org.typelevel" %% "cats-effect" % "3.1.0"
 )
 
 val check = TaskKey[Unit]("check")
@@ -18,37 +16,36 @@ check := {
     require(sanitize(expected) == sanitize(output), s"Tree should have been [\n${sanitize(expected)}\n] but was [\n${sanitize(output)}\n]")
 
   val withVersion =
-    (whatDependsOn in Compile)
-      .toTask(" org.codehaus.jackson jackson-core-asl 1.9.10")
+    (Compile / whatDependsOn)
+      .toTask(" org.typelevel cats-core_2.13 2.6.0")
       .value
-  val expectedGraphWithVersion =
-    """org.codehaus.jackson:jackson-core-asl:1.9.10
-      |  +-com.codahale:jerkson_2.9.1:0.5.0 [S]
-      |  | +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      |  |
-      |  +-org.codehaus.jackson:jackson-mapper-asl:1.9.10
-      |    +-com.codahale:jerkson_2.9.1:0.5.0 [S]
-      |    | +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      |    |
-      |    +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      |  """.stripMargin
+  val expectedGraphWithVersion = {
+    """org.typelevel:cats-core_2.13:2.6.0 [S]
+      |+-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
+      |+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
+      || +-org.typelevel:cats-effect_2.13:3.1.0 [S]
+      ||   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
+      ||
+      |+-org.typelevel:cats-effect_2.13:3.1.0 [S]
+      |+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
+  }
 
-  checkOutput(withVersion, expectedGraphWithVersion)
+  checkOutput(withVersion.trim, expectedGraphWithVersion.trim)
 
   val withoutVersion =
-    (whatDependsOn in Compile)
-      .toTask(" org.codehaus.jackson jackson-mapper-asl")
+    (Compile / whatDependsOn)
+      .toTask(" org.typelevel cats-core_2.13")
       .value
   val expectedGraphWithoutVersion =
-    """org.codehaus.jackson:jackson-mapper-asl:1.9.10
-      | +-com.codahale:jerkson_2.9.1:0.5.0 [S]
-      | | +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      | |
-      | +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      |
-      |org.codehaus.jackson:jackson-mapper-asl:[1.9.0,2.0.0) (evicted by: 1.9.10)
-      | +-com.codahale:jerkson_2.9.1:0.5.0 [S]
-      | +-whatdependson:whatdependson_2.9.1:0.1.0-SNAPSHOT [S]
-      |   """.stripMargin
-  checkOutput(withoutVersion, expectedGraphWithoutVersion)
+    """org.typelevel:cats-core_2.13:2.6.0 [S]
+      |+-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
+      |+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
+      || +-org.typelevel:cats-effect_2.13:3.1.0 [S]
+      ||   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
+      ||
+      |+-org.typelevel:cats-effect_2.13:3.1.0 [S]
+      |+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
+
+  checkOutput(withoutVersion.trim, expectedGraphWithoutVersion.trim)
+
 }
