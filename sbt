@@ -344,7 +344,7 @@ getPreloaded() {
   [ "$global_base" ] && echo "$global_base/preloaded" && return
 
   local user_home && user_home=$(findProperty user.home)
-  echo "${user_home:-$HOME}/.sbt/preloaded}}"
+  echo "${user_home:-$HOME}/.sbt/preloaded"
 }
 
 syncPreloaded() {
