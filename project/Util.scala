@@ -22,7 +22,7 @@ object Util {
   lazy val javaOnlySettings: Seq[Setting[_]] = Seq(
     // crossPaths := false,
     // compileOrder := CompileOrder.JavaThenScala,
-    unmanagedSourceDirectories in Compile := Seq((javaSource in Compile).value)
+    Compile / unmanagedSourceDirectories := Seq((Compile / javaSource).value)
   )
 
   lazy val baseScalacOptions = Seq(
@@ -131,7 +131,7 @@ object Util {
 
   def excludePomArtifact(artifactId: String) = (artifactId startsWith "compiler-bridge")
 
-  val testExclusive = tags in test += ((ExclusiveTest, 1))
+  val testExclusive = test / tags += (ExclusiveTest, 1)
 
   // TODO: replace with Tags.exclusive after 0.12.0
   val testExclusiveRestriction = Tags.customLimit { (tags: Map[Tags.Tag, Int]) =>
@@ -184,9 +184,9 @@ object Licensed {
 
   def settings: Seq[Setting[_]] = Seq(
     notice := (baseDirectory.value / "NOTICE"),
-    unmanagedResources in Compile ++= notice.value +: extractLicenses.value,
+    Compile / unmanagedResources ++= notice.value +: extractLicenses.value,
     extractLicenses := extractLicenses0(
-      (baseDirectory in ThisBuild).value,
+      (ThisBuild / baseDirectory).value,
       notice.value,
       streams.value
     )
