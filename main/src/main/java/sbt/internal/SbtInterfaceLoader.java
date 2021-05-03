@@ -18,7 +18,13 @@ class SbtInterfaceLoader extends URLClassLoader {
 
   @Override
   public String toString() {
-    return "SbtInterfaceClassLoader(" + getURLs()[0] + ")";
+    final StringBuilder builder = new StringBuilder();
+    URL[] urls = getURLs();
+    for (int i = 0; i < urls.length; ++i) {
+      builder.append(urls[i].toString());
+      if (i < urls.length - 2) builder.append(", ");
+    }
+    return "SbtInterfaceClassLoader(" + builder + ")";
   }
 
   static {
