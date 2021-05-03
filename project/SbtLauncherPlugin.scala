@@ -26,7 +26,7 @@ object SbtLauncherPlugin extends AutoPlugin {
       }
     },
     sbtLaunchJar := {
-      val propFiles = (resources in Compile).value
+      val propFiles = (Compile / resources).value
       val propFileLocations =
         for (file <- propFiles; if file.getName != "resources") yield {
           if (file.getName == "sbt.boot.properties") "sbt/sbt.boot.properties" -> file
