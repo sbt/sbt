@@ -71,22 +71,54 @@ private[sbt] object xMain {
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
-      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
-      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+      val isNew: String => Boolean = cmd => (cmd == "new")
+      lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      // keep this lazy to prevent project directory created prematurely
+      lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
         case (_, Some(e)) => return e
         case (s, _)       => s
       }
       else None
-      if (userCommands.exists(isBsp)) {
-        BspClient.run(dealiasBaseDirectory(configuration))
-      } else {
-        bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
-        val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
-        ITerminal.withStreams(true, isSubProcess = detachStdio) {
-          if (clientModByEnv || userCommands.exists(isClient)) {
+      lazy val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
+      def withStreams[A](f: => A): A =
+        try {
+          bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
+          ITerminal.withStreams(true, isSubProcess = detachStdio) {
+            f
+          }
+        } finally {
+          if (ITerminal.isAnsiSupported) {
+            // Clear any stray progress lines
+            System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+            System.out.flush()
+          }
+        }
+
+      userCommands match {
+        case cmds if cmds.exists(isBsp) =>
+          BspClient.run(dealiasBaseDirectory(configuration))
+        case cmds if cmds.exists(isNew) =>
+          IO.withTemporaryDirectory { tempDir =>
+            val rebasedConfig = new xsbti.AppConfiguration {
+              override def arguments: Array[String] = configuration.arguments()
+              override val baseDirectory: File = tempDir / "new"
+              override def provider: AppProvider = configuration.provider()
+            }
+            val state = StandardMain
+              .initialState(
+                rebasedConfig,
+                Seq(defaults, early),
+                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+              )
+            StandardMain.runManaged(state)
+          }
+        case _ if clientModByEnv || userCommands.exists(isClient) =>
+          withStreams {
             val args = userCommands.toList.filterNot(isClient)
             Exit(NetworkClient.run(dealiasBaseDirectory(configuration), args))
-          } else {
+          }
+        case _ =>
+          withStreams {
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
@@ -101,15 +133,9 @@ private[sbt] object xMain {
             try StandardMain.runManaged(state)
             finally bootServerSocket.foreach(_.close())
           }
-        }
       }
     } finally {
-      // Clear any stray progress lines
       ShutdownHooks.close()
-      if (ITerminal.isAnsiSupported) {
-        System.out.print(ConsoleAppender.ClearScreenAfterCursor)
-        System.out.flush()
-      }
     }
   }
 
