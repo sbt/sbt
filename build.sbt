@@ -49,7 +49,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   testFrameworks += new TestFramework("verify.runner.Framework"),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-  javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+  compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala212, scala213),
   resolvers += Resolver.sonatypeRepo("public"),
   scalacOptions := {
@@ -64,13 +64,13 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
     }
   },
   inCompileAndTest(
-    scalacOptions in console --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint")
+    (console / scalacOptions) --= Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint")
   ),
   scalafmtOnCompile := true,
   Test / scalafmtOnCompile := true,
-  publishArtifact in Compile := true,
-  publishArtifact in Test := false,
-  parallelExecution in Test := false
+  Compile / publishArtifact := true,
+  Test / publishArtifact := false,
+  Test / parallelExecution := false
 )
 
 val mimaSettings = Def settings (
@@ -87,6 +87,8 @@ val mimaSettings = Def settings (
     "1.1.4",
     "1.2.0",
     "1.3.0",
+    "1.4.0",
+    "1.5.0",
   ) map (
       version =>
         organization.value %% moduleName.value % version
@@ -101,7 +103,7 @@ lazy val lmRoot = (project in file("."))
     name := "LM Root",
     publish := {},
     publishLocal := {},
-    publishArtifact in Compile := false,
+    Compile / publishArtifact := false,
     publishArtifact := false,
     mimaPreviousArtifacts := Set.empty,
     customCommands,
@@ -125,13 +127,13 @@ lazy val lmCore = (project in file("core"))
       scalaVerify % Test,
     ),
     libraryDependencies += scalaXml,
-    resourceGenerators in Compile += Def
+    Compile / resourceGenerators += Def
       .task(
         Util.generateVersionFile(
           version.value,
           resourceManaged.value,
           streams.value,
-          (compile in Compile).value
+          (Compile / compile).value
         )
       )
       .taskValue,
@@ -139,14 +141,14 @@ lazy val lmCore = (project in file("core"))
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
     }),
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
     // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
-    mappings in (Compile, packageSrc) ++= {
-      val srcs = (managedSources in Compile).value
-      val sdirs = (managedSourceDirectories in Compile).value
+    Compile / packageSrc / mappings ++= {
+      val srcs = (Compile / managedSources).value
+      val sdirs = (Compile / managedSourceDirectories).value
       val base = baseDirectory.value
       (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
     },
@@ -259,6 +261,10 @@ lazy val lmCore = (project in file("core"))
         "sbt.librarymanagement.ResolverFunctions.validateArtifact"
       ),
       exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.*.validateProtocol"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.dottyID"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.DottyIDPrefix"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.toolDependencies*"),
     ),
   )
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
@@ -275,11 +281,11 @@ lazy val lmIvy = (project in file("ivy"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := DatatypeConfig.getFormats,
-    scalacOptions in (Compile, console) --=
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
+    Compile / console / scalacOptions --=
       Vector("-Ywarn-unused-import", "-Ywarn-unused", "-Xlint"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
