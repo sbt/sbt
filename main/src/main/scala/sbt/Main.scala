@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand }
+import sbt.BasicCommandStrings.{ JavaClient, Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -23,22 +23,22 @@ import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
 import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.io.Retry
 import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
 import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.internal.util.complete.{ Parser, SizeParser }
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
+import xsbti.AppProvider
 import xsbti.compile.CompilerCache
 
 import scala.annotation.{ nowarn, tailrec }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
-import sbt.internal.io.Retry
-import xsbti.AppProvider
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -58,7 +58,7 @@ private[sbt] object xMain {
   }
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
-      import BasicCommandStrings.{ DashClient, DashDashClient, DashDashServer, runEarly }
+      import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
@@ -69,7 +69,7 @@ private[sbt] object xMain {
       val userCommands = configuration.arguments
         .map(_.trim)
         .filterNot(_ == DashDashServer)
-      val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
+      val isClient: String => Boolean = cmd => (cmd == JavaClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
       val isNew: String => Boolean = cmd => (cmd == "new")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))

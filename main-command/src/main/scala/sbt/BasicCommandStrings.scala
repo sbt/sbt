@@ -210,6 +210,7 @@ $AliasCommand name=
   def Client: String = "client"
   def ClientDetailed: String =
     "Provides an interactive prompt from which commands can be run on a server."
+  def JavaClient: String = "--java-client"
   def DashClient: String = "-client"
   def DashDashClient: String = "--client"
   def DashDashDetachStdio: String = "--detach-stdio"

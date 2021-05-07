@@ -593,7 +593,7 @@ process_args () {
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
-                   --client) use_sbtn=1 && shift ;;
+           -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
 
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
