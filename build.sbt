@@ -77,6 +77,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
+  /*
   Compile / doc / scalacOptions ++= {
     import scala.sys.process._
     val devnull = ProcessLogger(_ => ())
@@ -88,6 +89,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
       s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
     )
   },
+   */
   Compile / javafmtOnCompile := Def
     .taskDyn(if ((scalafmtOnCompile).value) Compile / javafmt else Def.task(()))
     .value,
