@@ -163,7 +163,8 @@ object RemoteCache {
           val artp = artifactPath.value
           val af = compileAnalysisFile.value
           IO.copyFile(original, artp)
-          if (af.exists) {
+          // skip zip manipulation if the artp is a blank file
+          if (af.exists && artp.length() > 0) {
             JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
           }
           // val testStream = (test / streams).?.value
