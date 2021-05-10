@@ -880,7 +880,6 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
       exclude[IncompatibleSignatureProblem]("sbt.internal.inc.ZincLMHelper.update"),
     ),
     libraryDependencies += launcherInterface,
-    Test / fork := true,
   )
   .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
 
@@ -919,7 +918,6 @@ lazy val mainProj = (project in file("main"))
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
-    Test / fork := true,
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
