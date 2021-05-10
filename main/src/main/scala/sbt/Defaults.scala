@@ -1143,7 +1143,7 @@ object Defaults extends BuildCommon {
       scalaInstanceTopLoader.value,
     )
   }
-  private def makeScalaInstance(
+  def makeScalaInstance(
       version: String,
       libraryJars: Array[File],
       allCompilerJars: Seq[File],
