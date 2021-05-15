@@ -66,7 +66,7 @@ object VersionNumber {
     def splitDash(s: String) = splitOn(s, '-')
     def splitPlus(s: String) = splitOn(s, '+') map ("+" + _)
 
-    val TaggedVersion = """(\d{1,14})([\.\d{1,14}]*)((?:-[\w\.]+)*)((?:\+.+)*)""".r
+    val TaggedVersion = """(\d{1,14})([\.\d{1,14}]*)((?:-\w+(?:\.\w+)*)*)((?:\+.+)*)""".r
     val NonSpaceString = """(\S+)""".r
 
     s match {

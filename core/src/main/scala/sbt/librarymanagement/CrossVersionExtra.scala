@@ -102,7 +102,7 @@ private[librarymanagement] abstract class CrossVersionFunctions {
     }
 
   private[sbt] def patchFun(fullVersion: String): String = {
-    val BinCompatV = """(\d+)\.(\d+)\.(\d+)(-\w+)??-bin(-.*)?""".r
+    import sbt.internal.librarymanagement.cross.CrossVersionUtil.BinCompatV
     fullVersion match {
       case BinCompatV(x, y, z, w, _) => s"""$x.$y.$z${if (w == null) "" else w}"""
       case other                     => other

@@ -138,6 +138,9 @@ class CrossVersionTest extends UnitSpec {
   it should "for 1.3.0-SNAPSHOT return 1.0" in {
     binarySbtVersion("1.3.0-SNAPSHOT") shouldBe "1.0"
   }
+  it should "for 1.3.0-A1-B1.1 return 1.0" in {
+    binarySbtVersion("1.3.0-A1-B1.1") shouldBe "1.0"
+  }
   it should "for 1.10.0 return 1.0" in {
     binarySbtVersion("1.10.0") shouldBe "1.0"
   }
@@ -216,6 +219,9 @@ class CrossVersionTest extends UnitSpec {
   it should "for 3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY return 3.0.0-M3" in {
     binaryScalaVersion("3.0.0-M3-bin-20201215-cbe50b3-NIGHTLY") shouldBe "3.0.0-M3"
   }
+  it should "for 3.0.0-M3.5-bin-20201215-cbe50b3-NIGHTLY return 3.0.0-M3" in {
+    binaryScalaVersion("3.0.0-M3.5-bin-20201215-cbe50b3-NIGHTLY") shouldBe "3.0.0-M3.5"
+  }
   it should "for 3.0.0-RC1 return 3.0.0-RC1" in {
     binaryScalaVersion("3.0.0-RC1") shouldBe "3.0.0-RC1"
   }
@@ -267,6 +273,9 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 2.11.8-RC1-bin-extra return 2.11.8-RC1" in {
     patchVersion("2.11.8-RC1-bin-extra") shouldBe Some("artefact_2.11.8-RC1")
+  }
+  it should "for 2.11.8-X1.5-bin-extra return 2.11.8-X1.5" in {
+    patchVersion("2.11.8-X1.5-bin-extra") shouldBe Some("artefact_2.11.8-X1.5")
   }
 
   private def constantVersion(value: String) =

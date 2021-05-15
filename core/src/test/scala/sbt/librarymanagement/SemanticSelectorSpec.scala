@@ -75,6 +75,7 @@ class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
 
   semsel(">=1.2.3") { sel =>
     assertMatches(sel, "1.2.4-beta")
+    assertMatches(sel, "1.2.4-beta.1")
     assertMatches(sel, "1.2.3")
     assertMatches(sel, "1.3")
     assertMatches(sel, "2")
@@ -306,6 +307,21 @@ class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
     assertNotMatches(sel, "1.2.2")
   }
 
+  semsel(">=1.2.3-beta.5") { sel =>
+    assertMatches(sel, "1.3-alpha")
+    assertMatches(sel, "1.2.3")
+    assertMatches(sel, "1.2.3-beta.5")
+    assertMatches(sel, "1.2.3-beta.6-3")
+    assertMatches(sel, "1.2.3-beta.7")
+    assertMatches(sel, "1.2.3-beta.gamma")
+    assertMatches(sel, "1.2.4")
+    assertMatches(sel, "1.3")
+    assertNotMatches(sel, "1.2.3-alpha-3")
+    assertNotMatches(sel, "1.2.3-beta-1")
+    assertNotMatches(sel, "1.2.3-beta")
+    assertNotMatches(sel, "1.2.2")
+  }
+
   Seq(
     // invalid operator
     "~1.2.3",
@@ -339,7 +355,6 @@ class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
     "1.0.0 - 2.0.0 || - 2.0.0",
     "1.0.0- 2.0.0",
     "1.0.0 -2.0.0",
-    "1.0.0-2.0.0",
     "-",
     // minor and patch versions are required for pre-release version
     "1.2-alpha-beta",

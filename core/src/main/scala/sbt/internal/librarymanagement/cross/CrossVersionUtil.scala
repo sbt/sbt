@@ -22,12 +22,13 @@ object CrossVersionUtil {
 
   private val longPattern = """\d{1,19}"""
   private val basicVersion = raw"""($longPattern)\.($longPattern)\.($longPattern)"""
+  private val tagPattern = raw"""(?:\w+(?:\.\w+)*)"""
   private val ReleaseV = raw"""$basicVersion(-\d+)?""".r
-  private val BinCompatV = raw"""$basicVersion(-\w+)?-bin(-.*)?""".r
+  private[sbt] val BinCompatV = raw"""$basicVersion(-$tagPattern)?-bin(-.*)?""".r
   private val CandidateV = raw"""$basicVersion(-RC\d+)""".r
-  private val MilestonV = raw"""$basicVersion(-M\d+)""".r
-  private val NonReleaseV_n = raw"""$basicVersion([-\w]*)""".r // 0-n word suffixes, with leading dashes
-  private val NonReleaseV_1 = raw"""$basicVersion(-\w+)""".r // 1 word suffix, after a dash
+  private val MilestonV = raw"""$basicVersion(-M$tagPattern)""".r
+  private val NonReleaseV_n = raw"""$basicVersion((?:-$tagPattern)*)""".r // 0-n word suffixes, with leading dashes
+  private val NonReleaseV_1 = raw"""$basicVersion(-$tagPattern)""".r // 1 word suffix, after a dash
   private[sbt] val PartialVersion = raw"""($longPattern)\.($longPattern)(?:\..+)?""".r
 
   private[sbt] def isSbtApiCompatible(v: String): Boolean = sbtApiVersion(v).isDefined
