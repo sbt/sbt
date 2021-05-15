@@ -745,7 +745,7 @@ object Defaults extends BuildCommon {
         scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv",
         scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$epochVersion",
         javaSrcDir,
-      )
+      ).distinct
     else
       Seq(scalaSrcDir, javaSrcDir)
   }
