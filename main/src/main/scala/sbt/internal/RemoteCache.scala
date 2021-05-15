@@ -162,7 +162,10 @@ object RemoteCache {
           val original = packageBin.in(Defaults.TaskZero).value
           val artp = artifactPath.value
           val af = compileAnalysisFile.value
-          IO.copyFile(original, artp)
+          // when a file is copied to itself, it becomes zero size
+          if (!original.equals(artp)) {
+            IO.copyFile(original, artp)
+          }
           // skip zip manipulation if the artp is a blank file
           if (af.exists && artp.length() > 0) {
             JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
