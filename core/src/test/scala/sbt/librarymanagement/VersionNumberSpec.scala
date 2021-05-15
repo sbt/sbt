@@ -97,6 +97,13 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
     assertCascadesTo(v, Seq("0.1.0-MSERVER-1", "0.1.0", "0.1"))
   }
 
+  version("1.1.0-DLP-7923-presigned-download-url.5") { v =>
+    assertParsesTo(v, Seq(1, 1, 0), Seq("DLP", "7923", "presigned", "download", "url.5"), Seq())
+    assertCascadesTo(v, Seq("1.1.0-DLP-7923-presigned-download-url.5", "1.1.0", "1.1"))
+    assertIsCompatibleWith(v, "1.0.7", EarlySemVer)
+    assertIsNotCompatibleWith(v, "1.0.7", PackVer)
+  }
+
   version("2.10.4-20140115-000117-b3a-sources") { v =>
     assertParsesTo(v, Seq(2, 10, 4), Seq("20140115", "000117", "b3a", "sources"), Seq())
     assertCascadesTo(v, Seq("2.10.4-20140115-000117-b3a-sources", "2.10.4", "2.10"))
