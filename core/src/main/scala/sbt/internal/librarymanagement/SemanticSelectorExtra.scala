@@ -148,7 +148,7 @@ private[librarymanagement] abstract class SemComparatorFunctions {
         (?:\.(\d+|[xX*])
           (?:\.(\d+|[xX*]))?
         )?
-      )((?:-\w+)*)$
+      )((?:-\w+(?:\.\w+)*)*)$
     """.r
   protected def parse(comparator: String): SemComparator = {
     comparator match {
