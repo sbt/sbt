@@ -440,7 +440,7 @@ run() {
   elif [[ $print_sbt_script_version ]]; then
     echo "$init_sbt_version"
   elif [[ $print_version ]]; then
-    "${runSbt[@]}" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
+    "${runSbt[@]}" -Dsbt.log.noformat=true "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
     echo "sbt script version: $init_sbt_version"
   else
     # run sbt
