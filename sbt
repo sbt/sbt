@@ -436,7 +436,7 @@ run() {
   local runSbt=(execRunner "$java_cmd" "${java_args[@]}" "${sbt_options[@]}" -jar "$sbt_jar")
 
   if [[ $print_sbt_version ]]; then
-    "${runSbt[@]}" "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
+    "${runSbt[@]}" -Dsbt.log.noformat=true "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
   elif [[ $print_sbt_script_version ]]; then
     echo "$init_sbt_version"
   elif [[ $print_version ]]; then
