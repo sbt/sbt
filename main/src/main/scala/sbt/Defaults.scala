@@ -1211,7 +1211,7 @@ object Defaults extends BuildCommon {
       Seq(
         testFrameworks :== {
           import sbt.TestFrameworks._
-          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit)
+          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, AirSpec)
         },
         testListeners :== Nil,
         testOptions :== Nil,

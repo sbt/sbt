@@ -27,6 +27,7 @@ object TestFrameworks {
     TestFramework("org.specs2.runner.Specs2Framework", "org.specs2.runner.SpecsFramework")
   val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
   val MUnit = TestFramework("munit.Framework")
+  val AirSpec = TestFramework("wvlet.airspec.Framework")
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {
