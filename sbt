@@ -22,6 +22,7 @@ declare sbt_debug=
 declare build_props_sbt_version=
 declare use_sbtn=
 declare sbtn_command="$SBTN_CMD"
+declare sbtn_version="1.4.7"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -151,6 +152,42 @@ acquire_sbt_jar () {
       echoerr "failed to download launcher jar: $sbt_url"
       exit 2
     fi
+  fi
+}
+
+acquire_sbtn () {
+  local sbtn_v="$1"
+  local user_home && user_home=$(findProperty user.home)
+  local p="${user_home:-$HOME}/.cache/sbt/boot/sbtn/$sbtn_v"
+  local target="$p/sbtn"
+  local archive_target=
+  local url=
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    archive_target="$p/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    archive_target="$p/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+  elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    target="$p/sbtn.exe"
+    archive_target="$p/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
+  else
+    echoerr "sbtn is not supported on $OSTYPE"
+    exit 2
+  fi
+
+  if [[ -f "$target" ]]; then
+    sbtn_command="$target"
+  else
+    echoerr "downloading sbtn ${sbtn_v}"
+    download_url "$url" "$archive_target"
+    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+      tar zxf "$archive_target" --directory "$p"
+    else
+      unzip "$archive_target" -d "$p"
+    fi
+    sbtn_command="$target"
   fi
 }
 
@@ -661,7 +698,7 @@ isRunNativeClient() {
   sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
   sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
   if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
-    if [[ "$use_sbtn" == "1" ]] && [[ "$sbtn_command" != "" ]]; then
+    if [[ "$use_sbtn" == "1" ]]; then
       echo "true"
     else
       echo "false"
@@ -673,6 +710,10 @@ isRunNativeClient() {
 
 runNativeClient() {
   vlog "[debug] running native client"
+  detectNativeClient
+  [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
+    exit 1
+  }
   for i in "${!original_args[@]}"; do
     if [[ "${original_args[i]}" = "--client" ]]; then
       unset 'original_args[i]'
@@ -701,8 +742,6 @@ original_args=("$@")
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
 
 [[ -f "$build_props_file" ]] && loadPropFile "$build_props_file"
-
-detectNativeClient
 
 java_args=($JAVA_OPTS)
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})

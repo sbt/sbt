@@ -118,6 +118,7 @@ val root = (project in file(".")).
       // TODO - GPG Trust validation.
       file
     },
+    // update sbt.sh at root
     sbtnVersion := "1.4.7",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
