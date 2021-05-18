@@ -102,6 +102,8 @@ private[librarymanagement] abstract class ResolverFunctions {
   @deprecated("Renamed to SbtRepositoryRoot.", "1.0.0")
   val SbtPluginRepositoryRoot = SbtRepositoryRoot
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
+  val SonatypeReleasesRepository =
+    "https://oss.sonatype.org/service/local/repositories/releases/content/"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
   val JavaNet2RepositoryRoot = javanet2RepositoryRoot(useSecureResolvers)
   val JCenterRepositoryName = "jcenter"
@@ -132,7 +134,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   // obsolete: kept only for launcher compatibility
   private[sbt] val ScalaToolsReleasesName = "Sonatype OSS Releases"
   private[sbt] val ScalaToolsSnapshotsName = "Sonatype OSS Snapshots"
-  private[sbt] val ScalaToolsReleasesRoot = SonatypeRepositoryRoot + "/releases"
+  private[sbt] val ScalaToolsReleasesRoot = SonatypeReleasesRepository
   private[sbt] val ScalaToolsSnapshotsRoot = SonatypeRepositoryRoot + "/snapshots"
   private[sbt] val ScalaToolsReleases =
     MavenRepository(ScalaToolsReleasesName, ScalaToolsReleasesRoot)
@@ -152,7 +154,11 @@ private[librarymanagement] abstract class ResolverFunctions {
       ivyStylePatterns
     )
   def sonatypeRepo(status: String) =
-    MavenRepository("sonatype-" + status, SonatypeRepositoryRoot + "/" + status)
+    MavenRepository(
+      "sonatype-" + status,
+      if (status == "releases") SonatypeReleasesRepository
+      else SonatypeRepositoryRoot + "/" + status
+    )
   def bintrayRepo(owner: String, repo: String) =
     MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
   def bintrayIvyRepo(owner: String, repo: String) =
