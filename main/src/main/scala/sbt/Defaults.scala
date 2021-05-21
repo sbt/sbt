@@ -959,6 +959,13 @@ object Defaults extends BuildCommon {
         Vector("-Ypickle-java", "-Ypickle-write", converter.toPath(earlyOutput.value).toString) ++ old
       else old
     },
+    scalacOptions := {
+      val old = scalacOptions.value
+      if (sbtPlugin.value && VersionNumber(scalaVersion.value)
+            .matchesSemVer(SemanticSelector("=2.12 >=2.12.13")))
+        old ++ Seq("-Wconf:cat=unused-nowarn:s")
+      else old
+    },
     persistJarClasspath :== true,
     classpathEntryDefinesClassVF := {
       (if (persistJarClasspath.value) classpathDefinesClassCache.value
