@@ -42,7 +42,7 @@ jobs:
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SCALA_212: 2.12.13
       SCALA_213: 2.13.3
-      UTIL_TESTS: utilCache/test;utilControl/test;utilInterface/test;utilLogging/test;utilPosition/test;utilRelation/test;utilScripted/test;utilTracking/test
+      UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
       SBT_LOCAL: false
       TEST_SBT_VER: 1.5.0
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
@@ -90,7 +90,23 @@ jobs:
         rm -rf "$HOME/.sbt/scripted/" || true
         case ${{ matrix.jobtype }} in
           1)
-            ./sbt -v "mimaReportBinaryIssues ; javafmtCheck ; Test / javafmtCheck; scalafmtCheckAll ; scalafmtSbtCheck; serverTestProj/scalafmtCheckAll; headerCheck ;test:headerCheck ;whitesourceOnPush ;test:compile; publishLocal; test; serverTestProj/test; doc; $UTIL_TESTS; ++$SCALA_213; $UTIL_TESTS"
+            ./sbt -v --client mimaReportBinaryIssues
+            ./sbt -v --client javafmtCheck
+            ./sbt -v --client "Test/javafmtCheck"
+            ./sbt -v --client scalafmtCheckAll
+            ./sbt -v --client scalafmtSbtCheck
+            ./sbt -v --client serverTestProj/scalafmtCheckAll
+            ./sbt -v --client headerCheck
+            ./sbt -v --client "Test/headerCheck"
+            ./sbt -v --client whitesourceOnPush
+            ./sbt -v --client "Test/compile"
+            ./sbt -v --client publishLocal
+            ./sbt -v --client test
+            ./sbt -v --client "serverTestProj/test"
+            ./sbt -v --client doc
+            ./sbt -v --client "all $UTIL_TESTS"
+            ./sbt -v --client ++$SCALA_213
+            ./sbt -v --client "all $UTIL_TESTS"
             ;;
           2)
             ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
@@ -112,7 +128,7 @@ jobs:
             cd ../
             sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
             rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-            sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; $UTIL_TESTS; ++$SCALA_212; $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+            sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
             ;;
           7)
             # test launcher script
