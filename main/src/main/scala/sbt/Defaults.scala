@@ -2107,7 +2107,11 @@ object Defaults extends BuildCommon {
           val projectName = name.value
           if (ScalaArtifacts.isScala3(sv)) {
             val project = if (config == Compile) projectName else s"$projectName-$config"
-            compileOptions ++ Seq("-project", project)
+            if (scalaVersion.value.startsWith("3.0.0")) {
+              Seq("-project", project)
+            } else {
+              compileOptions ++ Seq("-project", project)
+            }
           } else compileOptions
         },
         (TaskZero / key) := {
