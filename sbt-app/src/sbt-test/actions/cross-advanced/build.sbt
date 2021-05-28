@@ -10,19 +10,19 @@ lazy val root = (project in file("."))
 
 lazy val foo = project
   .settings(
-    crossScalaVersions := Seq("2.12.13", "2.13.1"),
+    crossScalaVersions := Seq("2.12.14", "2.13.1"),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0",
 
     check := {
       // This tests that +check will respect bar's crossScalaVersions and not switch
       val x = (LocalProject("bar") / scalaVersion).value
-      assert(x == "2.12.13", s"$x == 2.12.12")
+      assert(x == "2.12.14", s"$x == 2.12.12")
       (Compile / compile).value
     },
     (Test / testOnly) := {
       // This tests that +testOnly will respect bar's crossScalaVersions and not switch
       val x = (LocalProject("bar") / scalaVersion).value
-      assert(x == "2.12.13", s"$x == 2.12.12")
+      assert(x == "2.12.14", s"$x == 2.12.12")
       val _ = (Test / testOnly).evaluated
     },
     compile2 := {
@@ -35,7 +35,7 @@ lazy val foo = project
 
 lazy val bar = project
   .settings(
-    crossScalaVersions := Seq("2.12.13"),
+    crossScalaVersions := Seq("2.12.14"),
     check := (Compile / compile).value,
     compile2 := (Compile / compile).value,
   )
@@ -46,14 +46,14 @@ lazy val baz = project
     check := {
       // This tests that +baz/check will respect bar's crossScalaVersions and not switch
       val x = (LocalProject("bar") / scalaVersion).value
-      assert(x == "2.12.13", s"$x == 2.12.13")
+      assert(x == "2.12.14", s"$x == 2.12.14")
       (Compile / compile).value
     },
   )
 
 lazy val client = project
   .settings(
-    crossScalaVersions := Seq("2.12.13", "2.13.1"),
+    crossScalaVersions := Seq("2.12.14", "2.13.1"),
     check := (Compile / compile).value,
     compile2 := (Compile / compile).value,
   )
