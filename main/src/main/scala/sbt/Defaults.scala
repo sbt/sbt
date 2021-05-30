@@ -982,12 +982,17 @@ object Defaults extends BuildCommon {
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
     run / mainClass := (run / selectMainClass).value,
     mainClass := {
-      val logWarning = state.value.currentCommand
-        .flatMap(_.commandLine.split(" ").headOption.map(_.trim))
-        .fold(true) {
-          case "run" | "runMain" => false
-          case _                 => true
-        }
+      val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
+        case "run" | "runMain" => true
+        case r =>
+          r.split("/") match {
+            case Array(parts @ _*) =>
+              parts.lastOption match {
+                case Some("run" | "runMain") => true
+                case _                       => false
+              }
+          }
+      })
       pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log, logWarning)
     },
     runMain := foregroundRunMainTask.evaluated,
