@@ -1,9 +1,9 @@
 # write the default pom.  The only repositories should be Scala Tools Releases and Snapshots
-> checkPom https://scala-ci.typesafe.com/artifactory/scala-integration/ https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/ https://oss.sonatype.org/content/repositories/releases/ https://oss.sonatype.org/content/repositories/snapshots/
+> checkPom https://scala-ci.typesafe.com/artifactory/scala-integration/ https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/ https://oss.sonatype.org/service/local/repositories/releases/content/ https://oss.sonatype.org/content/repositories/snapshots/
 
 # include file:// repositories.  The generated repositories section should include the local Maven repository as well
 $ touch repo.all
-> checkPom https://scala-ci.typesafe.com/artifactory/scala-integration/ https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/ https://oss.sonatype.org/content/repositories/releases/ https://oss.sonatype.org/content/repositories/snapshots/ file://*.m2/repository/
+> checkPom https://scala-ci.typesafe.com/artifactory/scala-integration/ https://scala-ci.typesafe.com/artifactory/scala-pr-validation-snapshots/ https://oss.sonatype.org/service/local/repositories/releases/content/ https://oss.sonatype.org/content/repositories/snapshots/ file://*.m2/repository/
 
 $ delete repo.all
 $ touch repo.none
