@@ -504,7 +504,7 @@ class MakePom(val log: Logger) {
     s.toArray.map(_.asInstanceOf[DependencyResolver])
 
   def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
-  def isValidIDCharacter(c: Char) = """\/:"<>|?*""".contains(c)
+  def isValidIDCharacter(c: Char) = !"""\/:"<>|?*""".contains(c)
   private def checkID(id: String, name: String) =
     if (id.isEmpty) sys.error("Could not convert '" + name + "' to an ID") else id
   def mavenRepository(repo: MavenRepository): XNode =
