@@ -1,6 +1,7 @@
 package sbt.internal.librarymanagement
 
 import sbt.internal.util.ConsoleLogger
+import sbt.librarymanagement.MavenRepository
 import verify.BasicTestSuite
 
 // http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html
@@ -72,6 +73,18 @@ object MakePomSpec extends BasicTestSuite {
 
   test("foo+ should convert to foo+") {
     beParsedAsError("foo+")
+  }
+
+  test("repository id should not contain maven illegal repo id characters") {
+    val repository = mp.mavenRepository(
+      MavenRepository(
+        """repository-id-\with-/illegal:"<-chars>|?*-others~!@#$%^&`';{}[]=+_,.""",
+        "uri"
+      )
+    )
+    assert(
+      (repository \ "id").text == "repository-id-with-illegal-chars-others~!@#$%^&`';{}[]=+_,."
+    )
   }
 
   val mp = new MakePom(ConsoleLogger())
