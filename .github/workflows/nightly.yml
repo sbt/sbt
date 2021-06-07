@@ -36,7 +36,7 @@ jobs:
         ref: develop
         path: zinc
     - name: Setup
-      uses: olafurpg/setup-scala@v10
+      uses: olafurpg/setup-scala@v12
       with:
         java-version: "adopt@1.${{ matrix.java }}"
     - name: Coursier cache
