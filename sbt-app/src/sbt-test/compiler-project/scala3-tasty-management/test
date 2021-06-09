@@ -1,12 +1,12 @@
 > check
 > compile
 
-$ exists target/scala-3.0.0-M2/classes/A.tasty
-$ exists target/scala-3.0.0-M2/classes/B.tasty
+$ exists target/scala-3.0.0-M3/classes/A.tasty
+$ exists target/scala-3.0.0-M3/classes/B.tasty
 
 $ delete src/main/scala/B.scala
 
 > compile
 
-$ exists target/scala-3.0.0-M2/classes/A.tasty
--$ exists target/scala-3.0.0-M2/classes/B.tasty
+$ exists target/scala-3.0.0-M3/classes/A.tasty
+-$ exists target/scala-3.0.0-M3/classes/B.tasty
