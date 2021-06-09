@@ -11,7 +11,6 @@ package server
 
 import java.net.URI
 
-import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
@@ -239,7 +238,7 @@ object BuildServerProtocol {
     ServerHandler { callback =>
       ServerIntent(
         onRequest = {
-          case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
+          case r if r.method == "build/initialize" =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
 
@@ -252,19 +251,16 @@ object BuildServerProtocol {
             )
             callback.jsonRpcRespond(response, Some(r.id)); ()
 
-          case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
+          case r if r.method == "workspace/buildTargets" =>
             val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
+          case r if r.method == "workspace/reload" =>
             val _ = callback.appendExec(s"$bspReload ${r.id}", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
+          case r if r.method == "build/shutdown" =>
             callback.jsonRpcRespond(JNull, Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-            val _ = callback.appendExec(Shutdown, Some(r.id))
-
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
+          case r if r.method == "buildTarget/sources" =>
             val param = Converter.fromJson[SourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetSources.key
@@ -306,26 +302,29 @@ object BuildServerProtocol {
               Some(r.id)
             )
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
+          case r if r.method == "buildTarget/scalacOptions" =>
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaTestClasses" =>
+          case r if r.method == "buildTarget/scalaTestClasses" =>
             val param = Converter.fromJson[ScalaTestClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaTestClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaMainClasses" =>
+          case r if r.method == "buildTarget/scalaMainClasses" =>
             val param = Converter.fromJson[ScalaMainClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaMainClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
         },
         onResponse = PartialFunction.empty,
-        onNotification = PartialFunction.empty,
+        onNotification = {
+          case r if r.method == "build/exit" =>
+            val _ = callback.appendExec(BasicCommandStrings.TerminateAction, None)
+        },
       )
     }
   }
