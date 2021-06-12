@@ -1182,12 +1182,7 @@ object Defaults extends BuildCommon {
     val allJars = libraryJars ++ compilerJars ++ docJars
 
     val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
-    val compilerLoader = classLoaderCache(
-      // It should be `compilerJars` but it would break on `3.0.0-M2` because of
-      // https://github.com/lampepfl/dotty/blob/d932af954ef187d7bdb87500d49ed0ff530bd1e7/sbt-bridge/src/xsbt/CompilerClassLoader.java#L108-L117
-      allCompilerJars.toList,
-      libraryLoader
-    )
+    val compilerLoader = classLoaderCache(compilerJars.toList, libraryLoader)
     val fullLoader =
       if (docJars.isEmpty) compilerLoader
       else classLoaderCache(docJars.distinct.toList, compilerLoader)
