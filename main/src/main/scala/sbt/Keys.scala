@@ -405,6 +405,8 @@ object Keys {
   val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build targets").withRank(DTask)
   val bspBuildTargetSources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetSourcesItem = taskKey[SourcesItem]("").withRank(DTask)
+  val bspBuildTargetResources = inputKey[Unit]("").withRank(DTask)
+  val bspBuildTargetResourcesItem = taskKey[ResourcesItem]("").withRank(DTask)
   val bspBuildTargetDependencySources = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetDependencySourcesItem = taskKey[DependencySourcesItem]("").withRank(DTask)
   val bspBuildTargetCompile = inputKey[Unit]("").withRank(DTask)

@@ -200,6 +200,19 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/resources") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "23", "method": "buildTarget/resources", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/resources"))
+    assert(svr.waitForString(10.seconds) { s =>
+      (s contains """"id":"23"""") && (s contains "util/src/main/resources/")
+    })
+  }
+
   private def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",
