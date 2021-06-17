@@ -16,7 +16,8 @@ object BuildServerTest extends AbstractServerTest {
   test("build/initialize") { _ =>
     initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
-      s contains """"id":"10""""
+      (s contains """"id":"10"""") &&
+      (s contains """"resourcesProvider":true""")
     })
   }
 

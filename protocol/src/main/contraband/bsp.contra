@@ -200,7 +200,7 @@ type BuildServerCapabilities {
 
   # The server provides all the resource dependencies
   # via method buildTarget/resources
-  # resourcesProvider: Boolean
+  resourcesProvider: Boolean
 
   ## Reloading the workspace state through workspace/reload is supported
   canReload: Boolean

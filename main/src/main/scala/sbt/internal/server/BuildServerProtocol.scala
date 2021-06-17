@@ -42,6 +42,7 @@ object BuildServerProtocol {
     TestProvider(BuildServerConnection.languages),
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
+    resourcesProvider = true,
     canReload = true
   )
 
