@@ -4,29 +4,29 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.13"
-  val scala213 = "2.13.5"
+  val scala212 = "2.12.14"
+  val scala213 = "2.13.6"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.5.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.5.1")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.0")
-  val zincVersion = nightlyVersion.getOrElse("1.5.1")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.2")
+  val zincVersion = nightlyVersion.getOrElse("1.5.5")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.3.1"
+  val launcherVersion = "1.3.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.1"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -116,5 +116,5 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.6.1"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val kindProjector = ("org.typelevel" % "kind-projector" % "0.11.3").cross(CrossVersion.full)
+  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.0").cross(CrossVersion.full)
 }

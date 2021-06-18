@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.5.1"
+declare builtin_sbt_version="1.5.4"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -22,6 +22,7 @@ declare sbt_debug=
 declare build_props_sbt_version=
 declare use_sbtn=
 declare sbtn_command="$SBTN_CMD"
+declare sbtn_version="1.4.7"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -126,7 +127,8 @@ acquire_sbt_jar () {
       launcher_sv="$builtin_sbt_version"
     fi
   fi
-  download_jar="$HOME/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  local user_home && user_home=$(findProperty user.home)
+  download_jar="${user_home:-$HOME}/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
   if [[ -f "$download_jar" ]]; then
     sbt_jar="$download_jar"
   else
@@ -150,6 +152,42 @@ acquire_sbt_jar () {
       echoerr "failed to download launcher jar: $sbt_url"
       exit 2
     fi
+  fi
+}
+
+acquire_sbtn () {
+  local sbtn_v="$1"
+  local user_home && user_home=$(findProperty user.home)
+  local p="${user_home:-$HOME}/.cache/sbt/boot/sbtn/$sbtn_v"
+  local target="$p/sbtn"
+  local archive_target=
+  local url=
+  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    archive_target="$p/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    archive_target="$p/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+  elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    target="$p/sbtn.exe"
+    archive_target="$p/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
+  else
+    echoerr "sbtn is not supported on $OSTYPE"
+    exit 2
+  fi
+
+  if [[ -f "$target" ]]; then
+    sbtn_command="$target"
+  else
+    echoerr "downloading sbtn ${sbtn_v}"
+    download_url "$url" "$archive_target"
+    if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
+      tar zxf "$archive_target" --directory "$p"
+    else
+      unzip "$archive_target" -d "$p"
+    fi
+    sbtn_command="$target"
   fi
 }
 
@@ -301,39 +339,49 @@ jdk_version() {
   echo "$result"
 }
 
-# Extracts the preloaded directory from either -Dsbt.preloaded or -Dsbt.global.base
-# properties by looking at:
-#   - _JAVA_OPTIONS environment variable,
+# Find the first occurrence of the given property name and returns its value by looking at:
+#   - properties set by command-line options,
+#   - JAVA_OPTS environment variable,
 #   - SBT_OPTS environment variable,
-#   - JAVA_OPTS environment variable and
-#   - properties set by command-line options
-# in that order. The last one will be chosen such that `sbt.preloaded` is
-# always preferred over `sbt.global.base`.
-getPreloaded() {
-  local -a _java_options_array
-  local -a sbt_opts_array
+#   - _JAVA_OPTIONS environment variable and
+#   - JAVA_TOOL_OPTIONS environment variable
+# in that order.
+findProperty() {
   local -a java_opts_array
-  read -a _java_options_array <<< "$_JAVA_OPTIONS"
-  read -a sbt_opts_array <<< "$SBT_OPTS"
+  local -a sbt_opts_array
+  local -a _java_options_array
+  local -a java_tool_options_array
   read -a java_opts_array <<< "$JAVA_OPTS"
+  read -a sbt_opts_array <<< "$SBT_OPTS"
+  read -a _java_options_array <<< "$_JAVA_OPTIONS"
+  read -a java_tool_options_array <<< "$JAVA_TOOL_OPTIONS"
 
   local args_to_check=(
-    "${_java_options_array[@]}"
-    "${sbt_opts_array[@]}"
+    "${java_args[@]}"
     "${java_opts_array[@]}"
-    "${java_args[@]}")
-  local via_global_base="$HOME/.sbt/preloaded"
-  local via_explicit=""
+    "${sbt_opts_array[@]}"
+    "${_java_options_array[@]}"
+    "${java_tool_options_array[@]}")
 
   for opt in "${args_to_check[@]}"; do
-    if [[ "$opt" == -Dsbt.preloaded=* ]]; then
-      via_explicit="${opt#-Dsbt.preloaded=}"
-    elif [[ "$opt" == -Dsbt.global.base=* ]]; then
-      via_global_base="${opt#-Dsbt.global.base=}/preloaded"
+    if [[ "$opt" == -D$1=* ]]; then
+      echo "${opt#-D$1=}"
+      return
     fi
   done
+}
 
-  echo "${via_explicit:-${via_global_base}}"
+# Extracts the preloaded directory from either -Dsbt.preloaded, -Dsbt.global.base or -Duser.home
+# in that order.
+getPreloaded() {
+  local preloaded && preloaded=$(findProperty sbt.preloaded)
+  [ "$preloaded" ] && echo "$preloaded" && return
+
+  local global_base && global_base=$(findProperty sbt.global.base)
+  [ "$global_base" ] && echo "$global_base/preloaded" && return
+
+  local user_home && user_home=$(findProperty user.home)
+  echo "${user_home:-$HOME}/.sbt/preloaded"
 }
 
 syncPreloaded() {
@@ -582,7 +630,7 @@ process_args () {
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
-                   --client) use_sbtn=1 && shift ;;
+           -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
 
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
@@ -650,7 +698,7 @@ isRunNativeClient() {
   sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
   sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
   if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
-    if [[ "$use_sbtn" == "1" ]] && [[ "$sbtn_command" != "" ]]; then
+    if [[ "$use_sbtn" == "1" ]]; then
       echo "true"
     else
       echo "false"
@@ -662,6 +710,10 @@ isRunNativeClient() {
 
 runNativeClient() {
   vlog "[debug] running native client"
+  detectNativeClient
+  [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
+    exit 1
+  }
   for i in "${!original_args[@]}"; do
     if [[ "${original_args[i]}" = "--client" ]]; then
       unset 'original_args[i]'
@@ -690,8 +742,6 @@ original_args=("$@")
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
 
 [[ -f "$build_props_file" ]] && loadPropFile "$build_props_file"
-
-detectNativeClient
 
 java_args=($JAVA_OPTS)
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})

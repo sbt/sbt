@@ -30,7 +30,7 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions += "-Ywarn-value-discard",
     scalacOptions ++= "-Ywarn-unused-import".ifScala(v => 11 <= v && v <= 12).value.toList
   ) ++ Seq(Compile, Test).flatMap(
-    c => scalacOptions in (c, console) --= Seq("-Ywarn-unused-import", "-Xlint")
+    c => (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")
   )
 
   private def scalaPartV = Def setting (CrossVersion partialVersion scalaVersion.value)
