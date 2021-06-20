@@ -21,8 +21,8 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
   "ManagedLogger" should "log to console" in {
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    log.info("test")
-    log.debug("test")
+    log.info("test_info")
+    log.debug("test_debug")
   }
 
   it should "support event logging" in {
