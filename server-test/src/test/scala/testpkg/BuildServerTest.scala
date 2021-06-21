@@ -16,7 +16,8 @@ object BuildServerTest extends AbstractServerTest {
   test("build/initialize") { _ =>
     initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
-      s contains """"id":"10""""
+      (s contains """"id":"10"""") &&
+      (s contains """"resourcesProvider":true""")
     })
   }
 
@@ -197,6 +198,19 @@ object BuildServerTest extends AbstractServerTest {
       (s contains s""""buildTarget":{"uri":"$x"}""") &&
       (s contains """"severity":2""") &&
       (s contains """"reset":true""")
+    })
+  }
+
+  test("buildTarget/resources") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "23", "method": "buildTarget/resources", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/resources"))
+    assert(svr.waitForString(10.seconds) { s =>
+      (s contains """"id":"23"""") && (s contains "util/src/main/resources/")
     })
   }
 
