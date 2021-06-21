@@ -346,7 +346,7 @@ object Terminal {
       consoleTerminalHolder.set(newConsoleTerminal())
     if (hasVirtualIO) {
       hasProgress.set(isServer && isAnsiSupported)
-      activeTerminal.set(consoleTerminalHolder.get)
+      Terminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
         jline.TerminalFactory.reset()
@@ -382,7 +382,16 @@ object Terminal {
   }
 
   private[this] object ProxyTerminal extends Terminal {
-    private def t: Terminal = activeTerminal.get
+    private def t: Terminal = {
+      val current = activeTerminal.get
+      // if the activeTerminal is yet to be initialized on use,
+      // initialize to the conventional simple terminal for compatibility and testing
+      if (current ne null) current
+      else {
+        Terminal.set(Terminal.SimpleTerminal)
+        activeTerminal.get
+      }
+    }
     override private[sbt] def progressState: ProgressState = t.progressState
     override private[sbt] def enterRawMode(): Unit = t.enterRawMode()
     override private[sbt] def exitRawMode(): Unit = t.exitRawMode()

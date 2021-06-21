@@ -107,7 +107,7 @@ private[sbt] final class ProgressState(
         val parts = new String(bytes, "UTF-8").split(System.lineSeparator)
         def appendLine(l: String, appendNewline: Boolean): Unit = {
           toWrite ++= l.getBytes("UTF-8")
-          toWrite ++= clearScreenBytes
+          if (!l.getBytes("UTF-8").endsWith("\r")) toWrite ++= clearScreenBytes
           if (appendNewline) toWrite ++= lineSeparatorBytes
         }
         parts.dropRight(1).foreach(appendLine(_, true))
