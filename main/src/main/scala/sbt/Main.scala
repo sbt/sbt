@@ -603,7 +603,10 @@ object BuiltinCommands {
         LineRange(0, 0)
       )(cl)
       val setResult =
-        if (all) SettingCompletions.setAll(extracted, settings)
+        if (all) {
+          if (arg == null || arg.trim.isEmpty) s.log.info(s"$arg will be ignored in set All")
+          SettingCompletions.setAll(extracted, settings)
+        }
         else SettingCompletions.setThis(extracted, settings, arg)
       s.log.info(setResult.quietSummary)
       s.log.debug(setResult.verboseSummary)
