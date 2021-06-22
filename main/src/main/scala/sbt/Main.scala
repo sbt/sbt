@@ -604,7 +604,8 @@ object BuiltinCommands {
       )(cl)
       val setResult =
         if (all) {
-          if (arg == null || arg.trim.isEmpty) s.log.info(s"$arg will be ignored in set All")
+          if (arg == null || arg.trim.isEmpty) 
+            s.log.info(s"$arg will be ignored in set All")
           SettingCompletions.setAll(extracted, settings)
         }
         else SettingCompletions.setThis(extracted, settings, arg)
