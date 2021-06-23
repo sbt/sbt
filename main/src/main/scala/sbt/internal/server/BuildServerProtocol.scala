@@ -10,13 +10,13 @@ package internal
 package server
 
 import java.net.URI
-import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildPaths.{ configurationSources, projectStandard }
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
 import sbt.Project._
 import sbt.ScopeFilter.Make._
+import sbt.Scoped.richTaskSeq
 import sbt.SlashSyntax0._
 import sbt.StandardMain.exchange
 import sbt.internal.bsp._
@@ -99,16 +99,21 @@ object BuildServerProtocol {
       }
     },
     bspEnabled := true,
-    bspWorkspace := bspWorkspaceSetting.value,
-    bspSbtBuildTarget := sbtBuildTargetTask.value,
+    bspSbtEnabled := true,
+    bspFullWorkspace := bspFullWorkspaceSetting.value,
+    bspWorkspace := bspFullWorkspace.value.scopes,
     bspWorkspaceBuildTargets := Def.taskDyn {
-      val workspace = Keys.bspWorkspace.value
+      val workspace = Keys.bspFullWorkspace.value
       val state = Keys.state.value
       val allTargets = ScopeFilter.in(workspace.scopes.values.toSeq)
+      val sbtTargets: List[Def.Initialize[Task[BuildTarget]]] = workspace.builds.map {
+        case (buildTargetIdentifier, loadedBuildUnit) =>
+          val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
+          sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor)
+      }.toList
       Def.task {
-        val sbtTargets = bspSbtBuildTarget.value
         val buildTargets = Keys.bspBuildTarget.all(allTargets).value.toVector
-        val allBuildTargets = buildTargets ++ sbtTargets
+        val allBuildTargets = buildTargets ++ sbtTargets.join.value
         state.respondEvent(WorkspaceBuildTargetsResult(allBuildTargets))
         allBuildTargets
       }
@@ -117,7 +122,7 @@ object BuildServerProtocol {
     bspBuildTargetSources := Def.inputTaskDyn {
       val s = state.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       // run the worker task concurrently
       Def.task {
@@ -153,7 +158,7 @@ object BuildServerProtocol {
     bspBuildTargetDependencySources := Def.inputTaskDyn {
       val s = state.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       // run the worker task concurrently
       Def.task {
@@ -167,7 +172,8 @@ object BuildServerProtocol {
     bspBuildTargetCompile := Def.inputTaskDyn {
       val s: State = state.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
+      workspace.warnIfBuildsNonEmpty(Method.Compile, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val statusCode = Keys.bspBuildTargetCompileItem.all(filter).value.max
@@ -181,7 +187,7 @@ object BuildServerProtocol {
       val s = state.value
 
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
       val builds = workspace.builds
 
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
@@ -207,7 +213,8 @@ object BuildServerProtocol {
     bspScalaTestClasses := Def.inputTaskDyn {
       val s = state.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
+      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val items = bspScalaTestClassesItem.all(filter).value
@@ -218,7 +225,8 @@ object BuildServerProtocol {
     bspScalaMainClasses := Def.inputTaskDyn {
       val s = state.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspWorkspace.value.filter(targets)
+      val workspace = bspFullWorkspace.value.filter(targets)
+      workspace.warnIfBuildsNonEmpty(Method.ScalaMainClasses, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val items = bspScalaMainClassesItem.all(filter).value
@@ -281,10 +289,26 @@ object BuildServerProtocol {
       }
     }
   )
+  private object Method {
+    final val Initialize = "build/initialize"
+    final val BuildTargets = "workspace/buildTargets"
+    final val Reload = "workspace/reload"
+    final val Shutdown = "build/shutdown"
+    final val Sources = "buildTarget/sources"
+    final val DependencySources = "buildTarget/dependencySources"
+    final val Compile = "buildTarget/compile"
+    final val Test = "buildTarget/test"
+    final val Run = "buildTarget/run"
+    final val ScalacOptions = "buildTarget/scalacOptions"
+    final val ScalaTestClasses = "buildTarget/scalaTestClasses"
+    final val ScalaMainClasses = "buildTarget/scalaMainClasses"
+    final val Exit = "build/exit"
+  }
+  identity(Method) // silence spurious "private object Method in object BuildServerProtocol is never used" warning!
 
   def handler(
       loadedBuild: LoadedBuild,
-      workspace: BspWorkspace,
+      workspace: BspFullWorkspace,
       sbtVersion: String,
       semanticdbEnabled: Boolean,
       semanticdbVersion: String
@@ -298,7 +322,7 @@ object BuildServerProtocol {
     ServerHandler { callback =>
       ServerIntent(
         onRequest = {
-          case r if r.method == "build/initialize" =>
+          case r if r.method == Method.Initialize =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
 
@@ -311,39 +335,39 @@ object BuildServerProtocol {
             )
             callback.jsonRpcRespond(response, Some(r.id)); ()
 
-          case r if r.method == "workspace/buildTargets" =>
+          case r if r.method == Method.BuildTargets =>
             val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
-          case r if r.method == "workspace/reload" =>
+          case r if r.method == Method.Reload =>
             val _ = callback.appendExec(s"$bspReload ${r.id}", Some(r.id))
 
-          case r if r.method == "build/shutdown" =>
+          case r if r.method == Method.Shutdown =>
             callback.jsonRpcRespond(JNull, Some(r.id))
 
-          case r if r.method == "buildTarget/sources" =>
+          case r if r.method == Method.Sources =>
             val param = Converter.fromJson[SourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetSources.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r if r.method == "buildTarget/dependencySources" =>
+          case r if r.method == Method.DependencySources =>
             val param = Converter.fromJson[DependencySourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetDependencySources.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r if r.method == "buildTarget/compile" =>
+          case r if r.method == Method.Compile =>
             val param = Converter.fromJson[CompileParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetCompile.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/test" =>
+          case r: JsonRpcRequestMessage if r.method == Method.Test =>
             val task = bspBuildTargetTest.key
             val paramStr = CompactPrinter(json(r))
             val _ = callback.appendExec(s"$task $paramStr", Some(r.id))
 
-          case r if r.method == "buildTarget/run" =>
+          case r if r.method == Method.Run =>
             val paramJson = json(r)
             val param = Converter.fromJson[RunParams](json(r)).get
             val scope = workspace.scopes.getOrElse(
@@ -362,19 +386,19 @@ object BuildServerProtocol {
               Some(r.id)
             )
 
-          case r if r.method == "buildTarget/scalacOptions" =>
+          case r if r.method == Method.ScalacOptions =>
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r if r.method == "buildTarget/scalaTestClasses" =>
+          case r if r.method == Method.ScalaTestClasses =>
             val param = Converter.fromJson[ScalaTestClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaTestClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r if r.method == "buildTarget/scalaMainClasses" =>
+          case r if r.method == Method.ScalaMainClasses =>
             val param = Converter.fromJson[ScalaMainClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaMainClasses.key
@@ -388,7 +412,7 @@ object BuildServerProtocol {
         },
         onResponse = PartialFunction.empty,
         onNotification = {
-          case r if r.method == "build/exit" =>
+          case r if r.method == Method.Exit =>
             val _ = callback.appendExec(BasicCommandStrings.TerminateAction, None)
         },
       )
@@ -437,7 +461,7 @@ object BuildServerProtocol {
     )
 
   @nowarn
-  private def bspWorkspaceSetting: Def.Initialize[BspWorkspace] =
+  private def bspFullWorkspaceSetting: Def.Initialize[BspFullWorkspace] =
     Def.settingDyn {
       val loadedBuild = Keys.loadedBuild.value
 
@@ -471,10 +495,14 @@ object BuildServerProtocol {
           }
           targetId -> scope
         }
-        val buildMap = for (loadedBuildUnit <- loadedBuild.units.values) yield {
-          toId(loadedBuildUnit) -> loadedBuildUnit
+        val buildMap = if (bspSbtEnabled.value) {
+          for (loadedBuildUnit <- loadedBuild.units.values) yield {
+            toId(loadedBuildUnit) -> loadedBuildUnit
+          }
+        } else {
+          Nil
         }
-        BspWorkspace(scopeMap.toMap, buildMap.toMap, buildsMap.mapValues(_.result()).toMap)
+        BspFullWorkspace(scopeMap.toMap, buildMap.toMap, buildsMap.mapValues(_.result()).toMap)
       }
     }
 
@@ -516,10 +544,12 @@ object BuildServerProtocol {
     }
   }
 
-  private def sbtBuildTargetTask: Def.Initialize[Task[List[BuildTarget]]] = Def.taskDyn {
+  private def sbtBuildTarget(
+      loadedUnit: LoadedBuildUnit,
+      buildTargetIdentifier: BuildTargetIdentifier,
+      buildFor: Seq[BuildTargetIdentifier]
+  ): Def.Initialize[Task[BuildTarget]] = Def.task {
     val structure = buildStructure.value
-    val loadedUnits = structure.units.values.toSeq.distinct
-
     val scalaProvider = appConfiguration.value.provider().scalaProvider()
     appConfiguration.value.provider().mainClasspath()
     val scalaJars = scalaProvider.jars()
@@ -530,34 +560,28 @@ object BuildServerProtocol {
       platform = ScalaPlatform.JVM,
       jars = scalaJars.toVector.map(_.toURI.toString)
     )
-    val workspace = bspWorkspaceSetting.value
-    Def.task {
-      val sbtVersionValue = sbtVersion.value
-      loadedUnits.toList.map { loadedUnit =>
-        val buildTargetIdentifier = toId(loadedUnit)
-        val sbtData = SbtBuildTarget(
-          sbtVersionValue,
-          loadedUnit.imports.toVector,
-          compileData,
-          None,
-          workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil).toVector
-        )
+    val sbtVersionValue = sbtVersion.value
+    val sbtData = SbtBuildTarget(
+      sbtVersionValue,
+      loadedUnit.imports.toVector,
+      compileData,
+      None,
+      buildFor.toVector
+    )
 
-        BuildTarget(
-          buildTargetIdentifier,
-          // naming convention still seems like the only way to get IntelliJ to import this correctly
-          // https://github.com/JetBrains/intellij-scala/blob/a54c2a7c157236f35957049cbfd8c10587c9e60c/scala/scala-impl/src/org/jetbrains/sbt/language/SbtFileImpl.scala#L82-L84
-          structure.rootProject(loadedUnit.unit.uri) + "-build",
-          projectStandard(loadedUnit.unit.localBase).toURI,
-          Vector(),
-          BuildTargetCapabilities(canCompile = false, canTest = false, canRun = false),
-          BuildServerConnection.languages,
-          Vector(),
-          "sbt",
-          data = Converter.toJsonUnsafe(sbtData),
-        )
-      }
-    }
+    BuildTarget(
+      buildTargetIdentifier,
+      // naming convention still seems like the only way to get IntelliJ to import this correctly
+      // https://github.com/JetBrains/intellij-scala/blob/a54c2a7c157236f35957049cbfd8c10587c9e60c/scala/scala-impl/src/org/jetbrains/sbt/language/SbtFileImpl.scala#L82-L84
+      structure.rootProject(loadedUnit.unit.uri) + "-build",
+      projectStandard(loadedUnit.unit.localBase).toURI,
+      Vector(),
+      BuildTargetCapabilities(canCompile = false, canTest = false, canRun = false),
+      BuildServerConnection.languages,
+      Vector(),
+      "sbt",
+      data = Converter.toJsonUnsafe(sbtData),
+    )
   }
 
   private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
@@ -662,7 +686,7 @@ object BuildServerProtocol {
       .map(_.flatMap(json => Converter.fromJson[TestParams](json)))
       .parsed
       .get
-    val workspace = bspWorkspace.value
+    val workspace = bspFullWorkspace.value
 
     val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {
       case Some("scala-test") =>
@@ -735,7 +759,7 @@ object BuildServerProtocol {
 
   @nowarn
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
-    val allScopes = bspWorkspace.value.scopes.map { case (_, scope) => scope }.toSet
+    val allScopes = bspFullWorkspace.value.scopes.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
       .map {
         case (project, rawConfigs) =>
@@ -834,15 +858,20 @@ object BuildServerProtocol {
     }
   }
 
-  final case class BspWorkspace(
+  /** The regular targets for each scope and meta-targets for the SBT build. */
+  private[sbt] final case class BspFullWorkspace(
       scopes: Map[BuildTargetIdentifier, Scope],
       builds: Map[BuildTargetIdentifier, LoadedBuildUnit],
       buildToScope: Map[BuildTargetIdentifier, Seq[BuildTargetIdentifier]]
   ) {
-    def filter(targets: Seq[BuildTargetIdentifier]): BspWorkspace = {
+    def filter(targets: Seq[BuildTargetIdentifier]): BspFullWorkspace = {
       val set = targets.toSet
       def filterMap[T](map: Map[BuildTargetIdentifier, T]) = map.filter(x => set.contains(x._1))
-      BspWorkspace(filterMap(scopes), filterMap(builds), buildToScope)
+      BspFullWorkspace(filterMap(scopes), filterMap(builds), buildToScope)
+    }
+    def warnIfBuildsNonEmpty(method: String, log: Logger): Unit = {
+      if (builds.nonEmpty)
+        log.warn(s"$method is a no-op for SBT targets: ${builds.keys.mkString("[", ",", "]")}")
     }
   }
 }
