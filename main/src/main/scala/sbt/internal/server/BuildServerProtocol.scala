@@ -195,15 +195,18 @@ object BuildServerProtocol {
         val items = bspBuildTargetScalacOptionsItem.all(filter).value
         val appProvider = appConfiguration.value.provider()
         val sbtJars = appProvider.mainClasspath()
-        val buildItems = builds.map { build =>
-          val pluginClassPath = build._2.unit.plugins.classpath
-          val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-          ScalacOptionsItem(
-            build._1,
-            Vector(),
-            classpath,
-            new File(build._2.localBase, "project/target").toURI
-          )
+        val buildItems = builds.map {
+          build =>
+            val plugins: LoadedPlugins = build._2.unit.plugins
+            val scalacOptions = plugins.pluginData.scalacOptions
+            val pluginClassPath = plugins.classpath
+            val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+            ScalacOptionsItem(
+              build._1,
+              scalacOptions.toVector,
+              classpath,
+              new File(build._2.localBase, "project/target").toURI
+            )
         }
         val result = ScalacOptionsResult((items ++ buildItems).toVector)
         s.respondEvent(result)
