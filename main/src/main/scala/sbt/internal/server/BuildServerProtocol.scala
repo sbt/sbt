@@ -509,8 +509,9 @@ object BuildServerProtocol {
       case Value(_) => StatusCode.Success
       case Inc(cause) =>
         cause.getCause match {
-          case _: CompileFailed => StatusCode.Error
-          case err              => throw cause
+          case _: CompileFailed        => StatusCode.Error
+          case _: InterruptedException => StatusCode.Cancelled
+          case err                     => throw cause
         }
     }
   }
