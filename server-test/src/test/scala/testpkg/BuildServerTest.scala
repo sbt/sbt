@@ -16,19 +16,19 @@ object BuildServerTest extends AbstractServerTest {
   test("build/initialize") { _ =>
     initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"10"""") &&
+      (s contains """"id":"8"""") &&
       (s contains """"resourcesProvider":true""")
     })
   }
 
   test("workspace/buildTargets") { _ =>
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": "11", "method": "workspace/buildTargets", "params": {} }"""
+      """{ "jsonrpc": "2.0", "id": "16", "method": "workspace/buildTargets", "params": {} }"""
     )
     assert(processing("workspace/buildTargets"))
     assert {
       svr.waitForString(10.seconds) { s =>
-        (s contains """"id":"11"""") &&
+        (s contains """"id":"16"""") &&
         (s contains """"displayName":"util"""")
       }
     }
@@ -37,13 +37,13 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/sources") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "12", "method": "buildTarget/sources", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "24", "method": "buildTarget/sources", "params": {
         |  "targets": [{ "uri": "$x" }]
         |} }""".stripMargin
     )
     assert(processing("buildTarget/sources"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"12"""") &&
+      (s contains """"id":"24"""") &&
       (s contains "util/src/main/scala")
     })
   }
@@ -51,13 +51,13 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/compile") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "13", "method": "buildTarget/compile", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "32", "method": "buildTarget/compile", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/compile"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"13"""") &&
+      (s contains """"id":"32"""") &&
       (s contains """"statusCode":1""")
     })
   }
@@ -65,24 +65,24 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/scalacOptions") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "14", "method": "buildTarget/scalacOptions", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "40", "method": "buildTarget/scalacOptions", "params": {
         |  "targets": [{ "uri": "$x" }]
         |} }""".stripMargin
     )
     assert(processing("buildTarget/scalacOptions"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"14"""") &&
+      (s contains """"id":"40"""") &&
       (s contains "scala-library-2.13.1.jar")
     })
   }
 
   test("workspace/reload") { _ =>
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": "15", "method": "workspace/reload"}"""
+      """{ "jsonrpc": "2.0", "id": "48", "method": "workspace/reload"}"""
     )
     assert(processing("workspace/reload"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"15"""") &&
+      (s contains """"id":"48"""") &&
       (s contains """"result":null""")
     })
   }
@@ -90,13 +90,13 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/scalaMainClasses") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "16", "method": "buildTarget/scalaMainClasses", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "56", "method": "buildTarget/scalaMainClasses", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/scalaMainClasses"))
     assert(svr.waitForString(30.seconds) { s =>
-      (s contains """"id":"16"""") &&
+      (s contains """"id":"56"""") &&
       (s contains """"class":"main.Main"""")
     })
   }
@@ -104,7 +104,7 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/run") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "17", "method": "buildTarget/run", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "64", "method": "buildTarget/run", "params": {
          |  "target": { "uri": "$x" },
          |  "dataKind": "scala-main-class",
          |  "data": { "class": "main.Main" }
@@ -116,7 +116,7 @@ object BuildServerTest extends AbstractServerTest {
       (s contains """"message":"Hello World!"""")
     })
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"17"""") &&
+      (s contains """"id":"64"""") &&
       (s contains """"statusCode":1""")
     })
   }
@@ -124,13 +124,13 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/scalaTestClasses") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "18", "method": "buildTarget/scalaTestClasses", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "72", "method": "buildTarget/scalaTestClasses", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/scalaTestClasses"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"18"""") &&
+      (s contains """"id":"72"""") &&
       (s contains """"tests.FailingTest"""") &&
       (s contains """"tests.PassingTest"""")
     })
@@ -139,13 +139,13 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/test: run all tests") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "19", "method": "buildTarget/test", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "80", "method": "buildTarget/test", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/test"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"19"""") &&
+      (s contains """"id":"80"""") &&
       (s contains """"statusCode":2""")
     })
   }
@@ -153,7 +153,7 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/test: run one test class") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#runAndTest/Test"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "20", "method": "buildTarget/test", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "84", "method": "buildTarget/test", "params": {
          |  "targets": [{ "uri": "$x" }],
          |  "dataKind": "scala-test",
          |  "data": {
@@ -168,7 +168,7 @@ object BuildServerTest extends AbstractServerTest {
     )
     assert(processing("buildTarget/test"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"20"""") &&
+      (s contains """"id":"84"""") &&
       (s contains """"statusCode":1""")
     })
   }
@@ -176,7 +176,7 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/compile: report error") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#reportError/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "21", "method": "buildTarget/compile", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "88", "method": "buildTarget/compile", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
@@ -190,7 +190,7 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/compile: report warning") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#reportWarning/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "22", "method": "buildTarget/compile", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "90", "method": "buildTarget/compile", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
@@ -201,22 +201,37 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/compile: respond error") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#respondError/Compile"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "92", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(svr.waitForString(10.seconds) { s =>
+      s.contains(""""id":"92"""") &&
+      s.contains(""""error"""") &&
+      s.contains(""""code":-32603""") &&
+      s.contains("custom message")
+    })
+  }
+
   test("buildTarget/resources") { _ =>
     val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#util/Compile"
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "23", "method": "buildTarget/resources", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "96", "method": "buildTarget/resources", "params": {
          |  "targets": [{ "uri": "$x" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/resources"))
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"23"""") && (s contains "util/src/main/resources/")
+      (s contains """"id":"96"""") && (s contains "util/src/main/resources/")
     })
   }
 
   private def initializeRequest(): Unit = {
     svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": "10", "method": "build/initialize",
+      """{ "jsonrpc": "2.0", "id": "8", "method": "build/initialize",
         |  "params": {
         |    "displayName": "test client",
         |    "version": "1.0.0",
