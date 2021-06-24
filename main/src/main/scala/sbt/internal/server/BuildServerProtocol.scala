@@ -10,7 +10,6 @@ package internal
 package server
 
 import java.net.URI
-
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
@@ -28,6 +27,7 @@ import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
+import xsbti.CompileFailed
 
 // import scala.annotation.nowarn
 import scala.util.control.NonFatal
@@ -507,9 +507,11 @@ object BuildServerProtocol {
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
     Keys.compile.result.value match {
       case Value(_) => StatusCode.Success
-      case Inc(_)   =>
-        // Cancellation is not yet implemented
-        StatusCode.Error
+      case Inc(cause) =>
+        cause.getCause match {
+          case _: CompileFailed => StatusCode.Error
+          case err              => throw cause
+        }
     }
   }
 
