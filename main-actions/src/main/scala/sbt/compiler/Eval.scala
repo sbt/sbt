@@ -12,7 +12,7 @@ import scala.collection.mutable.ListBuffer
 import scala.tools.nsc.{ ast, io, reporters, CompilerCommand, Global, Phase, Settings }
 import io.{ AbstractFile, PlainFile, VirtualDirectory }
 import ast.parser.Tokens
-import reporters.{ ConsoleReporter, Reporter }
+import reporters.Reporter
 import scala.reflect.internal.util.{ AbstractFileClassLoader, BatchSourceFile }
 import Tokens.{ EOF, NEWLINE, NEWLINES, SEMI }
 import java.io.{ File, FileNotFoundException }
@@ -65,12 +65,12 @@ final class EvalException(msg: String) extends RuntimeException(msg)
 final class Eval(
     optionsNoncp: Seq[String],
     classpath: Seq[File],
-    mkReporter: Settings => Reporter,
+    mkReporter: Settings => EvalReporter,
     backing: Option[File]
 ) {
-  def this(mkReporter: Settings => Reporter, backing: Option[File]) =
+  def this(mkReporter: Settings => EvalReporter, backing: Option[File]) =
     this(Nil, IO.classLocationPath[Product].toFile :: Nil, mkReporter, backing)
-  def this() = this(s => new ConsoleReporter(s), None)
+  def this() = this(EvalReporter.console, None)
 
   backing.foreach(IO.createDirectory)
   val classpathString = Path.makeString(classpath ++ backing.toList)
@@ -114,6 +114,7 @@ final class Eval(
       line: Int = DefaultStartLine
   ): EvalResult = {
     val ev = new EvalType[String] {
+      def sourceName: String = srcName
       def makeUnit = mkUnit(srcName, line, expression)
       def unlink = true
       def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
@@ -142,6 +143,7 @@ final class Eval(
     require(definitions.nonEmpty, "Definitions to evaluate cannot be empty.")
     val ev = new EvalType[Seq[String]] {
       lazy val (fullUnit, defUnits) = mkDefsUnit(srcName, definitions)
+      def sourceName: String = srcName
       def makeUnit = fullUnit
       def unlink = false
       def unitBody(unit: CompilationUnit, importTrees: Seq[Tree], moduleName: String): Tree = {
@@ -202,28 +204,19 @@ final class Eval(
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
 
-    lazy val unit = {
-      reporter.reset
-      ev.makeUnit
-    }
-    lazy val run = new Run {
-      override def units = (unit :: Nil).iterator
-    }
-    def unlinkAll(): Unit =
-      for ((sym, _) <- run.symSource) if (ev.unlink) unlink(sym) else toUnlinkLater ::= sym
-
-    val (extra, loader) = backing match {
-      case Some(back) if classExists(back, moduleName) =>
-        val loader = (parent: ClassLoader) =>
-          (new URLClassLoader(Array(back.toURI.toURL), parent): ClassLoader)
-        val extra = ev.read(cacheFile(back, moduleName))
-        (extra, loader)
-      case _ =>
-        try {
-          compileAndLoad(run, unit, imports, backing, moduleName, ev)
-        } finally {
-          unlinkAll()
-        }
+    val (extra, loader) = try {
+      backing match {
+        case Some(back) if classExists(back, moduleName) =>
+          val loader = (parent: ClassLoader) =>
+            (new URLClassLoader(Array(back.toURI.toURL), parent): ClassLoader)
+          val extra = ev.read(cacheFile(back, moduleName))
+          (extra, loader)
+        case _ =>
+          compileAndLoad(imports, backing, moduleName, ev)
+      }
+    } finally {
+      // send a final report even if the class file was backed to reset preceding diagnostics
+      reporter.finalReport(ev.sourceName)
     }
 
     val generatedFiles = getGeneratedFiles(backing, moduleName)
@@ -232,6 +225,25 @@ final class Eval(
   // location of the cached type or definition information
   private[this] def cacheFile(base: File, moduleName: String): File =
     new File(base, moduleName + ".cache")
+
+  private def compileAndLoad[T](
+      imports: EvalImports,
+      backing: Option[File],
+      moduleName: String,
+      ev: EvalType[T]
+  ): (T, ClassLoader => ClassLoader) = {
+    reporter.reset()
+    val unit = ev.makeUnit
+    val run = new Run {
+      override def units = (unit :: Nil).iterator
+    }
+    try {
+      compileAndLoad(run, unit, imports, backing, moduleName, ev)
+    } finally {
+      // unlink all
+      for ((sym, _) <- run.symSource) if (ev.unlink) unlink(sym) else toUnlinkLater ::= sym
+    }
+  }
   private[this] def compileAndLoad[T](
       run: Run,
       unit: CompilationUnit,
@@ -456,6 +468,8 @@ final class Eval(
 
     /** Serializes the extra information to a cache file, where it can be `read` back if inputs haven't changed.*/
     def write(value: T, file: File): Unit
+
+    def sourceName: String
 
     /**
      * Constructs the full compilation unit for this evaluation.
