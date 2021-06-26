@@ -131,11 +131,16 @@ object BuildServerProtocol {
           case (id, loadedBuildUnit) =>
             val base = loadedBuildUnit.localBase
             val sbtFiles = configurationSources(base)
-            val defDir = projectStandard(base)
+            val pluginData = loadedBuildUnit.unit.plugins.pluginData
+            val unmanagedSources = pluginData.unmanagedSources.map(
+              f => SourceItem(f.toURI, SourceItemKind.File, generated = false)
+            )
+            val managedSources = pluginData.managedSources.map(
+              f => SourceItem(f.toURI, SourceItemKind.File, generated = true)
+            )
             val sbtFilesItems =
               sbtFiles.map(f => SourceItem(f.toURI, SourceItemKind.File, generated = false))
-            val defDirItem = SourceItem(defDir.toURI, SourceItemKind.Directory, generated = false)
-            SourcesItem(id, (defDirItem +: sbtFilesItems).toVector)
+            SourcesItem(id, (unmanagedSources ++ managedSources ++ sbtFilesItems).toVector)
         }
         val result = SourcesResult((items ++ buildItems).toVector)
         s.respondEvent(result)
@@ -874,7 +879,7 @@ object BuildServerProtocol {
     }
     def warnIfBuildsNonEmpty(method: String, log: Logger): Unit = {
       if (builds.nonEmpty)
-        log.warn(s"$method is a no-op for SBT targets: ${builds.keys.mkString("[", ",", "]")}")
+        log.warn(s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}")
     }
   }
 }

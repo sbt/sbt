@@ -1164,12 +1164,16 @@ private[sbt] object Load {
         val prod = (Configurations.Runtime / exportedProducts).value
         val cp = (Configurations.Runtime / fullClasspath).value
         val opts = (Configurations.Compile / scalacOptions).value
+        val managedSrcs = (Configurations.Compile / managedSources).value
+        val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
         PluginData(
           removeEntries(cp, prod),
           prod,
           Some(fullResolvers.value.toVector),
           Some(update.value),
-          opts
+          opts,
+          unmanagedSrcs,
+          managedSrcs
         )
       },
       scalacOptions += "-Wconf:cat=unused-nowarn:s",
@@ -1225,7 +1229,7 @@ private[sbt] object Load {
     loadPluginDefinition(
       dir,
       config,
-      PluginData(config.globalPluginClasspath, Nil, None, None, Nil)
+      PluginData(config.globalPluginClasspath, Nil, None, None, Nil, Nil, Nil)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1417,6 +1421,8 @@ final case class LoadBuildConfiguration(
           data.internalClasspath,
           Some(data.resolvers),
           Some(data.updateReport),
+          Nil,
+          Nil,
           Nil
         )
       case None => PluginData(globalPluginClasspath)
