@@ -1,0 +1,2 @@
+$ copy-file test-files/test src/sbt-test/group/name/test
+> scripted

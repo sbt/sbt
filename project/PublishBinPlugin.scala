@@ -27,8 +27,8 @@ object PublishBinPlugin extends AutoPlugin {
       Classpaths.deliverPattern(crossTarget.value),
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-      (packagedArtifacts in publishLocalBin).value.toVector,
-      (checksums in publishLocalBin).value.toVector,
+      (publishLocalBin / packagedArtifacts).value.toVector,
+      (publishLocalBin / checksums).value.toVector,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     ),
@@ -59,9 +59,9 @@ object PublishBinPlugin extends AutoPlugin {
       dummyFile
     },
     dummyDoc / packagedArtifact := (Compile / packageDoc / artifact).value -> dummyDoc.value,
-    packagedArtifacts in publishLocalBin :=
+    publishLocalBin / packagedArtifacts :=
       Classpaths
-        .packaged(Seq(packageBin in Compile, packageSrc in Compile, makePom, dummyDoc))
+        .packaged(Seq(Compile / packageBin, Compile / packageSrc, makePom, dummyDoc))
         .value
   )
 }

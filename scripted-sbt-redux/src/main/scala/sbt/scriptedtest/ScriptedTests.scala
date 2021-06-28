@@ -18,6 +18,7 @@ import sbt.internal.io.Resources
 import sbt.internal.scripted._
 import RemoteSbtCreatorProp._
 
+import scala.annotation.nowarn
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.{ GenSeq, mutable }
 import scala.util.control.NonFatal
@@ -482,6 +483,7 @@ class ScriptedRunner {
       instances: Int
   ) = run(baseDir, bufferLog, tests, logger, launchOpts, prescripted, prop, instances, true)
 
+  @nowarn
   private[this] def run(
       baseDir: File,
       bufferLog: Boolean,
@@ -510,7 +512,8 @@ class ScriptedRunner {
     val scriptedRunners =
       runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
     if (parallelExecution && instances > 1) {
-      val parallelRunners = scriptedRunners.toParArray
+      import sbt.internal.CompatParColls.Converters._
+      val parallelRunners = scriptedRunners.toArray.par
       parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
       runAll(parallelRunners)
     } else {
@@ -544,8 +547,11 @@ class ScriptedRunner {
   private def reportErrors(errors: GenSeq[String]): Unit =
     if (errors.nonEmpty) sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n")) else ()
 
-  def runAll(toRun: GenSeq[ScriptedTests.TestRunner]): Unit =
+  def runAll(toRun: Seq[ScriptedTests.TestRunner]): Unit =
     reportErrors(toRun.flatMap(test => test.apply().flatten))
+
+  def runAll(toRun: scala.collection.parallel.ParSeq[ScriptedTests.TestRunner]): Unit =
+    reportErrors(toRun.flatMap(test => test.apply().flatten).toList)
 
   @deprecated("No longer used", "1.1.0")
   def get(tests: Seq[String], baseDirectory: File, log: Logger): Seq[ScriptedTest] =

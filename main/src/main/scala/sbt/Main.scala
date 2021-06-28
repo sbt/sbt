@@ -15,7 +15,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ Shell, Shutdown, TemplateCommand }
+import sbt.BasicCommandStrings.{ JavaClient, Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.compiler.EvalImports
 import sbt.internal.Aggregation.AnyKeys
@@ -23,22 +23,22 @@ import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
 import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.io.Retry
 import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
 import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.internal.util.complete.{ Parser, SizeParser }
+import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.io._
 import sbt.io.syntax._
 import sbt.util.{ Level, Logger, Show }
+import xsbti.AppProvider
 import xsbti.compile.CompilerCache
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
-import sbt.internal.io.Retry
-import xsbti.AppProvider
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain {
@@ -58,7 +58,7 @@ private[sbt] object xMain {
   }
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
-      import BasicCommandStrings.{ DashClient, DashDashClient, DashDashServer, runEarly }
+      import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
@@ -69,25 +69,56 @@ private[sbt] object xMain {
       val userCommands = configuration.arguments
         .map(_.trim)
         .filterNot(_ == DashDashServer)
-      val isClient: String => Boolean = cmd => (cmd == DashClient) || (cmd == DashDashClient)
+      val isClient: String => Boolean = cmd => (cmd == JavaClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
-      val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
-      val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
+      val isNew: String => Boolean = cmd => (cmd == "new")
+      lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
+      // keep this lazy to prevent project directory created prematurely
+      lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
         case (_, Some(e)) => return e
         case (s, _)       => s
       }
       else None
-      if (userCommands.exists(isBsp)) {
-        BspClient.run(dealiasBaseDirectory(configuration))
-      } else {
-        bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
-        val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
-        ITerminal.withStreams(true, isSubProcess = detachStdio) {
-          if (clientModByEnv || userCommands.exists(isClient)) {
+      lazy val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
+      def withStreams[A](f: => A): A =
+        try {
+          bootServerSocket.foreach(l => ITerminal.setBootStreams(l.inputStream, l.outputStream))
+          ITerminal.withStreams(true, isSubProcess = detachStdio) {
+            f
+          }
+        } finally {
+          if (ITerminal.isAnsiSupported) {
+            // Clear any stray progress lines
+            System.out.print(ConsoleAppender.ClearScreenAfterCursor)
+            System.out.flush()
+          }
+        }
+
+      userCommands match {
+        case cmds if cmds.exists(isBsp) =>
+          BspClient.run(dealiasBaseDirectory(configuration))
+        case cmds if cmds.exists(isNew) =>
+          IO.withTemporaryDirectory { tempDir =>
+            val rebasedConfig = new xsbti.AppConfiguration {
+              override def arguments: Array[String] = configuration.arguments()
+              override val baseDirectory: File = tempDir / "new"
+              override def provider: AppProvider = configuration.provider()
+            }
+            val state = StandardMain
+              .initialState(
+                rebasedConfig,
+                Seq(defaults, early),
+                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+              )
+            StandardMain.runManaged(state)
+          }
+        case _ if clientModByEnv || userCommands.exists(isClient) =>
+          withStreams {
             val args = userCommands.toList.filterNot(isClient)
-            NetworkClient.run(dealiasBaseDirectory(configuration), args)
-            Exit(0)
-          } else {
+            Exit(NetworkClient.run(dealiasBaseDirectory(configuration), args))
+          }
+        case _ =>
+          withStreams {
             val state0 = StandardMain
               .initialState(
                 dealiasBaseDirectory(configuration),
@@ -102,15 +133,9 @@ private[sbt] object xMain {
             try StandardMain.runManaged(state)
             finally bootServerSocket.foreach(_.close())
           }
-        }
       }
     } finally {
-      // Clear any stray progress lines
       ShutdownHooks.close()
-      if (ITerminal.isAnsiSupported) {
-        System.out.print(ConsoleAppender.ClearScreenAfterCursor)
-        System.out.flush()
-      }
     }
   }
 
@@ -119,9 +144,11 @@ private[sbt] object xMain {
   ): (Option[BootServerSocket], Option[Exit]) =
     try (Some(new BootServerSocket(configuration)) -> None)
     catch {
-      case _: ServerAlreadyBootingException
+      case e: ServerAlreadyBootingException
           if System.console != null && !ITerminal.startedByRemoteClient =>
-        println("sbt server is already booting. Create a new server? y/n (default y)")
+        println(
+          s"sbt thinks that server is already booting because of this exception:\n${e.getCause}\nCreate a new server? y/n (default y)"
+        )
         val exit = ITerminal.get.withRawInput(System.in.read) match {
           case 110 => Some(Exit(1))
           case _   => None
@@ -272,7 +299,7 @@ object BuiltinCommands {
   def ScriptCommands: Seq[Command] =
     Seq(ignore, exit, Script.command, setLogLevel, early, act, nop)
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   def DefaultCommands: Seq[Command] =
     Seq(
       multi,
@@ -1083,7 +1110,7 @@ object BuiltinCommands {
     }
 
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
-  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern matcher s matches ()
+  private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
   private def writeSbtVersionUnconditionally(state: State) = {
     val baseDir = state.baseDir

@@ -20,6 +20,7 @@ import sbt.io.syntax._
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
+import scala.annotation.nowarn
 
 final class BuildStructure(
     val units: Map[URI, LoadedBuildUnit],
@@ -396,6 +397,8 @@ object BuildStreams {
 
   def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
     refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
+
+  @nowarn
   def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =
     (Keys.target in scope get data getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
 }

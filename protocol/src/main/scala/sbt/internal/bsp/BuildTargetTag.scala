@@ -18,6 +18,7 @@ object BuildTargetTag {
 
   def fromConfig(config: String): Vector[String] = config match {
     case "test"    => Vector(test)
+    case "it"      => Vector(integrationTest)
     case "compile" => Vector(library)
     case _         => Vector.empty
   }

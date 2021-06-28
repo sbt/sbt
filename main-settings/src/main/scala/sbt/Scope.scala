@@ -20,16 +20,29 @@ final case class Scope(
     task: ScopeAxis[AttributeKey[_]],
     extra: ScopeAxis[AttributeMap]
 ) {
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(project: Reference, config: ConfigKey): Scope =
     copy(project = Select(project), config = Select(config))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(config: ConfigKey, task: AttributeKey[_]): Scope =
     copy(config = Select(config), task = Select(task))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(project: Reference, task: AttributeKey[_]): Scope =
     copy(project = Select(project), task = Select(task))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(project: Reference, config: ConfigKey, task: AttributeKey[_]): Scope =
     copy(project = Select(project), config = Select(config), task = Select(task))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(project: Reference): Scope = copy(project = Select(project))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(config: ConfigKey): Scope = copy(config = Select(config))
+
+  @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
 
   override def toString: String = this match {
@@ -42,6 +55,9 @@ object Scope {
   val ThisScope: Scope = Scope(This, This, This, This)
   val Global: Scope = Scope(Zero, Zero, Zero, Zero)
   val GlobalScope: Scope = Global
+
+  private[sbt] final val inIsDeprecated =
+    "`in` is deprecated; migrate to slash syntax - https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#slash"
 
   def resolveScope(thisScope: Scope, current: URI, rootProject: URI => String): Scope => Scope =
     resolveProject(current, rootProject) compose replaceThis(thisScope) compose subThisProject

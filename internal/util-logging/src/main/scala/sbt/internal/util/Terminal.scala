@@ -317,7 +317,10 @@ object Terminal {
     props
       .map(_.color)
       .orElse(isColorEnabledProp)
-      .getOrElse(logFormatEnabled.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI))
+      .getOrElse(
+        logFormatEnabled
+          .getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || Util.isEmacs)
+      )
   }
   private[this] lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
@@ -343,7 +346,7 @@ object Terminal {
       consoleTerminalHolder.set(newConsoleTerminal())
     if (hasVirtualIO) {
       hasProgress.set(isServer && isAnsiSupported)
-      activeTerminal.set(consoleTerminalHolder.get)
+      Terminal.set(consoleTerminalHolder.get)
       try withOut(withIn(f))
       finally {
         jline.TerminalFactory.reset()
@@ -379,7 +382,16 @@ object Terminal {
   }
 
   private[this] object ProxyTerminal extends Terminal {
-    private def t: Terminal = activeTerminal.get
+    private def t: Terminal = {
+      val current = activeTerminal.get
+      // if the activeTerminal is yet to be initialized on use,
+      // initialize to the conventional simple terminal for compatibility and testing
+      if (current ne null) current
+      else {
+        Terminal.set(Terminal.SimpleTerminal)
+        activeTerminal.get
+      }
+    }
     override private[sbt] def progressState: ProgressState = t.progressState
     override private[sbt] def enterRawMode(): Unit = t.enterRawMode()
     override private[sbt] def exitRawMode(): Unit = t.exitRawMode()
@@ -867,7 +879,8 @@ object Terminal {
         .map(_.supershell)
         .getOrElse(System.getProperty("sbt.supershell") match {
           case null =>
-            !(sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")) && isColorEnabled
+            !(sys.env.contains("BUILD_NUMBER") || sys.env
+              .contains("CI")) && isColorEnabled && !Util.isEmacs
           case "true" => true
           case _      => false
         })

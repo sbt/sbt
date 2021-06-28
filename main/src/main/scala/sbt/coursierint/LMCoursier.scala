@@ -22,6 +22,7 @@ import lmcoursier.definitions.{
 import lmcoursier._
 import lmcoursier.credentials.Credentials
 import Keys._
+import sbt.internal.util.Util
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{
   Credentials => IvyCredentials,
@@ -37,12 +38,36 @@ object LMCoursier {
   private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
-  def defaultCacheLocation: File =
-    sys.props.get("sbt.coursier.home") match {
-      case Some(home) => new File(home).getAbsoluteFile / "cache"
-      case _ =>
-        CoursierDependencyResolution.defaultCacheLocation
+  def defaultCacheLocation: File = {
+    def absoluteFile(path: String): File = new File(path).getAbsoluteFile()
+    def windowsCacheDirectory: File = {
+      // Per discussion in https://github.com/dirs-dev/directories-jvm/issues/43,
+      // LOCALAPPDATA environment variable may NOT represent the one-true
+      // Known Folders API (https://docs.microsoft.com/en-us/windows/win32/shell/knownfolderid)
+      // in case the user happened to have set the LOCALAPPDATA environmental variable.
+      // Given that there's no reliable way of accessing this API from JVM, I think it's actually
+      // better to use the LOCALAPPDATA as the first place to look.
+      // When it is not found, it will fall back to $HOME/AppData/Local.
+      // For the purpose of picking the Coursier cache directory, it's better to be
+      // fast, reliable, and predictable rather than strict adherence to Microsoft.
+      val base =
+        sys.env
+          .get("LOCALAPPDATA")
+          .map(absoluteFile)
+          .getOrElse(absoluteFile(sys.props("user.home")) / "AppData" / "Local")
+      base / "Coursier" / "Cache" / "v1"
     }
+    sys.props
+      .get("sbt.coursier.home")
+      .map(home => absoluteFile(home) / "cache")
+      .orElse(sys.env.get("COURSIER_CACHE").map(absoluteFile))
+      .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
+      case Some(dir) => dir
+      case _ =>
+        if (Util.isWindows) windowsCacheDirectory
+        else CoursierDependencyResolution.defaultCacheLocation
+    }
+  }
 
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
     Vector((ModuleMatchers.all, Reconciliation.Relaxed))
@@ -315,8 +340,8 @@ object LMCoursier {
       }
     }
     import scala.collection.JavaConverters._
-    (Keys.credentials in ThisBuild).value foreach registerCredentials
-    (Keys.credentials in LocalRootProject).value foreach registerCredentials
+    (ThisBuild / Keys.credentials).value foreach registerCredentials
+    (LocalRootProject / Keys.credentials).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials
     credentialRegistry.values.asScala.toVector
   }

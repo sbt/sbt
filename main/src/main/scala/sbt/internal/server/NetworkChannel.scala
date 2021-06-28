@@ -22,32 +22,32 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
-import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes }
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
   JsonRpcRequestMessage,
   JsonRpcResponseError,
   JsonRpcResponseMessage
 }
+
 import sbt.internal.ui.{ UITask, UserThread }
 import sbt.internal.util.{ Prompt, ReadJsonFromInputStream, Terminal, Util }
 import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.util.complete.{ Parser, Parsers }
-import sbt.protocol._
 import sbt.util.Logger
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
 import scala.util.control.NonFatal
-import Serialization.{ attach, cancelReadSystemIn, readSystemIn }
+import sbt.protocol._
+import sbt.protocol.Serialization.{ attach, cancelReadSystemIn, readSystemIn, promptChannel }
+
+import sbt.protocol.codec.JsonProtocol._
 
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
-import BasicJsonProtocol._
-import Serialization.{ attach, promptChannel }
 import sbt.internal.util.ProgressState
 
 final class NetworkChannel(
@@ -255,23 +255,29 @@ final class NetworkChannel(
       err: JsonRpcResponseError,
       execId: Option[String]
   ): Unit = this.synchronized {
-    def respond(id: String) = {
-      pendingRequests -= id
-      jsonRpcRespondError(id, err)
+    getPendingRequest(execId) match {
+      case Some(request) =>
+        pendingRequests -= request.id
+        jsonRpcRespondError(request.id, err)
+      case _ =>
+        import sbt.internal.protocol.codec.JsonRPCProtocol._
+        val msg =
+          s"unmatched json error for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(err))}"
+        log.debug(msg)
     }
-    def error(): Unit = logMessage("error", s"Error ${err.code}: ${err.message}")
-    execId match {
-      case Some(id) if pendingRequests.contains(id) => respond(id)
+  }
+
+  private[sbt] def getPendingRequest(execId: Option[String]): Option[JsonRpcRequestMessage] = {
+    execId.flatMap {
       // This handles multi commands from the network that were remapped to a different
       // exec id for reporting purposes.
-      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
+      case id if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
         StandardMain.exchange.withState { s =>
-          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
-            case Some(id) if pendingRequests.contains(id) => respond(id)
-            case _                                        => error()
-          }
+          s.get(BasicCommands.execMap)
+            .flatMap(_.collectFirst { case (k, `id`) => k })
+            .flatMap(pendingRequests.get)
         }
-      case _ => error()
+      case id => pendingRequests.get(id)
     }
   }
 
@@ -287,27 +293,14 @@ final class NetworkChannel(
       event: A,
       execId: Option[String]
   ): Unit = this.synchronized {
-    def error(): Unit = {
-      val msg =
-        s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
-      log.debug(msg)
-    }
-    def respond(id: String): Unit = {
-      pendingRequests -= id
-      jsonRpcRespond(event, id)
-    }
-    execId match {
-      case Some(id) if pendingRequests.contains(id) => respond(id)
-      // This handles multi commands from the network that were remapped to a different
-      // exec id for reporting purposes.
-      case Some(id) if id.startsWith(BasicCommandStrings.networkExecPrefix) =>
-        StandardMain.exchange.withState { s =>
-          s.get(BasicCommands.execMap).flatMap(_.collectFirst { case (k, `id`) => k }) match {
-            case Some(id) if pendingRequests.contains(id) => respond(id)
-            case _                                        => error()
-          }
-        }
-      case _ => error()
+    getPendingRequest(execId) match {
+      case Some(request) =>
+        pendingRequests -= request.id
+        jsonRpcRespond(event, request.id)
+      case _ =>
+        val msg =
+          s"unmatched json response for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(event))}"
+        log.debug(msg)
     }
   }
 
@@ -323,9 +316,17 @@ final class NetworkChannel(
 
   def notifyEvent(event: EventMessage): Unit = {
     event match {
-      case entry: LogEvent        => logMessage(entry.level, entry.message)
-      case entry: ExecStatusEvent => logMessage("debug", entry.status)
-      case _                      => ()
+      case entry: LogEvent => logMessage(entry.level, entry.message)
+      case entry: ExecStatusEvent =>
+        getPendingRequest(entry.execId) match {
+          case Some(request) =>
+            logMessage("debug", s"${entry.status} ${request.method}")
+          case None =>
+            log.debug(
+              s"unmatched ${entry.status} event for requestId ${entry.execId}: ${entry.message}"
+            )
+        }
+      case _ => ()
     }
   }
 
@@ -405,10 +406,9 @@ final class NetworkChannel(
 
   protected def onSettingQuery(execId: Option[String], req: SettingQuery) = {
     if (initialized) {
-      import sbt.protocol.codec.JsonProtocol._
       StandardMain.exchange.withState { s =>
         val structure = Project.extract(s).structure
-        SettingQuery.handleSettingQueryEither(req, structure) match {
+        sbt.internal.server.SettingQuery.handleSettingQueryEither(req, structure) match {
           case Right(x) => respondResult(x, execId)
           case Left(s)  => respondError(ErrorCodes.InvalidParams, s, execId)
         }
@@ -418,11 +418,11 @@ final class NetworkChannel(
     }
   }
 
+  @nowarn
   protected def onCompletionRequest(execId: Option[String], cp: CompletionParams) = {
     if (initialized) {
       try {
         StandardMain.exchange.withState { sstate =>
-          import sbt.protocol.codec.JsonProtocol._
           def completionItems(s: State) = {
             Parser
               .completions(s.combinedParser, cp.query, cp.level.getOrElse(9))
@@ -517,7 +517,6 @@ final class NetworkChannel(
                 StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))) {
               runningEngine.cancelAndShutdown()
 
-              import sbt.protocol.codec.JsonProtocol._
               respondResult(
                 ExecStatusEvent(
                   "Task cancelled",
@@ -808,7 +807,6 @@ final class NetworkChannel(
     ): Option[T] = {
       if (closed.get) None
       else {
-        import sbt.protocol.codec.JsonProtocol._
         val queue = VirtualTerminal.sendTerminalCapabilitiesQuery(name, jsonRpcRequest, query)
         Some(result(queue.take))
       }
@@ -835,7 +833,6 @@ final class NetworkChannel(
     override private[sbt] def getAttributes: Map[String, String] =
       if (closed.get) Map.empty
       else {
-        import sbt.protocol.codec.JsonProtocol._
         val queue = VirtualTerminal.sendTerminalAttributesQuery(
           name,
           jsonRpcRequest
@@ -853,7 +850,6 @@ final class NetworkChannel(
       }
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit =
       if (!closed.get) {
-        import sbt.protocol.codec.JsonProtocol._
         val attrs = TerminalSetAttributesCommand(
           iflag = attributes.getOrElse("iflag", ""),
           oflag = attributes.getOrElse("oflag", ""),
@@ -867,7 +863,6 @@ final class NetworkChannel(
       }
     override private[sbt] def getSizeImpl: (Int, Int) =
       if (!closed.get) {
-        import sbt.protocol.codec.JsonProtocol._
         val queue = VirtualTerminal.getTerminalSize(name, jsonRpcRequest)
         val res = try queue.take
         catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
@@ -875,7 +870,6 @@ final class NetworkChannel(
       } else (1, 1)
     override def setSize(width: Int, height: Int): Unit =
       if (!closed.get) {
-        import sbt.protocol.codec.JsonProtocol._
         val size = TerminalSetSizeCommand(width, height)
         val queue = VirtualTerminal.setTerminalSize(name, jsonRpcRequest, size)
         try queue.take
@@ -883,7 +877,6 @@ final class NetworkChannel(
       }
     private[this] def setRawMode(toggle: Boolean): Unit = {
       if (!closed.get || false) {
-        import sbt.protocol.codec.JsonProtocol._
         val raw = TerminalSetRawModeCommand(toggle)
         val queue = VirtualTerminal.setTerminalRawMode(name, jsonRpcRequest, raw)
         try queue.take
@@ -894,7 +887,6 @@ final class NetworkChannel(
     override private[sbt] def exitRawMode(): Unit = setRawMode(false)
     override def setEchoEnabled(toggle: Boolean): Unit =
       if (!closed.get) {
-        import sbt.protocol.codec.JsonProtocol._
         val echo = TerminalSetEchoCommand(toggle)
         val queue = VirtualTerminal.setTerminalEcho(name, jsonRpcRequest, echo)
         try queue.take

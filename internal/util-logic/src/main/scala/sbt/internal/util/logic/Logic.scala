@@ -8,7 +8,7 @@
 package sbt.internal.util
 package logic
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import Formula.{ And, True }
 
 /*
@@ -37,6 +37,8 @@ as is this:
 /** Disjunction (or) of the list of clauses. */
 final case class Clauses(clauses: List[Clause]) {
   assert(clauses.nonEmpty, "At least one clause is required.")
+  override def toString: String =
+    s"Clauses(${clauses.mkString("\n")})"
 }
 
 /** When the `body` Formula succeeds, atoms in `head` are true. */
@@ -119,9 +121,9 @@ object Logic {
 
     val problem =
       (checkContradictions(pos, neg): Option[LogicException]) orElse
-        (checkOverlap(clauses, pos): Option[LogicException]) orElse
-        (checkAcyclic(clauses): Option[LogicException])
-
+        (checkOverlap(clauses, pos): Option[LogicException])
+    // orElse
+    // (checkAcyclic(clauses): Option[LogicException])
     problem.toLeft(
       reduce0(clauses, initialFacts, Matched.empty)
     )
@@ -150,8 +152,11 @@ object Logic {
     if (contradictions.nonEmpty) Some(new InitialContradictions(contradictions)) else None
   }
 
+  @nowarn
   private[this] def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
     val deps = dependencyMap(clauses)
+    // println(s"deps = $deps")
+    // println(s"graph(deps) = ${graph(deps)}")
     val cycle = Dag.findNegativeCycle(graph(deps))
     if (cycle.nonEmpty) Some(new CyclicNegation(cycle)) else None
   }
@@ -167,6 +172,10 @@ object Logic {
     }
 
     def head(b: Literal) = b.atom
+    override def toString(): String =
+      nodes
+        .flatMap(n => List(n) ++ dependencies(n).map(d => s"$n -> $d"))
+        .mkString("{\n", "\n", "\n}")
   }
 
   private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
@@ -201,7 +210,7 @@ object Logic {
 
     def add(atoms: List[Atom]): Matched = {
       val newOnly = atoms.filterNot(provenSet)
-      new Matched(provenSet ++ newOnly, newOnly ::: reverseOrdered)
+      new Matched(provenSet ++ newOnly.toSet, newOnly ::: reverseOrdered)
     }
 
     def ordered: List[Atom] = reverseOrdered.reverse
@@ -308,7 +317,7 @@ object Logic {
         val (pos, neg) = directDeps(formula)
         val (newPos, newNeg) = head.foldLeft((posDeps, negDeps)) {
           case ((pdeps, ndeps), d) =>
-            (pdeps + (d, pos), ndeps + (d, neg))
+            (pdeps.+(d, pos), ndeps.+(d, neg))
         }
         hasNegatedDependency(tail, newPos, newNeg)
     }

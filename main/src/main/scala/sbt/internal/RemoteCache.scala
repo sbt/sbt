@@ -10,29 +10,35 @@ package internal
 
 import java.io.File
 import java.nio.file.Path
-import Keys._
-import SlashSyntax0._
-import ScopeFilter.Make._
-import Project._ // for tag and inTask()
 
-import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact, DefaultArtifact }
-import org.apache.ivy.core.resolve.DownloadOptions
+import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, Artifact => IArtifact }
 import org.apache.ivy.core.report.DownloadStatus
+import org.apache.ivy.core.resolve.DownloadOptions
 import org.apache.ivy.plugins.resolver.DependencyResolver
-import std.TaskExtra._ // for join
+import sbt.Defaults.prefix
+import sbt.Keys._
+import sbt.Project._
+import sbt.ScopeFilter.Make._
+import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
+import sbt.internal.inc.{ HashUtil, JarUtils }
+import sbt.internal.librarymanagement._
+import sbt.internal.remotecache._
+import sbt.io.IO
+import sbt.io.Path.{ flat, rebase }
+import sbt.io.syntax._
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyPaths, UpdateOptions }
 import sbt.librarymanagement.syntax._
 import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
-import sbt.internal.librarymanagement._
-import sbt.io.IO
-import sbt.io.syntax._
-import sbt.internal.remotecache._
-import sbt.internal.inc.{ HashUtil, JarUtils }
+import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
 import sbt.util.Logger
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
+import xsbti.FileConverter
+
+import scala.annotation.nowarn
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
@@ -61,7 +67,7 @@ object RemoteCache {
       val app = appConfiguration.value
       val base = app.baseDirectory.getCanonicalFile
       // base is used only to resolve relative paths, which should never happen
-      IvyPaths(base, localCacheDirectory.value),
+      IvyPaths(base, localCacheDirectory.value)
     },
   )
 
@@ -136,7 +142,7 @@ object RemoteCache {
       ivySbt := {
         Credentials.register(credentials.value, streams.value.log)
         val config0 = ivyConfiguration.value
-        new IvySbt(config0, CustomHttp.okhttpClient.value)
+        new IvySbt(config0, sbt.internal.CustomHttp.okhttpClient.value)
       },
     )
   ) ++ inTask(pullRemoteCache)(
@@ -151,6 +157,26 @@ object RemoteCache {
   ) ++ inConfig(Compile)(configCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
     ++ inConfig(Test)(configCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
+  def getResourceFilePaths() = Def.task {
+    import sbt.librarymanagement.LibraryManagementCodec._
+    val t = classDirectory.value
+    val dirs = resourceDirectories.value.toSet
+    val flt: File => Option[File] = flat(t)
+    val cacheDirectory = crossTarget.value / (prefix(configuration.value.name) + "caches")
+
+    val converter = fileConverter.value
+    val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
+    val resourcesInClassesDir = resources.value
+      .flatMap(x => transform(x).toList)
+      .map(f => converter.toVirtualFile(f.toPath).toString)
+    val json = Converter.toJson[Seq[String]](resourcesInClassesDir).get
+    val tmp = CompactPrinter(json)
+    val file = cacheDirectory / "resources.json"
+    IO.write(file, tmp)
+    file
+  }
+
+  @nowarn
   def configCacheSettings[A <: RemoteCacheArtifact](
       cacheArtifactTask: Def.Initialize[Task[A]]
   ): Seq[Def.Setting[_]] =
@@ -161,8 +187,13 @@ object RemoteCache {
           val artp = artifactPath.value
           val af = compileAnalysisFile.value
           IO.copyFile(original, artp)
-          if (af.exists) {
+          // skip zip manipulation if the artp is a blank file
+          if (af.exists && artp.length() > 0) {
             JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
+          }
+          val rf = getResourceFilePaths.value
+          if (rf.exists) {
+            JarUtils.includeInJar(artp, Vector(rf -> s"META-INF/resources.json"))
           }
           // val testStream = (test / streams).?.value
           // testStream foreach { s =>
@@ -246,6 +277,7 @@ object RemoteCache {
         val smi = scalaModuleInfo.value
         val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
         val nonPom = artifacts.filterNot(isPomArtifact).toVector
+        val converter = fileConverter.value
         m.withModule(log) {
           case (ivy, md, _) =>
             val resolver = ivy.getSettings.getResolver(r.name)
@@ -278,7 +310,7 @@ object RemoteCache {
 
                         findJar(classifier, v, jars) match {
                           case Some(jar) =>
-                            extractJar(art, jar)
+                            extractJar(art, jar, converter)
                             log.info(s"remote cache artifact extracted for $p $classifier")
 
                           case None =>
@@ -366,11 +398,16 @@ object RemoteCache {
     jars.find(_.toString.endsWith(suffix))
   }
 
-  private def extractJar(cacheArtifact: RemoteCacheArtifact, jar: File): Unit =
+  private def extractJar(
+      cacheArtifact: RemoteCacheArtifact,
+      jar: File,
+      converter: FileConverter
+  ): Unit =
     cacheArtifact match {
       case a: CompileRemoteCacheArtifact =>
         extractCache(jar, a.extractDirectory, preserveLastModified = true) { output =>
           extractAnalysis(output, a.analysisFile)
+          extractResourceList(output, converter)
         }
 
       case a: TestRemoteCacheArtifact =>
@@ -405,6 +442,23 @@ object RemoteCache {
     val expandedAnalysis = metaDir / "inc_compile.zip"
     if (expandedAnalysis.exists) {
       IO.move(expandedAnalysis, analysisFile)
+    }
+  }
+
+  private def extractResourceList(output: File, converter: FileConverter): Unit = {
+    import sbt.librarymanagement.LibraryManagementCodec._
+    import sjsonnew.support.scalajson.unsafe.{ Converter, Parser }
+    import xsbti.VirtualFileRef
+
+    val resourceFilesToDelete = output / "META-INF" / "resources.json"
+    if (resourceFilesToDelete.exists) {
+      val readFile = IO.read(resourceFilesToDelete)
+      val parseFile = Parser.parseUnsafe(readFile)
+      val resourceFiles = Converter.fromJsonUnsafe[Seq[String]](parseFile)
+      val paths = resourceFiles.map(f => converter.toPath(VirtualFileRef.of(f)))
+      val filesToDelete = paths.map(_.toFile)
+      for (file <- filesToDelete if file.getAbsolutePath.startsWith(output.getAbsolutePath))
+        IO.delete(file)
     }
   }
 

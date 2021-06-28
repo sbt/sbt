@@ -35,7 +35,7 @@ import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.coursierint._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
-import sbt.internal.classpath.{ AlternativeZincUtil, ClassLoaderCache }
+import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
@@ -91,9 +91,9 @@ import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.compile.TastyFiles
 import xsbti.{ FileConverter, Position }
 
+import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
 import scala.concurrent.duration._
-import scala.util.Try
 import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
@@ -134,7 +134,7 @@ object Defaults extends BuildCommon {
 
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {
-      (key in ThisScope.copy(config = Zero)).value / nameForSrc(configuration.value.name)
+      (ThisScope.copy(config = Zero) / key).value / nameForSrc(configuration.value.name)
     }
   def nameForSrc(config: String) = if (config == Configurations.Compile.name) "main" else config
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
@@ -190,12 +190,12 @@ object Defaults extends BuildCommon {
       extraIncOptions :== Seq("JAVA_CLASS_VERSION" -> sys.props("java.class.version")),
       allowMachinePath :== true,
       reportAbsolutePath := true,
-      traceLevel in run :== 0,
-      traceLevel in runMain :== 0,
-      traceLevel in bgRun :== 0,
-      traceLevel in fgRun :== 0,
-      traceLevel in console :== Int.MaxValue,
-      traceLevel in consoleProject :== Int.MaxValue,
+      run / traceLevel :== 0,
+      runMain / traceLevel :== 0,
+      bgRun / traceLevel :== 0,
+      fgRun / traceLevel :== 0,
+      console / traceLevel :== Int.MaxValue,
+      consoleProject / traceLevel :== Int.MaxValue,
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,
@@ -210,12 +210,12 @@ object Defaults extends BuildCommon {
       reresolveSbtArtifacts :== false,
       crossPaths :== true,
       sourcePositionMappers :== Nil,
-      artifactClassifier in packageSrc :== Some(SourceClassifier),
-      artifactClassifier in packageDoc :== Some(DocClassifier),
+      packageSrc / artifactClassifier :== Some(SourceClassifier),
+      packageDoc / artifactClassifier :== Some(DocClassifier),
       includeFilter :== NothingFilter,
-      includeFilter in unmanagedSources :== ("*.java" | "*.scala"),
-      includeFilter in unmanagedJars :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
-      includeFilter in unmanagedResources :== AllPassFilter,
+      unmanagedSources / includeFilter :== ("*.java" | "*.scala"),
+      unmanagedJars / includeFilter :== "*.jar" | "*.so" | "*.dll" | "*.jnilib" | "*.zip",
+      unmanagedResources / includeFilter :== AllPassFilter,
       bgList := { bgJobService.value.jobs },
       ps := psTask.value,
       bgStop := bgStopTask.evaluated,
@@ -223,6 +223,7 @@ object Defaults extends BuildCommon {
       bgCopyClasspath :== true,
       closeClassLoaders :== SysProp.closeClassLoaders,
       allowZombieClassLoaders :== true,
+      packageTimestamp :== Package.defaultTimestamp,
     ) ++ BuildServerProtocol.globalSettings
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -277,8 +278,8 @@ object Defaults extends BuildCommon {
       outputStrategy :== None, // TODO - This might belong elsewhere.
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
-      aggregate in checkBuildSources :== false,
-      aggregate in checkBuildSources / changedInputFiles := false,
+      checkBuildSources / aggregate :== false,
+      checkBuildSources / changedInputFiles / aggregate := false,
       checkBuildSources / Continuous.dynamicInputs := None,
       checkBuildSources / fileInputs := CheckBuildSources.buildSourceFileInputs.value,
       checkBuildSources := CheckBuildSources.needReloadImpl.value,
@@ -296,7 +297,7 @@ object Defaults extends BuildCommon {
       // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
       // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
       // directs the dependencies of the plugin to build to the specified sbt plugin version.
-      sbtVersion in pluginCrossBuild := sbtVersion.value,
+      pluginCrossBuild / sbtVersion := sbtVersion.value,
       onLoad := idFun[State],
       onUnload := idFun[State],
       onUnload := { s =>
@@ -420,12 +421,7 @@ object Defaults extends BuildCommon {
       )
     },
     fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
-    sourcePositionMappers ++= {
-      val fc = fileConverter.value
-      if (reportAbsolutePath.value) {
-        List(toAbsoluteSourceMapper(fc) _)
-      } else Nil
-    },
+    sourcePositionMappers := Nil, // Never set a default sourcePositionMapper, see #6352! Whatever you are trying to solve, do it in the foldMappers method.
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
     classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
     fullServerHandlers := {
@@ -472,17 +468,17 @@ object Defaults extends BuildCommon {
     },
   )
 
-  private[sbt] def toAbsoluteSourceMapper(fc: FileConverter)(pos: Position): Option[Position] = {
-    def isValid(path: String): Boolean = {
-      Try(Paths.get(path)).map(_ => true).getOrElse(false)
-    }
-
-    val newPath: Option[String] = pos
+  private[sbt] def toAbsoluteSource(fc: FileConverter)(pos: Position): Position = {
+    val newPath: Option[NioPath] = pos
       .sourcePath()
       .asScala
-      .filter(isValid)
-      .map { path =>
-        fc.toPath(VirtualFileRef.of(path)).toAbsolutePath.toString
+      .flatMap { path =>
+        try {
+          Some(fc.toPath(VirtualFileRef.of(path)))
+        } catch {
+          // catch all to trap wierd path injected by compiler, users, or plugins
+          case NonFatal(_) => None
+        }
       }
 
     newPath
@@ -498,12 +494,29 @@ object Defaults extends BuildCommon {
 
           override def pointerSpace(): Optional[String] = pos.pointerSpace()
 
-          override def sourcePath(): Optional[String] = Optional.of(path)
+          override def sourcePath(): Optional[String] = Optional.of(path.toAbsolutePath.toString)
 
-          override def sourceFile(): Optional[File] = pos.sourceFile()
+          override def sourceFile(): Optional[File] =
+            (try {
+              Some(path.toFile.getAbsoluteFile)
+            } catch {
+              case NonFatal(_) => None
+            }).toOptional
+
+          override def startOffset(): Optional[Integer] = pos.startOffset()
+
+          override def endOffset(): Optional[Integer] = pos.endOffset()
+
+          override def startLine(): Optional[Integer] = pos.startLine()
+
+          override def startColumn(): Optional[Integer] = pos.startColumn()
+
+          override def endLine(): Optional[Integer] = pos.endLine()
+
+          override def endColumn(): Optional[Integer] = pos.endColumn()
         }
       }
-      .orElse(Some(pos))
+      .getOrElse(pos)
   }
 
   // csrCacheDirectory is scoped to ThisBuild to allow customization.
@@ -570,13 +583,13 @@ object Defaults extends BuildCommon {
         makePluginCrossSources(
           sbtPlugin.value,
           scalaSource.value,
-          (sbtBinaryVersion in pluginCrossBuild).value,
+          (pluginCrossBuild / sbtBinaryVersion).value,
           crossPaths.value
         )
     },
     unmanagedSources / fileInputs := {
-      val include = (includeFilter in unmanagedSources).value
-      val filter = (excludeFilter in unmanagedSources).value match {
+      val include = (unmanagedSources / includeFilter).value
+      val filter = (unmanagedSources / excludeFilter).value match {
         // Hidden files are already filtered out by the FileStamps method
         case NothingFilter | HiddenFileFilter => include
         case exclude                          => include -- exclude
@@ -616,8 +629,8 @@ object Defaults extends BuildCommon {
       .value,
     unmanagedResources / inputFileStamper := sbt.nio.FileStamper.LastModified,
     unmanagedResources / fileInputs := {
-      val include = (includeFilter in unmanagedResources).value
-      val filter = (excludeFilter in unmanagedResources).value match {
+      val include = (unmanagedResources / includeFilter).value
+      val filter = (unmanagedResources / excludeFilter).value match {
         // Hidden files are already filtered out by the FileStamps method
         case NothingFilter | HiddenFileFilter => include
         case exclude                          => include -- exclude
@@ -650,21 +663,39 @@ object Defaults extends BuildCommon {
     semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
     compileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "zinc"),
     earlyCompileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "early-zinc"),
-    target in doc := crossTarget.value / (prefix(configuration.value.name) + "api")
+    doc / target := crossTarget.value / (prefix(configuration.value.name) + "api")
   )
 
   // This is included into JvmPlugin.projectSettings
   def compileBase = inTask(console)(compilersSetting :: Nil) ++ compileBaseGlobal ++ Seq(
     scalaInstance := scalaInstanceTask.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
-    sbtBinaryVersion in pluginCrossBuild := binarySbtVersion(
-      (sbtVersion in pluginCrossBuild).value
+    pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
+      (pluginCrossBuild / sbtVersion).value
     ),
-    crossSbtVersions := Vector((sbtVersion in pluginCrossBuild).value),
+    // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
+    // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
+    // this setting needs to be set here too.
+    pluginCrossBuild / sbtDependency := {
+      val app = appConfiguration.value
+      val id = app.provider.id
+      val sv = (pluginCrossBuild / sbtVersion).value
+      val scalaV = (pluginCrossBuild / scalaVersion).value
+      val binVersion = (pluginCrossBuild / scalaBinaryVersion).value
+      val cross = id.crossVersionedValue match {
+        case CrossValue.Disabled => Disabled()
+        case CrossValue.Full     => CrossVersion.full
+        case CrossValue.Binary   => CrossVersion.binary
+      }
+      val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
+      CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
+    },
+    crossSbtVersions := Vector((pluginCrossBuild / sbtVersion).value),
     crossTarget := makeCrossTarget(
       target.value,
+      scalaVersion.value,
       scalaBinaryVersion.value,
-      (sbtBinaryVersion in pluginCrossBuild).value,
+      (pluginCrossBuild / sbtBinaryVersion).value,
       sbtPlugin.value,
       crossPaths.value
     ),
@@ -676,6 +707,10 @@ object Defaults extends BuildCommon {
       else Def.task[Option[File]](None)
     }.value,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+    auxiliaryClassFiles ++= {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
+      else Nil
+    },
     consoleProject / scalaCompilerBridgeBinaryJar := None,
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
@@ -684,10 +719,10 @@ object Defaults extends BuildCommon {
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
-      auxiliaryClassFiles := Nil,
+      auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
       classpathOptions :== ClasspathOptionsUtil.boot,
-      classpathOptions in console :== ClasspathOptionsUtil.repl,
+      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
@@ -711,7 +746,7 @@ object Defaults extends BuildCommon {
         scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$sv",
         scalaSrcDir.getParentFile / s"${scalaSrcDir.name}-$epochVersion",
         javaSrcDir,
-      )
+      ).distinct
     else
       Seq(scalaSrcDir, javaSrcDir)
   }
@@ -739,8 +774,23 @@ object Defaults extends BuildCommon {
     else Vector()
   }
 
-  def makeCrossTarget(t: File, sv: String, sbtv: String, plugin: Boolean, cross: Boolean): File = {
-    val scalaBase = if (cross) t / ("scala-" + sv) else t
+  @deprecated("Use constructor with scalaVersion and scalaBinaryVersion", "1.5.0")
+  def makeCrossTarget(t: File, bv: String, sbtv: String, plugin: Boolean, cross: Boolean): File = {
+    val scalaBase = if (cross) t / ("scala-" + bv) else t
+    if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
+  }
+
+  def makeCrossTarget(
+      t: File,
+      scalaVersion: String,
+      scalaBinaryVersion: String,
+      sbtv: String,
+      plugin: Boolean,
+      cross: Boolean
+  ): File = {
+    val scalaSuffix =
+      if (ScalaArtifacts.isScala3(scalaVersion)) scalaVersion else scalaBinaryVersion
+    val scalaBase = if (cross) t / ("scala-" + scalaSuffix) else t
     if (plugin) scalaBase / ("sbt-" + sbtv) else scalaBase
   }
 
@@ -836,6 +886,13 @@ object Defaults extends BuildCommon {
       }) :+ compileAnalysisFile.value.toPath
     },
     compileOutputs := compileOutputs.triggeredBy(compile).value,
+    tastyFiles := Def.taskIf {
+      if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+        val _ = compile.value
+        val tastyFiles = classDirectory.value.**("*.tasty").get
+        tastyFiles.map(_.getAbsoluteFile)
+      } else Nil
+    }.value,
     clean := (compileOutputs / clean).value,
     earlyOutputPing := Def.promise[Boolean],
     compileProgress := {
@@ -880,10 +937,6 @@ object Defaults extends BuildCommon {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     externalHooks := IncOptions.defaultExternal,
-    auxiliaryClassFiles ++= {
-      if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
-      else Nil
-    },
     incOptions := {
       val old = incOptions.value
       old
@@ -907,6 +960,13 @@ object Defaults extends BuildCommon {
         Vector("-Ypickle-java", "-Ypickle-write", converter.toPath(earlyOutput.value).toString) ++ old
       else old
     },
+    scalacOptions := {
+      val old = scalacOptions.value
+      if (sbtPlugin.value && VersionNumber(scalaVersion.value)
+            .matchesSemVer(SemanticSelector("=2.12 >=2.12.13")))
+        old ++ Seq("-Wconf:cat=unused-nowarn:s")
+      else old
+    },
     persistJarClasspath :== true,
     classpathEntryDefinesClassVF := {
       (if (persistJarClasspath.value) classpathDefinesClassCache.value
@@ -921,20 +981,25 @@ object Defaults extends BuildCommon {
     // This fork options, scoped to the configuration is used for tests
     forkOptions := forkOptionsTask.value,
     selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
-    mainClass in run := (selectMainClass in run).value,
+    run / mainClass := (run / selectMainClass).value,
     mainClass := {
-      val logWarning = state.value.currentCommand
-        .flatMap(_.commandLine.split(" ").headOption.map(_.trim))
-        .fold(true) {
-          case "run" | "runMain" => false
-          case _                 => true
-        }
+      val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
+        case "run" | "runMain" => true
+        case r =>
+          r.split("/") match {
+            case Array(parts @ _*) =>
+              parts.lastOption match {
+                case Some("run" | "runMain") => true
+                case _                       => false
+              }
+          }
+      })
       pickMainClassOrWarn(discoveredMainClasses.value, streams.value.log, logWarning)
     },
     runMain := foregroundRunMainTask.evaluated,
     run := foregroundRunTask.evaluated,
-    fgRun := runTask(fullClasspath, mainClass in run, runner in run).evaluated,
-    fgRunMain := runMainTask(fullClasspath, runner in run).evaluated,
+    fgRun := runTask(fullClasspath, (run / mainClass), (run / runner)).evaluated,
+    fgRunMain := runMainTask(fullClasspath, (run / runner)).evaluated,
     copyResources := copyResourcesTask.value,
     // note that we use the same runner and mainClass as plain run
     mainBgRunMainTaskForConfig(This),
@@ -995,7 +1060,7 @@ object Defaults extends BuildCommon {
       val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
       val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
       new Watched {
-        val scoped = watchTransitiveSources in base
+        val scoped = (base / watchTransitiveSources)
         val key = scoped.scopedKey
         override def antiEntropy: FiniteDuration = _antiEntropy
         override def pollInterval: FiniteDuration = interval
@@ -1025,13 +1090,12 @@ object Defaults extends BuildCommon {
             val libraryJars = allJars.filter(_.getName == "scala-library.jar")
             allJars.filter(_.getName == "scala-compiler.jar") match {
               case Array(compilerJar) if libraryJars.nonEmpty =>
-                val cache = state.value.extendedClassLoaderCache
-                mkScalaInstance(
+                makeScalaInstance(
                   version,
-                  allJars,
                   libraryJars,
-                  compilerJar,
-                  cache,
+                  allJars,
+                  Seq.empty,
+                  state.value,
                   scalaInstanceTopLoader.value
                 )
               case _ => ScalaInstance(version, scalaProvider)
@@ -1060,32 +1124,44 @@ object Defaults extends BuildCommon {
 
   def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
     val sv = scalaVersion.value
-    val toolReport = update.value.configuration(Configurations.ScalaTool) getOrElse
-      sys.error(noToolConfiguration(managedScalaInstance.value))
-    def files(id: String) =
-      for {
+    val fullReport = update.value
+
+    val toolReport = fullReport
+      .configuration(Configurations.ScalaTool)
+      .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+
+    def file(id: String): File = {
+      val files = for {
         m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
-    def file(id: String) = files(id).headOption getOrElse sys.error(s"Missing $id jar file")
-    val allJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
+      files.headOption getOrElse sys.error(s"Missing $id jar file")
+    }
+
+    val allCompilerJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
+    val allDocJars =
+      fullReport
+        .configuration(Configurations.ScalaDocTool)
+        .toSeq
+        .flatMap(_.modules)
+        .flatMap(_.artifacts.map(_._2))
     val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
-    val compilerJar = file(ScalaArtifacts.compilerId(sv))
-    mkScalaInstance(
+
+    makeScalaInstance(
       sv,
-      allJars,
       libraryJars,
-      compilerJar,
-      state.value.extendedClassLoaderCache,
+      allCompilerJars,
+      allDocJars,
+      state.value,
       scalaInstanceTopLoader.value,
     )
   }
-  private[this] def mkScalaInstance(
+  def makeScalaInstance(
       version: String,
-      allJars: Seq[File],
       libraryJars: Array[File],
-      compilerJar: File,
-      classLoaderCache: ClassLoaderCache,
+      allCompilerJars: Seq[File],
+      allDocJars: Seq[File],
+      state: State,
       topLoader: ClassLoader,
   ): ScalaInstance = {
     // Scala 2.10 shades jline in the console so we need to make sure that it loads a compatible
@@ -1097,17 +1173,29 @@ object Defaults extends BuildCommon {
       }
     }
     else topLoader
-    val allJarsDistinct = allJars.distinct
+
+    val classLoaderCache = state.extendedClassLoaderCache
+    val compilerJars = allCompilerJars.filterNot(libraryJars.contains).distinct.toArray
+    val docJars = allDocJars
+      .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
+      .distinct
+      .toArray
+    val allJars = libraryJars ++ compilerJars ++ docJars
+
     val libraryLoader = classLoaderCache(libraryJars.toList, jansiExclusionLoader)
-    val fullLoader = classLoaderCache(allJarsDistinct.toList, libraryLoader)
+    val compilerLoader = classLoaderCache(compilerJars.toList, libraryLoader)
+    val fullLoader =
+      if (docJars.isEmpty) compilerLoader
+      else classLoaderCache(docJars.distinct.toList, compilerLoader)
     new ScalaInstance(
-      version,
-      fullLoader,
-      libraryLoader,
-      libraryJars,
-      compilerJar,
-      allJarsDistinct.toArray,
-      Some(version)
+      version = version,
+      loader = fullLoader,
+      loaderCompilerOnly = compilerLoader,
+      loaderLibraryOnly = libraryLoader,
+      libraryJars = libraryJars,
+      compilerJars = compilerJars,
+      allJars = allJars,
+      explicitActual = Some(version)
     )
   }
   def scalaInstanceFromHome(dir: File): Initialize[Task[ScalaInstance]] = Def.task {
@@ -1116,12 +1204,12 @@ object Defaults extends BuildCommon {
       case a: AutoCloseable => a.close()
       case _                =>
     }
-    mkScalaInstance(
+    makeScalaInstance(
       dummy.version,
-      dummy.allJars,
       dummy.libraryJars,
-      dummy.compilerJar,
-      state.value.extendedClassLoaderCache,
+      dummy.compilerJars,
+      dummy.allJars,
+      state.value,
       scalaInstanceTopLoader.value,
     )
   }
@@ -1131,12 +1219,12 @@ object Defaults extends BuildCommon {
       Seq(
         testFrameworks :== {
           import sbt.TestFrameworks._
-          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit)
+          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit)
         },
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
-        testFilter in testOnly :== (selectedFilter _)
+        testOnly / testFilter :== (selectedFilter _)
       )
     )
   lazy val testTasks
@@ -1151,27 +1239,27 @@ object Defaults extends BuildCommon {
     },
     definedTests := detectTests.value,
     definedTestNames := (definedTests map (_.map(_.name).distinct) storeAs definedTestNames triggeredBy compile).value,
-    testFilter in testQuick := testQuickFilter.value,
+    testQuick / testFilter := testQuickFilter.value,
     executeTests := (
       Def.taskDyn {
         allTestGroupsTask(
-          (streams in test).value,
+          (test / streams).value,
           loadedTestFrameworks.value,
           testLoader.value,
-          (testGrouping in test).value,
-          (testExecution in test).value,
-          (fullClasspath in test).value,
+          (test / testGrouping).value,
+          (test / testExecution).value,
+          (test / fullClasspath).value,
           testForkedParallel.value,
-          (javaOptions in test).value,
+          (test / javaOptions).value,
           (classLoaderLayeringStrategy).value,
           projectId = s"${thisProject.value.id} / ",
         )
       }
     ).value,
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
-    testResultLogger in (Test, test) :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
+    Test / test / testResultLogger :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
     test := {
-      val trl = (testResultLogger in (Test, test)).value
+      val trl = (Test / test / testResultLogger).value
       val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
       try trl.run(streams.value.log, executeTests.value, taskName)
       finally close(testLoader.value)
@@ -1211,15 +1299,15 @@ object Defaults extends BuildCommon {
             streams.value.log,
             closeableTestLogger(
               streamsManager.value,
-              test in resolvedScoped.value.scope,
+              (resolvedScoped.value.scope / test),
               logBuffered.value
             ),
             Keys.logLevel.?.value.getOrElse(stateLogLevel),
           ) +:
-            new TestStatusReporter(succeededFile(streams.in(test).value.cacheDirectory)) +:
-            testListeners.in(TaskZero).value
+            new TestStatusReporter(succeededFile((test / streams).value.cacheDirectory)) +:
+            (TaskZero / testListeners).value
         },
-        testOptions := Tests.Listeners(testListeners.value) +: (testOptions in TaskZero).value,
+        testOptions := Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value,
         testExecution := testExecutionTask(key).value
       )
     ) ++ inScope(GlobalScope)(
@@ -1279,16 +1367,16 @@ object Defaults extends BuildCommon {
   def testExecutionTask(task: Scoped): Initialize[Task[Tests.Execution]] =
     Def.task {
       new Tests.Execution(
-        (testOptions in task).value,
-        (parallelExecution in task).value,
-        (tags in task).value
+        (task / testOptions).value,
+        (task / parallelExecution).value,
+        (task / tags).value
       )
     }
 
   def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
     Def.task {
-      val cp = (fullClasspath in test).value
-      val s = (streams in test).value
+      val cp = (test / fullClasspath).value
+      val s = (test / streams).value
       val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map {
         case a0: Analysis => a0
       }
@@ -1322,7 +1410,7 @@ object Defaults extends BuildCommon {
       }
       def noSuccessYet(test: String) = succeeded.get(test) match {
         case None     => true
-        case Some(ts) => stamp(test) > ts
+        case Some(ts) => stamps.synchronized(stamp(test)) > ts
       }
       args =>
         for (filter <- selectedFilter(args))
@@ -1330,8 +1418,10 @@ object Defaults extends BuildCommon {
     }
   def succeededFile(dir: File) = dir / "succeeded_tests"
 
+  @nowarn
   def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
     inputTests0.mapReferenced(Def.mapScope(_ in key.key))
+
   private[this] lazy val inputTests0: Initialize[InputTask[Unit]] = {
     val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
     Def.inputTaskDyn {
@@ -1436,7 +1526,26 @@ object Defaults extends BuildCommon {
       strategy: ClassLoaderLayeringStrategy,
       projectId: String
   ): Initialize[Task[Tests.Output]] = {
-    val runners = createTestRunners(frameworks, loader, config)
+    val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
+      groups
+        .map(
+          group => group -> Tests.processOptions(config, group.tests.toVector, s.log)
+        )
+        .toMap
+
+    val testDefinitions: Iterable[TestDefinition] = processedOptions.values.flatMap(_.tests)
+
+    val filteredFrameworks: Map[TestFramework, Framework] = frameworks.filter {
+      case (_, framework) =>
+        TestFramework.getFingerprints(framework).exists { t =>
+          testDefinitions.exists { test =>
+            TestFramework.matches(t, test.fingerprint)
+          }
+        }
+    }
+
+    val runners = createTestRunners(filteredFrameworks, loader, config)
+
     val groupTasks = groups map { group =>
       group.runPolicy match {
         case Tests.SubProcess(opts) =>
@@ -1445,7 +1554,7 @@ object Defaults extends BuildCommon {
           s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
           ForkTests(
             runners,
-            group.tests.toVector,
+            processedOptions(group),
             forkedConfig,
             cp.files,
             opts,
@@ -1460,7 +1569,7 @@ object Defaults extends BuildCommon {
             frameworks,
             loader,
             runners,
-            group.tests.toVector,
+            processedOptions(group),
             config.copy(tags = config.tags ++ group.tags),
             s.log
           )
@@ -1565,20 +1674,27 @@ object Defaults extends BuildCommon {
           val org = organization.value
           val orgName = organizationName.value
           val main = mainClass.value
+          val ts = packageTimestamp.value
           val old = packageOptions.value
+
           Package.addSpecManifestAttributes(n, ver, orgName) +:
             Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
+            Package.setFixedTimestamp(ts) +:
             main.map(Package.MainClass.apply) ++: old
         }
       )
     ) ++
       inTask(packageSrc)(
         Seq(
-          packageOptions := Package.addSpecManifestAttributes(
-            name.value,
-            version.value,
-            organizationName.value
-          ) +: packageOptions.value
+          packageOptions := {
+            val old = packageOptions.value
+            val ts = packageTimestamp.value
+            Package.addSpecManifestAttributes(
+              name.value,
+              version.value,
+              organizationName.value
+            ) +: Package.setFixedTimestamp(ts) +: old
+          }
         )
       ) ++
       packageTaskSettings(packageBin, packageBinMappings) ++
@@ -1651,8 +1767,8 @@ object Defaults extends BuildCommon {
       crossTarget.value /
         (prefix(configuration.value.name) + extraPrefix) / f(
         ScalaVersion(
-          (scalaVersion in artifactName).value,
-          (scalaBinaryVersion in artifactName).value
+          (artifactName / scalaVersion).value,
+          (artifactName / scalaBinaryVersion).value
         ),
         projectID.value,
         art.value
@@ -1667,8 +1783,8 @@ object Defaults extends BuildCommon {
       val f = artifactName.value
       crossTarget.value / extraPrefix / f(
         ScalaVersion(
-          (scalaVersion in artifactName).value,
-          (scalaBinaryVersion in artifactName).value
+          (artifactName / scalaVersion).value,
+          (artifactName / scalaBinaryVersion).value
         ),
         projectID.value,
         art.value
@@ -1680,8 +1796,8 @@ object Defaults extends BuildCommon {
       val f = artifactName.value
       crossTarget.value / f(
         ScalaVersion(
-          (scalaVersion in artifactName).value,
-          (scalaBinaryVersion in artifactName).value
+          (artifactName / scalaVersion).value,
+          (artifactName / scalaBinaryVersion).value
         ),
         projectID.value,
         art.value
@@ -1727,7 +1843,7 @@ object Defaults extends BuildCommon {
   def packageTaskSettings(key: TaskKey[File], mappingsTask: Initialize[Task[Seq[(File, String)]]]) =
     inTask(key)(
       Seq(
-        key in TaskZero := packageTask.value,
+        (TaskZero / key) := packageTask.value,
         packageConfiguration := packageConfigurationTask.value,
         mappings := mappingsTask.value,
         packagedArtifact := (artifact.value -> key.value),
@@ -1744,7 +1860,7 @@ object Defaults extends BuildCommon {
         config,
         s.cacheStoreFactory,
         s.log,
-        sys.env.get("SOURCE_DATE_EPOCH").map(_.toLong * 1000).orElse(Some(0L))
+        Package.timeFromConfiguration(config)
       )
       config.jar
     }
@@ -1821,7 +1937,7 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val service = bgJobService.value
       val (mainClass, args) = parser.parsed
-      val hashClasspath = (bgHashClasspath in bgRunMain).value
+      val hashClasspath = (bgRunMain / bgHashClasspath).value
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
@@ -1852,7 +1968,7 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-      val hashClasspath = (bgHashClasspath in bgRun).value
+      val hashClasspath = (bgRun / bgHashClasspath).value
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       service.runInBackgroundWithLoader(resolvedScoped.value, state.value) { (logger, workingDir) =>
         val files =
@@ -1930,13 +2046,13 @@ object Defaults extends BuildCommon {
       if (options.nonEmpty) {
         val mask = ScopeMask(project = false)
         val showJavaOptions = Scope.displayMasked(
-          (javaOptions in resolvedScope).scopedKey.scope,
-          (javaOptions in resolvedScope).key.label,
+          (resolvedScope / javaOptions).scopedKey.scope,
+          (resolvedScope / javaOptions).key.label,
           mask
         )
         val showFork = Scope.displayMasked(
-          (fork in resolvedScope).scopedKey.scope,
-          (fork in resolvedScope).key.label,
+          (resolvedScope / fork).scopedKey.scope,
+          (resolvedScope / fork).key.label,
           mask
         )
         s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
@@ -1992,7 +2108,21 @@ object Defaults extends BuildCommon {
           else Map.empty[File, URL]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        key in TaskZero := {
+        scalacOptions := {
+          val compileOptions = scalacOptions.value
+          val sv = scalaVersion.value
+          val config = configuration.value
+          val projectName = name.value
+          if (ScalaArtifacts.isScala3(sv)) {
+            val project = if (config == Compile) projectName else s"$projectName-$config"
+            if (scalaVersion.value.startsWith("3.0.0")) {
+              Seq("-project", project)
+            } else {
+              compileOptions ++ Seq("-project", project)
+            }
+          } else compileOptions
+        },
+        (TaskZero / key) := {
           val s = streams.value
           val cs: Compilers = compilers.value
           val srcs = sources.value
@@ -2006,13 +2136,27 @@ object Defaults extends BuildCommon {
           val fiOpts = fileInputOptions.value
           val reporter = (compile / bspReporter).value
           val converter = fileConverter.value
+          val tFiles = tastyFiles.value
+          val sv = scalaVersion.value
+          val allDeps = allDependencies.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val options = sOpts ++ Opts.doc.externalAPI(xapis)
               val runDoc = Doc.scaladoc(label, s.cacheStoreFactory sub "scala", cs.scalac match {
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               }, fiOpts)
-              runDoc(srcs, cp, out, options, maxErrors.value, s.log)
+              def isScala3Doc(module: ModuleID): Boolean = {
+                module.configurations.exists(_.startsWith(Configurations.ScalaDocTool.name)) &&
+                module.name == ScalaArtifacts.Scala3DocID
+              }
+              if (ScalaArtifacts.isScala3M123(sv) && !allDeps.exists(isScala3Doc)) {
+                Array(
+                  "Unresolved scala3doc artifact",
+                  "add 'ThisBuild / resolvers += Resolver.JCenterRepository'"
+                ).foreach(m => s.log.error(m))
+              }
+              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
+              runDoc(docSrcs, cp, out, options, maxErrors.value, s.log)
             case (_, true) =>
               val javadoc =
                 sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
@@ -2020,7 +2164,7 @@ object Defaults extends BuildCommon {
                 srcs.toList map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
-                cp.toList map { x =>
+                cp map { x =>
                   converter.toVirtualFile(x.toPath)
                 },
                 converter,
@@ -2043,18 +2187,18 @@ object Defaults extends BuildCommon {
   private[this] def mainBgRunTaskForConfig(c: ScopeAxis[ConfigKey]) =
     bgRun := bgRunTask(
       exportedProductJars,
-      fullClasspathAsJars in (This, c, This),
-      mainClass in run,
-      bgCopyClasspath in bgRun,
-      runner in run
+      This / c / This / fullClasspathAsJars,
+      run / mainClass,
+      bgRun / bgCopyClasspath,
+      run / runner
     ).evaluated
 
   private[this] def mainBgRunMainTaskForConfig(c: ScopeAxis[ConfigKey]) =
     bgRunMain := bgRunMainTask(
       exportedProductJars,
-      fullClasspathAsJars in (This, c, This),
-      bgCopyClasspath in bgRunMain,
-      runner in run
+      This / c / This / fullClasspathAsJars,
+      bgRunMain / bgCopyClasspath,
+      run / runner
     ).evaluated
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] = analysis match {
@@ -2064,7 +2208,7 @@ object Defaults extends BuildCommon {
 
   def consoleProjectTask =
     Def.task {
-      ConsoleProject(state.value, (initialCommands in consoleProject).value)(streams.value.log)
+      ConsoleProject(state.value, (consoleProject / initialCommands).value)(streams.value.log)
       println()
     }
 
@@ -2072,19 +2216,19 @@ object Defaults extends BuildCommon {
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[_]): Initialize[Task[Unit]] =
     Def.task {
-      val si = (scalaInstance in task).value
+      val si = (task / scalaInstance).value
       val s = streams.value
-      val cpFiles = data((classpath in task).value)
+      val cpFiles = data((task / classpath).value)
       val fullcp = (cpFiles ++ si.allJars).distinct
-      val tempDir = IO.createUniqueDirectory((taskTemporaryDirectory in task).value).toPath
+      val tempDir = IO.createUniqueDirectory((task / taskTemporaryDirectory).value).toPath
       val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
       val compiler =
-        (compilers in task).value.scalac match {
+        (task / compilers).value.scalac match {
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
         }
-      val sc = (scalacOptions in task).value
-      val ic = (initialCommands in task).value
-      val cc = (cleanupCommands in task).value
+      val sc = (task / scalacOptions).value
+      val ic = (task / initialCommands).value
+      val cc = (task / cleanupCommands).value
       (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
       println()
     }
@@ -2247,7 +2391,7 @@ object Defaults extends BuildCommon {
       else None
     Setup.of(
       lookup,
-      (skip in compile).value,
+      (compile / skip).value,
       compileAnalysisFile.value.toPath,
       compilerCache.value,
       incOptions.value,
@@ -2279,7 +2423,9 @@ object Defaults extends BuildCommon {
           scalacOptions.value.toArray,
           javacOptions.value.toArray,
           maxErrors.value,
-          f1(foldMappers(sourcePositionMappers.value)),
+          f1(
+            foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
+          ),
           compileOrder.value,
           None.toOptional: Optional[NioPath],
           Some(fileConverter.value).toOptional,
@@ -2291,7 +2437,7 @@ object Defaults extends BuildCommon {
         new ManagedLoggedReporter(
           maxErrors.value,
           streams.value.log,
-          foldMappers(sourcePositionMappers.value)
+          foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
         )
       },
       compileInputs := {
@@ -2308,15 +2454,25 @@ object Defaults extends BuildCommon {
     )
   }
 
-  private[sbt] def foldMappers[A](mappers: Seq[A => Option[A]]) =
-    mappers.foldRight({ p: A =>
-      p
+  private[sbt] def foldMappers(
+      mappers: Seq[Position => Option[Position]],
+      reportAbsolutePath: Boolean,
+      fc: FileConverter
+  ) = {
+    def withAbsoluteSource(p: Position): Position =
+      if (reportAbsolutePath) toAbsoluteSource(fc)(p) else p
+
+    mappers.foldRight({ p: Position =>
+      withAbsoluteSource(p) // Fallback if sourcePositionMappers is empty
     }) {
-      (mapper, mappers) =>
-        { p: A =>
-          mapper(p).getOrElse(mappers(p))
+      (mapper, previousPosition) =>
+        { p: Position =>
+          // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
+          mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
         }
     }
+  }
+
   private[sbt] def none[A]: Option[A] = (None: Option[A])
   private[sbt] def jnone[A]: Optional[A] = none[A].toOptional
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
@@ -2343,7 +2499,11 @@ object Defaults extends BuildCommon {
       val problems =
         analysis.infos.allInfos.values
           .flatMap(i => i.getReportedProblems ++ i.getUnreportedProblems)
-      val reporter = new ManagedLoggedReporter(max, streams.value.log, foldMappers(spms))
+      val reporter = new ManagedLoggedReporter(
+        max,
+        streams.value.log,
+        foldMappers(spms, reportAbsolutePath.value, fileConverter.value)
+      )
       problems.foreach(p => reporter.log(p))
     }
 
@@ -2408,16 +2568,13 @@ object Defaults extends BuildCommon {
   def noAggregation: Seq[Scoped] =
     Seq(run, runMain, bgRun, bgRunMain, console, consoleQuick, consoleProject)
   lazy val disableAggregation = Defaults.globalDefaults(noAggregation map disableAggregate)
-  def disableAggregate(k: Scoped) = aggregate in k :== false
+  def disableAggregate(k: Scoped) = (k / aggregate) :== false
 
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
-  private[this] lazy val newRunnerSettings: Seq[Setting[_]] = {
-    val unscoped: Seq[Def.Setting[_]] =
-      Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
-    inConfig(Compile)(unscoped) ++ inConfig(Test)(unscoped)
-  }
+  private[this] lazy val newRunnerSettings: Seq[Setting[_]] =
+    Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
 
@@ -2444,23 +2601,6 @@ object Defaults extends BuildCommon {
       // Missing but core settings
       baseDirectory := thisProject.value.base,
       target := baseDirectory.value / "target",
-      // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
-      // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
-      // this setting needs to be set here too.
-      sbtDependency in pluginCrossBuild := {
-        val app = appConfiguration.value
-        val id = app.provider.id
-        val sv = (sbtVersion in pluginCrossBuild).value
-        val scalaV = (scalaVersion in pluginCrossBuild).value
-        val binVersion = (scalaBinaryVersion in pluginCrossBuild).value
-        val cross = id.crossVersionedValue match {
-          case CrossValue.Disabled => Disabled()
-          case CrossValue.Full     => CrossVersion.full
-          case CrossValue.Binary   => CrossVersion.binary
-        }
-        val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
-        CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
-      },
       bgHashClasspath := !turbo.value,
       classLoaderLayeringStrategy := {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
@@ -2566,8 +2706,8 @@ object Classpaths {
       unmanagedJars := findUnmanagedJars(
         configuration.value,
         unmanagedBase.value,
-        includeFilter in unmanagedJars value,
-        excludeFilter in unmanagedJars value
+        (unmanagedJars / includeFilter) value,
+        (unmanagedJars / excludeFilter) value
       )
     ).map(exportClasspath) ++ Seq(
       externalDependencyClasspath / outputFileStamps := {
@@ -2630,7 +2770,7 @@ object Classpaths {
 
   def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
   lazy val defaultPackages: Seq[TaskKey[File]] =
-    for (task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (task in conf)
+    for (task <- defaultPackageKeys; conf <- Seq(Compile, Test)) yield (conf / task)
   lazy val defaultArtifactTasks: Seq[TaskKey[File]] = makePom +: defaultPackages
 
   def findClasspathConfig(
@@ -2661,6 +2801,7 @@ object Classpaths {
       case (a, true) => a
     })
 
+  @nowarn
   def forallIn[T](
       key: Scoped.ScopingSetting[SettingKey[T]], // should be just SettingKey[T] (mea culpa)
       pkgTasks: Seq[TaskKey[_]],
@@ -2672,7 +2813,7 @@ object Classpaths {
       Seq(
         publishMavenStyle :== true,
         publishArtifact :== true,
-        publishArtifact in Test :== false
+        (Test / publishArtifact) :== false
       )
     )
 
@@ -2691,7 +2832,7 @@ object Classpaths {
       publisher.makePomFile(ivyModule.value, config, streams.value.log)
       config.file.get
     },
-    packagedArtifact in makePom := ((artifact in makePom).value -> makePom.value),
+    (makePom / packagedArtifact) := ((makePom / artifact).value -> makePom.value),
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
@@ -2717,6 +2858,9 @@ object Classpaths {
         libraryDependencies :== Nil,
         libraryDependencySchemes :== Nil,
         evictionErrorLevel :== Level.Error,
+        assumedEvictionErrorLevel :== Level.Info,
+        assumedVersionScheme :== VersionScheme.Always,
+        assumedVersionSchemeJava :== VersionScheme.Always,
         excludeDependencies :== Nil,
         ivyLoggingLevel := (// This will suppress "Resolving..." logs on Jenkins and Travis.
         if (insideCI.value)
@@ -2865,8 +3009,8 @@ object Classpaths {
       Def.setting {
         Option(
           ScalaModuleInfo(
-            (scalaVersion in update).value,
-            (scalaBinaryVersion in update).value,
+            (update / scalaVersion).value,
+            (update / scalaBinaryVersion).value,
             Vector.empty,
             filterImplicit = false,
             checkExplicit = true,
@@ -2876,9 +3020,9 @@ object Classpaths {
         )
       }
     )).value,
-    artifactPath in makePom := artifactPathSetting(artifact in makePom).value,
-    publishArtifact in makePom := publishMavenStyle.value && publishArtifact.value,
-    artifact in makePom := Artifact.pom(moduleName.value),
+    makePom / artifactPath := artifactPathSetting((makePom / artifact)).value,
+    makePom / publishArtifact := publishMavenStyle.value && publishArtifact.value,
+    makePom / artifact := Artifact.pom(moduleName.value),
     projectID := defaultProjectID.value,
     projectID := pluginProjectID.value,
     projectDescriptors := depMap.value,
@@ -2914,7 +3058,8 @@ object Classpaths {
     },
     ivyConfigurations ++= Configurations.auxiliary,
     ivyConfigurations ++= {
-      if (managedScalaInstance.value && scalaHome.value.isEmpty) Configurations.ScalaTool :: Nil
+      if (managedScalaInstance.value && scalaHome.value.isEmpty)
+        Configurations.ScalaTool :: Configurations.ScalaDocTool :: Nil
       else Nil
     },
     // Coursier needs these
@@ -2957,7 +3102,7 @@ object Classpaths {
     },
     moduleSettings := moduleSettings0.value,
     makePomConfiguration := MakePomConfiguration()
-      .withFile((artifactPath in makePom).value)
+      .withFile((makePom / artifactPath).value)
       .withModuleInfo(projectInfo.value)
       .withExtra(pomExtra.value)
       .withProcess(pomPostProcess.value)
@@ -2970,19 +3115,27 @@ object Classpaths {
         sbt.Classpaths.deliverPattern(crossTarget.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-        checksums.in(publish).value.toVector,
+        (publish / checksums).value.toVector,
         ivyLoggingLevel.value,
         isSnapshot.value
       )
     },
     publishConfiguration := {
+      val s = streams.value
+      val vs = versionScheme.value
+      if (vs.isEmpty)
+        s.log.warn(
+          s"""versionScheme setting is empty; set `ThisBuild / versionScheme := Some("early-semver")`, `Some("semver-spec")` or `Some("pvp")`
+             |so tooling can use it for eviction errors etc - https://www.scala-sbt.org/1.x/docs/Publishing.html""".stripMargin
+        )
+      else ()
       publishConfig(
         publishMavenStyle.value,
         deliverPattern(crossTarget.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-        packagedArtifacts.in(publish).value.toVector,
-        checksums.in(publish).value.toVector,
+        (publish / packagedArtifacts).value.toVector,
+        (publish / checksums).value.toVector,
         getPublishTo(publishTo.value).name,
         ivyLoggingLevel.value,
         isSnapshot.value
@@ -2994,7 +3147,7 @@ object Classpaths {
         sbt.Classpaths.deliverPattern(crossTarget.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-        checksums.in(publish).value.toVector,
+        (publish / checksums).value.toVector,
         ivyLoggingLevel.value,
         isSnapshot.value,
         optResolverName = Some("local")
@@ -3005,8 +3158,8 @@ object Classpaths {
       deliverPattern(crossTarget.value),
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-      packagedArtifacts.in(publishLocal).value.toVector,
-      checksums.in(publishLocal).value.toVector,
+      (publishLocal / packagedArtifacts).value.toVector,
+      (publishLocal / checksums).value.toVector,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
     ),
@@ -3015,8 +3168,8 @@ object Classpaths {
       deliverPattern(crossTarget.value),
       if (isSnapshot.value) "integration" else "release",
       ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-      packagedArtifacts.in(publishM2).value.toVector,
-      checksums = checksums.in(publishM2).value.toVector,
+      (publishM2 / packagedArtifacts).value.toVector,
+      checksums = (publishM2 / checksums).value.toVector,
       resolverName = Resolver.publishMavenLocal.name,
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value
@@ -3031,7 +3184,7 @@ object Classpaths {
       s"update_cache$suffix"
     },
     dependencyPositions := dependencyPositionsTask.value,
-    unresolvedWarningConfiguration in update := UnresolvedWarningConfiguration(
+    update / unresolvedWarningConfiguration := UnresolvedWarningConfiguration(
       dependencyPositions.value
     ),
     updateFull := (updateTask tag (Tags.Update, Tags.Network)).value,
@@ -3042,8 +3195,8 @@ object Classpaths {
       ConflictWarning(conflictWarning.value, report, log)
       report
     },
-    evictionWarningOptions in update := evictionWarningOptions.value,
-    evictionWarningOptions in evicted := EvictionWarningOptions.full,
+    update / evictionWarningOptions := evictionWarningOptions.value,
+    evicted / evictionWarningOptions := EvictionWarningOptions.full,
     evicted := {
       import ShowLines._
       val report = (updateTask tag (Tags.Update, Tags.Network)).value
@@ -3071,7 +3224,7 @@ object Classpaths {
         },
         dependencyResolution := dependencyResolutionTask.value,
         csrConfiguration := LMCoursier.updateClassifierConfigurationTask.value,
-        updateClassifiers in TaskGlobal := LibraryManagement.updateClassifiersTask.value,
+        TaskGlobal / updateClassifiers := LibraryManagement.updateClassifiersTask.value,
       )
     ) ++ Seq(
     csrProject := CoursierInputsTasks.coursierProjectTask.value,
@@ -3098,16 +3251,22 @@ object Classpaths {
       val base = projectDependencies.value ++ libraryDependencies.value
       val isPlugin = sbtPlugin.value
       val sbtdeps =
-        (sbtDependency in pluginCrossBuild).value.withConfigurations(Some(Provided.name))
+        (pluginCrossBuild / sbtDependency).value.withConfigurations(Some(Provided.name))
       val pluginAdjust =
         if (isPlugin) sbtdeps +: base
         else base
       val sbtOrg = scalaOrganization.value
       val version = scalaVersion.value
-      if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
-        pluginAdjust
-      else
-        ScalaArtifacts.toolDependencies(sbtOrg, version) ++ pluginAdjust
+      val extResolvers = externalResolvers.value
+      val isScala3M123 = ScalaArtifacts.isScala3M123(version)
+      val allToolDeps =
+        if (scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value)
+          Nil
+        else if (!isScala3M123 || extResolvers.contains(Resolver.JCenterRepository)) {
+          ScalaArtifacts.toolDependencies(sbtOrg, version) ++
+            ScalaArtifacts.docToolDependencies(sbtOrg, version)
+        } else ScalaArtifacts.toolDependencies(sbtOrg, version)
+      allToolDeps ++ pluginAdjust
     },
     // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
@@ -3132,7 +3291,7 @@ object Classpaths {
       val isPlugin = sbtPlugin.value
       val app = appConfiguration.value
       val id = app.provider.id
-      val sv = (sbtVersion in pluginCrossBuild).value
+      val sv = (pluginCrossBuild / sbtVersion).value
       val base = ModuleID(id.groupID, "scripted-plugin", sv).withCrossVersion(CrossVersion.binary)
       if (isPlugin) Seq(base)
       else Seq()
@@ -3165,7 +3324,7 @@ object Classpaths {
 
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val p0 = ModuleID(organization.value, moduleName.value, version.value)
-      .cross(crossVersion in projectID value)
+      .cross((projectID / crossVersion) value)
       .artifacts(artifacts.value: _*)
     val p1 = apiURL.value match {
       case Some(u) => p0.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
@@ -3184,8 +3343,8 @@ object Classpaths {
       if (sbtPlugin.value)
         sbtPluginExtra(
           projectID.value,
-          (sbtBinaryVersion in pluginCrossBuild).value,
-          (scalaBinaryVersion in pluginCrossBuild).value
+          (pluginCrossBuild / sbtBinaryVersion).value,
+          (pluginCrossBuild / scalaBinaryVersion).value
         )
       else projectID.value
     }
@@ -3212,7 +3371,7 @@ object Classpaths {
   private[this] def sbtClassifiersGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
-        transitiveClassifiers in updateSbtClassifiers ~= (_.filter(_ != DocClassifier))
+        (updateSbtClassifiers / transitiveClassifiers) ~= (_.filter(_ != DocClassifier))
       )
     )
   def sbtClassifiersTasks =
@@ -3262,7 +3421,7 @@ object Classpaths {
           },
           dependencyResolution := dependencyResolutionTask.value,
           csrConfiguration := LMCoursier.updateSbtClassifierConfigurationTask.value,
-          updateSbtClassifiers in TaskGlobal := (Def.task {
+          (TaskGlobal / updateSbtClassifiers) := (Def.task {
             val lm = dependencyResolution.value
             val s = streams.value
             val is = ivySbt.value
@@ -3278,7 +3437,7 @@ object Classpaths {
             val docTypes = docArtifactTypes.value
             val log = s.log
             val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
-            val uwConfig = (unresolvedWarningConfiguration in update).value
+            val uwConfig = (update / unresolvedWarningConfiguration).value
             withExcludes(out, mod.classifiers, lock(app)) { excludes =>
               // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
               LibraryManagement.transitiveScratch(
@@ -3475,7 +3634,7 @@ object Classpaths {
       // Use full level when debug is enabled so that ivy logs are shown.
       import UpdateLogging.{ Default, DownloadOnly, Full }
       val conf = updateConfiguration.value
-      val maybeUpdateLevel = (logLevel in update).?.value
+      val maybeUpdateLevel = (update / logLevel).?.value
       val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
         case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
         case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
@@ -3504,12 +3663,15 @@ object Classpaths {
       label = label,
       updateConf,
       substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
-      skip = (skip in update).value,
+      skip = (update / skip).value,
       force = shouldForce,
       depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-      uwConfig = (unresolvedWarningConfiguration in update).value,
+      uwConfig = (update / unresolvedWarningConfiguration).value,
       evictionLevel = evictionErrorLevel.value,
       versionSchemeOverrides = libraryDependencySchemes.value,
+      assumedEvictionErrorLevel = assumedEvictionErrorLevel.value,
+      assumedVersionScheme = assumedVersionScheme.value,
+      assumedVersionSchemeJava = assumedVersionSchemeJava.value,
       mavenStyle = publishMavenStyle.value,
       compatWarning = compatibilityWarningOptions.value,
       includeCallers = includeCallers,
@@ -3528,7 +3690,7 @@ object Classpaths {
       def modulePositions: Map[ModuleID, SourcePosition] =
         try {
           val extracted = (Project extract st)
-          val sk = (libraryDependencies in (GlobalScope in projRef)).scopedKey
+          val sk = (projRef / Zero / Zero / libraryDependencies).scopedKey
           val empty = extracted.structure.data set (sk.scope, sk.key, Nil)
           val settings = extracted.structure.settings filter { s: Setting[_] =>
             (s.key.key == libraryDependencies.key) &&
@@ -3649,7 +3811,7 @@ object Classpaths {
 
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =
-      a == "2.13" && (b.startsWith("0.") || b.startsWith("3.0"))
+      a == "2.13" && (b.startsWith("0.") || b.startsWith("3"))
     compare(sbv1, sbv2) || compare(sbv2, sbv1)
   }
 
@@ -3687,6 +3849,7 @@ object Classpaths {
       )
     }
 
+  @nowarn
   private[sbt] def depMap(
       projects: Seq[ProjectRef],
       data: Settings[Scope],
@@ -3748,7 +3911,7 @@ object Classpaths {
         .withOtherResolvers(other)
         .withModuleConfigurations(moduleConfigurations.value.toVector)
         .withLock(lock(appConfiguration.value))
-        .withChecksums((checksums in update).value.toVector)
+        .withChecksums((update / checksums).value.toVector)
         .withResolutionCacheDir(crossTarget.value / "resolution-cache")
         .withUpdateOptions(updateOptions.value)
         .withLog(s.log)
@@ -3825,7 +3988,7 @@ object Classpaths {
     ClasspathImpl.getClasspath(key, dep, conf, data)
 
   def defaultConfigurationTask(p: ResolvedReference, data: Settings[Scope]): Configuration =
-    flatten(defaultConfiguration in p get data) getOrElse Configurations.Default
+    flatten((p / defaultConfiguration) get data) getOrElse Configurations.Default
 
   def flatten[T](o: Option[Option[T]]): Option[T] = o flatMap idFun
 
@@ -3851,7 +4014,7 @@ object Classpaths {
       Nil
 
   def addUnmanagedLibrary: Seq[Setting[_]] =
-    Seq(unmanagedJars in Compile ++= unmanagedScalaLibrary.value)
+    Seq((Compile / unmanagedJars) ++= unmanagedScalaLibrary.value)
 
   def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] = Def.taskDyn {
     if (autoScalaLibrary.value && scalaHome.value.isDefined)
@@ -4010,7 +4173,7 @@ object Classpaths {
       ivyRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
-  @com.github.ghik.silencer.silent
+  @nowarn
   private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
@@ -4055,7 +4218,7 @@ object Classpaths {
   def shellPromptFromState: State => String = shellPromptFromState(ITerminal.console.isColorEnabled)
   def shellPromptFromState(isColorEnabled: Boolean): State => String = { s: State =>
     val extracted = Project.extract(s)
-    (name in extracted.currentRef).get(extracted.structure.data) match {
+    (extracted.currentRef / name).get(extracted.structure.data) match {
       case Some(name) =>
         s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), isColorEnabled)
       case _ => "> "
@@ -4079,12 +4242,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
     val add = (s: State) => BasicCommands.addAlias(s, name, value)
     val remove = (s: State) => BasicCommands.removeAlias(s, name)
     def compose(setting: SettingKey[State => State], f: State => State) =
-      setting in GlobalScope ~= (_ compose f)
+      (GlobalScope / setting) ~= (_ compose f)
     Seq(compose(onLoad, add), compose(onUnload, remove))
   }
 
   /**
-   * Adds Maven resolver plugin.
+   * Adds Dependency tree plugin.
    */
   def addDependencyTreePlugin: Setting[Seq[ModuleID]] =
     libraryDependencies += sbtPluginExtra(
@@ -4120,7 +4283,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
    */
   def addSbtPlugin(dependency: ModuleID, sbtVersion: String): Setting[Seq[ModuleID]] =
     libraryDependencies += {
-      val scalaV = (scalaBinaryVersion in update).value
+      val scalaV = (update / scalaBinaryVersion).value
       sbtPluginExtra(dependency, sbtVersion, scalaV)
     }
 
@@ -4130,8 +4293,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
    */
   def addSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
     libraryDependencies += {
-      val sbtV = (sbtBinaryVersion in pluginCrossBuild).value
-      val scalaV = (scalaBinaryVersion in update).value
+      val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+      val scalaV = (update / scalaBinaryVersion).value
       sbtPluginExtra(dependency, sbtV, scalaV)
     }
 
@@ -4206,6 +4369,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
     baseDirectory.value / name
   }
 
+  @deprecated(
+    "externalIvyFile is not supported by Couriser, and will be removed in the future",
+    since = "1.5.0"
+  )
   def externalIvyFile(
       file: Initialize[File] = inBase("ivy.xml"),
       iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo
@@ -4217,6 +4384,10 @@ trait BuildExtra extends BuildCommon with DefExtra {
       managedScalaInstance.value
     )
 
+  @deprecated(
+    "externalPom is not supported by Coursier, and will be removed in the future",
+    since = "1.5.0"
+  )
   def externalPom(
       file: Initialize[File] = inBase("pom.xml"),
       iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo,
@@ -4235,8 +4406,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
   ): Initialize[InputTask[Unit]] =
     Def.inputTask {
       import Def._
-      val r = (runner in (config, run)).value
-      val cp = (fullClasspath in config).value
+      val r = (config / run / runner).value
+      val cp = (config / fullClasspath).value
       val args = spaceDelimited().parsed
       r.run(mainClass, data(cp), baseArguments ++ args, streams.value.log).get
     }
@@ -4247,14 +4418,15 @@ trait BuildExtra extends BuildCommon with DefExtra {
       arguments: String*
   ): Initialize[Task[Unit]] =
     Def.task {
-      val cp = (fullClasspath in config).value
-      val r = (runner in (config, run)).value
+      val cp = (config / fullClasspath).value
+      val r = (config / run / runner).value
       val s = streams.value
       r.run(mainClass, data(cp), arguments, s.log).get
     }
 
   // public API
   /** Returns a vector of settings that create custom run input task. */
+  @nowarn
   def fullRunInputTask(
       scoped: InputKey[Unit],
       config: Configuration,
@@ -4265,7 +4437,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     // I tried "Def.spaceDelimited().parsed" (after importing Def.parserToInput)
     // but it broke actions/run-task
     // Maybe it needs to be defined inside a Def.inputTask?
-    @com.github.ghik.silencer.silent
+    @nowarn
     def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
       InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
 
@@ -4274,7 +4446,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
         initScoped(
           scoped.scopedKey,
           ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
-        ).zipWith(Def.task { ((fullClasspath in config).value, streams.value, result.value) }) {
+        ).zipWith(Def.task { ((config / fullClasspath).value, streams.value, result.value) }) {
           (rTask, t) =>
             (t, rTask) map {
               case ((cp, s, args), r) =>
@@ -4282,11 +4454,12 @@ trait BuildExtra extends BuildCommon with DefExtra {
             }
         }
       }.evaluated
-    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
+    ) ++ inTask(scoped)((config / forkOptions) := forkOptionsTask.value)
   }
 
   // public API
   /** Returns a vector of settings that create custom run task. */
+  @nowarn
   def fullRunTask(
       scoped: TaskKey[Unit],
       config: Configuration,
@@ -4297,7 +4470,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
       scoped := initScoped(
         scoped.scopedKey,
         ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
-      ).zipWith(Def.task { ((fullClasspath in config).value, streams.value) }) {
+      ).zipWith(Def.task { ((config / fullClasspath).value, streams.value) }) {
           case (rTask, t) =>
             (t, rTask) map {
               case ((cp, s), r) =>
@@ -4305,7 +4478,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             }
         }
         .value
-    ) ++ inTask(scoped)(forkOptions in config := forkOptionsTask.value)
+    ) ++ inTask(scoped)((config / forkOptions) := forkOptionsTask.value)
 
   def initScoped[T](sk: ScopedKey[_], i: Initialize[T]): Initialize[T] =
     initScope(fillTaskAxis(sk.scope, sk.key), i)

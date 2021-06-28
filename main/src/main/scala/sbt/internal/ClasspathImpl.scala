@@ -52,7 +52,7 @@ private[sbt] object ClasspathImpl {
   def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
       val _ = (packageBin / dynamicDependency).value
-      val art = (artifact in packageBin).value
+      val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
       for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings
@@ -65,7 +65,7 @@ private[sbt] object ClasspathImpl {
   def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
     Def.task {
       val _ = (packageBin / dynamicDependency).value
-      val art = (artifact in packageBin).value
+      val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
       for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings
@@ -114,7 +114,7 @@ private[sbt] object ClasspathImpl {
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
     Def.taskDyn {
-      val jar = (artifactPath in packageBin).value
+      val jar = (packageBin / artifactPath).value
       TrackLevel.intersection(track, exportToInternal.value) match {
         case TrackLevel.TrackAlways =>
           Def.task {

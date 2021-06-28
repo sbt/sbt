@@ -16,22 +16,23 @@ final class BuildServerCapabilities private (
   val testProvider: Option[sbt.internal.bsp.TestProvider],
   val runProvider: Option[sbt.internal.bsp.RunProvider],
   val dependencySourcesProvider: Option[Boolean],
+  val resourcesProvider: Option[Boolean],
   val canReload: Option[Boolean]) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: BuildServerCapabilities => (this.compileProvider == x.compileProvider) && (this.testProvider == x.testProvider) && (this.runProvider == x.runProvider) && (this.dependencySourcesProvider == x.dependencySourcesProvider) && (this.canReload == x.canReload)
+    case x: BuildServerCapabilities => (this.compileProvider == x.compileProvider) && (this.testProvider == x.testProvider) && (this.runProvider == x.runProvider) && (this.dependencySourcesProvider == x.dependencySourcesProvider) && (this.resourcesProvider == x.resourcesProvider) && (this.canReload == x.canReload)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildServerCapabilities".##) + compileProvider.##) + testProvider.##) + runProvider.##) + dependencySourcesProvider.##) + canReload.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildServerCapabilities".##) + compileProvider.##) + testProvider.##) + runProvider.##) + dependencySourcesProvider.##) + resourcesProvider.##) + canReload.##)
   }
   override def toString: String = {
-    "BuildServerCapabilities(" + compileProvider + ", " + testProvider + ", " + runProvider + ", " + dependencySourcesProvider + ", " + canReload + ")"
+    "BuildServerCapabilities(" + compileProvider + ", " + testProvider + ", " + runProvider + ", " + dependencySourcesProvider + ", " + resourcesProvider + ", " + canReload + ")"
   }
-  private[this] def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, canReload: Option[Boolean] = canReload): BuildServerCapabilities = {
-    new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, canReload)
+  private[this] def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, resourcesProvider: Option[Boolean] = resourcesProvider, canReload: Option[Boolean] = canReload): BuildServerCapabilities = {
+    new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload)
   }
   def withCompileProvider(compileProvider: Option[sbt.internal.bsp.CompileProvider]): BuildServerCapabilities = {
     copy(compileProvider = compileProvider)
@@ -57,6 +58,12 @@ final class BuildServerCapabilities private (
   def withDependencySourcesProvider(dependencySourcesProvider: Boolean): BuildServerCapabilities = {
     copy(dependencySourcesProvider = Option(dependencySourcesProvider))
   }
+  def withResourcesProvider(resourcesProvider: Option[Boolean]): BuildServerCapabilities = {
+    copy(resourcesProvider = resourcesProvider)
+  }
+  def withResourcesProvider(resourcesProvider: Boolean): BuildServerCapabilities = {
+    copy(resourcesProvider = Option(resourcesProvider))
+  }
   def withCanReload(canReload: Option[Boolean]): BuildServerCapabilities = {
     copy(canReload = canReload)
   }
@@ -66,6 +73,6 @@ final class BuildServerCapabilities private (
 }
 object BuildServerCapabilities {
   
-  def apply(compileProvider: Option[sbt.internal.bsp.CompileProvider], testProvider: Option[sbt.internal.bsp.TestProvider], runProvider: Option[sbt.internal.bsp.RunProvider], dependencySourcesProvider: Option[Boolean], canReload: Option[Boolean]): BuildServerCapabilities = new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, canReload)
-  def apply(compileProvider: sbt.internal.bsp.CompileProvider, testProvider: sbt.internal.bsp.TestProvider, runProvider: sbt.internal.bsp.RunProvider, dependencySourcesProvider: Boolean, canReload: Boolean): BuildServerCapabilities = new BuildServerCapabilities(Option(compileProvider), Option(testProvider), Option(runProvider), Option(dependencySourcesProvider), Option(canReload))
+  def apply(compileProvider: Option[sbt.internal.bsp.CompileProvider], testProvider: Option[sbt.internal.bsp.TestProvider], runProvider: Option[sbt.internal.bsp.RunProvider], dependencySourcesProvider: Option[Boolean], resourcesProvider: Option[Boolean], canReload: Option[Boolean]): BuildServerCapabilities = new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload)
+  def apply(compileProvider: sbt.internal.bsp.CompileProvider, testProvider: sbt.internal.bsp.TestProvider, runProvider: sbt.internal.bsp.RunProvider, dependencySourcesProvider: Boolean, resourcesProvider: Boolean, canReload: Boolean): BuildServerCapabilities = new BuildServerCapabilities(Option(compileProvider), Option(testProvider), Option(runProvider), Option(dependencySourcesProvider), Option(resourcesProvider), Option(canReload))
 }

@@ -26,6 +26,7 @@ object TestFrameworks {
   val Specs2 =
     TestFramework("org.specs2.runner.Specs2Framework", "org.specs2.runner.SpecsFramework")
   val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
+  val MUnit = TestFramework("munit.Framework")
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {
@@ -144,9 +145,9 @@ final class TestRunner(
         } finally {
           loggers.foreach(_.flush())
         }
-      val event = TestEvent(results)
+      val event = TestEvent(results.toList)
       safeListenersCall(_.testEvent(event))
-      (SuiteResult(results), nestedTasks.toSeq)
+      (SuiteResult(results.toList), nestedTasks.toSeq)
     }
 
     safeListenersCall(_.startGroup(name))
@@ -239,7 +240,7 @@ object TestFramework {
     }
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
-    map.toMap.mapValues(_.toSet)
+    map.toMap.mapValues(_.toSet).toMap
   }
 
   private def createTestTasks(
@@ -257,7 +258,7 @@ object TestFramework {
 
     val startTask = foreachListenerSafe(_.doInit)
     val testTasks =
-      tests flatMap {
+      Map(tests.toSeq.flatMap {
         case (framework, testDefinitions) =>
           val runner = runners(framework)
           val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
@@ -265,7 +266,7 @@ object TestFramework {
             val taskDef = testTask.taskDef
             (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
           }
-      }
+      }: _*)
 
     val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))
     (startTask, order(testTasks, ordered), endTask)

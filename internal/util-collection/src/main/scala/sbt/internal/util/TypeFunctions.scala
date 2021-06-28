@@ -18,11 +18,11 @@ trait TypeFunctions {
   private type AnyLeft[T] = Left[T, Nothing]
   private type AnyRight[T] = Right[Nothing, T]
 
-  final val left: Id ~> Left[?, Nothing] =
+  final val left: Id ~> Left[*, Nothing] =
     λ[Id ~> AnyLeft](Left(_)).setToString("TypeFunctions.left")
-  final val right: Id ~> Right[Nothing, ?] =
+  final val right: Id ~> Right[Nothing, *] =
     λ[Id ~> AnyRight](Right(_)).setToString("TypeFunctions.right")
-  final val some: Id ~> Some[?] = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
+  final val some: Id ~> Some[*] = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
   final def idFun[T]: T => T = ((t: T) => t).setToString("TypeFunctions.id")
   final def const[A, B](b: B): A => B = ((_: A) => b).setToString(s"TypeFunctions.const($b)")
   final def idK[M[_]]: M ~> M = λ[M ~> M](m => m).setToString("TypeFunctions.idK")

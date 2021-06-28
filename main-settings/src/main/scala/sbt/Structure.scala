@@ -68,6 +68,7 @@ sealed abstract class SettingKey[T]
 
   final def scopedKey: ScopedKey[T] = ScopedKey(scope, key)
 
+  // @deprecated(Scope.inIsDeprecated, "1.5.0")
   final def in(scope: Scope): SettingKey[T] =
     Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
@@ -140,6 +141,7 @@ sealed abstract class TaskKey[T]
 
   def scopedKey: ScopedKey[Task[T]] = ScopedKey(scope, key)
 
+  // @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(scope: Scope): TaskKey[T] =
     Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
 
@@ -206,6 +208,7 @@ sealed trait InputKey[T]
 
   def scopedKey: ScopedKey[InputTask[T]] = ScopedKey(scope, key)
 
+  // @deprecated(Scope.inIsDeprecated, "1.5.0")
   def in(scope: Scope): InputKey[T] =
     Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 
@@ -244,18 +247,32 @@ object Scoped {
    *
    */
   sealed trait ScopingSetting[ResultType] {
+    // @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(s: Scope): ResultType
 
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(p: Reference): ResultType = in(Select(p), This, This)
+
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(t: Scoped): ResultType = in(This, This, Select(t.key))
+
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(c: ConfigKey): ResultType = in(This, Select(c), This)
+
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(c: ConfigKey, t: Scoped): ResultType = in(This, Select(c), Select(t.key))
+
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(p: Reference, c: ConfigKey): ResultType = in(Select(p), Select(c), This)
+
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(p: Reference, t: Scoped): ResultType = in(Select(p), This, Select(t.key))
 
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(p: Reference, c: ConfigKey, t: Scoped): ResultType =
       in(Select(p), Select(c), Select(t.key))
 
+    @deprecated(Scope.inIsDeprecated, "1.5.0")
     def in(
         p: ScopeAxis[Reference],
         c: ScopeAxis[ConfigKey],

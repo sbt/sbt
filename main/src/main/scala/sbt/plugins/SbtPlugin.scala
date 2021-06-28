@@ -8,8 +8,8 @@
 package sbt
 package plugins
 
-import Keys._
-import Def.Setting
+import sbt.Def.Setting
+import sbt.Keys._
 
 object SbtPlugin extends AutoPlugin {
   override def requires = ScriptedPlugin

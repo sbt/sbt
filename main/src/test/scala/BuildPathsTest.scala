@@ -7,54 +7,43 @@
 
 package sbt
 
-import org.specs2.mutable.Specification
+import BuildPaths.expandTildePrefix
 
-object BuildPathsTest extends Specification {
+object BuildPathsTest extends verify.BasicTestSuite {
 
-  private def assertExpandedPath(given: String, expected: String) = {
-    val actual = BuildPaths.expandTildePrefix(given)
-
-    actual must be equalTo (expected)
+  test("expandTildePrefix should expand empty path to itself") {
+    assertEquals("", expandTildePrefix(""))
   }
 
-  "expandTildePrefix" should {
-
-    "expand empty path to itself" in {
-      assertExpandedPath("", "")
-    }
-
-    "expand /home/user/path to itself" in {
-      assertExpandedPath("/home/user/path", "/home/user/path")
-    }
-
-    "expand /~/foo/ to itself" in {
-      assertExpandedPath("/~/foo/", "/~/foo/")
-    }
-
-    "expand ~ to $HOME" in {
-      assertExpandedPath("~", sys.env.getOrElse("HOME", ""))
-    }
-
-    "expand ~/foo/bar to $HOME/foo/bar" in {
-      assertExpandedPath("~/foo/bar", sys.env.getOrElse("HOME", "") + "/foo/bar")
-    }
-
-    "expand ~+ to $PWD" in {
-      assertExpandedPath("~+", sys.env.getOrElse("PWD", ""))
-    }
-
-    "expand ~+/foo/bar to $PWD/foo/bar" in {
-      assertExpandedPath("~+/foo/bar", sys.env.getOrElse("PWD", "") + "/foo/bar")
-    }
-
-    "expand ~- to $OLDPWD" in {
-      assertExpandedPath("~-", sys.env.getOrElse("OLDPWD", ""))
-    }
-
-    "expand ~-/foo/bar to $OLDPWD/foo/bar" in {
-      assertExpandedPath("~-/foo/bar", sys.env.getOrElse("OLDPWD", "") + "/foo/bar")
-    }
-
+  test("it should expand /home/user/path to itself") {
+    assertEquals("/home/user/path", expandTildePrefix("/home/user/path"))
   }
 
+  test("it should expand /~/foo/ to itself") {
+    assertEquals("/~/foo/", expandTildePrefix("/~/foo/"))
+  }
+
+  test("it should expand ~ to $HOME") {
+    assertEquals(sys.env.getOrElse("HOME", ""), expandTildePrefix("~"))
+  }
+
+  test("it should expand ~/foo/bar to $HOME/foo/bar") {
+    assertEquals(sys.env.getOrElse("HOME", "") + "/foo/bar", expandTildePrefix("~/foo/bar"))
+  }
+
+  test("it should expand ~+ to $PWD") {
+    assertEquals(sys.env.getOrElse("PWD", ""), expandTildePrefix("~+"))
+  }
+
+  test("it should expand ~+/foo/bar to $PWD/foo/bar") {
+    assertEquals(sys.env.getOrElse("PWD", "") + "/foo/bar", expandTildePrefix("~+/foo/bar"))
+  }
+
+  test("it should expand ~- to $OLDPWD") {
+    assertEquals(sys.env.getOrElse("OLDPWD", ""), expandTildePrefix("~-"))
+  }
+
+  test("it should expand ~-/foo/bar to $OLDPWD/foo/bar") {
+    assertEquals(sys.env.getOrElse("OLDPWD", "") + "/foo/bar", expandTildePrefix("~-/foo/bar"))
+  }
 }

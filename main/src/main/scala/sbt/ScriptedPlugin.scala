@@ -14,6 +14,8 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.Project._
+import sbt.ScopeFilter.Make._
+import sbt.SlashSyntax0._
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
@@ -60,7 +62,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
-    scriptedSbt := (sbtVersion in pluginCrossBuild).value,
+    scriptedSbt := (pluginCrossBuild / sbtVersion).value,
     sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
     libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match {
@@ -92,12 +94,12 @@ object ScriptedPlugin extends AutoPlugin {
     scriptedRun := scriptedRunTask.value,
     scriptedDependencies := {
       def use[A](@deprecated("unused", "") x: A*): Unit = () // avoid unused warnings
-      val analysis = (Keys.compile in Test).value
-      val pub = (publishLocal).value
+      val analysis = (Test / Keys.compile).value
+      val pub = publishLocal.all(ScopeFilter(projects = inDependencies(ThisProject))).value
       use(analysis, pub)
     },
     scripted := scriptedTask.evaluated,
-    watchTriggers in scripted += Glob(sbtTestDirectory.value, RecursiveGlob)
+    scripted / watchTriggers += Glob(sbtTestDirectory.value, RecursiveGlob)
   )
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
@@ -144,7 +146,7 @@ object ScriptedPlugin extends AutoPlugin {
     val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
 
     val id = charClass(c => !c.isWhitespace && c != '/', "not whitespace and not '/'").+.string
-    val groupP = token(id.examples(pairMap.keySet)) <~ token('/')
+    val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
 
     // A parser for page definitions
     val pageNumber = (NatBasic & not('0', "zero page number")).flatMap { i =>

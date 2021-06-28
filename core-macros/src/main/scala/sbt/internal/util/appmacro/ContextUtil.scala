@@ -157,7 +157,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
     case _ => ()
   }
 
-  @deprecated("1.3.0", "Use that variant that specifies the M instance types to exclude")
+  @deprecated("Use that variant that specifies the M instance types to exclude", since = "1.3.0")
   /**
    * A function that checks the provided tree for illegal references to M instances defined in the
    *  expression passed to the macro and for illegal dereferencing of M instances.

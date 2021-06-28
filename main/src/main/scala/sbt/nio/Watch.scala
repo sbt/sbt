@@ -14,6 +14,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
+import sbt.SlashSyntax0._
 import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent
@@ -516,7 +517,7 @@ object Watch {
     }).reverse.foreach { o =>
       if (distinctOpts.add(o.input)) opts += o
     }
-    opts.reverse
+    opts.toSeq.reverse
   }
   private def waitMessage(project: ProjectRef, commands: Seq[String]): Seq[String] = {
     val cmds = commands.map(project.project + "/" + _.trim).mkString("; ")
@@ -620,7 +621,7 @@ object Watch {
     watchStartMessage :== Watch.defaultStartWatch,
     watchTriggeredMessage :== Watch.defaultOnTriggerMessage,
     watchForceTriggerOnAnyChange :== false,
-    watchPersistFileStamps := (sbt.Keys.turbo in ThisBuild).value,
+    watchPersistFileStamps := (ThisBuild / sbt.Keys.turbo).value,
     watchTriggers :== Nil,
     watchAntiEntropyPollPeriod := Watch.defaultAntiEntropyPollPeriod,
   )

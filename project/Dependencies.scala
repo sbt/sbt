@@ -4,29 +4,29 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.12"
-  val scala213 = "2.13.3"
+  val scala212 = "2.12.14"
+  val scala213 = "2.13.6"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.4.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.5.1")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.0-M2")
-  val zincVersion = nightlyVersion.getOrElse("1.5.0-M1")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.5.2")
+  val zincVersion = nightlyVersion.getOrElse("1.5.5")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.1.6"
+  val launcherVersion = "1.3.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.1"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -77,31 +77,33 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.5"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.8"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
-  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-42b717d4418374417765c7651dca69b1b75d8b84"
-  val jline3Version = "3.17.1"
+  // JLine 3 version must be coordinated together with JAnsi version
+  // and the JLine 2 fork version, which uses the same JAnsi
+  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
+  val jline3Version = "3.19.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val jansi = "org.fusesource.jansi" % "jansi" % "2.0.1"
+  val jansi = "org.fusesource.jansi" % "jansi" % "2.1.0"
   val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
-  val specs2 = "org.specs2" %% "specs2-junit" % "4.10.0"
   val junit = "junit" % "junit" % "4.13.1"
-  val scalaVerify = "com.eed3si9n.verify" %% "verify" % "0.2.0"
+  val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
   val scalaReflect = Def.setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.11.2"
@@ -112,8 +114,7 @@ object Dependencies {
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
-  val hedgehog = "hedgehog" %% "hedgehog-sbt" % "0.1.0"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.6.1"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val silencerPlugin = "com.github.ghik" %% "silencer-plugin" % "1.4.2"
-  val silencerLib = "com.github.ghik" %% "silencer-lib" % "1.4.2" % Provided
+  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.0").cross(CrossVersion.full)
 }

@@ -46,7 +46,7 @@ object DependencyTreeSettings {
         // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
         // NOT correctly force the scope when applied to `TaskKey.toTask` instances (as opposed to raw
         // implementations like `Classpaths.mkIvyConfiguration` or `Classpaths.updateTask`)
-        val is = new IvySbt((ivyConfiguration in dependencyTreeIgnoreMissingUpdate).value)
+        val is = new IvySbt((dependencyTreeIgnoreMissingUpdate / ivyConfiguration).value)
         new is.Module(moduleSettings.value)
       },
       // don't fail on missing dependencies
@@ -161,7 +161,7 @@ object DependencyTreeSettings {
       key / asString := renderer(dependencyTreeModuleGraph0.value),
       key / toFile := {
         val (targetFile, force) = targetFileAndForceParser.parsed
-        writeToFile(key.key.label, (asString in key).value, targetFile, force, streams.value)
+        writeToFile(key.key.label, (key / asString).value, targetFile, force, streams.value)
       },
     )
 

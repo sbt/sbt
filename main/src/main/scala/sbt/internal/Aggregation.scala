@@ -12,11 +12,13 @@ import java.text.DateFormat
 
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
+import sbt.SlashSyntax0._
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
+import scala.annotation.nowarn
 
 sealed trait Aggregation
 object Aggregation {
@@ -127,7 +129,8 @@ object Aggregation {
   ): Unit = {
     import extracted._
     def get(key: SettingKey[Boolean]): Boolean =
-      key in currentRef get structure.data getOrElse true
+      (currentRef / key).get(structure.data) getOrElse true
+
     if (get(showSuccess)) {
       if (get(showTiming)) {
         val msg = timingString(start, stop, structure.data, currentRef)
@@ -143,7 +146,7 @@ object Aggregation {
       data: Settings[Scope],
       currentRef: ProjectRef,
   ): String = {
-    val format = timingFormat in currentRef get data getOrElse defaultFormat
+    val format = (currentRef / timingFormat).get(data) getOrElse defaultFormat
     timing(format, startTime, endTime)
   }
 
@@ -287,6 +290,7 @@ object Aggregation {
       ScopedKey(resolved, key.key)
     }
 
+  @nowarn
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
     Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
   private[sbt] val suppressShow =

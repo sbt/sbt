@@ -14,12 +14,14 @@ import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 import sbt.Def._
 import sbt.Keys._
 import sbt.Project.richInitializeTask
+import sbt.SlashSyntax0._
 import sbt.io.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file._
 import sbt.nio.file.syntax._
 import sbt.util.Level
 import sjsonnew.JsonFormat
+import scala.annotation.nowarn
 
 private[sbt] object Clean {
 
@@ -51,16 +53,16 @@ private[sbt] object Clean {
   }
 
   private[this] def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
-    val excludes = (cleanKeepFiles in scope).value.map {
+    val excludes = (scope / cleanKeepFiles).value.map {
       // This mimics the legacy behavior of cleanFilesTask
       case f if f.isDirectory => Glob(f, AnyPath)
       case f                  => f.toGlob
-    } ++ (cleanKeepGlobs in scope).value
+    } ++ (scope / cleanKeepGlobs).value
     p: Path => excludes.exists(_.matches(p))
   }
   private[this] def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
     // Don't use a regular logger because the logger actually writes to the target directory.
-    val debug = (logLevel in scope).?.value.orElse(state.value.get(logLevel.key)) match {
+    val debug = (scope / logLevel).?.value.orElse(state.value.get(logLevel.key)) match {
       case Some(Level.Debug) =>
         (string: String) => println(s"[debug] $string")
       case _ =>
@@ -83,16 +85,17 @@ private[sbt] object Clean {
     Def.taskDyn {
       val state = Keys.state.value
       val extracted = Project.extract(state)
-      val view = (fileTreeView in scope).value
+      val view = (scope / fileTreeView).value
       val manager = streamsManager.value
       Def.task {
         val excludeFilter = cleanFilter(scope).value
         val delete = cleanDelete(scope).value
-        val targetDir = (target in scope).?.value.map(_.toPath)
+        val targetDir = (scope / target).?.value.map(_.toPath)
 
         targetDir.filter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
-        (cleanFiles in scope).?.value.getOrElse(Nil).foreach { f =>
-          deleteContents(f.toPath, excludeFilter, view, delete)
+        (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
+          if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
+          else delete(x.toPath)
         }
 
         // This is the special portion of the task where we clear out the relevant streams
@@ -105,7 +108,7 @@ private[sbt] object Clean {
           }
         val streamsGlobs =
           (streamsKey.toSeq ++ stampsKey).map(k => manager(k).cacheDirectory.toGlob / **)
-        ((fileOutputs in scope).value.filter(g => targetDir.fold(true)(g.base.startsWith)) ++ streamsGlobs)
+        ((scope / fileOutputs).value.filter(g => targetDir.fold(true)(g.base.startsWith)) ++ streamsGlobs)
           .foreach { g =>
             val filter: Path => Boolean = { path =>
               !g.matches(path) || excludeFilter(path)
@@ -127,18 +130,20 @@ private[sbt] object Clean {
   private[this] implicit class ToSeqPathOps[T](val t: T) extends AnyVal {
     def toSeqPath(implicit toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
   }
+
+  @nowarn
   private[sbt] def cleanFileOutputTask[T: JsonFormat: ToSeqPath](
       taskKey: TaskKey[T]
   ): Def.Initialize[Task[Unit]] =
     Def.taskDyn {
       val scope = taskKey.scope in taskKey.key
       Def.task {
-        val targetDir = (target in scope).value.toPath
+        val targetDir = (scope / target).value.toPath
         val filter = cleanFilter(scope).value
         // We do not want to inadvertently delete files that are not in the target directory.
         val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
         val delete = cleanDelete(scope).value
-        val st = streams.in(scope).value
+        val st = (scope / streams).value
         taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
         delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
       }

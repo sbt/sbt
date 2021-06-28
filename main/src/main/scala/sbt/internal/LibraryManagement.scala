@@ -11,6 +11,7 @@ package internal
 import java.io.File
 import java.util.concurrent.Callable
 
+import sbt.SlashSyntax0._
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
@@ -39,6 +40,9 @@ private[sbt] object LibraryManagement {
       uwConfig: UnresolvedWarningConfiguration,
       evictionLevel: Level.Value,
       versionSchemeOverrides: Seq[ModuleID],
+      assumedEvictionErrorLevel: Level.Value,
+      assumedVersionScheme: String,
+      assumedVersionSchemeJava: String,
       mavenStyle: Boolean,
       compatWarning: CompatibilityWarningOptions,
       includeCallers: Boolean,
@@ -63,19 +67,33 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val evictionError = EvictionError(report1, module, versionSchemeOverrides)
-      if (evictionError.incompatibleEvictions.isEmpty) ()
-      else
-        evictionLevel match {
-          case Level.Error =>
-            val msgs = List(
-              "",
-              "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
-            )
-            sys.error((evictionError.lines ++ msgs).mkString(EOL))
-          case _ =>
-            evictionError.lines.foreach(log.log(evictionLevel, _: String))
-        }
+      val evictionError = EvictionError(
+        report1,
+        module,
+        versionSchemeOverrides,
+        assumedVersionScheme,
+        assumedVersionSchemeJava,
+        assumedEvictionErrorLevel
+      )
+      def extraLines = List(
+        "",
+        "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
+      )
+      val errorLines: Seq[String] =
+        (if (evictionError.incompatibleEvictions.isEmpty
+             || evictionLevel != Level.Error) Nil
+         else evictionError.lines) ++
+          (if (evictionError.assumedIncompatibleEvictions.isEmpty
+               || assumedEvictionErrorLevel != Level.Error) Nil
+           else evictionError.toAssumedLines)
+      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(EOL))
+      else {
+        if (evictionError.incompatibleEvictions.isEmpty) ()
+        else evictionError.lines.foreach(log.log(evictionLevel, _: String))
+
+        if (evictionError.assumedIncompatibleEvictions.isEmpty) ()
+        else evictionError.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+      }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
       report2
@@ -248,7 +266,7 @@ private[sbt] object LibraryManagement {
         val updateConf = {
           import UpdateLogging.{ Full, DownloadOnly, Default }
           val conf = updateConfiguration.value
-          val maybeUpdateLevel = (logLevel in update).?.value
+          val maybeUpdateLevel = (update / logLevel).?.value
           val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
             case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
             case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
@@ -266,12 +284,15 @@ private[sbt] object LibraryManagement {
           Reference.display(thisProjectRef.value),
           updateConf,
           identity,
-          skip = (skip in update).value,
+          skip = (update / skip).value,
           force = shouldForce,
           depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-          uwConfig = (unresolvedWarningConfiguration in update).value,
+          uwConfig = (update / unresolvedWarningConfiguration).value,
           evictionLevel = Level.Debug,
           versionSchemeOverrides = Nil,
+          assumedEvictionErrorLevel = Level.Debug,
+          assumedVersionScheme = VersionScheme.Always,
+          assumedVersionSchemeJava = VersionScheme.Always,
           mavenStyle = publishMavenStyle.value,
           compatWarning = compatibilityWarningOptions.value,
           includeCallers = false,
@@ -290,7 +311,7 @@ private[sbt] object LibraryManagement {
         val app = appConfiguration.value
         val srcTypes = sourceArtifactTypes.value
         val docTypes = docArtifactTypes.value
-        val uwConfig = (unresolvedWarningConfiguration in update).value
+        val uwConfig = (update / unresolvedWarningConfiguration).value
         val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
         withExcludes(out, mod.classifiers, lock(app)) { excludes =>
           lm.updateClassifiers(
@@ -336,7 +357,11 @@ private[sbt] object LibraryManagement {
             .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
           IvyActions
-            .addExcluded(report, classifiers.toVector, allExcludes.mapValues(_.map(_.name).toSet))
+            .addExcluded(
+              report,
+              classifiers.toVector,
+              allExcludes.mapValues(_.map(_.name).toSet).toMap
+            )
         }
       }
     )

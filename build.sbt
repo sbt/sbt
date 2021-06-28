@@ -7,53 +7,51 @@ import java.nio.file.{ Files, Path => JPath }
 
 import scala.util.Try
 
+// ThisBuild settings take lower precedence,
+// but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.5.0-SNAPSHOT"
+  val v = "1.5.5-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
+ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / turbo := true
 ThisBuild / usePipelining := false // !(Global / insideCI).value
+ThisBuild / organization := "org.scala-sbt"
+ThisBuild / description := "sbt is an interactive build tool"
+ThisBuild / licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE"))
+ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+ThisBuild / Compile / doc / javacOptions := Nil
+ThisBuild / developers := List(
+  Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
+  Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
+  Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
+  Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
+  Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
+  Developer(
+    "gkossakowski",
+    "Grzegorz Kossakowski",
+    "@gkossakowski",
+    url("https://github.com/gkossakowski")
+  ),
+  Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+)
+ThisBuild / homepage := Some(url("https://github.com/sbt/sbt"))
+ThisBuild / scmInfo := Some(
+  ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
+)
+ThisBuild / resolvers += Resolver.mavenLocal
 
+Global / semanticdbEnabled := !(Global / insideCI).value
+Global / semanticdbVersion := "4.4.20"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
 Global / excludeLint += whitesourceIgnoredScopes
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
-
-// ThisBuild settings take lower precedence,
-// but can be shared across the multi projects.
-def buildLevelSettings: Seq[Setting[_]] =
-  inThisBuild(
-    Seq(
-      organization := "org.scala-sbt",
-      description := "sbt is an interactive build tool",
-      bintrayPackage := sys.env.get("BINTRAY_PACKAGE").getOrElse("sbt"),
-      licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE")),
-      javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
-      Compile / doc / javacOptions := Nil,
-      developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
-        Developer("eatkins", "Ethan Atkins", "@eatkins", url("https://github.com/eatkins")),
-        Developer(
-          "gkossakowski",
-          "Grzegorz Kossakowski",
-          "@gkossakowski",
-          url("https://github.com/gkossakowski")
-        ),
-        Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
-      ),
-      homepage := Some(url("https://github.com/sbt/sbt")),
-      scmInfo := Some(ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")),
-      resolvers += Resolver.mavenLocal,
-    )
-  )
 
 def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(
@@ -69,28 +67,29 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   resolvers += Resolver.url(
     "bintray-scala-hedgehog",
     url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
   )(Resolver.ivyStylePatterns),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
-  concurrentRestrictions in Global += Util.testExclusiveRestriction,
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
-  testOptions in Test += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
-  javacOptions in compile ++= Seq("-Xlint", "-Xlint:-serial"),
+  Global / concurrentRestrictions += Util.testExclusiveRestriction,
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
+  Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
+  compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
+  /*
   Compile / doc / scalacOptions ++= {
     import scala.sys.process._
     val devnull = ProcessLogger(_ => ())
     val tagOrSha = ("git describe --exact-match" #|| "git rev-parse HEAD").lineStream(devnull).head
     Seq(
       "-sourcepath",
-      (baseDirectory in LocalRootProject).value.getAbsolutePath,
+      (LocalRootProject / baseDirectory).value.getAbsolutePath,
       "-doc-source-url",
       s"https://github.com/sbt/sbt/tree/$tagOrSha€{FILE_PATH}.scala"
     )
   },
+   */
   Compile / javafmtOnCompile := Def
     .taskDyn(if ((scalafmtOnCompile).value) Compile / javafmt else Def.task(()))
     .value,
@@ -101,19 +100,19 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
     (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmtOnCompile).value,
   Test / unmanagedSources / inputFileStamps :=
     (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmtOnCompile).value,
-  crossScalaVersions := Seq(baseScalaVersion),
-  publishArtifact in Test := false,
-  fork in run := true,
+  crossScalaVersions := List(scala212, scala213),
+  Test / publishArtifact := false,
+  run / fork := true,
 )
 def commonSettings: Seq[Setting[_]] =
   commonBaseSettings :+
-    addCompilerPlugin("org.typelevel" %% "kind-projector" % "0.11.0" cross CrossVersion.full)
+    addCompilerPlugin(kindProjector)
 def utilCommonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
+  baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
 def minimalSettings: Seq[Setting[_]] =
   commonSettings ++ customCommands ++
-    publishPomSettings ++ Release.javaVersionCheckSettings
+    publishPomSettings
 
 def baseSettings: Seq[Setting[_]] =
   minimalSettings ++ Seq(projectComponent) ++ baseScalacOptions ++ Licensed.settings
@@ -121,7 +120,12 @@ def baseSettings: Seq[Setting[_]] =
 def testedBaseSettings: Seq[Setting[_]] =
   baseSettings ++ testDependencies
 
-val sbt13Plus = Seq("1.3.0")
+val sbt13Plus =
+  Seq(
+    "1.3.0",
+    "1.4.0",
+    "1.5.0",
+  )
 val sbt10Plus =
   Seq(
     "1.0.0",
@@ -167,10 +171,9 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .enablePlugins(ScriptedPlugin) // , SiteScaladocPlugin, GhpagesPlugin)
+// .enablePlugins(ScriptedPlugin)
   .aggregate(nonRoots: _*)
   .settings(
-    buildLevelSettings,
     minimalSettings,
     onLoadMessage := {
       val version = sys.props("java.specification.version")
@@ -195,8 +198,8 @@ lazy val sbtRoot: Project = (project in file("."))
     Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
-    skip in publish := true,
-    commands in Global += Command
+    publish / skip := true,
+    Global / commands += Command
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
@@ -225,22 +228,18 @@ lazy val sbtRoot: Project = (project in file("."))
 // This is used to configure an sbt-launcher for this version of sbt.
 lazy val bundledLauncherProj =
   (project in file("launch"))
+    .enablePlugins(SbtLauncherPlugin)
     .settings(
       minimalSettings,
       inConfig(Compile)(Transform.configSettings),
-      Release.launcherSettings(sbtLaunchJar)
     )
-    .enablePlugins(SbtLauncherPlugin)
     .settings(
       name := "sbt-launch",
       moduleName := "sbt-launch",
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
-      // mimaSettings, // TODO: Configure MiMa, deal with Proguard
-      publish := Release.deployLauncher.value,
-      publishLauncher := Release.deployLauncher.value,
-      packageBin in Compile := sbtLaunchJar.value,
+      Compile / packageBin := sbtLaunchJar.value,
       mimaSettings,
       mimaPreviousArtifacts := Set()
     )
@@ -333,6 +332,7 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   crossScalaVersions := List(scala212),
   javaOnlySettings,
   crossPaths := false,
+  autoScalaLibrary := false,
   name := "Util Interface",
   exportJars := true,
   utilMimaSettings,
@@ -372,19 +372,15 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         scalaReflect.value
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
     }),
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    managedSourceDirectories in Compile +=
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := { tpe =>
-      val old = (contrabandFormatsForType in generateContrabands in Compile).value
+    Compile / generateContrabands / contrabandFormatsForType := { tpe =>
+      val old = (Compile / generateContrabands / contrabandFormatsForType).value
       val name = tpe.removeTypeParameters.name
       if (name == "Throwable") Nil
       else old(tpe)
@@ -418,6 +414,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       exclude[IncompatibleSignatureProblem]("sbt.internal.util.MainAppender*"),
       exclude[MissingTypesProblem]("sbt.internal.util.ConsoleAppender"),
       exclude[MissingTypesProblem]("sbt.internal.util.BufferedAppender"),
+      exclude[MissingClassProblem]("sbt.internal.util.Terminal$BlockingInputStream$"),
     ),
   )
   .configure(addSbtIO)
@@ -486,10 +483,10 @@ lazy val testingProj = (project in file("testing"))
       sjsonNewScalaJson.value
     ),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // private[sbt]
@@ -570,6 +567,7 @@ lazy val stdTaskProj = (project in file("tasks-standard"))
     mimaBinaryIssueFilters ++= Seq(
       // unused private[sbt]
       exclude[DirectMissingMethodProblem]("sbt.Task.mapTask"),
+      exclude[NewMixinForwarderProblem]("sbt.std.TaskExtra.joinAnyTasks"),
     ),
   )
   .configure(addSbtIO)
@@ -582,9 +580,9 @@ lazy val runProj = (project in file("run"))
     testedBaseSettings,
     name := "Run",
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // copy method was never meant to be public
@@ -679,6 +677,7 @@ lazy val actionsProj = (project in file("main-actions"))
       exclude[DirectMissingMethodProblem]("sbt.Doc.generate"),
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.filesModifiedBytes"),
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.fileModifiedBytes"),
+      exclude[DirectMissingMethodProblem]("sbt.Doc.$init$"),
     ),
   )
   .configure(
@@ -698,10 +697,10 @@ lazy val protocolProj = (project in file("protocol"))
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value, ipcSocket),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // copy method was never meant to be public
@@ -739,15 +738,11 @@ lazy val commandProj = (project in file("main-command"))
     testedBaseSettings,
     name := "Command",
     libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
-    libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
-    }),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    contrabandFormatsForType in generateContrabands in Compile := ContrabandConfig.getFormats,
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := ContrabandConfig.getFormats,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       exclude[DirectMissingMethodProblem]("sbt.Exit.apply"),
@@ -781,8 +776,8 @@ lazy val commandProj = (project in file("main-command"))
       exclude[MissingTypesProblem]("sbt.internal.server.ServerConnection*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.server.ServerConnection.*")
     ),
-    unmanagedSources in (Compile, headerCreate) := {
-      val old = (unmanagedSources in (Compile, headerCreate)).value
+    Compile / headerCreate / unmanagedSources := {
+      val old = (Compile / headerCreate / unmanagedSources).value
       old filterNot { x =>
         (x.getName startsWith "NG") || (x.getName == "ReferenceCountedFileDescriptor.java")
       }
@@ -822,7 +817,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
   .settings(
     testedBaseSettings,
     name := "Main Settings",
-    testOptions in Test ++= {
+    Test / testOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val framework = TestFrameworks.ScalaTest
       Tests.Argument(framework, s"-Dsbt.server.classpath=$cp") ::
@@ -876,7 +871,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
   .settings(
     name := "Zinc LM Integration",
     testedBaseSettings,
-    testOptions in Test +=
+    Test / testOptions +=
       Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettingsSince(sbt13Plus),
     mimaBinaryIssueFilters ++= Seq(
@@ -908,19 +903,20 @@ lazy val mainProj = (project in file("main"))
     checkPluginCross := {
       val sv = scalaVersion.value
       val f = baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala"
-      if (!IO.readLines(f).exists(_.contains(s""""$sv"""")))
+      if (sv.startsWith("2.12") && !IO.readLines(f).exists(_.contains(s""""$sv""""))) {
         sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
+      }
     },
     libraryDependencies ++=
       (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List(compilerPlugin(silencerPlugin))
-      case _                          => List()
+      case v if v.startsWith("2.12.") => List()
+      case _                          => List(scalaPar)
     }),
-    managedSourceDirectories in Compile +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
-    sourceManaged in (Compile, generateContrabands) := baseDirectory.value / "src" / "main" / "contraband-scala",
-    testOptions in Test += Tests
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
     mimaSettings,
@@ -1029,7 +1025,20 @@ lazy val mainProj = (project in file("main"))
       // internal logging apis,
       exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
       exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread")
+      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
+      // internal implementation
+      exclude[MissingClassProblem](
+        "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
+      ),
+      // internal impl
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
+      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
+      // private[sbt] method, used to call the correct sourcePositionMapper
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.foldMappers"),
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.toAbsoluteSourceMapper"),
+      exclude[DirectMissingMethodProblem]("sbt.Defaults.earlyArtifactPathSetting"),
+      exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
+      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
     )
   )
   .configure(
@@ -1043,14 +1052,19 @@ lazy val mainProj = (project in file("main"))
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
-lazy val sbtProj = (project in file("sbt"))
+lazy val sbtProj = (project in file("sbt-app"))
   .dependsOn(mainProj)
   .settings(
     testedBaseSettings,
     name := "sbt",
     normalizedName := "sbt",
+    version := {
+      if (scalaVersion.value == baseScalaVersion) version.value
+      else version2_13.value
+    },
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
+    crossTarget := { target.value / scalaVersion.value },
     javaOptions ++= Seq("-Xdebug", "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=5005"),
     mimaSettings,
     mimaBinaryIssueFilters ++= sbtIgnoredProblems,
@@ -1059,7 +1073,7 @@ lazy val sbtProj = (project in file("sbt"))
     Test / run / connectInput := true,
     Test / run / outputStrategy := Some(StdoutOutput),
     Test / run / fork := true,
-    testOptions in Test ++= {
+    Test / testOptions ++= {
       val cp = (Test / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val framework = TestFrameworks.ScalaTest
       Tests.Argument(framework, s"-Dsbt.server.classpath=$cp") ::
@@ -1302,6 +1316,8 @@ lazy val sbtIgnoredProblems = {
     exclude[ReversedMissingMethodProblem]("sbt.Import.sbt$Import$_setter_$SemanticSelector_="),
     // Dropped in favour of plain scala.Function, and its compose method
     exclude[DirectMissingMethodProblem]("sbt.package.toFn1"),
+    exclude[NewMixinForwarderProblem]("sbt.IOSyntax1.singleFileFinder"),
+    exclude[DirectMissingMethodProblem]("sbt.IOSyntax1.$init$"),
   )
 }
 
@@ -1317,10 +1333,11 @@ def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = 
 
 lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
   .settings(
+    bspEnabled := false,
     crossPaths := false,
     crossScalaVersions := Seq(baseScalaVersion),
-    skip in publish := true,
-    compile in Compile := {
+    publish / skip := true,
+    Compile / compile := {
       val _ = update.value
       runNpm("run compile", baseDirectory.value, streams.value.log)
       sbt.internal.inc.Analysis.empty
@@ -1354,7 +1371,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
   val _ = publishLocalBinAll.value
   val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
   Scripted.doScripted(
-    (scalaInstance in scriptedSbtReduxProj).value,
+    (scriptedSbtReduxProj / scalaInstance).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
@@ -1420,9 +1437,9 @@ def otherRootSettings =
   Seq(
     scripted := scriptedTask(false).evaluated,
     scriptedUnpublished := scriptedTask(false).evaluated,
-    scriptedSource := (sourceDirectory in sbtProj).value / "sbt-test",
-    watchTriggers in scripted += scriptedSource.value.toGlob / **,
-    watchTriggers in scriptedUnpublished := (watchTriggers in scripted).value,
+    scriptedSource := (sbtProj / sourceDirectory).value / "sbt-test",
+    scripted / watchTriggers += scriptedSource.value.toGlob / **,
+    scriptedUnpublished / watchTriggers := (scripted / watchTriggers).value,
     scriptedLaunchOpts := List("-Xmx1500M", "-Xms512M", "-server") :::
       (sys.props.get("sbt.ivy.home") match {
         case Some(home) => List(s"-Dsbt.ivy.home=$home")
@@ -1431,7 +1448,6 @@ def otherRootSettings =
     publishLocalBinAll := {
       val _ = (Compile / publishLocalBin).all(scriptedProjects).value
     },
-    aggregate in bintrayRelease := false,
   ) ++ inConfig(Scripted.RepoOverrideTest)(
     Seq(
       scriptedLaunchOpts := List(
@@ -1447,7 +1463,7 @@ def otherRootSettings =
         }),
       scripted := scriptedTask(true).evaluated,
       scriptedUnpublished := scriptedTask(true).evaluated,
-      scriptedSource := (sourceDirectory in sbtProj).value / "repo-override-test"
+      scriptedSource := (sbtProj / sourceDirectory).value / "repo-override-test"
     )
   )
 
@@ -1501,8 +1517,8 @@ def customCommands: Seq[Setting[_]] = Seq(
       (lmOpt map { case ProjectRef(build, _)          => "{" + build.toString + "}/publishLocal" }).toList :::
       (zincOpt map {
         case ProjectRef(build, _) =>
-          val zincSv = get(scalaVersion in ProjectRef(build, "zinc"))
-          val csv = get(crossScalaVersions in ProjectRef(build, "compilerBridge")).toList
+          val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
+          val csv = get((ProjectRef(build, "compilerBridge") / crossScalaVersions)).toList
           (csv flatMap { bridgeSv =>
             s"++$bridgeSv" :: ("{" + build.toString + "}compilerBridge/publishLocal") :: Nil
           }) :::
@@ -1521,16 +1537,21 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
   commands += Command.command("release") { state =>
     // TODO - Any sort of validation
-    "clean" ::
-      "conscriptConfigs" ::
-      "upperModules/compile" ::
+    "upperModules/compile" ::
       "upperModules/publishSigned" ::
       "bundledLauncherProj/publishSigned" ::
-      "bundledLauncherProj/publishLauncher" ::
       state
   },
 )
 
+ThisBuild / pomIncludeRepository := { _ =>
+  false
+}
+ThisBuild / publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+ThisBuild / publishMavenStyle := true
 ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
 ThisBuild / whitesourceAggregateProjectName := {
   // note this can get detached on tag build etc

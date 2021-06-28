@@ -1,6 +1,10 @@
 Developer guide
 ===============
 
+### Getting started
+
+Create a [fork](https://docs.github.com/en/github/getting-started-with-github/fork-a-repo) of the repository and [clone](https://docs.github.com/en/github/creating-cloning-and-archiving-repositories/cloning-a-repository) it to create a local copy.
+
 ### Branch to work against
 
 sbt uses two branches for development:
@@ -8,10 +12,13 @@ sbt uses two branches for development:
 - Development branch: `develop` (this is also called "master")
 - Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
 
+The `develop` branch represents the next major version of sbt. Only new features are pushed to the `develop` branch. This is the branch that you will branch off of to make your changes.
+The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
 
 ### Instruction to build just sbt
 
-If the change you are making is contained in sbt/sbt, you could publishLocal on sbt/sbt:
+Sbt has a number of sub-modules. If the change you are making is just contained in sbt/sbt (not one of the sub-modules),
+you can use the `publishLocal` command to publish the sbt project to your local machine. This is helpful for testing your changes.
 
 ```
 $ sbt
@@ -19,6 +26,9 @@ sbt:sbtRoot> publishLocal
 ```
 
 ### Instruction to build all modules from source
+
+When working on a change that requires changing one or more sub modules, the source code for these modules can be pulled in by running the following script
+(instead of building them from Maven for example and not being able to change the source code for these sub-modules).
 
 1. Install the current stable binary release of sbt (see [Setup]), which will be used to build sbt from source.
 2. Get the source code.
@@ -42,7 +52,7 @@ sbt:sbtRoot> publishLocal
 
 ### Using the locally built sbt
 
-The `publishLocal` above will build and publish version `1.$MINOR.$PATCH-SNAPSHOT` (e.g. 1.1.2-SNAPSHOT) to your local ivy repository.
+The `publishLocal` command above will build and publish version `1.$MINOR.$PATCH-SNAPSHOT` (e.g. 1.1.2-SNAPSHOT) to your local ivy repository.
 
 To use the locally built sbt, set the version in `build.properties` file in your project to `1.$MINOR.$PATCH-SNAPSHOT` then launch `sbt` (this can be the `sbt` launcher installed in your machine).
 
@@ -53,6 +63,8 @@ $ sbt
 ```
 
 ### Nightly builds
+
+_Note: The following section may require an update._
 
 The latest development versions are available as nightly builds on sbt-maven-snapshots (<https://repo.scala-sbt.org/scalasbt/maven-snapshots>) repo, which is a redirect proxy whose underlying repository is subject to change it could be Bintray, Linux box, etc.
 
@@ -75,9 +87,16 @@ If you're overriding the repositories via `~/.sbt/repositories`, make sure that 
 
 ### Clearing out boot and local cache
 
-When you run a locally built sbt, the JAR artifacts will be now cached under `$HOME/.sbt/boot/scala-2.12.6/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory. To clear this out run: `reboot dev` command from sbt's session of your test application.
+sbt consists of lots of JAR files. When running sbt locally, these JAR artifacts are cached in the `boot` directory under `$HOME/.sbt/boot/scala-2.12.6/org.scala-sbt/sbt/1.$MINOR.$PATCH-SNAPSHOT` directory.
 
-One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers. You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`. A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
+In order to see a change you've made to sbt's source code, this cache should be cleared. To clear this out run: `reboot dev` command from sbt's session of your test application.
+
+By default sbt uses a snapshot version (this is a scala convention for quick local changes- it tells users that this version could change).
+One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers.
+This is important when testing perfomance, so that the slowness of the resolution does not impact sbt.
+
+You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`.
+A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
 
 ### Running sbt "from source" - `sbtOn`
 

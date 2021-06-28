@@ -17,6 +17,7 @@ import Keys._
 import EvaluateConfigurations.{ evaluateConfiguration => evaluate }
 import Configurations.Compile
 import Scope.Global
+import sbt.SlashSyntax0._
 
 import sbt.io.{ Hash, IO }
 
@@ -50,13 +51,13 @@ object Script {
       val embeddedSettings = blocks(script).flatMap { block =>
         evaluate(eval(), script, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
       }
-      val scriptAsSource = sources in Compile := script :: Nil
+      val scriptAsSource = (Compile / sources) := script :: Nil
       val asScript = scalacOptions ++= Seq("-Xscript", script.getName.stripSuffix(".scala"))
       val scriptSettings = Seq(
         asScript,
         scriptAsSource,
-        logLevel in Global := Level.Warn,
-        showSuccess in Global := false
+        (Global / logLevel) := Level.Warn,
+        (Global / showSuccess) := false
       )
       val append = Load.transformSettings(
         Load.projectScope(currentRef),

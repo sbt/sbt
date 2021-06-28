@@ -10,8 +10,6 @@ package internal
 package server
 
 import java.net.URI
-
-import sbt.BasicCommandStrings.Shutdown
 import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
@@ -29,9 +27,12 @@ import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
+import xsbti.CompileFailed
 
+// import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
+import scala.annotation.nowarn
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -41,6 +42,7 @@ object BuildServerProtocol {
     TestProvider(BuildServerConnection.languages),
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
+    resourcesProvider = true,
     canReload = true
   )
 
@@ -116,6 +118,19 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetSources / aggregate := false,
+    bspBuildTargetResources := Def.inputTaskDyn {
+      val s = state.value
+      val workspace = bspWorkspace.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val filter = ScopeFilter.in(targets.map(workspace))
+      // run the worker task concurrently
+      Def.task {
+        val items = bspBuildTargetResourcesItem.all(filter).value
+        val result = ResourcesResult(items.toVector)
+        s.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetResources / aggregate := false,
     bspBuildTargetDependencySources := Def.inputTaskDyn {
       val s = state.value
       val workspace = bspWorkspace.value
@@ -200,6 +215,18 @@ object BuildServerProtocol {
         })
       SourcesItem(id, items)
     },
+    bspBuildTargetResourcesItem := {
+      val id = bspTargetIdentifier.value
+      // Trigger resource generation
+      val _ = managedResources.value
+      val uris = resourceDirectories.value.toVector
+        .map { resourceDirectory =>
+          // Add any missing ending slash to the URI to explicitly mark it as a directory
+          // See https://github.com/build-server-protocol/build-server-protocol/issues/181 for more information
+          URI.create(s"${resourceDirectory.toURI.toString.replaceAll("([^/])$", "$1/")}")
+        }
+      ResourcesItem(id, uris)
+    },
     bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
@@ -237,7 +264,7 @@ object BuildServerProtocol {
     ServerHandler { callback =>
       ServerIntent(
         onRequest = {
-          case r: JsonRpcRequestMessage if r.method == "build/initialize" =>
+          case r if r.method == "build/initialize" =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
 
@@ -250,19 +277,16 @@ object BuildServerProtocol {
             )
             callback.jsonRpcRespond(response, Some(r.id)); ()
 
-          case r: JsonRpcRequestMessage if r.method == "workspace/buildTargets" =>
+          case r if r.method == "workspace/buildTargets" =>
             val _ = callback.appendExec(Keys.bspWorkspaceBuildTargets.key.toString, Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "workspace/reload" =>
-            val _ = callback.appendExec(s"$bspReload ${r.id}", None)
+          case r if r.method == "workspace/reload" =>
+            val _ = callback.appendExec(s"$bspReload ${r.id}", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "build/shutdown" =>
+          case r if r.method == "build/shutdown" =>
             callback.jsonRpcRespond(JNull, Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "build/exit" =>
-            val _ = callback.appendExec(Shutdown, Some(r.id))
-
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/sources" =>
+          case r if r.method == "buildTarget/sources" =>
             val param = Converter.fromJson[SourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetSources.key
@@ -304,26 +328,35 @@ object BuildServerProtocol {
               Some(r.id)
             )
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalacOptions" =>
+          case r if r.method == "buildTarget/scalacOptions" =>
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaTestClasses" =>
+          case r if r.method == "buildTarget/scalaTestClasses" =>
             val param = Converter.fromJson[ScalaTestClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaTestClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r: JsonRpcRequestMessage if r.method == "buildTarget/scalaMainClasses" =>
+          case r if r.method == "buildTarget/scalaMainClasses" =>
             val param = Converter.fromJson[ScalaMainClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspScalaMainClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == "buildTarget/resources" =>
+            val param = Converter.fromJson[ResourcesParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetResources.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
         },
         onResponse = PartialFunction.empty,
-        onNotification = PartialFunction.empty,
+        onNotification = {
+          case r if r.method == "build/exit" =>
+            val _ = callback.appendExec(BasicCommandStrings.TerminateAction, None)
+        },
       )
     }
   }
@@ -369,6 +402,7 @@ object BuildServerProtocol {
       )
     )
 
+  @nowarn
   private def bspWorkspaceSetting: Def.Initialize[Map[BuildTargetIdentifier, Scope]] =
     Def.settingDyn {
       val loadedBuild = Keys.loadedBuild.value
@@ -417,7 +451,7 @@ object BuildServerProtocol {
       (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
       config <- configs
       if dep != thisProjectRef || config.name != thisConfig.name
-    } yield Keys.bspTargetIdentifier.in(dep, config)
+    } yield (dep / config / Keys.bspTargetIdentifier)
     val capabilities = BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
@@ -444,7 +478,7 @@ object BuildServerProtocol {
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
-    } yield Keys.classDirectory.in(ref, config)
+    } yield ref / config / Keys.classDirectory
 
     Def.task {
       val classpath = internalDependencyClasspath.join.value.distinct ++
@@ -467,15 +501,18 @@ object BuildServerProtocol {
       (artifact, file) <- module.artifacts
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
-    DependencySourcesItem(targetId, sources.distinct.toVector)
+    DependencySourcesItem(targetId, sources.toVector.distinct)
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
     Keys.compile.result.value match {
       case Value(_) => StatusCode.Success
-      case Inc(_)   =>
-        // Cancellation is not yet implemented
-        StatusCode.Error
+      case Inc(cause) =>
+        cause.getCause match {
+          case _: CompileFailed        => StatusCode.Error
+          case _: InterruptedException => StatusCode.Cancelled
+          case err                     => throw cause
+        }
     }
   }
 
@@ -500,7 +537,10 @@ object BuildServerProtocol {
               ErrorCodes.ParseError,
               e.getMessage
             )
-          case Success(value) => value
+          case Success(value) =>
+            value.withEnvironmentVariables(
+              envVars.value.map { case (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
+            )
         }
 
       case Some(dataKind) =>
@@ -518,7 +558,8 @@ object BuildServerProtocol {
             )
           ),
           runParams.arguments,
-          defaultJvmOptions.toVector
+          defaultJvmOptions.toVector,
+          envVars.value.map { case (k, v) => s"$k=$v" }.toVector
         )
     }
 
@@ -584,7 +625,12 @@ object BuildServerProtocol {
       workingDirectory = Some(baseDirectory.value),
       runJVMOptions = mainClass.jvmOptions,
       connectInput = connectInput.value,
-      envVars = envVars.value
+      envVars = mainClass.environmentVariables
+        .flatMap(_.split("=", 2).toList match {
+          case key :: value :: Nil => Some(key -> value)
+          case _                   => None
+        })
+        .toMap
     )
     val runner = new ForkRun(forkOpts)
     val statusCode = runner
@@ -596,6 +642,7 @@ object BuildServerProtocol {
     state.respondEvent(RunResult(originId, statusCode))
   }
 
+  @nowarn
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val allScopes = bspWorkspace.value.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
@@ -618,7 +665,7 @@ object BuildServerProtocol {
     val transitiveDependencies = for {
       (dep, configs) <- directDependencies
       config <- configs if dep != ref || config.name != thisConfig.name
-    } yield Keys.bspInternalDependencyConfigurations.in(dep, config)
+    } yield dep / config / Keys.bspInternalDependencyConfigurations
     Def.setting {
       val allDependencies = directDependencies ++
         transitiveDependencies.join.value.flatten
@@ -645,7 +692,12 @@ object BuildServerProtocol {
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
     val jvmOptions = Keys.javaOptions.value.toVector
     val mainClasses = Keys.discoveredMainClasses.value.map(
-      ScalaMainClass(_, Vector(), jvmOptions)
+      ScalaMainClass(
+        _,
+        Vector(),
+        jvmOptions,
+        envVars.value.map { case (k, v) => s"$k=$v" }.toVector
+      )
     )
     ScalaMainClassesItem(
       bspTargetIdentifier.value,

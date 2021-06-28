@@ -15,4 +15,13 @@ lazy val reportWarning = project.in(file("report-warning"))
     scalacOptions += "-deprecation"
   )
 
+// check that the buildTarget/compile request fails with the custom message defined below
+lazy val respondError = project.in(file("respond-error"))
+  .settings(
+    Compile / compile := {
+      val _ = (Compile / compile).value
+      throw new MessageOnlyException("custom message")
+    }
+  )
+
 lazy val util = project

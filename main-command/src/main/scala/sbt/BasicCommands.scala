@@ -151,7 +151,7 @@ object BasicCommands {
   def completionsParser(state: State): Parser[String] = completionsParser
 
   private[this] def completionsParser: Parser[String] = {
-    val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq ++ s }
+    val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq + s }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
     token(quotedOrUnquotedSingleArgument ?? "" examples ("", " "))
   }

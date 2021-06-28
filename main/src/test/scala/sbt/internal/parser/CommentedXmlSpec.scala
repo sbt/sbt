@@ -7,7 +7,7 @@
 
 package sbt.internal.parser
 
-class CommentedXmlSpec extends CheckIfParsedSpec {
+object CommentedXmlSpec extends CheckIfParsedSpec {
 
   override protected val files = Seq(
     (

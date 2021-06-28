@@ -10,4 +10,6 @@ npm-debug.log
 .idea
 .bloop
 .metals
-/project/metals.sbt
+.bsp/
+metals.sbt
+launcher-package/citest/freshly-baked

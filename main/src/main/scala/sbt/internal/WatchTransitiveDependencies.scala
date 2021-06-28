@@ -19,7 +19,7 @@ import sbt.nio.FileStamper
 import sbt.nio.Keys._
 import sbt.nio.file.Glob
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 
 private[sbt] object WatchTransitiveDependencies {
   private implicit class SourceOps(val source: Source) {
@@ -53,6 +53,8 @@ private[sbt] object WatchTransitiveDependencies {
     def structure: BuildStructure = extracted.structure
     def data: Map[Scope, AttributeMap] = extracted.structure.data.data
   }
+
+  @nowarn
   private def argumentsImpl(
       scopedKey: ScopedKey[_],
       extracted: Extracted,
@@ -127,6 +129,7 @@ private[sbt] object WatchTransitiveDependencies {
     (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct.sorted
   }
 
+  @nowarn
   private def legacy(keys: Seq[ScopedKey[_]], args: Arguments): Seq[DynamicInput] = {
     import args._
     val projectScopes =
@@ -160,6 +163,8 @@ private[sbt] object WatchTransitiveDependencies {
       case Right(globs) => globs.map(toDynamicInput)
     }
   }
+
+  @nowarn
   @tailrec
   private def collectKeys(
       arguments: Arguments,

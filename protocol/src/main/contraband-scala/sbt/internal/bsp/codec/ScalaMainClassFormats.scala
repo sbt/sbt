@@ -14,8 +14,9 @@ implicit lazy val ScalaMainClassFormat: JsonFormat[sbt.internal.bsp.ScalaMainCla
       val `class` = unbuilder.readField[String]("class")
       val arguments = unbuilder.readField[Vector[String]]("arguments")
       val jvmOptions = unbuilder.readField[Vector[String]]("jvmOptions")
+      val environmentVariables = unbuilder.readField[Vector[String]]("environmentVariables")
       unbuilder.endObject()
-      sbt.internal.bsp.ScalaMainClass(`class`, arguments, jvmOptions)
+      sbt.internal.bsp.ScalaMainClass(`class`, arguments, jvmOptions, environmentVariables)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ implicit lazy val ScalaMainClassFormat: JsonFormat[sbt.internal.bsp.ScalaMainCla
     builder.addField("class", obj.`class`)
     builder.addField("arguments", obj.arguments)
     builder.addField("jvmOptions", obj.jvmOptions)
+    builder.addField("environmentVariables", obj.environmentVariables)
     builder.endObject()
   }
 }

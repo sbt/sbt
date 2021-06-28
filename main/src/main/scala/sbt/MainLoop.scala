@@ -205,8 +205,10 @@ object MainLoop {
   def processCommand(exec: Exec, state: State): State = {
     val channelName = exec.source map (_.channelName)
     val exchange = StandardMain.exchange
-    exchange notifyStatus
+    exchange.setState(state)
+    exchange.notifyStatus(
       ExecStatusEvent("Processing", channelName, exec.execId, Vector())
+    )
     try {
       def process(): State = {
         val progressState = state.get(sbt.Keys.currentTaskProgress) match {
@@ -251,7 +253,7 @@ object MainLoop {
         } finally {
           // Flush the terminal output after command evaluation to ensure that all output
           // is displayed in the thin client before we report the command status. Also
-          // set the promt to whatever it was before we started evaluating the task.
+          // set the prompt to whatever it was before we started evaluating the task.
           restoreTerminal()
         }
         if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
@@ -334,6 +336,7 @@ object MainLoop {
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
     if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
-        state.currentCommand.fold(true)(_ != StashOnFailure)) ExitCode(ErrorCodes.UnknownError)
-    else ExitCode.Success
+        state.currentCommand.fold(true)(_.commandLine != StashOnFailure)) {
+      ExitCode(ErrorCodes.UnknownError)
+    } else ExitCode.Success
 }

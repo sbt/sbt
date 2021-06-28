@@ -7,4 +7,11 @@
 
 package sbt.internal;
 
-public class ServerAlreadyBootingException extends Exception {}
+import java.io.IOException;
+
+public class ServerAlreadyBootingException extends Exception {
+
+  public ServerAlreadyBootingException(IOException e) {
+    super(e);
+  }
+}
