@@ -7,10 +7,18 @@
 
 package testpkg
 
+import sbt.internal.bsp.SourcesResult
+
+import java.io.File
+import sbt.internal.bsp.WorkspaceBuildTargetsResult
+
 import scala.concurrent.duration._
 
 // starts svr using server-test/buildserver and perform custom server tests
 object BuildServerTest extends AbstractServerTest {
+
+  import sbt.internal.bsp.codec.JsonProtocol._
+
   override val testDirectory: String = "buildserver"
 
   test("build/initialize") { _ =>
@@ -26,12 +34,12 @@ object BuildServerTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": "16", "method": "workspace/buildTargets", "params": {} }"""
     )
     assert(processing("workspace/buildTargets"))
-    assert {
-      svr.waitForString(10.seconds) { s =>
-        (s contains """"id":"16"""") &&
-        (s contains """"displayName":"util"""")
-      }
-    }
+    val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
+    val utilTarget = result.targets.find(_.displayName.contains("util")).get
+    assert(utilTarget.id.uri.toString.endsWith("#util/Compile"))
+    val buildServerBuildTarget =
+      result.targets.find(_.displayName.contains("buildserver-build")).get
+    assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-build"))
   }
 
   test("buildTarget/sources") { _ =>
@@ -42,10 +50,33 @@ object BuildServerTest extends AbstractServerTest {
         |} }""".stripMargin
     )
     assert(processing("buildTarget/sources"))
-    assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"24"""") &&
-      (s contains "util/src/main/scala")
-    })
+    val s = svr.waitFor[SourcesResult](10.seconds)
+    val sources = s.items.head.sources.map(_.uri)
+    assert(sources.contains(new File(svr.baseDirectory, "util/src/main/scala").toURI))
+  }
+  test("buildTarget/sources SBT") { _ =>
+    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-build"
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "25", "method": "buildTarget/sources", "params": {
+         |  "targets": [{ "uri": "$x" }]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/sources"))
+    val s = svr.waitFor[SourcesResult](10.seconds)
+    val sources = s.items.head.sources.map(_.uri).sorted
+    val expectedSources = Vector(
+      "build.sbt",
+      "project/",
+      "project/A.scala",
+      "project/src/main/java",
+      "project/src/main/scala-2",
+      "project/src/main/scala-2.12",
+      "project/src/main/scala-sbt-1.0",
+      "project/src/main/scala/",
+      "project/src/main/scala/B.scala",
+      "project/target/scala-2.12/sbt-1.0/src_managed/main"
+    ).map(rel => new File(svr.baseDirectory.getAbsoluteFile, rel).toURI).sorted
+    assert(sources == expectedSources)
   }
 
   test("buildTarget/compile") { _ =>

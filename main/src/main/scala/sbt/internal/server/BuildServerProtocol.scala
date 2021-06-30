@@ -132,15 +132,21 @@ object BuildServerProtocol {
             val base = loadedBuildUnit.localBase
             val sbtFiles = configurationSources(base)
             val pluginData = loadedBuildUnit.unit.plugins.pluginData
-            val unmanagedSources = pluginData.unmanagedSources.map(
-              f => SourceItem(f.toURI, SourceItemKind.File, generated = false)
-            )
-            val managedSources = pluginData.managedSources.map(
-              f => SourceItem(f.toURI, SourceItemKind.File, generated = true)
-            )
-            val sbtFilesItems =
-              sbtFiles.map(f => SourceItem(f.toURI, SourceItemKind.File, generated = false))
-            SourcesItem(id, (unmanagedSources ++ managedSources ++ sbtFilesItems).toVector)
+            val all = Vector.newBuilder[SourceItem]
+            def add(fs: Seq[File], sourceItemKind: Int, generated: Boolean): Unit = {
+              fs.foreach(f => all += (SourceItem(f.toURI, sourceItemKind, generated = generated)))
+            }
+            all += (SourceItem(
+              loadedBuildUnit.unit.plugins.base.toURI,
+              SourceItemKind.Directory,
+              generated = false
+            ))
+            add(pluginData.unmanagedSourceDirectories, SourceItemKind.Directory, generated = false)
+            add(pluginData.unmanagedSources, SourceItemKind.File, generated = false)
+            add(pluginData.managedSourceDirectories, SourceItemKind.Directory, generated = true)
+            add(pluginData.managedSources, SourceItemKind.File, generated = true)
+            add(sbtFiles, SourceItemKind.File, generated = false)
+            SourcesItem(id, all.result())
         }
         val result = SourcesResult((items ++ buildItems).toVector)
         s.respondEvent(result)
@@ -499,13 +505,17 @@ object BuildServerProtocol {
           scope.project.toOption match {
             case Some(ProjectRef(buildUri, _)) =>
               val loadedBuildUnit = loadedBuild.units(buildUri)
-              buildsMap.getOrElseUpdate(toId(loadedBuildUnit), new mutable.ListBuffer) += targetId
+              buildsMap.getOrElseUpdate(
+                toSbtTargetId(loadedBuildUnit),
+                new mutable.ListBuffer
+              ) += targetId
           }
           targetId -> scope
         }
         val buildMap = if (bspSbtEnabled.value) {
           for (loadedBuildUnit <- loadedBuild.units.values) yield {
-            toId(loadedBuildUnit) -> loadedBuildUnit
+            val rootProjectId = loadedBuildUnit.root
+            toSbtTargetId(loadedBuildUnit) -> loadedBuildUnit
           }
         } else {
           Nil
@@ -557,7 +567,6 @@ object BuildServerProtocol {
       buildTargetIdentifier: BuildTargetIdentifier,
       buildFor: Seq[BuildTargetIdentifier]
   ): Def.Initialize[Task[BuildTarget]] = Def.task {
-    val structure = buildStructure.value
     val scalaProvider = appConfiguration.value.provider().scalaProvider()
     appConfiguration.value.provider().mainClasspath()
     val scalaJars = scalaProvider.jars()
@@ -579,9 +588,7 @@ object BuildServerProtocol {
 
     BuildTarget(
       buildTargetIdentifier,
-      // naming convention still seems like the only way to get IntelliJ to import this correctly
-      // https://github.com/JetBrains/intellij-scala/blob/a54c2a7c157236f35957049cbfd8c10587c9e60c/scala/scala-impl/src/org/jetbrains/sbt/language/SbtFileImpl.scala#L82-L84
-      structure.rootProject(loadedUnit.unit.uri) + "-build",
+      toSbtTargetIdName(loadedUnit),
       projectStandard(loadedUnit.unit.localBase).toURI,
       Vector(),
       BuildTargetCapabilities(canCompile = false, canTest = false, canRun = false),
@@ -828,14 +835,19 @@ object BuildServerProtocol {
     )
   }
 
-  private val SbtBuildSuffix = "#sbt-build"
-  private def toId(ref: LoadedBuildUnit): BuildTargetIdentifier = {
+  // naming convention still seems like the only reliable way to get IntelliJ to import this correctly
+  // https://github.com/JetBrains/intellij-scala/blob/a54c2a7c157236f35957049cbfd8c10587c9e60c/scala/scala-impl/src/org/jetbrains/sbt/language/SbtFileImpl.scala#L82-L84
+  private def toSbtTargetIdName(ref: LoadedBuildUnit): String = {
+    ref.root + "-build"
+  }
+  private def toSbtTargetId(ref: LoadedBuildUnit): BuildTargetIdentifier = {
+    val name = toSbtTargetIdName(ref)
     val build = ref.unit.uri
     val sanitized = build.toString.indexOf("#") match {
       case i if i > 0 => build.toString.take(i)
       case _          => build.toString
     }
-    BuildTargetIdentifier(new URI(sanitized + SbtBuildSuffix))
+    BuildTargetIdentifier(new URI(sanitized + "#" + name))
   }
   private def toId(ref: ProjectReference, config: Configuration): BuildTargetIdentifier =
     ref match {
@@ -879,7 +891,9 @@ object BuildServerProtocol {
     }
     def warnIfBuildsNonEmpty(method: String, log: Logger): Unit = {
       if (builds.nonEmpty)
-        log.warn(s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}")
+        log.warn(
+          s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}"
+        )
     }
   }
 }

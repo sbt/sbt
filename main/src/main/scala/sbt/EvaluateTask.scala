@@ -144,7 +144,9 @@ final case class PluginData(
     resolvers: Option[Vector[Resolver]],
     report: Option[UpdateReport],
     scalacOptions: Seq[String],
+    unmanagedSourceDirectories: Seq[File],
     unmanagedSources: Seq[File],
+    managedSourceDirectories: Seq[File],
     managedSources: Seq[File]
 ) {
   val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
@@ -152,7 +154,7 @@ final case class PluginData(
 
 object PluginData {
   private[sbt] def apply(dependencyClasspath: Def.Classpath): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil)
+    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil)
 }
 
 object EvaluateTask {
