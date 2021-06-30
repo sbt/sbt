@@ -155,9 +155,10 @@ object BuildServerProtocol {
     bspBuildTargetSources / aggregate := false,
     bspBuildTargetResources := Def.inputTaskDyn {
       val s = state.value
-      val workspace = bspWorkspace.value
       val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val filter = ScopeFilter.in(targets.map(workspace))
+      val workspace = bspFullWorkspace.value.filter(targets)
+      workspace.warnIfBuildsNonEmpty(Method.Resources, s.log)
+      val filter = ScopeFilter.in(workspace.scopes.values.toList)
       // run the worker task concurrently
       Def.task {
         val items = bspBuildTargetResourcesItem.all(filter).value
@@ -309,6 +310,7 @@ object BuildServerProtocol {
     final val Reload = "workspace/reload"
     final val Shutdown = "build/shutdown"
     final val Sources = "buildTarget/sources"
+    final val Resources = "buildTarget/resources"
     final val DependencySources = "buildTarget/dependencySources"
     final val Compile = "buildTarget/compile"
     final val Test = "buildTarget/test"
@@ -418,7 +420,7 @@ object BuildServerProtocol {
             val command = Keys.bspScalaMainClasses.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
-          case r if r.method == "buildTarget/resources" =>
+          case r if r.method == Method.Resources =>
             val param = Converter.fromJson[ResourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetResources.key
