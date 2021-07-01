@@ -330,7 +330,7 @@ class NetworkClient(
 
         val cmd = arguments.sbtLaunchJar match {
           case Some(lj) =>
-            List("java") ++ arguments.sbtArguments ++
+            List(s"${Properties.javaHome}/bin/java") ++ arguments.sbtArguments ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
             List(arguments.sbtScript) ++ arguments.sbtArguments ++
