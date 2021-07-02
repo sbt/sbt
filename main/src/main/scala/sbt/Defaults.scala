@@ -2523,7 +2523,10 @@ object Defaults extends BuildCommon {
       val t = classDirectory.value
       val dirs = resourceDirectories.value.toSet
       val s = streams.value
-      val cacheStore = s.cacheStoreFactory make "copy-resources"
+      val syncDir = crossTarget.value / (prefix(configuration.value.name) + "sync")
+      val factory = CacheStoreFactory(syncDir)
+      val cacheStore = factory.make("copy-resource")
+      val converter = fileConverter.value
       val flt: File => Option[File] = flat(t)
       val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
       val mappings: Seq[(File, File)] = resources.value.flatMap {
@@ -2531,7 +2534,7 @@ object Defaults extends BuildCommon {
         case _             => None
       }
       s.log.debug("Copy resource mappings: " + mappings.mkString("\n\t", "\n\t", ""))
-      Sync.sync(cacheStore)(mappings)
+      Sync.sync(cacheStore, fileConverter = converter)(mappings)
       mappings
     }
 
