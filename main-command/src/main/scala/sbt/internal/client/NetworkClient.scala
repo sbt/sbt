@@ -31,7 +31,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.annotation.tailrec
-import scala.collection.mutable
+import scala.collection.{ JavaConverters, mutable }
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Properties, Success, Try }
@@ -328,13 +328,42 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
-        val cmd = arguments.sbtLaunchJar match {
+        val (cmd: List[String], envs: Map[String, String]) = arguments.sbtLaunchJar match {
           case Some(lj) =>
-            List(s"${Properties.javaHome}/bin/java") ++ arguments.sbtArguments ++
-              List("-jar", lj, DashDashDetachStdio, DashDashServer)
+            def loadConfigFile(file: File): List[String] =
+              IO.readLines(file)
+                .map(_.trim)
+                .filter(_.nonEmpty)
+                .filterNot(_.startsWith("#"))
+
+            val jvmOpts =
+              loadConfigFile(file(".jvmopts"))
+            val sbtOpts =
+              sys.env.get("SBT_OPTS").toSeq.flatMap(_.split(" ").map(_.trim)) ++
+                loadConfigFile(file("/etc/sbt/sbtopts")) ++
+                loadConfigFile(file(".sbtopts"))
+
+            // See https://discuss.lightbend.com/t/proposal-environment-variables-java-opts-sbt-opts-and-how-to-pass-jvm-arguments/5385
+            val javaOpts = jvmOpts ++ sbtOpts.collect {
+              case jvmOpt if jvmOpt.startsWith("-X") || jvmOpt.startsWith("-D") => jvmOpt
+              case prefixedJvmOpt if prefixedJvmOpt.startsWith("-J-X")          => prefixedJvmOpt.drop(2)
+            }
+
+            (
+              List(s"${Properties.javaHome}/bin/java") ++
+                javaOpts ++
+                arguments.sbtArguments ++
+                List("-jar", lj) ++
+                List(DashDashDetachStdio, DashDashServer),
+              // forward jvmOpts to forks
+              Map("JAVA_OPTS" -> (sys.env.get("JAVA_OPTS").toSeq ++ jvmOpts).mkString(" "))
+            )
           case _ =>
-            List(arguments.sbtScript) ++ arguments.sbtArguments ++
-              List(DashDashDetachStdio, DashDashServer)
+            (
+              List(arguments.sbtScript) ++ arguments.sbtArguments ++
+                List(DashDashDetachStdio, DashDashServer),
+              Map.empty
+            )
         }
 
         // https://github.com/sbt/sbt/issues/6271
@@ -347,6 +376,7 @@ class NetworkClient(
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
+        processBuilder.environment.putAll(JavaConverters.mapAsJavaMap(envs))
         val process = processBuilder.start()
         sbtProcess.set(process)
         Some(process)
