@@ -164,7 +164,10 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[FinalClassProblem]("sbt.internal.*"),
     exclude[FinalMethodProblem]("sbt.internal.*"),
     exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
-    exclude[ReversedMissingMethodProblem]("sbt.internal.*")
+    exclude[ReversedMissingMethodProblem]("sbt.internal.*"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.apply"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.copy"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
   ),
 )
 

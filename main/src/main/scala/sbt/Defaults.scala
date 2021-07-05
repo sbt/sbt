@@ -429,7 +429,7 @@ object Defaults extends BuildCommon {
         LanguageServerProtocol.handler(fileConverter.value),
         BuildServerProtocol.handler(
           loadedBuild.value,
-          bspWorkspace.value,
+          bspFullWorkspace.value,
           sbtVersion.value,
           semanticdbEnabled.value,
           semanticdbVersion.value
