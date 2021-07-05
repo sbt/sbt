@@ -59,7 +59,7 @@ object ConflictWarning {
   private[this] def groupByRawName(ms: Seq[ModuleID]): Map[(String, String), Seq[ModuleID]] =
     ms.groupBy(m => (m.organization, dropCrossSuffix(m.name)))
 
-  private[this] val CrossSuffixPattern = """(.+)_(\d+\.\d+(?:\.\d+)?(?:-.+)?)""".r
+  private[this] val CrossSuffixPattern = """(.+)_(\d+(?:\.\d+)?(?:\.\d+)?(?:-.+)?)""".r
   private[this] def dropCrossSuffix(s: String): String = s match {
     case CrossSuffixPattern(raw, _) => raw
     case _                          => s
