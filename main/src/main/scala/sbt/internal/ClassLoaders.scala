@@ -30,7 +30,6 @@ private[sbt] object ClassLoaders {
   private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
     def urls: Array[URL] = files.toArray.map(_.toURI.toURL)
   }
-  private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
    * Get the class loader for a test task. The configuration could be IntegrationTest or Test.
    */
@@ -49,6 +48,7 @@ private[sbt] object ClassLoaders {
     val allowZombies = allowZombieClassLoaders.value
     buildLayers(
       strategy = classLoaderLayeringStrategy.value,
+      topLoader = inProcessTopClassLoader.value,
       si = si,
       fullCP = fullCP,
       allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
@@ -99,6 +99,7 @@ private[sbt] object ClassLoaders {
             val transformedDependencies = allDeps.map(f => mappings.getOrElse(f.getName, f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
+              topLoader = inProcessTopClassLoader.value,
               si = instance,
               fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
               allDependenciesSet = transformedDependencies.toSet,
@@ -134,6 +135,7 @@ private[sbt] object ClassLoaders {
    */
   private def buildLayers(
       strategy: ClassLoaderLayeringStrategy,
+      topLoader: ClassLoader,
       si: ScalaInstance,
       fullCP: Seq[(File, Long)],
       allDependenciesSet: Set[File],
@@ -147,7 +149,7 @@ private[sbt] object ClassLoaders {
   ): ClassLoader = {
     val cpFiles = fullCP.map(_._1)
     strategy match {
-      case Flat => new FlatLoader(cpFiles.urls, interfaceLoader, tmp, close, allowZombies, logger)
+      case Flat => new FlatLoader(cpFiles.urls, topLoader, tmp, close, allowZombies, logger)
       case _ =>
         val layerDependencies = strategy match {
           case _: AllLibraryJars => true
@@ -156,8 +158,8 @@ private[sbt] object ClassLoaders {
         val scalaLibraryLayer = {
           cache.apply(
             si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
-            interfaceLoader,
-            () => new ScalaLibraryClassLoader(si.libraryJars.map(_.toURI.toURL), interfaceLoader)
+            topLoader,
+            () => new ScalaLibraryClassLoader(si.libraryJars.map(_.toURI.toURL), topLoader)
           )
         }
         val cpFiles = fullCP.map(_._1)

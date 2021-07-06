@@ -607,6 +607,8 @@ object Keys {
 
   val useScalaReplJLine = settingKey[Boolean]("Toggles whether or not to use sbt's forked jline in the scala repl. Enabling this flag may break the thin client in the scala console.").withRank(KeyRanks.Invisible)
   val scalaInstanceTopLoader = settingKey[ClassLoader]("The top classloader for the scala instance").withRank(KeyRanks.Invisible)
+  val inProcessTopClassLoader = settingKey[ClassLoader]("The top classloader for in process tasks that need to run code in a separate classloader").withRank(KeyRanks.Invisible)
+  val needsJLine3 = settingKey[Seq[String]]("The names of tasks that require that we set a jline3 terminal")
 
   val stateStreams = AttributeKey[Streams]("stateStreams", "Streams manager, which provides streams for different contexts.  Setting this on State will override the default Streams implementation.")
   val resolvedScoped = Def.resolvedScoped
