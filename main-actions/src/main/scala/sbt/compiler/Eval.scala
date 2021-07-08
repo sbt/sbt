@@ -81,8 +81,8 @@ final class Eval(
     new CompilerCommand(options.toList, s) // this side-effects on Settings..
     s
   }
-  lazy val reporter = mkReporter(settings)
-
+  private lazy val evalReporter = mkReporter(settings)
+  def reporter: Reporter = evalReporter // kept for binary compatibility
   /**
    * Subclass of Global which allows us to mutate currentRun from outside.
    * See for rationale https://issues.scala-lang.org/browse/SI-8794
@@ -95,7 +95,7 @@ final class Eval(
     }
     var curRun: Run = null
   }
-  lazy val global: EvalGlobal = new EvalGlobal(settings, reporter)
+  lazy val global: EvalGlobal = new EvalGlobal(settings, evalReporter)
   import global._
 
   private[sbt] def unlinkDeferred(): Unit = {
@@ -216,7 +216,7 @@ final class Eval(
       }
     } finally {
       // send a final report even if the class file was backed to reset preceding diagnostics
-      reporter.finalReport(ev.sourceName)
+      evalReporter.finalReport(ev.sourceName)
     }
 
     val generatedFiles = getGeneratedFiles(backing, moduleName)
@@ -232,7 +232,7 @@ final class Eval(
       moduleName: String,
       ev: EvalType[T]
   ): (T, ClassLoader => ClassLoader) = {
-    reporter.reset()
+    evalReporter.reset()
     val unit = ev.makeUnit
     val run = new Run {
       override def units = (unit :: Nil).iterator
@@ -262,7 +262,7 @@ final class Eval(
 
     def compile(phase: Phase): Unit = {
       globalPhase = phase
-      if (phase == null || phase == phase.next || reporter.hasErrors)
+      if (phase == null || phase == phase.next || evalReporter.hasErrors)
         ()
       else {
         enteringPhase(phase) { phase.run }
@@ -498,7 +498,7 @@ final class Eval(
   private[this] def mkUnit(srcName: String, firstLine: Int, s: String) =
     new CompilationUnit(new EvalSourceFile(srcName, firstLine, s))
   private[this] def checkError(label: String) =
-    if (reporter.hasErrors) throw new EvalException(label)
+    if (evalReporter.hasErrors) throw new EvalException(label)
 
   private[this] final class EvalSourceFile(name: String, startLine: Int, contents: String)
       extends BatchSourceFile(name, contents) {

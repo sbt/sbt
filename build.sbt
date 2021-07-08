@@ -681,6 +681,8 @@ lazy val actionsProj = (project in file("main-actions"))
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.filesModifiedBytes"),
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.fileModifiedBytes"),
       exclude[DirectMissingMethodProblem]("sbt.Doc.$init$"),
+      // Added field in nested private[this] class
+      exclude[ReversedMissingMethodProblem]("sbt.compiler.Eval#EvalType.sourceName"),
     ),
   )
   .configure(
