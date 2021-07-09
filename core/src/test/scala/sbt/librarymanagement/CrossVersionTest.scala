@@ -250,7 +250,13 @@ class CrossVersionTest extends UnitSpec {
     binaryScalaVersion("3.0.1-M1") shouldBe "3"
   }
   it should "for 3.0.1-RC1-bin-SNAPSHOT return 3" in {
-    binaryScalaVersion("3.0.1-RC1") shouldBe "3"
+    binaryScalaVersion("3.0.1-RC1-bin-SNAPSHOT") shouldBe "3"
+  }
+  it should "for 3.0.1-bin-nonbootstrapped return 3" in {
+    binaryScalaVersion("3.0.1-bin-SNAPSHOT") shouldBe "3"
+  }
+  it should "for 3.0.1-SNAPSHOT return 3" in {
+    binaryScalaVersion("3.0.1-SNAPSHOT") shouldBe "3"
   }
 
   private def patchVersion(fullVersion: String) =
