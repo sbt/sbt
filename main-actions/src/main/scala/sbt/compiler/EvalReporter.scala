@@ -12,7 +12,15 @@ import scala.reflect.internal.util.Position
 import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.{ ConsoleReporter, FilteringReporter }
 
+/**
+ * Reporter used to compile *.sbt files that forwards compiler diagnostics to BSP clients
+ */
 abstract class EvalReporter extends FilteringReporter {
+
+  /**
+   * Send a final report to clear out the outdated diagnostics.
+   * @param sourceName a *.sbt file
+   */
   def finalReport(sourceName: String): Unit
 }
 
