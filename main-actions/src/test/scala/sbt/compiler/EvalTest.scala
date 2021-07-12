@@ -19,7 +19,7 @@ import sbt.io.IO
 class EvalTest extends Properties("eval") {
   private[this] lazy val reporter = new StoreReporter(new Settings())
   import reporter.ERROR
-  private[this] lazy val eval = new Eval(_ => reporter, None)
+  private[this] lazy val eval = new Eval(_ => new ForwardingReporter(reporter), None)
 
   property("inferred integer") = forAll { (i: Int) =>
     val result = eval.eval(i.toString)
@@ -46,7 +46,7 @@ class EvalTest extends Properties("eval") {
 
   property("backed local class") = forAll { (i: Int) =>
     IO.withTemporaryDirectory { dir =>
-      val eval = new Eval(_ => reporter, backing = Some(dir))
+      val eval = new Eval(_ => new ForwardingReporter(reporter), backing = Some(dir))
       val result = eval.eval(local(i))
       val v = value(result).asInstanceOf[{ def i: Int }].i
       (label("Value", v) |: (v == i)) &&

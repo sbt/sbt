@@ -22,7 +22,7 @@ import sbt.StandardMain.exchange
 import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
-import sbt.internal.util.Attributed
+import sbt.internal.util.{ Attributed, ErrorHandling }
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.CrossVersion.binaryScalaVersion
 import sbt.librarymanagement.{ Configuration, ScalaArtifacts }
@@ -53,35 +53,19 @@ object BuildServerProtocol {
   )
 
   private val bspReload = "bspReload"
-  private val bspReloadFailed = "bspReloadFailed"
-  private val bspReloadSucceed = "bspReloadSucceed"
 
   lazy val commands: Seq[Command] = Seq(
     Command.single(bspReload) { (state, reqId) =>
-      import sbt.BasicCommandStrings._
-      import sbt.internal.CommandStrings._
-      val result = List(
-        StashOnFailure,
-        s"$OnFailure $bspReloadFailed $reqId",
-        LoadProjectImpl,
-        s"$bspReloadSucceed $reqId",
-        PopOnFailure,
-        FailureWall
-      ) ::: state
-      result
-    },
-    Command.single(bspReloadFailed) { (state, reqId) =>
-      exchange.respondError(
-        ErrorCodes.InternalError,
-        "reload failed",
-        Some(reqId),
-        state.source
-      )
-      state
-    },
-    Command.single(bspReloadSucceed) { (state, reqId) =>
-      exchange.respondEvent(JNull, Some(reqId), state.source)
-      state
+      try {
+        val newState = BuiltinCommands.doLoadProject(state, Project.LoadAction.Current)
+        exchange.respondEvent(JNull, Some(reqId), state.source)
+        newState
+      } catch {
+        case NonFatal(e) =>
+          val msg = ErrorHandling.reducedToString(e)
+          exchange.respondError(ErrorCodes.InternalError, msg, Some(reqId), state.source)
+          state.fail
+      }
     }
   )
 
