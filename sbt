@@ -299,6 +299,16 @@ addDefaultMemory() {
   fi
 }
 
+addSbtScriptProperty () {
+  if [[ "${java_args[@]}" == -Dsbt.script=* ]]; then
+    :
+  else
+    sbt_script=$0
+    sbt_script=${sbt_script/ /%20}
+    addJava "-Dsbt.script=$sbt_script"
+  fi
+}
+
 require_arg () {
   local type="$1"
   local opt="$2"
@@ -769,6 +779,7 @@ else
   java_version="$(jdk_version)"
   vlog "[process_args] java_version = '$java_version'"
   addDefaultMemory
+  addSbtScriptProperty
   set -- "${residual_args[@]}"
   argumentCount=$#
   run
