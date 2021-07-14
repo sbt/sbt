@@ -60,11 +60,12 @@ object BuildServerConnection {
   private def sbtScriptInPath: Option[String] = {
     // For those who use an old sbt script, the -Dsbt.script is not set
     // As a fallback we try to find the sbt script in $PATH
+    val fileName = if (Properties.isWin) "sbt.bat" else "sbt"
     val envPath = Option(System.getenv("PATH")).getOrElse("")
     val allPaths = envPath.split(File.pathSeparator).map(Paths.get(_))
     allPaths
-      .map(_.resolve("sbt"))
-      .find(file => Files.exists(file))
+      .map(_.resolve(fileName))
+      .find(file => Files.exists(file) && Files.isExecutable(file))
       .map(_.toString.replaceAllLiterally(" ", "%20"))
   }
 }
