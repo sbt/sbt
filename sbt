@@ -300,7 +300,7 @@ addDefaultMemory() {
 }
 
 addSbtScriptProperty () {
-  if [[ "${java_args[@]}" == -Dsbt.script=* ]]; then
+  if [[ "${java_args[@]}" == *-Dsbt.script=* ]]; then
     :
   else
     sbt_script=$0
