@@ -23,6 +23,7 @@ import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 import sbt.BuildSyntax._
+import sbt.internal.bsp.BuildTargetIdentifier
 
 import scala.annotation.nowarn
 import scala.Console.RED
@@ -143,14 +144,19 @@ final case class PluginData(
     definitionClasspath: Seq[Attributed[File]],
     resolvers: Option[Vector[Resolver]],
     report: Option[UpdateReport],
-    scalacOptions: Seq[String]
+    scalacOptions: Seq[String],
+    unmanagedSourceDirectories: Seq[File],
+    unmanagedSources: Seq[File],
+    managedSourceDirectories: Seq[File],
+    managedSources: Seq[File],
+    buildTarget: Option[BuildTargetIdentifier]
 ) {
   val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
 }
 
 object PluginData {
   private[sbt] def apply(dependencyClasspath: Def.Classpath): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil)
+    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
 }
 
 object EvaluateTask {

@@ -10,7 +10,6 @@ package sbt
 import java.nio.file.{ Path => NioPath }
 import java.io.File
 import java.net.URL
-
 import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
@@ -26,6 +25,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.WatchState
 import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.remotecache.RemoteCacheArtifact
+import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.io._
@@ -398,8 +398,10 @@ object Keys {
 
   val bspConfig = taskKey[Unit]("Create or update the BSP connection files").withRank(DSetting)
   val bspEnabled = SettingKey[Boolean](BasicKeys.bspEnabled)
+  val bspSbtEnabled = settingKey[Boolean]("Should BSP export meta-targets for the SBT build itself?")
   val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Build target identifier of a project and configuration.").withRank(DSetting)
   val bspWorkspace = settingKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DSetting)
+  private[sbt] val bspFullWorkspace = settingKey[BspFullWorkspace]("Mapping of BSP build targets to sbt scopes and meta-targets for the SBT build itself").withRank(DSetting)
   val bspInternalDependencyConfigurations = settingKey[Seq[(ProjectRef, Set[ConfigKey])]]("The project configurations that this configuration depends on, possibly transitivly").withRank(DSetting)
   val bspWorkspaceBuildTargets = taskKey[Seq[BuildTarget]]("List all the BSP build targets").withRank(DTask)
   val bspBuildTarget = taskKey[BuildTarget]("Description of the BSP build targets").withRank(DTask)

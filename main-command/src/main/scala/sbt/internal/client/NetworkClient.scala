@@ -330,6 +330,18 @@ class NetworkClient(
 
         val cmd = arguments.sbtLaunchJar match {
           case Some(lj) =>
+            if (log) {
+              val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+              console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
+              console.appendLog(
+                Level.Warn,
+                "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
+              )
+              console.appendLog(
+                Level.Warn,
+                s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
+              )
+            }
             List("java") ++ arguments.sbtArguments ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
@@ -1050,7 +1062,8 @@ object NetworkClient {
   private[client] val noStdErr = "--no-stderr"
   private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
-    var sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    var sbtScript = Properties.propOrNone("sbt.script")
     var launchJar: Option[String] = None
     var bsp = false
     val commandArgs = new mutable.ArrayBuffer[String]
@@ -1072,11 +1085,10 @@ object NetworkClient {
           sbtScript = a
             .split("--sbt-script=")
             .lastOption
-            .map(_.replaceAllLiterally("%20", " "))
-            .getOrElse(sbtScript)
+            .orElse(sbtScript)
         case "--sbt-script" if i + 1 < sanitized.length =>
           i += 1
-          sbtScript = sanitized(i).replaceAllLiterally("%20", " ")
+          sbtScript = Some(sanitized(i))
         case a if a.startsWith("--sbt-launch-jar=") =>
           launchJar = a
             .split("--sbt-launch-jar=")
@@ -1096,12 +1108,17 @@ object NetworkClient {
     }
     val base = new File("").getCanonicalFile
     if (!sbtArguments.contains("-Dsbt.io.virtual=true")) sbtArguments += "-Dsbt.io.virtual=true"
+    if (!sbtArguments.exists(_.startsWith("-Dsbt.script"))) {
+      sbtScript.foreach { sbtScript =>
+        sbtArguments += s"-Dsbt.script=$sbtScript"
+      }
+    }
     new Arguments(
       base,
       sbtArguments.toSeq,
       commandArgs.toSeq,
       completionArguments.toSeq,
-      sbtScript,
+      sbtScript.getOrElse(defaultSbtScript).replaceAllLiterally("%20", " "),
       bsp,
       launchJar
     )

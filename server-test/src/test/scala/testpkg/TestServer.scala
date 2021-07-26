@@ -12,17 +12,18 @@ import java.net.Socket
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.AtomicBoolean
-
 import verify._
 import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.protocol.ClientSocket
+import sjsonnew.JsonReader
+import sjsonnew.support.scalajson.unsafe.{ Converter, Parser }
 
 import scala.annotation.tailrec
 import scala.concurrent._
 import scala.concurrent.duration._
-import scala.util.{ Success, Try }
+import scala.util.{ Failure, Success, Try }
 
 trait AbstractServerTest extends TestSuite[Unit] {
   private var temp: File = _
@@ -290,6 +291,57 @@ case class TestServer(
       lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
         case null => false
         case s    => if (!f(s) && !deadline.isOverdue) impl() else !deadline.isOverdue()
+      }
+    impl()
+  }
+  final def waitFor[T: JsonReader](duration: FiniteDuration): T = {
+    val deadline = duration.fromNow
+    var lastEx: Throwable = null
+    @tailrec def impl(): T =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null =>
+          if (lastEx != null) throw lastEx
+          else throw new TimeoutException
+        case s =>
+          Parser
+            .parseFromString(s)
+            .flatMap(
+              jvalue =>
+                Converter.fromJson[T](
+                  jvalue.toStandard
+                    .asInstanceOf[sjsonnew.shaded.scalajson.ast.JObject]
+                    .value("result")
+                    .toUnsafe
+                )
+            ) match {
+            case Success(value) =>
+              value
+            case Failure(exception) =>
+              if (deadline.isOverdue) {
+                val ex = new TimeoutException()
+                ex.initCause(exception)
+                throw ex
+              } else {
+                lastEx = exception
+                impl()
+              }
+          }
+      }
+    impl()
+  }
+  final def waitForResponse(duration: FiniteDuration, id: Int): String = {
+    val deadline = duration.fromNow
+    @tailrec def impl(): String =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null =>
+          throw new TimeoutException()
+        case s =>
+          val s1 = s
+          val correctId = s1.contains("\"id\":\"" + id + "\"")
+          if (!correctId && !deadline.isOverdue) impl()
+          else if (deadline.isOverdue)
+            throw new TimeoutException()
+          else s
       }
     impl()
   }

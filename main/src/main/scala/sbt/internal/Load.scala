@@ -8,19 +8,17 @@
 package sbt
 package internal
 
-import java.io.File
-import java.net.URI
-
 import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
 import sbt.Scope.GlobalScope
 import sbt.SlashSyntax0._
-import sbt.compiler.Eval
+import sbt.compiler.{ Eval, EvalReporter }
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
+import sbt.internal.server.BuildServerEvalReporter
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings, ~> }
@@ -31,6 +29,8 @@ import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 
+import java.io.File
+import java.net.URI
 import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
 import scala.tools.nsc.reporters.ConsoleReporter
@@ -426,14 +426,21 @@ private[sbt] object Load {
     () => eval
   }
 
-  def mkEval(unit: BuildUnit): Eval =
-    mkEval(unit.definitions, unit.plugins, unit.plugins.pluginData.scalacOptions)
-
-  def mkEval(defs: LoadedDefinitions, plugs: LoadedPlugins, options: Seq[String]): Eval =
-    mkEval(defs.target ++ plugs.classpath, defs.base, options)
+  def mkEval(unit: BuildUnit): Eval = {
+    val defs = unit.definitions
+    mkEval(defs.target ++ unit.plugins.classpath, defs.base, unit.plugins.pluginData.scalacOptions)
+  }
 
   def mkEval(classpath: Seq[File], base: File, options: Seq[String]): Eval =
-    new Eval(options, classpath, s => new ConsoleReporter(s), Some(evalOutputDirectory(base)))
+    mkEval(classpath, base, options, EvalReporter.console)
+
+  def mkEval(
+      classpath: Seq[File],
+      base: File,
+      options: Seq[String],
+      mkReporter: scala.tools.nsc.Settings => EvalReporter
+  ): Eval =
+    new Eval(options, classpath, mkReporter, Some(evalOutputDirectory(base)))
 
   /**
    * This will clean up left-over files in the config-classes directory if they are no longer used.
@@ -703,7 +710,13 @@ private[sbt] object Load {
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) {
-        mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions)
+        def mkReporter(settings: scala.tools.nsc.Settings): EvalReporter =
+          plugs.pluginData.buildTarget match {
+            case None => EvalReporter.console(settings)
+            case Some(buildTarget) =>
+              new BuildServerEvalReporter(buildTarget, new ConsoleReporter(settings))
+          }
+        mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions, mkReporter)
       }
       val initialProjects = defsScala.flatMap(b => projectsFromBuild(b, normBase)) ++ buildLevelExtraProjects
 
@@ -1164,12 +1177,22 @@ private[sbt] object Load {
         val prod = (Configurations.Runtime / exportedProducts).value
         val cp = (Configurations.Runtime / fullClasspath).value
         val opts = (Configurations.Compile / scalacOptions).value
+        val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
+        val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
+        val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
+        val managedSrcs = (Configurations.Compile / managedSources).value
+        val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
         PluginData(
           removeEntries(cp, prod),
           prod,
           Some(fullResolvers.value.toVector),
           Some(update.value),
-          opts
+          opts,
+          unmanagedSrcDirs,
+          unmanagedSrcs,
+          managedSrcDirs,
+          managedSrcs,
+          Some(buildTarget)
         )
       },
       scalacOptions += "-Wconf:cat=unused-nowarn:s",
@@ -1225,7 +1248,7 @@ private[sbt] object Load {
     loadPluginDefinition(
       dir,
       config,
-      PluginData(config.globalPluginClasspath, Nil, None, None, Nil)
+      PluginData(config.globalPluginClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1417,7 +1440,12 @@ final case class LoadBuildConfiguration(
           data.internalClasspath,
           Some(data.resolvers),
           Some(data.updateReport),
-          Nil
+          Nil,
+          Nil,
+          Nil,
+          Nil,
+          Nil,
+          None
         )
       case None => PluginData(globalPluginClasspath)
     }

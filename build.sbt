@@ -164,7 +164,10 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[FinalClassProblem]("sbt.internal.*"),
     exclude[FinalMethodProblem]("sbt.internal.*"),
     exclude[IncompatibleResultTypeProblem]("sbt.internal.*"),
-    exclude[ReversedMissingMethodProblem]("sbt.internal.*")
+    exclude[ReversedMissingMethodProblem]("sbt.internal.*"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.apply"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.copy"),
+    exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
   ),
 )
 
@@ -678,6 +681,8 @@ lazy val actionsProj = (project in file("main-actions"))
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.filesModifiedBytes"),
       exclude[DirectMissingMethodProblem]("sbt.compiler.Eval.fileModifiedBytes"),
       exclude[DirectMissingMethodProblem]("sbt.Doc.$init$"),
+      // Added field in nested private[this] class
+      exclude[ReversedMissingMethodProblem]("sbt.compiler.Eval#EvalType.sourceName"),
     ),
   )
   .configure(
