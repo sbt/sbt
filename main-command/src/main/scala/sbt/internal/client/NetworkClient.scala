@@ -342,7 +342,12 @@ class NetworkClient(
                 s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
               )
             }
-            List("java") ++ arguments.sbtArguments ++
+            val java = Option(Properties.javaHome)
+              .map { javaHome =>
+                s"$javaHome/bin/java"
+              }
+              .getOrElse("java")
+            List(java) ++ arguments.sbtArguments ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
             List(arguments.sbtScript) ++ arguments.sbtArguments ++
