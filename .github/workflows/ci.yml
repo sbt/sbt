@@ -30,9 +30,10 @@ jobs:
     - uses: coursier/cache-action@v5
       with:
         extraKey: ${{ matrix.PLUGIN }}-${{ matrix.TEST_GROUP }}
-    - uses: olafurpg/setup-scala@v10
+    - uses: coursier/setup-action@v1
       with:
-        java-version: adopt@1.8.0-232
+        jvm: 8
+        apps: sbt-launcher
     - run: scripts/ci.sh
       shell: bash
       env:
@@ -49,10 +50,13 @@ jobs:
           fetch-depth: 0
           submodules: true
       - uses: coursier/cache-action@v5
-      - uses: olafurpg/setup-scala@v10
+      - uses: coursier/setup-action@v1
+        with:
+          jvm: 8
+          apps: sbt-launcher
       - uses: olafurpg/setup-gpg@v3
       - name: Release
-        run: ./sbt ci-release
+        run: sbt ci-release
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
