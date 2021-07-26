@@ -27,9 +27,7 @@ jobs:
       with:
         fetch-depth: 0
         submodules: true
-    - uses: coursier/cache-action@v5
-      with:
-        extraKey: ${{ matrix.PLUGIN }}-${{ matrix.TEST_GROUP }}
+    - uses: coursier/cache-action@v6.3
     - uses: coursier/setup-action@v1
       with:
         jvm: 8
@@ -49,7 +47,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: true
-      - uses: coursier/cache-action@v5
+      - uses: coursier/cache-action@v6.3
       - uses: coursier/setup-action@v1
         with:
           jvm: 8
