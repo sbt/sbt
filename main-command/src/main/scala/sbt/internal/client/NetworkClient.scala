@@ -364,9 +364,14 @@ class NetworkClient(
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
-        val process = processBuilder.start()
-        sbtProcess.set(process)
-        Some(process)
+        Try(processBuilder.start()) match {
+          case Success(process) =>
+            sbtProcess.set(process)
+            Some(process)
+          case Failure(e) =>
+            if (log) console.appendLog(Level.Error, s"Failed to start server : $e")
+            throw new ServerFailedException
+        }
       case _ =>
         if (log) {
           console.appendLog(Level.Info, "sbt server is booting up")
