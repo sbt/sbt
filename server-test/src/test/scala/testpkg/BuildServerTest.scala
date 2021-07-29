@@ -7,8 +7,7 @@
 
 package testpkg
 
-import sbt.internal.bsp.SourcesResult
-import sbt.internal.bsp.WorkspaceBuildTargetsResult
+import sbt.internal.bsp.{ BspCompileResult, SourcesResult, StatusCode, WorkspaceBuildTargetsResult }
 import sbt.internal.langserver.ErrorCodes
 import sbt.IO
 
@@ -41,13 +40,15 @@ object BuildServerTest extends AbstractServerTest {
     val buildServerBuildTarget =
       result.targets.find(_.displayName.contains("buildserver-build")).get
     assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-build"))
+    assert(!result.targets.exists(_.displayName.contains("badBuildTarget")))
   }
 
   test("buildTarget/sources") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "24", "method": "buildTarget/sources", "params": {
-        |  "targets": [{ "uri": "$buildTarget" }]
+        |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
         |} }""".stripMargin
     )
     assert(processing("buildTarget/sources"))
@@ -88,17 +89,16 @@ object BuildServerTest extends AbstractServerTest {
          |} }""".stripMargin
     )
     assert(processing("buildTarget/compile"))
-    assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"32"""") &&
-      (s contains """"statusCode":1""")
-    })
+    val res = svr.waitFor[BspCompileResult](10.seconds)
+    assert(res.statusCode == StatusCode.Success)
   }
 
   test("buildTarget/scalacOptions") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "40", "method": "buildTarget/scalacOptions", "params": {
-        |  "targets": [{ "uri": "$buildTarget" }]
+        |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
         |} }""".stripMargin
     )
     assert(processing("buildTarget/scalacOptions"))
@@ -176,9 +176,10 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/scalaMainClasses") { _ =>
     val buildTarget = buildTargetUri("runAndTest", "Compile")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "56", "method": "buildTarget/scalaMainClasses", "params": {
-         |  "targets": [{ "uri": "$buildTarget" }]
+         |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/scalaMainClasses"))
@@ -210,9 +211,10 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/scalaTestClasses") { _ =>
     val buildTarget = buildTargetUri("runAndTest", "Test")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Test")
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "72", "method": "buildTarget/scalaTestClasses", "params": {
-         |  "targets": [{ "uri": "$buildTarget" }]
+         |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/scalaTestClasses"))
@@ -305,9 +307,10 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/resources") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "96", "method": "buildTarget/resources", "params": {
-         |  "targets": [{ "uri": "$buildTarget" }]
+         |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/resources"))

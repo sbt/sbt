@@ -25,3 +25,18 @@ lazy val respondError = project.in(file("respond-error"))
   )
 
 lazy val util = project
+
+def somethingBad = throw new MessageOnlyException("I am a bad build target")
+// other build targets should not be affected by this bad build target
+lazy val badBuildTarget = project.in(file("bad-build-target"))
+  .settings(
+    Compile / bspBuildTarget := somethingBad,
+    Compile / bspBuildTargetSourcesItem := somethingBad,
+    Compile / bspBuildTargetResourcesItem := somethingBad,
+    Compile / bspBuildTargetDependencySourcesItem := somethingBad,
+    Compile / bspBuildTargetScalacOptionsItem := somethingBad,
+    Compile / bspBuildTargetCompileItem := somethingBad,
+    Compile / bspScalaMainClasses := somethingBad,
+    Test / bspBuildTarget := somethingBad,
+    Test / bspScalaTestClasses := somethingBad,
+  )
