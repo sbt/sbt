@@ -90,16 +90,16 @@ object BuildServerProtocol {
       val workspace = Keys.bspFullWorkspace.value
       val state = Keys.state.value
       val allTargets = ScopeFilter.in(workspace.scopes.values.toSeq)
-      val sbtTargets: List[Def.Initialize[Task[BuildTarget]]] = workspace.builds.map {
+      val sbtTargets = workspace.builds.map {
         case (buildTargetIdentifier, loadedBuildUnit) =>
           val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
-          sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor)
+          sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor).result
       }.toList
       Def.task {
-        val buildTargets = Keys.bspBuildTarget.all(allTargets).value.toVector
-        val allBuildTargets = buildTargets ++ sbtTargets.join.value
-        state.respondEvent(WorkspaceBuildTargetsResult(allBuildTargets))
-        allBuildTargets
+        val buildTargets = Keys.bspBuildTarget.result.all(allTargets).value
+        val successfulBuildTargets = anyOrThrow(buildTargets ++ sbtTargets.join.value)
+        state.respondEvent(WorkspaceBuildTargetsResult(successfulBuildTargets.toVector))
+        successfulBuildTargets
       }
     }.value,
     // https://github.com/build-server-protocol/build-server-protocol/blob/master/docs/specification.md#build-target-sources-request
@@ -110,8 +110,8 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       // run the worker task concurrently
       Def.task {
-        val items = bspBuildTargetSourcesItem.all(filter).value
-        val buildItems = workspace.builds.toVector.map {
+        val items = bspBuildTargetSourcesItem.result.all(filter).value
+        val buildItems = workspace.builds.map {
           case (id, loadedBuildUnit) =>
             val base = loadedBuildUnit.localBase
             val sbtFiles = configurationSources(base)
@@ -130,9 +130,10 @@ object BuildServerProtocol {
             add(pluginData.managedSourceDirectories, SourceItemKind.Directory, generated = true)
             add(pluginData.managedSources, SourceItemKind.File, generated = true)
             add(sbtFiles, SourceItemKind.File, generated = false)
-            SourcesItem(id, all.result())
+            Value(SourcesItem(id, all.result()))
         }
-        val result = SourcesResult((items ++ buildItems).toVector)
+        val successfulItems = anyOrThrow(items ++ buildItems)
+        val result = SourcesResult(successfulItems.toVector)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -145,8 +146,9 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       // run the worker task concurrently
       Def.task {
-        val items = bspBuildTargetResourcesItem.all(filter).value
-        val result = ResourcesResult(items.toVector)
+        val items = bspBuildTargetResourcesItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = ResourcesResult(successfulItems.toVector)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -159,8 +161,9 @@ object BuildServerProtocol {
       // run the worker task concurrently
       Def.task {
         import sbt.internal.bsp.codec.JsonProtocol._
-        val items = bspBuildTargetDependencySourcesItem.all(filter).value
-        val result = DependencySourcesResult(items.toVector)
+        val items = bspBuildTargetDependencySourcesItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = DependencySourcesResult(successfulItems.toVector)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -172,8 +175,12 @@ object BuildServerProtocol {
       workspace.warnIfBuildsNonEmpty(Method.Compile, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
-        val statusCode = Keys.bspBuildTargetCompileItem.all(filter).value.max
-        s.respondEvent(BspCompileResult(None, statusCode))
+        val statusCodes = Keys.bspBuildTargetCompileItem.result.all(filter).value
+        val aggregatedStatusCode = allOrThrow(statusCodes) match {
+          case Seq() => StatusCode.Success
+          case codes => codes.max
+        }
+        s.respondEvent(BspCompileResult(None, aggregatedStatusCode))
       }
     }.evaluated,
     bspBuildTargetCompile / aggregate := false,
@@ -188,7 +195,7 @@ object BuildServerProtocol {
 
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
-        val items = bspBuildTargetScalacOptionsItem.all(filter).value
+        val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
         val appProvider = appConfiguration.value.provider()
         val sbtJars = appProvider.mainClasspath()
         val buildItems = builds.map {
@@ -197,14 +204,16 @@ object BuildServerProtocol {
             val scalacOptions = plugins.pluginData.scalacOptions
             val pluginClassPath = plugins.classpath
             val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-            ScalacOptionsItem(
+            val item = ScalacOptionsItem(
               build._1,
               scalacOptions.toVector,
               classpath,
               new File(build._2.localBase, "project/target").toURI
             )
+            Value(item)
         }
-        val result = ScalacOptionsResult((items ++ buildItems).toVector)
+        val successfulItems = anyOrThrow(items ++ buildItems)
+        val result = ScalacOptionsResult(successfulItems.toVector)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -216,8 +225,9 @@ object BuildServerProtocol {
       workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
-        val items = bspScalaTestClassesItem.all(filter).value
-        val result = ScalaTestClassesResult(items.toVector, None)
+        val items = bspScalaTestClassesItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = ScalaTestClassesResult(successfulItems.toVector, None)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -228,8 +238,9 @@ object BuildServerProtocol {
       workspace.warnIfBuildsNonEmpty(Method.ScalaMainClasses, s.log)
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
-        val items = bspScalaMainClassesItem.all(filter).value
-        val result = ScalaMainClassesResult(items.toVector, None)
+        val items = bspScalaMainClassesItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = ScalaMainClassesResult(successfulItems.toVector, None)
         s.respondEvent(result)
       }
     }.evaluated,
@@ -845,6 +856,20 @@ object BuildServerProtocol {
         BuildTargetIdentifier(new URI(s"$sanitized#$project/${config.id}"))
       case _ => sys.error(s"unexpected $ref")
     }
+
+  private def anyOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
+    val successes = results.collect { case Value(v) => v }
+    val errors = results.collect { case Inc(cause)  => cause }
+    if (successes.nonEmpty || errors.isEmpty) successes
+    else throw Incomplete(None, causes = errors)
+  }
+
+  private def allOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
+    val successes = results.collect { case Value(v) => v }
+    val errors = results.collect { case Inc(cause)  => cause }
+    if (errors.isEmpty) successes
+    else throw Incomplete(None, causes = errors)
+  }
 
   private case class SemanticVersion(major: Int, minor: Int) extends Ordered[SemanticVersion] {
     override def compare(that: SemanticVersion): Int = {
