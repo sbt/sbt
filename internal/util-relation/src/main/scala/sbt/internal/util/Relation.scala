@@ -50,6 +50,19 @@ object Relation {
   private[sbt] def get[X, Y](map: M[X, Y], t: X): Set[Y] = map.getOrElse(t, Set.empty[Y])
 
   private[sbt] type M[X, Y] = Map[X, Set[Y]]
+
+  /** when both parameters taken by relation are the same type, switch calls a function on them. */
+  private[sbt] def switch[X, Y](relation: Relation[X, X], f: X => Y): Relation[Y, Y] = {
+    val forward = relation.forwardMap.map {
+      case (first, second) =>
+        f(first) -> second.map(f)
+    }
+    val reverse = relation.reverseMap.map {
+      case (first, second) =>
+        f(first) -> second.map(f)
+    }
+    make(forward, reverse)
+  }
 }
 
 /** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B.  */
@@ -133,7 +146,6 @@ trait Relation[A, B] {
    * The value associated with a given `_2` is the set of all `_1`s such that `(_1, _2)` is in this relation.
    */
   def reverseMap: Map[B, Set[A]]
-
 }
 
 // Note that we assume without checking that fwd and rev are consistent.
