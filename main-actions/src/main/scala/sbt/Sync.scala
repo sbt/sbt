@@ -44,7 +44,7 @@ object Sync {
   def sync(
       store: CacheStore,
       fileConverter: FileConverter
-  ): Traversable[(File, File)] => Relation[File, File] = sync(store, fileConverter)
+  ): Traversable[(File, File)] => Relation[File, File] = sync(store, FileInfo.lastModified, fileConverter)
 
   def sync(
       store: CacheStore,
