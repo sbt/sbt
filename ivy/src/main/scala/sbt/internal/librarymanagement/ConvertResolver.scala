@@ -403,7 +403,7 @@ private[sbt] object ConvertResolver {
                |    publishConfiguration := publishConfiguration.value.withOverwrite(true)
                |    publishLocalConfiguration := publishLocalConfiguration.value.withOverwrite(true)
                |
-               |If you have a remote cache respoitory, you can enable overwriting as follows:
+               |If you have a remote cache repository, you can enable overwriting as follows:
                |    pushRemoteCacheConfiguration := pushRemoteCacheConfiguration.value.withOverwrite(true)
                |""".stripMargin,
             ex
