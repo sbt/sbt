@@ -9,6 +9,7 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+
 import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
 import sbt.Project.richInitializeTask
@@ -28,6 +29,7 @@ import sbt.internal.bsp.BuildTargetIdentifier
 import scala.annotation.nowarn
 import scala.Console.RED
 import scala.concurrent.duration.Duration
+import scala.util.control.NonFatal
 
 /**
  * An API that allows you to cancel executing tasks upon some signal.
@@ -168,6 +170,28 @@ object EvaluateTask {
   def taskTimingProgress: Option[ExecuteProgress[Task]] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
     else None
+
+  private val capturedThunk = new AtomicReference[() => Unit]()
+  def onShutdown(): Unit = {
+    val thunk = capturedThunk.getAndSet(null)
+    if (thunk != null) thunk()
+  }
+  // our own implementation of shutdown hook, because the "sbt -timings help" command was not working with the JVM shutdown hook,
+  // which is a little hard to control.
+  def addShutdownHandler[A](thunk: () => A): Unit = {
+    capturedThunk
+      .set(
+        () =>
+          try {
+            thunk()
+            ()
+          } catch {
+            case NonFatal(e) =>
+              System.err.println(s"Caught exception running shutdown hook: $e")
+              e.printStackTrace(System.err)
+          }
+      )
+  }
 
   lazy private val sharedTraceEvent = new TaskTraceEvent()
   def taskTraceEvent: Option[ExecuteProgress[Task]] =

@@ -290,6 +290,7 @@ private[sbt] final class CommandExchange {
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
+    EvaluateTask.onShutdown
   }
 
   // This is an interface to directly respond events.
