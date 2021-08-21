@@ -20,6 +20,7 @@ declare -r default_java_opts="-Dfile.encoding=UTF-8"
 declare sbt_verbose=
 declare sbt_boot=
 declare sbt_debug=
+declare sbt_jar=
 declare build_props_sbt_version=
 declare use_sbtn=
 declare sbtn_command="$SBTN_CMD"
@@ -113,7 +114,7 @@ boot_dir() {
 }
 
 jar_file () {
-  if ! [[ "$sbt_jar" == "" ]]; then
+  if [[ "$sbt_jar" != "" ]]; then
     echo "$sbt_jar"
   elif [[ "$sbt_boot" == "" ]]; then
     echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
@@ -644,6 +645,7 @@ map_args () {
        -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
      -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
                  -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;
+       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
          -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
              -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
      -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
