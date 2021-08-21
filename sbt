@@ -18,6 +18,7 @@ declare sbt_default_mem=1024
 declare -r default_sbt_opts=""
 declare -r default_java_opts="-Dfile.encoding=UTF-8"
 declare sbt_verbose=
+declare sbt_boot=
 declare sbt_debug=
 declare build_props_sbt_version=
 declare use_sbtn=
@@ -94,8 +95,34 @@ dlog () {
   [[ $sbt_debug ]] && echoerr "$@"
 }
 
+default_sbt_version () {
+  if [[ "$init_sbt_version" != "_to_be_replaced" ]]; then
+    echo "$init_sbt_version"
+  else
+    echo "$builtin_sbt_version"
+  fi
+}
+
+boot_dir() {
+  if [[ "$sbt_boot" == "" ]]; then
+    local user_home && user_home=$(findProperty user.home)
+    echo "${user_home:-$HOME}/.sbt/boot"
+  else
+    mkdir -p "$sbt_boot" && echo "$sbt_boot"
+  fi
+}
+
 jar_file () {
-  echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
+  if ! [[ "$sbt_jar" == "" ]]; then
+    echo "$sbt_jar"
+  elif [[ "$sbt_boot" == "" ]]; then
+    echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
+  elif [[ "$sbt_version" == "" ]]; then
+    launcher_sv="$(default_sbt_version)"
+    echo "$(boot_dir)/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  else
+    echo "$(boot_dir)/sbt-launch/$sbt_version/sbt-launch-$sbt_version.jar"
+  fi
 }
 
 jar_url () {
@@ -121,14 +148,10 @@ download_url () {
 acquire_sbt_jar () {
   local launcher_sv="$1"
   if [[ "$launcher_sv" == "" ]]; then
-    if [[ "$init_sbt_version" != "_to_be_replaced" ]]; then
-      launcher_sv="$init_sbt_version"
-    else
-      launcher_sv="$builtin_sbt_version"
-    fi
+    launcher_sv="$(default_sbt_version)"
   fi
   local user_home && user_home=$(findProperty user.home)
-  download_jar="${user_home:-$HOME}/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  local download_jar="$(boot_dir)/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
   if [[ -f "$download_jar" ]]; then
     sbt_jar="$download_jar"
   else
@@ -158,7 +181,7 @@ acquire_sbt_jar () {
 acquire_sbtn () {
   local sbtn_v="$1"
   local user_home && user_home=$(findProperty user.home)
-  local p="${user_home:-$HOME}/.cache/sbt/boot/sbtn/$sbtn_v"
+  local p="$(boot_dir)/sbtn/$sbtn_v"
   local target="$p/sbtn"
   local archive_target=
   local url=
@@ -463,6 +486,7 @@ run() {
   syncPreloaded
 
   # no jar? download it.
+  sbt_jar="$(jar_file)"
   [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
     exit 1
   }
@@ -514,7 +538,7 @@ declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
 declare -r etc_file="${SBT_ETC_FILE:-$etc_sbt_opts_file}"
 declare -r dist_sbt_opts_file="${sbt_home}/conf/sbtopts"
 declare -r win_sbt_opts_file="${sbt_home}/conf/sbtconfig.txt"
-declare sbt_jar="$(jar_file)"
+declare sbt_jar=
 
 usage() {
  cat <<EOM
@@ -620,7 +644,6 @@ map_args () {
        -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
      -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
                  -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;
-       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
          -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
              -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
      -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
@@ -647,6 +670,10 @@ process_args () {
      -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
              -batch|--batch) exec </dev/null && shift ;;
 
+       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" &&
+                             sbt_boot="$2" &&
+                             addJava "-Dsbt.boot.directory=$2" &&
+                             shift 2 ;;
          -sbt-jar|--sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
  -sbt-version|--sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
      -java-home|--java-home) require_arg path "$1" "$2" &&
