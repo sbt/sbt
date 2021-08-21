@@ -8,6 +8,7 @@
 package sbt
 package internal
 
+import sbt.EvaluateTask.addShutdownHandler
 import sbt.internal.util.{ ConsoleOut, RMap }
 import sbt.util.{ Level, Logger }
 
@@ -38,7 +39,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
 
   if (reportOnShutdown) {
     start = System.nanoTime
-    ShutdownHooks.add(() => report())
+    addShutdownHandler(() => report())
   }
 
   override def initial(): Unit = {
