@@ -109,7 +109,6 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-Xss6M"))
   }
 
-
   makeTest(
     name = "sbt with -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 in SBT_OPTS",
     sbtOpts = "-Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080",
@@ -168,5 +167,16 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
   makeTest("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v") { out: List[String] =>
     if (isWindows) cancel("Test not supported on windows")
     assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
+  }
+
+  test("sbt --script-version should print sbtVersion") {
+    val out = sbtProcess("--script-version").!!.trim
+    val expectedVersion = "^"+SbtRunnerTest.versionRegEx+"$"
+    assert(out.matches(expectedVersion))
+    ()
+  }
+
+  makeTest("--sbt-cache")("--sbt-cache", "./cachePath") { out: List[String] =>
+    assert(out.contains[String](s"-Dsbt.global.localcache=./cachePath"))
   }
 }
