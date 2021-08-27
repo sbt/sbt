@@ -1,0 +1,8 @@
+[repositories]
+maven-local
+local
+jcenter-proxy-releases: http://laraquad3.epfl.ch:8081/artifactory/jcenter , allowInsecureProtocol
+jcenter-ivy-proxy-releases: http://laraquad3.epfl.ch:8081/artifactory/jcenter, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext], allowInsecureProtocol
+proxy-maven: http://laraquad3.epfl.ch:8081/artifactory/libs-release , allowInsecureProtocol
+proxy-ivy: http://laraquad3.epfl.ch:8081/artifactory/ivy-release/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext], allowInsecureProtocol
+

@@ -9,6 +9,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - os: windows-latest
+            java: 8
+            jobtype: 9
           - os: ubuntu-latest
             java: 11
             jobtype: 1
@@ -33,9 +36,6 @@ jobs:
           - os: macos-latest
             java: 8
             jobtype: 8
-          - os: windows-latest
-            java: 8
-            jobtype: 9
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -86,6 +86,7 @@ jobs:
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Build and test
       shell: bash
+      if: ${{ matrix.jobtype != '9' }}
       run: |
         rm -rf "$HOME/.sbt/scripted/" || true
         case ${{ matrix.jobtype }} in
@@ -170,3 +171,7 @@ jobs:
         find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
         find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
         find $HOME/.sbt                              -name "*.lock"               -delete || true
+    - name: Windows test
+      shell: cmd
+      if: ${{ matrix.jobtype == '9' }}
+      run: launcher-package\citest\runci.bat

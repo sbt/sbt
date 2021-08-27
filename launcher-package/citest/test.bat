@@ -7,7 +7,11 @@ unzip ..\target\universal\sbt.zip -d freshly-baked
 
 SETLOCAL
 
-"freshly-baked\sbt\bin\sbt" about
+"freshly-baked\sbt\bin\sbt" about || exit /b
+
+echo ***hello I'm printing the line you asked me to***
+"freshly-baked\sbt\bin\sbt" "-Dsbt.repository.config=.\repositories" "-Dsbt.version=0.100" about || exit /b
+if %errorlevel% neq 0 exit /b %errorlevel%
 
 SET JAVA_HOME=C:\jdk11
 SET PATH=C:\jdk11\bin;%PATH%
