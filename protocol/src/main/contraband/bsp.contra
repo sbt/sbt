@@ -368,6 +368,21 @@ type BspCompileResult {
   # data: any
 }
 
+## Clean Cache Request
+type CleanCacheParams {
+  ## A sequence of build targets to clean
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+## Clean Cache Response
+type CleanCacheResult {
+  ## Optional message to display to the user
+  message: String
+
+  ## Indicates whether the clean cache request was performed or not
+  cleaned: Boolean!
+}
+
 ## Compile Notifications
 
 type CompileTask {

@@ -7,7 +7,7 @@
 
 package testpkg
 
-import sbt.internal.bsp.{ BspCompileResult, SourcesResult, StatusCode, WorkspaceBuildTargetsResult }
+import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.IO
 
@@ -106,6 +106,18 @@ object BuildServerTest extends AbstractServerTest {
       (s contains """"id":"40"""") &&
       (s contains "scala-library-2.13.1.jar")
     })
+  }
+
+  test("buildTarget/cleanCache") { _ =>
+    val buildTarget = buildTargetUri("util", "Compile")
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "32", "method": "buildTarget/cleanCache", "params": {
+         |  "targets": [{ "uri": "$buildTarget" }]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/cleanCache"))
+    val res = svr.waitFor[CleanCacheResult](10.seconds)
+    assert(res.cleaned)
   }
 
   test("workspace/reload") { _ =>
