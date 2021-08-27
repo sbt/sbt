@@ -12,6 +12,7 @@ import sbt.internal.langserver.ErrorCodes
 import sbt.IO
 
 import java.io.File
+import java.nio.file.Paths
 import scala.concurrent.duration._
 
 // starts svr using server-test/buildserver and perform custom server tests
@@ -109,15 +110,32 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/cleanCache") { _ =>
-    val buildTarget = buildTargetUri("util", "Compile")
+    def targetDir =
+      Paths
+        .get(
+          svr.baseDirectory.getAbsoluteFile.toString,
+          "run-and-test/target/scala-2.13/classes/main"
+        )
+        .toFile
+
+    val buildTarget = buildTargetUri("runAndTest", "Compile")
     svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "32", "method": "buildTarget/cleanCache", "params": {
+      s"""{ "jsonrpc": "2.0", "id": "43", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$buildTarget" }]
+         |} }""".stripMargin
+    )
+    svr.waitFor[BspCompileResult](10.seconds)
+    assert(targetDir.list().contains("Main.class"))
+
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "44", "method": "buildTarget/cleanCache", "params": {
          |  "targets": [{ "uri": "$buildTarget" }]
          |} }""".stripMargin
     )
     assert(processing("buildTarget/cleanCache"))
     val res = svr.waitFor[CleanCacheResult](10.seconds)
     assert(res.cleaned)
+    assert(targetDir.list().isEmpty)
   }
 
   test("workspace/reload") { _ =>
