@@ -46,11 +46,18 @@ realpathish () {
     COUNT=$(($COUNT + 1))
   done
 
+  TARGET_DIR="$(pwd -P)"
+  if [ "$TARGET_DIR" == "/" ]; then
+    TARGET_FILE="/$TARGET_FILE"
+  else
+    TARGET_FILE="$TARGET_DIR/$TARGET_FILE"
+  fi
+
   # make sure we grab the actual windows path, instead of cygwin's path.
   if [[ "x$FIX_CYGPATH" != "x" ]]; then
-    echo "$(cygwinpath "$(pwd -P)/$TARGET_FILE")"
+    echo "$(cygwinpath "$TARGET_FILE")"
   else
-    echo "$(pwd -P)/$TARGET_FILE"
+    echo "$TARGET_FILE"
   fi
 )
 }
