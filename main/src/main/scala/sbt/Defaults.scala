@@ -2305,14 +2305,14 @@ object Defaults extends BuildCommon {
     analysis
   }
   def compileIncrementalTask = Def.task {
+    val s = streams.value
+    val ci = (compile / compileInputs).value
+    val ping = earlyOutputPing.value
+    val reporter = (compile / bspReporter).value
     BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
-      // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      compileIncrementalTaskImpl(
-        streams.value,
-        (compile / compileInputs).value,
-        earlyOutputPing.value,
-        (compile / bspReporter).value
-      )
+      task =>
+        // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+        compileIncrementalTaskImpl(task, s, ci, ping, reporter)
     }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
@@ -2337,6 +2337,7 @@ object Defaults extends BuildCommon {
     }
   }
   private[this] def compileIncrementalTaskImpl(
+      task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
       promise: PromiseWrap[Boolean],
@@ -2351,8 +2352,40 @@ object Defaults extends BuildCommon {
         }
       )
     }
+    def onProgress(s: Setup) = {
+      val p = s.progress.asScala
+      s.withProgress {
+        p.collect {
+          case c: CompileProgress =>
+            new CompileProgress {
+              override def startUnit(phase: String, unitPath: String): Unit =
+                c.startUnit(phase, unitPath)
+
+              override def afterEarlyOutput(success: Boolean): Unit =
+                c.afterEarlyOutput(success)
+
+              override def advance(
+                  current: Int,
+                  total: Int,
+                  prevPhase: String,
+                  nextPhase: String
+              ): Boolean = {
+                val percentage = current * 100 / total
+                // Report percentages every 5% increments
+                val shouldReportPercentage = percentage % 5 == 0
+                if (shouldReportPercentage) {
+                  task.notifyProgress(percentage, total)
+                }
+
+                c.advance(current, total, prevPhase, nextPhase)
+              }
+            }
+        }.asJava
+      }
+    }
     val compilers: Compilers = ci.compilers
-    val i = ci.withCompilers(onArgs(compilers))
+    val setup: Setup = ci.setup
+    val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
       reporter.sendSuccessReport(result.getAnalysis)
