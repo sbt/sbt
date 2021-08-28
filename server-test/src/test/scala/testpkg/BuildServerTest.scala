@@ -138,6 +138,26 @@ object BuildServerTest extends AbstractServerTest {
     assert(targetDir.list().isEmpty)
   }
 
+  test("buildTarget/cleanCache: rebuild project") { _ =>
+    svr.sendJsonRpc(
+      """{ "jsonrpc": "2.0", "id": "45", "method": "workspace/buildTargets", "params": {} }"""
+    )
+    assert(processing("workspace/buildTargets"))
+    val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
+    val allTargets = result.targets.map(_.id.uri)
+
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "46", "method": "buildTarget/cleanCache", "params": {
+         |  "targets": [
+         |    ${allTargets.map(uri => s"""{ "uri": "$uri" }""").mkString(",\n")}
+         |  ]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/cleanCache"))
+    val res = svr.waitFor[CleanCacheResult](10.seconds)
+    assert(res.cleaned)
+  }
+
   test("workspace/reload") { _ =>
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "48", "method": "workspace/reload"}"""

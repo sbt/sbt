@@ -194,7 +194,13 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val results = Keys.clean.result.all(filter).value
-        val cleaned = anyOrThrow(results).size == targets.size
+        val successes = anyOrThrow(results).size
+
+        // When asking to Rebuild Project, IntelliJ sends the root build as an additional target, however it is
+        // not returned as part of the results. In this case, there's 1 build entry in the workspace, and we're
+        // checking that the executed results plus this entry is equal to the total number of targets.
+        // When rebuilding a single module, the root build isn't sent, just the requested targets.
+        val cleaned = successes + workspace.builds.size == targets.size
         s.respondEvent(CleanCacheResult(None, cleaned))
       }
     }.evaluated,
