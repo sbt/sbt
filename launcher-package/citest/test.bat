@@ -2,10 +2,14 @@
 
 cd "%~dp0"
 
+echo hello1
+
 mkdir freshly-baked
 unzip ..\target\universal\sbt.zip -d freshly-baked
 
 SETLOCAL
+
+echo hello2
 
 "freshly-baked\sbt\bin\sbt" about
 
