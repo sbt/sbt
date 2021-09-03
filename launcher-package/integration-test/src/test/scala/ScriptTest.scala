@@ -40,7 +40,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
 
   IO.withTemporaryDirectory { tempDir =>
     tempDir.mkdirs
-    makeTest("sbt --sbt-boot")(s"--sbt-boot", s""""${tempDir.getAbsolutePath}"""", "--sbt-version", "1.3.13") { out: List[String] =>
+    makeTest("sbt --sbt-boot")("-v", s"--sbt-boot", s""""${tempDir.getAbsolutePath}"""", "--sbt-version", "1.3.13") { out: List[String] =>
       out.foreach{ l => s"line: '$l'" }
       assert(out.contains[String](s"""-Dsbt.boot.directory="${tempDir.getAbsolutePath}""""))
       assert(out.contains[String]("-Dsbt.version=1.3.13"))
