@@ -22,7 +22,8 @@ import xsbti.*;
  * we can avoid loading any classes from the old scala provider.
  */
 public class XMainConfiguration {
-  public xsbti.MainResult run(String moduleName, xsbti.AppConfiguration configuration) {
+  public xsbti.MainResult run(String moduleName, xsbti.AppConfiguration configuration)
+      throws Throwable {
     try {
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
       xsbti.AppConfiguration updatedConfiguration = null;
@@ -56,7 +57,7 @@ public class XMainConfiguration {
         return (xsbti.MainResult) runMethod.invoke(instance, updatedConfiguration);
       } catch (InvocationTargetException e) {
         // This propogates xsbti.FullReload to the launcher
-        throw (xsbti.FullReload) e.getCause();
+        throw e.getCause();
       }
     } catch (ReflectiveOperationException e) {
       throw new RuntimeException(e);
