@@ -186,6 +186,25 @@ object BuildServerProtocol {
     bspBuildTargetCompile / aggregate := false,
     bspBuildTargetTest := bspTestTask.evaluated,
     bspBuildTargetTest / aggregate := false,
+    bspBuildTargetCleanCache := Def.inputTaskDyn {
+      val s: State = state.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val workspace = bspFullWorkspace.value.filter(targets)
+      workspace.warnIfBuildsNonEmpty(Method.CleanCache, s.log)
+      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+      Def.task {
+        val results = Keys.clean.result.all(filter).value
+        val successes = anyOrThrow(results).size
+
+        // When asking to Rebuild Project, IntelliJ sends the root build as an additional target, however it is
+        // not returned as part of the results. In this case, there's 1 build entry in the workspace, and we're
+        // checking that the executed results plus this entry is equal to the total number of targets.
+        // When rebuilding a single module, the root build isn't sent, just the requested targets.
+        val cleaned = successes + workspace.builds.size == targets.size
+        s.respondEvent(CleanCacheResult(None, cleaned))
+      }
+    }.evaluated,
+    bspBuildTargetCleanCache / aggregate := false,
     bspBuildTargetScalacOptions := Def.inputTaskDyn {
       val s = state.value
 
@@ -310,6 +329,7 @@ object BuildServerProtocol {
     final val Compile = "buildTarget/compile"
     final val Test = "buildTarget/test"
     final val Run = "buildTarget/run"
+    final val CleanCache = "buildTarget/cleanCache"
     final val ScalacOptions = "buildTarget/scalacOptions"
     final val ScalaTestClasses = "buildTarget/scalaTestClasses"
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
@@ -396,6 +416,12 @@ object BuildServerProtocol {
               s"$project / $config / $task $paramStr",
               Some(r.id)
             )
+
+          case r if r.method == Method.CleanCache =>
+            val param = Converter.fromJson[CleanCacheParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetCleanCache.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
           case r if r.method == Method.ScalacOptions =>
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
