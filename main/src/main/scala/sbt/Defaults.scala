@@ -2353,9 +2353,7 @@ object Defaults extends BuildCommon {
       )
     }
     def onProgress(s: Setup) = {
-      val cp: BspCompileProgress = s.progress.asScala
-        .map(p => new BspCompileProgress(task, Some(p)))
-        .getOrElse(new BspCompileProgress(task, None))
+      val cp = new BspCompileProgress(task, s.progress.asScala)
       s.withProgress(cp)
     }
     val compilers: Compilers = ci.compilers

@@ -1,3 +1,10 @@
+/*
+ * sbt
+ * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt.internal.server
 
 import xsbti.compile.CompileProgress
@@ -18,7 +25,14 @@ private[sbt] final class BspCompileProgress(
     if (shouldReportPercentage) {
       task.notifyProgress(percentage, total)
     }
-    underlying.foreach(_.advance(current, total, prevPhase, nextPhase))
-    true
+    underlying.fold(true)(_.advance(current, total, prevPhase, nextPhase))
+  }
+
+  override def startUnit(phase: String, unitPath: String): Unit = {
+    underlying.foreach(_.startUnit(phase, unitPath))
+  }
+
+  override def afterEarlyOutput(success: Boolean): Unit = {
+    underlying.foreach(_.afterEarlyOutput(success))
   }
 }
