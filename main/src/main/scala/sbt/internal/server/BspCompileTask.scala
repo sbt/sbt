@@ -26,7 +26,7 @@ object BspCompileTask {
   ): CompileResult = {
     val task = BspCompileTask(targetId, project, config)
     try {
-      task.notifyStart
+      task.notifyStart()
       val result = Retry(compile(task))
       task.notifySuccess(result)
       result

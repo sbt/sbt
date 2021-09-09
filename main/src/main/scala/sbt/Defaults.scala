@@ -12,7 +12,6 @@ import java.net.{ URI, URL }
 import java.nio.file.{ Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
-
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
@@ -47,6 +46,7 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
+  BspCompileProgress,
   BspCompileTask,
   BuildServerProtocol,
   BuildServerReporter,
@@ -2353,39 +2353,16 @@ object Defaults extends BuildCommon {
       )
     }
     def onProgress(s: Setup) = {
-      val p = s.progress.asScala
-      s.withProgress {
-        p.collect {
-          case c: CompileProgress =>
-            new CompileProgress {
-              override def startUnit(phase: String, unitPath: String): Unit =
-                c.startUnit(phase, unitPath)
-
-              override def afterEarlyOutput(success: Boolean): Unit =
-                c.afterEarlyOutput(success)
-
-              override def advance(
-                  current: Int,
-                  total: Int,
-                  prevPhase: String,
-                  nextPhase: String
-              ): Boolean = {
-                val percentage = current * 100 / total
-                // Report percentages every 5% increments
-                val shouldReportPercentage = percentage % 5 == 0
-                if (shouldReportPercentage) {
-                  task.notifyProgress(percentage, total)
-                }
-
-                c.advance(current, total, prevPhase, nextPhase)
-              }
-            }
-        }.asJava
-      }
+      val cp: BspCompileProgress = s.progress.asScala
+        .map(p => new BspCompileProgress(task, Some(p)))
+        .getOrElse(new BspCompileProgress(task, None))
+      s.withProgress(cp)
     }
     val compilers: Compilers = ci.compilers
     val setup: Setup = ci.setup
-    val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
+    val i = ci
+      .withCompilers(onArgs(compilers))
+      .withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
       reporter.sendSuccessReport(result.getAnalysis)
