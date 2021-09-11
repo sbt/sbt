@@ -318,6 +318,32 @@ type TaskStartParams {
     data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
 }
 
+type TaskProgressParams {
+    ## Unique id of the task with optional reference to parent task id.
+    taskId: sbt.internal.bsp.TaskId!
+
+    ## Optional timestamp of when the event started in milliseconds since Epoch.
+    eventTime: Long
+
+    ## Message describing the task progress.
+    message: String
+
+    ## If known, total amount of work units in this task.
+    total: Long
+
+    ## If known, completed amount of work units in this task.
+    progress: Long
+
+    ## Name of a work unit. For example, "files" or "tests". May be empty.
+    unit: String
+
+    ## Kind of data to expect in the `data` field.
+    dataKind: String
+
+    ## Optional metadata about the task.
+    data: sjsonnew.shaded.scalajson.ast.unsafe.JValue
+}
+
 type TaskFinishParams {
     ## Unique id of the task with optional reference to parent task id.
     taskId: sbt.internal.bsp.TaskId!

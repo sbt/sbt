@@ -94,6 +94,35 @@ object BuildServerTest extends AbstractServerTest {
     assert(res.statusCode == StatusCode.Success)
   }
 
+  test("buildTarget/compile - reports compilation progress") { _ =>
+    val buildTarget = buildTargetUri("runAndTest", "Compile")
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "33", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$buildTarget" }]
+         |} }""".stripMargin
+    )
+
+    assert(svr.waitForString(10.seconds) { s =>
+      s.contains("build/taskStart") &&
+      s.contains(""""message":"Compiling runAndTest"""")
+    })
+
+    assert(svr.waitForString(10.seconds) { s =>
+      s.contains("build/taskProgress") &&
+      s.contains(""""message":"Compiling runAndTest (15%)"""")
+    })
+
+    assert(svr.waitForString(10.seconds) { s =>
+      s.contains("build/taskProgress") &&
+      s.contains(""""message":"Compiling runAndTest (100%)"""")
+    })
+
+    assert(svr.waitForString(10.seconds) { s =>
+      s.contains("build/taskFinish") &&
+      s.contains(""""message":"Compiled runAndTest"""")
+    })
+  }
+
   test("buildTarget/scalacOptions") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")

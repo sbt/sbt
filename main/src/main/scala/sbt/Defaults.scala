@@ -12,7 +12,6 @@ import java.net.{ URI, URL }
 import java.nio.file.{ Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
-
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
@@ -47,6 +46,7 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
+  BspCompileProgress,
   BspCompileTask,
   BuildServerProtocol,
   BuildServerReporter,
@@ -2305,14 +2305,14 @@ object Defaults extends BuildCommon {
     analysis
   }
   def compileIncrementalTask = Def.task {
+    val s = streams.value
+    val ci = (compile / compileInputs).value
+    val ping = earlyOutputPing.value
+    val reporter = (compile / bspReporter).value
     BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
-      // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      compileIncrementalTaskImpl(
-        streams.value,
-        (compile / compileInputs).value,
-        earlyOutputPing.value,
-        (compile / bspReporter).value
-      )
+      task =>
+        // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+        compileIncrementalTaskImpl(task, s, ci, ping, reporter)
     }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
@@ -2337,6 +2337,7 @@ object Defaults extends BuildCommon {
     }
   }
   private[this] def compileIncrementalTaskImpl(
+      task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
       promise: PromiseWrap[Boolean],
@@ -2351,8 +2352,15 @@ object Defaults extends BuildCommon {
         }
       )
     }
+    def onProgress(s: Setup) = {
+      val cp = new BspCompileProgress(task, s.progress.asScala)
+      s.withProgress(cp)
+    }
     val compilers: Compilers = ci.compilers
-    val i = ci.withCompilers(onArgs(compilers))
+    val setup: Setup = ci.setup
+    val i = ci
+      .withCompilers(onArgs(compilers))
+      .withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
       reporter.sendSuccessReport(result.getAnalysis)
