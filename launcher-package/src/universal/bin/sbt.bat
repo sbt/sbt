@@ -42,6 +42,7 @@ set sbt_args_ivy=
 set sbt_args_supershell=
 set sbt_args_timings=
 set sbt_args_traces=
+set sbt_args_sbt_boot=
 set sbt_args_sbt_create=
 set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
