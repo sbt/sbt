@@ -32,6 +32,7 @@ object LintUnused {
       concurrentRestrictions,
       commands,
       crossScalaVersions,
+      crossSbtVersions,
       initialize,
       lintUnusedKeysOnLoad,
       onLoad,
