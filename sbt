@@ -118,7 +118,7 @@ download_url () {
   local jar="$2"
   mkdir -p $(dirname "$jar") && {
     if command -v curl > /dev/null; then
-      curl --silent -L "$url" --output "$jar"
+      curl --fail --silent -L "$url" --output "$jar"
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
     fi
@@ -151,6 +151,7 @@ acquire_sbt_jar () {
         exit 2
       fi
     else
+      echoerr "('shasum' missing on path - $launcher_sv integrity check SKIPPED!)"
       mv "${download_jar}.temp" "${download_jar}"
     fi
     if [[ -f "$download_jar" ]]; then
