@@ -116,13 +116,20 @@ jar_url () {
 download_url () {
   local url="$1"
   local jar="$2"
+  local exit_code 
   mkdir -p $(dirname "$jar") && {
     if command -v curl > /dev/null; then
       curl --fail --silent -L "$url" --output "$jar"
+      exit_code=$?
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
+      exit_code=$?
     fi
-  } && [[ -f "$jar" ]]
+    $(exit "$exit_code") && [[ -f "$jar" ]]
+  } || {
+    echoerr "Error while fetching ${url}"
+    rm -f "$jar"
+  }
 }
 
 acquire_sbt_jar () {
