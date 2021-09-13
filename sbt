@@ -158,7 +158,7 @@ acquire_sbt_jar () {
         exit 2
       fi
     else
-      echoerr "('shasum' missing on path - $launcher_sv integrity check SKIPPED!)"
+      echoerr "$(command shasum 2>&1 | grep -o 'shasum:.*') - JAR checksum verification SKIPPED!"
       mv "${download_jar}.temp" "${download_jar}"
     fi
     if [[ -f "$download_jar" ]]; then
