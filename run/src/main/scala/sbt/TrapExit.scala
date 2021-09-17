@@ -7,6 +7,7 @@
 
 package sbt
 
+import scala.annotation.nowarn
 import scala.reflect.Manifest
 import scala.collection.concurrent.TrieMap
 import java.lang.ref.WeakReference
@@ -32,6 +33,7 @@ import TrapExit._
  * do not terminate, or if concurrent AWT applications are run.
  * This category of code should only be called by forking a new JVM.
  */
+@nowarn
 object TrapExit {
 
   /**
@@ -144,6 +146,7 @@ object TrapExit {
  * It also allows disposing AWT windows if the application created any.
  * Only one AWT application is supported at a time, however.
  */
+@nowarn
 private final class TrapExit(delegateManager: SecurityManager) extends SecurityManager {
 
   /** Tracks the number of running applications in order to short-cut SecurityManager checks when no applications are active.*/
