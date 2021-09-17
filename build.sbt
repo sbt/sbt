@@ -45,7 +45,7 @@ ThisBuild / scmInfo := Some(
 ThisBuild / resolvers += Resolver.mavenLocal
 
 Global / semanticdbEnabled := !(Global / insideCI).value
-Global / semanticdbVersion := "4.4.20"
+Global / semanticdbVersion := "4.4.28"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
