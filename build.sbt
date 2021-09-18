@@ -45,6 +45,7 @@ ThisBuild / scmInfo := Some(
 ThisBuild / resolvers += Resolver.mavenLocal
 
 Global / semanticdbEnabled := !(Global / insideCI).value
+// Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
 Global / semanticdbVersion := "4.4.28"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)

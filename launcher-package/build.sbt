@@ -26,7 +26,7 @@ lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.
       }))
 
 lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.14"
+lazy val scala212 = "2.12.15"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
