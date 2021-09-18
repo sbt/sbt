@@ -1,3 +1,4 @@
+// Don't have to upgrade this while updating 2.12
 ThisBuild / scalaVersion := "2.12.14"
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbVersion := "4.4.20"
