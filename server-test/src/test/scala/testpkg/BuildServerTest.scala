@@ -102,22 +102,23 @@ object BuildServerTest extends AbstractServerTest {
          |} }""".stripMargin
     )
 
-    assert(svr.waitForString(10.seconds) { s =>
+    // This doesn't always come back in 10s on CI.
+    assert(svr.waitForString(60.seconds) { s =>
       s.contains("build/taskStart") &&
       s.contains(""""message":"Compiling runAndTest"""")
     })
 
-    assert(svr.waitForString(10.seconds) { s =>
+    assert(svr.waitForString(60.seconds) { s =>
       s.contains("build/taskProgress") &&
       s.contains(""""message":"Compiling runAndTest (15%)"""")
     })
 
-    assert(svr.waitForString(10.seconds) { s =>
+    assert(svr.waitForString(60.seconds) { s =>
       s.contains("build/taskProgress") &&
       s.contains(""""message":"Compiling runAndTest (100%)"""")
     })
 
-    assert(svr.waitForString(10.seconds) { s =>
+    assert(svr.waitForString(60.seconds) { s =>
       s.contains("build/taskFinish") &&
       s.contains(""""message":"Compiled runAndTest"""")
     })
