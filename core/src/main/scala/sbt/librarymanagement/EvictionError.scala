@@ -155,7 +155,8 @@ final class EvictionError private[sbt] (
     evictions.foreach({
       case (a, scheme) =>
         val revs = a.evicteds map { _.module.revision }
-        val revsStr = if (revs.size <= 1) revs.mkString else "{" + revs.mkString(", ") + "}"
+        val revsStr =
+          if (revs.size <= 1) revs.mkString else "{" + revs.distinct.mkString(", ") + "}"
         val seen: mutable.Set[ModuleID] = mutable.Set()
         val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
           val rev = r.module.revision
