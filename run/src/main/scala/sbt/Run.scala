@@ -58,6 +58,7 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
   private def classpathOption(classpath: Seq[File]) =
     "-classpath" :: Path.makeString(classpath) :: Nil
 }
+
 class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolean)
     extends ScalaRun {
   def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
@@ -105,9 +106,8 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
           // log.trace(e)
           throw e
       }
-    // try { execute(); None } catch { case e: Exception => log.trace(e); Some(e.toString) }
 
-    if (trapExit) Run.executeTrapExit(execute(), log)
+    if (trapExit) Run.executeSuccess(execute())
     else directExecute()
   }
 
@@ -169,12 +169,12 @@ object Run {
     runner.run(mainClass, classpath, options, log)
 
   /** Executes the given function, trapping calls to System.exit. */
-  def executeTrapExit(f: => Unit, log: Logger): Try[Unit] = {
-    val exitCode = TrapExit(f, log)
-    if (exitCode == 0) {
-      log.debug("Exited with code 0")
-      Success(())
-    } else Failure(new MessageOnlyException("Nonzero exit code: " + exitCode))
+  @deprecated("TrapExit feature is removed; just call the function instead", "1.6.0")
+  def executeTrapExit(f: => Unit, log: Logger): Try[Unit] = executeSuccess(f)
+
+  private[sbt] def executeSuccess(f: => Unit): Try[Unit] = {
+    f
+    Success(())
   }
 
   // quotes the option that includes a whitespace

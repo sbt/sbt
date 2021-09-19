@@ -598,6 +598,9 @@ lazy val runProj = (project in file("run"))
       exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#CustomOutput.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#LoggedOutput.copy"),
       exclude[DirectMissingMethodProblem]("sbt.OutputStrategy#LoggedOutput.copy$default$*"),
+      exclude[Problem]("sbt.TrapExit*"),
+      exclude[MissingClassProblem]("sbt.ExitCode"), // private
+      exclude[MissingClassProblem]("sbt.LoggingExceptionHandler"), // private
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath)

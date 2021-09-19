@@ -71,7 +71,7 @@ final class Console(compiler: AnalyzingCompiler) {
       terminal.withRawOutput {
         jline.TerminalFactory.set(terminal.toJLine)
         DeprecatedJLine.setTerminalOverride(jline3term)
-        terminal.withRawInput(Run.executeTrapExit(console0, log))
+        terminal.withRawInput(Run.executeSuccess(console0))
       }
     } finally {
       sys.props("scala.color") = previous
