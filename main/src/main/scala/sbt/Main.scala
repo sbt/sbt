@@ -210,21 +210,16 @@ object StandardMain {
 
   private[this] val isShutdown = new AtomicBoolean(false)
   def runManaged(s: State): xsbti.MainResult = {
-    val previous = TrapExit.installManager()
+    val hook = ShutdownHooks.add(closeRunnable)
     try {
-      val hook = ShutdownHooks.add(closeRunnable)
-      try {
-        MainLoop.runLogged(s)
-      } catch {
-        case _: InterruptedException if isShutdown.get =>
-          new xsbti.Exit { override def code(): Int = 0 }
-      } finally {
-        try DefaultBackgroundJobService.shutdown()
-        finally hook.close()
-        ()
-      }
+      MainLoop.runLogged(s)
+    } catch {
+      case _: InterruptedException if isShutdown.get =>
+        new xsbti.Exit { override def code(): Int = 0 }
     } finally {
-      TrapExit.uninstallManager(previous)
+      try DefaultBackgroundJobService.shutdown()
+      finally hook.close()
+      ()
     }
   }
 

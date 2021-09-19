@@ -281,7 +281,7 @@ object Keys {
   val runMain = inputKey[Unit]("Runs the main class selected by the first argument, passing the remaining arguments to the main method.").withRank(ATask)
   val discoveredMainClasses = taskKey[Seq[String]]("Auto-detects main classes.").withRank(BMinusTask)
   val runner = taskKey[ScalaRun]("Implementation used to run a main class.").withRank(DTask)
-  val trapExit = settingKey[Boolean]("If true, enables exit trapping and thread management for 'run'-like tasks.  This is currently only suitable for serially-executed 'run'-like tasks.").withRank(CSetting)
+  val trapExit = settingKey[Boolean]("If true, enables exit trapping and thread management for 'run'-like tasks. This was removed in sbt 1.6.0 due to JDK 17 deprecating Security Manager.").withRank(CSetting)
 
   val fork = settingKey[Boolean]("If true, forks a new JVM when running.  If false, runs in the same JVM as the build.").withRank(ASetting)
   val forkOptions = taskKey[ForkOptions]("Configures JVM forking.").withRank(DSetting)
