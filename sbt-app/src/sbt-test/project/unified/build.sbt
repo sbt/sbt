@@ -1,3 +1,5 @@
+ThisBuild / scalaVersion := "2.12.15"
+
 import sbt.internal.CommandStrings.{ inspectBrief, inspectDetailed }
 import sbt.internal.Inspect
 import sjsonnew._, BasicJsonProtocol._
@@ -11,8 +13,6 @@ val buildInfo = taskKey[Seq[File]]("The task that generates the build info.")
 
 lazy val root = (project in file("."))
   .settings(
-    Global / cancelable := true,
-    ThisBuild / scalaVersion := "2.12.3",
     console / scalacOptions += "-deprecation",
     Compile / console / scalacOptions += "-Ywarn-numeric-widen",
     projA / Compile / console / scalacOptions += "-feature",
