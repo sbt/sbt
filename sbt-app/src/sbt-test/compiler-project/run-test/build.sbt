@@ -1,4 +1,4 @@
-scalaVersion in ThisBuild := "2.12.3"
+ThisBuild / scalaVersion := "2.12.15"
 
 libraryDependencies ++= Seq(
 	"com.novocode" % "junit-interface" % "0.5" % Test,
