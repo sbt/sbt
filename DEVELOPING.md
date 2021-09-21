@@ -131,6 +131,10 @@ Listening for transport dt_socket at address: 5005
 Please note that this alternative launcher does _not_ have feature parity with sbt/launcher. (Meta)
 contributions welcome! :-D
 
+### Updating Scala version
+
+See https://github.com/sbt/sbt/pull/6522 for the list of files to change for Scala version upgrade.
+
 ### Diagnosing build failures
 
 Globally included plugins can interfere building `sbt`; if you are getting errors building sbt, try disabling all globally included plugins and try again.

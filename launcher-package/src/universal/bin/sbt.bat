@@ -42,6 +42,8 @@ set sbt_args_ivy=
 set sbt_args_supershell=
 set sbt_args_timings=
 set sbt_args_traces=
+set sbt_args_sbt_boot=
+set sbt_args_sbt_cache=
 set sbt_args_sbt_create=
 set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
@@ -251,6 +253,21 @@ if defined _sbt_boot_arg (
  set _sbt_boot_arg=
  if not "%~1" == "" (
    set sbt_args_sbt_boot=%1
+   shift
+   goto args_loop
+ ) else (
+   echo "%~0" is missing a value
+   goto error
+ )
+)
+
+if "%~0" == "-sbt-cache" set _sbt_cache_arg=true
+if "%~0" == "--sbt-cache" set _sbt_cache_arg=true
+
+if defined _sbt_cache_arg (
+ set _sbt_cache_arg=
+ if not "%~1" == "" (
+   set sbt_args_sbt_cache=%1
    shift
    goto args_loop
  ) else (
@@ -585,6 +602,10 @@ if defined sbt_args_sbt_dir (
 
 if defined sbt_args_sbt_boot (
   set _SBT_OPTS=-Dsbt.boot.directory=!sbt_args_sbt_boot! !_SBT_OPTS!
+)
+
+if defined sbt_args_sbt_cache (
+  set _SBT_OPTS=-Dsbt.global.localcache=!sbt_args_sbt_cache! !_SBT_OPTS!
 )
 
 if defined sbt_args_ivy (
@@ -932,6 +953,7 @@ echo   --timings           display task timings report on shutdown
 echo   --sbt-create        start sbt even if current directory contains no sbt project
 echo   --sbt-dir   ^<path^>  path to global settings/plugins directory ^(default: ~/.sbt^)
 echo   --sbt-boot  ^<path^>  path to shared boot directory ^(default: ~/.sbt/boot in 0.11 series^)
+echo   --sbt-cache ^<path^>  path to global cache directory ^(default: operating system specific^)
 echo   --ivy       ^<path^>  path to local Ivy repository ^(default: ~/.ivy2^)
 echo   --mem    ^<integer^>  set memory options ^(default: %sbt_default_mem%^)
 echo   --no-share          use all local caches; no sharing

@@ -6,7 +6,7 @@ import java.io.File
 
 object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   // 1.3.0, 1.3.0-M4
-  private val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
+  private[test] val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
 
   lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
   lazy val sbtScript =
@@ -44,13 +44,6 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
 
   test("sbt --numeric-version should print sbt script version") {
     val out = sbtProcess("--numeric-version").!!.trim
-    val expectedVersion = "^"+versionRegEx+"$"
-    assert(out.matches(expectedVersion))
-    ()
-  }
-
-  test("sbt --script-version should print sbtVersion") {
-    val out = sbtProcess("--script-version").!!.trim
     val expectedVersion = "^"+versionRegEx+"$"
     assert(out.matches(expectedVersion))
     ()

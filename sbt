@@ -553,6 +553,7 @@ Usage: `basename "$0"` [options]
   --sbt-create        start sbt even if current directory contains no sbt project
   --sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
   --sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+  --sbt-cache <path>  path to global cache directory (default: operating system specific)
   --ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
   --mem    <integer>  set memory options (default: $sbt_default_mem)
   --no-share          use all local caches; no sharing
@@ -663,6 +664,10 @@ process_args () {
              -batch|--batch) exec </dev/null && shift ;;
 
          -sbt-jar|--sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+     -sbt-cache|--sbt-cache) require_arg path "$1" "$2" &&
+                             sbt_cache="$2" &&
+                             addJava "-Dsbt.global.localcache=$2" &&
+                             shift 2 ;;
  -sbt-version|--sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
      -java-home|--java-home) require_arg path "$1" "$2" &&
                              java_cmd="$2/bin/java" &&
