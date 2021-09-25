@@ -10,19 +10,19 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
             jobtype: 1
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
             jobtype: 2
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
             jobtype: 3
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
             jobtype: 4
           - os: ubuntu-latest
-            java: "17-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: "17-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
             jobtype: 5
           - os: ubuntu-latest
             java: "adopt@1.8"
