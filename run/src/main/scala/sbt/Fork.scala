@@ -114,7 +114,7 @@ object Fork {
     (classpathOption, newOptions)
   }
 
-  private def javaCommand(javaHome: Option[File], name: String): File = {
+  private[sbt] def javaCommand(javaHome: Option[File], name: String): File = {
     val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
     new File(new File(home, "bin"), name)
   }
