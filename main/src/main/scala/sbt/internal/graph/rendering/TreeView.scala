@@ -10,14 +10,17 @@ package internal
 package graph
 package rendering
 
-import java.io.{ OutputStream, InputStream, FileOutputStream, File }
-import java.net.URI
-
-import graph.{ Module, ModuleGraph }
 import sbt.io.IO
 
-import scala.annotation.{ nowarn, tailrec }
-import scala.util.parsing.json.{ JSONArray, JSONObject }
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import java.net.URI
+import scala.annotation.nowarn
+import scala.annotation.tailrec
+import scala.util.parsing.json.JSONArray
+import scala.util.parsing.json.JSONObject
 
 @nowarn object TreeView {
   def createJson(graph: ModuleGraph): String = {
@@ -36,18 +39,27 @@ import scala.util.parsing.json.{ JSONArray, JSONObject }
     new URI(graphHTML.toURI.toString)
   }
 
-  private def processSubtree(graph: ModuleGraph, module: Module): JSONObject = {
-    val children = graph.dependencyMap
-      .getOrElse(module.id, List())
-      .map(module => processSubtree(graph, module))
-      .toList
-    moduleAsJson(module, children)
+  private[rendering] def processSubtree(
+      graph: ModuleGraph,
+      module: Module,
+      parents: Set[GraphModuleId] = Set()
+  ): JSONObject = {
+    val cycle = parents.contains(module.id)
+    val dependencies = if (cycle) List() else graph.dependencyMap.getOrElse(module.id, List())
+    val children =
+      dependencies.map(dependency => processSubtree(graph, dependency, parents + module.id)).toList
+    moduleAsJson(module, cycle, children)
   }
 
-  private def moduleAsJson(module: Module, children: List[JSONObject]): JSONObject = {
+  private def moduleAsJson(
+      module: Module,
+      isCycle: Boolean,
+      children: List[JSONObject]
+  ): JSONObject = {
     val eviction = module.evictedByVersion.map(version => s" (evicted by $version)").getOrElse("")
+    val cycle = if (isCycle) " (cycle)" else ""
     val error = module.error.map(err => s" (errors: $err)").getOrElse("")
-    val text = module.id.idString + eviction + error
+    val text = module.id.idString + eviction + error + cycle
     JSONObject(Map("text" -> text, "children" -> JSONArray(children)))
   }
 
