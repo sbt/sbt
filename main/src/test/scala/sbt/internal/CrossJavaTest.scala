@@ -59,6 +59,16 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     assert(file.getName == "jdk1.7.0")
   }
 
+  test("The Windows Java home selector should correctly pick up a JDK with vendors") {
+    val conf = new WindowsDiscoverConfig(sbt.io.syntax.file("."), Seq("xxx", "yyy")) {
+      override def candidates() = Vector("jdk1.7.0")
+    }
+    val homes = conf.javaHomes
+    assert(homes.size == 2)
+    assert(homes.map(_._1) == Vector("xxx@1.7", "yyy@1.7"))
+    assert(homes.map(_._2.getName).forall(_ == "jdk1.7.0"))
+  }
+
   test("The JAVA_HOME selector should correctly pick up a JDK") {
     val conf = new JavaHomeDiscoverConfig {
       override def home() = Some("/opt/jdk8")
