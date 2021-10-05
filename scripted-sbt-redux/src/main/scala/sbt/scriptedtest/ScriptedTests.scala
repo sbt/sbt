@@ -26,8 +26,15 @@ import scala.util.control.NonFatal
 final class ScriptedTests(
     resourceBaseDirectory: File,
     bufferLog: Boolean,
+    javaCommand: String,
     launchOpts: Seq[String],
 ) {
+  def this(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      launchOpts: Seq[String],
+  ) = this(resourceBaseDirectory, bufferLog, "java", launchOpts)
+
   import ScriptedTests.TestRunner
 
   private val testResources = new Resources(resourceBaseDirectory)
@@ -80,11 +87,12 @@ final class ScriptedTests(
     val remoteSbtCreator =
       prop match {
         case LauncherBased(launcherJar) =>
-          new LauncherBasedRemoteSbtCreator(testDir, launcherJar, buffered, launchOpts)
+          new LauncherBasedRemoteSbtCreator(testDir, launcherJar, buffered, javaCommand, launchOpts)
         case RunFromSourceBased(scalaVersion, sbtVersion, classpath) =>
           new RunFromSourceBasedRemoteSbtCreator(
             testDir,
             buffered,
+            javaCommand,
             launchOpts,
             scalaVersion,
             sbtVersion,
@@ -383,6 +391,7 @@ class ScriptedRunner {
       bufferLog,
       tests,
       logger,
+      javaCommand = "java",
       launchOpts,
       prescripted = new java.util.ArrayList[File],
       LauncherBased(launcherJar),
@@ -411,6 +420,36 @@ class ScriptedRunner {
       bufferLog,
       tests,
       logger,
+      javaCommand = "java",
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      Int.MaxValue,
+      parallelExecution = false,
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 2.0.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   */
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    run(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
       launchOpts,
       prescripted,
       LauncherBased(launcherJar),
@@ -440,6 +479,36 @@ class ScriptedRunner {
       bufferLog,
       tests,
       logger,
+      javaCommand = "java",
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      instance,
+    )
+  }
+
+  /**
+   * This is the entry point used by SbtPlugin in sbt 2.0.x etc.
+   * Removing this method will break scripted and sbt plugin cross building.
+   * See https://github.com/sbt/sbt/issues/3245
+   */
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instance: Int,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
       launchOpts,
       prescripted,
       LauncherBased(launcherJar),
@@ -466,6 +535,7 @@ class ScriptedRunner {
       bufferLog,
       tests,
       logger,
+      javaCommand = "java",
       launchOpts,
       prescripted,
       RunFromSourceBased(scalaVersion, sbtVersion, classpath),
@@ -477,11 +547,24 @@ class ScriptedRunner {
       bufferLog: Boolean,
       tests: Array[String],
       logger: Logger,
+      javaCommand: String,
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
       instances: Int
-  ) = run(baseDir, bufferLog, tests, logger, launchOpts, prescripted, prop, instances, true)
+  ): Unit =
+    run(
+      baseDir,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      prop,
+      instances,
+      parallelExecution = true
+    )
 
   @nowarn
   private[this] def run(
@@ -489,6 +572,7 @@ class ScriptedRunner {
       bufferLog: Boolean,
       tests: Array[String],
       logger: Logger,
+      javaCommand: String,
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
@@ -496,7 +580,7 @@ class ScriptedRunner {
       parallelExecution: Boolean,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
-    val runner = new ScriptedTests(baseDir, bufferLog, launchOpts)
+    val runner = new ScriptedTests(baseDir, bufferLog, javaCommand, launchOpts)
     val sbtVersion =
       prop match {
         case LauncherBased(launcherJar) =>
