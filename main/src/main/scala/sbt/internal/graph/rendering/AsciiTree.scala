@@ -36,7 +36,7 @@ object AsciiTree {
       module.id.idString +
         module.extraInfo +
         module.error.map(" (error: " + _ + ")").getOrElse("") +
-        module.evictedByVersion.map(_ formatted " (evicted by: %s)").getOrElse(""),
+        module.evictedByVersion.map(v => s" (evicted by: $v)").getOrElse(""),
       module.hadError
     )
 }
