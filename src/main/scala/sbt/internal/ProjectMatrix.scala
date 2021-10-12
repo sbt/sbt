@@ -103,15 +103,21 @@ sealed trait ProjectMatrix extends CompositeProject {
   def jvmPlatform(scalaVersions: Seq[String]): ProjectMatrix
   def jvmPlatform(autoScalaLibrary: Boolean): ProjectMatrix
   def jvmPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
+  def jvmPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix
+  def jvmPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix
   def jvmPlatform(autoScalaLibrary: Boolean, scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
   def jvm: ProjectFinder
 
   def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix
   def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
+  def jsPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix
+  def jsPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix
   def js: ProjectFinder
 
   def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix
   def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix
+  def nativePlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix
+  def nativePlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix
   def native: ProjectFinder
 
   def defaultAxes(axes: VirtualAxis*): ProjectMatrix
@@ -368,22 +374,37 @@ object ProjectMatrix {
       jvmPlatform(true, scalaVersions, settings)
     override def jvmPlatform(autoScalaLibrary: Boolean, scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
       customRow(autoScalaLibrary, scalaVersions, Seq(VirtualAxis.jvm), { _.settings(settings) })
+    
+    override def jvmPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix = 
+      customRow(true, scalaVersions, VirtualAxis.jvm +: axisValues, {_.settings(settings)})
+    
+    override def jvmPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix = 
+      customRow(true, scalaVersions, VirtualAxis.jvm +: axisValues, configure)
 
     override def jvm: ProjectFinder = new AxisBaseProjectFinder(Seq(VirtualAxis.jvm))
 
     override def jsPlatform(scalaVersions: Seq[String]): ProjectMatrix =
       jsPlatform(scalaVersions, Nil)
 
+    private def enableScalaJSPlugin(project: Project): Project = 
+      project.enablePlugins(scalajsPlugin(this.getClass.getClassLoader).getOrElse(
+        sys.error("""Scala.js plugin was not found. Add the sbt-scalajs plugin into project/plugins.sbt:
+                    |  addSbtPlugin("org.scala-js" % "sbt-scalajs" % "x.y.z")
+                    |""".stripMargin)
+      ))
+
+
     override def jsPlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
       customRow(true, scalaVersions, Seq(VirtualAxis.js),
-        { _
-            .enablePlugins(scalajsPlugin(this.getClass.getClassLoader).getOrElse(
-              sys.error("""Scala.js plugin was not found. Add the sbt-scalajs plugin into project/plugins.sbt:
-                          |  addSbtPlugin("org.scala-js" % "sbt-scalajs" % "x.y.z")
-                          |""".stripMargin)
-            ))
-            .settings(settings)
-        })
+        project => enableScalaJSPlugin(project).settings(settings))
+    
+    override def jsPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix =
+      customRow(true, scalaVersions, VirtualAxis.js +: axisValues,
+        project => enableScalaJSPlugin(project).settings(settings))
+    
+    override def jsPlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix =
+      customRow(true, scalaVersions, VirtualAxis.js +: axisValues,
+        project => configure(enableScalaJSPlugin(project)))
 
     override def defaultAxes(axes: VirtualAxis*): ProjectMatrix =
       copy(defAxes = axes.toSeq)
@@ -402,16 +423,22 @@ object ProjectMatrix {
     override def nativePlatform(scalaVersions: Seq[String]): ProjectMatrix =
       nativePlatform(scalaVersions, Nil)
 
+    private def enableScalaNativePlugin(project: Project): Project = 
+      project.enablePlugins(nativePlugin(this.getClass.getClassLoader).getOrElse(
+        sys.error("""Scala Native plugin was not found. Add the sbt-scala-native plugin into project/plugins.sbt:
+                    |  addSbtPlugin("org.scala-native" % "sbt-scala-native" % "x.y.z")
+                    |""".stripMargin)
+      ))
+
+
     override def nativePlatform(scalaVersions: Seq[String], settings: Seq[Setting[_]]): ProjectMatrix =
-      customRow(true, scalaVersions, Seq(VirtualAxis.native),
-        { _
-          .enablePlugins(nativePlugin(this.getClass.getClassLoader).getOrElse(
-            sys.error("""Scala Native plugin was not found. Add the sbt-scala-native plugin into project/plugins.sbt:
-                        |  addSbtPlugin("org.scala-native" % "sbt-scala-native" % "x.y.z")
-                        |""".stripMargin)
-          ))
-          .settings(settings)
-        })
+      customRow(true, scalaVersions, Seq(VirtualAxis.native), project => enableScalaNativePlugin(project).settings(settings))
+    
+    override def nativePlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], settings: Seq[Setting[_]]): ProjectMatrix =
+      customRow(true, scalaVersions, VirtualAxis.native +: axisValues, project => enableScalaNativePlugin(project).settings(settings))
+
+    override def nativePlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix =
+      customRow(true, scalaVersions, VirtualAxis.native +: axisValues, project => enableScalaNativePlugin(project))
 
     def nativePlugin(classLoader: ClassLoader): Try[AutoPlugin] = {
       import sbtprojectmatrix.ReflectionUtil._
