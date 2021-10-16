@@ -10,31 +10,40 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 2
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 3
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 4
           - os: ubuntu-latest
-            java: "17-custom=tgz+https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17%2B35/OpenJDK17-jdk_x64_linux_hotspot_17_35.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 5
           - os: ubuntu-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 6
           - os: ubuntu-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 7
           - os: macos-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 8
           - os: windows-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 9
     runs-on: ${{ matrix.os }}
     env:
@@ -69,9 +78,10 @@ jobs:
         repository: sbt/zinc
         ref: develop
         path: zinc
-    - name: Setup
-      uses: olafurpg/setup-scala@v13
+    - name: Setup JDK
+      uses: actions/setup-java@v2
       with:
+        distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
     - name: Set up Python 3.7
       uses: actions/setup-python@v2
