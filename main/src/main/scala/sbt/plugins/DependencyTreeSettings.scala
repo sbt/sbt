@@ -80,7 +80,13 @@ object DependencyTreeSettings {
         else GraphTransformations.ignoreScalaLibrary(sv, g)
       },
       dependencyTreeModuleGraphStore := (dependencyTreeModuleGraph0 storeAs dependencyTreeModuleGraphStore triggeredBy dependencyTreeModuleGraph0).value,
-    ) ++ renderingTaskSettings(dependencyTree, rendering.AsciiTree.asciiTree _)
+    ) ++ {
+      renderingTaskSettings(dependencyTree, null) :+ {
+        dependencyTree / asString := {
+          rendering.AsciiTree.asciiTree(dependencyTreeModuleGraph0.value, asciiGraphWidth.value)
+        }
+      }
+    }
 
   /**
    * This is the maximum strength settings for DependencyTreePlugin.
@@ -130,11 +136,12 @@ object DependencyTreeSettings {
             case None =>
               graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
           }
+        val graphWidth = asciiGraphWidth.value
         val output =
           modules
             .map { module =>
               rendering.AsciiTree
-                .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
+                .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module), graphWidth)
             }
             .mkString("\n")
 
