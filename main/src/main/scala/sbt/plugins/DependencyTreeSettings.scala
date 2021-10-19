@@ -81,7 +81,7 @@ object DependencyTreeSettings {
       },
       dependencyTreeModuleGraphStore := (dependencyTreeModuleGraph0 storeAs dependencyTreeModuleGraphStore triggeredBy dependencyTreeModuleGraph0).value,
     ) ++ {
-      renderingTaskSettings(dependencyTree, null) :+ {
+      renderingTaskSettings(dependencyTree) :+ {
         dependencyTree / asString := {
           rendering.AsciiTree.asciiTree(dependencyTreeModuleGraph0.value, asciiGraphWidth.value)
         }
@@ -149,7 +149,7 @@ object DependencyTreeSettings {
         output
       },
     ) ++
-      renderingAlternatives.flatMap((renderingTaskSettings _).tupled)
+      renderingAlternatives.flatMap { case (key, renderer) => renderingTaskSettings(key, renderer) }
 
   def renderingAlternatives: Seq[(TaskKey[Unit], ModuleGraph => String)] =
     Seq(
@@ -159,13 +159,17 @@ object DependencyTreeSettings {
     )
 
   def renderingTaskSettings(key: TaskKey[Unit], renderer: ModuleGraph => String): Seq[Setting[_]] =
+    renderingTaskSettings(key) :+ {
+      key / asString := renderer(dependencyTreeModuleGraph0.value)
+    }
+
+  def renderingTaskSettings(key: TaskKey[Unit]): Seq[Setting[_]] =
     Seq(
       key := {
         val s = streams.value
         val str = (key / asString).value
         s.log.info(str)
       },
-      key / asString := renderer(dependencyTreeModuleGraph0.value),
       key / toFile := {
         val (targetFile, force) = targetFileAndForceParser.parsed
         writeToFile(key.key.label, (key / asString).value, targetFile, force, streams.value)
