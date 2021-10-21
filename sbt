@@ -10,6 +10,7 @@ declare -a sbt_options
 declare -a print_version
 declare -a print_sbt_version
 declare -a print_sbt_script_version
+declare -a shutdownall
 declare -a original_args
 declare java_cmd=java
 declare java_version
@@ -494,6 +495,12 @@ run() {
   elif [[ $print_version ]]; then
     execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
     echo "sbt script version: $init_sbt_version"
+  elif [[ $shutdownall ]]; then
+    local sbt_processes=( $(jps -v | grep sbt-launch | cut -f1 -d ' ') )
+    for procId in "${sbt_processes[@]}"; do
+      kill -9 $procId
+    done
+    echo "shutdown ${#sbt_processes[@]} sbt processes"
   else
     # run sbt
     execRunner "$java_cmd" \
@@ -532,6 +539,7 @@ Usage: `basename "$0"` [options]
   -V | --version      print sbt version information
   --numeric-version   print the numeric sbt version (sbt sbtVersion)
   --script-version    print the version of sbt script
+  shutdownall         shutdown all running sbt-launch processes
   -d | --debug        set sbt log level to debug
   -debug-inc | --debug-inc
                       enable extra debugging for the incremental debugger
@@ -647,6 +655,7 @@ process_args () {
       -V|-version|--version) print_version=1 && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
+                shutdownall) shutdownall=1 && shift ;;
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
            -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
