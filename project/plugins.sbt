@@ -11,3 +11,4 @@ addSbtPlugin("com.lightbend" % "sbt-whitesource" % "0.1.14")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.9")
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.1")
 addSbtPlugin("com.swoval" % "sbt-java-format" % "0.3.1")
+addDependencyTreePlugin

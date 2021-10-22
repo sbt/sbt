@@ -1,0 +1,9 @@
+package sbt.internal.graph
+@target(Scala)
+@codecPackage("sbt.internal.graph.codec")
+@fullCodec("JsonProtocol")
+
+type ModuleModel {
+  text: String!
+  children: [sbt.internal.graph.ModuleModel]
+}
