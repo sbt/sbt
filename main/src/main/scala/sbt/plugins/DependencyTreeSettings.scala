@@ -80,7 +80,13 @@ object DependencyTreeSettings {
         else GraphTransformations.ignoreScalaLibrary(sv, g)
       },
       dependencyTreeModuleGraphStore := (dependencyTreeModuleGraph0 storeAs dependencyTreeModuleGraphStore triggeredBy dependencyTreeModuleGraph0).value,
-    ) ++ renderingTaskSettings(dependencyTree, rendering.AsciiTree.asciiTree _)
+    ) ++ {
+      renderingTaskSettings(dependencyTree) :+ {
+        dependencyTree / asString := {
+          rendering.AsciiTree.asciiTree(dependencyTreeModuleGraph0.value, asciiGraphWidth.value)
+        }
+      }
+    }
 
   /**
    * This is the maximum strength settings for DependencyTreePlugin.
@@ -130,11 +136,12 @@ object DependencyTreeSettings {
             case None =>
               graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
           }
+        val graphWidth = asciiGraphWidth.value
         val output =
           modules
             .map { module =>
               rendering.AsciiTree
-                .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module))
+                .asciiTree(GraphTransformations.reverseGraphStartingAt(graph, module), graphWidth)
             }
             .mkString("\n")
 
@@ -142,7 +149,7 @@ object DependencyTreeSettings {
         output
       },
     ) ++
-      renderingAlternatives.flatMap((renderingTaskSettings _).tupled)
+      renderingAlternatives.flatMap { case (key, renderer) => renderingTaskSettings(key, renderer) }
 
   def renderingAlternatives: Seq[(TaskKey[Unit], ModuleGraph => String)] =
     Seq(
@@ -152,13 +159,17 @@ object DependencyTreeSettings {
     )
 
   def renderingTaskSettings(key: TaskKey[Unit], renderer: ModuleGraph => String): Seq[Setting[_]] =
+    renderingTaskSettings(key) :+ {
+      key / asString := renderer(dependencyTreeModuleGraph0.value)
+    }
+
+  def renderingTaskSettings(key: TaskKey[Unit]): Seq[Setting[_]] =
     Seq(
       key := {
         val s = streams.value
         val str = (key / asString).value
         s.log.info(str)
       },
-      key / asString := renderer(dependencyTreeModuleGraph0.value),
       key / toFile := {
         val (targetFile, force) = targetFileAndForceParser.parsed
         writeToFile(key.key.label, (key / asString).value, targetFile, force, streams.value)
