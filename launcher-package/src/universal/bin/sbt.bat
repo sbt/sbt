@@ -25,6 +25,7 @@ set default_java_opts=-Dfile.encoding=UTF-8
 set sbt_jar=
 set build_props_sbt_version=
 set run_native_client=
+set shutdownall=
 
 set sbt_args_print_version=
 set sbt_args_print_sbt_version=
@@ -399,6 +400,11 @@ if defined _timings_arg (
   goto args_loop
 )
 
+if "%~0" == "shutdownall" (
+  set shutdownall=1
+  goto args_loop
+)
+
 if "%~0" == "--script-version" (
   set sbt_args_print_sbt_script_version=1
   goto args_loop
@@ -508,7 +514,7 @@ goto args_loop
 rem Confirm a user's intent if the current directory does not look like an sbt
 rem top-level directory and the "new" command was not given.
 
-if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not defined sbt_args_print_sbt_version if not defined sbt_args_print_sbt_script_version if not exist build.sbt (
+if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not defined sbt_args_print_sbt_version if not defined sbt_args_print_sbt_script_version if not defined shutdownall if not exist build.sbt (
   if not exist project\ (
     if not defined sbt_new (
       echo [warn] Neither build.sbt nor a 'project' directory in the current directory: "%CD%"
@@ -534,6 +540,16 @@ if not defined sbt_args_sbt_create if not defined sbt_args_print_version if not 
 call :process
 
 rem avoid bootstrapping/java version check for script version
+
+if !shutdownall! equ 1 (
+  set count=0
+  for /f "tokens=1" %%i in ('jps -lv ^| findstr "xsbt.boot.Boot"') do (
+    taskkill /F /PID %%i
+    set /a count=!count!+1
+  )
+  echo shutdown !count! sbt processes
+  goto :eof
+)
 
 if !sbt_args_print_sbt_script_version! equ 1 (
   echo !init_sbt_version!
