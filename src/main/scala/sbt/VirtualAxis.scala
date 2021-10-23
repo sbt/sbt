@@ -65,7 +65,7 @@ object VirtualAxis {
 
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =
-      a == "2.13" && (b.startsWith("0.") || b.startsWith("3.0"))
+      a == "2.13" && (b.startsWith("0.") || b.startsWith("3.0") || b.startsWith("3.1"))
     compare(sbv1, sbv2) || compare(sbv2, sbv1)
   }
 
