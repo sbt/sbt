@@ -116,21 +116,18 @@ object BuildServerProtocol {
             val base = loadedBuildUnit.localBase
             val sbtFiles = configurationSources(base)
             val pluginData = loadedBuildUnit.unit.plugins.pluginData
-            val all = Vector.newBuilder[SourceItem]
-            def add(fs: Seq[File], sourceItemKind: Int, generated: Boolean): Unit = {
-              fs.foreach(f => all += (SourceItem(f.toURI, sourceItemKind, generated = generated)))
-            }
-            all += (SourceItem(
-              loadedBuildUnit.unit.plugins.base.toURI,
-              SourceItemKind.Directory,
-              generated = false
-            ))
-            add(pluginData.unmanagedSourceDirectories, SourceItemKind.Directory, generated = false)
-            add(pluginData.unmanagedSources, SourceItemKind.File, generated = false)
-            add(pluginData.managedSourceDirectories, SourceItemKind.Directory, generated = true)
-            add(pluginData.managedSources, SourceItemKind.File, generated = true)
-            add(sbtFiles, SourceItemKind.File, generated = false)
-            Value(SourcesItem(id, all.result()))
+            val dirs = pluginData.unmanagedSourceDirectories
+            val sourceFiles = getStandaloneSourceFiles(pluginData.unmanagedSources, dirs)
+            val managedDirs = pluginData.managedSourceDirectories
+            val managedSourceFiles =
+              getStandaloneSourceFiles(pluginData.managedSources, managedDirs)
+            val items =
+              dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+                sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+                managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+                managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true)) ++
+                sbtFiles.map(toSourceItem(SourceItemKind.File, generated = false))
+            Value(SourcesItem(id, items.toVector))
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = SourcesResult(successfulItems.toVector)
@@ -277,14 +274,14 @@ object BuildServerProtocol {
     bspBuildTargetSourcesItem := {
       val id = bspTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
-      val managed = managedSources.value
-      val items = (dirs.toVector map { dir =>
-        SourceItem(dir.toURI, SourceItemKind.Directory, generated = false)
-      }) ++
-        (managed.toVector map { x =>
-          SourceItem(x.toURI, SourceItemKind.File, generated = true)
-        })
-      SourcesItem(id, items)
+      val sourceFiles = getStandaloneSourceFiles(unmanagedSources.value, dirs)
+      val managedDirs = managedSourceDirectories.value
+      val managedSourceFiles = getStandaloneSourceFiles(managedSources.value, managedDirs)
+      val items = dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+        sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+        managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+        managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true))
+      SourcesItem(id, items.toVector)
     },
     bspBuildTargetResourcesItem := {
       val id = bspTargetIdentifier.value
@@ -455,6 +452,18 @@ object BuildServerProtocol {
       )
     }
   }
+
+  private def getStandaloneSourceFiles(
+      sourceFiles: Seq[File],
+      sourceDirs: Seq[File]
+  ): Seq[File] = {
+    sourceFiles.filterNot { f =>
+      sourceDirs.exists(dir => f.toPath.startsWith(dir.toPath))
+    }
+  }
+
+  private def toSourceItem(itemKind: Int, generated: Boolean)(file: File): SourceItem =
+    SourceItem(file.toURI, itemKind, generated)
 
   private def checkMetalsCompatibility(
       semanticdbEnabled: Boolean,

@@ -10,8 +10,13 @@ package testpkg
 import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
 import sbt.IO
+import sbt.internal.protocol.JsonRpcRequestMessage
+import sbt.internal.protocol.codec.JsonRPCProtocol._
+import sjsonnew.JsonWriter
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import java.io.File
+import java.net.URI
 import java.nio.file.Paths
 import scala.concurrent.duration._
 
@@ -47,41 +52,43 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/sources") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
-    svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "24", "method": "buildTarget/sources", "params": {
-        |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
-        |} }""".stripMargin
-    )
+    svr.sendJsonRpc(buildTargetSources(24, Seq(buildTarget, badBuildTarget)))
     assert(processing("buildTarget/sources"))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources.map(_.uri)
     assert(sources.contains(new File(svr.baseDirectory, "util/src/main/scala").toURI))
   }
-  test("buildTarget/sources SBT") { _ =>
-    val x = s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-build"
-    svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "25", "method": "buildTarget/sources", "params": {
-         |  "targets": [{ "uri": "$x" }]
-         |} }""".stripMargin
+  test("buildTarget/sources: base sources") { _ =>
+    val buildTarget = buildTargetUri("buildserver", "Compile")
+    svr.sendJsonRpc(buildTargetSources(25, Seq(buildTarget)))
+    assert(processing("buildTarget/sources"))
+    val s = svr.waitFor[SourcesResult](10.seconds)
+    val sources = s.items.head.sources
+    val expectedSource = SourceItem(
+      new File(svr.baseDirectory, "BaseSource.scala").toURI,
+      SourceItemKind.File,
+      generated = false
     )
+    assert(sources.contains(expectedSource))
+  }
+  test("buildTarget/sources: sbt") { _ =>
+    val x = new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-build")
+    svr.sendJsonRpc(buildTargetSources(26, Seq(x)))
     assert(processing("buildTarget/sources"))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources.map(_.uri).sorted
     val expectedSources = Vector(
       "build.sbt",
-      "project/",
       "project/A.scala",
       "project/src/main/java",
       "project/src/main/scala-2",
       "project/src/main/scala-2.12",
       "project/src/main/scala-sbt-1.0",
       "project/src/main/scala/",
-      "project/src/main/scala/B.scala",
       "project/target/scala-2.12/sbt-1.0/src_managed/main"
     ).map(rel => new File(svr.baseDirectory.getAbsoluteFile, rel).toURI).sorted
     assert(sources == expectedSources)
   }
-
   test("buildTarget/compile") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     svr.sendJsonRpc(
@@ -421,8 +428,20 @@ object BuildServerTest extends AbstractServerTest {
     }
   }
 
-  private def buildTargetUri(project: String, config: String): String =
-    s"${svr.baseDirectory.getAbsoluteFile.toURI}#$project/$config"
+  private def buildTargetSources(id: Int, buildTargets: Seq[URI]): String = {
+    val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
+    request(id, "buildTarget/sources", SourcesParams(targets))
+  }
+
+  private def request[T: JsonWriter](id: Int, method: String, params: T): String = {
+    val request = JsonRpcRequestMessage("2.0", id.toString, method, Converter.toJson(params).get)
+    val json = Converter.toJson(request).get
+    CompactPrinter(json)
+  }
+
+  private def buildTargetUri(project: String, config: String): URI = {
+    new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#$project/$config")
+  }
 
   private def metaBuildTarget: String =
     s"${svr.baseDirectory.getAbsoluteFile.toURI}project/#buildserver-build/Compile"
