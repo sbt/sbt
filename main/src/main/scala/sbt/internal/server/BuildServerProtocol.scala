@@ -277,14 +277,18 @@ object BuildServerProtocol {
     bspBuildTargetSourcesItem := {
       val id = bspTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
-      val managed = managedSources.value
-      val items = (dirs.toVector map { dir =>
-        SourceItem(dir.toURI, SourceItemKind.Directory, generated = false)
-      }) ++
-        (managed.toVector map { x =>
-          SourceItem(x.toURI, SourceItemKind.File, generated = true)
-        })
-      SourcesItem(id, items)
+      val sourceFiles = getStandaloneSourceFiles(unmanagedSources.value, dirs)
+      val managedDirs = managedSourceDirectories.value
+      val managedSourceFiles = getStandaloneSourceFiles(managedSources.value, managedDirs)
+
+      def toSourceItem(itemKind: Int, generated: Boolean)(file: File): SourceItem =
+        SourceItem(file.toURI, itemKind, generated)
+
+      val items = dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+        sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+        managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+        managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true))
+      SourcesItem(id, items.toVector)
     },
     bspBuildTargetResourcesItem := {
       val id = bspTargetIdentifier.value
@@ -453,6 +457,15 @@ object BuildServerProtocol {
             val _ = callback.appendExec(BasicCommandStrings.TerminateAction, None)
         },
       )
+    }
+  }
+
+  private def getStandaloneSourceFiles(
+      sourceFiles: Seq[File],
+      sourceDirs: Seq[File]
+  ): Seq[File] = {
+    sourceFiles.filterNot { f =>
+      sourceDirs.exists(dir => f.toPath.startsWith(dir.toPath))
     }
   }
 
