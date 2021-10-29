@@ -79,14 +79,12 @@ object BuildServerTest extends AbstractServerTest {
     val sources = s.items.head.sources.map(_.uri).sorted
     val expectedSources = Vector(
       "build.sbt",
-      "project/",
       "project/A.scala",
       "project/src/main/java",
       "project/src/main/scala-2",
       "project/src/main/scala-2.12",
       "project/src/main/scala-sbt-1.0",
       "project/src/main/scala/",
-      "project/src/main/scala/B.scala",
       "project/target/scala-2.12/sbt-1.0/src_managed/main"
     ).map(rel => new File(svr.baseDirectory.getAbsoluteFile, rel).toURI).sorted
     assert(sources == expectedSources)
