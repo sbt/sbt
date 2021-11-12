@@ -68,10 +68,6 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  resolvers += Resolver.url(
-    "bintray-scala-hedgehog",
-    url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
-  )(Resolver.ivyStylePatterns),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
   Global / concurrentRestrictions += Util.testExclusiveRestriction,
