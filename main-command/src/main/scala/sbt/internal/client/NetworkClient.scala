@@ -385,8 +385,8 @@ class NetworkClient(
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
-    val hook = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
-    Runtime.getRuntime.addShutdownHook(hook)
+    val shutdown = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
+    Runtime.getRuntime.addShutdownHook(shutdown)
     var gotInputBack = false
     val readThreadAlive = new AtomicBoolean(true)
     /*
@@ -406,10 +406,13 @@ class NetworkClient(
             socket.foreach { s =>
               try {
                 s.getInputStream.read match {
-                  case -1 | 0            => readThreadAlive.set(false)
-                  case 2                 => gotInputBack = true
-                  case 5                 => term.enterRawMode(); startInputThread()
-                  case 3 if gotInputBack => readThreadAlive.set(false)
+                  case -1 | 0 => readThreadAlive.set(false)
+                  case 2 => // STX: start of text
+                    gotInputBack = true
+                  case 5 => // ENQ: enquiry
+                    term.enterRawMode(); startInputThread()
+                  case 3 if gotInputBack => // ETX: end of text
+                    readThreadAlive.set(false)
                   case i if gotInputBack => stdinBytes.offer(i)
                   case i                 => printStream.write(i)
                 }
@@ -441,8 +444,13 @@ class NetworkClient(
             while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
               val out = s.getOutputStream
               val b = stdinBytes.poll
-              out.write(b)
-              out.flush()
+              if (b == -1) {
+                // server waits for user input but stinBytes has ended
+                shutdown.run()
+              } else {
+                out.write(b)
+                out.flush()
+              }
             }
         }
         process.foreach { p =>
@@ -483,7 +491,7 @@ class NetworkClient(
     try blockUntilStart()
     catch { case t: Throwable => t.printStackTrace() } finally {
       sbtProcess.set(null)
-      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(hook))
+      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
     if (!portfile.exists()) throw new ServerFailedException
     if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
