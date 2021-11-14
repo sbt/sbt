@@ -65,7 +65,7 @@ object RawCompileLike {
               log.debug("Uptodate: " + outputDirectory.getAbsolutePath)
         }
       }
-      cachedComp(inputs)(exists(outputDirectory.allPaths.get.toSet))
+      cachedComp(inputs)(exists(outputDirectory.allPaths.get().toSet))
     }
 
   def prepare(description: String, doCompile: Gen): Gen =

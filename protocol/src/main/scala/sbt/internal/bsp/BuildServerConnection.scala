@@ -39,7 +39,7 @@ object BuildServerConnection {
     val sbtLaunchJar = classPath
       .split(File.pathSeparator)
       .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
-      .map(_.replaceAllLiterally(" ", "%20"))
+      .map(_.replace(" ", "%20"))
       .map(jar => s"--sbt-launch-jar=$jar")
 
     val argv =
@@ -66,6 +66,6 @@ object BuildServerConnection {
     allPaths
       .map(_.resolve(fileName))
       .find(file => Files.exists(file) && Files.isExecutable(file))
-      .map(_.toString.replaceAllLiterally(" ", "%20"))
+      .map(_.toString.replace(" ", "%20"))
   }
 }

@@ -160,7 +160,7 @@ class TrackedSpec extends FlatSpec {
     withStore { store =>
       val beforeCompletion: String = "before-completion"
       val afterCompletion: String = "after-completion"
-      val sideEffectCompleted = Promise[Unit]
+      val sideEffectCompleted = Promise[Unit]()
       val p0: () => String = () => {
         if (sideEffectCompleted.isCompleted) {
           afterCompletion

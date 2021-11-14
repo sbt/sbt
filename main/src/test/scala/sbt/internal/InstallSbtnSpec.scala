@@ -41,7 +41,7 @@ class InstallSbtnSpec extends FlatSpec {
         val tmpDir = Files.createTempDirectory("sbtn-test").toRealPath()
         Files.createDirectories(tmpDir.resolve("project"))
         val foo = tmpDir.resolve("foo")
-        val fooPath = foo.toString.replaceAllLiterally("\\", "\\\\")
+        val fooPath = foo.toString.replace("\\", "\\\\")
         val build = s"""TaskKey[Unit]("foo") := IO.write(file("$fooPath"), "foo")"""
         IO.write(tmpDir.resolve("build.sbt").toFile, build)
         IO.write(

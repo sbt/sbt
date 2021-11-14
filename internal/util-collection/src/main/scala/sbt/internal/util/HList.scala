@@ -30,7 +30,7 @@ final case class HCons[H, T <: HList](head: H, tail: T) extends HList {
   type Wrap[M[_]] = M[H] :+: T#Wrap[M]
   def :+:[G](g: G): G :+: H :+: T = HCons(g, this)
 
-  override def toString = head + " :+: " + tail.toString
+  override def toString = head.toString + " :+: " + tail.toString
 }
 
 object HList {

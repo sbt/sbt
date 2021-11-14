@@ -905,7 +905,7 @@ object Terminal {
       new AtomicReference[((Int, Int), Deadline)](((1, 1), Deadline.now - 1.day))
     private[this] def setSize() = size.set((Try(getSizeImpl).getOrElse((1, 1)), Deadline.now))
     private[this] def getSize = size.get match {
-      case (s, d) if (d + sizeRefreshPeriod).isOverdue =>
+      case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
         setSize()
         size.get._1
       case (s, _) => s

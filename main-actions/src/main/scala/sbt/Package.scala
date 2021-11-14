@@ -88,7 +88,7 @@ object Package {
     for ((key, value) <- mergeManifest.getEntries.asScala) {
       entryMap.get(key) match {
         case Some(attributes) => mergeAttributes(attributes, value); ()
-        case None             => entryMap put (key, value); ()
+        case None             => entryMap.put(key, value); ()
       }
     }
   }

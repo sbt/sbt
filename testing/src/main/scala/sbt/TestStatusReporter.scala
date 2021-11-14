@@ -19,7 +19,7 @@ import scala.collection.concurrent
 private[sbt] class TestStatusReporter(f: File) extends TestsListener {
   private lazy val succeeded: concurrent.Map[String, Long] = TestStatus.read(f)
 
-  def doInit = ()
+  def doInit(): Unit = ()
   def startGroup(name: String): Unit = { succeeded remove name; () }
   def testEvent(event: TestEvent): Unit = ()
   def endGroup(name: String, t: Throwable): Unit = ()

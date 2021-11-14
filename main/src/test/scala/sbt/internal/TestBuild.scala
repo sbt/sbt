@@ -51,7 +51,7 @@ abstract class TestBuild {
   def tGen = genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen)
 
   class TestKeys(val env: Env, val scopes: Seq[Scope]) {
-    override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
+    override def toString = env.toString + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
     lazy val delegated = scopes map env.delegates
   }
 

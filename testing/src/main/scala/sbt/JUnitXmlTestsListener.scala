@@ -112,9 +112,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       val classnameRegex = s"^($name|${name.split('.').last})\\.?".r
 
       val result =
-        <testsuite hostname={hostname} name={name} tests={tests + ""} errors={errors + ""} failures={
+        <testsuite hostname={hostname} name={name} tests={tests.toString} errors={errors.toString} failures={
           failures + ""
-        } skipped={ignoredSkippedPending + ""} time={(duration / 1000.0).toString} timestamp={
+        } skipped={ignoredSkippedPending.toString} time={(duration / 1000.0).toString} timestamp={
           formatISO8601DateTime(timestamp)
         }>
           {properties}

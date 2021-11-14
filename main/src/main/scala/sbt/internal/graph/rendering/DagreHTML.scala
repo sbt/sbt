@@ -25,7 +25,7 @@ object DagreHTML {
     val graphString =
       URLEncoder
         .encode(dotGraph, "utf8")
-        .replaceAllLiterally("+", "%20")
+        .replace("+", "%20")
 
     IO.write(
       new File(targetDirectory, "dependencies.dot.js"),

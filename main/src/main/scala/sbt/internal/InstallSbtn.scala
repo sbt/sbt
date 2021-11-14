@@ -25,7 +25,7 @@ private[sbt] object InstallSbtn {
     Def.inputKey[Unit]("install sbtn and tab completions").withRank(KeyRanks.BTask)
   private[sbt] def installSbtnImpl: Def.Initialize[InputTask[Unit]] = Def.inputTask {
     val inputVersion = Def.spaceDelimited("version").parsed.headOption
-    val version = inputVersion.getOrElse(sbtVersion.value.replaceAllLiterally("-SNAPSHOT", ""))
+    val version = inputVersion.getOrElse(sbtVersion.value.replace("-SNAPSHOT", ""))
     val term = terminal.value
     term.setMode(canonical = false, echo = false)
     val baseDirectory = BuildPaths.getGlobalBase(state.value).toPath

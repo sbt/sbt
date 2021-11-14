@@ -13,7 +13,6 @@ import java.io.File
 import sbt.io.{ IO, Path }
 import sbt.io.syntax._
 import Path._
-import sbt.io.IO
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   lazy val commands = commandMap
@@ -25,7 +24,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       "mkdir" nonEmpty makeDirectories _,
       "absent" nonEmpty absent _,
       //			"sync" twoArg("Two directory paths", sync _),
-      "newer" twoArg ("Two paths", newer _),
+      "newer".twoArg("Two paths", newer _),
       "pause" noArg {
         println("Pausing in " + baseDirectory)
         /*readLine("Press enter to continue. ") */
@@ -33,11 +32,11 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         System.console.readLine
         println()
       },
-      "sleep" oneArg ("Time in milliseconds", time => Thread.sleep(time.toLong)),
+      "sleep".oneArg("Time in milliseconds", time => Thread.sleep(time.toLong)),
       "exec" nonEmpty (execute _),
       "copy" copy (to => rebase(baseDirectory, to)),
-      "copy-file" twoArg ("Two paths", copyFile _),
-      "must-mirror" twoArg ("Two paths", diffFiles _),
+      "copy-file".twoArg("Two paths", copyFile _),
+      "must-mirror".twoArg("Two paths", diffFiles _),
       "copy-flat" copy flat
     )
 

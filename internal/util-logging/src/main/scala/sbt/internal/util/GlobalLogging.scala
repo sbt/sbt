@@ -83,7 +83,7 @@ object GlobalLogging {
   ): GlobalLogging = {
     val loggerName = generateName
     val log = LoggerContext.globalContext.logger(loggerName, None, None)
-    val appender = ConsoleAppender(ConsoleAppender.generateName, console)
+    val appender = ConsoleAppender(ConsoleAppender.generateName(), console)
     LoggerContext.globalContext.addAppender(loggerName, appender -> Level.Info)
     GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
   }

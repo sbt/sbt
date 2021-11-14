@@ -43,7 +43,7 @@ object Util {
   def camelToHyphen(s: String): String =
     Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase(Locale.ENGLISH))
 
-  def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) '`' + s + '`' else s
+  def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) s"`${s}`" else s
 
   def ignoreResult[T](f: => T): Unit = macro Macro.ignore
 

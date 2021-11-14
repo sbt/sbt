@@ -256,7 +256,7 @@ object TestFramework {
     def foreachListenerSafe(f: TestsListener => Unit): () => Unit =
       () => safeForeach(testsListeners, log)(f)
 
-    val startTask = foreachListenerSafe(_.doInit)
+    val startTask = foreachListenerSafe(_.doInit())
     val testTasks =
       Map(tests.toSeq.flatMap {
         case (framework, testDefinitions) =>
