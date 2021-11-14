@@ -13,9 +13,9 @@ import sbt.io.syntax._
 import CacheImplicits._
 
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SingletonCacheSpec extends FlatSpec {
+class SingletonCacheSpec extends AnyFlatSpec {
 
   case class ComplexType(val x: Int, y: String, z: List[Int])
   object ComplexType {

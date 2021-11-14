@@ -8,11 +8,12 @@
 package sbt
 package internal
 
-import org.scalatest._
+import org.scalatest.diagrams.Diagrams
+import org.scalatest.funsuite.AnyFunSuite
 import sbt.internal.CrossJava.JavaDiscoverConfig._
 import scala.collection.immutable.ListMap
 
-class CrossJavaTest extends FunSuite with DiagrammedAssertions {
+class CrossJavaTest extends AnyFunSuite with Diagrams {
   test("The Java home selector should select the most recent") {
     assert(
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")

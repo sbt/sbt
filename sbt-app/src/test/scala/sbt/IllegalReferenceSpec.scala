@@ -8,11 +8,11 @@
 package sbt
 
 import org.scalatest
-import org.scalatest.{ TestData, fixture }
+import org.scalatest.{ TestData, fixture, funsuite }
 
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
-class IllegalReferenceSpec extends fixture.FunSuite with fixture.TestDataFixture {
+class IllegalReferenceSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
   private def toolboxClasspath(td: TestData): String =
     td.configMap.get("sbt.server.classpath") match {
       case Some(s: String) => s

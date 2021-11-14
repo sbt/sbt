@@ -9,10 +9,10 @@ package sbt.internal.util
 
 import java.io.InputStream
 import java.nio.charset.Charset
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import java.util.concurrent.LinkedBlockingQueue
 
-class UTF8DecoderSpec extends FlatSpec {
+class UTF8DecoderSpec extends AnyFlatSpec {
   val decoder = Charset.forName("UTF-8").newDecoder
   "ascii characters" should "not be modified" in {
     val inputStream = new InputStream {

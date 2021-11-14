@@ -8,11 +8,11 @@
 package sbt.std.neg
 
 import scala.tools.reflect.ToolBoxError
-import org.scalatest.{ TestData, fixture }
+import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.{ TaskLinterDSLFeedback, TestUtil }
 import sbt.std.TestUtil._
 
-class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
+class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
   def expectError(
       errorSnippet: String,
       compileOptions: String = "",

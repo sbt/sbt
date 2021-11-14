@@ -17,6 +17,7 @@ import sbt.librarymanagement.ivy._
 import sbt.util.Logger
 import xsbti.compile.CompilerBridgeProvider
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
@@ -24,7 +25,7 @@ import org.scalatest._
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
 abstract class IvyBridgeProviderSpecification
-    extends fixture.FlatSpec
+    extends flatspec.FixtureAnyFlatSpec
     with fixture.TestDataFixture
     with Matchers {
   def currentBase: File = new File(".")

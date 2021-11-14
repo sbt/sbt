@@ -8,7 +8,7 @@
 package sbt
 
 import scala.concurrent.duration._
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.complete.Parser
 
 object MultiParserSpec {
@@ -22,7 +22,7 @@ object MultiParserSpec {
   }
 }
 import sbt.MultiParserSpec._
-class MultiParserSpec extends FlatSpec {
+class MultiParserSpec extends AnyFlatSpec {
   "parsing" should "parse single commands" in {
     assert(";foo".parse == Seq("foo"))
     assert(";   foo".parse == Seq("foo"))
