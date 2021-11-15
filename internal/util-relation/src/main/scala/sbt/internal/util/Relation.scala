@@ -214,5 +214,5 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
   override def hashCode = fwd.filterNot(_._2.isEmpty).hashCode()
 
   override def toString =
-    all.map { case (a, b) => a + " -> " + b }.mkString("Relation [", ", ", "]")
+    all.map { case (a, b) => s"$a -> $b" }.mkString("Relation [", ", ", "]")
 }

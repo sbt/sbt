@@ -125,7 +125,7 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
   import logging.{ global => log, logTest, managed }
   import sbt.protocol.testing.codec.JsonProtocol._
 
-  def doInit: Unit = managed.logEvent(Level.Info, TestInitEvent())
+  def doInit(): Unit = managed.logEvent(Level.Info, TestInitEvent())
 
   def startGroup(name: String): Unit = managed.logEvent(Level.Info, StartTestGroupEvent(name))
 

@@ -67,14 +67,14 @@ object MainAppender {
     )
 
   def defaultScreen(console: ConsoleOut): Appender =
-    ConsoleAppender(ConsoleAppender.generateName, console)
+    ConsoleAppender(ConsoleAppender.generateName(), console)
 
   def defaultScreen(
       console: ConsoleOut,
       suppressedMessage: SuppressedTraceContext => Option[String]
   ): Appender = {
     ConsoleAppender(
-      ConsoleAppender.generateName,
+      ConsoleAppender.generateName(),
       console,
       suppressedMessage = suppressedMessage
     )
@@ -99,7 +99,7 @@ object MainAppender {
   def defaultBacked(loggerName: String, useFormat: Boolean): PrintWriter => Appender =
     to => {
       ConsoleAppender(
-        ConsoleAppender.generateName,
+        ConsoleAppender.generateName(),
         ConsoleOut.printWriterOut(to),
         useFormat = useFormat
       )

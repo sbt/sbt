@@ -31,7 +31,7 @@ object SingletonCache {
 
   implicit def basicSingletonCache[A: JsonFormat]: SingletonCache[A] =
     new SingletonCache[A] {
-      override def read(from: Input): A = from.read[A]
+      override def read(from: Input): A = from.read[A]()
       override def write(to: Output, value: A) = to.write(value)
     }
 

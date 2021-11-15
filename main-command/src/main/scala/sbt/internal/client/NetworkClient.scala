@@ -380,7 +380,7 @@ class NetworkClient(
     }
     if (!startServer) {
       val deadline = 5.seconds.fromNow
-      while (socket.isEmpty && !deadline.isOverdue) {
+      while (socket.isEmpty && !deadline.isOverdue()) {
         socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
         if (socket.isEmpty) Thread.sleep(20)
       }
@@ -836,12 +836,12 @@ class NetworkClient(
         case -1 => (query, query, None, None) // shouldn't happen
         case i =>
           val rawPrefix = query.substring(0, i)
-          val prefix = rawPrefix.replaceAllLiterally("\"", "").replaceAllLiterally("\\;", ";")
-          val rawSuffix = query.substring(i).replaceAllLiterally("\\;", ";")
+          val prefix = rawPrefix.replace("\"", "").replace("\\;", ";")
+          val rawSuffix = query.substring(i).replace("\\;", ";")
           val suffix = if (rawSuffix.length > 1) rawSuffix.substring(1) else ""
           (rawPrefix, prefix, Some(rawSuffix), Some(suffix))
       }
-    } else (query, query.replaceAllLiterally("\\;", ";"), None, None)
+    } else (query, query.replace("\\;", ";"), None, None)
     val tailSpace = query.endsWith(" ") || query.endsWith("\"")
     val sanitizedQuery = suffix.foldLeft(prefix) { _ + _ }
     def getCompletions(query: String, sendCommand: Boolean): Seq[String] = {
@@ -885,7 +885,7 @@ class NetworkClient(
     }
     getCompletions(sanitizedQuery, true) collect {
       case c if inQuote                      => c
-      case c if tailSpace && c.contains(" ") => c.replaceAllLiterally(prefix, "")
+      case c if tailSpace && c.contains(" ") => c.replace(prefix, "")
       case c if !tailSpace                   => c.split(" ").last
     }
   }
@@ -1106,10 +1106,10 @@ object NetworkClient {
           launchJar = a
             .split("--sbt-launch-jar=")
             .lastOption
-            .map(_.replaceAllLiterally("%20", " "))
+            .map(_.replace("%20", " "))
         case "--sbt-launch-jar" if i + 1 < sanitized.length =>
           i += 1
-          launchJar = Option(sanitized(i).replaceAllLiterally("%20", " "))
+          launchJar = Option(sanitized(i).replace("%20", " "))
         case "-bsp" | "--bsp"        => bsp = true
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
@@ -1131,7 +1131,7 @@ object NetworkClient {
       sbtArguments.toSeq,
       commandArgs.toSeq,
       completionArguments.toSeq,
-      sbtScript.getOrElse(defaultSbtScript).replaceAllLiterally("%20", " "),
+      sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
       launchJar
     )

@@ -43,7 +43,7 @@ private final class Settings0[ScopeType](
     (data get scope).flatMap(_ get key)
 
   def set[T](scope: ScopeType, key: AttributeKey[T], value: T): Settings[ScopeType] = {
-    val map = data getOrElse (scope, AttributeMap.empty)
+    val map = data.getOrElse(scope, AttributeMap.empty)
     val newData = data.updated(scope, map.put(key, value))
     new Settings0(newData, delegates)
   }
@@ -476,7 +476,7 @@ trait Init[ScopeType] {
         if (posDefined.size == settings.size) "defined at:"
         else
           "some of the defining occurrences:"
-      header + (posDefined.distinct mkString ("\n\t", "\n\t", "\n"))
+      header + (posDefined.distinct.mkString("\n\t", "\n\t", "\n"))
     } else ""
   }
 
@@ -711,10 +711,10 @@ trait Init[ScopeType] {
     def mapReferenced(g: MapScoped): Setting[T] = make(key, init mapReferenced g, pos)
 
     def validateReferenced(g: ValidateRef): Either[Seq[Undefined], Setting[T]] =
-      (init validateReferenced g).right.map(newI => make(key, newI, pos))
+      (init validateReferenced g).map(newI => make(key, newI, pos))
 
     private[sbt] def validateKeyReferenced(g: ValidateKeyRef): Either[Seq[Undefined], Setting[T]] =
-      (init validateKeyReferenced g).right.map(newI => make(key, newI, pos))
+      (init validateKeyReferenced g).map(newI => make(key, newI, pos))
 
     def mapKey(g: MapScoped): Setting[T] = make(g(key), init, pos)
     def mapInit(f: (ScopedKey[T], T) => T): Setting[T] = make(key, init(t => f(key, t)), pos)
@@ -879,9 +879,8 @@ trait Init[ScopeType] {
     def evaluate(ss: Settings[ScopeType]): T = f(in evaluate ss) evaluate ss
     def mapReferenced(g: MapScoped) = new Bind[S, T](s => f(s) mapReferenced g, in mapReferenced g)
 
-    def validateKeyReferenced(g: ValidateKeyRef) = (in validateKeyReferenced g).right.map {
-      validIn =>
-        new Bind[S, T](s => handleUndefined(f(s) validateKeyReferenced g), validIn)
+    def validateKeyReferenced(g: ValidateKeyRef) = (in validateKeyReferenced g).map { validIn =>
+      new Bind[S, T](s => handleUndefined(f(s) validateKeyReferenced g), validIn)
     }
 
     def mapConstant(g: MapConstant) = new Bind[S, T](s => f(s) mapConstant g, in mapConstant g)
@@ -898,7 +897,7 @@ trait Init[ScopeType] {
 
     def validateKeyReferenced(g: ValidateKeyRef) = a match {
       case None    => Right(this)
-      case Some(i) => Right(new Optional(i.validateKeyReferenced(g).right.toOption, f))
+      case Some(i) => Right(new Optional(i.validateKeyReferenced(g).toOption, f))
     }
 
     def mapConstant(g: MapConstant): Initialize[T] = new Optional(a map mapConstantT(g).fn, f)

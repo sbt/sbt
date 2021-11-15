@@ -80,10 +80,10 @@ object CoursierRepositoriesTasks {
           result1 map {
             case r: FileRepository =>
               val ivyPatterns = r.patterns.ivyPatterns map {
-                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                _.replace("$" + "{ivy.home}", ivyHomeUri)
               }
               val artifactPatterns = r.patterns.artifactPatterns map {
-                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                _.replace("$" + "{ivy.home}", ivyHomeUri)
               }
               val p =
                 r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)

@@ -69,7 +69,7 @@ object Tracked {
 
   /** Creates a tracker that provides the output of the most recent invocation of the function */
   def lastOutput[I, O: JsonFormat](store: CacheStore)(f: (I, Option[O]) => O): I => O = { in =>
-    val previous = Try { store.read[O] }.toOption
+    val previous = Try { store.read[O]() }.toOption
     val next = f(in, previous)
     store.write(next)
     next
@@ -277,7 +277,7 @@ object Tracked {
     }
 
     def changed(store: CacheStore, value: I): Boolean =
-      Try { store.read[Long] } match {
+      Try { store.read[Long]() } match {
         case USuccess(prev: Long) =>
           Hasher.hash(value) match {
             case USuccess(keyHash: Int) => keyHash.toLong != prev
@@ -321,7 +321,7 @@ class Timestamp(val store: CacheStore, useStartTime: Boolean)(implicit format: J
   private def now() = System.currentTimeMillis
 
   def readTimestamp: Long =
-    Try { store.read[Long] } getOrElse 0
+    Try { store.read[Long]() } getOrElse 0
 }
 
 @deprecated("Use Tracked.inputChanged and Tracked.outputChanged instead", "1.0.1")
@@ -342,7 +342,7 @@ class Changed[O: Equiv: JsonFormat](val store: CacheStore) extends Tracked {
 
   def uptodate(value: O): Boolean = {
     val equiv: Equiv[O] = implicitly
-    equiv.equiv(value, store.read[O])
+    equiv.equiv(value, store.read[O]())
   }
 }
 

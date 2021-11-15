@@ -19,7 +19,7 @@ object StressGCMonitor {
     new GCMonitor(ConsoleLogger())
     val deadline = Deadline.now + 10.seconds
     while (!deadline.isOverdue()) {
-      println(deadline.timeLeft.toSeconds + " seconds left...")
+      println(s"${deadline.timeLeft.toSeconds} seconds left...")
       list = List.fill(1000 * 1000 * 100)(Random.nextInt(100))
       System.gc()
       Thread.sleep(10)

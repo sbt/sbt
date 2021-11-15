@@ -235,7 +235,7 @@ object ConcurrentRestrictions {
         sentinels.toList foreach { s =>
           s.cancel(true)
         }
-        sentinels.clear
+        sentinels.clear()
       }
 
       def submit(node: A, work: () => R): Unit = synchronized {

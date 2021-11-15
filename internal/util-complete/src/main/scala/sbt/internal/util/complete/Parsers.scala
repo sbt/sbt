@@ -238,12 +238,12 @@ trait Parsers {
     val notDelim = charClass(c => c != open && c != close).*.string
     def impl(): Parser[String] = {
       (open ~ (notDelim ~ close).?).flatMap {
-        case (l, Some((content, r))) => Parser.success(l + content + r)
+        case (l, Some((content, r))) => Parser.success(s"$l$content$r")
         case (l, None) =>
           ((notDelim ~ impl()).map {
             case (leftPrefix, nestedBraces) => leftPrefix + nestedBraces
           }.+ ~ notDelim ~ close).map {
-            case ((nested, suffix), r) => l + nested.mkString + suffix + r
+            case ((nested, suffix), r) => s"$l${nested.mkString}$suffix$r"
           }
       }
     }

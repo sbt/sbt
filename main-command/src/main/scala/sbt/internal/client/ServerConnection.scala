@@ -79,7 +79,7 @@ abstract class ServerConnection(connection: Socket) {
       if (a.nonEmpty) {
         out.write(a)
       }
-      writeEndLine
+      writeEndLine()
     } catch {
       case e: IOException =>
         shutdown()
@@ -100,7 +100,7 @@ abstract class ServerConnection(connection: Socket) {
       out.close()
       connection.close()
     } catch { case e: IOException => e.printStackTrace() }
-    onShutdown
+    onShutdown()
   }
 
 }

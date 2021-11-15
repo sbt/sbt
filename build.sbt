@@ -1104,7 +1104,7 @@ lazy val serverTestProj = (project in file("server-test"))
       val rawClasspath =
         (Compile / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val cp =
-        if (scala.util.Properties.isWin) rawClasspath.replaceAllLiterally("\\", "\\\\")
+        if (scala.util.Properties.isWin) rawClasspath.replace("\\", "\\\\")
         else rawClasspath
       val content = {
         s"""|

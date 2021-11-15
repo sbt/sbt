@@ -96,7 +96,7 @@ object Escapes extends Properties("Escapes") {
       )
     }
     assert(isEscapeTerminator(terminator))
-    def makeString: String = ESC + content + terminator
+    def makeString: String = s"$ESC$content$terminator"
 
     override def toString =
       if (content.isEmpty) s"ESC (${terminator.toInt})"

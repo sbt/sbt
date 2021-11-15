@@ -103,7 +103,7 @@ final class ScriptedTests(
       log: ManagedLogger,
       context: LoggerContext,
   ): Seq[() => Option[String]] = {
-    for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
+    for (groupDir <- (resourceBaseDirectory * group).get(); nme <- (groupDir * name).get()) yield {
       val g = groupDir.getName
       val n = nme.getName
       val str = s"$g / $n"

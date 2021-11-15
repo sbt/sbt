@@ -263,7 +263,8 @@ final class BuildUnit(
     val plugins: LoadedPlugins
 ) {
   override def toString =
-    if (uri.getScheme == "file") localBase.toString else (uri + " (locally: " + localBase + ")")
+    if (uri.getScheme == "file") localBase.toString
+    else (uri.toString + " (locally: " + localBase + ")")
 }
 
 final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
