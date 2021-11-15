@@ -7,7 +7,7 @@
 
 package sbt.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.util.CacheImplicits._
@@ -15,7 +15,7 @@ import sjsonnew.{ Builder, JsonWriter }
 
 import scala.concurrent.Promise
 
-class TrackedSpec extends FlatSpec {
+class TrackedSpec extends AnyFlatSpec {
   "lastOutput" should "store the last output" in {
     withStore { store =>
       val value = 5

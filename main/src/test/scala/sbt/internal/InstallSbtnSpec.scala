@@ -13,10 +13,10 @@ import java.lang.ProcessBuilder
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.TimeUnit
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
 
-class InstallSbtnSpec extends FlatSpec {
+class InstallSbtnSpec extends AnyFlatSpec {
   private def withTemp[R](ext: String)(f: Path => R): R = {
     val tmp = Files.createTempFile("sbt-1.4.1-", ext)
     try f(tmp)

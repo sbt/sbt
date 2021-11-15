@@ -9,9 +9,10 @@ package sbt.util
 
 import sbt.internal.util._
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 
-class LogExchangeSpec extends FlatSpec with Matchers {
+class LogExchangeSpec extends AnyFlatSpec with Matchers {
   import LogExchange._
 
   checkTypeTag("stringTypeTagThrowable", stringTypeTagThrowable, StringTypeTag.fast[Throwable])

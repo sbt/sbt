@@ -7,12 +7,12 @@
 
 package sbt.std
 
-import org.scalatest.{ TestData, fixture }
+import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.TestUtil._
 
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
-class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
+class TaskConfigSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
   private def expectError(
       errorSnippet: String,
       compileOptions: String = "",

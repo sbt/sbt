@@ -7,13 +7,14 @@
 
 package sbt.internal.util
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import sbt.util._
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
 import scala.annotation.nowarn
 
-class ManagedLoggerSpec extends FlatSpec with Matchers {
+class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
   val context = LoggerContext(useLog4J = true)
   @nowarn
   val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)

@@ -7,9 +7,9 @@
 
 package sbt.internal.util.complete
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SizeParserSpec extends FlatSpec {
+class SizeParserSpec extends AnyFlatSpec {
   "SizeParser" should "handle raw bytes" in {
     assert(Parser.parse(str = "123456", SizeParser.value) == Right(123456L))
   }

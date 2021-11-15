@@ -94,7 +94,7 @@ object Dependencies {
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "2.1.0"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.2.10"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"

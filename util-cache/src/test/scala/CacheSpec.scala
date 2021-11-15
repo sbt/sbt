@@ -12,9 +12,9 @@ import sbt.io.syntax._
 
 import CacheImplicits._
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class CacheSpec extends FlatSpec {
+class CacheSpec extends AnyFlatSpec {
 
   "A cache" should "NOT throw an exception if read without being written previously" in {
     testCache[String, Int] {
