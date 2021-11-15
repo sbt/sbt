@@ -909,7 +909,7 @@ private final class StringLiteral(str: String, start: Int) extends ValidParser[S
     if (str.charAt(start) == c) stringLiteral(str, start + 1) else new Invalid(resultEmpty)
 
   def completions(level: Int) = Completions.single(Completion.suggestion(str.substring(start)))
-  override def toString = '"' + str + '"'
+  override def toString = "\"" + str + "\""
 }
 
 private final class CharacterClass(f: Char => Boolean, label: String) extends ValidParser[Char] {

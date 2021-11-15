@@ -265,7 +265,7 @@ final class Eval(
       if (phase == null || phase == phase.next || evalReporter.hasErrors)
         ()
       else {
-        enteringPhase(phase) { phase.run }
+        enteringPhase(phase) { phase.run() }
         compile(phase.next)
       }
     }

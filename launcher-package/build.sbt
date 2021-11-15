@@ -273,7 +273,7 @@ val root = (project in file(".")).
         case (k, BinSbt) =>
           import java.nio.file.{Files, FileSystems}
           val x = IO.read(k)
-          IO.write(t / "sbt", x.replaceAllLiterally(
+          IO.write(t / "sbt", x.replace(
             "declare init_sbt_version=_to_be_replaced",
             s"declare init_sbt_version=$sbtVersionToRelease"))
 

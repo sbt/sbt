@@ -200,7 +200,7 @@ trait TaskExtra extends TaskExtra0 {
           val pio = TaskExtra
             .processIO(s)
             .withInput(out => { BasicIO.transferFully(in, out); out.close() })
-          (p run pio).exitValue
+          (p run pio).exitValue()
         }
     }
 
@@ -246,7 +246,7 @@ trait TaskExtra extends TaskExtra0 {
   implicit def processToTask(p: ProcessBuilder)(implicit streams: Task[TaskStreams[_]]): Task[Int] =
     streams map { s =>
       val pio = TaskExtra.processIO(s)
-      (p run pio).exitValue
+      (p run pio).exitValue()
     }
 }
 object TaskExtra extends TaskExtra {

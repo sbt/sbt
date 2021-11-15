@@ -162,7 +162,7 @@ private[sbt] object ForkTests {
         RunningProcesses.add(p)
         val ec = try p.exitValue()
         finally {
-          if (p.isAlive) p.destroy()
+          if (p.isAlive()) p.destroy()
           RunningProcesses.remove(p)
         }
         val result =
@@ -223,7 +223,7 @@ private final class React(
       listeners.foreach(_ testEvent event)
       val suiteResult = SuiteResult(tEvents)
       results += group -> suiteResult
-      listeners.foreach(_ endGroup (group, suiteResult.result))
+      listeners.foreach(_.endGroup(group, suiteResult.result))
       react()
   }
 }

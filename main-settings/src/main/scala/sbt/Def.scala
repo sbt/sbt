@@ -252,7 +252,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   )(l: Def.Initialize[Task[A => C]])(r: Def.Initialize[Task[B => C]]): Def.Initialize[Task[C]] = {
     val lhs = {
       val innerLhs: Def.Initialize[Task[Either[A, Either[B, C]]]] =
-        x.map((fab: Either[A, B]) => fab.right.map(Left(_)))
+        x.map((fab: Either[A, B]) => fab.map(Left(_)))
       val innerRhs: Def.Initialize[Task[A => Either[B, C]]] =
         l.map((fn: A => C) => fn.andThen(Right(_)))
       selectITask(innerLhs, innerRhs)
