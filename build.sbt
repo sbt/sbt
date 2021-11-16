@@ -102,8 +102,15 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   run / fork := true,
 )
 def commonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+
-    addCompilerPlugin(kindProjector)
+  commonBaseSettings :+ {
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value == "3") {
+        Nil
+      } else {
+        Seq(compilerPlugin(kindProjector))
+      }
+    }
+  }
 def utilCommonSettings: Seq[Setting[_]] =
   baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
@@ -463,7 +470,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers,
+    libraryDependencies += scalaParsers.value,
     utilMimaSettings,
   )
   .configure(addSbtIO)
@@ -477,7 +484,7 @@ lazy val testingProj = (project in file("testing"))
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(
-      scalaXml,
+      scalaXml.value,
       testInterface,
       launcherInterface,
       sjsonNewScalaJson.value
@@ -803,7 +810,13 @@ lazy val coreMacrosProj = (project in file("core-macros"))
   .settings(
     baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
     name := "Core Macros",
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+    libraryDependencies += {
+      if (scalaBinaryVersion.value == "3") {
+        "org.scala-lang" % "scala-compiler" % scala213
+      } else {
+        "org.scala-lang" % "scala-compiler" % scalaVersion.value
+      }
+    },
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
   )
@@ -913,7 +926,7 @@ lazy val mainProj = (project in file("main"))
       }
     },
     libraryDependencies ++=
-      (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
+      (Seq(scalaXml.value, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List()
       case _                          => List(scalaPar)
