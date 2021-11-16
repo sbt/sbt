@@ -51,6 +51,7 @@ jobs:
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SCALA_212: 2.12.15
       SCALA_213: 2.13.6
+      SCALA_3: 3.1.0
       UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
       SBT_LOCAL: false
       TEST_SBT_VER: 1.5.0
@@ -134,7 +135,7 @@ jobs:
       if: ${{ matrix.jobtype == 5 }}
       shell: bash
       run: |
-        ./sbt -v "++$SCALA_213!; test;"
+        ./sbt -v "++$SCALA_213!; test; ++$SCALA_3!; all utilControl/test utilRelation/test utilPosition/test"
     - name: Build and test (6)
       if: ${{ matrix.jobtype == 6 }}
       shell: bash
