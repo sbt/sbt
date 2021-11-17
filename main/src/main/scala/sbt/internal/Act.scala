@@ -304,7 +304,12 @@ object Act {
         case Some(ProjectRef(uri, _)) => index.keys(Some(BuildRef(uri)), conf, task)
         case _                        => Set()
       }
-    val keys: Set[String] = index.keys(proj, conf, task) ++ buildKeys
+    val globalKeys: Set[String] =
+      proj match {
+        case Some(_) => index.keys(None, conf, task)
+        case _       => Set()
+      }
+    val keys: Set[String] = index.keys(proj, conf, task) ++ buildKeys ++ globalKeys
     keyParser(keys)
   }
 
