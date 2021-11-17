@@ -118,14 +118,16 @@ object ClientTest extends AbstractServerTest {
       "compileIncSetup",
       "compileIncremental",
       "compileJava",
+      "compileOrder",
       "compileOutputs",
       "compileProgress",
       "compileScalaBackend",
       "compileSplit",
+      "compilerCache",
       "compilers",
     )
 
-    assert(complete("compi") == expected)
+    assert(complete("compi").toVector == expected)
   }
   test("testOnly completions") { _ =>
     val testOnlyExpected = Vector(
