@@ -208,7 +208,7 @@ final class EvictionPair private[sbt] (
 }
 
 object EvictionPair {
-  implicit val evictionPairLines: ShowLines[EvictionPair] = ShowLines { a: EvictionPair =>
+  implicit val evictionPairLines: ShowLines[EvictionPair] = ShowLines { (a: EvictionPair) =>
     val revs = a.evicteds map { _.module.revision }
     val revsStr = if (revs.size <= 1) revs.mkString else "{" + revs.mkString(", ") + "}"
     val seen: mutable.Set[ModuleID] = mutable.Set()

@@ -130,7 +130,7 @@ object EvictionError {
     )
   }
 
-  implicit val evictionErrorLines: ShowLines[EvictionError] = ShowLines { a: EvictionError =>
+  implicit val evictionErrorLines: ShowLines[EvictionError] = ShowLines { (a: EvictionError) =>
     a.toLines
   }
 }

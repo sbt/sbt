@@ -1,7 +1,5 @@
 package sbt.internal.librarymanagement
 
-import java.io.File
-
 import org.apache.ivy.util.Message
 import sbt.librarymanagement._
 import sbt.librarymanagement.ivy._

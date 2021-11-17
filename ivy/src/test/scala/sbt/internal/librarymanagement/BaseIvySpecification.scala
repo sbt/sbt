@@ -102,7 +102,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
     }
   }
 
-  def cleanCache: Unit = cleanIvyCache()
+  def cleanCache(): Unit = cleanIvyCache()
   def cleanIvyCache(): Unit = IO.delete(currentTarget / "cache")
 
   override def cleanCachedResolutionCache(module: ModuleDescriptor): Unit = {

@@ -59,7 +59,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
 
   /** String representation of the extra attributes, excluding any information only attributes. */
   def extraString: String =
-    extraDependencyAttributes.map { case (k, v) => k + "=" + v } mkString ("(", ", ", ")")
+    extraDependencyAttributes.map { case (k, v) => k + "=" + v }.mkString("(", ", ", ")")
 
   /** Returns the extra attributes except for ones marked as information only (ones that typically would not be used for dependency resolution). */
   def extraDependencyAttributes: Map[String, String] =

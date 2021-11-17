@@ -15,7 +15,7 @@ private[sbt] object JsonUtil {
       log: Logger
   ): UpdateReport = {
     try {
-      val lite = CacheStore(path).read[UpdateReportLite]
+      val lite = CacheStore(path).read[UpdateReportLite]()
       fromLite(lite, cachedDescriptor)
     } catch {
       case e: Throwable =>

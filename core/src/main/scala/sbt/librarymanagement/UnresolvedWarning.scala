@@ -38,7 +38,7 @@ object UnresolvedWarning {
       } map {
         case (_, p) => p
       }
-    val failedPaths = err.failed map { x: ModuleID =>
+    val failedPaths = err.failed map { (x: ModuleID) =>
       err.failedPaths(x).toList.reverse map { id =>
         (id, modulePosition(id))
       }

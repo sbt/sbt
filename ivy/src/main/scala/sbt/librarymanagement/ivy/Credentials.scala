@@ -92,7 +92,7 @@ final class DirectCredentials(
     val dq = '"'
     val r =
       if (realm == null) "null"
-      else dq + realm + dq
+      else s"$dq$realm$dq"
     s"""DirectCredentials($r, "$host", "$userName", ****)"""
   }
 }

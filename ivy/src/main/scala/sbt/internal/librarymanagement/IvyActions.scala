@@ -396,7 +396,7 @@ object IvyActions {
     val toRetrieve: Option[Vector[ConfigRef]] = config.configurationsToRetrieve
     val base = getRetrieveDirectory(config.retrieveDirectory)
     val pattern = getRetrievePattern(config.outputPattern)
-    val existingFiles = PathFinder(base).allPaths.get filterNot { _.isDirectory }
+    val existingFiles = PathFinder(base).allPaths.get() filterNot { _.isDirectory }
     val toCopy = new collection.mutable.HashSet[(File, File)]
     val retReport = report retrieve { (conf: ConfigRef, mid, art, cached) =>
       toRetrieve match {

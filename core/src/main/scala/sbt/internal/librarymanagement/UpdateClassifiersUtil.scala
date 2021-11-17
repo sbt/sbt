@@ -35,7 +35,7 @@ object UpdateClassifiersUtil {
       classifiers: Vector[String],
       exclude: Map[ModuleID, Set[ConfigRef]]
   )(m: ModuleID): Option[ModuleID] = {
-    val excluded: Set[ConfigRef] = exclude getOrElse (restrictedCopy(m, false), Set.empty)
+    val excluded: Set[ConfigRef] = exclude.getOrElse(restrictedCopy(m, false), Set.empty)
     val exls = excluded map { _.name }
     val included = classifiers filterNot exls
     if (included.isEmpty) None

@@ -433,11 +433,11 @@ final class IvySbt(
         unionFormat2[IvyConfiguration, InlineIvyConfiguration, ExternalIvyConfiguration]
 
       object NullLogger extends sbt.internal.util.BasicLogger {
-        override def control(event: sbt.util.ControlEvent.Value, message: ⇒ String): Unit = ()
-        override def log(level: Level.Value, message: ⇒ String): Unit = ()
+        override def control(event: sbt.util.ControlEvent.Value, message: => String): Unit = ()
+        override def log(level: Level.Value, message: => String): Unit = ()
         override def logAll(events: Seq[sbt.util.LogEvent]): Unit = ()
-        override def success(message: ⇒ String): Unit = ()
-        override def trace(t: ⇒ Throwable): Unit = ()
+        override def success(message: => String): Unit = ()
+        override def trace(t: => Throwable): Unit = ()
       }
     }
 

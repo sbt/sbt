@@ -18,7 +18,7 @@ object VersionRange {
   // See https://github.com/sbt/sbt/issues/2954
   def stripMavenVersionRange(version: String): Option[String] =
     if (isVersionRange(version)) {
-      val noSpace = version.replaceAllLiterally(" ", "")
+      val noSpace = version.replace(" ", "")
       noSpace match {
         case MavenVersionSetPattern(open1, x1, comma, x2, close1, _) =>
           // http://maven.apache.org/components/enforcer/enforcer-rules/versionRanges.html
@@ -64,7 +64,7 @@ object VersionRange {
           val start = rev(0)
           val stop = rev(rev.length - 1)
           val mid = rev.substring(1, rev.length - 1)
-          (if (start == ']') "(" else start) + mid + (if (stop == '[') ")" else stop)
+          (if (start == ']') "(" else start.toString) + mid + (if (stop == '[') ")" else stop)
         case _ => revision
       }
     } catch {

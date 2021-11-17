@@ -61,7 +61,7 @@ private[sbt] class CachedResolutionResolveCache {
   val maxConflictCacheSize: Int = 1024
   val maxUpdateReportCacheSize: Int = 1024
 
-  def clean(): Unit = updateReportCache.clear
+  def clean(): Unit = updateReportCache.clear()
 
   def directDependencies(md0: ModuleDescriptor): Vector[DependencyDescriptor] =
     md0.getDependencies.toVector
@@ -699,11 +699,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
         )
       }
       (if (n > guard) {
-         warnCircular
+         warnCircular()
          result0
        } else if (called.isEmpty) result0
        else if (notCalled.isEmpty) {
-         warnCircular
+         warnCircular()
          sortModules(cs.tail, acc, extra :+ cs.head, n + 1, guard)
        } else sortModules(called, acc ++ notCalled, extra, 0, called.size * called.size + 1))
     }
