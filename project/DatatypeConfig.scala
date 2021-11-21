@@ -54,6 +54,10 @@ object DatatypeConfig {
         Nil
     }
 
+    case "sbt.librarymanagement.ConfigRef" => { _ =>
+      "sbt.librarymanagement.ConfigRefFormats" :: Nil
+    }
+
     // TODO: These are handled by BasicJsonProtocol, and sbt-datatype should handle them by default, imo
     case "Option" | "Set" | "scala.Vector" => { tpe =>
       getFormats(oneArg(tpe))

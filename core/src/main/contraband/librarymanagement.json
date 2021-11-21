@@ -193,24 +193,6 @@
       "toString": "s\"$caller\""
     },
     {
-      "name": "ConfigRef",
-      "namespace": "sbt.librarymanagement",
-      "target": "Scala",
-      "type": "record",
-      "doc": [
-        "A reference to Configuration."
-      ],
-      "fields": [
-        {
-          "name": "name",
-          "type": "String",
-          "doc": [ "The name of the configuration that eventually get used by Maven." ]
-        }
-      ],
-      "parentsCompanion": "sbt.librarymanagement.ConfigRefFunctions",
-      "toString": "name"
-    },
-    {
       "name": "ConfigurationReport",
       "namespace": "sbt.librarymanagement",
       "target": "Scala",
