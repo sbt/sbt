@@ -4,8 +4,8 @@
 
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
-trait LibraryManagementCodec extends sjsonnew.BasicJsonProtocol
-  with sbt.librarymanagement.ConfigRefFormats
+trait LibraryManagementCodec extends sbt.librarymanagement.ConfigRefFormats
+  with sjsonnew.BasicJsonProtocol
   with sbt.librarymanagement.RetrieveConfigurationFormats
   with sbt.librarymanagement.UpdateLoggingFormats
   with sbt.internal.librarymanagement.formats.LogicalClockFormats
