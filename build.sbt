@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.0.16"
+val coursierVersion0 = "2.1.0-M1"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
 
@@ -54,6 +54,15 @@ lazy val `lm-coursier-shaded` = project
     unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
     shadedModules += "io.get-coursier" %% "coursier",
     validNamespaces += "lmcoursier",
+    validEntries ++= Set(
+      // FIXME Ideally, we should just strip those from the resulting JAR…
+      "README", // from google-collections via plexus-archiver (see below)
+      // from plexus-util via plexus-archiver (see below)
+      "licenses/extreme.indiana.edu.license.TXT",
+      "licenses/javolution.license.TXT",
+      "licenses/thoughtworks.TXT",
+      "licenses/"
+    ),
     shadingRules ++= {
       val toShade = Seq(
         "coursier",
@@ -62,7 +71,15 @@ lazy val `lm-coursier-shaded` = project
         "org.fusesource",
         "macrocompat",
         "io.github.alexarchambault.windowsansi",
-        "concurrentrefhashmap"
+        "concurrentrefhashmap",
+        // pulled by the plexus-archiver stuff that coursier-cache
+        // depends on for now… can hopefully be removed in the future
+        "com.google.common",
+        "org.apache.commons",
+        "org.apache.xbean",
+        "org.codehaus",
+        "org.iq80",
+        "org.tukaani"
       )
       for (ns <- toShade)
         yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
