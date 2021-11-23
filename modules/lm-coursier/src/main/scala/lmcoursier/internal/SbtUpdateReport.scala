@@ -59,8 +59,8 @@ private[internal] object SbtUpdateReport {
         .withIsTransitive(dependency.transitive)
   }
 
-  private val artifact = caching[(Module, Map[String, String], Publication, Artifact), sbt.librarymanagement.Artifact] {
-    case (module, extraProperties, pub, artifact) =>
+  private val artifact = caching[(Module, Map[String, String], Publication, Artifact, Seq[ClassLoader]), sbt.librarymanagement.Artifact] {
+    case (module, extraProperties, pub, artifact, classLoaders) =>
       sbt.librarymanagement.Artifact(pub.name)
         .withType(pub.`type`.value)
         .withExtension(pub.ext.value)
@@ -70,20 +70,20 @@ private[internal] object SbtUpdateReport {
             .orElse(MavenAttributes.typeDefaultClassifierOpt(pub.`type`))
             .map(_.value)
         )
-        .withUrl(Some(CacheUrl.url(artifact.url)))
+        .withUrl(Some(CacheUrl.url(artifact.url, classLoaders)))
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
-  private val moduleReport = caching[(Dependency, Seq[(Dependency, ProjectInfo)], Project, Seq[(Publication, Artifact, Option[File])]), ModuleReport] {
-    case (dependency, dependees, project, artifacts) =>
+  private val moduleReport = caching[(Dependency, Seq[(Dependency, ProjectInfo)], Project, Seq[(Publication, Artifact, Option[File])], Seq[ClassLoader]), ModuleReport] {
+    case (dependency, dependees, project, artifacts, classLoaders) =>
 
     val sbtArtifacts = artifacts.collect {
       case (pub, artifact0, Some(file)) =>
-        (artifact((dependency.module, infoProperties(project).toMap, pub, artifact0)), file)
+        (artifact((dependency.module, infoProperties(project).toMap, pub, artifact0, classLoaders)), file)
     }
     val sbtMissingArtifacts = artifacts.collect {
       case (pub, artifact0, None) =>
-        artifact((dependency.module, infoProperties(project).toMap, pub, artifact0))
+        artifact((dependency.module, infoProperties(project).toMap, pub, artifact0, classLoaders))
     }
 
     val publicationDate = project.info.publication.map { dt =>
@@ -140,7 +140,8 @@ private[internal] object SbtUpdateReport {
     log: Logger,
     includeSignatures: Boolean,
     classpathOrder: Boolean,
-    missingOk: Boolean
+    missingOk: Boolean,
+    classLoaders: Seq[ClassLoader]
   ): Vector[ModuleReport] = {
 
     val deps = classifiersOpt match {
@@ -280,7 +281,8 @@ private[internal] object SbtUpdateReport {
           dep,
           dependees,
           proj,
-          filesOpt
+          filesOpt,
+          classLoaders,
         ))
     }
   }
@@ -297,7 +299,8 @@ private[internal] object SbtUpdateReport {
     includeSignatures: Boolean,
     classpathOrder: Boolean,
     missingOk: Boolean,
-    forceVersions: Map[Module, String]
+    forceVersions: Map[Module, String],
+    classLoaders: Seq[ClassLoader],
   ): UpdateReport = {
 
     val configReports = resolutions.map {
@@ -313,7 +316,8 @@ private[internal] object SbtUpdateReport {
           log,
           includeSignatures = includeSignatures,
           classpathOrder = classpathOrder,
-          missingOk = missingOk
+          missingOk = missingOk,
+          classLoaders = classLoaders,
         )
 
         val reports0 = subRes.rootDependencies match {
@@ -355,7 +359,7 @@ private[internal] object SbtUpdateReport {
                 // should not happen
                 ProjectInfo(c.dependeeVersion, Vector.empty, Vector.empty)
             }
-          val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil))
+          val rep = moduleReport((dep, Seq((dependee, dependeeProj)), proj.withVersion(c.wantedVersion), Nil, classLoaders))
             .withEvicted(true)
             .withEvictedData(Some("version selection")) // ??? put latest-revision like sbt/ivy here?
           OrganizationArtifactReport(c.module.organization.value, c.module.name.value, Vector(rep))

@@ -208,7 +208,7 @@ object LmCoursierPlugin extends AutoPlugin {
     }
   private def mkDependencyResolution: Def.Initialize[Task[DependencyResolution]] =
     Def.task {
-      CoursierDependencyResolution(coursierConfiguration.value)
+      CoursierDependencyResolution(coursierConfiguration.value, None)
     }
 
 }

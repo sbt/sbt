@@ -83,7 +83,8 @@ object UpdateRun {
       includeSignatures = params.includeSignatures,
       classpathOrder = params.classpathOrder,
       missingOk = params.missingOk,
-      params.forceVersions
+      params.forceVersions,
+      params.classLoaders,
     )
   }
 

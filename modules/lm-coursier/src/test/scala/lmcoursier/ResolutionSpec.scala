@@ -118,6 +118,88 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     resolution should be('right)
   }
 
+  property("resolve with resolvers using a custom protocols") {
+    val sbtModule = "org.scala-sbt" % "sbt" % "1.1.0"
+    val dependencies = Vector(sbtModule)
+
+    val protocolHandlerDependencies = Vector(
+      "org.example" %% "customprotocol-handler" % "0.1.0"
+    )
+
+    val resolvers = Vector(
+      "custom" at "customprotocol://host"
+    )
+
+    val configuration =
+      CoursierConfiguration()
+        .withResolvers(resolvers)
+
+    val protocolHandlerConfiguration =
+      Some(
+        CoursierConfiguration()
+          .withProtocolHandlerDependencies(protocolHandlerDependencies)
+          .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
+      )
+
+    val lmEngine =
+      CoursierDependencyResolution(
+        configuration = configuration,
+        protocolHandlerConfiguration = protocolHandlerConfiguration
+      )
+    val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.13"))
+    val resolution =
+      lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
+
+
+    val report = resolution.right.get
+
+    val modules = report.configurations.flatMap(_.modules)
+    modules.map(_.module).map(module => (module.organization, module.name, module.revision)) should contain(
+      (sbtModule.organization, sbtModule.name, sbtModule.revision)
+    )
+  }
+
+  property("resolve with resolvers using a custom protocols written in java") {
+    val sbtModule = "org.scala-sbt" % "sbt" % "1.1.0"
+    val dependencies = Vector(sbtModule)
+
+    val protocolHandlerDependencies = Vector(
+      "org.example" % "customprotocoljava-handler" % "0.1.0"
+    )
+
+    val resolvers = Vector(
+      "custom" at "customprotocoljava://host"
+    )
+
+    val configuration =
+      CoursierConfiguration()
+        .withResolvers(resolvers)
+
+    val protocolHandlerConfiguration =
+      Some(
+        CoursierConfiguration()
+          .withProtocolHandlerDependencies(protocolHandlerDependencies)
+          .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
+      )
+
+    val lmEngine =
+      CoursierDependencyResolution(
+        configuration = configuration,
+        protocolHandlerConfiguration = protocolHandlerConfiguration
+      )
+    val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.13"))
+    val resolution =
+      lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
+
+
+    val report = resolution.right.get
+
+    val modules = report.configurations.flatMap(_.modules)
+    modules.map(_.module).map(module => (module.organization, module.name, module.revision)) should contain(
+      (sbtModule.organization, sbtModule.name, sbtModule.revision)
+    )
+  }
+
   property("resolve plugin") {
     val pluginAttributes = Map("scalaVersion" -> "2.12", "sbtVersion" -> "1.0")
     val dependencies =

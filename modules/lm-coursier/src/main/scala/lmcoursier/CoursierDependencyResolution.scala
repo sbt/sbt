@@ -1,6 +1,7 @@
 package lmcoursier
 
 import java.io.File
+import java.net.{URL, URLClassLoader, URLConnection, MalformedURLException}
 
 import coursier.{Organization, Resolution, organizationString}
 import coursier.core.{Classifier, Configuration}
@@ -15,9 +16,85 @@ import sbt.util.Logger
 import coursier.core.Dependency
 import coursier.core.Publication
 
-class CoursierDependencyResolution(conf: CoursierConfiguration) extends DependencyResolutionInterface {
+import scala.util.{Try, Failure}
+
+class CoursierDependencyResolution(
+  conf: CoursierConfiguration,
+  protocolHandlerConfiguration: Option[CoursierConfiguration],
+  bootstrappingProtocolHandler: Boolean
+) extends DependencyResolutionInterface {
+
+  def this(conf: CoursierConfiguration) =
+    this(
+      conf,
+      protocolHandlerConfiguration = None,
+      bootstrappingProtocolHandler = true
+    )
 
   lmcoursier.CoursierConfiguration.checkLegacyCache()
+
+  private var protocolHandlerClassLoader: Option[ClassLoader] = None
+  private val protocolHandlerClassLoaderLock = new Object
+
+  private def fetchProtocolHandlerClassLoader(
+    configuration: UpdateConfiguration,
+    uwconfig: UnresolvedWarningConfiguration,
+    log: Logger
+  ): ClassLoader = {
+
+    val conf0 = protocolHandlerConfiguration.getOrElse(conf)
+
+    def isUnknownProtocol(rawURL: String): Boolean = {
+      Try(new URL(rawURL)) match {
+        case Failure(ex) if ex.getMessage.startsWith("unknown protocol: ") => true
+        case _ => false
+      }
+    }
+
+    val confWithoutUnknownProtocol =
+      conf0.withResolvers(
+        conf0.resolvers.filter {
+          case maven: MavenRepository =>
+            !isUnknownProtocol(maven.root)
+          case _ =>
+            true
+        }
+      )
+
+    val resolution = new CoursierDependencyResolution(
+      conf = confWithoutUnknownProtocol,
+      protocolHandlerConfiguration = None,
+      bootstrappingProtocolHandler = false
+    )
+
+    val fakeModule =
+      ModuleDescriptorConfiguration(
+        ModuleID("lmcoursier", "lmcoursier", "0.1.0"),
+        ModuleInfo("protocol-handler")
+      )
+      .withDependencies(conf0.protocolHandlerDependencies.toVector)
+
+    val reportOrUnresolved = resolution.update(moduleDescriptor(fakeModule), configuration, uwconfig, log)
+
+    val report = reportOrUnresolved match {
+      case Right(report0) =>
+        report0
+
+      case Left(unresolvedWarning) =>
+        import sbt.util.ShowLines._
+        unresolvedWarning.lines.foreach(log.warn(_))
+        throw unresolvedWarning.resolveException
+    }
+
+    val jars =
+      for {
+        reportConfiguration <- report.configurations.filter(_.configuration.name == "runtime")
+        module <- reportConfiguration.modules
+        (_, jar) <- module.artifacts
+      } yield jar
+
+    new URLClassLoader(jars.map(_.toURI().toURL()).toArray)
+  }
 
   /*
    * Based on earlier implementations by @leonardehrenfried (https://github.com/sbt/librarymanagement/pull/190)
@@ -34,6 +111,14 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     uwconfig: UnresolvedWarningConfiguration,
     log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
+
+    if (bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty)
+      protocolHandlerClassLoaderLock.synchronized {
+        if (bootstrappingProtocolHandler && protocolHandlerClassLoader.isEmpty) {
+          val classLoader = fetchProtocolHandlerClassLoader(configuration, uwconfig, log)
+          protocolHandlerClassLoader = Some(classLoader)
+        }
+      }
 
     val conf = this.conf.withUpdateConfiguration(configuration)
 
@@ -103,7 +188,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
           resolver,
           ivyProperties,
           log,
-          authenticationByRepositoryId.get(resolver.name).map(ToCoursier.authentication)
+          authenticationByRepositoryId.get(resolver.name).map(ToCoursier.authentication),
+          protocolHandlerClassLoader.toSeq,
         )
       }
 
@@ -213,7 +299,8 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
         includeSignatures = false,
         sbtBootJarOverrides = sbtBootJarOverrides,
         classpathOrder = conf.classpathOrder,
-        missingOk = conf.missingOk
+        missingOk = conf.missingOk,
+        classLoaders = protocolHandlerClassLoader.toSeq,
       )
 
     val e = for {
@@ -264,12 +351,21 @@ class CoursierDependencyResolution(conf: CoursierConfiguration) extends Dependen
     } else
       throw ex
   }
-
 }
 
 object CoursierDependencyResolution {
   def apply(configuration: CoursierConfiguration): DependencyResolution =
     DependencyResolution(new CoursierDependencyResolution(configuration))
+
+  def apply(configuration: CoursierConfiguration,
+            protocolHandlerConfiguration: Option[CoursierConfiguration]): DependencyResolution =
+    DependencyResolution(
+      new CoursierDependencyResolution(
+        configuration,
+        protocolHandlerConfiguration,
+        bootstrappingProtocolHandler = true
+      )
+    )
 
   def defaultCacheLocation: File =
     CacheDefaults.location

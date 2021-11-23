@@ -89,4 +89,8 @@ object Settings {
       Seq(f)
     }
 
+  lazy val dontPublish = Seq(
+    publish := {}
+  )
+
 }

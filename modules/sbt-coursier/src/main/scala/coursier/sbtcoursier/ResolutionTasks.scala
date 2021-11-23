@@ -134,7 +134,8 @@ object ResolutionTasks {
               Authentication(a.user, a.password)
                 .withOptional(a.optional)
                 .withRealmOpt(a.realmOpt)
-            }
+            },
+            Seq(),
           )
         }
 

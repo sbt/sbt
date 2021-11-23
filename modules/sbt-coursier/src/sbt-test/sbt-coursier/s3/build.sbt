@@ -30,6 +30,7 @@ check := {
         ),
         log = s.log,
         authentication = None,
+        classLoaders = Seq()
       )
     }
 

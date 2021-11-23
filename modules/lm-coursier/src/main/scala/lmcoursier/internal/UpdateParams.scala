@@ -19,7 +19,8 @@ final case class UpdateParams(
   includeSignatures: Boolean,
   sbtBootJarOverrides: Map[(Module, String), File],
   classpathOrder: Boolean,
-  missingOk: Boolean
+  missingOk: Boolean,
+  classLoaders: Seq[ClassLoader]
 ) {
 
   def artifactFileOpt(

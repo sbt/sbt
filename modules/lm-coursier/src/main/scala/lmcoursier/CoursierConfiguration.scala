@@ -6,10 +6,12 @@ import dataclass.data
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCoursier, Module, ModuleMatchers, Project, Reconciliation, Strict}
-import sbt.librarymanagement.{Resolver, UpdateConfiguration}
+import sbt.librarymanagement.{Resolver, UpdateConfiguration, ModuleID, CrossVersion, ModuleInfo, ModuleDescriptorConfiguration}
 import xsbti.Logger
 
 import scala.concurrent.duration.Duration
+import java.net.URL
+import java.net.URLClassLoader
 
 @data class CoursierConfiguration(
   log: Option[Logger] = None,
@@ -54,7 +56,9 @@ import scala.concurrent.duration.Duration
   @since
   sbtClassifiers: Boolean = false,
   @since
-  providedInCompile: Boolean = false // unused, kept for binary compatibility
+  providedInCompile: Boolean = false, // unused, kept for binary compatibility
+  @since
+  protocolHandlerDependencies: Seq[ModuleID] = Vector.empty,
 ) {
 
   def withLog(log: Logger): CoursierConfiguration =
