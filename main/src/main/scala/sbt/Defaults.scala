@@ -148,6 +148,7 @@ object Defaults extends BuildCommon {
     val m = (for (a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an)).toMap
     m.get _
   }
+
   private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Def.defaultSettings(inScope(GlobalScope)(ss))
 
@@ -229,7 +230,7 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
     Seq(
       internalConfigurationMap :== Configurations.internalMap _,
-      credentials :== Nil,
+      credentials :== SysProp.sbtCredentialsEnv.toList,
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
