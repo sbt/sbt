@@ -219,5 +219,5 @@ object SysProp {
   }
 
   val sbtCredentialsEnv: Option[Credentials] =
-    Option(System.getenv("SBT_CREDENTIALS")).map(raw => new FileCredentials(new File(raw)))
+    sys.env.get("SBT_CREDENTIALS").map(raw => new FileCredentials(new File(raw)))
 }

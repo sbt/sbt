@@ -54,7 +54,7 @@ object Util {
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
 
   lazy val isCygwin: Boolean = {
-    val os = Option(System.getenv("OSTYPE"))
+    val os = sys.env.get("OSTYPE")
     os match {
       case Some(x) => x.toLowerCase(Locale.ENGLISH).contains("cygwin")
       case _       => false
@@ -64,7 +64,7 @@ object Util {
   lazy val isNonCygwinWindows: Boolean = isWindows && !isCygwin
   lazy val isCygwinWindows: Boolean = isWindows && isCygwin
 
-  lazy val isEmacs: Boolean = Option(System.getenv("INSIDE_EMACS")).isDefined
+  lazy val isEmacs: Boolean = sys.env.contains("INSIDE_EMACS")
 
   def nil[A]: List[A] = List.empty[A]
   def nilSeq[A]: Seq[A] = Seq.empty[A]
