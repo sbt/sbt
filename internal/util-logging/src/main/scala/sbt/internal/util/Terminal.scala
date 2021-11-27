@@ -308,7 +308,7 @@ object Terminal {
   }
   private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
 
-  private[this] val isDumb = "dumb" == sys.env("TERM")
+  private[this] val isDumb = Some("dumb") == sys.env.get("TERM")
   private[this] def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
