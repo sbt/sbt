@@ -308,7 +308,7 @@ object Terminal {
   }
   private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
 
-  private[this] val isDumb = "dumb" == System.getenv("TERM")
+  private[this] val isDumb = Some("dumb") == sys.env.get("TERM")
   private[this] def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
   private[this] val hasConsole = Option(java.lang.System.console).isDefined
   private[this] def useColorDefault: Boolean = {
@@ -736,22 +736,20 @@ object Terminal {
       val supershell: Boolean
   )
   private[sbt] val TERMINAL_PROPS = "SBT_TERMINAL_PROPS"
-  private val props = System.getenv(TERMINAL_PROPS) match {
-    case null => None
-    case p =>
-      p.split(",") match {
-        case Array(width, height, ansi, color, supershell) =>
-          Try(
-            new Props(
-              width.toInt,
-              height.toInt,
-              ansi.toBoolean,
-              color.toBoolean,
-              supershell.toBoolean
-            )
-          ).toOption
-        case _ => None
-      }
+  private val props = sys.env.get(TERMINAL_PROPS) flatMap { p =>
+    p.split(",") match {
+      case Array(width, height, ansi, color, supershell) =>
+        Try(
+          new Props(
+            width.toInt,
+            height.toInt,
+            ansi.toBoolean,
+            color.toBoolean,
+            supershell.toBoolean
+          )
+        ).toOption
+      case _ => None
+    }
   }
   private[sbt] def startedByRemoteClient = props.isDefined
 
