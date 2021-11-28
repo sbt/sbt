@@ -50,6 +50,7 @@ set sbt_args_sbt_dir=
 set sbt_args_sbt_version=
 set sbt_args_mem=
 set sbt_args_client=
+set sbt_args_no_server=
 
 rem users can set SBT_OPTS via .sbtopts
 if exist .sbtopts for /F %%A in (.sbtopts) do (
@@ -202,6 +203,15 @@ if "%~0" == "--no-colors" set _no_colors_arg=true
 if defined _no_colors_arg (
   set _no_colors_arg=
   set sbt_args_no_colors=1
+  goto args_loop
+)
+
+if "%~0" == "-no-server" set _no_server_arg=true
+if "%~0" == "--no-server" set _no_server_arg=true
+
+if defined _no_server_arg (
+  set _no_server_arg=
+  set sbt_args_no_server=1
   goto args_loop
 )
 
@@ -644,6 +654,10 @@ if defined sbt_args_timings (
 
 if defined sbt_args_traces (
   set _SBT_OPTS=-Dsbt.traces=true !_SBT_OPTS!
+)
+
+if defined sbt_args_no_server (
+  set _SBT_OPTS=-Dsbt.io.virtual=false -Dsbt.server.autostart=false !_SBT_OPTS!
 )
 
 rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
