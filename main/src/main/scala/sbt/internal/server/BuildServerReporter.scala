@@ -80,11 +80,17 @@ final class BuildServerReporterImpl(
   private lazy val exchange = StandardMain.exchange
   private val problemsByFile = mutable.Map[Path, Vector[Diagnostic]]()
 
+  // sometimes the compiler returns a fake position such as <macro>
+  // on Windows, this causes InvalidPathException (see #5994 and #6720)
+  private def toSafePath(ref: VirtualFileRef): Option[Path] =
+    if (ref.id().contains("<")) None
+    else Some(converter.toPath(ref))
+
   override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
     for {
       (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
+      filePath <- toSafePath(source)
     } {
-      val filePath = converter.toPath(source)
       val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
       val params = PublishDiagnosticsParams(
         textDocument = TextDocumentIdentifier(filePath.toUri),
@@ -98,8 +104,10 @@ final class BuildServerReporterImpl(
   }
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
-    for (source <- sources) {
-      val filePath = converter.toPath(source)
+    for {
+      source <- sources
+      filePath <- toSafePath(source)
+    } {
       val diagnostics = problemsByFile.getOrElse(filePath, Vector())
       val params = PublishDiagnosticsParams(
         textDocument = TextDocumentIdentifier(filePath.toUri),
@@ -116,8 +124,8 @@ final class BuildServerReporterImpl(
     for {
       id <- problem.position.sourcePath.toOption
       diagnostic <- toDiagnostic(problem)
+      filePath <- toSafePath(VirtualFileRef.of(id))
     } {
-      val filePath = converter.toPath(VirtualFileRef.of(id))
       problemsByFile(filePath) = problemsByFile.getOrElse(filePath, Vector()) :+ diagnostic
       val params = PublishDiagnosticsParams(
         TextDocumentIdentifier(filePath.toUri),
