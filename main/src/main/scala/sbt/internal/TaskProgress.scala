@@ -70,8 +70,9 @@ private[sbt] class TaskProgress(
     pending.clear()
     scheduler.shutdownNow()
     executor.shutdownNow()
-    if (!executor.awaitTermination(1, TimeUnit.SECONDS) ||
-        !scheduler.awaitTermination(1, TimeUnit.SECONDS)) {
+    if (!executor.awaitTermination(30, TimeUnit.SECONDS) ||
+        !scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+      scala.Console.err.println("timed out closing the executor of supershell")
       throw new TimeoutException
     }
   }
