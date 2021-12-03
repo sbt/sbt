@@ -11,5 +11,6 @@ npm-debug.log
 .bloop
 .metals
 .bsp/
+.vscode/
 metals.sbt
 launcher-package/citest/freshly-baked

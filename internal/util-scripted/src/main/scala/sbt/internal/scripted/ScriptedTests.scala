@@ -25,8 +25,7 @@ object ScriptedRunnerImpl {
       tests: Array[String],
       handlersProvider: HandlersProvider
   ): Unit = {
-    val context =
-      LoggerContext(useLog4J = System.getProperty("sbt.log.uselog4j", "false") == "true")
+    val context = LoggerContext()
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, handlersProvider)
     val logger = newLogger(context)
     val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
