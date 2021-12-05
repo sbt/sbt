@@ -9,10 +9,9 @@ package sbt
 
 import java.io.File
 import java.lang.ProcessBuilder.Redirect
-
 import scala.sys.process.Process
 import OutputStrategy._
-import sbt.internal.util.Util
+import sbt.internal.util.{ RunningProcesses, Util }
 import Util.{ AnyOps, none }
 
 import java.lang.{ ProcessBuilder => JProcessBuilder }
@@ -31,7 +30,15 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
    * It is configured according to `config`.
    * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
    */
-  def apply(config: ForkOptions, arguments: Seq[String]): Int = fork(config, arguments).exitValue()
+  def apply(config: ForkOptions, arguments: Seq[String]): Int = {
+    val p = fork(config, arguments)
+    RunningProcesses.add(p)
+    try p.exitValue()
+    finally {
+      if (p.isAlive()) p.destroy()
+      RunningProcesses.remove(p)
+    }
+  }
 
   /**
    * Forks the configured process and returns a `Process` that can be used to wait for completion or to terminate the forked process.

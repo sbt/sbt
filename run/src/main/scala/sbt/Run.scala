@@ -10,7 +10,6 @@ package sbt
 import java.io.File
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPublic, isStatic }
-
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
 import sbt.internal.util.MessageOnlyException
@@ -34,29 +33,40 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
             s"""Nonzero exit code returned from $label: $exitCode""".stripMargin
           )
         )
-    val process = fork(mainClass, classpath, options, log)
-    def cancel() = {
-      log.warn("Run canceled.")
-      process.destroy()
-      1
+
+    log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
+    val c = configLogged(log)
+    val scalaOpts = scalaOptions(mainClass, classpath, options)
+    val exitCode = try Fork.java(c, scalaOpts)
+    catch {
+      case _: InterruptedException =>
+        log.warn("Run canceled.")
+        1
     }
-    val exitCode = try process.exitValue()
-    catch { case _: InterruptedException => cancel() }
     processExitCode(exitCode, "runner")
   }
 
   def fork(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Process = {
     log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
 
-    val scalaOptions = classpathOption(classpath) ::: mainClass :: options.toList
-    val configLogged =
-      if (config.outputStrategy.isDefined) config
-      else config.withOutputStrategy(OutputStrategy.LoggedOutput(log))
+    val c = configLogged(log)
+    val scalaOpts = scalaOptions(mainClass, classpath, options)
+
     // fork with Java because Scala introduces an extra class loader (#702)
-    Fork.java.fork(configLogged, scalaOptions)
+    Fork.java.fork(c, scalaOpts)
   }
-  private def classpathOption(classpath: Seq[File]) =
-    "-classpath" :: Path.makeString(classpath) :: Nil
+
+  private def configLogged(log: Logger): ForkOptions = {
+    if (config.outputStrategy.isDefined) config
+    else config.withOutputStrategy(OutputStrategy.LoggedOutput(log))
+  }
+
+  private def scalaOptions(
+      mainClass: String,
+      classpath: Seq[File],
+      options: Seq[String]
+  ): Seq[String] =
+    "-classpath" :: Path.makeString(classpath) :: mainClass :: options.toList
 }
 
 class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolean)
