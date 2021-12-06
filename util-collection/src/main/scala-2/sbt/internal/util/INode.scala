@@ -16,6 +16,7 @@ object EvaluationState extends Enumeration {
   val New, Blocked, Ready, Calling, Evaluated = Value
 }
 
+/*
 abstract class EvaluateSettings[ScopeType] {
   protected val init: Init[ScopeType]
   import init._
@@ -228,3 +229,4 @@ abstract class EvaluateSettings[ScopeType] {
     protected def evaluate0(): Unit = setValue(f(alist.transform(in, getValue)))
   }
 }
+ */

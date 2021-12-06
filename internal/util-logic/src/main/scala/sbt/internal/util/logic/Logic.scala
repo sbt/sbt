@@ -50,7 +50,7 @@ sealed abstract class Literal extends Formula {
   /** The underlying (positive) atom. */
   def atom: Atom
 
-  /** Negates this literal.*/
+  /** Negates this literal. */
   def unary_! : Literal
 
 }
@@ -62,24 +62,24 @@ final case class Atom(label: String) extends Literal {
 }
 
 /**
- * A negated atom, in the sense of negation as failure, not logical negation.
- * That is, it is true if `atom` is not known/defined.
+ * A negated atom, in the sense of negation as failure, not logical negation. That is, it is true if
+ * `atom` is not known/defined.
  */
 final case class Negated(atom: Atom) extends Literal {
   def unary_! : Atom = atom
 }
 
 /**
- * A formula consists of variables, negation, and conjunction (and).
- * (Disjunction is not currently included- it is modeled at the level of a sequence of clauses.
- *  This is less convenient when defining clauses, but is not less powerful.)
+ * A formula consists of variables, negation, and conjunction (and). (Disjunction is not currently
+ * included- it is modeled at the level of a sequence of clauses. This is less convenient when
+ * defining clauses, but is not less powerful.)
  */
 sealed abstract class Formula {
 
   /** Constructs a clause that proves `atoms` when this formula is true. */
   def proves(atom: Atom, atoms: Atom*): Clause = Clause(this, (atom +: atoms).toSet)
 
-  /** Constructs a formula that is true iff this formula and `f` are both true.*/
+  /** Constructs a formula that is true iff this formula and `f` are both true. */
   def &&(f: Formula): Formula = (this, f) match {
     case (True, x)                => x
     case (x, True)                => x
@@ -111,9 +111,9 @@ object Logic {
 
   /**
    * Computes the variables in the unique stable model for the program represented by `clauses` and
-   * `initialFacts`.  `clause` may not have any negative feedback (that is, negation is acyclic)
-   * and `initialFacts` cannot be in the head of any clauses in `clause`.
-   * These restrictions ensure that the logic program has a unique minimal model.
+   * `initialFacts`. `clause` may not have any negative feedback (that is, negation is acyclic) and
+   * `initialFacts` cannot be in the head of any clauses in `clause`. These restrictions ensure that
+   * the logic program has a unique minimal model.
    */
   def reduce(clauses: Clauses, initialFacts: Set[Literal]): Either[LogicException, Matched] = {
     val (posSeq, negSeq) = separate(initialFacts.toSeq)
@@ -130,10 +130,9 @@ object Logic {
   }
 
   /**
-   * Verifies `initialFacts` are not in the head of any `clauses`.
-   * This avoids the situation where an atom is proved but no clauses prove it.
-   * This isn't necessarily a problem, but the main sbt use cases expects
-   * a proven atom to have at least one clause satisfied.
+   * Verifies `initialFacts` are not in the head of any `clauses`. This avoids the situation where
+   * an atom is proved but no clauses prove it. This isn't necessarily a problem, but the main sbt
+   * use cases expects a proven atom to have at least one clause satisfied.
    */
   private[this] def checkOverlap(
       clauses: Clauses,
@@ -179,12 +178,11 @@ object Logic {
   }
 
   private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
-    clauses.clauses.foldLeft(Map.empty[Atom, Set[Literal]]) {
-      case (m, Clause(formula, heads)) =>
-        val deps = literals(formula)
-        heads.foldLeft(m) { (n, head) =>
-          n.updated(head, n.getOrElse(head, Set.empty) ++ deps)
-        }
+    clauses.clauses.foldLeft(Map.empty[Atom, Set[Literal]]) { case (m, Clause(formula, heads)) =>
+      val deps = literals(formula)
+      heads.foldLeft(m) { (n, head) =>
+        n.updated(head, n.getOrElse(head, Set.empty) ++ deps)
+      }
     }
 
   sealed abstract class LogicException(override val toString: String)
@@ -229,8 +227,8 @@ object Logic {
     }
 
   /**
-   * Finds clauses that have no body and thus prove their head.
-   * Returns `(<proven atoms>, <remaining unproven clauses>)`.
+   * Finds clauses that have no body and thus prove their head. Returns `(<proven atoms>, <remaining
+   * unproven clauses>)`.
    */
   private[this] def findProven(c: Clauses): (Set[Atom], List[Clause]) = {
     val (proven, unproven) = c.clauses.partition(_.body == True)
@@ -253,8 +251,7 @@ object Logic {
         val processedFacts = state add keepPositive(factsToProcess)
         val newlyProven = proven -- processedFacts.provenSet
         val newState = processedFacts add newlyProven
-        if (unprovenClauses.isEmpty)
-          newState // no remaining clauses, done.
+        if (unprovenClauses.isEmpty) newState // no remaining clauses, done.
         else {
           val unproven = Clauses(unprovenClauses)
           val nextFacts: Set[Literal] =
@@ -265,8 +262,8 @@ object Logic {
     }
 
   /**
-   * Finds negated atoms under the negation as failure rule and returns them.
-   * This should be called only after there are no more known atoms to be substituted.
+   * Finds negated atoms under the negation as failure rule and returns them. This should be called
+   * only after there are no more known atoms to be substituted.
    */
   private[this] def inferFailure(clauses: Clauses): Set[Literal] = {
     /* At this point, there is at least one clause and one of the following is the case as the
@@ -281,8 +278,7 @@ object Logic {
      */
     val allAtoms = atoms(clauses)
     val newFacts: Set[Literal] = negated(allAtoms.triviallyFalse)
-    if (newFacts.nonEmpty)
-      newFacts
+    if (newFacts.nonEmpty) newFacts
     else {
       val possiblyTrue = hasNegatedDependency(clauses.clauses, Relation.empty, Relation.empty)
       val newlyFalse: Set[Literal] = negated(allAtoms.inHead -- possiblyTrue)
@@ -296,10 +292,9 @@ object Logic {
   private[this] def negated(atoms: Set[Atom]): Set[Literal] = atoms.map(a => (Negated(a): Literal))
 
   /**
-   * Computes the set of atoms in `clauses` that directly or transitively take a negated atom as input.
-   * For example, for the following clauses, this method would return `List(a, d)` :
-   *  a :- b, not c
-   *  d :- a
+   * Computes the set of atoms in `clauses` that directly or transitively take a negated atom as
+   * input. For example, for the following clauses, this method would return `List(a, d)` : a :- b,
+   * not c d :- a
    */
   @tailrec
   def hasNegatedDependency(
@@ -315,9 +310,8 @@ object Logic {
       case Clause(formula, head) +: tail =>
         // collect direct positive and negative literals and track them in separate graphs
         val (pos, neg) = directDeps(formula)
-        val (newPos, newNeg) = head.foldLeft((posDeps, negDeps)) {
-          case ((pdeps, ndeps), d) =>
-            (pdeps.+(d, pos), ndeps.+(d, neg))
+        val (newPos, newNeg) = head.foldLeft((posDeps, negDeps)) { case ((pdeps, ndeps), d) =>
+          (pdeps.+(d, pos), ndeps.+(d, neg))
         }
         hasNegatedDependency(tail, newPos, newNeg)
     }
@@ -346,7 +340,9 @@ object Logic {
     case True         => Set()
   }
 
-  /** Represents the set of atoms in the heads of clauses and in the bodies (formulas) of clauses. */
+  /**
+   * Represents the set of atoms in the heads of clauses and in the bodies (formulas) of clauses.
+   */
   final case class Atoms(inHead: Set[Atom], inFormula: Set[Atom]) {
 
     /** Concatenates this with `as`. */
@@ -359,16 +355,16 @@ object Logic {
 
   /**
    * Applies known facts to `clause`s, deriving a new, possibly empty list of clauses.
-   * 1. If a fact is in the body of a clause, the derived clause has that fact removed from the body.
-   * 2. If the negation of a fact is in a body of a clause, that clause fails and is removed.
-   * 3. If a fact or its negation is in the head of a clause, the derived clause has that fact (or its negation) removed from the head.
-   * 4. If a head is empty, the clause proves nothing and is removed.
+   *   1. If a fact is in the body of a clause, the derived clause has that fact removed from the
+   *      body. 2. If the negation of a fact is in a body of a clause, that clause fails and is
+   *      removed. 3. If a fact or its negation is in the head of a clause, the derived clause has
+   *      that fact (or its negation) removed from the head. 4. If a head is empty, the clause
+   *      proves nothing and is removed.
    *
-   * NOTE: empty bodies do not cause a clause to succeed yet.
-   *       All known facts must be applied before this can be done in order to avoid inconsistencies.
-   * Precondition: no contradictions in `facts`
-   * Postcondition: no atom in `facts` is present in the result
-   * Postcondition: No clauses have an empty head
+   * NOTE: empty bodies do not cause a clause to succeed yet. All known facts must be applied before
+   * this can be done in order to avoid inconsistencies. Precondition: no contradictions in `facts`
+   * Postcondition: no atom in `facts` is present in the result Postcondition: No clauses have an
+   * empty head
    */
   def applyAll(cs: Clauses, facts: Set[Literal]): Option[Clauses] = {
     val newClauses =

@@ -14,8 +14,8 @@ import sbt.internal.util.Types.Id
 /**
  * The separate hierarchy from Applicative/Monad is for two reasons.
  *
- * 1. The type constructor is represented as an abstract type because a TypeTag cannot represent a type constructor directly.
- * 2. The applicative interface is uncurried.
+ *   1. The type constructor is represented as an abstract type because a TypeTag cannot represent a
+ *      type constructor directly. 2. The applicative interface is uncurried.
  */
 trait Instance {
   type M[x]
@@ -51,40 +51,41 @@ object Instance {
   def idTransform[C <: blackbox.Context with Singleton]: Transform[C, Id] = in => in
 
   /**
-   * Implementation of a macro that provides a direct syntax for applicative functors and monads.
-   * It is intended to be used in conjunction with another macro that conditions the inputs.
+   * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
+   * is intended to be used in conjunction with another macro that conditions the inputs.
    *
-   * This method processes the Tree `t` to find inputs of the form `wrap[T]( input )`
-   * This form is typically constructed by another macro that pretends to be able to get a value of type `T`
-   * from a value convertible to `M[T]`.  This `wrap(input)` form has two main purposes.
-   * First, it identifies the inputs that should be transformed.
-   * Second, it allows the input trees to be wrapped for later conversion into the appropriate `M[T]` type by `convert`.
-   * This wrapping is necessary because applying the first macro must preserve the original type,
-   * but it is useful to delay conversion until the outer, second macro is called.  The `wrap` method accomplishes this by
-   * allowing the original `Tree` and `Type` to be hidden behind the raw `T` type.  This method will remove the call to `wrap`
-   * so that it is not actually called at runtime.
+   * This method processes the Tree `t` to find inputs of the form `wrap[T]( input )` This form is
+   * typically constructed by another macro that pretends to be able to get a value of type `T` from
+   * a value convertible to `M[T]`. This `wrap(input)` form has two main purposes. First, it
+   * identifies the inputs that should be transformed. Second, it allows the input trees to be
+   * wrapped for later conversion into the appropriate `M[T]` type by `convert`. This wrapping is
+   * necessary because applying the first macro must preserve the original type, but it is useful to
+   * delay conversion until the outer, second macro is called. The `wrap` method accomplishes this
+   * by allowing the original `Tree` and `Type` to be hidden behind the raw `T` type. This method
+   * will remove the call to `wrap` so that it is not actually called at runtime.
    *
    * Each `input` in each expression of the form `wrap[T]( input )` is transformed by `convert`.
-   * This transformation converts the input Tree to a Tree of type `M[T]`.
-   * The original wrapped expression `wrap(input)` is replaced by a reference to a new local `val x: T`, where `x` is a fresh name.
-   * These converted inputs are passed to `builder` as well as the list of these synthetic `ValDef`s.
-   * The `TupleBuilder` instance constructs a tuple (Tree) from the inputs and defines the right hand side of the vals
-   * that unpacks the tuple containing the results of the inputs.
+   * This transformation converts the input Tree to a Tree of type `M[T]`. The original wrapped
+   * expression `wrap(input)` is replaced by a reference to a new local `val x: T`, where `x` is a
+   * fresh name. These converted inputs are passed to `builder` as well as the list of these
+   * synthetic `ValDef`s. The `TupleBuilder` instance constructs a tuple (Tree) from the inputs and
+   * defines the right hand side of the vals that unpacks the tuple containing the results of the
+   * inputs.
    *
-   * The constructed tuple of inputs and the code that unpacks the results of the inputs are then passed to the `i`,
-   * which is an implementation of `Instance` that is statically accessible.
-   * An Instance defines a applicative functor associated with a specific type constructor and, if it implements MonadInstance as well, a monad.
-   * Typically, it will be either a top-level module or a stable member of a top-level module (such as a val or a nested module).
-   * The `with Singleton` part of the type verifies some cases at macro compilation time,
-   *  while the full check for static accessibility is done at macro expansion time.
-   * Note: Ideally, the types would verify that `i: MonadInstance` when `t.isRight`.
-   * With the various dependent types involved, this is not worth it.
+   * The constructed tuple of inputs and the code that unpacks the results of the inputs are then
+   * passed to the `i`, which is an implementation of `Instance` that is statically accessible. An
+   * Instance defines a applicative functor associated with a specific type constructor and, if it
+   * implements MonadInstance as well, a monad. Typically, it will be either a top-level module or a
+   * stable member of a top-level module (such as a val or a nested module). The `with Singleton`
+   * part of the type verifies some cases at macro compilation time, while the full check for static
+   * accessibility is done at macro expansion time. Note: Ideally, the types would verify that `i:
+   * MonadInstance` when `t.isRight`. With the various dependent types involved, this is not worth
+   * it.
    *
-   * The `t` argument is the argument of the macro that will be transformed as described above.
-   * If the macro that calls this method is for a multi-input map (app followed by map),
-   * `t` should be the argument wrapped in Left.
-   * If this is for multi-input flatMap (app followed by flatMap),
-   *  this should be the argument wrapped in Right.
+   * The `t` argument is the argument of the macro that will be transformed as described above. If
+   * the macro that calls this method is for a multi-input map (app followed by map), `t` should be
+   * the argument wrapped in Left. If this is for multi-input flatMap (app followed by flatMap),
+   * this should be the argument wrapped in Right.
    */
   def contImpl[T, N[_]](
       c: blackbox.Context,
@@ -95,8 +96,8 @@ object Instance {
   )(
       t: Either[c.Expr[T], c.Expr[i.M[T]]],
       inner: Transform[c.type, N]
-  )(
-      implicit tt: c.WeakTypeTag[T],
+  )(implicit
+      tt: c.WeakTypeTag[T],
       nt: c.WeakTypeTag[N[T]],
       it: c.TypeTag[i.type]
   ): c.Expr[i.M[N[T]]] = {

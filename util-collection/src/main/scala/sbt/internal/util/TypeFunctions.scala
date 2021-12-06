@@ -7,6 +7,7 @@
 
 package sbt.internal.util
 
+/*
 trait TypeFunctions {
   import TypeFunctions._
   type Id[X] = X
@@ -54,7 +55,9 @@ object TypeFunctions extends TypeFunctions {
     }
   }
 }
+ */
 
+/*
 trait ~>[-A[_], +B[_]] { outer =>
   def apply[T](a: A[T]): B[T]
   // directly on ~> because of type inference limitations
@@ -68,3 +71,4 @@ object ~> {
   val Id: Id ~> Id = idK[Id]
   implicit def tcIdEquals: Id ~> Id = Id
 }
+ */

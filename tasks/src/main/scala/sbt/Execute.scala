@@ -65,12 +65,11 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   private[this] val viewCache = pMap[F, Node[F, *]]
   private[this] val results = pMap[F, Result]
 
-  private[this] val getResult: F ~> Result = λ[F ~> Result](
-    a =>
-      view.inline(a) match {
-        case Some(v) => Value(v())
-        case None    => results(a)
-      }
+  private[this] val getResult: F ~> Result = λ[F ~> Result](a =>
+    view.inline(a) match {
+      case Some(v) => Value(v())
+      case None    => results(a)
+    }
   )
   private[this] type State = State.Value
   private[this] object State extends Enumeration {
@@ -149,8 +148,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     }
 
     post {
-      if (done(target))
-        assert(done(node))
+      if (done(target)) assert(done(node))
       else {
         assert(calling(node))
         assert(callers(target) contains node)
@@ -203,9 +201,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   /**
-   * Ensures the given node has been added to the system.
-   * Once added, a node is pending until its inputs and dependencies have completed.
-   * Its computation is then evaluated and made available for nodes that have it as an input.
+   * Ensures the given node has been added to the system. Once added, a node is pending until its
+   * inputs and dependencies have completed. Its computation is then evaluated and made available
+   * for nodes that have it as an input.
    */
   def addChecked[A](node: F[A])(implicit strategy: Strategy): Unit = {
     if (!added(node)) addNew(node)
@@ -214,9 +212,9 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   /**
-   * Adds a node that has not yet been registered with the system.
-   * If all of the node's dependencies have finished, the node's computation is scheduled to run.
-   * The node's dependencies will be added (transitively) if they are not already registered.
+   * Adds a node that has not yet been registered with the system. If all of the node's dependencies
+   * have finished, the node's computation is scheduled to run. The node's dependencies will be
+   * added (transitively) if they are not already registered.
    */
   def addNew[A](node: F[A])(implicit strategy: Strategy): Unit = {
     pre { newPre(node) }
@@ -231,8 +229,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
       /* active is mutable, so take a snapshot */
     )
 
-    if (active.isEmpty)
-      ready(node)
+    if (active.isEmpty) ready(node)
     else {
       forward(node) = active
       for (a <- active) {
@@ -249,7 +246,10 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     }
   }
 
-  /** Called when a pending 'node' becomes runnable.  All of its dependencies must be done.  This schedules the node's computation with 'strategy'.*/
+  /**
+   * Called when a pending 'node' becomes runnable. All of its dependencies must be done. This
+   * schedules the node's computation with 'strategy'.
+   */
   def ready[A](node: F[A])(implicit strategy: Strategy): Unit = {
     pre {
       assert(pending(node))
@@ -283,8 +283,8 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   /**
-   * Evaluates the computation 'f' for 'node'.
-   * This returns a Completed instance, which contains the post-processing to perform after the result is retrieved from the Strategy.
+   * Evaluates the computation 'f' for 'node'. This returns a Completed instance, which contains the
+   * post-processing to perform after the result is retrieved from the Strategy.
    */
   def work[A](node: F[A], f: => Either[F[A], A])(implicit strategy: Strategy): Completed = {
     progress.beforeWork(node)

@@ -13,8 +13,8 @@ import scala.reflect._
 import macros._
 
 /**
- * A builder that uses a TupleN as the tuple representation.
- * It is limited to tuples of size 2 to `MaxInputs`.
+ * A builder that uses a TupleN as the tuple representation. It is limited to tuples of size 2 to
+ * `MaxInputs`.
  */
 object TupleNBuilder extends TupleBuilder {
 
@@ -35,8 +35,8 @@ object TupleNBuilder extends TupleBuilder {
       val ctx: c.type = c
       val representationC: PolyType = {
         val tcVariable: Symbol = newTCVariable(util.initialOwner)
-        val tupleTypeArgs = inputs.map(
-          in => internal.typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type]
+        val tupleTypeArgs = inputs.map(in =>
+          internal.typeRef(NoPrefix, tcVariable, in.tpe :: Nil).asInstanceOf[global.Type]
         )
         val tuple = global.definitions.tupleType(tupleTypeArgs)
         internal.polyType(tcVariable :: Nil, tuple.asInstanceOf[Type])

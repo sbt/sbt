@@ -11,9 +11,8 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.sys.process.Process
 
 /**
- * Manages forked processes created by sbt. Any process registered
- * with RunningProcesses can be killed with the killAll method. In
- * particular, this can be used in a signal handler to kill these
+ * Manages forked processes created by sbt. Any process registered with RunningProcesses can be
+ * killed with the killAll method. In particular, this can be used in a signal handler to kill these
  * processes when the user inputs ctrl+c.
  */
 private[sbt] object RunningProcesses {

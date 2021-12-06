@@ -36,8 +36,7 @@ object ErrorHandling {
     if (e.getClass == classOf[RuntimeException]) {
       val msg = e.getMessage
       if (msg == null || msg.isEmpty) e.toString else msg
-    } else
-      e.toString
+    } else e.toString
 }
 
 sealed class TranslatedException private[sbt] (msg: String, cause: Throwable)

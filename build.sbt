@@ -180,8 +180,8 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-// .enablePlugins(ScriptedPlugin)
-  .aggregate(nonRoots: _*)
+// .aggregate(nonRoots: _*)
+  .aggregate(collectionProj)
   .settings(
     minimalSettings,
     onLoadMessage := {
@@ -256,49 +256,20 @@ lazy val bundledLauncherProj =
 
 /* ** subproject declarations ** */
 
-val collectionProj = (project in file("internal") / "util-collection")
+val collectionProj = (project in file("util-collection"))
+  .dependsOn(utilPosition)
   .settings(
+    name := "Collections",
     testedBaseSettings,
     utilCommonSettings,
     Util.keywordsSettings,
-    name := "Collections",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, major)) if major <= 12 => Seq()
-      case _                               => Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0")
+      case _                               => Seq(scalaPar)
     }),
     mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // Added private[sbt] method to capture State attributes.
-      exclude[ReversedMissingMethodProblem]("sbt.internal.util.AttributeMap.setCond"),
-      // Dropped in favour of kind-projector's inline type lambda syntax
-      exclude[MissingClassProblem]("sbt.internal.util.TypeFunctions$P1of2"),
-      // Dropped in favour of kind-projector's polymorphic lambda literals
-      exclude[MissingClassProblem]("sbt.internal.util.Param"),
-      exclude[MissingClassProblem]("sbt.internal.util.Param$"),
-      // Dropped in favour of plain scala.Function, and its compose method
-      exclude[MissingClassProblem]("sbt.internal.util.Fn1"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.util.TypeFunctions.toFn1"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.util.Types.toFn1"),
-      // Instead of defining foldr in KList & overriding in KCons,
-      // it's now abstract in KList and defined in both KCons & KNil.
-      exclude[FinalMethodProblem]("sbt.internal.util.KNil.foldr"),
-      exclude[DirectAbstractMethodProblem]("sbt.internal.util.KList.foldr"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Init*.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings0.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#INode.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.TypeFunctions.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Settings.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#MixedNode.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.EvaluateSettings#BindNode.this"),
-      exclude[IncompatibleSignatureProblem](
-        "sbt.internal.util.EvaluateSettings#BindNode.dependsOn"
-      ),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.util.Types.some")
-    ),
   )
-  .dependsOn(utilPosition)
 
 // Command line-related utilities.
 val completeProj = (project in file("internal") / "util-complete")

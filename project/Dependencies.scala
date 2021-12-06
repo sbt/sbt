@@ -6,8 +6,9 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.17"
   val scala213 = "2.13.8"
+  val scala3 = "3.1.0"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
-  val baseScalaVersion = scala212
+  val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
@@ -79,8 +80,11 @@ object Dependencies {
 
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.13"
 
-  def sjsonNew(n: String) =
-    Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
+  lazy val sjsonNewVersion = "0.9.1"
+  def sjsonNew(n: String) = Def.setting(
+    if (scalaBinaryVersion.value == "3") "com.eed3si9n" % (n + "_2.13") % sjsonNewVersion
+    else "com.eed3si9n" %% n % "0.9.1"
+  ) // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
@@ -121,7 +125,7 @@ object Dependencies {
       "org.scala-lang" % "scala-reflect" % scalaVersion.value
     }
   )
-  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"

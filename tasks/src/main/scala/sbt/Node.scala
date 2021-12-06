@@ -12,8 +12,10 @@ import sbt.internal.util.AList
 /**
  * Represents a task node in a format understood by the task evaluation engine Execute.
  *
- * @tparam A the task type constructor
- * @tparam T the type computed by this node
+ * @tparam A
+ *   the task type constructor
+ * @tparam T
+ *   the type computed by this node
  */
 trait Node[A[_], T] {
   type K[L[x]]

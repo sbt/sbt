@@ -18,16 +18,17 @@ object ContextUtil {
 
   /**
    * Constructs an object with utility methods for operating in the provided macro context `c`.
-   * Callers should explicitly specify the type parameter as `c.type` in order to preserve the path dependent types.
+   * Callers should explicitly specify the type parameter as `c.type` in order to preserve the path
+   * dependent types.
    */
   def apply[C <: blackbox.Context with Singleton](c: C): ContextUtil[C] = new ContextUtil(c: C)
 
   /**
-   * Helper for implementing a no-argument macro that is introduced via an implicit.
-   * This method removes the implicit conversion and evaluates the function `f` on the target of the conversion.
+   * Helper for implementing a no-argument macro that is introduced via an implicit. This method
+   * removes the implicit conversion and evaluates the function `f` on the target of the conversion.
    *
-   * Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro that uses this
-   * method, the result of this method is `f(<Tree of someValue>)`.
+   * Given `myImplicitConversion(someValue).extensionMethod`, where `extensionMethod` is a macro
+   * that uses this method, the result of this method is `f(<Tree of someValue>)`.
    */
   def selectMacroImpl[T: c.WeakTypeTag](
       c: blackbox.Context
@@ -46,10 +47,9 @@ object ContextUtil {
 }
 
 /**
- * Utility methods for macros.  Several methods assume that the context's universe is a full compiler
- * (`scala.tools.nsc.Global`).
- * This is not thread safe due to the underlying Context and related data structures not being thread safe.
- * Use `ContextUtil[c.type](c)` to construct.
+ * Utility methods for macros. Several methods assume that the context's universe is a full compiler
+ * (`scala.tools.nsc.Global`). This is not thread safe due to the underlying Context and related
+ * data structures not being thread safe. Use `ContextUtil[c.type](c)` to construct.
  */
 final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   import ctx.universe.{ Apply => ApplyTree, _ }
@@ -64,20 +64,20 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   lazy val alist: Symbol = alistType.typeSymbol.companion
   lazy val alistTC: Type = alistType.typeConstructor
 
-  /** Modifiers for a local val.*/
+  /** Modifiers for a local val. */
   lazy val localModifiers = Modifiers(NoFlags)
 
   def getPos(sym: Symbol) = if (sym eq null) NoPosition else sym.pos
 
   /**
-   * Constructs a unique term name with the given prefix within this Context.
-   * (The current implementation uses Context.freshName, which increments
+   * Constructs a unique term name with the given prefix within this Context. (The current
+   * implementation uses Context.freshName, which increments
    */
   def freshTermName(prefix: String) = TermName(ctx.freshName("$" + prefix))
 
   /**
-   * Constructs a new, synthetic, local ValDef Type `tpe`, a unique name,
-   * Position `pos`, an empty implementation (no rhs), and owned by `owner`.
+   * Constructs a new, synthetic, local ValDef Type `tpe`, a unique name, Position `pos`, an empty
+   * implementation (no rhs), and owned by `owner`.
    */
   def freshValDef(tpe: Type, pos: Position, owner: Symbol): ValDef = {
     val SYNTHETIC = (1 << 21).toLong.asInstanceOf[FlagSet]
@@ -91,8 +91,8 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   lazy val parameterModifiers = Modifiers(Flag.PARAM)
 
   /**
-   * Collects all definitions in the tree for use in checkReferences.
-   * This excludes definitions in wrapped expressions because checkReferences won't allow nested dereferencing anyway.
+   * Collects all definitions in the tree for use in checkReferences. This excludes definitions in
+   * wrapped expressions because checkReferences won't allow nested dereferencing anyway.
    */
   def collectDefs(
       tree: Tree,
@@ -119,8 +119,8 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   }
 
   /**
-   * A reference is illegal if it is to an M instance defined within the scope of the macro call.
-   * As an approximation, disallow referenced to any local definitions `defs`.
+   * A reference is illegal if it is to an M instance defined within the scope of the macro call. As
+   * an approximation, disallow referenced to any local definitions `defs`.
    */
   def illegalReference(defs: collection.Set[Symbol], sym: Symbol, mType: Type): Boolean =
     sym != null && sym != NoSymbol && defs.contains(sym) && {
@@ -131,8 +131,8 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
     }
 
   /**
-   * A reference is illegal if it is to an M instance defined within the scope of the macro call.
-   * As an approximation, disallow referenced to any local definitions `defs`.
+   * A reference is illegal if it is to an M instance defined within the scope of the macro call. As
+   * an approximation, disallow referenced to any local definitions `defs`.
    */
   def illegalReference(defs: collection.Set[Symbol], sym: Symbol): Boolean =
     illegalReference(defs, sym, weakTypeOf[Any])
@@ -141,7 +141,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
 
   /**
    * A function that checks the provided tree for illegal references to M instances defined in the
-   *  expression passed to the macro and for illegal dereferencing of M instances.
+   * expression passed to the macro and for illegal dereferencing of M instances.
    */
   def checkReferences(
       defs: collection.Set[Symbol],
@@ -160,12 +160,15 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   @deprecated("Use that variant that specifies the M instance types to exclude", since = "1.3.0")
   /**
    * A function that checks the provided tree for illegal references to M instances defined in the
-   *  expression passed to the macro and for illegal dereferencing of M instances.
+   * expression passed to the macro and for illegal dereferencing of M instances.
    */
   def checkReferences(defs: collection.Set[Symbol], isWrapper: PropertyChecker): Tree => Unit =
     checkReferences(defs, isWrapper, weakTypeOf[Any])
 
-  /** Constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with an empty rhs. */
+  /**
+   * Constructs a ValDef with a parameter modifier, a unique name, with the provided Type and with
+   * an empty rhs.
+   */
   def freshMethodParameter(tpe: Type): ValDef =
     ValDef(parameterModifiers, freshTermName("p"), TypeTree(tpe), EmptyTree)
 
@@ -173,7 +176,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   def localValDef(tpt: Tree, rhs: Tree): ValDef =
     ValDef(localModifiers, freshTermName("q"), tpt, rhs)
 
-  /** Constructs a tuple value of the right TupleN type from the provided inputs.*/
+  /** Constructs a tuple value of the right TupleN type from the provided inputs. */
   def mkTuple(args: List[Tree]): Tree =
     global.gen.mkTuple(args.asInstanceOf[List[global.Tree]]).asInstanceOf[ctx.universe.Tree]
 
@@ -202,7 +205,10 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   /** A Type that references the given type variable. */
   def refVar(variable: TypeSymbol): Type = variable.toTypeConstructor
 
-  /** Constructs a new, synthetic type variable that is a type constructor. For example, in type Y[L[x]], L is such a type variable. */
+  /**
+   * Constructs a new, synthetic type variable that is a type constructor. For example, in type
+   * Y[L[x]], L is such a type variable.
+   */
   def newTCVariable(owner: Symbol): TypeSymbol = {
     val tc = newTypeVariable(owner)
     val arg = newTypeVariable(tc, "x");
@@ -226,11 +232,17 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
     tpe.asInstanceOf[Type]
   }
 
-  /** Create a Tree that references the `val` represented by `vd`, copying attributes from `replaced`. */
+  /**
+   * Create a Tree that references the `val` represented by `vd`, copying attributes from
+   * `replaced`.
+   */
   def refVal(replaced: Tree, vd: ValDef): Tree =
     treeCopy.Ident(replaced, vd.name).setSymbol(vd.symbol)
 
-  /** Creates a Function tree using `functionSym` as the Symbol and changing `initialOwner` to `functionSym` in `body`.*/
+  /**
+   * Creates a Function tree using `functionSym` as the Symbol and changing `initialOwner` to
+   * `functionSym` in `body`.
+   */
   def createFunction(params: List[ValDef], body: Tree, functionSym: Symbol): Tree = {
     changeOwner(body, initialOwner, functionSym)
     val f = Function(params, body)
@@ -262,7 +274,7 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   def singleton[T <: AnyRef with Singleton](i: T)(implicit it: ctx.TypeTag[i.type]): Symbol =
     it.tpe match {
       case SingleType(_, sym) if !sym.isFreeTerm && sym.isStatic => sym
-      case x                                                     => sys.error("Instance must be static (was " + x + ").")
+      case x => sys.error("Instance must be static (was " + x + ").")
     }
 
   def select(t: Tree, name: String): Tree = Select(t, TermName(name))
@@ -275,12 +287,12 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   }
 
   /**
-   * Returns a Type representing the type constructor tcp.<name>.  For example, given
-   *  `object Demo { type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing
-   * the type constructor `[x] List[x]`.
+   * Returns a Type representing the type constructor tcp.<name>. For example, given `object Demo {
+   * type M[x] = List[x] }`, the call `extractTC(Demo, "M")` will return a type representing the
+   * type constructor `[x] List[x]`.
    */
-  def extractTC(tcp: AnyRef with Singleton, name: String)(
-      implicit it: ctx.TypeTag[tcp.type]
+  def extractTC(tcp: AnyRef with Singleton, name: String)(implicit
+      it: ctx.TypeTag[tcp.type]
   ): ctx.Type = {
     val itTpe = it.tpe.asInstanceOf[global.Type]
     val m = itTpe.nonPrivateMember(global.newTypeName(name))
@@ -290,10 +302,10 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
   }
 
   /**
-   * Substitutes wrappers in tree `t` with the result of `subWrapper`.
-   * A wrapper is a Tree of the form `f[T](v)` for which isWrapper(<Tree of f>, <Underlying Type>, <qual>.target) returns true.
-   * Typically, `f` is a `Select` or `Ident`.
-   * The wrapper is replaced with the result of `subWrapper(<Type of T>, <Tree of v>, <wrapper Tree>)`
+   * Substitutes wrappers in tree `t` with the result of `subWrapper`. A wrapper is a Tree of the
+   * form `f[T](v)` for which isWrapper(<Tree of f>, <Underlying Type>, <qual>.target) returns true.
+   * Typically, `f` is a `Select` or `Ident`. The wrapper is replaced with the result of
+   * `subWrapper(<Type of T>, <Tree of v>, <wrapper Tree>)`
    */
   def transformWrappers(
       t: Tree,
@@ -307,7 +319,11 @@ final class ContextUtil[C <: blackbox.Context](val ctx: C) {
           case ApplyTree(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) =>
             subWrapper(nme.decodedName.toString, targ.tpe, qual, tree) match {
               case Converted.Success(t, finalTx) =>
-                changeOwner(qual, currentOwner, initialOwner) // Fixes https://github.com/sbt/sbt/issues/1150
+                changeOwner(
+                  qual,
+                  currentOwner,
+                  initialOwner
+                ) // Fixes https://github.com/sbt/sbt/issues/1150
                 finalTx(t)
               case Converted.Failure(p, m)       => ctx.abort(p, m)
               case _: Converted.NotApplicable[_] => super.transform(tree)

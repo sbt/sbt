@@ -32,8 +32,8 @@ object Signals {
   }
 
   /**
-   * Register a signal handler that can be removed later.
-   * NOTE: Does not stack with other signal handlers!!!!
+   * Register a signal handler that can be removed later. NOTE: Does not stack with other signal
+   * handlers!!!!
    */
   def register(handler: () => Unit, signal: String = INT): Registration =
     // TODO - Maybe we can just ignore things if not is-supported.
@@ -90,7 +90,8 @@ private final class Signals0 {
     val oldHandler = Signal.handle(intSignal, newHandler)
 
     try Right(action())
-    catch { case e: LinkageError => Left(e) } finally {
+    catch { case e: LinkageError => Left(e) }
+    finally {
       Signal.handle(intSignal, oldHandler); ()
     }
   }

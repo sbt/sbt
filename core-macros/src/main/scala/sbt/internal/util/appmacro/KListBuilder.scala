@@ -11,7 +11,7 @@ package appmacro
 import scala.reflect._
 import macros._
 
-/** A `TupleBuilder` that uses a KList as the tuple representation.*/
+/** A `TupleBuilder` that uses a KList as the tuple representation. */
 object KListBuilder extends TupleBuilder {
   def make(
       c: blackbox.Context
@@ -29,7 +29,7 @@ object KListBuilder extends TupleBuilder {
       val mTC: Type = mt.asInstanceOf[c.universe.Type]
       val kconsTC: Type = kconsTpe.typeConstructor
 
-      /** This is the L in the type function [L[x]] ...  */
+      /** This is the L in the type function [L[x]] ... */
       val tcVariable: TypeSymbol = newTCVariable(util.initialOwner)
 
       /** Instantiates KCons[h, t <: KList[L], L], where L is the type constructor variable */
@@ -70,8 +70,8 @@ object KListBuilder extends TupleBuilder {
       val klist = makeKList(inputs.reverse, knil, knilType)
 
       /**
-       * The input types combined in a KList type.  The main concern is tracking the heterogeneous types.
-       * The type constructor is tcVariable, so that it can be applied to [X] X or M later.
+       * The input types combined in a KList type. The main concern is tracking the heterogeneous
+       * types. The type constructor is tcVariable, so that it can be applied to [X] X or M later.
        * When applied to `M`, this type gives the type of the `input` KList.
        */
       val klistType: Type = inputs.foldRight(knilType)((in, klist) => kconsType(in.tpe, klist))

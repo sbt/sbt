@@ -83,8 +83,8 @@ object Dag {
   private[sbt] trait DirectedSignedGraph[Node] {
 
     /**
-     * Directed edge type that tracks the sign and target (head) vertex.
-     * The sign can be obtained via [[isNegative]] and the target vertex via [[head]].
+     * Directed edge type that tracks the sign and target (head) vertex. The sign can be obtained
+     * via [[isNegative]] and the target vertex via [[head]].
      */
     type Arrow
 
@@ -103,10 +103,10 @@ object Dag {
   }
 
   /**
-   * Traverses a directed graph defined by `graph` looking for a cycle that includes a "negative" edge.
-   * The directed edges are weighted by the caller as "positive" or "negative".
-   * If a cycle containing a "negative" edge is detected, its member edges are returned in order.
-   * Otherwise, the empty list is returned.
+   * Traverses a directed graph defined by `graph` looking for a cycle that includes a "negative"
+   * edge. The directed edges are weighted by the caller as "positive" or "negative". If a cycle
+   * containing a "negative" edge is detected, its member edges are returned in order. Otherwise,
+   * the empty list is returned.
    */
   private[sbt] def findNegativeCycle[Node](graph: DirectedSignedGraph[Node]): List[graph.Arrow] = {
     import graph._
@@ -132,8 +132,7 @@ object Dag {
             between
           else
             visit(tail, stack)
-        } else
-          visit(tail, stack)
+        } else visit(tail, stack)
     }
 
     visit(graph.nodes, Nil)

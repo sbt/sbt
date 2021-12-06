@@ -9,7 +9,7 @@ package sbt.internal.util
 
 import scala.collection.JavaConverters._
 
-/** A mutable set interface that uses object identity to test for set membership.*/
+/** A mutable set interface that uses object identity to test for set membership. */
 trait IDSet[T] {
   def apply(t: T): Boolean
   def contains(t: T): Boolean

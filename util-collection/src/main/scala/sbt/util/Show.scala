@@ -7,11 +7,12 @@
 
 package sbt.util
 
-trait Show[A] {
+trait Show[A]:
   def show(a: A): String
-}
-object Show {
+end Show
+
+object Show:
   def apply[A](f: A => String): Show[A] = a => f(a)
 
   def fromToString[A]: Show[A] = _.toString
-}
+end Show

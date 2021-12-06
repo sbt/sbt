@@ -16,8 +16,8 @@ import sbt.util.OptJsonWriter
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 
 /**
- * A key in an [[AttributeMap]] that constrains its associated value to be of type `T`.
- * The key is uniquely defined by its `label` and type `T`, represented at runtime by `manifest`.
+ * A key in an [[AttributeMap]] that constrains its associated value to be of type `T`. The key is
+ * uniquely defined by its `label` and type `T`, represented at runtime by `manifest`.
  */
 sealed trait AttributeKey[T] {
 
@@ -32,18 +32,19 @@ sealed trait AttributeKey[T] {
 
   /**
    * In environments that support delegation, looking up this key when it has no associated value
-   * will delegate to the values associated with these keys.
-   * The delegation proceeds in order the keys are returned here.
+   * will delegate to the values associated with these keys. The delegation proceeds in order the
+   * keys are returned here.
    */
   def extend: Seq[AttributeKey[_]]
 
   /**
-   * Specifies whether this key is a local, anonymous key (`true`) or not (`false`).
-   * This is typically only used for programmatic, intermediate keys that should not be referenced outside of a specific scope.
+   * Specifies whether this key is a local, anonymous key (`true`) or not (`false`). This is
+   * typically only used for programmatic, intermediate keys that should not be referenced outside
+   * of a specific scope.
    */
   def isLocal: Boolean
 
-  /** Identifies the relative importance of a key among other keys.*/
+  /** Identifies the relative importance of a key among other keys. */
   def rank: Int
 
   def optJsonWriter: OptJsonWriter[T]
@@ -133,60 +134,73 @@ object AttributeKey {
 }
 
 /**
- * An immutable map where a key is the tuple `(String,T)` for a fixed type `T` and can only be associated with values of type `T`.
- * It is therefore possible for this map to contain mappings for keys with the same label but different types.
- * Excluding this possibility is the responsibility of the client if desired.
+ * An immutable map where a key is the tuple `(String,T)` for a fixed type `T` and can only be
+ * associated with values of type `T`. It is therefore possible for this map to contain mappings for
+ * keys with the same label but different types. Excluding this possibility is the responsibility of
+ * the client if desired.
  */
 trait AttributeMap {
 
   /**
-   * Gets the value of type `T` associated with the key `k`.
-   * If a key with the same label but different type is defined, this method will fail.
+   * Gets the value of type `T` associated with the key `k`. If a key with the same label but
+   * different type is defined, this method will fail.
    */
   def apply[T](k: AttributeKey[T]): T
 
   /**
-   * Gets the value of type `T` associated with the key `k` or `None` if no value is associated.
-   * If a key with the same label but a different type is defined, this method will return `None`.
+   * Gets the value of type `T` associated with the key `k` or `None` if no value is associated. If
+   * a key with the same label but a different type is defined, this method will return `None`.
    */
   def get[T](k: AttributeKey[T]): Option[T]
 
   /**
-   * Returns this map without the mapping for `k`.
-   * This method will not remove a mapping for a key with the same label but a different type.
+   * Returns this map without the mapping for `k`. This method will not remove a mapping for a key
+   * with the same label but a different type.
    */
   def remove[T](k: AttributeKey[T]): AttributeMap
 
   /**
-   * Returns true if this map contains a mapping for `k`.
-   * If a key with the same label but a different type is defined in this map, this method will return `false`.
+   * Returns true if this map contains a mapping for `k`. If a key with the same label but a
+   * different type is defined in this map, this method will return `false`.
    */
   def contains[T](k: AttributeKey[T]): Boolean
 
   /**
-   * Adds the mapping `k -> value` to this map, replacing any existing mapping for `k`.
-   * Any mappings for keys with the same label but different types are unaffected.
+   * Adds the mapping `k -> value` to this map, replacing any existing mapping for `k`. Any mappings
+   * for keys with the same label but different types are unaffected.
    */
   def put[T](k: AttributeKey[T], value: T): AttributeMap
 
-  /** All keys with defined mappings.  There may be multiple keys with the same `label`, but different types. */
+  /**
+   * All keys with defined mappings. There may be multiple keys with the same `label`, but different
+   * types.
+   */
   def keys: Iterable[AttributeKey[_]]
 
-  /** Adds the mappings in `o` to this map, with mappings in `o` taking precedence over existing mappings.*/
+  /**
+   * Adds the mappings in `o` to this map, with mappings in `o` taking precedence over existing
+   * mappings.
+   */
   def ++(o: Iterable[AttributeEntry[_]]): AttributeMap
 
-  /** Combines the mappings in `o` with the mappings in this map, with mappings in `o` taking precedence over existing mappings.*/
+  /**
+   * Combines the mappings in `o` with the mappings in this map, with mappings in `o` taking
+   * precedence over existing mappings.
+   */
   def ++(o: AttributeMap): AttributeMap
 
-  /** All mappings in this map.  The [[AttributeEntry]] type preserves the typesafety of mappings, although the specific types are unknown.*/
+  /**
+   * All mappings in this map. The [[AttributeEntry]] type preserves the typesafety of mappings,
+   * although the specific types are unknown.
+   */
   def entries: Iterable[AttributeEntry[_]]
 
   /** `true` if there are no mappings in this map, `false` if there are. */
   def isEmpty: Boolean
 
   /**
-   * Adds the mapping `k -> opt.get` if opt is Some.
-   * Otherwise, it returns this map without the mapping for `k`.
+   * Adds the mapping `k -> opt.get` if opt is Some. Otherwise, it returns this map without the
+   * mapping for `k`.
    */
   private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap
 }
@@ -199,11 +213,11 @@ object AttributeMap {
   /** Constructs an [[AttributeMap]] containing the given `entries`. */
   def apply(entries: Iterable[AttributeEntry[_]]): AttributeMap = empty ++ entries
 
-  /** Constructs an [[AttributeMap]] containing the given `entries`.*/
+  /** Constructs an [[AttributeMap]] containing the given `entries`. */
   def apply(entries: AttributeEntry[_]*): AttributeMap = empty ++ entries
 
   /** Presents an `AttributeMap` as a natural transformation. */
-  implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = λ[AttributeKey ~> Id](map(_))
+  // implicit def toNatTrans(map: AttributeMap): AttributeKey ~> Id = λ[AttributeKey ~> Id](map(_))
 }
 
 private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
@@ -230,8 +244,8 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
   }
 
   def entries: Iterable[AttributeEntry[_]] =
-    backing.collect {
-      case (k: AttributeKey[kt], v) => AttributeEntry(k, v.asInstanceOf[kt])
+    backing.collect { case (k: AttributeKey[kt], v) =>
+      AttributeEntry(k, v.asInstanceOf[kt])
     }
 
   private[sbt] def setCond[T](k: AttributeKey[T], opt: Option[T]): AttributeMap =
@@ -269,7 +283,7 @@ object Attributed {
   /** Extracts the underlying data from the sequence `in`. */
   def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
-  /** Associates empty metadata maps with each entry of `in`.*/
+  /** Associates empty metadata maps with each entry of `in`. */
   def blankSeq[T](in: Seq[T]): Seq[Attributed[T]] = in map blank
 
   /** Associates an empty metadata map with `data`. */
