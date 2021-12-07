@@ -139,7 +139,7 @@ class NetworkClient(
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
-    System.getenv("SBTC_AUTO_COMPLETE") == null
+    !sys.env.contains("SBTC_AUTO_COMPLETE")
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 

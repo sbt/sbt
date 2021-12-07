@@ -15,8 +15,9 @@ import scala.util.control.NonFatal
 import scala.concurrent.duration._
 import sbt.internal.util.{ Terminal => ITerminal, Util }
 import sbt.internal.util.complete.SizeParser
-import sbt.nio.Keys._
 import sbt.io.syntax._
+import sbt.librarymanagement.ivy.{ Credentials, FileCredentials }
+import sbt.nio.Keys._
 
 // See also BuildPaths.scala
 // See also LineReader.scala
@@ -216,4 +217,7 @@ object SysProp {
         .getOrElse(linuxCache)
     baseCache.getAbsoluteFile / "v1"
   }
+
+  val sbtCredentialsEnv: Option[Credentials] =
+    sys.env.get("SBT_CREDENTIALS").map(raw => new FileCredentials(new File(raw)))
 }
