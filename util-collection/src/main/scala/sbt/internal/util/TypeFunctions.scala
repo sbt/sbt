@@ -7,11 +7,12 @@
 
 package sbt.internal.util
 
-/*
-trait TypeFunctions {
-  import TypeFunctions._
+trait TypeFunctions:
   type Id[X] = X
   type NothingK[X] = Nothing
+
+  /*
+  import TypeFunctions._
   sealed trait Const[A] { type Apply[B] = A }
   sealed trait ConstK[A] { type l[L[x]] = A }
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
@@ -24,8 +25,10 @@ trait TypeFunctions {
   final val right: Id ~> Right[Nothing, *] =
     λ[Id ~> AnyRight](Right(_)).setToString("TypeFunctions.right")
   final val some: Id ~> Some[*] = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
-  final def idFun[T]: T => T = ((t: T) => t).setToString("TypeFunctions.id")
-  final def const[A, B](b: B): A => B = ((_: A) => b).setToString(s"TypeFunctions.const($b)")
+   */
+  final def idFun[A]: A => A = ((a: A) => a) // .setToString("TypeFunctions.id")
+  final def const[A, B](b: B): A => B = ((_: A) => b) // .setToString(s"TypeFunctions.const($b)")
+/*
   final def idK[M[_]]: M ~> M = λ[M ~> M](m => m).setToString("TypeFunctions.idK")
 
   def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
@@ -35,9 +38,13 @@ trait TypeFunctions {
 
   type Endo[T] = T => T
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
-}
+ */
 
-object TypeFunctions extends TypeFunctions {
+end TypeFunctions
+
+/*
+object TypeFunctions extends TypeFunctions:
+
   private implicit class Ops[T[_], R[_]](val underlying: T ~> R) extends AnyVal {
     def setToString(string: String): T ~> R = new (T ~> R) {
       override def apply[U](a: T[U]): R[U] = underlying(a)
@@ -54,7 +61,8 @@ object TypeFunctions extends TypeFunctions {
       override def hashCode: Int = f.hashCode
     }
   }
-}
+
+end TypeFunctions
  */
 
 /*

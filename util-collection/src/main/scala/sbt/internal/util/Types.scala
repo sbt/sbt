@@ -7,10 +7,12 @@
 
 package sbt.internal.util
 
-object Types extends Types
+object Types extends TypeFunctions
 
-trait Types /* extends TypeFunctions */ {
+/*
+trait Types extends TypeFunctions {
   // val :^: = KCons
   // type :+:[H, T <: HList] = HCons[H, T]
   // val :+: = HCons
 }
+ */

@@ -181,7 +181,7 @@ val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
 // .aggregate(nonRoots: _*)
-  .aggregate(collectionProj)
+  .aggregate(collectionProj, coreMacrosProj)
   .settings(
     minimalSettings,
     onLoadMessage := {
@@ -494,7 +494,7 @@ lazy val testingProj = (project in file("testing"))
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestItemEvent.copy$default$*"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy"),
       exclude[DirectMissingMethodProblem]("sbt.protocol.testing.TestStringEvent.copy$default$1"),
-      //no reason to use
+      // no reason to use
       exclude[DirectMissingMethodProblem]("sbt.JUnitXmlTestsListener.testSuite"),
     )
   )
@@ -787,15 +787,8 @@ lazy val commandProj = (project in file("main-command"))
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(collectionProj)
   .settings(
-    baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
+    testedBaseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
     name := "Core Macros",
-    libraryDependencies += {
-      if (scalaBinaryVersion.value == "3") {
-        "org.scala-lang" % "scala-compiler" % scala213
-      } else {
-        "org.scala-lang" % "scala-compiler" % scalaVersion.value
-      }
-    },
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
   )
@@ -1110,7 +1103,8 @@ lazy val serverTestProj = (project in file("server-test"))
             |}
           """.stripMargin
       }
-      val file = (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
+      val file =
+        (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
       IO.write(file, content)
       file :: Nil
     },
@@ -1373,8 +1367,7 @@ lazy val lowerUtilProjects =
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
 ThisBuild / scriptedBufferLog := true
-ThisBuild / scriptedPrescripted := { _ =>
-}
+ThisBuild / scriptedPrescripted := { _ => }
 
 def otherRootSettings =
   Seq(
@@ -1442,21 +1435,24 @@ def customCommands: Seq[Setting[_]] = Seq(
     import extracted._
     val sv = get(scalaVersion)
     val projs = structure.allProjectRefs
-    val ioOpt = projs find { case ProjectRef(_, id)   => id == "ioRoot"; case _ => false }
+    val ioOpt = projs find { case ProjectRef(_, id) => id == "ioRoot"; case _ => false }
     val utilOpt = projs find { case ProjectRef(_, id) => id == "utilRoot"; case _ => false }
-    val lmOpt = projs find { case ProjectRef(_, id)   => id == "lmRoot"; case _ => false }
+    val lmOpt = projs find { case ProjectRef(_, id) => id == "lmRoot"; case _ => false }
     val zincOpt = projs find { case ProjectRef(_, id) => id == "zincRoot"; case _ => false }
-    (ioOpt map { case ProjectRef(build, _)            => "{" + build.toString + "}/publishLocal" }).toList :::
-      (utilOpt map { case ProjectRef(build, _)        => "{" + build.toString + "}/publishLocal" }).toList :::
-      (lmOpt map { case ProjectRef(build, _)          => "{" + build.toString + "}/publishLocal" }).toList :::
-      (zincOpt map {
-        case ProjectRef(build, _) =>
-          val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
-          val csv = get((ProjectRef(build, "compilerBridge") / crossScalaVersions)).toList
-          (csv flatMap { bridgeSv =>
-            s"++$bridgeSv" :: ("{" + build.toString + "}compilerBridge/publishLocal") :: Nil
-          }) :::
-            List(s"++$zincSv", "{" + build.toString + "}/publishLocal")
+    (ioOpt map { case ProjectRef(build, _) => "{" + build.toString + "}/publishLocal" }).toList :::
+      (utilOpt map { case ProjectRef(build, _) =>
+        "{" + build.toString + "}/publishLocal"
+      }).toList :::
+      (lmOpt map { case ProjectRef(build, _) =>
+        "{" + build.toString + "}/publishLocal"
+      }).toList :::
+      (zincOpt map { case ProjectRef(build, _) =>
+        val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
+        val csv = get((ProjectRef(build, "compilerBridge") / crossScalaVersions)).toList
+        (csv flatMap { bridgeSv =>
+          s"++$bridgeSv" :: ("{" + build.toString + "}compilerBridge/publishLocal") :: Nil
+        }) :::
+          List(s"++$zincSv", "{" + build.toString + "}/publishLocal")
       }).getOrElse(Nil) :::
       List(s"++$sv", "publishLocal") :::
       state
