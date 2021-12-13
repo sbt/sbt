@@ -19,4 +19,5 @@ end FlatMap
 
 object FlatMap:
   given FlatMap[Option] = OptionInstances.optionMonad
+  given FlatMap[List] = ListInstances.listMonad
 end FlatMap

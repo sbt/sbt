@@ -13,4 +13,5 @@ end Functor
 
 object Functor:
   given Functor[Option] = OptionInstances.optionMonad
+  given Functor[List] = ListInstances.listMonad
 end Functor

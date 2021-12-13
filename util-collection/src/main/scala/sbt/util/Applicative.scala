@@ -16,4 +16,5 @@ end Applicative
 
 object Applicative:
   given Applicative[Option] = OptionInstances.optionMonad
+  given Applicative[List] = ListInstances.listMonad
 end Applicative

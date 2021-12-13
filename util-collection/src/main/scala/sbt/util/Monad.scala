@@ -16,4 +16,5 @@ end Monad
 
 object Monad:
   given Monad[Option] = OptionInstances.optionMonad
+  given Monad[List] = ListInstances.listMonad
 end Monad

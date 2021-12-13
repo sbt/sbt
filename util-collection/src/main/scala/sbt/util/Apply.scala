@@ -16,4 +16,5 @@ end Apply
 
 object Apply:
   given Apply[Option] = OptionInstances.optionMonad
+  given Apply[List] = ListInstances.listMonad
 end Apply

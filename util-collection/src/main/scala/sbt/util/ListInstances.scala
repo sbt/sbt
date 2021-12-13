@@ -10,6 +10,7 @@ package sbt.util
 private[sbt] object ListInstances:
   lazy val listMonad: Monad[List] =
     new Monad[List]:
+      type F[a] = List[a]
       def pure[A](x: A): List[A] = List(x)
       def ap[A, B](ff: List[A => B])(fa: List[A]): List[B] =
         for
