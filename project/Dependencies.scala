@@ -106,7 +106,7 @@ object Dependencies {
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
-  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.16.0"
+  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.0"
   val log4jApi = log4jModule("log4j-api")
   val log4jCore = log4jModule("log4j-core")
   val log4jSlf4jImpl = log4jModule("log4j-slf4j-impl")
