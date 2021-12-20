@@ -41,11 +41,9 @@ object HashModifiedFileInfo {
 }
 
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
+
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
-@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
-private final case class FileHash(file: File, override val hash: List[Byte]) extends HashFileInfo {
-  override val hashArray: Array[Byte] = hash.toArray
-}
+
 private final case class FileHashArrayRepr(file: File, override val hashArray: Array[Byte])
     extends HashFileInfo {
   override def hashCode(): Int = (file, java.util.Arrays.hashCode(hashArray)).hashCode()
@@ -55,25 +53,18 @@ private final case class FileHashArrayRepr(file: File, override val hashArray: A
     case _ => false
   }
 }
-@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
-private final case class FileHashModified(
-    file: File,
-    override val hash: List[Byte],
-    lastModified: Long
-) extends HashModifiedFileInfo {
-  override val hashArray: Array[Byte] = hash.toArray
-}
+
 private final case class FileHashModifiedArrayRepr(
     file: File,
     override val hashArray: Array[Byte],
     lastModified: Long
 ) extends HashModifiedFileInfo
 
-final case class FilesInfo[F <: FileInfo] private (files: Set[F])
+final case class FilesInfo[F <: FileInfo] private[util] (files: Set[F])
 object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 
-  implicit def format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
+  given format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
     projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
   def full: FileInfo.Style = FileInfo.full

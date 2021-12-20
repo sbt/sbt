@@ -188,6 +188,7 @@ lazy val sbtRoot: Project = (project in file("."))
     utilControl,
     completeProj,
     logicProj,
+    utilCache,
   )
   .settings(
     minimalSettings,
