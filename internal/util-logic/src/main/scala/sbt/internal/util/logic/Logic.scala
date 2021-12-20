@@ -98,7 +98,7 @@ object Formula {
     assert(literals.nonEmpty, "'And' requires at least one literal.")
   }
 
-  final case object True extends Formula
+  case object True extends Formula
 
 }
 
@@ -162,7 +162,7 @@ object Logic {
 
   private[this] def graph(deps: Map[Atom, Set[Literal]]) = new Dag.DirectedSignedGraph[Atom] {
     type Arrow = Literal
-    def nodes = deps.keys.toList
+    def nodes: List[Atom] = deps.keys.toList
     def dependencies(a: Atom) = deps.getOrElse(a, Set.empty).toList
 
     def isNegative(b: Literal) = b match {
