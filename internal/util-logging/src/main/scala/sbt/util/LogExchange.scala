@@ -11,7 +11,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig
 import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.core.{ LoggerContext => XLoggerContext }
 import org.apache.logging.log4j.{ LogManager => XLogManager }
-import sbt.internal.util._
+import sbt.internal.util.{ Appender, ManagedLogger, TraceEvent, SuccessEvent, Util }
+import sbt.internal.util.appmacro.StringTypeTag
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.concurrent
@@ -34,6 +35,7 @@ sealed abstract class LogExchange {
   def unbindLoggerAppenders(loggerName: String): Unit = {
     LoggerContext.globalContext.clearAppenders(loggerName)
   }
+
   def bindLoggerAppenders(
       loggerName: String,
       appenders: Seq[(Appender, Level.Value)]
@@ -45,9 +47,11 @@ sealed abstract class LogExchange {
   // Construct these StringTypeTags manually, because they're used at the very startup of sbt
   // and we'll try not to initialize the universe by using the StringTypeTag.apply that requires a TypeTag
   // A better long-term solution could be to make StringTypeTag.apply a macro.
-  lazy val stringTypeTagThrowable = StringTypeTag[Throwable]("scala.Throwable")
-  lazy val stringTypeTagTraceEvent = StringTypeTag[TraceEvent]("sbt.internal.util.TraceEvent")
-  lazy val stringTypeTagSuccessEvent = StringTypeTag[SuccessEvent]("sbt.internal.util.SuccessEvent")
+  lazy val stringTypeTagThrowable = StringTypeTag.manually[Throwable]("java.lang.Throwable")
+  lazy val stringTypeTagTraceEvent =
+    StringTypeTag.manually[TraceEvent]("sbt.internal.util.TraceEvent")
+  lazy val stringTypeTagSuccessEvent =
+    StringTypeTag.manually[SuccessEvent]("sbt.internal.util.SuccessEvent")
 
   private[sbt] def initStringCodecs(): Unit = {
     import sbt.internal.util.codec.SuccessEventShowLines._

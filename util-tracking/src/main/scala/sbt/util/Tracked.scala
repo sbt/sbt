@@ -20,22 +20,22 @@ import sjsonnew.support.murmurhash.Hasher
 object Tracked {
 
   /**
-   * Creates a tracker that provides the last time it was evaluated.
-   * If the function throws an exception.
+   * Creates a tracker that provides the last time it was evaluated. If the function throws an
+   * exception.
    */
   def tstamp(store: CacheStore): Timestamp = tstamp(store, true)
 
   /**
-   * Creates a tracker that provides the last time it was evaluated.
-   * If the function throws an exception.
+   * Creates a tracker that provides the last time it was evaluated. If the function throws an
+   * exception.
    */
   def tstamp(cacheFile: File): Timestamp = tstamp(CacheStore(cacheFile))
 
   /**
-   * Creates a tracker that provides the last time it was evaluated.
-   * If 'useStartTime' is true, the recorded time is the start of the evaluated function.
-   * If 'useStartTime' is false, the recorded time is when the evaluated function completes.
-   * In both cases, the timestamp is not updated if the function throws an exception.
+   * Creates a tracker that provides the last time it was evaluated. If 'useStartTime' is true, the
+   * recorded time is the start of the evaluated function. If 'useStartTime' is false, the recorded
+   * time is when the evaluated function completes. In both cases, the timestamp is not updated if
+   * the function throws an exception.
    */
   def tstamp(store: CacheStore, useStartTime: Boolean): Timestamp = {
     import CacheImplicits.LongJsonFormat
@@ -43,27 +43,39 @@ object Tracked {
   }
 
   /**
-   * Creates a tracker that provides the last time it was evaluated.
-   * If 'useStartTime' is true, the recorded time is the start of the evaluated function.
-   * If 'useStartTime' is false, the recorded time is when the evaluated function completes.
-   * In both cases, the timestamp is not updated if the function throws an exception.
+   * Creates a tracker that provides the last time it was evaluated. If 'useStartTime' is true, the
+   * recorded time is the start of the evaluated function. If 'useStartTime' is false, the recorded
+   * time is when the evaluated function completes. In both cases, the timestamp is not updated if
+   * the function throws an exception.
    */
   def tstamp(cacheFile: File, useStartTime: Boolean): Timestamp =
     tstamp(CacheStore(cacheFile), useStartTime)
 
-  /** Creates a tracker that provides the difference between a set of input files for successive invocations.*/
+  /**
+   * Creates a tracker that provides the difference between a set of input files for successive
+   * invocations.
+   */
   def diffInputs(store: CacheStore, style: FileInfo.Style): Difference =
     Difference.inputs(store, style)
 
-  /** Creates a tracker that provides the difference between a set of input files for successive invocations.*/
+  /**
+   * Creates a tracker that provides the difference between a set of input files for successive
+   * invocations.
+   */
   def diffInputs(cacheFile: File, style: FileInfo.Style): Difference =
     diffInputs(CacheStore(cacheFile), style)
 
-  /** Creates a tracker that provides the difference between a set of output files for successive invocations.*/
+  /**
+   * Creates a tracker that provides the difference between a set of output files for successive
+   * invocations.
+   */
   def diffOutputs(store: CacheStore, style: FileInfo.Style): Difference =
     Difference.outputs(store, style)
 
-  /** Creates a tracker that provides the difference between a set of output files for successive invocations.*/
+  /**
+   * Creates a tracker that provides the difference between a set of output files for successive
+   * invocations.
+   */
   def diffOutputs(cacheFile: File, style: FileInfo.Style): Difference =
     diffOutputs(CacheStore(cacheFile), style)
 
@@ -113,7 +125,8 @@ object Tracked {
    * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
    * }}}
    *
-   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1:
+   * JsonFormat`.
    */
   def outputChangedW[A1: JsonWriter, A2](store: CacheStore)(
       f: (Boolean, A1) => A2
@@ -163,7 +176,8 @@ object Tracked {
    * cachedDoc(inputs)(() => exists(outputDirectory.allPaths.get.toSet))
    * }}}
    *
-   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1: JsonFormat`.
+   * This is a variant of `outputChanged` that takes `A1: JsonWriter` as opposed to `A1:
+   * JsonFormat`.
    */
   def outputChangedW[A1: JsonWriter, A2](
       cacheFile: File
@@ -298,7 +312,7 @@ object Tracked {
 
 trait Tracked {
 
-  /** Cleans outputs and clears the cache.*/
+  /** Cleans outputs and clears the cache. */
   def clean(): Unit
 
 }
@@ -308,8 +322,8 @@ class Timestamp(val store: CacheStore, useStartTime: Boolean)(implicit format: J
   def clean() = store.delete()
 
   /**
-   * Reads the previous timestamp, evaluates the provided function,
-   * and then updates the timestamp if the function completes normally.
+   * Reads the previous timestamp, evaluates the provided function, and then updates the timestamp
+   * if the function completes normally.
    */
   def apply[T](f: Long => T): T = {
     val start = now()
@@ -329,8 +343,7 @@ class Changed[O: Equiv: JsonFormat](val store: CacheStore) extends Tracked {
   def clean() = store.delete()
 
   def apply[O2](ifChanged: O => O2, ifUnchanged: O => O2): O => O2 = value => {
-    if (uptodate(value))
-      ifUnchanged(value)
+    if (uptodate(value)) ifUnchanged(value)
     else {
       update(value)
       ifChanged(value)
@@ -338,7 +351,9 @@ class Changed[O: Equiv: JsonFormat](val store: CacheStore) extends Tracked {
   }
 
   def update(value: O): Unit =
-    store.write(value) //Using.fileOutputStream(false)(cacheFile)(stream => format.writes(stream, value))
+    store.write(
+      value
+    ) // Using.fileOutputStream(false)(cacheFile)(stream => format.writes(stream, value))
 
   def uptodate(value: O): Boolean = {
     val equiv: Equiv[O] = implicitly
@@ -354,9 +369,10 @@ object Difference {
     (store, style) => new Difference(store, style, defineClean, filesAreOutputs)
 
   /**
-   * Provides a constructor for a Difference that removes the files from the previous run on a call to 'clean' and saves the
-   * hash/last modified time of the files as they are after running the function.  This means that this information must be evaluated twice:
-   * before and after running the function.
+   * Provides a constructor for a Difference that removes the files from the previous run on a call
+   * to 'clean' and saves the hash/last modified time of the files as they are after running the
+   * function. This means that this information must be evaluated twice: before and after running
+   * the function.
    */
   val outputs = constructor(true, true)
 
@@ -405,8 +421,10 @@ class Difference(
 
     val report = new ChangeReport[File] {
       lazy val checked = currentFiles
-      lazy val removed = lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
-      lazy val added = checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
+      lazy val removed =
+        lastFiles -- checked // all files that were included previously but not this time.  This is independent of whether the files exist.
+      lazy val added =
+        checked -- lastFiles // all files included now but not previously.  This is independent of whether the files exist.
       lazy val modified = raw(lastFilesInfo -- currentFilesInfo.files) ++ added
       lazy val unmodified = checked -- modified
     }

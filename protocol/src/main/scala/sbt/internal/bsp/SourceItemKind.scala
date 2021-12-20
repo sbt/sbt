@@ -11,7 +11,7 @@ package bsp
 
 object SourceItemKind {
 
-  /** The source item references a normal file.  */
+  /** The source item references a normal file. */
   val File: Int = 1
 
   /** The source item references a directory. */

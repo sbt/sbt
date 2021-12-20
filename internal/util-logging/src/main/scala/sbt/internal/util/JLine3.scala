@@ -81,7 +81,7 @@ private[sbt] object JLine3 {
     val bytes = new Array[Byte](4)
     var i = 0
     var res = -2
-    do {
+    while (i < 4 && res == -2) {
       inputStream.read() match {
         case -1 => res = -1
         case byte =>
@@ -94,8 +94,7 @@ private[sbt] object JLine3 {
             if (it.hasNext) res = it.next
           } catch { case _: CharacterCodingException => }
       }
-
-    } while (i < 4 && res == -2)
+    }
     res
   }
   private[this] def wrapTerminal(term: Terminal): JTerminal = {
@@ -210,7 +209,9 @@ private[sbt] object JLine3 {
         term.getBooleanCapability(cap.toString)
       def getAttributes(): Attributes = attributesFromMap(term.getAttributes)
       def getSize(): Size = new Size(term.getWidth, term.getHeight)
-      def setAttributes(a: Attributes): Unit = {} // don't allow the jline line reader to change attributes
+      def setAttributes(
+          a: Attributes
+      ): Unit = {} // don't allow the jline line reader to change attributes
       def setSize(size: Size): Unit = term.setSize(size.getColumns, size.getRows)
 
       override def enterRawMode(): Attributes = {

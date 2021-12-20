@@ -24,8 +24,8 @@ trait JsonRpcResponseErrorFormats {
             unbuilder.beginObject(js)
             val code = unbuilder.readField[Long]("code")
             val message = unbuilder.readField[String]("message")
-            val data = unbuilder.lookupField("data") map {
-              case x: JValue => x
+            val data = unbuilder.lookupField("data") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcResponseError(code, message, data)

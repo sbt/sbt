@@ -45,7 +45,8 @@ object Util {
 
   def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) s"`${s}`" else s
 
-  // def ignoreResult[T](f: => T): Unit = macro Macro.ignore
+  def ignoreResult[A](f: => A): Unit =
+    f; ()
 
   lazy val isMac: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")

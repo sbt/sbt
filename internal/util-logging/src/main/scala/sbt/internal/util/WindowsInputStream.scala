@@ -75,8 +75,10 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
           val isShift = (controlKeyState & SHIFT_PRESSED) > 0;
           if (keyEvent.keyDown) {
             if (keyEvent.uchar > 0) {
-              if (((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
-                  && isAlt && !isCtrl) {
+              if (
+                ((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
+                && isAlt && !isCtrl
+              ) {
                 sb.append('\u001B') // ESC
               }
               if (isShift && keyEvent.keyCode == 9) {
@@ -108,15 +110,15 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
                 case 0x77 /* VK_F8 */           => getCapability(Capability.key_f8)
                 case 0x78 /* VK_F9 */           => getCapability(Capability.key_f9)
                 case 0x79 /* VK_F10 */          => getCapability(Capability.key_f10)
-                case 0x7A /* VK_F11 */          => getCapability(Capability.key_f11)
-                case 0x7B /* VK_F12 */          => getCapability(Capability.key_f12)
+                case 0x7a /* VK_F11 */          => getCapability(Capability.key_f11)
+                case 0x7b /* VK_F12 */          => getCapability(Capability.key_f12)
                 // VK_END, VK_INSERT and VK_DELETE are not in the ansi key bindings so we
                 // have to manually apply the the sequences here and in JLine3.wrap
                 case 0x23 /* VK_END */ =>
                   Option(getCapability(Capability.key_end)).getOrElse("\u001B[4~")
-                case 0x2D /* VK_INSERT */ =>
+                case 0x2d /* VK_INSERT */ =>
                   Option(getCapability(Capability.key_ic)).getOrElse("\u001B[2~")
-                case 0x2E /* VK_DELETE */ =>
+                case 0x2e /* VK_DELETE */ =>
                   Option(getCapability(Capability.key_dc)).getOrElse("\u001B[3~")
                 case _ => null
               }
@@ -142,7 +144,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
     override def read(): Int = {
       buffer.poll match {
         case null =>
-          readConsoleInput().foreach(b => buffer.put(b & 0xFF))
+          readConsoleInput().foreach(b => buffer.put(b & 0xff))
           if (!Thread.interrupted) read() else throw new InterruptedException
         case b => b
       }

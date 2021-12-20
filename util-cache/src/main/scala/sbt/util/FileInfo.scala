@@ -213,13 +213,15 @@ object FileInfo {
       FileModified(file.getAbsoluteFile, lastModified)
 
     /**
-     * Returns an instance of [[FileModified]] where, for any directory, the maximum last
-     * modified time taken from its contents is used rather than the last modified time of the
-     * directory itself. The specific motivation was to prevent the doc task from re-running when
-     * the modified time changed for a directory classpath but none of the classfiles had changed.
+     * Returns an instance of [[FileModified]] where, for any directory, the maximum last modified
+     * time taken from its contents is used rather than the last modified time of the directory
+     * itself. The specific motivation was to prevent the doc task from re-running when the modified
+     * time changed for a directory classpath but none of the classfiles had changed.
      *
-     * @param file the file or directory
-     * @return the [[FileModified]]
+     * @param file
+     *   the file or directory
+     * @return
+     *   the [[FileModified]]
      */
     private[sbt] def fileOrDirectoryMax(file: File): ModifiedFileInfo = {
       val maxLastModified =

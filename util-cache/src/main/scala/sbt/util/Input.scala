@@ -30,7 +30,9 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
       val bufferSize = 1024
       val buffer = new Array[Char](bufferSize)
       var read = 0
-      while ({ read = reader.read(buffer, 0, bufferSize); read != -1 }) {
+      while
+        ({ read = reader.read(buffer, 0, bufferSize); read != -1
+      }) {
         builder.appendAll(buffer, 0, read)
       }
       builder.toString()

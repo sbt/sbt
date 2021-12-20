@@ -24,8 +24,8 @@ trait JsonRpcNotificationMessageFormats {
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
             val method = unbuilder.readField[String]("method")
-            val params = unbuilder.lookupField("params") map {
-              case x: JValue => x
+            val params = unbuilder.lookupField("params") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcNotificationMessage(jsonrpc, method, params)

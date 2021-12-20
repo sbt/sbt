@@ -17,8 +17,8 @@ object StampedFormat extends BasicJsonProtocol {
     withStamp(stamp(format))(format)
   }
 
-  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(
-      implicit formatStamp: JsonFormat[S],
+  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(implicit
+      formatStamp: JsonFormat[S],
       equivStamp: Equiv[S]
   ): JsonFormat[T] =
     new JsonFormat[T] {

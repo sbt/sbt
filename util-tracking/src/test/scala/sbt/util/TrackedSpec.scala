@@ -67,8 +67,8 @@ class TrackedSpec extends AnyFlatSpec {
     withStore { store =>
       val input0 = Input(1)
 
-      val cachedFun = Tracked.inputChangedW[Input, Int](store) {
-        case (_, in) => in.v
+      val cachedFun = Tracked.inputChangedW[Input, Int](store) { case (_, in) =>
+        in.v
       }
 
       val res0 = cachedFun(input0)
@@ -145,8 +145,8 @@ class TrackedSpec extends AnyFlatSpec {
     withStore { store =>
       val input0 = Input(1)
 
-      val cachedFun = Tracked.outputChangedW[Input, Int](store) {
-        case (_, in) => in.v
+      val cachedFun = Tracked.outputChangedW[Input, Int](store) { case (_, in) =>
+        in.v
       }
 
       val res0 = cachedFun(() => input0)

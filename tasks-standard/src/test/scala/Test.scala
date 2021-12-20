@@ -20,7 +20,7 @@ object Test extends std.TaskExtra {
   val b2 = task(true)
   val c = task("asdf")
 
-  val h1 = t3(a, b, c).map { case (aa, bb, cc)  => s"$aa $bb $cc" }
+  val h1 = t3(a, b, c).map { case (aa, bb, cc) => s"$aa $bb $cc" }
   val h2 = t3(a, b2, c).map { case (aa, bb, cc) => s"$aa $bb $cc" }
 
   type Values = (Result[Int], Result[Boolean], Result[String])
@@ -28,7 +28,9 @@ object Test extends std.TaskExtra {
   val f: Values => Any = {
     case (Value(aa), Value(bb), Value(cc)) => s"$aa $bb $cc"
     case x =>
-      val cs = x.productIterator.toList.collect { case Inc(x) => x } // workaround for double definition bug
+      val cs = x.productIterator.toList.collect { case Inc(x) =>
+        x
+      } // workaround for double definition bug
       throw Incomplete(None, causes = cs)
   }
   val d2 = t3(a, b2, c) mapR f

@@ -32,7 +32,7 @@ class UTF8DecoderSpec extends AnyFlatSpec {
   "emoji" should "be handled" in {
     val bytes = new LinkedBlockingQueue[Int]
     // laughing and crying emoji in utf8
-    Seq(0xF0, 0x9F, 0x98, 0x82).foreach(b => bytes.put(b))
+    Seq(0xf0, 0x9f, 0x98, 0x82).foreach(b => bytes.put(b))
     val inputStream = new InputStream {
       override def read(): Int = Option(bytes.poll).getOrElse(-1)
     }

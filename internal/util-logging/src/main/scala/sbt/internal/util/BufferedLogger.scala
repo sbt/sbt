@@ -29,11 +29,10 @@ object BufferedAppender {
 }
 
 /**
- * An appender that can buffer the logging done on it and then can flush the buffer
- * to the delegate appender provided in the constructor.  Use 'record()' to
- * start buffering and then 'play' to flush the buffer to the backing appender.
- *  The logging level set at the time a message is originally logged is used, not
- * the level at the time 'play' is called.
+ * An appender that can buffer the logging done on it and then can flush the buffer to the delegate
+ * appender provided in the constructor. Use 'record()' to start buffering and then 'play' to flush
+ * the buffer to the backing appender. The logging level set at the time a message is originally
+ * logged is used, not the level at the time 'play' is called.
  */
 class BufferedAppender(override val name: String, delegate: Appender) extends Appender {
   override def close(): Unit = log4j.get match {
@@ -108,8 +107,8 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
   }
 
   /**
-   * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
-   * so that the messages are written consecutively. The buffer is cleared in the process.
+   * Flushes the buffer to the delegate logger. This method calls logAll on the delegate so that the
+   * messages are written consecutively. The buffer is cleared in the process.
    */
   def play(): Unit =
     synchronized {
@@ -131,11 +130,10 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
 }
 
 /**
- * A logger that can buffer the logging done on it and then can flush the buffer
- * to the delegate logger provided in the constructor.  Use 'startRecording' to
- * start buffering and then 'play' from to flush the buffer to the backing logger.
- *  The logging level set at the time a message is originally logged is used, not
- * the level at the time 'play' is called.
+ * A logger that can buffer the logging done on it and then can flush the buffer to the delegate
+ * logger provided in the constructor. Use 'startRecording' to start buffering and then 'play' from
+ * to flush the buffer to the backing logger. The logging level set at the time a message is
+ * originally logged is used, not the level at the time 'play' is called.
  *
  * This class assumes that it is the only client of the delegate logger.
  */
@@ -168,8 +166,8 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
   }
 
   /**
-   * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
-   * so that the messages are written consecutively. The buffer is cleared in the process.
+   * Flushes the buffer to the delegate logger. This method calls logAll on the delegate so that the
+   * messages are written consecutively. The buffer is cleared in the process.
    */
   def play(): Unit = synchronized { delegate.logAll(buffer.toList); buffer.clear() }
 

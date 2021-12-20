@@ -14,11 +14,11 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.JavaConverters._
 
 /**
- * Provides a context for generating loggers during task evaluation. The logger context
- * can be initialized for a single command evaluation run and all of the resources
- * created (such as cached logger appenders) can be cleaned up after task evaluation.
- * This trait evolved out of LogExchange when it became clear that it was very difficult
- * to manage the loggers and appenders without introducing memory leaks.
+ * Provides a context for generating loggers during task evaluation. The logger context can be
+ * initialized for a single command evaluation run and all of the resources created (such as cached
+ * logger appenders) can be cleaned up after task evaluation. This trait evolved out of LogExchange
+ * when it became clear that it was very difficult to manage the loggers and appenders without
+ * introducing memory leaks.
  */
 sealed trait LoggerContext extends AutoCloseable {
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger
@@ -45,9 +45,8 @@ object LoggerContext {
         }
       }
       def log[T](level: Level.Value, message: ObjectEvent[T]): Unit = {
-        consoleAppenders.forEach {
-          case (a, l) =>
-            if (level.compare(l) >= 0) a.appendObjectEvent(level, message)
+        consoleAppenders.forEach { case (a, l) =>
+          if (level.compare(l) >= 0) a.appendObjectEvent(level, message)
         }
       }
       def addAppender(newAppender: (Appender, Level.Value)): Unit =

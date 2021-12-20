@@ -89,8 +89,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   }
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
   def execute0(command: String, args: List[String]): Unit = {
-    if (command.trim.isEmpty)
-      scriptError("Command was empty.")
+    if (command.trim.isEmpty) scriptError("Command was empty.")
     else {
       val exitValue = sys.process.Process(command :: args, baseDirectory).!
       if (exitValue != 0)

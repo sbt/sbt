@@ -170,11 +170,10 @@ trait TaskExtra extends TaskExtra0 {
 
     def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]({ fin; x }))
     def doFinally(t: Task[Unit]): Task[S] =
-      flatMapR(
-        x =>
-          t.result.map { tx =>
-            Result.tryValues[S](tx :: Nil, x)
-          }
+      flatMapR(x =>
+        t.result.map { tx =>
+          Result.tryValues[S](tx :: Nil, x)
+        }
       )
     def ||[T >: S](alt: Task[T]): Task[T] = flatMapR {
       case Value(v) => task(v: T)

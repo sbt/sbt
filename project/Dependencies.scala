@@ -82,15 +82,18 @@ object Dependencies {
 
   lazy val sjsonNewVersion = "0.9.1"
   def sjsonNew(n: String) = Def.setting(
-    if (scalaBinaryVersion.value == "3") "com.eed3si9n" % (n + "_2.13") % sjsonNewVersion
-    else "com.eed3si9n" %% n % "0.9.1"
+    if (scalaBinaryVersion.value == "3")
+      ("com.eed3si9n" % n % sjsonNewVersion).cross(CrossVersion.for3Use2_13)
+    else "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
+  val sjsonNewCore = sjsonNew("sjson-new-core")
 
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi
-  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
+  val jline =
+    "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
   val jline3Version = "3.19.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version

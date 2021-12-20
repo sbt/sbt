@@ -125,9 +125,11 @@ object LineReader {
           case _: Terminal.ConsoleTerminal => Some(Signals.register(() => terminal.write(-1)))
           case _                           => None
         }
-        try terminal.withRawInput {
-          Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
-        } catch {
+        try
+          terminal.withRawInput {
+            Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
+          }
+        catch {
           case e: EndOfFileException =>
             if (terminal == Terminal.console && System.console == null) None
             else Some("exit")
@@ -195,8 +197,8 @@ abstract class JLine extends LineReader {
 
   private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
-      Signals.withHandler(() => resume(), signal = Signals.CONT)(
-        () => readLineDirectRaw(prompt, mask)
+      Signals.withHandler(() => resume(), signal = Signals.CONT)(() =>
+        readLineDirectRaw(prompt, mask)
       )
     else
       readLineDirectRaw(prompt, mask)
@@ -253,8 +255,8 @@ private[sbt] object JLine {
   private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTeminal
 
   /**
-   * For accessing the JLine Terminal object.
-   * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
+   * For accessing the JLine Terminal object. This ensures synchronized access as well as
+   * re-enabling echo after getting the Terminal.
    */
   @deprecated(
     "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",

@@ -12,9 +12,9 @@ import DefaultParsers._
 import TypeString._
 
 /**
- * Basic representation of types parsed from Manifest.toString.
- * This can only represent the structure of parameterized types.
- * All other types are represented by a TypeString with an empty `args`.
+ * Basic representation of types parsed from Manifest.toString. This can only represent the
+ * structure of parameterized types. All other types are represented by a TypeString with an empty
+ * `args`.
  */
 private[sbt] final class TypeString(val base: String, val args: List[TypeString]) {
   override def toString =
@@ -28,7 +28,7 @@ private[sbt] final class TypeString(val base: String, val args: List[TypeString]
 
 private[sbt] object TypeString {
 
-  /** Makes the string representation of a type as returned by Manifest.toString more readable.*/
+  /** Makes the string representation of a type as returned by Manifest.toString more readable. */
   def cleanup(typeString: String): String =
     parse(typeString, typeStringParser) match {
       case Right(ts) => ts.toString
@@ -36,19 +36,19 @@ private[sbt] object TypeString {
     }
 
   /**
-   * Makes a fully qualified type name provided by Manifest.toString more readable.
-   * The argument should be just a name (like scala.Tuple2) and not a full type (like scala.Tuple2[Int,Boolean])
+   * Makes a fully qualified type name provided by Manifest.toString more readable. The argument
+   * should be just a name (like scala.Tuple2) and not a full type (like scala.Tuple2[Int,Boolean])
    */
   def cleanupTypeName(base: String): String =
     dropPrefix(base).replace('$', '.')
 
   /**
-   * Removes prefixes from a fully qualified type name that are unnecessary in the presence of standard imports for an sbt setting.
-   * This does not use the compiler and is therefore a conservative approximation.
+   * Removes prefixes from a fully qualified type name that are unnecessary in the presence of
+   * standard imports for an sbt setting. This does not use the compiler and is therefore a
+   * conservative approximation.
    */
   def dropPrefix(base: String): String =
-    if (base.startsWith(SbtPrefix))
-      base.substring(SbtPrefix.length)
+    if (base.startsWith(SbtPrefix)) base.substring(SbtPrefix.length)
     else if (base.startsWith(CollectionPrefix)) {
       val simple = base.substring(CollectionPrefix.length)
       if (ShortenCollection(simple)) simple else base
@@ -75,8 +75,9 @@ private[sbt] object TypeString {
   )
 
   /**
-   * A Parser that extracts basic structure from the string representation of a type from Manifest.toString.
-   * This is rudimentary and essentially only decomposes the string into names and arguments for parameterized types.
+   * A Parser that extracts basic structure from the string representation of a type from
+   * Manifest.toString. This is rudimentary and essentially only decomposes the string into names
+   * and arguments for parameterized types.
    */
   lazy val typeStringParser: Parser[TypeString] = {
     def isFullScalaIDChar(c: Char) = isScalaIDChar(c) || c == '.' || c == '$'

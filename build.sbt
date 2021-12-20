@@ -181,7 +181,11 @@ val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
 // .aggregate(nonRoots: _*)
-  .aggregate(collectionProj, coreMacrosProj)
+  .aggregate(
+    collectionProj,
+    coreMacrosProj,
+    utilLogging,
+  )
   .settings(
     minimalSettings,
     onLoadMessage := {
@@ -351,9 +355,9 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         log4jCore,
         disruptor,
         sjsonNewScalaJson.value,
-        scalaReflect.value
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
+    Compile / generateContrabands / contrabandCodecsDependencies := List(sjsonNewCore.value),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()

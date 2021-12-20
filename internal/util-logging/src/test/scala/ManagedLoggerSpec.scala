@@ -10,6 +10,7 @@ package sbt.internal.util
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import sbt.util._
+import sbt.internal.util.appmacro.StringTypeTag
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
 import scala.annotation.nowarn
@@ -17,8 +18,8 @@ import scala.annotation.nowarn
 class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
   val context = LoggerContext()
   @nowarn
-  //TODO create a new appender for testing purposes - 3/12/21
-  val asyncStdout = ConsoleAppender("asyncStdout")
+  // TODO create a new appender for testing purposes - 3/12/21
+  val asyncStdout = ConsoleAppender()
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {
     val log = newLogger("foo")
@@ -91,7 +92,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     } {
       pool.submit(new Runnable {
         def run(): Unit = {
-          val stringTypeTag = StringTypeTag.fast[List[Int]]
+          val stringTypeTag = StringTypeTag[List[Int]]
           val log = newLogger(s"foo$i")
           context.addAppender(s"foo$i", asyncStdout -> Level.Info)
           if (i % 100 == 0) {

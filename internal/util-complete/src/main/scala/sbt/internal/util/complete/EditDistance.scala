@@ -14,9 +14,8 @@ import java.lang.Character.{ toLowerCase => lower }
 object EditDistance {
 
   /**
-   * Translated from the java version at
-   *    http://www.merriampark.com/ld.htm
-   *  which is declared to be public domain.
+   * Translated from the java version at http://www.merriampark.com/ld.htm which is declared to be
+   * public domain.
    */
   def levenshtein(
       s: String,
