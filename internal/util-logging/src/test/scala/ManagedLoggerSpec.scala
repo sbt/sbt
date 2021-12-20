@@ -15,8 +15,9 @@ import sbt.io.Using
 import scala.annotation.nowarn
 
 class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
-  val context = LoggerContext(useLog4J = true)
+  val context = LoggerContext()
   @nowarn
+  //TODO create a new appender for testing purposes - 3/12/21
   val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {

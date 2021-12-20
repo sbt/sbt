@@ -8,16 +8,15 @@
 package sbt
 package internal
 
-import java.io.PrintWriter
-
 import sbt.Def.ScopedKey
 import sbt.Keys._
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.util.MainAppender._
 import sbt.internal.util.{ Terminal => ITerminal, _ }
-import sbt.util.{ Level, LogExchange, Logger, LoggerContext }
-import org.apache.logging.log4j.core.{ Appender => XAppender }
+import sbt.util.{ Level, Logger, LoggerContext }
+
+import java.io.PrintWriter
 import scala.annotation.nowarn
 
 sealed abstract class LogManager {
@@ -88,12 +87,6 @@ object LogManager {
   def defaultManager(console: ConsoleOut): LogManager =
     withLoggers((_, _) => defaultScreen(console))
 
-  @deprecated(
-    "use defaults that takes AppenderSupplier instead of ScopedKey[_] => Seq[Appender]",
-    "1.4.0"
-  )
-  def defaults(extra: ScopedKey[_] => Seq[XAppender], console: ConsoleOut): LogManager =
-    defaults((sk: ScopedKey[_]) => extra(sk).map(new ConsoleAppenderFromLog4J("extra", _)), console)
   // This is called by Defaults.
   def defaults(extra: AppenderSupplier, console: ConsoleOut): LogManager =
     withLoggers(
@@ -296,14 +289,6 @@ object LogManager {
     LoggerContext.globalContext.clearAppenders(gl.full.name)
     LoggerContext.globalContext.addAppender(gl.full.name, gl.backed -> level)
     s1
-  }
-
-  @deprecated("No longer used.", "1.4.0")
-  private[sbt] def progressLogger(appender: ConsoleAppender): ManagedLogger = {
-    val log = LogExchange.logger("progress", None, None)
-    LoggerContext.globalContext.clearAppenders("progress")
-    LoggerContext.globalContext.addAppender("progress", appender -> Level.Info)
-    log
   }
 
   // This is the default implementation for the relay appender

@@ -99,7 +99,7 @@ jobs:
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
       run: |
-        ./sbt -v --client mimaReportBinaryIssues
+        # ./sbt -v --client mimaReportBinaryIssues
         ./sbt -v --client javafmtCheck
         ./sbt -v --client "Test/javafmtCheck"
         ./sbt -v --client scalafmtCheckAll

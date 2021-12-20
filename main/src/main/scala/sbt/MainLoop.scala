@@ -7,26 +7,22 @@
 
 package sbt
 
-import java.io.PrintWriter
-import java.util.concurrent.RejectedExecutionException
-import java.util.Properties
-
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
-import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
-import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
+import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal }
-import sbt.internal.{ ShutdownHooks, TaskProgress }
+import sbt.internal.{ FastTrackCommands, ShutdownHooks, SysProp, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
 import sbt.util.{ Logger, LoggerContext }
 
+import java.io.PrintWriter
+import java.util.Properties
+import java.util.concurrent.RejectedExecutionException
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
-import sbt.internal.FastTrackCommands
-import sbt.internal.SysProp
 
 object MainLoop {
 
@@ -148,7 +144,7 @@ object MainLoop {
     }
 
   def next(state: State): State = {
-    val context = LoggerContext(useLog4J = state.get(Keys.useLog4J.key).getOrElse(false))
+    val context = LoggerContext()
     val superShellSleep =
       state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
     val superShellThreshold =
