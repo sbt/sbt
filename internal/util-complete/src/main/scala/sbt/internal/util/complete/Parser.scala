@@ -270,16 +270,18 @@ object Parser extends ParserMain {
     }
 
   def choiceParser[A, B](a: Parser[A], b: Parser[B]): Parser[Either[A, B]] =
-    if (a.valid)
-      if (b.valid) new HetParser(a, b) else a.map(left.fn)
-    else
-      b.map(right.fn)
+    if a.valid then
+      if b.valid then new HetParser(a, b)
+      else a.map(left[A])
+    else b.map(right[B])
 
   def opt[T](a: Parser[T]): Parser[Option[T]] =
-    if (a.valid) new Optional(a) else success(None)
+    if a.valid then new Optional(a)
+    else success(None)
 
   def onFailure[T](delegate: Parser[T], msg: String): Parser[T] =
-    if (delegate.valid) new OnFailure(delegate, msg) else failure(msg)
+    if delegate.valid then new OnFailure(delegate, msg)
+    else failure(msg)
 
   def trapAndFail[T](delegate: Parser[T]): Parser[T] =
     delegate.ifValid(new TrapAndFail(delegate))
@@ -437,8 +439,9 @@ trait ParserMain {
   /** Presents a single Char `ch` as a Parser that only parses that exact character. */
   implicit def literal(ch: Char): Parser[Char] = new ValidParser[Char] {
     def result = None
-    def resultEmpty = mkFailure("Expected '" + ch + "'")
-    def derive(c: Char) = if (c == ch) success(ch) else new Invalid(resultEmpty)
+    private[this] lazy val fail = mkFailure("Expected '" + ch + "'")
+    def resultEmpty = fail
+    def derive(c: Char) = if (c == ch) success(ch) else new Invalid(fail)
     def completions(level: Int) = Completions.single(Completion.suggestion(ch.toString))
     override def toString = "'" + ch + "'"
   }
@@ -640,7 +643,7 @@ trait ParserMain {
 
   def seq0[T](p: Seq[Parser[T]], errors: => Seq[String]): Parser[Seq[T]] = {
     val (newErrors, valid) = separate(p) {
-      case Invalid(f) => Left(f.errors _): Either[() => Seq[String], Parser[T]]
+      case Invalid(f) => Left(() => f.errors): Either[() => Seq[String], Parser[T]]
       case ok         => Right(ok): Either[() => Seq[String], Parser[T]]
     }
     def combinedErrors = errors ++ newErrors.flatMap(_())
@@ -944,11 +947,12 @@ private final class StringLiteral(str: String, start: Int) extends ValidParser[S
   assert(0 <= start && start < str.length)
 
   def failMsg = "Expected '" + str + "'"
+  private[this] lazy val fail = mkFailure(failMsg)
   def resultEmpty = mkFailure(failMsg)
   def result = None
 
   def derive(c: Char) =
-    if (str.charAt(start) == c) stringLiteral(str, start + 1) else new Invalid(resultEmpty)
+    if (str.charAt(start) == c) stringLiteral(str, start + 1) else new Invalid(fail)
 
   def completions(level: Int) = Completions.single(Completion.suggestion(str.substring(start)))
   override def toString = "\"" + str + "\""
@@ -956,16 +960,17 @@ private final class StringLiteral(str: String, start: Int) extends ValidParser[S
 
 private final class CharacterClass(f: Char => Boolean, label: String) extends ValidParser[Char] {
   def result = None
-  def resultEmpty = mkFailure("Expected " + label)
-  def derive(c: Char) = if (f(c)) success(c) else Invalid(resultEmpty)
+  private[this] def fail: Failure = mkFailure("Expected " + label)
+  def resultEmpty = fail
+  def derive(c: Char) = if (f(c)) success(c) else Invalid(fail)
   def completions(level: Int) = Completions.empty
   override def toString = "class(" + label + ")"
 }
 
-private final class Optional[T](delegate: Parser[T]) extends ValidParser[Option[T]] {
-  def result = delegate.result map some.fn
+private final class Optional[A](delegate: Parser[A]) extends ValidParser[Option[A]] {
+  def result = delegate.result.map(some[A])
   def resultEmpty = Value(None)
-  def derive(c: Char) = (delegate derive c).map(some.fn)
+  def derive(c: Char) = (delegate derive c).map(some[A])
   def completions(level: Int) = Completion.empty +: delegate.completions(level)
   override def toString = delegate.toString + "?"
 }

@@ -125,7 +125,8 @@ trait Parsers {
   def isOpType(cat: Int) = cat match {
     case MATH_SYMBOL | OTHER_SYMBOL | DASH_PUNCTUATION | OTHER_PUNCTUATION | MODIFIER_SYMBOL |
         CURRENCY_SYMBOL =>
-      true; case _ => false
+      true
+    case _ => false
   }
 
   /** Returns true if `c` is a dash `-`, a letter, digit, or an underscore `_`. */
@@ -182,18 +183,14 @@ trait Parsers {
   /** Matches any character except a double quote or whitespace. */
   lazy val NotDQuoteSpaceClass =
     charClass(
-      { c: Char =>
-        (c != DQuoteChar) && !c.isWhitespace
-      },
+      (c: Char) => { (c != DQuoteChar) && !c.isWhitespace },
       "non-double-quote-space character"
     )
 
   /** Matches any character except a double quote or backslash. */
   lazy val NotDQuoteBackslashClass =
     charClass(
-      { c: Char =>
-        (c != DQuoteChar) && (c != BackslashChar)
-      },
+      (c: Char) => { (c != DQuoteChar) && (c != BackslashChar) },
       "non-double-quote-backslash character"
     )
 

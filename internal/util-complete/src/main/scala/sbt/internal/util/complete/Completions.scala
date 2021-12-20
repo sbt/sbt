@@ -158,14 +158,4 @@ object Completion {
   def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
 
   def suggestion(value: String): Completion = new Suggestion(value)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def displayOnly(value: => String): Completion = new DisplayOnly(value)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def token(prepend: => String, append: => String): Completion =
-    new Token(prepend + append, append)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def suggestion(value: => String): Completion = new Suggestion(value)
 }
