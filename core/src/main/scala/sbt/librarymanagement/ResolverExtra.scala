@@ -392,7 +392,8 @@ private[librarymanagement] abstract class ResolverFunctions {
           System.err.println(s"WARNING: Problem parsing ${f().getAbsolutePath}, ${e.getMessage}");
           None
       }
-    loadHomeFromSettings(() => new File(sbt.io.Path.userHome, ".m2/settings.xml")) orElse
+    sys.props.get("maven.repo.local").map(new File(_)) orElse
+      loadHomeFromSettings(() => new File(sbt.io.Path.userHome, ".m2/settings.xml")) orElse
       loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
       new File(sbt.io.Path.userHome, ".m2/repository")
   }
