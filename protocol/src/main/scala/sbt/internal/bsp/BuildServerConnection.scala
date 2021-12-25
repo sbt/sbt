@@ -49,9 +49,11 @@ object BuildServerConnection {
         "-Xmx100m",
         "-classpath",
         classPath,
-        "xsbt.boot.Boot",
-        "-bsp"
-      ) ++ sbtScript.orElse(sbtLaunchJar)
+      ) ++
+        sbtScript ++
+        Vector("xsbt.boot.Boot", "-bsp") ++
+        (if (sbtScript.isEmpty) sbtLaunchJar else None)
+
     val details = BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
     val json = Converter.toJson(details).get
     IO.write(bspConnectionFile, CompactPrinter(json), append = false)
