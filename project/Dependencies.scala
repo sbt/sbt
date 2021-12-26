@@ -14,8 +14,8 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.6.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.6.0-M2")
-  val zincVersion = nightlyVersion.getOrElse("1.6.0-M2")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.6.0")
+  val zincVersion = nightlyVersion.getOrElse("1.6.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
