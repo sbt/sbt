@@ -218,6 +218,6 @@ object SysProp {
     baseCache.getAbsoluteFile / "v1"
   }
 
-  val sbtCredentialsEnv: Option[Credentials] =
+  lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new FileCredentials(new File(raw)))
 }
