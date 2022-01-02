@@ -8,6 +8,7 @@
 package sbt.internal.util
 
 import scala.collection.JavaConverters._
+
 private[util] class WrappedMap[K, V](val jmap: java.util.Map[K, V]) extends Map[K, V] {
   def removed(key: K): scala.collection.immutable.Map[K, V] = jmap.asScala.toMap.removed(key)
   def updated[V1 >: V](key: K, value: V1): scala.collection.immutable.Map[K, V1] =

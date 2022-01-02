@@ -22,20 +22,20 @@ trait ExecuteProgress[F[_]] {
    * `task` are `allDeps` and the subset of those dependencies that have not completed are
    * `pendingDeps`.
    */
-  def afterRegistered(task: F[_], allDeps: Iterable[F[_]], pendingDeps: Iterable[F[_]]): Unit
+  def afterRegistered(task: F[Any], allDeps: Iterable[F[Any]], pendingDeps: Iterable[F[Any]]): Unit
 
   /**
    * Notifies that all of the dependencies of `task` have completed and `task` is therefore ready to
    * run. The task has not been scheduled on a thread yet.
    */
-  def afterReady(task: F[_]): Unit
+  def afterReady(task: F[Any]): Unit
 
   /**
    * Notifies that the work for `task` is starting after this call returns. This is called from the
    * thread the task executes on, unlike most other methods in this callback. It is called
    * immediately before the task's work starts with minimal intervening executor overhead.
    */
-  def beforeWork(task: F[_]): Unit
+  def beforeWork(task: F[Any]): Unit
 
   /**
    * Notifies that the work for `task` work has finished. The task may have computed the next task
@@ -67,13 +67,13 @@ object ExecuteProgress {
   def empty[F[_]]: ExecuteProgress[F] = new ExecuteProgress[F] {
     override def initial(): Unit = ()
     override def afterRegistered(
-        task: F[_],
-        allDeps: Iterable[F[_]],
-        pendingDeps: Iterable[F[_]]
+        task: F[Any],
+        allDeps: Iterable[F[Any]],
+        pendingDeps: Iterable[F[Any]]
     ): Unit =
       ()
-    override def afterReady(task: F[_]): Unit = ()
-    override def beforeWork(task: F[_]): Unit = ()
+    override def afterReady(task: F[Any]): Unit = ()
+    override def beforeWork(task: F[Any]): Unit = ()
     override def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit = ()
     override def afterCompleted[A](task: F[A], result: Result[A]): Unit = ()
     override def afterAllCompleted(results: RMap[F, Result]): Unit = ()
@@ -85,16 +85,16 @@ object ExecuteProgress {
       reporters foreach { _.initial() }
     }
     override def afterRegistered(
-        task: F[_],
-        allDeps: Iterable[F[_]],
-        pendingDeps: Iterable[F[_]]
+        task: F[Any],
+        allDeps: Iterable[F[Any]],
+        pendingDeps: Iterable[F[Any]]
     ): Unit = {
       reporters foreach { _.afterRegistered(task, allDeps, pendingDeps) }
     }
-    override def afterReady(task: F[_]): Unit = {
+    override def afterReady(task: F[Any]): Unit = {
       reporters foreach { _.afterReady(task) }
     }
-    override def beforeWork(task: F[_]): Unit = {
+    override def beforeWork(task: F[Any]): Unit = {
       reporters foreach { _.beforeWork(task) }
     }
     override def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit = {

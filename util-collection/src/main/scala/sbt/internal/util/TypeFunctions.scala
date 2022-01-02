@@ -15,10 +15,10 @@ trait TypeFunctions:
   import TypeFunctions._
   sealed trait Const[A] { type Apply[B] = A }
   sealed trait ConstK[A] { type l[L[x]] = A }
-  sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
-  sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
-
    */
+  sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
+
+  sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
   private type AnyLeft[T] = Left[T, Nothing]
   private type AnyRight[T] = Right[Nothing, T]
   final val left: [A] => A => Left[A, Nothing] = [A] => (a: A) => Left(a)
@@ -71,15 +71,17 @@ object TypeFunctions extends TypeFunctions:
 end TypeFunctions
  */
 
-/*
-trait ~>[-A[_], +B[_]] { outer =>
-  def apply[T](a: A[T]): B[T]
+trait ~>[-F1[_], +F2[_]] { outer =>
+  def apply[A](f1: F1[A]): F2[A]
   // directly on ~> because of type inference limitations
-  final def ∙[C[_]](g: C ~> A): C ~> B = λ[C ~> B](c => outer.apply(g(c)))
-  final def ∙[C, D](g: C => D)(implicit ev: D <:< A[D]): C => B[D] = i => apply(ev(g(i)))
-  final def fn[T]: A[T] => B[T] = (t: A[T]) => apply[T](t)
+  final def ∙[F3[_]](g: F3 ~> F1): F3 ~> F2 = new ~>[F3, F2] {
+    override def apply[A](f3: F3[A]) = outer.apply(g(f3))
+  }
+  final def ∙[C, D](g: C => D)(implicit ev: D <:< F1[D]): C => F2[D] = i => apply(ev(g(i)))
+  lazy val fn: [A] => F1[A] => F2[A] = [A] => (f1: F1[A]) => outer.apply[A](f1)
 }
 
+/*
 object ~> {
   import TypeFunctions._
   val Id: Id ~> Id = idK[Id]
