@@ -99,4 +99,31 @@ object AList:
           case _: Tuple.Map[EmptyTuple, F1] => init
           case (head: F1[x] @unchecked) *: tail =>
             f(head, foldr[F1, A1](tail.asInstanceOf, init)(f))
+
+  def list[A]: AList[[F[_]] =>> List[F[A]]] =
+    new AList[[F[_]] =>> List[F[A]]]:
+      override def transform[F1[_], F2[_]](value: List[F1[A]])(
+          f: [x] => F1[x] => F2[x]
+      ): List[F2[A]] = value.map(f[A])
+
+      override def mapN[F1[_]: Applicative, A1](value: List[F1[A]])(f: List[Id[A]] => A1): F1[A1] =
+        val ap = summon[Applicative[F1]]
+        def loop[V](in: List[F1[A]], g: List[A] => V): F1[V] =
+          in match
+            case Nil => ap.pure(g(Nil))
+            case x :: xs =>
+              val h = (ts: List[A]) => (t: A) => g(t :: ts)
+              ap.ap(loop(xs, h))(x)
+        loop(value, f)
+
+      override def foldr[F1[_], A1](value: List[F1[A]], init: A1)(
+          f: [a] => (F1[a], A1) => A1
+      ): A1 = value.reverse.foldLeft(init)((t, m) => f(m, t))
+      override def traverse[F1[_], F2[_]: Applicative](value: List[F1[A]])(
+          f: [a] => F1[a] => F2[a]
+      ): F2[List[Id[A]]] = ???
+
+      override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: List[F1[A]])(
+          f: [a] => F1[a] => F2[P[a]]
+      ): F2[List[P[A]]] = ???
 end AList
