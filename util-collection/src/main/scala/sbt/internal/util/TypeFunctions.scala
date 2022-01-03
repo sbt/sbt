@@ -34,7 +34,7 @@ trait TypeFunctions:
 
   final def idFun[A]: A => A = ((a: A) => a) // .setToString("TypeFunctions.id")
   final def const[A, B](b: B): A => B = ((_: A) => b) // .setToString(s"TypeFunctions.const($b)")
-/*
+  /*
   final def idK[M[_]]: M ~> M = λ[M ~> M](m => m).setToString("TypeFunctions.idK")
 
   def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
@@ -44,7 +44,8 @@ trait TypeFunctions:
 
   type Endo[T] = T => T
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
- */
+   */
+  type ~>|[F1[_], F2[_]] = [A] => F1[A] => Option[F2[A]]
 
 end TypeFunctions
 
