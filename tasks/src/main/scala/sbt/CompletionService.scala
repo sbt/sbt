@@ -44,17 +44,21 @@ object CompletionService {
     )
     (apply[A, T](pool), () => { pool.shutdownNow(); () })
   }
+
   def apply[A, T](x: Executor): CompletionService[A, T] =
     apply(new ExecutorCompletionService[T](x))
+
   def apply[A, T](completion: JCompletionService[T]): CompletionService[A, T] =
     new CompletionService[A, T] {
       def submit(node: A, work: () => T) = { CompletionService.submit(work, completion); () }
       def take() = completion.take().get()
     }
+
   def submit[T](work: () => T, completion: JCompletionService[T]): () => T = {
     val future = submitFuture[T](work, completion)
     () => future.get
   }
+
   private[sbt] def submitFuture[A](work: () => A, completion: JCompletionService[A]): JFuture[A] = {
     val future =
       try completion.submit {

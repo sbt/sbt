@@ -12,7 +12,7 @@ import sbt.util.Applicative
 import Types._
 
 /**
- * Arity-generic List. An abstraction over structured Tuple type constructor `X1[f[a]]`.
+ * Arity-generic List. An abstraction over structured Tuple/List type constructor `X1[f[a]]`.
  */
 trait AList[K[F[_]]]:
   import AList.idPoly
@@ -42,6 +42,8 @@ trait AList[K[F[_]]]:
 end AList
 
 object AList:
+  inline def apply[K[F[_]]: AList]: AList[K] = summon[AList[K]]
+
   type Tail[X <: Tuple] <: Tuple = X match
     case _ *: xs => xs
 

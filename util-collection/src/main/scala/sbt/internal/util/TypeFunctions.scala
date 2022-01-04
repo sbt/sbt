@@ -19,11 +19,11 @@ trait TypeFunctions:
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
 
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
-  private type AnyLeft[T] = Left[T, Nothing]
-  private type AnyRight[T] = Right[Nothing, T]
-  final val left: [A] => A => Left[A, Nothing] = [A] => (a: A) => Left(a)
+  private type AnyLeft[A] = Left[A, Nothing]
+  private type AnyRight[A] = Right[Nothing, A]
+  final val left: [A] => A => AnyLeft[A] = [A] => (a: A) => Left(a)
 
-  final val right: [A] => A => Right[Nothing, A] = [A] => (a: A) => Right(a)
+  final val right: [A] => A => AnyRight[A] = [A] => (a: A) => Right(a)
 
   final val some: [A] => A => Some[A] = [A] => (a: A) => Some(a)
   // Id ~> Left[*, Nothing] =
@@ -34,9 +34,10 @@ trait TypeFunctions:
 
   final def idFun[A]: A => A = ((a: A) => a) // .setToString("TypeFunctions.id")
   final def const[A, B](b: B): A => B = ((_: A) => b) // .setToString(s"TypeFunctions.const($b)")
-  /*
-  final def idK[M[_]]: M ~> M = λ[M ~> M](m => m).setToString("TypeFunctions.idK")
 
+  final def idK[F[_]]: [a] => F[a] => F[a] = [a] =>
+    (fa: F[a]) => fa // .setToString("TypeFunctions.idK")
+  /*
   def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
     f.asInstanceOf[(M ∙ G)#l ~> (N ∙ G)#l] // implemented with a cast to avoid extra object+method call.
   // castless version:
@@ -46,6 +47,10 @@ trait TypeFunctions:
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
    */
   type ~>|[F1[_], F2[_]] = [A] => F1[A] => Option[F2[A]]
+
+  extension (f: [a] => a => AnyRight[a])
+    def compose[F3[_]](g: [a] => F3[a] => a): [a] => F3[a] => AnyRight[a] =
+      [a] => (f3: F3[a]) => f(g(f3))
 
 end TypeFunctions
 

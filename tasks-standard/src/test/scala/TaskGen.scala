@@ -30,14 +30,14 @@ object TaskGen extends std.TaskExtra {
       ExecuteProgress.empty[Task]
     )(std.Transform(dummies))
     try {
-      x.run(root)(service)
+      x.run(root)(service.asInstanceOf)
     } finally {
       shutdown()
     }
   }
   def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =
     run(root, checkCycles, maxWorkers) match {
-      case Value(v) => v
-      case Inc(i)   => throw i
+      case Result.Value(v) => v
+      case Result.Inc(i)   => throw i
     }
 }

@@ -8,24 +8,28 @@
 package sbt
 package std
 
+import sbt.internal.Action
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, DelegatingPMap, RMap }
 import TaskExtra.{ all, existToAny }
+import sbt.internal.util.Types.*
 
-object Transform {
-  def fromDummy[T](original: Task[T])(action: => T): Task[T] =
-    Task(original.info, Pure(action _, false))
+object Transform:
+  def fromDummy[A](original: Task[A])(action: => A): Task[A] =
+    Task(original.info, Action.Pure(() => action, false))
+
   def fromDummyStrict[T](original: Task[T], value: T): Task[T] = fromDummy(original)(value)
 
-  implicit def to_~>|[K[_], V[_]](map: RMap[K, V]): K ~>| V = new (K ~>| V) {
-    def apply[T](k: K[T]): Option[V[T]] = map.get(k)
-  }
+  implicit def to_~>|[K[_], V[_]](map: RMap[K, V]): ~>|[K, V] =
+    [A] => (k: K[A]) => map.get(k)
 
   final case class DummyTaskMap(mappings: List[TaskAndValue[_]]) {
     def ::[T](tav: (Task[T], T)): DummyTaskMap =
       DummyTaskMap(new TaskAndValue(tav._1, tav._2) :: mappings)
   }
+
   final class TaskAndValue[T](val task: Task[T], val value: T)
+
   def dummyMap(dummyMap: DummyTaskMap): Task ~>| Task = {
     val pmap = new DelegatingPMap[Task, Task](new collection.mutable.ListMap)
     def add[T](dummy: TaskAndValue[T]): Unit = {
@@ -36,35 +40,43 @@ object Transform {
   }
 
   /** Applies `map`, returning the result if defined or returning the input unchanged otherwise. */
-  implicit def getOrId(map: Task ~>| Task): Task ~> Task =
-    λ[Task ~> Task](in => map(in).getOrElse(in))
+  implicit def getOrId(map: Task ~>| Task): [A] => Task[A] => Task[A] =
+    [A] => (in: Task[A]) => map(in).getOrElse(in)
 
   def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))
 
-  def taskToNode(pre: Task ~> Task): NodeView[Task] = new NodeView[Task] {
-    def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match {
-      case Pure(eval, _)       => uniform(Nil)(_ => Right(eval()))
-      case m: Mapped[t, k]     => toNode[t, k](m.in)(right ∙ m.f)(m.alist)
-      case m: FlatMapped[t, k] => toNode[t, k](m.in)(left ∙ m.f)(m.alist)
-      case s: Selected[_, t]   => val m = s.asFlatMapped; toNode(m.in)(left ∙ m.f)(m.alist)
-      case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
-      case Join(in, f)         => uniform(in)(f)
-    }
-    def inline[T](t: Task[T]): Option[() => T] = t.work match {
-      case Pure(eval, true) => Some(eval)
-      case _                => None
-    }
-  }
+  def taskToNode(pre: [A] => Task[A] => Task[A]): NodeView[Task] =
+    new NodeView[Task]:
+      import Action.*
+      def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match
+        case Pure(eval, _)   => uniform(Nil)(_ => Right(eval()))
+        case m: Mapped[a, k] => toNode[a, k](m.in)(right[a] compose m.f)(m.alist)
+        case m: FlatMapped[a, k] =>
+          toNode[a, k](m.in)(left[Task[a]] compose m.f)(m.alist) // (m.alist)
+        case s: Selected[a1, a2] =>
+          val m = Action.asFlatMapped[a1, a2](s)
+          toNode[a2, [F[_]] =>> Tuple1[F[Either[a1, a2]]]](m.in)(left[Task[a2]] compose m.f)(
+            m.alist
+          )
+        case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
+        case Join(in, f)         => uniform(in)(f)
 
-  def uniform[T, D](tasks: Seq[Task[D]])(f: Seq[Result[D]] => Either[Task[T], T]): Node[Task, T] =
-    toNode[T, λ[L[x] => List[L[D]]]](tasks.toList)(f)(AList.seq[D])
+      def inline1[T](t: Task[T]): Option[() => T] = t.work match
+        case Action.Pure(eval, true) => Some(eval)
+        case _                       => None
 
-  def toNode[T, k[L[x]]](
-      inputs: k[Task]
-  )(f: k[Result] => Either[Task[T], T])(implicit a: AList[k]): Node[Task, T] = new Node[Task, T] {
-    type K[L[x]] = k[L]
-    val in = inputs
-    val alist = a
-    def work(results: K[Result]) = f(results)
-  }
-}
+  def uniform[A1, D](tasks: Seq[Task[D]])(
+      f: Seq[Result[D]] => Either[Task[A1], A1]
+  ): Node[Task, A1] =
+    toNode[A1, [F[_]] =>> List[F[D]]](tasks.toList)(f)(AList.list[D])
+
+  def toNode[A1, K1[F[_]]: AList](
+      inputs: K1[Task]
+  )(f: K1[Result] => Either[Task[A1], A1]): Node[Task, A1] =
+    new Node[Task, A1]:
+      type K[F[_]] = K1[F]
+      val in = inputs
+      lazy val alist: AList[K] = AList[K]
+      def work(results: K[Result]) = f(results)
+
+end Transform

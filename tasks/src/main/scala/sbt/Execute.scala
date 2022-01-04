@@ -39,13 +39,16 @@ private[sbt] object Execute {
   final val checkPreAndPostConditions =
     sys.props.get("sbt.execute.extrachecks").exists(java.lang.Boolean.parseBoolean)
 }
+
 sealed trait Completed {
   def process(): Unit
 }
+
 private[sbt] trait NodeView[F[_]] {
   def apply[A](a: F[A]): Node[F, A]
   def inline1[A](a: F[A]): Option[() => A]
 }
+
 final class Triggers[F[_]](
     val runBefore: collection.Map[F[Any], Seq[F[Any]]],
     val injectFor: collection.Map[F[Any], Seq[F[Any]]],
@@ -278,7 +281,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   /** Send the work for this node to the provided Strategy. */
   def submit[A](node: F[A])(implicit strategy: Strategy): Unit = {
     val v = viewCache(node)
-    val rs = AList.tuple.transform[F, Result, v.Tup](v.in)(getResult)
+    val rs = v.alist.transform[F, Result](v.in)(getResult)
     // v.alist.transform(v.in)(getResult)
     strategy.submit(node.asInstanceOf, () => work(node, v.work(rs)))
   }
@@ -321,8 +324,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
   def dependencies[A](node: F[A]): Iterable[F[Any]] = dependencies(viewCache(node.asInstanceOf))
   def dependencies[A](v: Node[F, A]): Iterable[F[Any]] =
-    AList.tuple.toList[F, v.Tup](v.in).filter(dep => view.inline1(dep).isEmpty)
-  // v.alist.toList(v.in).filter(dep => view.inline(dep).isEmpty)
+    v.alist.toList[F](v.in).filter(dep => view.inline1(dep).isEmpty)
 
   def runBefore[A](node: F[A]): Seq[F[A]] =
     getSeq[A](triggers.runBefore, node)

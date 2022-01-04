@@ -7,6 +7,8 @@
 
 package sbt
 
+import sbt.internal.util.AList
+
 /**
  * Represents a task node in a format understood by the task evaluation engine Execute.
  *
@@ -15,10 +17,11 @@ package sbt
  * @tparam A
  *   the type computed by this node
  */
-trait Node[Effect[_], A] {
-  type Tup <: Tuple
-  def in: Tuple.Map[Tup, Effect]
+private[sbt] trait Node[Effect[_], A]:
+  type K[L[x]]
+  def in: K[Effect]
+  def alist: AList[K]
 
   /** Computes the result of this task given the results from the inputs. */
-  def work(inputs: Tuple.Map[Tup, Result]): Either[Effect[A], A]
-}
+  def work(inputs: K[Result]): Either[Effect[A], A]
+end Node
