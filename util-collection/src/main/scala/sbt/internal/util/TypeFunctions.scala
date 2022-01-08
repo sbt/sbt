@@ -48,10 +48,6 @@ trait TypeFunctions:
    */
   type ~>|[F1[_], F2[_]] = [A] => F1[A] => Option[F2[A]]
 
-  extension (f: [a] => a => AnyRight[a])
-    def compose[F3[_]](g: [a] => F3[a] => a): [a] => F3[a] => AnyRight[a] =
-      [a] => (f3: F3[a]) => f(g(f3))
-
 end TypeFunctions
 
 /*
