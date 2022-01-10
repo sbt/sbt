@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.com/sbt/sbt.svg?branch=develop)](https://travis-ci.com/github/sbt/sbt)
 [![Latest version](https://img.shields.io/github/tag/sbt/sbt.svg)](https://index.scala-lang.org/sbt/sbt)
+[![Scaladoc](https://javadoc.io/badge2/org.scala-sbt/sbt/scaladoc.svg)](https://javadoc.io/doc/org.scala-sbt/sbt)
 [![Gitter Chat](https://badges.gitter.im/sbt/sbt.svg)](https://gitter.im/sbt/sbt)
 
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
