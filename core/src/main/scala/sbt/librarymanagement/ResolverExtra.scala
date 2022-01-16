@@ -102,6 +102,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   @deprecated("Renamed to SbtRepositoryRoot.", "1.0.0")
   val SbtPluginRepositoryRoot = SbtRepositoryRoot
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
+  val SonatypeS01RepositoryRoot = "https://s01.oss.sonatype.org/content/repositories"
   val SonatypeReleasesRepository =
     "https://oss.sonatype.org/service/local/repositories/releases/content/"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
@@ -158,6 +159,11 @@ private[librarymanagement] abstract class ResolverFunctions {
       "sonatype-" + status,
       if (status == "releases") SonatypeReleasesRepository
       else SonatypeRepositoryRoot + "/" + status
+    )
+  def sonatypeS01Repo(status: String) =
+    MavenRepository(
+      "sonatype-s01-" + status,
+      SonatypeS01RepositoryRoot + "/" + status
     )
   def bintrayRepo(owner: String, repo: String) =
     MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
