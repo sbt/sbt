@@ -5,6 +5,7 @@ package sbt.librarymanagement
 
 import java.io.{ IOException, File }
 import java.net.{ URI, URL }
+import scala.annotation.nowarn
 import scala.xml.XML
 import org.xml.sax.SAXParseException
 import sbt.util.Logger
@@ -154,17 +155,20 @@ private[librarymanagement] abstract class ResolverFunctions {
     url("sbt-plugin-" + status, new URL(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(
       ivyStylePatterns
     )
+  @deprecated("Use sonatypeRepos instead", "1.7.0")
   def sonatypeRepo(status: String) =
     MavenRepository(
       "sonatype-" + status,
       if (status == "releases") SonatypeReleasesRepository
       else SonatypeRepositoryRoot + "/" + status
     )
-  def sonatypeS01Repo(status: String) =
+  private def sonatypeS01Repo(status: String) =
     MavenRepository(
       "sonatype-s01-" + status,
       SonatypeS01RepositoryRoot + "/" + status
     )
+  def sonatypeRepos(status: String) =
+    Vector(sonatypeRepo(status): @nowarn("cat=deprecation"), sonatypeS01Repo(status))
   def bintrayRepo(owner: String, repo: String) =
     MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
   def bintrayIvyRepo(owner: String, repo: String) =
