@@ -180,19 +180,21 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-// .aggregate(nonRoots: _*)
-  .aggregate(
-    collectionProj,
-    coreMacrosProj,
-    utilLogging,
-    utilControl,
-    completeProj,
-    logicProj,
-    utilCache,
-    taskProj,
-    stdTaskProj,
-    testingProj,
-  )
+  .aggregate((allProjects diff Seq(
+    actionsProj,
+    commandProj,
+    mainSettingsProj,
+    zincLmIntegrationProj,
+    protocolProj,
+    scriptedSbtReduxProj,
+    scriptedSbtOldProj,
+    scriptedPluginProj,
+    dependencyTreeProj,
+    mainProj,
+    sbtProj,
+    bundledLauncherProj,
+    sbtClientProj,
+  )).map(p => LocalProject(p.id)): _*)
   .settings(
     minimalSettings,
     onLoadMessage := {

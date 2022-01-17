@@ -56,7 +56,11 @@ object Dependencies {
       moduleId: ModuleID,
       c: Option[Configuration] = None
   ) = (p: Project) => {
-    val m = moduleId.withConfigurations(c.map(_.name)).cross(CrossVersion.for3Use2_13)
+    val m0 = moduleId.withConfigurations(c.map(_.name))
+    val m = m0.name match {
+      case "compiler-interface" => m0
+      case _ => m0.cross(CrossVersion.for3Use2_13)
+    }
     path match {
       case Some(f) =>
         p.dependsOn(ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name)))
