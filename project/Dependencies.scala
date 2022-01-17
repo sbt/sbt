@@ -56,7 +56,7 @@ object Dependencies {
       moduleId: ModuleID,
       c: Option[Configuration] = None
   ) = (p: Project) => {
-    val m = moduleId.withConfigurations(c.map(_.name))
+    val m = moduleId.withConfigurations(c.map(_.name)).cross(CrossVersion.for3Use2_13)
     path match {
       case Some(f) =>
         p.dependsOn(ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name)))
@@ -80,11 +80,9 @@ object Dependencies {
 
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.13"
 
-  lazy val sjsonNewVersion = "0.9.1"
+  lazy val sjsonNewVersion = "0.10.0"
   def sjsonNew(n: String) = Def.setting(
-    if (scalaBinaryVersion.value == "3")
-      ("com.eed3si9n" % n % sjsonNewVersion).cross(CrossVersion.for3Use2_13)
-    else "com.eed3si9n" %% n % sjsonNewVersion
+    "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
