@@ -10,21 +10,21 @@ package sbt
 import sbt.util.Logger
 import java.io.OutputStream
 
-/** Configures where the standard output and error streams from a forked process go.*/
+/** Configures where the standard output and error streams from a forked process go. */
 sealed abstract class OutputStrategy
 
 object OutputStrategy {
 
   /**
-   * Configures the forked standard output to go to standard output of this process and
-   * for the forked standard error to go to the standard error of this process.
+   * Configures the forked standard output to go to standard output of this process and for the
+   * forked standard error to go to the standard error of this process.
    */
   case object StdoutOutput extends OutputStrategy
 
   /**
-   * Logs the forked standard output at the `info` level and the forked standard error at
-   * the `error` level. The output is buffered until the process completes, at which point
-   * the logger flushes it (to the screen, for example).
+   * Logs the forked standard output at the `info` level and the forked standard error at the
+   * `error` level. The output is buffered until the process completes, at which point the logger
+   * flushes it (to the screen, for example).
    */
   final class BufferedOutput private (val logger: Logger) extends OutputStrategy with Serializable {
     override def equals(o: Any): Boolean = o match {
@@ -49,8 +49,8 @@ object OutputStrategy {
   }
 
   /**
-   * Logs the forked standard output at the `info` level and the forked standard error at
-   * the `error` level.
+   * Logs the forked standard output at the `info` level and the forked standard error at the
+   * `error` level.
    */
   final class LoggedOutput private (val logger: Logger) extends OutputStrategy with Serializable {
     override def equals(o: Any): Boolean = o match {
@@ -75,8 +75,8 @@ object OutputStrategy {
   }
 
   /**
-   * Configures the forked standard output to be sent to `output` and the forked standard error
-   * to be sent to the standard error of this process.
+   * Configures the forked standard output to be sent to `output` and the forked standard error to
+   * be sent to the standard error of this process.
    */
   final class CustomOutput private (val output: OutputStream)
       extends OutputStrategy

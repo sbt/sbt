@@ -37,12 +37,13 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
     log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
     val c = configLogged(log)
     val scalaOpts = scalaOptions(mainClass, classpath, options)
-    val exitCode = try Fork.java(c, scalaOpts)
-    catch {
-      case _: InterruptedException =>
-        log.warn("Run canceled.")
-        1
-    }
+    val exitCode =
+      try Fork.java(c, scalaOpts)
+      catch {
+        case _: InterruptedException =>
+          log.warn("Run canceled.")
+          1
+      }
     processExitCode(exitCode, "runner")
   }
 
@@ -110,18 +111,17 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
           }
       }
     def directExecute(): Try[Unit] =
-      Try(execute()) recover {
-        case NonFatal(e) =>
-          // bgStop should not print out stack trace
-          // log.trace(e)
-          throw e
+      Try(execute()) recover { case NonFatal(e) =>
+        // bgStop should not print out stack trace
+        // log.trace(e)
+        throw e
       }
 
     if (trapExit) Run.executeSuccess(execute())
     else directExecute()
   }
 
-  /** Runs the class 'mainClass' using the given classpath and options using the scala runner.*/
+  /** Runs the class 'mainClass' using the given classpath and options using the scala runner. */
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
     val loader = newLoader(classpath)
     try runWithLoader(loader, classpath, mainClass, options, log)
@@ -171,10 +171,10 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
   }
 }
 
-/** This module is an interface to starting the scala interpreter or runner.*/
+/** This module is an interface to starting the scala interpreter or runner. */
 object Run {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger)(
-      implicit runner: ScalaRun
+  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger)(implicit
+      runner: ScalaRun
   ) =
     runner.run(mainClass, classpath, options, log)
 
