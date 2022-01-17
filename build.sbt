@@ -191,6 +191,7 @@ lazy val sbtRoot: Project = (project in file("."))
     utilCache,
     taskProj,
     stdTaskProj,
+    testingProj,
   )
   .settings(
     minimalSettings,
@@ -472,7 +473,8 @@ lazy val testingProj = (project in file("testing"))
       scalaXml.value,
       testInterface,
       launcherInterface,
-      sjsonNewScalaJson.value
+      sjsonNewScalaJson.value,
+      sjsonNewCore.value,
     ),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     Compile / managedSourceDirectories +=
