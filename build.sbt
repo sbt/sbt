@@ -180,21 +180,22 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .aggregate((allProjects diff Seq(
-    actionsProj,
-    commandProj,
-    mainSettingsProj,
-    zincLmIntegrationProj,
-    protocolProj,
-    scriptedSbtReduxProj,
-    scriptedSbtOldProj,
-    scriptedPluginProj,
-    dependencyTreeProj,
-    mainProj,
-    sbtProj,
-    bundledLauncherProj,
-    sbtClientProj,
-  )).map(p => LocalProject(p.id)): _*)
+  .aggregate(
+    (allProjects diff Seq(
+      actionsProj,
+      commandProj,
+      mainSettingsProj,
+      zincLmIntegrationProj,
+      scriptedSbtReduxProj,
+      scriptedSbtOldProj,
+      scriptedPluginProj,
+      dependencyTreeProj,
+      mainProj,
+      sbtProj,
+      bundledLauncherProj,
+      sbtClientProj,
+    )).map(p => LocalProject(p.id)): _*
+  )
   .settings(
     minimalSettings,
     onLoadMessage := {
@@ -700,7 +701,7 @@ lazy val protocolProj = (project in file("protocol"))
   .settings(
     testedBaseSettings,
     name := "Protocol",
-    libraryDependencies ++= Seq(sjsonNewScalaJson.value, ipcSocket),
+    libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -742,7 +743,12 @@ lazy val commandProj = (project in file("main-command"))
   .settings(
     testedBaseSettings,
     name := "Command",
-    libraryDependencies ++= Seq(launcherInterface, sjsonNewScalaJson.value, templateResolverApi),
+    libraryDependencies ++= Seq(
+      launcherInterface,
+      sjsonNewCore.value,
+      sjsonNewScalaJson.value,
+      templateResolverApi
+    ),
     Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
