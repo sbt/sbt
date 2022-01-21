@@ -580,7 +580,6 @@ Usage: `basename "$0"` [options]
   -Dkey=val           pass -Dkey=val directly to the java runtime
   -J-X                pass option -X directly to the java runtime
                       (-J is stripped)
-  -S-X                add -X to sbt's scalacOptions (-S is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
