@@ -178,13 +178,7 @@ abstract class JLine extends LineReader {
   protected[this] lazy val in: InputStream = Terminal.wrappedSystemIn
 
   override def readLine(prompt: String, mask: Option[Char] = None): Option[String] =
-    try {
-      unsynchronizedReadLine(prompt, mask)
-    } catch {
-      case _: InterruptedException =>
-        // println("readLine: InterruptedException")
-        Option("")
-    }
+    unsynchronizedReadLine(prompt, mask)
 
   private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
     readLineWithHistory(prompt, mask) map { x =>
