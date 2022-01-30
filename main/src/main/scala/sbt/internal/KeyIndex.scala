@@ -282,8 +282,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
     if (validID(scoped.key.label)) {
       val aggregateProjects = Aggregation.aggregate(scoped, ScopeMask(), extra, reverse = true)
       aggregateProjects.foldLeft(this: ExtendableKeyIndex)(_ add _)
-    } else
-      this
+    } else this
 
   def add(scoped: ScopedKey[_]): ExtendableKeyIndex =
     if (validID(scoped.key.label)) add0(scoped) else this

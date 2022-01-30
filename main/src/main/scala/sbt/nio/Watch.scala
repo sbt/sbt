@@ -580,11 +580,17 @@ object Watch {
    * a build is triggered.
    */
   final val defaultOnTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
-    ((_: Int, path: Path, commands: Seq[String]) => {
-      val msg = s"Build triggered by $path. " +
-        s"Running ${commands.mkString("'", "; ", "'")}."
-      Some(msg)
-    }).label("Watched.defaultOnTriggerMessage")
+    (
+        (
+            _: Int,
+            path: Path,
+            commands: Seq[String]
+        ) => {
+          val msg = s"Build triggered by $path. " +
+            s"Running ${commands.mkString("'", "; ", "'")}."
+          Some(msg)
+        }
+    ).label("Watched.defaultOnTriggerMessage")
 
   final val noTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
     (_, _, _) => None

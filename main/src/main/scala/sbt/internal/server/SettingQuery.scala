@@ -113,12 +113,11 @@ object SettingQuery {
       structure: BuildStructure,
       key: Def.ScopedKey[A]
   ): Either[String, JValue] =
-    getSettingValue(structure, key) flatMap (
-        value =>
-          getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
-            toJson(value)
-          }
-      )
+    getSettingValue(structure, key) flatMap (value =>
+      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
+        toJson(value)
+      }
+    )
 
   def handleSettingQueryEither(
       req: SettingQuery,

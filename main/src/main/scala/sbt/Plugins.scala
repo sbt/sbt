@@ -89,7 +89,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
 
   override def toString: String = label
 
-  /** The `Configuration`s to add to each project that activates this AutoPlugin.*/
+  /** The `Configuration`s to add to each project that activates this AutoPlugin. */
   def projectConfigurations: Seq[Configuration] = Nil
 
   /** The `Setting`s to add in the scope of each project that activates this AutoPlugin. */
@@ -167,7 +167,7 @@ object Plugins extends PluginsFunctions {
    * The [[AutoPlugin]]s are topologically sorted so that a required [[AutoPlugin]] comes before its requiring [[AutoPlugin]].
    */
   def deducer(defined0: List[AutoPlugin]): (Plugins, Logger) => Seq[AutoPlugin] =
-    if (defined0.isEmpty)(_, _) => Nil
+    if (defined0.isEmpty) (_, _) => Nil
     else {
       // TODO: defined should return all the plugins
       val allReqs = (defined0 flatMap { asRequirements }).toSet
@@ -225,9 +225,13 @@ object Plugins extends PluginsFunctions {
                 (selectedPlugins flatMap { Plugins.asExclusions }).toSet
               val c = selectedPlugins.toSet & forbidden
               if (c.nonEmpty) {
-                exclusionConflictError(requestedPlugins, selectedPlugins, c.toSeq sortBy {
-                  _.label
-                })
+                exclusionConflictError(
+                  requestedPlugins,
+                  selectedPlugins,
+                  c.toSeq sortBy {
+                    _.label
+                  }
+                )
               }
               val retval = topologicalSort(selectedPlugins)
               // log.debug(s"  :: sorted deduced result: ${retval.toString}")
@@ -270,9 +274,8 @@ object Plugins extends PluginsFunctions {
     lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString (", ")
 
   private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
-    val dupsByAtom = Map(byAtom.groupBy(_._1).toSeq.map {
-      case (k, v) =>
-        k -> v.map(_._2)
+    val dupsByAtom = Map(byAtom.groupBy(_._1).toSeq.map { case (k, v) =>
+      k -> v.map(_._2)
     }: _*)
     val dupStrings =
       for ((atom, dups) <- dupsByAtom if dups.size > 1)
@@ -294,18 +297,18 @@ object Plugins extends PluginsFunctions {
           (if (c.requires != empty && c.trigger == allRequirements)
              List(s"enabled by ${c.requires.toString}")
            else Nil) ++ {
-          val reqs = selected filter { x =>
-            asRequirements(x) contains c
+            val reqs = selected filter { x =>
+              asRequirements(x) contains c
+            }
+            if (reqs.nonEmpty) List(s"""required by ${reqs.mkString(", ")}""")
+            else Nil
+          } ++ {
+            val exs = selected filter { x =>
+              asExclusions(x) contains c
+            }
+            if (exs.nonEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
+            else Nil
           }
-          if (reqs.nonEmpty) List(s"""required by ${reqs.mkString(", ")}""")
-          else Nil
-        } ++ {
-          val exs = selected filter { x =>
-            asExclusions(x) contains c
-          }
-          if (exs.nonEmpty) List(s"""excluded by ${exs.mkString(", ")}""")
-          else Nil
-        }
         s"""  - conflict: ${c.label} is ${reasons.mkString("; ")}"""
       }).mkString("\n")
     throw AutoPluginException(s"""Contradiction in enabled plugins:
@@ -357,12 +360,12 @@ ${listConflicts(conflicting)}""")
       Clause(convert(ap), Set(Atom(x.label)))
     }
   private[sbt] def asRequirements(ap: AutoPlugin): List[AutoPlugin] =
-    flatten(ap.requires).toList collect {
-      case x: AutoPlugin => x
+    flatten(ap.requires).toList collect { case x: AutoPlugin =>
+      x
     }
   private[sbt] def asExclusions(ap: AutoPlugin): List[AutoPlugin] =
-    flatten(ap.requires).toList collect {
-      case Exclude(x) => x
+    flatten(ap.requires).toList collect { case Exclude(x) =>
+      x
     }
   // TODO - This doesn't handle nested AND boolean logic...
   private[sbt] def hasExclude(n: Plugins, p: AutoPlugin): Boolean = n match {
@@ -414,7 +417,8 @@ ${listConflicts(conflicting)}""")
 
   private val autoImport = "autoImport"
 
-  /** Determines whether a plugin has a stable autoImport member by:
+  /**
+   * Determines whether a plugin has a stable autoImport member by:
    *
    * 1. Checking whether there exists a public field.
    * 2. Checking whether there exists a public object.

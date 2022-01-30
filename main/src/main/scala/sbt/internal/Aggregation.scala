@@ -46,8 +46,8 @@ object Aggregation {
       success = true
     )
 
-  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(
-      implicit display: Show[ScopedKey[_]]
+  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit
+      display: Show[ScopedKey[_]]
   ): Unit =
     xs match {
       case KeyValue(_, x: Seq[_]) :: Nil => print(x.mkString("* ", "\n* ", ""))
@@ -69,8 +69,8 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
     Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
-  private def showRun[T](complete: Complete[T], show: ShowConfig)(
-      implicit display: Show[ScopedKey[_]]
+  private def showRun[T](complete: Complete[T], show: ShowConfig)(implicit
+      display: Show[ScopedKey[_]]
   ): Unit = {
     import complete._
     val log = state.log
@@ -163,8 +163,7 @@ object Aggregation {
          val mins = f"${total % 3600 / 60}%02d"
          val secs = f"${total % 60}%02d"
          s" ($maybeHours$mins:$secs)"
-       })
-    s"Total time: $totalString, completed $nowString"
+       }) s"Total time: $totalString, completed $nowString"
   }
 
   def defaultFormat: DateFormat = {
@@ -185,8 +184,8 @@ object Aggregation {
     }
   }
 
-  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(
-      implicit display: Show[ScopedKey[_]]
+  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(implicit
+      display: Show[ScopedKey[_]]
   ): Parser[() => State] = {
 
     // to make the call sites clearer
@@ -196,8 +195,7 @@ object Aggregation {
       Util.separate(in)(f)
 
     val kvs = keys.toList
-    if (kvs.isEmpty)
-      failure("No such setting/task")
+    if (kvs.isEmpty) failure("No such setting/task")
     else {
       val (inputTasks, other) = separate[InputTask[_]](kvs) {
         case KeyValue(k, v: InputTask[_]) => Left(KeyValue(k, v))
@@ -219,8 +217,7 @@ object Aggregation {
           val inputStrings = inputTasks.map(_.key).mkString("Input task(s):\n\t", "\n\t", "\n")
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
-        } else
-          applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
+        } else applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
       } else {
         val base =
           if (tasks.isEmpty) success(() => s)
@@ -246,8 +243,8 @@ object Aggregation {
       reverse: Boolean
   ): Seq[ProjectRef] = {
     val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap(
-      ref => if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
+    resRef.toList.flatMap(ref =>
+      if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
     )
   }
 

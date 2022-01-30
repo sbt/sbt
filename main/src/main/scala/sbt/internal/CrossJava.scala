@@ -34,8 +34,8 @@ private[sbt] object CrossJava {
     def splitDot(s: String): Vector[Long] =
       Option(s) match {
         case Some(x) =>
-          x.split('.').toVector collect {
-            case Num(n) => n.toLong
+          x.split('.').toVector collect { case Num(n) =>
+            n.toLong
           }
         case _ => Vector()
       }
@@ -113,8 +113,8 @@ private[sbt] object CrossJava {
 
       // when looking for "10" it should match "openjdk@10"
       case None if jv.vendor.isEmpty =>
-        val noVendors: Map[JavaVersion, File] = mappings map {
-          case (k, v) => k.withVendor(None) -> v
+        val noVendors: Map[JavaVersion, File] = mappings map { case (k, v) =>
+          k.withVendor(None) -> v
         }
         noVendors.get(jv).getOrElse(javaHomeNotFound(jv, mappings))
       case _ => javaHomeNotFound(jv, mappings)
@@ -155,9 +155,8 @@ private[sbt] object CrossJava {
         else version & spacedFirst(JavaSwitchCommand)
       val verbose = Parser.opt(token(Space ~> "-v"))
       val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
-      (spacedVersion ~ verbose ~ optionalCommand).map {
-        case v ~ verbose ~ command =>
-          SwitchJavaHome(v, verbose.isDefined, command)
+      (spacedVersion ~ verbose ~ optionalCommand).map { case v ~ verbose ~ command =>
+        SwitchJavaHome(v, verbose.isDefined, command)
       }
     }
     token(JavaSwitchCommand ~> OptSpace) flatMap { sp =>
@@ -216,28 +215,26 @@ private[sbt] object CrossJava {
         switch.target.version match {
           case None => projectJavaVersions
           case Some(v) =>
-            projectJavaVersions flatMap {
-              case (proj, versions) =>
-                if (versions.isEmpty || versions.contains[String](v.toString))
-                  Vector(proj -> versions)
-                else Vector()
+            projectJavaVersions flatMap { case (proj, versions) =>
+              if (versions.isEmpty || versions.contains[String](v.toString))
+                Vector(proj -> versions)
+              else Vector()
             }
         }
     }
 
     def setJavaHomeForProjects: State = {
-      val newSettings = projects.flatMap {
-        case (proj, javaVersions) =>
-          val fjh = getJavaHomesTyped(extracted, proj)
-          val home = switch.target match {
-            case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
-            case SwitchTarget(_, Some(h), _) => h
-            case _                           => sys.error(s"unexpected ${switch.target}")
-          }
-          val scope = Scope(Select(proj), Zero, Zero, Zero)
-          Seq(
-            (scope / javaHome) := Some(home)
-          )
+      val newSettings = projects.flatMap { case (proj, javaVersions) =>
+        val fjh = getJavaHomesTyped(extracted, proj)
+        val home = switch.target match {
+          case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
+          case SwitchTarget(_, Some(h), _) => h
+          case _                           => sys.error(s"unexpected ${switch.target}")
+        }
+        val scope = Scope(Select(proj), Zero, Zero, Zero)
+        Seq(
+          (scope / javaHome) := Some(home)
+        )
       }
 
       val filterKeys: Set[AttributeKey[_]] = Set(javaHome).map(_.key)
@@ -287,8 +284,8 @@ private[sbt] object CrossJava {
     }
     // if we support javaHome, projVersions should be cached somewhere since
     // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
-    val projVersions = (projCrossVersions flatMap {
-      case (proj, versions) => versions map { proj.project -> _ }
+    val projVersions = (projCrossVersions flatMap { case (proj, versions) =>
+      versions map { proj.project -> _ }
     }).toList
 
     val verbose = ""
@@ -314,8 +311,8 @@ private[sbt] object CrossJava {
                 "that are configured."
             )
             state.log.debug("Java versions configuration is:")
-            projCrossVersions.foreach {
-              case (project, versions) => state.log.debug(s"$project: $versions")
+            projCrossVersions.foreach { case (project, versions) =>
+              state.log.debug(s"$project: $versions")
             }
           }
 
@@ -403,9 +400,8 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         candidates()
-          .collect {
-            case dir @ JavaHomeDir(version) =>
-              version -> (base / dir)
+          .collect { case dir @ JavaHomeDir(version) =>
+            version -> (base / dir)
           }
     }
 
@@ -414,9 +410,8 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
-          .collect {
-            case dir @ JavaHomeDir(version) =>
-              version -> (base / dir / "Contents" / "Home")
+          .collect { case dir @ JavaHomeDir(version) =>
+            version -> (base / dir / "Contents" / "Home")
           }
     }
 
@@ -426,11 +421,10 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
-          .collect {
-            case dir @ JabbaJavaHomeDir(vendor, m, n) =>
-              val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
-              if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
-              else v -> (base / dir)
+          .collect { case dir @ JabbaJavaHomeDir(vendor, m, n) =>
+            val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
+            if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
+            else v -> (base / dir)
           }
     }
 
@@ -454,8 +448,8 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         candidates()
-          .collect {
-            case dir @ JavaHomeDir(version) => version -> base / dir
+          .collect { case dir @ JavaHomeDir(version) =>
+            version -> base / dir
           }
           .flatMap {
             case x if vendors.isEmpty => Vector(x)
@@ -513,30 +507,28 @@ private[sbt] object CrossJava {
     else s
 
   def expandJavaHomes(hs: Map[String, File]): Map[String, File] = {
-    val parsed = hs map {
-      case (k, v) => JavaVersion(k) -> v
+    val parsed = hs map { case (k, v) =>
+      JavaVersion(k) -> v
     }
     // first ignore vnd
-    val withAndWithoutVnd = parsed flatMap {
-      case (k, v) =>
-        if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
-        else Vector(k -> v)
+    val withAndWithoutVnd = parsed flatMap { case (k, v) =>
+      if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
+      else Vector(k -> v)
     }
-    val normalizeNumbers = withAndWithoutVnd flatMap {
-      case (k, v) =>
-        k.numbers match {
-          case Vector(1L, minor, _*) =>
-            Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
-          case Vector(major) if major > 1 =>
-            Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
-          case Vector(major, minor, _*) if major > 1 =>
-            Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
-          case _ =>
-            Vector(k -> v)
-        }
+    val normalizeNumbers = withAndWithoutVnd flatMap { case (k, v) =>
+      k.numbers match {
+        case Vector(1L, minor, _*) =>
+          Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
+        case Vector(major) if major > 1 =>
+          Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
+        case Vector(major, minor, _*) if major > 1 =>
+          Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
+        case _ =>
+          Vector(k -> v)
+      }
     }
-    val result: Map[String, File] = normalizeNumbers map {
-      case (k, v) => (k.toString -> v)
+    val result: Map[String, File] = normalizeNumbers map { case (k, v) =>
+      (k.toString -> v)
     }
     result
   }

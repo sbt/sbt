@@ -31,7 +31,7 @@ private[sbt] class SetResult(
     val quietSummary: String
 )
 
-/** Defines methods for implementing the `set` command.*/
+/** Defines methods for implementing the `set` command. */
 private[sbt] object SettingCompletions {
 
   /**
@@ -72,7 +72,8 @@ private[sbt] object SettingCompletions {
     setResult(session, r, redefined)
   }
 
-  /** Implementation of the `set` command that will reload the current project with `settings`
+  /**
+   * Implementation of the `set` command that will reload the current project with `settings`
    *  appended to the current settings.
    */
   def setThis(extracted: Extracted, settings: Seq[Def.Setting[_]], arg: String): SetResult = {
@@ -115,15 +116,13 @@ private[sbt] object SettingCompletions {
         quietList(in)
     def quietList(in: Seq[String]): (String, Boolean) = {
       val (first, last) = in.splitAt(QuietLimit)
-      if (last.isEmpty)
-        (first.mkString(", "), false)
+      if (last.isEmpty) (first.mkString(", "), false)
       else {
         val s = first.take(QuietLimit - 1).mkString("", ", ", " and " + last.size + " others.")
         (s, true)
       }
     }
-    if (redefined.isEmpty)
-      "No settings or tasks were redefined."
+    if (redefined.isEmpty) "No settings or tasks were redefined."
     else {
       val (redef, trimR) = lines(strings(redefined))
       val (used, trimU) = lines(strings(affected))
@@ -173,7 +172,7 @@ private[sbt] object SettingCompletions {
       yield ScopedKey(scope, key)
   }
 
-  /** Parser for the `in` method name that slightly augments the naive completion to give a hint of the purpose of `in`.*/
+  /** Parser for the `in` method name that slightly augments the naive completion to give a hint of the purpose of `in`. */
   val inParser = tokenDisplay(Space ~> InMethod, "%s <scope>".format(InMethod))
 
   /**
@@ -204,8 +203,8 @@ private[sbt] object SettingCompletions {
   ): Parser[Scope] = {
     val data = settings.data
     val allScopes = data.keys.toSeq
-    val definedScopes = data.toSeq flatMap {
-      case (scope, attrs) => if (attrs contains key) scope :: Nil else Nil
+    val definedScopes = data.toSeq flatMap { case (scope, attrs) =>
+      if (attrs contains key) scope :: Nil else Nil
     }
     scope(allScopes, definedScopes, context)
   }
@@ -257,7 +256,8 @@ private[sbt] object SettingCompletions {
     val completions = fixedCompletions { (seen, _) =>
       completeAssign(seen, key).toSet
     }
-    val identifier = Act.filterStrings(Op, Assign.values.map(_.toString), "assignment method") map Assign.withName
+    val identifier =
+      Act.filterStrings(Op, Assign.values.map(_.toString), "assignment method") map Assign.withName
     token(Space) ~> token(optionallyQuoted(identifier), completions)
   }
 
@@ -271,8 +271,8 @@ private[sbt] object SettingCompletions {
 
   /** Produce a new parser that allows the input accepted by `p` to be quoted in backticks. */
   def optionallyQuoted[T](p: Parser[T]): Parser[T] =
-    (Backtick.? ~ p) flatMap {
-      case (quote, id) => if (quote.isDefined) Backtick.? ^^^ id else success(id)
+    (Backtick.? ~ p) flatMap { case (quote, id) =>
+      if (quote.isDefined) Backtick.? ^^^ id else success(id)
     }
 
   /**
@@ -297,8 +297,8 @@ private[sbt] object SettingCompletions {
       prominentCutoff: Int,
       detailLimit: Int
   ): Seq[Completion] =
-    completeSelectDescribed(seen, level, keys, detailLimit)(_.description) {
-      case (_, v) => v.rank <= prominentCutoff
+    completeSelectDescribed(seen, level, keys, detailLimit)(_.description) { case (_, v) =>
+      v.rank <= prominentCutoff
     }
 
   def completeScope[T](
@@ -307,8 +307,8 @@ private[sbt] object SettingCompletions {
       definedChoices: Set[String],
       allChoices: Map[String, T]
   )(description: T => Option[String]): Seq[Completion] =
-    completeSelectDescribed(seen, level, allChoices, 10)(description) {
-      case (k, _) => definedChoices(k)
+    completeSelectDescribed(seen, level, allChoices, 10)(description) { case (k, _) =>
+      definedChoices(k)
     }
 
   def completeSelectDescribed[T](seen: String, level: Int, all: Map[String, T], detailLimit: Int)(
@@ -317,7 +317,9 @@ private[sbt] object SettingCompletions {
     val applicable = all.toSeq.filter { case (k, _) => k startsWith seen }
     val prominentOnly = applicable filter { case (k, v) => prominent(k, v) }
 
-    val showAll = (level >= 3) || (level == 2 && prominentOnly.lengthCompare(detailLimit) <= 0) || prominentOnly.isEmpty
+    val showAll = (level >= 3) || (level == 2 && prominentOnly.lengthCompare(
+      detailLimit
+    ) <= 0) || prominentOnly.isEmpty
     val showKeys = if (showAll) applicable else prominentOnly
     val showDescriptions = (level >= 2) || showKeys.lengthCompare(detailLimit) <= 0
     completeDescribed(seen, showDescriptions, showKeys)(s => description(s).toList.mkString)
@@ -326,14 +328,12 @@ private[sbt] object SettingCompletions {
       description: T => String
   ): Seq[Completion] = {
     def appendString(id: String): String = id.stripPrefix(seen) + " "
-    if (in.isEmpty)
-      Nil
+    if (in.isEmpty) Nil
     else if (showDescriptions) {
       val withDescriptions = in map { case (id, key) => (id, description(key)) }
       val padded = CommandUtil.aligned("", "   ", withDescriptions)
-      (padded, in).zipped.map {
-        case (line, (id, _)) =>
-          Completion.tokenDisplay(append = appendString(id), display = line + "\n")
+      (padded, in).zipped.map { case (line, (id, _)) =>
+        Completion.tokenDisplay(append = appendString(id), display = line + "\n")
       }
     } else
       in map { case (id, _) => Completion.tokenDisplay(display = id, append = appendString(id)) }
@@ -351,7 +351,7 @@ private[sbt] object SettingCompletions {
    */
   def configScalaID(c: String): String = Util.quoteIfKeyword(c.capitalize)
 
-  /** Applies a function on the underlying manifest for T for `key` depending if it is for a `Setting[T]`, `Task[T]`, or `InputTask[T]`.*/
+  /** Applies a function on the underlying manifest for T for `key` depending if it is for a `Setting[T]`, `Task[T]`, or `InputTask[T]`. */
   def keyType[S](key: AttributeKey[_])(
       onSetting: Manifest[_] => S,
       onTask: Manifest[_] => S,
@@ -388,7 +388,7 @@ private[sbt] object SettingCompletions {
   /** The simple name of the Global scope, which can be used to reference it in the default setting context. */
   final val GlobalID = Scope.Global.getClass.getSimpleName.stripSuffix("$")
 
-  /** Character used to quote a Scala identifier that would otherwise be interpreted as a keyword.*/
+  /** Character used to quote a Scala identifier that would otherwise be interpreted as a keyword. */
   final val Backtick = '`'
 
   /** Name of the method that modifies the scope of a key. */
@@ -414,7 +414,7 @@ private[sbt] object SettingCompletions {
   /** The assignment methods except for the ones that append. */
   val assignNoAppend: Set[Assign.Value] = Set(Define, Update)
 
-  /** Class values to approximate which types can be appended*/
+  /** Class values to approximate which types can be appended */
   val appendableClasses = Seq(
     classOf[Seq[_]],
     classOf[Map[_, _]],

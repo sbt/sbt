@@ -152,14 +152,15 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       LogManager.constructBackgroundLog(extracted.structure.data, state, context)(spawningTask)
     val workingDir = serviceTempDir / s"job-$id"
     IO.createDirectory(workingDir)
-    val job = try {
-      new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))
-    } catch {
-      case e: Throwable =>
-        // TODO: Fix this
-        // logger.close()
-        throw e
-    }
+    val job =
+      try {
+        new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))
+      } catch {
+        case e: Throwable =>
+          // TODO: Fix this
+          // logger.close()
+          throw e
+      }
     job
   }
 
@@ -211,7 +212,6 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   override def toString(): String = s"BackgroundJobService(jobs=${jobs.map(_.id).mkString})"
 
   /**
-   *
    * Copies products to the working directory, and the rest to the serviceTempDir of this service,
    * both wrapped in a stamp of the file contents.
    * This is intended to minimize the file copying and accumulation of the unused JAR file.
@@ -463,9 +463,12 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       work: (Logger, File) => Unit
   ): JobHandle = {
     def start(logger: Logger, workingDir: File): BackgroundJob = {
-      val runnable = new BackgroundRunnable(spawningTask.key.label, { () =>
-        work(logger, workingDir)
-      })
+      val runnable = new BackgroundRunnable(
+        spawningTask.key.label,
+        { () =>
+          work(logger, workingDir)
+        }
+      )
       executor.execute(runnable)
       runnable
     }

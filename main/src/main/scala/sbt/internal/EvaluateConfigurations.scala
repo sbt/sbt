@@ -154,17 +154,16 @@ private[sbt] object EvaluateConfigurations {
         (imp, DefinedSbtValues(definitions))
       }
     val allImports = importDefs.map(s => (s, -1)) ++ parsed.imports
-    val dslEntries = parsed.settings map {
-      case (dslExpression, range) =>
-        evaluateDslEntry(eval, name, allImports, dslExpression, range)
+    val dslEntries = parsed.settings map { case (dslExpression, range) =>
+      evaluateDslEntry(eval, name, allImports, dslExpression, range)
     }
     eval.unlinkDeferred()
     // Tracks all the files we generated from evaluating the sbt file.
     val allGeneratedFiles = (definitions.generated ++ dslEntries.flatMap(_.generated))
     loader => {
       val projects = {
-        val compositeProjects = definitions.values(loader).collect {
-          case p: CompositeProject => p
+        val compositeProjects = definitions.values(loader).collect { case p: CompositeProject =>
+          p
         }
         CompositeProject.expand(compositeProjects).map(resolveBase(file.getParentFile, _))
       }
@@ -177,8 +176,8 @@ private[sbt] object EvaluateConfigurations {
         case DslEntry.ProjectSettings(settings) => settings
         case _                                  => Nil
       }
-      val manipulations = manipulationsRaw map {
-        case DslEntry.ProjectManipulation(f) => f
+      val manipulations = manipulationsRaw map { case DslEntry.ProjectManipulation(f) =>
+        f
       }
       // TODO -get project manipulations.
       new LoadedSbtFile(
@@ -205,7 +204,8 @@ private[sbt] object EvaluateConfigurations {
    * The name of the class we cast DSL "setting" (vs. definition) lines to.
    */
   val SettingsDefinitionName = {
-    val _ = classOf[DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
+    val _ =
+      classOf[DslEntry] // this line exists to try to provide a compile-time error when the following line needs to be changed
     "sbt.internal.DslEntry"
   }
 
@@ -230,17 +230,18 @@ private[sbt] object EvaluateConfigurations {
   ): TrackedEvalResult[DslEntry] = {
     // TODO - Should we try to namespace these between.sbt files?  IF they hash to the same value, they may actually be
     // exactly the same setting, so perhaps we don't care?
-    val result = try {
-      eval.eval(
-        expression,
-        imports = new EvalImports(imports, name),
-        srcName = name,
-        tpeName = Some(SettingsDefinitionName),
-        line = range.start
-      )
-    } catch {
-      case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
-    }
+    val result =
+      try {
+        eval.eval(
+          expression,
+          imports = new EvalImports(imports, name),
+          srcName = name,
+          tpeName = Some(SettingsDefinitionName),
+          line = range.start
+        )
+      } catch {
+        case e: sbt.compiler.EvalException => throw new MessageOnlyException(e.getMessage)
+      }
     // TODO - keep track of configuration classes defined.
     TrackedEvalResult(
       result.generated,
@@ -331,13 +332,11 @@ private[sbt] object EvaluateConfigurations {
 object Index {
   def taskToKeyMap(data: Settings[Scope]): Map[Task[_], ScopedKey[Task[_]]] = {
 
-    val pairs = data.scopes flatMap (
-        scope =>
-          data.data(scope).entries collect {
-            case AttributeEntry(key, value: Task[_]) =>
-              (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
-          }
-      )
+    val pairs = data.scopes flatMap (scope =>
+      data.data(scope).entries collect { case AttributeEntry(key, value: Task[_]) =>
+        (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
+      }
+    )
 
     pairs.toMap[Task[_], ScopedKey[Task[_]]]
   }
@@ -372,7 +371,9 @@ object Index {
       multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
     else
       sys.error(
-        duplicates map { case (k, tps) => "'" + k + "' (" + tps.mkString(", ") + ")" } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
+        duplicates map { case (k, tps) =>
+          "'" + k + "' (" + tps.mkString(", ") + ")"
+        } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
       )
   }
 

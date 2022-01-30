@@ -153,9 +153,8 @@ object LMCoursier {
         log
       )
       .toVector
-      .map {
-        case (o, n) =>
-          (o.value, n.value)
+      .map { case (o, n) =>
+        (o.value, n.value)
       }
       .sorted
     val autoScala = autoScalaLib && scalaModInfo.forall(

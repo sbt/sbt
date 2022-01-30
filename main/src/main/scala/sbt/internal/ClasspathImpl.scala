@@ -293,9 +293,8 @@ private[sbt] object ClasspathImpl {
       trackIfMissing: TaskKey[Seq[A]],
       trackAlways: TaskKey[Seq[A]]
   ): Task[Seq[A]] = {
-    val interDepConfigs = interSort(projectRef, conf, data, deps) filter {
-      case (dep, c) =>
-        includeSelf || (dep != projectRef) || (conf.name != c && self.name != c)
+    val interDepConfigs = interSort(projectRef, conf, data, deps) filter { case (dep, c) =>
+      includeSelf || (dep != projectRef) || (conf.name != c && self.name != c)
     }
     val tasks = (new LinkedHashSet[Task[Seq[A]]]).asScala
     for {

@@ -108,7 +108,9 @@ private[sbt] object Clean {
           }
         val streamsGlobs =
           (streamsKey.toSeq ++ stampsKey).map(k => manager(k).cacheDirectory.toGlob / **)
-        ((scope / fileOutputs).value.filter(g => targetDir.fold(true)(g.base.startsWith)) ++ streamsGlobs)
+        ((scope / fileOutputs).value.filter(g =>
+          targetDir.fold(true)(g.base.startsWith)
+        ) ++ streamsGlobs)
           .foreach { g =>
             val filter: Path => Boolean = { path =>
               !g.matches(path) || excludeFilter(path)

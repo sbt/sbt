@@ -57,14 +57,13 @@ object Output {
   def grep(lines: Seq[String], patternString: String): Seq[String] =
     lines flatMap showMatches(Pattern compile patternString)
 
-  def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(
-      implicit display: Show[ScopedKey[_]]
+  def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(implicit
+      display: Show[ScopedKey[_]]
   ): Seq[String] = {
     val single = outputs.size == 1
-    outputs flatMap {
-      case KeyValue(key, lines) =>
-        val flines = f(lines)
-        if (!single) bold(display.show(key)) +: flines else flines
+    outputs flatMap { case KeyValue(key, lines) =>
+      val flines = f(lines)
+      if (!single) bold(display.show(key)) +: flines else flines
     }
   }
 
@@ -96,8 +95,7 @@ object Output {
     headLines(IO.readLines(file).reverse, tailDelim).reverse
 
   @tailrec def headLines(lines: Seq[String], tailDelim: String): Seq[String] =
-    if (lines.isEmpty)
-      lines
+    if (lines.isEmpty) lines
     else {
       val (first, tail) = lines.span { line =>
         !(line startsWith tailDelim)

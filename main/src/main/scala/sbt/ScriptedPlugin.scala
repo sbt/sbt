@@ -122,8 +122,8 @@ object ScriptedPlugin extends AutoPlugin {
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
     import DefaultParsers._
 
-    val scriptedFiles
-        : NameFilter = ("test": NameFilter) | "test.script" | "pending" | "pending.script"
+    val scriptedFiles: NameFilter =
+      ("test": NameFilter) | "test.script" | "pending" | "pending.script"
     val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
       (f: File) =>
         val p = f.getParentFile
@@ -164,13 +164,13 @@ object ScriptedPlugin extends AutoPlugin {
         page <- pageP
         files = pagedFilenames(group, page)
         // TODO -  Fail the parser if we don't have enough files for the given page size
-        //if !files.isEmpty
+        // if !files.isEmpty
       } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
     val testIdAsGroup = matched(testID) map (test => Seq(test))
 
-    //(token(Space) ~> matched(testID)).*
+    // (token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
 

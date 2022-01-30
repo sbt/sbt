@@ -70,8 +70,10 @@ private[sbt] class TaskProgress(
     pending.clear()
     scheduler.shutdownNow()
     executor.shutdownNow()
-    if (!executor.awaitTermination(30, TimeUnit.SECONDS) ||
-        !scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+    if (
+      !executor.awaitTermination(30, TimeUnit.SECONDS) ||
+      !scheduler.awaitTermination(30, TimeUnit.SECONDS)
+    ) {
       scala.Console.err.println("timed out closing the executor of supershell")
       throw new TimeoutException
     }
@@ -166,10 +168,9 @@ private[sbt] class TaskProgress(
         if (tasks.nonEmpty) nextReport.set(Deadline.now + sleepDuration)
         val toWrite = tasks.sortBy(_._2)
         val distinct = new java.util.LinkedHashMap[String, ProgressItem]
-        toWrite.foreach {
-          case (task, elapsed) =>
-            val name = taskName(task)
-            distinct.put(name, ProgressItem(name, elapsed))
+        toWrite.foreach { case (task, elapsed) =>
+          val name = taskName(task)
+          distinct.put(name, ProgressItem(name, elapsed))
         }
         ProgressEvent(
           "Info",
@@ -200,11 +201,10 @@ private[sbt] class TaskProgress(
   private[this] def filter(
       tasks: Vector[(Task[_], Long)]
   ): (Vector[(Task[_], Long)], Boolean) = {
-    tasks.foldLeft((Vector.empty[(Task[_], Long)], false)) {
-      case ((tasks, skip), pair @ (t, _)) =>
-        val shortName = getShortName(t)
-        val newSkip = skip || skipReportTasks.contains(shortName)
-        if (hiddenTasks.contains(shortName)) (tasks, newSkip) else (tasks :+ pair, newSkip)
+    tasks.foldLeft((Vector.empty[(Task[_], Long)], false)) { case ((tasks, skip), pair @ (t, _)) =>
+      val shortName = getShortName(t)
+      val newSkip = skip || skipReportTasks.contains(shortName)
+      if (hiddenTasks.contains(shortName)) (tasks, newSkip) else (tasks :+ pair, newSkip)
     }
   }
 }

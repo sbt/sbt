@@ -139,8 +139,7 @@ object SessionSettings {
     if (session.append.isEmpty) {
       s.log.info("No session settings defined.")
       s
-    } else
-      f(session)
+    } else f(session)
   }
 
   /** Adds `s` to a strings when needed.    Maybe one day we'll care about non-english languages. */
@@ -151,7 +150,10 @@ object SessionSettings {
     val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
     if (newSession.append.isEmpty && oldSettings.nonEmpty)
       oldState.log.warn(
-        "Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings."
+        "Discarding " + pluralize(
+          oldSettings.size,
+          " session setting"
+        ) + ".  Use 'session save' to persist session settings."
       )
   }
 
@@ -335,16 +337,16 @@ save, save-all
         "clear" ^^^ new Clear(false)
       ) |
         token("save-all" ^^^ new Save(true)) | token("save" ^^^ new Save(false)) | token(
-        "clear-all" ^^^ new Clear(true)
-      ) |
+          "clear-all" ^^^ new Clear(true)
+        ) |
         remove)
 
   lazy val remove = token("remove") ~> token(Space) ~> natSelect.map(ranges => new Remove(ranges))
 
   def natSelect = rep1sep(token(range, "<range>"), ',')
 
-  def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map {
-    case lo ~ hi => (lo, hi getOrElse lo)
+  def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map { case lo ~ hi =>
+    (lo, hi getOrElse lo)
   }
 
   /** The raw implementation of the session command. */

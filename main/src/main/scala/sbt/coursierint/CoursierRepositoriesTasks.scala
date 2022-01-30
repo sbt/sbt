@@ -48,8 +48,7 @@ object CoursierRepositoriesTasks {
       if (resolvers.exists(fastRepo) && resolvers.exists(slowRepo)) {
         val (slow, other) = resolvers.partition(slowRepo)
         other ++ slow
-      } else
-        resolvers
+      } else resolvers
   }
 
   // local-preloaded-ivy contains dangling ivy.xml without JAR files
@@ -92,7 +91,8 @@ object CoursierRepositoriesTasks {
       }
   }
 
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+  private val pluginIvySnapshotsBase =
+    Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
     val resolvers =

@@ -21,7 +21,8 @@ object ConsoleProject {
   ): Unit = {
     val extracted = Project extract state
     val cpImports = new Imports(extracted, state)
-    val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
+    val bindings =
+      ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
     val (state1, dependencyResolution) =
       extracted.runTask(Keys.dependencyResolution, state)
@@ -51,7 +52,8 @@ object ConsoleProject {
           componentProvider = app.provider.components,
           secondaryCacheDir = Option(zincDir),
           dependencyResolution = dependencyResolution,
-          compilerBridgeSource = extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
+          compilerBridgeSource =
+            extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
           scalaJarsTarget = zincDir,
           classLoaderCache = state1.get(BasicKeys.classLoaderCache),
           log = log

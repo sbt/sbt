@@ -22,9 +22,9 @@ private[sbt] object GraphModuleId {
   implicit val graphModuleIdIso = LList.iso[GraphModuleId, String :*: String :*: String :*: LNil](
     { m: GraphModuleId =>
       ("organization", m.organization) :*: ("name", m.name) :*: ("version", m.version) :*: LNil
-    }, {
-      case (_, organization) :*: (_, name) :*: (_, version) :*: LNil =>
-        GraphModuleId(organization, name, version)
+    },
+    { case (_, organization) :*: (_, name) :*: (_, version) :*: LNil =>
+      GraphModuleId(organization, name, version)
     }
   )
 }
@@ -50,11 +50,15 @@ private[sbt] object Module {
     { m: Module =>
       ("id", m.id) :*: ("license", m.license) :*: ("extraInfo", m.extraInfo) :*:
         ("evictedByVersion", m.evictedByVersion) :*: (
-        "jarFile",
-        m.jarFile
-      ) :*: ("error", m.error) :*: LNil
-    }, {
-      case (_, id) :*: (_, license) :*: (_, extraInfo) :*: (_, evictedByVersion) :*: (_, jarFile) :*: (
+          "jarFile",
+          m.jarFile
+        ) :*: ("error", m.error) :*: LNil
+    },
+    {
+      case (_, id) :*: (_, license) :*: (_, extraInfo) :*: (_, evictedByVersion) :*: (
+            _,
+            jarFile
+          ) :*: (
             _,
             error
           ) :*: LNil =>
@@ -97,9 +101,9 @@ private[sbt] object ModuleGraph {
   implicit val moduleGraphIso = LList.iso[ModuleGraph, Vector[Module] :*: Vector[Edge] :*: LNil](
     { g: ModuleGraph =>
       ("nodes", g.nodes.toVector) :*: ("edges", g.edges.toVector) :*: LNil
-    }, {
-      case (_, nodes: Vector[Module]) :*: (_, edges: Vector[Edge]) :*: LNil =>
-        ModuleGraph(nodes, edges)
+    },
+    { case (_, nodes: Vector[Module]) :*: (_, edges: Vector[Edge]) :*: LNil =>
+      ModuleGraph(nodes, edges)
     }
   )
 }

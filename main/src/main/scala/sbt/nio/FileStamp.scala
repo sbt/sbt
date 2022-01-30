@@ -25,7 +25,6 @@ sealed trait FileStamper
 
 /**
  * Provides implementations of [[FileStamper]].
- *
  */
 object FileStamper {
 
@@ -195,12 +194,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, Hash)]] {
         override def write[J](obj: Seq[(Path, Hash)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, h) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeString(h.hex)
-              builder.endArray()
+          obj.foreach { case (p, h) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeString(h.hex)
+            builder.endArray()
           }
           builder.endArray()
         }
@@ -226,12 +224,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, LastModified)]] {
         override def write[J](obj: Seq[(Path, LastModified)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, lm) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeLong(lm.time)
-              builder.endArray()
+          obj.foreach { case (p, lm) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeLong(lm.time)
+            builder.endArray()
           }
           builder.endArray()
         }

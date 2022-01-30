@@ -58,28 +58,27 @@ object Inspect {
   }
 
   def commandHandler(s: State, mode: Mode): Parser[() => String] = {
-    Space ~> commandParser(s).flatMap {
-      case (name, cmd) =>
-        cmd.tags.get(BasicCommands.CommandAliasKey) match {
-          case Some((_, aliasFor)) =>
-            def header = s"Alias for: $aliasFor"
-            Parser
-              .parse(" " ++ aliasFor, keyHandler(s)(mode))
-              .fold(
-                // If we can't find a task key for the alias target
-                // we don't display anymore information
-                _ => success(() => header),
-                success
-              )
-          case None =>
-            success(() => s"Command: $name")
-        }
+    Space ~> commandParser(s).flatMap { case (name, cmd) =>
+      cmd.tags.get(BasicCommands.CommandAliasKey) match {
+        case Some((_, aliasFor)) =>
+          def header = s"Alias for: $aliasFor"
+          Parser
+            .parse(" " ++ aliasFor, keyHandler(s)(mode))
+            .fold(
+              // If we can't find a task key for the alias target
+              // we don't display anymore information
+              _ => success(() => header),
+              success
+            )
+        case None =>
+          success(() => s"Command: $name")
+      }
     }
   }
 
   def commandParser: State => Parser[(String, Command)] = { s =>
-    oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect {
-      case (cmd, Some(name)) => DefaultParsers.literal(name).map(_ -> cmd)
+    oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect { case (cmd, Some(name)) =>
+      DefaultParsers.literal(name).map(_ -> cmd)
     })
   }
 

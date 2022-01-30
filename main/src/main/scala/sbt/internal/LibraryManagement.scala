@@ -80,11 +80,15 @@ private[sbt] object LibraryManagement {
         "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
       )
       val errorLines: Seq[String] =
-        (if (evictionError.incompatibleEvictions.isEmpty
-             || evictionLevel != Level.Error) Nil
+        (if (
+           evictionError.incompatibleEvictions.isEmpty
+           || evictionLevel != Level.Error
+         ) Nil
          else evictionError.lines) ++
-          (if (evictionError.assumedIncompatibleEvictions.isEmpty
-               || assumedEvictionErrorLevel != Level.Error) Nil
+          (if (
+             evictionError.assumedIncompatibleEvictions.isEmpty
+             || assumedEvictionErrorLevel != Level.Error
+           ) Nil
            else evictionError.toAssumedLines)
       if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(EOL))
       else {
@@ -269,8 +273,8 @@ private[sbt] object LibraryManagement {
           val maybeUpdateLevel = (update / logLevel).?.value
           val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
             case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
-            case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
-            case _                                            => conf
+            case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
+            case _                                  => conf
           }
           // logical clock is folded into UpdateConfiguration
           conf1.withLogicalClock(LogicalClock(state0.hashCode))

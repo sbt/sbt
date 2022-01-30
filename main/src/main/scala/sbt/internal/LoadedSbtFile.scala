@@ -91,6 +91,6 @@ private[sbt] object DefinedSbtValues {
 
 private[sbt] object LoadedSbtFile {
 
-  /** Represents an empty .sbt file: no Projects, imports, or settings.*/
+  /** Represents an empty .sbt file: no Projects, imports, or settings. */
   def empty = new LoadedSbtFile(Nil, Nil, Nil, Nil, DefinedSbtValues.empty, Nil)
 }

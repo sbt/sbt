@@ -71,9 +71,8 @@ object DependencyTreeSettings {
         val sv = scalaVersion.value
         val g = dependencyTreeIgnoreMissingUpdate.value
           .configuration(configuration.value)
-          .map(
-            report =>
-              SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
+          .map(report =>
+            SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
           )
           .getOrElse(ModuleGraph.empty)
         if (dependencyTreeIncludeScalaLibrary.value) g
@@ -253,24 +252,24 @@ object DependencyTreeSettings {
   import sbt.internal.util.complete.DefaultParsers._
   val artifactPatternParser: Def.Initialize[State => Parser[ArtifactPattern]] =
     Keys.resolvedScoped { ctx => (state: State) =>
-      val graph = Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
-        Nil,
-        Nil
-      )
+      val graph =
+        Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
+          Nil,
+          Nil
+        )
 
       graph.nodes
         .map(_.id)
         .groupBy(m => (m.organization, m.name))
-        .map {
-          case ((org, name), modules) =>
-            val versionParsers: Seq[Parser[Option[String]]] =
-              modules.map { id =>
-                token(Space ~> id.version).?
-              }
-
-            (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
-              case ((org, name), version) => ArtifactPattern(org, name, version)
+        .map { case ((org, name), modules) =>
+          val versionParsers: Seq[Parser[Option[String]]] =
+            modules.map { id =>
+              token(Space ~> id.version).?
             }
+
+          (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
+            case ((org, name), version) => ArtifactPattern(org, name, version)
+          }
         }
         .reduceOption(_ | _)
         .getOrElse {
@@ -278,9 +277,8 @@ object DependencyTreeSettings {
           ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
             StringBasic,
             "<module>"
-          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map {
-            case ((org, mod), version) =>
-              ArtifactPattern(org, mod, version)
+          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map { case ((org, mod), version) =>
+            ArtifactPattern(org, mod, version)
           }
         }
     }

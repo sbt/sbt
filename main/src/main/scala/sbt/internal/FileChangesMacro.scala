@@ -21,7 +21,6 @@ import scala.reflect.macros.blackbox
  * Provides extension methods to `TaskKey[T]` that can be use to fetch the input and output file
  * dependency changes for a task. Nothing in this object is intended to be called directly but,
  * because there are macro definitions, some of the definitions must be public.
- *
  */
 object FileChangesMacro {
   private[sbt] sealed abstract class TaskOps[T](val taskKey: TaskKey[T]) {

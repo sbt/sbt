@@ -89,15 +89,15 @@ object Tags {
   /** Returns a Rule that limits the maximum number of concurrently executing tasks to `max`, regardless of tags. */
   def limitAll(max: Int): Rule = limit(All, max)
 
-  /** Returns a Rule that limits the maximum number of concurrently executing tasks without a tag to `max`.  */
+  /** Returns a Rule that limits the maximum number of concurrently executing tasks without a tag to `max`. */
   def limitUntagged(max: Int): Rule = limit(Untagged, max)
 
-  /** Returns a Rule that limits the maximum number of concurrent executing tasks tagged with `tag` to `max`.*/
+  /** Returns a Rule that limits the maximum number of concurrent executing tasks tagged with `tag` to `max`. */
   def limit(tag: Tag, max: Int): Rule = new Single(tag, max)
 
   def limitSum(max: Int, tags: Tag*): Rule = new Sum(tags, max)
 
-  /** Ensure that a task with the given tag always executes in isolation.*/
+  /** Ensure that a task with the given tag always executes in isolation. */
   def exclusive(exclusiveTag: Tag): Rule = customLimit { (tags: Map[Tag, Int]) =>
     // if there are no exclusive tasks in this group, this rule adds no restrictions
     tags.getOrElse(exclusiveTag, 0) == 0 ||
@@ -105,7 +105,7 @@ object Tags {
     tags.getOrElse(Tags.All, 0) == 1
   }
 
-  /** Ensure that a task with the given tag only executes with tasks also tagged with the given tag.*/
+  /** Ensure that a task with the given tag only executes with tasks also tagged with the given tag. */
   def exclusiveGroup(exclusiveTag: Tag): Rule = customLimit { (tags: Map[Tag, Int]) =>
     val exclusiveCount = tags.getOrElse(exclusiveTag, 0)
     val allCount = tags.getOrElse(Tags.All, 0)
@@ -117,7 +117,7 @@ object Tags {
     allCount == 1
   }
 
-  /** A task tagged with one of `exclusiveTags` will not execute with another task with any of the other tags in `exclusiveTags`.*/
+  /** A task tagged with one of `exclusiveTags` will not execute with another task with any of the other tags in `exclusiveTags`. */
   def exclusiveGroups(exclusiveTags: Tag*): Rule = customLimit { (tags: Map[Tag, Int]) =>
     val groups = exclusiveTags.count(tag => tags.getOrElse(tag, 0) > 0)
     groups <= 1

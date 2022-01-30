@@ -17,10 +17,9 @@ object LicenseInfo {
       .groupBy(_.license)
       .toSeq
       .sortBy(_._1)
-      .map {
-        case (license, modules) =>
-          license.getOrElse("No license specified") + "\n" +
-            modules.map(m => s"\t ${m.id.idString}").mkString("\n")
+      .map { case (license, modules) =>
+        license.getOrElse("No license specified") + "\n" +
+          modules.map(m => s"\t ${m.id.idString}").mkString("\n")
       }
       .mkString("\n\n")
 }

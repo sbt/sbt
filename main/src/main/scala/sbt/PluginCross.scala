@@ -73,17 +73,16 @@ private[sbt] object PluginCross {
       import x._
       ((currentRef / crossSbtVersions) get structure.data getOrElse Nil).toList
     }
-    Command.arb(requireSession(crossParser), pluginCrossHelp) {
-      case (state, command) =>
-        val x = Project.extract(state)
-        import x._
-        val versions = crossVersions(state)
-        val current = (pluginCrossBuild / sbtVersion)
-          .get(structure.data)
-          .map(PluginSwitchCommand + " " + _)
-          .toList
-        if (versions.isEmpty) command :: state
-        else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
+    Command.arb(requireSession(crossParser), pluginCrossHelp) { case (state, command) =>
+      val x = Project.extract(state)
+      import x._
+      val versions = crossVersions(state)
+      val current = (pluginCrossBuild / sbtVersion)
+        .get(structure.data)
+        .map(PluginSwitchCommand + " " + _)
+        .toList
+      if (versions.isEmpty) command :: state
+      else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
     }
   }
 

@@ -89,7 +89,7 @@ object ScopeFilter {
   private[sbt] val Make = new Make {}
   trait Make {
 
-    /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`.*/
+    /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`. */
     type ScopeFilter = Base[Scope]
 
     /** Selects Scopes with a Zero task axis. */
@@ -154,17 +154,17 @@ object ScopeFilter {
         classpath = true
       )
 
-    /** Selects Scopes that have a project axis with one of the provided values.*/
+    /** Selects Scopes that have a project axis with one of the provided values. */
     def inProjects(projects: ProjectReference*): ProjectFilter =
       ScopeFilter.inProjects(projects: _*)
 
-    /** Selects Scopes that have a task axis with one of the provided values.*/
+    /** Selects Scopes that have a task axis with one of the provided values. */
     def inTasks(tasks: Scoped*): TaskFilter = {
       val ts = tasks.map(_.key).toSet
       selectAxis[AttributeKey[_]](const(ts))
     }
 
-    /** Selects Scopes that have a task axis with one of the provided values.*/
+    /** Selects Scopes that have a task axis with one of the provided values. */
     def inConfigurations(configs: Configuration*): ConfigurationFilter = {
       val cs = configs.map(_.name).toSet
       selectAxis[ConfigKey](const(c => cs(c.name)))
@@ -194,7 +194,7 @@ object ScopeFilter {
       val allScopes: Set[Scope]
   )
 
-  /** Constructs a Data instance from the list of static scopes and the project relationships.*/
+  /** Constructs a Data instance from the list of static scopes and the project relationships. */
   private[this] val getData: Initialize[Data] =
     Def.setting {
       val build = Keys.loadedBuild.value
@@ -265,16 +265,16 @@ object ScopeFilter {
     }
   }
 
-  /** Base functionality for filters on values of type `In` that need access to build data.*/
+  /** Base functionality for filters on values of type `In` that need access to build data. */
   sealed abstract class Base[In] { self =>
 
     /** Implements this filter. */
     private[ScopeFilter] def apply(data: Data): In => Boolean
 
-    /** Constructs a filter that selects values that match this filter but not `other`.*/
+    /** Constructs a filter that selects values that match this filter but not `other`. */
     def --(other: Base[In]): Base[In] = this && -other
 
-    /** Constructs a filter that selects values that match this filter and `other`.*/
+    /** Constructs a filter that selects values that match this filter and `other`. */
     def &&(other: Base[In]): Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
@@ -283,7 +283,7 @@ object ScopeFilter {
       }
     }
 
-    /** Constructs a filter that selects values that match this filter or `other`.*/
+    /** Constructs a filter that selects values that match this filter or `other`. */
     def ||(other: Base[In]): Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
@@ -292,7 +292,7 @@ object ScopeFilter {
       }
     }
 
-    /** Constructs a filter that selects values that do not match this filter.*/
+    /** Constructs a filter that selects values that do not match this filter. */
     def unary_- : Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)

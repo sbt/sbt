@@ -97,10 +97,9 @@ object BuildServerProtocol {
       val workspace = Keys.bspFullWorkspace.value
       val state = Keys.state.value
       val allTargets = ScopeFilter.in(workspace.scopes.values.toSeq)
-      val sbtTargets = workspace.builds.map {
-        case (buildTargetIdentifier, loadedBuildUnit) =>
-          val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
-          sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor).result
+      val sbtTargets = workspace.builds.map { case (buildTargetIdentifier, loadedBuildUnit) =>
+        val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
+        sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor).result
       }.toList
       Def.task {
         val buildTargets = Keys.bspBuildTarget.result.all(allTargets).value
@@ -114,23 +113,22 @@ object BuildServerProtocol {
       // run the worker task concurrently
       Def.task {
         val items = bspBuildTargetSourcesItem.result.all(filter).value
-        val buildItems = workspace.builds.map {
-          case (id, loadedBuildUnit) =>
-            val base = loadedBuildUnit.localBase
-            val sbtFiles = configurationSources(base)
-            val pluginData = loadedBuildUnit.unit.plugins.pluginData
-            val dirs = pluginData.unmanagedSourceDirectories
-            val sourceFiles = getStandaloneSourceFiles(pluginData.unmanagedSources, dirs)
-            val managedDirs = pluginData.managedSourceDirectories
-            val managedSourceFiles =
-              getStandaloneSourceFiles(pluginData.managedSources, managedDirs)
-            val items =
-              dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
-                sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
-                managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
-                managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true)) ++
-                sbtFiles.map(toSourceItem(SourceItemKind.File, generated = false))
-            Value(SourcesItem(id, items.toVector))
+        val buildItems = workspace.builds.map { case (id, loadedBuildUnit) =>
+          val base = loadedBuildUnit.localBase
+          val sbtFiles = configurationSources(base)
+          val pluginData = loadedBuildUnit.unit.plugins.pluginData
+          val dirs = pluginData.unmanagedSourceDirectories
+          val sourceFiles = getStandaloneSourceFiles(pluginData.unmanagedSources, dirs)
+          val managedDirs = pluginData.managedSourceDirectories
+          val managedSourceFiles =
+            getStandaloneSourceFiles(pluginData.managedSources, managedDirs)
+          val items =
+            dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+              sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+              managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+              managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true)) ++
+              sbtFiles.map(toSourceItem(SourceItemKind.File, generated = false))
+          Value(SourcesItem(id, items.toVector))
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = SourcesResult(successfulItems.toVector)
@@ -205,19 +203,18 @@ object BuildServerProtocol {
         val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
         val appProvider = appConfiguration.value.provider()
         val sbtJars = appProvider.mainClasspath()
-        val buildItems = builds.map {
-          build =>
-            val plugins: LoadedPlugins = build._2.unit.plugins
-            val scalacOptions = plugins.pluginData.scalacOptions
-            val pluginClassPath = plugins.classpath
-            val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-            val item = ScalacOptionsItem(
-              build._1,
-              scalacOptions.toVector,
-              classpath,
-              new File(build._2.localBase, "project/target").toURI
-            )
-            Value(item)
+        val buildItems = builds.map { build =>
+          val plugins: LoadedPlugins = build._2.unit.plugins
+          val scalacOptions = plugins.pluginData.scalacOptions
+          val pluginClassPath = plugins.classpath
+          val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+          val item = ScalacOptionsItem(
+            build._1,
+            scalacOptions.toVector,
+            classpath,
+            new File(build._2.localBase, "project/target").toURI
+          )
+          Value(item)
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = ScalacOptionsResult(successfulItems.toVector)
@@ -347,7 +344,9 @@ object BuildServerProtocol {
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
     final val Exit = "build/exit"
   }
-  identity(Method) // silence spurious "private object Method in object BuildServerProtocol is never used" warning!
+  identity(
+    Method
+  ) // silence spurious "private object Method in object BuildServerProtocol is never used" warning!
 
   def handler(
       loadedBuild: LoadedBuild,
@@ -753,9 +752,8 @@ object BuildServerProtocol {
     }
   }
 
-  private val jsonParser: Parser[Try[JValue]] = (Parsers.any *)
-    .map(_.mkString)
-    .map(JsonParser.parseFromString)
+  private val jsonParser: Parser[Try[JValue]] = (Parsers.any *).map(_.mkString)
+  .map(JsonParser.parseFromString)
 
   private def bspRunTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
     val runParams = jsonParser
@@ -883,19 +881,18 @@ object BuildServerProtocol {
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val allScopes = bspFullWorkspace.value.scopes.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
-      .map {
-        case (project, rawConfigs) =>
-          val configs = rawConfigs
-            .flatMap(_.split(","))
-            .map(name => ConfigKey(name.trim))
-            .filter { config =>
-              val scope = Scope.Global.in(project, config)
-              allScopes.contains(scope)
-            }
-          (project, configs)
+      .map { case (project, rawConfigs) =>
+        val configs = rawConfigs
+          .flatMap(_.split(","))
+          .map(name => ConfigKey(name.trim))
+          .filter { config =>
+            val scope = Scope.Global.in(project, config)
+            allScopes.contains(scope)
+          }
+        (project, configs)
       }
-      .filter {
-        case (_, configs) => configs.nonEmpty
+      .filter { case (_, configs) =>
+        configs.nonEmpty
       }
     val ref = Keys.thisProjectRef.value
     val thisConfig = Keys.configuration.value
@@ -979,14 +976,14 @@ object BuildServerProtocol {
 
   private def anyOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
     val successes = results.collect { case Value(v) => v }
-    val errors = results.collect { case Inc(cause)  => cause }
+    val errors = results.collect { case Inc(cause) => cause }
     if (successes.nonEmpty || errors.isEmpty) successes
     else throw Incomplete(None, causes = errors)
   }
 
   private def allOrThrow[T](results: Seq[Result[T]]): Seq[T] = {
     val successes = results.collect { case Value(v) => v }
-    val errors = results.collect { case Inc(cause)  => cause }
+    val errors = results.collect { case Inc(cause) => cause }
     if (errors.isEmpty) successes
     else throw Incomplete(None, causes = errors)
   }

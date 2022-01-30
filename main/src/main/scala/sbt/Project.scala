@@ -67,7 +67,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
    */
   def id: String
 
-  /** The base directory for the project.*/
+  /** The base directory for the project. */
   def base: File
 
   /**
@@ -120,7 +120,8 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
     val dep = ifNonEmpty("dependencies", dependencies)
     val conf = ifNonEmpty("configurations", configurations)
     val autos = ifNonEmpty("autoPlugins", autoPlugins.map(_.label))
-    val fields = s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
+    val fields =
+      s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
     s"Project(${fields.mkString(", ")})"
   }
 
@@ -235,10 +236,10 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
 
   def withId(id: String) = copy(id = id)
 
-  /** Sets the base directory for this project.*/
+  /** Sets the base directory for this project. */
   def in(dir: File): Project = copy(base = dir)
 
-  /** Adds configurations to this project.  Added configurations replace existing configurations with the same name.*/
+  /** Adds configurations to this project.  Added configurations replace existing configurations with the same name. */
   def overrideConfigs(cs: Configuration*): Project =
     copy(configurations = Defaults.overrideConfigs(cs: _*)(configurations))
 
@@ -288,7 +289,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
 
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
 
-  /** The [[AutoPlugin]]s enabled for this project as computed from [[plugins]].*/
+  /** The [[AutoPlugin]]s enabled for this project as computed from [[plugins]]. */
   def autoPlugins: Seq[AutoPlugin]
 
 }
@@ -367,14 +368,14 @@ object Project extends ProjectExtra {
       with GeneratedRootProject
   }
 
-  /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not.*/
+  /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not. */
   def validProjectID(id: String): Option[String] =
     DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
 
   private[this] def validProjectIDStart(id: String): Boolean =
     DefaultParsers.parse(id, DefaultParsers.IDStart).isRight
 
-  /** Constructs a valid Project ID based on `id` and returns it in Right or returns the error message in Left if one cannot be constructed.*/
+  /** Constructs a valid Project ID based on `id` and returns it in Right or returns the error message in Left if one cannot be constructed. */
   def normalizeProjectID(id: String): Either[String, String] = {
     val attempt = normalizeBase(id)
     val refined =
@@ -498,7 +499,9 @@ object Project extends ProjectExtra {
     val newState = unloaded.copy(attributes = newAttrs)
     // TODO: Fix this
     onLoad(
-      preOnLoad(updateCurrent(newState)) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
+      preOnLoad(
+        updateCurrent(newState)
+      ) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
     )
   }
 
@@ -521,7 +524,9 @@ object Project extends ProjectExtra {
     def get[T](k: SettingKey[T]): Option[T] = (ref / k) get structure.data
     def commandsIn(axis: ResolvedReference) = (axis / commands) get structure.data toList
 
-    val allCommands = commandsIn(ref) ++ commandsIn(BuildRef(ref.build)) ++ ((Global / commands) get structure.data toList)
+    val allCommands = commandsIn(ref) ++ commandsIn(
+      BuildRef(ref.build)
+    ) ++ ((Global / commands) get structure.data toList)
     val history = get(historyPath) flatMap idFun
     val prompt = get(shellPrompt)
     val newPrompt = get(colorShellPrompt)
@@ -571,12 +576,10 @@ object Project extends ProjectExtra {
 
   private[sbt] def checkTargets(data: Settings[Scope]): Option[String] = {
     val dups = overlappingTargets(allTargets(data))
-    if (dups.isEmpty)
-      None
+    if (dups.isEmpty) None
     else {
-      val dupStrs = dups map {
-        case (dir, scopes) =>
-          s"${dir.getAbsolutePath}:\n\t${scopes.mkString("\n\t")}"
+      val dupStrs = dups map { case (dir, scopes) =>
+        s"${dir.getAbsolutePath}:\n\t${scopes.mkString("\n\t")}"
       }
       Some(s"Overlapping output directories:${dupStrs.mkString}")
     }
@@ -702,12 +705,12 @@ object Project extends ProjectExtra {
       printScopes("Delegates", delegates(structure, scope, key)) +
       printScopes("Related", related, 10)
   }
-  def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(
-      implicit display: Show[ScopedKey[_]]
+  def settingGraph(structure: BuildStructure, basedir: File, scoped: ScopedKey[_])(implicit
+      display: Show[ScopedKey[_]]
   ): SettingGraph =
     SettingGraph(structure, basedir, scoped, 0)
-  def graphSettings(structure: BuildStructure, basedir: File)(
-      implicit display: Show[ScopedKey[_]]
+  def graphSettings(structure: BuildStructure, basedir: File)(implicit
+      display: Show[ScopedKey[_]]
   ): Unit = {
     def graph(actual: Boolean, name: String) =
       graphSettings(structure, actual, name, new File(basedir, name + ".dot"))
@@ -721,13 +724,13 @@ object Project extends ProjectExtra {
     val keyToString = display.show _
     DotGraph.generateGraph(file, graphName, rel, keyToString, keyToString)
   }
-  def relation(structure: BuildStructure, actual: Boolean)(
-      implicit display: Show[ScopedKey[_]]
+  def relation(structure: BuildStructure, actual: Boolean)(implicit
+      display: Show[ScopedKey[_]]
   ): Relation[ScopedKey[_], ScopedKey[_]] =
     relation(structure.settings, actual)(structure.delegates, structure.scopeLocal, display)
 
-  private[sbt] def relation(settings: Seq[Def.Setting[_]], actual: Boolean)(
-      implicit delegates: Scope => Seq[Scope],
+  private[sbt] def relation(settings: Seq[Def.Setting[_]], actual: Boolean)(implicit
+      delegates: Scope => Seq[Scope],
       scopeLocal: Def.ScopeLocal,
       display: Show[ScopedKey[_]]
   ): Relation[ScopedKey[_], ScopedKey[_]] = {
@@ -736,8 +739,8 @@ object Project extends ProjectExtra {
     cMap.foldLeft(emptyRelation) { case (r, (key, value)) => r + (key, value.dependencies) }
   }
 
-  def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(
-      implicit display: Show[ScopedKey[_]]
+  def showDefinitions(key: AttributeKey[_], defs: Seq[Scope])(implicit
+      display: Show[ScopedKey[_]]
   ): String =
     showKeys(defs.map(scope => ScopedKey(scope, key)))
 
@@ -747,17 +750,17 @@ object Project extends ProjectExtra {
   private[this] def showKeys(s: Seq[ScopedKey[_]])(implicit display: Show[ScopedKey[_]]): String =
     s.map(display.show).sorted.mkString("\n\t", "\n\t", "\n\n")
 
-  def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(
-      implicit display: Show[ScopedKey[_]]
+  def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit
+      display: Show[ScopedKey[_]]
   ): Seq[Scope] =
     relation(structure, actual)(display)._1s.toSeq flatMap { sk =>
       if (sk.key == key) sk.scope :: Nil else Nil
     }
-  def usedBy(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(
-      implicit display: Show[ScopedKey[_]]
+  def usedBy(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(implicit
+      display: Show[ScopedKey[_]]
   ): Seq[ScopedKey[_]] =
-    relation(structure, actual)(display).all.toSeq flatMap {
-      case (a, b) => if (b.key == key) List[ScopedKey[_]](a) else Nil
+    relation(structure, actual)(display).all.toSeq flatMap { case (a, b) =>
+      if (b.key == key) List[ScopedKey[_]](a) else Nil
     }
   def reverseDependencies(
       cMap: Map[ScopedKey[_], Flattened],
@@ -792,8 +795,7 @@ object Project extends ProjectExtra {
         if (acc.exists(map.contains)) {
           val (kept, rem) = map.partition { case (k, _) => acc(k) }
           helper(rem, acc ++ kept.valuesIterator.flatten)
-        } else
-          acc
+        } else acc
       helper(map - id, map.getOrElse(id, Nil).toSet)
     }
     val allProjectsDeps: Map[ProjectRef, Seq[ProjectRef]] =
@@ -891,7 +893,8 @@ object Project extends ProjectExtra {
     }
   }
 
-  /** implicitly injected to tasks that return PromiseWrap.
+  /**
+   * implicitly injected to tasks that return PromiseWrap.
    */
   final class RichTaskPromise[A](i: Def.Initialize[Task[PromiseWrap[A]]]) {
     import scala.concurrent.Await

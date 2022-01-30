@@ -52,5 +52,5 @@ object Docs {
     IO.copy(toCopy)
     repo
   }
- */
+   */
 }

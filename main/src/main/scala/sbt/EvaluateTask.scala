@@ -39,7 +39,7 @@ import scala.util.control.NonFatal
  */
 trait RunningTaskEngine {
 
-  /** Attempts to kill and shutdown the running task engine.*/
+  /** Attempts to kill and shutdown the running task engine. */
   def cancelAndShutdown(): Unit
 }
 
@@ -180,16 +180,15 @@ object EvaluateTask {
   // which is a little hard to control.
   def addShutdownHandler[A](thunk: () => A): Unit = {
     capturedThunk
-      .set(
-        () =>
-          try {
-            thunk()
-            ()
-          } catch {
-            case NonFatal(e) =>
-              System.err.println(s"Caught exception running shutdown hook: $e")
-              e.printStackTrace(System.err)
-          }
+      .set(() =>
+        try {
+          thunk()
+          ()
+        } catch {
+          case NonFatal(e) =>
+            System.err.println(s"Caught exception running shutdown hook: $e")
+            e.printStackTrace(System.err)
+        }
       )
   }
 
@@ -249,9 +248,14 @@ object EvaluateTask {
       structure: BuildStructure,
       state: State
   ): TaskCancellationStrategy =
-    getSetting(Keys.taskCancelStrategy, { (_: State) =>
-      TaskCancellationStrategy.Null
-    }, extracted, structure)(state)
+    getSetting(
+      Keys.taskCancelStrategy,
+      { (_: State) =>
+        TaskCancellationStrategy.Null
+      },
+      extracted,
+      structure
+    )(state)
 
   private[sbt] def executeProgress(
       extracted: Extracted,
@@ -511,7 +515,8 @@ object EvaluateTask {
           val results = x.runKeep(root)(service)
           storeValuesForPrevious(results, state, streams)
           applyResults(results, state, root)
-        } catch { case inc: Incomplete => (state, Inc(inc)) } finally shutdown()
+        } catch { case inc: Incomplete => (state, Inc(inc)) }
+        finally shutdown()
       val replaced = transformInc(result)
       logIncResult(replaced, state, streams)
       (newState, replaced)
@@ -556,8 +561,8 @@ object EvaluateTask {
     Function.chain(
       results.toTypedSeq flatMap {
         case results.TPair(_, Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
-        case results.TPair(Task(info, _), Value(v))                   => info.post(v) get transformState
-        case _                                                        => Nil
+        case results.TPair(Task(info, _), Value(v)) => info.post(v) get transformState
+        case _                                      => Nil
       }
     )
 
@@ -595,7 +600,9 @@ object EvaluateTask {
 
   def liftAnonymous: Incomplete => Incomplete = {
     case i @ Incomplete(_, _, None, causes, None) =>
-      causes.find(inc => inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)) match {
+      causes.find(inc =>
+        inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)
+      ) match {
         case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
         case None       => i
       }

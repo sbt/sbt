@@ -84,7 +84,7 @@ private[sbt] object WatchTransitiveDependencies {
         case Some(ShowTransitive(key)) =>
           Parser.parse(key.trim, Act.scopedKeyParser(state.value)) match {
             case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
-            case _                => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
+            case _ => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
           }
         case Some(_) => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
       }
@@ -139,21 +139,20 @@ private[sbt] object WatchTransitiveDependencies {
         .toIndexedSeq
     val projects = projectScopes.flatMap(_.project.toOption).distinct.toSet
     val scopes: Seq[Either[Scope, Seq[Glob]]] =
-      data.flatMap {
-        case (s, am) =>
-          if (s == Scope.Global || s.project.toOption.exists(projects.contains))
-            am.get(Keys.watchSources.key) match {
-              case Some(k) =>
-                k.work match {
-                  // Avoid extracted.runTask if possible.
-                  case Pure(w, _) => Some(Right(w().map(_.toGlob)))
-                  case _          => Some(Left(s))
-                }
-              case _ => None
-            }
-          else {
-            None
+      data.flatMap { case (s, am) =>
+        if (s == Scope.Global || s.project.toOption.exists(projects.contains))
+          am.get(Keys.watchSources.key) match {
+            case Some(k) =>
+              k.work match {
+                // Avoid extracted.runTask if possible.
+                case Pure(w, _) => Some(Right(w().map(_.toGlob)))
+                case _          => Some(Left(s))
+              }
+            case _ => None
           }
+        else {
+          None
+        }
       }.toSeq
     def toDynamicInput(glob: Glob): DynamicInput =
       DynamicInput(glob, FileStamper.LastModified, forceTrigger = true)
@@ -214,7 +213,7 @@ private[sbt] object WatchTransitiveDependencies {
           // Append the Keys.triggers key in case there are no other references to Keys.triggers.
           val transitiveTrigger = compiled.key.scope.task.toOption match {
             case _: Some[_] => ScopedKey(compiled.key.scope, watchTriggers.key)
-            case None       => ScopedKey(Project.fillTaskAxis(compiled.key).scope, watchTriggers.key)
+            case None => ScopedKey(Project.fillTaskAxis(compiled.key).scope, watchTriggers.key)
           }
           val newRest = rest ++ newDependencies ++ (if (newVisited(transitiveTrigger)) Nil
                                                     else Some(transitiveTrigger))
