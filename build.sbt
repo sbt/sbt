@@ -10,10 +10,10 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.8.1-SNAPSHOT"
+  val v = "2.0.0-alpha1-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
-ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
+ThisBuild / version2_13 := "2.0.0-alpha1-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -183,7 +183,6 @@ lazy val sbtRoot: Project = (project in file("."))
   .aggregate(
     (allProjects diff Seq(
       actionsProj,
-      commandProj,
       mainSettingsProj,
       zincLmIntegrationProj,
       scriptedSbtReduxProj,

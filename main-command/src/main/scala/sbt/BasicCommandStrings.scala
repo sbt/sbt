@@ -19,7 +19,7 @@ object BasicCommandStrings {
   val TemplateCommand: String = "new"
   val Cancel: String = "cancel"
 
-  /** The command name to terminate the program.*/
+  /** The command name to terminate the program. */
   val TerminateAction: String = Exit
 
   def helpBrief: (String, String) =
@@ -74,16 +74,16 @@ $HelpCommand <regular expression>
   private[this] def logLevelDetail(level: Level.Value): String =
     s"""$level
 
-	Sets the global logging level to $level.
-	This will be used as the default level for logging from commands, settings, and tasks.
-	Any explicit `logLevel` configuration in a project overrides this setting.
+  Sets the global logging level to $level.
+  This will be used as the default level for logging from commands, settings, and tasks.
+  Any explicit `logLevel` configuration in a project overrides this setting.
 
 -$level OR --$level
 
-	Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
-	This is useful as a startup option:
-		* it takes effect before any logging occurs
-		* if no other commands are passed, interactive mode is still entered
+  Sets the global logging level as described above, but does so before any other commands are executed on startup, including project loading.
+  This is useful as a startup option:
+    * it takes effect before any logging occurs
+    * if no other commands are passed, interactive mode is still entered
 """
 
   def runEarly(command: String): String = s"$EarlyCommand($command)"
@@ -102,8 +102,8 @@ $HelpCommand <regular expression>
   val EarlyCommandDetailed: String =
     s"""$EarlyCommand(<command>)
 
-	Schedules an early command, which will be run before other commands on the command line.
-	The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
+  Schedules an early command, which will be run before other commands on the command line.
+  The order is preserved between all early commands, so `sbt "early(a)" "early(b)"` executes `a` and `b` in order.
 """
 
   def addPluginSbtFileHelp(): Help = {
@@ -119,21 +119,21 @@ $HelpCommand <regular expression>
   def ReadDetailed: String =
     ReadCommand + ReadFiles + """
 
-	Reads the lines from the given files and inserts them as commands.
-	All empty lines and lines that start with '#' are ignored.
-	If a file does not exist or is not readable, this command fails.
+  Reads the lines from the given files and inserts them as commands.
+  All empty lines and lines that start with '#' are ignored.
+  If a file does not exist or is not readable, this command fails.
 
-	All the lines from all the files are read before any of the commands
-	  are executed. Thus, if any file is not readable, none of commands
-	  from any of the files (even the existing ones) will be run.
+  All the lines from all the files are read before any of the commands
+    are executed. Thus, if any file is not readable, none of commands
+    from any of the files (even the existing ones) will be run.
 
-	You probably need to escape this command if entering it at your shell."""
+  You probably need to escape this command if entering it at your shell."""
 
   def ApplyCommand: String = "apply"
   def ApplyDetailed: String =
     ApplyCommand + """ [-cp|-classpath <classpath>] <module-name>*
-	Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
-	Here, currentState is of type sbt.State.
+  Transforms the current State by calling <module-name>.apply(currentState) for each listed module name.
+  Here, currentState is of type sbt.State.
    If a classpath is provided, modules are loaded from a new class loader for this classpath.
 """
 
@@ -143,14 +143,14 @@ $HelpCommand <regular expression>
   def RebootDetailed: String =
     RebootCommand + """ [dev | full]
 
-	This command is equivalent to exiting sbt, restarting, and running the
-	  remaining commands with the exception that the JVM is not shut down.
+  This command is equivalent to exiting sbt, restarting, and running the
+    remaining commands with the exception that the JVM is not shut down.
 
-	If 'dev' is specified, the current sbt artifacts from the boot directory
-	  (`~/.sbt/boot` by default) are deleted before restarting.
-	This forces an update of sbt and Scala, which is useful when working with development
-	  versions of sbt.
-	If 'full' is specified, the boot directory is wiped out before restarting.
+  If 'dev' is specified, the current sbt artifacts from the boot directory
+    (`~/.sbt/boot` by default) are deleted before restarting.
+  This forces an update of sbt and Scala, which is useful when working with development
+    versions of sbt.
+  If 'full' is specified, the boot directory is wiped out before restarting.
 """
 
   def Multi: String = ";"
@@ -197,8 +197,8 @@ $AliasCommand name=
   def StartServer = "startServer"
   def StartServerDetailed: String =
     s"""$StartServer
-	Starts the server if it has not been started. This is intended to be used with
-	-Dsbt.server.autostart=false."""
+  Starts the server if it has not been started. This is intended to be used with
+  -Dsbt.server.autostart=false."""
 
   def ServerDetailed: String =
     "--server always runs sbt in not-daemon mode."
@@ -243,7 +243,7 @@ $AliasCommand name=
   def IfLastDetailed =
     s"""$IfLast <command>
 
-	$IfLastCommon"""
+  $IfLastCommon"""
 
   val ContinuousExecutePrefix = "~"
   def continuousDetail: String = "Executes the specified command whenever source files change."

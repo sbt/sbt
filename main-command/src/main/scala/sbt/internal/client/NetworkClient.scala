@@ -190,18 +190,19 @@ class NetworkClient(
         }
       }
       @tailrec def connect(attempt: Int): (Socket, Option[String]) = {
-        val res = try Some(mkSocket(portfile))
-        catch {
-          // This catches a pipe busy exception which can happen if two windows clients
-          // attempt to connect in rapid succession
-          case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
-            if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
-              errorStream.println(s"Access denied for portfile $portfile")
-              throw new NetworkClient.AccessDeniedException
-            }
-            None
-          case e: IOException => throw new ConnectionRefusedException(e)
-        }
+        val res =
+          try Some(mkSocket(portfile))
+          catch {
+            // This catches a pipe busy exception which can happen if two windows clients
+            // attempt to connect in rapid succession
+            case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
+              if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
+                errorStream.println(s"Access denied for portfile $portfile")
+                throw new NetworkClient.AccessDeniedException
+              }
+              None
+            case e: IOException => throw new ConnectionRefusedException(e)
+          }
         res match {
           case Some(r) => r
           case None    =>
@@ -431,36 +432,37 @@ class NetworkClient(
     }
     @tailrec
     def blockUntilStart(): Unit = {
-      val stop = try {
-        socket match {
-          case None =>
-            process.foreach { p =>
-              val output = p.getInputStream
-              while (output.available > 0) {
-                printStream.write(output.read())
+      val stop =
+        try {
+          socket match {
+            case None =>
+              process.foreach { p =>
+                val output = p.getInputStream
+                while (output.available > 0) {
+                  printStream.write(output.read())
+                }
               }
-            }
-          case Some(s) =>
-            while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
-              val out = s.getOutputStream
-              val b = stdinBytes.poll
-              if (b == -1) {
-                // server waits for user input but stinBytes has ended
-                shutdown.run()
-              } else {
-                out.write(b)
-                out.flush()
+            case Some(s) =>
+              while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
+                val out = s.getOutputStream
+                val b = stdinBytes.poll
+                if (b == -1) {
+                  // server waits for user input but stinBytes has ended
+                  shutdown.run()
+                } else {
+                  out.write(b)
+                  out.flush()
+                }
               }
-            }
-        }
-        process.foreach { p =>
-          val error = p.getErrorStream
-          while (error.available > 0) {
-            errorStream.write(error.read())
           }
-        }
-        false
-      } catch { case e: IOException => true }
+          process.foreach { p =>
+            val error = p.getErrorStream
+            while (error.available > 0) {
+              errorStream.write(error.read())
+            }
+          }
+          false
+        } catch { case e: IOException => true }
       Thread.sleep(10)
       printStream.flush()
       errorStream.flush()
@@ -489,7 +491,8 @@ class NetworkClient(
     }
 
     try blockUntilStart()
-    catch { case t: Throwable => t.printStackTrace() } finally {
+    catch { case t: Throwable => t.printStackTrace() }
+    finally {
       sbtProcess.set(null)
       Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
@@ -558,23 +561,22 @@ class NetworkClient(
             completions(msg.result match {
               case Some(o: JObject) =>
                 o.value
-                  .foldLeft(CompletionResponse(Vector.empty[String])) {
-                    case (resp, i) =>
-                      if (i.field == "items")
-                        resp.withItems(
-                          Converter
-                            .fromJson[Vector[String]](i.value)
-                            .getOrElse(Vector.empty[String])
-                        )
-                      else if (i.field == "cachedTestNames")
-                        resp.withCachedTestNames(
-                          Converter.fromJson[Boolean](i.value).getOrElse(true)
-                        )
-                      else if (i.field == "cachedMainClassNames")
-                        resp.withCachedMainClassNames(
-                          Converter.fromJson[Boolean](i.value).getOrElse(true)
-                        )
-                      else resp
+                  .foldLeft(CompletionResponse(Vector.empty[String])) { case (resp, i) =>
+                    if (i.field == "items")
+                      resp.withItems(
+                        Converter
+                          .fromJson[Vector[String]](i.value)
+                          .getOrElse(Vector.empty[String])
+                      )
+                    else if (i.field == "cachedTestNames")
+                      resp.withCachedTestNames(
+                        Converter.fromJson[Boolean](i.value).getOrElse(true)
+                      )
+                    else if (i.field == "cachedMainClassNames")
+                      resp.withCachedMainClassNames(
+                        Converter.fromJson[Boolean](i.value).getOrElse(true)
+                      )
+                    else resp
                   }
               case _ => CompletionResponse(Vector.empty[String])
             })
@@ -632,8 +634,8 @@ class NetworkClient(
             )
           )
       }
-    splitToMessage foreach {
-      case (level, msg) => console.appendLog(level, msg)
+    splitToMessage foreach { case (level, msg) =>
+      console.appendLog(level, msg)
     }
   }
 
@@ -802,7 +804,7 @@ class NetworkClient(
       }
       withSignalHandler(handler, Signals.INT) {
         def block(): Int = {
-          try this.synchronized(this.wait)
+          try this.synchronized(this.wait())
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
         }
@@ -989,7 +991,8 @@ class NetworkClient(
         if (attached.get()) drain()
       }
       try read()
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) } finally {
+      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
+      finally {
         inputThread.set(null)
       }
     }
@@ -1023,6 +1026,7 @@ class NetworkClient(
          val secs = f"${total % 60}%02d"
          s" ($maybeHours$mins:$secs)"
        })
+
     s"Total time: $totalString, completed $nowString"
   }
 }
@@ -1156,7 +1160,8 @@ object NetworkClient {
     try {
       if (client.connect(log = true, promptCompleteUsers = false)) client.run()
       else 1
-    } catch { case _: Exception => 1 } finally client.close()
+    } catch { case _: Exception => 1 }
+    finally client.close()
   }
   def client(
       baseDirectory: File,
@@ -1187,7 +1192,8 @@ object NetworkClient {
         if (client.connect(log = true, promptCompleteUsers = false)) client.run()
         else 1
       }
-    } catch { case _: Exception => 1 } finally client.close()
+    } catch { case _: Exception => 1 }
+    finally client.close()
   }
   def client(
       baseDirectory: File,
@@ -1240,7 +1246,8 @@ object NetworkClient {
       System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
         try client(base, parsed, term.inputStream, System.err, term, useJNI)
-        catch { case _: AccessDeniedException => 1 } finally {
+        catch { case _: AccessDeniedException => 1 }
+        finally {
           Runtime.getRuntime.removeShutdownHook(hook)
           hook.run()
         }
@@ -1286,7 +1293,8 @@ object NetworkClient {
           else Nil
         out.println(results.sorted.distinct mkString "\n")
         0
-      } catch { case _: Exception => 1 } finally client.close()
+      } catch { case _: Exception => 1 }
+      finally client.close()
     } catch { case _: AccessDeniedException => 1 }
   }
 
@@ -1301,7 +1309,8 @@ object NetworkClient {
     val err = new PrintStream(term.errorStream)
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
-    val useJNI = BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+    val useJNI =
+      BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }

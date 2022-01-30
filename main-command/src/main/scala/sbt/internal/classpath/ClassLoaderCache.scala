@@ -38,20 +38,21 @@ private[sbt] class ClassLoaderCache(
   def setParent(parent: ClassLoader): Unit = parentHolder.set(parent)
   def this(commonParent: ClassLoader) = this(commonParent, None)
   def this(scalaProvider: ScalaProvider) =
-    this(scalaProvider.launcher.topLoader, {
-      scalaProvider.jars.find(_.getName == "scala-library.jar").flatMap { lib =>
-        val clazz = scalaProvider.getClass
-        try {
-          val loader = clazz.getDeclaredMethod("libraryLoaderOnly").invoke(scalaProvider)
-          Some(lib -> loader.asInstanceOf[ClassLoader])
-        } catch { case NonFatal(_) => None }
+    this(
+      scalaProvider.launcher.topLoader, {
+        scalaProvider.jars.find(_.getName == "scala-library.jar").flatMap { lib =>
+          val clazz = scalaProvider.getClass
+          try {
+            val loader = clazz.getDeclaredMethod("libraryLoaderOnly").invoke(scalaProvider)
+            Some(lib -> loader.asInstanceOf[ClassLoader])
+          } catch { case NonFatal(_) => None }
+        }
       }
-    })
-  private val scalaProviderKey = miniProvider.map {
-    case (f, cl) =>
-      new Key((f -> IO.getModifiedTimeOrZero(f)) :: Nil, commonParent) {
-        override def toClassLoader: ClassLoader = cl
-      }
+    )
+  private val scalaProviderKey = miniProvider.map { case (f, cl) =>
+    new Key((f -> IO.getModifiedTimeOrZero(f)) :: Nil, commonParent) {
+      override def toClassLoader: ClassLoader = cl
+    }
   }
   private class Key(val fileStamps: Seq[(File, Long)], val parent: ClassLoader) {
     def this(files: List[File], parent: ClassLoader) =
@@ -102,19 +103,20 @@ private[sbt] class ClassLoaderCache(
     start()
     @tailrec
     override final def run(): Unit = {
-      val stop = try {
-        referenceQueue.remove(1000) match {
-          case ClassLoaderReference(key, classLoader) =>
-            close(classLoader)
-            delegate.remove(key)
-            ()
-          case _ =>
+      val stop =
+        try {
+          referenceQueue.remove(1000) match {
+            case ClassLoaderReference(key, classLoader) =>
+              close(classLoader)
+              delegate.remove(key)
+              ()
+            case _ =>
+          }
+          clearExpiredLoaders()
+          false
+        } catch {
+          case _: InterruptedException => true
         }
-        clearExpiredLoaders()
-        false
-      } catch {
-        case _: InterruptedException => true
-      }
       if (!stop) run()
     }
   }

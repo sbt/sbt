@@ -23,7 +23,7 @@ import scala.annotation.tailrec
 
 private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] val channel: CommandChannel
-  private[sbt] val reader: UITask.Reader
+  private[sbt] def reader: UITask.Reader
   private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommand(cmd)

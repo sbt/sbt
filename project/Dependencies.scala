@@ -15,8 +15,8 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.8.0")
-  val zincVersion = nightlyVersion.getOrElse("1.8.0")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha1")
+  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -57,10 +57,7 @@ object Dependencies {
       c: Option[Configuration] = None
   ) = (p: Project) => {
     val m0 = moduleId.withConfigurations(c.map(_.name))
-    val m = m0.name match {
-      case "compiler-interface" => m0
-      case _ => m0.cross(CrossVersion.for3Use2_13)
-    }
+    val m = m0
     path match {
       case Some(f) =>
         p.dependsOn(ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name)))

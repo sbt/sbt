@@ -114,7 +114,7 @@ private[sbt] object Server {
                 } catch {
                   case e: IOException if e.getMessage.contains("connect") =>
                   case _: SocketTimeoutException                          => // its ok
-                  case _: SocketException if !running.get                 => // the server is shutting down
+                  case _: SocketException if !running.get => // the server is shutting down
                 }
               }
               serverSocketHolder.get match {

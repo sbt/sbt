@@ -39,7 +39,7 @@ trait Watched {
    */
   def antiEntropy: FiniteDuration = Watched.AntiEntropy
 
-  /** The message to show when triggered execution waits for sources to change.*/
+  /** The message to show when triggered execution waits for sources to change. */
   private[sbt] def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
 
   /** The message to show before an action is run. */
