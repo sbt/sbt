@@ -184,7 +184,6 @@ lazy val sbtRoot: Project = (project in file("."))
     (allProjects diff Seq(
       actionsProj,
       mainSettingsProj,
-      zincLmIntegrationProj,
       scriptedSbtReduxProj,
       scriptedSbtOldProj,
       scriptedPluginProj,
