@@ -16,11 +16,11 @@ object Credentials {
   def apply(file: File): Credentials =
     new FileCredentials(file)
 
-  /** Add the provided credentials to Ivy's credentials cache.*/
+  /** Add the provided credentials to Ivy's credentials cache. */
   def add(realm: String, host: String, userName: String, passwd: String): Unit =
     CredentialsStore.INSTANCE.addCredentials(realm, host, userName, passwd)
 
-  /** Load credentials from the given file into Ivy's credentials cache.*/
+  /** Load credentials from the given file into Ivy's credentials cache. */
   def add(path: File, log: Logger): Unit =
     loadCredentials(path) match {
       case Left(err) => log.warn(err)
@@ -41,23 +41,20 @@ object Credentials {
   def loadCredentials(path: File): Either[String, DirectCredentials] =
     if (path.exists) {
       val properties = read(path)
-      def get(keys: List[String]) =
+      def get(keys: List[String]): Either[String, String] =
         keys
           .flatMap(properties.get)
           .headOption
           .toRight(keys.head + " not specified in credentials file: " + path)
 
-      IvyUtil.separate(List(HostKeys, UserKeys, PasswordKeys).map(get)) match {
-        case (Nil, List(host, user, pass)) =>
-          IvyUtil.separate(List(RealmKeys).map(get)) match {
-            case (_, List(realm)) => Right(new DirectCredentials(realm, host, user, pass))
-            case _                => Right(new DirectCredentials(null, host, user, pass))
-          }
+      IvyUtil.separate(List(HostKeys, UserKeys, PasswordKeys).map(get)) match
+        case (Nil, List(host: String, user: String, pass: String)) =>
+          IvyUtil.separate(List(RealmKeys).map(get)) match
+            case (_, List(realm: String)) => Right(new DirectCredentials(realm, host, user, pass))
+            case _                        => Right(new DirectCredentials(null, host, user, pass))
 
         case (errors, _) => Left(errors.mkString("\n"))
-      }
-    } else
-      Left("Credentials file " + path + " does not exist")
+    } else Left("Credentials file " + path + " does not exist")
 
   def register(cs: Seq[Credentials], log: Logger): Unit =
     cs foreach {

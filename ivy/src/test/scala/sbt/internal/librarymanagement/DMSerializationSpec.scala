@@ -101,7 +101,7 @@ object DMSerializationSpec extends BasicTestSuite {
   def roundtripBuilder[A: JsonReader: JsonWriter](a: A)(f: (A, A) => Unit): Unit = {
     val json = isoString to (Converter toJsonUnsafe a)
     println(json)
-    val obj = Converter fromJsonUnsafe [A] (isoString from json)
+    val obj = Converter.fromJsonUnsafe[A](isoString from json)
     f(a, obj)
   }
 

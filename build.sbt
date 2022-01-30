@@ -40,17 +40,16 @@ ThisBuild / publishTo := {
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
 
 def commonSettings: Seq[Setting[_]] = Def.settings(
-  scalaVersion := scala212,
+  scalaVersion := scala3,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sbtPluginRepo("releases"),
-  resolvers += "bintray-sbt-maven-releases" at "https://dl.bintray.com/sbt/maven-releases/",
   testFrameworks += new TestFramework("verify.runner.Framework"),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
-  crossScalaVersions := Seq(scala212, scala213),
+  crossScalaVersions := Seq(scala3),
   resolvers += Resolver.sonatypeRepo("public"),
   scalacOptions := {
     val old = scalacOptions.value
@@ -114,14 +113,16 @@ lazy val lmCore = (project in file("core"))
   .settings(
     commonSettings,
     name := "librarymanagement-core",
+    contrabandSjsonNewVersion := sjsonNewVersion,
     libraryDependencies ++= Seq(
       jsch,
-      scalaReflect.value,
-      scalaCompiler.value,
+      // scalaReflect.value,
+      // scalaCompiler.value,
       launcherInterface,
       gigahorseOkhttp,
       okhttpUrlconnection,
       sjsonnewScalaJson.value % Optional,
+      sjsonnew.value % Optional,
       scalaTest % Test,
       scalaCheck % Test,
       scalaVerify % Test,
@@ -275,6 +276,7 @@ lazy val lmIvy = (project in file("ivy"))
   .settings(
     commonSettings,
     name := "librarymanagement-ivy",
+    contrabandSjsonNewVersion := sjsonNewVersion,
     libraryDependencies ++= Seq(
       ivy,
       scalaTest % Test,

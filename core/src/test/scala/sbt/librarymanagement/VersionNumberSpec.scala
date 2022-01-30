@@ -133,7 +133,7 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
     assertParsesToError(v)
   }
 
-  ////
+  // //
 
   private[this] final class VersionString(val value: String)
 
@@ -148,13 +148,12 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
       ts: Seq[String],
       es: Seq[String]
   ): Unit =
-    s"should parse to ($ns, $ts, $es)" in inside(v.value) {
-      case VersionNumber(ns1, ts1, es1) =>
-        (ns1 shouldBe ns)
-        (ts1 shouldBe ts)
-        (es1 shouldBe es)
-        (VersionNumber(ns, ts, es).toString shouldBe v.value)
-        (VersionNumber(ns, ts, es) shouldBe VersionNumber(ns, ts, es))
+    s"should parse to ($ns, $ts, $es)" in inside(v.value) { case VersionNumber(ns1, ts1, es1) =>
+      (ns1 shouldBe ns)
+      (ts1 shouldBe ts)
+      (es1 shouldBe es)
+      (VersionNumber(ns, ts, es).toString shouldBe v.value)
+      (VersionNumber(ns, ts, es) shouldBe VersionNumber(ns, ts, es))
     }
 
   private[this] def assertParsesToError(v: VersionString): Unit =

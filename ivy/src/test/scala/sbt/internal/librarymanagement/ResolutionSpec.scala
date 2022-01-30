@@ -70,10 +70,10 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
     // second resolution reads from the minigraph
     val report = update(m)
     val modules: Seq[String] = report.configurations.head.modules map { _.toString }
-    assert(modules exists { x: String =>
+    assert(modules exists { (x: String) =>
       x contains """org.jboss.netty:netty:3.2.0.Final"""
     })
-    assert(!(modules exists { x: String =>
+    assert(!(modules exists { (x: String) =>
       x contains """org.jboss.netty:netty:3.2.1.Final"""
     }))
   }

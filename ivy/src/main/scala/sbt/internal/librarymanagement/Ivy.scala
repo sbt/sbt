@@ -141,7 +141,8 @@ final class IvySbt(
     is
   }
 
-  /** Defines a parallel [[CachedResolutionResolveEngine]].
+  /**
+   * Defines a parallel [[CachedResolutionResolveEngine]].
    *
    * This is defined here because it needs access to [[mkIvy]].
    */
@@ -160,8 +161,10 @@ final class IvySbt(
     }
   }
 
-  /** Provides a default ivy implementation that decides which resolution
-   * engine to use depending on the passed ivy configuration options. */
+  /**
+   * Provides a default ivy implementation that decides which resolution
+   * engine to use depending on the passed ivy configuration options.
+   */
   private class IvyImplementation extends Ivy {
     private val loggerEngine = new SbtMessageLoggerEngine
     override def getLoggerEngine: SbtMessageLoggerEngine = loggerEngine
@@ -201,7 +204,7 @@ final class IvySbt(
 
   // ========== End Configuration/Setup ============
 
-  /** Uses the configured Ivy instance within a safe context.*/
+  /** Uses the configured Ivy instance within a safe context. */
   def withIvy[T](log: Logger)(f: Ivy => T): T =
     withIvy(new IvyLoggerInterface(log))(f)
 
@@ -292,7 +295,7 @@ final class IvySbt(
         IvySbt.wrapped(module, ivyXML),
         moduleID,
         defaultConf.name,
-        validate
+        ic.validate
       )
       IvySbt.addMainArtifact(moduleID)
       IvySbt.addOverrides(moduleID, overrides, ivy.getSettings.getMatcher(PatternMatcher.EXACT))
@@ -320,7 +323,7 @@ final class IvySbt(
       mod
     }
 
-    /** Parses the Maven pom 'pomFile' from the given `PomConfiguration`.*/
+    /** Parses the Maven pom 'pomFile' from the given `PomConfiguration`. */
     private def configurePom(pc: PomConfiguration) = {
       val md = CustomPomParser.default.parseDescriptor(settings, toURL(pc.file), pc.validate)
       val dmd = IvySbt.toDefaultModuleDescriptor(md)
@@ -334,7 +337,7 @@ final class IvySbt(
       (dmd, defaultConf)
     }
 
-    /** Parses the Ivy file 'ivyFile' from the given `IvyFileConfiguration`.*/
+    /** Parses the Ivy file 'ivyFile' from the given `IvyFileConfiguration`. */
     private def configureIvyFile(ifc: IvyFileConfiguration) = {
       val parser = new CustomXmlParser.CustomParser(settings, None)
       parser.setValidate(ifc.validate)
@@ -517,8 +520,7 @@ private[sbt] object IvySbt {
     val ivyResolvers = resolvers.map(r => ConvertResolver(r, settings, updateOptions, log))
     val (projectResolvers, rest) =
       ivyResolvers.partition(_.getName == ProjectResolver.InterProject)
-    if (projectResolvers.isEmpty)
-      ivyint.SbtChainResolver(name, rest, settings, updateOptions, log)
+    if (projectResolvers.isEmpty) ivyint.SbtChainResolver(name, rest, settings, updateOptions, log)
     else {
       // Force that we always look at the project resolver first by wrapping the chain resolver
       val delegatedName = s"$name-delegate"
@@ -591,8 +593,7 @@ private[sbt] object IvySbt {
   private[sbt] def resetArtifactResolver(
       resolved: ResolvedModuleRevision
   ): ResolvedModuleRevision =
-    if (resolved eq null)
-      null
+    if (resolved eq null) null
     else {
       val desc = resolved.getDescriptor
       val updatedDescriptor = CustomPomParser.defaultTransform(desc.getParser, desc)
@@ -690,7 +691,7 @@ private[sbt] object IvySbt {
     moduleID.addConflictManager(mid, matcher, manager)
   }
 
-  /** Converts the given sbt module id into an Ivy ModuleRevisionId.*/
+  /** Converts the given sbt module id into an Ivy ModuleRevisionId. */
   def toID(m: ModuleID) = {
     import m._
     ModuleRevisionId.newInstance(
@@ -758,7 +759,8 @@ private[sbt] object IvySbt {
   }
   private[sbt] def javaMap(m: Map[String, String], unqualify: Boolean = false) = {
     import scala.collection.JavaConverters._
-    val map = if (unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) } else m
+    val map = if (unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) }
+    else m
     if (map.isEmpty) null else map.asJava
   }
 
@@ -789,15 +791,14 @@ private[sbt] object IvySbt {
       elem: scala.xml.Elem,
       extra: Map[String, String]
   ): scala.xml.Elem =
-    extra.foldLeft(elem) {
-      case (e, (key, value)) => e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null)
+    extra.foldLeft(elem) { case (e, (key, value)) =>
+      e % new scala.xml.UnprefixedAttribute(key, value, scala.xml.Null)
     }
   private def hasInfo(module: ModuleID, x: scala.xml.NodeSeq) = {
     val info = <g>{x}</g> \ "info"
     if (info.nonEmpty) {
       def check(found: NodeSeq, expected: String, label: String) =
-        if (found.isEmpty)
-          sys.error("Missing " + label + " in inline Ivy XML.")
+        if (found.isEmpty) sys.error("Missing " + label + " in inline Ivy XML.")
         else {
           val str = found.text
           if (str != expected)
@@ -918,7 +919,7 @@ private[sbt] object IvySbt {
     }
   }
 
-  /** Transforms an sbt ModuleID into an Ivy DefaultDependencyDescriptor.*/
+  /** Transforms an sbt ModuleID into an Ivy DefaultDependencyDescriptor. */
   def convertDependency(
       moduleID: DefaultModuleDescriptor,
       dependency: ModuleID,
@@ -936,7 +937,9 @@ private[sbt] object IvySbt {
     dependency.configurations match {
       case None => // The configuration for this dependency was not explicitly specified, so use the default
         parser.parseDepsConfs(parser.getDefaultConf, dependencyDescriptor)
-      case Some(confs) => // The configuration mapping (looks like: test->default) was specified for this dependency
+      case Some(
+            confs
+          ) => // The configuration mapping (looks like: test->default) was specified for this dependency
         parser.parseDepsConfs(confs, dependencyDescriptor)
     }
     for (artifact <- dependency.explicitArtifacts) {

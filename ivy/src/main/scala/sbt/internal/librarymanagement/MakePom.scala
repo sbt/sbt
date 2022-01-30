@@ -202,7 +202,7 @@ class MakePom(val log: Logger) {
     if (moduleInfo.developers.nonEmpty) {
       <developers>
         {
-        moduleInfo.developers.map { developer: Developer =>
+        moduleInfo.developers.map { (developer: Developer) =>
           <developer>
               <id>{developer.id}</id>
               <name>{developer.name}</name>
@@ -431,7 +431,7 @@ class MakePom(val log: Logger) {
   def getScopeAndOptional(confs: Array[String]): (Option[String], Boolean) = {
     val (opt, notOptional) = confs.partition(_ == Optional.name)
     val defaultNotOptional =
-      Configurations.defaultMavenConfigurations.find({ c: Configuration =>
+      Configurations.defaultMavenConfigurations.find({ (c: Configuration) =>
         notOptional contains c.name
       })
     val scope = defaultNotOptional.map(_.name)

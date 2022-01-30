@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait PomConfigurationFormats { self: sbt.librarymanagement.ScalaModuleInfoFormats with sjsonnew.BasicJsonProtocol =>
+trait PomConfigurationFormats { self: sbt.librarymanagement.ScalaModuleInfoFormats with sbt.librarymanagement.ConfigurationFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val PomConfigurationFormat: JsonFormat[sbt.librarymanagement.PomConfiguration] = new JsonFormat[sbt.librarymanagement.PomConfiguration] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.PomConfiguration = {
     __jsOpt match {

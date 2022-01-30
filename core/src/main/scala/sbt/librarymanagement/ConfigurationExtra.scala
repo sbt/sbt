@@ -4,10 +4,12 @@
 package sbt.librarymanagement
 
 import scala.annotation.tailrec
-import scala.language.experimental.macros
+import scala.quoted.*
 
 object Configurations {
-  def config(name: String): Configuration = macro ConfigurationMacro.configMacroImpl
+  inline def config(name: String): Configuration = ${
+    ConfigurationMacro.configMacroImpl('{ name })
+  }
   def default: Vector[Configuration] = defaultMavenConfigurations
   def defaultMavenConfigurations: Vector[Configuration] =
     Vector(Compile, Runtime, Test, Provided, Optional)
@@ -104,50 +106,26 @@ private[librarymanagement] abstract class ConfigurationExtra {
   def hide = Configuration.of(id, name, description, false, extendsConfigs, transitive)
 }
 
-private[sbt] object ConfigurationMacro {
-  import scala.reflect.macros._
+private[sbt] object ConfigurationMacro:
+  def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] = {
+    import quotes.reflect.*
+    def enclosingTerm(sym: Symbol): Symbol =
+      sym match
+        case sym if sym.flags is Flags.Macro => enclosingTerm(sym.owner)
+        case sym if !sym.isTerm              => enclosingTerm(sym.owner)
+        case _                               => sym
+    val term = enclosingTerm(Symbol.spliceOwner)
+    if !term.isValDef then
+      report.error(
+        """config must be directly assigned to a val, such as `val Tooling = config("tooling")`."""
+      )
 
-  def configMacroImpl(c: blackbox.Context)(name: c.Expr[String]): c.Expr[Configuration] = {
-    import c.universe._
-    val enclosingValName = definingValName(
-      c,
-      methodName =>
-        s"""$methodName must be directly assigned to a val, such as `val Tooling = $methodName("tooling")`."""
-    )
-    if (enclosingValName.head.isLower) {
-      c.error(c.enclosingPosition, "configuration id must be capitalized")
-    }
-    val id = c.Expr[String](Literal(Constant(enclosingValName)))
-    reify { Configuration.of(id.splice, name.splice) }
+    val enclosingValName = term.name
+    if enclosingValName.head.isLower then report.error("configuration id must be capitalized")
+    val id = Expr(enclosingValName)
+    '{ Configuration.of($id, $name) }
   }
-
-  def definingValName(c: blackbox.Context, invalidEnclosingTree: String => String): String = {
-    import c.universe.{ Apply => ApplyTree, _ }
-    val methodName = c.macroApplication.symbol.name
-    def processName(n: Name): String =
-      n.decodedName.toString.trim // trim is not strictly correct, but macros don't expose the API necessary
-    @tailrec def enclosingVal(trees: List[c.Tree]): String = {
-      trees match {
-        case ValDef(_, name, _, _) :: _                      => processName(name)
-        case (_: ApplyTree | _: Select | _: TypeApply) :: xs => enclosingVal(xs)
-        // lazy val x: X = <methodName> has this form for some reason (only when the explicit type is present, though)
-        case Block(_, _) :: DefDef(mods, name, _, _, _, _) :: _ if mods.hasFlag(Flag.LAZY) =>
-          processName(name)
-        case _ =>
-          c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decodedName.toString))
-          "<error>"
-      }
-    }
-    enclosingVal(enclosingTrees(c).toList)
-  }
-
-  def enclosingTrees(c: blackbox.Context): Seq[c.Tree] =
-    c.asInstanceOf[reflect.macros.runtime.Context]
-      .callsiteTyper
-      .context
-      .enclosingContextChain
-      .map(_.tree.asInstanceOf[c.Tree])
-}
+end ConfigurationMacro
 
 private[librarymanagement] abstract class ConfigRefFunctions {
   implicit def configToConfigRef(c: Configuration): ConfigRef =

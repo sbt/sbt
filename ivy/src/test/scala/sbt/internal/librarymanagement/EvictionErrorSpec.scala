@@ -101,17 +101,25 @@ object EvictionErrorSpec extends BaseIvySpecification {
   def oldAkkaPvp = List("com.typesafe.akka" % "*" % "pvp")
 
   lazy val `akkaActor2.1.4` =
-    ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(Some("compile")) cross CrossVersion.binary
+    ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary
   lazy val `akkaActor2.3.0` =
-    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(Some("compile")) cross CrossVersion.binary
+    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary
   lazy val `scala2.10.4` =
     ModuleID("org.scala-lang", "scala-library", "2.10.4").withConfigurations(Some("compile"))
   lazy val `scala2.13.3` =
     ModuleID("org.scala-lang", "scala-library", "2.13.3").withConfigurations(Some("compile"))
   lazy val `bananaSesame0.4` =
-    ModuleID("org.w3", "banana-sesame", "0.4").withConfigurations(Some("compile")) cross CrossVersion.binary // uses akka-actor 2.1.4
+    ModuleID("org.w3", "banana-sesame", "0.4").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary // uses akka-actor 2.1.4
   lazy val `akkaRemote2.3.4` =
-    ModuleID("com.typesafe.akka", "akka-remote", "2.3.4").withConfigurations(Some("compile")) cross CrossVersion.binary // uses akka-actor 2.3.4
+    ModuleID("com.typesafe.akka", "akka-remote", "2.3.4").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary // uses akka-actor 2.3.4
   lazy val `http4s0.21.11` =
     ("org.http4s" %% "http4s-blaze-server" % "0.21.11").withConfigurations(Some("compile"))
   // https://repo1.maven.org/maven2/org/typelevel/cats-effect_2.13/3.0.0-M4/cats-effect_2.13-3.0.0-M4.pom

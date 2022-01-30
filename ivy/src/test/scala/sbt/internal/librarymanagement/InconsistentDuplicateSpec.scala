@@ -24,9 +24,15 @@ object InconsistentDuplicateSpec extends BasicTestSuite {
   }
 
   def akkaActor214 =
-    ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(Some("compile")) cross CrossVersion.binary
+    ModuleID("com.typesafe.akka", "akka-actor", "2.1.4").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary
   def akkaActor230 =
-    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(Some("compile")) cross CrossVersion.binary
+    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary
   def akkaActor230Test =
-    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(Some("test")) cross CrossVersion.binary
+    ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(
+      Some("test")
+    ) cross CrossVersion.binary
 }

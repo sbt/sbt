@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait UpdateConfigurationFormats { self: sbt.librarymanagement.RetrieveConfigurationFormats with sbt.librarymanagement.UpdateLoggingFormats with sbt.internal.librarymanagement.formats.LogicalClockFormats with sbt.librarymanagement.ArtifactTypeFilterFormats with sjsonnew.BasicJsonProtocol =>
+trait UpdateConfigurationFormats { self: sbt.librarymanagement.RetrieveConfigurationFormats with sbt.librarymanagement.ConfigRefFormats with sjsonnew.BasicJsonProtocol with sbt.librarymanagement.UpdateLoggingFormats with sbt.internal.librarymanagement.formats.LogicalClockFormats with sbt.librarymanagement.ArtifactTypeFilterFormats =>
 implicit lazy val UpdateConfigurationFormat: JsonFormat[sbt.librarymanagement.UpdateConfiguration] = new JsonFormat[sbt.librarymanagement.UpdateConfiguration] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.UpdateConfiguration = {
     __jsOpt match {

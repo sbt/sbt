@@ -54,14 +54,18 @@ object IvyRetrieve {
   private[sbt] def organizationArtifactReports(
       confReport: ConfigurationResolveReport
   ): Vector[OrganizationArtifactReport] = {
-    val moduleIds = confReport.getModuleIds.toArray.toVector collect {
-      case mId: IvyModuleId => mId
+    val moduleIds = confReport.getModuleIds.toArray.toVector collect { case mId: IvyModuleId =>
+      mId
     }
     def organizationArtifact(mid: IvyModuleId): OrganizationArtifactReport = {
       val deps = confReport.getNodes(mid).toArray.toVector collect { case node: IvyNode => node }
-      OrganizationArtifactReport(mid.getOrganisation, mid.getName, deps map {
-        moduleRevisionDetail(confReport, _)
-      })
+      OrganizationArtifactReport(
+        mid.getOrganisation,
+        mid.getName,
+        deps map {
+          moduleRevisionDetail(confReport, _)
+        }
+      )
     }
     moduleIds map { organizationArtifact }
   }
@@ -141,9 +145,13 @@ object IvyRetrieve {
         val edOpt = Option(dep.getEvictedData(confReport.getConfiguration))
         edOpt match {
           case Some(ed) =>
-            (true, nonEmptyString(Option(ed.getConflictManager) map { _.toString } getOrElse {
-              "transitive"
-            }), nonEmptyString(ed.getDetail))
+            (
+              true,
+              nonEmptyString(Option(ed.getConflictManager) map { _.toString } getOrElse {
+                "transitive"
+              }),
+              nonEmptyString(ed.getDetail)
+            )
           case None => (true, None, None)
         }
       case _ => (false, None, None)
@@ -218,7 +226,7 @@ object IvyRetrieve {
       getType,
       getExt,
       Option(getExtraAttribute("classifier")),
-      getConfigurations.toVector map { c: String =>
+      getConfigurations.toVector map { (c: String) =>
         ConfigRef(c)
       },
       Option(getUrl)

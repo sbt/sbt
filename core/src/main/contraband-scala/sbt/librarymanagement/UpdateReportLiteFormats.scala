@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait UpdateReportLiteFormats { self: sbt.librarymanagement.ConfigurationReportLiteFormats with sjsonnew.BasicJsonProtocol =>
+trait UpdateReportLiteFormats { self: sbt.librarymanagement.ConfigurationReportLiteFormats with sbt.librarymanagement.OrganizationArtifactReportFormats with sbt.librarymanagement.ModuleReportFormats with sbt.librarymanagement.ModuleIDFormats with sbt.librarymanagement.ArtifactFormats with sbt.librarymanagement.ConfigRefFormats with sbt.librarymanagement.ChecksumFormats with sjsonnew.BasicJsonProtocol with sbt.librarymanagement.InclExclRuleFormats with sbt.librarymanagement.CrossVersionFormats with sbt.librarymanagement.DisabledFormats with sbt.librarymanagement.BinaryFormats with sbt.librarymanagement.ConstantFormats with sbt.librarymanagement.PatchFormats with sbt.librarymanagement.FullFormats with sbt.librarymanagement.For3Use2_13Formats with sbt.librarymanagement.For2_13Use3Formats with sbt.librarymanagement.CallerFormats =>
 implicit lazy val UpdateReportLiteFormat: JsonFormat[sbt.internal.librarymanagement.UpdateReportLite] = new JsonFormat[sbt.internal.librarymanagement.UpdateReportLite] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.librarymanagement.UpdateReportLite = {
     __jsOpt match {

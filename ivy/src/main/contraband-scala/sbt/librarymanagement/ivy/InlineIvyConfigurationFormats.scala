@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement.ivy
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait InlineIvyConfigurationFormats { self: sbt.internal.librarymanagement.formats.GlobalLockFormat with sbt.internal.librarymanagement.formats.LoggerFormat with sbt.librarymanagement.ivy.formats.UpdateOptionsFormat with sbt.librarymanagement.ivy.IvyPathsFormats with sbt.librarymanagement.ResolverFormats with sbt.librarymanagement.ModuleConfigurationFormats with sjsonnew.BasicJsonProtocol =>
+trait InlineIvyConfigurationFormats { self: sbt.internal.librarymanagement.formats.GlobalLockFormat with sbt.internal.librarymanagement.formats.LoggerFormat with sbt.librarymanagement.ivy.formats.UpdateOptionsFormat with sbt.librarymanagement.ivy.IvyPathsFormats with sjsonnew.BasicJsonProtocol with sbt.librarymanagement.ResolverFormats with sbt.librarymanagement.ModuleConfigurationFormats =>
 implicit lazy val InlineIvyConfigurationFormat: JsonFormat[sbt.librarymanagement.ivy.InlineIvyConfiguration] = new JsonFormat[sbt.librarymanagement.ivy.InlineIvyConfiguration] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ivy.InlineIvyConfiguration = {
     __jsOpt match {

@@ -392,28 +392,29 @@ object EvictionWarning {
     )
   }
 
-  implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines { a: EvictionWarning =>
-    import ShowLines._
-    val out: mutable.ListBuffer[String] = mutable.ListBuffer()
-    if (a.options.warnEvictionSummary && a.binaryIncompatibleEvictionExists) {
-      out += "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
-    }
+  implicit val evictionWarningLines: ShowLines[EvictionWarning] = ShowLines {
+    (a: EvictionWarning) =>
+      import ShowLines._
+      val out: mutable.ListBuffer[String] = mutable.ListBuffer()
+      if (a.options.warnEvictionSummary && a.binaryIncompatibleEvictionExists) {
+        out += "There may be incompatibilities among your library dependencies; run 'evicted' to see detailed eviction warnings."
+      }
 
-    if (a.scalaEvictions.nonEmpty) {
-      out += "Scala version was updated by one of library dependencies:"
-      out ++= (a.scalaEvictions flatMap { _.lines })
-      out += "To force scalaVersion, add the following:"
-      out += "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
-    }
+      if (a.scalaEvictions.nonEmpty) {
+        out += "Scala version was updated by one of library dependencies:"
+        out ++= (a.scalaEvictions flatMap { _.lines })
+        out += "To force scalaVersion, add the following:"
+        out += "\tscalaModuleInfo ~= (_.map(_.withOverrideScalaVersion(true)))"
+      }
 
-    if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
-      out += "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
-      out += ""
-      out ++= (a.directEvictions flatMap { _.lines })
-      out ++= (a.transitiveEvictions flatMap { _.lines })
-    }
+      if (a.directEvictions.nonEmpty || a.transitiveEvictions.nonEmpty) {
+        out += "Found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
+        out += ""
+        out ++= (a.directEvictions flatMap { _.lines })
+        out ++= (a.transitiveEvictions flatMap { _.lines })
+      }
 
-    out.toList
+      out.toList
   }
 
   private[sbt] def infoAllTheThings(a: EvictionWarning): List[String] =
