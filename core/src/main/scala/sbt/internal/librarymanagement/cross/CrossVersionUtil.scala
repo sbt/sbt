@@ -27,7 +27,8 @@ object CrossVersionUtil {
   private[sbt] val BinCompatV = raw"""$basicVersion(-$tagPattern)?-bin(-.*)?""".r
   private val CandidateV = raw"""$basicVersion(-RC\d+)""".r
   private val MilestonV = raw"""$basicVersion(-M$tagPattern)""".r
-  private val NonReleaseV_n = raw"""$basicVersion((?:-$tagPattern)*)""".r // 0-n word suffixes, with leading dashes
+  private val NonReleaseV_n =
+    raw"""$basicVersion((?:-$tagPattern)*)""".r // 0-n word suffixes, with leading dashes
   private val NonReleaseV_1 = raw"""$basicVersion(-$tagPattern)""".r // 1 word suffix, after a dash
   private[sbt] val PartialVersion = raw"""($longPattern)\.($longPattern)(?:\..+)?""".r
 

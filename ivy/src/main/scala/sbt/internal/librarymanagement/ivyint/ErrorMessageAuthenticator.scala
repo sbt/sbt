@@ -65,8 +65,10 @@ object ErrorMessageAuthenticator {
     }
 
     try Option(ivyOriginalField.get(ivy).asInstanceOf[Authenticator]) match {
-      case Some(_: ErrorMessageAuthenticator) => // We're already installed, no need to do the work again.
-      case originalOpt                        => installIntoIvyImpl(originalOpt)
+      case Some(
+            _: ErrorMessageAuthenticator
+          ) => // We're already installed, no need to do the work again.
+      case originalOpt => installIntoIvyImpl(originalOpt)
     } catch {
       case t: Throwable =>
         Message.debug(

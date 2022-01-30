@@ -127,8 +127,12 @@ private[sbt] class CachedResolutionResolveCache {
     val mesStr = (mes map excludeRuleString).mkString(",")
     val os = extractOverrides(parent)
     val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
-    val depsString = s"""$mrid;${confMap.mkString(",")};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
-      s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(",")};explicitArtifacts=${explicitArtifacts
+    val depsString = s"""$mrid;${confMap.mkString(
+      ","
+    )};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
+      s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(
+        ","
+      )};explicitArtifacts=${explicitArtifacts
         .mkString(",")};$moduleLevel;"""
     val sha1 = Hash.toHex(
       Hash(s"""graphVersion=${CachedResolutionResolveCache.graphVersion};$depsString""")
@@ -158,15 +162,14 @@ private[sbt] class CachedResolutionResolveCache {
     md0.getAllDependencyDescriptorMediators.getAllRules.asScala.toSeq.toVector sortBy {
       case (k, _) =>
         k.toString
-    } collect {
-      case (k: MapMatcher, v: OverrideDependencyDescriptorMediator) =>
-        val attr: Map[Any, Any] = k.getAttributes.asScala.toMap
-        val module = IvyModuleId.newInstance(
-          attr(IvyPatternHelper.ORGANISATION_KEY).toString,
-          attr(IvyPatternHelper.MODULE_KEY).toString
-        )
-        val pm = k.getPatternMatcher
-        IvyOverride(module, pm, v)
+    } collect { case (k: MapMatcher, v: OverrideDependencyDescriptorMediator) =>
+      val attr: Map[Any, Any] = k.getAttributes.asScala.toMap
+      val module = IvyModuleId.newInstance(
+        attr(IvyPatternHelper.ORGANISATION_KEY).toString,
+        attr(IvyPatternHelper.MODULE_KEY).toString
+      )
+      val pm = k.getPatternMatcher
+      IvyOverride(module, pm, v)
     }
   }
   def getOrElseUpdateMiniGraph(
@@ -200,8 +203,10 @@ private[sbt] class CachedResolutionResolveCache {
     }
     val staticGraphDirectory = miniGraphPath / "static"
     val dynamicGraphDirectory = miniGraphPath / "dynamic"
-    val staticGraphPath = staticGraphDirectory / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
-    val dynamicGraphPath = dynamicGraphDirectory / todayStr / logicalClock.toString / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+    val staticGraphPath =
+      staticGraphDirectory / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
+    val dynamicGraphPath =
+      dynamicGraphDirectory / todayStr / logicalClock.toString / pathScalaVersion / pathSbtVersion / pathOrg / pathName / pathRevision / "graphs" / "graph.json"
     def cleanDynamicGraph(): Unit = {
       val list = IO.listFiles(dynamicGraphDirectory, DirectoryFilter).toList
       list filterNot { d =>
@@ -282,9 +287,12 @@ private[sbt] class CachedResolutionResolveCache {
       val moduleIdMap = Map(conflicts map { x =>
         x.module -> x
       }: _*)
-      (surviving map moduleIdMap, evicted map moduleIdMap map {
-        _.withEvicted(true).withEvictedReason(Some(mgr.toString))
-      })
+      (
+        surviving map moduleIdMap,
+        evicted map moduleIdMap map {
+          _.withEvicted(true).withEvictedReason(Some(mgr.toString))
+        }
+      )
     }
     (conflictCache get ((cf0, cf1))) match {
       case Some((surviving, evicted, mgr)) => reconstructReports(surviving, evicted, mgr)
@@ -304,8 +312,7 @@ private[sbt] class CachedResolutionResolveCache {
   def getOrElseUpdateProjectReport(mrid: ModuleRevisionId, logicalClock: LogicalClock)(
       f: => Either[ResolveException, UpdateReport]
   ): Either[ResolveException, UpdateReport] =
-    if (projectReportCache contains (mrid -> logicalClock))
-      projectReportCache((mrid, logicalClock))
+    if (projectReportCache contains (mrid -> logicalClock)) projectReportCache((mrid, logicalClock))
     else {
       val oldKeys = projectReportCache.keys filter { case (_, clk) => clk != logicalClock }
       projectReportCache --= oldKeys
@@ -410,59 +417,58 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           Left(new ResolveException(messages, failed, failedPaths))
         }
       }
-      val (internal, external) = mds.partition {
-        case (_, _, dd) => cache.internalDependency(dd, projectResolver).isDefined
+      val (internal, external) = mds.partition { case (_, _, dd) =>
+        cache.internalDependency(dd, projectResolver).isDefined
       }
-      val internalResults = internal map {
-        case (md, changing, dd) =>
-          cache.getOrElseUpdateMiniGraph(
-            md,
-            changing,
-            logicalClock,
-            miniGraphPath,
-            cachedDescriptor,
-            log
-          ) {
-            doWork(md, dd)
-          }
+      val internalResults = internal map { case (md, changing, dd) =>
+        cache.getOrElseUpdateMiniGraph(
+          md,
+          changing,
+          logicalClock,
+          miniGraphPath,
+          cachedDescriptor,
+          log
+        ) {
+          doWork(md, dd)
+        }
       }
-      val externalResults = external map {
-        case (md0, changing, dd) =>
-          val configurationsInInternal = internalResults flatMap {
-            case Right(ur) =>
-              ur.allModules.flatMap {
-                case md =>
-                  val sameName = md.name == dd.getDependencyId.getName
-                  val sameOrg = md.organization == dd.getDependencyId.getOrganisation
-                  if (sameName && sameOrg) md.configurations
-                  else None
+      val externalResults = external map { case (md0, changing, dd) =>
+        val configurationsInInternal = internalResults flatMap {
+          case Right(ur) =>
+            ur.allModules.flatMap { case md =>
+              val sameName = md.name == dd.getDependencyId.getName
+              val sameOrg = md.organization == dd.getDependencyId.getOrganisation
+              if (sameName && sameOrg) md.configurations
+              else None
+            }
+          case _ => Nil
+        }
+
+        dd match {
+          case d: DefaultDependencyDescriptor =>
+            configurationsInInternal foreach { c =>
+              val configurations = c.split(";").map(_.split("->"))
+              configurations foreach { conf =>
+                try d.addDependencyConfiguration(conf(0), conf(1))
+                catch {
+                  case _: Throwable => ()
+                } // An exception will be thrown if `conf(0)` doesn't exist.
               }
-            case _ => Nil
-          }
+            }
 
-          dd match {
-            case d: DefaultDependencyDescriptor =>
-              configurationsInInternal foreach { c =>
-                val configurations = c.split(";").map(_.split("->"))
-                configurations foreach { conf =>
-                  try d.addDependencyConfiguration(conf(0), conf(1))
-                  catch { case _: Throwable => () } // An exception will be thrown if `conf(0)` doesn't exist.
-                }
-              }
+          case _ => ()
+        }
 
-            case _ => ()
-          }
-
-          cache.getOrElseUpdateMiniGraph(
-            md0,
-            changing,
-            logicalClock,
-            miniGraphPath,
-            cachedDescriptor,
-            log
-          ) {
-            doWork(md0, dd)
-          }
+        cache.getOrElseUpdateMiniGraph(
+          md0,
+          changing,
+          logicalClock,
+          miniGraphPath,
+          cachedDescriptor,
+          log
+        ) {
+          doWork(md0, dd)
+        }
       }
       val results = internalResults ++ externalResults
       val uReport =
@@ -485,21 +491,20 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       log: Logger
   ): Either[ResolveException, UpdateReport] =
     if (!missingOk && (results exists { _.isLeft }))
-      Left(mergeErrors(md0, results collect { case Left(re)       => re }))
+      Left(mergeErrors(md0, results collect { case Left(re) => re }))
     else Right(mergeReports(md0, results collect { case Right(ur) => ur }, resolveTime, os, log))
 
   def mergeErrors(md0: ModuleDescriptor, errors: Vector[ResolveException]): ResolveException = {
     val messages = errors flatMap { _.messages }
     val failed = errors flatMap { _.failed }
     val failedPaths = errors flatMap {
-      _.failedPaths.toList map {
-        case (failed, paths) =>
-          if (paths.isEmpty) (failed, paths)
-          else
-            (
-              failed,
-              List(IvyRetrieve.toModuleID(md0.getResolvedModuleRevisionId)) ::: paths.toList.tail
-            )
+      _.failedPaths.toList map { case (failed, paths) =>
+        if (paths.isEmpty) (failed, paths)
+        else
+          (
+            failed,
+            List(IvyRetrieve.toModuleID(md0.getResolvedModuleRevisionId)) ::: paths.toList.tail
+          )
       }
     }
     new ResolveException(messages, failed, ListMap(failedPaths: _*))
@@ -579,12 +584,11 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     // this might take up some memory, but it's limited to a single
     val reports1 = reports0 flatMap { filterReports }
     val allModules0: Map[(String, String), Vector[OrganizationArtifactReport]] =
-      Map(orgNamePairs map {
-        case (organization, name) =>
-          val xs = reports1 filter { oar =>
-            oar.organization == organization && oar.name == name
-          }
-          ((organization, name), xs)
+      Map(orgNamePairs map { case (organization, name) =>
+        val xs = reports1 filter { oar =>
+          oar.organization == organization && oar.name == name
+        }
+        ((organization, name), xs)
       }: _*)
     // this returns a List of Lists of (org, name). should be deterministic
     def detectLoops(
@@ -766,8 +770,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       val completelyEvicted = xs forall { _.evicted }
       val allCallers = xs flatMap { _.callers }
       // Caller info is often repeated across the subprojects. We only need ModuleID info for later, so xs.head is ok.
-      val distinctByModuleId = allCallers.groupBy({ _.caller }).toVector map {
-        case (_, xs) => xs.head
+      val distinctByModuleId = allCallers.groupBy({ _.caller }).toVector map { case (_, xs) =>
+        xs.head
       }
       val allArtifacts = (xs flatMap { _.artifacts }).distinct
       xs.head
@@ -777,10 +781,9 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     }
     val merged = (modules groupBy { m =>
       (m.module.organization, m.module.name, m.module.revision)
-    }).toSeq.toVector flatMap {
-      case (_, xs) =>
-        if (xs.size < 2) xs
-        else Vector(mergeModuleReports(xs))
+    }).toSeq.toVector flatMap { case (_, xs) =>
+      if (xs.size < 2) xs
+      else Vector(mergeModuleReports(xs))
     }
     val conflicts = merged filter { m =>
       !m.evicted && m.problem.isEmpty
@@ -789,9 +792,12 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     else
       resolveConflict(rootModuleConf, conflicts, os, log) match {
         case (survivor, evicted) =>
-          (survivor ++ (merged filter { m =>
-            m.evicted || m.problem.isDefined
-          }), evicted)
+          (
+            survivor ++ (merged filter { m =>
+              m.evicted || m.problem.isDefined
+            }),
+            evicted
+          )
       }
   }
 
@@ -869,9 +875,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }) match {
         case Some(m) =>
           log.debug(s"- directly forced dependency: $m ${m.callers}")
-          (Vector(m), conflicts filterNot { _ == m } map {
-            _.withEvicted(true).withEvictedReason(Some("direct-force"))
-          }, "direct-force")
+          (
+            Vector(m),
+            conflicts filterNot { _ == m } map {
+              _.withEvicted(true).withEvictedReason(Some("direct-force"))
+            },
+            "direct-force"
+          )
         case None =>
           (conflicts find { m =>
             m.callers.exists { _.isForceDependency }
@@ -879,18 +889,26 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             // Ivy translates pom.xml dependencies to forced="true", so transitive force is broken.
             case Some(m) if !ignoreTransitiveForce =>
               log.debug(s"- transitively forced dependency: $m ${m.callers}")
-              (Vector(m), conflicts filterNot { _ == m } map {
-                _.withEvicted(true).withEvictedReason(Some("transitive-force"))
-              }, "transitive-force")
+              (
+                Vector(m),
+                conflicts filterNot { _ == m } map {
+                  _.withEvicted(true).withEvictedReason(Some("transitive-force"))
+                },
+                "transitive-force"
+              )
             case _ =>
               val strategy = lcm.getStrategy
               val infos = conflicts map { ModuleReportArtifactInfo(_) }
               log.debug(s"- Using $strategy with $infos")
               Option(strategy.findLatest(infos.toArray, None.orNull)) match {
                 case Some(ModuleReportArtifactInfo(m)) =>
-                  (Vector(m), conflicts filterNot { _ == m } map {
-                    _.withEvicted(true).withEvictedReason(Some(lcm.toString))
-                  }, lcm.toString)
+                  (
+                    Vector(m),
+                    conflicts filterNot { _ == m } map {
+                      _.withEvicted(true).withEvictedReason(Some(lcm.toString))
+                    },
+                    lcm.toString
+                  )
                 case _ => (conflicts, Vector(), lcm.toString)
               }
           }
@@ -905,9 +923,13 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             mr.module.revision == ovrVersion
           } match {
             case Some(m) =>
-              (Vector(m), conflicts filterNot { _ == m } map {
-                _.withEvicted(true).withEvictedReason(Some("override"))
-              }, "override")
+              (
+                Vector(m),
+                conflicts filterNot { _ == m } map {
+                  _.withEvicted(true).withEvictedReason(Some("override"))
+                },
+                "override"
+              )
             case None =>
               sys.error(
                 s"override dependency specifies $ovrVersion but no candidates were found: " + (conflicts map {
@@ -925,7 +947,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 }).mkString("(", ", ", ")"))
               )
             case lcm: LatestConflictManager => useLatest(lcm)
-            case conflictManager            => sys.error(s"Unsupported conflict manager $conflictManager")
+            case conflictManager => sys.error(s"Unsupported conflict manager $conflictManager")
           }
       }
     if (conflicts.size == 2 && os.isEmpty) {

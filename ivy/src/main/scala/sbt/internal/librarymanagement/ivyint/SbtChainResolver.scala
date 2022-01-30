@@ -124,7 +124,8 @@ private[sbt] case class SbtChainResolver(
     /** If None, module was not found. Otherwise, hit. */
     type TriedResolution = Option[(ResolvedModuleRevision, DependencyResolver)]
 
-    /** Attempts to resolve the artifact from each of the resolvers in the chain.
+    /**
+     * Attempts to resolve the artifact from each of the resolvers in the chain.
      *
      * Contract:
      *   1. It doesn't resolve anything when there is a resolved module, `isReturnFirst` is
@@ -155,8 +156,8 @@ private[sbt] case class SbtChainResolver(
         currentlyResolved = Option(resolver.getDependency(descriptor, data))
         if (currentlyResolved eq previouslyResolved) None
         else if (useLatest) {
-          currentlyResolved.map(
-            x => (reparseModuleDescriptor(descriptor, data, resolver, x), resolver)
+          currentlyResolved.map(x =>
+            (reparseModuleDescriptor(descriptor, data, resolver, x), resolver)
           )
         } else currentlyResolved.map(x => (forcedRevision(x), resolver))
       }
@@ -174,7 +175,8 @@ private[sbt] case class SbtChainResolver(
           val oldLatest: Option[LatestStrategy] =
             setLatestIfRequired(resolver, Option(getLatestStrategy))
           try Right(performResolution(resolver))
-          catch { case NonFatal(t) => reportError(t, resolver); Left(t) } finally {
+          catch { case NonFatal(t) => reportError(t, resolver); Left(t) }
+          finally {
             oldLatest.foreach(_ => doSetLatestStrategy(resolver, oldLatest))
             checkInterrupted()
           }
@@ -189,34 +191,33 @@ private[sbt] case class SbtChainResolver(
         data: ResolveData
     ): Option[ResolvedModuleRevision] = {
 
-      val sortedRevisions = foundRevisions.sortBy {
-        case (rmr, resolver) =>
-          val publicationDate = rmr.getPublicationDate
-          val descriptorDate = rmr.getDescriptor.getPublicationDate
-          Message.warn(s"Sorting results from $rmr, using $publicationDate and $descriptorDate.")
-          // Just issue warning about issues with publication date, and fake one on it for now
-          val chosenPublicationDate = Option(publicationDate).orElse(Option(descriptorDate))
-          chosenPublicationDate match {
-            case Some(date) => date.getTime
-            case None =>
-              val id = rmr.getId
-              val resolvedResource = (resolver.findIvyFileRef(descriptor, data), rmr.getDescriptor)
-              resolvedResource match {
-                case (res: ResolvedResource, dmd: DefaultModuleDescriptor) =>
-                  val resolvedPublicationDate = new java.util.Date(res.getLastModified)
-                  Message.debug(s"No publication date from resolver $resolver for $id.")
-                  Message.debug(s"Setting publication date to: $resolvedPublicationDate.")
-                  dmd.setPublicationDate(resolvedPublicationDate)
-                  res.getLastModified
-                case (ivf, dmd) =>
-                  // The dependency is specified by a direct URL or some sort of non-ivy file
-                  if (ivf == null && descriptor.isChanging)
-                    Message.warn(s"$prefix: changing dependency $id with no ivy/pom file!")
-                  if (dmd == null)
-                    Message.warn(s"$prefix: no publication date from resolver $resolver for $id")
-                  0L
-              }
-          }
+      val sortedRevisions = foundRevisions.sortBy { case (rmr, resolver) =>
+        val publicationDate = rmr.getPublicationDate
+        val descriptorDate = rmr.getDescriptor.getPublicationDate
+        Message.warn(s"Sorting results from $rmr, using $publicationDate and $descriptorDate.")
+        // Just issue warning about issues with publication date, and fake one on it for now
+        val chosenPublicationDate = Option(publicationDate).orElse(Option(descriptorDate))
+        chosenPublicationDate match {
+          case Some(date) => date.getTime
+          case None =>
+            val id = rmr.getId
+            val resolvedResource = (resolver.findIvyFileRef(descriptor, data), rmr.getDescriptor)
+            resolvedResource match {
+              case (res: ResolvedResource, dmd: DefaultModuleDescriptor) =>
+                val resolvedPublicationDate = new java.util.Date(res.getLastModified)
+                Message.debug(s"No publication date from resolver $resolver for $id.")
+                Message.debug(s"Setting publication date to: $resolvedPublicationDate.")
+                dmd.setPublicationDate(resolvedPublicationDate)
+                res.getLastModified
+              case (ivf, dmd) =>
+                // The dependency is specified by a direct URL or some sort of non-ivy file
+                if (ivf == null && descriptor.isChanging)
+                  Message.warn(s"$prefix: changing dependency $id with no ivy/pom file!")
+                if (dmd == null)
+                  Message.warn(s"$prefix: no publication date from resolver $resolver for $id")
+                0L
+            }
+        }
       }
 
       val firstHit = sortedRevisions.reverse.headOption
@@ -277,12 +278,11 @@ private[sbt] case class SbtChainResolver(
     }
 
     /** Cleans unnecessary module id information not provided by [[IvyRetrieve.toModuleID()]]. */
-    private final val moduleResolvers = updateOptions.moduleResolvers.map {
-      case (key, value) =>
-        val cleanKey = ModuleID(key.organization, key.name, key.revision)
-          .withExtraAttributes(key.extraAttributes)
-          .withBranchName(key.branchName)
-        cleanKey -> value
+    private final val moduleResolvers = updateOptions.moduleResolvers.map { case (key, value) =>
+      val cleanKey = ModuleID(key.organization, key.name, key.revision)
+        .withExtraAttributes(key.extraAttributes)
+        .withBranchName(key.branchName)
+      cleanKey -> value
     }
 
     /**
@@ -309,7 +309,8 @@ private[sbt] case class SbtChainResolver(
     def findInterProjectResolver(resolvers: Seq[DependencyResolver]): Option[DependencyResolver] =
       resolvers.find(_.getName == ProjectResolver.InterProject)
 
-    /** Gets the dependency for a given descriptor with the pertinent resolve data.
+    /**
+     * Gets the dependency for a given descriptor with the pertinent resolve data.
      *
      * This is a custom sbt chain operation that produces better error output and deals with
      * cases that the conventional ivy resolver does not. It accumulates the resolution of

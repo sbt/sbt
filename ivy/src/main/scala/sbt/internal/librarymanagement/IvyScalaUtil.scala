@@ -67,9 +67,11 @@ object IvyScalaUtil {
         new NamespaceTransformer {
           def transform(mrid: ModuleRevisionId): ModuleRevisionId = {
             if (mrid == null) mrid
-            else if ((isScala2Artifact(mrid.getName) || isScala3Artifact(mrid.getName)) &&
-                     configQualifies &&
-                     dependeeQualifies) {
+            else if (
+              (isScala2Artifact(mrid.getName) || isScala3Artifact(mrid.getName)) &&
+              configQualifies &&
+              dependeeQualifies
+            ) {
               // do not override the binary incompatible Scala version because:
               //  - the artifacts compiled with Scala 3 depends on the Scala 2.13 scala-library
               //  - the Scala 2 TASTy reader can consume the Scala 3 artifacts
@@ -152,7 +154,8 @@ object IvyScalaUtil {
             .forall(bv => bv.startsWith("3") || bv.startsWith("2.13"))
 
       def matchesOneOfTheConfigs = dep.getModuleConfigurations exists { scalaVersionConfigs }
-      val mismatched = isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs
+      val mismatched =
+        isScalaLangOrg && isScalaArtifact && hasBinVerMismatch && matchesOneOfTheConfigs
       if (mismatched)
         Some(
           "Binary version (" + depBinaryVersion + ") for dependency " + id +
@@ -180,8 +183,7 @@ object IvyScalaUtil {
   ): Unit = {
     val configurationNames = {
       val names = module.getConfigurationsNames
-      if (configurations.isEmpty)
-        names
+      if (configurations.isEmpty) names
       else {
         val configSet = configurationSet(configurations)
         configSet.intersect(HashSet(names: _*))

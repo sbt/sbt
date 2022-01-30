@@ -13,14 +13,14 @@ private[sbt] object MergeDescriptors {
       a.isTransitive == b.isTransitive &&
       a.getParentRevisionId == b.getParentRevisionId &&
       a.getNamespace == b.getNamespace && {
-      val amrid = a.getDependencyRevisionId
-      val bmrid = b.getDependencyRevisionId
-      amrid == bmrid
-    } && {
-      val adyn = a.getDynamicConstraintDependencyRevisionId
-      val bdyn = b.getDynamicConstraintDependencyRevisionId
-      adyn == bdyn
-    }
+        val amrid = a.getDependencyRevisionId
+        val bmrid = b.getDependencyRevisionId
+        amrid == bmrid
+      } && {
+        val adyn = a.getDynamicConstraintDependencyRevisionId
+        val bdyn = b.getDynamicConstraintDependencyRevisionId
+        adyn == bdyn
+      }
 
   def apply(a: DependencyDescriptor, b: DependencyDescriptor): DependencyDescriptor = {
     assert(mergeable(a, b))

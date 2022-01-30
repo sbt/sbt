@@ -102,5 +102,6 @@ private[sbt] object ResolutionCache {
   private val Name = "sbt-resolution-cache"
 
   // use sbt-specific extra attributes so that resolved xml files do not get overwritten when using different Scala/sbt versions
-  private val ResolvedPattern = "[organisation]/[module]/" + Resolver.PluginPattern + "([branch]/)[revision]/[artifact].[ext]"
+  private val ResolvedPattern =
+    "[organisation]/[module]/" + Resolver.PluginPattern + "([branch]/)[revision]/[artifact].[ext]"
 }

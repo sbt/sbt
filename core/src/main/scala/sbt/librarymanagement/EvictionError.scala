@@ -106,11 +106,16 @@ object EvictionError {
         if (isNameScalaSuffixed(p.name)) assumedVersionScheme
         else assumedVersionSchemeJava
       val guess = VersionSchemes.evalFunc(scheme)
-      (p.evicteds forall { r =>
-        f((r.module, winnerOpt, module.scalaModuleInfo))
-      }, schemeOpt.getOrElse("?"), p.evicteds forall { r =>
-        guess((r.module, winnerOpt, module.scalaModuleInfo))
-      }, scheme)
+      (
+        p.evicteds forall { r =>
+          f((r.module, winnerOpt, module.scalaModuleInfo))
+        },
+        schemeOpt.getOrElse("?"),
+        p.evicteds forall { r =>
+          guess((r.module, winnerOpt, module.scalaModuleInfo))
+        },
+        scheme
+      )
     }
     pairs foreach {
       // don't report on a transitive eviction that does not have a winner
@@ -152,30 +157,29 @@ final class EvictionError private[sbt] (
     val out: mutable.ListBuffer[String] = mutable.ListBuffer()
     out += "found version conflict(s) in library dependencies; some are suspected to be binary incompatible:"
     out += ""
-    evictions.foreach({
-      case (a, scheme) =>
-        val revs = a.evicteds map { _.module.revision }
-        val revsStr =
-          if (revs.size <= 1) revs.mkString else "{" + revs.distinct.mkString(", ") + "}"
-        val seen: mutable.Set[ModuleID] = mutable.Set()
-        val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
-          val rev = r.module.revision
-          r.callers.toList flatMap { caller =>
-            if (seen(caller.caller)) Nil
-            else {
-              seen += caller.caller
-              List(f"\t    +- ${caller}%-50s (depends on $rev)")
-            }
+    evictions.foreach({ case (a, scheme) =>
+      val revs = a.evicteds map { _.module.revision }
+      val revsStr =
+        if (revs.size <= 1) revs.mkString else "{" + revs.distinct.mkString(", ") + "}"
+      val seen: mutable.Set[ModuleID] = mutable.Set()
+      val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
+        val rev = r.module.revision
+        r.callers.toList flatMap { caller =>
+          if (seen(caller.caller)) Nil
+          else {
+            seen += caller.caller
+            List(f"\t    +- ${caller}%-50s (depends on $rev)")
           }
         }
-        val que = if (assumed) "?" else ""
-        val winnerRev = a.winner match {
-          case Some(r) => s":${r.module.revision} ($scheme$que) is selected over ${revsStr}"
-          case _       => " is evicted for all versions"
-        }
-        val title = s"\t* ${a.organization}:${a.name}$winnerRev"
-        val lines = title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
-        out ++= lines
+      }
+      val que = if (assumed) "?" else ""
+      val winnerRev = a.winner match {
+        case Some(r) => s":${r.module.revision} ($scheme$que) is selected over ${revsStr}"
+        case _       => " is evicted for all versions"
+      }
+      val title = s"\t* ${a.organization}:${a.name}$winnerRev"
+      val lines = title :: (if (a.showCallers) callers.reverse else Nil) ::: List("")
+      out ++= lines
     })
     out.toList
   }

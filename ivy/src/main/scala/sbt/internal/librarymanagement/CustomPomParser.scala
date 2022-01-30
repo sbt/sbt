@@ -64,7 +64,7 @@ object CustomPomParser {
   // Evil hackery to override the default maven pom mappings.
   ReplaceMavenConfigurationMappings.init()
 
-  /** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution.*/
+  /** The key prefix that indicates that this is used only to store extra information and is not intended for dependency resolution. */
   val InfoKeyPrefix = SbtPomExtraProperties.POM_INFO_KEY_PREFIX
   val ApiURLKey = SbtPomExtraProperties.POM_API_KEY
   val VersionSchemeKey = SbtPomExtraProperties.VERSION_SCHEME_KEY
@@ -109,7 +109,9 @@ object CustomPomParser {
     val MyHash = MakeTransformHash(md)
     // sbt 0.13.1 used "sbtTransformHash" instead of "e:sbtTransformHash" until #1192 so read both
     Option(extraInfo).isDefined &&
-    ((Option(extraInfo get TransformedHashKey) orElse Option(extraInfo get oldTransformedHashKey)) match {
+    ((Option(extraInfo get TransformedHashKey) orElse Option(
+      extraInfo get oldTransformedHashKey
+    )) match {
       case Some(MyHash) => true
       case _            => false
     })
@@ -269,17 +271,23 @@ object CustomPomParser {
     for (l <- md.getLicenses) dmd.addLicense(l)
     for ((key, value) <- md.getExtraInfo.asInstanceOf[java.util.Map[String, String]].asScala)
       dmd.addExtraInfo(key, value)
-    dmd.addExtraInfo(TransformedHashKey, MakeTransformHash(md)) // mark as transformed by this version, so we don't need to do it again
-    for ((key, value) <- md.getExtraAttributesNamespaces
-           .asInstanceOf[java.util.Map[String, String]]
-           .asScala) dmd.addExtraAttributeNamespace(key, value)
+    dmd.addExtraInfo(
+      TransformedHashKey,
+      MakeTransformHash(md)
+    ) // mark as transformed by this version, so we don't need to do it again
+    for (
+      (key, value) <- md.getExtraAttributesNamespaces
+        .asInstanceOf[java.util.Map[String, String]]
+        .asScala
+    ) dmd.addExtraAttributeNamespace(key, value)
     IvySbt.addExtraNamespace(dmd)
 
     val withExtra = md.getDependencies map { dd =>
       addExtra(dd, dependencyExtra)
     }
     val withVersionRangeMod: Seq[DependencyDescriptor] =
-      if (LMSysProp.modifyVersionRange) withExtra map { stripVersionRange } else withExtra
+      if (LMSysProp.modifyVersionRange) withExtra map { stripVersionRange }
+      else withExtra
     val unique = IvySbt.mergeDuplicateDefinitions(withVersionRangeMod)
     unique foreach dmd.addDependency
 

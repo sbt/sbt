@@ -29,9 +29,13 @@ private[librarymanagement] abstract class ConfigurationReportExtra {
   }
 
   def retrieve(f: (ConfigRef, ModuleID, Artifact, File) => File): ConfigurationReport =
-    ConfigurationReport(configuration, modules map {
-      _.retrieve((mid, art, file) => f(configuration, mid, art, file))
-    }, details)
+    ConfigurationReport(
+      configuration,
+      modules map {
+        _.retrieve((mid, art, file) => f(configuration, mid, art, file))
+      },
+      details
+    )
 }
 
 private[librarymanagement] abstract class ModuleReportExtra {
@@ -124,24 +128,23 @@ private[librarymanagement] abstract class UpdateReportExtra {
   /** All resolved modules in all configurations. */
   def allModules: Vector[ModuleID] = {
     val key = (m: ModuleID) => (m.organization, m.name, m.revision)
-    configurations.flatMap(_.allModules).groupBy(key).toVector map {
-      case (_, v) =>
-        v reduceLeft { (agg, x) =>
-          agg.withConfigurations(
-            (agg.configurations, x.configurations) match {
-              case (None, _)            => x.configurations
-              case (Some(ac), None)     => Some(ac)
-              case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
-            }
-          )
-        }
+    configurations.flatMap(_.allModules).groupBy(key).toVector map { case (_, v) =>
+      v reduceLeft { (agg, x) =>
+        agg.withConfigurations(
+          (agg.configurations, x.configurations) match {
+            case (None, _)            => x.configurations
+            case (Some(ac), None)     => Some(ac)
+            case (Some(ac), Some(xc)) => Some(s"$ac;$xc")
+          }
+        )
+      }
     }
   }
 
   def retrieve(f: (ConfigRef, ModuleID, Artifact, File) => File): UpdateReport =
     UpdateReport(cachedDescriptor, configurations map { _ retrieve f }, stats, stamps)
 
-  /** Gets the report for the given configuration, or `None` if the configuration was not resolved.*/
+  /** Gets the report for the given configuration, or `None` if the configuration was not resolved. */
   def configuration(s: ConfigRef) = configurations.find(_.configuration == s)
 
   /** Gets the names of all resolved configurations.  This `UpdateReport` contains one `ConfigurationReport` for each configuration in this list. */

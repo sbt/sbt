@@ -56,8 +56,8 @@ private[sbt] object IvyCredentialsLookup {
    * A mapping of host -> realms in the ivy credentials store.
    */
   def realmsForHost: Map[String, Set[String]] =
-    (keyringKeys collect {
-      case x: Realm => x
+    (keyringKeys collect { case x: Realm =>
+      x
     } groupBy { realm =>
       realm.host
     } mapValues { realms =>

@@ -10,9 +10,13 @@ final class ResolveException(
     val failedPaths: Map[ModuleID, Seq[ModuleID]]
 ) extends RuntimeException(messages.mkString("\n")) {
   def this(messages: Seq[String], failed: Seq[ModuleID]) =
-    this(messages, failed, Map(failed map { m =>
-      m -> Nil
-    }: _*))
+    this(
+      messages,
+      failed,
+      Map(failed map { m =>
+        m -> Nil
+      }: _*)
+    )
 }
 
 /**
@@ -30,13 +34,12 @@ object UnresolvedWarning {
       config: UnresolvedWarningConfiguration
   ): UnresolvedWarning = {
     def modulePosition(m0: ModuleID): Option[SourcePosition] =
-      config.modulePositions.find {
-        case (m, _) =>
-          (m.organization == m0.organization) &&
-            (m0.name startsWith m.name) &&
-            (m.revision == m0.revision)
-      } map {
-        case (_, p) => p
+      config.modulePositions.find { case (m, _) =>
+        (m.organization == m0.organization) &&
+          (m0.name startsWith m.name) &&
+          (m.revision == m0.revision)
+      } map { case (_, p) =>
+        p
       }
     val failedPaths = err.failed map { (x: ModuleID) =>
       err.failedPaths(x).toList.reverse map { id =>
@@ -67,9 +70,8 @@ object UnresolvedWarning {
         if (path.nonEmpty) {
           val head = path.head
           buffer += "\t\t" + head._1.toString + sourcePosStr(head._2)
-          path.tail foreach {
-            case (m, pos) =>
-              buffer += "\t\t  +- " + m.toString + sourcePosStr(pos)
+          path.tail foreach { case (m, pos) =>
+            buffer += "\t\t  +- " + m.toString + sourcePosStr(pos)
           }
         }
       }

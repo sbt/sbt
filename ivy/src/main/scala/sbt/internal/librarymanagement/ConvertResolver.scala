@@ -151,83 +151,82 @@ private[sbt] object ConvertResolver {
     (updateOptions.resolverConverter orElse defaultConvert)((r, settings, log))
 
   /** The default implementation of converter. */
-  lazy val defaultConvert: ResolverConverter = {
-    case (r, settings, log) =>
-      val managedChecksums = Option(settings.getVariable(ManagedChecksums)) match {
-        case Some(x) => x.toBoolean
-        case _       => false
+  lazy val defaultConvert: ResolverConverter = { case (r, settings, log) =>
+    val managedChecksums = Option(settings.getVariable(ManagedChecksums)) match {
+      case Some(x) => x.toBoolean
+      case _       => false
+    }
+    r match {
+      case repo: MavenRepository => {
+        val pattern = Collections.singletonList(
+          Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern)
+        )
+        final class PluginCapableResolver
+            extends IBiblioResolver
+            with ChecksumFriendlyURLResolver
+            with DescriptorRequired {
+          override val managedChecksumsEnabled: Boolean = managedChecksums
+          override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+          def setPatterns(): Unit = {
+            // done this way for access to protected methods.
+            setArtifactPatterns(pattern)
+            setIvyPatterns(pattern)
+          }
+        }
+        val resolver = new PluginCapableResolver
+        if (repo.localIfFile) resolver.setRepository(new LocalIfFileRepo)
+        initializeMavenStyle(resolver, repo.name, repo.root)
+        resolver
+          .setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
+        resolver
       }
-      r match {
-        case repo: MavenRepository => {
-          val pattern = Collections.singletonList(
-            Resolver.resolvePattern(repo.root, Resolver.mavenStyleBasePattern)
-          )
-          final class PluginCapableResolver
-              extends IBiblioResolver
-              with ChecksumFriendlyURLResolver
-              with DescriptorRequired {
-            override val managedChecksumsEnabled: Boolean = managedChecksums
-            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
-            def setPatterns(): Unit = {
-              // done this way for access to protected methods.
-              setArtifactPatterns(pattern)
-              setIvyPatterns(pattern)
-            }
-          }
-          val resolver = new PluginCapableResolver
-          if (repo.localIfFile) resolver.setRepository(new LocalIfFileRepo)
-          initializeMavenStyle(resolver, repo.name, repo.root)
-          resolver
-            .setPatterns() // has to be done after initializeMavenStyle, which calls methods that overwrite the patterns
-          resolver
+      case repo: SshRepository => {
+        val resolver = new SshResolver with DescriptorRequired with ThreadSafeSshBasedResolver {
+          override val managedChecksumsEnabled: Boolean = managedChecksums
+          override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
         }
-        case repo: SshRepository => {
-          val resolver = new SshResolver with DescriptorRequired with ThreadSafeSshBasedResolver {
-            override val managedChecksumsEnabled: Boolean = managedChecksums
-            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
-          }
-          initializeSSHResolver(resolver, repo, settings)
-          repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
-          resolver
-        }
-        case repo: SftpRepository => {
-          val resolver = new SFTPResolver with ThreadSafeSshBasedResolver
-          initializeSSHResolver(resolver, repo, settings)
-          resolver
-        }
-        case repo: FileRepository => {
-          val resolver = new FileSystemResolver with DescriptorRequired {
-            // Workaround for #1156
-            // Temporarily in sbt 0.13.x we deprecate overwriting
-            // in local files for non-changing revisions.
-            // This will be fully enforced in sbt 1.0.
-            setRepository(new WarnOnOverwriteFileRepo())
-            override val managedChecksumsEnabled: Boolean = managedChecksums
-            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
-          }
-          resolver.setName(repo.name)
-          initializePatterns(resolver, repo.patterns, settings)
-          import repo.configuration.{ isLocal, isTransactional }
-          resolver.setLocal(isLocal)
-          isTransactional.foreach(value => resolver.setTransactional(value.toString))
-          resolver
-        }
-        case repo: URLRepository => {
-          val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
-            override val managedChecksumsEnabled: Boolean = managedChecksums
-            override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
-          }
-          resolver.setName(repo.name)
-          initializePatterns(resolver, repo.patterns, settings)
-          resolver
-        }
-        case repo: ChainedResolver =>
-          IvySbt.resolverChain(repo.name, repo.resolvers, settings, log)
-        case repo: RawRepository =>
-          repo.resolver match {
-            case r: DependencyResolver => r
-          }
+        initializeSSHResolver(resolver, repo, settings)
+        repo.publishPermissions.foreach(perm => resolver.setPublishPermissions(perm))
+        resolver
       }
+      case repo: SftpRepository => {
+        val resolver = new SFTPResolver with ThreadSafeSshBasedResolver
+        initializeSSHResolver(resolver, repo, settings)
+        resolver
+      }
+      case repo: FileRepository => {
+        val resolver = new FileSystemResolver with DescriptorRequired {
+          // Workaround for #1156
+          // Temporarily in sbt 0.13.x we deprecate overwriting
+          // in local files for non-changing revisions.
+          // This will be fully enforced in sbt 1.0.
+          setRepository(new WarnOnOverwriteFileRepo())
+          override val managedChecksumsEnabled: Boolean = managedChecksums
+          override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+        }
+        resolver.setName(repo.name)
+        initializePatterns(resolver, repo.patterns, settings)
+        import repo.configuration.{ isLocal, isTransactional }
+        resolver.setLocal(isLocal)
+        isTransactional.foreach(value => resolver.setTransactional(value.toString))
+        resolver
+      }
+      case repo: URLRepository => {
+        val resolver = new URLResolver with ChecksumFriendlyURLResolver with DescriptorRequired {
+          override val managedChecksumsEnabled: Boolean = managedChecksums
+          override def getResource(resource: Resource, dest: File): Long = get(resource, dest)
+        }
+        resolver.setName(repo.name)
+        initializePatterns(resolver, repo.patterns, settings)
+        resolver
+      }
+      case repo: ChainedResolver =>
+        IvySbt.resolverChain(repo.name, repo.resolvers, settings, log)
+      case repo: RawRepository =>
+        repo.resolver match {
+          case r: DependencyResolver => r
+        }
+    }
   }
 
   private sealed trait DescriptorRequired extends BasicResolver {
@@ -290,8 +289,9 @@ private[sbt] object ConvertResolver {
     override def getDependency(dd: DependencyDescriptor, data: ResolveData) = {
       val prev = descriptorString(isAllownomd)
       setDescriptor(descriptorString(hasExplicitURL(dd)))
-      val t = try super.getDependency(dd, data)
-      finally setDescriptor(prev)
+      val t =
+        try super.getDependency(dd, data)
+        finally setDescriptor(prev)
       t
     }
     def descriptorString(optional: Boolean) =

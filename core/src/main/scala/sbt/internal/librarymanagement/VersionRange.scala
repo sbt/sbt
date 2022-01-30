@@ -71,7 +71,7 @@ object VersionRange {
       case _: NumberFormatException =>
         // TODO - if the version doesn't meet our expectations, maybe we just issue a hard
         //        error instead of softly ignoring the attempt to rewrite.
-        //sys.error(s"Could not fix version [$revision] into maven style version")
+        // sys.error(s"Could not fix version [$revision] into maven style version")
         revision
     }
   }

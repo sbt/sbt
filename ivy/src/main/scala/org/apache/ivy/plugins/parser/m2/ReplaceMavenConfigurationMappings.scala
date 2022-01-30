@@ -21,8 +21,6 @@ import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor;
  *
  * Also see: http://ant.apache.org/ivy/history/2.3.0/ivyfile/dependency.html
  * and: http://svn.apache.org/repos/asf/ant/ivy/core/tags/2.3.0/src/java/org/apache/ivy/plugins/parser/m2/PomModuleDescriptorBuilder.java
- *
- *
  */
 object ReplaceMavenConfigurationMappings {
 

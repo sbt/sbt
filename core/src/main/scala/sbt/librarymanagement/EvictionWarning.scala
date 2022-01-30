@@ -279,10 +279,12 @@ object EvictionWarning {
     }
     confs flatMap { confReport =>
       confReport.details map { detail =>
-        if ((detail.modules exists { _.evicted }) &&
-            !(buffer exists { x =>
-              (x.organization == detail.organization) && (x.name == detail.name)
-            })) {
+        if (
+          (detail.modules exists { _.evicted }) &&
+          !(buffer exists { x =>
+            (x.organization == detail.organization) && (x.name == detail.name)
+          })
+        ) {
           buffer += detail
         }
       }

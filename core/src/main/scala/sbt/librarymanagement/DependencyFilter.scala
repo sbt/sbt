@@ -29,7 +29,9 @@ trait DependencyFilterExtra {
   ): ArtifactFilter =
     new ArtifactFilter {
       def apply(a: Artifact): Boolean =
-        name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(a.extension) && classifier
+        name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(
+          a.extension
+        ) && classifier
           .accept(a.classifier getOrElse "")
     }
 
