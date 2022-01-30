@@ -162,7 +162,7 @@ object Tests {
       new Group(name, tests, runPolicy, tags)
     }
 
-    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    // - EXPANDED CASE CLASS METHOD BEGIN -//
     @deprecated("Methods generated for case class will be removed in the future.", "1.4.0")
     def copy(
         name: String = this.name,
@@ -199,13 +199,13 @@ object Tests {
         runPolicy == Group$1.runPolicy && tags == Group$1.tags
       }))
     }
-    //- EXPANDED CASE CLASS METHOD END -//
+    // - EXPANDED CASE CLASS METHOD END -//
   }
 
   object Group
       extends AbstractFunction3[String, Seq[TestDefinition], TestRunPolicy, Group]
       with Serializable {
-    //- EXPANDED CASE CLASS METHOD BEGIN -//
+    // - EXPANDED CASE CLASS METHOD BEGIN -//
     final override def toString(): String = "Group"
     def apply(
         name: String,
@@ -239,7 +239,7 @@ object Tests {
         )
     }
     private def readResolve(): Object = Group
-    //- EXPANDED CASE CLASS METHOD END -//
+    // - EXPANDED CASE CLASS METHOD END -//
   }
 
   private[sbt] final class ProcessedOptions(
@@ -379,23 +379,22 @@ object Tests {
       testFun: TestFunction,
       nestedTasks: Seq[TestTask]
   ): Seq[(String, TestFunction)] =
-    (nestedTasks.view.zipWithIndex map {
-      case (nt, idx) =>
-        val testFunDef = testFun.taskDef
-        (
-          testFunDef.fullyQualifiedName,
-          TestFramework.createTestFunction(
-            loader,
-            new TaskDef(
-              testFunDef.fullyQualifiedName + "-" + idx,
-              testFunDef.fingerprint,
-              testFunDef.explicitlySpecified,
-              testFunDef.selectors
-            ),
-            testFun.runner,
-            nt
-          )
+    (nestedTasks.view.zipWithIndex map { case (nt, idx) =>
+      val testFunDef = testFun.taskDef
+      (
+        testFunDef.fullyQualifiedName,
+        TestFramework.createTestFunction(
+          loader,
+          new TaskDef(
+            testFunDef.fullyQualifiedName + "-" + idx,
+            testFunDef.fingerprint,
+            testFunDef.explicitlySpecified,
+            testFunDef.selectors
+          ),
+          testFun.runner,
+          nt
         )
+      )
     }).toSeq
 
   def makeParallel(
@@ -412,15 +411,14 @@ object Tests {
       tags: Seq[(Tag, Int)]
   ): Task[Map[String, SuiteResult]] = {
     val tasks = runnables.map { case (name, test) => toTask(loader, name, test, tags) }
-    tasks.join.map(_.foldLeft(Map.empty[String, SuiteResult]) {
-      case (sum, e) =>
-        val merged = sum.toSeq ++ e.toSeq
-        val grouped = merged.groupBy(_._1)
-        grouped
-          .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) {
-            case (resultSum, result) => resultSum + result
-          })
-          .toMap
+    tasks.join.map(_.foldLeft(Map.empty[String, SuiteResult]) { case (sum, e) =>
+      val merged = sum.toSeq ++ e.toSeq
+      val grouped = merged.groupBy(_._1)
+      grouped
+        .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) { case (resultSum, result) =>
+          resultSum + result
+        })
+        .toMap
     })
   }
 
@@ -435,17 +433,16 @@ object Tests {
       Pure(() => (name, fun.apply()), `inline` = false)
     )
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
-    taggedBase flatMap {
-      case (name, (result, nested)) =>
-        val nestedRunnables = createNestedRunnables(loader, fun, nested)
-        toTasks(loader, nestedRunnables, tags).map { currentResultMap =>
-          val newResult =
-            currentResultMap.get(name) match {
-              case Some(currentResult) => currentResult + result
-              case None                => result
-            }
-          currentResultMap.updated(name, newResult)
-        }
+    taggedBase flatMap { case (name, (result, nested)) =>
+      val nestedRunnables = createNestedRunnables(loader, fun, nested)
+      toTasks(loader, nestedRunnables, tags).map { currentResultMap =>
+        val newResult =
+          currentResultMap.get(name) match {
+            case Some(currentResult) => currentResult + result
+            case None                => result
+          }
+        currentResultMap.updated(name, newResult)
+      }
     }
   }
 
@@ -495,13 +492,13 @@ object Tests {
       task { Output(TestResult.Passed, Map.empty, Nil) }
     } else if (parallel) {
       reduced[Output](
-        results.toIndexedSeq, {
-          case (Output(v1, m1, _), Output(v2, m2, _)) =>
-            Output(
-              (if (severity(v1) < severity(v2)) v2 else v1): TestResult,
-              Map((m1.toSeq ++ m2.toSeq): _*),
-              Iterable.empty[Summary]
-            )
+        results.toIndexedSeq,
+        { case (Output(v1, m1, _), Output(v2, m2, _)) =>
+          Output(
+            (if (severity(v1) < severity(v2)) v2 else v1): TestResult,
+            Map((m1.toSeq ++ m2.toSeq): _*),
+            Iterable.empty[Summary]
+          )
         }
       )
     } else {
@@ -554,11 +551,11 @@ object Tests {
       definitions: Seq[Definition],
       log: Logger
   ): (Seq[TestDefinition], Set[String]) = {
-    val subclasses = fingerprints collect {
-      case sub: SubclassFingerprint => (sub.superclassName, sub.isModule, sub)
+    val subclasses = fingerprints collect { case sub: SubclassFingerprint =>
+      (sub.superclassName, sub.isModule, sub)
     };
-    val annotations = fingerprints collect {
-      case ann: AnnotatedFingerprint => (ann.annotationName, ann.isModule, ann)
+    val annotations = fingerprints collect { case ann: AnnotatedFingerprint =>
+      (ann.annotationName, ann.isModule, ann)
     };
     log.debug("Subclass fingerprints: " + subclasses)
     log.debug("Annotation fingerprints: " + annotations)

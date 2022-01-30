@@ -86,8 +86,7 @@ object Sync {
     }
 
   def copy(source: File, target: File): Unit =
-    if (source.isFile)
-      IO.copyFile(source, target, true)
+    if (source.isFile) IO.copyFile(source, target, true)
     else if (!target.exists) { // we don't want to update the last modified time of an existing directory
       IO.createDirectory(target)
       IO.copyLastModified(source, target)
@@ -102,8 +101,8 @@ object Sync {
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](
-      implicit af: JsonFormat[Map[A, Set[B]]],
+  implicit def relationFormat[A, B](implicit
+      af: JsonFormat[Map[A, Set[B]]],
       bf: JsonFormat[Map[B, Set[A]]]
   ): JsonFormat[Relation[A, B]] =
     new JsonFormat[Relation[A, B]] {
@@ -142,9 +141,8 @@ object Sync {
   )(implicit infoFormat: JsonFormat[F]): Unit = {
     val virtualRelation: Relation[VirtualFileRef, VirtualFileRef] =
       Relation.switch(relation, (f: File) => fileConverter.toVirtualFile(f.toPath))
-    val virtualInfo: Map[VirtualFileRef, F] = info.map {
-      case (file, fileInfo) =>
-        fileConverter.toVirtualFile(file.toPath) -> fileInfo
+    val virtualInfo: Map[VirtualFileRef, F] = info.map { case (file, fileInfo) =>
+      fileConverter.toVirtualFile(file.toPath) -> fileInfo
     }
 
     import LibraryManagementCodec._
@@ -162,8 +160,8 @@ object Sync {
   type RelationInfo[F] = (Relation[File, File], Map[File, F])
   type RelationInfoVirtual[F] = (Relation[VirtualFileRef, VirtualFileRef], Map[VirtualFileRef, F])
 
-  def readInfoWrapped[F <: FileInfo](store: CacheStore, fileConverter: FileConverter)(
-      implicit infoFormat: JsonFormat[F]
+  def readInfoWrapped[F <: FileInfo](store: CacheStore, fileConverter: FileConverter)(implicit
+      infoFormat: JsonFormat[F]
   ): RelationInfo[F] = {
     convertFromVirtual(readInfoVirtual(store)(infoFormat), fileConverter)
   }
@@ -173,9 +171,8 @@ object Sync {
       fileConverter: FileConverter
   ): RelationInfo[F] = {
     val firstPart = Relation.switch(info._1, (r: VirtualFileRef) => fileConverter.toPath(r).toFile)
-    val secondPart = info._2.map {
-      case (file, fileInfo) =>
-        fileConverter.toPath(file).toFile -> fileInfo
+    val secondPart = info._2.map { case (file, fileInfo) =>
+      fileConverter.toPath(file).toFile -> fileInfo
     }
     firstPart -> secondPart
   }

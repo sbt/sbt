@@ -20,7 +20,7 @@ import sbt.util.Logger
 
 import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
 import sbt.internal.util.HNil
-import sbt.internal.util.HListFormats._
+// import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.{ inputChanged, outputChanged }
@@ -107,7 +107,6 @@ object Package {
   )
 
   /**
-   *
    * @param conf the package configuration that should be build
    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
    * @param log feedback for the user
@@ -116,7 +115,6 @@ object Package {
     apply(conf, cacheStoreFactory, log, timeFromConfiguration(conf))
 
   /**
-   *
    * @param conf the package configuration that should be build
    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
    * @param log feedback for the user
@@ -132,11 +130,11 @@ object Package {
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
       option match {
-        case JarManifest(mergeManifest)          => mergeManifests(manifest, mergeManifest); ()
-        case MainClass(mainClassName)            => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
+        case JarManifest(mergeManifest) => mergeManifests(manifest, mergeManifest); ()
+        case MainClass(mainClassName)   => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
         case ManifestAttributes(attributes @ _*) => main.asScala ++= attributes; ()
         case FixedTimestamp(value)               => ()
-        case _                                   => log.warn("Ignored unknown package option " + option)
+        case _ => log.warn("Ignored unknown package option " + option)
       }
     }
     setVersion(main)
@@ -151,8 +149,7 @@ object Package {
             makeJar(sources, jar.file, manifest, log, time)
             jar.file
             ()
-          } else
-            log.debug("Jar uptodate: " + jar.file)
+          } else log.debug("Jar uptodate: " + jar.file)
         }
     }
 

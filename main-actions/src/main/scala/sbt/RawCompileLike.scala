@@ -13,7 +13,7 @@ import sbt.io.syntax._
 import sbt.io.IO
 import sbt.internal.inc.{ RawCompiler, ScalaInstance }
 import sbt.internal.util.Types.:+:
-import sbt.internal.util.HListFormats._
+// import sbt.internal.util.HListFormats._
 import sbt.internal.util.HNil
 import sbt.internal.util.HListFormats._
 import sbt.util.CacheImplicits._
@@ -70,8 +70,7 @@ object RawCompileLike {
 
   def prepare(description: String, doCompile: Gen): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
-      if (sources.isEmpty)
-        log.info("No sources available, skipping " + description + "...")
+      if (sources.isEmpty) log.info("No sources available, skipping " + description + "...")
       else {
         log.info(description.capitalize + " to " + outputDirectory.absolutePath + "...")
         IO.delete(outputDirectory)

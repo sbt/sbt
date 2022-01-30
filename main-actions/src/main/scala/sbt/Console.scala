@@ -18,7 +18,7 @@ import scala.util.Try
 
 final class Console(compiler: AnalyzingCompiler) {
 
-  /** Starts an interactive scala interpreter session with the given classpath.*/
+  /** Starts an interactive scala interpreter session with the given classpath. */
   def apply(classpath: Seq[File], log: Logger): Try[Unit] =
     apply(classpath, Nil, "", "", log)
 
@@ -57,9 +57,16 @@ final class Console(compiler: AnalyzingCompiler) {
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
     def console0(): Unit =
       try {
-        compiler.console(classpath map { x =>
-          PlainVirtualFile(x.toPath)
-        }, MappedFileConverter.empty, options, initialCommands, cleanupCommands, log)(
+        compiler.console(
+          classpath map { x =>
+            PlainVirtualFile(x.toPath)
+          },
+          MappedFileConverter.empty,
+          options,
+          initialCommands,
+          cleanupCommands,
+          log
+        )(
           loader,
           bindings
         )

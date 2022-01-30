@@ -204,20 +204,21 @@ final class Eval(
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
 
-    val (extra, loader) = try {
-      backing match {
-        case Some(back) if classExists(back, moduleName) =>
-          val loader = (parent: ClassLoader) =>
-            (new URLClassLoader(Array(back.toURI.toURL), parent): ClassLoader)
-          val extra = ev.read(cacheFile(back, moduleName))
-          (extra, loader)
-        case _ =>
-          compileAndLoad(imports, backing, moduleName, ev)
+    val (extra, loader) =
+      try {
+        backing match {
+          case Some(back) if classExists(back, moduleName) =>
+            val loader = (parent: ClassLoader) =>
+              (new URLClassLoader(Array(back.toURI.toURL), parent): ClassLoader)
+            val extra = ev.read(cacheFile(back, moduleName))
+            (extra, loader)
+          case _ =>
+            compileAndLoad(imports, backing, moduleName, ev)
+        }
+      } finally {
+        // send a final report even if the class file was backed to reset preceding diagnostics
+        evalReporter.finalReport(ev.sourceName)
       }
-    } finally {
-      // send a final report even if the class file was backed to reset preceding diagnostics
-      evalReporter.finalReport(ev.sourceName)
-    }
 
     val generatedFiles = getGeneratedFiles(backing, moduleName)
     new EvalIntermediate(extra, loader, generatedFiles, moduleName)
@@ -262,8 +263,7 @@ final class Eval(
 
     def compile(phase: Phase): Unit = {
       globalPhase = phase
-      if (phase == null || phase == phase.next || evalReporter.hasErrors)
-        ()
+      if (phase == null || phase == phase.next || evalReporter.hasErrors) ()
       else {
         enteringPhase(phase) { phase.run() }
         compile(phase.next)
@@ -295,7 +295,7 @@ final class Eval(
   def loadPlain(dir: File, moduleName: String): ClassLoader => Any =
     parent => getValue[Any](moduleName, new URLClassLoader(Array(dir.toURI.toURL), parent))
 
-  //wrap tree in object objectName { def WrapValName = <tree> }
+  // wrap tree in object objectName { def WrapValName = <tree> }
   def augment(
       parser: global.syntaxAnalyzer.UnitParser,
       imports: Seq[Tree],
@@ -342,7 +342,7 @@ final class Eval(
     }
   }
 
-  /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`.*/
+  /** Tree traverser that obtains the names of vals in a top-level module whose type is a subtype of one of `types`. */
   private[this] final class ValExtractor(tpes: Set[String]) extends Traverser {
     private[this] var vals = List[String]()
     def getVals(t: Tree): List[String] = { vals = Nil; traverse(t); vals }
@@ -451,22 +451,24 @@ final class Eval(
   /** Parses one or more definitions (defs, vals, lazy vals, classes, traits, modules). */
   private[this] def parseDefinitions(parser: syntaxAnalyzer.UnitParser): Seq[Tree] = {
     val defs = ListBuffer[Tree]()
-    do {
+    def run(): Unit =
       defs ++= parser.nonLocalDefOrDcl
       parser.acceptStatSepOpt()
-    } while (!parser.isStatSeqEnd)
+
+    run()
+    while !parser.isStatSeqEnd do run()
     defs.toList
   }
 
   private[this] trait EvalType[T] {
 
-    /** Extracts additional information after the compilation unit is evaluated.*/
+    /** Extracts additional information after the compilation unit is evaluated. */
     def extra(run: Run, unit: CompilationUnit): T
 
-    /** Deserializes the extra information for unchanged inputs from a cache file.*/
+    /** Deserializes the extra information for unchanged inputs from a cache file. */
     def read(file: File): T
 
-    /** Serializes the extra information to a cache file, where it can be `read` back if inputs haven't changed.*/
+    /** Serializes the extra information to a cache file, where it can be `read` back if inputs haven't changed. */
     def write(value: T, file: File): Unit
 
     def sourceName: String
@@ -478,7 +480,7 @@ final class Eval(
      */
     def makeUnit: CompilationUnit
 
-    /** If true, all top-level symbols from this evaluation will be unlinked.*/
+    /** If true, all top-level symbols from this evaluation will be unlinked. */
     def unlink: Boolean
 
     /**
@@ -559,7 +561,8 @@ private[sbt] object Eval {
     if (f.isDirectory)
       (f listFiles classDirFilter) foreach { x =>
         fileModifiedHash(x, digester)
-      } else digester.update(bytes(getModifiedTimeOrZero(f)))
+      }
+    else digester.update(bytes(getModifiedTimeOrZero(f)))
 
     digester.update(bytes(f.getAbsolutePath))
   }
@@ -602,7 +605,7 @@ private[sbt] object Eval {
     value.asInstanceOf[T]
   }
 
-  /** Gets the top-level module `moduleName` from the provided class `loader`.  The module name should not include the trailing `$`.*/
+  /** Gets the top-level module `moduleName` from the provided class `loader`.  The module name should not include the trailing `$`. */
   def getModule(moduleName: String, loader: ClassLoader): Any = {
     val clazz = Class.forName(moduleName + "$", true, loader)
     clazz.getField("MODULE$").get(null)
