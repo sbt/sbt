@@ -5,7 +5,21 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ModuleConfigurationFormats { self: sbt.librarymanagement.ResolverFormats with sjsonnew.BasicJsonProtocol =>
+trait ModuleConfigurationFormats { self: sbt.librarymanagement.ResolverFormats with
+  sjsonnew.BasicJsonProtocol with
+  sbt.librarymanagement.ChainedResolverFormats with
+  sbt.librarymanagement.MavenRepoFormats with
+  sbt.librarymanagement.MavenCacheFormats with
+  sbt.librarymanagement.PatternsFormats with
+  sbt.librarymanagement.FileConfigurationFormats with
+  sbt.librarymanagement.FileRepositoryFormats with
+  sbt.librarymanagement.URLRepositoryFormats with
+  sbt.librarymanagement.SshConnectionFormats with
+  sbt.librarymanagement.SshAuthenticationFormats with
+  sbt.librarymanagement.SshRepositoryFormats with
+  sbt.librarymanagement.SftpRepositoryFormats with
+  sbt.librarymanagement.PasswordAuthenticationFormats with
+  sbt.librarymanagement.KeyFileAuthenticationFormats =>
 implicit lazy val ModuleConfigurationFormat: JsonFormat[sbt.librarymanagement.ModuleConfiguration] = new JsonFormat[sbt.librarymanagement.ModuleConfiguration] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.ModuleConfiguration = {
     __jsOpt match {

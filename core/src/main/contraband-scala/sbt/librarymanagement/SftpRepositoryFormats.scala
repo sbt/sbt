@@ -5,7 +5,12 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait SftpRepositoryFormats { self: sbt.librarymanagement.PatternsFormats with sjsonnew.BasicJsonProtocol with sbt.librarymanagement.SshConnectionFormats with sbt.librarymanagement.SshAuthenticationFormats =>
+trait SftpRepositoryFormats { self: sbt.librarymanagement.PatternsFormats with
+  sjsonnew.BasicJsonProtocol with
+  sbt.librarymanagement.SshConnectionFormats with
+  sbt.librarymanagement.SshAuthenticationFormats with
+  sbt.librarymanagement.PasswordAuthenticationFormats with
+  sbt.librarymanagement.KeyFileAuthenticationFormats =>
 implicit lazy val SftpRepositoryFormat: JsonFormat[sbt.librarymanagement.SftpRepository] = new JsonFormat[sbt.librarymanagement.SftpRepository] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.librarymanagement.SftpRepository = {
     __jsOpt match {
