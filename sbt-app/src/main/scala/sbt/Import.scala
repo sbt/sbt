@@ -297,6 +297,7 @@ trait Import {
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
+  val License = sbt.librarymanagement.License
   type LogicalClock = sbt.librarymanagement.LogicalClock
   val LogicalClock = sbt.librarymanagement.LogicalClock
   type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
