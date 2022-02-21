@@ -123,6 +123,9 @@ download_url () {
       curl --silent -L "$url" --output "$jar"
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
+    else
+      echoerr "failed to download $url: Neither curl nor wget is avaialble"
+      exit 2
     fi
   } && [[ -f "$jar" ]]
 }
