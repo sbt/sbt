@@ -636,6 +636,9 @@ type ScalaTestClassesItem {
 
   ## The fully qualified names of the test classes in this target
   classes: [String]
+
+  ## test framework name
+  framework: String
 }
 
 ## Scala Main Class Request
