@@ -303,7 +303,8 @@ object RemoteCache {
                       }
                       found = true
                     case Left(e) =>
-                      log.info(s"remote cache not found for ${v}")
+                      val classifier = seqa.map(_.classifier).mkString(" ")
+                      log.info(s"remote cache artifact not found for $p $classifier")
                       log.debug(e.getMessage)
                   }
                 }
