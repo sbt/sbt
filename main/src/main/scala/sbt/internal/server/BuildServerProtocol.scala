@@ -242,7 +242,7 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val items = bspScalaTestClassesItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items)
+        val successfulItems = anyOrThrow(items).flatten.toVector
         val result = ScalaTestClassesResult(successfulItems.toVector, None)
         s.respondEvent(result)
       }
@@ -840,15 +840,30 @@ object BuildServerProtocol {
     }
   }
 
-  private def scalaTestClassesTask: Initialize[Task[ScalaTestClassesItem]] = Def.task {
-    val testClasses = Keys.definedTests.?.value
-      .getOrElse(Seq.empty)
-      .map(_.name)
-      .toVector
-    ScalaTestClassesItem(
-      bspTargetIdentifier.value,
-      testClasses
-    )
+  private def scalaTestClassesTask: Initialize[Task[Seq[ScalaTestClassesItem]]] = Def.task {
+    Keys.definedTests.?.value match {
+      case None => Vector.empty
+      case Some(definitions) =>
+        val fingerprints = Keys.loadedTestFrameworks.?.value
+          .getOrElse(Map.empty)
+          .values
+          .flatMap { framework =>
+            framework.fingerprints().map(fingerprint => (fingerprint, framework))
+          }
+          .toMap
+
+        definitions
+          .groupBy(defn => fingerprints.get(defn.fingerprint))
+          .map {
+            case (framework, definitions) =>
+              ScalaTestClassesItem(
+                bspTargetIdentifier.value,
+                definitions.map(_.name).toVector,
+                framework.map(_.name())
+              )
+          }
+          .toSeq
+    }
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
