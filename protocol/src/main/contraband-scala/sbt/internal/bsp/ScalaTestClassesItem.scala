@@ -7,7 +7,7 @@ package sbt.internal.bsp
 /**
  * @param target The build target that contains the test classes.
  * @param classes The fully qualified names of the test classes in this target
- * @param framework test framework name
+ * @param framework The name of the test framework used in test classes.
  */
 final class ScalaTestClassesItem private (
   val target: sbt.internal.bsp.BuildTargetIdentifier,
