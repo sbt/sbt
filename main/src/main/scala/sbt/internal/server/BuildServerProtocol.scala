@@ -39,6 +39,7 @@ import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
+import sbt.testing.Framework
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -844,25 +845,20 @@ object BuildServerProtocol {
     Keys.definedTests.?.value match {
       case None => Vector.empty
       case Some(definitions) =>
-        val fingerprints = Keys.loadedTestFrameworks.?.value
-          .getOrElse(Map.empty)
-          .values
-          .flatMap { framework =>
-            framework.fingerprints().map(fingerprint => (fingerprint, framework))
-          }
-          .toMap
+        val frameworks: Seq[Framework] = Keys.loadedTestFrameworks.?.value
+          .map(_.values.toSeq)
+          .getOrElse(Seq.empty)
 
-        definitions
-          .groupBy(defn => fingerprints.get(defn.fingerprint))
-          .map {
-            case (framework, definitions) =>
-              ScalaTestClassesItem(
-                bspTargetIdentifier.value,
-                definitions.map(_.name).toVector,
-                framework.map(_.name())
-              )
-          }
-          .toSeq
+        val grouped = TestFramework.testMap(frameworks, definitions)
+
+        grouped.map {
+          case (framework, definitions) =>
+            ScalaTestClassesItem(
+              bspTargetIdentifier.value,
+              definitions.map(_.name).toVector,
+              framework.name()
+            )
+        }.toSeq
     }
   }
 

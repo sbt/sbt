@@ -308,7 +308,8 @@ object BuildServerTest extends AbstractServerTest {
     assert(svr.waitForString(10.seconds) { s =>
       (s contains """"id":"72"""") &&
       (s contains """"tests.FailingTest"""") &&
-      (s contains """"tests.PassingTest"""")
+      (s contains """"tests.PassingTest"""") &&
+      (s contains """"framework":"ScalaTest"""")
     })
   }
 

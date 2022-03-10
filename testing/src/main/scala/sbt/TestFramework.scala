@@ -231,21 +231,26 @@ object TestFramework {
   ): Vector[(String, TestFunction)] =
     for (d <- inputs; act <- mapped.get(d.name)) yield (d.name, act)
 
-  private[this] def testMap(
+  def testMap(
       frameworks: Seq[Framework],
       tests: Seq[TestDefinition]
   ): Map[Framework, Set[TestDefinition]] = {
     import scala.collection.mutable.{ HashMap, HashSet, Set }
     val map = new HashMap[Framework, Set[TestDefinition]]
+
     def assignTest(test: TestDefinition): Unit = {
       def isTestForFramework(framework: Framework) = getFingerprints(framework).exists { t =>
         matches(t, test.fingerprint)
       }
-      for (framework <- frameworks.find(isTestForFramework))
+
+      frameworks.find(isTestForFramework).foreach { framework =>
         map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
+      }
     }
+
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
+
     map.toMap.mapValues(_.toSet).toMap
   }
 
