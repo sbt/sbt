@@ -39,6 +39,7 @@ import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
+import sbt.testing.Framework
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -242,7 +243,7 @@ object BuildServerProtocol {
       val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val items = bspScalaTestClassesItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items)
+        val successfulItems = anyOrThrow(items).flatten.toVector
         val result = ScalaTestClassesResult(successfulItems.toVector, None)
         s.respondEvent(result)
       }
@@ -840,15 +841,25 @@ object BuildServerProtocol {
     }
   }
 
-  private def scalaTestClassesTask: Initialize[Task[ScalaTestClassesItem]] = Def.task {
-    val testClasses = Keys.definedTests.?.value
-      .getOrElse(Seq.empty)
-      .map(_.name)
-      .toVector
-    ScalaTestClassesItem(
-      bspTargetIdentifier.value,
-      testClasses
-    )
+  private def scalaTestClassesTask: Initialize[Task[Seq[ScalaTestClassesItem]]] = Def.task {
+    Keys.definedTests.?.value match {
+      case None => Vector.empty
+      case Some(definitions) =>
+        val frameworks: Seq[Framework] = Keys.loadedTestFrameworks.?.value
+          .map(_.values.toSeq)
+          .getOrElse(Seq.empty)
+
+        val grouped = TestFramework.testMap(frameworks, definitions)
+
+        grouped.map {
+          case (framework, definitions) =>
+            ScalaTestClassesItem(
+              bspTargetIdentifier.value,
+              definitions.map(_.name).toVector,
+              framework.name()
+            )
+        }.toSeq
+    }
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {

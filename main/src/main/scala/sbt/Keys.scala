@@ -419,7 +419,7 @@ object Keys {
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
   val bspScalaTestClasses = inputKey[Unit]("Corresponds to buildTarget/scalaTestClasses request").withRank(DTask)
-  val bspScalaTestClassesItem = taskKey[ScalaTestClassesItem]("").withRank(DTask)
+  val bspScalaTestClassesItem = taskKey[Seq[ScalaTestClassesItem]]("").withRank(DTask)
   val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
   val bspScalaMainClassesItem = taskKey[ScalaMainClassesItem]("").withRank(DTask)
   val bspReporter = taskKey[BuildServerReporter]("").withRank(DTask)
