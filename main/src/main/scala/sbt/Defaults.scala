@@ -2310,10 +2310,11 @@ object Defaults extends BuildCommon {
     val ci = (compile / compileInputs).value
     val ping = earlyOutputPing.value
     val reporter = (compile / bspReporter).value
+    val prevAnalysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
     BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
       task =>
         // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-        compileIncrementalTaskImpl(task, s, ci, ping, reporter)
+        compileIncrementalTaskImpl(task, s, ci, ping, reporter, prevAnalysis)
     }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
@@ -2342,7 +2343,8 @@ object Defaults extends BuildCommon {
       s: TaskStreams,
       ci: Inputs,
       promise: PromiseWrap[Boolean],
-      reporter: BuildServerReporter
+      reporter: BuildServerReporter,
+      prev: CompileAnalysis
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) = {
@@ -2364,7 +2366,7 @@ object Defaults extends BuildCommon {
       .withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
-      reporter.sendSuccessReport(result.getAnalysis)
+      reporter.sendSuccessReport(result.getAnalysis, prev)
       result
     } catch {
       case e: Throwable =>

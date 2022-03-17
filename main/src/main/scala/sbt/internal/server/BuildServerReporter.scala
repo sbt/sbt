@@ -38,7 +38,7 @@ sealed trait BuildServerReporter extends Reporter {
 
   protected def publishDiagnostic(problem: Problem): Unit
 
-  def sendSuccessReport(analysis: CompileAnalysis): Unit
+  def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
 
@@ -86,20 +86,26 @@ final class BuildServerReporterImpl(
     if (ref.id().contains("<")) None
     else Some(converter.toPath(ref))
 
-  override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
+  override def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit = {
+    val prevInfos = prev.readSourceInfos().getAllSourceInfos().asScala
     for {
       (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
       filePath <- toSafePath(source)
     } {
-      val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
-      val params = PublishDiagnosticsParams(
-        textDocument = TextDocumentIdentifier(filePath.toUri),
-        buildTarget,
-        originId = None,
-        diagnostics.toVector,
-        reset = true
-      )
-      exchange.notifyEvent("build/publishDiagnostics", params)
+      val prevProblems = prevInfos.get(source).map(_.getReportedProblems()).getOrElse(Array.empty)
+      val dontPublish = prevProblems.length == 0 && infos.getReportedProblems().length == 0
+
+      if (!dontPublish) {
+        val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
+        val params = PublishDiagnosticsParams(
+          textDocument = TextDocumentIdentifier(filePath.toUri),
+          buildTarget,
+          originId = None,
+          diagnostics.toVector,
+          reset = true
+        )
+        exchange.notifyEvent("build/publishDiagnostics", params)
+      }
     }
   }
 
@@ -179,7 +185,7 @@ final class BuildServerForwarder(
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
 
-  override def sendSuccessReport(analysis: CompileAnalysis): Unit = ()
+  override def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit = ()
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
 
