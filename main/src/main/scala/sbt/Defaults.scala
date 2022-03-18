@@ -2329,7 +2329,7 @@ object Defaults extends BuildCommon {
         val result0 = incCompiler
           .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
           .compileAllJava(in, s.log)
-        reporter.sendSuccessReport(result0.analysis())
+        reporter.sendSuccessReport(result0.analysis(), Analysis.empty, false)
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
     } catch {
@@ -2366,7 +2366,11 @@ object Defaults extends BuildCommon {
       .withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
-      reporter.sendSuccessReport(result.getAnalysis, prev)
+      reporter.sendSuccessReport(
+        result.getAnalysis,
+        prev,
+        BuildServerProtocol.shouldReportAllPreviousProblems(task.targetId)
+      )
       result
     } catch {
       case e: Throwable =>

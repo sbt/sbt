@@ -39,10 +39,25 @@ import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
+import scala.collection.concurrent.TrieMap
 import sbt.testing.Framework
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
+
+  /**
+   * Keep track of those projects that were compiled at least once so that we can
+   * decide to enable fresh reporting for projects that are compiled for the first time.
+   *
+   * see: https://github.com/scalacenter/bloop/issues/726
+   */
+  private val compiledTargetsAtLeastOnce = new TrieMap[bsp.BuildTargetIdentifier, Boolean]()
+  def shouldReportAllPreviousProblems(id: bsp.BuildTargetIdentifier): Boolean = {
+    compiledTargetsAtLeastOnce.putIfAbsent(id, true) match {
+      case Some(_) => false
+      case None    => true
+    }
+  }
 
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
@@ -354,6 +369,7 @@ object BuildServerProtocol {
           case r if r.method == Method.Initialize =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
+            compiledTargetsAtLeastOnce.clear()
 
             val response = InitializeBuildResult(
               "sbt",

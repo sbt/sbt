@@ -38,7 +38,11 @@ sealed trait BuildServerReporter extends Reporter {
 
   protected def publishDiagnostic(problem: Problem): Unit
 
-  def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit
+  def sendSuccessReport(
+      analysis: CompileAnalysis,
+      prev: CompileAnalysis,
+      reportAllPreviousProblems: Boolean
+  ): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
 
@@ -86,7 +90,11 @@ final class BuildServerReporterImpl(
     if (ref.id().contains("<")) None
     else Some(converter.toPath(ref))
 
-  override def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit = {
+  override def sendSuccessReport(
+      analysis: CompileAnalysis,
+      prev: CompileAnalysis,
+      reportAllPreviousProblems: Boolean
+  ): Unit = {
     val prevInfos = prev.readSourceInfos().getAllSourceInfos().asScala
     for {
       (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
@@ -94,8 +102,9 @@ final class BuildServerReporterImpl(
     } {
       val prevProblems = prevInfos.get(source).map(_.getReportedProblems()).getOrElse(Array.empty)
       val dontPublish = prevProblems.length == 0 && infos.getReportedProblems().length == 0
+      val shouldPublish = reportAllPreviousProblems || !dontPublish
 
-      if (!dontPublish) {
+      if (shouldPublish) {
         val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
         val params = PublishDiagnosticsParams(
           textDocument = TextDocumentIdentifier(filePath.toUri),
@@ -185,7 +194,11 @@ final class BuildServerForwarder(
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
 
-  override def sendSuccessReport(analysis: CompileAnalysis, prev: CompileAnalysis): Unit = ()
+  override def sendSuccessReport(
+      analysis: CompileAnalysis,
+      prev: CompileAnalysis,
+      reportAllPreviousProblems: Boolean
+  ): Unit = ()
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
 
