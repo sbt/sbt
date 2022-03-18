@@ -189,6 +189,14 @@ object Terminal {
     try Terminal.console.printStream.println(s"[info] $string")
     catch { case _: IOException => }
   }
+
+  private[this] val writeLock = new AnyRef
+  def withWriteLock[A](f: => A): A = {
+    writeLock.synchronized {
+      f
+    }
+  }
+
   private[sbt] def set(terminal: Terminal): Terminal = activeTerminal.getAndSet(terminal)
   implicit class TerminalOps(private val term: Terminal) extends AnyVal {
     def ansi(richString: => String, string: => String): String =
@@ -462,7 +470,7 @@ object Terminal {
   val sepBytes = System.lineSeparator.getBytes("UTF-8")
   private class LinePrintStream(outputStream: OutputStream)
       extends PrintStream(outputStream, true) {
-    override def println(s: String): Unit = synchronized {
+    override def println(s: String): Unit = withWriteLock {
       out.write(s.getBytes("UTF-8") ++ sepBytes)
       out.flush()
     }
@@ -911,7 +919,6 @@ object Terminal {
     override def getWidth: Int = getSize._1
     override def getHeight: Int = getSize._2
     private[this] val rawMode = new AtomicBoolean(false)
-    private[this] val writeLock = new AnyRef
     def throwIfClosed[R](f: => R): R = if (isStopped.get) throw new ClosedChannelException else f
     override def getLastLine: Option[String] = progressState.currentLine
     override def getLines: Seq[String] = progressState.getLines
@@ -939,7 +946,7 @@ object Terminal {
         write(Array((b & 0xFF).toByte))
       }
       override def write(b: Array[Byte]): Unit = throwIfClosed {
-        writeLock.synchronized(doWrite(b))
+        withWriteLock(doWrite(b))
       }
       override def write(b: Array[Byte], offset: Int, length: Int): Unit = throwIfClosed {
         write(Arrays.copyOfRange(b, offset, offset + length))
