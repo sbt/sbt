@@ -12,10 +12,10 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.6.0-M2")
+  private val ioVersion = nightlyVersion.getOrElse("1.6.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.6.0-M2")
-  val zincVersion = nightlyVersion.getOrElse("1.6.0-M2")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.6.1")
+  val zincVersion = nightlyVersion.getOrElse("1.6.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -69,13 +69,13 @@ object Dependencies {
   def addSbtLmIvy = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy)
   def addSbtLmIvyTest = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
-  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterfaceJVM", compilerInterface)
-  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspathJVM2_12", compilerClasspath)
-  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfoJVM2_12", compilerApiInfo)
-  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridgeJVM2_12", compilerBridge)
-  def addSbtZinc = addSbtModule(sbtZincPath, "zincJVM2_12", zinc)
-  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
-  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
+  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface", compilerInterface)
+  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath", compilerClasspath)
+  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfo", compilerApiInfo)
+  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridge2_12", compilerBridge)
+  def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
+  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
+  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
 
@@ -124,7 +124,7 @@ object Dependencies {
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
-  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.16.0"
+  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"
   val log4jApi = log4jModule("log4j-api")
   val log4jCore = log4jModule("log4j-core")
   val log4jSlf4jImpl = log4jModule("log4j-slf4j-impl")

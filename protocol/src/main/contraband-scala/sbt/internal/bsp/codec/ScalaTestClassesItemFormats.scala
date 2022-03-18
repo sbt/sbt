@@ -13,8 +13,9 @@ implicit lazy val ScalaTestClassesItemFormat: JsonFormat[sbt.internal.bsp.ScalaT
       unbuilder.beginObject(__js)
       val target = unbuilder.readField[sbt.internal.bsp.BuildTargetIdentifier]("target")
       val classes = unbuilder.readField[Vector[String]]("classes")
+      val framework = unbuilder.readField[Option[String]]("framework")
       unbuilder.endObject()
-      sbt.internal.bsp.ScalaTestClassesItem(target, classes)
+      sbt.internal.bsp.ScalaTestClassesItem(target, classes, framework)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val ScalaTestClassesItemFormat: JsonFormat[sbt.internal.bsp.ScalaT
     builder.beginObject()
     builder.addField("target", obj.target)
     builder.addField("classes", obj.classes)
+    builder.addField("framework", obj.framework)
     builder.endObject()
   }
 }

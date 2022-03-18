@@ -16,7 +16,7 @@ private[sbt] object Banner {
                 |  - Improved JDK 17 support
                 |  - Improved Build Server Protocol (BSP) support
                 |  - Tab completion of global keys
-                |See https://eed3si9n.com/sbt-1.6.0-beta for full release notes.
+                |See https://eed3si9n.com/sbt-1.6.0 for full release notes.
                 |Hide the banner for this release by running `skipBanner`.
                 |""".stripMargin.linesIterator.mkString("\n"))
       case v if v.startsWith("1.4.0") =>

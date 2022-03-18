@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.6.0-RC1"
+declare builtin_sbt_version="1.6.2"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -583,7 +583,6 @@ Usage: `basename "$0"` [options]
   -Dkey=val           pass -Dkey=val directly to the java runtime
   -J-X                pass option -X directly to the java runtime
                       (-J is stripped)
-  -S-X                add -X to sbt's scalacOptions (-S is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
