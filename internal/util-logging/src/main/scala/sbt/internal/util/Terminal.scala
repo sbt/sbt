@@ -189,6 +189,14 @@ object Terminal {
     try Terminal.console.printStream.println(s"[info] $string")
     catch { case _: IOException => }
   }
+
+  private[this] val writeLock = new AnyRef
+  def withWriteLock[A](f: => A): A = {
+    writeLock.synchronized {
+      f
+    }
+  }
+
   private[sbt] def set(terminal: Terminal): Terminal = activeTerminal.getAndSet(terminal)
   implicit class TerminalOps(private val term: Terminal) extends AnyVal {
     def ansi(richString: => String, string: => String): String =
