@@ -1,0 +1,35 @@
+$ copy-file Bar.scala bar1a/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar1b/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar1c/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar2a/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar2b/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar2c/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar3a/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar3b/src/main/scala/Bar.scala
+$ copy-file Bar.scala bar3c/src/main/scala/Bar.scala
+
+> ++3.1.2-RC2
+> foo / compile
+> foo / run
+> foo / test
+> foo / publishLocal
+> foo / checkIvy
+> foo / publishM2
+> foo / checkPom
+
+> ++2.13.8
+> foo / compile
+> foo / run
+> foo / test
+> foo / publishLocal
+> foo / publishM2
+
+> bar1a / run
+> bar1b / run
+> bar1c / run
+> bar2a / run
+> bar2b / run
+> bar2c / run
+> bar3a / run
+> bar3b / run
+> bar3c / run
