@@ -126,9 +126,24 @@ object BuildServerTest extends AbstractServerTest {
     })
 
     assert(svr.waitForString(60.seconds) { s =>
+      s.contains("build/publishDiagnostics")
+      s.contains(""""diagnostics":[]""")
+    })
+
+    assert(svr.waitForString(60.seconds) { s =>
       s.contains("build/taskFinish") &&
       s.contains(""""message":"Compiled runAndTest"""")
     })
+
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "34", "method": "buildTarget/compile", "params": {
+         |  "targets": [{ "uri": "$buildTarget" }]
+         |} }""".stripMargin
+    )
+
+    assert(!svr.waitForString(30.seconds) { s =>
+      s.contains("build/publishDiagnostics")
+    }, "shouldn't send publishDiagnostics if there's no change in diagnostics")
   }
 
   test("buildTarget/scalacOptions") { _ =>
