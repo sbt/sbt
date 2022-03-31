@@ -696,3 +696,34 @@ type ResourcesItem {
    ## List of resource files.
   resources: [java.net.URI]
 }
+
+
+# JVM Environment requests
+
+type JvmEnvironmentItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+  classpath: [java.net.URI]!
+  jvmOptions: [String]!
+  workingDirectory: String!
+  environmentVariables: StringStringMap!
+}
+
+type JvmTestEnvironmentParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]!
+  originId: String
+}
+
+type JvmTestEnvironmentResult{
+  items: [sbt.internal.bsp.JvmEnvironmentItem]!
+  originId: String
+}
+
+type JvmRunEnvironmentParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]!
+  originId: String
+}
+
+type JvmRunEnvironmentResult{
+  items: [sbt.internal.bsp.JvmEnvironmentItem]!
+  originId: String
+}
