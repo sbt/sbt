@@ -315,6 +315,31 @@ object BuildServerProtocol {
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
+    bspBuildTargetJVMRunEnvironment := Def.inputTaskDyn {
+      val s = state.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val workspace = bspFullWorkspace.value.filter(targets)
+      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
+        s.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJVMTestEnvironment := Def.inputTaskDyn {
+      val s = state.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val workspace = bspFullWorkspace.value.filter(targets)
+      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
+        s.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value,
@@ -344,6 +369,8 @@ object BuildServerProtocol {
     final val Run = "buildTarget/run"
     final val CleanCache = "buildTarget/cleanCache"
     final val ScalacOptions = "buildTarget/scalacOptions"
+    final val JvmRunEnvironment = "buildTarget/jvmRunEnvironment"
+    final val JvmTestEnvironment = "buildTarget/jvmTestEnvironment"
     final val ScalaTestClasses = "buildTarget/scalaTestClasses"
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
     final val Exit = "build/exit"
@@ -441,6 +468,18 @@ object BuildServerProtocol {
             val param = Converter.fromJson[ScalacOptionsParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetScalacOptions.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.JvmRunEnvironment =>
+            val param = Converter.fromJson[JvmRunEnvironmentParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetJVMRunEnvironment.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.JvmTestEnvironment =>
+            val param = Converter.fromJson[JvmTestEnvironmentParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetJVMTestEnvironment.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
           case r if r.method == Method.ScalaTestClasses =>
@@ -646,6 +685,33 @@ object BuildServerProtocol {
       "sbt",
       data = Converter.toJsonUnsafe(sbtData),
     )
+  }
+
+  private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.taskDyn {
+    val target = Keys.bspTargetIdentifier.value
+    val baseDir = Keys.baseDirectory.value.toURI().toString()
+    val jvmOptions = Keys.javaOptions.value.toVector
+    val env = envVars.value
+    val externalDependencyClasspath = Keys.externalDependencyClasspath.value
+
+    val internalDependencyClasspath = for {
+      (ref, configs) <- bspInternalDependencyConfigurations.value
+      config <- configs
+    } yield ref / config / Keys.classDirectory
+
+    Def.task {
+      val classpath =
+        internalDependencyClasspath.join.value.distinct ++
+          externalDependencyClasspath.map(_.data)
+
+      JvmEnvironmentItem(
+        target,
+        classpath.map(_.toURI).toVector,
+        jvmOptions,
+        baseDir,
+        env
+      )
+    }
   }
 
   private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
@@ -878,6 +944,7 @@ object BuildServerProtocol {
     }
   }
 
+  // here
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
     val jvmOptions = Keys.javaOptions.value.toVector
     val mainClasses = Keys.discoveredMainClasses.value.map(
