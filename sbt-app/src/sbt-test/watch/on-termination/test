@@ -1,0 +1,8 @@
+$ exists foo.txt
+> ~compile
+$ absent foo.txt
+> set watchOnIteration := { (_, _, _) => new Watch.HandleError(new IllegalStateException("fail")) }
+$ exists bar.txt
+-> ~compile
+$ absent bar.txt
+

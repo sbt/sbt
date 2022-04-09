@@ -1128,7 +1128,28 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       val callbacks: Callbacks,
       val dynamicInputs: mutable.Set[DynamicInput],
       val pending: Boolean,
+      var failAction: Option[Watch.Action],
   ) {
+    def this(
+        count: Int,
+        commands: Seq[String],
+        beforeCommandImpl: (State, mutable.Set[DynamicInput]) => State,
+        afterCommand: State => State,
+        afterWatch: State => State,
+        callbacks: Callbacks,
+        dynamicInputs: mutable.Set[DynamicInput],
+        pending: Boolean,
+    ) = this(
+      count,
+      commands,
+      beforeCommandImpl,
+      afterCommand,
+      afterWatch,
+      callbacks,
+      dynamicInputs,
+      pending,
+      None
+    )
     def beforeCommand(state: State): State = beforeCommandImpl(state, dynamicInputs)
     def incremented: ContinuousState = withCount(count + 1)
     def withPending(p: Boolean) =
@@ -1323,7 +1344,8 @@ private[sbt] object ContinuousCommands {
         case Watch.Prompt => stop.map(_ :: s"$PromptChannel ${channel.name}" :: Nil mkString ";")
         case Watch.Run(commands) =>
           stop.map(_ +: commands.map(_.commandLine).filter(_.nonEmpty) mkString "; ")
-        case Watch.HandleError(_) =>
+        case a @ Watch.HandleError(_) =>
+          cs.failAction = Some(a)
           stop.map(_ :: s"$failWatch ${channel.name}" :: Nil mkString "; ")
         case _ => stop
       }
@@ -1353,27 +1375,31 @@ private[sbt] object ContinuousCommands {
     }
     cs.afterCommand(postState)
   }
-  private[sbt] val stopWatchCommand = watchCommand(stopWatch) { (channel, state) =>
-    state.get(watchStates).flatMap(_.get(channel)) match {
-      case Some(cs) =>
-        val afterWatchState = cs.afterWatch(state)
-        cs.callbacks.onExit()
-        StandardMain.exchange
-          .channelForName(channel)
-          .foreach { c =>
-            c.terminal.setPrompt(Prompt.Pending)
-            c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+  private[this] val exitWatchShared = (error: Boolean) =>
+    (channel: String, state: State) =>
+      state.get(watchStates).flatMap(_.get(channel)) match {
+        case Some(cs) =>
+          val afterWatchState = cs.afterWatch(state)
+          cs.callbacks.onExit()
+          StandardMain.exchange
+            .channelForName(channel)
+            .foreach { c =>
+              c.terminal.setPrompt(Prompt.Pending)
+              c.unprompt(ConsoleUnpromptEvent(Some(CommandSource(channel))))
+            }
+          val newState = afterWatchState.get(watchStates) match {
+            case None    => afterWatchState
+            case Some(w) => afterWatchState.put(watchStates, w - channel)
           }
-        afterWatchState.get(watchStates) match {
-          case None    => afterWatchState
-          case Some(w) => afterWatchState.put(watchStates, w - channel)
-        }
-      case _ => state
-    }
-  }
-  private[sbt] val failWatchCommand = watchCommand(failWatch) { (channel, state) =>
-    state.fail
-  }
+          val commands = cs.commands.mkString("; ")
+          val count = cs.count
+          val action = cs.failAction.getOrElse(Watch.CancelWatch)
+          val st = cs.callbacks.onTermination(action, commands, count, newState)
+          if (error) st.fail else st
+        case _ => if (error) state.fail else state
+      }
+  private[sbt] val stopWatchCommand = watchCommand(stopWatch)(exitWatchShared(false))
+  private[sbt] val failWatchCommand = watchCommand(failWatch)(exitWatchShared(true))
   /*
    * Creates a FileTreeRepository where it is safe to call close without inadvertently cancelling
    * still active watches.
