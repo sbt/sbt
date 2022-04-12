@@ -63,4 +63,9 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.ResourcesParamsFormats
   with sbt.internal.bsp.codec.ResourcesItemFormats
   with sbt.internal.bsp.codec.ResourcesResultFormats
+  with sbt.internal.bsp.codec.JvmEnvironmentItemFormats
+  with sbt.internal.bsp.codec.JvmTestEnvironmentParamsFormats
+  with sbt.internal.bsp.codec.JvmTestEnvironmentResultFormats
+  with sbt.internal.bsp.codec.JvmRunEnvironmentParamsFormats
+  with sbt.internal.bsp.codec.JvmRunEnvironmentResultFormats
 object JsonProtocol extends JsonProtocol

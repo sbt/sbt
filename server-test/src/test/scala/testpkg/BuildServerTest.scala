@@ -157,7 +157,7 @@ object BuildServerTest extends AbstractServerTest {
     assert(processing("buildTarget/scalacOptions"))
     assert(svr.waitForString(10.seconds) { s =>
       (s contains """"id":"40"""") &&
-      (s contains "scala-library-2.13.1.jar")
+      (s contains "scala-library-2.13.8.jar")
     })
   }
 
@@ -309,6 +309,49 @@ object BuildServerTest extends AbstractServerTest {
       (s contains """"id":"64"""") &&
       (s contains """"statusCode":1""")
     })
+  }
+
+  test("buildTarget/jvmRunEnvironment") { _ =>
+    val buildTarget = buildTargetUri("runAndTest", "Compile")
+    svr.sendJsonRpc(
+      s"""|{ "jsonrpc": "2.0",
+          |  "id": "97",
+          |  "method": "buildTarget/jvmRunEnvironment",
+          |  "params": { "targets": [{ "uri": "$buildTarget" }] }
+          |}""".stripMargin
+    )
+    assert(processing("buildTarget/jvmRunEnvironment"))
+    assert {
+      svr.waitForString(10.seconds) { s =>
+        (s contains """"id":"97"""") &&
+        (s contains "jsoniter-scala-core_2.13-2.13.11.jar") && // compile dependency
+        (s contains "\"jvmOptions\":[\"Xmx256M\"]") &&
+        (s contains "\"environmentVariables\":{\"KEY\":\"VALUE\"}") &&
+        (s contains "/buildserver/run-and-test/") // working directory
+      }
+    }
+  }
+
+  test("buildTarget/jvmTestEnvironment") { _ =>
+    val buildTarget = buildTargetUri("runAndTest", "Test")
+    svr.sendJsonRpc(
+      s"""|{ "jsonrpc": "2.0", 
+          |  "id": "98", 
+          |  "method": "buildTarget/jvmTestEnvironment", 
+          |  "params": { "targets": [{ "uri": "$buildTarget" }] } 
+          |}""".stripMargin
+    )
+    assert(processing("buildTarget/jvmTestEnvironment"))
+    assert {
+      svr.waitForString(10.seconds) { s =>
+        (s contains """"id":"98"""") &&
+        // test depends on compile so it has dependencies from both
+        (s contains "jsoniter-scala-core_2.13-2.13.11.jar") && // compile dependency
+        (s contains "scalatest_2.13-3.0.8.jar") && // test dependency
+        (s contains "\"jvmOptions\":[\"Xmx512M\"]") &&
+        (s contains "\"environmentVariables\":{\"KEY_TEST\":\"VALUE_TEST\"}")
+      }
+    }
   }
 
   test("buildTarget/scalaTestClasses") { _ =>
