@@ -990,7 +990,14 @@ object Defaults extends BuildCommon {
     discoveredSbtPlugins := discoverSbtPluginNames.value,
     // This fork options, scoped to the configuration is used for tests
     forkOptions := forkOptionsTask.value,
-    selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
+    allowUndiscoveredMainClass :== false,
+    selectMainClass :=
+      errorForUndiscoveredMainClass(
+        mainClass.value,
+        discoveredMainClasses.value,
+        allowUndiscoveredMainClass.value
+      ) orElse
+        askForMainClass(discoveredMainClasses.value),
     run / mainClass := (run / selectMainClass).value,
     mainClass := {
       val logWarning = state.value.currentCommand.forall(!_.commandLine.split(" ").exists {
@@ -1889,6 +1896,23 @@ object Defaults extends BuildCommon {
         }),
       classes
     )
+
+  private def errorForUndiscoveredMainClass(
+      mainClass: Option[String],
+      discoveredMainClasses: Seq[String],
+      allowUndiscoveredMainClass: Boolean
+  ): Option[String] = {
+    mainClass match {
+      case None                                                                         => mainClass
+      case Some(mc) if discoveredMainClasses.contains(mc) || allowUndiscoveredMainClass => mainClass
+      case Some(mc) =>
+        val msg =
+          s"The main class '$mc' was not discovered so it may not exist.\n" +
+            "Run 'show discoveredMainClasses' to see the list of discovered main classes.\n" +
+            "If you are sure the main class is correct, use 'allowUndiscoveredMainClass := true' to suppress this error."
+        sys.error(msg)
+    }
+  }
 
   def pickMainClass(classes: Seq[String]): Option[String] =
     sbt.SelectMainClass(None, classes)

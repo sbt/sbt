@@ -256,6 +256,7 @@ object Keys {
   val rootPaths = settingKey[Map[String, NioPath]]("The root paths used to abstract machine-specific paths.")
   private[sbt] val timeWrappedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
   private[sbt] val reusableStamper = taskKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
+  val allowUndiscoveredMainClass = settingKey[Boolean]("Toggles whether or not to allow a mainClass that is not in the list of discovered main classes")
 
   // package keys
   val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)
