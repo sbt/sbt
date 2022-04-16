@@ -65,7 +65,9 @@ object BuildServerProtocol {
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
     resourcesProvider = true,
-    canReload = true
+    canReload = true,
+    jvmRunEnvironmentProvider = true,
+    jvmTestEnvironmentProvider = true,
   )
 
   private val bspReload = "bspReload"
