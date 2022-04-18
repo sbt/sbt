@@ -360,6 +360,7 @@ object Defaults extends BuildCommon {
       aggregate :== true,
       maxErrors :== 100,
       fork :== false,
+      allowUndiscoveredMainClass :== false,
       initialize :== {},
       templateResolverInfos :== Nil,
       forcegc :== sys.props
@@ -990,7 +991,6 @@ object Defaults extends BuildCommon {
     discoveredSbtPlugins := discoverSbtPluginNames.value,
     // This fork options, scoped to the configuration is used for tests
     forkOptions := forkOptionsTask.value,
-    allowUndiscoveredMainClass :== false,
     selectMainClass :=
       errorForUndiscoveredMainClass(
         mainClass.value,
@@ -1680,7 +1680,11 @@ object Defaults extends BuildCommon {
           val ver = version.value
           val org = organization.value
           val orgName = organizationName.value
-          val main = mainClass.value
+          val main = errorForUndiscoveredMainClass(
+            mainClass.value,
+            discoveredMainClasses.value,
+            allowUndiscoveredMainClass.value
+          )
           val ts = packageTimestamp.value
           val old = packageOptions.value
 
@@ -1902,6 +1906,8 @@ object Defaults extends BuildCommon {
       discoveredMainClasses: Seq[String],
       allowUndiscoveredMainClass: Boolean
   ): Option[String] = {
+    // TODO: remove println before merge!
+    println(s"$mainClass | ${discoveredMainClasses.mkString(",")} | $allowUndiscoveredMainClass")
     mainClass match {
       case None                                                                         => mainClass
       case Some(mc) if discoveredMainClasses.contains(mc) || allowUndiscoveredMainClass => mainClass

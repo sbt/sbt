@@ -1,0 +1,7 @@
+> ok/package
+
+# an undiscovered main-class should fail package task
+-> missing/package
+
+# an undiscovered main-class with suppressed error should succeed package task
+> suppressed/package

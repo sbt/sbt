@@ -256,7 +256,6 @@ object Keys {
   val rootPaths = settingKey[Map[String, NioPath]]("The root paths used to abstract machine-specific paths.")
   private[sbt] val timeWrappedStamper = settingKey[ReadStamps]("The stamper to create timestamp or hash.")
   private[sbt] val reusableStamper = taskKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
-  val allowUndiscoveredMainClass = settingKey[Boolean]("Toggles whether or not to allow a mainClass that is not in the list of discovered main classes")
 
   // package keys
   val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)
@@ -274,6 +273,7 @@ object Keys {
   val artifactName = settingKey[(ScalaVersion, ModuleID, Artifact) => String]("Function that produces the artifact name from its definition.").withRank(CSetting)
   val mappings = taskKey[Seq[(File, String)]]("Defines the mappings from a file to a path, used by packaging, for example.").withRank(BTask)
   val fileMappings = taskKey[Seq[(File, File)]]("Defines the mappings from a file to a file, used for copying files, for example.").withRank(BMinusTask)
+  val allowUndiscoveredMainClass = settingKey[Boolean]("Toggles whether or not to allow a mainClass that is missing in the list of discovered main classes")
 
   // Run Keys
   val selectMainClass = taskKey[Option[String]]("Selects the main class to run.").withRank(BMinusTask)
