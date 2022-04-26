@@ -281,13 +281,23 @@ public class BootServerSocket implements AutoCloseable {
         }
       };
 
+  private static String getUnixParentDirectory(String path) {
+    for (int i = path.length() - 2; i >= 0; i--) {
+      if (path.charAt(i) == '\\' || path.charAt(i) == '/') {
+        return path.substring(0, i + 1);
+      }
+    }
+    return "/";
+  }
+
   public BootServerSocket(final AppConfiguration configuration)
       throws ServerAlreadyBootingException, IOException {
     final Path base = configuration.baseDirectory().toPath().toRealPath();
-    final Path target = base.resolve("project").resolve("target");
     if (!isWindows) {
+      final String actualSocketLocation = socketLocation(base);
+      final Path target = Paths.get(getUnixParentDirectory(actualSocketLocation));
       if (!Files.isDirectory(target)) Files.createDirectories(target);
-      socketFile = Paths.get(socketLocation(base));
+      socketFile = Paths.get(actualSocketLocation);
     } else {
       socketFile = null;
     }
@@ -301,11 +311,21 @@ public class BootServerSocket implements AutoCloseable {
     }
   }
 
-  public static String socketLocation(final Path base) throws UnsupportedEncodingException {
+  public static String socketLocation(final Path base)
+      throws UnsupportedEncodingException, IOException {
+    boolean usingAlternativeSocketLocation = System.getProperty("sbt.altSockLocation", "") != "";
+
     final Path target = base.resolve("project").resolve("target");
     if (isWindows) {
       long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
       return "sbt-load" + hash;
+    } else if (usingAlternativeSocketLocation) {
+      long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
+      final Path alternativeSocketLocationRoot =
+          Paths.get(System.getProperty("sbt.altSockLocation", "/"));
+      final Path locationForSocket = alternativeSocketLocationRoot.resolve("socket" + hash);
+      final Path pathForSocket = locationForSocket.resolve("sbt-load.sock");
+      return pathForSocket.toString();
     } else {
       return base.relativize(target.resolve("sbt-load.sock")).toString();
     }
