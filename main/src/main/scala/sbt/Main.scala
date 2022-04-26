@@ -329,7 +329,6 @@ object BuiltinCommands {
       startServer,
       eval,
       last,
-      oldLastGrep,
       lastGrep,
       export,
       boot,
