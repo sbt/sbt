@@ -329,7 +329,6 @@ object BuiltinCommands {
       startServer,
       eval,
       last,
-      oldLastGrep,
       lastGrep,
       export,
       boot,
@@ -625,7 +624,6 @@ object BuiltinCommands {
       s.log.info(f())
       s
   }
-
 
   def lastGrep: Command =
     lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed, lastGrepParser)
