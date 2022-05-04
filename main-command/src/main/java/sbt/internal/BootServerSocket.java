@@ -313,21 +313,16 @@ public class BootServerSocket implements AutoCloseable {
 
   public static String socketLocation(final Path base)
       throws UnsupportedEncodingException, IOException {
-    final String alternativeSocketLocation = System.getenv().getOrDefault("XDG_RUNTIME_DIR", "/tmp/.sbt");
-    final boolean usingAlternativeSocketLocation = alternativeSocketLocation != "";
-
     final Path target = base.resolve("project").resolve("target");
+      long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
     if (isWindows) {
-      long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
       return "sbt-load" + hash;
-    } else if (usingAlternativeSocketLocation) {
-      long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
-      final Path alternativeSocketLocationRoot = Paths.get(alternativeSocketLocation);
-      final Path locationForSocket = alternativeSocketLocationRoot.resolve("socket" + hash);
+    } else {
+      final String alternativeSocketLocation = System.getenv().getOrDefault("XDG_RUNTIME_DIR", "/tmp");
+      final Path alternativeSocketLocationRoot = Paths.get(alternativeSocketLocation).resolve(".sbt");
+      final Path locationForSocket = alternativeSocketLocationRoot.resolve("sbt-socket" + hash);
       final Path pathForSocket = locationForSocket.resolve("sbt-load.sock");
       return pathForSocket.toString();
-    } else {
-      return base.relativize(target.resolve("sbt-load.sock")).toString();
     }
   }
 
