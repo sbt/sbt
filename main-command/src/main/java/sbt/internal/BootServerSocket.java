@@ -313,8 +313,8 @@ public class BootServerSocket implements AutoCloseable {
 
   public static String socketLocation(final Path base)
       throws UnsupportedEncodingException, IOException {
-    String alternativeSocketLocation = System.getenv().getOrDefault("XDG_RUNTIME_DIR", "");
-    boolean usingAlternativeSocketLocation = alternativeSocketLocation != "";
+    final String alternativeSocketLocation = System.getenv().getOrDefault("XDG_RUNTIME_DIR", "/tmp/.sbt");
+    final boolean usingAlternativeSocketLocation = alternativeSocketLocation != "";
 
     final Path target = base.resolve("project").resolve("target");
     if (isWindows) {
