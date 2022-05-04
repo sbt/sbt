@@ -625,7 +625,6 @@ object BuiltinCommands {
       s
   }
 
-
   def lastGrep: Command =
     lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed, lastGrepParser)
 
