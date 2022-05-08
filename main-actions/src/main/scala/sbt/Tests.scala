@@ -11,6 +11,7 @@ import std._
 import xsbt.api.{ Discovered, Discovery }
 import sbt.internal.inc.Analysis
 import TaskExtra._
+import sbt.internal.Action
 import sbt.internal.util.FeedbackProvidedException
 import xsbti.api.Definition
 import xsbti.api.ClassLike
@@ -430,7 +431,7 @@ object Tests {
   ): Task[Map[String, SuiteResult]] = {
     val base = Task[(String, (SuiteResult, Seq[TestTask]))](
       Info[(String, (SuiteResult, Seq[TestTask]))]().setName(name),
-      Pure(() => (name, fun.apply()), `inline` = false)
+      Action.Pure(() => (name, fun.apply()), `inline` = false)
     )
     val taggedBase = base.tagw(tags: _*).tag(fun.tags.map(ConcurrentRestrictions.Tag(_)): _*)
     taggedBase flatMap { case (name, (result, nested)) =>

@@ -670,6 +670,7 @@ lazy val actionsProj = (project in file("main-actions"))
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value,
     libraryDependencies += jline3Terminal,
+    libraryDependencies += eval,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // Removed unused private[sbt] nested class

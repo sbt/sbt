@@ -60,7 +60,7 @@ private final case class FileHashModifiedArrayRepr(
     lastModified: Long
 ) extends HashModifiedFileInfo
 
-final case class FilesInfo[F <: FileInfo] private[util] (files: Set[F])
+final case class FilesInfo[F <: FileInfo] private[sbt] (files: Set[F])
 object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 

@@ -6,7 +6,7 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.17"
   val scala213 = "2.13.8"
-  val scala3 = "3.1.0"
+  val scala3 = "3.1.1"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
@@ -88,6 +88,8 @@ object Dependencies {
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
   val sjsonNewCore = sjsonNew("sjson-new-core")
+
+  val eval = ("com.eed3si9n.eval" % "eval" % "0.1.0").cross(CrossVersion.full)
 
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi

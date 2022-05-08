@@ -11,7 +11,6 @@ import java.io.File
 import java.time.OffsetDateTime
 import java.util.jar.{ Attributes, Manifest }
 import scala.collection.JavaConverters._
-import sbt.internal.util.Types.:+:
 import sbt.io.IO
 
 import sjsonnew.JsonFormat
@@ -19,8 +18,6 @@ import sjsonnew.JsonFormat
 import sbt.util.Logger
 
 import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
-import sbt.internal.util.HNil
-// import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.{ inputChanged, outputChanged }
@@ -139,11 +136,11 @@ object Package {
     }
     setVersion(main)
 
-    type Inputs = Seq[(File, String)] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
+    type Inputs = (Seq[(File, String)], FilesInfo[ModifiedFileInfo], Manifest)
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
       (inChanged, inputs: Inputs) =>
         import exists.format
-        val sources :+: _ :+: manifest :+: HNil = inputs
+        val (sources, _, manifest) = inputs
         outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
           if (inChanged || outChanged) {
             makeJar(sources, jar.file, manifest, log, time)
@@ -154,7 +151,7 @@ object Package {
     }
 
     val inputFiles = conf.sources.map(_._1).toSet
-    val inputs = conf.sources.distinct :+: lastModified(inputFiles) :+: manifest :+: HNil
+    val inputs = (conf.sources.distinct, lastModified(inputFiles), manifest)
     cachedMakeJar(inputs)(() => exists(conf.jar))
     ()
   }
