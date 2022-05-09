@@ -125,11 +125,12 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
   def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
     val loader = newLoader(classpath)
     try runWithLoader(loader, classpath, mainClass, options, log)
-    finally loader match {
-      case ac: AutoCloseable  => ac.close()
-      case c: ClasspathFilter => c.close()
-      case _                  =>
-    }
+    finally
+      loader match {
+        case ac: AutoCloseable  => ac.close()
+        case c: ClasspathFilter => c.close()
+        case _                  =>
+      }
   }
   private def invokeMain(
       loader: ClassLoader,

@@ -547,13 +547,15 @@ object Terminal {
       if (!closed.get)
         readThread.synchronized {
           readThread.set(Thread.currentThread)
-          try buffer.poll match {
-            case null =>
-              readQueue.put(())
-              result.put(buffer.take)
-            case b if b == -1 => throw new ClosedChannelException
-            case b            => result.put(b)
-          } finally readThread.set(null)
+          try
+            buffer.poll match {
+              case null =>
+                readQueue.put(())
+                result.put(buffer.take)
+              case b if b == -1 => throw new ClosedChannelException
+              case b            => result.put(b)
+            }
+          finally readThread.set(null)
         }
     override def read(): Int = {
       val result = new LinkedBlockingQueue[Integer]

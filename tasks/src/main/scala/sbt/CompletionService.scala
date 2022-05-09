@@ -61,17 +61,19 @@ object CompletionService {
 
   private[sbt] def submitFuture[A](work: () => A, completion: JCompletionService[A]): JFuture[A] = {
     val future =
-      try completion.submit {
-        new Callable[A] {
-          def call =
-            try {
-              work()
-            } catch {
-              case _: InterruptedException =>
-                throw Incomplete(None, message = Some("cancelled"))
-            }
+      try
+        completion.submit {
+          new Callable[A] {
+            def call =
+              try {
+                work()
+              } catch {
+                case _: InterruptedException =>
+                  throw Incomplete(None, message = Some("cancelled"))
+              }
+          }
         }
-      } catch {
+      catch {
         case _: RejectedExecutionException =>
           throw Incomplete(None, message = Some("cancelled"))
       }

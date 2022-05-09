@@ -148,7 +148,7 @@ object InterfaceUtil {
     override def equals(o: Any): Boolean = o match {
       case o: ConcreteT2[A1, A2] =>
         this.get1 == o.get1 &&
-          this.get2 == o.get2
+        this.get2 == o.get2
       case _ => false
     }
     override def hashCode: Int = {
