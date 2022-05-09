@@ -58,6 +58,36 @@ object AList:
   // givens for tuple map
   given [Tup <: Tuple]: AList[[F[_]] =>> Tuple.Map[Tup, F]] = tuple[Tup]
 
+  type Empty = AList[[F[_]] =>> Unit]
+
+  lazy val empty: Empty = new Empty:
+    override def transform[F1[_], F2[_]](value: Unit)(f: [x] => F1[x] => F2[x]): Unit = ()
+    override def traverse[F1[_], F2[_]: Applicative](value: Unit)(
+        f: [a] => F1[a] => F2[a]
+    ): F2[Unit] = summon[Applicative[F2]].pure(())
+    override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: Unit)(
+        f: [a] => F1[a] => F2[P[a]]
+    ): F2[Unit] = summon[Applicative[F2]].pure(())
+    override def foldr[F1[_], A2](value: Unit, init: A2)(
+        f: [a] => (F1[a], A2) => A2
+    ): A2 = init
+
+  def single[A1]: AList[[F[_]] =>> F[A1]] =
+    new AList[[F[_]] =>> F[A1]]:
+      override def transform[F1[_], F2[_]](value: F1[A1])(f: [x] => F1[x] => F2[x]): F2[A1] =
+        f(value)
+      override def traverse[F1[_], F2[_]: Applicative](value: F1[A1])(
+          f: [a] => F1[a] => F2[a]
+      ): F2[A1] = f(value)
+      override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: F1[A1])(
+          f: [a] => F1[a] => F2[P[a]]
+      ): F2[P[A1]] = f(value)
+      override def foldr[F1[_], A2](value: F1[A1], init: A2)(
+          f: [a] => (F1[a], A2) => A2
+      ): A2 = f(value, init)
+
+  def tuple2[A1, A2]: AList[[F[_]] =>> Tuple.Map[(A1, A2), F]] = tuple[(A1, A2)]
+
   def tuple[Tup <: Tuple]: AList[[F[_]] =>> Tuple.Map[Tup, F]] =
     new AList[[F[_]] =>> Tuple.Map[Tup, F]]:
       override def transform[F1[_], F2[_]](value: Tuple.Map[Tup, F1])(

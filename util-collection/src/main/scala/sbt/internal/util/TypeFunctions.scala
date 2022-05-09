@@ -15,7 +15,9 @@ trait TypeFunctions:
   import TypeFunctions._
   sealed trait Const[A] { type Apply[B] = A }
   sealed trait ConstK[A] { type l[L[x]] = A }
+  type ConstK[A] = [F[_]] =>> A
    */
+
   sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
 
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
@@ -47,7 +49,6 @@ trait TypeFunctions:
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
    */
   type ~>|[F1[_], F2[_]] = [A] => F1[A] => Option[F2[A]]
-
 end TypeFunctions
 
 /*
