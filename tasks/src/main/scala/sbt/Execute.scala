@@ -64,7 +64,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
 
   private[this] val forward = idMap[F[Any], IDSet[F[Any]]]
   private[this] val reverse = idMap[F[Any], Iterable[F[Any]]]
-  private[this] val callers = pMap[F, Compose[IDSet, F]#Apply]
+  private[this] val callers = pMap[F, Compose[IDSet, F]]
   private[this] val state = idMap[F[Any], State]
   private[this] val viewCache = pMap[F, Node[F, *]]
   private[this] val results = pMap[F, Result]

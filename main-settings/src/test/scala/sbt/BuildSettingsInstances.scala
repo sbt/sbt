@@ -112,8 +112,7 @@ object BuildSettingsInstances {
   implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
   implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = withScope(genTaskKey[A])
 
-  implicit def arbKey[A: Manifest](
-      implicit
+  implicit def arbKey[A: Manifest](implicit
       arbInputKey: Arbitrary[InputKey[A]],
       arbSettingKey: Arbitrary[SettingKey[A]],
       arbTaskKey: Arbitrary[TaskKey[A]],

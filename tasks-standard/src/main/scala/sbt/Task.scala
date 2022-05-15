@@ -7,13 +7,16 @@
 
 package sbt
 
+import sbt.internal.Action
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, AttributeMap }
 import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
-import sbt.internal.Action
+import sbt.util.Monad
 
-/** Combines metadata `info` and a computation `work` to define a task. */
-final case class Task[A](info: Info[A], work: Action[A]) {
+/**
+ * Combines metadata `info` and a computation `work` to define a task.
+ */
+final case class Task[A](info: Info[A], work: Action[A]):
   override def toString = info.name getOrElse ("Task(" + info + ")")
   override def hashCode = info.hashCode
 
@@ -22,11 +25,31 @@ final case class Task[A](info: Info[A], work: Action[A]) {
     val tgs: TagMap = info.get(tagsKey).getOrElse(TagMap.empty)
     val value = tags.foldLeft(tgs)((acc, tag) => acc + tag)
     val nextInfo = info.set(tagsKey, value)
-    copy(info = nextInfo)
+    withInfo(info = nextInfo)
   }
 
   def tags: TagMap = info get tagsKey getOrElse TagMap.empty
-}
+
+  private[sbt] def withInfo(info: Info[A]): Task[A] =
+    Task(info = info, work = this.work)
+end Task
+
+object Task:
+  import sbt.std.TaskExtra.*
+
+  given taskMonad: Monad[Task] with
+    type F[a] = Task[a]
+    override def pure[A1](a: () => A1): Task[A1] = toTask(a)
+
+    override def ap[A1, A2](ff: Task[A1 => A2])(in: Task[A1]): Task[A2] =
+      multT2Task((in, ff)).map { case (x, f) =>
+        f(x)
+      }
+
+    override def map[A1, A2](in: Task[A1])(f: A1 => A2): Task[A2] = in.map(f)
+    override def flatMap[A1, A2](in: F[A1])(f: A1 => F[A2]): F[A2] = in.flatMap(f)
+    override def flatten[A1](in: Task[Task[A1]]): Task[A1] = in.flatMap(idFun[Task[A1]])
+end Task
 
 /**
  * Used to provide information about a task, such as the name, description, and tags for controlling
@@ -52,8 +75,9 @@ final case class Info[T](
 
   override def toString = if (attributes.isEmpty) "_" else attributes.toString
 }
-object Info {
+
+object Info:
   val Name = AttributeKey[String]("name")
   val Description = AttributeKey[String]("description")
   val defaultAttributeMap = const(AttributeMap.empty)
-}
+end Info

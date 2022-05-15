@@ -14,20 +14,20 @@ import sbt.internal.util.Util.{ makeList, separate }
 
 /**
  * A String parser that provides semi-automatic tab completion. A successful parse results in a
- * value of type `T`. The methods in this trait are what must be implemented to define a new Parser
+ * value of type `A`. The methods in this trait are what must be implemented to define a new Parser
  * implementation, but are not typically useful for common usage. Instead, most useful methods for
  * combining smaller parsers into larger parsers are implicitly added by the [[RichParser]] type.
  */
-trait Parser[+T] {
-  def derive(i: Char): Parser[T]
-  def resultEmpty: Result[T]
-  def result: Option[T]
+trait Parser[+A1]:
+  def derive(i: Char): Parser[A1]
+  def resultEmpty: Result[A1]
+  def result: Option[A1]
   def completions(level: Int): Completions
   def failure: Option[Failure]
   def isTokenStart = false
-  def ifValid[S](p: => Parser[S]): Parser[S]
+  def ifValid[A2](p: => Parser[A2]): Parser[A2]
   def valid: Boolean
-}
+end Parser
 
 sealed trait RichParser[A] {
 
@@ -154,7 +154,7 @@ sealed trait RichParser[A] {
 }
 
 /** Contains Parser implementation helper methods not typically needed for using parsers. */
-object Parser extends ParserMain {
+object Parser extends ParserMain:
   sealed abstract class Result[+T] {
     def isFailure: Boolean
     def isValid: Boolean
@@ -332,7 +332,8 @@ object Parser extends ParserMain {
   }
 
   def and[T](a: Parser[T], b: Parser[_]): Parser[T] = a.ifValid(b.ifValid(new And(a, b)))
-}
+
+end Parser
 
 trait ParserMain {
 

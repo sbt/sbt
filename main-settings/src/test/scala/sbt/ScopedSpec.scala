@@ -83,7 +83,7 @@ object ScopedSpec extends Properties("Scoped") {
     }
   }
 
-  ///
+  // /
 
   def settingKey[A](label: Label, manifest: Manifest[A], scope: Scope): SettingKey[A] = {
     val noJsonWriter = NoJsonWriter[A]()
@@ -101,7 +101,7 @@ object ScopedSpec extends Properties("Scoped") {
     AttributeKey[A](label.value)(manifest, jsonWriter)
   }
 
-  ///
+  // /
 
   def expectEq(k1: Scoped, k2: Scoped): Prop =
     ?=(k1, k2) && ?=(k2, k1) map eqLabels(k1, k2)

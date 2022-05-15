@@ -22,7 +22,7 @@ private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) exte
       case Some(pd) =>
         pd.confs.get(conf) match {
           case Some(cs) => cs
-          case None     => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
+          case None => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
         }
       case None => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
     }

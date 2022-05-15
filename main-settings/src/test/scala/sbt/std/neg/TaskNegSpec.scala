@@ -380,5 +380,5 @@ class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixtu
       """.stripMargin
     }
   }
- */
+   */
 }

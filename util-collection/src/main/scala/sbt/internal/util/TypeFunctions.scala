@@ -18,7 +18,12 @@ trait TypeFunctions:
   type ConstK[A] = [F[_]] =>> A
    */
 
-  sealed trait Compose[A[_], B[_]] { type Apply[T] = A[B[T]] }
+  type Compose[F1[_], F2[_]] = [a] =>> F1[F2[a]]
+
+  /**
+   * Example: calling `SplitK[K1, Task]` returns the type lambda `F[a] => K1[F[Task[a]]`.
+   */
+  type SplitK[K1[F1[_]], F2[_]] = [f[_]] =>> K1[Compose[f, F2]]
 
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
   private type AnyLeft[A] = Left[A, Nothing]
@@ -39,12 +44,13 @@ trait TypeFunctions:
 
   final def idK[F[_]]: [a] => F[a] => F[a] = [a] =>
     (fa: F[a]) => fa // .setToString("TypeFunctions.idK")
-  /*
-  def nestCon[M[_], N[_], G[_]](f: M ~> N): (M ∙ G)#l ~> (N ∙ G)#l =
-    f.asInstanceOf[(M ∙ G)#l ~> (N ∙ G)#l] // implemented with a cast to avoid extra object+method call.
-  // castless version:
-  // λ[(M ∙ G)#l ~> (N ∙ G)#l](f(_))
 
+  inline def nestCon[F1[_], F2[_], F3[_]](
+      f: [a] => F1[a] => F2[a]
+  ): [a] => Compose[F1, F3][a] => Compose[F2, F3][a] =
+    f.asInstanceOf[[a] => Compose[F1, F3][a] => Compose[F2, F3][a]]
+
+  /*
   type Endo[T] = T => T
   type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
    */

@@ -16,18 +16,18 @@ import sbt.internal.io.Source
 import sbt.internal.util.Attributed
 import sbt.io.{ AllPassFilter, NothingFilter }
 
-object Append {
-  @implicitNotFound("No Append.Value[${A}, ${B}] found, so ${B} cannot be appended to ${A}")
-  trait Value[A, B] {
-    def appendValue(a: A, b: B): A
-  }
+object Append:
+  @implicitNotFound("No Append.Value[${A1}, ${A2}] found, so ${A2} cannot be appended to ${A1}")
+  trait Value[A1, A2]:
+    def appendValue(a1: A1, a2: A2): A1
+  end Value
 
-  @implicitNotFound("No Append.Values[${A}, ${B}] found, so ${B} cannot be appended to ${A}")
-  trait Values[A, -B] {
-    def appendValues(a: A, b: B): A
-  }
+  @implicitNotFound("No Append.Values[${A1}, ${A2}] found, so ${A2} cannot be appended to ${A1}")
+  trait Values[A1, -A2]:
+    def appendValues(a1: A1, a2: A2): A1
+  end Values
 
-  trait Sequence[A, -B, T] extends Value[A, T] with Values[A, B]
+  trait Sequence[A1, -A2, A3] extends Value[A1, A3] with Values[A1, A2]
 
   implicit def appendSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] =
     new Sequence[Seq[T], Seq[V], V] {
@@ -35,11 +35,9 @@ object Append {
       def appendValue(a: Seq[T], b: V): Seq[T] = a :+ (b: T)
     }
 
-  implicit def appendSeqImplicit[T, V](implicit ev: V => T): Sequence[Seq[T], Seq[V], V] =
-    new Sequence[Seq[T], Seq[V], V] {
-      def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ b.map(x => (x: T))
-      def appendValue(a: Seq[T], b: V): Seq[T] = a :+ (b: T)
-    }
+  given appendSeqImplicit[A1, V](using ev: Conversion[V, A1]): Sequence[Seq[A1], Seq[V], V] with
+    override def appendValues(a: Seq[A1], b: Seq[V]): Seq[A1] = a ++ b.map(x => (x: A1))
+    override def appendValue(a: Seq[A1], b: V): Seq[A1] = a :+ (b: A1)
 
   @compileTimeOnly("This can be used in += only.")
   implicit def appendTaskValueSeq[T, V <: T]: Value[Seq[Task[T]], Initialize[Task[V]]] =
@@ -54,17 +52,14 @@ object Append {
       def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
     }
 
-  implicit def appendListImplicit[T, V](implicit ev: V => T): Sequence[List[T], List[V], V] =
-    new Sequence[List[T], List[V], V] {
-      def appendValues(a: List[T], b: List[V]): List[T] = a ::: b.map(x => (x: T))
-      def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
-    }
+  given appendListImplicit[A1, V](using ev: Conversion[V, A1]): Sequence[List[A1], List[V], V] with
+    override def appendValues(a: List[A1], b: List[V]): List[A1] = a ++ b.map(x => (x: A1))
+    override def appendValue(a: List[A1], b: V): List[A1] = a :+ (b: A1)
 
-  implicit def appendVectorImplicit[T, V](implicit ev: V => T): Sequence[Vector[T], Seq[V], V] =
-    new Sequence[Vector[T], Seq[V], V] {
-      def appendValues(a: Vector[T], b: Seq[V]): Vector[T] = a ++ b.map(x => (x: T))
-      def appendValue(a: Vector[T], b: V): Vector[T] = a :+ (b: T)
-    }
+  given appendVectorImplicit[A1, V](using ev: Conversion[V, A1]): Sequence[Vector[A1], Vector[V], V]
+    with
+    override def appendValues(a: Vector[A1], b: Vector[V]): Vector[A1] = a ++ b.map(x => (x: A1))
+    override def appendValue(a: Vector[A1], b: V): Vector[A1] = a :+ (b: A1)
 
   // psst... these are implemented with SAM conversions
   implicit def appendString: Value[String, String] = _ + _
@@ -122,4 +117,4 @@ object Append {
       b
     }
   }
-}
+end Append

@@ -64,29 +64,87 @@ object AList:
     override def transform[F1[_], F2[_]](value: Unit)(f: [x] => F1[x] => F2[x]): Unit = ()
     override def traverse[F1[_], F2[_]: Applicative](value: Unit)(
         f: [a] => F1[a] => F2[a]
-    ): F2[Unit] = summon[Applicative[F2]].pure(())
+    ): F2[Unit] = summon[Applicative[F2]].pure(() => ())
     override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: Unit)(
         f: [a] => F1[a] => F2[P[a]]
-    ): F2[Unit] = summon[Applicative[F2]].pure(())
+    ): F2[Unit] = summon[Applicative[F2]].pure(() => ())
     override def foldr[F1[_], A2](value: Unit, init: A2)(
         f: [a] => (F1[a], A2) => A2
     ): A2 = init
 
-  def single[A1]: AList[[F[_]] =>> F[A1]] =
-    new AList[[F[_]] =>> F[A1]]:
-      override def transform[F1[_], F2[_]](value: F1[A1])(f: [x] => F1[x] => F2[x]): F2[A1] =
-        f(value)
-      override def traverse[F1[_], F2[_]: Applicative](value: F1[A1])(
-          f: [a] => F1[a] => F2[a]
-      ): F2[A1] = f(value)
-      override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: F1[A1])(
-          f: [a] => F1[a] => F2[P[a]]
-      ): F2[P[A1]] = f(value)
-      override def foldr[F1[_], A2](value: F1[A1], init: A2)(
-          f: [a] => (F1[a], A2) => A2
-      ): A2 = f(value, init)
+  type Single[A1] = AList[[F[_]] =>> F[A1]]
 
-  def tuple2[A1, A2]: AList[[F[_]] =>> Tuple.Map[(A1, A2), F]] = tuple[(A1, A2)]
+  def single[A1]: Single[A1] = new Single[A1]:
+    override def transform[F1[_], F2[_]](value: F1[A1])(f: [x] => F1[x] => F2[x]): F2[A1] =
+      f(value)
+    override def traverse[F1[_], F2[_]: Applicative](value: F1[A1])(
+        f: [a] => F1[a] => F2[a]
+    ): F2[A1] = f(value)
+    override def traverseX[F1[_], F2[_]: Applicative, P[_]](value: F1[A1])(
+        f: [a] => F1[a] => F2[P[a]]
+    ): F2[P[A1]] = f(value)
+    override def foldr[F1[_], A2](value: F1[A1], init: A2)(
+        f: [a] => (F1[a], A2) => A2
+    ): A2 = f(value, init)
+
+  type ASplit[K1[F1[_]], F2[_]] = AList[SplitK[K1, F2]]
+  def asplit[K1[g[_]], G2[_]](base: AList[K1]): ASplit[K1, G2] = new ASplit[K1, G2]:
+    def transform[F1[_], F2[_]](value: SplitK[K1, G2][F1])(
+        f: [a] => F1[a] => F2[a]
+    ): SplitK[K1, G2][F2] =
+      base.transform[Compose[F1, G2], Compose[F2, G2]](value) {
+        nestCon[F1, F2, G2](f)
+      }
+    def traverse[F1[_], F2[_]: Applicative](value: SplitK[K1, G2][F1])(
+        f: [a] => F1[a] => F2[a]
+    ): F2[SplitK[K1, G2][Id]] = traverseX[F1, F2, Id](value)(f)
+
+    def traverseX[F1[_], F2[_]: Applicative, P[_]](value: SplitK[K1, G2][F1])(
+        f: [a] => F1[a] => F2[P[a]]
+    ): F2[SplitK[K1, G2][P]] =
+      base.traverseX[Compose[F1, G2], F2, Compose[P, G2]](value) {
+        nestCon[F1, Compose[F2, P], G2](f)
+      }
+    def foldr[F1[_], A1](value: SplitK[K1, G2][F1], init: A1)(
+        f: [a] => (F1[a], A1) => A1
+    ): A1 = base.foldr[Compose[F1, G2], A1](value, init) {
+      // This is safe because F1[G2[a]] is F1[a]
+      f.asInstanceOf[[a] => (F1[G2[a]], A1) => A1]
+    }
+
+  type Tuple2K[A1, A2] = [F[_]] =>> Tuple.Map[(A1, A2), F]
+  def tuple2[A1, A2]: AList[Tuple2K[A1, A2]] = tuple[(A1, A2)]
+  type Tuple3K[A1, A2, A3] = [F[_]] =>> Tuple.Map[(A1, A2, A3), F]
+  def tuple3[A1, A2, A3]: AList[Tuple3K[A1, A2, A3]] = tuple[(A1, A2, A3)]
+  type Tuple4K[A1, A2, A3, A4] = [F[_]] =>> Tuple.Map[(A1, A2, A3, A4), F]
+  def tuple4[A1, A2, A3, A4]: AList[Tuple4K[A1, A2, A3, A4]] = tuple[(A1, A2, A3, A4)]
+  type Tuple5K[A1, A2, A3, A4, A5] = [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5), F]
+  def tuple5[A1, A2, A3, A4, A5]: AList[Tuple5K[A1, A2, A3, A4, A5]] = tuple[(A1, A2, A3, A4, A5)]
+  type Tuple6K[A1, A2, A3, A4, A5, A6] = [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6), F]
+  def tuple6[A1, A2, A3, A4, A5, A6]: AList[Tuple6K[A1, A2, A3, A4, A5, A6]] =
+    tuple[(A1, A2, A3, A4, A5, A6)]
+  type Tuple7K[A1, A2, A3, A4, A5, A6, A7] = [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6, A7), F]
+  def tuple7[A1, A2, A3, A4, A5, A6, A7]: AList[Tuple7K[A1, A2, A3, A4, A5, A6, A7]] =
+    tuple[(A1, A2, A3, A4, A5, A6, A7)]
+  type Tuple8K[A1, A2, A3, A4, A5, A6, A7, A8] =
+    [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6, A7, A8), F]
+  def tuple8[A1, A2, A3, A4, A5, A6, A7, A8]: AList[Tuple8K[A1, A2, A3, A4, A5, A6, A7, A8]] =
+    tuple[(A1, A2, A3, A4, A5, A6, A7, A8)]
+  type Tuple9K[A1, A2, A3, A4, A5, A6, A7, A8, A9] =
+    [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6, A7, A8, A9), F]
+  def tuple9[A1, A2, A3, A4, A5, A6, A7, A8, A9]
+      : AList[Tuple9K[A1, A2, A3, A4, A5, A6, A7, A8, A9]] =
+    tuple[(A1, A2, A3, A4, A5, A6, A7, A8, A9)]
+  type Tuple10K[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10] =
+    [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10), F]
+  def tuple10[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10]
+      : AList[Tuple10K[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10]] =
+    tuple[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10)]
+  type Tuple11K[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11] =
+    [F[_]] =>> Tuple.Map[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11), F]
+  def tuple11[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11]
+      : AList[Tuple11K[A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11]] =
+    tuple[(A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11)]
 
   def tuple[Tup <: Tuple]: AList[[F[_]] =>> Tuple.Map[Tup, F]] =
     new AList[[F[_]] =>> Tuple.Map[Tup, F]]:
@@ -104,7 +162,8 @@ object AList:
       ): F2[Tuple.Map[Tup, Id]] =
         val F2 = summon[Applicative[F2]]
         value match
-          case _: Tuple.Map[EmptyTuple, F1] => F2.pure(nil[Tup].asInstanceOf[Tuple.Map[Tup, Id]])
+          case _: Tuple.Map[EmptyTuple, F1] =>
+            F2.pure(() => nil[Tup].asInstanceOf[Tuple.Map[Tup, Id]])
           case (head: F1[x] @unchecked) *: (tail: Tuple.Map[Tail[Tup], F1] @unchecked) =>
             val tt = tuple[Tail[Tup]].traverse[F1, F2](tail)(f)
             val g = (t: Tail[Tup]) => (h: x) => (h *: t)
@@ -117,7 +176,7 @@ object AList:
       ): F2[Tuple.Map[Tup, P]] =
         val F2 = summon[Applicative[F2]]
         value match
-          case _: Tuple.Map[EmptyTuple, F1] => F2.pure(nil[Tuple.Map[Tup, P]])
+          case _: Tuple.Map[EmptyTuple, F1] => F2.pure(() => nil[Tuple.Map[Tup, P]])
           case (head: F1[x] @unchecked) *: (tail: Tuple.Map[Tail[Tup], F1] @unchecked) =>
             val tt = traverseX[F1, F2, P](tail.asInstanceOf)(f)
             val g = (t: Tuple.Map[Tail[Tup], P]) =>
@@ -142,7 +201,7 @@ object AList:
         val ap = summon[Applicative[F1]]
         def loop[V](in: List[F1[A]], g: List[A] => V): F1[V] =
           in match
-            case Nil => ap.pure(g(Nil))
+            case Nil => ap.pure(() => g(Nil))
             case x :: xs =>
               val h = (ts: List[A]) => (t: A) => g(t :: ts)
               ap.ap(loop(xs, h))(x)

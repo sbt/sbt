@@ -8,7 +8,7 @@
 package sbt.util
 
 trait Functor[F[_]]:
-  def map[A, B](fa: F[A])(f: A => B): F[B]
+  def map[A1, A2](fa: F[A1])(f: A1 => A2): F[A2]
 end Functor
 
 object Functor:

@@ -99,7 +99,10 @@ trait Cont:
         case Right(r) => (r, faTpe)
 
       // we can extract i out of i.type
-      val instanceExpr = Expr.summon[Applicative[F]].get
+      val instanceExpr =
+        Expr
+          .summon[Applicative[F]]
+          .getOrElse(sys.error(s"Applicative[F] not found for ${fTypeCon.typeSymbol}"))
       val inputBuf = ListBuffer[Input]()
 
       def makeApp(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] = inputs match
@@ -111,7 +114,7 @@ trait Cont:
       def pure(body: Term): Expr[F[Effect[A]]] =
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
           '{
-            $instanceExpr.pure[A1] { $body }
+            $instanceExpr.pure[A1] { () => $body }
           }
         eitherTree match
           case Left(_) => pure0[Effect[A]](body.asExprOf[Effect[A]])

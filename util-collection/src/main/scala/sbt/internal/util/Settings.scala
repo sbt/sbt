@@ -105,14 +105,19 @@ trait Init[ScopeType]:
   def update[A1](key: ScopedKey[A1])(f: A1 => A1): Setting[A1] =
     setting[A1](key, map(key)(f), NoPosition)
 
-  def bind[A1, A2](in: Initialize[A1])(f: A1 => Initialize[A2]): Initialize[A2] = Bind(f, in)
+  def flatMap[A1, A2](in: Initialize[A1])(f: A1 => Initialize[A2]): Initialize[A2] = Bind(f, in)
 
   def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
     Apply[[F[_]] =>> F[A1], A2](f, in, AList.single[A1])
 
-  def app[K[L[x]], T](inputs: K[Initialize])(f: K[Id] => T)(implicit
+  def app[K[L[x]], A2](inputs: K[Initialize])(f: K[Id] => A2)(implicit
       alist: AList[K]
-  ): Initialize[T] = Apply[K, T](f, inputs, alist)
+  ): Initialize[A2] = Apply[K, A2](f, inputs, alist)
+
+  def ap[A1, A2](ff: Initialize[A1 => A2])(in: Initialize[A1]): Initialize[A2] =
+    app[[F[_]] =>> (F[A1 => A2], F[A1]), A2]((ff, in)) { (f, a1) =>
+      f(a1)
+    }(AList.tuple2[A1 => A2, A1])
 
   def uniform[A1, A2](inputs: Seq[Initialize[A1]])(f: Seq[A1] => A2): Initialize[A2] =
     Apply[[F[_]] =>> List[F[A1]], A2](f, inputs.toList, AList.list[A1])
@@ -657,8 +662,10 @@ trait Init[ScopeType]:
 
     def evaluate(map: Settings[ScopeType]): A1
     def zip[A2](o: Initialize[A2]): Initialize[(A1, A2)] = zipTupled(o)(idFun)
+
     def zipWith[A2, U](o: Initialize[A2])(f: (A1, A2) => U): Initialize[U] =
       zipTupled(o)(f.tupled)
+
     private[this] def zipTupled[A2, U](o: Initialize[A2])(f: ((A1, A2)) => U): Initialize[U] =
       Apply[[F[_]] =>> Tuple.Map[(A1, A2), F], U](f, (this, o), AList.tuple2[A1, A2])
 

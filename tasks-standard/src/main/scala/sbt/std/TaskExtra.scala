@@ -117,6 +117,7 @@ trait TaskExtra extends TaskExtra0 {
   final implicit def upcastTask[A >: B, B](t: Task[B]): Task[A] = t map { x =>
     x: A
   }
+
   final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)
   final implicit def iterableTask[S](in: Seq[S]): ForkTask[S, Seq] = new ForkTask[S, Seq] {
     def fork[T](f: S => T): Seq[Task[T]] = in.map(x => task(f(x)))
@@ -271,6 +272,7 @@ trait TaskExtra extends TaskExtra0 {
       (p run pio).exitValue()
     }
 }
+
 object TaskExtra extends TaskExtra {
   def processIO(s: TaskStreams[_]): ProcessIO = {
     def transfer(id: String) = (in: InputStream) => BasicIO.transferFully(in, s.binary(id))

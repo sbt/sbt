@@ -47,13 +47,15 @@ object Previous {
   private final val StreamName = "previous"
   private[sbt] final val DependencyDirectory = "previous-dependencies"
 
-  /** Represents a reference task.previous*/
+  /** Represents a reference task.previous */
   private[sbt] final class Referenced[T](val key: Key[T], val format: JsonFormat[T]) {
     def this(task: ScopedTaskKey[T], format: JsonFormat[T]) = this(Key(task, task), format)
-    @deprecated("unused", "1.3.0")
-    private[sbt] def task: ScopedKey[Task[T]] = key.task
+
+    // @deprecated("unused", "1.3.0")
+    // private[sbt] def task: ScopedKey[Task[T]] = key.task
+
     lazy val stamped: JsonFormat[T] =
-      StampedFormat.withStamp(key.task.key.manifest.toString)(format)
+      StampedFormat.withStamp(key.task.key.classTag.toString)(format)
     def setTask(newTask: ScopedKey[Task[T]]) = new Referenced(newTask, format)
     private[sbt] def read(streams: Streams): Option[T] =
       try Option(streams(key.cacheKey).cacheStoreFactory.make(StreamName).read[T]()(stamped))
@@ -82,7 +84,7 @@ object Previous {
       else {
         val am = enclosing.scope.extra match {
           case Select(a) => a.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])
-          case _         => AttributeMap.empty.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])
+          case _ => AttributeMap.empty.put(scopedKeyAttribute, task.asInstanceOf[AnyTaskKey])
         }
         Def.ScopedKey(enclosing.scope.copy(extra = Select(am)), enclosing.key)
       }
@@ -120,7 +122,7 @@ object Previous {
     // We first collect all of the successful tasks and write their scoped key into a map
     // along with their values.
     val successfulTaskResults = (for {
-      results.TPair(task, Value(v)) <- results.toTypedSeq
+      results.TPair(task, Result.Value(v)) <- results.toTypedSeq
       key <- task.info.attributes.get(Def.taskDefinitionKey).asInstanceOf[Option[AnyTaskKey]]
     } yield key -> v).toMap
     // We then traverse the successful results and look up all of the referenced values for
@@ -147,28 +149,27 @@ object Previous {
 
   /** Public as a macro implementation detail.  Do not call directly. */
   def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] = {
-    val inputs = (Global / cache) zip Def.validated(skey, selfRefOk = true) zip (Global / references)
-    inputs {
-      case ((prevTask, resolved), refs) =>
-        val key = Key(resolved, resolved)
-        refs.recordReference(key, format) // always evaluated on project load
-        prevTask.map(_.get(key)) // evaluated if this task is evaluated
+    val inputs =
+      (Global / cache) zip Def.validated(skey, selfRefOk = true) zip (Global / references)
+    inputs { case ((prevTask, resolved), refs) =>
+      val key = Key(resolved, resolved)
+      refs.recordReference(key, format) // always evaluated on project load
+      prevTask.map(_.get(key)) // evaluated if this task is evaluated
     }
   }
 
   /** Public as a macro implementation detail.  Do not call directly. */
-  def runtimeInEnclosingTask[T](skey: TaskKey[T])(
-      implicit format: JsonFormat[T]
+  def runtimeInEnclosingTask[T](skey: TaskKey[T])(implicit
+      format: JsonFormat[T]
   ): Initialize[Task[Option[T]]] = {
     val inputs = (Global / cache)
       .zip(Def.validated(skey, selfRefOk = true))
       .zip(Global / references)
       .zip(Def.resolvedScoped)
-    inputs {
-      case (((prevTask, resolved), refs), inTask: ScopedKey[Task[_]] @unchecked) =>
-        val key = Key(resolved, inTask)
-        refs.recordReference(key, format) // always evaluated on project load
-        prevTask.map(_.get(key)) // evaluated if this task is evaluated
+    inputs { case (((prevTask, resolved), refs), inTask: ScopedKey[Task[_]] @unchecked) =>
+      val key = Key(resolved, inTask)
+      refs.recordReference(key, format) // always evaluated on project load
+      prevTask.map(_.get(key)) // evaluated if this task is evaluated
     }
   }
 }

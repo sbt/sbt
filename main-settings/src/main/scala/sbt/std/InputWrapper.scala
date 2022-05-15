@@ -18,10 +18,10 @@ import sbt.internal.util.appmacro.ContextUtil
 import sbt.internal.util.complete.Parser
 
 /** Implementation detail.  The wrap methods temporarily hold inputs (as a Tree, at compile time) until a task or setting macro processes it. */
-object InputWrapper {
+object InputWrapper:
   /* The names of the wrapper methods should be obscure.
-	* Wrapper checking is based solely on this name, so it must not conflict with a user method name.
-	* The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
+   * Wrapper checking is based solely on this name, so it must not conflict with a user method name.
+   * The user should never see this method because it is compile-time only and only used internally by the task macro system.*/
 
   private[std] final val WrapTaskName = "wrapTask_\u2603\u2603"
   private[std] final val WrapInitName = "wrapInit_\u2603\u2603"
@@ -62,7 +62,7 @@ object InputWrapper {
 
   private[this] def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
-
+/*
   private[std] def wrapTask[T: c.WeakTypeTag](c: blackbox.Context)(
       ts: c.Expr[Any],
       pos: c.Position
@@ -100,11 +100,11 @@ object InputWrapper {
     wrapImpl[Option[T], InputWrapper.type](c, InputWrapper, WrapPreviousName)(ts, pos)
 
   /**
-   * Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
-   * The resulting Tree is the manually constructed version of:
-   *
-   * `c.universe.reify { <s>.<wrapName>[T](ts.splice) }`
-   */
+ * Wraps an arbitrary Tree in a call to the `<s>.<wrapName>` method of this module for later processing by an enclosing macro.
+ * The resulting Tree is the manually constructed version of:
+ *
+ * `c.universe.reify { <s>.<wrapName>[T](ts.splice) }`
+ */
   def wrapImpl[T: c.WeakTypeTag, S <: AnyRef with Singleton](
       c: blackbox.Context,
       s: S,
@@ -117,7 +117,9 @@ object InputWrapper {
     val tpe = c.weakTypeOf[T]
     val nme = TermName(wrapName).encodedName
     val sel = Select(Ident(iw), nme)
-    sel.setPos(pos) // need to set the position on Select, because that is where the compileTimeOnly check looks
+    sel.setPos(
+      pos
+    ) // need to set the position on Select, because that is where the compileTimeOnly check looks
     val tree = ApplyTree(TypeApply(sel, TypeTree(tpe) :: Nil), ts.tree :: Nil)
     tree.setPos(ts.tree.pos)
     // JZ: I'm not sure why we need to do this. Presumably a caller is wrapping this tree in a
@@ -166,7 +168,7 @@ object InputWrapper {
         unexpectedType(c)(pos, tpe)
     }
 
-  /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value*/
+  /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value */
   def previousMacroImpl[T: c.WeakTypeTag](
       c: blackbox.Context
   )(format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
@@ -177,16 +179,17 @@ object InputWrapper {
           val tsTyped = c.Expr[TaskKey[T]](t)
           val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
           wrapPrevious[T](c)(newTree, a.pos)
-        } else
-          unexpectedType(c)(a.pos, t.tpe)
+        } else unexpectedType(c)(a.pos, t.tpe)
       case x => ContextUtil.unexpectedTree(x)
     }
   }
 
   private def unexpectedType(c: blackbox.Context)(pos: c.Position, tpe: c.Type) =
     c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
-}
+ */
+end InputWrapper
 
+/*
 sealed abstract class MacroTaskValue[T] {
   @compileTimeOnly(
     "`taskValue` can only be used within a setting macro, such as :=, +=, ++=, or Def.setting."
@@ -222,18 +225,19 @@ sealed abstract class ParserInputTask[T] {
   def parsed: Task[T] = macro ParserInput.parsedInputMacroImpl[T]
 }
 sealed abstract class MacroPrevious[T] {
-  @compileTimeOnly(
-    "`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task."
-  )
-  def previous(implicit format: sjsonnew.JsonFormat[T]): Option[T] =
-    macro InputWrapper.previousMacroImpl[T]
+  // @compileTimeOnly(
+  //   "`previous` can only be used within a task macro, such as :=, +=, ++=, or Def.task."
+  // )
+  // def previous(implicit format: sjsonnew.JsonFormat[T]): Option[T] =
+  //   macro InputWrapper.previousMacroImpl[T]
 }
+ */
 
 /** Implementation detail.  The wrap method temporarily holds the input parser (as a Tree, at compile time) until the input task macro processes it. */
-object ParserInput {
+object ParserInput:
   /* The name of the wrapper method should be obscure.
-	* Wrapper checking is based solely on this name, so it must not conflict with a user method name.
-	* The user should never see this method because it is compile-time only and only used internally by the task macros.*/
+   * Wrapper checking is based solely on this name, so it must not conflict with a user method name.
+   * The user should never see this method because it is compile-time only and only used internally by the task macros.*/
   private[std] val WrapName = "parser_\u2603\u2603"
   private[std] val WrapInitName = "initParser_\u2603\u2603"
 
@@ -248,7 +252,7 @@ object ParserInput {
   )
   def `initParser_\u2603\u2603`[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
-
+/*
   private[std] def wrap[T: c.WeakTypeTag](
       c: blackbox.Context
   )(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
@@ -287,7 +291,7 @@ object ParserInput {
     wrapInit[Task[T]](c)(c.universe.reify { Def.toIParser(e.splice) }, pos)
   }
 
-  /** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper.*/
+  /** Implements `Parser[T].parsed` by wrapping the Parser with the ParserInput wrapper. */
   def parsedMacroImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[T] =
     ContextUtil.selectMacroImpl[T](c) { (p, pos) =>
       p.tree.tpe match {
@@ -296,7 +300,7 @@ object ParserInput {
         case tpe if tpe <:< c.weakTypeOf[Initialize[Parser[T]]] =>
           wrapInitParser[T](c)(p.tree, pos)
         case tpe if tpe <:< c.weakTypeOf[Initialize[State => Parser[T]]] => wrapInit[T](c)(p, pos)
-        case tpe                                                         => unexpectedType(c)(pos, tpe, "parsedMacroImpl")
+        case tpe => unexpectedType(c)(pos, tpe, "parsedMacroImpl")
       }
     }
 
@@ -315,4 +319,6 @@ object ParserInput {
 
   private def unexpectedType(c: blackbox.Context)(pos: c.Position, tpe: c.Type, label: String) =
     c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.dealias} in $label.")
-}
+ */
+
+end ParserInput

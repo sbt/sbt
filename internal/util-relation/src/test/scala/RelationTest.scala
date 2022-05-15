@@ -23,9 +23,9 @@ object RelationTest extends Properties("Relation") {
     r._2s == _2s && r.reverseMap.keySet == _2s &&
     pairs.forall { case (a, b) =>
       (r.forward(a) contains b) &&
-        (r.reverse(b) contains a) &&
-        (r.forwardMap(a) contains b) &&
-        (r.reverseMap(b) contains a)
+      (r.reverse(b) contains a) &&
+      (r.forwardMap(a) contains b) &&
+      (r.reverseMap(b) contains a)
     }
   }
 
@@ -47,9 +47,9 @@ object RelationTest extends Properties("Relation") {
     } &&
     all(removeFine) { case (a, b) =>
       ("Forward does not contain removed" |: (!r.forward(a).contains(b))) &&
-        ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
-        ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
-        ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
+      ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
+      ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
+      ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
     }
   }
 

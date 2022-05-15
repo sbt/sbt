@@ -54,7 +54,7 @@ object ProjectRef {
 }
 object RootProject {
 
-  /** Reference to the root project at 'base'.*/
+  /** Reference to the root project at 'base'. */
   def apply(base: File): RootProject = RootProject(IO toURI base)
 }
 object Reference {
@@ -96,7 +96,7 @@ object Reference {
     case ProjectRef(b, _) => b
   }
 
-  /** Extracts the build URI from a Reference if one has been explicitly defined.*/
+  /** Extracts the build URI from a Reference if one has been explicitly defined. */
   def uri(ref: Reference): Option[URI] = ref match {
     case RootProject(b)   => Some(b)
     case ProjectRef(b, _) => Some(b)

@@ -11,9 +11,9 @@ import scala.annotation.implicitNotFound
 
 @implicitNotFound("Could not find an instance of FlatMap for ${F}")
 trait FlatMap[F[_]] extends Apply[F]:
-  def flatMap[A, B](fa: F[A])(f: A => F[B]): F[B]
+  def flatMap[A1, A2](fa: F[A1])(f: A1 => F[A2]): F[A2]
 
-  def flatten[A](ffa: F[F[A]]): F[A] =
+  def flatten[A1](ffa: F[F[A1]]): F[A1] =
     flatMap(ffa)(fa => fa)
 end FlatMap
 

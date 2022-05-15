@@ -182,8 +182,6 @@ val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 lazy val sbtRoot: Project = (project in file("."))
   .aggregate(
     (allProjects diff Seq(
-      actionsProj,
-      mainSettingsProj,
       scriptedSbtReduxProj,
       scriptedSbtOldProj,
       scriptedPluginProj,

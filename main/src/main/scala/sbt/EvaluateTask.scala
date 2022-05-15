@@ -384,7 +384,7 @@ object EvaluateTask {
   }
 
   def logIncResult(result: Result[_], state: State, streams: Streams) = result match {
-    case Inc(i) => logIncomplete(i, state, streams); case _ => ()
+    case Result.Inc(i) => logIncomplete(i, state, streams); case _ => ()
   }
 
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
@@ -623,8 +623,8 @@ object EvaluateTask {
 
   def onResult[T, S](result: Result[T])(f: T => S): S =
     result match {
-      case Value(v) => f(v)
-      case Inc(inc) => throw inc
+      case Result.Value(v) => f(v)
+      case Result.Inc(inc) => throw inc
     }
 
   // if the return type Seq[Setting[_]] is not explicitly given, scalac hangs

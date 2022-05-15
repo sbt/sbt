@@ -742,8 +742,8 @@ object BuildServerProtocol {
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
     Keys.compile.result.value match {
-      case Value(_) => StatusCode.Success
-      case Inc(cause) =>
+      case Result.Value(_) => StatusCode.Success
+      case Result.Inc(cause) =>
         cause.getCause match {
           case _: CompileFailed        => StatusCode.Error
           case _: InterruptedException => StatusCode.Cancelled

@@ -75,7 +75,7 @@ object Assign {
   )
 
   val it1 = Def.inputTask {
-    tsk.parsed //"as" //dummy.value.parsed
+    tsk.parsed // "as" //dummy.value.parsed
   }
   val it2 = Def.inputTask {
     "lit"

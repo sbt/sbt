@@ -12,7 +12,7 @@ private[sbt] object OptionInstances:
     new Monad[Option]:
       type F[a] = Option[a]
 
-      def pure[A](x: A): Option[A] = Some(x)
+      def pure[A](x: () => A): Option[A] = Some(x())
       def ap[A, B](ff: Option[A => B])(fa: Option[A]): Option[B] =
         if ff.isDefined && fa.isDefined then Some(ff.get(fa.get))
         else None
