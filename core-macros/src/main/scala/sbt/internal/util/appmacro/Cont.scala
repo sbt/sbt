@@ -224,6 +224,7 @@ trait Cont:
           replace
         }
       val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
+      // println("tx: " + tx.show)
       val tr = makeApp(inner(tx), inputBuf.toList)
       tr
 end Cont

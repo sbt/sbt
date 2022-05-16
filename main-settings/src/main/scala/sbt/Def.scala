@@ -10,7 +10,9 @@ package sbt
 import java.io.File
 import java.net.URI
 
+import scala.annotation.compileTimeOnly
 import scala.annotation.tailrec
+import scala.annotation.targetName
 import sbt.KeyRanks.{ DTask, Invisible }
 import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
@@ -281,8 +283,12 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   // implicit def macroValueI[T](@deprecated("unused", "") in: Initialize[T]): MacroValue[T] = ???
 
-  // implicit def macroValueIT[T](@deprecated("unused", "") in: Initialize[Task[T]]): MacroValue[T] =
-  //   ???
+  extension [A1](in: Initialize[A1])
+    inline def value: A1 = InputWrapper.`wrapInit_\u2603\u2603`[A1](in)
+
+  extension [A1](in: Initialize[Task[A1]])
+    @targetName("valueIA1")
+    inline def value: A1 = InputWrapper.`wrapInitTask_\u2603\u2603`[A1](in)
 
   // implicit def macroValueIInT[T](
   //     @deprecated("unused", "") in: Initialize[InputTask[T]]

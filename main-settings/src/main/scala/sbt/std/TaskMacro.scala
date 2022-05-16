@@ -73,16 +73,11 @@ object TaskMacro:
   // import LinterDSL.{ Empty => EmptyLinter }
 
   def taskMacroImpl[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
-    // import qctx.reflect.*
     t match
       case '{ if ($cond) then $thenp else $elsep } => mkIfS[A1](t)
       case _ =>
         val convert1: Convert[qctx.type] = new FullConvert(qctx)
         convert1.contMapN[A1, F, Id](t, convert1.idTransform)
-      // Instance.contImpl[A1, Id](c, FullInstance, FullConvert, MixedBuilder, TaskLinterDSL)(
-      //   Left(t),
-      //   Instance.idTransform[c.type]
-      // )
 
   def mkIfS[A1: Type](using
       qctx: Quotes

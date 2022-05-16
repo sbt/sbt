@@ -7,6 +7,7 @@
 
 package sbt
 
+/*
 import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.{ AttributeKey, AttributeMap }
 import sbt.io.syntax.file
@@ -75,3 +76,4 @@ class ScopeDisplaySpec extends AnyFlatSpec {
   it should "LocalRootProject" in assert(disp(LocalRootProject) == "<root> /")
   it should "ThisProject" in assert(disp(ThisProject) == "<this> /")
 }
+ */

@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import org.scalacheck._, Prop._, util.Pretty
 
 import sbt.internal.util.AttributeKey
@@ -143,3 +144,4 @@ object ScopedSpec extends Properties("Scoped") {
         s"Expected $act to NOT be equal to $exp"
       }
 }
+ */

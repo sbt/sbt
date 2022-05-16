@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import sbt._
 import sbt.Def.Initialize
 import sbt.TupleSyntax._
@@ -16,3 +17,4 @@ object TupleSyntaxTest {
     (a, b, c.toTaskable, d.toTaskable).map((x: T, y: T, z: T, w: T) => "" + x + y + z + w)
   }
 }
+ */

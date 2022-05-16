@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import java.io.File
 import sjsonnew._, BasicJsonProtocol._
 import sbt.Def.{ Setting, inputKey, settingKey, taskKey }
@@ -62,3 +63,4 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
     libraryDependencies += uTest % Test,
   )
 }
+ */

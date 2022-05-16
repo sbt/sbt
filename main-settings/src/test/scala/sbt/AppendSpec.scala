@@ -7,6 +7,7 @@
 
 package sbt
 
+/*
 object AppendSpec {
   val onLoad = SettingKey[State => State]("onLoad")
 
@@ -29,3 +30,4 @@ object AppendSpec {
   Global / onLoad += (() => doSideEffect())
   Global / onLoad += (() => println("foo"))
 }
+ */

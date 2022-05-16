@@ -19,7 +19,6 @@ import scala.quoted.*
  * single term param like `X.wrapInit[A](...)`.
  */
 trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil[C]:
-  // with TupleBuilder[C]:
   import qctx.reflect.*
 
   def convert[A: Type](nme: String, in: Term): Converted

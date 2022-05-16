@@ -7,6 +7,7 @@
 
 package sbt.std
 
+/*
 import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.TestUtil._
 
@@ -75,3 +76,4 @@ class TaskConfigSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFi
     assert(toolbox.infos.isEmpty)
   }
 }
+ */

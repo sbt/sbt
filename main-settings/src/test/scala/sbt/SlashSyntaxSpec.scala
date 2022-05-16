@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import org.scalacheck.{ Test => _, _ }, Prop._
 
 import sbt.SlashSyntax
@@ -109,3 +110,4 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     if (equals) proved else falsified :| s"Expected $expected but got $x"
   }
 }
+ */

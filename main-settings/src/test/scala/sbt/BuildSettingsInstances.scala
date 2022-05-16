@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import org.scalacheck.{ Test => _, _ }, Arbitrary.arbitrary, Gen._
 
 import java.io.File
@@ -133,3 +134,4 @@ object BuildSettingsInstances {
 
   implicit def arbScoped[A: Manifest]: Arbitrary[Scoped] = Arbitrary(arbitrary[Key])
 }
+ */
