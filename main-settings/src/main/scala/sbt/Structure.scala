@@ -14,6 +14,7 @@ import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
 import sbt.util.OptJsonWriter
 import sbt.ConcurrentRestrictions.Tag
 import sbt.Def.{ Initialize, ScopedKey, Setting, setting }
+import std.TaskMacro
 import std.TaskExtra.{ task => mktask, _ }
 
 /** An abstraction on top of Settings for build configuration and task definition. */
@@ -72,30 +73,32 @@ sealed abstract class SettingKey[A1]
   final def in(scope: Scope): SettingKey[A1] =
     Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
-  // final def :=(v: T): Setting[T] = macro std.TaskMacro.settingAssignMacroImpl[T]
+  final inline def :=(inline v: A1): Setting[A1] =
+    ${ TaskMacro.settingAssignMacroImpl('this, 'v) }
 
-  // final def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[T] =
-  //   macro std.TaskMacro.settingAppend1Impl[T, U]
+  final inline def +=[A2](inline v: A2)(using a: Append.Value[A1, A2]): Setting[A1] =
+    ${ TaskMacro.settingAppend1Impl[A1, A2]('this, 'v) }
 
-  // final def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[T] =
-  //   macro std.TaskMacro.settingAppendNImpl[T, U]
+  final inline def ++=[A2](inline vs: A2)(using a: Append.Values[A1, A2]): Setting[A1] =
+    ${ TaskMacro.settingAppendNImpl[A1, A2]('this, 'vs) }
 
-  // final def <+=[V](v: Initialize[V])(implicit a: Append.Value[T, V]): Setting[T] =
-  //   macro std.TaskMacro.fakeSettingAppend1Position[T, V]
+  final inline def <+=[A2](inline v: Initialize[A2]): Setting[A1] =
+    ${ TaskMacro.fakeSettingAppend1Position[A1, A2]('v) }
 
-  // final def <++=[V](vs: Initialize[V])(implicit a: Append.Values[T, V]): Setting[T] =
-  //   macro std.TaskMacro.fakeSettingAppendNPosition[T, V]
+  final inline def <++=[A2](inline vs: Initialize[A2]): Setting[A1] =
+    ${ TaskMacro.fakeSettingAppendNPosition[A1, A2]('vs) }
 
-  // final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[T] =
-  //   macro std.TaskMacro.settingRemove1Impl[T, U]
+  final inline def -=[A2](inline v: A2)(using Remove.Value[A1, A2]): Setting[A1] =
+    ${ TaskMacro.settingRemove1Impl[A1, A2]('this, 'v) }
 
-  // final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[T] =
-  //   macro std.TaskMacro.settingRemoveNImpl[T, U]
+  final inline def --=[A2](inline vs: A2)(using Remove.Values[A1, A2]): Setting[A1] =
+    ${ TaskMacro.settingRemoveNImpl[A1, A2]('this, 'vs) }
 
-  // final def ~=(f: T => T): Setting[T] = macro std.TaskMacro.settingTransformPosition[T]
+  final inline def ~=(inline f: A1 => A1): Setting[A1] =
+    ${ TaskMacro.settingTransformPosition('this, 'f) }
 
-  final def append1[V](v: Initialize[V], source: SourcePosition)(implicit
-      a: Append.Value[A1, V]
+  final def append1[A2](v: Initialize[A2], source: SourcePosition)(using
+      a: Append.Value[A1, A2]
   ): Setting[A1] = make(v, source)(a.appendValue)
 
   final def appendN[V](vs: Initialize[V], source: SourcePosition)(implicit
@@ -212,7 +215,7 @@ sealed trait InputKey[A1]
   def in(scope: Scope): InputKey[A1] =
     Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 
-  // final def :=(v: A1): Setting[InputTask[A1]] = macro std.TaskMacro.inputTaskAssignMacroImpl[A1]
+  // inline def :=(inline v: A1): Setting[InputTask[A1]] = macro std.TaskMacro.inputTaskAssignMacroImpl[A1]
   // final def ~=(f: A1 => A1): Setting[InputTask[A1]] = macro std.TaskMacro.itaskTransformPosition[A1]
 
   final def transform(f: A1 => A1, source: SourcePosition): Setting[InputTask[A1]] =
@@ -297,8 +300,9 @@ object Scoped:
 
     // private[sbt] final def :==(app: S): Setting[S] = macro std.TaskMacro.settingAssignPure[S]
 
-    // final def <<=(app: Initialize[S]): Setting[S] =
-    //   macro std.TaskMacro.fakeSettingAssignPosition[S]
+    inline def <<=(inline app: Initialize[S]): Setting[S] = ${
+      TaskMacro.fakeSettingAssignImpl('app)
+    }
 
     /** Internally used function for setting a value along with the `.sbt` file location where it is defined. */
     final def set(app: Initialize[S], source: SourcePosition): Setting[S] =
@@ -361,7 +365,11 @@ object Scoped:
     // private[sbt] def ::=(app: Task[S]): Setting[Task[S]] =
     //   macro std.TaskMacro.taskAssignPositionT[S]
 
-    // def :=(v: S): Setting[Task[S]] = macro std.TaskMacro.taskAssignMacroImpl[S]
+    inline def :=(inline v: A1): Setting[Task[A1]] = ${
+      TaskMacro.taskAssignMacroImpl[A1]('self, 'v)
+    }
+    // macro std.TaskMacro.taskAssignMacroImpl[S]
+
     // def ~=(f: S => S): Setting[Task[S]] = macro std.TaskMacro.taskTransformPosition[S]
 
     // def <<=(app: Initialize[Task[S]]): Setting[Task[S]] =

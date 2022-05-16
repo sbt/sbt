@@ -214,7 +214,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   def toISParser[T](p: Initialize[Parser[T]]): Initialize[State => Parser[T]] = p(toSParser)
   def toIParser[T](p: Initialize[InputTask[T]]): Initialize[State => Parser[Task[T]]] = p(_.parser)
 
-  // import std.SettingMacro.{ settingDynMacroImpl, settingMacroImpl }
+  import std.SettingMacro.{
+    // settingDynMacroImpl,
+    settingMacroImpl
+  }
   import std.TaskMacro.{
     //   inputTaskDynMacroImpl,
     //   inputTaskMacroImpl,
@@ -230,7 +233,9 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     ${ taskMacroImpl[A1]('a1) }
 
   // def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
-  // def setting[T](t: T): Def.Initialize[T] = macro settingMacroImpl[T]
+
+  inline def setting[A1](inline a: A1): Def.Initialize[A1] = ${ settingMacroImpl[A1]('a) }
+
   // def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
   // def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
   // def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] = {
@@ -290,13 +295,15 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     @targetName("valueIA1")
     inline def value: A1 = InputWrapper.`wrapInitTask_\u2603\u2603`[A1](in)
 
+    /**
+     * This treats the `Initailize[Task[A]]` as a setting that returns the Task value,
+     * instead of evaluating the task.
+     */
+    inline def taskValue: Task[A1] = InputWrapper.`wrapInit_\u2603\u2603`[Task[A1]](in)
+
   // implicit def macroValueIInT[T](
   //     @deprecated("unused", "") in: Initialize[InputTask[T]]
   // ): InputEvaluated[T] = ???
-
-  // implicit def taskMacroValueIT[T](
-  //     @deprecated("unused", "") in: Initialize[Task[T]]
-  // ): MacroTaskValue[T] = ???
 
   // implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
 

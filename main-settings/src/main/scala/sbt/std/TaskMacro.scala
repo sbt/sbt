@@ -79,16 +79,14 @@ object TaskMacro:
         val convert1: Convert[qctx.type] = new FullConvert(qctx)
         convert1.contMapN[A1, F, Id](t, convert1.idTransform)
 
-  def mkIfS[A1: Type](using
-      qctx: Quotes
-  )(t: Expr[A1]): Expr[Initialize[Task[A1]]] =
+  def mkIfS[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     t match
       case '{ if ($cond) then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
 
-/*
+  /*
   def taskDynMacroImpl[A1: Type](
       c: blackbox.Context
   )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[Task[A1]]] =
@@ -109,110 +107,126 @@ object TaskMacro:
       case x => ContextUtil.unexpectedTree(x)
     }
   }
+   */
 
   /** Implementation of := macro for settings. */
-  def settingAssignMacroImpl[A1: Type](
-      c: blackbox.Context
-  )(v: c.Expr[A1]): c.Expr[Setting[A1]] = {
-    val init = SettingMacro.settingMacroImpl[A1](c)(v)
-    val assign = transformMacroImpl(c)(init.tree)(AssignInitName)
-    c.Expr[Setting[A1]](assign)
-  }
+  def settingAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableSetting[A1]], v: Expr[A1])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    val init = SettingMacro.settingMacroImpl[A1](v)
+    '{
+      $rec.set($init, $sourcePosition)
+    }
 
   /** Implementation of := macro for tasks. */
-  def taskAssignMacroImpl[A1: Type](
-      c: blackbox.Context
-  )(v: c.Expr[A1]): c.Expr[Setting[Task[A1]]] = {
-    val init = taskMacroImpl[A1](c)(v)
-    val assign = transformMacroImpl(c)(init.tree)(AssignInitName)
-    c.Expr[Setting[Task[A1]]](assign)
-  }
+  def taskAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableTask[A1]], v: Expr[A1])(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    val init = taskMacroImpl[A1](v)
+    '{
+      $rec.set($init, $sourcePosition)
+    }
 
   // Error macros (Restligeist)
   // These macros are there just so we can fail old operators like `<<=` and provide useful migration information.
 
-  def fakeSettingAssignPosition[A1: Type](c: blackbox.Context)(
-      @deprecated("unused", "") app: c.Expr[Initialize[A1]]
-  ): c.Expr[Setting[A1]] =
-    ContextUtil.selectMacroImpl[Setting[A1]](c)((_, pos) => c.abort(pos, assignMigration))
+  def fakeSettingAssignImpl[A1: Type](app: Expr[Initialize[A1]])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.assignMigration)
 
-  def fakeSettingAppend1Position[S: Type, V: Type](
-      c: blackbox.Context
-  )(@deprecated("unused", "") v: c.Expr[Initialize[V]])(
-      @deprecated("unused", "") a: c.Expr[Append.Value[S, V]]
-  ): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c)((_, pos) => c.abort(pos, append1Migration))
+  def fakeSettingAppend1Position[A1: Type, A2: Type](
+      @deprecated("unused", "") v: Expr[Initialize[A2]]
+  )(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.append1Migration)
 
-  def fakeSettingAppendNPosition[S: Type, V: Type](
-      c: blackbox.Context
-  )(@deprecated("unused", "") vs: c.Expr[Initialize[V]])(
-      @deprecated("unused", "") a: c.Expr[Append.Values[S, V]]
-  ): c.Expr[Setting[S]] =
-    ContextUtil.selectMacroImpl[Setting[S]](c)((_, pos) => c.abort(pos, appendNMigration))
+  def fakeSettingAppendNPosition[A1: Type, A2: Type](
+      @deprecated("unused", "") vs: Expr[Initialize[A2]]
+  )(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.appendNMigration)
 
-  def fakeItaskAssignPosition[A1: Type](c: blackbox.Context)(
-      @deprecated("unused", "") app: c.Expr[Initialize[Task[A1]]]
-  ): c.Expr[Setting[Task[A1]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[A1]]](c)((_, pos) => c.abort(pos, assignMigration))
+  def fakeItaskAssignPosition[A1: Type](
+      @deprecated("unused", "") app: Expr[Initialize[Task[A1]]]
+  )(using qctx: Quotes): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.assignMigration)
 
-  def fakeTaskAppend1Position[S: Type, V: Type](
-      c: blackbox.Context
-  )(@deprecated("unused", "") v: c.Expr[Initialize[Task[V]]])(
-      @deprecated("unused", "") a: c.Expr[Append.Value[S, V]]
-  ): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c)((_, pos) => c.abort(pos, append1Migration))
+  def fakeTaskAppend1Position[A1: Type, A2: Type](
+      @deprecated("unused", "") v: Expr[Initialize[Task[A2]]]
+  )(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A2]]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.append1Migration)
 
-  def fakeTaskAppendNPosition[S: Type, V: Type](
-      c: blackbox.Context
-  )(@deprecated("unused", "") vs: c.Expr[Initialize[Task[V]]])(
-      @deprecated("unused", "") a: c.Expr[Append.Values[S, V]]
-  ): c.Expr[Setting[Task[S]]] =
-    ContextUtil.selectMacroImpl[Setting[Task[S]]](c)((_, pos) => c.abort(pos, appendNMigration))
+  def fakeTaskAppendNPosition[A1: Type, A2: Type](
+      @deprecated("unused", "") vs: Expr[Initialize[Task[A2]]]
+  )(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    report.errorAndAbort(TaskMacro.appendNMigration)
 
+  /*
   // Implementations of <<= macro variations for tasks and settings.
   // These just get the source position of the call site.
 
-  def itaskAssignPosition[A1: Type](
-      c: blackbox.Context
+  def itaskAssignPosition[A1: Type](using
+      qctx: Quotes
   )(app: c.Expr[Initialize[Task[A1]]]): c.Expr[Setting[Task[A1]]] =
     settingAssignPosition(c)(app)
 
-  def taskAssignPositionT[A1: Type](
-      c: blackbox.Context
+  def taskAssignPositionT[A1: Type](using
+      qctx: Quotes
   )(app: c.Expr[Task[A1]]): c.Expr[Setting[Task[A1]]] =
     itaskAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
 
-  def taskAssignPositionPure[A1: Type](
-      c: blackbox.Context
+  def taskAssignPositionPure[A1: Type](using
+      qctx: Quotes
   )(app: c.Expr[A1]): c.Expr[Setting[Task[A1]]] =
     taskAssignPositionT(c)(c.universe.reify { TaskExtra.constant(app.splice) })
 
-  def taskTransformPosition[S: Type](
-      c: blackbox.Context
+  def taskTransformPosition[S: Type](using
+      qctx: Quotes
   )(f: c.Expr[S => S]): c.Expr[Setting[Task[S]]] =
     c.Expr[Setting[Task[S]]](transformMacroImpl(c)(f.tree)(TransformInitName))
 
-  def settingTransformPosition[S: Type](
-      c: blackbox.Context
+   */
+
+  def settingTransformPosition[A1: Type](rec: Expr[SettingKey[A1]], f: Expr[A1 => A1])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    '{
+      $rec.transform($f, $sourcePosition)
+    }
+
+  /*
+  def itaskTransformPosition[S: Type](using
+      qctx: Quotes
   )(f: c.Expr[S => S]): c.Expr[Setting[S]] =
     c.Expr[Setting[S]](transformMacroImpl(c)(f.tree)(TransformInitName))
 
-  def itaskTransformPosition[S: Type](
-      c: blackbox.Context
-  )(f: c.Expr[S => S]): c.Expr[Setting[S]] =
-    c.Expr[Setting[S]](transformMacroImpl(c)(f.tree)(TransformInitName))
-
-  def settingAssignPure[A1: Type](c: blackbox.Context)(app: c.Expr[A1]): c.Expr[Setting[A1]] =
+  def settingAssignPure[A1: Type](using
+      qctx: Quotes)(app: c.Expr[A1]): c.Expr[Setting[A1]] =
     settingAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
 
-  def settingAssignPosition[A1: Type](
-      c: blackbox.Context
+  def settingAssignPosition[A1: Type](using
+      qctx: Quotes
   )(app: c.Expr[Initialize[A1]]): c.Expr[Setting[A1]] =
     c.Expr[Setting[A1]](transformMacroImpl(c)(app.tree)(AssignInitName))
 
   /** Implementation of := macro for tasks. */
-  def inputTaskAssignMacroImpl[A1: Type](
-      c: blackbox.Context
+  def inputTaskAssignMacroImpl[A1: Type](using
+      qctx: Quotes
   )(v: c.Expr[A1]): c.Expr[Setting[InputTask[A1]]] = {
     val init = inputTaskMacroImpl[A1](c)(v)
     val assign = transformMacroImpl(c)(init.tree)(AssignInitName)
@@ -220,42 +234,42 @@ object TaskMacro:
   }
 
   /** Implementation of += macro for tasks. */
-  def taskAppend1Impl[A1: Type, U: Type](
-      c: blackbox.Context
+  def taskAppend1Impl[A1: Type, U: Type](using
+      qctx: Quotes
   )(v: c.Expr[U])(a: c.Expr[Append.Value[A1, U]]): c.Expr[Setting[Task[A1]]] = {
     val init = taskMacroImpl[U](c)(v)
     val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
     c.Expr[Setting[Task[A1]]](append)
   }
+   */
 
   /** Implementation of += macro for settings. */
-  def settingAppend1Impl[A1: Type, U: Type](
-      c: blackbox.Context
-  )(v: c.Expr[U])(a: c.Expr[Append.Value[A1, U]]): c.Expr[Setting[A1]] = {
-    import c.universe._
-    val ttpe = c.weakTypeOf[A1]
-    val typeArgs = ttpe.typeArgs
-    v.tree.tpe match {
-      // To allow Initialize[Task[A]] in the position of += RHS, we're going to call "taskValue" automatically.
-      case tpe
-          if typeArgs.nonEmpty && (typeArgs.head weak_<:< c.weakTypeOf[Task[_]])
-            && (tpe weak_<:< c.weakTypeOf[Initialize[_]]) =>
-        c.macroApplication match {
-          case Apply(Apply(TypeApply(Select(preT, _), _), _), _) =>
-            val tree = Apply(
-              TypeApply(Select(preT, TermName("+=").encodedName), TypeTree(typeArgs.head) :: Nil),
-              Select(v.tree, TermName("taskValue").encodedName) :: Nil
-            )
-            c.Expr[Setting[A1]](tree)
-          case x => ContextUtil.unexpectedTree(x)
-        }
-      case _ =>
-        val init = SettingMacro.settingMacroImpl[U](c)(v)
-        val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-        c.Expr[Setting[A1]](append)
-    }
-  }
+  def settingAppend1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
+      qctx: Quotes,
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    // To allow Initialize[Task[A]] in the position of += RHS, we're going to call "taskValue" automatically.
+    if TypeRepr.of[A2] <:< TypeRepr.of[Def.Initialize[Task[_]]] then
+      Type.of[A2] match
+        case '[Def.Initialize[Task[a]]] =>
+          Expr.summon[Append.Value[A1, Task[a]]] match
+            case Some(ev) =>
+              val v2 = v.asExprOf[Def.Initialize[Task[a]]]
+              '{
+                $rec.+=($v2.taskValue)(using $ev)
+              }
+            case _ =>
+              report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[Task[a]]}] missing")
+    else
+      Expr.summon[Append.Value[A1, A2]] match
+        case Some(ev) =>
+          val init = SettingMacro.settingMacroImpl[A2](v)
+          '{
+            $rec.append1[A2]($init, $sourcePosition)(using $ev)
+          }
+        case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
+  /*
   /** Implementation of ++= macro for tasks. */
   def taskAppendNImpl[A1: Type, U: Type](
       c: blackbox.Context
@@ -264,113 +278,97 @@ object TaskMacro:
     val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
     c.Expr[Setting[Task[A1]]](append)
   }
+   */
 
   /** Implementation of ++= macro for settings. */
-  def settingAppendNImpl[A1: Type, U: Type](
-      c: blackbox.Context
-  )(vs: c.Expr[U])(a: c.Expr[Append.Values[A1, U]]): c.Expr[Setting[A1]] = {
-    val init = SettingMacro.settingMacroImpl[U](c)(vs)
-    val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-    c.Expr[Setting[A1]](append)
-  }
+  def settingAppendNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    Expr.summon[Append.Values[A1, A2]] match
+      case Some(ev) =>
+        val init = SettingMacro.settingMacroImpl[A2](vs)
+        '{
+          $rec.appendN($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Append.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
+  /*
   /** Implementation of -= macro for tasks. */
-  def taskRemove1Impl[A1: Type, U: Type](
-      c: blackbox.Context
+  def taskRemove1Impl[A1: Type, U: Type](using
+      qctx: Quotes
   )(v: c.Expr[U])(r: c.Expr[Remove.Value[A1, U]]): c.Expr[Setting[Task[A1]]] = {
     val init = taskMacroImpl[U](c)(v)
     val remove = removeMacroImpl(c)(init.tree, r.tree)(Remove1InitName)
     c.Expr[Setting[Task[A1]]](remove)
   }
+   */
 
   /** Implementation of -= macro for settings. */
-  def settingRemove1Impl[A1: Type, U: Type](
-      c: blackbox.Context
-  )(v: c.Expr[U])(r: c.Expr[Remove.Value[A1, U]]): c.Expr[Setting[A1]] = {
-    val init = SettingMacro.settingMacroImpl[U](c)(v)
-    val remove = removeMacroImpl(c)(init.tree, r.tree)(Remove1InitName)
-    c.Expr[Setting[A1]](remove)
-  }
+  def settingRemove1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    Expr.summon[Remove.Value[A1, A2]] match
+      case Some(ev) =>
+        val init = SettingMacro.settingMacroImpl[A2](v)
+        '{
+          $rec.remove1[A2]($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Remove.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
+  /*
   /** Implementation of --= macro for tasks. */
-  def taskRemoveNImpl[A1: Type, U: Type](
-      c: blackbox.Context
+  def taskRemoveNImpl[A1: Type, U: Type](using
+      qctx: Quotes
   )(vs: c.Expr[U])(r: c.Expr[Remove.Values[A1, U]]): c.Expr[Setting[Task[A1]]] = {
     val init = taskMacroImpl[U](c)(vs)
     val remove = removeMacroImpl(c)(init.tree, r.tree)(RemoveNInitName)
     c.Expr[Setting[Task[A1]]](remove)
   }
+   */
 
   /** Implementation of --= macro for settings. */
-  def settingRemoveNImpl[A1: Type, U: Type](
-      c: blackbox.Context
-  )(vs: c.Expr[U])(r: c.Expr[Remove.Values[A1, U]]): c.Expr[Setting[A1]] = {
-    val init = SettingMacro.settingMacroImpl[U](c)(vs)
-    val remove = removeMacroImpl(c)(init.tree, r.tree)(RemoveNInitName)
-    c.Expr[Setting[A1]](remove)
-  }
+  def settingRemoveNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    import qctx.reflect.*
+    Expr.summon[Remove.Values[A1, A2]] match
+      case Some(ev) =>
+        val init = SettingMacro.settingMacroImpl[A2](vs)
+        '{
+          $rec.removeN[A2]($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Remove.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
-  private[A1his] def appendMacroImpl(
-      c: blackbox.Context
-  )(init: c.Tree, append: c.Tree)(newName: String): c.Tree = {
-    import c.universe._
-    c.macroApplication match {
-      case Apply(Apply(TypeApply(Select(preT, _), targs), _), _) =>
-        Apply(
-          Apply(
-            TypeApply(Select(preT, TermName(newName).encodedName), targs),
-            init :: sourcePosition(c).tree :: Nil
-          ),
-          append :: Nil
-        )
-      case x => ContextUtil.unexpectedTree(x)
-    }
-  }
-
-  private[A1his] def removeMacroImpl(
-      c: blackbox.Context
-  )(init: c.Tree, remove: c.Tree)(newName: String): c.Tree = {
-    import c.universe._
-    c.macroApplication match {
-      case Apply(Apply(TypeApply(Select(preT, _), targs), _), _) =>
-        Apply(
-          Apply(
-            TypeApply(Select(preT, TermName(newName).encodedName), targs),
-            init :: sourcePosition(c).tree :: Nil
-          ),
-          remove :: Nil
-        )
-      case x => ContextUtil.unexpectedTree(x)
-    }
-  }
-
-  private[A1his] def transformMacroImpl(c: blackbox.Context)(init: c.Tree)(
+  /*
+  private[this] def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(
       newName: String
-  ): c.Tree = {
-    import c.universe._
-    val target =
-      c.macroApplication match {
-        case Apply(Select(prefix, _), _) => prefix
-        case x                           => ContextUtil.unexpectedTree(x)
-      }
+  ): qctx.reflect.Term = {
+    import qctx.reflect.*
+    // val target =
+    //   c.macroApplication match {
+    //     case Apply(Select(prefix, _), _) => prefix
+    //     case x                           => ContextUtil.unexpectedTree(x)
+    //   }
     Apply.apply(
-      Select(target, TermName(newName).encodedName),
-      init :: sourcePosition(c).tree :: Nil
+      Select(This, TermName(newName).encodedName),
+      init.asTerm :: sourcePosition.asTerm :: Nil
     )
   }
+   */
 
-  private[A1his] def sourcePosition(c: blackbox.Context): c.Expr[SourcePosition] = {
-    import c.universe.reify
-    val pos = c.enclosingPosition
-    if (!pos.isInstanceOf[UndefinedPosition] && pos.line >= 0 && pos.source != null) {
-      val f = pos.source.file
-      val name = constant[String](c, settingSource(c, f.path, f.name))
-      val line = constant[Int](c, pos.line)
-      reify { LinePosition(name.splice, line.splice) }
-    } else reify { NoPosition }
-  }
+  private[this] def sourcePosition(using qctx: Quotes): Expr[SourcePosition] =
+    import qctx.reflect.*
+    val pos = Position.ofMacroExpansion
+    if pos.startLine >= 0 && pos.sourceCode != None then
+      val name = Expr(pos.sourceCode.get)
+      val line = Expr(pos.startLine)
+      '{ LinePosition($name, $line) }
+    else '{ NoPosition }
 
-  private[A1his] def settingSource(c: blackbox.Context, path: String, name: String): String = {
+  /*
+  private[this] def settingSource(c: blackbox.Context, path: String, name: String): String = {
     @tailrec def inEmptyPackage(s: c.Symbol): Boolean = s != c.universe.NoSymbol && (
       s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(
         s.owner
@@ -383,7 +381,7 @@ object TaskMacro:
     }
   }
 
-  private[A1his] def constant[A1: c.TypeTag](c: blackbox.Context, t: T): c.Expr[A1] = {
+  private[this] def constant[A1: c.TypeTag](c: blackbox.Context, t: T): c.Expr[A1] = {
     import c.universe._
     c.Expr[A1](Literal(Constant(t)))
   }
@@ -398,7 +396,7 @@ object TaskMacro:
   )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[InputTask[A1]]] =
     inputTaskDynMacro0[A1](c)(t)
 
-  private[A1his] def inputTaskMacro0[A1: Type](
+  private[this] def inputTaskMacro0[A1: Type](
       c: blackbox.Context
   )(t: c.Expr[A1]): c.Expr[Initialize[InputTask[A1]]] =
     iInitializeMacro(c)(t) { et =>
@@ -408,7 +406,7 @@ object TaskMacro:
       c.universe.reify { InputTask.make(pt.splice) }
     }
 
-  private[A1his] def iInitializeMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
+  private[this] def iInitializeMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
       f: c.Expr[A1] => c.Expr[M[A1]]
   )(implicit tt: Type[A1], mt: Type[M[A1]]): c.Expr[Initialize[M[A1]]] = {
     val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[A1](in)).tree
@@ -420,7 +418,7 @@ object TaskMacro:
       )
   }
 
-  private[A1his] def conditionInputTaskTree(c: blackbox.Context)(t: c.Tree): c.Tree = {
+  private[this] def conditionInputTaskTree(c: blackbox.Context)(t: c.Tree): c.Tree = {
     import c.universe._
     import InputWrapper._
     def wrapInitTask[A1: Type](tree: Tree) = {
@@ -453,7 +451,7 @@ object TaskMacro:
     util.transformWrappers(t, (nme, tpe, tree, original) => expand(nme, tpe, tree))
   }
 
-  private[A1his] def iParserMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
+  private[this] def iParserMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
       f: c.Expr[A1] => c.Expr[M[A1]]
   )(implicit tt: Type[A1], mt: Type[M[A1]]): c.Expr[State => Parser[M[A1]]] = {
     val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[A1](in)).tree
@@ -463,7 +461,7 @@ object TaskMacro:
     )
   }
 
-  private[A1his] def iTaskMacro[A1: Type](
+  private[this] def iTaskMacro[A1: Type](
       c: blackbox.Context
   )(t: c.Expr[A1]): c.Expr[Task[A1]] =
     Instance
@@ -472,7 +470,7 @@ object TaskMacro:
         Instance.idTransform
       )
 
-  private[A1his] def inputTaskDynMacro0[A1: Type](
+  private[this] def inputTaskDynMacro0[A1: Type](
       c: blackbox.Context
   )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[InputTask[A1]]] = {
     import c.universe.{ Apply => ApplyTree, _ }
@@ -554,7 +552,7 @@ object TaskMacro:
         inputTaskCreateFree(tag.tpe, init)
     }
   }
- */
+   */
 
 end TaskMacro
 
