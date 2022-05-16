@@ -181,9 +181,9 @@ trait Cont:
               //  the call is addType(Type A, Tree qual)
               // The result is a Tree representing a reference to
               //  the bound value of the input.
-              def substitute(name: String, tpe: TypeRepr, qual: Term, replace: Term) =
-                convert[A](name, qual) transform { (tree: Term) =>
-                  val idx = inputs.indexWhere(input => input.term == qual)
+              def substitute(name: String, tpe: TypeRepr, qual: Term, oldTree: Term) =
+                convert[A](name, qual) transform { (replacement: Term) =>
+                  val idx = inputs.indexWhere(input => input.qual == qual)
                   Select
                     .unique(Ref(p0.symbol), "apply")
                     .appliedToTypes(List(br.inputTupleTypeRepr))
@@ -218,13 +218,12 @@ trait Cont:
 
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
-      def record(name: String, tpe: TypeRepr, qual: Term, replace: Term) =
-        convert[A](name, qual) transform { (tree: Term) =>
-          inputBuf += Input(tpe, qual, freshName("q"))
-          replace
+      def record(name: String, tpe: TypeRepr, qual: Term, oldTree: Term) =
+        convert[A](name, qual) transform { (replacement: Term) =>
+          inputBuf += Input(tpe, qual, replacement, freshName("q"))
+          oldTree
         }
       val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
-      // println("tx: " + tx.show)
       val tr = makeApp(inner(tx), inputBuf.toList)
       tr
 end Cont

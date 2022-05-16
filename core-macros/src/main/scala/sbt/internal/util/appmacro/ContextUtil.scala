@@ -53,6 +53,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C):
 
   final class Input(
       val tpe: TypeRepr,
+      val qual: Term,
       val term: Term,
       val name: String
   )
