@@ -18,12 +18,12 @@ trait UpperStateOps extends Any {
 
   /**
    * ProjectRef to the current project of the state session that can be change using
-   * `project` commmand.
+   * `project` command.
    */
   def currentRef: ProjectRef
 
   /**
-   * Current project of the state session that can be change using `project` commmand.
+   * Current project of the state session that can be change using `project` command.
    */
   def currentProject: ResolvedProject
 

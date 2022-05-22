@@ -4387,7 +4387,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   }
 
   @deprecated(
-    "externalIvyFile is not supported by Couriser, and will be removed in the future",
+    "externalIvyFile is not supported by Coursier, and will be removed in the future",
     since = "1.5.0"
   )
   def externalIvyFile(
