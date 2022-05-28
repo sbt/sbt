@@ -32,3 +32,9 @@ $ sleep 2000
 -> testQuick Create
 > testQuick Delete
 > testQuick Create
+
+# https://github.com/sbt/sbt/issues/5504
+$ copy-file changed/MathFunction.scala src/test/scala/MathFunction.scala
+> compile
+$ sleep 2000
+-> testQuick MathFunctionTest
