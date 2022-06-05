@@ -62,6 +62,8 @@ object Assign {
    */
 
   val settings = Seq(
+    ak :== 1,
+
     // ak += z.value + (if (y.value) set.value else plain.value),
     ck := new File(ck.value, "asdf"),
     ak := sk.value.size,

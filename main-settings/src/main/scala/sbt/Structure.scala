@@ -94,29 +94,29 @@ sealed abstract class SettingKey[A1]
   final inline def --=[A2](inline vs: A2)(using Remove.Values[A1, A2]): Setting[A1] =
     ${ TaskMacro.settingRemoveNImpl[A1, A2]('this, 'vs) }
 
-  final inline def ~=(inline f: A1 => A1): Setting[A1] =
-    ${ TaskMacro.settingTransformPosition('this, 'f) }
+  final inline def ~=(f: A1 => A1): Setting[A1] = transform(f)
+
+  final inline def transform(f: A1 => A1): Setting[A1] = set(scopedKey(f))
 
   final def append1[A2](v: Initialize[A2], source: SourcePosition)(using
       a: Append.Value[A1, A2]
   ): Setting[A1] = make(v, source)(a.appendValue)
 
-  final def appendN[V](vs: Initialize[V], source: SourcePosition)(implicit
+  final def appendN[V](vs: Initialize[V], source: SourcePosition)(using
       a: Append.Values[A1, V]
   ): Setting[A1] = make(vs, source)(a.appendValues)
 
-  final def remove1[V](v: Initialize[V], source: SourcePosition)(implicit
+  final def remove1[V](v: Initialize[V], source: SourcePosition)(using
       r: Remove.Value[A1, V]
   ): Setting[A1] = make(v, source)(r.removeValue)
-  final def removeN[V](vs: Initialize[V], source: SourcePosition)(implicit
+
+  final def removeN[V](vs: Initialize[V], source: SourcePosition)(using
       r: Remove.Values[A1, V]
   ): Setting[A1] = make(vs, source)(r.removeValues)
 
-  final def transform(f: A1 => A1, source: SourcePosition): Setting[A1] = set(scopedKey(f), source)
-
   protected[this] def make[S](other: Initialize[S], source: SourcePosition)(
       f: (A1, S) => A1
-  ): Setting[A1] = set(this.zipWith(other)(f), source)
+  ): Setting[A1] = set0(this.zipWith(other)(f), source)
 
   final def withRank(rank: Int): SettingKey[A1] =
     SettingKey(AttributeKey.copyWithRank(key, rank))
@@ -184,7 +184,7 @@ sealed abstract class TaskKey[A1]
 
   private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(
       f: (A1, S) => A1
-  ): Setting[Task[A1]] = set(this.zipWith(other)((a, b) => (a, b) map f.tupled), source)
+  ): Setting[Task[A1]] = set0(this.zipWith(other)((a, b) => (a, b) map f.tupled), source)
 
   final def withRank(rank: Int): TaskKey[A1] =
     TaskKey(AttributeKey.copyWithRank(key, rank))
@@ -216,10 +216,11 @@ sealed trait InputKey[A1]
     Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 
   // inline def :=(inline v: A1): Setting[InputTask[A1]] = macro std.TaskMacro.inputTaskAssignMacroImpl[A1]
-  // final def ~=(f: A1 => A1): Setting[InputTask[A1]] = macro std.TaskMacro.itaskTransformPosition[A1]
 
-  final def transform(f: A1 => A1, source: SourcePosition): Setting[InputTask[A1]] =
-    set(scopedKey(_ mapTask { _ map f }), source)
+  final inline def ~=(f: A1 => A1): Setting[InputTask[A1]] = transform(f)
+
+  final inline def transform(f: A1 => A1): Setting[InputTask[A1]] =
+    set(scopedKey(_ mapTask { _ map f }))
 
   final def withRank(rank: Int): InputKey[A1] =
     InputKey(AttributeKey.copyWithRank(key, rank))
@@ -295,21 +296,23 @@ object Scoped:
   /**
    * Mixin trait for adding convenience vocabulary associated with applying a setting to a configuration item.
    */
-  sealed trait DefinableSetting[S] {
-    def scopedKey: ScopedKey[S]
+  sealed trait DefinableSetting[A1] { self =>
+    def scopedKey: ScopedKey[A1]
 
     // private[sbt] final def :==(app: S): Setting[S] = macro std.TaskMacro.settingAssignPure[S]
 
-    inline def <<=(inline app: Initialize[S]): Setting[S] = ${
-      TaskMacro.fakeSettingAssignImpl('app)
-    }
+    inline def <<=(inline app: Initialize[A1]): Setting[A1] =
+      ${ TaskMacro.fakeSettingAssignImpl('app) }
+
+    inline def set(inline app: Initialize[A1]): Setting[A1] =
+      ${ TaskMacro.settingSetImpl('self, 'app) }
 
     /** Internally used function for setting a value along with the `.sbt` file location where it is defined. */
-    final def set(app: Initialize[S], source: SourcePosition): Setting[S] =
+    final def set0(app: Initialize[A1], source: SourcePosition): Setting[A1] =
       setting(scopedKey, app, source)
 
     /** From the given `Settings`, extract the value bound to this key. */
-    final def get(settings: Settings[Scope]): Option[S] =
+    final def get(settings: Settings[Scope]): Option[A1] =
       settings.get(scopedKey.scope, scopedKey.key)
 
     /**
@@ -318,14 +321,14 @@ object Scoped:
      * one setting in order to define another setting.
      * @return currently bound value wrapped in `Initialize[Some[T]]`, or `Initialize[None]` if unbound.
      */
-    final def ? : Initialize[Option[S]] = Def.optional(scopedKey)(idFun)
+    final def ? : Initialize[Option[A1]] = Def.optional(scopedKey)(idFun)
 
     /**
      * Creates an [[Def.Initialize]] with value bound to this key, or returns `i` parameter if unbound.
      * @param i value to return if this setting doesn't have a value.
      * @return currently bound setting value, or `i` if unbound.
      */
-    final def or[T >: S](i: Initialize[T]): Initialize[T] = ?.zipWith(i)(_.getOrElse(_))
+    final def or[T >: A1](i: Initialize[T]): Initialize[T] = ?.zipWith(i)(_.getOrElse(_))
 
     /**
      * Like [[?]], but with a call-by-name parameter rather than an existing [[Def.Initialize]].
@@ -333,7 +336,7 @@ object Scoped:
      * @param or by-name expression evaluated when a value is needed.
      * @return currently bound setting value, or the result of `or` if unbound.
      */
-    final def ??[T >: S](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
+    final def ??[T >: A1](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
   }
 
   // Duplicated with ProjectExtra.
@@ -360,26 +363,28 @@ object Scoped:
 
   sealed trait DefinableTask[A1] { self: TaskKey[A1] =>
 
-    // private[sbt] def :==(app: S): Setting[Task[S]] = macro std.TaskMacro.taskAssignPositionPure[S]
+    private[sbt] inline def :==(app: A1): Setting[Task[A1]] =
+      set(Def.valueStrict(std.TaskExtra.constant(app)))
 
-    // private[sbt] def ::=(app: Task[S]): Setting[Task[S]] =
-    //   macro std.TaskMacro.taskAssignPositionT[S]
+    private[sbt] inline def ::=(app: Task[A1]): Setting[Task[A1]] =
+      set(Def.valueStrict(app))
 
-    inline def :=(inline v: A1): Setting[Task[A1]] = ${
-      TaskMacro.taskAssignMacroImpl[A1]('self, 'v)
-    }
-    // macro std.TaskMacro.taskAssignMacroImpl[S]
-
-    // def ~=(f: S => S): Setting[Task[S]] = macro std.TaskMacro.taskTransformPosition[S]
+    inline def :=(inline v: A1): Setting[Task[A1]] =
+      ${ TaskMacro.taskAssignMacroImpl[A1]('self, 'v) }
 
     // def <<=(app: Initialize[Task[S]]): Setting[Task[S]] =
     //   macro std.TaskMacro.fakeItaskAssignPosition[S]
 
-    def set(app: Initialize[Task[A1]], source: SourcePosition): Setting[Task[A1]] =
+    /** In addition to creating Def.setting(...), this captures the source position. */
+    inline def set(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
+      ${ TaskMacro.taskSetImpl('self, 'app) }
+
+    private[sbt] def set0(app: Initialize[Task[A1]], source: SourcePosition): Setting[Task[A1]] =
       Def.setting(scopedKey, app, source)
 
-    def transform(f: A1 => A1, source: SourcePosition): Setting[Task[A1]] =
-      set(scopedKey(_ map f), source)
+    inline def ~=(inline f: A1 => A1): Setting[Task[A1]] = transform(f)
+
+    inline def transform(f: A1 => A1): Setting[Task[A1]] = set(scopedKey(_ map f))
 
     // @deprecated(
     //   "No longer needed with new task syntax and SettingKey inheriting from Initialize.",

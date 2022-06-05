@@ -116,7 +116,7 @@ object TaskMacro:
     import qctx.reflect.*
     val init = SettingMacro.settingMacroImpl[A1](v)
     '{
-      $rec.set($init, $sourcePosition)
+      $rec.set0($init, $sourcePosition)
     }
 
   /** Implementation of := macro for tasks. */
@@ -126,7 +126,7 @@ object TaskMacro:
     import qctx.reflect.*
     val init = taskMacroImpl[A1](v)
     '{
-      $rec.set($init, $sourcePosition)
+      $rec.set0($init, $sourcePosition)
     }
 
   // Error macros (Restligeist)
@@ -176,38 +176,42 @@ object TaskMacro:
     import qctx.reflect.*
     report.errorAndAbort(TaskMacro.appendNMigration)
 
-  /*
   // Implementations of <<= macro variations for tasks and settings.
   // These just get the source position of the call site.
 
+  /*
   def itaskAssignPosition[A1: Type](using
       qctx: Quotes
-  )(app: c.Expr[Initialize[Task[A1]]]): c.Expr[Setting[Task[A1]]] =
-    settingAssignPosition(c)(app)
+  )(app: Expr[Initialize[Task[A1]]]): Expr[Setting[Task[A1]]] =
+    settingAssignPosition(app)
 
-  def taskAssignPositionT[A1: Type](using
+  def taskAssignPositionT[A1: Type](app: Expr[Task[A1]])(using
       qctx: Quotes
-  )(app: c.Expr[Task[A1]]): c.Expr[Setting[Task[A1]]] =
-    itaskAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
-
-  def taskAssignPositionPure[A1: Type](using
-      qctx: Quotes
-  )(app: c.Expr[A1]): c.Expr[Setting[Task[A1]]] =
-    taskAssignPositionT(c)(c.universe.reify { TaskExtra.constant(app.splice) })
-
-  def taskTransformPosition[S: Type](using
-      qctx: Quotes
-  )(f: c.Expr[S => S]): c.Expr[Setting[Task[S]]] =
-    c.Expr[Setting[Task[S]]](transformMacroImpl(c)(f.tree)(TransformInitName))
-
+  ): Expr[Setting[Task[A1]]] =
+    itaskAssignPosition(universe.reify { Def.valueStrict(app.splice) })
    */
 
-  def settingTransformPosition[A1: Type](rec: Expr[SettingKey[A1]], f: Expr[A1 => A1])(using
+  def settingSetImpl[A1: Type](
+      rec: Expr[Scoped.DefinableSetting[A1]],
+      app: Expr[Def.Initialize[A1]]
+  )(using
       qctx: Quotes
   ): Expr[Setting[A1]] =
     '{
-      $rec.transform($f, $sourcePosition)
+      $rec.set0($app, $sourcePosition)
     }
+
+  def taskSetImpl[A1: Type](rec: Expr[TaskKey[A1]], app: Expr[Def.Initialize[Task[A1]]])(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A1]]] =
+    '{
+      $rec.set0($app, $sourcePosition)
+    }
+
+  // def taskTransformPosition[A1: Type](f: Expr[A1 => A1])(using
+  //     qctx: Quotes
+  // ): Expr[Setting[Task[A1]]] =
+  //   Expr[Setting[Task[S]]](transformMacroImpl(c)(f.tree)(TransformInitName))
 
   /*
   def itaskTransformPosition[S: Type](using
@@ -219,11 +223,16 @@ object TaskMacro:
       qctx: Quotes)(app: c.Expr[A1]): c.Expr[Setting[A1]] =
     settingAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
 
-  def settingAssignPosition[A1: Type](using
-      qctx: Quotes
-  )(app: c.Expr[Initialize[A1]]): c.Expr[Setting[A1]] =
-    c.Expr[Setting[A1]](transformMacroImpl(c)(app.tree)(AssignInitName))
+   */
 
+  def settingAssignPosition[A1: Type](rec: Expr[SettingKey[A1]], app: Expr[Initialize[A1]])(using
+      qctx: Quotes
+  ): Expr[Setting[A1]] =
+    '{
+      $rec.set0($app, $sourcePosition)
+    }
+
+  /*
   /** Implementation of := macro for tasks. */
   def inputTaskAssignMacroImpl[A1: Type](using
       qctx: Quotes
