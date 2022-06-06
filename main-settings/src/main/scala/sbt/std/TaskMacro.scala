@@ -164,7 +164,7 @@ object TaskMacro:
       @deprecated("unused", "") v: Expr[Initialize[Task[A2]]]
   )(using
       qctx: Quotes
-  ): Expr[Setting[Task[A2]]] =
+  ): Expr[Setting[Task[A1]]] =
     import qctx.reflect.*
     report.errorAndAbort(TaskMacro.append1Migration)
 
@@ -241,16 +241,21 @@ object TaskMacro:
     val assign = transformMacroImpl(c)(init.tree)(AssignInitName)
     c.Expr[Setting[InputTask[A1]]](assign)
   }
+   */
 
   /** Implementation of += macro for tasks. */
-  def taskAppend1Impl[A1: Type, U: Type](using
+  def taskAppend1Impl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], v: Expr[A2])(using
       qctx: Quotes
-  )(v: c.Expr[U])(a: c.Expr[Append.Value[A1, U]]): c.Expr[Setting[Task[A1]]] = {
-    val init = taskMacroImpl[U](c)(v)
-    val append = appendMacroImpl(c)(init.tree, a.tree)(Append1InitName)
-    c.Expr[Setting[Task[A1]]](append)
-  }
-   */
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    Expr.summon[Append.Value[A1, A2]] match
+      case Some(ev) =>
+        val init = taskMacroImpl[A2](v)
+        '{
+          $rec.append1[A2]($init, $sourcePosition)(using $ev)
+        }
+      case _ =>
+        report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
@@ -278,16 +283,18 @@ object TaskMacro:
           }
         case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
-  /*
   /** Implementation of ++= macro for tasks. */
-  def taskAppendNImpl[A1: Type, U: Type](
-      c: blackbox.Context
-  )(vs: c.Expr[U])(a: c.Expr[Append.Values[A1, U]]): c.Expr[Setting[Task[A1]]] = {
-    val init = taskMacroImpl[U](c)(vs)
-    val append = appendMacroImpl(c)(init.tree, a.tree)(AppendNInitName)
-    c.Expr[Setting[Task[A1]]](append)
-  }
-   */
+  def taskAppendNImpl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], vs: Expr[A2])(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    Expr.summon[Append.Values[A1, A2]] match
+      case Some(ev) =>
+        val init = taskMacroImpl[A2](vs)
+        '{
+          $rec.appendN($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Append.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /** Implementation of ++= macro for settings. */
   def settingAppendNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using
@@ -302,16 +309,18 @@ object TaskMacro:
         }
       case _ => report.errorAndAbort(s"Append.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
-  /*
   /** Implementation of -= macro for tasks. */
-  def taskRemove1Impl[A1: Type, U: Type](using
+  def taskRemove1Impl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], v: Expr[A2])(using
       qctx: Quotes
-  )(v: c.Expr[U])(r: c.Expr[Remove.Value[A1, U]]): c.Expr[Setting[Task[A1]]] = {
-    val init = taskMacroImpl[U](c)(v)
-    val remove = removeMacroImpl(c)(init.tree, r.tree)(Remove1InitName)
-    c.Expr[Setting[Task[A1]]](remove)
-  }
-   */
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    Expr.summon[Remove.Value[A1, A2]] match
+      case Some(ev) =>
+        val init = taskMacroImpl[A2](v)
+        '{
+          $rec.remove1[A2]($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Remove.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /** Implementation of -= macro for settings. */
   def settingRemove1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
@@ -326,16 +335,18 @@ object TaskMacro:
         }
       case _ => report.errorAndAbort(s"Remove.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
-  /*
   /** Implementation of --= macro for tasks. */
-  def taskRemoveNImpl[A1: Type, U: Type](using
+  def taskRemoveNImpl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], vs: Expr[A2])(using
       qctx: Quotes
-  )(vs: c.Expr[U])(r: c.Expr[Remove.Values[A1, U]]): c.Expr[Setting[Task[A1]]] = {
-    val init = taskMacroImpl[U](c)(vs)
-    val remove = removeMacroImpl(c)(init.tree, r.tree)(RemoveNInitName)
-    c.Expr[Setting[Task[A1]]](remove)
-  }
-   */
+  ): Expr[Setting[Task[A1]]] =
+    import qctx.reflect.*
+    Expr.summon[Remove.Values[A1, A2]] match
+      case Some(ev) =>
+        val init = taskMacroImpl[A2](vs)
+        '{
+          $rec.removeN[A2]($init, $sourcePosition)(using $ev)
+        }
+      case _ => report.errorAndAbort(s"Remove.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /** Implementation of --= macro for settings. */
   def settingRemoveNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using

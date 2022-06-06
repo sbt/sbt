@@ -148,23 +148,23 @@ sealed abstract class TaskKey[A1]
   def in(scope: Scope): TaskKey[A1] =
     Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
 
-  // def +=[U](v: U)(implicit a: Append.Value[T, U]): Setting[Task[T]] =
-  //   macro std.TaskMacro.taskAppend1Impl[T, U]
+  inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[Task[A1]] =
+    ${ TaskMacro.taskAppend1Impl[A1, A2]('this, 'v) }
 
-  // def ++=[U](vs: U)(implicit a: Append.Values[T, U]): Setting[Task[T]] =
-  //   macro std.TaskMacro.taskAppendNImpl[T, U]
+  inline def ++=[A2](inline vs: A2)(using Append.Values[A1, A2]): Setting[Task[A1]] =
+    ${ TaskMacro.taskAppendNImpl[A1, A2]('this, 'vs) }
 
-  // def <+=[V](v: Initialize[Task[V]])(implicit a: Append.Value[T, V]): Setting[Task[T]] =
-  //   macro std.TaskMacro.fakeTaskAppend1Position[T, V]
+  inline def <+=[A2](inline v: Initialize[Task[A2]]): Setting[Task[A1]] =
+    ${ TaskMacro.fakeTaskAppend1Position[A1, A2]('v) }
 
-  // def <++=[V](vs: Initialize[Task[V]])(implicit a: Append.Values[T, V]): Setting[Task[T]] =
-  //   macro std.TaskMacro.fakeTaskAppendNPosition[T, V]
+  inline def <++=[A2](inline vs: Initialize[Task[A2]]): Setting[Task[A1]] =
+    ${ TaskMacro.fakeTaskAppendNPosition[A1, A2]('vs) }
 
-  // final def -=[U](v: U)(implicit r: Remove.Value[T, U]): Setting[Task[T]] =
-  //   macro std.TaskMacro.taskRemove1Impl[T, U]
+  final inline def -=[A2](v: A2)(using r: Remove.Value[A1, A2]): Setting[Task[A1]] =
+    ${ TaskMacro.taskRemove1Impl[A1, A2]('this, 'v) }
 
-  // final def --=[U](vs: U)(implicit r: Remove.Values[T, U]): Setting[Task[T]] =
-  //   macro std.TaskMacro.taskRemoveNImpl[T, U]
+  final inline def --=[A2](vs: A2)(using r: Remove.Values[A1, A2]): Setting[Task[A1]] =
+    ${ TaskMacro.taskRemoveNImpl[A1, A2]('this, 'vs) }
 
   def append1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit
       a: Append.Value[A1, V]
@@ -372,8 +372,8 @@ object Scoped:
     inline def :=(inline v: A1): Setting[Task[A1]] =
       ${ TaskMacro.taskAssignMacroImpl[A1]('self, 'v) }
 
-    // def <<=(app: Initialize[Task[S]]): Setting[Task[S]] =
-    //   macro std.TaskMacro.fakeItaskAssignPosition[S]
+    inline def <<=(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
+      ${ TaskMacro.fakeItaskAssignPosition[A1]('app) }
 
     /** In addition to creating Def.setting(...), this captures the source position. */
     inline def set(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =

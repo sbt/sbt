@@ -56,6 +56,8 @@ object Assign {
   val seqSetting = settingKey[Seq[String]]("seqSetting")
   val listSetting = settingKey[List[String]]("listSetting")
 
+  val listTask = taskKey[List[String]]("listTask")
+
   /*	def azy = sk.value
 
   def azy2 = appmacro.Debug.checkWild(Def.task{ sk.value.size })
@@ -134,4 +136,7 @@ object Assign {
   listSetting += "test4"
 
   listSetting ~= { (xs) => xs }
+
+  listTask := List("test1")
+  listTask += "test2"
 }
