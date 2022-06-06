@@ -221,7 +221,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   import std.TaskMacro.{
     //   inputTaskDynMacroImpl,
     //   inputTaskMacroImpl,
-    //   taskDynMacroImpl,
+    taskDynMacroImpl,
     //   taskIfMacroImpl,
     taskMacroImpl,
   }
@@ -232,7 +232,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
     ${ taskMacroImpl[A1]('a1) }
 
-  // def taskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[Task[T]] = macro taskDynMacroImpl[T]
+  inline def taskDyn[A1](a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
+    ${ taskDynMacroImpl[A1]('a1) }
 
   inline def setting[A1](inline a: A1): Def.Initialize[A1] = ${ settingMacroImpl[A1]('a) }
 

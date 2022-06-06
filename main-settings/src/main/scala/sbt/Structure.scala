@@ -73,14 +73,26 @@ sealed abstract class SettingKey[A1]
   final def in(scope: Scope): SettingKey[A1] =
     Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
 
+  /** Internal function for the setting macro. */
+  inline def settingMacro[A](inline a: A): Initialize[A] =
+    ${ std.SettingMacro.settingMacroImpl[A]('a) }
+
   final inline def :=(inline v: A1): Setting[A1] =
     ${ TaskMacro.settingAssignMacroImpl('this, 'v) }
 
-  final inline def +=[A2](inline v: A2)(using a: Append.Value[A1, A2]): Setting[A1] =
+  final inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[A1] =
     ${ TaskMacro.settingAppend1Impl[A1, A2]('this, 'v) }
 
-  final inline def ++=[A2](inline vs: A2)(using a: Append.Values[A1, A2]): Setting[A1] =
-    ${ TaskMacro.settingAppendNImpl[A1, A2]('this, 'vs) }
+  final inline def append1[A2](v: Initialize[A2])(using
+      a: Append.Value[A1, A2]
+  ): Setting[A1] = make(v)(a.appendValue)
+
+  final inline def ++=[A2](inline vs: A2)(using Append.Values[A1, A2]): Setting[A1] =
+    appendN(settingMacro[A2](vs))
+
+  final def appendN[V](vs: Initialize[V])(using
+      ev: Append.Values[A1, V]
+  ): Setting[A1] = make(vs)(ev.appendValues)
 
   final inline def <+=[A2](inline v: Initialize[A2]): Setting[A1] =
     ${ TaskMacro.fakeSettingAppend1Position[A1, A2]('v) }
@@ -89,33 +101,28 @@ sealed abstract class SettingKey[A1]
     ${ TaskMacro.fakeSettingAppendNPosition[A1, A2]('vs) }
 
   final inline def -=[A2](inline v: A2)(using Remove.Value[A1, A2]): Setting[A1] =
-    ${ TaskMacro.settingRemove1Impl[A1, A2]('this, 'v) }
+    remove1(settingMacro[A2](v))
+
+  final inline def remove1[V](v: Initialize[V])(using
+      ev: Remove.Value[A1, V]
+  ): Setting[A1] = make(v)(ev.removeValue)
 
   final inline def --=[A2](inline vs: A2)(using Remove.Values[A1, A2]): Setting[A1] =
-    ${ TaskMacro.settingRemoveNImpl[A1, A2]('this, 'vs) }
+    removeN(settingMacro[A2](vs))
+
+  final inline def removeN[V](vs: Initialize[V])(using
+      ev: Remove.Values[A1, V]
+  ): Setting[A1] = make(vs)(ev.removeValues)
 
   final inline def ~=(f: A1 => A1): Setting[A1] = transform(f)
 
   final inline def transform(f: A1 => A1): Setting[A1] = set(scopedKey(f))
 
-  final def append1[A2](v: Initialize[A2], source: SourcePosition)(using
-      a: Append.Value[A1, A2]
-  ): Setting[A1] = make(v, source)(a.appendValue)
+  inline def make[A2](other: Initialize[A2])(f: (A1, A2) => A1): Setting[A1] =
+    set(this.zipWith(other)(f))
 
-  final def appendN[V](vs: Initialize[V], source: SourcePosition)(using
-      a: Append.Values[A1, V]
-  ): Setting[A1] = make(vs, source)(a.appendValues)
-
-  final def remove1[V](v: Initialize[V], source: SourcePosition)(using
-      r: Remove.Value[A1, V]
-  ): Setting[A1] = make(v, source)(r.removeValue)
-
-  final def removeN[V](vs: Initialize[V], source: SourcePosition)(using
-      r: Remove.Values[A1, V]
-  ): Setting[A1] = make(vs, source)(r.removeValues)
-
-  protected[this] def make[S](other: Initialize[S], source: SourcePosition)(
-      f: (A1, S) => A1
+  protected[this] inline def make[A2](other: Initialize[A2], source: SourcePosition)(
+      f: (A1, A2) => A1
   ): Setting[A1] = set0(this.zipWith(other)(f), source)
 
   final def withRank(rank: Int): SettingKey[A1] =
@@ -149,10 +156,19 @@ sealed abstract class TaskKey[A1]
     Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
 
   inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[Task[A1]] =
-    ${ TaskMacro.taskAppend1Impl[A1, A2]('this, 'v) }
+    append1[A2](taskMacro(v))
+
+  inline def append1[A2](v: Initialize[Task[A2]])(using
+      ev: Append.Value[A1, A2]
+  ): Setting[Task[A1]] =
+    make(v)(ev.appendValue)
 
   inline def ++=[A2](inline vs: A2)(using Append.Values[A1, A2]): Setting[Task[A1]] =
-    ${ TaskMacro.taskAppendNImpl[A1, A2]('this, 'vs) }
+    appendN(taskMacro[A2](vs))
+
+  inline def appendN[A2](vs: Initialize[Task[A2]])(using
+      ev: Append.Values[A1, A2]
+  ): Setting[Task[A1]] = make(vs)(ev.appendValues)
 
   inline def <+=[A2](inline v: Initialize[Task[A2]]): Setting[Task[A1]] =
     ${ TaskMacro.fakeTaskAppend1Position[A1, A2]('v) }
@@ -160,31 +176,27 @@ sealed abstract class TaskKey[A1]
   inline def <++=[A2](inline vs: Initialize[Task[A2]]): Setting[Task[A1]] =
     ${ TaskMacro.fakeTaskAppendNPosition[A1, A2]('vs) }
 
-  final inline def -=[A2](v: A2)(using r: Remove.Value[A1, A2]): Setting[Task[A1]] =
-    ${ TaskMacro.taskRemove1Impl[A1, A2]('this, 'v) }
+  final inline def -=[A2](v: A2)(using Remove.Value[A1, A2]): Setting[Task[A1]] =
+    remove1[A2](taskMacro[A2](v))
+
+  final inline def remove1[A2](v: Initialize[Task[A2]])(using
+      ev: Remove.Value[A1, A2]
+  ): Setting[Task[A1]] = make(v)(ev.removeValue)
 
   final inline def --=[A2](vs: A2)(using r: Remove.Values[A1, A2]): Setting[Task[A1]] =
-    ${ TaskMacro.taskRemoveNImpl[A1, A2]('this, 'vs) }
+    removeN[A2](taskMacro[A2](vs))
 
-  def append1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit
-      a: Append.Value[A1, V]
-  ): Setting[Task[A1]] = make(v, source)(a.appendValue)
+  final inline def removeN[A2](vs: Initialize[Task[A2]])(using
+      ev: Remove.Values[A1, A2]
+  ): Setting[Task[A1]] = make(vs)(ev.removeValues)
 
-  def appendN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit
-      a: Append.Values[A1, V]
-  ): Setting[Task[A1]] = make(vs, source)(a.appendValues)
-
-  final def remove1[V](v: Initialize[Task[V]], source: SourcePosition)(implicit
-      r: Remove.Value[A1, V]
-  ): Setting[Task[A1]] = make(v, source)(r.removeValue)
-
-  final def removeN[V](vs: Initialize[Task[V]], source: SourcePosition)(implicit
-      r: Remove.Values[A1, V]
-  ): Setting[Task[A1]] = make(vs, source)(r.removeValues)
-
-  private[this] def make[S](other: Initialize[Task[S]], source: SourcePosition)(
+  inline def make[S](other: Initialize[Task[S]], source: SourcePosition)(
       f: (A1, S) => A1
   ): Setting[Task[A1]] = set0(this.zipWith(other)((a, b) => (a, b) map f.tupled), source)
+
+  inline def make[S](other: Initialize[Task[S]])(
+      f: (A1, S) => A1
+  ): Setting[Task[A1]] = set(this.zipWith(other)((a, b) => (a, b) map f.tupled))
 
   final def withRank(rank: Int): TaskKey[A1] =
     TaskKey(AttributeKey.copyWithRank(key, rank))
@@ -299,11 +311,13 @@ object Scoped:
   sealed trait DefinableSetting[A1] { self =>
     def scopedKey: ScopedKey[A1]
 
-    // private[sbt] final def :==(app: S): Setting[S] = macro std.TaskMacro.settingAssignPure[S]
+    private[sbt] final inline def :==(inline app: A1): Setting[A1] =
+      set(Def.valueStrict(app))
 
     inline def <<=(inline app: Initialize[A1]): Setting[A1] =
       ${ TaskMacro.fakeSettingAssignImpl('app) }
 
+    /** In addition to creating Def.setting(...), this captures the source position. */
     inline def set(inline app: Initialize[A1]): Setting[A1] =
       ${ TaskMacro.settingSetImpl('self, 'app) }
 
@@ -363,21 +377,25 @@ object Scoped:
 
   sealed trait DefinableTask[A1] { self: TaskKey[A1] =>
 
+    /** Internal function for the task macro. */
+    inline def taskMacro[A](inline a: A): Initialize[Task[A]] =
+      ${ TaskMacro.taskMacroImpl[A]('a) }
+
     private[sbt] inline def :==(app: A1): Setting[Task[A1]] =
       set(Def.valueStrict(std.TaskExtra.constant(app)))
 
     private[sbt] inline def ::=(app: Task[A1]): Setting[Task[A1]] =
       set(Def.valueStrict(app))
 
-    inline def :=(inline v: A1): Setting[Task[A1]] =
-      ${ TaskMacro.taskAssignMacroImpl[A1]('self, 'v) }
+    inline def :=(inline a: A1): Setting[Task[A1]] =
+      set(taskMacro(a))
 
     inline def <<=(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
       ${ TaskMacro.fakeItaskAssignPosition[A1]('app) }
 
     /** In addition to creating Def.setting(...), this captures the source position. */
     inline def set(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
-      ${ TaskMacro.taskSetImpl('self, 'app) }
+      ${ std.DefinableTaskMacro.taskSetImpl('self, 'app) }
 
     private[sbt] def set0(app: Initialize[Task[A1]], source: SourcePosition): Setting[Task[A1]] =
       Def.setting(scopedKey, app, source)

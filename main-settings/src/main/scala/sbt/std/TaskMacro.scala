@@ -28,26 +28,6 @@ import scala.annotation.tailrec
 import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
 
-/** Instance for the monad/applicative functor for plain Tasks. */
-/*
-object TaskInstance:
-  import TaskExtra._
-
-  given taskMonad: Monad[Task] with
-    type F[a] = Task[a]
-    override def pure[A1](a: () => A1): Task[A1] = toTask(a)
-
-    override def ap[A1, A2](ff: Task[A1 => A2])(in: Task[A1]): Task[A2] =
-      multT2Task((in, ff)).map { case (x, f) =>
-        f(x)
-      }
-
-    override def map[A1, A2](in: Task[A1])(f: A1 => A2): Task[A2] = in.map(f)
-    override def flatMap[A1, A2](in: F[A1])(f: A1 => F[A2]): F[A2] = in.flatMap(f)
-    override def flatten[A1](in: Task[Task[A1]]): Task[A1] = in.flatMap(idFun[Task[A1]])
-end TaskInstance
- */
-
 object TaskMacro:
   final val AssignInitName = "set"
   final val Append1InitName = "append1"
@@ -86,15 +66,13 @@ object TaskMacro:
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
 
-  /*
   def taskDynMacroImpl[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[Task[A1]]] =
-    Instance.contImpl[A1, Id](c, FullInstance, FullConvert, MixedBuilder, TaskDynLinterDSL)(
-      Right(t),
-      Instance.idTransform[c.type]
-    )
+      t: Expr[Initialize[Task[A1]]]
+  )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
+    val convert1: Convert[qctx.type] = new FullConvert(qctx)
+    convert1.contFlatMap[A1, F, Id](t, convert1.idTransform)
 
+  /*
   def taskIfMacroImpl[A: Type](
       c: blackbox.Context
   )(a: c.Expr[A]): c.Expr[Initialize[Task[A]]] = {
@@ -115,16 +93,6 @@ object TaskMacro:
   ): Expr[Setting[A1]] =
     import qctx.reflect.*
     val init = SettingMacro.settingMacroImpl[A1](v)
-    '{
-      $rec.set0($init, $sourcePosition)
-    }
-
-  /** Implementation of := macro for tasks. */
-  def taskAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableTask[A1]], v: Expr[A1])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    val init = taskMacroImpl[A1](v)
     '{
       $rec.set0($init, $sourcePosition)
     }
@@ -179,53 +147,10 @@ object TaskMacro:
   // Implementations of <<= macro variations for tasks and settings.
   // These just get the source position of the call site.
 
-  /*
-  def itaskAssignPosition[A1: Type](using
-      qctx: Quotes
-  )(app: Expr[Initialize[Task[A1]]]): Expr[Setting[Task[A1]]] =
-    settingAssignPosition(app)
-
-  def taskAssignPositionT[A1: Type](app: Expr[Task[A1]])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    itaskAssignPosition(universe.reify { Def.valueStrict(app.splice) })
-   */
-
   def settingSetImpl[A1: Type](
       rec: Expr[Scoped.DefinableSetting[A1]],
       app: Expr[Def.Initialize[A1]]
   )(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    '{
-      $rec.set0($app, $sourcePosition)
-    }
-
-  def taskSetImpl[A1: Type](rec: Expr[TaskKey[A1]], app: Expr[Def.Initialize[Task[A1]]])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    '{
-      $rec.set0($app, $sourcePosition)
-    }
-
-  // def taskTransformPosition[A1: Type](f: Expr[A1 => A1])(using
-  //     qctx: Quotes
-  // ): Expr[Setting[Task[A1]]] =
-  //   Expr[Setting[Task[S]]](transformMacroImpl(c)(f.tree)(TransformInitName))
-
-  /*
-  def itaskTransformPosition[S: Type](using
-      qctx: Quotes
-  )(f: c.Expr[S => S]): c.Expr[Setting[S]] =
-    c.Expr[Setting[S]](transformMacroImpl(c)(f.tree)(TransformInitName))
-
-  def settingAssignPure[A1: Type](using
-      qctx: Quotes)(app: c.Expr[A1]): c.Expr[Setting[A1]] =
-    settingAssignPosition(c)(c.universe.reify { Def.valueStrict(app.splice) })
-
-   */
-
-  def settingAssignPosition[A1: Type](rec: Expr[SettingKey[A1]], app: Expr[Initialize[A1]])(using
       qctx: Quotes
   ): Expr[Setting[A1]] =
     '{
@@ -242,20 +167,6 @@ object TaskMacro:
     c.Expr[Setting[InputTask[A1]]](assign)
   }
    */
-
-  /** Implementation of += macro for tasks. */
-  def taskAppend1Impl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], v: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    Expr.summon[Append.Value[A1, A2]] match
-      case Some(ev) =>
-        val init = taskMacroImpl[A2](v)
-        '{
-          $rec.append1[A2]($init, $sourcePosition)(using $ev)
-        }
-      case _ =>
-        report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
@@ -279,87 +190,9 @@ object TaskMacro:
         case Some(ev) =>
           val init = SettingMacro.settingMacroImpl[A2](v)
           '{
-            $rec.append1[A2]($init, $sourcePosition)(using $ev)
+            $rec.append1[A2]($init)(using $ev)
           }
         case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of ++= macro for tasks. */
-  def taskAppendNImpl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], vs: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    Expr.summon[Append.Values[A1, A2]] match
-      case Some(ev) =>
-        val init = taskMacroImpl[A2](vs)
-        '{
-          $rec.appendN($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Append.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of ++= macro for settings. */
-  def settingAppendNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    Expr.summon[Append.Values[A1, A2]] match
-      case Some(ev) =>
-        val init = SettingMacro.settingMacroImpl[A2](vs)
-        '{
-          $rec.appendN($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Append.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of -= macro for tasks. */
-  def taskRemove1Impl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], v: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    Expr.summon[Remove.Value[A1, A2]] match
-      case Some(ev) =>
-        val init = taskMacroImpl[A2](v)
-        '{
-          $rec.remove1[A2]($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Remove.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of -= macro for settings. */
-  def settingRemove1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    Expr.summon[Remove.Value[A1, A2]] match
-      case Some(ev) =>
-        val init = SettingMacro.settingMacroImpl[A2](v)
-        '{
-          $rec.remove1[A2]($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Remove.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of --= macro for tasks. */
-  def taskRemoveNImpl[A1: Type, A2: Type](rec: Expr[TaskKey[A1]], vs: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    Expr.summon[Remove.Values[A1, A2]] match
-      case Some(ev) =>
-        val init = taskMacroImpl[A2](vs)
-        '{
-          $rec.removeN[A2]($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Remove.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
-
-  /** Implementation of --= macro for settings. */
-  def settingRemoveNImpl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], vs: Expr[A2])(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    Expr.summon[Remove.Values[A1, A2]] match
-      case Some(ev) =>
-        val init = SettingMacro.settingMacroImpl[A2](vs)
-        '{
-          $rec.removeN[A2]($init, $sourcePosition)(using $ev)
-        }
-      case _ => report.errorAndAbort(s"Remove.Values[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /*
   private[this] def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(
@@ -378,7 +211,7 @@ object TaskMacro:
   }
    */
 
-  private[this] def sourcePosition(using qctx: Quotes): Expr[SourcePosition] =
+  private[sbt] def sourcePosition(using qctx: Quotes): Expr[SourcePosition] =
     import qctx.reflect.*
     val pos = Position.ofMacroExpansion
     if pos.startLine >= 0 && pos.sourceCode != None then
@@ -575,6 +408,19 @@ object TaskMacro:
    */
 
 end TaskMacro
+
+object DefinableTaskMacro:
+  def taskSetImpl[A1: Type](
+      rec: Expr[Scoped.DefinableTask[A1]],
+      app: Expr[Def.Initialize[Task[A1]]]
+  )(using
+      qctx: Quotes
+  ): Expr[Setting[Task[A1]]] =
+    val pos = TaskMacro.sourcePosition
+    '{
+      $rec.set0($app, $pos)
+    }
+end DefinableTaskMacro
 
 /*
 object PlainTaskMacro:

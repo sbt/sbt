@@ -11,20 +11,21 @@ import sbt.internal.util.complete
 import sbt.internal.util.complete.DefaultParsers
 import sbt.{ Def, InputTask, Task }
 
-/*object UseTask
-{
-		import Def._
+object UseTask:
+  import sbt.std.FullInstance.given
 
-	val set = setting { 23 }
-	val plain = PlainTaskMacro task { 19 }
+  val set = Def.setting { 23 }
+  val x = Def.task { set.value }
+  val y = Def.task { true }
+  val z = Def.task { if (y.value) x.value else set.value }
+  val a = Def.taskDyn {
+    // if y.value then z
+    // else x
+    if true then z
+    else x
+  }
+end UseTask
 
-	val x = task { set.value }
-	val y = task { true }
-	val z = task { if(y.value) x.value else plain.value }
-	val a = taskDyn {
-		if(y.value) z else x
-	}
-}*/
 object Assign {
   import java.io.File
 
@@ -56,7 +57,7 @@ object Assign {
   val seqSetting = settingKey[Seq[String]]("seqSetting")
   val listSetting = settingKey[List[String]]("listSetting")
 
-  val listTask = taskKey[List[String]]("listTask")
+  val listTask = taskKey[List[Int]]("listTask")
 
   /*	def azy = sk.value
 
@@ -137,6 +138,7 @@ object Assign {
 
   listSetting ~= { (xs) => xs }
 
-  listTask := List("test1")
-  listTask += "test2"
+  listTask := List(1)
+  listTask += 1
+  listTask += ak.value
 }
