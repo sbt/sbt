@@ -89,6 +89,7 @@ val mimaSettings = Def settings (
     "1.3.0",
     "1.4.0",
     "1.5.0",
+    "1.6.0",
   ) map (
       version =>
         organization.value %% moduleName.value % version
@@ -353,6 +354,15 @@ lazy val lmIvy = (project in file("ivy"))
         "sbt.internal.librarymanagement.CustomPomParser.versionRangeFlag"
       ),
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.FixedParser*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.JavaNetAuthenticator"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.CustomHttp*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.http"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.this"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.IvyPublisher.apply"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.librarymanagement.ivy.IvyDependencyResolution.apply"
+      ),
     ),
   )
 

@@ -112,7 +112,7 @@ class IvyCache(val ivyHome: Option[File]) {
       .withResolvers(Vector(local))
       .withLock(lock)
       .withLog(log)
-    (new IvySbt(conf, CustomHttp.defaultHttpClient), local)
+    (new IvySbt(conf), local)
   }
 
   /** Creates a default jar artifact based on the given ID.*/
