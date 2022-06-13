@@ -1057,6 +1057,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Defaults.earlyArtifactPathSetting"),
       exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
       exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
+      exclude[MissingClassProblem]("sbt.internal.CustomHttp*"),
     )
   )
   .configure(
