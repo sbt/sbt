@@ -3,8 +3,8 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala212 = "2.12.15"
-  val scala213 = "2.13.6"
+  val scala212 = "2.12.16"
+  val scala213 = "2.13.8"
 
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
@@ -61,6 +61,5 @@ object Dependencies {
   val sjsonnewScalaJson = Def.setting {
     "com.eed3si9n" %% "sjson-new-scalajson" % contrabandSjsonNewVersion.value
   }
-  val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.5.0"
-  val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.7.0"
 }

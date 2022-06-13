@@ -6,7 +6,8 @@ val _ = {
   //https://github.com/sbt/contraband/issues/122
   sys.props += ("line.separator" -> "\n")
 }
-
+Global / semanticdbEnabled := true
+Global / semanticdbVersion := "4.5.9"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
@@ -88,6 +89,7 @@ val mimaSettings = Def settings (
     "1.3.0",
     "1.4.0",
     "1.5.0",
+    "1.6.0",
   ) map (
       version =>
         organization.value %% moduleName.value % version
@@ -118,8 +120,7 @@ lazy val lmCore = (project in file("core"))
       scalaReflect.value,
       scalaCompiler.value,
       launcherInterface,
-      gigahorseOkhttp,
-      okhttpUrlconnection,
+      gigahorseApacheHttp,
       sjsonnewScalaJson.value % Optional,
       scalaTest % Test,
       scalaCheck % Test,
@@ -260,7 +261,9 @@ lazy val lmCore = (project in file("core"))
         "sbt.librarymanagement.ResolverFunctions.validateArtifact"
       ),
       exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.*.validateProtocol"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"
+      ),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.dottyID"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.DottyIDPrefix"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.toolDependencies*"),
@@ -351,6 +354,15 @@ lazy val lmIvy = (project in file("ivy"))
         "sbt.internal.librarymanagement.CustomPomParser.versionRangeFlag"
       ),
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.FixedParser*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.JavaNetAuthenticator"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.CustomHttp*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.http"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.this"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.IvyPublisher.apply"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.librarymanagement.ivy.IvyDependencyResolution.apply"
+      ),
     ),
   )
 
@@ -385,17 +397,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       "reload" ::
       state
   }
-)
-
-inThisBuild(
-  Seq(
-    whitesourceProduct := "Lightbend Reactive Platform",
-    whitesourceAggregateProjectName := "sbt-lm-master",
-    whitesourceAggregateProjectToken := "9bde4ccbaab7401a91f8cda337af84365d379e13abaf473b85cb16e3f5c65cb6",
-    whitesourceIgnoredScopes += "scalafmt",
-    whitesourceFailOnError := sys.env.contains("WHITESOURCE_PASSWORD"), // fail if pwd is present
-    whitesourceForceCheckAllDependencies := true,
-  )
 )
 
 def inCompileAndTest(ss: SettingsDefinition*): Seq[Setting[_]] =

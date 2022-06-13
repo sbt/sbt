@@ -2,7 +2,6 @@ package sbt
 package librarymanagement
 package ivy
 
-import okhttp3.OkHttpClient
 import sbt.internal.librarymanagement._
 import sbt.util.Logger
 
@@ -30,8 +29,5 @@ class IvyDependencyResolution private[sbt] (val ivySbt: IvySbt)
 
 object IvyDependencyResolution {
   def apply(ivyConfiguration: IvyConfiguration): DependencyResolution =
-    apply(ivyConfiguration, CustomHttp.defaultHttpClient)
-
-  def apply(ivyConfiguration: IvyConfiguration, http: OkHttpClient): DependencyResolution =
-    DependencyResolution(new IvyDependencyResolution(new IvySbt(ivyConfiguration, http)))
+    DependencyResolution(new IvyDependencyResolution(new IvySbt(ivyConfiguration)))
 }

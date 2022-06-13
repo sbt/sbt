@@ -7,7 +7,6 @@ import java.io.File
 import java.net.URI
 import java.util.concurrent.Callable
 
-import okhttp3.OkHttpClient
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.IvyPatternHelper
 import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager }
@@ -50,17 +49,13 @@ import ivyint.{
   CachedResolutionResolveEngine,
   ParallelResolveEngine,
   SbtDefaultDependencyDescriptor,
-  GigahorseUrlHandler
 }
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
 
 final class IvySbt(
     val configuration: IvyConfiguration,
-    val http: OkHttpClient
 ) { self =>
-  def this(configuration: IvyConfiguration) = this(configuration, CustomHttp.defaultHttpClient)
-
   /*
    * ========== Configuration/Setup ============
    * This part configures the Ivy instance by first creating the logger interface to ivy, then IvySettings, and then the Ivy instance.
@@ -90,7 +85,6 @@ final class IvySbt(
   }
 
   private lazy val basicUrlHandler: URLHandler = new BasicURLHandler
-  private lazy val gigahorseUrlHandler: URLHandler = new GigahorseUrlHandler(http)
 
   private lazy val settings: IvySettings = {
     val dispatcher: URLHandlerDispatcher = URLHandlerRegistry.getDefault match {
@@ -106,8 +100,8 @@ final class IvySbt(
         disp
     }
 
-    val urlHandler: URLHandler =
-      if (configuration.updateOptions.gigahorse) gigahorseUrlHandler else basicUrlHandler
+    // Ignore configuration.updateOptions.gigahorse due to sbt/sbt#6912
+    val urlHandler: URLHandler = basicUrlHandler
 
     // Only set the urlHandler for the http/https protocols so we do not conflict with any other plugins
     // that might register other protocol handlers.

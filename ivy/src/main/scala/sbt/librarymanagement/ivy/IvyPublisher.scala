@@ -2,7 +2,6 @@ package sbt
 package librarymanagement
 package ivy
 
-import okhttp3.OkHttpClient
 import sbt.internal.librarymanagement._
 import sbt.util.Logger
 import java.io.File
@@ -36,8 +35,5 @@ class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends PublisherInterface 
 
 object IvyPublisher {
   def apply(ivyConfiguration: IvyConfiguration): Publisher =
-    apply(ivyConfiguration, CustomHttp.defaultHttpClient)
-
-  def apply(ivyConfiguration: IvyConfiguration, http: OkHttpClient): Publisher =
-    Publisher(new IvyPublisher(new IvySbt(ivyConfiguration, http)))
+    Publisher(new IvyPublisher(new IvySbt(ivyConfiguration)))
 }

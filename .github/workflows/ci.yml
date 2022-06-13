@@ -37,7 +37,7 @@ jobs:
       run: |
         case ${{ matrix.jobtype }} in
           1)
-            sbt -v -Dfile.encoding=UTF8 scalafmtCheckAll whitesourceCheckPolicies +test +packagedArtifacts
+            sbt -v -Dfile.encoding=UTF8 scalafmtCheckAll +test +packagedArtifacts
             ;;
           *)
             echo unknown jobtype

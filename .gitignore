@@ -4,3 +4,4 @@ __pycache__
 
 scripted-test/src/sbt-test/*/*/project/build.properties
 scripted-test/src/sbt-test/*/*/project/plugins.sbt
+metals.sbt
