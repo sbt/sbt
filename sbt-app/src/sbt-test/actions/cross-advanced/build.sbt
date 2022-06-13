@@ -1,6 +1,6 @@
 lazy val check = taskKey[Unit]("")
 lazy val compile2 = taskKey[Unit]("")
-lazy val scala212 = "2.12.15"
+lazy val scala212 = "2.12.16"
 
 lazy val root = (project in file("."))
   .aggregate(foo, bar, client)

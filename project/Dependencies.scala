@@ -4,8 +4,8 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.15"
-  val scala213 = "2.13.6"
+  val scala212 = "2.12.16"
+  val scala213 = "2.13.8"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
