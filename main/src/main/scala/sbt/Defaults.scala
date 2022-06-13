@@ -43,7 +43,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
+import sbt.internal.librarymanagement._
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
   BspCompileProgress,
@@ -258,8 +258,6 @@ object Defaults extends BuildCommon {
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
-      CustomHttp.okhttpClientBuilder :== CustomHttp.defaultHttpClientBuilder,
-      CustomHttp.okhttpClient := CustomHttp.okhttpClientBuilder.value.build,
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
@@ -2705,7 +2703,7 @@ object Defaults extends BuildCommon {
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
     Def.taskIf {
       if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
-      else IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      else IvyDependencyResolution(ivyConfiguration.value)
     }
 }
 
@@ -3129,7 +3127,7 @@ object Classpaths {
       else None
     },
     dependencyResolution := dependencyResolutionTask.value,
-    publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
+    publisher := IvyPublisher(ivyConfiguration.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
       val confs = thisProject.value.configurations
@@ -3432,7 +3430,7 @@ object Classpaths {
   private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
     Def.task {
       Credentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     val deps = allDependencies.value.toVector
