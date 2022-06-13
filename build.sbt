@@ -6,7 +6,8 @@ val _ = {
   //https://github.com/sbt/contraband/issues/122
   sys.props += ("line.separator" -> "\n")
 }
-
+Global / semanticdbEnabled := true
+Global / semanticdbVersion := "4.5.9"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
@@ -118,8 +119,7 @@ lazy val lmCore = (project in file("core"))
       scalaReflect.value,
       scalaCompiler.value,
       launcherInterface,
-      gigahorseOkhttp,
-      okhttpUrlconnection,
+      gigahorseApacheHttp,
       sjsonnewScalaJson.value % Optional,
       scalaTest % Test,
       scalaCheck % Test,
@@ -260,7 +260,9 @@ lazy val lmCore = (project in file("core"))
         "sbt.librarymanagement.ResolverFunctions.validateArtifact"
       ),
       exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.*.validateProtocol"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"
+      ),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.dottyID"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.DottyIDPrefix"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.toolDependencies*"),
@@ -385,17 +387,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       "reload" ::
       state
   }
-)
-
-inThisBuild(
-  Seq(
-    whitesourceProduct := "Lightbend Reactive Platform",
-    whitesourceAggregateProjectName := "sbt-lm-master",
-    whitesourceAggregateProjectToken := "9bde4ccbaab7401a91f8cda337af84365d379e13abaf473b85cb16e3f5c65cb6",
-    whitesourceIgnoredScopes += "scalafmt",
-    whitesourceFailOnError := sys.env.contains("WHITESOURCE_PASSWORD"), // fail if pwd is present
-    whitesourceForceCheckAllDependencies := true,
-  )
 )
 
 def inCompileAndTest(ss: SettingsDefinition*): Seq[Setting[_]] =
