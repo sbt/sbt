@@ -35,7 +35,7 @@ private[sbt] object ClassLoaders {
    * Get the class loader for a test task. The configuration could be IntegrationTest or Test.
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
-    val si = runtimeScalaInstance.value
+    val si = scalaInstance.value
     val cp = fullClasspath.value.map(_.data)
     val dependencyStamps = modifiedTimes((dependencyClasspathFiles / outputFileStamps).value).toMap
     def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
@@ -64,7 +64,7 @@ private[sbt] object ClassLoaders {
 
   private[sbt] def runner: Def.Initialize[Task[ScalaRun]] = Def.taskDyn {
     val resolvedScope = resolvedScoped.value.scope
-    val instance = runtimeScalaInstance.value
+    val instance = scalaInstance.value
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
