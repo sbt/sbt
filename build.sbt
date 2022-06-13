@@ -246,6 +246,7 @@ lazy val bundledLauncherProj =
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
+      Compile / doc / javacOptions := Nil,
       Compile / packageBin := sbtLaunchJar.value,
       mimaSettings,
       mimaPreviousArtifacts := Set()
@@ -340,6 +341,7 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   javaOnlySettings,
   crossPaths := false,
   autoScalaLibrary := false,
+  Compile / doc / javacOptions := Nil,
   name := "Util Interface",
   exportJars := true,
   utilMimaSettings,
@@ -532,6 +534,7 @@ lazy val testAgentProj = (project in file("testing") / "agent")
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     autoScalaLibrary := false,
+    Compile / doc / javacOptions := Nil,
     name := "Test Agent",
     libraryDependencies += testInterface,
     mimaSettings,
