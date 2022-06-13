@@ -17,8 +17,10 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       val dependencySourcesProvider = unbuilder.readField[Option[Boolean]]("dependencySourcesProvider")
       val resourcesProvider = unbuilder.readField[Option[Boolean]]("resourcesProvider")
       val canReload = unbuilder.readField[Option[Boolean]]("canReload")
+      val jvmRunEnvironmentProvider = unbuilder.readField[Option[Boolean]]("jvmRunEnvironmentProvider")
+      val jvmTestEnvironmentProvider = unbuilder.readField[Option[Boolean]]("jvmTestEnvironmentProvider")
       unbuilder.endObject()
-      sbt.internal.bsp.BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload)
+      sbt.internal.bsp.BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -31,6 +33,8 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
     builder.addField("dependencySourcesProvider", obj.dependencySourcesProvider)
     builder.addField("resourcesProvider", obj.resourcesProvider)
     builder.addField("canReload", obj.canReload)
+    builder.addField("jvmRunEnvironmentProvider", obj.jvmRunEnvironmentProvider)
+    builder.addField("jvmTestEnvironmentProvider", obj.jvmTestEnvironmentProvider)
     builder.endObject()
   }
 }

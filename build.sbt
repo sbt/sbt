@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.6.3-SNAPSHOT"
+  val v = "1.7.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -46,7 +46,7 @@ ThisBuild / resolvers += Resolver.mavenLocal
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
-Global / semanticdbVersion := "4.5.4"
+Global / semanticdbVersion := "4.5.9"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -1057,6 +1057,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Defaults.earlyArtifactPathSetting"),
       exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
       exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
+      exclude[MissingClassProblem]("sbt.internal.CustomHttp*"),
     )
   )
   .configure(

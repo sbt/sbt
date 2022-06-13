@@ -7,6 +7,8 @@
 
 package xsbti;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 public interface Problem {
@@ -25,5 +27,25 @@ public interface Problem {
    */
   default Optional<String> rendered() {
     return Optional.empty();
+  }
+
+  /**
+   * The unique code attached to the diagnostic being reported.
+   *
+   * <p>NOTE: To avoid breaking compatibility we provide a default to account for older Scala
+   * versions that do not have codes.
+   */
+  default Optional<DiagnosticCode> diagnosticCode() {
+    return Optional.empty();
+  }
+
+  /**
+   * The possible releated information for the diagnostic being reported.
+   *
+   * <p>NOTE: To avoid breaking compatibility we provide a default to account for older Scala
+   * versions that do not have the concept of "related information".
+   */
+  default List<DiagnosticRelatedInformation> diagnosticRelatedInforamation() {
+    return Collections.emptyList();
   }
 }
