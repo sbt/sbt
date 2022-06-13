@@ -677,15 +677,6 @@ object Defaults extends BuildCommon {
       else topLoader
     },
     scalaInstance := scalaInstanceTask.value,
-    runtimeScalaInstance := Def.taskDyn {
-      scalaOutputVersion.?.value
-        .map { version =>
-          scalaInstanceTask0(version = version, isRuntimeInstance = true)
-        }
-        .getOrElse {
-          scalaInstance
-        }
-    }.value,
     crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
     pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
       (pluginCrossBuild / sbtVersion).value
@@ -984,49 +975,6 @@ object Defaults extends BuildCommon {
         old ++ Seq("-Wconf:cat=unused-nowarn:s", "-Xsource:3")
       else old
     },
-    scalacOptions := {
-      val old = scalacOptions.value
-
-      // 3 possible sources of Scala output version
-      val fromCompiler = CrossVersion
-        .partialVersion(scalaVersion.value)
-        .map { case (major, minor) => s"${major}.${minor}" }
-        .getOrElse(
-          sys.error(s"Wrong value of `scalaVersion`: ${scalaVersion.value}")
-        )
-
-      val maybeFromSetting = scalaOutputVersion.?.value.map { version =>
-        CrossVersion
-          .partialVersion(version)
-          .map { case (major, minor) => s"${major}.${minor}" }
-          .getOrElse(
-            sys.error(s"Wrong value of `scalaOutputVersion`: ${version}")
-          )
-      }
-
-      val maybeFromFlags = old.zipWithIndex.flatMap {
-        case (opt, idx) =>
-          if (opt.startsWith("-scala-output-version:"))
-            Some(opt.stripPrefix("-scala-output-version:"))
-          else if (opt == "-scala-output-version" && idx + 1 < old.length)
-            Some(old(idx + 1))
-          else None
-      }.lastOption
-
-      // Add -scala-output-version flag when minor Scala versions are different
-      // unless the flag is already set properly
-      maybeFromSetting match {
-        case Some(fromSetting) if fromSetting != fromCompiler =>
-          maybeFromFlags match {
-            case Some(fromFlags) if fromFlags == fromSetting =>
-              old
-            case _ =>
-              old ++ Seq("-scala-output-version", fromSetting)
-          }
-        case _ =>
-          old
-      }
-    },
     persistJarClasspath :== true,
     classpathEntryDefinesClassVF := {
       (if (persistJarClasspath.value) classpathDefinesClassCache.value
@@ -1137,19 +1085,13 @@ object Defaults extends BuildCommon {
     }
 
   def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
-    scalaInstanceTask0(scalaVersion.value, false)
-  }
-
-  private def scalaInstanceTask0(
-      version: String,
-      isRuntimeInstance: Boolean
-  ): Initialize[Task[ScalaInstance]] = Def.taskDyn {
     // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
     //  appropriately to avoid cycles
     scalaHome.value match {
       case Some(h) => scalaInstanceFromHome(h)
       case None =>
         val scalaProvider = appConfiguration.value.provider.scalaProvider
+        val version = scalaVersion.value
         if (version == scalaProvider.version) // use the same class loader as the Scala classes used by sbt
           Def.task {
             val allJars = scalaProvider.jars
@@ -1167,7 +1109,7 @@ object Defaults extends BuildCommon {
               case _ => ScalaInstance(version, scalaProvider)
             }
           } else
-          scalaInstanceFromUpdate0(isRuntimeInstance)
+          scalaInstanceFromUpdate
     }
   }
 
@@ -1188,29 +1130,22 @@ object Defaults extends BuildCommon {
     pre + post
   }
 
-  def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = scalaInstanceFromUpdate0(false)
-
-  private def scalaInstanceFromUpdate0(
-      isRuntimeInstance: Boolean
-  ): Initialize[Task[ScalaInstance]] = Def.task {
+  def scalaInstanceFromUpdate: Initialize[Task[ScalaInstance]] = Def.task {
     val sv = scalaVersion.value
     val fullReport = update.value
 
     val toolReport = fullReport
       .configuration(Configurations.ScalaTool)
       .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
-    lazy val runtimeReport = fullReport.configuration(Configurations.Runtime).get
-    val libraryReport = if (isRuntimeInstance) runtimeReport else toolReport
 
-    def libraryFile(id: String): File = {
+    def file(id: String): File = {
       val files = for {
-        m <- libraryReport.modules if m.module.name.startsWith(id)
+        m <- toolReport.modules if m.module.name.startsWith(id)
         (art, file) <- m.artifacts if art.`type` == Artifact.DefaultType
       } yield file
       files.headOption getOrElse sys.error(s"Missing $id jar file")
     }
 
-    val libraryJars = ScalaArtifacts.libraryIds(sv).map(libraryFile)
     val allCompilerJars = toolReport.modules.flatMap(_.artifacts.map(_._2))
     val allDocJars =
       fullReport
@@ -1218,6 +1153,7 @@ object Defaults extends BuildCommon {
         .toSeq
         .flatMap(_.modules)
         .flatMap(_.artifacts.map(_._2))
+    val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
 
     makeScalaInstance(
       sv,
@@ -2096,7 +2032,7 @@ object Defaults extends BuildCommon {
   def runnerInit: Initialize[Task[ScalaRun]] = Def.task {
     val tmp = taskTemporaryDirectory.value
     val resolvedScope = resolvedScoped.value.scope
-    val si = runtimeScalaInstance.value
+    val si = scalaInstance.value
     val s = streams.value
     val opts = forkOptions.value
     val options = javaOptions.value
@@ -3323,7 +3259,7 @@ object Classpaths {
       autoScalaLibrary.value && scalaHome.value.isEmpty && managedScalaInstance.value,
       sbtPlugin.value,
       scalaOrganization.value,
-      scalaOutputVersion.?.value.getOrElse(scalaVersion.value)
+      scalaVersion.value
     ),
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := {
