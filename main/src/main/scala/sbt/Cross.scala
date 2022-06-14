@@ -19,7 +19,7 @@ import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.CrossVersion
+import sbt.librarymanagement.{ CrossVersion, ScalaArtifacts }
 
 /**
  * Cross implements the Scala cross building commands:
@@ -314,6 +314,12 @@ object Cross {
       excluded.foreach(logProject.tupled)
     }
 
+    def crossCompatibleVersion(full: String): String = {
+      if (ScalaArtifacts.isScala3(full))
+        CrossVersion.partialVersion(full).fold(full) { case (maj, min) => s"$maj.$min" }
+      else CrossVersion.binaryScalaVersion(full)
+    }
+
     val projects: Seq[(ResolvedReference, Seq[ScalaVersion])] = {
       val projectScalaVersions =
         structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
@@ -323,11 +329,11 @@ object Cross {
           .map(BuildRef.apply)
           .map(proj => proj -> crossVersions(extracted, proj))
       } else {
-        val binaryVersion = CrossVersion.binaryScalaVersion(version)
+        val binaryVersion = crossCompatibleVersion(version)
 
         val (included, excluded) = projectScalaVersions.partition {
           case (_, scalaVersions) =>
-            scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
+            scalaVersions.exists(v => crossCompatibleVersion(v) == binaryVersion)
         }
         if (included.isEmpty) {
           sys.error(
