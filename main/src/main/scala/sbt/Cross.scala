@@ -339,16 +339,18 @@ object Cross {
                 )
             }
         }
-      } else {
-        val binaryVersion = CrossVersion.binaryScalaVersion(version)
+      } else
+        // This is the default implementation for ++ <sv> <command1>
+        // It checks that <sv> is backward compatible with one of the Scala versions listed
+        // in crossScalaVersions setting. Note this must account for the fact that in Scala 3.x
+        // 3.1.0 is not compatible with 3.0.0.
         projectScalaVersions.map {
           case (project, scalaVersions) =>
-            if (scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion))
+            if (scalaVersions.exists(CrossVersion.isScalaBinaryCompatibleWith(version, _)))
               (project, Some(version), scalaVersions)
             else
               (project, None, scalaVersions)
         }
-      }
     }
 
     val included = projects.collect {
