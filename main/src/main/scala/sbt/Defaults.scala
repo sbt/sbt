@@ -43,7 +43,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
+import sbt.internal.librarymanagement._
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
   BspCompileProgress,
@@ -258,8 +258,6 @@ object Defaults extends BuildCommon {
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
-      CustomHttp.okhttpClientBuilder :== CustomHttp.defaultHttpClientBuilder,
-      CustomHttp.okhttpClient := CustomHttp.okhttpClientBuilder.value.build,
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
@@ -1395,11 +1393,10 @@ object Defaults extends BuildCommon {
               val x = {
                 import analysis.{ apis, relations => rel }
                 rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                  rel.externalDeps(c).map(stamp) +
-                  (apis.internal.get(c) match {
-                    case Some(x) => x.compilationTimestamp
-                    case _       => Long.MinValue
-                  })
+                  rel.externalDeps(c).map(stamp) ++
+                  rel.productClassName.reverse(c).flatMap { pc =>
+                    apis.internal.get(pc).map(_.compilationTimestamp)
+                  } + Long.MinValue
               }.max
               if (x != Long.MinValue) {
                 stamps(c) = x
@@ -2641,7 +2638,7 @@ object Defaults extends BuildCommon {
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
     Def.taskIf {
       if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
-      else IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      else IvyDependencyResolution(ivyConfiguration.value)
     }
 }
 
@@ -3065,7 +3062,7 @@ object Classpaths {
       else None
     },
     dependencyResolution := dependencyResolutionTask.value,
-    publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
+    publisher := IvyPublisher(ivyConfiguration.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
       val confs = thisProject.value.configurations
@@ -3368,7 +3365,7 @@ object Classpaths {
   private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
     Def.task {
       Credentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     val deps = allDependencies.value.toVector
@@ -4387,7 +4384,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   }
 
   @deprecated(
-    "externalIvyFile is not supported by Couriser, and will be removed in the future",
+    "externalIvyFile is not supported by Coursier, and will be removed in the future",
     since = "1.5.0"
   )
   def externalIvyFile(

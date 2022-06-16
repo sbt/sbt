@@ -67,7 +67,7 @@ trait ConsoleInterface {
 }
 
 /**
- * A NetworkClient connects to a running an sbt instance or starts a
+ * A NetworkClient connects to a running sbt instance or starts a
  * new instance if there isn't already one running. Once connected,
  * it can send commands for sbt to run, it can send completions to sbt
  * and print the completions to stdout so that a shell can consume
@@ -78,15 +78,15 @@ trait ConsoleInterface {
  *                    needs to start it. It also contains the sbt command
  *                    arguments to send to the server if any are present.
  * @param console     a logging instance. This can use a ConsoleAppender or
- *                    just simply print to a PrintSream.
+ *                    just simply print to a PrintStream.
  * @param inputStream the InputStream from which the client reads bytes. It
  *                    is not hardcoded to System.in so that a NetworkClient
  *                    can be remotely controlled by a java process, which
- *                    is useful in test.
+ *                    is useful in testing.
  * @param errorStream the sink for messages that we always want to be printed.
  *                    It is usually System.err but could be overridden in tests
  *                    or set to a null OutputStream if the NetworkClient needs
- *                    to be silent
+ *                    to be silent.
  * @param printStream the sink for standard out messages. It is typically
  *                    System.out but in the case of completions, the bytes written
  *                    to System.out are usually treated as completion results
@@ -139,7 +139,7 @@ class NetworkClient(
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
-    !sys.env.contains("SBTC_AUTO_COMPLETE")
+    !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 

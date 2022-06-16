@@ -208,6 +208,15 @@ type BuildServerCapabilities {
   # The server sends notifications to the client on build
   # target change events via buildTarget/didChange
   # buildTargetChangedProvider: Boolean
+
+
+  # The JVM run/test environment request is sent from the client to the server 
+  # in order to gather information required to launch a Java process. 
+  # This is useful when the client wants to control the Java process execution, 
+  # for example to enable custom Java agents or launch a custom main class during 
+  # unit testing or debugging
+  jvmRunEnvironmentProvider: Boolean
+  jvmTestEnvironmentProvider: Boolean
 }
 
 type CompileProvider {
@@ -695,4 +704,35 @@ type ResourcesItem {
   target: sbt.internal.bsp.BuildTargetIdentifier!
    ## List of resource files.
   resources: [java.net.URI]
+}
+
+
+# JVM Environment requests
+
+type JvmEnvironmentItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+  classpath: [java.net.URI]!
+  jvmOptions: [String]!
+  workingDirectory: String!
+  environmentVariables: StringStringMap!
+}
+
+type JvmTestEnvironmentParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]!
+  originId: String
+}
+
+type JvmTestEnvironmentResult{
+  items: [sbt.internal.bsp.JvmEnvironmentItem]!
+  originId: String
+}
+
+type JvmRunEnvironmentParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]!
+  originId: String
+}
+
+type JvmRunEnvironmentResult{
+  items: [sbt.internal.bsp.JvmEnvironmentItem]!
+  originId: String
 }

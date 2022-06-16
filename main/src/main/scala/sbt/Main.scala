@@ -329,7 +329,6 @@ object BuiltinCommands {
       startServer,
       eval,
       last,
-      oldLastGrep,
       lastGrep,
       export,
       boot,
@@ -626,12 +625,6 @@ object BuiltinCommands {
       s
   }
 
-  @deprecated("Use `lastGrep` instead.", "1.2.0")
-  def oldLastGrep: Command =
-    lastGrepCommand(OldLastGrepCommand, oldLastGrepBrief, oldLastGrepDetailed, { s =>
-      lastGrepParser(s)
-    })
-
   def lastGrep: Command =
     lastGrepCommand(LastGrepCommand, lastGrepBrief, lastGrepDetailed, lastGrepParser)
 
@@ -643,9 +636,6 @@ object BuiltinCommands {
   ): Command =
     Command(name, briefHelp, detail)(parser) { (s: State, sks: (String, Option[AnyKeys])) =>
       {
-        if (name == OldLastGrepCommand)
-          s.log.warn(deprecationWarningText(OldLastGrepCommand, LastGrepCommand))
-
         (s, sks) match {
           case (s, (pattern, Some(sks))) =>
             val (str, _, display) = extractLast(s)

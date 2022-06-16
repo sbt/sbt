@@ -1,10 +1,16 @@
-ThisBuild / scalaVersion := "2.13.1"
+ThisBuild / scalaVersion := "2.13.8"
 
 Global / serverLog / logLevel := Level.Debug
 
 lazy val runAndTest = project.in(file("run-and-test"))
   .settings(
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.13.11",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+    Compile / javaOptions := Vector("Xmx256M"),
+    Compile / envVars := Map("KEY" -> "VALUE"),
+
+    Test / javaOptions := Vector("Xmx512M"),
+    Test / envVars := Map("KEY_TEST" -> "VALUE_TEST"),
   )
   .dependsOn(util)
 

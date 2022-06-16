@@ -75,7 +75,7 @@ private[sbt] object UITask {
                 this.synchronized(this.wait())
                 Right("") // should be unreachable
               // JLine returns null on ctrl+d when there is no other input. This interprets
-              // ctrl+d with no imput as an exit
+              // ctrl+d with no input as an exit
               case None => Left(TerminateAction)
               case Some(s: String) =>
                 s.trim() match {

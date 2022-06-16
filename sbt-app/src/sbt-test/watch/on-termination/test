@@ -1,7 +1,8 @@
-# This tests that we can override the state transformation in the watch task
-# In the build, watchOnEvent should return CancelWatch which should be successful, but we
-# override watchTasks to fail the state instead
+$ exists foo.txt
+> ~compile
+$ absent foo.txt
+> set watchOnIteration := { (_, _, _) => new Watch.HandleError(new IllegalStateException("fail")) }
+$ exists bar.txt
+-> ~compile
+$ absent bar.txt
 
--> ~ root / setStringValue foo.txt bar
-
-> checkStringValue foo.txt bar

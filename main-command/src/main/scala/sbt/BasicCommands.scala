@@ -406,7 +406,7 @@ object BasicCommands {
       case Some(line) =>
         val newState = s
           .copy(
-            onFailure = Some(Exec(Shell, None)),
+            onFailure = Some(Exec(OldShell, None)),
             remainingCommands = Exec(line, s.source) +: Exec(OldShell, None) +: s.remainingCommands
           )
           .setInteractive(true)
