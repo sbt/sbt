@@ -16,6 +16,6 @@ object ContTestMacro:
     object ContSyntax extends Cont
     import ContSyntax.*
     val convert1: Convert[qctx.type] = new InputInitConvert(qctx)
-    convert1.contMapN[A, List, Id](expr, convert1.idTransform)
+    convert1.contMapN[A, List, Id](expr, convert1.summonAppExpr[List], convert1.idTransform)
 
 end ContTestMacro

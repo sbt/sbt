@@ -22,6 +22,7 @@ import sbt.internal.util.appmacro.{
 }
 // import Instance.Transform
 import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition, ~> }
+import sbt.internal.util.complete.Parser
 
 import language.experimental.macros
 import scala.annotation.tailrec
@@ -56,8 +57,8 @@ object TaskMacro:
     t match
       case '{ if ($cond) then $thenp else $elsep } => mkIfS[A1](t)
       case _ =>
-        val convert1: Convert[qctx.type] = new FullConvert(qctx)
-        convert1.contMapN[A1, F, Id](t, convert1.idTransform)
+        val convert1 = new FullConvert(qctx)
+        convert1.contMapN[A1, F, Id](t, convert1.appExpr)
 
   def mkIfS[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     t match
@@ -69,8 +70,8 @@ object TaskMacro:
   def taskDynMacroImpl[A1: Type](
       t: Expr[Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
-    val convert1: Convert[qctx.type] = new FullConvert(qctx)
-    convert1.contFlatMap[A1, F, Id](t, convert1.idTransform)
+    val convert1 = new FullConvert(qctx)
+    convert1.contFlatMap[A1, F, Id](t, convert1.appExpr)
 
   /*
   def taskIfMacroImpl[A: Type](
@@ -157,16 +158,14 @@ object TaskMacro:
       $rec.set0($app, $sourcePosition)
     }
 
-  /*
   /** Implementation of := macro for tasks. */
-  def inputTaskAssignMacroImpl[A1: Type](using
+  def inputTaskAssignMacroImpl[A1: Type](v: Expr[A1])(using
       qctx: Quotes
-  )(v: c.Expr[A1]): c.Expr[Setting[InputTask[A1]]] = {
-    val init = inputTaskMacroImpl[A1](c)(v)
-    val assign = transformMacroImpl(c)(init.tree)(AssignInitName)
-    c.Expr[Setting[InputTask[A1]]](assign)
-  }
-   */
+  ): Expr[Setting[InputTask[A1]]] =
+    val init = inputTaskMacroImpl[A1](v)
+    // val assign = transformMacroImpl(init.tree)(AssignInitName)
+    // Expr[Setting[InputTask[A1]]](assign)
+    ???
 
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
@@ -238,94 +237,97 @@ object TaskMacro:
     import c.universe._
     c.Expr[A1](Literal(Constant(t)))
   }
+   */
 
-  def inputTaskMacroImpl[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[A1]): c.Expr[Initialize[InputTask[A1]]] =
-    inputTaskMacro0[A1](c)(t)
+  def inputTaskMacroImpl[A1: Type](tree: Expr[A1])(using
+      qctx: Quotes
+  ): Expr[Initialize[InputTask[A1]]] =
+    inputTaskMacro0[A1](tree)
 
-  def inputTaskDynMacroImpl[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[InputTask[A1]]] =
-    inputTaskDynMacro0[A1](c)(t)
+  // def inputTaskDynMacroImpl[A1: Type](t: c.Expr[Initialize[Task[A1]]])(using qctx: Quotes): c.Expr[Initialize[InputTask[A1]]] =
+  //   inputTaskDynMacro0[A1](c)(t)
 
-  private[this] def inputTaskMacro0[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[A1]): c.Expr[Initialize[InputTask[A1]]] =
-    iInitializeMacro(c)(t) { et =>
-      val pt = iParserMacro(c)(et) { pt =>
-        iTaskMacro(c)(pt)
+  private[this] def inputTaskMacro0[A1: Type](tree: Expr[A1])(using
+      qctx: Quotes
+  ): Expr[Initialize[InputTask[A1]]] =
+    iInitializeMacro(tree) { et =>
+      val pt = iParserMacro(et) { pt =>
+        iTaskMacro(pt)
       }
-      c.universe.reify { InputTask.make(pt.splice) }
+      '{ InputTask.make($pt) }
     }
 
-  private[this] def iInitializeMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
-      f: c.Expr[A1] => c.Expr[M[A1]]
-  )(implicit tt: Type[A1], mt: Type[M[A1]]): c.Expr[Initialize[M[A1]]] = {
-    val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[A1](in)).tree
-    val cond = c.Expr[A1](conditionInputTaskTree(c)(t.tree))
-    Instance
-      .contImpl[A1, M](c, InitializeInstance, InputInitConvert, MixedBuilder, EmptyLinter)(
-        Left(cond),
-        inner
-      )
-  }
+  private[this] def iInitializeMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
+      f: Expr[A1] => Expr[F1[A1]]
+  )(using qctx: Quotes): Expr[Initialize[F1[A1]]] =
+    import qctx.reflect.*
+    import InputWrapper.*
+    val convert1 = new InputInitConvert(qctx)
+    import convert1.Converted
 
-  private[this] def conditionInputTaskTree(c: blackbox.Context)(t: c.Tree): c.Tree = {
-    import c.universe._
-    import InputWrapper._
-    def wrapInitTask[A1: Type](tree: Tree) = {
-      val e = c.Expr[Initialize[Task[A1]]](tree)
-      wrapTask[A1](c)(wrapInit[Task[A1]](c)(e, tree.pos), tree.pos).tree
-    }
-    def wrapInitParser[A1: Type](tree: Tree) = {
-      val e = c.Expr[Initialize[State => Parser[A1]]](tree)
-      ParserInput.wrap[A1](c)(wrapInit[State => Parser[A1]](c)(e, tree.pos), tree.pos).tree
-    }
-    def wrapInitInput[A1: Type](tree: Tree) = {
-      val e = c.Expr[Initialize[InputTask[A1]]](tree)
-      wrapInput[A1](wrapInit[InputTask[A1]](c)(e, tree.pos).tree)
-    }
-    def wrapInput[A1: Type](tree: Tree) = {
-      val e = c.Expr[InputTask[A1]](tree)
-      val p = ParserInput.wrap[Task[A1]](c)(ParserInput.inputParser(c)(e), tree.pos)
-      wrapTask[A1](c)(p, tree.pos).tree
-    }
+    def wrapInitTask[A2: Type](tree: Term): Term =
+      val expr = tree.asExprOf[Initialize[Task[A2]]]
+      '{
+        InputWrapper.wrapTask[A2](InputWrapper.wrapInit[A2]($expr))
+      }.asTerm
 
-    def expand(nme: String, tpe: Type, tree: Tree): Converted[c.type] = nme match {
-      case WrapInitTaskName         => Converted.Success(wrapInitTask(tree)(Type(tpe)))
-      case WrapPreviousName         => Converted.Success(wrapInitTask(tree)(Type(tpe)))
-      case ParserInput.WrapInitName => Converted.Success(wrapInitParser(tree)(Type(tpe)))
-      case WrapInitInputName        => Converted.Success(wrapInitInput(tree)(Type(tpe)))
-      case WrapInputName            => Converted.Success(wrapInput(tree)(Type(tpe)))
-      case _                        => Converted.NotApplicable
-    }
-    val util = ContextUtil[c.type](c)
-    util.transformWrappers(t, (nme, tpe, tree, original) => expand(nme, tpe, tree))
-  }
+    def wrapInitParser[A2: Type](tree: Term): Term =
+      val expr = tree.asExprOf[Initialize[State => Parser[A2]]]
+      '{
+        ParserInput.wrap[A2](InputWrapper.wrapInit[State => Parser[A2]]($expr))
+      }.asTerm
 
-  private[this] def iParserMacro[M[_], T](c: blackbox.Context)(t: c.Expr[A1])(
-      f: c.Expr[A1] => c.Expr[M[A1]]
-  )(implicit tt: Type[A1], mt: Type[M[A1]]): c.Expr[State => Parser[M[A1]]] = {
-    val inner: Transform[c.type, M] = (in: c.Tree) => f(c.Expr[A1](in)).tree
-    Instance.contImpl[A1, M](c, ParserInstance, ParserConvert, MixedBuilder, LinterDSL.Empty)(
-      Left(t),
-      inner
-    )
-  }
+    def wrapInitInput[A2: Type](tree: Term): Term =
+      val expr = tree.asExprOf[Initialize[InputTask[A2]]]
+      wrapInput[A2]('{
+        InputWrapper.wrapInit[InputTask[A2]]($expr)
+      }.asTerm)
 
-  private[this] def iTaskMacro[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[A1]): c.Expr[Task[A1]] =
-    Instance
-      .contImpl[A1, Id](c, TaskInstance, TaskConvert, MixedBuilder, EmptyLinter)(
-        Left(t),
-        Instance.idTransform
+    def wrapInput[A2: Type](tree: Term): Term =
+      val expr = tree.asExprOf[InputTask[A1]]
+      '{
+        InputWrapper.wrapTask[A2](ParserInput.wrap[Task[A2]]($expr.parser))
+      }.asTerm
+
+    def expand(nme: String, tpeRepr: TypeRepr, tree: Term): Converted =
+      tpeRepr.asType match
+        case '[tpe] =>
+          nme match
+            case WrapInitTaskName         => Converted.success(wrapInitTask[tpe](tree))
+            case WrapPreviousName         => Converted.success(wrapInitTask[tpe](tree))
+            case ParserInput.WrapInitName => Converted.success(wrapInitParser[tpe](tree))
+            case WrapInitInputName        => Converted.success(wrapInitInput[tpe](tree))
+            case WrapInputName            => Converted.success(wrapInput[tpe](tree))
+            case _                        => Converted.NotApplicable()
+
+    def conditionInputTaskTree(t: Term): Term =
+      convert1.transformWrappers(
+        tree = t,
+        subWrapper = (nme, tpe, tree, original) => expand(nme, tpe, tree),
+        owner = Symbol.spliceOwner,
       )
 
+    val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
+    val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
+    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, inner)
+
+  private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
+      f: Expr[A1] => Expr[F1[A1]]
+  )(using qctx: Quotes): Expr[State => Parser[F1[A1]]] =
+    import qctx.reflect.*
+    val convert1 = new ParserConvert(qctx)
+    val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
+    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, inner)
+
+  private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
+    import qctx.reflect.*
+    val convert1 = new TaskConvert(qctx)
+    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr)
+
+  /*
   private[this] def inputTaskDynMacro0[A1: Type](
-      c: blackbox.Context
-  )(t: c.Expr[Initialize[Task[A1]]]): c.Expr[Initialize[InputTask[A1]]] = {
+      t: Expr[Initialize[Task[A1]]]
+  )(using qctx: Quotes): Expr[Initialize[InputTask[A1]]] = {
     import c.universe.{ Apply => ApplyTree, _ }
     import internal.decorators._
 
@@ -406,7 +408,6 @@ object TaskMacro:
     }
   }
    */
-
 end TaskMacro
 
 object DefinableTaskMacro:

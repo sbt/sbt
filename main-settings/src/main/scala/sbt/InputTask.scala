@@ -33,8 +33,8 @@ final class InputTask[A1] private (val parser: State => Parser[Task[A1]]):
     )
 end InputTask
 
-/*
-object InputTask {
+object InputTask:
+  /*
   implicit class InitializeInput[T](i: Initialize[InputTask[T]]) {
     def partialInput(in: String): Initialize[InputTask[T]] = i(_ partialInput in)
     def fullInput(in: String): Initialize[InputTask[T]] = i(_ fullInput in)
@@ -61,9 +61,11 @@ object InputTask {
   implicit def inputTaskInitParsed[T](
       @deprecated("unused", "") in: Initialize[InputTask[T]]
   ): std.ParserInputTask[T] = ???
+   */
 
-  def make[T](p: State => Parser[Task[T]]): InputTask[T] = new InputTask[T](p)
+  def make[A1](p: State => Parser[Task[A1]]): InputTask[A1] = new InputTask[A1](p)
 
+  /*
   def static[T](p: Parser[Task[T]]): InputTask[T] = free(_ => p)
 
   def static[I, T](p: Parser[I])(c: I => Task[T]): InputTask[T] = static(p map c)
@@ -89,10 +91,10 @@ object InputTask {
     }
 
   /**
- * Constructs an InputTask from:
- *  a) a Parser constructed using other Settings, but not Tasks
- *  b) a dynamically constructed Task that uses Settings, Tasks, and the result of parsing.
- */
+   * Constructs an InputTask from:
+   *  a) a Parser constructed using other Settings, but not Tasks
+   *  b) a dynamically constructed Task that uses Settings, Tasks, and the result of parsing.
+   */
   def createDyn[I, T](
       p: Initialize[State => Parser[I]]
   )(action: Initialize[Task[I => Initialize[Task[T]]]]): Initialize[InputTask[T]] =
@@ -124,10 +126,10 @@ object InputTask {
   }
 
   /**
- * The proper solution is to have a Manifest context bound and accept slight source incompatibility,
- * The affected InputTask construction methods are all deprecated and so it is better to keep complete
- * compatibility.  Because the AttributeKey is local, it uses object equality and the manifest is not used.
- */
+   * The proper solution is to have a Manifest context bound and accept slight source incompatibility,
+   * The affected InputTask construction methods are all deprecated and so it is better to keep complete
+   * compatibility.  Because the AttributeKey is local, it uses object equality and the manifest is not used.
+   */
   private[this] def localKey[T]: AttributeKey[T] =
     AttributeKey.local[Unit].asInstanceOf[AttributeKey[T]]
 
@@ -173,5 +175,5 @@ object InputTask {
     }
     f(task)
   }
-}
- */
+   */
+end InputTask

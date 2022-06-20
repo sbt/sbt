@@ -210,38 +210,33 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   /** Lifts the result of a setting initialization into a Task. */
   def toITask[A1](i: Initialize[A1]): Initialize[Task[A1]] = map(i)(std.TaskExtra.inlineTask)
 
-  def toSParser[T](p: Parser[T]): State => Parser[T] = const(p)
-  def toISParser[T](p: Initialize[Parser[T]]): Initialize[State => Parser[T]] = p(toSParser)
-  def toIParser[T](p: Initialize[InputTask[T]]): Initialize[State => Parser[Task[T]]] = p(_.parser)
+  inline def toSParser[A1](p: Parser[A1]): State => Parser[A1] = const(p)
+  def toISParser[A1](p: Initialize[Parser[A1]]): Initialize[State => Parser[A1]] =
+    p.apply[State => Parser[A1]](toSParser(_))
+  def toIParser[A1](p: Initialize[InputTask[A1]]): Initialize[State => Parser[Task[A1]]] =
+    p(_.parser)
 
   import std.SettingMacro.{
     // settingDynMacroImpl,
     settingMacroImpl
   }
-  import std.TaskMacro.{
-    //   inputTaskDynMacroImpl,
-    //   inputTaskMacroImpl,
-    taskDynMacroImpl,
-    //   taskIfMacroImpl,
-    taskMacroImpl,
-  }
-  import std._
+  import std.*
 
   import language.experimental.macros
 
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
-    ${ taskMacroImpl[A1]('a1) }
+    ${ TaskMacro.taskMacroImpl[A1]('a1) }
 
   inline def taskDyn[A1](a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
-    ${ taskDynMacroImpl[A1]('a1) }
+    ${ TaskMacro.taskDynMacroImpl[A1]('a1) }
 
   inline def setting[A1](inline a: A1): Def.Initialize[A1] = ${ settingMacroImpl[A1]('a) }
 
   // def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
-  // def inputTask[T](t: T): Def.Initialize[InputTask[T]] = macro inputTaskMacroImpl[T]
-  // def inputTaskDyn[T](t: Def.Initialize[Task[T]]): Def.Initialize[InputTask[T]] = {
-  //   macro inputTaskDynMacroImpl[T]
-  // }
+
+  inline def inputTask[A1](inline a: A1): Def.Initialize[InputTask[A1]] =
+    ${ TaskMacro.inputTaskMacroImpl[A1]('a) }
+
   // def taskIf[T](a: T): Def.Initialize[Task[T]] = macro taskIfMacroImpl[T]
 
   private[sbt] def selectITask[A1, A2](
@@ -310,14 +305,14 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and
   // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate
-  // result of type T
-  // implicit def parserInitToInput[T](
-  //     @deprecated("unused", "") p: Initialize[Parser[T]]
-  // ): ParserInput[T] = ???
+  // result of type A1, previously implemented using ParserInput.parsedMacroImpl[A1].
 
-  // implicit def parserInitStateToInput[T](
-  //     @deprecated("unused", "") p: Initialize[State => Parser[T]]
-  // ): ParserInput[T] = ???
+  extension [A1](in: Initialize[Parser[A1]])
+    inline def parsed: A1 = ParserInput.wrapInit[A1](Def.toISParser(in))
+
+  extension [A1](in: Initialize[State => Parser[A1]])
+    @targetName("parsedISPA1")
+    inline def parsed: A1 = ParserInput.wrapInit[A1](in)
 
   inline def settingKey[A1](inline description: String): SettingKey[A1] =
     ${ std.KeyMacro.settingKeyImpl[A1]('description) }
@@ -382,18 +377,19 @@ end Def
 
 // these need to be mixed into the sbt package object
 // because the target doesn't involve Initialize or anything in Def
-trait TaskMacroExtra {
+trait TaskMacroExtra:
+  import sbt.std.ParserInput
   // implicit def macroValueT[T](@deprecated("unused", "") in: Task[T]): std.MacroValue[T] = ???
 
   // implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
   //   ???
 
-  // implicit def parserToInput[T](@deprecated("unused", "") in: Parser[T]): std.ParserInput[T] = ???
+  extension [A1](in: Parser[A1])
+    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](Def.toSParser(in))
 
-  // implicit def stateParserToInput[T](
-  //     @deprecated("unused", "") in: State => Parser[T]
-  // ): std.ParserInput[T] = ???
-}
+  extension [A1](in: State => Parser[A1])
+    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](in)
+end TaskMacroExtra
 
 sealed trait InitializeImplicits0 { self: Def.type =>
   implicit def initOps[T](x: Def.Initialize[T]): Def.InitOps[T] = new Def.InitOps(x)

@@ -10,10 +10,9 @@ package sbt.std
 import sbt.internal.util.complete
 import sbt.internal.util.complete.DefaultParsers
 import sbt.{ Def, InputTask, Task }
+import sbt.Def.parsed
 
 object UseTask:
-  import sbt.std.FullInstance.given
-
   val set = Def.setting { 23 }
   val x = Def.task { set.value }
   val y = Def.task { true }
@@ -88,9 +87,10 @@ object Assign {
     // ik := { if (tsk.parsed.value == "blue") tk.value else mk.value }
   )
 
-  // val it1 = Def.inputTask {
-  //   tsk.parsed // "as" //dummy.value.parsed
-  // }
+  val it1 = Def.inputTask {
+    //
+    tsk.parsed // "as" //dummy.value.parsed
+  }
   // val it2 = Def.inputTask {
   //   "lit"
   // }

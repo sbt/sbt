@@ -11,6 +11,8 @@ package std
 import sbt.internal.util.appmacro.{ Convert, ContextUtil }
 import sbt.internal.util.complete.Parser
 import Def.Initialize
+import sbt.util.Applicative
+import sbt.internal.util.Types.Compose
 import scala.quoted.*
 
 class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
@@ -25,6 +27,9 @@ class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
       case _                             => Converted.NotApplicable()
 
   private def initTaskErrorMessage = "Internal sbt error: initialize+task wrapper not split"
+
+  def appExpr: Expr[Applicative[Initialize]] =
+    '{ InitializeInstance.initializeMonad }
 end InputInitConvert
 
 /** Converts an input `Term` of type `Parser[A]` or `State => Parser[A]` into a `Term` of type `State => Parser[A]`. */
@@ -40,6 +45,9 @@ class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C)
       case _                        => Converted.NotApplicable()
 
   private def initParserErrorMessage = "Internal sbt error: initialize+parser wrapper not split"
+
+  def appExpr: Expr[Applicative[ParserInstance.F1]] =
+    '{ ParserInstance.parserFunApplicative }
 end ParserConvert
 
 /** Convert instance for plain `Task`s not within the settings system. */
@@ -50,6 +58,9 @@ class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C)
   override def convert[A: Type](nme: String, in: Term): Converted =
     if nme == InputWrapper.WrapTaskName then Converted.success(in)
     else Converted.NotApplicable()
+
+  def appExpr[Expr[Monad[Task]]] =
+    '{ Task.taskMonad }
 end TaskConvert
 
 /**
@@ -83,6 +94,8 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C)
     }
     Converted.success(t.asTerm)
 
+  def appExpr: Expr[Applicative[Compose[Initialize, Task]]] =
+    '{ FullInstance.initializeTaskMonad }
 end FullConvert
 
 /**

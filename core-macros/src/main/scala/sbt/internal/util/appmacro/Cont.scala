@@ -24,12 +24,26 @@ trait Cont:
      */
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
+        instanceExpr: Expr[Applicative[F]]
+    )(using
+        iftpe: Type[F],
+        eatpe: Type[Effect[A]],
+    ): Expr[F[Effect[A]]] =
+      contMapN[A, F, Effect](tree, instanceExpr, conv.idTransform)
+
+    /**
+     * Implementation of a macro that provides a direct syntax for applicative functors. It is
+     * intended to be used in conjunction with another macro that conditions the inputs.
+     */
+    def contMapN[A: Type, F[_], Effect[_]: Type](
+        tree: Expr[A],
+        instanceExpr: Expr[Applicative[F]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Left(tree), inner)
+      contImpl[A, F, Effect](Left(tree), instanceExpr, inner)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -37,16 +51,38 @@ trait Cont:
      */
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
+        instanceExpr: Expr[Applicative[F]],
+    )(using
+        iftpe: Type[F],
+        eatpe: Type[Effect[A]],
+    ): Expr[F[Effect[A]]] =
+      contFlatMap[A, F, Effect](tree, instanceExpr, conv.idTransform)
+
+    /**
+     * Implementation of a macro that provides a direct syntax for applicative functors. It is
+     * intended to be used in conjunction with another macro that conditions the inputs.
+     */
+    def contFlatMap[A: Type, F[_], Effect[_]: Type](
+        tree: Expr[F[A]],
+        instanceExpr: Expr[Applicative[F]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Right(tree), inner)
+      contImpl[A, F, Effect](Right(tree), instanceExpr, inner)
+
+    def summonAppExpr[F[_]: Type]: Expr[Applicative[F]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[Applicative[F]]
+        .getOrElse(sys.error(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}"))
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
-     * It is intended to be used in conjunction with another macro that conditions the inputs.
+     * It is intended to bcke used in conjunction with another macro that conditions the inputs.
      *
      * This method processes the Term `t` to find inputs of the form `wrap[A]( input )` This form is
      * typically constructed by another macro that pretends to be able to get a value of type `A`
@@ -83,6 +119,7 @@ trait Cont:
      */
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
+        instanceExpr: Expr[Applicative[F]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -98,11 +135,6 @@ trait Cont:
         case Left(l)  => (l, TypeRepr.of[Effect[A]])
         case Right(r) => (r, faTpe)
 
-      // we can extract i out of i.type
-      val instanceExpr =
-        Expr
-          .summon[Applicative[F]]
-          .getOrElse(sys.error(s"Applicative[F] not found for ${fTypeCon.typeSymbol}"))
       val inputBuf = ListBuffer[Input]()
 
       def makeApp(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] = inputs match

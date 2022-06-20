@@ -29,10 +29,12 @@ end InitializeInstance
 private[std] object ComposeInstance:
   import InitializeInstance.initializeMonad
   val InitInstance = summon[Applicative[Initialize]]
-  val F1F2: Applicative[Compose[Initialize, Task]] = summon[Applicative[Compose[Initialize, Task]]]
+  val F1F2: Applicative[Compose[Initialize, Task]] =
+    summon[Applicative[Compose[Initialize, Task]]]
 end ComposeInstance
 
 object ParserInstance:
+  type F1[x] = State => Parser[x]
   // import sbt.internal.util.Classes.Applicative
   // private[this] implicit val parserApplicative: Applicative[M] = new Applicative[M] {
   //   def apply[S, T](f: M[S => T], v: M[S]): M[A1] = s => (f(s) ~ v(s)) map { case (a, b) => a(b) }
@@ -40,7 +42,7 @@ object ParserInstance:
   //   def map[S, T](f: S => T, v: M[S]) = s => v(s).map(f)
   // }
 
-  given Applicative[[a] =>> State => Parser[a]] with
+  given parserFunApplicative: Applicative[F1] with
     type F[x] = State => Parser[x]
     override def pure[A1](a: () => A1): State => Parser[A1] = const(DefaultParsers.success(a()))
     override def ap[A1, A2](ff: F[A1 => A2])(fa: F[A1]): F[A2] =
@@ -60,7 +62,7 @@ object FullInstance:
 
   given Monad[Initialize] = InitializeInstance.initializeMonad
   val F1F2: Applicative[Compose[Initialize, Task]] = ComposeInstance.F1F2
-  given Monad[Compose[Initialize, Task]] with
+  given initializeTaskMonad: Monad[Compose[Initialize, Task]] with
     type F[x] = Initialize[Task[x]]
     override def pure[A1](x: () => A1): Initialize[Task[A1]] = F1F2.pure(x)
     override def ap[A1, A2](ff: Initialize[Task[A1 => A2]])(

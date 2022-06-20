@@ -16,6 +16,7 @@ import sbt.internal.util.appmacro.{
   Convert,
   // LinterDSL,
 }
+import sbt.util.Applicative
 import scala.quoted.*
 
 class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C)
@@ -31,6 +32,9 @@ class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C)
       case InputWrapper.WrapPreviousName =>
         Converted.Failure(in.pos, "A setting cannot depend on a task's previous value.")
       case _ => Converted.NotApplicable()
+
+  def appExpr: Expr[Applicative[Initialize]] =
+    '{ InitializeInstance.initializeMonad }
 end InitializeConvert
 
 object SettingMacro:
@@ -41,8 +45,8 @@ object SettingMacro:
   import ContSyntax.*
 
   def settingMacroImpl[A1: Type](in: Expr[A1])(using qctx: Quotes): Expr[Initialize[A1]] =
-    val convert1: Convert[qctx.type] = InitializeConvert(qctx)
-    convert1.contMapN[A1, F, Id](in, convert1.idTransform)
+    val convert1 = InitializeConvert(qctx)
+    convert1.contMapN[A1, F, Id](in, convert1.appExpr)
 
 /*
   def settingDynMacroImpl[T: c.WeakTypeTag](

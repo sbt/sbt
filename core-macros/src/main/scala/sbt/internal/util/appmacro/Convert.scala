@@ -39,12 +39,19 @@ trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil
       subWrapper: (String, TypeRepr, Term, Term) => Converted,
       owner: Symbol,
   ): Term =
+    object ApplySelectOrIdent:
+      def unapply(tree: Term): Option[(String, TypeTree, Term)] = tree match
+        case Apply(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) => Some((nme, targ, qual))
+        case Apply(TypeApply(Ident(nme), targ :: Nil), qual :: Nil)     => Some((nme, targ, qual))
+        case _                                                          => None
+    end ApplySelectOrIdent
+
     // the main tree transformer that replaces calls to InputWrapper.wrap(x) with
     //  plain Idents that reference the actual input value
     object appTransformer extends TreeMap:
       override def transformTerm(tree: Term)(owner: Symbol): Term =
         tree match
-          case Apply(TypeApply(Select(_, nme), targ :: Nil), qual :: Nil) =>
+          case ApplySelectOrIdent(nme, targ, qual) =>
             subWrapper(nme, targ.tpe, qual, tree) match
               case Converted.Success(tree, finalTransform) =>
                 finalTransform(tree)

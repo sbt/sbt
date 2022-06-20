@@ -64,6 +64,9 @@ object InputWrapper:
   private[this] def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
 
+  inline def wrapTask[A](in: Any): A = `wrapTask_\u2603\u2603`[A](in)
+  inline def wrapInit[A](in: Any): A = `wrapInit_\u2603\u2603`[A](in)
+
   /*
   private[std] def wrapInitInputTask[T: c.WeakTypeTag](using qctx: Quotes)(
       ts: c.Expr[Any],
@@ -189,12 +192,6 @@ sealed abstract class MacroValue[A1] {
   def value: A1 = macro InputWrapper.valueMacroImpl[A1]
 }
 
-sealed abstract class ParserInput[T] {
-  @compileTimeOnly(
-    "`parsed` can only be used within an input task macro, such as := or Def.inputTask."
-  )
-  def parsed: T = macro ParserInput.parsedMacroImpl[T]
-}
 sealed abstract class InputEvaluated[T] {
   @compileTimeOnly(
     "`evaluated` can only be used within an input task macro, such as := or Def.inputTask."
@@ -239,16 +236,11 @@ object ParserInput:
   )
   def `initParser_\u2603\u2603`[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
-/*
-  private[std] def wrap[T: c.WeakTypeTag](
-      using qctx: Quotes
-  )(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
-    InputWrapper.wrapImpl[T, ParserInput.type](c, ParserInput, WrapName)(ts, pos)
-  private[std] def wrapInit[T: c.WeakTypeTag](
-      using qctx: Quotes
-  )(ts: c.Expr[Any], pos: c.Position): c.Expr[T] =
-    InputWrapper.wrapImpl[T, ParserInput.type](c, ParserInput, WrapInitName)(ts, pos)
 
+  inline def wrap[A1](in: Any): A1 = `parser_\u2603\u2603`[A1](in)
+  inline def wrapInit[A1](in: Any): A1 = `initParser_\u2603\u2603`[A1](in)
+
+/*
   private[std] def inputParser[T: c.WeakTypeTag](
       using qctx: Quotes
   )(t: c.Expr[InputTask[T]]): c.Expr[State => Parser[Task[T]]] =

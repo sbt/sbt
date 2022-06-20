@@ -62,5 +62,5 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C):
     def apply(in: Term): Term
   end TermTransform
 
-  def idTransform: TermTransform[Id] = in => in
+  def idTransform[F[_]]: TermTransform[F] = in => in
 end ContextUtil
