@@ -32,32 +32,19 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 import xsbti.CompileFailed
 
+import java.nio.file.Path
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 
 // import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
-import scala.collection.concurrent.TrieMap
 import sbt.testing.Framework
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
-
-  /**
-   * Keep track of those projects that were compiled at least once so that we can
-   * decide to enable fresh reporting for projects that are compiled for the first time.
-   *
-   * see: https://github.com/scalacenter/bloop/issues/726
-   */
-  private val compiledTargetsAtLeastOnce = new TrieMap[bsp.BuildTargetIdentifier, Boolean]()
-  def shouldReportAllPreviousProblems(id: bsp.BuildTargetIdentifier): Boolean = {
-    compiledTargetsAtLeastOnce.putIfAbsent(id, true) match {
-      case Some(_) => false
-      case None    => true
-    }
-  }
 
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),
@@ -305,12 +292,20 @@ object BuildServerProtocol {
     bspScalaMainClassesItem := scalaMainClassesTask.value,
     Keys.compile / bspReporter := {
       val targetId = bspTargetIdentifier.value
+      val bspCompileStateInstance = bspCompileState.value
       val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
       val meta = isMetaBuild.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, converter, meta, logger, underlying)
+        new BuildServerReporterImpl(
+          targetId,
+          bspCompileStateInstance,
+          converter,
+          meta,
+          logger,
+          underlying
+        )
       } else {
         new BuildServerForwarder(meta, logger, underlying)
       }
@@ -356,7 +351,6 @@ object BuildServerProtocol {
           case r if r.method == Method.Initialize =>
             val params = Converter.fromJson[InitializeBuildParams](json(r)).get
             checkMetalsCompatibility(semanticdbEnabled, semanticdbVersion, params, callback.log)
-            compiledTargetsAtLeastOnce.clear()
 
             val response = InitializeBuildResult(
               "sbt",
@@ -714,6 +708,10 @@ object BuildServerProtocol {
     DependencySourcesItem(targetId, sources.toVector.distinct)
   }
 
+  private def bspCompileState: Initialize[BuildServerProtocol.BspCompileState] = Def.setting {
+    new BuildServerProtocol.BspCompileState()
+  }
+
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
     Keys.compile.result.value match {
       case Value(_) => StatusCode.Success
@@ -999,5 +997,21 @@ object BuildServerProtocol {
           s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}"
         )
     }
+  }
+
+  /**
+   * Additional information about compilation status for given build target.
+   *
+   * @param hasAnyProblems keeps track of problems in given file so BSP reporter
+   * can omit unnecessary diagnostics updates.
+   * @param compiledAtLeastOnce keeps track of those projects that were compiled at
+   * least once so that we can decide to enable fresh reporting for projects that
+   * are compiled for the first time.
+   * see: https://github.com/scalacenter/bloop/issues/726
+   */
+  private[server] final class BspCompileState {
+    val hasAnyProblems: java.util.Set[Path] =
+      java.util.concurrent.ConcurrentHashMap.newKeySet[Path]
+    val compiledAtLeastOnce: AtomicBoolean = new AtomicBoolean(false)
   }
 }
