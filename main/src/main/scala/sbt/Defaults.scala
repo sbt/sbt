@@ -2308,11 +2308,10 @@ object Defaults extends BuildCommon {
     val ci = (compile / compileInputs).value
     val ping = earlyOutputPing.value
     val reporter = (compile / bspReporter).value
-    val prevAnalysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
     BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
       task =>
         // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-        compileIncrementalTaskImpl(task, s, ci, ping, reporter, prevAnalysis)
+        compileIncrementalTaskImpl(task, s, ci, ping, reporter)
     }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
@@ -2327,7 +2326,7 @@ object Defaults extends BuildCommon {
         val result0 = incCompiler
           .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
           .compileAllJava(in, s.log)
-        reporter.sendSuccessReport(result0.analysis(), Analysis.empty, false)
+        reporter.sendSuccessReport(result0.analysis())
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
     } catch {
@@ -2342,7 +2341,6 @@ object Defaults extends BuildCommon {
       ci: Inputs,
       promise: PromiseWrap[Boolean],
       reporter: BuildServerReporter,
-      prev: CompileAnalysis
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) = {
@@ -2364,11 +2362,7 @@ object Defaults extends BuildCommon {
       .withSetup(onProgress(setup))
     try {
       val result = incCompiler.compile(i, s.log)
-      reporter.sendSuccessReport(
-        result.getAnalysis,
-        prev,
-        BuildServerProtocol.shouldReportAllPreviousProblems(task.targetId)
-      )
+      reporter.sendSuccessReport(result.getAnalysis)
       result
     } catch {
       case e: Throwable =>
