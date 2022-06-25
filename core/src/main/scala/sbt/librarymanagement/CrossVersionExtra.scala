@@ -239,6 +239,6 @@ private[librarymanagement] abstract class CrossVersionFunctions {
   /**
    * Returns `true` if a project targeting version `origVersion` can run with version `newVersion`.
    */
-  def isBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean =
-    CrossVersionUtil.isBinaryCompatibleWith(newVersion, origVersion)
+  def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean =
+    CrossVersionUtil.isScalaBinaryCompatibleWith(newVersion, origVersion)
 }

@@ -92,12 +92,18 @@ object CrossVersionUtil {
   //
   //   - For non-stable Scala 3 versions, compiler versions can read TASTy in an older stable format but their TASTY versions are not compatible between each other even if the compilers have the same minor version (https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html)
   //
-  private[sbt] def isBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean = {
+  private[sbt] def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean = {
     (newVersion, origVersion) match {
-      case (NonReleaseV_n("2", nMin, _, _), NonReleaseV_n("2", oMin, _, _)) => nMin == oMin
-      case (ReleaseV("3", nMin, _, _), ReleaseV("3", oMin, _, _))           => nMin.toInt >= oMin.toInt
-      case (NonReleaseV_1("3", nMin, _, _), ReleaseV("3", oMin, _, _))      => nMin.toInt > oMin.toInt
-      case _                                                                => newVersion == origVersion
+      case (NonReleaseV_n("2", nMin, _, _), NonReleaseV_n("2", oMin, _, _)) =>
+        nMin == oMin
+      case (ReleaseV(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt >= oMin.toInt
+      case (NonReleaseV_1(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt > oMin.toInt
+      case _ =>
+        newVersion == origVersion
     }
   }
 
