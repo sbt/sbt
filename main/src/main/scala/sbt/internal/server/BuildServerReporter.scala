@@ -12,6 +12,7 @@ import java.nio.file.Path
 import sbt.StandardMain
 import sbt.internal.bsp._
 import sbt.internal.util.ManagedLogger
+import sbt.internal.server.BuildServerProtocol.BspCompileState
 import xsbti.compile.CompileAnalysis
 import xsbti.{
   FileConverter,
@@ -40,8 +41,6 @@ sealed trait BuildServerReporter extends Reporter {
 
   def sendSuccessReport(
       analysis: CompileAnalysis,
-      prev: CompileAnalysis,
-      reportAllPreviousProblems: Boolean
   ): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
@@ -73,6 +72,7 @@ sealed trait BuildServerReporter extends Reporter {
 
 final class BuildServerReporterImpl(
     buildTarget: BuildTargetIdentifier,
+    bspCompileState: BspCompileState,
     converter: FileConverter,
     protected override val isMetaBuild: Boolean,
     protected override val logger: ManagedLogger,
@@ -90,22 +90,38 @@ final class BuildServerReporterImpl(
     if (ref.id().contains("<")) None
     else Some(converter.toPath(ref))
 
+  /**
+   * Send diagnostics from the compilation to the client.
+   * Do not send empty diagnostics if previous ones were also empty ones.
+   *
+   * @param analysis current compile analysis
+   */
   override def sendSuccessReport(
       analysis: CompileAnalysis,
-      prev: CompileAnalysis,
-      reportAllPreviousProblems: Boolean
   ): Unit = {
-    val prevInfos = prev.readSourceInfos().getAllSourceInfos().asScala
+    val shouldReportAllProblems = !bspCompileState.compiledAtLeastOnce.getAndSet(true)
     for {
       (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
       filePath <- toSafePath(source)
     } {
-      val prevProblems = prevInfos.get(source).map(_.getReportedProblems()).getOrElse(Array.empty)
-      val dontPublish = prevProblems.length == 0 && infos.getReportedProblems().length == 0
-      val shouldPublish = reportAllPreviousProblems || !dontPublish
+      // clear problems for current file
+      val hadProblems = bspCompileState.hasAnyProblems.remove(filePath)
+
+      val reportedProblems = infos.getReportedProblems.toVector
+      val diagnostics = reportedProblems.flatMap(toDiagnostic)
+
+      // publish diagnostics if:
+      // 1. file had any problems previously - we might want to update them with new ones
+      // 2. file has fresh problems - we might want to update old ones
+      // 3. build project is compiled first time - shouldReportAllProblems is set
+      val shouldPublish = hadProblems || diagnostics.nonEmpty || shouldReportAllProblems
+
+      // file can have some warnings
+      if (diagnostics.nonEmpty) {
+        bspCompileState.hasAnyProblems.add(filePath)
+      }
 
       if (shouldPublish) {
-        val diagnostics = infos.getReportedProblems.toSeq.flatMap(toDiagnostic)
         val params = PublishDiagnosticsParams(
           textDocument = TextDocumentIdentifier(filePath.toUri),
           buildTarget,
@@ -117,21 +133,32 @@ final class BuildServerReporterImpl(
       }
     }
   }
-
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
+    val shouldReportAllProblems = !bspCompileState.compiledAtLeastOnce.get
     for {
       source <- sources
       filePath <- toSafePath(source)
     } {
-      val diagnostics = problemsByFile.getOrElse(filePath, Vector())
-      val params = PublishDiagnosticsParams(
-        textDocument = TextDocumentIdentifier(filePath.toUri),
-        buildTarget,
-        originId = None,
-        diagnostics,
-        reset = true
-      )
-      exchange.notifyEvent("build/publishDiagnostics", params)
+      val diagnostics = problemsByFile.getOrElse(filePath, Vector.empty)
+
+      val hadProblems = bspCompileState.hasAnyProblems.remove(filePath)
+      val shouldPublish = hadProblems || diagnostics.nonEmpty || shouldReportAllProblems
+
+      // mark file as file with problems
+      if (diagnostics.nonEmpty) {
+        bspCompileState.hasAnyProblems.add(filePath)
+      }
+
+      if (shouldPublish) {
+        val params = PublishDiagnosticsParams(
+          textDocument = TextDocumentIdentifier(filePath.toUri),
+          buildTarget,
+          originId = None,
+          diagnostics,
+          reset = true
+        )
+        exchange.notifyEvent("build/publishDiagnostics", params)
+      }
     }
   }
 
@@ -141,7 +168,7 @@ final class BuildServerReporterImpl(
       diagnostic <- toDiagnostic(problem)
       filePath <- toSafePath(VirtualFileRef.of(id))
     } {
-      problemsByFile(filePath) = problemsByFile.getOrElse(filePath, Vector()) :+ diagnostic
+      problemsByFile(filePath) = problemsByFile.getOrElse(filePath, Vector.empty) :+ diagnostic
       val params = PublishDiagnosticsParams(
         TextDocumentIdentifier(filePath.toUri),
         buildTarget,
@@ -196,8 +223,6 @@ final class BuildServerForwarder(
 
   override def sendSuccessReport(
       analysis: CompileAnalysis,
-      prev: CompileAnalysis,
-      reportAllPreviousProblems: Boolean
   ): Unit = ()
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = ()
