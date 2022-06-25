@@ -284,6 +284,55 @@ class CrossVersionTest extends UnitSpec {
     patchVersion("2.11.8-X1.5-bin-extra") shouldBe Some("artefact_2.11.8-X1.5")
   }
 
+  "isBinaryCompatibleWith" should "for (2.10.4, 2.10.5) return true" in {
+    isBinaryCompatibleWith("2.10.4", "2.10.5") shouldBe true
+  }
+  it should "for (2.10.6, 2.10.5) return true" in {
+    isBinaryCompatibleWith("2.10.6", "2.10.5") shouldBe true
+  }
+  it should "for (2.11.0, 2.10.5) return false" in {
+    isBinaryCompatibleWith("2.11.0", "2.10.5") shouldBe false
+  }
+  it should "for (3.0.0, 2.10.5) return false" in {
+    isBinaryCompatibleWith("3.0.0", "2.10.5") shouldBe false
+  }
+  it should "for (3.0.0, 3.1.0) return false" in {
+    isBinaryCompatibleWith("3.0.0", "3.1.0") shouldBe false
+  }
+  it should "for (3.1.0, 3.0.0) return true" in {
+    isBinaryCompatibleWith("3.1.0", "3.0.0") shouldBe true
+  }
+  it should "for (3.1.0, 3.1.1) return true" in {
+    isBinaryCompatibleWith("3.1.0", "3.1.1") shouldBe true
+  }
+  it should "for (3.1.1, 3.1.0) return true" in {
+    isBinaryCompatibleWith("3.1.1", "3.1.0") shouldBe true
+  }
+  it should "for (2.10.0-M1, 2.10.5) return true" in {
+    isBinaryCompatibleWith("2.10.0-M1", "2.10.5") shouldBe true
+  }
+  it should "for (2.10.5, 2.10.0-M1) return true" in {
+    isBinaryCompatibleWith("2.10.5", "2.10.0-M1") shouldBe true
+  }
+  it should "for (2.10.0-M1, 2.10.0-M2) return true" in {
+    isBinaryCompatibleWith("2.10.0-M1", "2.10.0-M2") shouldBe true
+  }
+  it should "for (2.10.0-M1, 2.11.0-M1) return false" in {
+    isBinaryCompatibleWith("2.10.0-M1", "2.11.0-M1") shouldBe false
+  }
+  it should "for (3.1.0-M1, 3.0.0) return true" in {
+    isBinaryCompatibleWith("3.1.0-M1", "3.0.0") shouldBe true
+  }
+  it should "for (3.1.0-M1, 3.1.0) return false" in {
+    isBinaryCompatibleWith("3.1.0-M1", "3.1.0") shouldBe false
+  }
+  it should "for (3.1.0-M1, 3.1.0-M2) return false" in {
+    isBinaryCompatibleWith("3.1.0-M1", "3.1.0-M2") shouldBe false
+  }
+  it should "for (3.1.0-M2, 3.1.0-M1) return false" in {
+    isBinaryCompatibleWith("3.1.0-M2", "3.1.0-M1") shouldBe false
+  }
+
   private def constantVersion(value: String) =
     CrossVersion(CrossVersion.constant(value), "dummy1", "dummy2") map (fn => fn("artefact"))
 

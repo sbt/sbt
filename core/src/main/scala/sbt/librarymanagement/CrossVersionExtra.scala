@@ -9,7 +9,7 @@ private[librarymanagement] abstract class CrossVersionFunctions {
 
   /** Compatibility with 0.13 */
   @deprecated(
-    "use CrossVersion.disabled instead. prior to sbt 1.3.0, Diabled did not work without apply(). sbt/sbt#4977",
+    "use CrossVersion.disabled instead. prior to sbt 1.3.0, Disabled did not work without apply(). sbt/sbt#4977",
     "1.3.0"
   )
   final val Disabled = sbt.librarymanagement.Disabled
@@ -235,4 +235,10 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    * Full sbt versions earlier than [[sbt.librarymanagement.CrossVersion.TransitionSbtVersion]] are returned as is.
    */
   def binarySbtVersion(full: String): String = CrossVersionUtil.binarySbtVersion(full)
+
+  /**
+   * Returns `true` if a project targeting version `origVersion` can run with version `newVersion`.
+   */
+  def isBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean =
+    CrossVersionUtil.isBinaryCompatibleWith(newVersion, origVersion)
 }
