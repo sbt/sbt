@@ -8,7 +8,6 @@
 package sbt
 
 import java.io.File
-import java.util.regex.Pattern
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.Keys._
 import sbt.SlashSyntax0._
@@ -19,7 +18,7 @@ import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.CrossVersion
+import sbt.librarymanagement.{ CrossVersion, SemanticSelector, VersionNumber }
 
 /**
  * Cross implements the Scala cross building commands:
@@ -327,10 +326,11 @@ object Cross {
         } ++ structure.units.keys
           .map(BuildRef.apply)
           .map(proj => (proj, Some(version), crossVersions(extracted, proj)))
-      } else if (version.contains('*')) {
+      } else if (isSelector(version)) {
+        val selector = SemanticSelector(version)
         projectScalaVersions.map {
           case (project, scalaVersions) =>
-            globFilter(version, scalaVersions) match {
+            scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
               case Nil          => (project, None, scalaVersions)
               case Seq(version) => (project, Some(version), scalaVersions)
               case multiple =>
@@ -370,19 +370,13 @@ object Cross {
     (setScalaVersionsForProjects(instance, included, state, extracted), included.map(_._1))
   }
 
-  def globFilter(pattern: String, candidates: Seq[String]): Seq[String] = {
-    def createGlobRegex(remainingPattern: String): String =
-      remainingPattern.indexOf("*") match {
-        case -1 => Pattern.quote(remainingPattern)
-        case n =>
-          val chunk = Pattern.quote(remainingPattern.substring(0, n)) + ".*"
-          if (remainingPattern.length > n)
-            chunk + createGlobRegex(remainingPattern.substring(n + 1))
-          else chunk
-      }
-    val compiledPattern = Pattern.compile(createGlobRegex(pattern))
-    candidates.filter(compiledPattern.matcher(_).matches())
-  }
+  // determine whether this is a 'specific' version or a selector
+  // to be passed to SemanticSelector
+  private def isSelector(version: String): Boolean =
+    version.contains('*') || version.contains('x') || version.contains('X') || version.contains(' ') ||
+      version.contains('<') || version.contains('>') || version.contains('|') || version.contains(
+      '='
+    )
 
   private def setScalaVersionsForProjects(
       instance: Option[(File, ScalaInstance)],
