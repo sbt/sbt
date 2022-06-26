@@ -152,6 +152,8 @@ jobs:
       if: ${{ matrix.jobtype == 7 }}
       shell: bash
       run: |
+        # test building sbtn on Linux
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8 test using JDK 8 and JDK 11
         cd launcher-package
@@ -165,6 +167,8 @@ jobs:
       if: ${{ matrix.jobtype == 8 }}
       shell: bash
       run: |
+        # test building sbtn on macOS
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8, test using JDK 8, on macOS
         cd launcher-package
@@ -175,6 +179,8 @@ jobs:
       if: ${{ matrix.jobtype == 9 }}
       shell: bash
       run: |
+        # test building sbtn on Windows
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8, test using JDK 8, on Windows
         cd launcher-package

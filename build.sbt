@@ -211,7 +211,7 @@ lazy val sbtRoot: Project = (project in file("."))
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
     buildThinClient := (sbtClientProj / buildThinClient).evaluated,
-    buildNativeThinClient := (sbtClientProj / buildNativeThinClient).value,
+    nativeImage := (sbtClientProj / nativeImage).value,
     installNativeThinClient := {
       // nativeInstallDirectory can be set globally or in a gitignored local file
       val dir = nativeInstallDirectory.?.value
@@ -226,7 +226,7 @@ lazy val sbtRoot: Project = (project in file("."))
           }
       }
       val base = baseDirectory.value.toPath
-      val exec = (sbtClientProj / buildNativeThinClient).value
+      val exec = (sbtClientProj / nativeImage).value.toPath
       streams.value.log.info(s"installing thin client ${base.relativize(exec)} to ${target}")
       Files.copy(exec, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
@@ -1143,17 +1143,11 @@ lazy val serverTestProj = (project in file("server-test"))
 val isWin = scala.util.Properties.isWin
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
-val thinClientClasspath =
-  taskKey[Seq[JPath]]("Generate the classpath for thin client (compacted for windows)")
-val thinClientNativeImageCommand = taskKey[String]("The native image command")
-val thinClientNativeImageOptions = settingKey[Seq[String]]("The native image options")
-val thinClientNativeImageClass = settingKey[String]("The class for the native image")
-val buildNativeThinClient = taskKey[JPath]("Generate a native executable")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
 val nativeInstallDirectory = taskKey[JPath]("The install directory for the native executable")
 val installNativeThinClient = inputKey[JPath]("Install the native executable")
-val nativeThinClientPath = settingKey[JPath]("The location of the native executable")
 lazy val sbtClientProj = (project in file("client"))
+  .enablePlugins(NativeImagePlugin)
   .dependsOn(commandProj)
   .settings(
     commonBaseSettings,
@@ -1164,65 +1158,17 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies += jansi,
-    libraryDependencies += scalatest % "test",
-    /*
-     * On windows, the raw classpath is too large to be a command argument to an
-     * external process so we create symbolic links with short names to get the
-     * classpath length under the limit.
-     */
-    thinClientClasspath := {
-      val original = (Compile / fullClasspathAsJars).value.map(_.data)
-      val outputDir = target.value / "thinclientcp"
-      IO.createDirectory(outputDir)
-      Files.walk(outputDir.toPath).forEach {
-        case f if f.getFileName.toString.endsWith(".jar") => Files.deleteIfExists(f)
-        case _                                            =>
-      }
-      original.zipWithIndex.map {
-        case (f, i) => Files.createSymbolicLink(outputDir.toPath / s"$i.jar", f.toPath)
-      }
+    libraryDependencies += scalatest % Test,
+    Compile / mainClass := Some("sbt.client.Client"),
+    nativeImageReady := { () =>
+      ()
     },
-    thinClientNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
-    buildNativeThinClient / name := s"sbtn${if (isWin) ".exe" else ""}",
-    nativeThinClientPath := target.value.toPath / "bin" / (buildNativeThinClient / name).value,
-    thinClientNativeImageClass := "sbt.client.Client",
-    buildNativeThinClient := {
-      val hasChanges = thinClientClasspath.outputFileChanges.hasChanges
-      val cpString =
-        thinClientClasspath.value.map(_.getFileName).mkString(java.io.File.pathSeparator)
-      val prefix = Seq(thinClientNativeImageCommand.value, "-cp", cpString)
-      val full = prefix ++ thinClientNativeImageOptions.value :+ thinClientNativeImageClass.value
-      val dir = target.value
-      if (hasChanges || !Files.exists(nativeThinClientPath.value)) {
-        val pb = new java.lang.ProcessBuilder(full: _*)
-        pb.directory(dir / "thinclientcp")
-        val proc = pb.start()
-        val thread = new Thread {
-          setDaemon(true)
-          val is = proc.getInputStream
-          val es = proc.getErrorStream
-
-          override def run(): Unit = {
-            Thread.sleep(100)
-            while (proc.isAlive) {
-              if (is.available > 0 || es.available > 0) {
-                while (is.available > 0) System.out.print(is.read.toChar)
-                while (es.available > 0) System.err.print(es.read.toChar)
-              }
-              if (proc.isAlive) Thread.sleep(10)
-            }
-          }
-        }
-        thread.start()
-        proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
-        assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
-      }
-      nativeThinClientPath.value
-    },
-    thinClientNativeImageOptions := Seq(
+    nativeImage / name := s"sbtn${if (isWin) ".exe" else ""}",
+    nativeImageOutput := target.value / "bin" / (nativeImage / name).value,
+    nativeImageOptions ++= Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
-      "--verbose",
+      // "--verbose",
       "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
