@@ -84,6 +84,29 @@ object CrossVersionUtil {
     case _ => full
   }
 
+  // Uses the following rules:
+  //
+  //   - Forwards and backwards compatibility is guaranteed for Scala 2.N.x (https://docs.scala-lang.org/overviews/core/binary-compatibility-of-scala-releases.html)
+  //
+  //   - A Scala compiler in version 3.x1.y1 is able to read TASTy files produced by another compiler in version 3.x2.y2 if x1 >= x2 (https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html)
+  //
+  //   - For non-stable Scala 3 versions, compiler versions can read TASTy in an older stable format but their TASTY versions are not compatible between each other even if the compilers have the same minor version (https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html)
+  //
+  private[sbt] def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean = {
+    (newVersion, origVersion) match {
+      case (NonReleaseV_n("2", nMin, _, _), NonReleaseV_n("2", oMin, _, _)) =>
+        nMin == oMin
+      case (ReleaseV(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt >= oMin.toInt
+      case (NonReleaseV_1(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt > oMin.toInt
+      case _ =>
+        newVersion == origVersion
+    }
+  }
+
   def binaryScalaVersion(full: String): String = {
     if (ScalaArtifacts.isScala3(full)) binaryScala3Version(full)
     else
