@@ -308,14 +308,14 @@ class CrossVersionTest extends UnitSpec {
   it should "for (3.1.1, 3.1.0) return true" in {
     isScalaBinaryCompatibleWith("3.1.1", "3.1.0") shouldBe true
   }
-  it should "for (2.10.0-M1, 2.10.5) return true" in {
-    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.5") shouldBe true
+  it should "for (2.10.0-M1, 2.10.5) return false" in {
+    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.5") shouldBe false
   }
-  it should "for (2.10.5, 2.10.0-M1) return true" in {
-    isScalaBinaryCompatibleWith("2.10.5", "2.10.0-M1") shouldBe true
+  it should "for (2.10.5, 2.10.0-M1) return false" in {
+    isScalaBinaryCompatibleWith("2.10.5", "2.10.0-M1") shouldBe false
   }
-  it should "for (2.10.0-M1, 2.10.0-M2) return true" in {
-    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.0-M2") shouldBe true
+  it should "for (2.10.0-M1, 2.10.0-M2) return false" in {
+    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.0-M2") shouldBe false
   }
   it should "for (2.10.0-M1, 2.11.0-M1) return false" in {
     isScalaBinaryCompatibleWith("2.10.0-M1", "2.11.0-M1") shouldBe false

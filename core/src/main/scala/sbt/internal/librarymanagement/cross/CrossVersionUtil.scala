@@ -94,8 +94,10 @@ object CrossVersionUtil {
   //
   private[sbt] def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean = {
     (newVersion, origVersion) match {
-      case (NonReleaseV_n("2", nMin, _, _), NonReleaseV_n("2", oMin, _, _)) =>
-        nMin == oMin
+      case (NonReleaseV_n("2", _, _, _), NonReleaseV_n("2", _, _, _)) =>
+        val api1 = scalaApiVersion(newVersion)
+        val api2 = scalaApiVersion(origVersion)
+        (api1.isDefined && api1 == api2) || (newVersion == origVersion)
       case (ReleaseV(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
           if nMaj == oMaj && nMaj.toLong >= 3 =>
         nMin.toInt >= oMin.toInt
