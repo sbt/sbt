@@ -119,7 +119,7 @@ val root = (project in file(".")).
       file
     },
     // update sbt.sh at root
-    sbtnVersion := "1.4.7",
+    sbtnVersion := "1.7.0-RC1",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
