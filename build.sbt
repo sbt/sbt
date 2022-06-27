@@ -1163,8 +1163,7 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImage / name := s"sbtn${if (isWin) ".exe" else ""}",
-    nativeImageOutput := target.value / "bin" / (nativeImage / name).value,
+    nativeImageOutput := target.value / "bin" / "sbtn",
     nativeImageOptions ++= Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
