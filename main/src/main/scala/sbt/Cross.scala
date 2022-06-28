@@ -294,7 +294,14 @@ object Cross {
       if (switch.version.force) {
         state.log.info(s"Forcing Scala version to $version on all projects.")
       } else {
-        state.log.info(s"Setting Scala version to $version on ${included.size} projects.")
+        included
+          .groupBy(_._2)
+          .foreach {
+            case (selectedVersion, projects) =>
+              state.log.info(
+                s"Setting Scala version to $selectedVersion on ${projects.size} projects."
+              )
+          }
       }
       if (excluded.nonEmpty && !switch.verbose) {
         state.log.info(s"Excluded ${excluded.size} projects, run ++ $version -v for more details.")
