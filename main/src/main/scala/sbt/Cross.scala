@@ -15,6 +15,7 @@ import sbt.internal.Act
 import sbt.internal.CommandStrings._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.AttributeKey
+import sbt.internal.util.MessageOnlyException
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
@@ -368,10 +369,15 @@ object Cross {
     }
 
     if (included.isEmpty) {
-      sys.error(
-        s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
-           |If you want to force it regardless, call ++ $version!""".stripMargin
-      )
+      if (isSelector(version))
+        throw new MessageOnlyException(
+          s"""Switch failed: no subprojects have a version matching "$version" in the crossScalaVersions setting."""
+        )
+      else
+        throw new MessageOnlyException(
+          s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
+             |If you want to force it regardless, call ++ $version!""".stripMargin
+        )
     }
 
     logSwitchInfo(included, excluded)
