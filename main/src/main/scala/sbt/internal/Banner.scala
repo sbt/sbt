@@ -10,6 +10,15 @@ package sbt.internal
 private[sbt] object Banner {
   def apply(version: String): Option[String] =
     version match {
+      case v if v.startsWith("1.7.0") =>
+        Some(s"""
+                |Here are some highlights of this release:
+                |  - `++ <sv> <command1>` updates
+                |  - Scala 3 compiler error improvements
+                |  - Improved Build Server Protocol (BSP) support
+                |See https://eed3si9n.com/sbt-1.7.0 for full release notes.
+                |Hide the banner for this release by running `skipBanner`.
+                |""".stripMargin.linesIterator.mkString("\n"))
       case v if v.startsWith("1.6.0") =>
         Some(s"""
                 |Here are some highlights of this release:
