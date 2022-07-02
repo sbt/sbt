@@ -387,17 +387,23 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
 	Uses the Scala installation at <scala-home> by configuring the scalaHome setting for
 	all projects.
 
-	If <scala-version> is specified, it is used as the value of the scalaVersion setting.
+	If <scala-version> is specified, it is used to select the value of the scalaVersion setting
+  from one of the values of crossScalaVersions setting.
 	This is important when using managed dependencies.  This version will determine the
 	cross-version used as well as transitive dependencies.
 
-  Only projects that are listed to be binary compatible with the selected Scala version
+  <scala-version> may be an actual Scala version such as 3.1.3, or a Semantic Version selector
+  pattern such as 2.13.x. Only subprojects that are listed to match the version pattern
   have their Scala version switched.  If ! is supplied, then all projects projects have
   their Scala version switched.
 
   If -v is supplied, verbose logging of the Scala version switching is done.
 
-	If <command> is provided, it is then executed.
+	If <command> is provided, it is then executed. For example:
+
+    ++ 2.13.x test
+
+  The above will run test on all subprojects that contain a 2.13 Scala version.
 
 	See also `help $CrossCommand`
 """
