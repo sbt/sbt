@@ -19,7 +19,7 @@ import sbt.internal.util.MessageOnlyException
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.{ CrossVersion, SemanticSelector, VersionNumber }
+import sbt.librarymanagement.{ SemanticSelector, VersionNumber }
 
 /**
  * Cross implements the Scala cross building commands:
@@ -334,10 +334,10 @@ object Cross {
         } ++ structure.units.keys
           .map(BuildRef.apply)
           .map(proj => (proj, Some(version), crossVersions(extracted, proj)))
-      } else if (isSelector(version)) {
-        val selector = SemanticSelector(version)
+      } else {
         projectScalaVersions.map {
           case (project, scalaVersions) =>
+            val selector = SemanticSelector(version)
             scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
               case Nil          => (project, None, scalaVersions)
               case Seq(version) => (project, Some(version), scalaVersions)
@@ -347,18 +347,7 @@ object Cross {
                 )
             }
         }
-      } else
-        // This is the default implementation for ++ <sv> <command1>
-        // It checks that <sv> is backward compatible with one of the Scala versions listed
-        // in crossScalaVersions setting. Note this must account for the fact that in Scala 3.x
-        // 3.1.0 is not compatible with 3.0.0.
-        projectScalaVersions.map {
-          case (project, scalaVersions) =>
-            if (scalaVersions.exists(CrossVersion.isScalaBinaryCompatibleWith(version, _)))
-              (project, Some(version), scalaVersions)
-            else
-              (project, None, scalaVersions)
-        }
+      }
     }
 
     val included = projects.collect {
