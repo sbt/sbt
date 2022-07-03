@@ -50,7 +50,6 @@ Global / semanticdbVersion := "4.5.9"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
-Global / excludeLint += whitesourceIgnoredScopes
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
 
@@ -1454,15 +1453,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     s"""set scalaVersion in ThisBuild := "$scala212" """ ::
       state
   },
-  commands += Command.command("whitesourceOnPush") { state =>
-    sys.env.get("TRAVIS_EVENT_TYPE") match {
-      case Some("push") =>
-        "whitesourceCheckPolicies" ::
-          "whitesourceUpdate" ::
-          state
-      case _ => state
-    }
-  },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
       "so compile" ::
@@ -1519,24 +1509,3 @@ ThisBuild / publishTo := {
   Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
-ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
-ThisBuild / whitesourceAggregateProjectName := {
-  // note this can get detached on tag build etc
-  val b = sys.process.Process("git rev-parse --abbrev-ref HEAD").!!.trim
-  val Stable = """1\.([0-9]+)\.x""".r
-  b match {
-    case Stable(y) => "sbt-1." + y.toString + "-stable"
-    case _         => "sbt-master"
-  }
-}
-ThisBuild / whitesourceAggregateProjectToken := {
-  (ThisBuild / whitesourceAggregateProjectName).value match {
-    case "sbt-master"     => "e7a1e55518c0489a98e9c7430c8b2ccd53d9f97c12ed46148b592ebe4c8bf128"
-    case "sbt-1.3-stable" => "7e38cbb4d2fc4599835cd5d2cfb41b150597a4147b15424bb65841664ab2ec0d"
-    case "sbt-1.2-stable" => "54f2313767aa47198971e65595670ee16e1ad0000d20458588e72d3ac2c34763"
-    case _                => "" // it's ok to fail here
-  }
-}
-ThisBuild / whitesourceIgnoredScopes ++= Seq("plugin", "scalafmt", "sxr")
-ThisBuild / whitesourceFailOnError := sys.env.contains("WHITESOURCE_PASSWORD") // fail if pwd is present
-ThisBuild / whitesourceForceCheckAllDependencies := true

@@ -110,7 +110,6 @@ jobs:
         ./sbt -v --client serverTestProj/scalafmtCheckAll
         ./sbt -v --client headerCheck
         ./sbt -v --client "Test/headerCheck"
-        ./sbt -v --client whitesourceOnPush
         ./sbt -v --client "Test/compile"
         ./sbt -v --client publishLocal
         ./sbt -v --client test
