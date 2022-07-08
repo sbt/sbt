@@ -1,7 +1,7 @@
-ThisBuild / scalaVersion := "3.0.0-M1"
+ThisBuild / scalaVersion := "3.1.3"
 ThisBuild / scalacOptions += "-Ytasty-reader"
 
-lazy val scala213 = "2.13.4"
+lazy val scala213 = "2.13.8"
 
 lazy val root = (project in file("."))
   .aggregate(fooApp, fooCore, barApp, barCore)
