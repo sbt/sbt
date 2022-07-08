@@ -1,4 +1,4 @@
-lazy val dottyVersion = "3.0.0-M1"
+lazy val dottyVersion = "3.1.3"
 
 lazy val plugin = project
   .in(file("plugin"))
@@ -7,10 +7,6 @@ lazy val plugin = project
     version := "0.0.1",
     organization := "ch.epfl.lamp",
     scalaVersion := dottyVersion,
-
-    libraryDependencies ++= Seq(
-      "ch.epfl.lamp" %% "dotty" % scalaVersion.value % "provided"
-    )
   )
 
 lazy val app = project
