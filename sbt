@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.7.0-RC1"
+declare sbtn_version="1.7.0"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
