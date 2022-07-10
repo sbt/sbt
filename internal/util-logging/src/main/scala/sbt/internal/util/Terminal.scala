@@ -547,7 +547,7 @@ object Terminal {
     }
 
     override def available(): Int = {
-      buffer.size
+      buffer.size + in.available()
     }
     override def close(): Unit = if (closed.compareAndSet(false, true)) {
       executor.shutdownNow()
