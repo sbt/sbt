@@ -675,7 +675,7 @@ object Terminal {
       }
       override def close(): Unit = if (running.compareAndSet(true, false)) this.interrupt()
     }
-    def read(): Int = {
+    override def read(): Int = {
       if (isScripted) -1
       else if (bootInputStreamHolder.get == null) activeTerminal.get().inputStream.read()
       else {
@@ -689,6 +689,13 @@ object Terminal {
         poll()
       }
     }
+    override def available(): Int =
+      if (isScripted) 0
+      else
+        bootInputStreamHolder.get match {
+          case null   => activeTerminal.get().inputStream.available()
+          case stream => stream.available() + activeTerminal.get().inputStream.available()
+        }
   }
   private[this] object proxyOutputStream extends OutputStream {
     private[this] def os: OutputStream = activeTerminal.get().outputStream
