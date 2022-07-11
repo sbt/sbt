@@ -7,7 +7,7 @@ val _ = {
   sys.props += ("line.separator" -> "\n")
 }
 Global / semanticdbEnabled := !(Global / insideCI).value
-Global / semanticdbVersion := "4.5.9"
+// Global / semanticdbVersion := "4.5.9"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
