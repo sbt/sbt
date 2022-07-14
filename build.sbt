@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.6.0-SNAPSHOT"
+  val v = "1.7.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -46,7 +46,7 @@ ThisBuild / resolvers += Resolver.mavenLocal
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
-Global / semanticdbVersion := "4.4.28"
+Global / semanticdbVersion := "4.5.9"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -68,10 +68,6 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
-  resolvers += Resolver.url(
-    "bintray-scala-hedgehog",
-    url("https://dl.bintray.com/hedgehogqa/scala-hedgehog")
-  )(Resolver.ivyStylePatterns),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
   Global / concurrentRestrictions += Util.testExclusiveRestriction,
@@ -106,8 +102,15 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   run / fork := true,
 )
 def commonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+
-    addCompilerPlugin(kindProjector)
+  commonBaseSettings :+ {
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value == "3") {
+        Nil
+      } else {
+        Seq(compilerPlugin(kindProjector))
+      }
+    }
+  }
 def utilCommonSettings: Seq[Setting[_]] =
   baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil))
 
@@ -467,7 +470,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers,
+    libraryDependencies += scalaParsers.value,
     utilMimaSettings,
   )
   .configure(addSbtIO)
@@ -481,7 +484,7 @@ lazy val testingProj = (project in file("testing"))
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(
-      scalaXml,
+      scalaXml.value,
       testInterface,
       launcherInterface,
       sjsonNewScalaJson.value
@@ -807,7 +810,13 @@ lazy val coreMacrosProj = (project in file("core-macros"))
   .settings(
     baseSettings :+ (crossScalaVersions := (scala212 :: scala213 :: Nil)),
     name := "Core Macros",
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+    libraryDependencies += {
+      if (scalaBinaryVersion.value == "3") {
+        "org.scala-lang" % "scala-compiler" % scala213
+      } else {
+        "org.scala-lang" % "scala-compiler" % scalaVersion.value
+      }
+    },
     SettingKey[Boolean]("exportPipelining") := false,
     mimaSettings,
   )
@@ -917,7 +926,7 @@ lazy val mainProj = (project in file("main"))
       }
     },
     libraryDependencies ++=
-      (Seq(scalaXml, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
+      (Seq(scalaXml.value, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List()
       case _                          => List(scalaPar)
@@ -1048,6 +1057,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Defaults.earlyArtifactPathSetting"),
       exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
       exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
+      exclude[MissingClassProblem]("sbt.internal.CustomHttp*"),
     )
   )
   .configure(
@@ -1108,7 +1118,7 @@ lazy val serverTestProj = (project in file("server-test"))
       val rawClasspath =
         (Compile / fullClasspathAsJars).value.map(_.data).mkString(java.io.File.pathSeparator)
       val cp =
-        if (scala.util.Properties.isWin) rawClasspath.replaceAllLiterally("\\", "\\\\")
+        if (scala.util.Properties.isWin) rawClasspath.replace("\\", "\\\\")
         else rawClasspath
       val content = {
         s"""|

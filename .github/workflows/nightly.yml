@@ -16,21 +16,21 @@ jobs:
       JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
     steps:
     - name: Checkout sbt/sbt
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Checkout sbt/io
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/io
         ref: develop
         path: io
     - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/librarymanagement
         ref: develop
         path: librarymanagement
     - name: Checkout sbt/zinc
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/zinc
         ref: develop

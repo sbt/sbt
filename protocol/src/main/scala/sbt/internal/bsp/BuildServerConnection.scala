@@ -39,7 +39,7 @@ object BuildServerConnection {
     val sbtLaunchJar = classPath
       .split(File.pathSeparator)
       .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
-      .map(_.replaceAllLiterally(" ", "%20"))
+      .map(_.replace(" ", "%20"))
       .map(jar => s"--sbt-launch-jar=$jar")
 
     val argv =
@@ -49,9 +49,11 @@ object BuildServerConnection {
         "-Xmx100m",
         "-classpath",
         classPath,
-        "xsbt.boot.Boot",
-        "-bsp"
-      ) ++ sbtScript.orElse(sbtLaunchJar)
+      ) ++
+        sbtScript ++
+        Vector("xsbt.boot.Boot", "-bsp") ++
+        (if (sbtScript.isEmpty) sbtLaunchJar else None)
+
     val details = BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
     val json = Converter.toJson(details).get
     IO.write(bspConnectionFile, CompactPrinter(json), append = false)
@@ -61,11 +63,11 @@ object BuildServerConnection {
     // For those who use an old sbt script, the -Dsbt.script is not set
     // As a fallback we try to find the sbt script in $PATH
     val fileName = if (Properties.isWin) "sbt.bat" else "sbt"
-    val envPath = Option(System.getenv("PATH")).getOrElse("")
+    val envPath = sys.env.getOrElse("PATH", "")
     val allPaths = envPath.split(File.pathSeparator).map(Paths.get(_))
     allPaths
       .map(_.resolve(fileName))
       .find(file => Files.exists(file) && Files.isExecutable(file))
-      .map(_.toString.replaceAllLiterally(" ", "%20"))
+      .map(_.toString.replace(" ", "%20"))
   }
 }

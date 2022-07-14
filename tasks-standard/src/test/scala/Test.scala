@@ -20,25 +20,25 @@ object Test extends std.TaskExtra {
   val b2 = task(true)
   val c = task("asdf")
 
-  val h1 = t3(a, b, c).map { case (aa, bb, cc)  => aa + " " + bb + " " + cc }
-  val h2 = t3(a, b2, c).map { case (aa, bb, cc) => aa + " " + bb + " " + cc }
+  val h1 = t3(a, b, c).map { case (aa, bb, cc)  => s"$aa $bb $cc" }
+  val h2 = t3(a, b2, c).map { case (aa, bb, cc) => s"$aa $bb $cc" }
 
   type Values = (Result[Int], Result[Boolean], Result[String])
 
   val f: Values => Any = {
-    case (Value(aa), Value(bb), Value(cc)) => aa + " " + bb + " " + cc
+    case (Value(aa), Value(bb), Value(cc)) => s"$aa $bb $cc"
     case x =>
       val cs = x.productIterator.toList.collect { case Inc(x) => x } // workaround for double definition bug
       throw Incomplete(None, causes = cs)
   }
   val d2 = t3(a, b2, c) mapR f
   val f2: Values => Task[Any] = {
-    case (Value(aa), Value(bb), Value(cc)) => task(aa + " " + bb + " " + cc)
+    case (Value(aa), Value(bb), Value(cc)) => task(s"$aa $bb $cc")
     case _                                 => d3
   }
   lazy val d = t3(a, b, c) flatMapR f2
   val f3: Values => Task[Any] = {
-    case (Value(aa), Value(bb), Value(cc)) => task(aa + " " + bb + " " + cc)
+    case (Value(aa), Value(bb), Value(cc)) => task(s"$aa $bb $cc")
     case _                                 => d2
   }
   lazy val d3 = t3(a, b, c) flatMapR f3

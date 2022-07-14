@@ -20,7 +20,7 @@ object LicenseInfo {
       .map {
         case (license, modules) =>
           license.getOrElse("No license specified") + "\n" +
-            modules.map(_.id.idString formatted "\t %s").mkString("\n")
+            modules.map(m => s"\t ${m.id.idString}").mkString("\n")
       }
       .mkString("\n\n")
 }

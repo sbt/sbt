@@ -1,9 +1,8 @@
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
 
-class Delete extends FlatSpec with ShouldMatchers with Base {
+class Delete extends FlatSpec with Base {
   "a file" should "exist" in {
-		marker.exists should equal(true)
+		assert(marker.exists == true)
 		marker.delete()
   }
 

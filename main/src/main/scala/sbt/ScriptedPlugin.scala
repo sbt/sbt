@@ -8,7 +8,6 @@
 package sbt
 
 import java.io.File
-import java.lang.reflect.Method
 
 import sbt.Def._
 import sbt.Keys._
@@ -47,7 +46,7 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedParallelInstances = settingKey[Int](
       "Configures the number of scripted instances for parallel testing, only used in batch mode."
     )
-    val scriptedRun = taskKey[Method]("")
+    val scriptedRun = taskKey[ScriptedRun]("")
     val scriptedLaunchOpts =
       settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
     val scriptedDependencies = taskKey[Unit]("")
@@ -114,21 +113,8 @@ object ScriptedPlugin extends AutoPlugin {
       }
     }
 
-  private[sbt] def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {
-    val fCls = classOf[File]
-    val bCls = classOf[Boolean]
-    val asCls = classOf[Array[String]]
-    val lfCls = classOf[java.util.List[File]]
-    val iCls = classOf[Int]
-
-    val clazz = scriptedTests.value.getClass
-    val method =
-      if (scriptedBatchExecution.value)
-        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
-      else
-        clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
-
-    Def.task(method)
+  private[sbt] def scriptedRunTask: Initialize[Task[ScriptedRun]] = Def.task {
+    ScriptedRun.of(scriptedTests.value, scriptedBatchExecution.value)
   }
 
   private[sbt] final case class ScriptedTestPage(page: Int, total: Int)
@@ -191,21 +177,16 @@ object ScriptedPlugin extends AutoPlugin {
   private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
     val args = scriptedParser(sbtTestDirectory.value).parsed
     Def.unit(scriptedDependencies.value)
-    try {
-      val method = scriptedRun.value
-      val scriptedInstance = scriptedTests.value
-      val dir = sbtTestDirectory.value
-      val log = Boolean box scriptedBufferLog.value
-      val launcher = sbtLauncher.value
-      val opts = scriptedLaunchOpts.value.toArray
-      val empty = new java.util.ArrayList[File]()
-      val instances = Int box scriptedParallelInstances.value
-
-      if (scriptedBatchExecution.value)
-        method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)
-      else method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty)
-      ()
-    } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+    scriptedRun.value.run(
+      sbtTestDirectory.value,
+      scriptedBufferLog.value,
+      args,
+      sbtLauncher.value,
+      Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
+      scriptedLaunchOpts.value,
+      new java.util.ArrayList[File](),
+      scriptedParallelInstances.value
+    )
   }
 
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {

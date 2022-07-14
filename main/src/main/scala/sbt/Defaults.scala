@@ -43,7 +43,7 @@ import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
 }
-import sbt.internal.librarymanagement.{ CustomHttp => _, _ }
+import sbt.internal.librarymanagement._
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
   BspCompileProgress,
@@ -148,6 +148,7 @@ object Defaults extends BuildCommon {
     val m = (for (a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an)).toMap
     m.get _
   }
+
   private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Def.defaultSettings(inScope(GlobalScope)(ss))
 
@@ -229,7 +230,7 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
     Seq(
       internalConfigurationMap :== Configurations.internalMap _,
-      credentials :== Nil,
+      credentials :== SysProp.sbtCredentialsEnv.toList,
       exportJars :== false,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
@@ -257,8 +258,6 @@ object Defaults extends BuildCommon {
       artifactClassifier :== None,
       checksums := Classpaths.bootChecksums(appConfiguration.value),
       conflictManager := ConflictManager.default,
-      CustomHttp.okhttpClientBuilder :== CustomHttp.defaultHttpClientBuilder,
-      CustomHttp.okhttpClient := CustomHttp.okhttpClientBuilder.value.build,
       pomExtra :== NodeSeq.Empty,
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
@@ -1394,11 +1393,10 @@ object Defaults extends BuildCommon {
               val x = {
                 import analysis.{ apis, relations => rel }
                 rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                  rel.externalDeps(c).map(stamp) +
-                  (apis.internal.get(c) match {
-                    case Some(x) => x.compilationTimestamp
-                    case _       => Long.MinValue
-                  })
+                  rel.externalDeps(c).map(stamp) ++
+                  rel.productClassName.reverse(c).flatMap { pc =>
+                    apis.internal.get(pc).map(_.compilationTimestamp)
+                  } + Long.MinValue
               }.max
               if (x != Long.MinValue) {
                 stamps(c) = x
@@ -2341,7 +2339,7 @@ object Defaults extends BuildCommon {
       s: TaskStreams,
       ci: Inputs,
       promise: PromiseWrap[Boolean],
-      reporter: BuildServerReporter
+      reporter: BuildServerReporter,
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) = {
@@ -2634,7 +2632,7 @@ object Defaults extends BuildCommon {
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
     Def.taskIf {
       if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
-      else IvyDependencyResolution(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      else IvyDependencyResolution(ivyConfiguration.value)
     }
 }
 
@@ -3058,7 +3056,7 @@ object Classpaths {
       else None
     },
     dependencyResolution := dependencyResolutionTask.value,
-    publisher := IvyPublisher(ivyConfiguration.value, CustomHttp.okhttpClient.value),
+    publisher := IvyPublisher(ivyConfiguration.value),
     ivyConfiguration := mkIvyConfiguration.value,
     ivyConfigurations := {
       val confs = thisProject.value.configurations
@@ -3197,8 +3195,8 @@ object Classpaths {
     update / unresolvedWarningConfiguration := UnresolvedWarningConfiguration(
       dependencyPositions.value
     ),
-    updateFull := (updateTask tag (Tags.Update, Tags.Network)).value,
-    update := (updateWithoutDetails("update") tag (Tags.Update, Tags.Network)).value,
+    updateFull := (updateTask.tag(Tags.Update, Tags.Network)).value,
+    update := (updateWithoutDetails("update").tag(Tags.Update, Tags.Network)).value,
     update := {
       val report = update.value
       val log = streams.value.log
@@ -3209,7 +3207,7 @@ object Classpaths {
     evicted / evictionWarningOptions := EvictionWarningOptions.full,
     evicted := {
       import ShowLines._
-      val report = (updateTask tag (Tags.Update, Tags.Network)).value
+      val report = (updateTask.tag(Tags.Update, Tags.Network)).value
       val log = streams.value.log
       val ew =
         EvictionWarning(ivyModule.value, (evicted / evictionWarningOptions).value, report)
@@ -3361,7 +3359,7 @@ object Classpaths {
   private[sbt] def ivySbt0: Initialize[Task[IvySbt]] =
     Def.task {
       Credentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value, CustomHttp.okhttpClient.value)
+      new IvySbt(ivyConfiguration.value)
     }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     val deps = allDependencies.value.toVector
@@ -3701,7 +3699,7 @@ object Classpaths {
         try {
           val extracted = (Project extract st)
           val sk = (projRef / Zero / Zero / libraryDependencies).scopedKey
-          val empty = extracted.structure.data set (sk.scope, sk.key, Nil)
+          val empty = extracted.structure.data.set(sk.scope, sk.key, Nil)
           val settings = extracted.structure.settings filter { s: Setting[_] =>
             (s.key.key == libraryDependencies.key) &&
             (s.key.scope.project == Select(projRef))
@@ -4318,7 +4316,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   /** Constructs a setting that declares a new artifact `a` that is generated by `taskDef`. */
   def addArtifact(a: Artifact, taskDef: TaskKey[File]): SettingsDefinition = {
-    val pkgd = packagedArtifacts := packagedArtifacts.value updated (a, taskDef.value)
+    val pkgd = packagedArtifacts := packagedArtifacts.value.updated(a, taskDef.value)
     Seq(artifacts += a, pkgd)
   }
 
@@ -4330,7 +4328,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     val artLocal = SettingKey.local[Artifact]
     val taskLocal = TaskKey.local[File]
     val art = artifacts := artLocal.value +: artifacts.value
-    val pkgd = packagedArtifacts := packagedArtifacts.value updated (artLocal.value, taskLocal.value)
+    val pkgd = packagedArtifacts := packagedArtifacts.value.updated(artLocal.value, taskLocal.value)
     Seq(artLocal := artifact.value, taskLocal := taskDef.value, art, pkgd)
   }
 
@@ -4380,7 +4378,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
   }
 
   @deprecated(
-    "externalIvyFile is not supported by Couriser, and will be removed in the future",
+    "externalIvyFile is not supported by Coursier, and will be removed in the future",
     since = "1.5.0"
   )
   def externalIvyFile(

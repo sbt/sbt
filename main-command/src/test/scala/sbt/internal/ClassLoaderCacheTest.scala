@@ -10,7 +10,8 @@ package sbt.internal
 import java.io.File
 import java.nio.file.Files
 
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.io.IO
 
@@ -19,7 +20,7 @@ object ClassLoaderCacheTest {
     def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
   }
 }
-class ClassLoaderCacheTest extends FlatSpec with Matchers {
+class ClassLoaderCacheTest extends AnyFlatSpec with Matchers {
   import ClassLoaderCacheTest._
   private def withCache[R](f: ClassLoaderCache => R): R = {
     val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)

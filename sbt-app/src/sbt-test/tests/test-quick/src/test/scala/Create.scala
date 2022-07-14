@@ -1,11 +1,10 @@
 import org.scalatest.FlatSpec
-import org.scalatest.matchers.ShouldMatchers
 
-class Create extends FlatSpec with ShouldMatchers with Base {
+class Create extends FlatSpec with Base {
   "a file" should "not exist" in {
 		A(new B).foo
-		marker.exists should equal(false)
-		marker.createNewFile() should equal (true)
+		assert(marker.exists == false)
+		assert(marker.createNewFile() == true)
   }
 
 }

@@ -9,13 +9,13 @@ package sbt.internal
 
 import java.nio.file.{ Path, Paths }
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.nio.FileStamp
 import sbt.nio.FileStamp.Formats
 import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.Converter
 
-class FileStampJsonSpec extends FlatSpec {
+class FileStampJsonSpec extends AnyFlatSpec {
   "file hashes" should "be serializable" in {
     val hashes = Seq(
       Paths.get("foo") -> FileStamp.hash("bar"),

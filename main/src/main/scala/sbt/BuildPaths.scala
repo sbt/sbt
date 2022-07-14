@@ -116,7 +116,8 @@ object BuildPaths {
   private[this] def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
 
   def configurationSources(base: File): Seq[File] =
-    (base * (GlobFilter("*.sbt") - ".sbt")).get
+    (base * (GlobFilter("*.sbt") - ".sbt"))
+      .get()
       .sortBy(_.getName.toLowerCase(Locale.ENGLISH))
   def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 

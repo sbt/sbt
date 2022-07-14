@@ -1,10 +1,16 @@
-ThisBuild / scalaVersion := "2.13.1"
+ThisBuild / scalaVersion := "2.13.8"
 
 Global / serverLog / logLevel := Level.Debug
 
 lazy val runAndTest = project.in(file("run-and-test"))
   .settings(
+    libraryDependencies += "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core" % "2.13.11",
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test",
+    Compile / javaOptions := Vector("Xmx256M"),
+    Compile / envVars := Map("KEY" -> "VALUE"),
+
+    Test / javaOptions := Vector("Xmx512M"),
+    Test / envVars := Map("KEY_TEST" -> "VALUE_TEST"),
   )
   .dependsOn(util)
 
@@ -25,6 +31,8 @@ lazy val respondError = project.in(file("respond-error"))
   )
 
 lazy val util = project
+
+lazy val diagnostics = project
 
 def somethingBad = throw new MessageOnlyException("I am a bad build target")
 // other build targets should not be affected by this bad build target

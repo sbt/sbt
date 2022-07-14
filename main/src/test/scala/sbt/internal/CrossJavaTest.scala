@@ -8,11 +8,12 @@
 package sbt
 package internal
 
-import org.scalatest._
+import org.scalatest.diagrams.Diagrams
+import org.scalatest.funsuite.AnyFunSuite
 import sbt.internal.CrossJava.JavaDiscoverConfig._
 import scala.collection.immutable.ListMap
 
-class CrossJavaTest extends FunSuite with DiagrammedAssertions {
+class CrossJavaTest extends AnyFunSuite with Diagrams {
   test("The Java home selector should select the most recent") {
     assert(
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")
@@ -57,6 +58,16 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     val (version, file) = conf.javaHomes.sortWith(CrossJava.versionOrder).last
     assert(version == "1.7")
     assert(file.getName == "jdk1.7.0")
+  }
+
+  test("The Windows Java home selector should correctly pick up a JDK with vendors") {
+    val conf = new WindowsDiscoverConfig(sbt.io.syntax.file("."), Seq("xxx", "yyy")) {
+      override def candidates() = Vector("jdk1.7.0")
+    }
+    val homes = conf.javaHomes
+    assert(homes.size == 2)
+    assert(homes.map(_._1) == Vector("xxx@1.7", "yyy@1.7"))
+    assert(homes.map(_._2.getName).forall(_ == "jdk1.7.0"))
   }
 
   test("The JAVA_HOME selector should correctly pick up a JDK") {

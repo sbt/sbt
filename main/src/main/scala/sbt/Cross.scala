@@ -8,7 +8,7 @@
 package sbt
 
 import java.io.File
-
+import java.util.regex.Pattern
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.Keys._
 import sbt.SlashSyntax0._
@@ -284,8 +284,8 @@ object Cross {
     }
 
     def logSwitchInfo(
-        included: Seq[(ProjectRef, Seq[ScalaVersion])],
-        excluded: Seq[(ProjectRef, Seq[ScalaVersion])]
+        included: Seq[(ResolvedReference, ScalaVersion, Seq[ScalaVersion])],
+        excluded: Seq[(ResolvedReference, Seq[ScalaVersion])]
     ) = {
 
       instance.foreach {
@@ -304,56 +304,96 @@ object Cross {
       def detailedLog(msg: => String) =
         if (switch.verbose) state.log.info(msg) else state.log.debug(msg)
 
-      def logProject: (ProjectRef, Seq[ScalaVersion]) => Unit = (proj, scalaVersions) => {
-        val current = if (proj == currentRef) "*" else " "
-        detailedLog(s"  $current ${proj.project} ${scalaVersions.mkString("(", ", ", ")")}")
+      def logProject: (ResolvedReference, Seq[ScalaVersion]) => Unit = (ref, scalaVersions) => {
+        val current = if (ref == currentRef) "*" else " "
+        ref match {
+          case proj: ProjectRef =>
+            detailedLog(s"  $current ${proj.project} ${scalaVersions.mkString("(", ", ", ")")}")
+          case _ => // don't log BuildRefs
+        }
       }
       detailedLog("Switching Scala version on:")
-      included.foreach(logProject.tupled)
+      included.foreach { case (project, _, versions) => logProject(project, versions) }
       detailedLog("Excluding projects:")
       excluded.foreach(logProject.tupled)
     }
 
-    val projects: Seq[(ResolvedReference, Seq[ScalaVersion])] = {
+    val projects: Seq[(ResolvedReference, Option[ScalaVersion], Seq[ScalaVersion])] = {
       val projectScalaVersions =
         structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
-        logSwitchInfo(projectScalaVersions, Nil)
-        projectScalaVersions ++ structure.units.keys
+        projectScalaVersions.map {
+          case (ref, options) => (ref, Some(version), options)
+        } ++ structure.units.keys
           .map(BuildRef.apply)
-          .map(proj => proj -> crossVersions(extracted, proj))
+          .map(proj => (proj, Some(version), crossVersions(extracted, proj)))
+      } else if (version.contains('*')) {
+        projectScalaVersions.map {
+          case (project, scalaVersions) =>
+            globFilter(version, scalaVersions) match {
+              case Nil          => (project, None, scalaVersions)
+              case Seq(version) => (project, Some(version), scalaVersions)
+              case multiple =>
+                sys.error(
+                  s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
+                )
+            }
+        }
       } else {
         val binaryVersion = CrossVersion.binaryScalaVersion(version)
-
-        val (included, excluded) = projectScalaVersions.partition {
-          case (_, scalaVersions) =>
-            scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion)
+        projectScalaVersions.map {
+          case (project, scalaVersions) =>
+            if (scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion))
+              (project, Some(version), scalaVersions)
+            else
+              (project, None, scalaVersions)
         }
-        if (included.isEmpty) {
-          sys.error(
-            s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
-               |If you want to force it regardless, call ++ $version!""".stripMargin
-          )
-        }
-        logSwitchInfo(included, excluded)
-        included
       }
     }
 
-    (setScalaVersionForProjects(version, instance, projects, state, extracted), projects.map(_._1))
+    val included = projects.collect {
+      case (project, Some(version), scalaVersions) => (project, version, scalaVersions)
+    }
+    val excluded = projects.collect {
+      case (project, None, scalaVersions) => (project, scalaVersions)
+    }
+
+    if (included.isEmpty) {
+      sys.error(
+        s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
+           |If you want to force it regardless, call ++ $version!""".stripMargin
+      )
+    }
+
+    logSwitchInfo(included, excluded)
+
+    (setScalaVersionsForProjects(instance, included, state, extracted), included.map(_._1))
   }
 
-  private def setScalaVersionForProjects(
-      version: String,
+  def globFilter(pattern: String, candidates: Seq[String]): Seq[String] = {
+    def createGlobRegex(remainingPattern: String): String =
+      remainingPattern.indexOf("*") match {
+        case -1 => Pattern.quote(remainingPattern)
+        case n =>
+          val chunk = Pattern.quote(remainingPattern.substring(0, n)) + ".*"
+          if (remainingPattern.length > n)
+            chunk + createGlobRegex(remainingPattern.substring(n + 1))
+          else chunk
+      }
+    val compiledPattern = Pattern.compile(createGlobRegex(pattern))
+    candidates.filter(compiledPattern.matcher(_).matches())
+  }
+
+  private def setScalaVersionsForProjects(
       instance: Option[(File, ScalaInstance)],
-      projects: Seq[(ResolvedReference, Seq[String])],
+      projects: Seq[(ResolvedReference, String, Seq[String])],
       state: State,
       extracted: Extracted
   ): State = {
     import extracted._
 
     val newSettings = projects.flatMap {
-      case (project, scalaVersions) =>
+      case (project, version, scalaVersions) =>
         val scope = Scope(Select(project), Zero, Zero, Zero)
 
         instance match {

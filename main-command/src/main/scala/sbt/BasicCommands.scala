@@ -153,7 +153,7 @@ object BasicCommands {
   private[this] def completionsParser: Parser[String] = {
     val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq + s }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
-    token(quotedOrUnquotedSingleArgument ?? "" examples ("", " "))
+    token((quotedOrUnquotedSingleArgument ?? "").examples("", " "))
   }
 
   def runCompletions(state: State)(input: String): State = {
@@ -199,7 +199,7 @@ object BasicCommands {
       val it = s.iterator
       var fail = false
       while (it.hasNext && !fail) {
-        it.next match {
+        it.next() match {
           case ""   => fail = it.hasNext; ()
           case next => result += next; ()
         }
@@ -406,7 +406,7 @@ object BasicCommands {
       case Some(line) =>
         val newState = s
           .copy(
-            onFailure = Some(Exec(Shell, None)),
+            onFailure = Some(Exec(OldShell, None)),
             remainingCommands = Exec(line, s.source) +: Exec(OldShell, None) +: s.remainingCommands
           )
           .setInteractive(true)

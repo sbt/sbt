@@ -49,12 +49,14 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
   ): Option[Framework] = {
     def logError(e: Throwable): Option[Framework] = {
       log.error(
-        s"Error loading test framework ($e). This usually means that you are"
-          + " using a layered class loader that cannot reach the sbt.testing.Framework class."
-          + " The most likely cause is that your project has a runtime dependency on your"
-          + " test framework, e.g. scalatest. To fix this, you can try to set\n"
-          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary\nor\n"
-          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat"
+        s"""Error loading test framework ($e).
+           |This often means that you are using a layered class loader that cannot reach the sbt.testing.Framework class.
+           |The most likely cause is that your project has a runtime dependency on your
+           |test framework, e.g. ScalaTest. To fix this, you can try to set
+           |
+           |    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+           |or
+           |    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat""".stripMargin
       )
       None
     }
@@ -66,8 +68,12 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
             case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
           })
         } catch {
-          case e: NoClassDefFoundError => logError(e)
-          case e: MatchError           => logError(e)
+          case e: NoClassDefFoundError =>
+            logError(e)
+            throw e
+          case e: MatchError =>
+            logError(e)
+            throw e
           case _: ClassNotFoundException =>
             log.debug("Framework implementation '" + head + "' not present.")
             createFramework(loader, log, tail)
@@ -225,21 +231,26 @@ object TestFramework {
   ): Vector[(String, TestFunction)] =
     for (d <- inputs; act <- mapped.get(d.name)) yield (d.name, act)
 
-  private[this] def testMap(
+  def testMap(
       frameworks: Seq[Framework],
       tests: Seq[TestDefinition]
   ): Map[Framework, Set[TestDefinition]] = {
     import scala.collection.mutable.{ HashMap, HashSet, Set }
     val map = new HashMap[Framework, Set[TestDefinition]]
+
     def assignTest(test: TestDefinition): Unit = {
       def isTestForFramework(framework: Framework) = getFingerprints(framework).exists { t =>
         matches(t, test.fingerprint)
       }
-      for (framework <- frameworks.find(isTestForFramework))
+
+      frameworks.find(isTestForFramework).foreach { framework =>
         map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
+      }
     }
+
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
+
     map.toMap.mapValues(_.toSet).toMap
   }
 
@@ -256,7 +267,7 @@ object TestFramework {
     def foreachListenerSafe(f: TestsListener => Unit): () => Unit =
       () => safeForeach(testsListeners, log)(f)
 
-    val startTask = foreachListenerSafe(_.doInit)
+    val startTask = foreachListenerSafe(_.doInit())
     val testTasks =
       Map(tests.toSeq.flatMap {
         case (framework, testDefinitions) =>

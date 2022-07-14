@@ -9,12 +9,12 @@ package sbt.internal
 
 import java.util.concurrent.atomic.AtomicReference
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration._
 
-class GCMonitorTest extends FunSuite {
+class GCMonitorTest extends AnyFunSuite {
   class TestMonitor extends GCMonitorBase {
     val loggedTotals = ListBuffer.empty[Long]
     override protected val window = 10.seconds

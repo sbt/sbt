@@ -32,13 +32,16 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 import xsbti.CompileFailed
 
+import java.nio.file.Path
 import java.io.File
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 
 // import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
+import sbt.testing.Framework
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -49,7 +52,9 @@ object BuildServerProtocol {
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
     resourcesProvider = true,
-    canReload = true
+    canReload = true,
+    jvmRunEnvironmentProvider = true,
+    jvmTestEnvironmentProvider = true,
   )
 
   private val bspReload = "bspReload"
@@ -103,11 +108,7 @@ object BuildServerProtocol {
       }
     }.value,
     // https://github.com/build-server-protocol/build-server-protocol/blob/master/docs/specification.md#build-target-sources-request
-    bspBuildTargetSources := Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspBuildTargetSources := bspInputTask { (state, _, workspace, filter) =>
       // run the worker task concurrently
       Def.task {
         val items = bspBuildTargetSourcesItem.result.all(filter).value
@@ -116,82 +117,63 @@ object BuildServerProtocol {
             val base = loadedBuildUnit.localBase
             val sbtFiles = configurationSources(base)
             val pluginData = loadedBuildUnit.unit.plugins.pluginData
-            val all = Vector.newBuilder[SourceItem]
-            def add(fs: Seq[File], sourceItemKind: Int, generated: Boolean): Unit = {
-              fs.foreach(f => all += (SourceItem(f.toURI, sourceItemKind, generated = generated)))
-            }
-            all += (SourceItem(
-              loadedBuildUnit.unit.plugins.base.toURI,
-              SourceItemKind.Directory,
-              generated = false
-            ))
-            add(pluginData.unmanagedSourceDirectories, SourceItemKind.Directory, generated = false)
-            add(pluginData.unmanagedSources, SourceItemKind.File, generated = false)
-            add(pluginData.managedSourceDirectories, SourceItemKind.Directory, generated = true)
-            add(pluginData.managedSources, SourceItemKind.File, generated = true)
-            add(sbtFiles, SourceItemKind.File, generated = false)
-            Value(SourcesItem(id, all.result()))
+            val dirs = pluginData.unmanagedSourceDirectories
+            val sourceFiles = getStandaloneSourceFiles(pluginData.unmanagedSources, dirs)
+            val managedDirs = pluginData.managedSourceDirectories
+            val managedSourceFiles =
+              getStandaloneSourceFiles(pluginData.managedSources, managedDirs)
+            val items =
+              dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+                sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+                managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+                managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true)) ++
+                sbtFiles.map(toSourceItem(SourceItemKind.File, generated = false))
+            Value(SourcesItem(id, items.toVector))
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = SourcesResult(successfulItems.toVector)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
     bspBuildTargetSources / aggregate := false,
-    bspBuildTargetResources := Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      workspace.warnIfBuildsNonEmpty(Method.Resources, s.log)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspBuildTargetResources := bspInputTask { (state, _, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.Resources, state.log)
       // run the worker task concurrently
       Def.task {
         val items = bspBuildTargetResourcesItem.result.all(filter).value
         val successfulItems = anyOrThrow(items)
         val result = ResourcesResult(successfulItems.toVector)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
     bspBuildTargetResources / aggregate := false,
-    bspBuildTargetDependencySources := Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspBuildTargetDependencySources := bspInputTask { (state, _, workspace, filter) =>
       // run the worker task concurrently
       Def.task {
         import sbt.internal.bsp.codec.JsonProtocol._
         val items = bspBuildTargetDependencySourcesItem.result.all(filter).value
         val successfulItems = anyOrThrow(items)
         val result = DependencySourcesResult(successfulItems.toVector)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
     bspBuildTargetDependencySources / aggregate := false,
-    bspBuildTargetCompile := Def.inputTaskDyn {
-      val s: State = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      workspace.warnIfBuildsNonEmpty(Method.Compile, s.log)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspBuildTargetCompile := bspInputTask { (state, _, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.Compile, state.log)
       Def.task {
         val statusCodes = Keys.bspBuildTargetCompileItem.result.all(filter).value
         val aggregatedStatusCode = allOrThrow(statusCodes) match {
           case Seq() => StatusCode.Success
           case codes => codes.max
         }
-        s.respondEvent(BspCompileResult(None, aggregatedStatusCode))
+        state.respondEvent(BspCompileResult(None, aggregatedStatusCode))
       }
     }.evaluated,
     bspBuildTargetCompile / aggregate := false,
     bspBuildTargetTest := bspTestTask.evaluated,
     bspBuildTargetTest / aggregate := false,
-    bspBuildTargetCleanCache := Def.inputTaskDyn {
-      val s: State = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      workspace.warnIfBuildsNonEmpty(Method.CleanCache, s.log)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspBuildTargetCleanCache := bspInputTask { (state, targets, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.CleanCache, state.log)
       Def.task {
         val results = Keys.clean.result.all(filter).value
         val successes = anyOrThrow(results).size
@@ -201,18 +183,12 @@ object BuildServerProtocol {
         // checking that the executed results plus this entry is equal to the total number of targets.
         // When rebuilding a single module, the root build isn't sent, just the requested targets.
         val cleaned = successes + workspace.builds.size == targets.size
-        s.respondEvent(CleanCacheResult(None, cleaned))
+        state.respondEvent(CleanCacheResult(None, cleaned))
       }
     }.evaluated,
     bspBuildTargetCleanCache / aggregate := false,
-    bspBuildTargetScalacOptions := Def.inputTaskDyn {
-      val s = state.value
-
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
+    bspBuildTargetScalacOptions := bspInputTask { (state, _, workspace, filter) =>
       val builds = workspace.builds
-
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
       Def.task {
         val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
         val appProvider = appConfiguration.value.provider()
@@ -233,34 +209,26 @@ object BuildServerProtocol {
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = ScalacOptionsResult(successfulItems.toVector)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
     bspBuildTargetScalacOptions / aggregate := false,
-    bspScalaTestClasses := Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, s.log)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspScalaTestClasses := bspInputTask { (state, _, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, state.log)
       Def.task {
         val items = bspScalaTestClassesItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items)
+        val successfulItems = anyOrThrow(items).flatten.toVector
         val result = ScalaTestClassesResult(successfulItems.toVector, None)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
-    bspScalaMainClasses := Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace = bspFullWorkspace.value.filter(targets)
-      workspace.warnIfBuildsNonEmpty(Method.ScalaMainClasses, s.log)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+    bspScalaMainClasses := bspInputTask { (state, _, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.ScalaMainClasses, state.log)
       Def.task {
         val items = bspScalaMainClassesItem.result.all(filter).value
         val successfulItems = anyOrThrow(items)
         val result = ScalaMainClassesResult(successfulItems.toVector, None)
-        s.respondEvent(result)
+        state.respondEvent(result)
       }
     }.evaluated,
     bspScalaMainClasses / aggregate := false
@@ -277,14 +245,14 @@ object BuildServerProtocol {
     bspBuildTargetSourcesItem := {
       val id = bspTargetIdentifier.value
       val dirs = unmanagedSourceDirectories.value
-      val managed = managedSources.value
-      val items = (dirs.toVector map { dir =>
-        SourceItem(dir.toURI, SourceItemKind.Directory, generated = false)
-      }) ++
-        (managed.toVector map { x =>
-          SourceItem(x.toURI, SourceItemKind.File, generated = true)
-        })
-      SourcesItem(id, items)
+      val sourceFiles = getStandaloneSourceFiles(unmanagedSources.value, dirs)
+      val managedDirs = managedSourceDirectories.value
+      val managedSourceFiles = getStandaloneSourceFiles(managedSources.value, managedDirs)
+      val items = dirs.map(toSourceItem(SourceItemKind.Directory, generated = false)) ++
+        sourceFiles.map(toSourceItem(SourceItemKind.File, generated = false)) ++
+        managedDirs.map(toSourceItem(SourceItemKind.Directory, generated = true)) ++
+        managedSourceFiles.map(toSourceItem(SourceItemKind.File, generated = true))
+      SourcesItem(id, items.toVector)
     },
     bspBuildTargetResourcesItem := {
       val id = bspTargetIdentifier.value
@@ -302,17 +270,42 @@ object BuildServerProtocol {
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
+    bspBuildTargetJVMRunEnvironment := bspInputTask { (state, _, _, filter) =>
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJVMTestEnvironment := bspInputTask { (state, _, _, filter) =>
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value,
     Keys.compile / bspReporter := {
       val targetId = bspTargetIdentifier.value
+      val bspCompileStateInstance = bspCompileState.value
       val converter = fileConverter.value
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
       val meta = isMetaBuild.value
       if (bspEnabled.value) {
-        new BuildServerReporterImpl(targetId, converter, meta, logger, underlying)
+        new BuildServerReporterImpl(
+          targetId,
+          bspCompileStateInstance,
+          converter,
+          meta,
+          logger,
+          underlying
+        )
       } else {
         new BuildServerForwarder(meta, logger, underlying)
       }
@@ -331,6 +324,8 @@ object BuildServerProtocol {
     final val Run = "buildTarget/run"
     final val CleanCache = "buildTarget/cleanCache"
     final val ScalacOptions = "buildTarget/scalacOptions"
+    final val JvmRunEnvironment = "buildTarget/jvmRunEnvironment"
+    final val JvmTestEnvironment = "buildTarget/jvmTestEnvironment"
     final val ScalaTestClasses = "buildTarget/scalaTestClasses"
     final val ScalaMainClasses = "buildTarget/scalaMainClasses"
     final val Exit = "build/exit"
@@ -429,6 +424,18 @@ object BuildServerProtocol {
             val command = Keys.bspBuildTargetScalacOptions.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
 
+          case r if r.method == Method.JvmRunEnvironment =>
+            val param = Converter.fromJson[JvmRunEnvironmentParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetJVMRunEnvironment.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.JvmTestEnvironment =>
+            val param = Converter.fromJson[JvmTestEnvironmentParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetJVMTestEnvironment.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
           case r if r.method == Method.ScalaTestClasses =>
             val param = Converter.fromJson[ScalaTestClassesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
@@ -455,6 +462,18 @@ object BuildServerProtocol {
       )
     }
   }
+
+  private def getStandaloneSourceFiles(
+      sourceFiles: Seq[File],
+      sourceDirs: Seq[File]
+  ): Seq[File] = {
+    sourceFiles.filterNot { f =>
+      sourceDirs.exists(dir => f.toPath.startsWith(dir.toPath))
+    }
+  }
+
+  private def toSourceItem(itemKind: Int, generated: Boolean)(file: File): SourceItem =
+    SourceItem(file.toURI, itemKind, generated)
 
   private def checkMetalsCompatibility(
       semanticdbEnabled: Boolean,
@@ -622,6 +641,38 @@ object BuildServerProtocol {
     )
   }
 
+  private def bspInputTask[T](
+      taskImpl: (
+          State,
+          Seq[BuildTargetIdentifier],
+          BspFullWorkspace,
+          ScopeFilter
+      ) => Def.Initialize[Task[T]]
+  ): Def.Initialize[InputTask[T]] =
+    Def.inputTaskDyn {
+      val s = state.value
+      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
+      val workspace: BspFullWorkspace = bspFullWorkspace.value.filter(targets)
+      val filter = ScopeFilter.in(workspace.scopes.values.toList)
+      taskImpl(s, targets, workspace, filter)
+    }
+
+  private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.task {
+    val target = Keys.bspTargetIdentifier.value
+    val classpath = Keys.fullClasspath.value.map(_.data.toURI).toVector
+    val jvmOptions = Keys.javaOptions.value.toVector
+    val baseDir = Keys.baseDirectory.value.toURI().toString()
+    val env = envVars.value
+
+    JvmEnvironmentItem(
+      target,
+      classpath,
+      jvmOptions,
+      baseDir,
+      env
+    )
+  }
+
   private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
     val target = Keys.bspTargetIdentifier.value
     val scalacOptions = Keys.scalacOptions.value
@@ -655,6 +706,10 @@ object BuildServerProtocol {
       classifier <- artifact.classifier if classifier == "sources"
     } yield file.toURI
     DependencySourcesItem(targetId, sources.toVector.distinct)
+  }
+
+  private def bspCompileState: Initialize[BuildServerProtocol.BspCompileState] = Def.setting {
+    new BuildServerProtocol.BspCompileState()
   }
 
   private def bspCompileTask: Def.Initialize[Task[Int]] = Def.task {
@@ -831,15 +886,25 @@ object BuildServerProtocol {
     }
   }
 
-  private def scalaTestClassesTask: Initialize[Task[ScalaTestClassesItem]] = Def.task {
-    val testClasses = Keys.definedTests.?.value
-      .getOrElse(Seq.empty)
-      .map(_.name)
-      .toVector
-    ScalaTestClassesItem(
-      bspTargetIdentifier.value,
-      testClasses
-    )
+  private def scalaTestClassesTask: Initialize[Task[Seq[ScalaTestClassesItem]]] = Def.task {
+    Keys.definedTests.?.value match {
+      case None => Vector.empty
+      case Some(definitions) =>
+        val frameworks: Seq[Framework] = Keys.loadedTestFrameworks.?.value
+          .map(_.values.toSeq)
+          .getOrElse(Seq.empty)
+
+        val grouped = TestFramework.testMap(frameworks, definitions)
+
+        grouped.map {
+          case (framework, definitions) =>
+            ScalaTestClassesItem(
+              bspTargetIdentifier.value,
+              definitions.map(_.name).toVector,
+              framework.name()
+            )
+        }.toSeq
+    }
   }
 
   private def scalaMainClassesTask: Initialize[Task[ScalaMainClassesItem]] = Def.task {
@@ -932,5 +997,21 @@ object BuildServerProtocol {
           s"$method is a no-op for build.sbt targets: ${builds.keys.mkString("[", ",", "]")}"
         )
     }
+  }
+
+  /**
+   * Additional information about compilation status for given build target.
+   *
+   * @param hasAnyProblems keeps track of problems in given file so BSP reporter
+   * can omit unnecessary diagnostics updates.
+   * @param compiledAtLeastOnce keeps track of those projects that were compiled at
+   * least once so that we can decide to enable fresh reporting for projects that
+   * are compiled for the first time.
+   * see: https://github.com/scalacenter/bloop/issues/726
+   */
+  private[server] final class BspCompileState {
+    val hasAnyProblems: java.util.Set[Path] =
+      java.util.concurrent.ConcurrentHashMap.newKeySet[Path]
+    val compiledAtLeastOnce: AtomicBoolean = new AtomicBoolean(false)
   }
 }

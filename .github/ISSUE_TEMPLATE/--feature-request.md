@@ -7,4 +7,4 @@ assignees: ''
 
 ---
 
-Please use https://discuss.lightbend.com/c/tooling including a specific user story instead of posting them to the issue tracker.
+Please use https://github.com/sbt/sbt/discussions including a specific user story instead of posting them to the issue tracker.

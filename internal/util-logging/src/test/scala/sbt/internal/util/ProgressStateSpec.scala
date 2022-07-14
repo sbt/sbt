@@ -9,12 +9,13 @@ package sbt.internal.util
 
 import java.io.{ File, PrintStream }
 
-import org.scalatest.{ BeforeAndAfterAll, FlatSpec }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.BeforeAndAfterAll
 import sbt.internal.util.Terminal.SimpleTerminal
 
 import scala.io.Source
 
-class ProgressStateSpec extends FlatSpec with BeforeAndAfterAll {
+class ProgressStateSpec extends AnyFlatSpec with BeforeAndAfterAll {
 
   private lazy val fileIn = new File("/tmp/tmp.txt")
   private lazy val fileOut = Source.fromFile("/tmp/tmp.txt")

@@ -173,7 +173,7 @@ object ParseKey extends Properties {
         .log(s"Key: ${Scope.displayPedantic(key.scope, key.key.label)}")
         .log(s"Mask: $mask")
         .log(s"Key string: '$s'")
-        .log(s"Parsed: ${parsed.right.map(displayFull)}")
+        .log(s"Parsed: ${parsed.map(displayFull)}")
         .log(s"Structure: $structure")
       )
   }

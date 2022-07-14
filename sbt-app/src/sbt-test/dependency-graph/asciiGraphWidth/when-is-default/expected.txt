@@ -1,0 +1,13 @@
+whenisdefault:whenisdefault_2.13:0.1.0-SNAPSHOT [S]
+  +-org.typelevel:cats-effect_2.13:3.1.0 [S]
+    +-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
+    | +-org.typelevel:cats-core_2.13:2.6.0 [S]
+    |   +-org.typelevel:cats-kernel_2.13:2.6.0 [S]
+    |   +-org.typelevel:simulacrum-scalafix-annotations_2.13:0.5.4 [S]
+    |   
+    +-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
+      +-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
+        +-org.typelevel:cats-core_2.13:2.6.0 [S]
+          +-org.typelevel:cats-kernel_2.13:2.6.0 [S]
+          +-org.typelevel:simulacrum-scalafix-annotations_2.13:0.5.4 [S]
+          

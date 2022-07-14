@@ -20,7 +20,7 @@ object JoinThread {
           t.interrupt()
           t.join(10)
         } catch { case e: InterruptedException => }
-        if (t.isAlive && !deadline.isOverdue) impl()
+        if (t.isAlive && !deadline.isOverdue()) impl()
       }
       impl()
       if (t.isAlive) {

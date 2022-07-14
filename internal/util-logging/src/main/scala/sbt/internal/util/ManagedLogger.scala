@@ -50,13 +50,6 @@ class ManagedLogger(
     }
   }
 
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  def registerStringCodec[A](
-      s: ShowLines[A],
-      tt: scala.reflect.runtime.universe.TypeTag[A]
-  ): Unit = {
-    LogExchange.registerStringCodec[A](s, tt)
-  }
   def registerStringCodec[A: ShowLines: StringTypeTag]: Unit = {
     LogExchange.registerStringCodec[A]
   }

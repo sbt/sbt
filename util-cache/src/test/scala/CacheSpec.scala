@@ -12,15 +12,15 @@ import sbt.io.syntax._
 
 import CacheImplicits._
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class CacheSpec extends FlatSpec {
+class CacheSpec extends AnyFlatSpec {
 
   "A cache" should "NOT throw an exception if read without being written previously" in {
     testCache[String, Int] {
       case (cache, store) =>
         cache(store)("missing") match {
-          case Hit(_)  => fail
+          case Hit(_)  => fail()
           case Miss(_) => ()
         }
     }
@@ -30,7 +30,7 @@ class CacheSpec extends FlatSpec {
     testCache[String, Int] {
       case (cache, store) =>
         cache(store)("missing") match {
-          case Hit(_)       => fail
+          case Hit(_)       => fail()
           case Miss(update) => update(5)
         }
     }
@@ -41,13 +41,13 @@ class CacheSpec extends FlatSpec {
       case (cache, store) =>
         val value = 5
         cache(store)("someKey") match {
-          case Hit(_)       => fail
+          case Hit(_)       => fail()
           case Miss(update) => update(value)
         }
 
         cache(store)("someKey") match {
           case Hit(read) => assert(read === value); ()
-          case Miss(_)   => fail
+          case Miss(_)   => fail()
         }
     }
   }
@@ -58,13 +58,13 @@ class CacheSpec extends FlatSpec {
         val key = "someKey"
         val value = 5
         cache(store)(key) match {
-          case Hit(_)       => fail
+          case Hit(_)       => fail()
           case Miss(update) => update(value)
         }
 
         cache(store)(key) match {
           case Hit(read) => assert(read === value); ()
-          case Miss(_)   => fail
+          case Miss(_)   => fail()
         }
     }
   }

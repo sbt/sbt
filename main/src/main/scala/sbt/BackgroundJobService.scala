@@ -44,7 +44,7 @@ abstract class BackgroundJobService extends Closeable {
     start(logger, file)._2.apply()
   }
 
-  /** Same as shutown. */
+  /** Same as shutdown. */
   def close(): Unit
 
   /** Shuts down all background jobs. */

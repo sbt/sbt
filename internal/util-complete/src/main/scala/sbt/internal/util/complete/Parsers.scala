@@ -202,7 +202,7 @@ trait Parsers {
    * Parses a potentially quoted String value.  The value may be verbatim quoted ([[StringVerbatim]]),
    * quoted with interpreted escapes ([[StringEscapable]]), or unquoted ([[NotQuoted]]).
    */
-  lazy val StringBasic = StringVerbatim | StringEscapable | NotQuoted
+  lazy val StringBasic = StringVerbatim | StringEscapable | NotQuoted | NotQuotedThenQuoted
 
   /**
    * Parses a verbatim quoted String value, discarding the quotes in the result.  This kind of quoted text starts with triple quotes `"""`
@@ -238,12 +238,12 @@ trait Parsers {
     val notDelim = charClass(c => c != open && c != close).*.string
     def impl(): Parser[String] = {
       (open ~ (notDelim ~ close).?).flatMap {
-        case (l, Some((content, r))) => Parser.success(l + content + r)
+        case (l, Some((content, r))) => Parser.success(s"$l$content$r")
         case (l, None) =>
           ((notDelim ~ impl()).map {
             case (leftPrefix, nestedBraces) => leftPrefix + nestedBraces
           }.+ ~ notDelim ~ close).map {
-            case ((nested, suffix), r) => l + nested.mkString + suffix + r
+            case ((nested, suffix), r) => s"$l${nested.mkString}$suffix$r"
           }
       }
     }
@@ -269,6 +269,11 @@ trait Parsers {
 
   /** Parses an unquoted, non-empty String value that cannot start with a double quote and cannot contain whitespace.*/
   lazy val NotQuoted = (NotDQuoteSpaceClass ~ OptNotSpace) map { case (c, s) => c.toString + s }
+
+  /** Parses a non-empty String value that cannot start with a double quote, but includes double quotes.*/
+  lazy val NotQuotedThenQuoted = (NotQuoted ~ StringEscapable) map {
+    case (s1, s2) => s"""$s1\"$s2\""""
+  }
 
   /**
    * Applies `rep` zero or more times, separated by `sep`.

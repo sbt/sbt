@@ -7,16 +7,18 @@
 
 package sbt.internal.util
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import sbt.util._
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
 import scala.annotation.nowarn
 
-class ManagedLoggerSpec extends FlatSpec with Matchers {
-  val context = LoggerContext(useLog4J = true)
+class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
+  val context = LoggerContext()
   @nowarn
-  val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
+  //TODO create a new appender for testing purposes - 3/12/21
+  val asyncStdout = ConsoleAppender("asyncStdout")
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {
     val log = newLogger("foo")

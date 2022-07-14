@@ -7,9 +7,9 @@
 
 package sbt.internal.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class CleanStringSpec extends FlatSpec {
+class CleanStringSpec extends AnyFlatSpec {
   "EscHelpers" should "not modify normal strings" in {
     val cleanString = s"1234"
     assert(EscHelpers.stripColorsAndMoves(cleanString) == cleanString)

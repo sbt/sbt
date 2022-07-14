@@ -396,6 +396,7 @@ object Keys {
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
   val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)
 
+  // BSP keys
   val bspConfig = taskKey[Unit]("Create or update the BSP connection files").withRank(DSetting)
   val bspEnabled = SettingKey[Boolean](BasicKeys.bspEnabled)
   val bspSbtEnabled = settingKey[Boolean]("Should BSP export meta-targets for the SBT build itself?")
@@ -418,8 +419,13 @@ object Keys {
   val bspBuildTargetCleanCache = inputKey[Unit]("Corresponds to buildTarget/cleanCache request").withRank(DTask)
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
+
+  val bspBuildTargetJVMRunEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmRunEnvironment request").withRank(DTask)
+  val bspBuildTargetJVMTestEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmTestEnvironment request").withRank(DTask)
+  val bspBuildTargetJvmEnvironmentItem = taskKey[JvmEnvironmentItem]("Computes JVM environment item").withRank(DTask)
+  
   val bspScalaTestClasses = inputKey[Unit]("Corresponds to buildTarget/scalaTestClasses request").withRank(DTask)
-  val bspScalaTestClassesItem = taskKey[ScalaTestClassesItem]("").withRank(DTask)
+  val bspScalaTestClassesItem = taskKey[Seq[ScalaTestClassesItem]]("").withRank(DTask)
   val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
   val bspScalaMainClassesItem = taskKey[ScalaMainClassesItem]("").withRank(DTask)
   val bspReporter = taskKey[BuildServerReporter]("").withRank(DTask)

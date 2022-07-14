@@ -69,7 +69,7 @@ object Assign {
   val is = Seq(
     mk := 3,
     name := "asdf",
-    tk := (math.random * 1000).toInt,
+    tk := (math.random() * 1000).toInt,
     isk := dummys.value.parsed // should not compile: cannot use a task to define the parser
     //		ik := { if( tsk.parsed.value == "blue") tk.value else mk.value }
   )

@@ -7,12 +7,12 @@
 
 package sbt
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.{ AttributeKey, AttributeMap }
 import sbt.io.syntax.file
 import scala.annotation.nowarn
 
-class ScopeDisplaySpec extends FlatSpec {
+class ScopeDisplaySpec extends AnyFlatSpec {
   val project = ProjectRef(file("foo/bar"), "bar")
   val mangledName = "bar_slash_blah_blah_blah"
 

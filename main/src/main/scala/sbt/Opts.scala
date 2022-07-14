@@ -41,8 +41,14 @@ object Opts {
   }
   object resolver {
     import sbt.io.syntax._
+    @deprecated("Use sonatypeOssReleases instead", "1.7.0")
     val sonatypeReleases = Resolver.sonatypeRepo("releases")
+    val sonatypeOssReleases = Resolver.sonatypeOssRepos("releases")
+
+    @deprecated("Use sonatypeOssSnapshots instead", "1.7.0")
     val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
+    val sonatypeOssSnapshots = Resolver.sonatypeOssRepos("snapshots")
+
     val sonatypeStaging = MavenRepository(
       "sonatype-staging",
       "https://oss.sonatype.org/service/local/staging/deploy/maven2"

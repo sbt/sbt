@@ -67,7 +67,7 @@ trait ConsoleInterface {
 }
 
 /**
- * A NetworkClient connects to a running an sbt instance or starts a
+ * A NetworkClient connects to a running sbt instance or starts a
  * new instance if there isn't already one running. Once connected,
  * it can send commands for sbt to run, it can send completions to sbt
  * and print the completions to stdout so that a shell can consume
@@ -78,15 +78,15 @@ trait ConsoleInterface {
  *                    needs to start it. It also contains the sbt command
  *                    arguments to send to the server if any are present.
  * @param console     a logging instance. This can use a ConsoleAppender or
- *                    just simply print to a PrintSream.
+ *                    just simply print to a PrintStream.
  * @param inputStream the InputStream from which the client reads bytes. It
  *                    is not hardcoded to System.in so that a NetworkClient
  *                    can be remotely controlled by a java process, which
- *                    is useful in test.
+ *                    is useful in testing.
  * @param errorStream the sink for messages that we always want to be printed.
  *                    It is usually System.err but could be overridden in tests
  *                    or set to a null OutputStream if the NetworkClient needs
- *                    to be silent
+ *                    to be silent.
  * @param printStream the sink for standard out messages. It is typically
  *                    System.out but in the case of completions, the bytes written
  *                    to System.out are usually treated as completion results
@@ -139,7 +139,7 @@ class NetworkClient(
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
-    System.getenv("SBTC_AUTO_COMPLETE") == null
+    !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
@@ -380,13 +380,13 @@ class NetworkClient(
     }
     if (!startServer) {
       val deadline = 5.seconds.fromNow
-      while (socket.isEmpty && !deadline.isOverdue) {
+      while (socket.isEmpty && !deadline.isOverdue()) {
         socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
-    val hook = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
-    Runtime.getRuntime.addShutdownHook(hook)
+    val shutdown = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
+    Runtime.getRuntime.addShutdownHook(shutdown)
     var gotInputBack = false
     val readThreadAlive = new AtomicBoolean(true)
     /*
@@ -406,10 +406,13 @@ class NetworkClient(
             socket.foreach { s =>
               try {
                 s.getInputStream.read match {
-                  case -1 | 0            => readThreadAlive.set(false)
-                  case 2                 => gotInputBack = true
-                  case 5                 => term.enterRawMode(); startInputThread()
-                  case 3 if gotInputBack => readThreadAlive.set(false)
+                  case -1 | 0 => readThreadAlive.set(false)
+                  case 2 => // STX: start of text
+                    gotInputBack = true
+                  case 5 => // ENQ: enquiry
+                    term.enterRawMode(); startInputThread()
+                  case 3 if gotInputBack => // ETX: end of text
+                    readThreadAlive.set(false)
                   case i if gotInputBack => stdinBytes.offer(i)
                   case i                 => printStream.write(i)
                 }
@@ -441,8 +444,13 @@ class NetworkClient(
             while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
               val out = s.getOutputStream
               val b = stdinBytes.poll
-              out.write(b)
-              out.flush()
+              if (b == -1) {
+                // server waits for user input but stinBytes has ended
+                shutdown.run()
+              } else {
+                out.write(b)
+                out.flush()
+              }
             }
         }
         process.foreach { p =>
@@ -483,7 +491,7 @@ class NetworkClient(
     try blockUntilStart()
     catch { case t: Throwable => t.printStackTrace() } finally {
       sbtProcess.set(null)
-      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(hook))
+      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
     if (!portfile.exists()) throw new ServerFailedException
     if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
@@ -828,12 +836,12 @@ class NetworkClient(
         case -1 => (query, query, None, None) // shouldn't happen
         case i =>
           val rawPrefix = query.substring(0, i)
-          val prefix = rawPrefix.replaceAllLiterally("\"", "").replaceAllLiterally("\\;", ";")
-          val rawSuffix = query.substring(i).replaceAllLiterally("\\;", ";")
+          val prefix = rawPrefix.replace("\"", "").replace("\\;", ";")
+          val rawSuffix = query.substring(i).replace("\\;", ";")
           val suffix = if (rawSuffix.length > 1) rawSuffix.substring(1) else ""
           (rawPrefix, prefix, Some(rawSuffix), Some(suffix))
       }
-    } else (query, query.replaceAllLiterally("\\;", ";"), None, None)
+    } else (query, query.replace("\\;", ";"), None, None)
     val tailSpace = query.endsWith(" ") || query.endsWith("\"")
     val sanitizedQuery = suffix.foldLeft(prefix) { _ + _ }
     def getCompletions(query: String, sendCommand: Boolean): Seq[String] = {
@@ -877,7 +885,7 @@ class NetworkClient(
     }
     getCompletions(sanitizedQuery, true) collect {
       case c if inQuote                      => c
-      case c if tailSpace && c.contains(" ") => c.replaceAllLiterally(prefix, "")
+      case c if tailSpace && c.contains(" ") => c.replace(prefix, "")
       case c if !tailSpace                   => c.split(" ").last
     }
   }
@@ -1098,10 +1106,10 @@ object NetworkClient {
           launchJar = a
             .split("--sbt-launch-jar=")
             .lastOption
-            .map(_.replaceAllLiterally("%20", " "))
+            .map(_.replace("%20", " "))
         case "--sbt-launch-jar" if i + 1 < sanitized.length =>
           i += 1
-          launchJar = Option(sanitized(i).replaceAllLiterally("%20", " "))
+          launchJar = Option(sanitized(i).replace("%20", " "))
         case "-bsp" | "--bsp"        => bsp = true
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
@@ -1123,7 +1131,7 @@ object NetworkClient {
       sbtArguments.toSeq,
       commandArgs.toSeq,
       completionArguments.toSeq,
-      sbtScript.getOrElse(defaultSbtScript).replaceAllLiterally("%20", " "),
+      sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
       launchJar
     )

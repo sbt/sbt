@@ -41,3 +41,24 @@ $ exists lib/target/scala-2.13
 -$ exists lib/target/scala-2.12
 # -$ exists sbt-foo/target/scala-2.12
 -$ exists sbt-foo/target/scala-2.13
+
+# test wildcard switching (2.12)
+> clean
+> ++ 2.12.* -v compile
+$ exists lib/target/scala-2.12
+-$ exists lib/target/scala-2.13
+$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13
+
+# test wildcard switching (2.13)
+> clean
+> ++ 2.13.* -v compile
+$ exists lib/target/scala-2.13
+-$ exists lib/target/scala-2.12
+# -$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-2.13
+
+# test wildcard switching (no matches)
+-> ++ 3.*
+# test wildcard switching (multiple matches)
+-> ++ 2.*

@@ -99,8 +99,8 @@ private[sbt] final class ProgressState(
       addBytes(terminal, bytes)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
-        case a: Prompt.AskUser if a.render.nonEmpty && canClearPrompt => toWrite ++= cleanPrompt
-        case _                                                        =>
+        case a: Prompt.AskUser if a.render().nonEmpty && canClearPrompt => toWrite ++= cleanPrompt
+        case _                                                          =>
       }
       val endsWithNewLine = bytes.endsWith(lineSeparatorBytes)
       if (endsWithNewLine || bytes.containsSlice(lineSeparatorBytes)) {

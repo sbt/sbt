@@ -57,16 +57,7 @@ object CoursierRepositoriesTasks {
   private final val keepPreloaded = false // coursierKeepPreloaded.value
 
   def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    val bootResOpt = bootResolvers.value
-    val overrideFlag = overrideBuildResolvers.value
-    val result0 = bootResOpt.filter(_ => overrideFlag) match {
-      case Some(r) => r
-      case None =>
-        val extRes = externalResolvers.value
-        val isSbtPlugin = sbtPlugin.value
-        if (isSbtPlugin) sbtResolvers.value ++ extRes
-        else extRes
-    }
+    val result0 = fullResolvers.value.filterNot(_ == projectResolver.value)
     val reorderResolvers = true // coursierReorderResolvers.value
 
     val paths = ivyPaths.value
@@ -80,10 +71,10 @@ object CoursierRepositoriesTasks {
           result1 map {
             case r: FileRepository =>
               val ivyPatterns = r.patterns.ivyPatterns map {
-                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                _.replace("$" + "{ivy.home}", ivyHomeUri)
               }
               val artifactPatterns = r.patterns.artifactPatterns map {
-                _.replaceAllLiterally("$" + "{ivy.home}", ivyHomeUri)
+                _.replace("$" + "{ivy.home}", ivyHomeUri)
               }
               val p =
                 r.patterns.withIvyPatterns(ivyPatterns).withArtifactPatterns(artifactPatterns)

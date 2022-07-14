@@ -10,38 +10,48 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 2
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 3
           - os: ubuntu-latest
-            java: "17.0-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 4
           - os: ubuntu-latest
-            java: "17-custom=tgz+https://download.java.net/java/GA/jdk17/0d483333a00540d886896bac774ff48b/35/GPL/openjdk-17_linux-x64_bin.tar.gz"
+            java: 17
+            distribution: temurin
             jobtype: 5
           - os: ubuntu-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 6
           - os: ubuntu-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 7
           - os: macos-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 8
           - os: windows-latest
-            java: "adopt@1.8"
+            java: 8
+            distribution: adopt
             jobtype: 9
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
-      SCALA_212: 2.12.15
-      SCALA_213: 2.13.6
+      SCALA_212: 2.12.16
+      SCALA_213: 2.13.8
+      SCALA_3: 3.1.0
       UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
       SBT_LOCAL: false
       TEST_SBT_VER: 1.5.0
@@ -50,119 +60,132 @@ jobs:
       SPARK_LOCAL_IP: "127.0.0.1"
     steps:
     - name: Checkout sbt/sbt
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Checkout sbt/io
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/io
         ref: develop
         path: io
     - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/librarymanagement
         ref: develop
         path: librarymanagement
     - name: Checkout sbt/zinc
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: sbt/zinc
         ref: develop
         path: zinc
-    - name: Setup
-      uses: olafurpg/setup-scala@v13
+    - name: Setup JDK
+      uses: actions/setup-java@v3
       with:
+        distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
     - name: Set up Python 3.7
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: 3.7
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Cache sbt
-      uses: actions/cache@v2.1.6
+      uses: actions/cache@v3
       with:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
-    - name: Build and test
+    - name: Build and test (1)
+      if: ${{ matrix.jobtype == 1 }}
       shell: bash
       run: |
-        rm -rf "$HOME/.sbt/scripted/" || true
-        case ${{ matrix.jobtype }} in
-          1)
-            ./sbt -v --client mimaReportBinaryIssues
-            ./sbt -v --client javafmtCheck
-            ./sbt -v --client "Test/javafmtCheck"
-            ./sbt -v --client scalafmtCheckAll
-            ./sbt -v --client scalafmtSbtCheck
-            ./sbt -v --client serverTestProj/scalafmtCheckAll
-            ./sbt -v --client headerCheck
-            ./sbt -v --client "Test/headerCheck"
-            ./sbt -v --client whitesourceOnPush
-            ./sbt -v --client "Test/compile"
-            ./sbt -v --client publishLocal
-            ./sbt -v --client test
-            ./sbt -v --client "serverTestProj/test"
-            ./sbt -v --client doc
-            ./sbt -v --client "all $UTIL_TESTS"
-            ./sbt -v --client ++$SCALA_213
-            ./sbt -v --client "all $UTIL_TESTS"
-            ;;
-          2)
-            ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
-            ;;
-          3)
-            ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
-            ;;
-          4)
-            ./sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
-            ;;
-          5)
-            ./sbt -v "++$SCALA_213!; test;"
-            ;;
-          6)
-            # build from fresh IO, LM, and Zinc
-            BUILD_VERSION="1.5.0-SNAPSHOT"
-            cd io
-            sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-            cd ../
-            sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-            rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-            sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
-            ;;
-          7)
-            # test launcher script
-            echo build using JDK 8 test using JDK 8 and JDK 11
-            cd launcher-package
-            sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
-            sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-            cd citest && ./test.sh
-            $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
-            java -Xmx32m -version
-            ./test.sh
-            ;;
-          8)
-            # test launcher script
-            echo build using JDK 8, test using JDK 8, on macOS
-            cd launcher-package
-            bin/coursier resolve
-            sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-            cd citest && ./test.sh
-            ;;
-          9)
-            # test launcher script
-            echo build using JDK 8, test using JDK 8, on Windows
-            cd launcher-package
-            bin/coursier.bat resolve
-            sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-            cd citest
-            ./test.bat
-            test3/test3.bat
-            ;;
-          *)
-            echo unknown jobtype
-            exit 1
-        esac
+        # ./sbt -v --client mimaReportBinaryIssues
+        ./sbt -v --client javafmtCheck
+        ./sbt -v --client "Test/javafmtCheck"
+        ./sbt -v --client scalafmtCheckAll
+        ./sbt -v --client scalafmtSbtCheck
+        ./sbt -v --client serverTestProj/scalafmtCheckAll
+        ./sbt -v --client headerCheck
+        ./sbt -v --client "Test/headerCheck"
+        ./sbt -v --client whitesourceOnPush
+        ./sbt -v --client "Test/compile"
+        ./sbt -v --client publishLocal
+        ./sbt -v --client test
+        ./sbt -v --client "serverTestProj/test"
+        ./sbt -v --client doc
+        ./sbt -v --client "all $UTIL_TESTS"
+        ./sbt -v --client ++$SCALA_213
+        ./sbt -v --client "all $UTIL_TESTS"
+    - name: Build and test (2)
+      if: ${{ matrix.jobtype == 2 }}
+      shell: bash
+      run: |
+        ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
+    - name: Build and test (3)
+      if: ${{ matrix.jobtype == 3 }}
+      shell: bash
+      run: |
+        ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
+    - name: Build and test (4)
+      if: ${{ matrix.jobtype == 4 }}
+      shell: bash
+      run: |
+        ./sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
+    - name: Build and test (5)
+      if: ${{ matrix.jobtype == 5 }}
+      shell: bash
+      run: |
+        ./sbt -v "++$SCALA_213!; test; ++$SCALA_3!; all utilControl/test utilRelation/test utilPosition/test"
+    - name: Build and test (6)
+      if: ${{ matrix.jobtype == 6 }}
+      shell: bash
+      run: |
+        # build from fresh IO, LM, and Zinc
+        BUILD_VERSION="1.5.0-SNAPSHOT"
+        cd io
+        sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
+        cd ../
+        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+        sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+    - name: Build and test (7)
+      if: ${{ matrix.jobtype == 7 }}
+      shell: bash
+      run: |
+        # test launcher script
+        echo build using JDK 8 test using JDK 8 and JDK 11
+        cd launcher-package
+        sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
+        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        cd citest && ./test.sh
+        $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
+        java -Xmx32m -version
+        ./test.sh
+    - name: Build and test (8)
+      if: ${{ matrix.jobtype == 8 }}
+      shell: bash
+      run: |
+        # test launcher script
+        echo build using JDK 8, test using JDK 8, on macOS
+        cd launcher-package
+        bin/coursier resolve
+        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        cd citest && ./test.sh
+    - name: Build and test (9)
+      if: ${{ matrix.jobtype == 9 }}
+      shell: bash
+      run: |
+        # test launcher script
+        echo build using JDK 8, test using JDK 8, on Windows
+        cd launcher-package
+        bin/coursier.bat resolve
+        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        cd citest
+        ./test.bat
+        test3/test3.bat
+    - name: Cleanup
+      shell: bash
+      run: |
         rm -rf "$HOME/.sbt/scripted/" || true
         rm -rf "$HOME/.ivy2/local" || true
         rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true

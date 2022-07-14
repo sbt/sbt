@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.5.4"
+declare builtin_sbt_version="1.6.2"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -10,6 +10,7 @@ declare -a sbt_options
 declare -a print_version
 declare -a print_sbt_version
 declare -a print_sbt_script_version
+declare -a shutdownall
 declare -a original_args
 declare java_cmd=java
 declare java_version
@@ -21,6 +22,7 @@ declare sbt_verbose=
 declare sbt_debug=
 declare build_props_sbt_version=
 declare use_sbtn=
+declare no_server=
 declare sbtn_command="$SBTN_CMD"
 declare sbtn_version="1.4.7"
 
@@ -124,6 +126,9 @@ download_url () {
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
       exit_code=$?
+    else
+      echoerr "failed to download $url: Neither curl nor wget is avaialble"
+      exit 2
     fi
     $(exit "$exit_code") && [[ -f "$jar" ]]
   } || {
@@ -502,6 +507,12 @@ run() {
   elif [[ $print_version ]]; then
     execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
     echo "sbt script version: $init_sbt_version"
+  elif [[ $shutdownall ]]; then
+    local sbt_processes=( $(jps -v | grep sbt-launch | cut -f1 -d ' ') )
+    for procId in "${sbt_processes[@]}"; do
+      kill -9 $procId
+    done
+    echo "shutdown ${#sbt_processes[@]} sbt processes"
   else
     # run sbt
     execRunner "$java_cmd" \
@@ -540,6 +551,7 @@ Usage: `basename "$0"` [options]
   -V | --version      print sbt version information
   --numeric-version   print the numeric sbt version (sbt sbtVersion)
   --script-version    print the version of sbt script
+  shutdownall         shutdown all running sbt-launch processes
   -d | --debug        set sbt log level to debug
   -debug-inc | --debug-inc
                       enable extra debugging for the incremental debugger
@@ -579,7 +591,6 @@ Usage: `basename "$0"` [options]
   -Dkey=val           pass -Dkey=val directly to the java runtime
   -J-X                pass option -X directly to the java runtime
                       (-J is stripped)
-  -S-X                add -X to sbt's scalacOptions (-S is stripped)
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
@@ -631,6 +642,7 @@ map_args () {
            -traces|--traces) options=( "${options[@]}" "-Dsbt.traces=true" ) && shift ;;
              --supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
               -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
+     -no-server|--no-server) options=( "${options[@]}" "-Dsbt.io.virtual=false" "-Dsbt.server.autostart=false" ) && shift ;;
                   --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
                    -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
        -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
@@ -655,6 +667,7 @@ process_args () {
       -V|-version|--version) print_version=1 && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
            --script-version) print_sbt_script_version=1 && shift ;;
+                shutdownall) shutdownall=1 && shift ;;
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
            -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;

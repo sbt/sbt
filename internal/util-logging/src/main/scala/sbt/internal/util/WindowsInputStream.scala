@@ -56,7 +56,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
   private val SHIFT_PRESSED = 0x0010;
   private def getCapability(cap: Capability): String = term.getStringCapability(cap) match {
     case null => null
-    case c    => c.replaceAllLiterally("\\E", "\u001B")
+    case c    => c.replace("\\E", "\u001B")
   }
   /*
    * This function is a hybrid of jline 2 WindowsTerminal.readConsoleInput

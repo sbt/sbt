@@ -90,7 +90,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   // hooks for sending start/stop events
   protected def onAddJob(@deprecated("unused", "") job: JobHandle): Unit = ()
   protected def onRemoveJob(@deprecated("unused", "") job: JobHandle): Unit = ()
-  private val context = LoggerContext(useLog4J)
+  private val context = LoggerContext()
 
   // this mutable state could conceptually go on State except
   // that then every task that runs a background job would have

@@ -10,21 +10,20 @@ package internal
 package graph
 package rendering
 
-import java.io.{ OutputStream, InputStream, FileOutputStream, File }
-import java.net.URI
-
-import graph.{ Module, ModuleGraph }
+import sbt.internal.graph.codec.JsonProtocol.ModuleModelFormat
 import sbt.io.IO
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
+import java.io.{ File, FileOutputStream, InputStream, OutputStream }
+import java.net.URI
 import scala.annotation.{ nowarn, tailrec }
-import scala.util.parsing.json.{ JSONArray, JSONObject }
 
 @nowarn object TreeView {
   def createJson(graph: ModuleGraph): String = {
-    val trees = graph.roots
+    val moduleModels = graph.roots
       .map(module => processSubtree(graph, module))
-      .toList
-    JSONArray(trees).toString
+    val js = moduleModels.map(Converter.toJsonUnsafe(_))
+    js.map(CompactPrinter).mkString("[", ",", "]")
   }
 
   def createLink(graphJson: String, targetDirectory: File): URI = {
@@ -36,19 +35,30 @@ import scala.util.parsing.json.{ JSONArray, JSONObject }
     new URI(graphHTML.toURI.toString)
   }
 
-  private def processSubtree(graph: ModuleGraph, module: Module): JSONObject = {
-    val children = graph.dependencyMap
-      .getOrElse(module.id, List())
-      .map(module => processSubtree(graph, module))
-      .toList
-    moduleAsJson(module, children)
+  private[rendering] def processSubtree(
+      graph: ModuleGraph,
+      module: Module,
+      parents: Set[GraphModuleId] = Set()
+  ): ModuleModel = {
+    val cycle = parents.contains(module.id)
+    val dependencies = if (cycle) List() else graph.dependencyMap.getOrElse(module.id, List())
+    val children =
+      dependencies
+        .map(dependency => processSubtree(graph, dependency, parents + module.id))
+        .toVector
+    moduleAsModuleAgain(module, cycle, children)
   }
 
-  private def moduleAsJson(module: Module, children: List[JSONObject]): JSONObject = {
+  private def moduleAsModuleAgain(
+      module: Module,
+      isCycle: Boolean,
+      children: Vector[ModuleModel]
+  ): ModuleModel = {
     val eviction = module.evictedByVersion.map(version => s" (evicted by $version)").getOrElse("")
+    val cycle = if (isCycle) " (cycle)" else ""
     val error = module.error.map(err => s" (errors: $err)").getOrElse("")
-    val text = module.id.idString + eviction + error
-    JSONObject(Map("text" -> text, "children" -> JSONArray(children)))
+    val text = module.id.idString + eviction + error + cycle
+    ModuleModel(text, children)
   }
 
   def saveResource(resourcePath: String, to: File): Unit = {

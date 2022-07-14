@@ -7,9 +7,9 @@
 
 package sbt.internal.util
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SourcePositionSpec extends FlatSpec {
+class SourcePositionSpec extends AnyFlatSpec {
   "SourcePosition()" should "return a sane SourcePosition" in {
     val filename = "SourcePositionSpec.scala"
     val lineNumber = 16

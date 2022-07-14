@@ -12,7 +12,7 @@ import java.io.File
 import scala.collection.immutable.ListMap
 import scala.annotation.tailrec
 import scala.util.{ Try, Success, Failure }
-import sbt.io.Path
+import sbt.io.{ IO, Path }
 import sbt.io.syntax._
 import sbt.Cross._
 import sbt.Def.{ ScopedKey, Setting }
@@ -389,7 +389,7 @@ private[sbt] object CrossJava {
 
   object JavaDiscoverConfig {
     object JavaHomeDir {
-      private val regex = """(\w+-)?(java-|(?:adoptopen)?jdk-?)(bin-)?(1\.)?([0-9]+).*""".r
+      private val regex = """(\w+-)??(java-|(?:adoptopen)?jdk-?)?(bin-)?(1\.)?([0-9]+).*""".r
       def unapply(s: CharSequence): Option[String] = {
         s match {
           case regex(vendor, _, _, m, n) => Some(JavaVersion(nullBlank(m) + n).toString)
@@ -447,15 +447,21 @@ private[sbt] object CrossJava {
         }.flatten
     }
 
-    class WindowsDiscoverConfig(base: File) extends JavaDiscoverConf {
+    class WindowsDiscoverConfig(base: File, vendors: Seq[String] = Seq.empty)
+        extends JavaDiscoverConf {
 
       def candidates() = wrapNull(base.list())
 
       def javaHomes: Vector[(String, File)] =
         candidates()
           .collect {
-            case dir @ JavaHomeDir(version) =>
-              version -> (base / dir)
+            case dir @ JavaHomeDir(version) => version -> base / dir
+          }
+          .flatMap {
+            case x if vendors.isEmpty => Vector(x)
+            case (version, home) =>
+              val jv = JavaVersion(version)
+              vendors.map(jv.withVendor(_).toString -> home)
           }
     }
 
@@ -482,10 +488,24 @@ private[sbt] object CrossJava {
       new LinuxDiscoverConfig(file("/usr") / "java"),
       new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
       new MacOsDiscoverConfig,
-      new WindowsDiscoverConfig(file("C://Program Files/Java")),
-      new WindowsDiscoverConfig(file("C://Program Files (x86)/Java")),
       new JavaHomeDiscoverConfig,
-    )
+    ) ++ {
+      if (IO.isWindows) {
+        def discover(dir: String, vendors: String*) = new WindowsDiscoverConfig(file(dir), vendors)
+        Vector(
+          discover("C://Program Files/Java", "openjdk"),
+          discover("C://Program Files/Eclipse Foundation", "temurin", "adopt"),
+          discover("C://Program Files/Semeru", "semeru", "adopt-openj9"),
+          discover("C://Program Files/Microsoft", "microsoft"),
+          discover("C://Program Files/Amazon Corretto", "amazon-corretto"),
+          discover("C://Program Files/Zulu", "zulu"),
+          discover("C://Program Files/BellSoft", "liberica"),
+          discover("C://Program Files (x86)/Java", "openjdk"),
+          discover("C://Program Files (x86)/Eclipse Foundation", "temurin", "adopt"),
+          discover("C://Program Files (x86)/Semeru", "semeru", "adopt-openj9"),
+        )
+      } else Vector.empty
+    }
   }
 
   def nullBlank(s: String): String =

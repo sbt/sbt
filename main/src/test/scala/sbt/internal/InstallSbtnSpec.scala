@@ -13,10 +13,10 @@ import java.lang.ProcessBuilder
 import java.lang.ProcessBuilder.Redirect
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.TimeUnit
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
 
-class InstallSbtnSpec extends FlatSpec {
+class InstallSbtnSpec extends AnyFlatSpec {
   private def withTemp[R](ext: String)(f: Path => R): R = {
     val tmp = Files.createTempFile("sbt-1.4.1-", ext)
     try f(tmp)
@@ -41,7 +41,7 @@ class InstallSbtnSpec extends FlatSpec {
         val tmpDir = Files.createTempDirectory("sbtn-test").toRealPath()
         Files.createDirectories(tmpDir.resolve("project"))
         val foo = tmpDir.resolve("foo")
-        val fooPath = foo.toString.replaceAllLiterally("\\", "\\\\")
+        val fooPath = foo.toString.replace("\\", "\\\\")
         val build = s"""TaskKey[Unit]("foo") := IO.write(file("$fooPath"), "foo")"""
         IO.write(tmpDir.resolve("build.sbt").toFile, build)
         IO.write(

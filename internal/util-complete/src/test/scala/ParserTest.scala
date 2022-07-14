@@ -119,6 +119,8 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep requires at least one token") = !matches(repeat, "")
   property("repeatDep accepts one token") = matches(repeat, colors.toSeq.head)
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
+  property("parses string that doesn't start with quotes, but includes quotes within it") =
+    matches(StringBasic, "-Dsilicon:z3ConfigArgs=\"model=true model_validate=true\"")
 }
 object ParserExample {
   val ws = charClass(_.isWhitespace, "whitespace").+

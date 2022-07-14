@@ -18,7 +18,7 @@ import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
 import sbt.internal.util.Util.{ AnyOps, none }
-import sbt.internal.util.{ RunningProcesses, Terminal => UTerminal }
+import sbt.internal.util.{ Terminal => UTerminal }
 
 private[sbt] object ForkTests {
   def apply(
@@ -158,13 +158,7 @@ private[sbt] object ForkTests {
           classOf[ForkMain].getCanonicalName,
           server.getLocalPort.toString
         )
-        val p = Fork.java.fork(fork, options)
-        RunningProcesses.add(p)
-        val ec = try p.exitValue()
-        finally {
-          if (p.isAlive) p.destroy()
-          RunningProcesses.remove(p)
-        }
+        val ec = Fork.java(fork, options)
         val result =
           if (ec != 0)
             TestOutput(
@@ -223,7 +217,7 @@ private final class React(
       listeners.foreach(_ testEvent event)
       val suiteResult = SuiteResult(tEvents)
       results += group -> suiteResult
-      listeners.foreach(_ endGroup (group, suiteResult.result))
+      listeners.foreach(_.endGroup(group, suiteResult.result))
       react()
   }
 }

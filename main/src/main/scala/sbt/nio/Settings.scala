@@ -259,7 +259,7 @@ private[sbt] object Settings {
    * Provides an automatically generated clean method for a task that provides fileOutputs.
    *
    * @param taskKey the task for which we add a custom clean implementation
-   * @return a task specificic clean implementation
+   * @return a task specific clean implementation
    */
   @nowarn
   private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Def.Setting[_] = {

@@ -12,7 +12,6 @@ import sbt.util.Show
 import java.io.File
 
 import Def.{ ScopedKey, compiled, flattenLocals }
-import sbt.internal.util.Terminal
 
 import Predef.{ any2stringadd => _, _ }
 import sbt.io.IO
@@ -122,11 +121,5 @@ object Graph {
       }
 
     toAsciiLines(top, 0, Set.empty).mkString("\n")
-  }
-
-  def defaultColumnSize: Int = {
-    val termWidth = Terminal.console.getWidth
-    if (termWidth > 20) termWidth - 8
-    else 80 // ignore termWidth
   }
 }

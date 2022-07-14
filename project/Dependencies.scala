@@ -4,18 +4,18 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.15"
-  val scala213 = "2.13.6"
+  val scala212 = "2.12.16"
+  val scala213 = "2.13.8"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.6.0-M1")
+  private val ioVersion = nightlyVersion.getOrElse("1.6.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.6.0-M1")
-  val zincVersion = nightlyVersion.getOrElse("1.6.0-M1")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.7.0-M1")
+  val zincVersion = nightlyVersion.getOrElse("1.7.0-M2")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -69,15 +69,15 @@ object Dependencies {
   def addSbtLmIvy = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy)
   def addSbtLmIvyTest = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
 
-  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterfaceJVM", compilerInterface)
-  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspathJVM2_12", compilerClasspath)
-  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfoJVM2_12", compilerApiInfo)
-  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridgeJVM2_12", compilerBridge)
-  def addSbtZinc = addSbtModule(sbtZincPath, "zincJVM2_12", zinc)
-  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompileJVM2_12", zincCompile)
-  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCoreJVM2_12", zincCompileCore)
+  def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface", compilerInterface)
+  def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath", compilerClasspath)
+  def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfo", compilerApiInfo)
+  def addSbtCompilerBridge = addSbtModule(sbtZincPath, "compilerBridge2_12", compilerBridge)
+  def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
+  def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
+  def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.8"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
@@ -94,19 +94,37 @@ object Dependencies {
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "2.1.0"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.0.8"
-  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.2.10"
+  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.15.4"
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
 
-  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
-  val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
-  val scalaReflect = Def.setting("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  val scalaXml = Def.setting(
+    if (scalaBinaryVersion.value == "3") {
+      "org.scala-lang.modules" %% "scala-xml" % "2.0.1"
+    } else {
+      "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
+    }
+  )
+  val scalaParsers = Def.setting(
+    if (scalaBinaryVersion.value == "3") {
+      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.1.0"
+    } else {
+      "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
+    }
+  )
+  val scalaReflect = Def.setting(
+    if (scalaBinaryVersion.value == "3") {
+      "org.scala-lang" % "scala-reflect" % scala213
+    } else {
+      "org.scala-lang" % "scala-reflect" % scalaVersion.value
+    }
+  )
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
 
   // specify all of log4j modules to prevent misalignment
-  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.11.2"
+  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"
   val log4jApi = log4jModule("log4j-api")
   val log4jCore = log4jModule("log4j-core")
   val log4jSlf4jImpl = log4jModule("log4j-slf4j-impl")
@@ -114,7 +132,7 @@ object Dependencies {
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
-  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.6.1"
+  val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.7.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
   val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.2").cross(CrossVersion.full)
 }
