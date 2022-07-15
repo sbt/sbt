@@ -9,6 +9,4 @@ jobs:
     runs-on: ubuntu-latest # or windows-latest, or macOS-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: scalacenter/sbt-dependency-graph-action@v1
-        with:
-          scala-versions: 2.12.16
+      - uses: scalacenter/sbt-dependency-submission@v2

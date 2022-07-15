@@ -622,6 +622,7 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
   .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
@@ -633,6 +634,7 @@ lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
   .dependsOn(scriptedSbtReduxProj)
   .settings(
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "Scripted sbt",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
@@ -660,6 +662,7 @@ lazy val dependencyTreeProj = (project in file("dependency-tree"))
   .settings(
     sbtPlugin := true,
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "sbt-dependency-tree",
     publishMavenStyle := true,
     // mimaSettings,
