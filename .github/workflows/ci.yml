@@ -91,7 +91,7 @@ jobs:
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Cache sbt
-      uses: actions/cache@v3.0.4
+      uses: actions/cache@v3.0.5
       with:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
