@@ -28,7 +28,7 @@ object Statistics {
       val directDependencies = graph.dependencyMap(moduleId).filterNot(_.isEvicted).map(_.id)
       val dependencyStats =
         directDependencies.map(statsFor).flatMap(_.transitiveStatsWithSelf).toMap
-      val selfSize = graph.module(moduleId).jarFile.filter(_.exists).map(_.length)
+      val selfSize = graph.module(moduleId).flatMap(_.jarFile).filter(_.exists).map(_.length)
       val numDirectDependencies = directDependencies.size
       val numTransitiveDependencies = dependencyStats.size
       val transitiveSize = selfSize.getOrElse(0L) + dependencyStats
