@@ -67,7 +67,7 @@ private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
   lazy val modules: Map[GraphModuleId, Module] =
     nodes.map(n => (n.id, n)).toMap
 
-  def module(id: GraphModuleId): Module = modules(id)
+  def module(id: GraphModuleId): Option[Module] = modules.get(id)
 
   lazy val dependencyMap: Map[GraphModuleId, Seq[Module]] =
     createMap(identity)
@@ -81,7 +81,7 @@ private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
     val m = new HashMap[GraphModuleId, Set[Module]] with MultiMap[GraphModuleId, Module]
     edges.foreach { entry =>
       val (f, t) = bindingFor(entry)
-      m.addBinding(f, module(t))
+      module(t).foreach(m.addBinding(f, _))
     }
     m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).toMap.withDefaultValue(Nil)
   }

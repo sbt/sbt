@@ -31,8 +31,8 @@ object DOT {
       }
     }.sorted.mkString("\n")
 
-    def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).isEvicted
-    def targetWasEvicted(edge: Edge): Boolean = graph.module(edge._2).isEvicted
+    def originWasEvicted(edge: Edge): Boolean = graph.module(edge._1).exists(_.isEvicted)
+    def targetWasEvicted(edge: Edge): Boolean = graph.module(edge._2).exists(_.isEvicted)
 
     // add extra edges from evicted to evicted-by module
     val evictedByEdges: Seq[Edge] =
@@ -43,13 +43,11 @@ object DOT {
     // remove edges to new evicted-by module which is now replaced by a chain
     // dependend -> [evicted] -> dependee
     val evictionTargetEdges =
-      graph.edges
-        .filter(targetWasEvicted)
-        .map {
-          case (from, evicted) =>
-            (from, evicted.copy(version = graph.module(evicted).evictedByVersion.get))
-        }
-        .toSet
+      graph.edges.collect {
+        case edge @ (from, evicted) if targetWasEvicted(edge) =>
+          // Can safely call `get` as `targetWasEvicted` already proves evicted exists in the graph
+          (from, evicted.copy(version = graph.module(evicted).flatMap(_.evictedByVersion).get))
+      }.toSet
 
     val filteredEdges =
       graph.edges
@@ -58,7 +56,7 @@ object DOT {
     val edges = {
       for (e <- filteredEdges) yield {
         val extra =
-          if (graph.module(e._1).isEvicted)
+          if (graph.module(e._1).exists(_.isEvicted))
             s""" [label="Evicted By" style="$EvictedStyle"]"""
           else ""
         """    "%s" -> "%s"%s""".format(e._1.idString, e._2.idString, extra)
