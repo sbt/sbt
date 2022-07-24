@@ -190,13 +190,22 @@ sealed abstract class TaskKey[A1]
       ev: Remove.Values[A1, A2]
   ): Setting[Task[A1]] = make(vs)(ev.removeValues)
 
-  inline def make[S](other: Initialize[Task[S]], source: SourcePosition)(
-      f: (A1, S) => A1
-  ): Setting[Task[A1]] = set0(this.zipWith(other)((a, b) => (a, b) map f.tupled), source)
+  inline def make[A2](other: Initialize[Task[A2]], source: SourcePosition)(
+      f: (A1, A2) => A1
+  ): Setting[Task[A1]] =
+    set0(
+      this.zipWith(other) { (ta1: Task[A1], ta2: Task[A2]) =>
+        multT2Task((ta1, ta2)) map f.tupled
+      },
+      source
+    )
 
-  inline def make[S](other: Initialize[Task[S]])(
-      f: (A1, S) => A1
-  ): Setting[Task[A1]] = set(this.zipWith(other)((a, b) => (a, b) map f.tupled))
+  inline def make[A2](other: Initialize[Task[A2]])(
+      f: (A1, A2) => A1
+  ): Setting[Task[A1]] =
+    set(this.zipWith(other) { (ta1: Task[A1], ta2: Task[A2]) =>
+      multT2Task((ta1, ta2)) map f.tupled
+    })
 
   final def withRank(rank: Int): TaskKey[A1] =
     TaskKey(AttributeKey.copyWithRank(key, rank))
