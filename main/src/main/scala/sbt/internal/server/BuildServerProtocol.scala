@@ -661,7 +661,7 @@ object BuildServerProtocol {
     val target = Keys.bspTargetIdentifier.value
     val classpath = Keys.fullClasspath.value.map(_.data.toURI).toVector
     val jvmOptions = Keys.javaOptions.value.toVector
-    val baseDir = Keys.baseDirectory.value.toURI().toString()
+    val baseDir = Keys.baseDirectory.value.getAbsolutePath
     val env = envVars.value
 
     JvmEnvironmentItem(
