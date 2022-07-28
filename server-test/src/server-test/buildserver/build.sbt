@@ -30,7 +30,9 @@ lazy val respondError = project.in(file("respond-error"))
     }
   )
 
-lazy val util = project
+lazy val util = project.settings(
+  Compile / target := baseDirectory.value / "custom-target",
+)
 
 lazy val diagnostics = project
 
@@ -44,6 +46,7 @@ lazy val badBuildTarget = project.in(file("bad-build-target"))
     Compile / bspBuildTargetDependencySourcesItem := somethingBad,
     Compile / bspBuildTargetScalacOptionsItem := somethingBad,
     Compile / bspBuildTargetCompileItem := somethingBad,
+    Compile / bspBuildTargetOutputPathsItem := somethingBad,
     Compile / bspScalaMainClasses := somethingBad,
     Test / bspBuildTarget := somethingBad,
     Test / bspScalaTestClasses := somethingBad,

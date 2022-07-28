@@ -31,7 +31,8 @@ object BuildServerTest extends AbstractServerTest {
     initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
       (s contains """"id":"8"""") &&
-      (s contains """"resourcesProvider":true""")
+      (s contains """"resourcesProvider":true""") &&
+      (s contains """"outputPathsProvider":true""")
     })
   }
 
@@ -539,13 +540,39 @@ object BuildServerTest extends AbstractServerTest {
     })
   }
 
+  test("buildTarget/outputPaths") { _ =>
+    val buildTarget = buildTargetUri("util", "Compile")
+    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
+    svr.sendJsonRpc(
+      s"""{ "jsonrpc": "2.0", "id": "97", "method": "buildTarget/outputPaths", "params": {
+         |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
+         |} }""".stripMargin
+    )
+    assert(processing("buildTarget/outputPaths"))
+    val actualResult = svr.waitFor[OutputPathsResult](10.seconds)
+    val expectedResult = OutputPathsResult(
+      items = Vector(
+        OutputPathsItem(
+          target = BuildTargetIdentifier(buildTarget),
+          outputPaths = Vector(
+            OutputPathItem(
+              uri = new File(svr.baseDirectory, "util/custom-target").toURI,
+              kind = OutputPathItemKind.Directory
+            )
+          )
+        )
+      )
+    )
+    assert(actualResult == expectedResult)
+  }
+
   private def initializeRequest(): Unit = {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "8", "method": "build/initialize",
         |  "params": {
         |    "displayName": "test client",
         |    "version": "1.0.0",
-        |    "bspVersion": "2.0.0-M5",
+        |    "bspVersion": "2.1.0-M1",
         |    "rootUri": "file://root/",
         |    "capabilities": { "languageIds": ["scala"] }
         |  }
