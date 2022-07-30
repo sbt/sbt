@@ -412,7 +412,7 @@ object BuildServerTest extends AbstractServerTest {
         (s contains "jsoniter-scala-core_2.13-2.13.11.jar") && // compile dependency
         (s contains "\"jvmOptions\":[\"Xmx256M\"]") &&
         (s contains "\"environmentVariables\":{\"KEY\":\"VALUE\"}") &&
-        (s contains "/buildserver/run-and-test/") // working directory
+        (s contains s""""workingDirectory":"${svr.baseDirectory.getAbsolutePath}/run-and-test"""")
       }
     }
   }
@@ -434,7 +434,8 @@ object BuildServerTest extends AbstractServerTest {
         (s contains "jsoniter-scala-core_2.13-2.13.11.jar") && // compile dependency
         (s contains "scalatest_2.13-3.0.8.jar") && // test dependency
         (s contains "\"jvmOptions\":[\"Xmx512M\"]") &&
-        (s contains "\"environmentVariables\":{\"KEY_TEST\":\"VALUE_TEST\"}")
+        (s contains "\"environmentVariables\":{\"KEY_TEST\":\"VALUE_TEST\"}") &&
+        (s contains s""""workingDirectory":"${svr.baseDirectory.getAbsolutePath}/run-and-test"""")
       }
     }
   }
