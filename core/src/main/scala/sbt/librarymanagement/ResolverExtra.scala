@@ -155,7 +155,10 @@ private[librarymanagement] abstract class ResolverFunctions {
     url("sbt-plugin-" + status, new URL(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(
       ivyStylePatterns
     )
-  @deprecated("""Use sonatypeOssRepos instead e.g. `resolvers ++= Resolver.sonatypeOssRepos("snapshots")`""", "1.7.0")
+  @deprecated(
+    """Use sonatypeOssRepos instead e.g. `resolvers ++= Resolver.sonatypeOssRepos("snapshots")`""",
+    "1.7.0"
+  )
   def sonatypeRepo(status: String) =
     MavenRepository(
       "sonatype-" + status,
