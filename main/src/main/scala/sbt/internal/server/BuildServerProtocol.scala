@@ -52,6 +52,7 @@ object BuildServerProtocol {
     RunProvider(BuildServerConnection.languages),
     dependencySourcesProvider = true,
     resourcesProvider = true,
+    outputPathsProvider = true,
     canReload = true,
     jvmRunEnvironmentProvider = true,
     jvmTestEnvironmentProvider = true,
@@ -158,6 +159,16 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetDependencySources / aggregate := false,
+    bspBuildTargetOutputPaths := bspInputTask { (state, _, workspace, filter) =>
+      Def.task {
+        import sbt.internal.bsp.codec.JsonProtocol._
+        val items = bspBuildTargetOutputPathsItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = OutputPathsResult(successfulItems.toVector)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetOutputPaths / aggregate := false,
     bspBuildTargetCompile := bspInputTask { (state, _, workspace, filter) =>
       workspace.warnIfBuildsNonEmpty(Method.Compile, state.log)
       Def.task {
@@ -267,6 +278,10 @@ object BuildServerProtocol {
       ResourcesItem(id, uris)
     },
     bspBuildTargetDependencySourcesItem := dependencySourcesItemTask.value,
+    bspBuildTargetOutputPathsItem := {
+      val id = bspTargetIdentifier.value
+      OutputPathsItem(id, Vector(OutputPathItem(target.value.toURI, OutputPathItemKind.Directory)))
+    },
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
     bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
@@ -318,6 +333,7 @@ object BuildServerProtocol {
     final val Shutdown = "build/shutdown"
     final val Sources = "buildTarget/sources"
     final val Resources = "buildTarget/resources"
+    final val OutputPaths = "buildTarget/outputPaths"
     final val DependencySources = "buildTarget/dependencySources"
     final val Compile = "buildTarget/compile"
     final val Test = "buildTarget/test"
@@ -452,6 +468,12 @@ object BuildServerProtocol {
             val param = Converter.fromJson[ResourcesParams](json(r)).get
             val targets = param.targets.map(_.uri).mkString(" ")
             val command = Keys.bspBuildTargetResources.key
+            val _ = callback.appendExec(s"$command $targets", Some(r.id))
+
+          case r if r.method == Method.OutputPaths =>
+            val param = Converter.fromJson[OutputPathsParams](json(r)).get
+            val targets = param.targets.map(_.uri).mkString(" ")
+            val command = Keys.bspBuildTargetOutputPaths.key
             val _ = callback.appendExec(s"$command $targets", Some(r.id))
         },
         onResponse = PartialFunction.empty,
