@@ -149,7 +149,7 @@ object LogManager {
         task: ScopedKey[_],
         context: LoggerContext
     ): ManagedLogger = {
-      val console = screen(task, state)
+      val console = ConsoleAppender("bg-" + ConsoleAppender.generateName(), ITerminal.current)
       LogManager.backgroundLog(data, state, task, console, relay(()), context)
     }
   }
