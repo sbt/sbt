@@ -153,9 +153,13 @@ private[sbt] object xMain {
           if (ITerminal.get.withRawInput(System.in.read) == 'n'.toInt) Some(Exit(1))
           else None
         (None, exit)
-      case _: ServerAlreadyBootingException =>
+      case e: ServerAlreadyBootingException =>
         if (SysProp.forceServerStart) (None, None)
-        else (None, Some(Exit(2)))
+        else {
+          println("Boot server failed to create socket")
+          e.printStackTrace()
+          (None, Some(Exit(2)))
+        }
       case _: UnsatisfiedLinkError => (None, None)
     }
 }
