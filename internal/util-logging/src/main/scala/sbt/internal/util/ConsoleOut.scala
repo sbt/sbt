@@ -8,6 +8,7 @@
 package sbt.internal.util
 
 import java.io.{ BufferedWriter, PrintStream, PrintWriter }
+import java.nio.channels.ClosedChannelException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
@@ -88,6 +89,26 @@ object ConsoleOut {
     override def println(): Unit = Terminal.get.printStream.println()
     override def flush(): Unit = Terminal.get.printStream.flush()
     override def toString: String = s"TerminalOut"
+  }
+
+  /** Same as terminalOut but it catches and ignores the ClosedChannelException
+   */
+  def safeTerminalOut(terminal: Terminal): ConsoleOut = {
+    val out = terminalOut(terminal)
+    new ConsoleOut {
+      override val lockObject: AnyRef = terminal
+      override def print(s: String): Unit = catchException(out.print(s))
+      override def println(s: String): Unit = catchException(out.println(s))
+      override def println(): Unit = catchException(out.println())
+      override def flush(): Unit = catchException(out.flush)
+      override def toString: String = s"SafeTerminalOut($terminal)"
+      private def catchException(f: => Unit): Unit = {
+        try f
+        catch {
+          case _: ClosedChannelException => ()
+        }
+      }
+    }
   }
 
   private[this] val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
