@@ -73,15 +73,23 @@ object LogManager {
       manager(data, state, task, to, context)
     }
 
-  @nowarn
+  @deprecated("Use alternate constructBackgroundLog that provides a LoggerContext", "1.8.0")
   def constructBackgroundLog(
       data: Settings[Scope],
       state: State
+  ): ScopedKey[_] => ManagedLogger = {
+    val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
+    constructBackgroundLog(data, state, context)
+  }
+
+  def constructBackgroundLog(
+      data: Settings[Scope],
+      state: State,
+      context: LoggerContext
   ): (ScopedKey[_]) => ManagedLogger =
     (task: ScopedKey[_]) => {
       val manager: LogManager =
         (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
-      val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
       manager.backgroundLog(data, state, task, context)
     }
 
@@ -141,7 +149,7 @@ object LogManager {
         task: ScopedKey[_],
         context: LoggerContext
     ): ManagedLogger = {
-      val console = screen(task, state)
+      val console = ConsoleAppender.safe("bg-" + ConsoleAppender.generateName(), ITerminal.current)
       LogManager.backgroundLog(data, state, task, console, relay(()), context)
     }
   }

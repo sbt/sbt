@@ -182,7 +182,8 @@ object LoggerContext {
       }
     }
     def close(): Unit = {
-      loggers.forEach((name, l) => l.clearAppenders())
+      closed.set(true)
+      loggers.forEach((_, l) => l.clearAppenders())
       loggers.clear()
     }
   }
