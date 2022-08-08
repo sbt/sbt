@@ -141,13 +141,17 @@ private[sbt] object xMain {
 
   private def getSocketOrExit(
       configuration: xsbti.AppConfiguration
-  ): (Option[BootServerSocket], Option[Exit]) =
-    try (Some(new BootServerSocket(configuration)) -> None)
+  ): (Option[BootServerSocket], Option[Exit]) = {
+    def printThrowable(e: Throwable): Unit = {
+      println("sbt thinks that server is already booting because of this exception:")
+      e.printStackTrace()
+    }
+
+    try Some(new BootServerSocket(configuration)) -> None
     catch {
       case e: ServerAlreadyBootingException
           if System.console != null && !ITerminal.startedByRemoteClient =>
-        println("sbt thinks that server is already booting because of this exception:")
-        e.printStackTrace()
+        printThrowable(e)
         println("Create a new server? y/n (default y)")
         val exit =
           if (ITerminal.get.withRawInput(System.in.read) == 'n'.toInt) Some(Exit(1))
@@ -156,12 +160,12 @@ private[sbt] object xMain {
       case e: ServerAlreadyBootingException =>
         if (SysProp.forceServerStart) (None, None)
         else {
-          println("Boot server failed to create socket")
-          e.printStackTrace()
+          printThrowable(e)
           (None, Some(Exit(2)))
         }
       case _: UnsatisfiedLinkError => (None, None)
     }
+  }
 }
 
 final class ScriptMain extends xsbti.AppMain {
