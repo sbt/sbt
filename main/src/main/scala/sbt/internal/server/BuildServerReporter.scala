@@ -174,7 +174,7 @@ final class BuildServerReporterImpl(
       Diagnostic(
         range,
         Option(toDiagnosticSeverity(problem.severity)),
-        None,
+        problem.diagnosticCode().toOption.map(_.code),
         Option("sbt"),
         problem.message
       )
