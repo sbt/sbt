@@ -9,9 +9,4 @@ import dataclass._
   @since
   includeByDefault: Boolean = false,
   semVer: Boolean = false
-) {
-  def addInclude(include: (String, String)*): Strict =
-    withInclude(this.include ++ include)
-  def addExclude(exclude: (String, String)*): Strict =
-    withExclude(this.exclude ++ exclude)
-}
+)

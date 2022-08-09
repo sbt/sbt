@@ -1,6 +1,8 @@
 
 import Settings._
 
+def dataclassScalafixV = "0.1.0-M3"
+
 inThisBuild(List(
   organization := "io.get-coursier",
   homepage := Some(url("https://github.com/coursier/sbt-coursier")),
@@ -12,12 +14,50 @@ inThisBuild(List(
       "",
       url("https://github.com/alexarchambault")
     )
-  )
+  ),
+  semanticdbEnabled := true,
+  semanticdbVersion := "4.5.9",
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
 ))
 
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
+
+def dataclassGen(data: Reference) = Def.taskDyn {
+  val root = (ThisBuild / baseDirectory).value.toURI.toString
+  val from = (data / Compile / sourceDirectory).value
+  val to = (Compile / sourceManaged).value
+  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
+  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
+  (data / Compile / compile).value
+  Def.task {
+    (data / Compile / scalafix)
+      .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
+      .value
+    (to ** "*.scala").get
+  }
+}
+
+def lmIvy = Def.setting {
+  "org.scala-sbt" %% "librarymanagement-ivy" % {
+    if (scalaBinaryVersion.value == "2.12") lmVersion
+    else lm2_13Version
+  }
+}
+
+lazy val definitions = project
+  .in(file("modules/definitions"))
+  .disablePlugins(MimaPlugin)
+  .settings(
+    crossScalaVersions := Seq(scala212, scala213),
+    libraryDependencies ++= Seq(
+      "io.get-coursier" %% "coursier" % coursierVersion0,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
+      lmIvy.value,
+    ),
+    dontPublish,
+  )
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -28,16 +68,14 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
-      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
+
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
-      "org.scala-sbt" %% "librarymanagement-ivy" % {
-        if (scalaBinaryVersion.value == "2.12") lmVersion
-        else lm2_13Version
-      },
+      lmIvy.value,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test
     ),
     Test / test := {
@@ -51,7 +89,8 @@ lazy val `lm-coursier` = project
       (publishLocal in customProtocolForTest213).value
       (publishLocal in customProtocolJavaForTest).value
       (Test / testOnly).evaluated
-    }
+    },
+    Compile / sourceGenerators += dataclassGen(definitions).taskValue,
   )
 
 lazy val `lm-coursier-shaded` = project
@@ -63,7 +102,7 @@ lazy val `lm-coursier-shaded` = project
     Mima.settings,
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
-    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
+    Compile / sources := (`lm-coursier` / Compile / sources).value,
     shadedModules += "io.get-coursier" %% "coursier",
     validNamespaces += "lmcoursier",
     validEntries ++= Set(
@@ -98,13 +137,10 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
-      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0", // depending on that one so that it doesn't get shaded
-      "org.scala-sbt" %% "librarymanagement-ivy" % {
-        if (scalaBinaryVersion.value == "2.12") lmVersion
-        else lm2_13Version
-      },
+      // "org.scala-lang.modules" %% "scala-xml" % "2.1.0", // depending on that one so that it doesn't get shaded
+      lmIvy.value,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test
     )
   )

@@ -2,6 +2,7 @@ package coursier.sbtlmcoursier
 
 import lmcoursier.definitions.{Authentication, ModuleMatchers, Reconciliation}
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
+import lmcoursier.syntax._
 import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}
@@ -152,7 +153,7 @@ object LmCoursierPlugin extends AutoPlugin {
 
         val authenticationByRepositoryId = actualCoursierCredentials.value.mapValues { c =>
           val a = c.authentication
-          Authentication(a.user, a.password, a.optional, a.realmOpt)
+          Authentication(a.user, a.password, a.optional, a.realmOpt, headers = Nil, httpsOnly = true, passOnRedirect = false)
         }
         val credentials = credentialsTask.value
         val strict = strictTask.value

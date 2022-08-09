@@ -6,7 +6,7 @@ object CachePolicy {
   /* NOTE: the following comments are copied from coursier.cache.CachePolicy for the benefit of users within an IDE
   that reads the javadocs. Please keep in sync from the original ADT.
    */
-  
+
   /** Only pick local files, possibly from the cache. Don't try to download anything. */
   case object LocalOnly extends CachePolicy
 

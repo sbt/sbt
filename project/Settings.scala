@@ -90,7 +90,8 @@ object Settings {
     }
 
   lazy val dontPublish = Seq(
-    publish := {}
+    publish := {},
+    publish / skip := true,
   )
 
 }

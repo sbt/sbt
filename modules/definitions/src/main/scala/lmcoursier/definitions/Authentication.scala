@@ -13,18 +13,5 @@ import dataclass._
   passOnRedirect: Boolean = false
 ) {
   override def toString(): String =
-    withPassword("****")
-      .withHeaders(
-        headers.map {
-          case (k, v) => (k, "****")
-        }
-      )
-      .productIterator
-      .mkString("Authentication(", ", ", ")")
-}
-
-object Authentication {
-
-  def apply(headers: Seq[(String, String)]): Authentication =
-    Authentication("", "").withHeaders(headers)
+    s"Authentication(user=$user)"
 }
