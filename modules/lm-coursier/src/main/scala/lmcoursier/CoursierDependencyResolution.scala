@@ -138,7 +138,7 @@ class CoursierDependencyResolution(
 
     val so = conf.scalaOrganization.map(Organization(_))
       .orElse(module0.scalaModuleInfo.map(m => Organization(m.scalaOrganization)))
-      .getOrElse(org"org.scala-lang")
+      .getOrElse(Organization("org.scala-lang"))
     val sv = conf.scalaVersion
       .orElse(module0.scalaModuleInfo.map(_.scalaFullVersion))
       // FIXME Manage to do stuff below without a scala version?
@@ -271,7 +271,7 @@ class CoursierDependencyResolution(
       )
 
     val sbtBootJarOverrides = SbtBootJars(
-      conf.sbtScalaOrganization.fold(org"org.scala-lang")(Organization(_)),
+      conf.sbtScalaOrganization.fold(Organization("org.scala-lang"))(Organization(_)),
       conf.sbtScalaVersion.getOrElse(sv),
       conf.sbtScalaJars
     )

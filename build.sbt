@@ -17,12 +17,33 @@ inThisBuild(List(
   ),
   semanticdbEnabled := true,
   semanticdbVersion := "4.5.9",
-  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
+  scalafixScalaBinaryVersion := {
+    (ThisBuild / scalaBinaryVersion).value match {
+      case "3" => "2.13"
+      case v   => v
+    }
+  },
 ))
 
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
+val lm3Version = "2.0.0-SNAPSHOT"
+
+lazy val scalafixGen = Def.taskDyn {
+  val root = (ThisBuild / baseDirectory).value.toURI.toString
+  val from = (Compile / sourceDirectory).value
+  val to = (Compile / sourceManaged).value
+  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
+  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
+  Def.task {
+    (Compile / scalafix)
+      .toTask(s" https://raw.githubusercontent.com/hamnis/dataclass-scalafix/9d1bc56b0b53c537293f1218d5600a2e987ee82a/rules/src/main/scala/fix/GenerateDataClass.scala --out-from=$outFrom --out-to=$outTo")
+      .value
+    (to ** "*.scala").get
+  }
+}
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -41,8 +62,11 @@ def dataclassGen(data: Reference) = Def.taskDyn {
 
 def lmIvy = Def.setting {
   "org.scala-sbt" %% "librarymanagement-ivy" % {
-    if (scalaBinaryVersion.value == "2.12") lmVersion
-    else lm2_13Version
+    scalaBinaryVersion.value match {
+      case "2.12" => lmVersion
+      case "2.13" => lm2_13Version
+      case  _     => lm3Version
+    }
   }
 }
 
@@ -52,7 +76,7 @@ lazy val definitions = project
   .settings(
     crossScalaVersions := Seq(scala212, scala213),
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value,
     ),
@@ -67,7 +91,7 @@ lazy val `lm-coursier` = project
     Mima.settings,
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
 
       // We depend on librarymanagement-ivy rather than just
@@ -76,7 +100,7 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       lmIvy.value,
-      "org.scalatest" %% "scalatest" % "3.2.13" % Test
+      ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
     ),
     Test / test := {
       (publishLocal in customProtocolForTest212).value
@@ -136,13 +160,13 @@ lazy val `lm-coursier-shaded` = project
         yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
     },
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
+      ("org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1").cross(CrossVersion.for3Use2_13),
       // "org.scala-lang.modules" %% "scala-xml" % "2.1.0", // depending on that one so that it doesn't get shaded
       lmIvy.value,
-      "org.scalatest" %% "scalatest" % "3.2.13" % Test
-    )
+      ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
+    ),
   )
 
 lazy val `sbt-coursier-shared` = project
