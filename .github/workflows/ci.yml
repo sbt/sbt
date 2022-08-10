@@ -41,7 +41,7 @@ jobs:
             java: 8
             distribution: adopt
             jobtype: 8
-          - os: windows-latest
+          - os: windows-2019
             java: 8
             distribution: adopt
             jobtype: 9
@@ -95,6 +95,9 @@ jobs:
       with:
         path: ~/.sbt
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+    - name: Setup Windows C++ toolchain
+      uses: ilammy/msvc-dev-cmd@v1
+      if: ${{ matrix.os == 'windows-2019' }}
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
@@ -107,7 +110,6 @@ jobs:
         ./sbt -v --client serverTestProj/scalafmtCheckAll
         ./sbt -v --client headerCheck
         ./sbt -v --client "Test/headerCheck"
-        ./sbt -v --client whitesourceOnPush
         ./sbt -v --client "Test/compile"
         ./sbt -v --client publishLocal
         ./sbt -v --client test
@@ -152,6 +154,8 @@ jobs:
       if: ${{ matrix.jobtype == 7 }}
       shell: bash
       run: |
+        # test building sbtn on Linux
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8 test using JDK 8 and JDK 11
         cd launcher-package
@@ -165,6 +169,8 @@ jobs:
       if: ${{ matrix.jobtype == 8 }}
       shell: bash
       run: |
+        # test building sbtn on macOS
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8, test using JDK 8, on macOS
         cd launcher-package
@@ -175,6 +181,8 @@ jobs:
       if: ${{ matrix.jobtype == 9 }}
       shell: bash
       run: |
+        # test building sbtn on Windows
+        sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8, test using JDK 8, on Windows
         cd launcher-package

@@ -310,7 +310,7 @@ public class BootServerSocket implements AutoCloseable {
       return "sbt-load" + hash;
     } else {
       final String alternativeSocketLocation =
-          System.getenv().getOrDefault("XDG_RUNTIME_DIR", "/tmp");
+          System.getenv().getOrDefault("XDG_RUNTIME_DIR", System.getProperty("java.io.tmpdir"));
       final Path alternativeSocketLocationRoot =
           Paths.get(alternativeSocketLocation).resolve(".sbt");
       final Path locationForSocket = alternativeSocketLocationRoot.resolve("sbt-socket" + hash);
