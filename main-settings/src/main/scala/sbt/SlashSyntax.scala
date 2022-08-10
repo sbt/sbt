@@ -36,8 +36,9 @@ trait SlashSyntax {
 
   // implicit def sbtSlashSyntaxRichReference(r: Reference): RichReference = Select(r)
 
-  given sbtSlashSyntaxRichReference: Conversion[Reference, RichReference] =
-    (r: Reference) => Select(r)
+  // Implement in Reference directly
+  // given sbtSlashSyntaxRichReference: Conversion[Reference, RichReference] =
+  //   (r: Reference) => Select(r)
 
   given sbtSlashSyntaxRichProject[A](using Conversion[A, Reference]): Conversion[A, RichReference] =
     (a: A) => Select(a: Reference)

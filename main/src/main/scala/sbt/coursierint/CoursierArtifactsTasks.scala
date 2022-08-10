@@ -106,9 +106,8 @@ object CoursierArtifactsTasks {
         )
       }
 
-      val sbtArtifactsPublication = sbtArtifacts.collect {
-        case Some((config, artifact)) =>
-          config -> artifactPublication(artifact)
+      val sbtArtifactsPublication = sbtArtifacts.collect { case Some((config, artifact)) =>
+        config -> artifactPublication(artifact)
       }
 
       val stdArtifactsSet = sbtArtifacts.flatMap(_.map { case (_, a) => a }.toSeq).toSet

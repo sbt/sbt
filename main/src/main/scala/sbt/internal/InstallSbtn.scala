@@ -100,10 +100,12 @@ private[sbt] object InstallSbtn {
       try {
         val result = new Array[Byte](1024 * 1024)
         var bytesRead = -1
-        do {
+        def impl(): Unit = {
           bytesRead = inputStream.read(result)
           if (bytesRead > 0) os.write(result, 0, bytesRead)
-        } while (bytesRead > 0)
+        }
+        impl()
+        while bytesRead > 0 do impl()
       } finally os.close()
     } finally inputStream.close()
   private[this] def getShell(term: Terminal): String = {
@@ -139,12 +141,13 @@ private[sbt] object InstallSbtn {
       setCompletions: Path => String,
   ): Unit = {
     val bin = baseDirectory.resolve("bin")
-    val export = setPath(bin)
+    val exp = setPath(bin)
     val completions = baseDirectory.resolve("completions")
     val sourceCompletions = setCompletions(completions)
-    val contents = try IO.read(configFile)
-    catch { case _: IOException => "" }
-    if (!contents.contains(export)) {
+    val contents =
+      try IO.read(configFile)
+      catch { case _: IOException => "" }
+    if (!contents.contains(exp)) {
       term.printStream.print(s"Add $bin to PATH in $configFile? y/n (y default): ")
       term.printStream.flush()
       term.inputStream.read() match {
@@ -153,11 +156,12 @@ private[sbt] object InstallSbtn {
           term.printStream.println(c.toChar)
           // put the export at the bottom so that the ~/.sbt/1.0/bin/sbtn is least preferred
           // but still on the path
-          IO.write(configFile, s"$contents\n$export")
+          IO.write(configFile, s"$contents\n$exp")
       }
     }
-    val newContents = try IO.read(configFile)
-    catch { case _: IOException => "" }
+    val newContents =
+      try IO.read(configFile)
+      catch { case _: IOException => "" }
     if (!newContents.contains(sourceCompletions)) {
       term.printStream.print(s"Add tab completions to $configFile? y/n (y default): ")
       term.printStream.flush()

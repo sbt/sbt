@@ -186,7 +186,8 @@ object SysProp {
   private[this] def file(value: String): File = new File(value)
   private[this] def home: File = file(sys.props("user.home"))
 
-  /** Operating system specific cache directory, similar to Coursier cache.
+  /**
+   * Operating system specific cache directory, similar to Coursier cache.
    */
   def globalLocalCache: File = {
     val appName = "sbt"

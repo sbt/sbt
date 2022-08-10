@@ -58,7 +58,7 @@ private[sbt] object Clean {
       case f if f.isDirectory => Glob(f, AnyPath)
       case f                  => f.toGlob
     } ++ (scope / cleanKeepGlobs).value
-    p: Path => excludes.exists(_.matches(p))
+    (p: Path) => excludes.exists(_.matches(p))
   }
   private[this] def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
     // Don't use a regular logger because the logger actually writes to the target directory.

@@ -72,12 +72,12 @@ trait Init[ScopeType]:
   type SettingSeq[A] = Seq[Setting[A]]
   type ScopedMap = IMap[ScopedKey, SettingSeq]
   type CompiledMap = Map[ScopedKey[_], Compiled[_]]
-  type MapScoped = ScopedKey ~> ScopedKey
+  type MapScoped = [a] => ScopedKey[a] => ScopedKey[a]
   type ValidatedRef[A] = Either[Undefined, ScopedKey[A]]
   type ValidatedInit[A] = Either[Seq[Undefined], Initialize[A]]
-  type ValidateRef = ScopedKey ~> ValidatedRef
+  type ValidateRef = [a] => ScopedKey[a] => ValidatedRef[a]
   type ScopeLocal = ScopedKey[_] => Seq[Setting[_]]
-  type MapConstant = ScopedKey ~> Option
+  type MapConstant = [a] => ScopedKey[a] => Option[a]
 
   private[sbt] abstract class ValidateKeyRef {
     def apply[T](key: ScopedKey[T], selfRefOk: Boolean): ValidatedRef[T]
@@ -174,11 +174,10 @@ trait Init[ScopeType]:
   def getValue[T](s: Settings[ScopeType], k: ScopedKey[T]) =
     s.get(k.scope, k.key) getOrElse (throw new InvalidReference(k))
 
-  def asFunction[T](s: Settings[ScopeType]): ScopedKey[T] => T = k => getValue(s, k)
+  def asFunction[A](s: Settings[ScopeType]): ScopedKey[A] => A = k => getValue(s, k)
 
-  def mapScope(f: ScopeType => ScopeType): MapScoped = new MapScoped {
-    def apply[T](k: ScopedKey[T]): ScopedKey[T] = k.copy(scope = f(k.scope))
-  }
+  def mapScope(f: ScopeType => ScopeType): MapScoped =
+    [a] => (k: ScopedKey[a]) => k.copy(scope = f(k.scope))
 
   private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
     val result = new java.util.LinkedHashSet[Setting[_]]

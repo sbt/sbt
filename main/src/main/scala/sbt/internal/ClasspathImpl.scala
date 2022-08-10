@@ -327,27 +327,33 @@ private[sbt] object ClasspathImpl {
       for {
         ac <- applicableConfigs
       } // add all configurations in this project
-      visited add (p -> ac.name)
-      val masterConfs = names(getConfigurations(projectRef, data).toVector)
+        visited add (p -> ac.name)
+        val masterConfs = names(getConfigurations(projectRef, data).toVector)
 
-      for {
-        ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)
-      } {
-        val configurations = getConfigurations(dep, data)
-        val mapping =
-          mapped(confMapping, masterConfs, names(configurations.toVector), "compile", "*->compile")
-        // map master configuration 'c' and all extended configurations to the appropriate dependency configuration
         for {
-          ac <- applicableConfigs
-          depConfName <- mapping(ac.name)
+          ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)
         } {
+          val configurations = getConfigurations(dep, data)
+          val mapping =
+            mapped(
+              confMapping,
+              masterConfs,
+              names(configurations.toVector),
+              "compile",
+              "*->compile"
+            )
+          // map master configuration 'c' and all extended configurations to the appropriate dependency configuration
           for {
-            depConf <- confOpt(configurations, depConfName)
-          } if (!visited((dep, depConfName))) {
-            visit(dep, depConf)
+            ac <- applicableConfigs
+            depConfName <- mapping(ac.name)
+          } {
+            for {
+              depConf <- confOpt(configurations, depConfName)
+            } if (!visited((dep, depConfName))) {
+              visit(dep, depConf)
+            }
           }
         }
-      }
     }
     visit(projectRef, conf)
     visited.toSeq

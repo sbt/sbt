@@ -153,7 +153,7 @@ final class NetworkChannel(
         override private[sbt] val channel = NetworkChannel.this
         override private[sbt] lazy val reader: UITask.Reader = () => {
           try {
-            this.synchronized(this.wait)
+            this.synchronized((this.wait()))
             Left(TerminateAction)
           } catch {
             case _: InterruptedException => Right("")
@@ -197,17 +197,17 @@ final class NetworkChannel(
     }
 
     lazy val onRequestMessage: PartialFunction[JsonRpcRequestMessage, Unit] =
-      intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) {
-        case (f, i) => f orElse i.onRequest
+      intents.foldLeft(PartialFunction.empty[JsonRpcRequestMessage, Unit]) { case (f, i) =>
+        f orElse i.onRequest
       }
     lazy val onResponseMessage: PartialFunction[JsonRpcResponseMessage, Unit] =
-      intents.foldLeft(PartialFunction.empty[JsonRpcResponseMessage, Unit]) {
-        case (f, i) => f orElse i.onResponse
+      intents.foldLeft(PartialFunction.empty[JsonRpcResponseMessage, Unit]) { case (f, i) =>
+        f orElse i.onResponse
       }
 
     lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
-      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) {
-        case (f, i) => f orElse i.onNotification
+      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) { case (f, i) =>
+        f orElse i.onNotification
       }
 
     def handleBody(chunk: Seq[Byte]): Unit = {
@@ -335,34 +335,37 @@ final class NetworkChannel(
   /*
    * Do writes on a background thread because otherwise the client socket can get blocked.
    */
-  private[this] val writeThread = new Thread(() => {
-    @tailrec def impl(): Unit = {
-      val (event, delimit) =
-        try pendingWrites.take
-        catch {
-          case _: InterruptedException =>
-            alive.set(false)
-            (Array.empty[Byte], false)
-        }
-      if (alive.get) {
-        try {
-          out.write(event)
-          if (delimit) {
-            out.write(delimiter.toInt)
+  private[this] val writeThread = new Thread(
+    () => {
+      @tailrec def impl(): Unit = {
+        val (event, delimit) =
+          try pendingWrites.take
+          catch {
+            case _: InterruptedException =>
+              alive.set(false)
+              (Array.empty[Byte], false)
           }
-          out.flush()
-        } catch {
-          case _: IOException =>
-            alive.set(false)
-            shutdown(true)
-          case _: InterruptedException =>
-            alive.set(false)
+        if (alive.get) {
+          try {
+            out.write(event)
+            if (delimit) {
+              out.write(delimiter.toInt)
+            }
+            out.flush()
+          } catch {
+            case _: IOException =>
+              alive.set(false)
+              shutdown(true)
+            case _: InterruptedException =>
+              alive.set(false)
+          }
+          impl()
         }
-        impl()
       }
-    }
-    impl()
-  }, s"sbt-$name-write-thread")
+      impl()
+    },
+    s"sbt-$name-write-thread"
+  )
   writeThread.setDaemon(true)
   writeThread.start()
 
@@ -449,7 +452,11 @@ final class NetworkChannel(
                 val runKeys = keys.filter(_.key.label == "runMain")
                 val (runState, cachedMainClassNames) = runKeys.foldLeft((testState, true)) {
                   case ((st, allCached), k) =>
-                    SessionVar.loadAndSet(sbt.Keys.discoveredMainClasses in k.scope, st, true) match {
+                    SessionVar.loadAndSet(
+                      sbt.Keys.discoveredMainClasses in k.scope,
+                      st,
+                      true
+                    ) match {
                       case (nst, d) => (nst, allCached && d.isDefined)
                     }
                 }
@@ -513,8 +520,10 @@ final class NetworkChannel(
 
             // direct comparison on strings and
             // remove hotspring unicode added character for numbers
-            if (checkId || (crp.id == Serialization.CancelAll &&
-                StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))) {
+            if (
+              checkId() || (crp.id == Serialization.CancelAll &&
+                StandardMain.exchange.currentExec.exists(_.source.exists(_.channelName == name)))
+            ) {
               runningEngine.cancelAndShutdown()
 
               respondResult(
@@ -659,18 +668,20 @@ final class NetworkChannel(
 
   import scala.collection.JavaConverters._
   private[this] val outputBuffer = new LinkedBlockingQueue[Byte]
-  private[this] val flushExecutor = Executors.newSingleThreadScheduledExecutor(
-    r => new Thread(r, s"$name-output-buffer-timer-thread")
+  private[this] val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
+    new Thread(r, s"$name-output-buffer-timer-thread")
   )
-  private[this] def forceFlush() = {
+
+  private[this] def forceFlush(): Unit =
     Util.ignoreResult(flushExecutor.shutdownNow())
     doFlush()
-  }
-  private[this] def doFlush()() = {
+
+  private[this] def doFlush() = {
     val list = new java.util.ArrayList[Byte]
     outputBuffer.synchronized(outputBuffer.drainTo(list))
     if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
   }
+
   private[this] lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
     with AutoCloseable {
     /*
@@ -769,17 +780,21 @@ final class NetworkChannel(
       try {
         blockedThreads.synchronized(blockedThreads.add(t))
         f
-      } catch { case _: InterruptedException => default } finally {
+      } catch { case _: InterruptedException => default }
+      finally {
         Util.ignoreResult(blockedThreads.synchronized(blockedThreads.remove(t)))
       }
     }
     def getProperty[T](f: TerminalPropertiesResponse => T, default: T): Option[T] = {
       if (closed.get || !isAttached) None
       else
-        withThread({
-          getProperties(true);
-          Some(f(Option(properties.get).getOrElse(empty)))
-        }, None)
+        withThread(
+          {
+            getProperties(true);
+            Some(f(Option(properties.get).getOrElse(empty)))
+          },
+          None
+        )
     }
     private[this] def waitForPending(f: TerminalPropertiesResponse => Boolean): Boolean = {
       if (closed.get || !isAttached) false
@@ -871,8 +886,9 @@ final class NetworkChannel(
     override private[sbt] def getSizeImpl: (Int, Int) =
       if (!closed.get) {
         val queue = VirtualTerminal.getTerminalSize(name, jsonRpcRequest)
-        val res = try queue.take
-        catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
+        val res =
+          try queue.take
+          catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
         (res.width, res.height)
       } else (1, 1)
     override def setSize(width: Int, height: Int): Unit =

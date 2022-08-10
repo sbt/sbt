@@ -338,7 +338,7 @@ object BuiltinCommands {
       eval,
       last,
       lastGrep,
-      export,
+      exportCommand,
       boot,
       initialize,
       act,
@@ -586,29 +586,28 @@ object BuiltinCommands {
     Project.setProject(newSession, newStructure, s)
   }
 
-  def set: Command = Command(SetCommand, setBrief, setDetailed)(setParser) {
-    case (s, (all, arg)) =>
-      val extracted = Project extract s
-      import extracted._
-      val dslVals = extracted.currentUnit.unit.definitions.dslDefinitions
-      // TODO - This is possibly inefficient (or stupid).  We should try to only attach the
-      // classloader + imports NEEDED to compile the set command, rather than
-      // just ALL of them.
-      val ims = (imports(extracted) ++ dslVals.imports.map(i => (i, -1)))
-      val cl = dslVals.classloader(currentLoader)
-      val settings = EvaluateConfigurations.evaluateSetting(
-        session.currentEval(),
-        "<set>",
-        ims,
-        arg,
-        LineRange(0, 0)
-      )(cl)
-      val setResult =
-        if (all) SettingCompletions.setAll(extracted, settings)
-        else SettingCompletions.setThis(extracted, settings, arg)
-      s.log.info(setResult.quietSummary)
-      s.log.debug(setResult.verboseSummary)
-      reapply(setResult.session, structure, s)
+  def set: Command = Command(SetCommand, setBrief, setDetailed)(setParser) { case (s, (all, arg)) =>
+    val extracted = Project extract s
+    import extracted._
+    val dslVals = extracted.currentUnit.unit.definitions.dslDefinitions
+    // TODO - This is possibly inefficient (or stupid).  We should try to only attach the
+    // classloader + imports NEEDED to compile the set command, rather than
+    // just ALL of them.
+    val ims = (imports(extracted) ++ dslVals.imports.map(i => (i, -1)))
+    val cl = dslVals.classloader(currentLoader)
+    val settings = EvaluateConfigurations.evaluateSetting(
+      session.currentEval(),
+      "<set>",
+      ims,
+      arg,
+      LineRange(0, 0)
+    )(cl)
+    val setResult =
+      if (all) SettingCompletions.setAll(extracted, settings)
+      else SettingCompletions.setThis(extracted, settings, arg)
+    s.log.info(setResult.quietSummary)
+    s.log.debug(setResult.verboseSummary)
+    reapply(setResult.session, structure, s)
   }
 
   @deprecated("Use variant that doesn't take a State", "1.1.1")
@@ -693,18 +692,20 @@ object BuiltinCommands {
     for {
       lastOnly_keys <- keysParser
       kvs = Act.keyValues(structure)(lastOnly_keys._2)
-      f <- if (lastOnly_keys._1) success(() => s)
-      else Aggregation.evaluatingParser(s, show)(kvs)
+      f <-
+        if (lastOnly_keys._1) success(() => s)
+        else Aggregation.evaluatingParser(s, show)(kvs)
     } yield () => {
       def export0(s: State): State = lastImpl(s, kvs, Some(ExportStream))
-      val newS = try f()
-      catch {
-        case NonFatal(e) =>
-          try export0(s)
-          finally {
-            throw e
-          }
-      }
+      val newS =
+        try f()
+        catch {
+          case NonFatal(e) =>
+            try export0(s)
+            finally {
+              throw e
+            }
+        }
       export0(newS)
     }
   }
@@ -722,7 +723,7 @@ object BuiltinCommands {
       keepLastLog(s)
   }
 
-  def export: Command =
+  def exportCommand: Command =
     Command(ExportCommand, exportBrief, exportDetailed)(exportParser)((_, f) => f())
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
@@ -808,8 +809,8 @@ object BuiltinCommands {
   }
 
   def projects: Command =
-    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(
-      s => projectsParser(s).?
+    Command(ProjectsCommand, (ProjectsCommand, projectsBrief), projectsDetailed)(s =>
+      projectsParser(s).?
     ) {
       case (s, Some(modifyBuilds)) => transformExtraBuilds(s, modifyBuilds)
       case (s, None)               => showProjects(s); s
@@ -863,10 +864,13 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result = try ITerminal.get.withRawInput(System.in.read) match {
-      case -1 => 'q'.toInt
-      case b  => b
-    } catch { case _: ClosedChannelException => 'q' }
+    val result =
+      try
+        ITerminal.get.withRawInput(System.in.read) match {
+          case -1 => 'q'.toInt
+          case b  => b
+        }
+      catch { case _: ClosedChannelException => 'q' }
     def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
     def ignoreMsg: String =
       if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
@@ -890,8 +894,8 @@ object BuiltinCommands {
       Nil
 
   def loadProject: Command =
-    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)(
-      (s, arg) => loadProjectCommands(arg) ::: s
+    Command(LoadProject, LoadProjectBrief, LoadProjectDetailed)(loadProjectParser)((s, arg) =>
+      loadProjectCommands(arg) ::: s
     )
 
   private[this] def loadProjectParser: State => Parser[String] =
@@ -1002,13 +1006,14 @@ object BuiltinCommands {
 
   def clearCaches: Command = {
     val help = Help.more(ClearCaches, ClearCachesDetailed)
-    val f: State => State = registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
+    val f: State => State =
+      registerCompilerCache _ andThen (_.initializeClassLoaderCache) andThen addCacheStoreFactoryFactory
     Command.command(ClearCaches, help)(f)
   }
 
   private[sbt] def waitCmd: Command =
-    Command.arb(
-      _ => ContinuousCommands.waitWatch.examples() ~> " ".examples() ~> matched(any.*).examples()
+    Command.arb(_ =>
+      ContinuousCommands.waitWatch.examples() ~> " ".examples() ~> matched(any.*).examples()
     ) { (s0, channel) =>
       val exchange = StandardMain.exchange
       exchange.channelForName(channel) match {
@@ -1118,8 +1123,7 @@ object BuiltinCommands {
           val line = s"sbt.version=$sbtVersion"
           IO.writeLines(buildProps, line :: buildPropsLines)
           state.log info s"Updated file $buildProps: set sbt.version to $sbtVersion"
-        } else
-          state.log warn warnMsg
+        } else state.log warn warnMsg
       } catch {
         case _: IOException => state.log warn warnMsg
       }

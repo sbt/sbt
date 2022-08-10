@@ -105,7 +105,7 @@ object GlobalPlugin {
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, roots)
       val config = EvaluateTask.extractedTaskConfig(Project.extract(state), structure, state)
-      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)
+      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(using nv)
       (newS, processResult2(result))
     }
   }

@@ -24,7 +24,6 @@ import scala.collection.JavaConverters._
  * If the top layer needs to load a class from the bottom layer via java reflection, we facilitate
  * that with the `ReverseLookupClassLoader`.
  *
- *
  * This holder caches the ReverseLookupClassLoader, which is the top loader in this hierarchy. The
  * checkout method will get the RevereLookupClassLoader from the cache or make a new one if
  * none is available. It will only cache at most one so if multiple concurrently tasks have the

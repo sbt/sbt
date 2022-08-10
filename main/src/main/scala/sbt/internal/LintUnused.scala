@@ -97,13 +97,12 @@ object LintUnused {
       if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
       else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
       buffer.append(" ")
-      result foreach {
-        case (_, str, positions) =>
-          buffer.append(s"* $str")
-          positions foreach {
-            case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
-            case _                 => ()
-          }
+      result foreach { case (_, str, positions) =>
+        buffer.append(s"* $str")
+        positions foreach {
+          case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
+          case _                 => ()
+        }
       }
       buffer.append(" ")
       buffer.append(

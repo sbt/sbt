@@ -269,13 +269,13 @@ object EvaluateTask {
           val progress = tp.progress
           override def initial(): Unit = progress.initial()
           override def afterRegistered(
-              task: Task[_],
-              allDeps: Iterable[Task[_]],
-              pendingDeps: Iterable[Task[_]]
+              task: Task[Any],
+              allDeps: Iterable[Task[Any]],
+              pendingDeps: Iterable[Task[Any]]
           ): Unit =
             progress.afterRegistered(task, allDeps, pendingDeps)
-          override def afterReady(task: Task[_]): Unit = progress.afterReady(task)
-          override def beforeWork(task: Task[_]): Unit = progress.beforeWork(task)
+          override def afterReady(task: Task[Any]): Unit = progress.afterReady(task)
+          override def beforeWork(task: Task[Any]): Unit = progress.beforeWork(task)
           override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
             progress.afterWork(task, result)
           override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
@@ -379,7 +379,7 @@ object EvaluateTask {
   ): Option[(State, Result[T])] = {
     withStreams(structure, state) { str =>
       for ((task, toNode) <- getTask(structure, taskKey, state, str, ref))
-        yield runTask(task, state, str, structure.index.triggers, config)(toNode)
+        yield runTask(task, state, str, structure.index.triggers, config)(using toNode)
     }
   }
 
@@ -442,7 +442,7 @@ object EvaluateTask {
     for (t <- structure.data.get(resolvedScope, taskKey.key))
       yield (t, nodeView(state, streams, taskKey :: Nil))
   }
-  def nodeView[HL <: HList](
+  def nodeView(
       state: State,
       streams: Streams,
       roots: Seq[ScopedKey[_]],
@@ -470,7 +470,7 @@ object EvaluateTask {
       streams: Streams,
       triggers: Triggers[Task],
       config: EvaluateTaskConfig
-  )(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
+  )(using taskToNode: NodeView[Task]): (State, Result[T]) = {
     import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
 
     val log = state.log
@@ -480,9 +480,9 @@ object EvaluateTask {
     def tagMap(t: Task[_]): Tags.TagMap =
       t.info.get(tagsKey).getOrElse(Map.empty)
     val tags =
-      tagged[Task[_]](tagMap, Tags.predicate(config.restrictions))
+      tagged[Task[Any]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      cancellableCompletionService[Task[_], Completed](
+      cancellableCompletionService[Task[Any], Completed](
         tags,
         (s: String) => log.warn(s),
         (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
@@ -509,14 +509,16 @@ object EvaluateTask {
         Execute.config(config.checkCycles, overwriteNode),
         triggers,
         config.progressReporter
-      )(taskToNode)
+      )
       val (newState, result) =
         try {
-          val results = x.runKeep(root)(service)
+          given strategy: x.Strategy = service
+          val results = x.runKeep(root)
           storeValuesForPrevious(results, state, streams)
           applyResults(results, state, root)
-        } catch { case inc: Incomplete => (state, Inc(inc)) }
-        finally shutdown()
+        } catch {
+          case inc: Incomplete => (state, Result.Inc(inc))
+        } finally shutdown()
       val replaced = transformInc(result)
       logIncResult(replaced, state, streams)
       (newState, replaced)
@@ -560,9 +562,9 @@ object EvaluateTask {
   def stateTransform(results: RMap[Task, Result]): State => State =
     Function.chain(
       results.toTypedSeq flatMap {
-        case results.TPair(_, Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
-        case results.TPair(Task(info, _), Value(v)) => info.post(v) get transformState
-        case _                                      => Nil
+        case results.TPair(_, Result.Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
+        case results.TPair(Task(info, _), Result.Value(v)) => info.post(v) get transformState
+        case _                                             => Nil
       }
     )
 

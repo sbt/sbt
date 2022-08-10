@@ -59,76 +59,6 @@ import language.experimental.macros
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.FiniteDuration
 
-sealed trait ProjectDefinition[PR <: ProjectReference] {
-
-  /**
-   * The project ID is used to uniquely identify a project within a build.
-   * It is used to refer to a project from the command line and in the scope of keys.
-   */
-  def id: String
-
-  /** The base directory for the project. */
-  def base: File
-
-  /**
-   * The configurations for this project.  These are groups of related tasks and the main reason
-   * to list them here is when one configuration extends another.  In this case, a setting lookup
-   * in one configuration will fall back to the configurations it extends configuration if the setting doesn't exist.
-   */
-  def configurations: Seq[Configuration]
-
-  /**
-   * The explicitly defined sequence of settings that configure this project.
-   * These do not include the automatically appended settings as configured by `auto`.
-   */
-  def settings: Seq[Setting[_]]
-
-  /**
-   * The references to projects that are aggregated by this project.
-   * When a task is run on this project, it will also be run on aggregated projects.
-   */
-  def aggregate: Seq[PR]
-
-  /** The references to projects that are classpath dependencies of this project. */
-  def dependencies: Seq[ClasspathDep[PR]]
-
-  /** The references to projects that are aggregate and classpath dependencies of this project. */
-  def uses: Seq[PR] = aggregate ++ dependencies.map(_.project)
-  def referenced: Seq[PR] = uses
-
-  /**
-   * The defined [[Plugins]] associated with this project.
-   * A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to add to a project.
-   */
-  def plugins: Plugins
-
-  /** Indicates whether the project was created organically, or was generated synthetically. */
-  def projectOrigin: ProjectOrigin
-
-  /** The [[AutoPlugin]]s enabled for this project.  This value is only available on a loaded Project. */
-  private[sbt] def autoPlugins: Seq[AutoPlugin]
-
-  override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
-
-  override final def equals(o: Any) = o match {
-    case p: ProjectDefinition[_] => p.getClass == this.getClass && p.id == id && p.base == base
-    case _                       => false
-  }
-
-  override def toString = {
-    val agg = ifNonEmpty("aggregate", aggregate)
-    val dep = ifNonEmpty("dependencies", dependencies)
-    val conf = ifNonEmpty("configurations", configurations)
-    val autos = ifNonEmpty("autoPlugins", autoPlugins.map(_.label))
-    val fields =
-      s"id $id" :: s"base: $base" :: agg ::: dep ::: conf ::: (s"plugins: List($plugins)" :: autos)
-    s"Project(${fields.mkString(", ")})"
-  }
-
-  private[this] def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] =
-    if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
-}
-
 trait CompositeProject {
   def componentProjects: Seq[Project]
 }
@@ -605,12 +535,15 @@ object Project extends ProjectExtra {
   def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
     ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
 
-  def mapScope(f: Scope => Scope) = λ[ScopedKey ~> ScopedKey](k => ScopedKey(f(k.scope), k.key))
+  def mapScope(f: Scope => Scope): [a] => ScopedKey[a] => ScopedKey[a] =
+    [a] => (k: ScopedKey[a]) => ScopedKey(f(k.scope), k.key)
 
-  def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
+  def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] =
     val f = mapScope(g)
-    ss.map(_ mapKey f mapReferenced f)
-  }
+    ss.map { setting =>
+      setting.mapKey(f).mapReferenced(f)
+    }
+
   def transformRef(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
     val f = mapScope(g)
     ss.map(_ mapReferenced f)

@@ -43,6 +43,7 @@ case object Zero extends ScopeAxis[Nothing]
 final case class Select[S](s: S) extends ScopeAxis[S] {
   override def isSelect = true
 }
+
 object ScopeAxis {
   def fromOption[T](o: Option[T]): ScopeAxis[T] = o match {
     case Some(v) => Select(v)

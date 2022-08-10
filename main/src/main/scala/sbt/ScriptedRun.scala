@@ -62,10 +62,11 @@ object ScriptedRun {
 
     val clazz = scriptedTests.getClass
     if (batchExecution)
-      try new RunInParallelV2(
-        scriptedTests,
-        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
-      )
+      try
+        new RunInParallelV2(
+          scriptedTests,
+          clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
+        )
       catch {
         case _: NoSuchMethodException =>
           new RunInParallelV1(
@@ -74,10 +75,11 @@ object ScriptedRun {
           )
       }
     else
-      try new RunV2(
-        scriptedTests,
-        clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
-      )
+      try
+        new RunV2(
+          scriptedTests,
+          clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
+        )
       catch {
         case _: NoSuchMethodException =>
           new RunV1(scriptedTests, clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls))

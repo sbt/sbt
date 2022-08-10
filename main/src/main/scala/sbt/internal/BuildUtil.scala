@@ -113,7 +113,8 @@ object BuildUtil {
   def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] = {
     val depPairs =
       for {
-        (uri, unit) <- units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
+        (uri, unit) <-
+          units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
         project <- unit.projects
         ref = ProjectRef(uri, project.id)
         agg <- project.aggregate

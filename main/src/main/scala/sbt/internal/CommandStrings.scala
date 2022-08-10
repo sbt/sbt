@@ -12,7 +12,7 @@ import sbt.io.Path
 
 object CommandStrings {
 
-  /** The prefix used to identify a request to execute the remaining input on source changes.*/
+  /** The prefix used to identify a request to execute the remaining input on source changes. */
   val AboutCommand = "about"
   val TasksCommand = "tasks"
   val SettingsCommand = "settings"

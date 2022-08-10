@@ -79,7 +79,8 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.13"
+  // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
+  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha1"
 
   lazy val sjsonNewVersion = "0.10.0"
   def sjsonNew(n: String) = Def.setting(
@@ -89,7 +90,8 @@ object Dependencies {
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
   val sjsonNewCore = sjsonNew("sjson-new-core")
 
-  val eval = ("com.eed3si9n.eval" % "eval" % "0.1.0").cross(CrossVersion.full)
+  // val eval = ("com.eed3si9n.eval" % "eval" % "0.1.0").cross(CrossVersion.full)
+  val eval = "com.eed3si9n.eval" % "eval_3.1.1" % "0.1.0"
 
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi
@@ -107,6 +109,8 @@ object Dependencies {
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+
+  val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {

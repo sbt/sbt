@@ -19,9 +19,10 @@ import lmcoursier.definitions.{
   Reconciliation,
   Strict => CStrict,
 }
-import lmcoursier._
-import lmcoursier.syntax._
+import lmcoursier.*
+import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
+import lmcoursier.syntax.*
 import Keys._
 import sbt.internal.util.Util
 import sbt.librarymanagement._

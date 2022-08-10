@@ -110,7 +110,7 @@ final class LoadedBuildUnit(
     )
   )
 
-  /** The base directory of the build unit (not the build definition).*/
+  /** The base directory of the build unit (not the build definition). */
   def localBase = unit.localBase
 
   /**
@@ -211,8 +211,8 @@ final class DetectedPlugins(
 
   private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
     autoPlugins
-      .flatMap {
-        case DetectedAutoPlugin(name, _, hasAutoImport) => if (hasAutoImport) Some(name) else None
+      .flatMap { case DetectedAutoPlugin(name, _, hasAutoImport) =>
+        if (hasAutoImport) Some(name) else None
       }
       .partition(nonTopLevelPlugin)
 
@@ -271,8 +271,8 @@ final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
   BuildUtil.checkCycles(units)
 
   def allProjectRefs: Seq[(ProjectRef, ResolvedProject)] =
-    units.iterator.flatMap {
-      case (build, unit) => unit.projects.map(p => ProjectRef(build, p.id) -> p)
+    units.iterator.flatMap { case (build, unit) =>
+      unit.projects.map(p => ProjectRef(build, p.id) -> p)
     }.toIndexedSeq
 
   def extra(data: Settings[Scope])(keyIndex: KeyIndex): BuildUtil[ResolvedProject] =
@@ -377,7 +377,7 @@ object BuildStreams {
         // The Previous.scopedKeyAttribute is an implementation detail that allows us to get a
         // more specific cache directory for a task stream.
         case AttributeEntry(key, _) if key == Previous.scopedKeyAttribute => Nil
-        case AttributeEntry(key, value)                                   => s"${key.label}=$value" :: Nil
+        case AttributeEntry(key, value) => s"${key.label}=$value" :: Nil
       }
       .mkString(" ")
 
@@ -388,8 +388,8 @@ object BuildStreams {
       data: Settings[Scope]
   ): File =
     scoped.scope.project match {
-      case Zero                             => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
-      case Select(br @ BuildRef(uri))       => refTarget(br, units(uri).localBase, data) / BuildUnitPath
+      case Zero => refTarget(GlobalScope, units(root).localBase, data) / GlobalPath
+      case Select(br @ BuildRef(uri)) => refTarget(br, units(uri).localBase, data) / BuildUnitPath
       case Select(pr @ ProjectRef(uri, id)) => refTarget(pr, units(uri).defined(id).base, data)
       case Select(pr) =>
         sys.error("Unresolved project reference (" + pr + ") in " + displayFull(scoped))

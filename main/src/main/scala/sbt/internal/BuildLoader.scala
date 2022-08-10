@@ -55,11 +55,10 @@ final class MultiHandler[S, T](
   def setRoot(resolver: S => Option[T]) =
     new MultiHandler(builtIn, Some(resolver), nonRoots, getURI, log)
   def applyNonRoots(info: S): List[(URI, T)] =
-    nonRoots flatMap {
-      case (definingURI, loader) =>
-        loader(info) map { unit =>
-          (definingURI, unit)
-        }
+    nonRoots flatMap { case (definingURI, loader) =>
+      loader(info) map { unit =>
+        (definingURI, unit)
+      }
     }
 
   private[this] def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
@@ -183,7 +182,8 @@ object BuildLoader {
   }
 }
 
-/** Defines the responsible for loading builds.
+/**
+ * Defines the responsible for loading builds.
  *
  * @param fail A reporter for failures.
  * @param state The state.

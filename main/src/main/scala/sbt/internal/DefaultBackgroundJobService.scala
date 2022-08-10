@@ -182,7 +182,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     while (jobSet.nonEmpty && !deadline.isOverdue) {
       jobSet.headOption.foreach {
         case handle: ThreadJobHandle @unchecked =>
-          if (handle.job.isRunning) {
+          if (handle.job.isRunning()) {
             handle.job.shutdown()
             handle.job.awaitTerminationTry(10.seconds)
           }
@@ -451,11 +451,12 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
   ) extends BackgroundRunnable(taskName, body) {
     override def awaitTermination(duration: Duration): Unit = {
       try super.awaitTermination(duration)
-      finally loader.foreach {
-        case ac: AutoCloseable   => ac.close()
-        case cp: ClasspathFilter => cp.close()
-        case _                   =>
-      }
+      finally
+        loader.foreach {
+          case ac: AutoCloseable   => ac.close()
+          case cp: ClasspathFilter => cp.close()
+          case _                   =>
+        }
     }
   }
 

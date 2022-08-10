@@ -111,8 +111,7 @@ abstract class TestBuild {
         def makeKey(task: ScopeAxis[AttributeKey[_]]) =
           ScopedKey(skey.scope.copy(task = task), skey.key)
         val hasGlobal = tasks(Zero)
-        if (hasGlobal)
-          zero += skey
+        if (hasGlobal) zero += skey
         else {
           val keys = tasks map makeKey
           keys.size match {
@@ -305,31 +304,34 @@ abstract class TestBuild {
   ): Gen[Vector[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
-        new Proj(id, deps.map { dep =>
-          ProjectRef(build, dep.id)
-        }, cs)
+        new Proj(
+          id,
+          deps.map { dep =>
+            ProjectRef(build, dep.id)
+          },
+          cs
+        )
       }
     }
 
-  def genConfigs(
-      implicit genName: Gen[String],
+  def genConfigs(implicit
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Configuration]] =
-    genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
-      (key, deps) =>
-        Configuration
-          .of(key.capitalize, key)
-          .withExtendsConfigs(deps.toVector)
+    genAcyclicDirect[Configuration, String](maxDeps, genName, count)((key, deps) =>
+      Configuration
+        .of(key.capitalize, key)
+        .withExtendsConfigs(deps.toVector)
     )
 
-  def genTasks(
-      implicit genName: Gen[String],
+  def genTasks(implicit
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Taskk]] =
-    genAcyclicDirect[Taskk, String](maxDeps, genName, count)(
-      (key, deps) => new Taskk(AttributeKey[String](key), deps)
+    genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
+      new Taskk(AttributeKey[String](key), deps)
     )
 
   def genAcyclicDirect[A, T](maxDeps: Range[Int], keyGen: Gen[T], max: Range[Int])(

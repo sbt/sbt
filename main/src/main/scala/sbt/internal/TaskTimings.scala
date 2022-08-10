@@ -76,7 +76,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       val maxTime = times.map { _._2 }.max.toString.length
       times.foreach { case (taskName, time) =>
         logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
-          .padTo(maxTime - time.toString.length, ' ')}$time $unit")
+            .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
     }
   }

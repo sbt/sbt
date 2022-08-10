@@ -22,12 +22,18 @@ import _root_.sbt.internal.util.complete.Parser
 object CompletionSpec extends Properties {
   override def tests: List[Test] =
     List(
-      property("can complete any build", TestBuild.uriGen.forAll.map { uri =>
-        complete(buildURI = uri, line = "{", expected = "{" + uri.toString + "}")
-      }),
-      property("can complete any project", TestBuild.nonEmptyId.forAll.map { id =>
-        complete(projectID = id, line = id.head.toString, expected = id)
-      }),
+      property(
+        "can complete any build",
+        TestBuild.uriGen.forAll.map { uri =>
+          complete(buildURI = uri, line = "{", expected = "{" + uri.toString + "}")
+        }
+      ),
+      property(
+        "can complete any project",
+        TestBuild.nonEmptyId.forAll.map { id =>
+          complete(projectID = id, line = id.head.toString, expected = id)
+        }
+      ),
       property(
         "can complete any configuration",
         TestBuild.nonEmptyId.forAll.map { name =>

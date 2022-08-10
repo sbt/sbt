@@ -131,7 +131,7 @@ private[sbt] object TemplateCommandUtil {
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
-    def jars = (templateDirectory ** -DirectoryFilter).get
+    def jars = (templateDirectory ** -DirectoryFilter).get()
     if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList.map(_.toPath)
     else {
       IO.createDirectory(templateDirectory)

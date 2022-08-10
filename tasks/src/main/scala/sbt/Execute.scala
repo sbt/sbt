@@ -59,7 +59,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     config: Config,
     triggers: Triggers[F],
     progress: ExecuteProgress[F]
-)(implicit view: NodeView[F]) {
+)(using view: NodeView[F]) {
   type Strategy = CompletionService[F[Any], Completed]
 
   private[this] val forward = idMap[F[Any], IDSet[F[Any]]]
@@ -85,12 +85,12 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   def dump: String =
     "State: " + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
-  def run[A](root: F[A])(implicit strategy: Strategy): Result[A] =
+  def run[A](root: F[A])(using strategy: Strategy): Result[A] =
     try {
-      runKeep(root)(strategy)(root)
+      runKeep(root)(root)
     } catch { case i: Incomplete => Result.Inc(i) }
 
-  def runKeep[A](root: F[A])(implicit strategy: Strategy): RMap[F, Result] = {
+  def runKeep[A](root: F[A])(using strategy: Strategy): RMap[F, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")
 
     addNew(root)
@@ -102,7 +102,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     finalResults
   }
 
-  def processAll()(implicit strategy: Strategy): Unit = {
+  def processAll()(using strategy: Strategy): Unit = {
     @tailrec def next(): Unit = {
       pre {
         assert(reverse.nonEmpty, "Nothing to process.")
@@ -135,7 +135,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
   def dumpCalling: String = state.filter(_._2 == Calling).mkString("\n\t")
 
-  def call[A](node: F[A], target: F[A])(implicit strategy: Strategy): Unit = {
+  def call[A](node: F[A], target: F[A])(using strategy: Strategy): Unit = {
     if (config.checkCycles) cycleCheck(node, target)
     pre {
       assert(running(node))
@@ -160,7 +160,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
     }
   }
 
-  def retire[A](node: F[A], result: Result[A])(implicit strategy: Strategy): Unit = {
+  def retire[A](node: F[A], result: Result[A])(using strategy: Strategy): Unit = {
     pre {
       assert(running(node) | calling(node))
       readyInv(node)
@@ -194,7 +194,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
       case Result.Inc(i)      => Result.Inc(Incomplete(Some(node), tpe = i.tpe, causes = i :: Nil))
     }
 
-  def notifyDone[A](node: F[A], dependent: F[Any])(implicit strategy: Strategy): Unit = {
+  def notifyDone[A](node: F[A], dependent: F[Any])(using strategy: Strategy): Unit = {
     val f = forward(dependent)
     f -= node.asInstanceOf
     if (f.isEmpty) {
@@ -208,7 +208,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * inputs and dependencies have completed. Its computation is then evaluated and made available
    * for nodes that have it as an input.
    */
-  def addChecked[A](node: F[A])(implicit strategy: Strategy): Unit = {
+  def addChecked[A](node: F[A])(using strategy: Strategy): Unit = {
     if (!added(node)) addNew(node)
 
     post { addedInv(node) }
@@ -219,7 +219,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * have finished, the node's computation is scheduled to run. The node's dependencies will be
    * added (transitively) if they are not already registered.
    */
-  def addNew[A](node: F[A])(implicit strategy: Strategy): Unit = {
+  def addNew[A](node: F[A])(using strategy: Strategy): Unit = {
     pre { newPre(node) }
 
     val v = register(node)
@@ -253,7 +253,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * Called when a pending 'node' becomes runnable. All of its dependencies must be done. This
    * schedules the node's computation with 'strategy'.
    */
-  def ready[A](node: F[A])(implicit strategy: Strategy): Unit = {
+  def ready[A](node: F[A])(using strategy: Strategy): Unit = {
     pre {
       assert(pending(node))
       readyInv(node)
@@ -279,7 +279,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
   }
 
   /** Send the work for this node to the provided Strategy. */
-  def submit[A](node: F[A])(implicit strategy: Strategy): Unit = {
+  def submit[A](node: F[A])(using strategy: Strategy): Unit = {
     val v = viewCache(node)
     val rs = v.alist.transform[F, Result](v.in)(getResult)
     // v.alist.transform(v.in)(getResult)
@@ -290,7 +290,7 @@ private[sbt] final class Execute[F[_] <: AnyRef](
    * Evaluates the computation 'f' for 'node'. This returns a Completed instance, which contains the
    * post-processing to perform after the result is retrieved from the Strategy.
    */
-  def work[A](node: F[A], f: => Either[F[A], A])(implicit strategy: Strategy): Completed = {
+  def work[A](node: F[A], f: => Either[F[A], A])(using strategy: Strategy): Completed = {
     progress.beforeWork(node.asInstanceOf)
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if (config.overwriteNode(i)) i.copy(node = Some(node)) else i

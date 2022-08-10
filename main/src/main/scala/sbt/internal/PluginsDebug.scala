@@ -447,7 +447,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def excludedPluginsError(transitive: Boolean)(dependencies: List[AutoPlugin]) =
     s"Required ${transitiveString(transitive)}dependencies were excluded:\n\t${labels(dependencies)
-      .mkString("\n\t")}"
+        .mkString("\n\t")}"
 
   private[this] def transitiveString(transitive: Boolean) =
     if (transitive) "(transitive) " else ""

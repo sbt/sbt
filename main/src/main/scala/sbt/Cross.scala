@@ -117,8 +117,8 @@ object Cross {
   )(command: String): (Seq[ProjectRef], String) = {
     import extracted._
     import DefaultParsers._
-    val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map {
-      case seg1 ~ cmd => (seg1, cmd.mkString)
+    val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map { case seg1 ~ cmd =>
+      (seg1, cmd.mkString)
     }
     Parser.parse(command, parser) match {
       case Right((seg1, cmd)) =>
@@ -157,8 +157,8 @@ object Cross {
               "that are configured."
           )
           state.log.debug("Scala versions configuration is:")
-          projCrossVersions.foreach {
-            case (project, versions) => state.log.debug(s"$project: $versions")
+          projCrossVersions.foreach { case (project, versions) =>
+            state.log.debug(s"$project: $versions")
           }
         }
 
@@ -180,41 +180,40 @@ object Cross {
           .groupBy(_._1)
           .mapValues(_.map(_._2).toSet)
         val commandsByVersion = keysByVersion.toSeq
-          .flatMap {
-            case (v, keys) =>
-              val projects = keys.flatMap(project)
-              keys.toSeq.flatMap { k =>
-                project(k).filter(projects.contains).flatMap { p =>
-                  if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
-                    val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
-                      case ConfigKey(n) => n.head.toUpper + n.tail
+          .flatMap { case (v, keys) =>
+            val projects = keys.flatMap(project)
+            keys.toSeq.flatMap { k =>
+              project(k).filter(projects.contains).flatMap { p =>
+                if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
+                  val parts =
+                    project(k).map(_.project) ++ k.scope.config.toOption.map { case ConfigKey(n) =>
+                      n.head.toUpper + n.tail
                     } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
-                    Some(v -> parts.mkString("", "/", fullArgs))
-                  } else None
-                }
+                  Some(v -> parts.mkString("", "/", fullArgs))
+                } else None
               }
+            }
           }
           .groupBy(_._1)
           .mapValues(_.map(_._2))
           .toSeq
           .sortBy(_._1)
-        commandsByVersion.flatMap {
-          case (v, commands) =>
-            commands match {
-              case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
-              case Seq()  => Nil // should be unreachable
-              case multi if fullArgs.isEmpty =>
-                Seq(s"$SwitchCommand $verbose $v all ${multi.mkString(" ")}")
-              case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
-            }
+        commandsByVersion.flatMap { case (v, commands) =>
+          commands match {
+            case Seq(c) => Seq(s"$SwitchCommand $verbose $v $c")
+            case Seq()  => Nil // should be unreachable
+            case multi if fullArgs.isEmpty =>
+              Seq(s"$SwitchCommand $verbose $v all ${multi.mkString(" ")}")
+            case multi => Seq(s"$SwitchCommand $verbose $v") ++ multi
+          }
         }
     }
     allCommands.toList ::: CrossRestoreSessionCommand :: captureCurrentSession(state, extracted)
   }
 
   def crossRestoreSession: Command =
-    Command.arb(_ => crossRestoreSessionParser, crossRestoreSessionHelp)(
-      (s, _) => crossRestoreSessionImpl(s)
+    Command.arb(_ => crossRestoreSessionParser, crossRestoreSessionHelp)((s, _) =>
+      crossRestoreSessionImpl(s)
     )
 
   private def crossRestoreSessionImpl(state: State): State = {
@@ -288,9 +287,8 @@ object Cross {
         excluded: Seq[(ResolvedReference, Seq[ScalaVersion])]
     ) = {
 
-      instance.foreach {
-        case (home, instance) =>
-          state.log.info(s"Using Scala home $home with actual version ${instance.actualVersion}")
+      instance.foreach { case (home, instance) =>
+        state.log.info(s"Using Scala home $home with actual version ${instance.actualVersion}")
       }
       if (switch.version.force) {
         state.log.info(s"Forcing Scala version to $version on all projects.")

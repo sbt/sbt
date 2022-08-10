@@ -10,12 +10,38 @@ package sbt
 import java.io.File
 import java.net.URI
 
+import sbt.internal.util.AttributeKey
 import sbt.io.IO
+import sbt.librarymanagement.Configuration
+import sbt.SlashSyntax.{ RichConfiguration, RichScope }
+import scala.annotation.nowarn
 
 // in all of these, the URI must be resolved and normalized before it is definitive
 
 /** Identifies a project or build. */
-sealed trait Reference
+sealed trait Reference:
+  private[sbt] def asScopeAxis: ScopeAxis[this.type] =
+    Select(this)
+  private[sbt] def asScope: Scope =
+    Scope(asScopeAxis, This, This, This)
+
+  @nowarn
+  def /(c: ConfigKey): RichConfiguration = RichConfiguration(asScope in c)
+
+  @nowarn
+  def /(c: Configuration): RichConfiguration = RichConfiguration(asScope in c)
+
+  // This is for handling `Zero / Zero / name`.
+  @nowarn
+  def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
+    new RichConfiguration(asScope.copy(config = configAxis))
+
+  @nowarn
+  final def /[K](key: Scoped.ScopingSetting[K]): K = key.in(asScope)
+
+  @nowarn
+  final def /(key: AttributeKey[_]): RichScope = new RichScope(asScope in key)
+end Reference
 
 /** A fully resolved, unique identifier for a project or build. */
 sealed trait ResolvedReference extends Reference
@@ -24,7 +50,7 @@ sealed trait ResolvedReference extends Reference
 sealed trait BuildReference extends Reference
 
 /** Identifies the build for the current context. */
-final case object ThisBuild extends BuildReference
+case object ThisBuild extends BuildReference
 
 /** Uniquely identifies a build by a URI. */
 final case class BuildRef(build: URI) extends BuildReference with ResolvedReference
@@ -44,10 +70,10 @@ final case class LocalProject(project: String) extends ProjectReference
 final case class RootProject(build: URI) extends ProjectReference
 
 /** Identifies the root project in the current build context. */
-final case object LocalRootProject extends ProjectReference
+case object LocalRootProject extends ProjectReference
 
 /** Identifies the project for the current context. */
-final case object ThisProject extends ProjectReference
+case object ThisProject extends ProjectReference
 
 object ProjectRef {
   def apply(base: File, id: String): ProjectRef = ProjectRef(IO toURI base, id)

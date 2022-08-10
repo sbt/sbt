@@ -668,7 +668,6 @@ lazy val actionsProj = (project in file("main-actions"))
     name := "Actions",
     libraryDependencies += sjsonNewScalaJson.value,
     libraryDependencies += jline3Terminal,
-    libraryDependencies += eval,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       // Removed unused private[sbt] nested class
@@ -816,6 +815,7 @@ lazy val mainSettingsProj = (project in file("main-settings"))
     commandProj,
     stdTaskProj,
     coreMacrosProj,
+    logicProj,
     utilLogging,
     utilCache,
     utilRelation,
@@ -889,11 +889,27 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
   )
   .configure(addSbtZincCompileCore, addSbtLmCore, addSbtLmIvyTest)
 
+lazy val buildFileProj = (project in file("buildfile"))
+  .dependsOn(
+    mainSettingsProj,
+  )
+  .settings(
+    testedBaseSettings,
+    name := "build file",
+    libraryDependencies ++= Seq(scalaCompiler),
+  )
+  .configure(
+    addSbtIO,
+    addSbtLmCore,
+    addSbtLmIvy,
+    addSbtCompilerInterface,
+    addSbtZincCompile
+  )
+
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
 lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
   .dependsOn(
-    logicProj,
     actionsProj,
     mainSettingsProj,
     runProj,
@@ -925,128 +941,8 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
-    mimaSettings,
-    mimaBinaryIssueFilters ++= Vector(
-      // New and changed methods on KeyIndex. internal.
-      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.*"),
-      // internal
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.*"),
-      // Changed signature or removed private[sbt] methods
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedLibs0"),
-      exclude[DirectMissingMethodProblem]("sbt.Defaults.allTestGroupsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.Plugins.topologicalSort"),
-      exclude[IncompatibleMethTypeProblem]("sbt.Defaults.allTestGroupsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.StandardMain.shutdownHook"),
-      exclude[DirectMissingMethodProblem]("sbt.nio.Keys.compileBinaryFileInputs"),
-      exclude[DirectMissingMethodProblem]("sbt.nio.Keys.compileSourceFileInputs"),
-      exclude[MissingClassProblem]("sbt.internal.ResourceLoaderImpl"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.ConfigIndex.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.Inspect.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.ProjectIndex.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.BuildIndex.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.server.BuildServerReporter.*"),
-      exclude[VirtualStaticMemberProblem]("sbt.internal.server.LanguageServerProtocol.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.librarymanagement.IvyXml.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.ScriptedPlugin.*Settings"),
-      exclude[IncompatibleSignatureProblem]("sbt.plugins.SbtPlugin.*Settings"),
-      // Removed private internal classes
-      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$BottomClassLoader"),
-      exclude[MissingClassProblem](
-        "sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader$ResourceLoader"
-      ),
-      exclude[MissingClassProblem]("sbt.internal.ReverseLookupClassLoaderHolder$ClassLoadingLock"),
-      exclude[MissingClassProblem](
-        "sbt.internal.ReverseLookupClassLoaderHolder$ReverseLookupClassLoader"
-      ),
-      exclude[MissingClassProblem]("sbt.internal.LayeredClassLoaderImpl"),
-      exclude[MissingClassProblem]("sbt.internal.FileManagement"),
-      exclude[MissingClassProblem]("sbt.internal.FileManagement$"),
-      exclude[MissingClassProblem]("sbt.internal.FileManagement$CopiedFileTreeRepository"),
-      exclude[MissingClassProblem]("sbt.internal.server.LanguageServerReporter*"),
-      exclude[MissingClassProblem]("sbt.internal.ExternalHooks"),
-      exclude[MissingClassProblem]("sbt.internal.ExternalHooks$"),
-      // false positives
-      exclude[DirectMissingMethodProblem]("sbt.plugins.IvyPlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.plugins.JUnitXmlReportPlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.plugins.Giter8TemplatePlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.plugins.JvmPlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.plugins.SbtPlugin.requires"),
-      exclude[DirectMissingMethodProblem]("sbt.ResolvedClasspathDependency.apply"),
-      exclude[DirectMissingMethodProblem]("sbt.ClasspathDependency.apply"),
-      exclude[IncompatibleSignatureProblem]("sbt.plugins.SemanticdbPlugin.globalSettings"),
-      // File -> Source
-      exclude[DirectMissingMethodProblem]("sbt.Defaults.cleanFilesTask"),
-      exclude[IncompatibleSignatureProblem]("sbt.Defaults.resourceConfigPaths"),
-      exclude[IncompatibleSignatureProblem]("sbt.Defaults.sourceConfigPaths"),
-      exclude[IncompatibleSignatureProblem]("sbt.Defaults.configPaths"),
-      exclude[IncompatibleSignatureProblem]("sbt.Defaults.paths"),
-      exclude[IncompatibleSignatureProblem]("sbt.Keys.csrPublications"),
-      exclude[IncompatibleSignatureProblem](
-        "sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"
-      ),
-      exclude[IncompatibleSignatureProblem](
-        "sbt.coursierint.CoursierArtifactsTasks.coursierPublicationsTask"
-      ),
-      exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
-      exclude[IncompatibleSignatureProblem]("sbt.coursierint.LMCoursier.publicationsSetting"),
-      exclude[IncompatibleSignatureProblem]("sbt.Project.inThisBuild"),
-      exclude[IncompatibleSignatureProblem]("sbt.Project.inConfig"),
-      exclude[IncompatibleSignatureProblem]("sbt.Project.inTask"),
-      exclude[IncompatibleSignatureProblem]("sbt.Project.inScope"),
-      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inThisBuild"),
-      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inConfig"),
-      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inTask"),
-      exclude[IncompatibleSignatureProblem]("sbt.ProjectExtra.inScope"),
-      exclude[MissingTypesProblem]("sbt.internal.Load*"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.Load*"),
-      exclude[MissingTypesProblem]("sbt.internal.server.NetworkChannel"),
-      // IvyConfiguration was replaced by InlineIvyConfiguration in the generic
-      // signature, this does not break compatibility regardless of what
-      // cast a compiler might have inserted based on the old signature
-      // since we're returning the same values as before.
-      exclude[IncompatibleSignatureProblem]("sbt.Classpaths.mkIvyConfiguration"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.Definition*"),
-      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.LanguageServerProtocol"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocol"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.warnInsecureProtocolInModules"),
-      exclude[MissingClassProblem]("sbt.internal.ExternalHooks*"),
-      // This seems to be a mima problem. The older constructor still exists but
-      // mima seems to incorrectly miss the secondary constructor that provides
-      // the binary compatible version.
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.server.NetworkChannel.this"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.DeprecatedContinuous.taskDefinitions"),
-      exclude[MissingClassProblem]("sbt.internal.SettingsGraph*"),
-      // Tasks include non-Files, but it's ok
-      exclude[IncompatibleSignatureProblem]("sbt.Defaults.outputConfigPaths"),
-      // private[sbt]
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.trackedExportedProducts"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.trackedExportedJarProducts"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.unmanagedDependencies0"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.internalDependenciesImplTask"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.internalDependencyJarsImplTask"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.interDependencies"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.productsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.Classpaths.jarProductsTask"),
-      exclude[DirectMissingMethodProblem]("sbt.StandardMain.cache"),
-      // internal logging apis,
-      exclude[IncompatibleSignatureProblem]("sbt.internal.LogManager*"),
-      exclude[MissingTypesProblem]("sbt.internal.RelayAppender"),
-      exclude[MissingClassProblem]("sbt.internal.TaskProgress$ProgressThread"),
-      // internal implementation
-      exclude[MissingClassProblem](
-        "sbt.internal.XMainConfiguration$ModifiedConfiguration$ModifiedAppProvider$ModifiedScalaProvider$"
-      ),
-      // internal impl
-      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.configIdent"),
-      exclude[IncompatibleSignatureProblem]("sbt.internal.Act.taskAxis"),
-      // private[sbt] method, used to call the correct sourcePositionMapper
-      exclude[DirectMissingMethodProblem]("sbt.Defaults.foldMappers"),
-      exclude[DirectMissingMethodProblem]("sbt.Defaults.toAbsoluteSourceMapper"),
-      exclude[DirectMissingMethodProblem]("sbt.Defaults.earlyArtifactPathSetting"),
-      exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
-      exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
-      exclude[MissingClassProblem]("sbt.internal.CustomHttp*"),
-    )
+    // mimaSettings,
+    // mimaBinaryIssueFilters ++= Vector(),
   )
   .configure(
     addSbtIO,
@@ -1362,6 +1258,7 @@ def allProjects =
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
+    buildFileProj,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc

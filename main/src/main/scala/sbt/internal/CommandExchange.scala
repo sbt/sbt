@@ -92,21 +92,22 @@ private[sbt] final class CommandExchange {
           case s @ Seq(_, _) => Some(s.min)
           case s             => s.headOption
         }
-        try Option(deadline match {
-          case Some(d: Deadline) =>
-            commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
-              case null if idleDeadline.fold(false)(_.isOverdue) =>
-                state.foreach { s =>
-                  s.get(BasicKeys.serverIdleTimeout) match {
-                    case Some(Some(d)) => s.log.info(s"sbt idle timeout of $d expired")
-                    case _             =>
+        try
+          Option(deadline match {
+            case Some(d: Deadline) =>
+              commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
+                case null if idleDeadline.fold(false)(_.isOverdue) =>
+                  state.foreach { s =>
+                    s.get(BasicKeys.serverIdleTimeout) match {
+                      case Some(Some(d)) => s.log.info(s"sbt idle timeout of $d expired")
+                      case _             =>
+                    }
                   }
-                }
-                Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName)))
-              case x => x
-            }
-          case _ => commandQueue.take
-        })
+                  Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName)))
+                case x => x
+              }
+            case _ => commandQueue.take
+          })
         catch { case _: InterruptedException => None }
       }
       poll match {
@@ -134,10 +135,13 @@ private[sbt] final class CommandExchange {
       }
     }
     // Do not manually run GC until the user has been idling for at least the min gc interval.
-    impl(interval match {
-      case d: FiniteDuration => Some(d.fromNow)
-      case _                 => None
-    }, idleDeadline)
+    impl(
+      interval match {
+        case d: FiniteDuration => Some(d.fromNow)
+        case _                 => None
+      },
+      idleDeadline
+    )
   }
 
   private def addConsoleChannel(): Unit =
@@ -210,7 +214,9 @@ private[sbt] final class CommandExchange {
     if (server.isEmpty && firstInstance.get) {
       val h = Hash.halfHashString(IO.toURI(portfile).toString)
       val serverDir =
-        sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(s) / "server"
+        sys.env get "SBT_GLOBAL_SERVER_DIR" map file getOrElse BuildPaths.getGlobalBase(
+          s
+        ) / "server"
       val tokenfile = serverDir / h / "token.json"
       val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
@@ -290,7 +296,7 @@ private[sbt] final class CommandExchange {
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
-    EvaluateTask.onShutdown
+    EvaluateTask.onShutdown()
   }
 
   // This is an interface to directly respond events.

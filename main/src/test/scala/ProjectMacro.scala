@@ -67,6 +67,6 @@ object ProjectMacro extends Properties("ProjectMacro") {
       s"Actual id: ${p.id}" |:
       s"Actual dir: ${p.base}" |:
       (p.id == id) &&
-    (p.base.getName == dir)
+      (p.base.getName == dir)
   }
 }

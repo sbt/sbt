@@ -188,7 +188,7 @@ object ScopeFilter {
    * Information provided to Scope filters.  These provide project relationships,
    * project reference resolution, and the list of all static Scopes.
    */
-  private final class Data(
+  private[sbt] final class Data(
       val units: Map[URI, LoadedBuildUnit],
       val resolve: ProjectReference => ProjectRef,
       val allScopes: Set[Scope]

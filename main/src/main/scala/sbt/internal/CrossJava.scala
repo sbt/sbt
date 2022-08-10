@@ -432,7 +432,7 @@ private[sbt] object CrossJava {
       val base: File = Path.userHome / ".sdkman" / "candidates" / "java"
       def candidates(): Vector[String] = wrapNull(base.list())
       def javaHomes: Vector[(String, File)] =
-        candidates.collect {
+        candidates().collect {
           case dir if dir.contains("-") =>
             CrossJava.parseSdkmanString(dir) match {
               case Success(v) => Some(v.toString -> (base / dir))

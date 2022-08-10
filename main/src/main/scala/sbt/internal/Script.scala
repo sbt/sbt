@@ -76,8 +76,7 @@ object Script {
   def blocks(file: File): Seq[Block] = {
     val lines = IO.readLines(file).toIndexedSeq
     def blocks(b: Block, acc: List[Block]): List[Block] =
-      if (b.lines.isEmpty)
-        acc.reverse
+      if (b.lines.isEmpty) acc.reverse
       else {
         val (dropped, blockToEnd) = b.lines.span { line =>
           !line.startsWith(BlockStart)

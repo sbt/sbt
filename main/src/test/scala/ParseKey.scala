@@ -62,12 +62,11 @@ object ParseKey extends Properties {
     val mask = if (showZeroConfig) skm.mask.copy(project = true) else skm.mask
 
     val expected = resolve(structure, key, mask)
-    parseCheck(structure, key, mask, showZeroConfig)(
-      sk =>
-        hedgehog.Result
-          .assert(Project.equal(sk, expected, mask))
-          .log(s"$sk.key == $expected.key: ${sk.key == expected.key}")
-          .log(s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}")
+    parseCheck(structure, key, mask, showZeroConfig)(sk =>
+      hedgehog.Result
+        .assert(Project.equal(sk, expected, mask))
+        .log(s"$sk.key == $expected.key: ${sk.key == expected.key}")
+        .log(s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}")
     ).log(s"Expected: ${displayFull(expected)}")
   }
 
@@ -77,11 +76,10 @@ object ParseKey extends Properties {
     // skip when config axis is set to Zero
     val hasZeroConfig = key.scope.config ==== Zero
     val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
-    parseCheck(structure, key, mask, showZeroConfig)(
-      sk =>
-        (hasZeroConfig or sk.scope.project ==== Select(structure.current))
-          .log(s"parsed subproject: ${sk.scope.project}")
-          .log(s"current subproject: ${structure.current}")
+    parseCheck(structure, key, mask, showZeroConfig)(sk =>
+      (hasZeroConfig or sk.scope.project ==== Select(structure.current))
+        .log(s"parsed subproject: ${sk.scope.project}")
+        .log(s"current subproject: ${structure.current}")
     )
   }
 
@@ -96,8 +94,8 @@ object ParseKey extends Properties {
     val mask = ScopeMask(config = false)
     val resolvedConfig = Resolve.resolveConfig(structure.extra, key.key, mask)(key.scope).config
     val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
-    parseCheck(structure, key, mask, showZeroConfig)(
-      sk => (sk.scope.config ==== resolvedConfig) or (sk.scope ==== Scope.GlobalScope)
+    parseCheck(structure, key, mask, showZeroConfig)(sk =>
+      (sk.scope.config ==== resolvedConfig) or (sk.scope ==== Scope.GlobalScope)
     ).log(s"Expected configuration: ${resolvedConfig map (_.name)}")
   }
 
@@ -138,8 +136,8 @@ object ParseKey extends Properties {
     import skm._
     val resolvedKey = resolve(structure, key, mask)
     val proj = resolvedKey.scope.project.toOption
-    val maybeResolvedProj = proj.collect {
-      case ref: ResolvedReference => ref
+    val maybeResolvedProj = proj.collect { case ref: ResolvedReference =>
+      ref
     }
     val checkName = for {
       configKey <- resolvedKey.scope.config.toOption
@@ -175,7 +173,7 @@ object ParseKey extends Properties {
         .log(s"Key string: '$s'")
         .log(s"Parsed: ${parsed.map(displayFull)}")
         .log(s"Structure: $structure")
-      )
+    )
   }
 
   // pickN is a function that randomly picks load % items from the "from" sequence.

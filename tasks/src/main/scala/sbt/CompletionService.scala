@@ -7,7 +7,7 @@
 
 package sbt
 
-trait CompletionService[A, R] {
+trait CompletionService[A, R]:
 
   /**
    * Submits a work node A with work that returns R. In Execute this is used for tasks returning
@@ -20,7 +20,7 @@ trait CompletionService[A, R] {
    * In Execute this is used for tasks returning sbt.Completed.
    */
   def take(): R
-}
+end CompletionService
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{

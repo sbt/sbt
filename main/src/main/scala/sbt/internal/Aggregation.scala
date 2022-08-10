@@ -75,7 +75,9 @@ object Aggregation {
     import complete._
     val log = state.log
     val extracted = Project.extract(state)
-    val success = results match { case Value(_) => true; case Inc(_) => false }
+    val success = results match
+      case Result.Value(_) => true
+      case Result.Inc(_)   => false
     results.toEither.right.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
@@ -100,25 +102,23 @@ object Aggregation {
     val start = System.currentTimeMillis
     val (newS, result) = withStreams(structure, s) { str =>
       val transform = nodeView(s, str, roots, extra)
-      runTask(toRun, s, str, structure.index.triggers, config)(transform)
+      runTask(toRun, s, str, structure.index.triggers, config)(using transform)
     }
     val stop = System.currentTimeMillis
     Complete(start, stop, result, newS)
   }
 
-  def runTasks[HL <: HList, T](
+  def runTasks[A1](
       s: State,
-      ts: Values[Task[T]],
+      ts: Values[Task[A1]],
       extra: DummyTaskMap,
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[_]]): State = {
-    val complete = timedRun[T](s, ts, extra)
+  )(using display: Show[ScopedKey[_]]): State =
+    val complete = timedRun[A1](s, ts, extra)
     showRun(complete, show)
-    complete.results match {
-      case Inc(i)   => complete.state.handleError(i)
-      case Value(_) => complete.state
-    }
-  }
+    complete.results match
+      case Result.Inc(i)   => complete.state.handleError(i)
+      case Result.Value(_) => complete.state
 
   def printSuccess(
       start: Long,
@@ -163,7 +163,9 @@ object Aggregation {
          val mins = f"${total % 3600 / 60}%02d"
          val secs = f"${total % 60}%02d"
          s" ($maybeHours$mins:$secs)"
-       }) s"Total time: $totalString, completed $nowString"
+       })
+
+    s"Total time: $totalString, completed $nowString"
   }
 
   def defaultFormat: DateFormat = {

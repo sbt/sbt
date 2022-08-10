@@ -89,7 +89,7 @@ final case class Extracted(
     EvaluateTask.withStreams(structure, state) { str =>
       val nv = EvaluateTask.nodeView(state, str, rkey.scopedKey :: Nil)
       val (newS, result) =
-        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
+        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(using nv)
       (newS, EvaluateTask.processResult2(result))
     }
   }
@@ -100,7 +100,7 @@ final case class Extracted(
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
    */
-  def runAggregated[T](key: TaskKey[T], state: State): State = {
+  def runAggregated[A1](key: TaskKey[A1], state: State): State =
     val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
@@ -109,8 +109,7 @@ final case class Extracted(
       tasks,
       DummyTaskMap(Nil),
       show = Aggregation.defaultShow(state, false),
-    )(showKey)
-  }
+    )
 
   @nowarn
   private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
