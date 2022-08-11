@@ -2,6 +2,6 @@ name := "source-plugins"
 
 organization := "org.example"
 
-proguardSettings
+enablePlugins(SbtProguard)
 
 useJGit
