@@ -12,7 +12,7 @@ ThisBuild / version := {
   nightlyVersion match {
     case Some(v) => v
     case _ =>
-      if ((ThisBuild / isSnapshot).value) "1.4.0-SNAPSHOT"
+      if ((ThisBuild / isSnapshot).value) "2.0.0-SNAPSHOT"
       else old
   }
 }
@@ -109,7 +109,7 @@ lazy val lmRoot = (project in file("."))
   )
 
 lazy val lmCore = (project in file("core"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     commonSettings,
     name := "librarymanagement-core",
@@ -121,13 +121,13 @@ lazy val lmCore = (project in file("core"))
       launcherInterface,
       gigahorseOkhttp,
       okhttpUrlconnection,
+      scalaXml,
       sjsonnewScalaJson.value % Optional,
       sjsonnew.value % Optional,
       scalaTest % Test,
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    libraryDependencies += scalaXml,
     Compile / resourceGenerators += Def
       .task(
         Util.generateVersionFile(
@@ -142,7 +142,7 @@ lazy val lmCore = (project in file("core"))
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
     }),
-    Compile / managedSourceDirectories +=
+    Compile / unmanagedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
@@ -271,7 +271,7 @@ lazy val lmCore = (project in file("core"))
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
 
 lazy val lmIvy = (project in file("ivy"))
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(lmCore)
   .settings(
     commonSettings,
@@ -283,7 +283,7 @@ lazy val lmIvy = (project in file("ivy"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    Compile / managedSourceDirectories +=
+    Compile / unmanagedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
