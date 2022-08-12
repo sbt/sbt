@@ -36,6 +36,13 @@ object Settings {
     scalacOptions ++= {
       if (isAtLeastScala213.value) Seq("-Ymacro-annotations")
       else Nil
+    },
+    libraryDependencySchemes ++= {
+      val sv = scalaVersion.value
+      if (sv.startsWith("2.13."))
+        Seq("org.scala-lang.modules" %% "scala-xml" % "always")
+      else
+        Nil
     }
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
