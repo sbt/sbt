@@ -26,8 +26,23 @@ def lmIvy = Def.setting {
   }
 }
 
+lazy val definitions = project
+  .in(file("modules/definitions"))
+  .disablePlugins(MimaPlugin)
+  .settings(
+    shared,
+    crossScalaVersions := Seq(scala212, scala213),
+    libraryDependencies ++= Seq(
+      "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
+      lmIvy.value,
+    ),
+    dontPublish,
+  )
+
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
+  .dependsOn(definitions)
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213),
@@ -35,7 +50,6 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
-      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
@@ -61,6 +75,7 @@ lazy val `lm-coursier` = project
 lazy val `lm-coursier-shaded` = project
   .in(file("modules/lm-coursier/target/shaded-module"))
   .enablePlugins(ShadingPlugin)
+  .dependsOn(definitions)
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213),
@@ -101,7 +116,6 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
-      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       lmIvy.value,
