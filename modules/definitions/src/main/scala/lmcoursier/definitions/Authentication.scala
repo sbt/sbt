@@ -22,9 +22,3 @@ import dataclass._
       .productIterator
       .mkString("Authentication(", ", ", ")")
 }
-
-object Authentication {
-
-  def apply(headers: Seq[(String, String)]): Authentication =
-    Authentication("", "").withHeaders(headers)
-}
