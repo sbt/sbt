@@ -2,11 +2,11 @@
 set -euvx
 
 if [ "$(expr substr $(uname -s) 1 5 2>/dev/null)" == "Linux" ]; then
-  SBT="sbt -C--plugin-version=2.0.0-RC6-8"
+  SBT="sbt"
 elif [ "$(uname)" == "Darwin" ]; then
-  SBT="sbt -C--plugin-version=2.0.0-RC6-8"
+  SBT="sbt"
 else
-  SBT="sbt.bat -C--plugin-version=2.0.0-RC6-8"
+  SBT="sbt.bat"
 fi
 
 lmCoursier() {

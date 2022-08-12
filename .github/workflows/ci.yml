@@ -31,7 +31,7 @@ jobs:
     - uses: coursier/setup-action@v1
       with:
         jvm: 8
-        apps: sbt-launcher
+        apps: sbt
     - run: scripts/ci.sh
       shell: bash
       env:
@@ -51,7 +51,7 @@ jobs:
       - uses: coursier/setup-action@v1
         with:
           jvm: 8
-          apps: sbt-launcher
+          apps: sbt
       - uses: olafurpg/setup-gpg@v3
       - name: Release
         run: sbt ci-release

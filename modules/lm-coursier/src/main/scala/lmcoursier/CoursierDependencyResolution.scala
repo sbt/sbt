@@ -31,8 +31,6 @@ class CoursierDependencyResolution(
       bootstrappingProtocolHandler = true
     )
 
-  lmcoursier.CoursierConfiguration.checkLegacyCache()
-
   private var protocolHandlerClassLoader: Option[ClassLoader] = None
   private val protocolHandlerClassLoaderLock = new Object
 

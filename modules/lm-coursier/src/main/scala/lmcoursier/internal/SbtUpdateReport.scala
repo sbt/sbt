@@ -47,7 +47,7 @@ private[internal] object SbtUpdateReport {
         .withExtraAttributes(dependency.module.attributes ++ extraProperties)
         .withExclusions(
           dependency
-            .exclusions
+            .minimizedExclusions
             .toVector
             .map {
               case (org, name) =>

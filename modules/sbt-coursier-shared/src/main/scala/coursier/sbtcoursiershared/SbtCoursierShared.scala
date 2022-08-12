@@ -14,8 +14,6 @@ import sbt.librarymanagement.{ModuleID, Resolver, URLRepository}
 
 object SbtCoursierShared extends AutoPlugin {
 
-  lmcoursier.CoursierConfiguration.checkLegacyCache()
-
   override def trigger = allRequirements
 
   override def requires = sbt.plugins.JvmPlugin
