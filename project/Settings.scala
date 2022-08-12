@@ -11,6 +11,7 @@ object Settings {
 
   def scala212 = "2.12.16"
   def scala213 = "2.13.8"
+  def scala3 = "3.1.3"
 
   def targetSbtVersion = "1.2.8"
 

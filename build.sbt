@@ -4,7 +4,7 @@ import Settings._
 def dataclassScalafixV = "0.1.0-M3"
 
 inThisBuild(List(
-  organization := "io.get-coursier",
+  organization := "org.scala-sbt",
   homepage := Some(url("https://github.com/coursier/sbt-coursier")),
   licenses := Seq("Apache 2.0" -> url("http://opensource.org/licenses/Apache-2.0")),
   developers := List(
@@ -24,12 +24,13 @@ inThisBuild(List(
       case v   => v
     }
   },
+  version := "2.0.0-alpha1",
 ))
 
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-SNAPSHOT"
+val lm3Version = "2.0.0-alpha2"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -74,7 +75,7 @@ lazy val definitions = project
   .in(file("modules/definitions"))
   .disablePlugins(MimaPlugin)
   .settings(
-    crossScalaVersions := Seq(scala212, scala213),
+    crossScalaVersions := Seq(scala212, scala213, scala3),
     libraryDependencies ++= Seq(
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
@@ -87,7 +88,7 @@ lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
   .settings(
     shared,
-    crossScalaVersions := Seq(scala212, scala213),
+    crossScalaVersions := Seq(scala212, scala213, scala3),
     Mima.settings,
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
@@ -117,12 +118,20 @@ lazy val `lm-coursier` = project
     Compile / sourceGenerators += dataclassGen(definitions).taskValue,
   )
 
+lazy val `lm-coursier-shaded-publishing` = project
+  .in(file("modules/lm-coursier/target/shaded-publishing-module"))
+  .settings(
+    name := "librarymanagement-coursier",
+    crossScalaVersions := Seq(scala212, scala213, scala3),
+    Compile / packageBin := (`lm-coursier-shaded` / shadedPackageBin).value,
+  )
+
 lazy val `lm-coursier-shaded` = project
   .in(file("modules/lm-coursier/target/shaded-module"))
   .enablePlugins(ShadingPlugin)
   .settings(
     shared,
-    crossScalaVersions := Seq(scala212, scala213),
+    crossScalaVersions := Seq(scala212, scala213, scala3),
     Mima.settings,
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
@@ -167,6 +176,7 @@ lazy val `lm-coursier-shaded` = project
       lmIvy.value,
       ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
     ),
+    dontPublish,
   )
 
 lazy val `sbt-coursier-shared` = project
