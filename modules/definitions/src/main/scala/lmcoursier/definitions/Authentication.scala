@@ -7,18 +7,13 @@ import dataclass._
   password: String,
   optional: Boolean = false,
   realmOpt: Option[String] = None,
-  @since
+  @since("1.0")
   headers: Seq[(String,String)] = Nil,
+  @since("1.1")
   httpsOnly: Boolean = true,
+  @since("1.2")
   passOnRedirect: Boolean = false
 ) {
   override def toString(): String =
-    withPassword("****")
-      .withHeaders(
-        headers.map {
-          case (k, v) => (k, "****")
-        }
-      )
-      .productIterator
-      .mkString("Authentication(", ", ", ")")
+    s"Authentication(user=$user)"
 }

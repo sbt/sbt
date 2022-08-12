@@ -2,7 +2,7 @@ package lmcoursier
 
 import java.io.File
 
-import dataclass.data
+import dataclass.{ data, since }
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCoursier, Module, ModuleMatchers, Project, Reconciliation, Strict}

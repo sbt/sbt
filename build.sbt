@@ -1,6 +1,8 @@
 
 import Settings._
 
+def dataclassScalafixV = "0.1.0-M3"
+
 inThisBuild(List(
   organization := "io.get-coursier",
   homepage := Some(url("https://github.com/coursier/sbt-coursier")),
@@ -12,10 +14,29 @@ inThisBuild(List(
       "",
       url("https://github.com/alexarchambault")
     )
-  )
+  ),
+  semanticdbEnabled := true,
+  semanticdbVersion := "4.5.9",
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
 ))
 
 val coursierVersion0 = "2.1.0-M6-49-gff26f8e39"
+
+def dataclassGen(data: Reference) = Def.taskDyn {
+  val root = (ThisBuild / baseDirectory).value.toURI.toString
+  val from = (data / Compile / sourceDirectory).value
+  val to = (Compile / sourceManaged).value
+  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
+  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
+  (data / Compile / compile).value
+  Def.task {
+    (data / Compile / scalafix)
+      .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
+      .value
+    (to ** "*.scala").get
+  }
+}
+
 def lmIvy = Def.setting {
   "org.scala-sbt" %% "librarymanagement-ivy" % {
     scalaBinaryVersion.value match {
@@ -36,7 +57,7 @@ lazy val definitions = project
     crossScalaVersions := Seq(scala212, scala213),
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
-      "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value,
     ),
     dontPublish,
@@ -44,7 +65,6 @@ lazy val definitions = project
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
-  .dependsOn(definitions)
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213),
@@ -52,6 +72,7 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
       // to DependencyResolutionInterface.update, which is an
@@ -75,14 +96,13 @@ lazy val `lm-coursier` = project
 lazy val `lm-coursier-shaded` = project
   .in(file("modules/lm-coursier/target/shaded-module"))
   .enablePlugins(ShadingPlugin)
-  .dependsOn(definitions)
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213),
     Mima.settings,
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
-    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`lm-coursier`).value,
+    Compile / sources := (`lm-coursier` / Compile / sources).value,
     shadedModules += "io.get-coursier" %% "coursier",
     validNamespaces += "lmcoursier",
     validEntries ++= Set(
@@ -116,6 +136,7 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       lmIvy.value,
@@ -215,6 +236,7 @@ lazy val `sbt-coursier-root` = project
   .in(file("."))
   .disablePlugins(MimaPlugin)
   .aggregate(
+    definitions,
     `lm-coursier`,
     `lm-coursier-shaded`,
     `sbt-coursier`,
