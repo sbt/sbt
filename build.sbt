@@ -16,8 +16,15 @@ inThisBuild(List(
 ))
 
 val coursierVersion0 = "2.1.0-M6-49-gff26f8e39"
-val lmVersion = "1.3.4"
-val lm2_13Version = "1.5.0-M3"
+def lmIvy = Def.setting {
+  "org.scala-sbt" %% "librarymanagement-ivy" % {
+    scalaBinaryVersion.value match {
+      case "2.12" => "1.3.4"
+      case "2.13" => "1.7.0"
+      case _      => "2.0.0-alpha2"
+    }
+  }
+}
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -34,10 +41,7 @@ lazy val `lm-coursier` = project
       // to DependencyResolutionInterface.update, which is an
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
-      "org.scala-sbt" %% "librarymanagement-ivy" % {
-        if (scalaBinaryVersion.value == "2.12") lmVersion
-        else lm2_13Version
-      },
+      lmIvy.value,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test
     ),
     Test / test := {
@@ -100,10 +104,7 @@ lazy val `lm-coursier-shaded` = project
       "io.github.alexarchambault" %% "data-class" % "0.2.5" % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
-      "org.scala-sbt" %% "librarymanagement-ivy" % {
-        if (scalaBinaryVersion.value == "2.12") lmVersion
-        else lm2_13Version
-      },
+      lmIvy.value,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test
     )
   )
