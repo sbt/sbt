@@ -15,7 +15,7 @@ inThisBuild(List(
   )
 ))
 
-val coursierVersion0 = "2.1.0-M5"
+val coursierVersion0 = "2.1.0-M6-28-gbad85693f"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
 
@@ -78,8 +78,6 @@ lazy val `lm-coursier-shaded` = project
     shadingRules ++= {
       val toShade = Seq(
         "coursier",
-        "shapeless",
-        "argonaut",
         "org.fusesource",
         "macrocompat",
         "io.github.alexarchambault.windowsansi",
@@ -91,7 +89,8 @@ lazy val `lm-coursier-shaded` = project
         "org.apache.xbean",
         "org.codehaus",
         "org.iq80",
-        "org.tukaani"
+        "org.tukaani",
+        "com.github.plokhotnyuk.jsoniter_scala"
       )
       for (ns <- toShade)
         yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
