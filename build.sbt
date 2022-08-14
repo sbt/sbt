@@ -20,6 +20,9 @@ inThisBuild(List(
   scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
 ))
 
+Global / excludeLintKeys += scriptedBufferLog
+Global / excludeLintKeys += scriptedLaunchOpts
+
 val coursierVersion0 = "2.1.0-M6-49-gff26f8e39"
 
 def dataclassGen(data: Reference) = Def.taskDyn {
@@ -162,7 +165,7 @@ lazy val `sbt-coursier-shared-shaded` = project
   .settings(
     plugin,
     generatePropertyFile,
-    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`sbt-coursier-shared`).value
+    Compile / unmanagedSourceDirectories := (`sbt-coursier-shared` / Compile / unmanagedSourceDirectories).value
   )
 
 lazy val `sbt-lm-coursier` = project
@@ -172,14 +175,14 @@ lazy val `sbt-lm-coursier` = project
   .dependsOn(`sbt-coursier-shared-shaded`)
   .settings(
     plugin,
-    sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
+    sbtTestDirectory := (`sbt-coursier` / sbtTestDirectory).value,
     scriptedDependencies := {
       scriptedDependencies.value
 
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
-       publishLocal.in(`lm-coursier-shaded`).value
-       publishLocal.in(`sbt-coursier-shared-shaded`).value
+       (`lm-coursier-shaded` / publishLocal).value
+       (`sbt-coursier-shared-shaded` / publishLocal).value
      }
    )
 
@@ -195,8 +198,8 @@ lazy val `sbt-coursier` = project
 
       // TODO Get dependency projects automatically
       // (but shouldn't scripted itself handle that…?)
-      publishLocal.in(`lm-coursier`).value
-      publishLocal.in(`sbt-coursier-shared`).value
+      (`lm-coursier` / publishLocal).value
+      (`sbt-coursier-shared` / publishLocal).value
     }
   )
 
@@ -246,6 +249,6 @@ lazy val `sbt-coursier-root` = project
   )
   .settings(
     shared,
-    skip.in(publish) := true
+    (publish / skip) := true
   )
 
