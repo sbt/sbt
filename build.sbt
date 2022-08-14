@@ -26,6 +26,8 @@ def lmIvy = Def.setting {
   }
 }
 
+lazy val preTest = taskKey[Unit]("prep steps before tests")
+
 lazy val definitions = project
   .in(file("modules/definitions"))
   .disablePlugins(MimaPlugin)
@@ -58,18 +60,16 @@ lazy val `lm-coursier` = project
       lmIvy.value,
       "org.scalatest" %% "scalatest" % "3.2.13" % Test
     ),
-    Test / test := {
-      (publishLocal in customProtocolForTest212).value
-      (publishLocal in customProtocolForTest213).value
-      (publishLocal in customProtocolJavaForTest).value
-      (Test / test).value
+    Test / exportedProducts := {
+      (Test / preTest).value
+      (Test / exportedProducts).value
     },
-    Test / testOnly := {
-      (publishLocal in customProtocolForTest212).value
-      (publishLocal in customProtocolForTest213).value
-      (publishLocal in customProtocolJavaForTest).value
-      (Test / testOnly).evaluated
-    }
+    Test / preTest := {
+      (customProtocolForTest212 / publishLocal).value
+      (customProtocolForTest213 / publishLocal).value
+      (customProtocolJavaForTest / publishLocal).value
+    },
+    Compile / sourceGenerators += dataclassGen(definitions).taskValue,
   )
 
 lazy val `lm-coursier-shaded` = project
