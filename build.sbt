@@ -66,6 +66,10 @@ lazy val definitions = project
     dontPublish,
   )
 
+// FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
+// io.get-coursier::coursier depends on.
+val jniUtilsVersion = "0.3.3"
+
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
   .settings(
@@ -75,6 +79,7 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       // We depend on librarymanagement-ivy rather than just
       // librarymanagement-core to handle the ModuleDescriptor passed
@@ -106,7 +111,10 @@ lazy val `lm-coursier-shaded` = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (`lm-coursier` / Compile / sources).value,
-    shadedModules += "io.get-coursier" %% "coursier",
+    shadedModules ++= Set(
+      "io.get-coursier" %% "coursier",
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
+    ),
     validNamespaces += "lmcoursier",
     validEntries ++= Set(
       // FIXME Ideally, we should just strip those from the resulting JAR…
@@ -139,6 +147,7 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
