@@ -20,7 +20,7 @@ object Settings {
   }
 
   lazy val shared = Seq(
-    resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers ++= Resolver.sonatypeOssRepos("releases"),
     crossScalaVersions := Seq(scala212),
     scalaVersion := scala212,
     scalacOptions ++= Seq(
