@@ -7,6 +7,7 @@ import lmcoursier.credentials.Credentials
 import lmcoursier.{CoursierDependencyResolution, FallbackDependency}
 import lmcoursier.definitions.{CacheLogger, Configuration, Project, Publication}
 import lmcoursier.internal.SbtCoursierCache
+import lmcoursier.syntax._
 import sbt.{AutoPlugin, Classpaths, Compile, Setting, TaskKey, Test, settingKey, taskKey}
 import sbt.Keys._
 import sbt.librarymanagement.DependencyBuilders.OrganizationArtifactName

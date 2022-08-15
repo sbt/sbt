@@ -48,8 +48,8 @@ object Settings {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
     if (prop == "0" || prop == "false")
       Seq(
-        sources in (Compile, doc) := Seq.empty,
-        publishArtifact in (Compile, packageDoc) := false
+        Compile / doc / sources := Seq.empty,
+        Compile / packageDoc / publishArtifact := false
       )
     else
       Nil
@@ -69,14 +69,14 @@ object Settings {
       ),
       scriptedBufferLog := false,
       sbtPlugin := true,
-      sbtVersion.in(pluginCrossBuild) := targetSbtVersion
+      pluginCrossBuild / sbtVersion := targetSbtVersion
     )
 
   lazy val generatePropertyFile =
-    resourceGenerators.in(Compile) += Def.task {
+    Compile / resourceGenerators += Def.task {
       import sys.process._
 
-      val dir = classDirectory.in(Compile).value / "coursier"
+      val dir = (Compile / classDirectory).value / "coursier"
       val ver = version.value
 
       val f = dir / "sbtcoursier.properties"

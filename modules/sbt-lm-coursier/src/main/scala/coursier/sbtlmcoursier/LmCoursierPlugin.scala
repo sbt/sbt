@@ -2,6 +2,7 @@ package coursier.sbtlmcoursier
 
 import lmcoursier.definitions.{Authentication, ModuleMatchers, Reconciliation}
 import lmcoursier.{CoursierConfiguration, CoursierDependencyResolution, Inputs}
+import lmcoursier.syntax._
 import coursier.sbtcoursiershared.InputsTasks.{credentialsTask, strictTask}
 import coursier.sbtcoursiershared.{InputsTasks, SbtCoursierShared}
 import sbt.{AutoPlugin, Classpaths, Def, Setting, Task, taskKey}

@@ -4,6 +4,7 @@ target/
 # Metals / bloop
 .metals/
 .bloop/
+metals.sbt
 
 # Intellij
 .idea/
