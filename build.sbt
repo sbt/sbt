@@ -23,7 +23,7 @@ inThisBuild(List(
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-val coursierVersion0 = "2.1.0-M6-49-gff26f8e39"
+val coursierVersion0 = "2.1.0-M6-53-gb4f448130"
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
