@@ -619,6 +619,7 @@ object Defaults extends BuildCommon {
     resourceDirectories := Classpaths
       .concatSettings(unmanagedResourceDirectories, managedResourceDirectories)
       .value,
+    unmanagedResources / inputFileStamper := sbt.nio.FileStamper.LastModified,
     unmanagedResources / fileInputs := {
       val include = (unmanagedResources / includeFilter).value
       val filter = (unmanagedResources / excludeFilter).value match {
