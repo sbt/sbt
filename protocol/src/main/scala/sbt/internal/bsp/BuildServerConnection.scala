@@ -17,7 +17,7 @@ import scala.util.Properties
 
 object BuildServerConnection {
   final val name = "sbt"
-  final val bspVersion = "2.0.0-M5"
+  final val bspVersion = "2.1.0-M1"
   final val languages = Vector("scala")
 
   private final val SbtLaunchJar = "sbt-launch(-.*)?\\.jar".r

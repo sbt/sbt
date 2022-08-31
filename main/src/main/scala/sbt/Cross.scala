@@ -8,7 +8,6 @@
 package sbt
 
 import java.io.File
-import java.util.regex.Pattern
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.Keys._
 import sbt.SlashSyntax0._
@@ -16,10 +15,11 @@ import sbt.internal.Act
 import sbt.internal.CommandStrings._
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.util.AttributeKey
+import sbt.internal.util.MessageOnlyException
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.CrossVersion
+import sbt.librarymanagement.{ SemanticSelector, VersionNumber }
 
 /**
  * Cross implements the Scala cross building commands:
@@ -295,7 +295,14 @@ object Cross {
       if (switch.version.force) {
         state.log.info(s"Forcing Scala version to $version on all projects.")
       } else {
-        state.log.info(s"Setting Scala version to $version on ${included.size} projects.")
+        included
+          .groupBy(_._2)
+          .foreach {
+            case (selectedVersion, projects) =>
+              state.log.info(
+                s"Setting Scala version to $selectedVersion on ${projects.size} projects."
+              )
+          }
       }
       if (excluded.nonEmpty && !switch.verbose) {
         state.log.info(s"Excluded ${excluded.size} projects, run ++ $version -v for more details.")
@@ -327,10 +334,11 @@ object Cross {
         } ++ structure.units.keys
           .map(BuildRef.apply)
           .map(proj => (proj, Some(version), crossVersions(extracted, proj)))
-      } else if (version.contains('*')) {
+      } else {
         projectScalaVersions.map {
           case (project, scalaVersions) =>
-            globFilter(version, scalaVersions) match {
+            val selector = SemanticSelector(version)
+            scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
               case Nil          => (project, None, scalaVersions)
               case Seq(version) => (project, Some(version), scalaVersions)
               case multiple =>
@@ -338,15 +346,6 @@ object Cross {
                   s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
                 )
             }
-        }
-      } else {
-        val binaryVersion = CrossVersion.binaryScalaVersion(version)
-        projectScalaVersions.map {
-          case (project, scalaVersions) =>
-            if (scalaVersions.exists(v => CrossVersion.binaryScalaVersion(v) == binaryVersion))
-              (project, Some(version), scalaVersions)
-            else
-              (project, None, scalaVersions)
         }
       }
     }
@@ -359,10 +358,15 @@ object Cross {
     }
 
     if (included.isEmpty) {
-      sys.error(
-        s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
-           |If you want to force it regardless, call ++ $version!""".stripMargin
-      )
+      if (isSelector(version))
+        throw new MessageOnlyException(
+          s"""Switch failed: no subprojects have a version matching "$version" in the crossScalaVersions setting."""
+        )
+      else
+        throw new MessageOnlyException(
+          s"""Switch failed: no subprojects list "$version" (or compatible version) in crossScalaVersions setting.
+             |If you want to force it regardless, call ++ $version!""".stripMargin
+        )
     }
 
     logSwitchInfo(included, excluded)
@@ -370,19 +374,13 @@ object Cross {
     (setScalaVersionsForProjects(instance, included, state, extracted), included.map(_._1))
   }
 
-  def globFilter(pattern: String, candidates: Seq[String]): Seq[String] = {
-    def createGlobRegex(remainingPattern: String): String =
-      remainingPattern.indexOf("*") match {
-        case -1 => Pattern.quote(remainingPattern)
-        case n =>
-          val chunk = Pattern.quote(remainingPattern.substring(0, n)) + ".*"
-          if (remainingPattern.length > n)
-            chunk + createGlobRegex(remainingPattern.substring(n + 1))
-          else chunk
-      }
-    val compiledPattern = Pattern.compile(createGlobRegex(pattern))
-    candidates.filter(compiledPattern.matcher(_).matches())
-  }
+  // determine whether this is a 'specific' version or a selector
+  // to be passed to SemanticSelector
+  private def isSelector(version: String): Boolean =
+    version.contains('*') || version.contains('x') || version.contains('X') || version.contains(' ') ||
+      version.contains('<') || version.contains('>') || version.contains('|') || version.contains(
+      '='
+    )
 
   private def setScalaVersionsForProjects(
       instance: Option[(File, ScalaInstance)],

@@ -1,5 +1,7 @@
 -> ++2.12.0-magic
 
+-> ++2.12.12
+
 > ++2.13.1 compile
 
 $ exists core/target/scala-2.13

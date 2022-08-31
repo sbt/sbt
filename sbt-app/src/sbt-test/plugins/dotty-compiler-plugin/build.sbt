@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.0.0-M1"
+ThisBuild / scalaVersion := "3.1.3"
 
 lazy val plugin = project
   .in(file("plugin"))
@@ -12,7 +12,7 @@ lazy val plugin = project
     ),
 
     libraryDependencies ++= Seq(
-      "ch.epfl.lamp" %% "dotty-compiler" % scalaVersion.value % "provided"
+      "org.scala-lang" %% "scala3-compiler" % scalaVersion.value % "provided"
     )
   )
 
