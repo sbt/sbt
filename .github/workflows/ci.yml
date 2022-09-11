@@ -41,7 +41,7 @@ jobs:
             java: 8
             distribution: adopt
             jobtype: 8
-          - os: windows-2019
+          - os: windows-latest
             java: 8
             distribution: adopt
             jobtype: 9
@@ -97,7 +97,7 @@ jobs:
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
-      if: ${{ matrix.os == 'windows-2019' }}
+      if: ${{ matrix.os == 'windows-latest' }}
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
