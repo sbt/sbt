@@ -1,3 +1,5 @@
+ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
+
 import scala.concurrent.duration._
 
 val foo = inputKey[Unit]("working task")
