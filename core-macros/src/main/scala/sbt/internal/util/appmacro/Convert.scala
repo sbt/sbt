@@ -57,8 +57,7 @@ trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil
               case Converted.Success(tree, finalTransform) =>
                 finalTransform(tree)
               case Converted.Failure(position, message) =>
-                report.error(message, position)
-                sys.error("macro error: " + message)
+                report.errorAndAbort(message, position)
               case _ =>
                 super.transformTerm(tree)(owner)
           case _ =>
