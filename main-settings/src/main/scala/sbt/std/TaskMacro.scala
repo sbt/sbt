@@ -54,17 +54,24 @@ object TaskMacro:
 
   def taskMacroImpl[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     t match
-      case '{ if ($cond) then $thenp else $elsep } => mkIfS[A1](t)
+      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t)
       case _ =>
         val convert1 = new FullConvert(qctx)
         convert1.contMapN[A1, F, Id](t, convert1.appExpr)
 
-  def mkIfS[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
-    t match
+  def taskIfImpl[A1: Type](expr: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
+    import qctx.reflect.*
+    expr match
       case '{ if ($cond) then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
+      case '{ (${ stats }: a); if ($cond) then $thenp else $elsep } =>
+        '{
+          Def.ifS[A1](Def.task { $stats; $cond })(Def.task[A1]($thenp))(Def.task[A1]($elsep))
+        }
+      case _ =>
+        report.errorAndAbort(s"Def.taskIf(...) must contain if expression but found ${expr.asTerm}")
 
   def taskDynMacroImpl[A1: Type](
       t: Expr[Initialize[Task[A1]]]

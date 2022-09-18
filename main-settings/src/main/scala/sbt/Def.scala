@@ -237,7 +237,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   inline def inputTask[A1](inline a: A1): Def.Initialize[InputTask[A1]] =
     ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 
-  // def taskIf[T](a: T): Def.Initialize[Task[T]] = macro taskIfMacroImpl[T]
+  inline def taskIf[A1](inline a: A1): Def.Initialize[Task[A1]] =
+    ${ TaskMacro.taskIfImpl[A1]('a) }
 
   private[sbt] def selectITask[A1, A2](
       fab: Initialize[Task[Either[A1, A2]]],
