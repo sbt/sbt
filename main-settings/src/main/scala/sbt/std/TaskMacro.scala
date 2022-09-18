@@ -22,7 +22,6 @@ import sbt.internal.util.appmacro.{
 }
 // import Instance.Transform
 import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition, ~> }
-import sbt.internal.util.complete.Parser
 
 import language.experimental.macros
 import scala.annotation.tailrec
@@ -158,15 +157,6 @@ object TaskMacro:
       $rec.set0($app, $sourcePosition)
     }
 
-  /** Implementation of := macro for tasks. */
-  def inputTaskAssignMacroImpl[A1: Type](v: Expr[A1])(using
-      qctx: Quotes
-  ): Expr[Setting[InputTask[A1]]] =
-    val init = inputTaskMacroImpl[A1](v)
-    // val assign = transformMacroImpl(init.tree)(AssignInitName)
-    // Expr[Setting[InputTask[A1]]](assign)
-    ???
-
   /** Implementation of += macro for settings. */
   def settingAppend1Impl[A1: Type, A2: Type](rec: Expr[SettingKey[A1]], v: Expr[A2])(using
       qctx: Quotes,
@@ -236,176 +226,6 @@ object TaskMacro:
   private[this] def constant[A1: c.TypeTag](c: blackbox.Context, t: T): c.Expr[A1] = {
     import c.universe._
     c.Expr[A1](Literal(Constant(t)))
-  }
-   */
-
-  def inputTaskMacroImpl[A1: Type](tree: Expr[A1])(using
-      qctx: Quotes
-  ): Expr[Initialize[InputTask[A1]]] =
-    inputTaskMacro0[A1](tree)
-
-  // def inputTaskDynMacroImpl[A1: Type](t: c.Expr[Initialize[Task[A1]]])(using qctx: Quotes): c.Expr[Initialize[InputTask[A1]]] =
-  //   inputTaskDynMacro0[A1](c)(t)
-
-  private[this] def inputTaskMacro0[A1: Type](tree: Expr[A1])(using
-      qctx: Quotes
-  ): Expr[Initialize[InputTask[A1]]] =
-    iInitializeMacro(tree) { et =>
-      val pt = iParserMacro(et) { pt =>
-        iTaskMacro(pt)
-      }
-      '{ InputTask.make($pt) }
-    }
-
-  private[this] def iInitializeMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
-      f: Expr[A1] => Expr[F1[A1]]
-  )(using qctx: Quotes): Expr[Initialize[F1[A1]]] =
-    import qctx.reflect.*
-    import InputWrapper.*
-    val convert1 = new InputInitConvert(qctx)
-    import convert1.Converted
-
-    def wrapInitTask[A2: Type](tree: Term): Term =
-      val expr = tree.asExprOf[Initialize[Task[A2]]]
-      '{
-        InputWrapper.wrapTask[A2](InputWrapper.wrapInit[A2]($expr))
-      }.asTerm
-
-    def wrapInitParser[A2: Type](tree: Term): Term =
-      val expr = tree.asExprOf[Initialize[State => Parser[A2]]]
-      '{
-        ParserInput.wrap[A2](InputWrapper.wrapInit[State => Parser[A2]]($expr))
-      }.asTerm
-
-    def wrapInitInput[A2: Type](tree: Term): Term =
-      val expr = tree.asExprOf[Initialize[InputTask[A2]]]
-      wrapInput[A2]('{
-        InputWrapper.wrapInit[InputTask[A2]]($expr)
-      }.asTerm)
-
-    def wrapInput[A2: Type](tree: Term): Term =
-      val expr = tree.asExprOf[InputTask[A1]]
-      '{
-        InputWrapper.wrapTask[A2](ParserInput.wrap[Task[A2]]($expr.parser))
-      }.asTerm
-
-    def expand(nme: String, tpeRepr: TypeRepr, tree: Term): Converted =
-      tpeRepr.asType match
-        case '[tpe] =>
-          nme match
-            case WrapInitTaskName         => Converted.success(wrapInitTask[tpe](tree))
-            case WrapPreviousName         => Converted.success(wrapInitTask[tpe](tree))
-            case ParserInput.WrapInitName => Converted.success(wrapInitParser[tpe](tree))
-            case WrapInitInputName        => Converted.success(wrapInitInput[tpe](tree))
-            case WrapInputName            => Converted.success(wrapInput[tpe](tree))
-            case _                        => Converted.NotApplicable()
-
-    def conditionInputTaskTree(t: Term): Term =
-      convert1.transformWrappers(
-        tree = t,
-        subWrapper = (nme, tpe, tree, original) => expand(nme, tpe, tree),
-        owner = Symbol.spliceOwner,
-      )
-
-    val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
-    val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
-    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, inner)
-
-  private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
-      f: Expr[A1] => Expr[F1[A1]]
-  )(using qctx: Quotes): Expr[State => Parser[F1[A1]]] =
-    import qctx.reflect.*
-    val convert1 = new ParserConvert(qctx)
-    val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
-    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, inner)
-
-  private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
-    import qctx.reflect.*
-    val convert1 = new TaskConvert(qctx)
-    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr)
-
-  /*
-  private[this] def inputTaskDynMacro0[A1: Type](
-      t: Expr[Initialize[Task[A1]]]
-  )(using qctx: Quotes): Expr[Initialize[InputTask[A1]]] = {
-    import c.universe.{ Apply => ApplyTree, _ }
-    import internal.decorators._
-
-    val tag = implicitly[Type[A1]]
-    val util = ContextUtil[c.type](c)
-    val it = Ident(util.singleton(InputTask))
-    val isParserWrapper = InitParserConvert.asPredicate(c)
-    val isTaskWrapper = FullConvert.asPredicate(c)
-    val isAnyWrapper = (n: String, tpe: Type, tr: Tree) =>
-      isParserWrapper(n, tpe, tr) || isTaskWrapper(n, tpe, tr)
-    val ttree = t.tree
-    val defs = util.collectDefs(ttree, isAnyWrapper)
-    val checkQual = util.checkReferences(defs, isAnyWrapper, weakTypeOf[Initialize[InputTask[Any]]])
-
-    // the Symbol for the anonymous function passed to the appropriate Instance.map/flatMap/pure method
-    // this Symbol needs to be known up front so that it can be used as the owner of synthetic vals
-    val functionSym = util.functionSymbol(ttree.pos)
-    var result: Option[(Tree, Type, ValDef)] = None
-
-    // original is the Tree being replaced.  It is needed for preserving attributes.
-    def subWrapper(tpe: Type, qual: Tree, original: Tree): Tree =
-      if (result.isDefined) {
-        c.error(
-          qual.pos,
-          "Implementation restriction: a dynamic InputTask can only have a single input parser."
-        )
-        EmptyTree
-      } else {
-        qual.foreach(checkQual)
-        val vd = util.freshValDef(tpe, qual.symbol.pos, functionSym) // val $x: <tpe>
-        result = Some((qual, tpe, vd))
-        val tree = util.refVal(original, vd) // $x
-        tree.setPos(
-          qual.pos
-        ) // position needs to be set so that wrapKey passes the position onto the wrapper
-        assert(tree.tpe != null, "Null type: " + tree)
-        tree.setType(tpe)
-        tree
-      }
-    // Tree for InputTask.<name>[<tpeA>, <tpeB>](arg1)(arg2)
-    def inputTaskCreate(name: String, tpeA: Type, tpeB: Type, arg1: Tree, arg2: Tree) = {
-      val typedApp = TypeApply(util.select(it, name), TypeTree(tpeA) :: TypeTree(tpeB) :: Nil)
-      val app = ApplyTree(ApplyTree(typedApp, arg1 :: Nil), arg2 :: Nil)
-      c.Expr[Initialize[InputTask[A1]]](app)
-    }
-    // Tree for InputTask.createFree[<tpe>](arg1)
-    def inputTaskCreateFree(tpe: Type, arg: Tree) = {
-      val typedApp = TypeApply(util.select(it, InputTaskCreateFreeName), TypeTree(tpe) :: Nil)
-      val app = ApplyTree(typedApp, arg :: Nil)
-      c.Expr[Initialize[InputTask[A1]]](app)
-    }
-    def expandTask[I: WeakTypeTag](dyn: Boolean, tx: Tree): c.Expr[Initialize[Task[I]]] =
-      if (dyn)
-        taskDynMacroImpl[I](c)(c.Expr[Initialize[Task[I]]](tx))
-      else
-        taskMacroImpl[I](c)(c.Expr[I](tx))
-    def wrapTag[I: WeakTypeTag]: WeakTypeTag[Initialize[Task[I]]] = weakTypeTag
-
-    def sub(name: String, tpe: Type, qual: Tree, selection: Tree): Converted[c.type] = {
-      val tag = Type[A1](tpe)
-      InitParserConvert(c)(name, qual)(tag) transform { tree =>
-        subWrapper(tpe, tree, selection)
-      }
-    }
-
-    val tx = util.transformWrappers(ttree, (n, tpe, tree, replace) => sub(n, tpe, tree, replace))
-    result match {
-      case Some((p, tpe, param)) =>
-        val fCore = util.createFunction(param :: Nil, tx, functionSym)
-        val bodyTpe = wrapTag(tag).tpe
-        val fTpe = util.functionType(tpe :: Nil, bodyTpe)
-        val fTag = Type[Any](fTpe) // don't know the actual type yet, so use Any
-        val fInit = expandTask(false, fCore)(fTag).tree
-        inputTaskCreate(InputTaskCreateDynName, tpe, tag.tpe, p, fInit)
-      case None =>
-        val init = expandTask[A1](true, tx).tree
-        inputTaskCreateFree(tag.tpe, init)
-    }
   }
    */
 end TaskMacro

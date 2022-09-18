@@ -64,9 +64,6 @@ object InputWrapper:
   private[this] def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
 
-  inline def wrapTask[A](in: Any): A = `wrapTask_\u2603\u2603`[A](in)
-  inline def wrapInit[A](in: Any): A = `wrapInit_\u2603\u2603`[A](in)
-
   /*
   private[std] def wrapInitInputTask[T: c.WeakTypeTag](using qctx: Quotes)(
       ts: c.Expr[Any],
@@ -236,9 +233,6 @@ object ParserInput:
   )
   def `initParser_\u2603\u2603`[T](@deprecated("unused", "") i: Any): T =
     sys.error("This method is an implementation detail and should not be referenced.")
-
-  inline def wrap[A1](in: Any): A1 = `parser_\u2603\u2603`[A1](in)
-  inline def wrapInit[A1](in: Any): A1 = `initParser_\u2603\u2603`[A1](in)
 
 /*
   private[std] def inputParser[T: c.WeakTypeTag](

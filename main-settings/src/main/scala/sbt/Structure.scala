@@ -236,7 +236,11 @@ sealed trait InputKey[A1]
   def in(scope: Scope): InputKey[A1] =
     Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
 
-  // inline def :=(inline v: A1): Setting[InputTask[A1]] = macro std.TaskMacro.inputTaskAssignMacroImpl[A1]
+  private inline def inputTaskMacro[A2](inline a: A2): Def.Initialize[InputTask[A2]] =
+    ${ std.InputTaskMacro.inputTaskMacroImpl('a) }
+
+  inline def :=(inline a: A1): Setting[InputTask[A1]] =
+    set(inputTaskMacro[A1](a))
 
   final inline def ~=(f: A1 => A1): Setting[InputTask[A1]] = transform(f)
 

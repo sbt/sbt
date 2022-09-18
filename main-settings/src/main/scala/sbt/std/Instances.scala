@@ -87,18 +87,23 @@ object FullInstance:
           (a, data).flatMap { case (a, d) => f(a) evaluate d }
       }(AList.tuple3[Task[Initialize[Task[A1]]], Task[SS], [a] => Initialize[a] => Initialize[a]])
 
-/*
-  def flattenFun[S, T](
-      in: Initialize[Task[S => Initialize[Task[A1]]]]
-  ): Initialize[S => Task[A1]] = {
+  def flattenFun[A1, A2](
+      in: Initialize[Task[A1 => Initialize[Task[A2]]]]
+  ): Initialize[A1 => Task[A2]] =
     type K[L[x]] =
-      AList.T3K[Task[S => Initialize[Task[A1]]], Task[SS], Initialize ~> Initialize]#l[L]
-    Def.app[K, S => Task[A1]]((in, settingsData, Def.capturedTransformations)) {
-      case (a: Task[S => Initialize[Task[A1]]], data: Task[SS], f) => { (s: S) =>
-        import TaskExtra.multT2Task
-        (a, data) flatMap { case (af, d) => f(af(s)) evaluate d }
+      AList.Tuple3K[Task[A1 => Initialize[Task[A2]]], Task[SS], [a] => Initialize[a] => Initialize[
+        a
+      ]][L]
+    Def.app[K, A1 => Task[A2]]((in, settingsData, Def.capturedTransformations)) {
+      case (a: Task[A1 => Initialize[Task[A2]]] @unchecked, data: Task[SS] @unchecked, f) => {
+        (s: A1) =>
+          import TaskExtra.multT2Task
+          (a, data) flatMap { case (af, d) => f(af(s)) evaluate d }
       }
-    }(AList.tuple3)
-  }
- */
+    }(
+      AList.tuple3[Task[A1 => Initialize[Task[A2]]], Task[SS], [a] => Initialize[a] => Initialize[
+        a
+      ]]
+    )
+
 end FullInstance

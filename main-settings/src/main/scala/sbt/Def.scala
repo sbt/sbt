@@ -235,7 +235,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   // def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
 
   inline def inputTask[A1](inline a: A1): Def.Initialize[InputTask[A1]] =
-    ${ TaskMacro.inputTaskMacroImpl[A1]('a) }
+    ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 
   // def taskIf[T](a: T): Def.Initialize[Task[T]] = macro taskIfMacroImpl[T]
 
@@ -308,11 +308,17 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   // result of type A1, previously implemented using ParserInput.parsedMacroImpl[A1].
 
   extension [A1](in: Initialize[Parser[A1]])
-    inline def parsed: A1 = ParserInput.wrapInit[A1](Def.toISParser(in))
+    inline def parsed: A1 = ParserInput.`initParser_\u2603\u2603`[A1](Def.toISParser(in))
 
   extension [A1](in: Initialize[State => Parser[A1]])
     @targetName("parsedISPA1")
-    inline def parsed: A1 = ParserInput.wrapInit[A1](in)
+    inline def parsed: A1 = ParserInput.`initParser_\u2603\u2603`[A1](in)
+
+  extension [A1](in: Def.Initialize[InputTask[A1]])
+    inline def parsed: Task[A1] =
+      ParserInput.`initParser_\u2603\u2603`[Task[A1]](Def.toIParser[A1](in))
+
+    inline def evaluated: A1 = InputWrapper.`wrapInitInputTask_\u2603\u2603`[A1](in)
 
   inline def settingKey[A1](inline description: String): SettingKey[A1] =
     ${ std.KeyMacro.settingKeyImpl[A1]('description) }
@@ -379,7 +385,8 @@ end Def
 // because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra:
   import sbt.std.ParserInput
-  // implicit def macroValueT[T](@deprecated("unused", "") in: Task[T]): std.MacroValue[T] = ???
+  extension [A1](in: Task[A1])
+    inline def value: A1 = std.InputWrapper.`wrapTask_\u2603\u2603`[A1](in)
 
   // implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
   //   ???

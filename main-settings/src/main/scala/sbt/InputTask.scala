@@ -69,37 +69,42 @@ object InputTask:
   def static[T](p: Parser[Task[T]]): InputTask[T] = free(_ => p)
 
   def static[I, T](p: Parser[I])(c: I => Task[T]): InputTask[T] = static(p map c)
+   */
 
-  def free[T](p: State => Parser[Task[T]]): InputTask[T] = make(p)
+  def free[A1](p: State => Parser[Task[A1]]): InputTask[A1] = make(p)
 
-  def free[I, T](p: State => Parser[I])(c: I => Task[T]): InputTask[T] = free(s => p(s) map c)
+  def free[A1, A2](p: State => Parser[A1])(c: A1 => Task[A2]): InputTask[A2] =
+    free(s => p(s) map c)
 
-  def separate[I, T](
-      p: State => Parser[I]
-  )(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
-    separate(Def value p)(action)
+  def separate[A1, A2](
+      p: State => Parser[A1]
+  )(action: Initialize[A1 => Task[A2]]): Initialize[InputTask[A2]] =
+    separate(Def.value(p))(action)
 
-  def separate[I, T](
-      p: Initialize[State => Parser[I]]
-  )(action: Initialize[I => Task[T]]): Initialize[InputTask[T]] =
+  def separate[A1, A2](
+      p: Initialize[State => Parser[A1]]
+  )(action: Initialize[A1 => Task[A2]]): Initialize[InputTask[A2]] =
     p.zipWith(action)((parser, act) => free(parser)(act))
 
+  /*
   /** Constructs an InputTask that accepts no user input. */
   def createFree[T](action: Initialize[Task[T]]): Initialize[InputTask[T]] =
     action { tsk =>
       free(emptyParser)(const(tsk))
     }
+   */
 
   /**
    * Constructs an InputTask from:
    *  a) a Parser constructed using other Settings, but not Tasks
    *  b) a dynamically constructed Task that uses Settings, Tasks, and the result of parsing.
    */
-  def createDyn[I, T](
-      p: Initialize[State => Parser[I]]
-  )(action: Initialize[Task[I => Initialize[Task[T]]]]): Initialize[InputTask[T]] =
-    separate(p)(std.FullInstance.flattenFun[I, T](action))
+  def createDyn[A1, A2](
+      p: Initialize[State => Parser[A1]]
+  )(action: Initialize[Task[A1 => Initialize[Task[A2]]]]): Initialize[InputTask[A2]] =
+    separate(p)(std.FullInstance.flattenFun[A1, A2](action))
 
+  /*
   /** A dummy parser that consumes no input and produces nothing useful (unit). */
   def emptyParser: State => Parser[Unit] =
     Types.const(sbt.internal.util.complete.DefaultParsers.success(()))

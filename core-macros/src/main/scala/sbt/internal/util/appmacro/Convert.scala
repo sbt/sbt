@@ -23,10 +23,11 @@ trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil
 
   def convert[A: Type](nme: String, in: Term): Converted
 
-  def asPredicate[A]: (String, Type[A], Term) => Boolean =
-    (n, tpe, tree) =>
-      val tag = tpe
-      convert(n, tree)(tag).isSuccess
+  def asPredicate: (String, TypeRepr, Term) => Boolean =
+    (n: String, tpe: TypeRepr, tree: Term) =>
+      tpe.asType match
+        case '[a] =>
+          convert[a](n, tree)(Type.of[a]).isSuccess
 
   /**
    * Substitutes wrappers in tree `t` with the result of `subWrapper`. A wrapper is a Tree of the

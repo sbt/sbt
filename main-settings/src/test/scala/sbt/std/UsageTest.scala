@@ -11,6 +11,7 @@ import sbt.internal.util.complete
 import sbt.internal.util.complete.DefaultParsers
 import sbt.{ Def, InputTask, Task }
 import sbt.Def.parsed
+import sbt.Def.value
 
 object UseTask:
   val set = Def.setting { 23 }
@@ -91,30 +92,36 @@ object Assign {
     //
     tsk.parsed // "as" //dummy.value.parsed
   }
-  // val it2 = Def.inputTask {
-  //   "lit"
-  // }
+  val it2 = Def.inputTask {
+    "lit"
+  }
 
-  // val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
-  //   tsk.parsed.value + itsk.parsed.value.toString + isk.evaluated
-  // }
-  // // should not compile: cannot use a task to define the parser
-  // /*	val it4 = Def.inputTask {
-  // 	dummyt.value.parsed
-  // }*/
-  // // should compile: can use a setting to define the parser
-  // val it5 = Def.inputTask {
-  //   dummys.parsed
-  // }
+  val it3: Initialize[InputTask[String]] = Def.inputTask[String] {
+    itsk.parsed.value.toString
+  }
+
+  val it3b: Initialize[InputTask[String]] = Def.inputTask[String] {
+    tsk.parsed.value + itsk.parsed.value.toString + isk.evaluated
+  }
+
+  // should not compile: cannot use a task to define the parser
+  /*	val it4 = Def.inputTask {
+  	dummyt.value.parsed
+  }*/
+  // should compile: can use a setting to define the parser
+  val it5 = Def.inputTask {
+    dummys.parsed
+  }
+
   // val it6 = Def.inputTaskDyn {
   //   val d3 = dummy3.parsed
   //   val i = d3._2
   //   Def.task { tk.value + i }
   // }
 
-  // val it7 = Def.inputTask {
-  //   it5.parsed
-  // }
+  val it7 = Def.inputTask {
+    it5.parsed
+  }
 
   // def bool: Initialize[Boolean] = Def.setting { true }
   // def enabledOnly[T](key: Initialize[T]): Initialize[Seq[T]] = Def.setting {

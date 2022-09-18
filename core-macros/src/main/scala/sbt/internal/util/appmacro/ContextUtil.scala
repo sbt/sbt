@@ -93,4 +93,20 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C):
           case _                                  => super.transformTerm(tree)(owner)
     end refTransformer
     refTransformer.transformTerm(tree)(Symbol.spliceOwner)
+
+  def collectDefs(tree: Term, isWrapper: (String, TypeRepr, Term) => Boolean): Set[Symbol] =
+    val defs = mutable.HashSet[Symbol]()
+    object traverser extends TreeTraverser:
+      override def traverseTree(tree: Tree)(owner: Symbol): Unit =
+        tree match
+          case Ident(_) => ()
+          case Apply(TypeApply(Select(_, nme), tpe :: Nil), qual :: Nil)
+              if isWrapper(nme, tpe.tpe, qual) =>
+            ()
+          case _ =>
+            if tree.symbol ne null then defs += tree.symbol
+            super.traverseTree(tree)(owner)
+    end traverser
+    traverser.traverseTree(tree)(Symbol.spliceOwner)
+    defs.toSet
 end ContextUtil
