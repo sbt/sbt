@@ -18,6 +18,7 @@ import sbt.internal.util.appmacro.{
 }
 import sbt.util.Applicative
 import scala.quoted.*
+import sbt.internal.util.complete.Parser
 
 class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C)
     extends Convert[C](qctx)
@@ -48,14 +49,14 @@ object SettingMacro:
     val convert1 = InitializeConvert(qctx)
     convert1.contMapN[A1, F, Id](in, convert1.appExpr)
 
-/*
-  def settingDynMacroImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
-    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
-      Right(t),
-      Instance.idTransform[c.type]
-    )
- */
+  def settingDynImpl[A1: Type](in: Expr[Initialize[A1]])(using qctx: Quotes): Expr[Initialize[A1]] =
+    val convert1 = InitializeConvert(qctx)
+    convert1.contFlatMap[A1, F, Id](in, convert1.appExpr)
 
+  def inputMacroImpl[A1: Type](in: Expr[State => Parser[A1]])(using
+      qctx: Quotes
+  ): Expr[ParserGen[A1]] =
+    val convert1 = InitializeConvert(qctx)
+    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr)
+    '{ ParserGen[A1]($init1) }
 end SettingMacro

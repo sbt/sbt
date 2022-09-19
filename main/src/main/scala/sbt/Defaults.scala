@@ -1439,8 +1439,7 @@ object Defaults extends BuildCommon {
 
   private[this] lazy val inputTests0: Initialize[InputTask[Unit]] = {
     val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
-    Def.inputTaskDyn {
-      val (selected, frameworkOptions) = parser.parsed
+    ParserGen(parser).flatMapTask { case ((selected, frameworkOptions)) =>
       val s = streams.value
       val filter = testFilter.value
       val config = testExecution.value

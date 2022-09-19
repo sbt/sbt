@@ -234,6 +234,9 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   // def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
 
+  inline def input[A1](inline p: State => Parser[A1]): ParserGen[A1] =
+    ${ SettingMacro.inputMacroImpl[A1]('p) }
+
   inline def inputTask[A1](inline a: A1): Def.Initialize[InputTask[A1]] =
     ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 

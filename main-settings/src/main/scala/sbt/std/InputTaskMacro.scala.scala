@@ -195,4 +195,70 @@ object InputTaskMacro:
     }
   }
    */
+
+  def parserGenInputTaskMacroImpl[A1: Type, A2: Type](
+      parserGen: Expr[ParserGen[A1]],
+      tree: Expr[A1 => A2]
+  )(using
+      qctx: Quotes
+  ): Expr[Def.Initialize[InputTask[A2]]] =
+    inputTaskMacro0[A2]('{
+      val `arg$` = $parserGen.p.parsed
+      $tree(`arg$`)
+    })
+
+  def parserGenFlatMapTaskImpl[A1: Type, A2: Type](
+      parserGen: Expr[ParserGen[A1]],
+      tree: Expr[A1 => Def.Initialize[Task[A2]]]
+  )(using
+      qctx: Quotes
+  ): Expr[Def.Initialize[InputTask[A2]]] =
+    import qctx.reflect.*
+    val convert1 = new FullConvert(qctx) // 1000
+    import convert1.Converted
+    def mkInputTask(params: List[ValDef], body: Term): Expr[Def.Initialize[InputTask[A2]]] =
+      val lambdaTpe =
+        MethodType(params.map(_.name))(
+          _ => List(TypeRepr.of[A1]),
+          _ => TypeRepr.of[Def.Initialize[Task[A2]]]
+        )
+      val lambda = Lambda(
+        owner = Symbol.spliceOwner,
+        tpe = lambdaTpe,
+        rhsFn = (sym, params) => {
+          val p0 = params.head.asInstanceOf[Ident]
+          val body2 =
+            convert1
+              .contFlatMap[A2, TaskMacro.F, Id](body.asExprOf[TaskMacro.F[A2]], convert1.appExpr)
+              .asTerm
+          object refTransformer extends TreeMap:
+            override def transformTerm(tree: Term)(owner: Symbol): Term =
+              tree match
+                case Ident(name) if name == p0.name => Ref(p0.symbol)
+                case _                              => super.transformTerm(tree)(owner)
+          end refTransformer
+          refTransformer.transformTerm(body2.changeOwner(sym))(sym)
+        }
+      )
+      val action = lambda.asExprOf[A1 => Def.Initialize[Task[A2]]]
+      '{
+        InputTask.createDyn[A1, A2](${ parserGen }.p)(
+          Def.valueStrict(TaskExtra.task[A1 => Def.Initialize[Task[A2]]]($action))
+        )
+      }
+    tree.asTerm match
+      case Lambda(params, body) =>
+        mkInputTask(params, body)
+      case Inlined(
+            _,
+            _,
+            Lambda(params, body),
+          ) =>
+        mkInputTask(params, body)
+      case Inlined(
+            _,
+            _,
+            Block(List(), Lambda(params, body)),
+          ) =>
+        mkInputTask(params, body)
 end InputTaskMacro
