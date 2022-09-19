@@ -2004,10 +2004,11 @@ object Defaults extends BuildCommon {
 
   // runMain calls bgRunMain in the background and waits for the result.
   def foregroundRunMainTask: Initialize[InputTask[Unit]] =
-    Def.inputTask {
+    Def.inputTask[Unit] {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
       service.waitForTry(handle).get
+      ()
     }
 
   // run calls bgRun in the background and waits for the result.
