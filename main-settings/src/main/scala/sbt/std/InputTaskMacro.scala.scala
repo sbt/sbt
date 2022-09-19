@@ -73,21 +73,21 @@ object InputTaskMacro:
         )
       }.asTerm
 
-    def expand(nme: String, tpeRepr: TypeRepr, tree: Term): Converted =
-      tpeRepr.asType match
-        case '[tpe] =>
-          nme match
-            case WrapInitTaskName         => Converted.success(wrapInitTask[tpe](tree))
-            case WrapPreviousName         => Converted.success(wrapInitTask[tpe](tree))
-            case ParserInput.WrapInitName => Converted.success(wrapInitParser[tpe](tree))
-            case WrapInitInputName        => Converted.success(wrapInitInput[tpe](tree))
-            case WrapInputName            => Converted.success(wrapInput[tpe](tree))
-            case _                        => Converted.NotApplicable()
+    def expand[A](nme: String, tpe: Type[A], tree: Term): Converted =
+      given Type[A] = tpe
+      nme match
+        case WrapInitTaskName         => Converted.success(wrapInitTask[A](tree))
+        case WrapPreviousName         => Converted.success(wrapInitTask[A](tree))
+        case ParserInput.WrapInitName => Converted.success(wrapInitParser[A](tree))
+        case WrapInitInputName        => Converted.success(wrapInitInput[A](tree))
+        case WrapInputName            => Converted.success(wrapInput[A](tree))
+        case _                        => Converted.NotApplicable()
 
     def conditionInputTaskTree(t: Term): Term =
       convert1.transformWrappers(
         tree = t,
-        subWrapper = (nme, tpe, tree, original) => expand(nme, tpe, tree),
+        subWrapper = [a] =>
+          (nme: String, tpe: Type[a], tree: Term, original: Term) => expand[a](nme, tpe, tree),
         owner = Symbol.spliceOwner,
       )
 

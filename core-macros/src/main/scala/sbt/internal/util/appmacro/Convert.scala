@@ -37,7 +37,7 @@ trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil
    */
   def transformWrappers(
       tree: Term,
-      subWrapper: (String, TypeRepr, Term, Term) => Converted,
+      subWrapper: [a] => (String, Type[a], Term, Term) => Converted,
       owner: Symbol,
   ): Term =
     object ApplySelectOrIdent:
@@ -53,13 +53,16 @@ trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil
       override def transformTerm(tree: Term)(owner: Symbol): Term =
         tree match
           case ApplySelectOrIdent(nme, targ, qual) =>
-            subWrapper(nme, targ.tpe, qual, tree) match
-              case Converted.Success(tree, finalTransform) =>
-                finalTransform(tree)
-              case Converted.Failure(position, message) =>
-                report.errorAndAbort(message, position)
-              case _ =>
-                super.transformTerm(tree)(owner)
+            val tpe = targ.tpe.asType
+            tpe match
+              case '[a] =>
+                subWrapper[a](nme, tpe.asInstanceOf[Type[a]], qual, tree) match
+                  case Converted.Success(tree, finalTransform) =>
+                    finalTransform(tree)
+                  case Converted.Failure(position, message) =>
+                    report.errorAndAbort(message, position)
+                  case _ =>
+                    super.transformTerm(tree)(owner)
           case _ =>
             super.transformTerm(tree)(owner)
     end appTransformer

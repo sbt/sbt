@@ -83,7 +83,7 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C)
   private def wrapInit[A: Type](tree: Term): Converted =
     val expr = tree.asExprOf[Initialize[A]]
     val t = '{
-      Def.toITask($expr)
+      Def.toITask[A]($expr)
     }
     Converted.success(t.asTerm)
 

@@ -43,6 +43,7 @@ object Assign {
   val bk = taskKey[Seq[Int]]("b")
   val ck = settingKey[File]("c")
   val sk = taskKey[Set[_]]("s")
+  val bgList = taskKey[Seq[Int]]("")
 
   val ik = inputKey[Int]("i")
   val isk = inputKey[String]("is")
@@ -71,6 +72,8 @@ object Assign {
     ck := new File(ck.value, "asdf"),
     ak := sk.value.size,
     // bk ++= Seq(z.value)
+    intTask := ak.previous.get,
+    bgList := { mk.value.toString.toList.map(_.toInt) },
   )
 
   val zz = Def.task {

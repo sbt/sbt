@@ -149,9 +149,9 @@ trait Cont:
             $instanceExpr.pure[A1] { () => $body }
           }
         eitherTree match
-          case Left(_) => pure0[Effect[A]](body.asExprOf[Effect[A]])
+          case Left(_) => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
-            flatten(pure0[F[Effect[A]]](body.asExprOf[F[Effect[A]]]))
+            flatten(pure0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
       // m should have type F[F[A]]
       // the returned Tree will have type F[A]
@@ -179,9 +179,11 @@ trait Cont:
                   //  the call is addType(Type A, Tree qual)
                   // The result is a Tree representing a reference to
                   //  the bound value of the input.
-                  def substitute(name: String, tpe: TypeRepr, qual: Term, replace: Term) =
-                    convert[A](name, qual) transform { (tree: Term) =>
-                      typed[a](Ref(param.symbol))
+                  val substitute = [x] =>
+                    (name: String, tpe: Type[x], qual: Term, replace: Term) =>
+                      given t: Type[x] = tpe
+                      convert[x](name, qual) transform { (tree: Term) =>
+                        typed[x](Ref(param.symbol))
                     }
                   transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
                 }
@@ -194,9 +196,9 @@ trait Cont:
               ).asExprOf[F[A1]]
         eitherTree match
           case Left(_) =>
-            genMap0[Effect[A]](body.asExprOf[Effect[A]])
+            genMap0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
-            flatten(genMap0[F[Effect[A]]](body.asExprOf[F[Effect[A]]]))
+            flatten(genMap0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
       def genMapN(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] =
         def genMapN0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
@@ -213,13 +215,15 @@ trait Cont:
               //  the call is addType(Type A, Tree qual)
               // The result is a Tree representing a reference to
               //  the bound value of the input.
-              def substitute(name: String, tpe: TypeRepr, qual: Term, oldTree: Term) =
-                convert[A](name, qual) transform { (replacement: Term) =>
-                  val idx = inputs.indexWhere(input => input.qual == qual)
-                  Select
-                    .unique(Ref(p0.symbol), "apply")
-                    .appliedToTypes(List(br.inputTupleTypeRepr))
-                    .appliedToArgs(List(Literal(IntConstant(idx))))
+              val substitute = [x] =>
+                (name: String, tpe: Type[x], qual: Term, oldTree: Term) =>
+                  given Type[x] = tpe
+                  convert[x](name, qual) transform { (replacement: Term) =>
+                    val idx = inputs.indexWhere(input => input.qual == qual)
+                    Select
+                      .unique(Ref(p0.symbol), "apply")
+                      .appliedToTypes(List(br.inputTupleTypeRepr))
+                      .appliedToArgs(List(Literal(IntConstant(idx))))
                 }
               transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
             }
@@ -244,19 +248,21 @@ trait Cont:
 
         eitherTree match
           case Left(_) =>
-            genMapN0[Effect[A]](body.asExprOf[Effect[A]])
+            genMapN0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
-            flatten(genMapN0[F[Effect[A]]](body.asExprOf[F[Effect[A]]]))
+            flatten(genMapN0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
-      def record(name: String, tpe: TypeRepr, qual: Term, oldTree: Term) =
-        convert[A](name, qual) transform { (replacement: Term) =>
-          inputBuf += Input(tpe, qual, replacement, freshName("q"))
-          oldTree
+      val record = [a] =>
+        (name: String, tpe: Type[a], qual: Term, oldTree: Term) =>
+          given t: Type[a] = tpe
+          convert[a](name, qual) transform { (replacement: Term) =>
+            inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+            oldTree
         }
       val inlined = inlineExtensionProxy(expr.asTerm)
       val tx = transformWrappers(inlined, record, Symbol.spliceOwner)
-      val tr = makeApp(inner(tx), inputBuf.toList)
+      val tr = makeApp(tx, inputBuf.toList)
       tr
 end Cont
