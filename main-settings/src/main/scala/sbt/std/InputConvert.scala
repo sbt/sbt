@@ -15,9 +15,9 @@ import sbt.util.Applicative
 import sbt.internal.util.Types.Compose
 import scala.quoted.*
 
-class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
+class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C](qctx)
-    with ContextUtil[C](qctx):
+    with ContextUtil[C](qctx, valStart):
   import qctx.reflect.*
 
   override def convert[A: Type](nme: String, in: Term): Converted =
@@ -33,9 +33,9 @@ class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
 end InputInitConvert
 
 /** Converts an input `Term` of type `Parser[A]` or `State => Parser[A]` into a `Term` of type `State => Parser[A]`. */
-class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C)
+class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C](qctx)
-    with ContextUtil[C](qctx):
+    with ContextUtil[C](qctx, valStart):
   import qctx.reflect.*
 
   override def convert[A: Type](nme: String, in: Term): Converted =
@@ -51,9 +51,9 @@ class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C)
 end ParserConvert
 
 /** Convert instance for plain `Task`s not within the settings system. */
-class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C)
+class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C](qctx)
-    with ContextUtil[C](qctx):
+    with ContextUtil[C](qctx, valStart):
   import qctx.reflect.*
   override def convert[A: Type](nme: String, in: Term): Converted =
     if nme == InputWrapper.WrapTaskName then Converted.success(in)
@@ -67,9 +67,9 @@ end TaskConvert
  * Converts an input `Term` of type `Initialize[A]`, `Initialize[Task[A]]`, or `Task[A]` into
  * a `Term` of type `Initialize[Task[A]]`.
  */
-class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C)
+class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C](qctx)
-    with ContextUtil[C](qctx):
+    with ContextUtil[C](qctx, valStart):
   import qctx.reflect.*
 
   override def convert[A: Type](nme: String, in: Term): Converted =
@@ -102,9 +102,9 @@ end FullConvert
  * Converts an input `Term` of type `State => Parser[A]` or `Initialize[State => Parser[A]]`
  * into a `Term` of type `Initialize[State => Parser[A]]`.
  */
-class InitParserConvert[C <: Quotes & scala.Singleton](override val qctx: C)
+class InitParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C](qctx)
-    with ContextUtil[C](qctx):
+    with ContextUtil[C](qctx, valStart):
   import qctx.reflect.*
 
   override def convert[A: Type](nme: String, in: Term): Converted =

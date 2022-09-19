@@ -6,11 +6,11 @@ import scala.quoted.*
 import scala.reflect.TypeTest
 import scala.collection.mutable
 
-trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C):
+trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int):
   import qctx.reflect.*
   given qctx.type = qctx
 
-  private var counter: Int = -1
+  private var counter: Int = valStart - 1
   def freshName(prefix: String): String =
     counter = counter + 1
     s"$$${prefix}${counter}"

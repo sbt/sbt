@@ -56,7 +56,7 @@ object TaskMacro:
     t match
       case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t)
       case _ =>
-        val convert1 = new FullConvert(qctx)
+        val convert1 = new FullConvert(qctx, 0)
         convert1.contMapN[A1, F, Id](t, convert1.appExpr)
 
   def taskIfImpl[A1: Type](expr: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
@@ -76,7 +76,7 @@ object TaskMacro:
   def taskDynMacroImpl[A1: Type](
       t: Expr[Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
-    val convert1 = new FullConvert(qctx)
+    val convert1 = new FullConvert(qctx, 0)
     convert1.contFlatMap[A1, F, Id](t, convert1.appExpr)
 
   /*

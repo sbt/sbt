@@ -42,7 +42,7 @@ object InputTaskMacro:
   )(using qctx: Quotes): Expr[Def.Initialize[F1[A1]]] =
     import qctx.reflect.*
     import InputWrapper.*
-    val convert1 = new InputInitConvert(qctx)
+    val convert1 = new InputInitConvert(qctx, 0)
     import convert1.Converted
 
     def wrapInitTask[A2: Type](tree: Term): Term =
@@ -99,13 +99,13 @@ object InputTaskMacro:
       f: Expr[A1] => Expr[F1[A1]]
   )(using qctx: Quotes): Expr[State => Parser[F1[A1]]] =
     import qctx.reflect.*
-    val convert1 = new ParserConvert(qctx)
+    val convert1 = new ParserConvert(qctx, 1000)
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
     convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, inner)
 
   private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
     import qctx.reflect.*
-    val convert1 = new TaskConvert(qctx)
+    val convert1 = new TaskConvert(qctx, 2000)
     convert1.contMapN[A1, Task, Id](tree, convert1.appExpr)
 
   /*
@@ -214,7 +214,7 @@ object InputTaskMacro:
       qctx: Quotes
   ): Expr[Def.Initialize[InputTask[A2]]] =
     import qctx.reflect.*
-    val convert1 = new FullConvert(qctx) // 1000
+    val convert1 = new FullConvert(qctx, 1000)
     import convert1.Converted
     def mkInputTask(params: List[ValDef], body: Term): Expr[Def.Initialize[InputTask[A2]]] =
       val lambdaTpe =
