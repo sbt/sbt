@@ -752,101 +752,96 @@ object BuildServerProtocol {
     }
   }
 
-  private val jsonParser: Parser[Try[JValue]] = (Parsers.any *).map(_.mkString)
-  .map(JsonParser.parseFromString)
+  private val jsonParser: Parser[JValue] = (Parsers.any *).map(_.mkString)
+  .map(JsonParser.parseUnsafe)
 
-  private def bspRunTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
-    val runParams = jsonParser
-      .map(_.flatMap(json => Converter.fromJson[RunParams](json)))
-      .parsed
-      .get
-    val defaultClass = Keys.mainClass.value
-    val defaultJvmOptions = Keys.javaOptions.value
+  private def bspRunTask: Def.Initialize[InputTask[Unit]] =
+    Def.input((s: State) => jsonParser).flatMapTask { json =>
+      val runParams = Converter.fromJson[RunParams](json).get
+      val defaultClass = Keys.mainClass.value
+      val defaultJvmOptions = Keys.javaOptions.value
 
-    val mainClass = runParams.dataKind match {
-      case Some("scala-main-class") =>
-        val data = runParams.data.getOrElse(JNull)
-        Converter.fromJson[ScalaMainClass](data) match {
-          case Failure(e) =>
-            throw LangServerError(
-              ErrorCodes.ParseError,
-              e.getMessage
-            )
-          case Success(value) =>
-            value.withEnvironmentVariables(
-              envVars.value.map { case (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
-            )
-        }
-
-      case Some(dataKind) =>
-        throw LangServerError(
-          ErrorCodes.InvalidParams,
-          s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
-        )
-
-      case None =>
-        ScalaMainClass(
-          defaultClass.getOrElse(
-            throw LangServerError(
-              ErrorCodes.InvalidParams,
-              "No default main class is defined"
-            )
-          ),
-          runParams.arguments,
-          defaultJvmOptions.toVector,
-          envVars.value.map { case (k, v) => s"$k=$v" }.toVector
-        )
-    }
-
-    runMainClassTask(mainClass, runParams.originId)
-  }
-
-  private def bspTestTask: Def.Initialize[InputTask[Unit]] = Def.inputTaskDyn {
-    val testParams = jsonParser
-      .map(_.flatMap(json => Converter.fromJson[TestParams](json)))
-      .parsed
-      .get
-    val workspace = bspFullWorkspace.value
-
-    val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {
-      case Some("scala-test") =>
-        val data = testParams.data.getOrElse(JNull)
-        val items = Converter.fromJson[ScalaTestParams](data) match {
-          case Failure(e) =>
-            throw LangServerError(ErrorCodes.ParseError, e.getMessage)
-          case Success(value) => value.testClasses
-        }
-        val testTasks: Seq[Def.Initialize[Task[Unit]]] = items.map { item =>
-          val scope = workspace.scopes(item.target)
-          item.classes.toList match {
-            case Nil => Def.task(())
-            case classes =>
-              (scope / testOnly).toTask(" " + classes.mkString(" "))
+      val mainClass = runParams.dataKind match {
+        case Some("scala-main-class") =>
+          val data = runParams.data.getOrElse(JNull)
+          Converter.fromJson[ScalaMainClass](data) match {
+            case Failure(e) =>
+              throw LangServerError(
+                ErrorCodes.ParseError,
+                e.getMessage
+              )
+            case Success(value) =>
+              value.withEnvironmentVariables(
+                envVars.value.map { case (k, v) => s"$k=$v" }.toVector ++ value.environmentVariables
+              )
           }
-        }
-        testTasks.joinWith(ts => TaskExtra.joinTasks(ts).join).result
 
-      case Some(dataKind) =>
-        throw LangServerError(
-          ErrorCodes.InvalidParams,
-          s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
-        )
+        case Some(dataKind) =>
+          throw LangServerError(
+            ErrorCodes.InvalidParams,
+            s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
+          )
 
-      case None =>
-        // run allTests in testParams.targets
-        val filter = ScopeFilter.in(testParams.targets.map(workspace.scopes))
-        test.all(filter).result
-    }
-
-    Def.task {
-      val state = Keys.state.value
-      val statusCode = resultTask.value match {
-        case Value(_) => StatusCode.Success
-        case Inc(_)   => StatusCode.Error
+        case None =>
+          ScalaMainClass(
+            defaultClass.getOrElse(
+              throw LangServerError(
+                ErrorCodes.InvalidParams,
+                "No default main class is defined"
+              )
+            ),
+            runParams.arguments,
+            defaultJvmOptions.toVector,
+            envVars.value.map { case (k, v) => s"$k=$v" }.toVector
+          )
       }
-      val _ = state.respondEvent(TestResult(testParams.originId, statusCode))
+      runMainClassTask(mainClass, runParams.originId)
     }
-  }
+
+  private def bspTestTask: Def.Initialize[InputTask[Unit]] =
+    Def.input((s: State) => jsonParser).flatMapTask { json =>
+      val testParams = Converter.fromJson[TestParams](json).get
+      val workspace = bspFullWorkspace.value
+
+      val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {
+        case Some("scala-test") =>
+          val data = testParams.data.getOrElse(JNull)
+          val items = Converter.fromJson[ScalaTestParams](data) match {
+            case Failure(e) =>
+              throw LangServerError(ErrorCodes.ParseError, e.getMessage)
+            case Success(value) => value.testClasses
+          }
+          val testTasks: Seq[Def.Initialize[Task[Unit]]] = items.map { item =>
+            val scope = workspace.scopes(item.target)
+            item.classes.toList match {
+              case Nil => Def.task(())
+              case classes =>
+                (scope / testOnly).toTask(" " + classes.mkString(" "))
+            }
+          }
+          testTasks.joinWith(ts => TaskExtra.joinTasks(ts).join).result
+
+        case Some(dataKind) =>
+          throw LangServerError(
+            ErrorCodes.InvalidParams,
+            s"Unexpected data of kind '$dataKind', 'scala-main-class' is expected"
+          )
+
+        case None =>
+          // run allTests in testParams.targets
+          val filter = ScopeFilter.in(testParams.targets.map(workspace.scopes))
+          test.all(filter).result
+      }
+
+      Def.task {
+        val state = Keys.state.value
+        val statusCode = resultTask.value match {
+          case Value(_) => StatusCode.Success
+          case Inc(_)   => StatusCode.Error
+        }
+        val _ = state.respondEvent(TestResult(testParams.originId, statusCode))
+      }
+    }
 
   private def runMainClassTask(mainClass: ScalaMainClass, originId: Option[String]) = Def.task {
     val state = Keys.state.value
