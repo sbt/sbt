@@ -552,9 +552,9 @@ object Scoped:
       Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
   }
 
-  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[Taskable])(implicit
+  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[Taskable])(using
       a: AList[K]
-  ) {
+  ):
 
     type App[T] = Initialize[Task[T]]
 
@@ -571,74 +571,74 @@ object Scoped:
     private[this] def onTasks[A1](f: K[Task] => Task[A1]): App[A1] =
       Def.app[SplitK[K, Task], Task[A1]](inputs)(f)(AList.asplit[K, Task](a))
 
-    def flatMap[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMap(convert(f)))
+    def flatMapN[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMapN(convert(f)))
     def flatMapR[T](f: Fun[Result, Task[T]]): App[T] = onTasks(_.flatMapR(convert(f)))
-    def map[T](f: Fun[Id, T]): App[T] = onTasks(_.mapR(convert(f) compose allM))
+    def mapN[T](f: Fun[Id, T]): App[T] = onTasks(_.mapR(convert(f) compose allM))
     def mapR[T](f: Fun[Result, T]): App[T] = onTasks(_.mapR(convert(f)))
     def flatFailure[T](f: Seq[Incomplete] => Task[T]): App[T] = onTasks(_ flatFailure f)
     def mapFailure[T](f: Seq[Incomplete] => T): App[T] = onTasks(_ mapFailure f)
-  }
+  end RichTaskables
 
   // format: off
 
   type ST[X] = Taskable[X]
-  final class RichTaskable2[A, B](t2: (ST[A], ST[B])) extends RichTaskables[AList.Tuple2K[A, B]](t2)(AList.tuple2[A, B]) {
+  final class RichTaskable2[A, B](t2: (ST[A], ST[B])) extends RichTaskables[AList.Tuple2K[A, B]](t2)(using AList.tuple2[A, B]) {
     type Fun[M[_], Ret] = (M[A], M[B]) => Ret
-    def identityMap = map(mkTuple2)
+    def identityMap = mapN(mkTuple2)
     protected def convert[M[_], R](f: (M[A], M[B]) => R) = f.tupled
   }
 
-  final class RichTaskable3[A, B, C](t3: (ST[A], ST[B], ST[C])) extends RichTaskables[AList.Tuple3K[A, B, C]](t3)(AList.tuple3[A, B, C]) {
+  final class RichTaskable3[A, B, C](t3: (ST[A], ST[B], ST[C])) extends RichTaskables[AList.Tuple3K[A, B, C]](t3)(using AList.tuple3[A, B, C]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C]) => Ret
-    def identityMap = map(mkTuple3)
+    def identityMap = mapN(mkTuple3)
     protected def convert[M[_], R](f: Fun[M, R]) = f.tupled
   }
 
-  final class RichTaskable4[A, B, C, D](t4: (ST[A], ST[B], ST[C], ST[D])) extends RichTaskables[AList.Tuple4K[A, B, C, D]](t4)(AList.tuple4[A, B, C, D]) {
+  final class RichTaskable4[A, B, C, D](t4: (ST[A], ST[B], ST[C], ST[D])) extends RichTaskables[AList.Tuple4K[A, B, C, D]](t4)(using AList.tuple4[A, B, C, D]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D]) => Ret
-    def identityMap = map(mkTuple4)
+    def identityMap = mapN(mkTuple4)
     protected def convert[M[_], R](f: Fun[M, R]) = f.tupled
   }
 
-  final class RichTaskable5[A, B, C, D, E](t5: (ST[A], ST[B], ST[C], ST[D], ST[E])) extends RichTaskables[AList.Tuple5K[A, B, C, D, E]](t5)(AList.tuple5[A, B, C, D, E]) {
+  final class RichTaskable5[A, B, C, D, E](t5: (ST[A], ST[B], ST[C], ST[D], ST[E])) extends RichTaskables[AList.Tuple5K[A, B, C, D, E]](t5)(using AList.tuple5[A, B, C, D, E]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E]) => Ret
-    def identityMap = map(mkTuple5)
+    def identityMap = mapN(mkTuple5)
     protected def convert[M[_], R](f: Fun[M, R]) = f.tupled
   }
 
-  final class RichTaskable6[A, B, C, D, E, F](t6: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F])) extends RichTaskables[AList.Tuple6K[A, B, C, D, E, F]](t6)(AList.tuple6[A, B, C, D, E, F]) {
+  final class RichTaskable6[A, B, C, D, E, F](t6: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F])) extends RichTaskables[AList.Tuple6K[A, B, C, D, E, F]](t6)(using AList.tuple6[A, B, C, D, E, F]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F]) => Ret
-    def identityMap = map(mkTuple6)
+    def identityMap = mapN(mkTuple6)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  final class RichTaskable7[A, B, C, D, E, F, G](t7: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G])) extends RichTaskables[AList.Tuple7K[A, B, C, D, E, F, G]](t7)(AList.tuple7[A, B, C, D, E, F, G]) {
+  final class RichTaskable7[A, B, C, D, E, F, G](t7: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G])) extends RichTaskables[AList.Tuple7K[A, B, C, D, E, F, G]](t7)(using AList.tuple7[A, B, C, D, E, F, G]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G]) => Ret
-    def identityMap = map(mkTuple7)
+    def identityMap = mapN(mkTuple7)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  final class RichTaskable8[A, B, C, D, E, F, G, H](t8: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H])) extends RichTaskables[AList.Tuple8K[A, B, C, D, E, F, G, H]](t8)(AList.tuple8[A, B, C, D, E, F, G, H]) {
+  final class RichTaskable8[A, B, C, D, E, F, G, H](t8: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H])) extends RichTaskables[AList.Tuple8K[A, B, C, D, E, F, G, H]](t8)(using AList.tuple8[A, B, C, D, E, F, G, H]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H]) => Ret
-    def identityMap = map(mkTuple8)
+    def identityMap = mapN(mkTuple8)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  final class RichTaskable9[A, B, C, D, E, F, G, H, I](t9: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I])) extends RichTaskables[AList.Tuple9K[A, B, C, D, E, F, G, H, I]](t9)(AList.tuple9[A, B, C, D, E, F, G, H, I]) {
+  final class RichTaskable9[A, B, C, D, E, F, G, H, I](t9: (ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I])) extends RichTaskables[AList.Tuple9K[A, B, C, D, E, F, G, H, I]](t9)(using AList.tuple9[A, B, C, D, E, F, G, H, I]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I]) => Ret
-    def identityMap = map(mkTuple9)
+    def identityMap = mapN(mkTuple9)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  final class RichTaskable10[A, B, C, D, E, F, G, H, I, J](t10: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J]))) extends RichTaskables[AList.Tuple10K[A, B, C, D, E, F, G, H, I, J]](t10)(AList.tuple10[A, B, C, D, E, F, G, H, I, J]) {
+  final class RichTaskable10[A, B, C, D, E, F, G, H, I, J](t10: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J]))) extends RichTaskables[AList.Tuple10K[A, B, C, D, E, F, G, H, I, J]](t10)(using AList.tuple10[A, B, C, D, E, F, G, H, I, J]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J]) => Ret
-    def identityMap = map(mkTuple10)
+    def identityMap = mapN(mkTuple10)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
-  final class RichTaskable11[A, B, C, D, E, F, G, H, I, J, K](t11: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K]))) extends RichTaskables[AList.Tuple11K[A, B, C, D, E, F, G, H, I, J, K]](t11)(AList.tuple11[A, B, C, D, E, F, G, H, I, J, K]) {
+  final class RichTaskable11[A, B, C, D, E, F, G, H, I, J, K](t11: ((ST[A], ST[B], ST[C], ST[D], ST[E], ST[F], ST[G], ST[H], ST[I], ST[J], ST[K]))) extends RichTaskables[AList.Tuple11K[A, B, C, D, E, F, G, H, I, J, K]](t11)(using AList.tuple11[A, B, C, D, E, F, G, H, I, J, K]) {
     type Fun[M[_], Ret] = (M[A], M[B], M[C], M[D], M[E], M[F], M[G], M[H], M[I], M[J], M[K]) => Ret
-    def identityMap = map(mkTuple11)
+    def identityMap = mapN(mkTuple11)
     protected def convert[M[_], R](z: Fun[M, R]) = z.tupled
   }
 
