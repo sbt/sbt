@@ -3633,91 +3633,172 @@ object Classpaths {
       cacheLabel: String,
       includeCallers: Boolean,
       includeDetails: Boolean
-  ): Initialize[Task[UpdateReport]] = Def.task {
-    val s = streams.value
-    val cacheDirectory = crossTarget.value / cacheLabel / updateCacheName.value
+  ): Initialize[Task[UpdateReport]] =
+    TupleWrap[
+      (
+          DependencyResolution,
+          TaskStreams,
+          UpdateConfiguration,
+          Option[Level.Value],
+          String,
+          State,
+          String,
+          xsbti.AppConfiguration,
+          Option[ScalaInstance],
+          File,
+          File,
+          Seq[ScopedKey[_]],
+          ScopedKey[_],
+          Option[FiniteDuration],
+          Boolean,
+          ProjectRef,
+          IvySbt#Module,
+          String,
+          Boolean,
+          Seq[UpdateReport],
+          UnresolvedWarningConfiguration,
+          Level.Value,
+          Seq[ModuleID],
+          Level.Value,
+          String,
+          String,
+          Boolean,
+          CompatibilityWarningOptions,
+      )
+    ](
+      dependencyResolution,
+      streams,
+      updateConfiguration.toTaskable,
+      (update / logLevel).?.toTaskable,
+      updateCacheName.toTaskable,
+      state,
+      scalaVersion.toTaskable,
+      appConfiguration.toTaskable,
+      Defaults.unmanagedScalaInstanceOnly.toTaskable,
+      dependencyCacheDirectory.toTaskable,
+      crossTarget.toTaskable,
+      executionRoots.toTaskable,
+      resolvedScoped.toTaskable,
+      forceUpdatePeriod.toTaskable,
+      sbtPlugin.toTaskable,
+      thisProjectRef.toTaskable,
+      ivyModule.toTaskable,
+      scalaOrganization.toTaskable,
+      (update / skip).toTaskable,
+      transitiveUpdate.toTaskable,
+      (update / unresolvedWarningConfiguration).toTaskable,
+      evictionErrorLevel.toTaskable,
+      libraryDependencySchemes.toTaskable,
+      assumedEvictionErrorLevel.toTaskable,
+      assumedVersionScheme.toTaskable,
+      assumedVersionSchemeJava.toTaskable,
+      publishMavenStyle.toTaskable,
+      compatibilityWarningOptions.toTaskable,
+    ).mapN {
+      case (
+            lm,
+            s,
+            conf,
+            maybeUpdateLevel,
+            ucn,
+            state0,
+            sv,
+            ac,
+            usiOnly,
+            dcd,
+            ct,
+            er,
+            rs,
+            fup,
+            isPlugin,
+            thisRef,
+            im,
+            so,
+            sk,
+            tu,
+            uwConfig,
+            eel,
+            lds,
+            aeel,
+            avs,
+            avsj,
+            mavenStyle,
+            cwo,
+          ) =>
+        val cacheDirectory = ct / cacheLabel / ucn
+        val cacheStoreFactory: CacheStoreFactory = {
+          val factory =
+            state0.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
+          factory(cacheDirectory.toPath)
+        }
 
-    val cacheStoreFactory: CacheStoreFactory = {
-      val factory =
-        state.value.get(Keys.cacheStoreFactoryFactory).getOrElse(InMemoryCacheStore.factory(0))
-      factory(cacheDirectory.toPath)
+        val isRoot = er.contains(rs)
+        val shouldForce = isRoot || {
+          fup match
+            case None => false
+            case Some(period) =>
+              val fullUpdateOutput = cacheDirectory / "out"
+              val now = System.currentTimeMillis
+              val diff = now - IO.getModifiedTimeOrZero(fullUpdateOutput)
+              val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
+              fullUpdateOutput.exists() && elapsedDuration > period
+        }
+
+        val providedScalaJars: String => Seq[File] = {
+          val scalaProvider = ac.provider.scalaProvider
+          usiOnly match
+            case Some(instance) =>
+              unmanagedJarsTask(sv, instance.version, instance.allJars)
+            case None =>
+              (subVersion: String) =>
+                if (scalaProvider.version == subVersion) scalaProvider.jars else Nil
+        }
+        val updateConf = {
+          // Log captures log messages at all levels, except ivy logs.
+          // Use full level when debug is enabled so that ivy logs are shown.
+          import UpdateLogging.{ Default, DownloadOnly, Full }
+          val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+            case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
+            case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
+            case _                                  => conf
+          }
+
+          // logical clock is folded into UpdateConfiguration
+          conf1
+            .withLogicalClock(LogicalClock(state0.hashCode))
+            .withMetadataDirectory(dcd)
+        }
+
+        val extracted = Project.extract(state0)
+        val label =
+          if (isPlugin) Reference.display(thisRef)
+          else Def.displayRelativeReference(extracted.currentRef, thisRef)
+
+        LibraryManagement.cachedUpdate(
+          // LM API
+          lm = lm,
+          // Ivy-free ModuleDescriptor
+          module = im,
+          cacheStoreFactory = cacheStoreFactory,
+          label = label,
+          updateConf,
+          substituteScalaFiles(so, _)(providedScalaJars),
+          skip = sk,
+          force = shouldForce,
+          depsUpdated = tu.exists(!_.stats.cached),
+          uwConfig = uwConfig,
+          evictionLevel = eel,
+          versionSchemeOverrides = lds,
+          assumedEvictionErrorLevel = aeel,
+          assumedVersionScheme = avs,
+          assumedVersionSchemeJava = avsj,
+          mavenStyle = mavenStyle,
+          compatWarning = cwo,
+          includeCallers = includeCallers,
+          includeDetails = includeDetails,
+          log = s.log
+        )
     }
-
-    val isRoot = executionRoots.value contains resolvedScoped.value
-    val shouldForce = isRoot || {
-      forceUpdatePeriod.value match {
-        case None => false
-        case Some(period) =>
-          val fullUpdateOutput = cacheDirectory / "out"
-          val now = System.currentTimeMillis
-          val diff = now - IO.getModifiedTimeOrZero(fullUpdateOutput)
-          val elapsedDuration = new FiniteDuration(diff, TimeUnit.MILLISECONDS)
-          fullUpdateOutput.exists() && elapsedDuration > period
-      }
-    }
-
-    val providedScalaJars: String => Seq[File] = {
-      val scalaProvider = appConfiguration.value.provider.scalaProvider
-      Defaults.unmanagedScalaInstanceOnly.value match {
-        case Some(instance) =>
-          unmanagedJarsTask(scalaVersion.value, instance.version, instance.allJars)
-        case None =>
-          (subVersion: String) =>
-            if (scalaProvider.version == subVersion) scalaProvider.jars else Nil
-      }
-    }
-
-    val state0 = state.value
-    val updateConf = {
-      // Log captures log messages at all levels, except ivy logs.
-      // Use full level when debug is enabled so that ivy logs are shown.
-      import UpdateLogging.{ Default, DownloadOnly, Full }
-      val conf = updateConfiguration.value
-      val maybeUpdateLevel = (update / logLevel).?.value
-      val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
-        case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
-        case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
-        case _                                  => conf
-      }
-
-      // logical clock is folded into UpdateConfiguration
-      conf1
-        .withLogicalClock(LogicalClock(state0.hashCode))
-        .withMetadataDirectory(dependencyCacheDirectory.value)
-    }
-
-    val extracted = Project.extract(state0)
-    val isPlugin = sbtPlugin.value
-    val thisRef = thisProjectRef.value
-    val label =
-      if (isPlugin) Reference.display(thisRef)
-      else Def.displayRelativeReference(extracted.currentRef, thisRef)
-
-    LibraryManagement.cachedUpdate(
-      // LM API
-      lm = dependencyResolution.value,
-      // Ivy-free ModuleDescriptor
-      module = ivyModule.value,
-      cacheStoreFactory = cacheStoreFactory,
-      label = label,
-      updateConf,
-      substituteScalaFiles(scalaOrganization.value, _)(providedScalaJars),
-      skip = (update / skip).value,
-      force = shouldForce,
-      depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-      uwConfig = (update / unresolvedWarningConfiguration).value,
-      evictionLevel = evictionErrorLevel.value,
-      versionSchemeOverrides = libraryDependencySchemes.value,
-      assumedEvictionErrorLevel = assumedEvictionErrorLevel.value,
-      assumedVersionScheme = assumedVersionScheme.value,
-      assumedVersionSchemeJava = assumedVersionSchemeJava.value,
-      mavenStyle = publishMavenStyle.value,
-      compatWarning = compatibilityWarningOptions.value,
-      includeCallers = includeCallers,
-      includeDetails = includeDetails,
-      log = s.log
-    )
-  }
 
   private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] =
     Def.task {

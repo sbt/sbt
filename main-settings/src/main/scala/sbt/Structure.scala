@@ -718,7 +718,7 @@ end Scoped
  *
  * See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html#Migrating+from+sbt+0.12+style for how to migrate.
  */
-trait TupleSyntax {
+trait TupleSyntax:
   import Scoped._
 
   // format: off
@@ -748,7 +748,7 @@ trait TupleSyntax {
   implicit def t11ToApp11[A, B, C, D, E, F, G, H, I, J, K](t11: (Initialize[A], Initialize[B], Initialize[C], Initialize[D], Initialize[E], Initialize[F], Initialize[G], Initialize[H], Initialize[I], Initialize[J], Initialize[K])): Apply11[A, B, C, D, E, F, G, H, I, J, K] = new Apply11(t11)
 
   // format: on
-}
+end TupleSyntax
 
 object TupleSyntax extends TupleSyntax
 
@@ -849,3 +849,12 @@ object SettingKey:
   def local[A1: Manifest: OptJsonWriter]: SettingKey[A1] = apply[A1](AttributeKey.local[A1])
 
 end SettingKey
+
+class TupleWrap[Tup <: Tuple](value: Tuple.Map[Tup, Taskable]):
+  type InitTask[A2] = Initialize[Task[A2]]
+  lazy val alist = AList.tuple[Tup]
+  lazy val initTasks =
+    alist.transform[Taskable, InitTask](value)([a] => (t: Taskable[a]) => t.toTask)
+  def mapN[A1](f: Tup => A1): Def.Initialize[Task[A1]] =
+    import std.FullInstance.initializeTaskMonad
+    alist.mapN[InitTask, A1](initTasks)(f.asInstanceOf[Tuple.Map[Tup, Id] => A1])
