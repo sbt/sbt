@@ -34,6 +34,7 @@ import sbt.librarymanagement.ivy.{
   Credentials,
   DirectCredentials => IvyDirectCredentials
 }
+import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make._
 import scala.collection.JavaConverters._
 

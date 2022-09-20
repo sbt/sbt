@@ -276,7 +276,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
       case _                         => (None, None)
     }
   private[this] def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] =
-    None +: (configs(project).toSeq map some.fn)
+    None +: (configs(project).toSeq.map(some[String]))
 
   def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex =
     if (validID(scoped.key.label)) {

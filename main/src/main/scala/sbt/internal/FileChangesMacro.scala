@@ -14,90 +14,91 @@ import sbt.nio.Keys._
 import sbt.nio.{ FileChanges, FileStamp }
 
 import scala.annotation.compileTimeOnly
-import scala.language.experimental.macros
-import scala.reflect.macros.blackbox
+import scala.quoted.*
 
 /**
  * Provides extension methods to `TaskKey[T]` that can be use to fetch the input and output file
  * dependency changes for a task. Nothing in this object is intended to be called directly but,
  * because there are macro definitions, some of the definitions must be public.
  */
-object FileChangesMacro {
-  private[sbt] sealed abstract class TaskOps[T](val taskKey: TaskKey[T]) {
+object FileChangesMacro:
+
+  extension [A](in: TaskKey[A])
     @compileTimeOnly(
       "`inputFileChanges` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
     )
-    def inputFileChanges: FileChanges = macro changedInputFilesImpl[T]
+    inline def inputFileChanges: FileChanges =
+      ${ FileChangesMacro.changedInputFilesImpl[A]('in) }
+
     @compileTimeOnly(
       "`outputFileChanges` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
     )
-    def outputFileChanges: FileChanges = macro changedOutputFilesImpl[T]
+    inline def outputFileChanges: FileChanges =
+      ${ FileChangesMacro.changedOutputFilesImpl[A]('in) }
+
     @compileTimeOnly(
       "`inputFiles` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
     )
-    def inputFiles: Seq[NioPath] = macro inputFilesImpl[T]
+    inline def inputFiles: Seq[NioPath] =
+      ${ FileChangesMacro.inputFilesImpl[A]('in) }
+
     @compileTimeOnly(
       "`outputFiles` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."
     )
-    def outputFiles: Seq[NioPath] = macro outputFilesImpl[T]
-  }
-  def changedInputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[FileChanges] = {
-    impl[T](c)(
-      c.universe.reify(allInputFiles),
-      c.universe.reify(changedInputFiles),
-      c.universe.reify(inputFileStamps)
+    inline def outputFiles: Seq[NioPath] =
+      ${ FileChangesMacro.outputFilesImpl[A]('in) }
+
+  def changedInputFilesImpl[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[FileChanges] =
+    impl[A](
+      in = in,
+      currentKey = '{ allInputFiles },
+      changeKey = '{ changedInputFiles },
+      mapKey = '{ inputFileStamps },
     )
-  }
-  def changedOutputFilesImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  ): c.Expr[FileChanges] = {
-    impl[T](c)(
-      c.universe.reify(allOutputFiles),
-      c.universe.reify(changedOutputFiles),
-      c.universe.reify(outputFileStamps)
+
+  def changedOutputFilesImpl[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[FileChanges] =
+    impl[A](
+      in = in,
+      currentKey = '{ allOutputFiles },
+      changeKey = '{ changedOutputFiles },
+      mapKey = '{ outputFileStamps },
     )
-  }
-  def rescope[T](left: TaskKey[_], right: TaskKey[T]): TaskKey[T] =
+
+  def rescope[A](left: TaskKey[_], right: TaskKey[A]): TaskKey[A] =
     Scoped.scopedTask(left.scope.copy(task = Select(left.key)), right.key)
-  def rescope[T](left: Scope, right: TaskKey[T]): TaskKey[T] =
+
+  def rescope[A](left: Scope, right: TaskKey[A]): TaskKey[A] =
     Scoped.scopedTask(left, right.key)
-  private def impl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(
-      currentKey: c.Expr[TaskKey[Seq[NioPath]]],
-      changeKey: c.Expr[TaskKey[Seq[(NioPath, FileStamp)] => FileChanges]],
-      mapKey: c.Expr[TaskKey[Seq[(NioPath, FileStamp)]]]
-  ): c.Expr[FileChanges] = {
-    import c.universe._
-    val taskScope = getTaskScope(c)
-    reify {
-      val changes = rescope(taskScope.splice, changeKey.splice).value
-      val current = rescope(taskScope.splice, currentKey.splice).value
-      import sbt.nio.FileStamp.Formats._
-      val previous = Previous.runtimeInEnclosingTask(rescope(taskScope.splice, mapKey.splice)).value
+
+  private def impl[A: Type](
+      in: Expr[TaskKey[A]],
+      currentKey: Expr[TaskKey[Seq[NioPath]]],
+      changeKey: Expr[TaskKey[Seq[(NioPath, FileStamp)] => FileChanges]],
+      mapKey: Expr[TaskKey[Seq[(NioPath, FileStamp)]]],
+  )(using qctx: Quotes): Expr[FileChanges] =
+    import qctx.reflect.*
+    val taskScope = getTaskScope[A](in)
+    '{
+      val ts: Scope = $taskScope
+      val changes = rescope[Seq[(NioPath, FileStamp)] => FileChanges](ts, $changeKey).value
+      val current = rescope[Seq[NioPath]](ts, $currentKey).value
+      import sbt.nio.FileStamp.Formats.*
+      val previous =
+        Previous.runtimeInEnclosingTask(rescope[Seq[(NioPath, FileStamp)]](ts, $mapKey)).value
       previous.map(changes).getOrElse(FileChanges.noPrevious(current))
     }
-  }
-  def inputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Seq[NioPath]] = {
-    val taskKey = getTaskScope(c)
-    c.universe.reify(rescope(taskKey.splice, allInputFiles).value)
-  }
-  def outputFilesImpl[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[Seq[NioPath]] = {
-    val taskKey = getTaskScope(c)
-    c.universe.reify(rescope(taskKey.splice, allOutputFiles).value)
-  }
-  private def getTaskScope[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[sbt.Scope] = {
-    import c.universe._
-    val taskTpe = c.weakTypeOf[TaskKey[T]]
-    lazy val err = "Couldn't expand file change macro."
-    c.macroApplication match {
-      case Select(Apply(_, k :: Nil), _) if k.tpe <:< taskTpe =>
-        val expr = c.Expr[TaskKey[T]](k)
-        c.universe.reify {
-          if (expr.splice.scope.task.toOption.isDefined) expr.splice.scope
-          else expr.splice.scope.copy(task = sbt.Select(expr.splice.key))
-        }
-      case _ => c.abort(c.enclosingPosition, err)
+
+  def inputFilesImpl[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[Seq[NioPath]] =
+    val ts = getTaskScope[A](in)
+    '{ rescope[Seq[NioPath]]($ts, allInputFiles).value }
+
+  def outputFilesImpl[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[Seq[NioPath]] =
+    val ts = getTaskScope[A](in)
+    '{ rescope[Seq[NioPath]]($ts, allOutputFiles).value }
+
+  private def getTaskScope[A: Type](in: Expr[TaskKey[A]])(using qctx: Quotes): Expr[sbt.Scope] =
+    '{
+      if $in.scope.task.toOption.isDefined then $in.scope
+      else $in.scope.copy(task = sbt.Select($in.key))
     }
-  }
-}
+end FileChangesMacro

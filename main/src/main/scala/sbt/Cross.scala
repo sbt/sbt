@@ -10,6 +10,7 @@ package sbt
 import java.io.File
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.Keys._
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 import sbt.internal.Act
 import sbt.internal.CommandStrings._

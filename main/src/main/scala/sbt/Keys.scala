@@ -92,7 +92,7 @@ object Keys {
   val onLoadMessage = settingKey[String]("Message to display when the project is loaded.").withRank(DSetting)
   val transformState = AttributeKey[State => State]("transformState", "State transformation to apply after tasks run.", DSetting)
 
-  val onComplete = settingKey[() => Unit]("Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.").withRank(DSetting)
+  val onComplete = Def.onComplete //  settingKey[() => Unit]("Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.").withRank(DSetting)
 
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)

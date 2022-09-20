@@ -15,6 +15,7 @@ import sbt.internal.util.AttributeKey
 import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
+import sbt.ProjectExtra.setProject
 import scala.annotation.nowarn
 
 final case class Extracted(
@@ -148,6 +149,7 @@ final case class Extracted(
       state: State,
       sessionSettings: Seq[Setting[_]],
   ): State = {
+    import sbt.ProjectExtra.extract
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newStructure = Load.reapply(sessionSettings ++ appendSettings, structure)

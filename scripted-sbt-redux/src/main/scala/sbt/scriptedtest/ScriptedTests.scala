@@ -53,8 +53,8 @@ final class ScriptedTests(
 
     // Test group and names may be file filters (like '*')
     for {
-      groupDir <- (resourceBaseDirectory * group).get
-      nme <- (groupDir * name).get
+      groupDir <- (resourceBaseDirectory * group).get()
+      nme <- (groupDir * name).get()
       if !(nme.isFile)
     } yield {
       val g = groupDir.getName
@@ -115,19 +115,18 @@ final class ScriptedTests(
     val groupAndNameDirs = {
       for {
         (group, name) <- testGroupAndNames
-        groupDir <- (resourceBaseDirectory * group).get
-        testDir <- (groupDir * name).get
+        groupDir <- (resourceBaseDirectory * group).get()
+        testDir <- (groupDir * name).get()
       } yield (groupDir, testDir)
     }
 
     type TestInfo = ((String, String), File)
 
-    val labelsAndDirs = groupAndNameDirs.filterNot(_._2.isFile).map {
-      case (groupDir, nameDir) =>
-        val groupName = groupDir.getName
-        val testName = nameDir.getName
-        val testDirectory = testResources.readOnlyResourceDirectory(groupName, testName)
-        (groupName, testName) -> testDirectory
+    val labelsAndDirs = groupAndNameDirs.filterNot(_._2.isFile).map { case (groupDir, nameDir) =>
+      val groupName = groupDir.getName
+      val testName = nameDir.getName
+      val testDirectory = testResources.readOnlyResourceDirectory(groupName, testName)
+      (groupName, testName) -> testDirectory
     }
 
     if (labelsAndDirs.isEmpty) List()
@@ -164,24 +163,24 @@ final class ScriptedTests(
   }
 
   private[this] val windowsExclude: (((String, String), File)) => Boolean =
-    if (scala.util.Properties.isWin) {
-      case (testName, _) =>
-        testName match {
-          case ("classloader-cache", "jni") => true // no native lib is built for windows
-          case ("classloader-cache", "snapshot") =>
-            true // the test overwrites a jar that is being used which is verboten in windows
-          // The test spark server is unable to bind to a local socket on Visual Studio 2019
-          case ("classloader-cache", "spark") => true
-          case ("nio", "make-clone")          => true // uses gcc which isn't set up on all systems
-          // symlinks don't work the same on windows. Symlink monitoring does work in many cases
-          // on windows but not to the same level as it does on osx and linux
-          case ("watch", "symlinks") => true
-          case _                     => false
-        }
+    if (scala.util.Properties.isWin) { case (testName, _) =>
+      testName match {
+        case ("classloader-cache", "jni") => true // no native lib is built for windows
+        case ("classloader-cache", "snapshot") =>
+          true // the test overwrites a jar that is being used which is verboten in windows
+        // The test spark server is unable to bind to a local socket on Visual Studio 2019
+        case ("classloader-cache", "spark") => true
+        case ("nio", "make-clone")          => true // uses gcc which isn't set up on all systems
+        // symlinks don't work the same on windows. Symlink monitoring does work in many cases
+        // on windows but not to the same level as it does on osx and linux
+        case ("watch", "symlinks") => true
+        case _                     => false
+      }
     }
     else _ => false
 
-  /** Defines the batch execution of scripted tests.
+  /**
+   * Defines the batch execution of scripted tests.
    *
    * Scripted tests are run one after the other one recycling the handlers, under
    * the assumption that handlers do not produce side effects that can change scripted
@@ -214,47 +213,46 @@ final class ScriptedTests(
     runner.initStates(states, seqHandlers)
 
     def runBatchTests = {
-      groupedTests.map {
-        case ((group, name), originalDir) =>
-          val label = s"$group/$name"
-          log.info(s"Running $label")
-          // Copy test's contents and reload the sbt instance to pick them up
-          IO.copyDirectory(originalDir, tempTestDir)
+      groupedTests.map { case ((group, name), originalDir) =>
+        val label = s"$group/$name"
+        log.info(s"Running $label")
+        // Copy test's contents and reload the sbt instance to pick them up
+        IO.copyDirectory(originalDir, tempTestDir)
 
-          val runTest = () => {
-            // Reload and initialize (to reload contents of .sbtrc files)
-            def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
-            val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
-            val statement = Statement("reload;initialize", Nil, successExpected = true, line = -1)
+        val runTest = () => {
+          // Reload and initialize (to reload contents of .sbtrc files)
+          def sbtHandlerError = sys error "Missing sbt handler. Scripted is misconfigured."
+          val sbtHandler = handlers.getOrElse('>', sbtHandlerError)
+          val statement = Statement("reload;initialize", Nil, successExpected = true, line = -1)
 
-            // Run reload inside the hook to reuse error handling for pending tests
-            val wrapHook = (file: File) => {
-              preHook(file)
-              try runner.processStatement(sbtHandler, statement, states)
-              catch {
-                case t: Throwable =>
-                  val newMsg = "Reload for scripted batch execution failed."
-                  throw new TestException(statement, newMsg, t)
-              }
+          // Run reload inside the hook to reuse error handling for pending tests
+          val wrapHook = (file: File) => {
+            preHook(file)
+            try runner.processStatement(sbtHandler, statement, states)
+            catch {
+              case t: Throwable =>
+                val newMsg = "Reload for scripted batch execution failed."
+                throw new TestException(statement, newMsg, t)
             }
-
-            commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)
           }
 
-          // Run the test and delete files (except global that holds local scala jars)
-          val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
-          val view = sbt.nio.file.FileTreeView.default
-          val base = tempTestDir.getCanonicalFile.toGlob
-          val global = base / "global"
-          val globalLogging = base / ** / "global-logging"
-          def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
-          val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
-          val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
-          toDelete.foreach { p =>
-            try Files.deleteIfExists(p)
-            catch { case _: IOException => }
-          }
-          result
+          commonRunTest(label, tempTestDir, wrapHook, handlers, runner, states, buffer)
+        }
+
+        // Run the test and delete files (except global that holds local scala jars)
+        val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
+        val view = sbt.nio.file.FileTreeView.default
+        val base = tempTestDir.getCanonicalFile.toGlob
+        val global = base / "global"
+        val globalLogging = base / ** / "global-logging"
+        def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
+        val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
+        val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
+        toDelete.foreach { p =>
+          try Files.deleteIfExists(p)
+          catch { case _: IOException => }
+        }
+        result
       }
     }
 
@@ -321,7 +319,7 @@ final class ScriptedTests(
     }
 
     import scala.util.control.Exception.catching
-    catching(classOf[TestException]).withApply(testFailed).andFinally(log.clear).apply {
+    catching(classOf[TestException]).withApply(testFailed).andFinally(log.clear()).apply {
       preScriptedHook(testDirectory)
       val parser = new TestScriptParser(handlers)
       val handlersAndStatements = parser.parse(file, stripQuotes = false)
@@ -349,7 +347,7 @@ object ScriptedTests extends ScriptedRunner {
     val sbtVersion = args(2)
     val defScalaVersion = args(3)
     //  val buildScalaVersions = args(4)
-    //val bootProperties = new File(args(5))
+    // val bootProperties = new File(args(5))
     val tests = args.drop(6)
     val logger = TestConsoleLogger()
     val cp = System.getProperty("java.class.path", "").split(java.io.File.pathSeparator).map(file)
@@ -714,8 +712,7 @@ private[sbt] final class ListTests(
     } else {
       val (included, skipped) =
         allTests.toList.partition(test => accept(ScriptedTest(groupName, test.getName)))
-      if (included.isEmpty)
-        log.warn(s"Test group $groupName skipped.")
+      if (included.isEmpty) log.warn(s"Test group $groupName skipped.")
       else if (skipped.nonEmpty) {
         log.warn(s"Tests skipped in group $groupName:")
         skipped.foreach(testName => log.warn(s" ${testName.getName}"))

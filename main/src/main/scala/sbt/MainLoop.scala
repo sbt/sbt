@@ -8,6 +8,7 @@
 package sbt
 
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
+import sbt.ProjectExtra.extract
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.protocol.JsonRpcResponseError
@@ -97,7 +98,7 @@ object MainLoop {
     } else None
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
-    currentArtDirs.get foreach { dir =>
+    currentArtDirs.get().foreach { dir =>
       state.log.info(s"deleting $dir")
       IO.delete(dir)
     }

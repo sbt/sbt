@@ -142,6 +142,9 @@ class Eval(
       valTypes: Seq[String],
       extraHash: String,
   ): EvalDefinitions =
+    println(s"""evalDefinitions(definitions = $definitions)
+classpath = $classpath
+""")
     require(definitions.nonEmpty, "definitions to evaluate cannot be empty.")
     val extraHash0 = extraHash
     val ev = new EvalType[Seq[String]]:
@@ -314,7 +317,7 @@ object Eval:
   class EvalSourceFile(name: String, startLine: Int, contents: String)
       extends SourceFile(
         new VirtualFile(name, contents.getBytes(StandardCharsets.UTF_8)),
-        scala.io.Codec.UTF8
+        contents.toArray
       ):
     override def lineToOffset(line: Int): Int = super.lineToOffset((line + startLine) max 0)
     override def offsetToLine(offset: Int): Int = super.offsetToLine(offset) - startLine

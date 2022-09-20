@@ -7,8 +7,11 @@
 
 package sbt.internal.server
 
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.reporting.{ Diagnostic => ScalaDiagnostic }
+import dotty.tools.dotc.reporting.Reporter
 import sbt.StandardMain.exchange
-import sbt.compiler.ForwardingReporter
+import sbt.internal.ForwardingReporter
 import sbt.internal.bsp
 import sbt.internal.bsp.{
   BuildTargetIdentifier,
@@ -21,16 +24,14 @@ import sbt.internal.bsp.{
 
 import java.nio.file.{ Files, Path, Paths }
 import scala.collection.mutable
-import scala.reflect.internal.Reporter
-import scala.reflect.internal.util.{ DefinedPosition, Position }
-import scala.tools.nsc.reporters.FilteringReporter
 import sbt.internal.bsp.codec.JsonProtocol._
 
-class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: FilteringReporter)
-    extends ForwardingReporter(delegate) {
+class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Reporter)
+    extends ForwardingReporter(delegate):
   private val problemsByFile = mutable.Map[Path, Vector[Diagnostic]]()
 
-  override def doReport(pos: Position, msg: String, severity: Severity): Unit = {
+  override def doReport(dia: ScalaDiagnostic)(using Context): Unit = {
+    /*
     for {
       filePath <- if (pos.source.file.exists) Some(Paths.get(pos.source.file.path)) else None
       range <- convertToRange(pos)
@@ -47,10 +48,12 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Filt
       )
       exchange.notifyEvent("build/publishDiagnostics", params)
     }
-    super.doReport(pos, msg, severity)
+     */
+    super.doReport(dia)
   }
 
-  override def finalReport(sourceName: String): Unit = {
+  /*
+  def finalReport(sourceName: String): Unit = {
     val filePath = Paths.get(sourceName)
     if (Files.exists(filePath)) {
       val diagnostics = problemsByFile.getOrElse(filePath, Vector())
@@ -90,4 +93,5 @@ class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Filt
       case _ => None
     }
   }
-}
+   */
+end BuildServerEvalReporter

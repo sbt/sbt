@@ -16,7 +16,6 @@ import scala.annotation.{ nowarn, tailrec }
 import scala.collection.JavaConverters._
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
-import scala.tools.reflect.{ ToolBox, ToolBoxError }
 import scala.util.matching.Regex
 
 import sjsonnew.JsonFormat
@@ -25,6 +24,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
 import sbt.internal.inc.JavaInterfaceUtil._
+import sbt.internal.parser.SbtParser
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.protocol.codec.JsonRPCProtocol
 import sbt.internal.langserver
@@ -48,21 +48,7 @@ private[sbt] object Definition {
   }
 
   object textProcessor {
-    private val isIdentifier = {
-      lazy val tb =
-        scala.reflect.runtime.universe
-          .runtimeMirror(this.getClass.getClassLoader)
-          .mkToolBox()
-      import tb._
-      lazy val check = parse _ andThen compile _
-      (identifier: String) =>
-        try {
-          check(s"val $identifier = 0; val ${identifier}${identifier} = $identifier")
-          true
-        } catch {
-          case _: ToolBoxError => false
-        }
-    }
+    private val isIdentifier: String => Boolean = SbtParser.isIdentifier
 
     private def findInBackticks(line: String, point: Int): Option[String] = {
       val (even, odd) = line.zipWithIndex
@@ -295,7 +281,7 @@ private[sbt] object Definition {
                   analysis.relations.definesClass(className) ++
                     analysis.relations.libraryDefinesClass(className)
                 }
-                .flatMap { classFile: VirtualFileRef =>
+                .flatMap { (classFile: VirtualFileRef) =>
                   val x = converter.toPath(classFile)
                   textProcessor.markPosition(x, sym).collect { case (uri, line, from, to) =>
                     Location(

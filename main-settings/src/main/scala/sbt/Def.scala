@@ -21,6 +21,7 @@ import sbt.internal.util.{ Terminal => ITerminal, * }
 import Util._
 import sbt.util.Show
 import xsbti.VirtualFile
+import sjsonnew.JsonFormat
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
@@ -29,6 +30,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 
+  val onComplete = SettingKey[() => Unit](
+    "onComplete",
+    "Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915."
+  ) // .withRank(DSetting)
   val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
   val runBefore = AttributeKey[Seq[Task[_]]]("run-before")
   val resolvedScoped = SettingKey[ScopedKey[_]](
@@ -232,7 +237,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   inline def setting[A1](inline a: A1): Def.Initialize[A1] = ${ settingMacroImpl[A1]('a) }
 
-  // def settingDyn[T](t: Def.Initialize[T]): Def.Initialize[T] = macro settingDynMacroImpl[T]
+  inline def settingDyn[A1](inline a1: Def.Initialize[A1]): Def.Initialize[A1] =
+    ${ SettingMacro.settingDynImpl('a1) }
 
   inline def input[A1](inline p: State => Parser[A1]): ParserGen[A1] =
     ${ SettingMacro.inputMacroImpl[A1]('p) }
@@ -329,6 +335,20 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
       ParserInput.`initParser_\u2603\u2603`[Task[A1]](Def.toIParser[A1](in))
 
     inline def evaluated: A1 = InputWrapper.`wrapInitInputTask_\u2603\u2603`[A1](in)
+
+    def toTask(arg: String): Initialize[Task[A1]] =
+      import TaskExtra.singleInputTask
+      FullInstance.flatten(
+        (Def.stateKey zipWith in)((sTask, it) =>
+          sTask map { s =>
+            Parser.parse(arg, it.parser(s)) match
+              case Right(a) => Def.value[Task[A1]](a)
+              case Left(msg) =>
+                val indented = msg.linesIterator.map("   " + _).mkString("\n")
+                sys.error(s"Invalid programmatic input:\n$indented")
+          }
+        )
+      )
 
   inline def settingKey[A1](inline description: String): SettingKey[A1] =
     ${ std.KeyMacro.settingKeyImpl[A1]('description) }

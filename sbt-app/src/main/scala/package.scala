@@ -16,7 +16,7 @@ import scala.language.experimental.macros
 package object sbt
     extends sbt.IOSyntax0
     with sbt.std.TaskExtra
-    with sbt.internal.util.Types
+    // with sbt.internal.util.Types
     with sbt.ProjectExtra
     with sbt.librarymanagement.DependencyBuilders
     with sbt.librarymanagement.DependencyFilterExtra
@@ -39,7 +39,7 @@ package object sbt
    * Provides macro extension methods. Because the extension methods are all macros, no instance
    * of FileChangesMacro.TaskOps is ever made which is why it is ok to use `???`.
    */
-  implicit def taskToTaskOpts[T](t: TaskKey[T]): FileChangesMacro.TaskOps[T] = ???
+  // implicit def taskToTaskOpts[T](t: TaskKey[T]): FileChangesMacro.TaskOps[T] = ???
   implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
     FileStamp.Formats.seqPathFileStampJsonFormatter
   implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
@@ -59,6 +59,6 @@ package object sbt
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
-  def config(name: String): Configuration =
-    macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
+  // def config(name: String): Configuration =
+  //   macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
 }

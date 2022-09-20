@@ -14,19 +14,20 @@ import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
 import DefaultParsers._
 import sbt.internal.util.Types.idFun
+import sbt.ProjectExtra.*
 import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
 import sbt.util.Show
 import scala.collection.mutable
 
-final class ParsedKey[+A](val key: ScopedKey[A], val mask: ScopeMask, val separaters: Seq[String]):
-  def this(key: ScopedKey[A], mask: ScopeMask) = this(key, mask, Nil)
+final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask, val separaters: Seq[String]):
+  def this(key: ScopedKey[_], mask: ScopeMask) = this(key, mask, Nil)
 
   override def equals(o: Any): Boolean =
     this.eq(o.asInstanceOf[AnyRef]) || (o match {
-      case x: ParsedKey[_] => (this.key == x.key) && (this.mask == x.mask)
-      case _               => false
+      case x: ParsedKey => (this.key == x.key) && (this.mask == x.mask)
+      case _            => false
     })
   override def hashCode: Int = {
     37 * (37 * (37 * (17 + "sbt.internal.ParsedKey".##) + this.key.##)) + this.mask.##
@@ -55,7 +56,8 @@ object Act {
       keyMap: Map[String, AttributeKey[_]],
       data: Settings[Scope]
   ): Parser[ScopedKey[Any]] =
-    scopedKeySelected(index, current, defaultConfigs, keyMap, data).map(_.key)
+    scopedKeySelected(index, current, defaultConfigs, keyMap, data)
+      .map(_.key.asInstanceOf[ScopedKey[Any]])
 
   // the index should be an aggregated index for proper tab completion
   def scopedKeyAggregated(
@@ -72,7 +74,11 @@ object Act {
         structure.data
       )
     )
-      yield Aggregation.aggregate(selected.key, selected.mask, structure.extra)
+      yield Aggregation.aggregate(
+        selected.key.asInstanceOf[ScopedKey[Any]],
+        selected.mask,
+        structure.extra
+      )
 
   def scopedKeyAggregatedSep(
       current: ProjectRef,
@@ -88,7 +94,7 @@ object Act {
       )
     yield Aggregation
       .aggregate(selected.key, selected.mask, structure.extra)
-      .map(k => k -> selected.separaters)
+      .map(k => k.asInstanceOf[ScopedKey[Any]] -> selected.separaters)
 
   def scopedKeySelected(
       index: KeyIndex,
@@ -96,7 +102,7 @@ object Act {
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[_]],
       data: Settings[Scope]
-  ): Parser[ParsedKey[Any]] =
+  ): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap) flatMap { choices =>
       select(choices, data)(showRelativeKey2(current))
     }
@@ -106,7 +112,7 @@ object Act {
       current: ProjectRef,
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[_]]
-  ): Parser[Seq[Parser[ParsedKey[Any]]]] = {
+  ): Parser[Seq[Parser[ParsedKey]]] = {
     val confParserCache
         : mutable.Map[Option[sbt.ResolvedReference], Parser[(ParsedAxis[String], Seq[String])]] =
       mutable.Map.empty
@@ -151,7 +157,7 @@ object Act {
       confAmb: ParsedAxis[String],
       baseMask: ScopeMask,
       baseSeps: Seq[String]
-  ): Seq[Parser[ParsedKey[Any]]] =
+  ): Seq[Parser[ParsedKey]] =
     for {
       conf <- configs(confAmb, defaultConfigs, proj, index)
     } yield for {
@@ -178,9 +184,9 @@ object Act {
       key
     )
 
-  def select(allKeys: Seq[Parser[ParsedKey[_]]], data: Settings[Scope])(implicit
+  def select(allKeys: Seq[Parser[ParsedKey]], data: Settings[Scope])(implicit
       show: Show[ScopedKey[_]]
-  ): Parser[ParsedKey[Any]] =
+  ): Parser[ParsedKey] =
     seq(allKeys) flatMap { ss =>
       val default = ss.headOption match {
         case None    => noValidKeys
@@ -188,16 +194,16 @@ object Act {
       }
       selectFromValid(ss filter isValid(data), default)
     }
-  def selectFromValid(ss: Seq[ParsedKey[_]], default: Parser[ParsedKey[_]])(implicit
+  def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(implicit
       show: Show[ScopedKey[_]]
-  ): Parser[ParsedKey[Any]] =
+  ): Parser[ParsedKey] =
     selectByTask(selectByConfig(ss)) match {
       case Seq()       => default
       case Seq(single) => success(single)
       case multi       => failure("Ambiguous keys: " + showAmbiguous(keys(multi)))
     }
-  private[this] def keys(ss: Seq[ParsedKey[_]]): Seq[ScopedKey[_]] = ss.map(_.key)
-  def selectByConfig(ss: Seq[ParsedKey[_]]): Seq[ParsedKey[Any]] =
+  private[this] def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[_]] = ss.map(_.key)
+  def selectByConfig(ss: Seq[ParsedKey]): Seq[ParsedKey] =
     ss match {
       case Seq() => Nil
       case Seq(x, tail @ _*) => // select the first configuration containing a valid key
@@ -206,7 +212,7 @@ object Act {
           case xs    => x +: xs
         }
     }
-  def selectByTask(ss: Seq[ParsedKey[_]]): Seq[ParsedKey[Any]] = {
+  def selectByTask(ss: Seq[ParsedKey]): Seq[ParsedKey] = {
     val (selects, zeros) = ss.partition(_.key.scope.task.isSelect)
     if (zeros.nonEmpty) zeros else selects
   }
@@ -216,7 +222,7 @@ object Act {
   def showAmbiguous(keys: Seq[ScopedKey[_]])(implicit show: Show[ScopedKey[_]]): String =
     keys.take(3).map(x => show.show(x)).mkString("", ", ", if (keys.size > 3) ", ..." else "")
 
-  def isValid(data: Settings[Scope])(parsed: ParsedKey[_]): Boolean = {
+  def isValid(data: Settings[Scope])(parsed: ParsedKey): Boolean = {
     val key = parsed.key
     data.definingScope(key.scope, key.key) == Some(key.scope)
   }

@@ -9,6 +9,7 @@ package sbt
 
 import java.nio.file.Paths
 import sbt.util.Level
+import sbt.internal.inc.PlainVirtualFile
 import sbt.internal.util.{ AttributeKey, FullReader, LineReader, Terminal }
 import sbt.internal.util.complete.{
   Completion,
@@ -39,6 +40,7 @@ import sbt.util.Level
 import scala.Function.tupled
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
+import xsbti.VirtualFile
 
 object BasicCommands {
   lazy val allBasicCommands: Seq[Command] = Seq(
@@ -110,8 +112,9 @@ object BasicCommands {
    */
   def addPluginSbtFile: Command = Command.arb(_ => addPluginSbtFileParser, addPluginSbtFileHelp()) {
     (s, extraSbtFile) =>
-      val extraFiles = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
-      s.put(BasicKeys.extraMetaSbtFiles, (extraFiles: Seq[File]) :+ extraSbtFile)
+      val existing: Seq[VirtualFile] = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
+      val vf = PlainVirtualFile(extraSbtFile.toPath())
+      s.put(BasicKeys.extraMetaSbtFiles, existing :+ vf)
   }
 
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)

@@ -39,7 +39,7 @@ object PluginDiscovery {
 
   /** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
   def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins = {
-    def discover[T](resource: String)(implicit classTag: reflect.ClassTag[T]) =
+    def discover[T](resource: String)(implicit manifest: Manifest[T]) =
       binarySourceModules[T](data, loader, resource)
     import Paths._
     // TODO - Fix this once we can autodetect AutoPlugins defined by sbt itself.

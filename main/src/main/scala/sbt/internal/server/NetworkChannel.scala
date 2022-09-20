@@ -21,6 +21,7 @@ import java.util.concurrent.{
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
+import sbt.ProjectExtra.extract
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
@@ -745,7 +746,7 @@ final class NetworkChannel(
     }
   }
   private class NetworkTerminal
-      extends TerminalImpl(writeableInputStream, outputStream, errorStream, name) {
+      extends TerminalImpl(writeableInputStream, outputStream, errorStream, name) { term =>
     private[this] val pending = new AtomicBoolean(false)
     private[this] val closed = new AtomicBoolean(false)
     private[this] val properties = new AtomicReference[TerminalPropertiesResponse]
@@ -755,7 +756,7 @@ final class NetworkChannel(
       if (alive.get) {
         if (!pending.get && Option(lastUpdate.get).fold(true)(d => (d + 1.second).isOverdue)) {
           pending.set(true)
-          val queue = VirtualTerminal.sendTerminalPropertiesQuery(name, jsonRpcRequest)
+          val queue = VirtualTerminal.sendTerminalPropertiesQuery(term.name, jsonRpcRequest)
           val update: Runnable = () => {
             queue.poll(5, java.util.concurrent.TimeUnit.SECONDS) match {
               case null =>
@@ -767,7 +768,7 @@ final class NetworkChannel(
               pending.notifyAll()
             }
           }
-          new Thread(update, s"network-terminal-$name-update") {
+          new Thread(update, s"network-terminal-${term.name}-update") {
             setDaemon(true)
           }.start()
         }
@@ -829,7 +830,11 @@ final class NetworkChannel(
     ): Option[T] = {
       if (closed.get) None
       else {
-        val queue = VirtualTerminal.sendTerminalCapabilitiesQuery(name, jsonRpcRequest, query)
+        val queue = VirtualTerminal.sendTerminalCapabilitiesQuery(
+          term.name,
+          jsonRpcRequest[TerminalCapabilitiesQuery],
+          query
+        )
         Some(result(queue.take))
       }
     }
@@ -856,8 +861,8 @@ final class NetworkChannel(
       if (closed.get) Map.empty
       else {
         val queue = VirtualTerminal.sendTerminalAttributesQuery(
-          name,
-          jsonRpcRequest
+          term.name,
+          jsonRpcRequest[TerminalAttributesQuery]
         )
         try {
           val a = queue.take
@@ -879,13 +884,18 @@ final class NetworkChannel(
           lflag = attributes.getOrElse("lflag", ""),
           cchars = attributes.getOrElse("cchars", ""),
         )
-        val queue = VirtualTerminal.setTerminalAttributesCommand(name, jsonRpcRequest, attrs)
+        val queue = VirtualTerminal.setTerminalAttributesCommand(
+          term.name,
+          jsonRpcRequest[TerminalSetAttributesCommand],
+          attrs
+        )
         try queue.take
         catch { case _: InterruptedException => }
       }
     override private[sbt] def getSizeImpl: (Int, Int) =
       if (!closed.get) {
-        val queue = VirtualTerminal.getTerminalSize(name, jsonRpcRequest)
+        val queue =
+          VirtualTerminal.getTerminalSize(term.name, jsonRpcRequest[TerminalGetSizeQuery])
         val res =
           try queue.take
           catch { case _: InterruptedException => TerminalGetSizeResponse(1, 1) }
@@ -894,14 +904,19 @@ final class NetworkChannel(
     override def setSize(width: Int, height: Int): Unit =
       if (!closed.get) {
         val size = TerminalSetSizeCommand(width, height)
-        val queue = VirtualTerminal.setTerminalSize(name, jsonRpcRequest, size)
+        val queue =
+          VirtualTerminal.setTerminalSize(term.name, jsonRpcRequest[TerminalSetSizeCommand], size)
         try queue.take
         catch { case _: InterruptedException => }
       }
     private[this] def setRawMode(toggle: Boolean): Unit = {
       if (!closed.get || false) {
         val raw = TerminalSetRawModeCommand(toggle)
-        val queue = VirtualTerminal.setTerminalRawMode(name, jsonRpcRequest, raw)
+        val queue = VirtualTerminal.setTerminalRawMode(
+          term.name,
+          jsonRpcRequest[TerminalSetRawModeCommand],
+          raw
+        )
         try queue.take
         catch { case _: InterruptedException => }
       }
@@ -911,13 +926,14 @@ final class NetworkChannel(
     override def setEchoEnabled(toggle: Boolean): Unit =
       if (!closed.get) {
         val echo = TerminalSetEchoCommand(toggle)
-        val queue = VirtualTerminal.setTerminalEcho(name, jsonRpcRequest, echo)
+        val queue =
+          VirtualTerminal.setTerminalEcho(term.name, jsonRpcRequest[TerminalSetEchoCommand], echo)
         try queue.take
         catch { case _: InterruptedException => () }
       }
 
     override def flush(): Unit = doFlush()
-    override def toString: String = s"NetworkTerminal($name)"
+    override def toString: String = s"NetworkTerminal(${term.name})"
     override def close(): Unit = if (closed.compareAndSet(false, true)) {
       val threads = blockedThreads.synchronized {
         val t = blockedThreads.asScala.toVector
@@ -961,7 +977,7 @@ object NetworkChannel {
 
         // direct comparison on strings and
         // remove hotspring unicode added character for numbers
-        if (checkId || force) {
+        if (checkId() || force) {
           runningEngine.cancelAndShutdown()
           Right(runningExecId)
         } else {

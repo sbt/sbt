@@ -12,6 +12,7 @@ import sbt.internal.util.{ AttributeKey, Dag, Types }
 import sbt.librarymanagement.{ ConfigRef, Configuration }
 import Types.const
 import Def.Initialize
+import sbt.Project.inScope
 import java.net.URI
 
 object ScopeFilter {
@@ -64,27 +65,36 @@ object ScopeFilter {
       }
     }
 
-  final class SettingKeyAll[T] private[sbt] (i: Initialize[T]) {
+  final class SettingKeyAll[A] private[sbt] (i: Initialize[A]):
 
     /**
      * Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Seq[T]] = Def.bind(getData) { data =>
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join
-    }
-  }
-  final class TaskKeyAll[T] private[sbt] (i: Initialize[Task[T]]) {
+    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] =
+      Def.flatMap(getData) { data =>
+        data.allScopes.toSeq
+          .filter(sfilter(data))
+          .map(s => Project.inScope(s, i))
+          .join
+      }
+  end SettingKeyAll
+
+  final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
 
     /**
      * Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[T]]] = Def.bind(getData) { data =>
-      import std.TaskExtra._
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join(_.join)
-    }
-  }
+    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] =
+      Def.flatMap(getData) { data =>
+        import std.TaskExtra._
+        data.allScopes.toSeq
+          .filter(sfilter(data))
+          .map(s => Project.inScope(s, i))
+          .join(_.join)
+      }
+  end TaskKeyAll
 
   private[sbt] val Make = new Make {}
   trait Make {
@@ -219,6 +229,7 @@ object ScopeFilter {
       aggregate: Boolean
   ): ProjectRef => Seq[ProjectRef] =
     ref =>
+      import sbt.ProjectExtra.getProject
       Project.getProject(ref, structure).toList flatMap { p =>
         (if (classpath) p.dependencies.map(_.project) else Nil) ++
           (if (aggregate) p.aggregate else Nil)

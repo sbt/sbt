@@ -16,6 +16,7 @@ import java.util.concurrent.{ ConcurrentHashMap, TimeUnit }
 import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 
 import sbt.Def.{ Classpath, ScopedKey, Setting }
+import sbt.ProjectExtra.extract
 import sbt.Scope.GlobalScope
 import sbt.SlashSyntax0._
 import sbt.internal.inc.classpath.ClasspathFilter

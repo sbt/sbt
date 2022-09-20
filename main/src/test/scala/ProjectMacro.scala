@@ -10,7 +10,7 @@ package sbt
 import scala.util.control.NonFatal
 import org.scalacheck._
 import Prop._
-import Project.project
+import sbt.BuildSyntax.project
 import java.io.File
 
 class ProjectDefs {

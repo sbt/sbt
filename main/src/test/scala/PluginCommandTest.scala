@@ -7,9 +7,11 @@
 
 package sbt
 
+/*
 import java.io._
 
 import sbt.internal._
+import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.{
   AttributeEntry,
   AttributeMap,
@@ -90,7 +92,7 @@ object FakeState {
     val settings: Seq[Def.Setting[_]] = Nil
 
     val currentProject = Map(testProject.base.toURI -> testProject.id)
-    val currentEval: () => sbt.compiler.Eval = () => Load.mkEval(Nil, base, Nil)
+    val currentEval: () => Eval = () => Load.mkEval(Nil, base, Nil)
     val sessionSettings =
       SessionSettings(base.toURI, currentProject, Nil, Map.empty, Nil, currentEval)
 
@@ -98,7 +100,7 @@ object FakeState {
     val scopeLocal: Def.ScopeLocal = _ => Nil
 
     val (cMap, data: Settings[Scope]) =
-      Def.makeWithCompiledMap(settings)(delegates, scopeLocal, Def.showFullKey)
+      Def.makeWithCompiledMap(settings)(using delegates, scopeLocal, Def.showFullKey)
     val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
     val structureIndex: StructureIndex =
@@ -138,6 +140,7 @@ object FakeState {
       delegates,
       scopeLocal,
       cMap,
+      MappedFileConverter.empty,
     )
 
     val attributes = AttributeMap.empty ++ AttributeMap(
@@ -165,3 +168,4 @@ object FakeState {
   }
 
 }
+ */

@@ -17,7 +17,7 @@ private[sbt] object InternalDependencies {
     val projectDependencies = buildDependencies.value.classpath.get(ref).toSeq.flatten
     val applicableConfigs = allConfigs + "*"
     ((ref -> allConfigs) +:
-      projectDependencies.flatMap { case ResolvedClasspathDependency(p, rawConfigs) =>
+      projectDependencies.flatMap { case ClasspathDep.ResolvedClasspathDependency(p, rawConfigs) =>
         val configs = rawConfigs.getOrElse("*->compile").split(";").flatMap { config =>
           config.split("->") match {
             case Array(n, c) if applicableConfigs.contains(n) => Some(c)

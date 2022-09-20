@@ -25,23 +25,23 @@ object Output {
   final val DefaultTail = "> "
 
   def last(
-      keys: Values[_],
+      keys: Values[Any],
       streams: Streams,
       printLines: Seq[String] => Unit,
       sid: Option[String]
-  )(implicit display: Show[ScopedKey[_]]): Unit =
+  )(using display: Show[ScopedKey[_]]): Unit =
     printLines(flatLines(lastLines(keys, streams, sid))(idFun))
 
   def last(file: File, printLines: Seq[String] => Unit, tailDelim: String = DefaultTail): Unit =
     printLines(tailLines(file, tailDelim))
 
   def lastGrep(
-      keys: Values[_],
+      keys: Values[Any],
       streams: Streams,
       patternString: String,
       printLines: Seq[String] => Unit
-  )(implicit display: Show[ScopedKey[_]]): Unit = {
-    val pattern = Pattern compile patternString
+  )(using display: Show[ScopedKey[_]]): Unit = {
+    val pattern = Pattern.compile(patternString)
     val lines = flatLines(lastLines(keys, streams))(_ flatMap showMatches(pattern))
     printLines(lines)
   }
@@ -68,7 +68,7 @@ object Output {
   }
 
   def lastLines(
-      keys: Values[_],
+      keys: Values[Any],
       streams: Streams,
       sid: Option[String] = None
   ): Values[Seq[String]] = {

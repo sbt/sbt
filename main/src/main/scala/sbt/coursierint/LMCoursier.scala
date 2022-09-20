@@ -66,7 +66,7 @@ object LMCoursier {
       .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
       case Some(dir) => dir
       case _ =>
-        if (Util.isWindows) windowsCacheDirectory
+        if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
     }
   }

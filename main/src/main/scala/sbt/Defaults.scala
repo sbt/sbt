@@ -18,19 +18,20 @@ import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.logging.log4j.core.{ Appender => XAppender }
 import org.scalasbt.ipcsocket.Win32SecurityLevel
-import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition }
+import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition, parsed }
 import sbt.Keys._
 import sbt.OptionSyntax._
 import sbt.Project.{
-  inConfig,
   inScope,
   inTask,
-  richInitialize,
-  richInitializeTask,
-  richTaskSessionVar,
-  sbtRichTaskPromise
+  // richInitialize,
+  // richInitializeTask,
+  // richTaskSessionVar,
+  // sbtRichTaskPromise
 }
+import sbt.ProjectExtra.*
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
+import sbt.State.StateOpsImpl
 import sbt.coursierint._
 import sbt.internal.CommandStrings.ExportStream
 import sbt.internal._
@@ -81,7 +82,7 @@ import sbt.nio.Keys._
 import sbt.nio.file.syntax._
 import sbt.nio.file.{ FileTreeView, Glob, RecursiveGlob }
 import sbt.nio.Watch
-import sbt.std.TaskExtra._
+import sbt.std.TaskExtra.*
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits._
 import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
@@ -308,7 +309,7 @@ object Defaults extends BuildCommon {
         try onUnload.value(s)
         finally IO.delete(taskTemporaryDirectory.value)
       },
-      // extraLoggers is deprecated
+      // // extraLoggers is deprecated
       SettingKey[ScopedKey[_] => Seq[XAppender]]("extraLoggers") :== { _ =>
         Nil
       },
@@ -904,7 +905,7 @@ object Defaults extends BuildCommon {
       tastyFiles := Def.taskIf {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) {
           val _ = compile.value
-          val tastyFiles = classDirectory.value.**("*.tasty").get
+          val tastyFiles = classDirectory.value.**("*.tasty").get()
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
       }.value,
@@ -919,7 +920,7 @@ object Defaults extends BuildCommon {
           override def afterEarlyOutput(isSuccess: Boolean): Unit = {
             if (isSuccess) s.log.debug(s"[$mn / $c] early output is success")
             else s.log.debug(s"[$mn / $c] early output can't be made because of macros")
-            promise.complete(Value(isSuccess))
+            promise.complete(Result.Value(isSuccess))
           }
         }
       },
@@ -1090,11 +1091,10 @@ object Defaults extends BuildCommon {
         override def triggeredMessage(s: WatchState) = trigMsg(s)
         override def watchService() = getService()
         override def watchSources(s: State) =
-          EvaluateTask(Project structure s, key, s, base) match {
-            case Some((_, Value(ps))) => ps
-            case Some((_, Inc(i)))    => throw i
-            case None                 => sys.error("key not found: " + Def.displayFull(key))
-          }
+          EvaluateTask(Project structure s, key, s, base) match
+            case Some((_, Result.Value(ps))) => ps
+            case Some((_, Result.Inc(i)))    => throw i
+            case None                        => sys.error("key not found: " + Def.displayFull(key))
       }
     }
 
@@ -1252,22 +1252,34 @@ object Defaults extends BuildCommon {
         _.name
       ).distinct) storeAs definedTestNames triggeredBy compile).value,
       testQuick / testFilter := testQuickFilter.value,
-      executeTests := (
-        Def.taskDyn {
+      executeTests := {
+        import sbt.TupleSyntax.*
+        (
+          test / streams,
+          loadedTestFrameworks,
+          testLoader,
+          (test / testGrouping),
+          (test / testExecution),
+          (test / fullClasspath),
+          testForkedParallel,
+          (test / javaOptions),
+          (classLoaderLayeringStrategy),
+          thisProject,
+        ).flatMapN { case (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj) =>
           allTestGroupsTask(
-            (test / streams).value,
-            loadedTestFrameworks.value,
-            testLoader.value,
-            (test / testGrouping).value,
-            (test / testExecution).value,
-            (test / fullClasspath).value,
-            testForkedParallel.value,
-            (test / javaOptions).value,
-            (classLoaderLayeringStrategy).value,
-            projectId = s"${thisProject.value.id} / ",
+            s,
+            lt,
+            tl,
+            gp,
+            ex,
+            cp,
+            fp,
+            jo,
+            clls,
+            projectId = s"${thisProj.id} / ",
           )
         }
-      ).value,
+      }.value,
       // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
       Test / test / testResultLogger :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
       test := {
@@ -1285,6 +1297,7 @@ object Defaults extends BuildCommon {
         finally close(testLoader.value)
       }
     )
+
   private def close(sbtLoader: ClassLoader): Unit = sbtLoader match {
     case u: AutoCloseable   => u.close()
     case c: ClasspathFilter => c.close()
@@ -1439,8 +1452,8 @@ object Defaults extends BuildCommon {
       val s = streams.value
       val filter = testFilter.value
       val config = testExecution.value
-
-      implicit val display = Project.showContextKey(state.value)
+      val st = state.value
+      given display: Show[ScopedKey[_]] = Project.showContextKey(st)
       val modifiedOpts =
         Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions: _*) +: config.options
       val newConfig = config.copy(options = modifiedOpts)
@@ -1458,7 +1471,9 @@ object Defaults extends BuildCommon {
       )
       val taskName = display.show(resolvedScoped.value)
       val trl = testResultLogger.value
-      output.map(out => trl.run(s.log, out, taskName))
+      (Def
+        .value[Task[Tests.Output]] { output })
+        .map { out => trl.run(s.log, out, taskName) }
     }
   }
 
@@ -1486,7 +1501,7 @@ object Defaults extends BuildCommon {
       groups: Seq[Tests.Group],
       config: Tests.Execution,
       cp: Classpath,
-  ): Initialize[Task[Tests.Output]] = {
+  ): Task[Tests.Output] = {
     allTestGroupsTask(
       s,
       frameworks,
@@ -1509,7 +1524,7 @@ object Defaults extends BuildCommon {
       config: Tests.Execution,
       cp: Classpath,
       forkedParallelExecution: Boolean
-  ): Initialize[Task[Tests.Output]] = {
+  ): Task[Tests.Output] = {
     allTestGroupsTask(
       s,
       frameworks,
@@ -1535,7 +1550,7 @@ object Defaults extends BuildCommon {
       javaOptions: Seq[String],
       strategy: ClassLoaderLayeringStrategy,
       projectId: String
-  ): Initialize[Task[Tests.Output]] = {
+  ): Task[Tests.Output] = {
     val processedOptions: Map[Tests.Group, Tests.ProcessedOptions] =
       groups
         .map(group => group -> Tests.processOptions(config, group.tests.toVector, s.log))
@@ -1632,7 +1647,8 @@ object Defaults extends BuildCommon {
         }
       out.copy(summaries = summaries)
     }
-    Def.value { result }
+    // Def.value[Task[Tests.Output]] {
+    result
   }
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] = {
@@ -1710,13 +1726,20 @@ object Defaults extends BuildCommon {
       packageTaskSettings(packageDoc, packageDocMappings) ++
       Seq(Keys.`package` := packageBin.value)
 
-  def packageBinMappings = products map { _ flatMap Path.allSubpaths }
-  def packageDocMappings = doc map { Path.allSubpaths(_).toSeq }
-  def packageSrcMappings = concatMappings(resourceMappings, sourceMappings)
+  def packageBinMappings: Initialize[Task[Seq[(File, String)]]] =
+    products.map { _ flatMap Path.allSubpaths }
+  def packageDocMappings: Initialize[Task[Seq[(File, String)]]] =
+    doc.map { x => Path.allSubpaths(x).toSeq }
+  def packageSrcMappings: Initialize[Task[Seq[(File, String)]]] =
+    concatMappings(resourceMappings, sourceMappings)
 
   private type Mappings = Initialize[Task[Seq[(File, String)]]]
-  def concatMappings(as: Mappings, bs: Mappings) =
-    (as zipWith bs)((a, b) => (a, b) map { case (a, b) => a ++ b })
+  def concatMappings(as: Mappings, bs: Mappings): Mappings =
+    as.zipWith(bs) { (a: Task[Seq[(File, String)]], b: Task[Seq[(File, String)]]) =>
+      (a, b).mapN { case (seq1: Seq[(File, String)], seq2: Seq[(File, String)]) =>
+        seq1 ++ seq2
+      }
+    }
 
   // drop base directories, since there are no valid mappings for these
   def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
@@ -1752,7 +1775,7 @@ object Defaults extends BuildCommon {
       excludes: Taskable[FileFilter]
   ): Initialize[Task[Seq[File]]] =
     Def.task {
-      dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get
+      dirs.toTask.value.descendantsExcept(filter.toTask.value, excludes.toTask.value).get()
     }
 
   def relativeMappings( // forward to widened variant
@@ -1972,10 +1995,10 @@ object Defaults extends BuildCommon {
       mainClassTask: Initialize[Task[Option[String]]],
       copyClasspath: Initialize[Boolean],
       scalaRun: Initialize[Task[ScalaRun]]
-  ): Initialize[InputTask[JobHandle]] = {
-    import Def.parserToInput
+  ): Initialize[InputTask[JobHandle]] =
     val parser = Def.spaceDelimited()
     Def.inputTask {
+      val args = parser.parsed
       val service = bgJobService.value
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
       val hashClasspath = (bgRun / bgHashClasspath).value
@@ -1986,17 +2009,14 @@ object Defaults extends BuildCommon {
             service.copyClasspath(products.value, classpath.value, workingDir, hashClasspath)
           else classpath.value
         val cp = data(files)
-        val args = parser.parsed
-        scalaRun.value match {
+        scalaRun.value match
           case r: Run =>
             val loader = r.newLoader(cp)
             (Some(loader), wrapper(() => r.runWithLoader(loader, cp, mainClass, args, logger).get))
           case sr =>
             (None, wrapper(() => sr.run(mainClass, cp, args, logger).get))
-        }
       }
     }
-  }
 
   // runMain calls bgRunMain in the background and waits for the result.
   def foregroundRunMainTask: Initialize[InputTask[Unit]] =
@@ -2031,14 +2051,13 @@ object Defaults extends BuildCommon {
       classpath: Initialize[Task[Classpath]],
       mainClassTask: Initialize[Task[Option[String]]],
       scalaRun: Initialize[Task[ScalaRun]]
-  ): Initialize[InputTask[Unit]] = {
-    import Def.parserToInput
+  ): Initialize[InputTask[Unit]] =
     val parser = Def.spaceDelimited()
     Def.inputTask {
+      val in = parser.parsed
       val mainClass = mainClassTask.value getOrElse sys.error("No main class detected.")
-      scalaRun.value.run(mainClass, data(classpath.value), parser.parsed, streams.value.log).get
+      scalaRun.value.run(mainClass, data(classpath.value), in, streams.value.log).get
     }
-  }
 
   def runnerTask: Setting[Task[ScalaRun]] = runner := runnerInit.value
 
@@ -2837,7 +2856,7 @@ object Classpaths {
       key: Scoped.ScopingSetting[SettingKey[T]], // should be just SettingKey[T] (mea culpa)
       pkgTasks: Seq[TaskKey[_]],
   ): Initialize[Seq[T]] =
-    pkgTasks.map(pkg => key in pkg.scope in pkg).join
+    pkgTasks.map(pkg => (pkg.scope / pkg / key)).join
 
   private[this] def publishGlobalDefaults =
     Defaults.globalDefaults(
@@ -2982,7 +3001,10 @@ object Classpaths {
         Resolver.reorganizeAppResolvers(ars, uj, useMavenCentral)
       }
     },
-    bootResolvers := (appConfiguration map bootRepositories).value,
+    bootResolvers := {
+      import Scoped.syntax.richInitialize
+      (appConfiguration map bootRepositories).value
+    },
     fullResolvers :=
       (Def.task {
         val proj = projectResolver.value
@@ -4547,26 +4569,21 @@ trait BuildExtra extends BuildCommon with DefExtra {
       mainClass: String,
       baseArguments: String*
   ): Vector[Setting[_]] = {
-    // TODO: Re-write to avoid InputTask.apply which is deprecated
-    // I tried "Def.spaceDelimited().parsed" (after importing Def.parserToInput)
-    // but it broke actions/run-task
-    // Maybe it needs to be defined inside a Def.inputTask?
-    @nowarn
-    def inputTask[T](f: TaskKey[Seq[String]] => Initialize[Task[T]]): Initialize[InputTask[T]] =
-      InputTask.apply(Def.value((s: State) => Def.spaceDelimited()))(f)
-
     Vector(
-      scoped := inputTask { result =>
-        initScoped(
-          scoped.scopedKey,
-          ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
-        ).zipWith(Def.task { ((config / fullClasspath).value, streams.value, result.value) }) {
-          (rTask, t) =>
-            (t, rTask) map { case ((cp, s, args), r) =>
-              r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
-            }
-        }
-      }.evaluated
+      scoped := (Def
+        .input((s: State) => Def.spaceDelimited())
+        .flatMapTask { result =>
+          initScoped(
+            scoped.scopedKey,
+            ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
+          ).zipWith(Def.task { ((config / fullClasspath).value, streams.value, result) }) {
+            (rTask, t) =>
+              (t, rTask) mapN { case ((cp, s, args), r) =>
+                r.run(mainClass, data(cp), baseArguments ++ args, s.log).get
+              }
+          }
+        })
+        .value
     ) ++ inTask(scoped)((config / forkOptions) := forkOptionsTask.value)
   }
 
@@ -4584,7 +4601,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
         scoped.scopedKey,
         ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
       ).zipWith(Def.task { ((config / fullClasspath).value, streams.value) }) { case (rTask, t) =>
-        (t, rTask) map { case ((cp, s), r) =>
+        (t, rTask).mapN { case ((cp: Keys.Classpath, s: Streams), r: ScalaRun) =>
           r.run(mainClass, data(cp), arguments, s.log).get
         }
       }.value
@@ -4628,7 +4645,7 @@ trait BuildCommon {
   final class RichPathFinder private[sbt] (s: PathFinder) {
 
     /** Converts the `PathFinder` to a `Classpath`, which is an alias for `Seq[Attributed[File]]`. */
-    def classpath: Classpath = Attributed blankSeq s.get
+    def classpath: Classpath = Attributed.blankSeq(s.get())
   }
   final class RichAttributed private[sbt] (s: Seq[Attributed[File]]) {
 

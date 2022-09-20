@@ -8,6 +8,7 @@
 package sbt
 package internal
 
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
@@ -66,7 +67,7 @@ object ConsoleProject {
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     (new Console(compiler))(
-      unit.classpath,
+      unit.classpath.map(_.toFile),
       options,
       initCommands,
       cleanupCommands,

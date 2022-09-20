@@ -12,6 +12,8 @@ import sbt.internal.util.complete.DefaultParsers
 import sbt.{ Def, InputTask, Task }
 import sbt.Def.parsed
 import sbt.Def.value
+import sbt.Def.previous
+import sbt.util.CacheImplicits.given
 
 object UseTask:
   val set = Def.setting { 23 }
@@ -42,6 +44,7 @@ object Assign {
   val ak = taskKey[Int]("a")
   val bk = taskKey[Seq[Int]]("b")
   val ck = settingKey[File]("c")
+  val intTask = taskKey[Int]("int")
   val sk = taskKey[Set[_]]("s")
   val bgList = taskKey[Seq[Int]]("")
 
@@ -75,6 +78,10 @@ object Assign {
     intTask := ak.previous.get,
     bgList := { mk.value.toString.toList.map(_.toInt) },
   )
+
+  val sd = Def.settingDyn {
+    name
+  }
 
   val zz = Def.task {
     mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value

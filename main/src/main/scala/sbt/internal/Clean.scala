@@ -13,12 +13,14 @@ import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 
 import sbt.Def._
 import sbt.Keys._
-import sbt.Project.richInitializeTask
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.SlashSyntax0._
 import sbt.io.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file._
-import sbt.nio.file.syntax._
+import sbt.nio.file.syntax.pathToPathOps
+import sbt.nio.file.Glob.{ GlobOps }
 import sbt.util.Level
 import sjsonnew.JsonFormat
 import scala.annotation.nowarn
@@ -56,7 +58,7 @@ private[sbt] object Clean {
     val excludes = (scope / cleanKeepFiles).value.map {
       // This mimics the legacy behavior of cleanFilesTask
       case f if f.isDirectory => Glob(f, AnyPath)
-      case f                  => f.toGlob
+      case f                  => f.toPath.toGlob
     } ++ (scope / cleanKeepGlobs).value
     (p: Path) => excludes.exists(_.matches(p))
   }

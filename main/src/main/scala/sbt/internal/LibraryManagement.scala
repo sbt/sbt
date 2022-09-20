@@ -19,7 +19,7 @@ import sbt.librarymanagement.syntax._
 import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
 import sbt.io.syntax._
-import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.richInitializeTask
 import sjsonnew.JsonFormat
 import scala.compat.Platform.EOL
 import scala.concurrent.duration.FiniteDuration

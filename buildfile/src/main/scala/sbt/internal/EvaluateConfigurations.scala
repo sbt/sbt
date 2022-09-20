@@ -21,11 +21,11 @@ import java.io.File
 import java.nio.file.Path
 import sbt.internal.util.complete.DefaultParsers.validID
 import Def.{ ScopedKey, Setting }
-// import Scope.GlobalScope
-// import sbt.SlashSyntax0._
+import Scope.GlobalScope
+import sbt.SlashSyntax0.*
 import sbt.internal.parser.SbtParser
 import sbt.io.IO
-import scala.collection.JavaConverters._
+import scala.collection.JavaConverters.*
 import xsbti.VirtualFile
 import xsbti.VirtualFileRef
 
@@ -386,44 +386,49 @@ object Index {
   private[this] def stringToKeyMap0(
       settings: Set[AttributeKey[_]]
   )(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
-    // val multiMap = settings.groupBy(label)
-    // val duplicates = multiMap.iterator
-    //   .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) }
-    //   .collect {
-    //     case (k, xs) if xs.size > 1 => (k, xs)
-    //   }
-    //   .toVector
-    // if (duplicates.isEmpty)
-    //   multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
-    // else
-    //   sys.error(
-    //     duplicates map { case (k, tps) =>
-    //       "'" + k + "' (" + tps.mkString(", ") + ")"
-    //     } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
-    //   )
-    ???
+    val multiMap = settings.groupBy(label)
+    val duplicates = multiMap.iterator
+      .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) }
+      .collect {
+        case (k, xs) if xs.size > 1 => (k, xs)
+      }
+      .toVector
+    if (duplicates.isEmpty)
+      multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
+    else
+      sys.error(
+        duplicates map { case (k, tps) =>
+          "'" + k + "' (" + tps.mkString(", ") + ")"
+        } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
+      )
   }
 
-  private[this] type TriggerMap = collection.mutable.HashMap[Task[_], Seq[Task[_]]]
+  private[this] type TriggerMap = collection.mutable.HashMap[Task[Any], Seq[Task[Any]]]
 
   def triggers(ss: Settings[Scope]): Triggers[Task] = {
-    // val runBefore = new TriggerMap
-    // val triggeredBy = new TriggerMap
-    // ss.data.values foreach (
-    //   _.entries foreach {
-    //     case AttributeEntry(_, value: Task[_]) =>
-    //       val as = value.info.attributes
-    //       update(runBefore, value, as get Keys.runBefore)
-    //       update(triggeredBy, value, as get Keys.triggeredBy)
-    //     case _ => ()
-    //   }
-    // )
-    // val onComplete = (GlobalScope / Keys.onComplete) get ss getOrElse (() => ())
-    // new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
-    ???
+    val runBefore = new TriggerMap
+    val triggeredBy = new TriggerMap
+    ss.data.values foreach (
+      _.entries foreach {
+        case AttributeEntry(_, value: Task[Any]) =>
+          val as = value.info.attributes
+          update(runBefore, value, as.get(Def.runBefore.asInstanceOf))
+          update(triggeredBy, value, as.get(Def.triggeredBy.asInstanceOf))
+        case _ => ()
+      }
+    )
+    val onComplete = (GlobalScope / Def.onComplete) get ss getOrElse (() => ())
+    new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
   }
 
-  private[this] def update(map: TriggerMap, base: Task[_], tasksOpt: Option[Seq[Task[_]]]): Unit =
-    for (tasks <- tasksOpt; task <- tasks)
+  private[this] def update(
+      map: TriggerMap,
+      base: Task[Any],
+      tasksOpt: Option[Seq[Task[Any]]]
+  ): Unit =
+    for {
+      tasks <- tasksOpt
+      task <- tasks
+    }
       map(task) = base +: map.getOrElse(task, Nil)
 }

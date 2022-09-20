@@ -13,21 +13,22 @@ object ConvertTestMacro:
   def someMacroImpl(expr: Expr[Boolean])(using qctx: Quotes) =
     val convert1: Convert[qctx.type] = new InputInitConvert(qctx)
     import convert1.qctx.reflect.*
-    def addTypeCon(tpe: TypeRepr, qual: Term, selection: Term): Term =
-      tpe.asType match
+    def addTypeCon[A](tpe: Type[A], qual: Term, selection: Term): Term =
+      tpe match
         case '[a] =>
           '{
             Option[a](${ selection.asExprOf[a] })
           }.asTerm
-    def substitute(name: String, tpe: TypeRepr, qual: Term, replace: Term) =
-      convert1.convert[Boolean](name, qual) transform { (tree: Term) =>
-        addTypeCon(tpe, tree, replace)
+    val substitute = [a] =>
+      (name: String, tpe: Type[a], qual: Term, replace: Term) =>
+        convert1.convert[Boolean](name, qual) transform { (tree: Term) =>
+          addTypeCon(tpe, tree, replace)
       }
     convert1.transformWrappers(expr.asTerm, substitute, Symbol.spliceOwner).asExprOf[Boolean]
 
   class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
       extends Convert[C](qctx)
-      with ContextUtil[C](qctx):
+      with ContextUtil[C](qctx, 0):
     // with TupleBuilder[C](qctx)
     // with TupleNBuilder[C](qctx):
     import qctx.reflect.*

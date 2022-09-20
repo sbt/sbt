@@ -8,10 +8,13 @@
 package sbt
 
 import java.io.File
+import java.util.Locale
 import sbt.librarymanagement.Configuration
 import sbt.Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.util.Dag
+import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.DefaultParsers
+import Scope.{ Global, ThisScope }
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
 
@@ -158,6 +161,19 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   /** Definitively set the [[ProjectOrigin]] for this project. */
   private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = copy(projectOrigin = origin)
 
+  /**
+   * Applies the given functions to this Project.
+   * The second function is applied to the result of applying the first to this Project and so on.
+   * The intended use is a convenience for applying default configuration provided by a plugin.
+   */
+  def configure(transforms: (Project => Project)*): Project =
+    Function.chain(transforms)(this)
+
+  def withId(id: String): Project = copy(id = id)
+
+  /** Sets the base directory for this project. */
+  def in(dir: File): Project = copy(base = dir)
+
   private[sbt] def copy(
       id: String = id,
       base: File = base,
@@ -180,9 +196,52 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
       autoPlugins,
       projectOrigin
     )
+
+  private[sbt] def resolveBuild(resolveRef: ProjectReference => ProjectReference): Project =
+    def resolveRefs(prs: Seq[ProjectReference]) = prs map resolveRef
+    def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds map resolveDep
+    def resolveDep(d: ClasspathDep[ProjectReference]) =
+      ClasspathDep.ClasspathDependency(resolveRef(d.project), d.configuration)
+    copy(
+      aggregate = resolveRefs(aggregate),
+      dependencies = resolveDeps(dependencies),
+    )
+
+  private[sbt] def resolve(resolveRef: ProjectReference => ProjectRef): ResolvedProject =
+    def resolveRefs(prs: Seq[ProjectReference]) = prs.map(resolveRef)
+    def resolveDeps(ds: Seq[ClasspathDep[ProjectReference]]) = ds.map(resolveDep)
+    def resolveDep(d: ClasspathDep[ProjectReference]) =
+      ClasspathDep.ResolvedClasspathDependency(resolveRef(d.project), d.configuration)
+    Project.resolved(
+      id,
+      base,
+      aggregate = resolveRefs(aggregate),
+      dependencies = resolveDeps(dependencies),
+      settings,
+      configurations,
+      plugins,
+      autoPlugins,
+      projectOrigin
+    )
 end Project
 
 object Project:
+  def apply(id: String, base: File): Project =
+    unresolved(id, base, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
+
+  /** This is a variation of def apply that mixes in GeneratedRootProject. */
+  private[sbt] def mkGeneratedRoot(
+      id: String,
+      base: File,
+      aggregate: Seq[ProjectReference]
+  ): Project =
+    validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
+    val plugins = Plugins.empty
+    val origin = ProjectOrigin.GenericRoot
+    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin)
+      with Project
+      with GeneratedRootProject
+
   private abstract class ProjectDef[PR <: ProjectReference](
       val id: String,
       val base: File,
@@ -198,7 +257,9 @@ object Project:
     Dag.topologicalSort(configurations)(_.extendsConfigs)
   }
 
-  private def unresolved(
+  // Data structure representing an unresolved Project in terms of the project references.
+  // This is created in build.sbt by the build user.
+  private[sbt] def unresolved(
       id: String,
       base: File,
       aggregate: Seq[ProjectReference],
@@ -208,7 +269,7 @@ object Project:
       plugins: Plugins,
       autoPlugins: Seq[AutoPlugin],
       origin: ProjectOrigin
-  ): Project = {
+  ): Project =
     validProjectID(id).foreach(errMsg => sys.error("Invalid project ID: " + errMsg))
     new ProjectDef[ProjectReference](
       id,
@@ -221,11 +282,106 @@ object Project:
       autoPlugins,
       origin
     ) with Project
-  }
+
+  // Data structure representing resolved Project in terms of references to
+  // other projects in dependencies etc.
+  private def resolved(
+      id: String,
+      base: File,
+      aggregate: Seq[ProjectRef],
+      dependencies: Seq[ClasspathDep[ProjectRef]],
+      settings: Seq[Def.Setting[_]],
+      configurations: Seq[Configuration],
+      plugins: Plugins,
+      autoPlugins: Seq[AutoPlugin],
+      origin: ProjectOrigin
+  ): ResolvedProject =
+    new ProjectDef[ProjectRef](
+      id,
+      base,
+      aggregate,
+      dependencies,
+      settings,
+      configurations,
+      plugins,
+      autoPlugins,
+      origin
+    ) with ResolvedProject
 
   /** Returns None if `id` is a valid Project ID or Some containing the parser error message if it is not. */
   def validProjectID(id: String): Option[String] =
     DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
+
+  private[this] def validProjectIDStart(id: String): Boolean =
+    DefaultParsers.parse(id, DefaultParsers.IDStart).isRight
+
+  def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
+    ScopedKey(Scope.fillTaskAxis(scoped.scope, scoped.key), scoped.key)
+
+  def mapScope(f: Scope => Scope): [a] => ScopedKey[a] => ScopedKey[a] =
+    [a] => (k: ScopedKey[a]) => ScopedKey(f(k.scope), k.key)
+
+  def transform(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] =
+    val f = mapScope(g)
+    ss.map { setting =>
+      setting.mapKey(f).mapReferenced(f)
+    }
+
+  def transformRef(g: Scope => Scope, ss: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] =
+    val f = mapScope(g)
+    ss.map(_ mapReferenced f)
+
+  def inThisBuild(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)))(ss)
+
+  private[sbt] def inThisBuild[T](i: Initialize[T]): Initialize[T] =
+    inScope(ThisScope.copy(project = Select(ThisBuild)), i)
+
+  private[sbt] def inConfig[T](conf: Configuration, i: Initialize[T]): Initialize[T] =
+    inScope(ThisScope.copy(config = Select(conf)), i)
+
+  def inTask(t: Scoped)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    inScope(ThisScope.copy(task = Select(t.key)))(ss)
+
+  private[sbt] def inTask[A](t: Scoped, i: Initialize[A]): Initialize[A] =
+    inScope(ThisScope.copy(task = Select(t.key)), i)
+
+  def inScope(scope: Scope)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
+    Project.transform(Scope.replaceThis(scope), ss)
+
+  private[sbt] def inScope[A](scope: Scope, i: Initialize[A]): Initialize[A] =
+    i.mapReferenced(Project.mapScope(Scope.replaceThis(scope)))
+
+  /**
+   * Normalize a String so that it is suitable for use as a dependency management module identifier.
+   * This is a best effort implementation, since valid characters are not documented or consistent.
+   */
+  def normalizeModuleID(id: String): String = normalizeBase(id)
+
+  /** Constructs a valid Project ID based on `id` and returns it in Right or returns the error message in Left if one cannot be constructed. */
+  private[sbt] def normalizeProjectID(id: String): Either[String, String] = {
+    val attempt = normalizeBase(id)
+    val refined =
+      if (attempt.length < 1) "root"
+      else if (!validProjectIDStart(attempt.substring(0, 1))) "root-" + attempt
+      else attempt
+    validProjectID(refined).toLeft(refined)
+  }
+
+  private[this] def normalizeBase(s: String) =
+    s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
+
+  private[sbt] enum LoadAction:
+    case Return
+    case Current
+    case Plugins
+
+  private[sbt] lazy val loadActionParser: Parser[LoadAction] = {
+    import DefaultParsers.*
+    token(
+      Space ~> ("plugins" ^^^ LoadAction.Plugins | "return" ^^^ LoadAction.Return)
+    ) ?? LoadAction.Current
+  }
 end Project
 
 sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
@@ -234,3 +390,5 @@ sealed trait ResolvedProject extends ProjectDefinition[ProjectRef] {
   def autoPlugins: Seq[AutoPlugin]
 
 }
+
+private[sbt] trait GeneratedRootProject

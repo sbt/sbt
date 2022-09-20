@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import sbt.BasicCommandStrings._
 import sbt.Def._
 import sbt.Keys._
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 import sbt.internal.Continuous.{ ContinuousState, FileStampRepository }
 import sbt.internal.LabeledFunctions._
@@ -972,17 +973,17 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * @param inputs        the transitive task inputs (see [[SettingsGraph]])
    * @param watchSettings the [[WatchSettings]] instance for the task
    */
-  private final class Config private[internal] (
+  private final class Config(
       val command: String,
       val dynamicInputs: mutable.Set[DynamicInput],
-      val watchSettings: WatchSettings
-  ) {
+      val watchSettings: WatchSettings,
+  ):
     def inputs() = dynamicInputs.toSeq.sorted
     private[sbt] def watchState(count: Int): DeprecatedWatchState =
       WatchState.empty(inputs().map(_.glob)).withCount(count)
 
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
-  }
+  end Config
 
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
     lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)

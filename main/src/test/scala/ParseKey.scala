@@ -11,6 +11,7 @@ import sbt.Def.{ ScopedKey, displayFull, displayMasked }
 import sbt.internal.TestBuild._
 import sbt.internal.util.complete.Parser
 import sbt.internal.{ Resolve, TestBuild }
+import sbt.ProjectExtra.equalKeys
 import hedgehog._
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.runner._
@@ -64,7 +65,7 @@ object ParseKey extends Properties {
     val expected = resolve(structure, key, mask)
     parseCheck(structure, key, mask, showZeroConfig)(sk =>
       hedgehog.Result
-        .assert(Project.equal(sk, expected, mask))
+        .assert(Project.equalKeys(sk, expected, mask))
         .log(s"$sk.key == $expected.key: ${sk.key == expected.key}")
         .log(s"${sk.scope} == ${expected.scope}: ${Scope.equal(sk.scope, expected.scope, mask)}")
     ).log(s"Expected: ${displayFull(expected)}")

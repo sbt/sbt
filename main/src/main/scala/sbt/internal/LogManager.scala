@@ -10,6 +10,7 @@ package internal
 
 import sbt.Def.ScopedKey
 import sbt.Keys._
+import sbt.ProjectExtra.showContextKey
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.util.MainAppender._

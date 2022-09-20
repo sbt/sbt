@@ -25,6 +25,7 @@ import Configurations.Compile
 import Def.Setting
 import Keys._
 import Scope.Global
+import sbt.ProjectExtra.{ extract, setProject }
 import sbt.SlashSyntax0._
 
 import sbt.io.IO

@@ -12,7 +12,7 @@ import java.io.File
 import sbt.Def._
 import sbt.Keys._
 import sbt.nio.Keys._
-import sbt.Project._
+import sbt.ProjectExtra.richInitializeTask
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ModuleUtilities
@@ -62,7 +62,9 @@ object ScriptedPlugin extends AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (pluginCrossBuild / sbtVersion).value,
-    sbtLauncher := getJars(ScriptedLaunchConf).map(_.get().head).value,
+    sbtLauncher := getJars(ScriptedLaunchConf)
+      .map(_.get().head)
+      .value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
     libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match {
       case Some((0, 13)) =>
@@ -174,20 +176,21 @@ object ScriptedPlugin extends AutoPlugin {
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
 
-  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
-    val args = scriptedParser(sbtTestDirectory.value).parsed
-    Def.unit(scriptedDependencies.value)
-    scriptedRun.value.run(
-      sbtTestDirectory.value,
-      scriptedBufferLog.value,
-      args,
-      sbtLauncher.value,
-      Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
-      scriptedLaunchOpts.value,
-      new java.util.ArrayList[File](),
-      scriptedParallelInstances.value
-    )
-  }
+  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val args = scriptedParser(sbtTestDirectory.value).parsed
+      Def.unit(scriptedDependencies.value)
+      scriptedRun.value.run(
+        sbtTestDirectory.value,
+        scriptedBufferLog.value,
+        args,
+        sbtLauncher.value,
+        Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
+        scriptedLaunchOpts.value,
+        new java.util.ArrayList[File](),
+        scriptedParallelInstances.value
+      )
+    }
 
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
     PathFinder(Classpaths.managedJars(config, classpathTypes.value, Keys.update.value).map(_.data))

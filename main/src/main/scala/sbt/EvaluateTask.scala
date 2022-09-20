@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
-import sbt.Project.richInitializeTask
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.Aggregation.KeyValue
@@ -390,17 +391,20 @@ object EvaluateTask {
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
     val keyed =
-      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) => (key, msg, ex) }
+      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) =>
+        (key, msg, ex)
+      }
 
     import ExceptionCategory._
-    for ((key, msg, Some(ex)) <- keyed) {
+    for {
+      (key, msg, Some(ex)) <- keyed
+    } do
       def log = getStreams(key, streams).log
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()
         case m: MessageOnly => if (msg.isEmpty) log.error(m.message)
         case f: Full        => log.trace(f.exception)
       }
-    }
 
     for ((key, msg, ex) <- keyed if msg.isDefined || ex.isDefined) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
@@ -633,7 +637,7 @@ object EvaluateTask {
   val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
     if (scoped.key == streams.key) {
       Seq(scoped.scope / streams := {
-        (streamsManager map { mgr =>
+        (streamsManager.map { mgr =>
           val stream = mgr(scoped)
           stream.open()
           stream

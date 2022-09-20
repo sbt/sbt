@@ -12,6 +12,7 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
+import sbt.ProjectExtra.extract
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.CommandStrings.LoadProject

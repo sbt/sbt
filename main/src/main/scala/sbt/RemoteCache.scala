@@ -17,7 +17,9 @@ import org.apache.ivy.core.resolve.DownloadOptions
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import sbt.Defaults.prefix
 import sbt.Keys._
-import sbt.Project._
+import sbt.Project.*
+import sbt.ProjectExtra.inConfig
+import sbt.ProjectExtra.richInitializeTask
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
@@ -159,7 +161,9 @@ object RemoteCache {
           .withResolvers(rs)
       }
     )
-  ) ++ inConfig(Compile)(configCacheSettings(compileArtifact(Compile, cachedCompileClassifier)))
+  ) ++ inConfig(Compile)(
+    configCacheSettings(compileArtifact(Compile, cachedCompileClassifier))
+  )
     ++ inConfig(Test)(configCacheSettings(testArtifact(Test, cachedTestClassifier))))
 
   def getResourceFilePaths() = Def.task {
@@ -183,7 +187,7 @@ object RemoteCache {
           if (af.exists && artp.length() > 0) {
             JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
           }
-          val rf = getResourceFilePaths.value
+          val rf = getResourceFilePaths().value
           if (rf.exists) {
             JarUtils.includeInJar(artp, Vector(rf -> s"META-INF/copy-resources.txt"))
           }
@@ -271,12 +275,12 @@ object RemoteCache {
         val smi = scalaModuleInfo.value
         val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
         val nonPom = artifacts.filterNot(isPomArtifact).toVector
-        val copyResources = getResourceFilePaths.value
+        val copyResources = getResourceFilePaths().value
         m.withModule(log) { case (ivy, md, _) =>
           val resolver = ivy.getSettings.getResolver(r.name)
           if (resolver eq null) sys.error(s"undefined resolver '${r.name}'")
           val cross = CrossVersion(p, smi)
-          val crossf: String => String = cross.getOrElse(identity _)
+          val crossf: String => String = cross.getOrElse(identity[String](_))
           var found = false
           ids foreach { (id: String) =>
             val v = toVersion(id)

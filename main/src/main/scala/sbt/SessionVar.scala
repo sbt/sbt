@@ -15,6 +15,7 @@ import Def.ScopedKey
 import Types.Id
 import Keys.sessionVars
 import sjsonnew.JsonFormat
+import sbt.ProjectExtra.*
 
 object SessionVar {
   val DefaultDataID = "data"

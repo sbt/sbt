@@ -42,7 +42,7 @@ object Task:
     override def pure[A1](a: () => A1): Task[A1] = toTask(a)
 
     override def ap[A1, A2](ff: Task[A1 => A2])(in: Task[A1]): Task[A2] =
-      multT2Task((in, ff)).map { case (x, f) =>
+      multT2Task((in, ff)).mapN { case (x, f) =>
         f(x)
       }
 

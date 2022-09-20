@@ -26,6 +26,7 @@ import sbt.util.{ Level, Logger }
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import scala.collection.immutable.StringOps
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
 
@@ -505,7 +506,9 @@ object Watch {
     val opts = distinctOptions(options).sortBy(_.input)
     val alignmentLength = opts.map(_.display.length).max + 1
     val formatted =
-      opts.map(o => s"${o.display}${" " * (alignmentLength - o.display.length)}: ${o.description}")
+      opts.map(o =>
+        s"${o.display}${StringOps(" ") * (alignmentLength - o.display.length)}: ${o.description}"
+      )
     s"Options:\n${formatted.mkString("  ", "\n  ", "")}"
   }
   private def distinctOptions(options: Seq[InputOption]): Seq[InputOption] = {
@@ -535,7 +538,8 @@ object Watch {
     (count: Int, project: ProjectRef, commands: Seq[String]) =>
       {
         val countStr = s"$count. "
-        Some(s"$countStr${waitMessage(project, commands).mkString(s"\n${" " * countStr.length}")}")
+        Some(s"$countStr${waitMessage(project, commands)
+            .mkString(s"\n${StringOps(" ") * countStr.length}")}")
       }
   }.label("Watched.defaultStartWatch")
 

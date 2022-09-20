@@ -90,7 +90,7 @@ private[sbt] class TaskProgress(
     }
     Util.ignoreResult(pending.add(executor.submit(runnable)))
   }
-  override def beforeWork(task: Task[_]): Unit =
+  override def beforeWork(task: Task[Any]): Unit =
     if (!closed.get) {
       super.beforeWork(task)
       reportLoop.get match {
@@ -108,7 +108,7 @@ private[sbt] class TaskProgress(
       logger.debug(s"called beforeWork for ${taskName(task)} after task progress was closed")
     }
 
-  override def afterReady(task: Task[_]): Unit =
+  override def afterReady(task: Task[Any]): Unit =
     if (!closed.get) {
       try {
         Util.ignoreResult(executor.submit((() => {

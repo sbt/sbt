@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.io.File
+import java.nio.file.Path
 import java.net.URI
 
 import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
@@ -17,6 +18,7 @@ import Scope.GlobalScope
 import BuildStreams.Streams
 import sbt.LocalRootProject
 import sbt.io.syntax._
+import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
@@ -32,19 +34,8 @@ final class BuildStructure(
     val delegates: Scope => Seq[Scope],
     val scopeLocal: ScopeLocal,
     private[sbt] val compiledMap: Map[ScopedKey[_], Def.Compiled[_]],
+    private[sbt] val converter: MappedFileConverter,
 ) {
-  @deprecated("Used the variant that takes a compiledMap", "1.4.0")
-  def this(
-      units: Map[URI, LoadedBuildUnit],
-      root: URI,
-      settings: Seq[Setting[_]],
-      data: Settings[Scope],
-      index: StructureIndex,
-      streams: State => Streams,
-      delegates: Scope => Seq[Scope],
-      scopeLocal: ScopeLocal,
-  ) = this(units, root, settings, data, index, streams, delegates, scopeLocal, Map.empty)
-
   val extra: BuildUtil[ResolvedProject] = BuildUtil(root, units, index.keyIndex, data)
 
   /** The root project for the specified build.  Throws if no build or empty build. */
@@ -117,8 +108,10 @@ final class LoadedBuildUnit(
    * The classpath to use when compiling against this build unit's publicly visible code.
    * It includes build definition and plugin classes and classes for .sbt file statements and expressions.
    */
-  def classpath: Seq[File] =
-    unit.definitions.target ++ unit.plugins.classpath ++ unit.definitions.dslDefinitions.classpath
+  def classpath: Seq[Path] =
+    unit.definitions.target.map(
+      _.toPath()
+    ) ++ unit.plugins.classpath.map(_.toPath()) ++ unit.definitions.dslDefinitions.classpath
 
   /**
    * The class loader to use for this build unit's publicly visible code.
@@ -281,7 +274,11 @@ final class LoadedBuild(val root: URI, val units: Map[URI, LoadedBuildUnit]) {
   private[sbt] def autos = GroupedAutoPlugins(units)
 }
 
-final class PartBuild(val root: URI, val units: Map[URI, PartBuildUnit])
+final class PartBuild(
+    val root: URI,
+    val units: Map[URI, PartBuildUnit],
+    val converter: MappedFileConverter,
+)
 
 sealed trait BuildUnitBase { def rootProjects: Seq[String]; def buildSettings: Seq[Setting[_]] }
 

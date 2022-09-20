@@ -21,6 +21,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
 import sbt.internal.inc.classpath.ClasspathUtil
 import BasicCommandStrings._, BasicKeys._
+import sbt.ProjectExtra.*
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command =

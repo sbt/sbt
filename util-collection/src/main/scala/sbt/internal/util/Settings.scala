@@ -191,7 +191,7 @@ trait Init[ScopeType]:
     result.asScala.toVector
   }
 
-  def compiled(init: Seq[Setting[_]], actual: Boolean = true)(implicit
+  def compiled(init: Seq[Setting[_]], actual: Boolean = true)(using
       delegates: ScopeType => Seq[ScopeType],
       scopeLocal: ScopeLocal,
       display: Show[ScopedKey[_]]
@@ -210,18 +210,18 @@ trait Init[ScopeType]:
   }
 
   @deprecated("Use makeWithCompiledMap", "1.4.0")
-  def make(init: Seq[Setting[_]])(implicit
+  def make(init: Seq[Setting[_]])(using
       delegates: ScopeType => Seq[ScopeType],
       scopeLocal: ScopeLocal,
       display: Show[ScopedKey[_]]
   ): Settings[ScopeType] = makeWithCompiledMap(init)._2
 
-  def makeWithCompiledMap(init: Seq[Setting[_]])(implicit
+  def makeWithCompiledMap(init: Seq[Setting[_]])(using
       delegates: ScopeType => Seq[ScopeType],
       scopeLocal: ScopeLocal,
       display: Show[ScopedKey[_]]
   ): (CompiledMap, Settings[ScopeType]) =
-    val cMap = compiled(init)(delegates, scopeLocal, display)
+    val cMap = compiled(init)(using delegates, scopeLocal, display)
     // order the initializations.  cyclic references are detected here.
     val ordered: Seq[Compiled[_]] = sort(cMap)
     // evaluation: apply the initializations.
@@ -682,8 +682,8 @@ trait Init[ScopeType]:
 
     def join[A1](inits: Seq[Initialize[A1]]): Initialize[Seq[A1]] = uniform(inits)(idFun)
 
-    def joinAny[F[_]]: [A] => Seq[Initialize[F[A]]] => Initialize[Seq[F[Any]]] = [A] =>
-      (inits: Seq[Initialize[F[A]]]) => join(inits.asInstanceOf[Seq[Initialize[F[Any]]]])
+    def joinAny[F[_]]: [a] => Seq[Initialize[F[a]]] => Initialize[Seq[F[Any]]] = [a] =>
+      (inits: Seq[Initialize[F[a]]]) => join(inits.asInstanceOf[Seq[Initialize[F[Any]]]])
   end Initialize
 
   object SettingsDefinition:

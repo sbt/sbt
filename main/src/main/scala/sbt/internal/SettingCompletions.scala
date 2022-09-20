@@ -12,7 +12,7 @@ import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Types, Ut
 import sbt.util.Show
 import sbt.librarymanagement.Configuration
 
-import Project._
+import ProjectExtra.{ relation }
 import Def.{ ScopedKey, Setting }
 import Scope.Global
 import Types.idFun
@@ -41,13 +41,13 @@ private[sbt] object SettingCompletions {
    */
   def setAll(extracted: Extracted, settings: Seq[Setting[_]]): SetResult = {
     import extracted._
-    val r = relation(extracted.structure, true)
+    val r = Project.relation(extracted.structure, true)
     val allDefs = Def
       .flattenLocals(
-        Def.compiled(extracted.structure.settings, true)(
+        Def.compiled(extracted.structure.settings, true)(using
           structure.delegates,
           structure.scopeLocal,
-          implicitly[Show[ScopedKey[_]]]
+          implicitly[Show[ScopedKey[_]]],
         )
       )
       .keys
@@ -81,10 +81,10 @@ private[sbt] object SettingCompletions {
     val append =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))
-    val r = relation(newSession.mergeSettings, true)(
+    val r = Project.relation(newSession.mergeSettings, true)(using
       structure.delegates,
       structure.scopeLocal,
-      implicitly
+      summon[Show[ScopedKey[_]]],
     )
     setResult(newSession, r, append)
   }

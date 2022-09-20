@@ -36,4 +36,8 @@ lazy val foo = project
     assert(p.settings(1) == ("""lazy val foo = project
   .settings(x := y)""" -> LineRange(7, 8)))
   }
+
+  test("isIdentifier") {
+    assert(SbtParser.isIdentifier("1a") == false)
+  }
 end SbtParserTest

@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-alpha1-SNAPSHOT"
+  val v = "2.0.0-alpha2-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-alpha1-SNAPSHOT"
@@ -53,6 +53,7 @@ Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
+ThisBuild / evictionErrorLevel := Level.Info
 
 def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(
@@ -180,17 +181,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
 val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
-  .aggregate(
-    (allProjects diff Seq(
-      scriptedSbtReduxProj,
-      scriptedSbtOldProj,
-      scriptedPluginProj,
-      dependencyTreeProj,
-      mainProj,
-      sbtProj,
-      bundledLauncherProj,
-    )).map(p => LocalProject(p.id)): _*
-  )
+  .aggregate(allProjects.map(p => LocalProject(p.id)): _*)
   .settings(
     minimalSettings,
     onLoadMessage := {
@@ -911,6 +902,7 @@ lazy val mainProj = (project in file("main"))
   .enablePlugins(ContrabandPlugin)
   .dependsOn(
     actionsProj,
+    buildFileProj,
     mainSettingsProj,
     runProj,
     commandProj,
@@ -984,13 +976,15 @@ lazy val sbtProj = (project in file("sbt-app"))
         Tests.Argument(framework, s"-Dsbt.server.scala.version=${scalaVersion.value}") :: Nil
     },
   )
-  .configure(addSbtIO, addSbtCompilerBridge)
+  .configure(addSbtIO)
+// addSbtCompilerBridge
 
 lazy val serverTestProj = (project in file("server-test"))
   .dependsOn(sbtProj % "compile->test", scriptedSbtReduxProj % "compile->test")
   .settings(
     testedBaseSettings,
     crossScalaVersions := Seq(baseScalaVersion),
+    bspEnabled := false,
     publish / skip := true,
     // make server tests serial
     Test / watchTriggers += baseDirectory.value.toGlob / "src" / "server-test" / **,

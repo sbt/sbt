@@ -83,7 +83,7 @@ abstract class AutoPlugin extends Plugins.Basic with PluginsFunctions {
   /**
    * This AutoPlugin requires the plugins the Plugins matcher returned by this method. See [[trigger]].
    */
-  def requires: Plugins = ???
+  def requires: Plugins = Plugins.defaultRequires
   // plugins.JvmPlugin
 
   val label: String = getClass.getName.stripSuffix("$")
@@ -162,6 +162,8 @@ sealed trait PluginsFunctions {
 }
 
 object Plugins extends PluginsFunctions {
+
+  private[sbt] var defaultRequires: Plugins = _
 
   /**
    * Given the available auto plugins `defined`, returns a function that selects [[AutoPlugin]]s for the provided [[AutoPlugin]]s.

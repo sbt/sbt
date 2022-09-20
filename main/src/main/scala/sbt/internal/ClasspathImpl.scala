@@ -178,7 +178,7 @@ private[sbt] object ClasspathImpl {
       track: TrackLevel,
       log: Logger
   ): Initialize[Task[Classpath]] =
-    Def.value {
+    Def.value[Task[Classpath]] {
       interDependencies(projectRef, deps, conf, self, data, track, false, log)(
         exportedProductsNoTracking,
         exportedProductsIfMissing,
@@ -196,7 +196,7 @@ private[sbt] object ClasspathImpl {
         track: TrackLevel,
         log: Logger
     ): Initialize[Task[VirtualClasspath]] =
-      Def.value {
+      Def.value[Task[VirtualClasspath]] {
         interDependencies(projectRef, deps, conf, self, data, track, false, log)(
           exportedPickles,
           exportedPickles,
@@ -242,7 +242,7 @@ private[sbt] object ClasspathImpl {
       track: TrackLevel,
       log: Logger
   ): Initialize[Task[Classpath]] =
-    Def.value {
+    Def.value[Task[Classpath]] {
       interDependencies(projectRef, deps, conf, self, data, track, false, log)(
         exportedProductJarsNoTracking,
         exportedProductJarsIfMissing,
@@ -270,7 +270,7 @@ private[sbt] object ClasspathImpl {
       deps: BuildDependencies,
       log: Logger
   ): Initialize[Task[Classpath]] =
-    Def.value {
+    Def.value[Task[Classpath]] {
       interDependencies(
         projectRef,
         deps,
@@ -346,7 +346,7 @@ private[sbt] object ClasspathImpl {
         val masterConfs = names(getConfigurations(projectRef, data).toVector)
 
         for {
-          ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)
+          ClasspathDep.ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)
         } {
           val configurations = getConfigurations(dep, data)
           val mapping =

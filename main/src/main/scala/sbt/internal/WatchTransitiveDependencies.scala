@@ -5,12 +5,13 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
 import sbt.Def._
 import sbt.Keys._
-import sbt.Project.richInitializeTask
-import sbt._
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.{ delegates, extract, richInitializeTask }
 import sbt.internal.io.Source
 import sbt.internal.nio.Globs
 import sbt.internal.util.AttributeMap
@@ -59,22 +60,26 @@ private[sbt] object WatchTransitiveDependencies {
       scopedKey: ScopedKey[_],
       extracted: Extracted,
       compiledMap: CompiledMap
-  ): Def.Initialize[Task[Arguments]] = Def.task {
-    val log = (streamsManager map { mgr =>
-      val stream = mgr(scopedKey)
-      stream.open()
-      stream
-    }).value.log
-    val configs = (internalDependencyConfigurations in scopedKey.scope).value
-    new Arguments(
-      scopedKey,
-      extracted,
-      compiledMap,
-      log,
-      configs,
-      state.value
-    )
-  }
+  ): Def.Initialize[Task[Arguments]] =
+    import sbt.TupleSyntax.*
+    (
+      (streamsManager map { mgr =>
+        val stream = mgr(scopedKey)
+        stream.open()
+        stream
+      }).toTaskable,
+      (internalDependencyConfigurations in scopedKey.scope).toTaskable,
+      state,
+    ).mapN { case (log, configs, st) =>
+      new Arguments(
+        scopedKey,
+        extracted,
+        compiledMap,
+        log.log,
+        configs,
+        st
+      )
+    }
   private val ShowTransitive = "(?:show)?(?:[ ]*)(.*)/(?:[ ]*)transitive(?:Inputs|Globs|Triggers)".r
   private def arguments: Def.Initialize[Task[Arguments]] =
     Def
@@ -149,8 +154,8 @@ private[sbt] object WatchTransitiveDependencies {
             case Some(k) =>
               k.work match {
                 // Avoid extracted.runTask if possible.
-                case Pure(w, _) => Some(Right(w().map(_.toGlob)))
-                case _          => Some(Left(s))
+                case Action.Pure(w, _) => Some(Right(w().map(_.toGlob)))
+                case _                 => Some(Left(s))
               }
             case _ => None
           }

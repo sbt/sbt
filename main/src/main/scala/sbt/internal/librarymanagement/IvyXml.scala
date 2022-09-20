@@ -22,6 +22,7 @@ import sbt.Keys.{
   publishConfiguration,
   useCoursier
 }
+import sbt.ProjectExtra.richInitializeTask
 import sbt.librarymanagement.PublishConfiguration
 import scala.collection.JavaConverters._
 import scala.xml.{ Node, PrefixedAttribute }

@@ -16,6 +16,7 @@ import sbt.ConcurrentRestrictions.Tag
 import sbt.Def.{ Initialize, ScopedKey, Setting, setting }
 import std.TaskMacro
 import std.TaskExtra.{ task => mktask, _ }
+import scala.reflect.ManifestFactory
 
 /** An abstraction on top of Settings for build configuration and task definition. */
 sealed trait Scoped extends Equals:
@@ -195,7 +196,7 @@ sealed abstract class TaskKey[A1]
   ): Setting[Task[A1]] =
     set0(
       this.zipWith(other) { (ta1: Task[A1], ta2: Task[A2]) =>
-        multT2Task((ta1, ta2)) map f.tupled
+        multT2Task((ta1, ta2)).mapN(f.tupled)
       },
       source
     )
@@ -204,7 +205,7 @@ sealed abstract class TaskKey[A1]
       f: (A1, A2) => A1
   ): Setting[Task[A1]] =
     set(this.zipWith(other) { (ta1: Task[A1], ta2: Task[A2]) =>
-      multT2Task((ta1, ta2)) map f.tupled
+      multT2Task((ta1, ta2)).mapN(f.tupled)
     })
 
   final def withRank(rank: Int): TaskKey[A1] =
@@ -440,6 +441,9 @@ object Scoped:
     //   }
   }
 
+  private def coerceToAnyTaskSeq(tasks: Seq[AnyInitTask]): Seq[Def.Initialize[Task[Any]]] =
+    tasks.asInstanceOf[Seq[Def.Initialize[Task[Any]]]]
+
   /**
    * Enriches `Initialize[Task[S]]` types.
    *
@@ -449,9 +453,13 @@ object Scoped:
   final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
 
-    def dependsOn(tasks: AnyInitTask*): Initialize[Task[S]] = {
-      i.zipWith(Initialize.joinAny[Task](tasks))((thisTask, deps) => thisTask.dependsOn(deps: _*))
-    }
+    def dependsOn[B1](task1: Initialize[Task[B1]]): Initialize[Task[S]] =
+      dependsOn(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
+
+    def dependsOn(tasks: Seq[AnyInitTask]): Initialize[Task[S]] =
+      i.zipWith(
+        Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks))
+      )((thisTask, deps) => thisTask.dependsOn(deps: _*))
 
     def failure: Initialize[Task[Incomplete]] = i(_.failure)
     def result: Initialize[Task[Result[S]]] = i(_.result)
@@ -469,7 +477,9 @@ object Scoped:
         tasks: Seq[AnyInitTask],
         key: AttributeKey[Seq[Task[_]]]
     ): Initialize[Task[S]] =
-      Initialize.joinAny[Task](tasks).zipWith(i)((ts, i) => i.copy(info = i.info.set(key, ts)))
+      Initialize
+        .joinAny[Task](coerceToAnyTaskSeq(tasks))
+        .zipWith(i)((ts, i) => i.copy(info = i.info.set(key, ts)))
   }
 
   /**
@@ -483,11 +493,10 @@ object Scoped:
 
     protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
 
-    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] = {
-      i.zipWith(Initialize.joinAny[Task](tasks))((thisTask, deps) =>
+    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] =
+      i.zipWith(Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks)))((thisTask, deps) =>
         thisTask.mapTask(_.dependsOn(deps: _*))
       )
-    }
   }
 
   /**
@@ -538,7 +547,7 @@ object Scoped:
     def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = onTask(_.result map (f compose failM))
   }
 
-  type AnyInitTask = Initialize[Task[Any]]
+  type AnyInitTask = Initialize[Task[_]]
 
   implicit def richTaskSeq[T](in: Seq[Initialize[Task[T]]]): RichTaskSeq[T] = new RichTaskSeq(in)
   final class RichTaskSeq[T](keys: Seq[Initialize[Task[T]]]) {
@@ -549,7 +558,9 @@ object Scoped:
   implicit def richAnyTaskSeq(in: Seq[AnyInitTask]): RichAnyTaskSeq = new RichAnyTaskSeq(in)
   final class RichAnyTaskSeq(keys: Seq[AnyInitTask]) {
     def dependOn: Initialize[Task[Unit]] =
-      Initialize.joinAny[Task](keys).apply(deps => nop.dependsOn(deps: _*))
+      Initialize
+        .joinAny[Task](coerceToAnyTaskSeq(keys))
+        .apply(deps => nop.dependsOn(deps: _*))
   }
 
   sealed abstract class RichTaskables[K[L[x]]](final val keys: K[Taskable])(using
@@ -761,6 +772,8 @@ object InputKey:
       description: String = "",
       rank: Int = KeyRanks.DefaultInputRank
   ): InputKey[A1] =
+    given mf: Manifest[InputTask[A1]] =
+      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], manifest[A1])
     apply(AttributeKey[InputTask[A1]](label, description, rank))
 
   def apply[A1: Manifest](
@@ -777,6 +790,8 @@ object InputKey:
       extend1: Scoped,
       extendN: Scoped*
   ): InputKey[A1] =
+    given mf: Manifest[InputTask[A1]] =
+      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], manifest[A1])
     apply(AttributeKey[InputTask[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[InputTask[A1]]): InputKey[A1] =
@@ -791,6 +806,8 @@ object TaskKey:
       description: String = "",
       rank: Int = KeyRanks.DefaultTaskRank
   ): TaskKey[A1] =
+    given mf: Manifest[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
     apply(AttributeKey[Task[A1]](label, description, rank))
 
   def apply[A1: Manifest](
@@ -799,6 +816,8 @@ object TaskKey:
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
+    given mf: Manifest[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN)))
 
   def apply[A1: Manifest](
@@ -808,12 +827,17 @@ object TaskKey:
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
+    given mf: Manifest[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[Task[A1]]): TaskKey[A1] =
     Scoped.scopedTask(Scope.ThisScope, akey)
 
-  def local[A1: Manifest]: TaskKey[A1] = apply[A1](AttributeKey.local[Task[A1]])
+  def local[A1: Manifest]: TaskKey[A1] =
+    given mf: Manifest[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
+    apply[A1](AttributeKey.local[Task[A1]])
 
 end TaskKey
 
@@ -821,8 +845,27 @@ end TaskKey
 object SettingKey:
   def apply[A1: Manifest: OptJsonWriter](
       label: String,
-      description: String = "",
-      rank: Int = KeyRanks.DefaultSettingRank
+  ): SettingKey[A1] =
+    apply[A1](
+      label = label,
+      description = "",
+      rank = KeyRanks.DefaultSettingRank
+    )
+
+  def apply[A1: Manifest: OptJsonWriter](
+      label: String,
+      description: String,
+  ): SettingKey[A1] =
+    apply[A1](
+      label = label,
+      description = description,
+      rank = KeyRanks.DefaultSettingRank,
+    )
+
+  def apply[A1: Manifest: OptJsonWriter](
+      label: String,
+      description: String,
+      rank: Int
   ): SettingKey[A1] =
     apply(AttributeKey[A1](label, description, rank))
 

@@ -21,9 +21,9 @@ import sbt.util.OptJsonWriter
  */
 sealed trait AttributeKey[A]:
 
-  /** The runtime evidence for `T`. */
-  // def manifest: Manifest[A]
-  def classTag: ClassTag[A]
+  /** The runtime evidence for `A`. */
+  def manifest: Manifest[A]
+  // def classTag: ClassTag[A]
 
   /** The label is the identifier for the key and is camelCase by convention. */
   def label: String
@@ -57,37 +57,37 @@ private[sbt] abstract class SharedAttributeKey[T] extends AttributeKey[T] {
   override final def hashCode = label.hashCode
   override final def equals(o: Any) =
     (this eq o.asInstanceOf[AnyRef]) || (o match {
-      case a: SharedAttributeKey[t] => a.label == this.label && a.classTag == this.classTag
+      case a: SharedAttributeKey[t] => a.label == this.label && a.manifest == this.manifest
       case _                        => false
     })
   final def isLocal: Boolean = false
 }
 
 object AttributeKey {
-  def apply[T: ClassTag: OptJsonWriter](name: String): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String): AttributeKey[T] =
     make(name, None, Nil, Int.MaxValue)
 
-  def apply[T: ClassTag: OptJsonWriter](name: String, rank: Int): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String, rank: Int): AttributeKey[T] =
     make(name, None, Nil, rank)
 
-  def apply[T: ClassTag: OptJsonWriter](name: String, description: String): AttributeKey[T] =
+  def apply[T: Manifest: OptJsonWriter](name: String, description: String): AttributeKey[T] =
     apply(name, description, Nil)
 
-  def apply[T: ClassTag: OptJsonWriter](
+  def apply[T: Manifest: OptJsonWriter](
       name: String,
       description: String,
       rank: Int
   ): AttributeKey[T] =
     apply(name, description, Nil, rank)
 
-  def apply[T: ClassTag: OptJsonWriter](
+  def apply[T: Manifest: OptJsonWriter](
       name: String,
       description: String,
       extend: Seq[AttributeKey[_]]
   ): AttributeKey[T] =
     apply(name, description, extend, Int.MaxValue)
 
-  def apply[T: ClassTag: OptJsonWriter](
+  def apply[T: Manifest: OptJsonWriter](
       name: String,
       description: String,
       extend: Seq[AttributeKey[_]],
@@ -96,21 +96,21 @@ object AttributeKey {
     make(name, Some(description), extend, rank)
 
   private[sbt] def copyWithRank[T](a: AttributeKey[T], rank: Int): AttributeKey[T] =
-    make(a.label, a.description, a.extend, rank)(a.classTag, a.optJsonWriter)
+    make(a.label, a.description, a.extend, rank)(a.manifest, a.optJsonWriter)
 
   private[this] def make[T](
       name: String,
       description0: Option[String],
       extend0: Seq[AttributeKey[_]],
       rank0: Int
-  )(implicit mf: ClassTag[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  )(implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     new SharedAttributeKey[T] {
       require(
         name.headOption.exists(_.isLower),
         s"A named attribute key must start with a lowercase letter: $name"
       )
 
-      def classTag = mf
+      def manifest = mf
       val label = Util.hyphenToCamel(name)
       def description = description0
       def extend = extend0
@@ -118,9 +118,9 @@ object AttributeKey {
       def optJsonWriter = ojw
     }
 
-  private[sbt] def local[T](implicit mf: ClassTag[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
+  private[sbt] def local[T](implicit mf: Manifest[T], ojw: OptJsonWriter[T]): AttributeKey[T] =
     new AttributeKey[T] {
-      def classTag = mf
+      def manifest = mf
       def label = LocalLabel
       def description = None
       def extend = Nil

@@ -55,7 +55,8 @@ object Previous {
     // private[sbt] def task: ScopedKey[Task[T]] = key.task
 
     lazy val stamped: JsonFormat[T] =
-      StampedFormat.withStamp(key.task.key.classTag.toString)(format)
+      StampedFormat.withStamp(key.task.key.manifest.toString)(format)
+
     def setTask(newTask: ScopedKey[Task[T]]) = new Referenced(newTask, format)
     private[sbt] def read(streams: Streams): Option[T] =
       try Option(streams(key.cacheKey).cacheStoreFactory.make(StreamName).read[T]()(stamped))

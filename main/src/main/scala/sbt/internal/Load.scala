@@ -12,12 +12,13 @@ import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
+import sbt.ProjectExtra.{ checkTargets, prefixConfigs, setProject, showLoadingKey, structure }
 import sbt.Scope.GlobalScope
 import sbt.SlashSyntax0._
-import sbt.compiler.{ Eval, EvalReporter }
+import sbt.internal.{ Eval, EvalReporter }
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
-import sbt.internal.inc.{ ScalaInstance, ZincLmUtil, ZincUtil }
+import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
 import sbt.internal.server.BuildServerEvalReporter
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
@@ -27,13 +28,14 @@ import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResoluti
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
+import xsbti.VirtualFile
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
-
 import java.io.File
 import java.net.URI
+import java.nio.file.{ Path, Paths }
 import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
-import scala.tools.nsc.reporters.ConsoleReporter
+// import scala.tools.nsc.reporters.ConsoleReporter
 
 private[sbt] object Load {
   // note that there is State passed in but not pulled out
@@ -68,6 +70,13 @@ private[sbt] object Load {
     val scalaProvider = app.provider.scalaProvider
     val launcher = scalaProvider.launcher
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
+    val javaHome = Paths.get(sys.props("java.home"))
+    val rootPaths = Map(
+      "BASE" -> baseDirectory.toPath,
+      "SBT_BOOT" -> launcher.bootDirectory.toPath,
+      "IVY_HOME" -> launcher.ivyHome.toPath,
+      "JAVA_HOME" -> javaHome,
+    )
     val loader = getClass.getClassLoader
     val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
     val ivyConfiguration =
@@ -115,6 +124,7 @@ private[sbt] object Load {
       inject,
       None,
       Nil,
+      converter = MappedFileConverter(rootPaths, false),
       log
     )
   }
@@ -139,28 +149,33 @@ private[sbt] object Load {
   ): LoadBuildConfiguration = {
     val globalPluginsDir = getGlobalPluginsDirectory(state, globalBase)
     val withGlobal = loadGlobal(state, base, globalPluginsDir, rawConfig)
-    val globalSettings = configurationSources(getGlobalSettingsDirectory(state, globalBase))
+    val globalSettings: Seq[VirtualFile] =
+      configurationSources(getGlobalSettingsDirectory(state, globalBase))
+        .map(x => rawConfig.converter.toVirtualFile(x.toPath))
     loadGlobalSettings(base, globalBase, globalSettings, withGlobal)
   }
 
   def loadGlobalSettings(
       base: File,
       globalBase: File,
-      files: Seq[File],
+      files: Seq[VirtualFile],
       config: LoadBuildConfiguration
-  ): LoadBuildConfiguration = {
+  ): LoadBuildConfiguration =
     val compiled: ClassLoader => Seq[Setting[_]] =
       if (files.isEmpty || base == globalBase) const(Nil)
       else buildGlobalSettings(globalBase, files, config)
     config.copy(injectSettings = config.injectSettings.copy(projectLoaded = compiled))
-  }
 
   def buildGlobalSettings(
       base: File,
-      files: Seq[File],
+      files: Seq[VirtualFile],
       config: LoadBuildConfiguration
   ): ClassLoader => Seq[Setting[_]] = {
-    val eval = mkEval(data(config.globalPluginClasspath), base, defaultEvalOptions)
+    val eval = mkEval(
+      classpath = data(config.globalPluginClasspath).map(_.toPath()),
+      base = base,
+      options = defaultEvalOptions,
+    )
 
     val imports =
       BuildUtil.baseImports ++ config.detectedGlobalPlugins.imports
@@ -254,7 +269,7 @@ private[sbt] object Load {
       if (settings.size > 10000) {
         log.info(s"resolving key references (${settings.size} settings) ...")
       }
-      Def.makeWithCompiledMap(settings)(
+      Def.makeWithCompiledMap(settings)(using
         delegates,
         config.scopeLocal,
         Project.showLoadingKey(loaded)
@@ -274,7 +289,8 @@ private[sbt] object Load {
       streams,
       delegates,
       config.scopeLocal,
-      cMap
+      cMap,
+      config.converter,
     )
     (rootEval, bs)
   }
@@ -285,11 +301,12 @@ private[sbt] object Load {
   // 3. resolvedScoped is replaced with the defining key as a value
   // Note: this must be idempotent.
   def finalTransforms(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
-    def mapSpecial(to: ScopedKey[_]) = λ[ScopedKey ~> ScopedKey]((key: ScopedKey[_]) =>
-      if (key.key == streams.key) {
-        ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
-      } else key
-    )
+    def mapSpecial(to: ScopedKey[_]): [a] => ScopedKey[a] => ScopedKey[a] =
+      [a] =>
+        (key: ScopedKey[a]) =>
+          if key.key == streams.key then
+            ScopedKey(Scope.fillTaskAxis(Scope.replaceThis(to.scope)(key.scope), to.key), key.key)
+          else key
     def setDefining[T] =
       (key: ScopedKey[T], value: T) =>
         value match {
@@ -297,12 +314,12 @@ private[sbt] object Load {
           case ik: InputTask[t] => ik.mapTask(tk => setDefinitionKey(tk, key)).asInstanceOf[T]
           case _                => value
         }
-    def setResolved(defining: ScopedKey[_]) = λ[ScopedKey ~> Option]((key: ScopedKey[_]) =>
-      key.key match {
-        case resolvedScoped.key => Some(defining.asInstanceOf[A1$])
-        case _                  => None
-      }
-    )
+    def setResolved(defining: ScopedKey[_]): [a] => ScopedKey[a] => Option[a] =
+      [a] =>
+        (key: ScopedKey[a]) =>
+          key.key match
+            case resolvedScoped.key => Some(defining.asInstanceOf[a])
+            case _                  => None
     ss.map(s =>
       s mapConstant setResolved(s.key) mapReferenced mapSpecial(s.key) mapInit setDefining
     )
@@ -340,7 +357,7 @@ private[sbt] object Load {
   ): BuildStructure = {
     val transformed = finalTransforms(newSettings)
     val (cMap, newData) =
-      Def.makeWithCompiledMap(transformed)(structure.delegates, structure.scopeLocal, display)
+      Def.makeWithCompiledMap(transformed)(using structure.delegates, structure.scopeLocal, display)
     def extra(index: KeyIndex) = BuildUtil(structure.root, structure.units, index, newData)
     val newIndex = structureIndex(newData, transformed, extra, structure.units)
     val newStreams = mkStreams(structure.units, structure.root, newData)
@@ -354,6 +371,7 @@ private[sbt] object Load {
       delegates = structure.delegates,
       scopeLocal = structure.scopeLocal,
       compiledMap = cMap,
+      converter = structure.converter,
     )
   }
 
@@ -421,39 +439,51 @@ private[sbt] object Load {
 
   def mkEval(unit: BuildUnit): Eval = {
     val defs = unit.definitions
-    mkEval(defs.target ++ unit.plugins.classpath, defs.base, unit.plugins.pluginData.scalacOptions)
+    mkEval(
+      (defs.target ++ unit.plugins.classpath).map(_.toPath()),
+      defs.base,
+      unit.plugins.pluginData.scalacOptions,
+    )
   }
 
-  def mkEval(classpath: Seq[File], base: File, options: Seq[String]): Eval =
-    mkEval(classpath, base, options, EvalReporter.console)
+  def mkEval(classpath: Seq[Path], base: File, options: Seq[String]): Eval =
+    mkEval(classpath, base, options, () => EvalReporter.console)
 
   def mkEval(
-      classpath: Seq[File],
+      classpath: Seq[Path],
       base: File,
       options: Seq[String],
-      mkReporter: scala.tools.nsc.Settings => EvalReporter
+      mkReporter: () => EvalReporter,
   ): Eval =
-    new Eval(options, classpath, mkReporter, Some(evalOutputDirectory(base)))
+    new Eval(
+      nonCpOptions = options,
+      classpath = classpath,
+      backingDir = Option(evalOutputDirectory(base).toPath()),
+      mkReporter = Option(() => (mkReporter(): dotty.tools.dotc.reporting.Reporter)),
+    )
 
   /**
    * This will clean up left-over files in the config-classes directory if they are no longer used.
    *
    * @param base  The base directory for the build, should match the one passed into `mkEval` method.
    */
-  def cleanEvalClasses(base: File, keep: Seq[File]): Unit = {
+  def cleanEvalClasses(base: File, keep: Seq[Path]): Unit = {
     val baseTarget = evalOutputDirectory(base)
-    val keepSet = keep.map(_.getCanonicalPath).toSet
+    val keepSet = keep.map(_.toAbsolutePath().normalize()).toSet
     // If there are no keeper files, this may be because cache was up-to-date and
     // the files aren't properly returned, even though they should be.
     // TODO - figure out where the caching of whether or not to generate classfiles occurs, and
     // put cleanups there, perhaps.
     if (keepSet.nonEmpty) {
-      def keepFile(f: File) = keepSet(f.getCanonicalPath)
+      def keepFile(f: Path) = keepSet(f.toAbsolutePath().normalize())
       import sbt.io.syntax._
-      val existing = (baseTarget.allPaths.get).filterNot(_.isDirectory)
+      val existing = (baseTarget.allPaths
+        .get())
+        .filterNot(_.isDirectory)
+        .map(_.toPath())
       val toDelete = existing.filterNot(keepFile)
       if (toDelete.nonEmpty) {
-        IO.delete(toDelete)
+        IO.delete(toDelete.map(_.toFile()))
       }
     }
   }
@@ -472,7 +502,7 @@ private[sbt] object Load {
     val newConfig: LoadBuildConfiguration =
       config.copy(pluginManagement = manager, extraBuilds = Nil)
     val loader = builtinLoader(s, newConfig)
-    loadURI(IO.directoryURI(root), loader, config.extraBuilds.toList)
+    loadURI(IO.directoryURI(root), loader, config.extraBuilds.toList, newConfig.converter)
   }
 
   /**
@@ -492,12 +522,17 @@ private[sbt] object Load {
     BuildLoader(components, fail, s, config)
   }
 
-  private def loadURI(uri: URI, loader: BuildLoader, extra: List[URI]): PartBuild = {
+  private def loadURI(
+      uri: URI,
+      loader: BuildLoader,
+      extra: List[URI],
+      converter: MappedFileConverter,
+  ): PartBuild = {
     IO.assertAbsolute(uri)
     val (referenced, map, newLoaders) = loadAll(uri +: extra, Map.empty, loader, Map.empty)
     checkAll(referenced, map)
-    val build = new PartBuild(uri, map)
-    newLoaders transformAll build
+    val build = PartBuild(uri, map, converter)
+    newLoaders.transformAll(build)
   }
 
   def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
@@ -703,20 +738,27 @@ private[sbt] object Load {
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) {
-        def mkReporter(settings: scala.tools.nsc.Settings): EvalReporter =
-          plugs.pluginData.buildTarget match {
-            case None => EvalReporter.console(settings)
-            case Some(buildTarget) =>
-              new BuildServerEvalReporter(buildTarget, new ConsoleReporter(settings))
-          }
-        mkEval(plugs.classpath, defDir, plugs.pluginData.scalacOptions, mkReporter)
+        def mkReporter() = EvalReporter.console
+        // todo:
+        // def mkReporter(settings: scala.tools.nsc.Settings): EvalReporter =
+        //   plugs.pluginData.buildTarget match {
+        //     case None => EvalReporter.console // (settings)
+        //     case Some(buildTarget) =>
+        //       new BuildServerEvalReporter(buildTarget, new ConsoleReporter(settings))
+        //   }
+        mkEval(
+          classpath = plugs.classpath.map(_.toPath()),
+          defDir,
+          plugs.pluginData.scalacOptions,
+          mkReporter,
+        )
       }
       val initialProjects =
         defsScala.flatMap(b => projectsFromBuild(b, normBase)) ++ buildLevelExtraProjects
 
       val hasRootAlreadyDefined = defsScala.exists(_.rootProject.isDefined)
 
-      val memoSettings = new mutable.HashMap[File, LoadedSbtFile]
+      val memoSettings = new mutable.HashMap[VirtualFile, LoadedSbtFile]
       def loadProjects(ps: Seq[Project], createRoot: Boolean) =
         loadTransitive(
           ps,
@@ -731,7 +773,8 @@ private[sbt] object Load {
           uri,
           config.pluginManagement.context,
           Nil,
-          s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil)
+          s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil),
+          converter = config.converter,
         )
       val loadedProjectsRaw = timed("Load.loadUnit: loadedProjectsRaw", log) {
         loadProjects(initialProjects, !hasRootAlreadyDefined)
@@ -817,7 +860,7 @@ private[sbt] object Load {
   // Lame hackery to keep track of our state.
   private[this] case class LoadedProjects(
       projects: Seq[Project],
-      generatedConfigClassFiles: Seq[File]
+      generatedConfigClassFiles: Seq[Path],
   )
 
   /**
@@ -857,17 +900,18 @@ private[sbt] object Load {
       eval: () => Eval,
       injectSettings: InjectSettings,
       acc: Seq[Project],
-      memoSettings: mutable.Map[File, LoadedSbtFile],
+      memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
       log: Logger,
       makeOrDiscoverRoot: Boolean,
       buildUri: URI,
       context: PluginManagement.Context,
-      generatedConfigClassFiles: Seq[File],
-      extraSbtFiles: Seq[File]
+      generatedConfigClassFiles: Seq[Path],
+      extraSbtFiles: Seq[VirtualFile],
+      converter: MappedFileConverter,
   ): LoadedProjects =
     /*timed(s"Load.loadTransitive(${ newProjects.map(_.id) })", log)*/ {
 
-      def load(newProjects: Seq[Project], acc: Seq[Project], generated: Seq[File]) = {
+      def load(newProjects: Seq[Project], acc: Seq[Project], generated: Seq[Path]) = {
         loadTransitive(
           newProjects,
           buildBase,
@@ -881,7 +925,8 @@ private[sbt] object Load {
           buildUri,
           context,
           generated,
-          Nil
+          Nil,
+          converter,
         )
       }
 
@@ -894,7 +939,7 @@ private[sbt] object Load {
         val extraFiles =
           if (base == buildBase && isMetaBuildContext(context)) extraSbtFiles
           else Nil
-        discoverProjects(auto, base, extraFiles, plugins, eval, memoSettings)
+        discoverProjects(auto, base, extraFiles, plugins, eval, memoSettings, converter)
       }
 
       // Step two:
@@ -903,8 +948,8 @@ private[sbt] object Load {
       // c. Finalize a project with all its settings/configuration.
       def finalizeProject(
           p: Project,
-          files: Seq[File],
-          extraFiles: Seq[File],
+          files: Seq[VirtualFile],
+          extraFiles: Seq[VirtualFile],
           expand: Boolean
       ): (Project, Seq[Project]) = {
         val configFiles = files.flatMap(f => memoSettings.get(f))
@@ -913,7 +958,16 @@ private[sbt] object Load {
           try plugins.detected.deducePluginsFromProject(p1, log)
           catch { case e: AutoPluginException => throw translateAutoPluginException(e, p) }
         val p2 =
-          resolveProject(p1, autoPlugins, plugins, injectSettings, memoSettings, extraFiles, log)
+          resolveProject(
+            p1,
+            autoPlugins,
+            plugins,
+            injectSettings,
+            memoSettings,
+            extraFiles,
+            converter,
+            log
+          )
         val projectLevelExtra =
           if (expand) {
             autoPlugins.flatMap(
@@ -1004,9 +1058,9 @@ private[sbt] object Load {
   private[this] case class DiscoveredProjects(
       root: Option[Project],
       nonRoot: Seq[Project],
-      sbtFiles: Seq[File],
-      extraSbtFiles: Seq[File],
-      generatedFiles: Seq[File]
+      sbtFiles: Seq[VirtualFile],
+      extraSbtFiles: Seq[VirtualFile],
+      generatedFiles: Seq[Path]
   )
 
   /**
@@ -1028,8 +1082,9 @@ private[sbt] object Load {
       projectPlugins: Seq[AutoPlugin],
       loadedPlugins: LoadedPlugins,
       globalUserSettings: InjectSettings,
-      memoSettings: mutable.Map[File, LoadedSbtFile],
-      extraSbtFiles: Seq[File],
+      memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
+      extraSbtFiles: Seq[VirtualFile],
+      converter: MappedFileConverter,
       log: Logger
   ): Project =
     timed(s"Load.resolveProject(${p.id})", log) {
@@ -1040,35 +1095,37 @@ private[sbt] object Load {
       val allSettings = {
         // TODO - This mechanism of applying settings could be off... It's in two places now...
         lazy val defaultSbtFiles = configurationSources(p.base)
-        lazy val sbtFiles = defaultSbtFiles ++ extraSbtFiles
+          .map(_.toPath())
+          .map(converter.toVirtualFile)
+        lazy val sbtFiles: Seq[VirtualFile] = defaultSbtFiles ++ extraSbtFiles
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
           projectPlugins.filter(f.include).flatMap(_.projectSettings)
         // Grab all the settings we already loaded from sbt files
-        def settings(files: Seq[File]): Seq[Setting[_]] = {
+        def settings(files: Seq[VirtualFile]): Seq[Setting[_]] = {
           if (files.nonEmpty)
             log.info(
-              s"${files.map(_.getName).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
+              s"${files.map(_.name()).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
             )
           for {
             file <- files
-            config <- (memoSettings get file).toSeq
+            config <- memoSettings.get(file).toSeq
             setting <- config.settings
           } yield setting
         }
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
-        def expandSettings(auto: AddSettings): Seq[Setting[_]] = auto match {
-          case BuildScalaFiles     => p.settings
-          case User                => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
-          case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
-          case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
-          case p: AutoPlugins      => autoPluginSettings(p)
-          case q: Sequence =>
-            q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
-              b ++ expandSettings(add)
-            }
-        }
+        def expandSettings(auto: AddSettings): Seq[Setting[_]] =
+          auto match
+            case BuildScalaFiles => p.settings
+            case User            => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
+            // case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
+            case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
+            case p: AutoPlugins      => autoPluginSettings(p)
+            case q: Sequence =>
+              q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
+                b ++ expandSettings(add)
+              }
         val auto = AddSettings.allDefaults
         expandSettings(auto)
       }
@@ -1089,14 +1146,17 @@ private[sbt] object Load {
   private[this] def discoverProjects(
       auto: AddSettings,
       projectBase: File,
-      extraSbtFiles: Seq[File],
+      extraSbtFiles: Seq[VirtualFile],
       loadedPlugins: LoadedPlugins,
       eval: () => Eval,
-      memoSettings: mutable.Map[File, LoadedSbtFile]
+      memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
+      converter: MappedFileConverter,
   ): DiscoveredProjects = {
 
     // Default sbt files to read, if needed
     lazy val defaultSbtFiles = configurationSources(projectBase)
+      .map(_.toPath)
+      .map(converter.toVirtualFile)
     lazy val sbtFiles = defaultSbtFiles ++ extraSbtFiles
 
     // Classloader of the build
@@ -1105,11 +1165,11 @@ private[sbt] object Load {
     // How to load an individual file for use later.
     // TODO - We should import vals defined in other sbt files here, if we wish to
     // share.  For now, build.sbt files have their own unique namespace.
-    def loadSettingsFile(src: File): LoadedSbtFile =
+    def loadSettingsFile(src: VirtualFile): LoadedSbtFile =
       EvaluateConfigurations.evaluateSbtFile(
         eval(),
         src,
-        IO.readLines(src),
+        IO.readStream(src.input()).linesIterator.toList,
         loadedPlugins.detected.imports,
         0
       )(loader)
@@ -1119,7 +1179,7 @@ private[sbt] object Load {
     }
     // Loads a given file, or pulls from the cache.
 
-    def memoLoadSettingsFile(src: File): LoadedSbtFile =
+    def memoLoadSettingsFile(src: VirtualFile): LoadedSbtFile =
       memoSettings.getOrElse(
         src, {
           val lf = loadSettingsFile(src)
@@ -1129,20 +1189,31 @@ private[sbt] object Load {
       )
 
     // Loads a set of sbt files, sorted by their lexical name (current behavior of sbt).
-    def loadFiles(fs: Seq[File]): LoadedSbtFile =
-      merge(fs.sortBy(_.getName).map(memoLoadSettingsFile))
+    def loadFiles(fs: Seq[VirtualFile]): LoadedSbtFile =
+      merge(
+        fs.sortBy(_.name())
+          .map(memoLoadSettingsFile)
+      )
 
     // Finds all the build files associated with this project
-    import AddSettings.{ DefaultSbtFiles, SbtFiles, Sequence }
-    def associatedFiles(auto: AddSettings): Seq[File] = auto match {
-      case sf: SbtFiles => sf.files.map(f => IO.resolve(projectBase, f)).filterNot(_.isHidden)
-      case sf: DefaultSbtFiles => sbtFiles.filter(sf.include).filterNot(_.isHidden)
-      case q: Sequence =>
-        q.sequence.foldLeft(Seq.empty[File]) { (b, add) =>
-          b ++ associatedFiles(add)
-        }
-      case _ => Seq.empty
-    }
+    import AddSettings.{ DefaultSbtFiles, Sequence }
+    def associatedFiles(auto: AddSettings): Seq[VirtualFile] =
+      auto match
+        // case sf: SbtFiles =>
+        //   sf.files
+        //     .map(f => IO.resolve(projectBase, f))
+        //     .filterNot(_.isHidden)
+        //     .map(_.toPath)
+        case sf: DefaultSbtFiles =>
+          sbtFiles
+        // .filter(sf.include)
+        // .filterNot(_.isHidden)
+        // .map(_.toPath)
+        case q: Sequence =>
+          q.sequence.foldLeft(Seq.empty[VirtualFile]) { (b, add) =>
+            b ++ associatedFiles(add)
+          }
+        case _ => Seq.empty
     val rawFiles = associatedFiles(auto)
     val loadedFiles = loadFiles(rawFiles)
     val rawProjects = loadedFiles.projects
@@ -1223,7 +1294,7 @@ private[sbt] object Load {
 
   def plugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins = {
     val context = config.pluginManagement.context
-    val extraSbtFiles: Seq[File] =
+    val extraSbtFiles: Seq[VirtualFile] =
       if (isMetaBuildContext(context)) s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil)
       else Nil
     if (hasDefinition(dir) || extraSbtFiles.nonEmpty)
@@ -1237,7 +1308,7 @@ private[sbt] object Load {
 
   def hasDefinition(dir: File): Boolean = {
     import sbt.io.syntax._
-    (dir * -GlobFilter(DefaultTargetName)).get.nonEmpty
+    (dir * -GlobFilter(DefaultTargetName)).get().nonEmpty
   }
 
   def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1310,7 +1381,7 @@ private[sbt] object Load {
       else {
         // Load only the dependency classpath for the common plugin classloader
         val loader = manager.loader
-        loader.add(Path.toURLs(data(dependencyClasspath)))
+        loader.add(sbt.io.Path.toURLs(data(dependencyClasspath)))
         loader
       }
     }
@@ -1425,6 +1496,7 @@ final case class LoadBuildConfiguration(
     injectSettings: Load.InjectSettings,
     globalPlugin: Option[GlobalPlugin],
     extraBuilds: Seq[URI],
+    converter: MappedFileConverter,
     log: Logger
 ) {
   lazy val globalPluginClasspath: Def.Classpath =

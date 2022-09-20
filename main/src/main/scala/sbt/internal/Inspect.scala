@@ -16,6 +16,7 @@ import Def.ScopedKey
 import Types.idFun
 import java.io.File
 import Scope.Global
+import sbt.ProjectExtra.*
 
 object Inspect {
   sealed trait Mode
@@ -87,14 +88,16 @@ object Inspect {
     import extracted._
     option match {
       case Details(actual) =>
-        Project.details(structure, actual, sk.scope, sk.key)
+        Project.details(extracted.structure, actual, sk.scope, sk.key)
       case DependencyTreeMode =>
         val basedir = new File(Project.session(s).current.build)
-        Project.settingGraph(structure, basedir, sk).dependsAscii(get(sbt.Keys.asciiGraphWidth))
+        Project
+          .settingGraph(extracted.structure, basedir, sk)
+          .dependsAscii(get(sbt.Keys.asciiGraphWidth))
       case UsesMode =>
-        Project.showUses(Project.usedBy(structure, true, sk.key))
+        Project.showUses(Project.usedBy(extracted.structure, true, sk.key))
       case DefinitionsMode =>
-        Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
+        Project.showDefinitions(sk.key, Project.definitions(extracted.structure, true, sk.key))
     }
   }
 

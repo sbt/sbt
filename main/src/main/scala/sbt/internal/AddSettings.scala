@@ -10,6 +10,7 @@ package internal
 
 import sbt.internal.util.Types.const
 import java.io.File
+import xsbti.VirtualFile
 
 /**
  * Represents how settings from various sources are automatically merged into a Project's settings.
@@ -23,10 +24,10 @@ object AddSettings {
   }
   private[sbt] final object User extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
-  private[sbt] final class DefaultSbtFiles(val include: File => Boolean) extends AddSettings
-  private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings {
-    override def toString: String = s"SbtFiles($files)"
-  }
+  private[sbt] final class DefaultSbtFiles(val include: VirtualFile => Boolean) extends AddSettings
+  // private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings {
+  //   override def toString: String = s"SbtFiles($files)"
+  // }
   private[sbt] final object BuildScalaFiles extends AddSettings
 
   /** Adds all settings from autoplugins. */
@@ -51,7 +52,7 @@ object AddSettings {
   val defaultSbtFiles: AddSettings = new DefaultSbtFiles(const(true))
 
   /** Includes the settings from the .sbt files given by `files`. */
-  def sbtFiles(files: File*): AddSettings = new SbtFiles(files)
+  // def sbtFiles(files: File*): AddSettings = new SbtFiles(files)
 
   /** Includes settings automatically */
   def seq(autos: AddSettings*): AddSettings = new Sequence(autos)
@@ -69,8 +70,9 @@ object AddSettings {
 
   def clearSbtFiles(a: AddSettings): AddSettings =
     tx(a) {
-      case _: DefaultSbtFiles | _: SbtFiles => None
-      case x                                => Some(x)
+      // case _: SbtFiles        => None
+      case _: DefaultSbtFiles => None
+      case x                  => Some(x)
     } getOrElse seq()
 
   private[sbt] def tx(a: AddSettings)(f: AddSettings => Option[AddSettings]): Option[AddSettings] =

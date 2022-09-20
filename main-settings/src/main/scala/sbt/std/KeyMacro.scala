@@ -8,6 +8,7 @@
 package sbt
 package std
 
+import java.io.File
 import scala.annotation.tailrec
 import scala.quoted.*
 
@@ -59,8 +60,17 @@ private[sbt] object KeyMacro:
       Expr.summon[OptJsonWriter[A1]].getOrElse(sys.error("OptJsonWriter[A] not found for $tpe")),
     )
 
+  def projectImpl(using qctx: Quotes): Expr[Project] =
+    val name = Expr(definingValName(errorMsg2("project")))
+    '{
+      Project($name, new File($name))
+    }
+
   private def errorMsg(methodName: String): String =
     s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`."""
+
+  private def errorMsg2(methodName: String): String =
+    s"""$methodName must be directly assigned to a val, such as `val x = ($methodName in file("core"))`."""
 
   private def definingValName(errorMsg: String)(using qctx: Quotes): String =
     val term = enclosingTerm
@@ -75,5 +85,4 @@ private[sbt] object KeyMacro:
         case sym if !sym.isTerm              => enclosingTerm0(sym.owner)
         case _                               => sym
     enclosingTerm0(Symbol.spliceOwner)
-
 end KeyMacro

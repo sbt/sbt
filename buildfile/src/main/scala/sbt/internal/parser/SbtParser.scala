@@ -57,6 +57,13 @@ private[sbt] object SbtParser:
   private final val defaultClasspath =
     sbt.io.Path.makeString(sbt.io.IO.classLocationPath[Product].toFile :: Nil)
 
+  def isIdentifier(ident: String): Boolean =
+    val code = s"val $ident = 0; val ${ident}${ident} = $ident"
+    try
+      val p = SbtParser(FAKE_FILE, List(code))
+      true
+    catch case e: Throwable => false
+
   /**
    * Provides the previous error reporting functionality in
    * [[scala.tools.reflect.ToolBox]].

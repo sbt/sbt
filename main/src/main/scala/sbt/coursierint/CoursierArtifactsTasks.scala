@@ -17,6 +17,7 @@ import lmcoursier.definitions.{
 }
 import sbt.librarymanagement._
 import sbt.Keys._
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 
 object CoursierArtifactsTasks {

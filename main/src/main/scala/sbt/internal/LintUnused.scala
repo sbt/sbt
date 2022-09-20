@@ -12,6 +12,7 @@ import Keys._
 import Def.{ Setting, ScopedKey }
 import sbt.internal.util.{ FilePosition, NoPosition, SourcePosition }
 import java.io.File
+import ProjectExtra.{ extract, scopedKeyData }
 import Scope.Global
 import sbt.SlashSyntax0._
 import sbt.Def._

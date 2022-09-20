@@ -13,6 +13,7 @@ import java.text.DateFormat
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.SlashSyntax0._
+import sbt.ProjectExtra.*
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
@@ -57,7 +58,7 @@ object Aggregation {
     }
 
   type Values[T] = Seq[KeyValue[T]]
-  type AnyKeys = Values[_]
+  type AnyKeys = Values[Any]
 
   def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]] =
     seq(ps.map { case KeyValue(k, p) => p.map(v => KeyValue(k, v)) })
@@ -219,7 +220,12 @@ object Aggregation {
           val inputStrings = inputTasks.map(_.key).mkString("Input task(s):\n\t", "\n\t", "\n")
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
-        } else applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
+        } else
+          applyDynamicTasks(
+            s,
+            inputTasks.map { case KeyValue(k, v: InputTask[a]) => KeyValue(k, castToAny(v)) },
+            show
+          )
       } else {
         val base =
           if (tasks.isEmpty) success(() => s)
@@ -233,8 +239,10 @@ object Aggregation {
       }
     }
   }
+
   // this is a hack to avoid duplicating method implementations
-  private[this] def castToAny[T[_]](t: T[_]): T[Any] = t.asInstanceOf[T[Any]]
+  private[this] def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] =>
+    (fa: F[a]) => fa.asInstanceOf[F[Any]]
 
   private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
     vs map { case KeyValue(k, v) => KeyValue(k, f(v)) }

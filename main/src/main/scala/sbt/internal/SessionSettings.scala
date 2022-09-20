@@ -12,13 +12,11 @@ import sbt.internal.util.{ complete, LineRange, RangePosition, Types }
 
 import java.io.File
 import java.net.URI
+import sbt.ProjectExtra.extract
 import Def.{ ScopedKey, Setting }
-import Types.Endo
-import compiler.Eval
-
 import SessionSettings._
+import sbt.ProjectExtra.{ extract, getProject, session, structure }
 import sbt.internal.parser.SbtRefactorings
-
 import sbt.io.IO
 
 /**
@@ -93,19 +91,24 @@ final case class SessionSettings(
   private[this] def merge(map: SessionMap): Seq[Setting[_]] =
     map.values.toSeq.flatten[SessionSetting].map(_._1)
 
-  private[this] def modify(map: SessionMap, onSeq: Endo[Seq[SessionSetting]]): SessionMap = {
+  private[this] def modify(
+      map: SessionMap,
+      onSeq: Seq[SessionSetting] => Seq[SessionSetting],
+  ): SessionMap = {
     val cur = current
     map.updated(cur, onSeq(map.getOrElse(cur, Nil)))
   }
 }
 
-object SessionSettings {
+object SessionSettings:
 
   /** A session setting is simply a tuple of a Setting[_] and the strings which define it. */
-  type SessionSetting = (Setting[_], Seq[String])
+  type SessionSetting = sbt.internal.parser.SbtRefactorings.SessionSetting
+  // (Setting[_], Seq[String])
 
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
-  type SbtConfigFile = (File, Seq[String])
+  type SbtConfigFile = sbt.internal.parser.SbtRefactorings.SbtConfigFile
+  // (File, Seq[String])
 
   /**
    * This will re-evaluate all Setting[_]'s on this session against the current build state and
@@ -133,14 +136,12 @@ object SessionSettings {
    * @param f  A function which takes the current SessionSettings and returns the new build state.
    * @return The new build state
    */
-  def withSettings(s: State)(f: SessionSettings => State): State = {
-    val extracted = Project extract s
-    import extracted._
-    if (session.append.isEmpty) {
+  def withSettings(s: State)(f: SessionSettings => State): State =
+    val extracted = Project.extract(s)
+    if (extracted.session.append.isEmpty) {
       s.log.info("No session settings defined.")
       s
-    } else f(session)
-  }
+    } else f(extracted.session)
 
   /** Adds `s` to a strings when needed.    Maybe one day we'll care about non-english languages. */
   def pluralize(size: Int, of: String) = size.toString + (if (size == 1) of else (of + "s"))
@@ -356,4 +357,4 @@ save, save-all
     case c: Clear  => if (c.all) clearAllSettings(s) else clearSettings(s)
     case r: Remove => removeSettings(s, r.ranges)
   }
-}
+end SessionSettings

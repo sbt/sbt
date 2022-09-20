@@ -27,6 +27,7 @@ import language.experimental.macros
 import scala.annotation.tailrec
 import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
+import sjsonnew.JsonFormat
 
 object TaskMacro:
   final val AssignInitName = "set"
@@ -76,23 +77,20 @@ object TaskMacro:
   def taskDynMacroImpl[A1: Type](
       t: Expr[Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
-    val convert1 = new FullConvert(qctx, 0)
+    val convert1 = new FullConvert(qctx, 1000)
     convert1.contFlatMap[A1, F, Id](t, convert1.appExpr)
 
-  /*
-  def taskIfMacroImpl[A: Type](
-      c: blackbox.Context
-  )(a: c.Expr[A]): c.Expr[Initialize[Task[A]]] = {
-    import c.universe._
-    a.tree match {
-      case Block(stat, If(cond, thenp, elsep)) =>
-        c.Expr[Initialize[Task[A]]](mkIfS(c)(Block(stat, cond), thenp, elsep))
-      case If(cond, thenp, elsep) =>
-        c.Expr[Initialize[Task[A]]](mkIfS(c)(cond, thenp, elsep))
-      case x => ContextUtil.unexpectedTree(x)
-    }
-  }
-   */
+  /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value */
+  def previousImpl[A1: Type](t: Expr[TaskKey[A1]])(using
+      qctx: Quotes
+  ): Expr[Option[A1]] =
+    import qctx.reflect.*
+    Expr.summon[JsonFormat[A1]] match
+      case Some(ev) =>
+        '{
+          InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1]($t)($ev))
+        }
+      case _ => report.errorAndAbort(s"JsonFormat[${Type.of[A1]}] missing")
 
   /** Implementation of := macro for settings. */
   def settingAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableSetting[A1]], v: Expr[A1])(using

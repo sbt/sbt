@@ -153,22 +153,6 @@ object InputWrapper:
         unexpectedType(c)(pos, tpe)
     }
 
-  /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value */
-  def previousMacroImpl[T: c.WeakTypeTag](
-      using qctx: Quotes
-  )(format: c.Expr[sjsonnew.JsonFormat[T]]): c.Expr[Option[T]] = {
-    import c.universe._
-    c.macroApplication match {
-      case a @ Apply(Select(Apply(_, t :: Nil), _), _) =>
-        if (t.tpe <:< c.weakTypeOf[TaskKey[T]]) {
-          val tsTyped = c.Expr[TaskKey[T]](t)
-          val newTree = c.universe.reify { Previous.runtime[T](tsTyped.splice)(format.splice) }
-          wrapPrevious[T](c)(newTree, a.pos)
-        } else unexpectedType(c)(a.pos, t.tpe)
-      case x => ContextUtil.unexpectedTree(x)
-    }
-  }
-
   private def unexpectedType(using qctx: Quotes)(pos: c.Position, tpe: c.Type) =
     c.abort(pos, s"Internal sbt error. Unexpected type ${tpe.widen}")
    */

@@ -5,6 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt
 package internal
 package server
@@ -242,3 +243,4 @@ object DefinitionTest extends verify.BasicTestSuite {
     )
   }
 }
+ */

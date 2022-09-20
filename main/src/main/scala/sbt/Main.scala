@@ -17,7 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import sbt.BasicCommandStrings.{ JavaClient, Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
-import sbt.compiler.EvalImports
+import sbt.ProjectExtra.*
+import sbt.internal.EvalImports
 import sbt.internal.Aggregation.AnyKeys
 import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
@@ -41,10 +42,11 @@ import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
 
 /** This class is the entry point for sbt. */
-final class xMain extends xsbti.AppMain {
+final class xMain extends xsbti.AppMain:
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
     new XMainConfiguration().run("xMain", configuration)
-}
+end xMain
+
 private[sbt] object xMain {
   private[sbt] def dealiasBaseDirectory(config: xsbti.AppConfiguration): xsbti.AppConfiguration = {
     val dealiasedBase = config.baseDirectory.getCanonicalFile
@@ -56,6 +58,7 @@ private[sbt] object xMain {
         override def provider: AppProvider = config.provider()
       }
   }
+
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
       import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
@@ -64,6 +67,7 @@ private[sbt] object xMain {
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
       import sbt.internal.client.NetworkClient
 
+      Plugins.defaultRequires = sbt.plugins.JvmPlugin
       // if we detect -Dsbt.client=true or -client, run thin client.
       val clientModByEnv = SysProp.client
       val userCommands = configuration.arguments
@@ -127,8 +131,9 @@ private[sbt] object xMain {
               )
               .put(BasicKeys.detachStdio, detachStdio)
             val state = bootServerSocket match {
-              case Some(l) => state0.put(Keys.bootServerSocket, l)
-              case _       => state0
+              // todo: fix this
+              // case Some(l) => state0.put(Keys.bootServerSocket, l)
+              case _ => state0
             }
             try StandardMain.runManaged(state)
             finally bootServerSocket.foreach(_.close())
@@ -557,10 +562,10 @@ object BuiltinCommands {
   def continuous: Command = Continuous.continuous
 
   private[this] def loadedEval(s: State, arg: String): Unit = {
-    val extracted = Project extract s
+    val extracted = Project.extract(s)
     import extracted._
     val result =
-      session.currentEval().eval(arg, srcName = "<eval>", imports = autoImports(extracted))
+      session.currentEval().evalInfer(expression = arg, imports = autoImports(extracted))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(currentLoader)}")
   }
 
@@ -568,8 +573,8 @@ object BuiltinCommands {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
     val result = Load
-      .mkEval(classpath, s.baseDir, Nil)
-      .eval(arg, srcName = "<eval>", imports = new EvalImports(Nil, ""))
+      .mkEval(classpath.map(_.toPath()), s.baseDir, Nil)
+      .evalInfer(expression = arg, imports = EvalImports(Nil))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
   }
 
@@ -646,7 +651,7 @@ object BuiltinCommands {
         (s, sks) match {
           case (s, (pattern, Some(sks))) =>
             val (str, _, display) = extractLast(s)
-            Output.lastGrep(sks, str.streams(s), pattern, printLast)(display)
+            Output.lastGrep(sks, str.streams(s), pattern, printLast)(using display)
             keepLastLog(s)
           case (s, (pattern, None)) =>
             for (logFile <- lastLogFile(s)) yield Output.lastGrep(logFile, pattern, printLast)
@@ -668,7 +673,8 @@ object BuiltinCommands {
   }
 
   import Def.ScopedKey
-  type KeysParser = Parser[Seq[ScopedKey[T]] forSome { type T }]
+  // type PolyStateKeysParser = [a] => State => Parser[Seq[ScopedKey[a]]]
+  type KeysParser = Parser[Seq[ScopedKey[Any]]]
 
   val spacedAggregatedParser: State => KeysParser = (s: State) =>
     Act.requireSession(s, token(Space) ~> Act.aggregatedKeyParser(s))
@@ -728,7 +734,7 @@ object BuiltinCommands {
 
   private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
     val (str, _, display) = extractLast(s)
-    Output.last(sks, str.streams(s), printLast, sid)(display)
+    Output.last(sks, str.streams(s), printLast, sid)(using display)
     keepLastLog(s)
   }
 
@@ -759,7 +765,7 @@ object BuiltinCommands {
   def printLast: Seq[String] => Unit = _ foreach println
 
   def autoImports(extracted: Extracted): EvalImports =
-    new EvalImports(imports(extracted), "<auto-imports>")
+    new EvalImports(imports(extracted).map(_._1)) // <auto-imports>
 
   def imports(extracted: Extracted): Seq[(String, Int)] = {
     val curi = extracted.currentRef.build
@@ -864,7 +870,7 @@ object BuiltinCommands {
   @tailrec
   private[this] def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result =
+    val result: Int =
       try
         ITerminal.get.withRawInput(System.in.read) match {
           case -1 => 'q'.toInt
@@ -944,7 +950,7 @@ object BuiltinCommands {
     state.log.info(s"welcome to sbt $appVersion ($javaVersion)")
   }
 
-  def doLoadProject(s0: State, action: LoadAction.Value): State = {
+  def doLoadProject(s0: State, action: LoadAction): State = {
     welcomeBanner(s0)
     checkSBTVersionChanged(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
@@ -954,7 +960,7 @@ object BuiltinCommands {
     val (eval, structure) =
       try Load.defaultLoad(s2, base, s2.log, Project.inPluginProject(s2), Project.extraBuilds(s2))
       catch {
-        case ex: compiler.EvalException =>
+        case ex: sbt.internal.EvalException =>
           s0.log.debug(ex.getMessage)
           ex.getStackTrace map (ste => s"\tat $ste") foreach (s0.log.debug(_))
           ex.setStackTrace(Array.empty)

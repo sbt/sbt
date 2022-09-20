@@ -14,6 +14,8 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.SlashSyntax0._
 import sbt.Project._
+import sbt.ProjectExtra.storeAs
+import sbt.ProjectExtra.richInitializeTask
 import sbt.internal.graph._
 import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }
@@ -40,7 +42,7 @@ object DependencyTreeSettings {
         .withCachedResolution(false),
       dependencyTreeIgnoreMissingUpdate / ivyConfiguration := {
         // inTask will make sure the new definition will pick up `updateOptions in dependencyTreeIgnoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
       },
       dependencyTreeIgnoreMissingUpdate / ivyModule := {
         // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
@@ -54,7 +56,7 @@ object DependencyTreeSettings {
         .withMissingOk(true),
       dependencyTreeIgnoreMissingUpdate := {
         // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
       },
     )
 

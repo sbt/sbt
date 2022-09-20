@@ -68,9 +68,9 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
   }
 
   override def afterRegistered(
-      task: Task[_],
-      allDeps: Iterable[Task[_]],
-      pendingDeps: Iterable[Task[_]]
+      task: Task[Any],
+      allDeps: Iterable[Task[Any]],
+      pendingDeps: Iterable[Task[Any]]
   ): Unit = {
     // we need this to infer anonymous task names
     pendingDeps foreach { t =>
@@ -80,7 +80,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
     }
   }
 
-  override def beforeWork(task: Task[_]): Unit = {
+  override def beforeWork(task: Task[Any]): Unit = {
     timings.put(task, new Timer)
     ()
   }

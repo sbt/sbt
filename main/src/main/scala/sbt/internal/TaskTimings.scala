@@ -50,7 +50,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       start = System.nanoTime
   }
 
-  override def afterReady(task: Task[_]): Unit = ()
+  override def afterReady(task: Task[Any]): Unit = ()
   override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
   override def afterAllCompleted(results: RMap[Task, Result]): Unit =
     if (!reportOnShutdown) {
