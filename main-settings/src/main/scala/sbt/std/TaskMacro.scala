@@ -170,25 +170,24 @@ object TaskMacro:
   ): Expr[Setting[A1]] =
     import qctx.reflect.*
     // To allow Initialize[Task[A]] in the position of += RHS, we're going to call "taskValue" automatically.
-    if TypeRepr.of[A2] <:< TypeRepr.of[Def.Initialize[Task[_]]] then
-      Type.of[A2] match
-        case '[Def.Initialize[Task[a]]] =>
-          Expr.summon[Append.Value[A1, Task[a]]] match
-            case Some(ev) =>
-              val v2 = v.asExprOf[Def.Initialize[Task[a]]]
-              '{
-                $rec.+=($v2.taskValue)(using $ev)
-              }
-            case _ =>
-              report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[Task[a]]}] missing")
-    else
-      Expr.summon[Append.Value[A1, A2]] match
-        case Some(ev) =>
-          val init = SettingMacro.settingMacroImpl[A2](v)
-          '{
-            $rec.append1[A2]($init)(using $ev)
-          }
-        case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
+    Type.of[A2] match
+      case '[Def.Initialize[Task[a]]] =>
+        Expr.summon[Append.Value[A1, Task[a]]] match
+          case Some(ev) =>
+            val v2 = v.asExprOf[Def.Initialize[Task[a]]]
+            '{
+              $rec.+=($v2.taskValue)(using $ev)
+            }
+          case _ =>
+            report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[Task[a]]}] missing")
+      case _ =>
+        Expr.summon[Append.Value[A1, A2]] match
+          case Some(ev) =>
+            val init = SettingMacro.settingMacroImpl[A2](v)
+            '{
+              $rec.append1[A2]($init)(using $ev)
+            }
+          case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
 
   /*
   private[this] def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(

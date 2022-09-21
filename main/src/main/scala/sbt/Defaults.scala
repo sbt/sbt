@@ -635,9 +635,9 @@ object Defaults extends BuildCommon {
     },
     unmanagedResources := (unmanagedResources / inputFileStamps).value.map(_._1.toFile),
     resourceGenerators :== Nil,
-    resourceGenerators += Def.task {
+    resourceGenerators += (Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
-    },
+    }).taskValue,
     managedResources := generate(resourceGenerators).value,
     resources := Classpaths.concat(managedResources, unmanagedResources).value
   )
