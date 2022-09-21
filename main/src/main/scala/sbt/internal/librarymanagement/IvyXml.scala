@@ -198,24 +198,20 @@ object IvyXml {
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
     task := task.dependsOn {
-      Def.taskDyn {
-        val doGen = useCoursier.value
-        if (doGen)
-          Def.task {
-            val currentProject = {
-              val proj = csrProject.value
-              val publications = csrPublications.value
-              proj.withPublications(publications)
-            }
-            IvyXml.writeFiles(
-              currentProject,
-              shadedConfigOpt,
-              sbt.Keys.ivySbt.value,
-              sbt.Keys.streams.value.log
-            )
+      Def.taskIf {
+        if useCoursier.value then
+          val currentProject = {
+            val proj = csrProject.value
+            val publications = csrPublications.value
+            proj.withPublications(publications)
           }
-        else
-          Def.task(())
+          IvyXml.writeFiles(
+            currentProject,
+            shadedConfigOpt,
+            sbt.Keys.ivySbt.value,
+            sbt.Keys.streams.value.log
+          )
+        else ()
       }
     }.value
 

@@ -74,6 +74,8 @@ object GlobalPlugin {
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
 
+    // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
+    val updateReport = (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value

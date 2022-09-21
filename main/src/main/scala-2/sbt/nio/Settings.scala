@@ -263,12 +263,19 @@ private[sbt] object Settings {
   @nowarn
   private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Def.Setting[_] = {
     val taskScope = taskKey.scope in taskKey.key
-    addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
-      // the clean file task needs to run first because the previous cache gets blown away
-      // by the second task
-      Def.unit(Clean.cleanFileOutputTask(taskKey).value)
-      Clean.task(taskScope, full = false)
-    }.value)
+    addTaskDefinition(
+      sbt.Keys.clean in taskScope :=
+        // the clean file task needs to run first because the previous cache gets blown away
+        // by the second task
+        Def
+          .task {
+            Def.unit(Clean.cleanFileOutputTask(taskKey).value)
+          }
+          .flatMapTask { case _ =>
+            Clean.task(taskScope, full = false)
+          }
+          .value
+    )
   }
 
   /**

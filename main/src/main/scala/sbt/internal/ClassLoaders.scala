@@ -62,18 +62,22 @@ private[sbt] object ClassLoaders {
     )
   }
 
-  private[sbt] def runner: Def.Initialize[Task[ScalaRun]] = Def.taskDyn {
-    val resolvedScope = resolvedScoped.value.scope
-    val instance = scalaInstance.value
-    val s = streams.value
-    val opts = forkOptions.value
-    val options = javaOptions.value
-    if (fork.value) {
-      s.log.debug(s"javaOptions: $options")
-      Def.task(new ForkRun(opts))
-    } else {
-      Def.task {
-        if (options.nonEmpty) {
+  private[sbt] def runner: Def.Initialize[Task[ScalaRun]] =
+    Def.taskIf {
+      if fork.value then
+        val s = streams.value
+        val options = javaOptions.value
+        s.log.debug(s"javaOptions: $options")
+        val opts = forkOptions.value
+        new ForkRun(opts)
+      else {
+        val resolvedScope = resolvedScoped.value.scope
+        val instance = scalaInstance.value
+        val s = streams.value
+        val opts = forkOptions.value
+        val options = javaOptions.value
+
+        if options.nonEmpty then
           val mask = ScopeMask(project = false)
           val showJavaOptions = Scope.displayMasked(
             (resolvedScope / javaOptions).scopedKey.scope,
@@ -86,7 +90,7 @@ private[sbt] object ClassLoaders {
             mask
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
-        }
+
         val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.libraryJars
         val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
         val logger = state.value.globalLogging.full
@@ -114,7 +118,6 @@ private[sbt] object ClassLoaders {
         new Run(newLoader, trapExit.value)
       }
     }
-  }
 
   private[this] def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
     val errorMessage = "Tried to extract classloader cache for uninitialized state."

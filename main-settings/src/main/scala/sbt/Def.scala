@@ -301,11 +301,17 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
      */
     inline def taskValue: Task[A1] = InputWrapper.`wrapInit_\u2603\u2603`[Task[A1]](in)
 
-  // implicit def macroValueIInT[T](
-  //     @deprecated("unused", "") in: Initialize[InputTask[T]]
-  // ): InputEvaluated[T] = ???
+    // implicit def macroValueIInT[T](
+    //     @deprecated("unused", "") in: Initialize[InputTask[T]]
+    // ): InputEvaluated[T] = ???
 
-  // implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
+    inline def flatMapTask[A2](f: A1 => Initialize[Task[A2]]): Initialize[Task[A2]] =
+      std.FullInstance.initializeTaskMonad.flatMap(in)(f)
+
+  extension [A1](in: TaskKey[A1])
+    // implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
+    inline def previous(using JsonFormat[A1]): Option[A1] =
+      ${ TaskMacro.previousImpl[A1]('in) }
 
   // The following conversions enable the types Parser[T], Initialize[Parser[T]], and
   // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate

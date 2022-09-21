@@ -36,10 +36,10 @@ private[sbt] object WatchTransitiveDependencies {
     withParams((e, cm) => Def.task(transitiveDynamicInputs(argumentsImpl(key, e, cm).value)))
   private def withParams[R](
       f: (Extracted, CompiledMap) => Def.Initialize[Task[R]]
-  ): Def.Initialize[Task[R]] = Def.taskDyn {
-    val extracted = Project.extract(state.value)
-    f(extracted, compile(extracted.structure))
-  }
+  ): Def.Initialize[Task[R]] =
+    Def.task { Project.extract(state.value) }.flatMapTask { extracted =>
+      f(extracted, compile(extracted.structure))
+    }
 
   private[sbt] def compile(structure: BuildStructure): CompiledMap = structure.compiledMap
   private[sbt] final class Arguments(
@@ -76,20 +76,24 @@ private[sbt] object WatchTransitiveDependencies {
     )
   }
   private val ShowTransitive = "(?:show)?(?:[ ]*)(.*)/(?:[ ]*)transitive(?:Inputs|Globs|Triggers)".r
-  private def arguments: Def.Initialize[Task[Arguments]] = Def.taskDyn {
-    Def.task {
-      val extracted = Project.extract(state.value)
-      val compiledMap = compile(extracted.structure)
-      state.value.currentCommand.map(_.commandLine) match {
-        case Some(ShowTransitive(key)) =>
-          Parser.parse(key.trim, Act.scopedKeyParser(state.value)) match {
-            case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
-            case _ => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
-          }
-        case Some(_) => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
+  private def arguments: Def.Initialize[Task[Arguments]] =
+    Def
+      .task {
+        val extracted = Project.extract(state.value)
+        val compiledMap = compile(extracted.structure)
+        val st = state.value
+        val rs = Keys.resolvedScoped.value
+        (extracted, compiledMap, st, rs)
       }
-    }.value
-  }
+      .flatMapTask { case (extracted, compiledMap, st, rs) =>
+        st.currentCommand.map(_.commandLine) match
+          case Some(ShowTransitive(key)) =>
+            Parser.parse(key.trim, Act.scopedKeyParser(st)) match
+              case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
+              case _                => argumentsImpl(rs, extracted, compiledMap)
+          case Some(_) => argumentsImpl(rs, extracted, compiledMap)
+      }
+
   private[sbt] def transitiveDynamicInputs(args: Arguments): Seq[DynamicInput] = {
     import args._
     val taskScope = Project.fillTaskAxis(scopedKey).scope

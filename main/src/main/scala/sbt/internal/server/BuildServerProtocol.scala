@@ -93,21 +93,26 @@ object BuildServerProtocol {
     bspSbtEnabled := true,
     bspFullWorkspace := bspFullWorkspaceSetting.value,
     bspWorkspace := bspFullWorkspace.value.scopes,
-    bspWorkspaceBuildTargets := Def.taskDyn {
-      val workspace = Keys.bspFullWorkspace.value
-      val state = Keys.state.value
-      val allTargets = ScopeFilter.in(workspace.scopes.values.toSeq)
-      val sbtTargets = workspace.builds.map { case (buildTargetIdentifier, loadedBuildUnit) =>
-        val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
-        sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor).result
-      }.toList
-      Def.task {
-        val buildTargets = Keys.bspBuildTarget.result.all(allTargets).value
-        val successfulBuildTargets = anyOrThrow(buildTargets ++ sbtTargets.join.value)
-        state.respondEvent(WorkspaceBuildTargetsResult(successfulBuildTargets.toVector))
-        successfulBuildTargets
+    bspWorkspaceBuildTargets := (Def
+      .task {
+        val workspace = Keys.bspFullWorkspace.value
+        val state = Keys.state.value
+        val allTargets = ScopeFilter.in(workspace.scopes.values.toSeq)
+        val sbtTargets = workspace.builds.map { case (buildTargetIdentifier, loadedBuildUnit) =>
+          val buildFor = workspace.buildToScope.getOrElse(buildTargetIdentifier, Nil)
+          sbtBuildTarget(loadedBuildUnit, buildTargetIdentifier, buildFor).result
+        }.toList
+        (workspace, state, allTargets, sbtTargets)
       }
-    }.value,
+      .flatMapTask { case (workspace, state, allTargets, sbtTargets) =>
+        Def.task {
+          val buildTargets = Keys.bspBuildTarget.result.all(allTargets).value
+          val successfulBuildTargets = anyOrThrow(buildTargets ++ sbtTargets.join.value)
+          state.respondEvent(WorkspaceBuildTargetsResult(successfulBuildTargets.toVector))
+          successfulBuildTargets
+        }
+      })
+      .value,
     // https://github.com/build-server-protocol/build-server-protocol/blob/master/docs/specification.md#build-target-sources-request
     bspBuildTargetSources := bspInputTask { (state, _, workspace, filter) =>
       // run the worker task concurrently
@@ -588,44 +593,66 @@ object BuildServerProtocol {
       }
     }
 
-  private def buildTargetTask: Def.Initialize[Task[BuildTarget]] = Def.taskDyn {
-    val buildTargetIdentifier = Keys.bspTargetIdentifier.value
-    val thisProject = Keys.thisProject.value
-    val thisProjectRef = Keys.thisProjectRef.value
-    val thisConfig = Keys.configuration.value
-    val scalaJars = Keys.scalaInstance.value.allJars.map(_.toURI.toString)
-    val compileData = ScalaBuildTarget(
-      scalaOrganization = scalaOrganization.value,
-      scalaVersion = scalaVersion.value,
-      scalaBinaryVersion = scalaBinaryVersion.value,
-      platform = ScalaPlatform.JVM,
-      jars = scalaJars.toVector
-    )
-    val configuration = Keys.configuration.value
-    val displayName = BuildTargetName.fromScope(thisProject.id, configuration.name)
-    val baseDirectory = Keys.baseDirectory.value.toURI
-    val projectDependencies = for {
-      (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
-      config <- configs
-      if dep != thisProjectRef || config.name != thisConfig.name
-    } yield (dep / config / Keys.bspTargetIdentifier)
-    val capabilities =
-      BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true, canDebug = false)
-    val tags = BuildTargetTag.fromConfig(configuration.name)
-    Def.task {
-      BuildTarget(
-        buildTargetIdentifier,
-        Some(displayName),
-        Some(baseDirectory),
-        tags,
-        capabilities,
-        BuildServerConnection.languages,
-        projectDependencies.join.value.distinct.toVector,
-        dataKind = Some("scala"),
-        data = Some(Converter.toJsonUnsafe(compileData)),
-      )
-    }
-  }
+  private def buildTargetTask: Def.Initialize[Task[BuildTarget]] =
+    Def
+      .task {
+        val buildTargetIdentifier = Keys.bspTargetIdentifier.value
+        val thisProject = Keys.thisProject.value
+        val thisProjectRef = Keys.thisProjectRef.value
+        val thisConfig = Keys.configuration.value
+        val scalaJars = Keys.scalaInstance.value.allJars.map(_.toURI.toString)
+        val compileData = ScalaBuildTarget(
+          scalaOrganization = scalaOrganization.value,
+          scalaVersion = scalaVersion.value,
+          scalaBinaryVersion = scalaBinaryVersion.value,
+          platform = ScalaPlatform.JVM,
+          jars = scalaJars.toVector
+        )
+        val configuration = Keys.configuration.value
+        val displayName = BuildTargetName.fromScope(thisProject.id, configuration.name)
+        val baseDirectory = Keys.baseDirectory.value.toURI
+        val projectDependencies = for {
+          (dep, configs) <- Keys.bspInternalDependencyConfigurations.value
+          config <- configs
+          if dep != thisProjectRef || config.name != thisConfig.name
+        } yield (dep / config / Keys.bspTargetIdentifier)
+        val capabilities =
+          BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true, canDebug = false)
+        val tags = BuildTargetTag.fromConfig(configuration.name)
+        (
+          buildTargetIdentifier,
+          displayName,
+          baseDirectory,
+          tags,
+          capabilities,
+          projectDependencies,
+          compileData
+        )
+      }
+      .flatMapTask {
+        case (
+              buildTargetIdentifier,
+              displayName,
+              baseDirectory,
+              tags,
+              capabilities,
+              projectDependencies,
+              compileData
+            ) =>
+          Def.task {
+            BuildTarget(
+              buildTargetIdentifier,
+              Some(displayName),
+              Some(baseDirectory),
+              tags,
+              capabilities,
+              BuildServerConnection.languages,
+              projectDependencies.join.value.distinct.toVector,
+              dataKind = Some("scala"),
+              data = Some(Converter.toJsonUnsafe(compileData)),
+            )
+          }
+      }
 
   private def sbtBuildTarget(
       loadedUnit: LoadedBuildUnit,
@@ -701,28 +728,44 @@ object BuildServerProtocol {
     )
   }
 
-  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
-    val target = Keys.bspTargetIdentifier.value
-    val scalacOptions = Keys.scalacOptions.value
-    val classDirectory = Keys.classDirectory.value
-    val externalDependencyClasspath = Keys.externalDependencyClasspath.value
-
-    val internalDependencyClasspath = for {
-      (ref, configs) <- bspInternalDependencyConfigurations.value
-      config <- configs
-    } yield ref / config / Keys.classDirectory
-
-    Def.task {
-      val classpath = internalDependencyClasspath.join.value.distinct ++
-        externalDependencyClasspath.map(_.data)
-      ScalacOptionsItem(
-        target,
-        scalacOptions.toVector,
-        classpath.map(_.toURI).toVector,
-        classDirectory.toURI
-      )
-    }
-  }
+  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] =
+    Def
+      .task {
+        val target = Keys.bspTargetIdentifier.value
+        val scalacOptions = Keys.scalacOptions.value
+        val classDirectory = Keys.classDirectory.value
+        val externalDependencyClasspath = Keys.externalDependencyClasspath.value
+        val internalDependencyClasspath = for {
+          (ref, configs) <- bspInternalDependencyConfigurations.value
+          config <- configs
+        } yield ref / config / Keys.classDirectory
+        (
+          target,
+          scalacOptions,
+          classDirectory,
+          externalDependencyClasspath,
+          internalDependencyClasspath
+        )
+      }
+      .flatMapTask {
+        case (
+              target,
+              scalacOptions,
+              classDirectory,
+              externalDependencyClasspath,
+              internalDependencyClasspath
+            ) =>
+          Def.task {
+            val classpath = internalDependencyClasspath.join.value.distinct ++
+              externalDependencyClasspath.map(_.data)
+            ScalacOptionsItem(
+              target,
+              scalacOptions.toVector,
+              classpath.map(_.toURI).toVector,
+              classDirectory.toURI
+            )
+          }
+      }
 
   private def dependencySourcesItemTask: Def.Initialize[Task[DependencySourcesItem]] = Def.task {
     val targetId = Keys.bspTargetIdentifier.value

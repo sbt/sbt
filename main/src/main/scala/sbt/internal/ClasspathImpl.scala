@@ -78,53 +78,58 @@ private[sbt] object ClasspathImpl {
   private[this] def trackedExportedProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val _ = (packageBin / dynamicDependency).value
-      val useJars = exportJars.value
-      if (useJars) trackedJarProductsImplTask(track)
-      else trackedNonJarProductsImplTask(track)
+    Def.taskIf {
+      if {
+        val _ = (packageBin / dynamicDependency).value
+        exportJars.value
+      } then trackedJarProductsImplTask(track).value
+      else trackedNonJarProductsImplTask(track).value
     }
 
   private[this] def trackedNonJarProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val dirs = productDirectories.value
-      val view = fileTreeView.value
-      def containsClassFile(): Boolean =
-        view.list(dirs.map(Glob(_, RecursiveGlob / "*.class"))).nonEmpty
-      TrackLevel.intersection(track, exportToInternal.value) match {
-        case TrackLevel.TrackAlways =>
+    (Def
+      .task {
+        val dirs = productDirectories.value
+        val view = fileTreeView.value
+        (TrackLevel.intersection(track, exportToInternal.value), dirs, view)
+      })
+      .flatMapTask {
+        case (TrackLevel.TrackAlways, _, _) =>
           Def.task {
             products.value map { (_, compile.value) }
           }
-        case TrackLevel.TrackIfMissing if !containsClassFile() =>
+        case (TrackLevel.TrackIfMissing, dirs, view)
+            if view.list(dirs.map(Glob(_, RecursiveGlob / "*.class"))).isEmpty =>
           Def.task {
             products.value map { (_, compile.value) }
           }
-        case _ =>
+        case (_, dirs, _) =>
           Def.task {
             val analysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
             dirs.map(_ -> analysis)
           }
       }
-    }
 
   private[this] def trackedJarProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(File, CompileAnalysis)]]] =
-    Def.taskDyn {
-      val jar = (packageBin / artifactPath).value
-      TrackLevel.intersection(track, exportToInternal.value) match {
-        case TrackLevel.TrackAlways =>
+    (Def
+      .task {
+        val jar = (packageBin / artifactPath).value
+        (TrackLevel.intersection(track, exportToInternal.value), jar)
+      })
+      .flatMapTask {
+        case (TrackLevel.TrackAlways, _) =>
           Def.task {
             Seq((packageBin.value, compile.value))
           }
-        case TrackLevel.TrackIfMissing if !jar.exists =>
+        case (TrackLevel.TrackIfMissing, jar) if !jar.exists =>
           Def.task {
             Seq((packageBin.value, compile.value))
           }
-        case _ =>
+        case (_, jar) =>
           Def.task {
             val analysisOpt = previousCompile.value.analysis.toOption
             Seq(jar) map { x =>
@@ -136,29 +141,33 @@ private[sbt] object ClasspathImpl {
             }
           }
       }
-    }
 
-  def internalDependencyClasspathTask: Initialize[Task[Classpath]] = {
-    Def.taskDyn {
-      val _ = (
-        (exportedProductsNoTracking / transitiveClasspathDependency).value,
-        (exportedProductsIfMissing / transitiveClasspathDependency).value,
-        (exportedProducts / transitiveClasspathDependency).value,
-        (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
-        (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
-        (exportedProductJars / transitiveClasspathDependency).value
-      )
-      internalDependenciesImplTask(
-        thisProjectRef.value,
-        classpathConfiguration.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        trackInternalDependencies.value,
-        streams.value.log,
-      )
-    }
-  }
+  def internalDependencyClasspathTask: Initialize[Task[Classpath]] =
+    (Def
+      .task {
+        val _ = (
+          (exportedProductsNoTracking / transitiveClasspathDependency).value,
+          (exportedProductsIfMissing / transitiveClasspathDependency).value,
+          (exportedProducts / transitiveClasspathDependency).value,
+          (exportedProductJarsNoTracking / transitiveClasspathDependency).value,
+          (exportedProductJarsIfMissing / transitiveClasspathDependency).value,
+          (exportedProductJars / transitiveClasspathDependency).value
+        )
+      })
+      .flatMapTask { case u =>
+        Def.task {
+          (
+            thisProjectRef.value,
+            classpathConfiguration.value,
+            configuration.value,
+            settingsData.value,
+            buildDependencies.value,
+            trackInternalDependencies.value,
+            streams.value.log,
+          )
+        }
+      }
+      .flatMapTask { internalDependenciesImplTask }
 
   def internalDependenciesImplTask(
       projectRef: ProjectRef,
@@ -194,31 +203,35 @@ private[sbt] object ClasspathImpl {
           exportedPickles
         )
       }
-    Def.taskDyn {
-      implTask(
-        thisProjectRef.value,
-        classpathConfiguration.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        TrackLevel.TrackAlways,
-        streams.value.log,
-      )
-    }
+    (Def
+      .task {
+        (
+          thisProjectRef.value,
+          classpathConfiguration.value,
+          configuration.value,
+          settingsData.value,
+          buildDependencies.value,
+          TrackLevel.TrackAlways,
+          streams.value.log,
+        )
+      })
+      .flatMapTask(implTask)
   }
 
   def internalDependencyJarsTask: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      internalDependencyJarsImplTask(
-        thisProjectRef.value,
-        classpathConfiguration.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        trackInternalDependencies.value,
-        streams.value.log,
-      )
-    }
+    (Def
+      .task {
+        (
+          thisProjectRef.value,
+          classpathConfiguration.value,
+          configuration.value,
+          settingsData.value,
+          buildDependencies.value,
+          trackInternalDependencies.value,
+          streams.value.log,
+        )
+      })
+      .flatMapTask(internalDependencyJarsImplTask)
 
   private def internalDependencyJarsImplTask(
       projectRef: ProjectRef,
@@ -238,15 +251,17 @@ private[sbt] object ClasspathImpl {
     }
 
   def unmanagedDependenciesTask: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      unmanagedDependencies0(
-        thisProjectRef.value,
-        configuration.value,
-        settingsData.value,
-        buildDependencies.value,
-        streams.value.log
-      )
-    }
+    (Def
+      .task {
+        (
+          thisProjectRef.value,
+          configuration.value,
+          settingsData.value,
+          buildDependencies.value,
+          streams.value.log
+        )
+      })
+      .flatMapTask(unmanagedDependencies0)
 
   def unmanagedDependencies0(
       projectRef: ProjectRef,

@@ -69,34 +69,42 @@ object RemoteCache {
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(
-    pushRemoteCache := (Def.taskDyn {
-      val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-      val configs = arts flatMap { art =>
-        art.packaged.scopedKey.scope match {
-          case Scope(_, Select(c), _, _) => Some(c)
-          case _                         => None
+    pushRemoteCache := ((Def
+      .task {
+        val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+        val configs = arts flatMap { art =>
+          art.packaged.scopedKey.scope match {
+            case Scope(_, Select(c), _, _) => Some(c)
+            case _                         => None
+          }
         }
-      }
-      val filter = ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
-      Def.task {
-        val _ = pushRemoteCache.all(filter).value
-        ()
-      }
-    }).value,
-    pullRemoteCache := (Def.taskDyn {
-      val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-      val configs = arts flatMap { art =>
-        art.packaged.scopedKey.scope match {
-          case Scope(_, Select(c), _, _) => Some(c)
-          case _                         => None
+        ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          val _ = pushRemoteCache.all(filter).value
+          ()
         }
-      }
-      val filter = ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
-      Def.task {
-        val _ = pullRemoteCache.all(filter).value
-        ()
-      }
-    }).value,
+      })
+      .value,
+    pullRemoteCache := ((Def
+      .task {
+        val arts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
+        val configs = arts flatMap { art =>
+          art.packaged.scopedKey.scope match {
+            case Scope(_, Select(c), _, _) => Some(c)
+            case _                         => None
+          }
+        }
+        ScopeFilter(configurations = inConfigurationsByKeys(configs: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          val _ = pullRemoteCache.all(filter).value
+          ()
+        }
+      })
+      .value,
     pushRemoteCacheConfiguration / remoteCacheArtifacts := {
       enabledOnly(remoteCacheArtifact.toSettingKey, defaultArtifactTasks).apply(_.join).value
     },
@@ -239,13 +247,16 @@ object RemoteCache {
           isSnapshot.value
         )
       },
-      pushRemoteCacheConfiguration / packagedArtifacts := Def.taskDyn {
-        val artifacts = (pushRemoteCacheConfiguration / remoteCacheArtifacts).value
-        artifacts
-          .map(a => a.packaged.map(file => (a.artifact, file)))
-          .join
-          .apply(_.join.map(_.toMap))
-      }.value,
+      pushRemoteCacheConfiguration / packagedArtifacts :=
+        (Def
+          .task { (pushRemoteCacheConfiguration / remoteCacheArtifacts).value })
+          .flatMapTask { case artifacts =>
+            artifacts
+              .map(a => a.packaged.map(file => (a.artifact, file)))
+              .join
+              .apply(_.join.map(_.toMap))
+          }
+          .value,
       pushRemoteCacheConfiguration / remoteCacheArtifacts := {
         List((packageCache / remoteCacheArtifact).value)
       },

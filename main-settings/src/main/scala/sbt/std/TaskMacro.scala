@@ -66,7 +66,7 @@ object TaskMacro:
         '{
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
-      case '{ (${ stats }: a); if ($cond) then $thenp else $elsep } =>
+      case '{ ${ stats }: a; if ($cond) then $thenp else $elsep } =>
         '{
           Def.ifS[A1](Def.task { $stats; $cond })(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }

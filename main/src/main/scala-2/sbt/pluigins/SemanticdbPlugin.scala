@@ -68,15 +68,19 @@ object SemanticdbPlugin extends AutoPlugin {
     }.value,
     semanticdbOptions ++=
       targetRootOptions(scalaVersion.value, semanticdbTargetRoot.value),
-    scalacOptions --= Def.settingDyn {
-      val config = configuration.value
-      val enabled = semanticdbEnabled.value
-      if (enabled)
-        Def.setting {
-          semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten
-        }
-      else Def.setting { Nil }
-    }.value,
+    // todo:
+    // scalacOptions --= {
+    //   Def
+    //     .task { (configuration.value, semanticdbEnabled.value) }
+    //     .flatMapTask { case (config, enabled) =>
+    //       if enabled then
+    //         Def.task {
+    //           (semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten: Seq[String])
+    //         }
+    //       else Def.task { (Nil: Seq[String]) }
+    //     }
+    //     .value
+    // },
     scalacOptions ++= {
       if (semanticdbEnabled.value)
         semanticdbOptions.value

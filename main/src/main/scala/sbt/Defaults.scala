@@ -1039,7 +1039,8 @@ object Defaults extends BuildCommon {
     cleanFiles := cleanFilesTask.value,
     cleanKeepFiles := Vector.empty,
     cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
-    clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
+    // clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
+    clean := Clean.scopedTask.value,
     consoleProject := consoleProjectTask.value,
     transitiveDynamicInputs := WatchTransitiveDependencies.task.value,
   ) ++ sbt.internal.DeprecatedContinuous.taskDefinitions
@@ -1097,17 +1098,13 @@ object Defaults extends BuildCommon {
       }
     }
 
-  def scalaInstanceTask: Initialize[Task[ScalaInstance]] = Def.taskDyn {
-    // if this logic changes, ensure that `unmanagedScalaInstanceOnly` and `update` are changed
-    //  appropriately to avoid cycles
-    scalaHome.value match {
-      case Some(h) => scalaInstanceFromHome(h)
-      case None =>
-        val scalaProvider = appConfiguration.value.provider.scalaProvider
-        val version = scalaVersion.value
-        if (
-          version == scalaProvider.version
-        ) // use the same class loader as the Scala classes used by sbt
+  def scalaInstanceTask: Initialize[Task[ScalaInstance]] =
+    (Def.task { (Keys.scalaHome.value, appConfiguration.value, scalaVersion.value) }).flatMapTask {
+      case (Some(h), _, _) => scalaInstanceFromHome(h)
+      case (_, app, version) =>
+        val scalaProvider = app.provider.scalaProvider
+        if version == scalaProvider.version then
+          // use the same class loader as the Scala classes used by sbt
           Def.task {
             val allJars = scalaProvider.jars
             val libraryJars = allJars.filter(_.getName == "scala-library.jar")
@@ -1124,16 +1121,15 @@ object Defaults extends BuildCommon {
               case _ => ScalaInstance(version, scalaProvider)
             }
           }
-        else
-          scalaInstanceFromUpdate
+        else scalaInstanceFromUpdate
     }
-  }
 
   // Returns the ScalaInstance only if it was not constructed via `update`
   //  This is necessary to prevent cycles between `update` and `scalaInstance`
   private[sbt] def unmanagedScalaInstanceOnly: Initialize[Task[Option[ScalaInstance]]] =
-    Def.taskDyn {
-      if (scalaHome.value.isDefined) Def.task(Some(scalaInstance.value)) else Def.task(None)
+    (Def.task { scalaHome.value }).flatMapTask { case h =>
+      if h.isDefined then Def.task(Some(scalaInstance.value))
+      else Def.task(None)
     }
 
   private[this] def noToolConfiguration(autoInstance: Boolean): String = {
@@ -2542,10 +2538,11 @@ object Defaults extends BuildCommon {
       PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
     ).withCrossVersion(Disabled())
 
-  def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.taskDyn {
-    if (sbtPlugin.value) Def.task(PluginDiscovery.discoverSourceAll(compile.value))
-    else Def.task(PluginDiscovery.emptyDiscoveredNames)
-  }
+  def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] =
+    (Def.task { sbtPlugin.value }).flatMapTask { case p =>
+      if p then Def.task(PluginDiscovery.discoverSourceAll(compile.value))
+      else Def.task(PluginDiscovery.emptyDiscoveredNames)
+    }
 
   def copyResourcesTask =
     Def.task {
@@ -3963,12 +3960,10 @@ object Classpaths {
     }
 
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-    Def.taskDyn {
-      depMap(
-        buildDependencies.value classpathTransitiveRefs thisProjectRef.value,
-        settingsData.value,
-        streams.value.log
-      )
+    import sbt.TupleSyntax.*
+    (buildDependencies.toTaskable, thisProjectRef.toTaskable, settingsData, streams).flatMapN {
+      case (bd, thisProj, data, s) =>
+        depMap(bd.classpathTransitiveRefs(thisProj), data, s.log)
     }
 
   @nowarn
@@ -3976,11 +3971,12 @@ object Classpaths {
       projects: Seq[ProjectRef],
       data: Settings[Scope],
       log: Logger
-  ): Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-    Def.value {
-      projects.flatMap(ivyModule in _ get data).join.map { mod =>
-        mod map { _.dependencyMapping(log) } toMap;
-      }
+  ): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
+    val ivyModules = projects.flatMap { proj =>
+      (proj / ivyModule).get(data)
+    }.join
+    ivyModules.mapN { mod =>
+      mod map { _.dependencyMapping(log) } toMap;
     }
 
   def projectResolverTask: Initialize[Task[Resolver]] =
@@ -4138,12 +4134,11 @@ object Classpaths {
   def addUnmanagedLibrary: Seq[Setting[_]] =
     Seq((Compile / unmanagedJars) ++= unmanagedScalaLibrary.value)
 
-  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] = Def.taskDyn {
-    if (autoScalaLibrary.value && scalaHome.value.isDefined)
-      Def.task { scalaInstance.value.libraryJars }
-    else
-      Def.task { Nil }
-  }
+  def unmanagedScalaLibrary: Initialize[Task[Seq[File]]] =
+    (Def.task { autoScalaLibrary.value && scalaHome.value.isDefined }).flatMapTask { case cond =>
+      if cond then Def.task { (scalaInstance.value.libraryJars: Seq[File]) }
+      else Def.task { (Nil: Seq[File]) }
+    }
 
   import DependencyFilter._
   def managedJars(config: Configuration, jarTypes: Set[String], up: UpdateReport): Classpath =
@@ -4187,20 +4182,19 @@ object Classpaths {
   }
 
   private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
-    Def.taskDyn {
-      val ref = thisProjectRef.value
-      val data = settingsData.value
-      val deps = buildDependencies.value
-      ClasspathImpl.internalDependenciesImplTask(
-        ref,
-        CompilerPlugin,
-        CompilerPlugin,
-        data,
-        deps,
-        TrackLevel.TrackAlways,
-        streams.value.log
-      )
-    }
+    (Def
+      .task { (thisProjectRef.value, settingsData.value, buildDependencies.value, streams.value) })
+      .flatMapTask { case (ref, data, deps, s) =>
+        ClasspathImpl.internalDependenciesImplTask(
+          ref,
+          CompilerPlugin,
+          CompilerPlugin,
+          data,
+          deps,
+          TrackLevel.TrackAlways,
+          s.log
+        )
+      }
 
   lazy val compilerPluginConfig = Seq(
     scalacOptions := {

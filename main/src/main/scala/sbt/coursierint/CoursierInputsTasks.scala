@@ -147,14 +147,18 @@ object CoursierInputsTasks {
   }
 
   private[sbt] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
-    Def.taskDyn {
-      val state = sbt.Keys.state.value
-      val projectRef = sbt.Keys.thisProjectRef.value
-      val projectRefs = Project.transitiveInterDependencies(state, projectRef)
-      Def.task {
-        csrProject.all(ScopeFilter(inProjects(projectRefs :+ projectRef: _*))).value
+    (Def
+      .task {
+        val state = sbt.Keys.state.value
+        val projectRef = sbt.Keys.thisProjectRef.value
+        val projectRefs = Project.transitiveInterDependencies(state, projectRef)
+        ScopeFilter(inProjects(projectRefs :+ projectRef: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          csrProject.all(filter).value
+        }
       }
-    }
 
   private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
     Def.task {
@@ -191,22 +195,25 @@ object CoursierInputsTasks {
 
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
-    Def.taskDyn {
-      val s = state.value
-      val projectRef = thisProjectRef.value
-      val projects = Project.transitiveInterDependencies(s, projectRef)
+    (Def
+      .task {
+        val s = state.value
+        val projectRef = thisProjectRef.value
+        val projects = Project.transitiveInterDependencies(s, projectRef)
+        ScopeFilter(inProjects(projectRef +: projects: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          val allDeps =
+            allDependencies.all(filter).value.flatten
 
-      Def.task {
-        val allDeps =
-          allDependencies.all(ScopeFilter(inProjects(projectRef +: projects: _*))).value.flatten
-
-        FromSbt.fallbackDependencies(
-          allDeps,
-          scalaVersion.value,
-          scalaBinaryVersion.value
-        )
+          FromSbt.fallbackDependencies(
+            allDeps,
+            scalaVersion.value,
+            scalaBinaryVersion.value
+          )
+        }
       }
-    }
 
   val credentialsTask = Def.task {
     val log = streams.value.log

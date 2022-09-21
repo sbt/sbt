@@ -770,8 +770,7 @@ trait TaskSequential {
     tasks.toList match {
       case Nil => Def.task { last.value }
       case x :: xs =>
-        Def.taskDyn {
-          Def.unit(x.value)
+        Def.task { Def.unit(x.value) }.flatMapTask { case _ =>
           sequential(xs, last)
         }
     }
