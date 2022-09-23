@@ -24,7 +24,8 @@ inThisBuild(List(
       case v   => v
     }
   },
-  version := "2.0.0-alpha1-SNAPSHOT",
+  version := "2.0.0-alpha4-SNAPSHOT",
+  scalaVersion := scala3,
 ))
 
 ThisBuild / assemblyMergeStrategy := {
@@ -51,7 +52,7 @@ ThisBuild / assemblyMergeStrategy := {
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-alpha2"
+val lm3Version = "2.0.0-alpha8"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -196,6 +197,7 @@ lazy val `lm-coursier-shaded` = project
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       ("org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1").cross(CrossVersion.for3Use2_13),
+      ("org.scala-lang.modules" %% "scala-xml" % "2.1.0").cross(CrossVersion.for3Use2_13),
       // "org.scala-lang.modules" %% "scala-xml" % "2.1.0", // depending on that one so that it doesn't get shaded
       lmIvy.value,
       ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
