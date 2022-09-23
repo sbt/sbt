@@ -1,7 +1,7 @@
 
 import Settings._
 
-def dataclassScalafixV = "0.1.0-M3"
+def dataclassScalafixV = "0.1.0"
 
 inThisBuild(List(
   organization := "org.scala-sbt",
@@ -24,8 +24,29 @@ inThisBuild(List(
       case v   => v
     }
   },
-  version := "2.0.0-alpha1",
+  version := "2.0.0-alpha1-SNAPSHOT",
 ))
+
+ThisBuild / assemblyMergeStrategy := {
+  case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", xs @ _*) => MergeStrategy.first
+  // case PathList("lmcoursier", "internal", "shaded", "package.class") => MergeStrategy.first
+  // case PathList("lmcoursier", "internal", "shaded", "package$.class") => MergeStrategy.first
+  case PathList("com", "github") => MergeStrategy.discard
+  case PathList("com", "jcraft") => MergeStrategy.discard
+  case PathList("com", "lmax") => MergeStrategy.discard
+  case PathList("com", "sun") => MergeStrategy.discard
+  case PathList("com", "swoval") => MergeStrategy.discard
+  case PathList("com", "typesafe") => MergeStrategy.discard
+  case PathList("gigahorse") => MergeStrategy.discard
+  case PathList("jline") => MergeStrategy.discard
+  case PathList("scala") => MergeStrategy.discard
+  case PathList("sjsonnew") => MergeStrategy.discard
+  case PathList("xsbti") => MergeStrategy.discard
+  case PathList("META-INF", "native", xs @ _*) => MergeStrategy.first
+  case x =>
+    val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+    oldStrategy(x)
+}
 
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
@@ -75,6 +96,7 @@ lazy val definitions = project
   .in(file("modules/definitions"))
   .disablePlugins(MimaPlugin)
   .settings(
+    scalaVersion := scala3,
     crossScalaVersions := Seq(scala212, scala213, scala3),
     libraryDependencies ++= Seq(
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
@@ -123,12 +145,11 @@ lazy val `lm-coursier-shaded-publishing` = project
   .settings(
     name := "librarymanagement-coursier",
     crossScalaVersions := Seq(scala212, scala213, scala3),
-    Compile / packageBin := (`lm-coursier-shaded` / shadedPackageBin).value,
+    Compile / packageBin := (`lm-coursier-shaded` / assembly).value,
   )
 
 lazy val `lm-coursier-shaded` = project
   .in(file("modules/lm-coursier/target/shaded-module"))
-  .enablePlugins(ShadingPlugin)
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213, scala3),
@@ -136,18 +157,18 @@ lazy val `lm-coursier-shaded` = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (`lm-coursier` / Compile / sources).value,
-    shadedModules += "io.get-coursier" %% "coursier",
-    validNamespaces += "lmcoursier",
-    validEntries ++= Set(
-      // FIXME Ideally, we should just strip those from the resulting JAR…
-      "README", // from google-collections via plexus-archiver (see below)
-      // from plexus-util via plexus-archiver (see below)
-      "licenses/extreme.indiana.edu.license.TXT",
-      "licenses/javolution.license.TXT",
-      "licenses/thoughtworks.TXT",
-      "licenses/"
-    ),
-    shadingRules ++= {
+    // shadedModules += "io.get-coursier" %% "coursier",
+    // validNamespaces += "lmcoursier",
+    // validEntries ++= Set(
+    //   // FIXME Ideally, we should just strip those from the resulting JAR…
+    //   "README", // from google-collections via plexus-archiver (see below)
+    //   // from plexus-util via plexus-archiver (see below)
+    //   "licenses/extreme.indiana.edu.license.TXT",
+    //   "licenses/javolution.license.TXT",
+    //   "licenses/thoughtworks.TXT",
+    //   "licenses/"
+    // ),
+    assemblyShadeRules := {
       val toShade = Seq(
         "coursier",
         "shapeless",
@@ -156,9 +177,12 @@ lazy val `lm-coursier-shaded` = project
         "macrocompat",
         "io.github.alexarchambault.windowsansi",
         "concurrentrefhashmap",
+        "com.github.ghik",
         // pulled by the plexus-archiver stuff that coursier-cache
         // depends on for now… can hopefully be removed in the future
         "com.google.common",
+        "com.jcraft",
+        "com.lmax",
         "org.apache.commons",
         "org.apache.xbean",
         "org.codehaus",
@@ -166,7 +190,7 @@ lazy val `lm-coursier-shaded` = project
         "org.tukaani"
       )
       for (ns <- toShade)
-        yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
+        yield ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
     },
     libraryDependencies ++= Seq(
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
