@@ -992,7 +992,7 @@ trait Init[ScopeType]:
   final class Undefined private[sbt] (val defining: Setting[_], val referencedKey: ScopedKey[_])
 
   def Undefined(defining: Setting[_], referencedKey: ScopedKey[_]): Undefined =
-    Undefined(defining, referencedKey)
+    new Undefined(defining, referencedKey)
 
   final class RuntimeUndefined(val undefined: Seq[Undefined])
       extends RuntimeException("References to undefined settings at runtime."):
