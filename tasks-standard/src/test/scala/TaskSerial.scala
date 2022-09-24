@@ -88,9 +88,9 @@ object TaskTest {
       Execute.config(checkCycles),
       Execute.noTriggers,
       ExecuteProgress.empty[Task]
-    )(taskToNode(idK[Task]))
+    )(using taskToNode(idK[Task]))
     try {
-      x.run(root)(service.asInstanceOf)
+      x.run(root)(using service.asInstanceOf)
     } finally {
       shutdown()
     }

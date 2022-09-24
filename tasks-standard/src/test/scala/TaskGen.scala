@@ -28,9 +28,9 @@ object TaskGen extends std.TaskExtra {
       Execute.config(checkCycles),
       Execute.noTriggers,
       ExecuteProgress.empty[Task]
-    )(std.Transform(dummies))
+    )(using std.Transform(dummies))
     try {
-      x.run(root)(service.asInstanceOf)
+      x.run(root)(using service.asInstanceOf)
     } finally {
       shutdown()
     }
