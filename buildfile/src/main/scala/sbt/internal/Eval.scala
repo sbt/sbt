@@ -39,11 +39,13 @@ class Eval(
   backingDir.foreach { dir =>
     Files.createDirectories(dir)
   }
-  private val classpathString = classpath.map(_.toString).mkString(":")
   private val outputDir =
     backingDir match
       case Some(dir) => PlainDirectory(Directory(dir.toString))
       case None      => VirtualDirectory("output")
+  private val classpathString = (backingDir.toList ++ classpath)
+    .map(_.toString)
+    .mkString(":")
   private lazy val driver: EvalDriver = new EvalDriver
   private lazy val reporter = mkReporter match
     case Some(fn) => fn()
@@ -142,9 +144,9 @@ class Eval(
       valTypes: Seq[String],
       extraHash: String,
   ): EvalDefinitions =
-    println(s"""evalDefinitions(definitions = $definitions)
-classpath = $classpath
-""")
+    // println(s"""evalDefinitions(definitions = $definitions)
+    // backingDir = $backingDir,
+    // """)
     require(definitions.nonEmpty, "definitions to evaluate cannot be empty.")
     val extraHash0 = extraHash
     val ev = new EvalType[Seq[String]]:
@@ -382,7 +384,7 @@ object Eval:
       tree match
         case tpd.ValDef(name, tpt, _)
             if isTopLevelModule(tree.symbol.owner) && isAcceptableType(tpt.tpe) =>
-          vals ::= name.mangledString
+          vals ::= name.toString
         case t: tpd.Template   => this((), t.body)
         case t: tpd.PackageDef => this((), t.stats)
         case t: tpd.TypeDef    => this((), t.rhs)
