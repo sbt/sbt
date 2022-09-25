@@ -3,8 +3,12 @@ name: Submit Dependency Graph
 on:
   push:
     branches: [1.7.x] # default branch of the project
+permissions: {}
 jobs:
   submit-graph:
+    permissions:
+      contents: write # to submit the dependency graph
+
     name: Submit Dependency Graph
     runs-on: ubuntu-latest # or windows-latest, or macOS-latest
     steps:
