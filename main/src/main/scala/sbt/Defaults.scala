@@ -1107,8 +1107,13 @@ object Defaults extends BuildCommon {
           // use the same class loader as the Scala classes used by sbt
           Def.task {
             val allJars = scalaProvider.jars
-            val libraryJars = allJars.filter(_.getName == "scala-library.jar")
-            allJars.filter(_.getName == "scala-compiler.jar") match {
+            val libraryJars = allJars
+              .filter { jar =>
+                (jar.getName == "scala-library.jar") || (jar.getName.startsWith("scala3-library_3"))
+              }
+            (allJars.filter { jar =>
+              jar.getName == "scala-compiler.jar" || jar.getName.startsWith("scala3-compiler_3")
+            }) match {
               case Array(compilerJar) if libraryJars.nonEmpty =>
                 makeScalaInstance(
                   version,
