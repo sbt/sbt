@@ -296,11 +296,10 @@ object Cross {
       } else {
         included
           .groupBy(_._2)
-          .foreach {
-            case (selectedVersion, projects) =>
-              state.log.info(
-                s"Setting Scala version to $selectedVersion on ${projects.size} projects."
-              )
+          .foreach { case (selectedVersion, projects) =>
+            state.log.info(
+              s"Setting Scala version to $selectedVersion on ${projects.size} projects."
+            )
           }
       }
       if (excluded.nonEmpty && !switch.verbose) {
@@ -328,32 +327,31 @@ object Cross {
       val projectScalaVersions =
         structure.allProjectRefs.map(proj => proj -> crossVersions(extracted, proj))
       if (switch.version.force) {
-        projectScalaVersions.map {
-          case (ref, options) => (ref, Some(version), options)
+        projectScalaVersions.map { case (ref, options) =>
+          (ref, Some(version), options)
         } ++ structure.units.keys
           .map(BuildRef.apply)
           .map(proj => (proj, Some(version), crossVersions(extracted, proj)))
       } else {
-        projectScalaVersions.map {
-          case (project, scalaVersions) =>
-            val selector = SemanticSelector(version)
-            scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
-              case Nil          => (project, None, scalaVersions)
-              case Seq(version) => (project, Some(version), scalaVersions)
-              case multiple =>
-                sys.error(
-                  s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
-                )
-            }
+        projectScalaVersions.map { case (project, scalaVersions) =>
+          val selector = SemanticSelector(version)
+          scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
+            case Nil          => (project, None, scalaVersions)
+            case Seq(version) => (project, Some(version), scalaVersions)
+            case multiple =>
+              sys.error(
+                s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
+              )
+          }
         }
       }
     }
 
-    val included = projects.collect {
-      case (project, Some(version), scalaVersions) => (project, version, scalaVersions)
+    val included = projects.collect { case (project, Some(version), scalaVersions) =>
+      (project, version, scalaVersions)
     }
-    val excluded = projects.collect {
-      case (project, None, scalaVersions) => (project, scalaVersions)
+    val excluded = projects.collect { case (project, None, scalaVersions) =>
+      (project, scalaVersions)
     }
 
     if (included.isEmpty) {
@@ -376,10 +374,12 @@ object Cross {
   // determine whether this is a 'specific' version or a selector
   // to be passed to SemanticSelector
   private def isSelector(version: String): Boolean =
-    version.contains('*') || version.contains('x') || version.contains('X') || version.contains(' ') ||
+    version.contains('*') || version.contains('x') || version.contains('X') || version.contains(
+      ' '
+    ) ||
       version.contains('<') || version.contains('>') || version.contains('|') || version.contains(
-      '='
-    )
+        '='
+      )
 
   private def setScalaVersionsForProjects(
       instance: Option[(File, ScalaInstance)],
@@ -389,25 +389,24 @@ object Cross {
   ): State = {
     import extracted._
 
-    val newSettings = projects.flatMap {
-      case (project, version, scalaVersions) =>
-        val scope = Scope(Select(project), Zero, Zero, Zero)
+    val newSettings = projects.flatMap { case (project, version, scalaVersions) =>
+      val scope = Scope(Select(project), Zero, Zero, Zero)
 
-        instance match {
-          case Some((home, inst)) =>
-            Seq(
-              scope / scalaVersion := version,
-              scope / crossScalaVersions := scalaVersions,
-              scope / scalaHome := Some(home),
-              scope / scalaInstance := inst
-            )
-          case None =>
-            Seq(
-              scope / scalaVersion := version,
-              scope / crossScalaVersions := scalaVersions,
-              scope / scalaHome := None
-            )
-        }
+      instance match {
+        case Some((home, inst)) =>
+          Seq(
+            scope / scalaVersion := version,
+            scope / crossScalaVersions := scalaVersions,
+            scope / scalaHome := Some(home),
+            scope / scalaInstance := inst
+          )
+        case None =>
+          Seq(
+            scope / scalaVersion := version,
+            scope / crossScalaVersions := scalaVersions,
+            scope / scalaHome := None
+          )
+      }
     }
 
     val filterKeys: Set[AttributeKey[_]] = Set(scalaVersion, scalaHome, scalaInstance).map(_.key)

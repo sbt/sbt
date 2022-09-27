@@ -312,9 +312,9 @@ trait Parsers {
    */
   lazy val NotQuoted = (NotDQuoteSpaceClass ~ OptNotSpace) map { case (c, s) => c.toString + s }
 
-  /** Parses a non-empty String value that cannot start with a double quote, but includes double quotes.*/
-  lazy val NotQuotedThenQuoted = (NotQuoted ~ StringEscapable) map {
-    case (s1, s2) => s"""$s1\"$s2\""""
+  /** Parses a non-empty String value that cannot start with a double quote, but includes double quotes. */
+  lazy val NotQuotedThenQuoted = (NotQuoted ~ StringEscapable) map { case (s1, s2) =>
+    s"""$s1\"$s2\""""
   }
 
   /**

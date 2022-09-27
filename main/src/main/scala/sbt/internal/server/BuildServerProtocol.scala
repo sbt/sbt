@@ -275,8 +275,11 @@ object BuildServerProtocol {
         val filter = ScopeFilter.in(workspace.scopes.values.toList)
         Def.task {
           val items = bspScalaTestClassesItem.result.all(filter).value
-          val successfulItems = anyOrThrow(items)
-          val result = ScalaTestClassesResult(successfulItems.toVector, None)
+          val successfulItems = anyOrThrow[Seq[ScalaTestClassesItem]](items).flatten
+          val result = ScalaTestClassesResult(
+            items = successfulItems.toVector,
+            originId = None: Option[String]
+          )
           s.respondEvent(result)
         }
       })
@@ -753,13 +756,14 @@ object BuildServerProtocol {
           ScopeFilter
       ) => Def.Initialize[Task[T]]
   ): Def.Initialize[InputTask[T]] =
-    Def.inputTaskDyn {
-      val s = state.value
-      val targets = spaceDelimited().parsed.map(uri => BuildTargetIdentifier(URI.create(uri)))
-      val workspace: BspFullWorkspace = bspFullWorkspace.value.filter(targets)
-      val filter = ScopeFilter.in(workspace.scopes.values.toList)
-      taskImpl(s, targets, workspace, filter)
-    }
+    Def
+      .input((s: State) => targetIdentifierParser)
+      .flatMapTask { targets =>
+        val s = state.value
+        val workspace: BspFullWorkspace = bspFullWorkspace.value.filter(targets)
+        val filter = ScopeFilter.in(workspace.scopes.values.toList)
+        taskImpl(s, targets, workspace, filter)
+      }
 
   private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.task {
     val target = Keys.bspTargetIdentifier.value
@@ -1009,13 +1013,12 @@ object BuildServerProtocol {
 
         val grouped = TestFramework.testMap(frameworks, definitions)
 
-        grouped.map {
-          case (framework, definitions) =>
-            ScalaTestClassesItem(
-              bspTargetIdentifier.value,
-              definitions.map(_.name).toVector,
-              framework.name()
-            )
+        grouped.map { case (framework, definitions) =>
+          ScalaTestClassesItem(
+            bspTargetIdentifier.value,
+            definitions.map(_.name).toVector,
+            framework.name()
+          )
         }.toSeq
     }
   }
