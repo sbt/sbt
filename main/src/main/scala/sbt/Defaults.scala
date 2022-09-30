@@ -1393,11 +1393,10 @@ object Defaults extends BuildCommon {
               val x = {
                 import analysis.{ apis, relations => rel }
                 rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                  rel.externalDeps(c).map(stamp) +
-                  (apis.internal.get(c) match {
-                    case Some(x) => x.compilationTimestamp
-                    case _       => Long.MinValue
-                  })
+                  rel.externalDeps(c).map(stamp) ++
+                  rel.productClassName.reverse(c).flatMap { pc =>
+                    apis.internal.get(pc).map(_.compilationTimestamp)
+                  } + Long.MinValue
               }.max
               if (x != Long.MinValue) {
                 stamps(c) = x
