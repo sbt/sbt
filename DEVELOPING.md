@@ -151,14 +151,14 @@ suite with `sbt testOnly`
 
 #### Integration tests
 
-Scripted integration tests reside in `sbt/src/sbt-test` and are
+Scripted integration tests reside in `sbt-app/src/sbt-test` and are
 written using the same testing infrastructure sbt plugin authors can
 use to test their own plugins with sbt. You can read more about this
 style of tests [here](https://www.scala-sbt.org/1.0/docs/Testing-sbt-plugins).
 
 You can run the integration tests with the `sbt scripted` sbt
 command. To run a single test, such as the test in
-`sbt/src/sbt-test/project/global-plugin`, simply run:
+`sbt-app/src/sbt-test/project/global-plugin`, simply run:
 
     sbt "scripted project/global-plugin"
 
