@@ -12,10 +12,10 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.6.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.7.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.7.0-M1")
-  val zincVersion = nightlyVersion.getOrElse("1.7.0-M2")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.7.0")
+  val zincVersion = nightlyVersion.getOrElse("1.7.1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -26,7 +26,7 @@ object Dependencies {
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.3.1"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.5.0"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion

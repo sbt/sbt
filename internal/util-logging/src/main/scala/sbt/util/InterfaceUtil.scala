@@ -7,10 +7,14 @@
 
 package sbt.util
 
-import xsbti.{ Position, Problem, Severity, T2 }
 import java.io.File
 import java.util.Optional
 import java.util.function.Supplier
+import java.{ util => ju }
+
+import xsbti.{ DiagnosticCode, DiagnosticRelatedInformation, Position, Problem, Severity, T2 }
+
+import scala.collection.mutable.ListBuffer
 
 object InterfaceUtil {
   def toSupplier[A](a: => A): Supplier[A] = new Supplier[A] {
@@ -42,6 +46,18 @@ object InterfaceUtil {
       case Some(v) => Optional.ofNullable(v)
       case None    => Optional.empty[A]()
     }
+
+  def l2jl[A](l: List[A]): ju.List[A] = {
+    val jl = new ju.ArrayList[A](l.size)
+    l.foreach(jl.add(_))
+    jl
+  }
+
+  def jl2l[A](jl: ju.List[A]): List[A] = {
+    val l = ListBuffer[A]()
+    jl.forEach(l += _)
+    l.toList
+  }
 
   @deprecated("Use the overload of this method with more arguments", "1.2.2")
   def position(
@@ -104,6 +120,7 @@ object InterfaceUtil {
   def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
     problem(cat, pos, msg, sev, None)
 
+  @deprecated("Use the overload of this method with more arguments", "1.7.2")
   def problem(
       cat: String,
       pos: Position,
@@ -111,7 +128,18 @@ object InterfaceUtil {
       sev: Severity,
       rendered: Option[String]
   ): Problem =
-    new ConcreteProblem(cat, pos, msg, sev, rendered)
+    problem(cat, pos, msg, sev, rendered, None, List.empty[DiagnosticRelatedInformation])
+
+  def problem(
+      cat: String,
+      pos: Position,
+      msg: String,
+      sev: Severity,
+      rendered: Option[String],
+      diagnosticCode: Option[DiagnosticCode],
+      diagnosticRelatedInforamation: List[DiagnosticRelatedInformation]
+  ): Problem =
+    new ConcreteProblem(cat, pos, msg, sev, rendered, diagnosticCode, diagnosticRelatedInforamation)
 
   private final class ConcreteT2[A1, A2](a1: A1, a2: A2) extends T2[A1, A2] {
     val get1: A1 = a1
@@ -166,13 +194,18 @@ object InterfaceUtil {
       pos: Position,
       msg: String,
       sev: Severity,
-      rendered0: Option[String]
+      rendered0: Option[String],
+      diagnosticCode0: Option[DiagnosticCode],
+      diagnosticRelatedInformation0: List[DiagnosticRelatedInformation]
   ) extends Problem {
     val category = cat
     val position = pos
     val message = msg
     val severity = sev
     override val rendered = o2jo(rendered0)
+    override def diagnosticCode: Optional[DiagnosticCode] = o2jo(diagnosticCode0)
+    override def diagnosticRelatedInforamation(): ju.List[DiagnosticRelatedInformation] =
+      l2jl(diagnosticRelatedInformation0)
     override def toString = s"[$severity] $pos: $message"
   }
 }

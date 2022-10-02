@@ -17,6 +17,7 @@ final class BuildServerCapabilities private (
   val runProvider: Option[sbt.internal.bsp.RunProvider],
   val dependencySourcesProvider: Option[Boolean],
   val resourcesProvider: Option[Boolean],
+  val outputPathsProvider: Option[Boolean],
   val canReload: Option[Boolean],
   val jvmRunEnvironmentProvider: Option[Boolean],
   val jvmTestEnvironmentProvider: Option[Boolean]) extends Serializable {
@@ -24,17 +25,17 @@ final class BuildServerCapabilities private (
   
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: BuildServerCapabilities => (this.compileProvider == x.compileProvider) && (this.testProvider == x.testProvider) && (this.runProvider == x.runProvider) && (this.dependencySourcesProvider == x.dependencySourcesProvider) && (this.resourcesProvider == x.resourcesProvider) && (this.canReload == x.canReload) && (this.jvmRunEnvironmentProvider == x.jvmRunEnvironmentProvider) && (this.jvmTestEnvironmentProvider == x.jvmTestEnvironmentProvider)
+    case x: BuildServerCapabilities => (this.compileProvider == x.compileProvider) && (this.testProvider == x.testProvider) && (this.runProvider == x.runProvider) && (this.dependencySourcesProvider == x.dependencySourcesProvider) && (this.resourcesProvider == x.resourcesProvider) && (this.outputPathsProvider == x.outputPathsProvider) && (this.canReload == x.canReload) && (this.jvmRunEnvironmentProvider == x.jvmRunEnvironmentProvider) && (this.jvmTestEnvironmentProvider == x.jvmTestEnvironmentProvider)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildServerCapabilities".##) + compileProvider.##) + testProvider.##) + runProvider.##) + dependencySourcesProvider.##) + resourcesProvider.##) + canReload.##) + jvmRunEnvironmentProvider.##) + jvmTestEnvironmentProvider.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.BuildServerCapabilities".##) + compileProvider.##) + testProvider.##) + runProvider.##) + dependencySourcesProvider.##) + resourcesProvider.##) + outputPathsProvider.##) + canReload.##) + jvmRunEnvironmentProvider.##) + jvmTestEnvironmentProvider.##)
   }
   override def toString: String = {
-    "BuildServerCapabilities(" + compileProvider + ", " + testProvider + ", " + runProvider + ", " + dependencySourcesProvider + ", " + resourcesProvider + ", " + canReload + ", " + jvmRunEnvironmentProvider + ", " + jvmTestEnvironmentProvider + ")"
+    "BuildServerCapabilities(" + compileProvider + ", " + testProvider + ", " + runProvider + ", " + dependencySourcesProvider + ", " + resourcesProvider + ", " + outputPathsProvider + ", " + canReload + ", " + jvmRunEnvironmentProvider + ", " + jvmTestEnvironmentProvider + ")"
   }
-  private[this] def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, resourcesProvider: Option[Boolean] = resourcesProvider, canReload: Option[Boolean] = canReload, jvmRunEnvironmentProvider: Option[Boolean] = jvmRunEnvironmentProvider, jvmTestEnvironmentProvider: Option[Boolean] = jvmTestEnvironmentProvider): BuildServerCapabilities = {
-    new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
+  private[this] def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, resourcesProvider: Option[Boolean] = resourcesProvider, outputPathsProvider: Option[Boolean] = outputPathsProvider, canReload: Option[Boolean] = canReload, jvmRunEnvironmentProvider: Option[Boolean] = jvmRunEnvironmentProvider, jvmTestEnvironmentProvider: Option[Boolean] = jvmTestEnvironmentProvider): BuildServerCapabilities = {
+    new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, outputPathsProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
   }
   def withCompileProvider(compileProvider: Option[sbt.internal.bsp.CompileProvider]): BuildServerCapabilities = {
     copy(compileProvider = compileProvider)
@@ -66,6 +67,12 @@ final class BuildServerCapabilities private (
   def withResourcesProvider(resourcesProvider: Boolean): BuildServerCapabilities = {
     copy(resourcesProvider = Option(resourcesProvider))
   }
+  def withOutputPathsProvider(outputPathsProvider: Option[Boolean]): BuildServerCapabilities = {
+    copy(outputPathsProvider = outputPathsProvider)
+  }
+  def withOutputPathsProvider(outputPathsProvider: Boolean): BuildServerCapabilities = {
+    copy(outputPathsProvider = Option(outputPathsProvider))
+  }
   def withCanReload(canReload: Option[Boolean]): BuildServerCapabilities = {
     copy(canReload = canReload)
   }
@@ -87,6 +94,6 @@ final class BuildServerCapabilities private (
 }
 object BuildServerCapabilities {
   
-  def apply(compileProvider: Option[sbt.internal.bsp.CompileProvider], testProvider: Option[sbt.internal.bsp.TestProvider], runProvider: Option[sbt.internal.bsp.RunProvider], dependencySourcesProvider: Option[Boolean], resourcesProvider: Option[Boolean], canReload: Option[Boolean], jvmRunEnvironmentProvider: Option[Boolean], jvmTestEnvironmentProvider: Option[Boolean]): BuildServerCapabilities = new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
-  def apply(compileProvider: sbt.internal.bsp.CompileProvider, testProvider: sbt.internal.bsp.TestProvider, runProvider: sbt.internal.bsp.RunProvider, dependencySourcesProvider: Boolean, resourcesProvider: Boolean, canReload: Boolean, jvmRunEnvironmentProvider: Boolean, jvmTestEnvironmentProvider: Boolean): BuildServerCapabilities = new BuildServerCapabilities(Option(compileProvider), Option(testProvider), Option(runProvider), Option(dependencySourcesProvider), Option(resourcesProvider), Option(canReload), Option(jvmRunEnvironmentProvider), Option(jvmTestEnvironmentProvider))
+  def apply(compileProvider: Option[sbt.internal.bsp.CompileProvider], testProvider: Option[sbt.internal.bsp.TestProvider], runProvider: Option[sbt.internal.bsp.RunProvider], dependencySourcesProvider: Option[Boolean], resourcesProvider: Option[Boolean], outputPathsProvider: Option[Boolean], canReload: Option[Boolean], jvmRunEnvironmentProvider: Option[Boolean], jvmTestEnvironmentProvider: Option[Boolean]): BuildServerCapabilities = new BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, outputPathsProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
+  def apply(compileProvider: sbt.internal.bsp.CompileProvider, testProvider: sbt.internal.bsp.TestProvider, runProvider: sbt.internal.bsp.RunProvider, dependencySourcesProvider: Boolean, resourcesProvider: Boolean, outputPathsProvider: Boolean, canReload: Boolean, jvmRunEnvironmentProvider: Boolean, jvmTestEnvironmentProvider: Boolean): BuildServerCapabilities = new BuildServerCapabilities(Option(compileProvider), Option(testProvider), Option(runProvider), Option(dependencySourcesProvider), Option(resourcesProvider), Option(outputPathsProvider), Option(canReload), Option(jvmRunEnvironmentProvider), Option(jvmTestEnvironmentProvider))
 }

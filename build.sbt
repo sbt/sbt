@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.7.0-SNAPSHOT"
+  val v = "1.7.2-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -50,7 +50,6 @@ Global / semanticdbVersion := "4.5.9"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
-Global / excludeLint += whitesourceIgnoredScopes
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
 
@@ -129,6 +128,8 @@ val sbt13Plus =
     "1.3.0",
     "1.4.0",
     "1.5.0",
+    "1.6.0",
+    "1.7.0",
   )
 val sbt10Plus =
   Seq(
@@ -211,7 +212,7 @@ lazy val sbtRoot: Project = (project in file("."))
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
     buildThinClient := (sbtClientProj / buildThinClient).evaluated,
-    buildNativeThinClient := (sbtClientProj / buildNativeThinClient).value,
+    nativeImage := (sbtClientProj / nativeImage).value,
     installNativeThinClient := {
       // nativeInstallDirectory can be set globally or in a gitignored local file
       val dir = nativeInstallDirectory.?.value
@@ -226,7 +227,7 @@ lazy val sbtRoot: Project = (project in file("."))
           }
       }
       val base = baseDirectory.value.toPath
-      val exec = (sbtClientProj / buildNativeThinClient).value
+      val exec = (sbtClientProj / nativeImage).value.toPath
       streams.value.log.info(s"installing thin client ${base.relativize(exec)} to ${target}")
       Files.copy(exec, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
     }
@@ -246,6 +247,7 @@ lazy val bundledLauncherProj =
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
+      Compile / doc / javacOptions := Nil,
       Compile / packageBin := sbtLaunchJar.value,
       mimaSettings,
       mimaPreviousArtifacts := Set()
@@ -340,6 +342,7 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   javaOnlySettings,
   crossPaths := false,
   autoScalaLibrary := false,
+  Compile / doc / javacOptions := Nil,
   name := "Util Interface",
   exportJars := true,
   utilMimaSettings,
@@ -532,6 +535,7 @@ lazy val testAgentProj = (project in file("testing") / "agent")
     crossScalaVersions := Seq(baseScalaVersion),
     crossPaths := false,
     autoScalaLibrary := false,
+    Compile / doc / javacOptions := Nil,
     name := "Test Agent",
     libraryDependencies += testInterface,
     mimaSettings,
@@ -618,6 +622,7 @@ lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
   .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "Scripted sbt Redux",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
@@ -629,6 +634,7 @@ lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
   .dependsOn(scriptedSbtReduxProj)
   .settings(
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "Scripted sbt",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
@@ -656,6 +662,7 @@ lazy val dependencyTreeProj = (project in file("dependency-tree"))
   .settings(
     sbtPlugin := true,
     baseSettings,
+    crossScalaVersions := Seq(baseScalaVersion),
     name := "sbt-dependency-tree",
     publishMavenStyle := true,
     // mimaSettings,
@@ -1140,17 +1147,11 @@ lazy val serverTestProj = (project in file("server-test"))
 val isWin = scala.util.Properties.isWin
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
-val thinClientClasspath =
-  taskKey[Seq[JPath]]("Generate the classpath for thin client (compacted for windows)")
-val thinClientNativeImageCommand = taskKey[String]("The native image command")
-val thinClientNativeImageOptions = settingKey[Seq[String]]("The native image options")
-val thinClientNativeImageClass = settingKey[String]("The class for the native image")
-val buildNativeThinClient = taskKey[JPath]("Generate a native executable")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
 val nativeInstallDirectory = taskKey[JPath]("The install directory for the native executable")
 val installNativeThinClient = inputKey[JPath]("Install the native executable")
-val nativeThinClientPath = settingKey[JPath]("The location of the native executable")
 lazy val sbtClientProj = (project in file("client"))
+  .enablePlugins(NativeImagePlugin)
   .dependsOn(commandProj)
   .settings(
     commonBaseSettings,
@@ -1161,65 +1162,16 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies += jansi,
-    libraryDependencies += scalatest % "test",
-    /*
-     * On windows, the raw classpath is too large to be a command argument to an
-     * external process so we create symbolic links with short names to get the
-     * classpath length under the limit.
-     */
-    thinClientClasspath := {
-      val original = (Compile / fullClasspathAsJars).value.map(_.data)
-      val outputDir = target.value / "thinclientcp"
-      IO.createDirectory(outputDir)
-      Files.walk(outputDir.toPath).forEach {
-        case f if f.getFileName.toString.endsWith(".jar") => Files.deleteIfExists(f)
-        case _                                            =>
-      }
-      original.zipWithIndex.map {
-        case (f, i) => Files.createSymbolicLink(outputDir.toPath / s"$i.jar", f.toPath)
-      }
+    libraryDependencies += scalatest % Test,
+    Compile / mainClass := Some("sbt.client.Client"),
+    nativeImageReady := { () =>
+      ()
     },
-    thinClientNativeImageCommand := System.getProperty("sbt.native-image", "native-image").toString,
-    buildNativeThinClient / name := s"sbtn${if (isWin) ".exe" else ""}",
-    nativeThinClientPath := target.value.toPath / "bin" / (buildNativeThinClient / name).value,
-    thinClientNativeImageClass := "sbt.client.Client",
-    buildNativeThinClient := {
-      val hasChanges = thinClientClasspath.outputFileChanges.hasChanges
-      val cpString =
-        thinClientClasspath.value.map(_.getFileName).mkString(java.io.File.pathSeparator)
-      val prefix = Seq(thinClientNativeImageCommand.value, "-cp", cpString)
-      val full = prefix ++ thinClientNativeImageOptions.value :+ thinClientNativeImageClass.value
-      val dir = target.value
-      if (hasChanges || !Files.exists(nativeThinClientPath.value)) {
-        val pb = new java.lang.ProcessBuilder(full: _*)
-        pb.directory(dir / "thinclientcp")
-        val proc = pb.start()
-        val thread = new Thread {
-          setDaemon(true)
-          val is = proc.getInputStream
-          val es = proc.getErrorStream
-
-          override def run(): Unit = {
-            Thread.sleep(100)
-            while (proc.isAlive) {
-              if (is.available > 0 || es.available > 0) {
-                while (is.available > 0) System.out.print(is.read.toChar)
-                while (es.available > 0) System.err.print(es.read.toChar)
-              }
-              if (proc.isAlive) Thread.sleep(10)
-            }
-          }
-        }
-        thread.start()
-        proc.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
-        assert(proc.exitValue == 0, s"Exit value ${proc.exitValue} was nonzero")
-      }
-      nativeThinClientPath.value
-    },
-    thinClientNativeImageOptions := Seq(
+    nativeImageOutput := target.value / "bin" / "sbtn",
+    nativeImageOptions ++= Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
-      "--verbose",
+      // "--verbose",
       "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
@@ -1506,15 +1458,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     s"""set scalaVersion in ThisBuild := "$scala212" """ ::
       state
   },
-  commands += Command.command("whitesourceOnPush") { state =>
-    sys.env.get("TRAVIS_EVENT_TYPE") match {
-      case Some("push") =>
-        "whitesourceCheckPolicies" ::
-          "whitesourceUpdate" ::
-          state
-      case _ => state
-    }
-  },
   commands += Command.command("release-sbt-local") { state =>
     "clean" ::
       "so compile" ::
@@ -1571,24 +1514,3 @@ ThisBuild / publishTo := {
   Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
-ThisBuild / whitesourceProduct := "Lightbend Reactive Platform"
-ThisBuild / whitesourceAggregateProjectName := {
-  // note this can get detached on tag build etc
-  val b = sys.process.Process("git rev-parse --abbrev-ref HEAD").!!.trim
-  val Stable = """1\.([0-9]+)\.x""".r
-  b match {
-    case Stable(y) => "sbt-1." + y.toString + "-stable"
-    case _         => "sbt-master"
-  }
-}
-ThisBuild / whitesourceAggregateProjectToken := {
-  (ThisBuild / whitesourceAggregateProjectName).value match {
-    case "sbt-master"     => "e7a1e55518c0489a98e9c7430c8b2ccd53d9f97c12ed46148b592ebe4c8bf128"
-    case "sbt-1.3-stable" => "7e38cbb4d2fc4599835cd5d2cfb41b150597a4147b15424bb65841664ab2ec0d"
-    case "sbt-1.2-stable" => "54f2313767aa47198971e65595670ee16e1ad0000d20458588e72d3ac2c34763"
-    case _                => "" // it's ok to fail here
-  }
-}
-ThisBuild / whitesourceIgnoredScopes ++= Seq("plugin", "scalafmt", "sxr")
-ThisBuild / whitesourceFailOnError := sys.env.contains("WHITESOURCE_PASSWORD") // fail if pwd is present
-ThisBuild / whitesourceForceCheckAllDependencies := true
