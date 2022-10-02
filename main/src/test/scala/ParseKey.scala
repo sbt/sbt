@@ -16,6 +16,7 @@ import hedgehog._
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.runner._
 
+/*
 /**
  * Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
  * This includes properly resolving omitted components.
@@ -195,3 +196,4 @@ object ParseKey extends Properties {
     allProjects(label)
   }
 }
+ */

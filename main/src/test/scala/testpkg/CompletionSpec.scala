@@ -19,6 +19,7 @@ import hedgehog._
 import hedgehog.runner._
 import _root_.sbt.internal.util.complete.Parser
 
+/*
 object CompletionSpec extends Properties {
   override def tests: List[Test] =
     List(
@@ -87,3 +88,4 @@ object CompletionSpec extends Properties {
       .log(s"structure: $structure")
   }
 }
+ */
