@@ -14,6 +14,7 @@ import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{ PlainDirectory, Directory, VirtualDirectory, VirtualFile }
 import dotty.tools.repl.AbstractFileClassLoader
+import java.io.File
 import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
@@ -306,9 +307,11 @@ object Eval:
     }
 
   def currentClasspath: Seq[Path] =
-    val cl = ClassLoader.getSystemClassLoader()
-    val urls = cl.asInstanceOf[URLClassLoader].getURLs().toList
-    urls.map(_.getFile).map(Paths.get(_))
+    val urls = sys.props
+      .get("java.class.path")
+      .map(_.split(File.pathSeparator))
+      .getOrElse(Array.empty[String])
+    urls.toVector.map(Paths.get(_))
 
   def bytes(s: String): Array[Byte] = s.getBytes("UTF-8")
 
@@ -384,7 +387,11 @@ object Eval:
       tree match
         case tpd.ValDef(name, tpt, _)
             if isTopLevelModule(tree.symbol.owner) && isAcceptableType(tpt.tpe) =>
-          vals ::= name.toString
+          val str = name.mangledString
+          vals ::= (
+            if str.contains("$lzy") then str.take(str.indexOf("$"))
+            else str
+          )
         case t: tpd.Template   => this((), t.body)
         case t: tpd.PackageDef => this((), t.stats)
         case t: tpd.TypeDef    => this((), t.rhs)
