@@ -99,6 +99,7 @@ object Scripted {
       scalaVersion: String,
       sbtVersion: String,
       classpath: Seq[File],
+      launcherJar: File,
       logger: Logger
   ): Unit = {
     logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
@@ -113,16 +114,27 @@ object Scripted {
 
     // Interface to cross class loader
     type SbtScriptedRunner = {
+      // def runInParallel(
+      //     resourceBaseDirectory: File,
+      //     bufferLog: Boolean,
+      //     tests: Array[String],
+      //     launchOpts: Array[String],
+      //     prescripted: java.util.List[File],
+      //     scalaVersion: String,
+      //     sbtVersion: String,
+      //     classpath: Array[File],
+      //     instances: Int
+      // ): Unit
+
       def runInParallel(
           resourceBaseDirectory: File,
           bufferLog: Boolean,
           tests: Array[String],
+          launcherJar: File,
+          javaCommand: String,
           launchOpts: Array[String],
           prescripted: java.util.List[File],
-          scalaVersion: String,
-          sbtVersion: String,
-          classpath: Array[File],
-          instances: Int
+          instance: Int,
       ): Unit
     }
 
@@ -146,15 +158,26 @@ object Scripted {
           case _          => 1
         }
         import scala.language.reflectiveCalls
+
+        // bridge.runInParallel(
+        //   sourcePath,
+        //   bufferLog,
+        //   args.toArray,
+        //   launchOpts.toArray,
+        //   callback,
+        //   scalaVersion,
+        //   sbtVersion,
+        //   classpath.toArray,
+        //   instances
+        // )
         bridge.runInParallel(
           sourcePath,
           bufferLog,
           args.toArray,
+          launcherJar,
+          "java",
           launchOpts.toArray,
           callback,
-          scalaVersion,
-          sbtVersion,
-          classpath.toArray,
           instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }

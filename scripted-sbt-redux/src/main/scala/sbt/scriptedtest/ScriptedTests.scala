@@ -144,7 +144,7 @@ final class ScriptedTests(
         log.info(
           f"Running $size / $totalSize (${size * 100d / totalSize}%3.2f%%) scripted tests with $how"
         )
-      logTests(runFromSourceBasedTests.size, "RunFromSourceMain")
+      logTests(runFromSourceBasedTests.size, prop.toString)
 
       def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests

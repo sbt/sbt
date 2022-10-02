@@ -1224,6 +1224,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
     (scriptedSbtReduxProj / Test / fullClasspathAsJars).value
       .map(_.data)
       .filterNot(_.getName.contains("scala-compiler")),
+    (bundledLauncherProj / Compile / packageBin).value,
     streams.value.log
   )
 }
@@ -1277,8 +1278,8 @@ ThisBuild / scriptedPrescripted := { _ => }
 
 def otherRootSettings =
   Seq(
-    scripted := scriptedTask(false).evaluated,
-    scriptedUnpublished := scriptedTask(false).evaluated,
+    scripted := scriptedTask(true).evaluated,
+    scriptedUnpublished := scriptedTask(true).evaluated,
     scriptedSource := (sbtProj / sourceDirectory).value / "sbt-test",
     scripted / watchTriggers += scriptedSource.value.toGlob / **,
     scriptedUnpublished / watchTriggers := (scripted / watchTriggers).value,

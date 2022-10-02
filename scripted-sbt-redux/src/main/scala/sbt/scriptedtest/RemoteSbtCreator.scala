@@ -45,8 +45,10 @@ final class LauncherBasedRemoteSbtCreator(
     val cmd =
       javaCommand :: launchOpts.toList ::: globalBase :: scripted :: "-jar" :: launcherJar :: args ::: Nil
     val io = BasicIO(false, log).withInput(_.close())
-    val p = Process(cmd, directory) run (io)
-    val thread = new Thread() { override def run() = { p.exitValue(); server.close() } }
+    val p = Process(cmd, directory).run(io)
+    val thread = new Thread() {
+      override def run(): Unit = { p.exitValue(); server.close() }
+    }
     thread.start()
     p
   }

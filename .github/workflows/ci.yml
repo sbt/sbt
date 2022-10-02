@@ -17,15 +17,15 @@ jobs:
             distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: 17
+            java: 11
             distribution: temurin
             jobtype: 2
           - os: ubuntu-latest
-            java: 17
+            java: 11
             distribution: temurin
             jobtype: 3
           - os: ubuntu-latest
-            java: 17
+            java: 11
             distribution: temurin
             jobtype: 4
           - os: ubuntu-latest
@@ -44,7 +44,7 @@ jobs:
             java: 8
             distribution: adopt
             jobtype: 8
-          - os: windows-latest
+          - os: windows-2019
             java: 8
             distribution: adopt
             jobtype: 9
@@ -93,14 +93,20 @@ jobs:
         python-version: 3.7
     - name: Coursier cache
       uses: coursier/cache-action@v6
-    - name: Cache sbt
-      uses: actions/cache@v3
-      with:
-        path: ~/.sbt
-        key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+    # - name: Cache sbt
+    #  uses: actions/cache@v3
+    #  with:
+    #    path: ~/.sbt
+    #    key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
-      if: ${{ matrix.os == 'windows-latest' }}
+      if: ${{ matrix.os == 'windows-2019' }}
+    - name: Pre-test cleanup
+      shell: bash
+      run: |
+        rm -rf "$HOME/.sbt/scripted/" || true
+        rm -rf "$HOME/.ivy2/local" || true
+        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
@@ -131,29 +137,31 @@ jobs:
       if: ${{ matrix.jobtype == 3 }}
       shell: bash
       run: |
-        ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
+        # ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/*"
+        ./sbt -v --client "scripted dependency-management/* plugins/* project-load/* java/* run/* nio/*"
     - name: Build and test (4)
       if: ${{ matrix.jobtype == 4 }}
       shell: bash
       run: |
-        ./sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
-    - name: Build and test (5)
-      if: ${{ matrix.jobtype == 5 }}
-      shell: bash
-      run: |
-        ./sbt -v "++$SCALA_213!; test; ++$SCALA_3!; all utilControl/test utilRelation/test utilPosition/test"
-    - name: Build and test (6)
-      if: ${{ matrix.jobtype == 6 }}
-      shell: bash
-      run: |
-        # build from fresh IO, LM, and Zinc
-        BUILD_VERSION="1.5.0-SNAPSHOT"
-        cd io
-        sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-        cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-        sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+        # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
+        ./sbt -v "scripted source-dependencies/* project/*"
+    # - name: Build and test (5)
+    #  if: ${{ matrix.jobtype == 5 }}
+    #  shell: bash
+    #  run: |
+    #    ./sbt -v "++$SCALA_213!; test; ++$SCALA_3!; all utilControl/test utilRelation/test utilPosition/test"
+    # - name: Build and test (6)
+    #  if: ${{ matrix.jobtype == 6 }}
+    #  shell: bash
+    #  run: |
+    #    # build from fresh IO, LM, and Zinc
+    #    BUILD_VERSION="1.5.0-SNAPSHOT"
+    #    cd io
+    #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
+    #    cd ../
+    #    sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+    #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+    #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
     - name: Build and test (7)
       if: ${{ matrix.jobtype == 7 }}
       shell: bash

@@ -158,7 +158,7 @@ object RunFromSourceMain {
         }
         val Name = """(.*)(?:\-[\d.]+)\.jar""".r
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
-        val module = "org.scala-lang" % "scala-compiler" % scalaVersion
+        val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
           case Left(w) => throw w.resolveException
           case Right(_) =>
