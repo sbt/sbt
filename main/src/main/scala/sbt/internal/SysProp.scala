@@ -14,6 +14,7 @@ import java.util.Locale
 
 import scala.util.control.NonFatal
 import scala.concurrent.duration._
+import sbt.internal.inc.HashUtil
 import sbt.internal.util.{ Terminal => ITerminal, Util }
 import sbt.internal.util.complete.SizeParser
 import sbt.io.syntax._
@@ -247,7 +248,15 @@ object SysProp {
    * Windows, and Docker environment.
    * Mostly these directories will be used as throw-away location to extract
    * native files etc.
+   * A deterministic hash is appended in the directory name as "/tmp/.sbt1234ABCD/"
+   * to avoid collision between multiple users in a shared server environment.
    */
-  private[this] def runtimeDirectory: Path =
-    Paths.get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir"))).resolve(".sbt")
+  private[this] def runtimeDirectory: Path = {
+    val hashValue =
+      java.lang.Long.toHexString(HashUtil.farmHash(home.toString.getBytes("UTF-8")))
+    val halfhash = hashValue.take(8)
+    Paths
+      .get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
+      .resolve(s".sbt$halfhash")
+  }
 }
