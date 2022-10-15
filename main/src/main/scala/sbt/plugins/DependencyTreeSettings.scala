@@ -114,7 +114,7 @@ object DependencyTreeSettings {
       dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
       dependencyDotHeader :=
         """|digraph "dependency-graph" {
-         |    graph[rankdir="LR"]
+         |    graph[rankdir="LR"; splines=polyline]
          |    edge [
          |        arrowtail="none"
          |    ]""".stripMargin,
