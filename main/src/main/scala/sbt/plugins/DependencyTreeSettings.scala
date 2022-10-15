@@ -192,7 +192,7 @@ object DependencyTreeSettings {
         graph,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.LabelTypeHtml
+        rendering.DOT.AngleBrackets
       )
       val link = DagreHTML.createLink(dotGraph, target.value)
       streams.value.log.info(s"HTML graph written to $link")
