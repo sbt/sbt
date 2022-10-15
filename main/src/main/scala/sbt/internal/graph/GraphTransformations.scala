@@ -32,7 +32,7 @@ object GraphTransformations {
     val nodes =
       edges
         .foldLeft(Set.empty[GraphModuleId])((set, edge) => set + edge._1 + edge._2)
-        .map(graph.module)
+        .flatMap(graph.module)
     ModuleGraph(nodes.toSeq, edges)
   }
 
