@@ -41,6 +41,9 @@ abstract class DependencyTreeKeys {
     taskKey[File]("Creates a graphml file containing the dependency-graph for a project")
   val dependencyDotFile =
     settingKey[File]("The location the dot file should be generated at")
+  val dependencyDotNodeColors = settingKey[Boolean](
+    "The boxes of nodes are painted with colors. Otherwise they're black."
+  )
   val dependencyDotNodeLabel = settingKey[(String, String, String) => String](
     "Returns a formated string of a dependency. Takes organization, name and version as parameters"
   )
