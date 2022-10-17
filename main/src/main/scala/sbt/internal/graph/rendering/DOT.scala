@@ -17,13 +17,15 @@ object DOT {
       graph: ModuleGraph,
       dotHead: String,
       nodeFormation: (String, String, String) => String,
-      labelRendering: HTMLLabelRendering
+      labelRendering: HTMLLabelRendering,
+      colors: Boolean
   ): String = {
     val nodes = {
       for (n <- graph.nodes) yield {
-        val style = if (n.isEvicted) EvictedStyle else ""
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
-        val color = {
+        val style = if (n.isEvicted) EvictedStyle else ""
+        val penwidth = if (n.isEvicted) "3" else "5"
+        val color = if (colors) {
           val orgHash = n.id.organization.hashCode
           val r = (orgHash >> 16) & 0xFF
           val g = (orgHash >> 8) & 0xFF
@@ -32,12 +34,13 @@ object DOT {
           val g1 = (g * 0.90).toInt
           val b1 = (b * 0.90).toInt
           (r1 << 16) | (g1 << 8) | (b1 << 0)
-        }
-        s"""    "%s"[shape=box %s style="%s" penwidth="5" color="%s"]"""
+        } else 0
+        s"""    "%s"[shape=box %s style="%s" penwidth="%s" color="%s"]"""
           .format(
             n.id.idString,
             labelRendering.renderLabel(label),
             style,
+            penwidth,
             f"#$color%06X",
           )
       }
