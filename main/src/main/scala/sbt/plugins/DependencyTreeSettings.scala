@@ -109,15 +109,17 @@ object DependencyTreeSettings {
         dependencyTreeModuleGraph0.value,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets
+        rendering.DOT.AngleBrackets,
+        dependencyDotNodeColors.value
       ),
       dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
       dependencyDotHeader :=
         """|digraph "dependency-graph" {
-         |    graph[rankdir="LR"]
+         |    graph[rankdir="LR"; splines=polyline]
          |    edge [
          |        arrowtail="none"
          |    ]""".stripMargin,
+      dependencyDotNodeColors := true,
       dependencyDotNodeLabel := { (organization: String, name: String, version: String) =>
         """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
       },
@@ -192,7 +194,8 @@ object DependencyTreeSettings {
         graph,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.LabelTypeHtml
+        rendering.DOT.AngleBrackets,
+        dependencyDotNodeColors.value
       )
       val link = DagreHTML.createLink(dotGraph, target.value)
       streams.value.log.info(s"HTML graph written to $link")

@@ -30,86 +30,15 @@ THE SOFTWARE.
 <meta charset="utf-8">
 <title>Dependency Graph</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dagre-d3/0.4.16/dagre-d3.min.js"></script>
-<script src="https://dagrejs.github.io/project/graphlib-dot/v0.6.3/graphlib-dot.min.js"></script>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://unpkg.com/@hpcc-js/wasm@0.3.15/dist/index.min.js"></script>
+<script src="https://unpkg.com/d3-graphviz@3.2.0/build/d3-graphviz.js"></script>
 <script src="dependencies.dot.js"></script>
 
-<style>
-    body {
-        margin: 0;
-        overflow: hidden;
-    }
-    .node {
-        white-space: nowrap;
-    }
-
-    .node rect,
-    .node circle,
-    .node ellipse {
-        stroke: #333;
-        fill: #fff;
-        stroke-width: 1.5px;
-    }
-
-    .cluster rect {
-        stroke: #333;
-        fill: #000;
-        fill-opacity: 0.1;
-        stroke-width: 1.5px;
-    }
-
-    .edgePath path.path {
-        stroke: #333;
-        stroke-width: 1.5px;
-        fill: none;
-    }
-</style>
-
-<style>
-    h1, h2 {
-        color: #333;
-    }
-</style>
-
-<body onLoad="initialize()">
-
-<svg width=1280 height=1024>
-    <g/>
-</svg>
+<body>
+<div id="graph"></div>
+</body>
 
 <script>
-function initialize() {
-    // Set up zoom support
-    var svg = d3.select("svg"),
-        inner = d3.select("svg g"),
-        zoom = d3.behavior.zoom().on("zoom", function() {
-          inner.attr("transform", "translate(" + d3.event.translate + ")" +
-                                      "scale(" + d3.event.scale + ")");
-        });
-    svg.attr("width", window.innerWidth);
-
-    svg.call(zoom);
-    // Create and configure the renderer
-    var render = dagreD3.render();
-    function tryDraw(inputGraph) {
-      var g;
-      {
-        g = graphlibDot.read(inputGraph);
-        g.graph().rankdir = "LR";
-        d3.select("svg g").call(render, g);
-
-        // Center the graph
-        var initialScale = 0.10;
-        zoom
-          .translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
-          .scale(initialScale)
-          .event(svg);
-        svg.attr('height', g.graph().height * initialScale + 40);
-      }
-    }
-    tryDraw(decodeURIComponent(data));
-}
+    d3.select("#graph").graphviz().renderDot(decodeURIComponent(data));
 </script>
-</body>

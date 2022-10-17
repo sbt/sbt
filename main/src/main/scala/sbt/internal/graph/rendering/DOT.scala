@@ -11,23 +11,38 @@ package graph
 package rendering
 
 object DOT {
-  val EvictedStyle = "stroke-dasharray: 5,5"
+  val EvictedStyle = "dashed"
 
   def dotGraph(
       graph: ModuleGraph,
       dotHead: String,
       nodeFormation: (String, String, String) => String,
-      labelRendering: HTMLLabelRendering
+      labelRendering: HTMLLabelRendering,
+      colors: Boolean
   ): String = {
     val nodes = {
       for (n <- graph.nodes) yield {
-        val style = if (n.isEvicted) EvictedStyle else ""
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
-        """    "%s"[%s style="%s"]""".format(
-          n.id.idString,
-          labelRendering.renderLabel(label),
-          style
-        )
+        val style = if (n.isEvicted) EvictedStyle else ""
+        val penwidth = if (n.isEvicted) "3" else "5"
+        val color = if (colors) {
+          val orgHash = n.id.organization.hashCode
+          val r = (orgHash >> 16) & 0xFF
+          val g = (orgHash >> 8) & 0xFF
+          val b = (orgHash >> 0) & 0xFF
+          val r1 = (r * 0.90).toInt
+          val g1 = (g * 0.90).toInt
+          val b1 = (b * 0.90).toInt
+          (r1 << 16) | (g1 << 8) | (b1 << 0)
+        } else 0
+        s"""    "%s"[shape=box %s style="%s" penwidth="%s" color="%s"]"""
+          .format(
+            n.id.idString,
+            labelRendering.renderLabel(label),
+            style,
+            penwidth,
+            f"#$color%06X",
+          )
       }
     }.sorted.mkString("\n")
 
