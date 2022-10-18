@@ -19,6 +19,7 @@ import Types.idFun
 import complete._
 import DefaultParsers._
 import scala.annotation.nowarn
+import scala.reflect.ClassTag
 
 /**
  * The resulting `session` and verbose and quiet summaries of the result of a set operation.
@@ -352,32 +353,33 @@ private[sbt] object SettingCompletions {
   def configScalaID(c: String): String = Util.quoteIfKeyword(c.capitalize)
 
   /** Applies a function on the underlying manifest for T for `key` depending if it is for a `Setting[T]`, `Task[T]`, or `InputTask[T]`. */
+  @nowarn
   def keyType[S](key: AttributeKey[_])(
-      onSetting: Manifest[_] => S,
-      onTask: Manifest[_] => S,
-      onInput: Manifest[_] => S
-  )(implicit tm: Manifest[Task[_]], im: Manifest[InputTask[_]]): S = {
-    def argTpe = key.manifest.typeArguments.head
+      onSetting: ClassTag[_] => S,
+      onTask: ClassTag[_] => S,
+      onInput: ClassTag[_] => S
+  )(using tm: ClassTag[Task[_]], im: ClassTag[InputTask[_]]): S =
+    def argTpe = key.manifest.typeArguments.head match
+      case m: Manifest[_] => m
+      case _              => sys.error(s"Manifest not found for ${key} typeArgument")
     val TaskClass = tm.runtimeClass
     val InputTaskClass = im.runtimeClass
-    key.manifest.runtimeClass match {
+    key.manifest.runtimeClass match
       case TaskClass      => onTask(argTpe)
       case InputTaskClass => onInput(argTpe)
       case _              => onSetting(key.manifest)
-    }
-  }
 
   /** For a Task[T], InputTask[T], or Setting[T], this returns the manifest for T. */
-  def keyUnderlyingType(key: AttributeKey[_]): Manifest[_] = keyType(key)(idFun, idFun, idFun)
+  def keyUnderlyingType(key: AttributeKey[_]): ClassTag[_] =
+    keyType(key)(idFun, idFun, idFun)
 
   /**
    * Returns a string representation of the underlying type T for a `key` representing a `Setting[T]`, `Task[T]`, or `InputTask[T]`.
-   * This string representation is currently a cleaned up toString of the underlying Manifest.
+   * This string representation is currently a cleaned up toString of the underlying ClassTag.
    */
-  def keyTypeString[T](key: AttributeKey[_]): String = {
-    val mfToString = (mf: Manifest[_]) => complete.TypeString.cleanup(mf.toString)
-    keyType(key)(mfToString, mfToString, mfToString)
-  }
+  def keyTypeString[T](key: AttributeKey[_]): String =
+    val tagToString = (tag: ClassTag[_]) => complete.TypeString.cleanup(tag.toString)
+    keyType(key)(tagToString, tagToString, tagToString)
 
   /** True if the `key` represents a setting or task that may be appended using an assignment method such as `+=`. */
   def appendable(key: AttributeKey[_]): Boolean = {

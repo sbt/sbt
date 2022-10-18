@@ -16,7 +16,7 @@ import sbt.ConcurrentRestrictions.Tag
 import sbt.Def.{ Initialize, ScopedKey, Setting, setting }
 import std.TaskMacro
 import std.TaskExtra.{ task => mktask, _ }
-import scala.reflect.ManifestFactory
+import scala.reflect.{ ClassTag, ManifestFactory }
 
 /** An abstraction on top of Settings for build configuration and task definition. */
 sealed trait Scoped extends Equals:
@@ -260,6 +260,11 @@ object Scoped:
 
   implicit def inputScopedToKey[T](s: InputKey[T]): ScopedKey[InputTask[T]] =
     ScopedKey(s.scope, s.key)
+
+  private[sbt] def coerceTag[A1: ClassTag]: Manifest[A1] =
+    summon[ClassTag[A1]] match
+      case mf: Manifest[A1] => mf
+      case tag              => ManifestFactory.classType[A1](tag.runtimeClass)
 
   /**
    * Mixin trait for adding convenience vocabulary associated with specifying the [[Scope]] of a setting.
@@ -593,6 +598,12 @@ object Scoped:
   // format: off
 
   type ST[X] = Taskable[X]
+  final class RichTaskable1[A1](t1: ST[A1]) extends RichTaskables[[F[_]] =>> F[A1]](t1)(using AList.single[A1]):
+    type Fun[M[_], Ret] = M[A1] => Ret
+    def identityMap = mapN(identity)
+    protected def convert[M[_], R](f: M[A1] => R) = f
+  end RichTaskable1
+
   final class RichTaskable2[A, B](t2: (ST[A], ST[B])) extends RichTaskables[AList.Tuple2K[A, B]](t2)(using AList.tuple2[A, B]) {
     type Fun[M[_], Ret] = (M[A], M[B]) => Ret
     def identityMap = mapN(mkTuple2)
@@ -736,6 +747,7 @@ trait TupleSyntax:
 
   // this is the least painful arrangement I came up with
   type ST[T] = Taskable[T]
+  implicit def taskableToTable1[A1](t1: ST[A1]): RichTaskable1[A1] = new RichTaskable1(t1)
   implicit def t2ToTable2[A, B](t2: (ST[A], ST[B])): RichTaskable2[A, B] = new RichTaskable2(t2)
   implicit def t3ToTable3[A, B, C](t3: (ST[A], ST[B], ST[C])): RichTaskable3[A, B, C] = new RichTaskable3(t3)
   implicit def t4ToTable4[A, B, C, D](t4: (ST[A], ST[B], ST[C], ST[D])): RichTaskable4[A, B, C, D] = new RichTaskable4(t4)
@@ -763,35 +775,36 @@ end TupleSyntax
 
 object TupleSyntax extends TupleSyntax
 
-import Scoped.extendScoped
+import Scoped.{ coerceTag, extendScoped }
 
 /** Constructs InputKeys, which are associated with input tasks to define a setting. */
 object InputKey:
-  def apply[A1: Manifest](
+
+  def apply[A1: ClassTag](
       label: String,
       description: String = "",
       rank: Int = KeyRanks.DefaultInputRank
   ): InputKey[A1] =
-    given mf: Manifest[InputTask[A1]] =
-      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], manifest[A1])
+    given mf: ClassTag[InputTask[A1]] =
+      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], coerceTag[A1])
     apply(AttributeKey[InputTask[A1]](label, description, rank))
 
-  def apply[A1: Manifest](
+  def apply[A1: ClassTag](
       label: String,
       description: String,
       extend1: Scoped,
       extendN: Scoped*
   ): InputKey[A1] = apply(label, description, KeyRanks.DefaultInputRank, extend1, extendN: _*)
 
-  def apply[A1: Manifest](
+  def apply[A1: ClassTag](
       label: String,
       description: String,
       rank: Int,
       extend1: Scoped,
       extendN: Scoped*
   ): InputKey[A1] =
-    given mf: Manifest[InputTask[A1]] =
-      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], manifest[A1])
+    given mf: ClassTag[InputTask[A1]] =
+      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], coerceTag[A1])
     apply(AttributeKey[InputTask[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[InputTask[A1]]): InputKey[A1] =
@@ -801,49 +814,63 @@ end InputKey
 
 /** Constructs TaskKeys, which are associated with tasks to define a setting. */
 object TaskKey:
-  def apply[A1: Manifest](
+  def apply[A1: ClassTag](label: String): TaskKey[A1] =
+    apply[A1](
+      label = label,
+      description = "",
+      rank = Int.MaxValue,
+    )
+
+  def apply[A1: ClassTag](label: String, description: String): TaskKey[A1] =
+    apply[A1](
+      label = label,
+      description = description,
+      rank = Int.MaxValue,
+    )
+
+  def apply[A1: ClassTag](
       label: String,
-      description: String = "",
-      rank: Int = KeyRanks.DefaultTaskRank
+      description: String,
+      rank: Int,
   ): TaskKey[A1] =
-    given mf: Manifest[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
+    given mf: ClassTag[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, rank))
 
-  def apply[A1: Manifest](
+  def apply[A1: ClassTag](
       label: String,
       description: String,
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
-    given mf: Manifest[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
+    given mf: ClassTag[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN)))
 
-  def apply[A1: Manifest](
+  def apply[A1: ClassTag](
       label: String,
       description: String,
       rank: Int,
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
-    given mf: Manifest[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
+    given mf: ClassTag[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[Task[A1]]): TaskKey[A1] =
     Scoped.scopedTask(Scope.ThisScope, akey)
 
-  def local[A1: Manifest]: TaskKey[A1] =
-    given mf: Manifest[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], manifest[A1])
+  def local[A1: ClassTag]: TaskKey[A1] =
+    given mf: ClassTag[Task[A1]] =
+      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply[A1](AttributeKey.local[Task[A1]])
 
 end TaskKey
 
 /** Constructs SettingKeys, which are associated with a value to define a basic setting. */
 object SettingKey:
-  def apply[A1: Manifest: OptJsonWriter](
+  def apply[A1: ClassTag: OptJsonWriter](
       label: String,
   ): SettingKey[A1] =
     apply[A1](
@@ -852,7 +879,7 @@ object SettingKey:
       rank = KeyRanks.DefaultSettingRank
     )
 
-  def apply[A1: Manifest: OptJsonWriter](
+  def apply[A1: ClassTag: OptJsonWriter](
       label: String,
       description: String,
   ): SettingKey[A1] =
@@ -862,14 +889,14 @@ object SettingKey:
       rank = KeyRanks.DefaultSettingRank,
     )
 
-  def apply[A1: Manifest: OptJsonWriter](
+  def apply[A1: ClassTag: OptJsonWriter](
       label: String,
       description: String,
       rank: Int
   ): SettingKey[A1] =
     apply(AttributeKey[A1](label, description, rank))
 
-  def apply[A1: Manifest: OptJsonWriter](
+  def apply[A1: ClassTag: OptJsonWriter](
       label: String,
       description: String,
       extend1: Scoped,
@@ -877,7 +904,7 @@ object SettingKey:
   ): SettingKey[A1] =
     apply(AttributeKey[A1](label, description, extendScoped(extend1, extendN)))
 
-  def apply[A1: Manifest: OptJsonWriter](
+  def apply[A1: ClassTag: OptJsonWriter](
       label: String,
       description: String,
       rank: Int,
@@ -889,7 +916,8 @@ object SettingKey:
   def apply[A1](akey: AttributeKey[A1]): SettingKey[A1] =
     Scoped.scopedSetting(Scope.ThisScope, akey)
 
-  def local[A1: Manifest: OptJsonWriter]: SettingKey[A1] = apply[A1](AttributeKey.local[A1])
+  def local[A1: ClassTag: OptJsonWriter]: SettingKey[A1] =
+    apply[A1](AttributeKey.local[A1])
 
 end SettingKey
 

@@ -39,6 +39,7 @@ import xsbti.compile.CompilerCache
 import scala.annotation.{ nowarn, tailrec }
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
 /** This class is the entry point for sbt. */
@@ -517,11 +518,14 @@ object BuiltinCommands {
   def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
   def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] =
     keys.filter(_.description.isDefined)
+
   def isTask(
-      mf: Manifest[_]
-  )(implicit taskMF: Manifest[Task[_]], inputMF: Manifest[InputTask[_]]): Boolean =
+      mf: ClassTag[_]
+  )(using taskMF: ClassTag[Task[_]], inputMF: ClassTag[InputTask[_]]): Boolean =
     mf.runtimeClass == taskMF.runtimeClass || mf.runtimeClass == inputMF.runtimeClass
+
   def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
+
   def highPass(rankCutoff: Int) =
     (keys: Seq[AttributeKey[_]]) => sortByRank(keys).takeWhile(_.rank <= rankCutoff)
 

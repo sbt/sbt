@@ -11,6 +11,7 @@ package std
 import java.io.File
 import scala.annotation.tailrec
 import scala.quoted.*
+import scala.reflect.ClassTag
 
 import sbt.util.OptJsonWriter
 
@@ -42,21 +43,21 @@ private[sbt] object KeyMacro:
     }
 
   private def keyImpl[A1: Type, A2: Type](methodName: String)(
-      f: (String, Expr[Manifest[A1]]) => Expr[A2]
+      f: (String, Expr[ClassTag[A1]]) => Expr[A2]
   )(using qctx: Quotes): Expr[A2] =
     val tpe = summon[Type[A1]]
     f(
       definingValName(errorMsg(methodName)),
-      Expr.summon[Manifest[A1]].getOrElse(sys.error("Manifest[A] not found for $tpe"))
+      Expr.summon[ClassTag[A1]].getOrElse(sys.error("ClassTag[A] not found for $tpe"))
     )
 
   private def keyImpl2[A1: Type, A2: Type](methodName: String)(
-      f: (String, Expr[Manifest[A1]], Expr[OptJsonWriter[A1]]) => Expr[A2]
+      f: (String, Expr[ClassTag[A1]], Expr[OptJsonWriter[A1]]) => Expr[A2]
   )(using qctx: Quotes): Expr[A2] =
     val tpe = summon[Type[A1]]
     f(
       definingValName(errorMsg(methodName)),
-      Expr.summon[Manifest[A1]].getOrElse(sys.error("Manifest[A] not found for $tpe")),
+      Expr.summon[ClassTag[A1]].getOrElse(sys.error("ClassTag[A] not found for $tpe")),
       Expr.summon[OptJsonWriter[A1]].getOrElse(sys.error("OptJsonWriter[A] not found for $tpe")),
     )
 

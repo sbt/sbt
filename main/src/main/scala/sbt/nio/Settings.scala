@@ -93,15 +93,15 @@ private[sbt] object Settings {
           addTaskDefinition(Def.setting[Task[Seq[Path]]](key, init, setting.pos)) ::
             outputsAndStamps(taskKey)
         }
-        ak.manifest.typeArguments match {
-          case t :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
+        ak.manifest.typeArguments match
+          case (t: Manifest[_]) :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
             t.typeArguments match {
               case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
               case _                                                      => default
             }
-          case t :: Nil if pathClass.isAssignableFrom(t.runtimeClass) => mkSetting[Path]
-          case _                                                      => default
-        }
+          case (t: Manifest[_]) :: Nil if pathClass.isAssignableFrom(t.runtimeClass) =>
+            mkSetting[Path]
+          case _ => default
       case _ => Nil
     }
   }

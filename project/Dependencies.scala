@@ -82,7 +82,7 @@ object Dependencies {
   // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
   val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha2"
 
-  lazy val sjsonNewVersion = "0.10.0"
+  lazy val sjsonNewVersion = "0.11.0"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value
