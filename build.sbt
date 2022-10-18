@@ -87,7 +87,7 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       lmIvy.value,
-      "org.scalatest" %% "scalatest" % "3.2.13" % Test
+      "org.scalatest" %% "scalatest" % "3.2.14" % Test
     ),
     Test / exportedProducts := {
       (Test / preTest).value
@@ -152,7 +152,7 @@ lazy val `lm-coursier-shaded` = project
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
       "org.scala-lang.modules" %% "scala-xml" % "1.3.0", // depending on that one so that it doesn't get shaded
       lmIvy.value,
-      "org.scalatest" %% "scalatest" % "3.2.13" % Test
+      "org.scalatest" %% "scalatest" % "3.2.14" % Test
     )
   )
 
