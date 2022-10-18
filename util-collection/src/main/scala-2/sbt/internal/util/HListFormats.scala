@@ -28,8 +28,8 @@ trait HListFormats {
     }
   }
 
-  implicit def hconsFormat[H, T <: HList](
-      implicit hf: JsonFormat[H],
+  implicit def hconsFormat[H, T <: HList](implicit
+      hf: JsonFormat[H],
       tf: HListJF[T]
   ): JsonFormat[H :+: T] =
     new JsonFormat[H :+: T] {
@@ -56,8 +56,8 @@ trait HListFormats {
     def write[J](obj: A, builder: Builder[J]): Unit
   }
 
-  implicit def hconsHListJF[H, T <: HList](
-      implicit hf: JsonFormat[H],
+  implicit def hconsHListJF[H, T <: HList](implicit
+      hf: JsonFormat[H],
       tf: HListJF[T]
   ): HListJF[H :+: T] =
     new HListJF[H :+: T] {

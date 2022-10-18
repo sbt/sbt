@@ -23,7 +23,7 @@ sealed trait KList[+M[_]] {
   /** Applies `f` to the elements of this list in the applicative functor defined by `ap`. */
   def apply[N[x] >: M[x], Z](f: Transform[Id] => Z)(implicit ap: Applicative[N]): N[Z]
 
-  /** Equivalent to `transform(f) . apply(x => x)`, this is the essence of the iterator at the level of natural transformations.*/
+  /** Equivalent to `transform(f) . apply(x => x)`, this is the essence of the iterator at the level of natural transformations. */
   def traverse[N[_], P[_]](f: M ~> (N ∙ P)#l)(implicit np: Applicative[N]): N[Transform[P]]
 
   /** Discards the heterogeneous type information and constructs a plain List from this KList's elements. */

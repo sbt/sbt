@@ -14,7 +14,8 @@ import scala.reflect.internal.util.UndefinedPosition
 
 abstract class SourcePositionImpl {
 
-  /** Creates a SourcePosition by using the enclosing position of the invocation of this method.
+  /**
+   * Creates a SourcePosition by using the enclosing position of the invocation of this method.
    * @return SourcePosition
    */
   def fromEnclosing(): SourcePosition = macro SourcePositionMacro.fromEnclosingImpl
@@ -30,8 +31,7 @@ final class SourcePositionMacro(val c: blackbox.Context) {
       val name = constant[String](ownerSource(f.path, f.name))
       val line = constant[Int](pos.line)
       reify { LinePosition(name.splice, line.splice) }
-    } else
-      reify { NoPosition }
+    } else reify { NoPosition }
   }
 
   private[this] def ownerSource(path: String, name: String): String = {

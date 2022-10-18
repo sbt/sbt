@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-alpha2-SNAPSHOT"
+  val v = "2.0.0-alpha5-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-alpha1-SNAPSHOT"
@@ -922,7 +922,14 @@ lazy val mainProj = (project in file("main"))
       }
     },
     libraryDependencies ++=
-      (Seq(scalaXml.value, launcherInterface, caffeine, lmCoursierShaded) ++ log4jModules),
+      (Seq(
+        scalaXml.value,
+        sjsonNewScalaJson.value,
+        sjsonNewCore.value,
+        launcherInterface,
+        caffeine,
+        lmCoursierShaded,
+      ) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List()
       case _                          => List(scalaPar)

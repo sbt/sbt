@@ -3850,8 +3850,8 @@ object Classpaths {
       val outCacheStore = cacheStoreFactory make "output_dsp"
       val f = Tracked.inputChanged(cacheStoreFactory make "input_dsp") {
         (inChanged: Boolean, in: Seq[ModuleID]) =>
-          implicit val NoPositionFormat: JsonFormat[NoPosition.type] = asSingleton(NoPosition)
-          implicit val LinePositionFormat: IsoLList.Aux[LinePosition, String :*: Int :*: LNil] =
+          given NoPositionFormat: JsonFormat[NoPosition.type] = asSingleton(NoPosition)
+          given LinePositionFormat: IsoLList.Aux[LinePosition, String :*: Int :*: LNil] =
             LList.iso(
               { (l: LinePosition) =>
                 ("path", l.path) :*: ("startLine", l.startLine) :*: LNil
@@ -3860,7 +3860,7 @@ object Classpaths {
                 LinePosition(in.head, in.tail.head)
               }
             )
-          implicit val LineRangeFormat: IsoLList.Aux[LineRange, Int :*: Int :*: LNil] = LList.iso(
+          given LineRangeFormat: IsoLList.Aux[LineRange, Int :*: Int :*: LNil] = LList.iso(
             { (l: LineRange) =>
               ("start", l.start) :*: ("end", l.end) :*: LNil
             },
@@ -3868,19 +3868,19 @@ object Classpaths {
               LineRange(in.head, in.tail.head)
             }
           )
-          implicit val RangePositionFormat
-              : IsoLList.Aux[RangePosition, String :*: LineRange :*: LNil] = LList.iso(
-            { (r: RangePosition) =>
-              ("path", r.path) :*: ("range", r.range) :*: LNil
-            },
-            { (in: String :*: LineRange :*: LNil) =>
-              RangePosition(in.head, in.tail.head)
-            }
-          )
-          implicit val SourcePositionFormat: JsonFormat[SourcePosition] =
+          given RangePositionFormat: IsoLList.Aux[RangePosition, String :*: LineRange :*: LNil] =
+            LList.iso(
+              { (r: RangePosition) =>
+                ("path", r.path) :*: ("range", r.range) :*: LNil
+              },
+              { (in: String :*: LineRange :*: LNil) =>
+                RangePosition(in.head, in.tail.head)
+              }
+            )
+          given SourcePositionFormat: JsonFormat[SourcePosition] =
             unionFormat3[SourcePosition, NoPosition.type, LinePosition, RangePosition]
 
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
+          given midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
           val outCache =
             Tracked.lastOutput[Seq[ModuleID], Map[ModuleID, SourcePosition]](outCacheStore) {
               case (_, Some(out)) if !inChanged => out
