@@ -5,13 +5,13 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   val scala212 = "2.12.15"
   val scala213 = "2.13.6"
-  val scala3 = "3.1.0"
+  val scala3 = "3.1.3"
 
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   private val ioVersion = nightlyVersion.getOrElse("1.6.0")
-  private val utilVersion = nightlyVersion.getOrElse("2.0.0-alpha1")
+  private val utilVersion = nightlyVersion.getOrElse("2.0.0-alpha3")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -56,7 +56,7 @@ object Dependencies {
   val scalaTest = ("org.scalatest" %% "scalatest" % "3.2.10").cross(CrossVersion.for3Use2_13)
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
-  val sjsonNewVersion = "0.10.0"
+  val sjsonNewVersion = "0.11.0"
   val sjsonnew = Def.setting {
     "com.eed3si9n" %% "sjson-new-core" % sjsonNewVersion
   }
