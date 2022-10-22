@@ -110,7 +110,7 @@ object DependencyTreeSettings {
         dependencyTreeModuleGraph0.value,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
+        rendering.DOT.HTMLLabelRendering.AngleBrackets,
         dependencyDotNodeColors.value
       ),
       dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
@@ -195,7 +195,7 @@ object DependencyTreeSettings {
         graph,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
+        rendering.DOT.HTMLLabelRendering.AngleBrackets,
         dependencyDotNodeColors.value
       )
       val link = DagreHTML.createLink(dotGraph, target.value)

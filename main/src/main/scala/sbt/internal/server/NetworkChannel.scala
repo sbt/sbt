@@ -851,10 +851,12 @@ final class NetworkChannel(
     override def getStringCapability(capability: String): String =
       getCapability(
         TerminalCapabilitiesQuery(boolean = None, numeric = None, string = Some(capability)),
-        _.string.flatMap {
-          case "null" => None
-          case s      => Some(s)
-        }.orNull
+        _.string
+          .flatMap {
+            case "null" => None
+            case s      => Some(s)
+          }
+          .orNull
       ).getOrElse("")
 
     override private[sbt] def getAttributes: Map[String, String] =
