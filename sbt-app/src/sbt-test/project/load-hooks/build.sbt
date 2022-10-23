@@ -6,8 +6,8 @@
     s.put(key, previous + 1)
   }
   Seq(
-    onLoad in Global ~= (f(loadCount) compose _),
-    onUnload in Global ~= (f(unloadCount) compose _)
+    Global / onLoad ~= (f(loadCount) compose _),
+    Global / onUnload ~= (f(unloadCount) compose _)
   )
 }
 

@@ -22,8 +22,8 @@ package name.example {
 
     import autoImport._
     override def projectSettings = Seq[Setting[_]](
-      checkMaxErrors := (Keys.maxErrors map { me => assert(me == xyz, "Expected maxErrors to be " + xyz + ", but it was " + me ) }).value,
-      checkName := (Keys.name map { n => assert(n == "Demo", "Expected name to be 'Demo', but it was '" + n + "'" ) }).value
+      checkMaxErrors := (Keys.maxErrors mapN { me => assert(me == xyz, "Expected maxErrors to be " + xyz + ", but it was " + me ) }).value,
+      checkName := (Keys.name mapN { n => assert(n == "Demo", "Expected name to be 'Demo', but it was '" + n + "'" ) }).value
     )
   }
 }

@@ -10,7 +10,7 @@ lazy val root = (project in file(".")).
     name := "run-test",
     runFoo := Def.inputTaskDyn {
         val args = Def.spaceDelimited().parsed
-        (runMain in Compile).toTask(s" Foo " + args.mkString(" "))
+        (Compile / runMain).toTask(s" Foo " + args.mkString(" "))
     }.evaluated,
     check := {
       val x = runFoo.toTask(" hi ho").value

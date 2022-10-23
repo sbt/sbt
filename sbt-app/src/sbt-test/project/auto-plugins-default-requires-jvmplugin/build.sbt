@@ -1,5 +1,5 @@
 val test123 = project in file(".") enablePlugins TestP settings(
-  resourceGenerators in Compile += Def.task {
+  Compile / resourceGenerators += Def.task {
     streams.value.log info "resource generated in settings"
     Nil
   }

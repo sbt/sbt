@@ -1,6 +1,6 @@
 TaskKey[Unit]("checkJavaFailures") := {
   val reporter = savedReporter.value
-  val ignore = (compile in Compile).failure.value
+  val ignore = (Compile / compile).failure.value
   val ps = reporter.problems
   assert(!ps.isEmpty, "Failed to report any problems!")
   // First error should be on a specific line/file
@@ -13,7 +13,7 @@ TaskKey[Unit]("checkJavaFailures") := {
 
 TaskKey[Unit]("checkScalaFailures") := {
   val reporter = savedReporter.value
-  val ignore = (compile in Compile).failure.value
+  val ignore = (Compile / compile).failure.value
   val ps = reporter.problems
   assert(!ps.isEmpty, "Failed to report any problems!")
   // First error should be on a specific line/file

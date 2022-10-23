@@ -18,7 +18,7 @@ lazy val checkDifferentConfigClasses = taskKey[Unit]("Checks that the number of 
 configClassCountFile := (target.value / "config-count")
 
 numConfigClasses := {
-  val cdir = (baseDirectory in ThisBuild).value / "project/target/config-classes"
+  val cdir = (ThisBuild / baseDirectory).value / "project/target/config-classes"
   (cdir.allPaths --- cdir).get.length
 }
 

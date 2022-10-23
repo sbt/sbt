@@ -19,15 +19,15 @@ lazy val root = (project in file("."))
     inConfig(Macro)(Defaults.configSettings),
 
     // puts the compiled macro on the classpath for the main sources
-    unmanagedClasspath in Compile ++=
-      (fullClasspath in Macro).value,
+    Compile / unmanagedClasspath ++=
+      (Macro / fullClasspath).value,
 
     // includes sources in src/macro/ in the main source package
-    mappings in (Compile, packageSrc) ++=
-      (mappings in (Macro, packageSrc)).value,
+    Compile / packageSrc / mappings ++=
+      (Macro / packageSrc / mappings).value,
 
     // Includes classes compiled from src/macro/ in the main binary
     // This can be omitted if the classes in src/macro/ aren't used at runtime
-    mappings in (Compile, packageBin) ++=
-      (mappings in (Macro, packageBin)).value
+    Compile / packageBin / mappings ++=
+      (Macro / packageBin / mappings).value
   )

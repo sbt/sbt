@@ -9,7 +9,7 @@ lazy val root = (project in file("."))
     incOptions := incOptions.value.withClassfileManagerType(
       Option(xsbti.compile.TransactionalManagerType.of(
         crossTarget.value / "classes.bak",
-        (streams in (Compile, compile)).value.log
+        (Compile / compile / streams).value.log
       ): xsbti.compile.ClassFileManagerType).asJava
     )
   )

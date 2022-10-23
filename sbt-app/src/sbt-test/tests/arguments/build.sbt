@@ -14,7 +14,7 @@ lazy val root = (project in file("."))
     },
     libraryDependencies += scalatest % Test,
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-f", "result.txt", "-eNDXEHLO")
-    testOptions in Configurations.Test ++= {
+    Configurations.Test / testOptions ++= {
       def args(path: String, args: String*): Seq[TestOption] =
         if(file(path).exists) Tests.Argument(args : _*) :: Nil
         else Nil

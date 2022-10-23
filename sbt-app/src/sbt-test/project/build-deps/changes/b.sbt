@@ -1,5 +1,5 @@
-buildDependencies in Global :=
-  (buildDependencies in Global).value.addClasspath(
-    (thisProjectRef in LocalProject("a")).value,
+Global / buildDependencies :=
+  (Global / buildDependencies).value.addClasspath(
+    (LocalProject("a") / thisProjectRef).value,
     ResolvedClasspathDependency(thisProjectRef.value, None)
   )

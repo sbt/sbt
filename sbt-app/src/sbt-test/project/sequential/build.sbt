@@ -34,6 +34,6 @@ lazy val root = project.
       val t = testFile.value
       IO.append(t, "2")
     },
-    foo := Def.sequential(compile in Compile, sideEffect0, sideEffect1, sideEffect2, test in Test, bar).value,
+    foo := Def.sequential(Compile / compile, sideEffect0, sideEffect1, sideEffect2, Test / test, bar).value,
     bar := 1
   )

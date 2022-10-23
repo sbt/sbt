@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 val commonSettings = Seq(
   organization := "com.example",
   version := "0.1.0",
-  ivyPaths := IvyPaths((baseDirectory in LocalRootProject).value, Some((target in LocalRootProject).value / "ivy-cache"))
+  ivyPaths := IvyPaths((LocalRootProject / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache"))
 )
 
 lazy val app = (project in file("app")).

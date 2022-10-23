@@ -7,12 +7,12 @@ lazy val root = (project in file(".")).
 lazy val sub: Project = project.
   dependsOn(LocalProject("root")).
   settings(
-    name := (name in LocalProject("root")).value + "sub"
+    name := (LocalProject("root") / name).value + "sub"
   )
 
 lazy val foo: Project = project.
   aggregate(LocalProject("root")).
   dependsOn(LocalProject("root")).
   settings(List(
-    name := (name in LocalProject("root")).value + "foo"
+    name := (LocalProject("root") / name).value + "foo"
   ): _*)

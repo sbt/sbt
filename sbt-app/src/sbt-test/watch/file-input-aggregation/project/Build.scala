@@ -33,7 +33,7 @@ object Build {
   lazy val foo = project
     .settings(
       setStringValue := {
-        val _ = (fileInputs in (bar, setStringValue)).value
+        val _ = (bar / setStringValue / fileInputs).value
         setStringValueImpl.evaluated
       },
       checkStringValue := checkStringValueImpl.evaluated,
@@ -92,6 +92,7 @@ object Build {
       assert(testTriggers == compileTriggers)
     },
   )
+
   lazy val root = (project in file("."))
     .aggregate(foo, bar)
     .settings(

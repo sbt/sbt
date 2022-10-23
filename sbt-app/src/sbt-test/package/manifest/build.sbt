@@ -9,11 +9,11 @@ crossPaths := false
 
 mainClass := Some("jartest.Main")
 
-packageOptions in (Compile, packageBin) := {
+Compile / packageBin / packageOptions := {
   def manifestExtra = {
     val mf = new Manifest
     mf.getMainAttributes.put(Attributes.Name.CLASS_PATH, makeString(scalaInstance.value.libraryJars))
     mf
   }
-  (packageOptions in (Compile, packageBin)).value :+ Package.JarManifest(manifestExtra)
+  (Compile / packageBin / packageOptions).value :+ Package.JarManifest(manifestExtra)
 }
