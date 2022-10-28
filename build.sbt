@@ -300,3 +300,4 @@ lazy val `sbt-coursier-root` = project
     (publish / skip) := true
   )
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
