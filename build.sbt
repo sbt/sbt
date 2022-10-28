@@ -17,7 +17,8 @@ inThisBuild(List(
   ),
   semanticdbEnabled := true,
   semanticdbVersion := "4.6.0",
-  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
+  libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % "always"
 ))
 
 Global / excludeLintKeys += scriptedBufferLog
