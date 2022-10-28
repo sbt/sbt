@@ -17,13 +17,14 @@ inThisBuild(List(
   ),
   semanticdbEnabled := true,
   semanticdbVersion := "4.6.0",
-  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
+  libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % "always"
 ))
 
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-val coursierVersion0 = "2.1.0-M7-18-g67daad6a9"
+val coursierVersion0 = "2.1.0-M7-34-gf519b50a3"
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -300,3 +301,4 @@ lazy val `sbt-coursier-root` = project
     (publish / skip) := true
   )
 
+Global / onChangedBuildSource := ReloadOnSourceChanges
