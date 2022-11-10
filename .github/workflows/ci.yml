@@ -105,6 +105,7 @@ jobs:
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
       run: |
+        rm -rf "$HOME/.sbt/boot/" || true
         ./sbt -v --client mimaReportBinaryIssues
         ./sbt -v --client javafmtCheck
         ./sbt -v --client "Test/javafmtCheck"
