@@ -3,14 +3,14 @@ import Keys._
 import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
-  val scala212 = "2.12.16"
+  val scala212 = "2.12.17"
   val scala213 = "2.13.8"
 
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.7.0")
-  private val utilVersion = nightlyVersion.getOrElse("1.7.1")
+  private val ioVersion = nightlyVersion.getOrElse("1.8.0")
+  private val utilVersion = nightlyVersion.getOrElse("1.8.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -51,7 +51,7 @@ object Dependencies {
   val jsch = "com.jcraft" % "jsch" % "0.1.54" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
-  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.0"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.14.0"
