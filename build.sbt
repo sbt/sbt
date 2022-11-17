@@ -24,7 +24,7 @@ inThisBuild(List(
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-val coursierVersion0 = "2.1.0-RC1"
+val coursierVersion0 = "2.1.0-RC2"
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -128,38 +128,40 @@ lazy val `lm-coursier-shaded` = project
       // zstd files, pulled via plexus-archiver
       "darwin/",
       "darwin/aarch64/",
-      "darwin/aarch64/libzstd-jni-1.5.2-4.dylib",
+      "darwin/aarch64/libzstd-jni-1.5.2-5.dylib",
       "darwin/x86_64/",
-      "darwin/x86_64/libzstd-jni-1.5.2-4.dylib",
+      "darwin/x86_64/libzstd-jni-1.5.2-5.dylib",
       "freebsd/",
       "freebsd/amd64/",
-      "freebsd/amd64/libzstd-jni-1.5.2-4.so",
+      "freebsd/amd64/libzstd-jni-1.5.2-5.so",
       "freebsd/i386/",
-      "freebsd/i386/libzstd-jni-1.5.2-4.so",
+      "freebsd/i386/libzstd-jni-1.5.2-5.so",
       "linux/",
       "linux/aarch64/",
-      "linux/aarch64/libzstd-jni-1.5.2-4.so",
+      "linux/aarch64/libzstd-jni-1.5.2-5.so",
       "linux/amd64/",
-      "linux/amd64/libzstd-jni-1.5.2-4.so",
+      "linux/amd64/libzstd-jni-1.4.9-3.so",
+      "linux/amd64/libzstd-jni-1.4.9-4.so",
+      "linux/amd64/libzstd-jni-1.5.2-5.so",
       "linux/arm/",
-      "linux/arm/libzstd-jni-1.5.2-4.so",
+      "linux/arm/libzstd-jni-1.5.2-5.so",
       "linux/i386/",
-      "linux/i386/libzstd-jni-1.5.2-4.so",
+      "linux/i386/libzstd-jni-1.5.2-5.so",
       "linux/loongarch64/",
-      "linux/loongarch64/libzstd-jni-1.5.2-4.so",
+      "linux/loongarch64/libzstd-jni-1.5.2-5.so",
       "linux/mips64/",
-      "linux/mips64/libzstd-jni-1.5.2-4.so",
+      "linux/mips64/libzstd-jni-1.5.2-5.so",
       "linux/ppc64/",
-      "linux/ppc64/libzstd-jni-1.5.2-4.so",
+      "linux/ppc64/libzstd-jni-1.5.2-5.so",
       "linux/ppc64le/",
-      "linux/ppc64le/libzstd-jni-1.5.2-4.so",
+      "linux/ppc64le/libzstd-jni-1.5.2-5.so",
       "linux/s390x/",
-      "linux/s390x/libzstd-jni-1.5.2-4.so",
+      "linux/s390x/libzstd-jni-1.5.2-5.so",
       "win/",
       "win/amd64/",
-      "win/amd64/libzstd-jni-1.5.2-4.dll",
+      "win/amd64/libzstd-jni-1.5.2-5.dll",
       "win/x86/",
-      "win/x86/libzstd-jni-1.5.2-4.dll",
+      "win/x86/libzstd-jni-1.5.2-5.dll",
     ),
     shadingRules ++= {
       val toShade = Seq(
