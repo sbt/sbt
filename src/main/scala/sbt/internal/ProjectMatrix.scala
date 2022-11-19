@@ -438,7 +438,7 @@ object ProjectMatrix {
       customRow(true, scalaVersions, VirtualAxis.native +: axisValues, project => enableScalaNativePlugin(project).settings(settings))
 
     override def nativePlatform(scalaVersions: Seq[String], axisValues: Seq[VirtualAxis], configure: Project => Project): ProjectMatrix =
-      customRow(true, scalaVersions, VirtualAxis.native +: axisValues, project => enableScalaNativePlugin(project))
+      customRow(true, scalaVersions, VirtualAxis.native +: axisValues, project => configure(enableScalaNativePlugin(project)))
 
     def nativePlugin(classLoader: ClassLoader): Try[AutoPlugin] = {
       import sbtprojectmatrix.ReflectionUtil._
