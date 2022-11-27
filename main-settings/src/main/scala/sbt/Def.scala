@@ -294,10 +294,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   // implicit def macroValueI[T](@deprecated("unused", "") in: Initialize[T]): MacroValue[T] = ???
 
-  extension [A1](in: Initialize[A1])
+  extension [A1](inline in: Initialize[A1])
     inline def value: A1 = InputWrapper.`wrapInit_\u2603\u2603`[A1](in)
 
-  extension [A1](in: Initialize[Task[A1]])
+  extension [A1](inline in: Initialize[Task[A1]])
     @targetName("valueIA1")
     inline def value: A1 = InputWrapper.`wrapInitTask_\u2603\u2603`[A1](in)
 
@@ -314,7 +314,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     inline def flatMapTask[A2](f: A1 => Initialize[Task[A2]]): Initialize[Task[A2]] =
       std.FullInstance.initializeTaskMonad.flatMap(in)(f)
 
-  extension [A1](in: TaskKey[A1])
+  extension [A1](inline in: TaskKey[A1])
     // implicit def macroPrevious[T](@deprecated("unused", "") in: TaskKey[T]): MacroPrevious[T] = ???
     inline def previous(using JsonFormat[A1]): Option[A1] =
       ${ TaskMacro.previousImpl[A1]('in) }
@@ -323,20 +323,20 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   // Initialize[State => Parser[T]] to be used in the inputTask macro as an input with an ultimate
   // result of type A1, previously implemented using ParserInput.parsedMacroImpl[A1].
 
-  extension [A1](in: Initialize[Parser[A1]])
+  extension [A1](inline in: Initialize[Parser[A1]])
     inline def parsed: A1 = ParserInput.`initParser_\u2603\u2603`[A1](Def.toISParser(in))
 
-  extension [A1](in: Initialize[State => Parser[A1]])
+  extension [A1](inline in: Initialize[State => Parser[A1]])
     @targetName("parsedISPA1")
     inline def parsed: A1 = ParserInput.`initParser_\u2603\u2603`[A1](in)
 
-  extension [A1](in: Def.Initialize[InputTask[A1]])
+  extension [A1](inline in: Def.Initialize[InputTask[A1]])
     inline def parsed: Task[A1] =
       ParserInput.`initParser_\u2603\u2603`[Task[A1]](Def.toIParser[A1](in))
 
     inline def evaluated: A1 = InputWrapper.`wrapInitInputTask_\u2603\u2603`[A1](in)
 
-    def toTask(arg: String): Initialize[Task[A1]] =
+    inline def toTask(arg: String): Initialize[Task[A1]] =
       import TaskExtra.singleInputTask
       FullInstance.flatten(
         (Def.stateKey zipWith in)((sTask, it) =>
@@ -415,16 +415,16 @@ end Def
 // because the target doesn't involve Initialize or anything in Def
 trait TaskMacroExtra:
   import sbt.std.ParserInput
-  extension [A1](in: Task[A1])
+  extension [A1](inline in: Task[A1])
     inline def value: A1 = std.InputWrapper.`wrapTask_\u2603\u2603`[A1](in)
 
   // implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
   //   ???
 
-  extension [A1](in: Parser[A1])
+  extension [A1](inline in: Parser[A1])
     inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](Def.toSParser(in))
 
-  extension [A1](in: State => Parser[A1])
+  extension [A1](inline in: State => Parser[A1])
     inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](in)
 end TaskMacroExtra
 

@@ -261,8 +261,7 @@ trait Cont:
             inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
             oldTree
         }
-      val inlined = inlineExtensionProxy(expr.asTerm)
-      val tx = transformWrappers(inlined, record, Symbol.spliceOwner)
+      val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
       val tr = makeApp(tx, inputBuf.toList)
       tr
 end Cont

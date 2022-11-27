@@ -67,33 +67,6 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
 
   def idTransform[F[_]]: TermTransform[F] = in => in
 
-  /**
-   * {
-   *  val in$proxy264: sbt.Def.Initialize[sbt.Task[sbt.ForkOptions]] = sbt.Defaults.forkOptionsTask
-   *  (foo.bar[sbt.ForkOptions](in$proxy264): sbt.ForkOptions)
-   * }
-   *
-   * @param tree
-   * @return
-   */
-  def inlineExtensionProxy(tree: Term): Term =
-    val rhss: mutable.Map[String, Term] = mutable.Map.empty
-    object refTransformer extends TreeMap:
-      override def transformStatement(tree: Statement)(owner: Symbol): Statement =
-        tree match
-          case ValDef(name, tpe, Some(body)) if name.contains("$proxy") =>
-            rhss(name) = body
-            ValDef.copy(tree)(name, tpe, None)
-          case _ =>
-            super.transformStatement(tree)(owner)
-
-      override def transformTerm(tree: Term)(owner: Symbol): Term =
-        tree match
-          case Ident(name) if rhss.contains(name) => rhss(name)
-          case _                                  => super.transformTerm(tree)(owner)
-    end refTransformer
-    refTransformer.transformTerm(tree)(Symbol.spliceOwner)
-
   def collectDefs(tree: Term, isWrapper: (String, TypeRepr, Term) => Boolean): Set[Symbol] =
     val defs = mutable.HashSet[Symbol]()
     object traverser extends TreeTraverser:

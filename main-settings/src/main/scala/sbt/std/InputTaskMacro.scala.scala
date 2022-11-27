@@ -97,8 +97,7 @@ object InputTaskMacro:
       )
 
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
-    val inlined = convert1.inlineExtensionProxy(tree.asTerm)
-    val cond = conditionInputTaskTree(inlined).asExprOf[A1]
+    val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
     convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, inner)
 
   private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
@@ -184,9 +183,8 @@ object InputTaskMacro:
         subWrapper(tpe, tree, oldTree)
       }
 
-    val inlined = convert1.inlineExtensionProxy(expr.asTerm)
     val tx =
-      convert1.transformWrappers(inlined, sub, Symbol.spliceOwner)
+      convert1.transformWrappers(expr.asTerm, sub, Symbol.spliceOwner)
     result match {
       case Some((p, tpe, param)) =>
         val fCore = util.createFunction(param :: Nil, tx, functionSym)
