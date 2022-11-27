@@ -87,6 +87,12 @@ object Assign {
     mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value + mk.value + tk.value
   }
 
+  val dyn: Def.Initialize[Task[Int]] = Def.taskDyn {
+    val a = ak.value
+    if a < 1 then Def.task { 1 }
+    else Def.task { 0 }
+  }
+
   import DefaultParsers._
   val p = Def.setting { name.value ~> Space ~> ID }
   val is = Seq(

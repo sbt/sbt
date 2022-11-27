@@ -1099,34 +1099,39 @@ object Defaults extends BuildCommon {
     }
 
   def scalaInstanceTask: Initialize[Task[ScalaInstance]] =
-    (Def.task { (Keys.scalaHome.value, appConfiguration.value, scalaVersion.value) }).flatMapTask {
-      case (Some(h), _, _) => scalaInstanceFromHome(h)
-      case (_, app, version) =>
-        val scalaProvider = app.provider.scalaProvider
-        if version == scalaProvider.version then
-          // use the same class loader as the Scala classes used by sbt
-          Def.task {
-            val allJars = scalaProvider.jars
-            val libraryJars = allJars
-              .filter { jar =>
-                (jar.getName == "scala-library.jar") || (jar.getName.startsWith("scala3-library_3"))
-              }
-            (allJars.filter { jar =>
-              jar.getName == "scala-compiler.jar" || jar.getName.startsWith("scala3-compiler_3")
-            }) match {
-              case Array(compilerJar) if libraryJars.nonEmpty =>
-                makeScalaInstance(
-                  version,
-                  libraryJars,
-                  allJars,
-                  Seq.empty,
-                  state.value,
-                  scalaInstanceTopLoader.value
-                )
-              case _ => ScalaInstance(version, scalaProvider)
+    Def.taskDyn {
+      val sh = Keys.scalaHome.value
+      val app = appConfiguration.value
+      val sv = scalaVersion.value
+      sh match
+        case Some(h) => scalaInstanceFromHome(h)
+        case _ =>
+          val scalaProvider = app.provider.scalaProvider
+          if sv == scalaProvider.version then
+            // use the same class loader as the Scala classes used by sbt
+            Def.task {
+              val allJars = scalaProvider.jars
+              val libraryJars = allJars
+                .filter { jar =>
+                  (jar.getName == "scala-library.jar") || (jar.getName.startsWith(
+                    "scala3-library_3"
+                  ))
+                }
+              (allJars.filter { jar =>
+                jar.getName == "scala-compiler.jar" || jar.getName.startsWith("scala3-compiler_3")
+              }) match
+                case Array(compilerJar) if libraryJars.nonEmpty =>
+                  makeScalaInstance(
+                    sv,
+                    libraryJars,
+                    allJars.toSeq,
+                    Seq.empty,
+                    state.value,
+                    scalaInstanceTopLoader.value
+                  )
+                case _ => ScalaInstance(sv, scalaProvider)
             }
-          }
-        else scalaInstanceFromUpdate
+          else scalaInstanceFromUpdate
     }
 
   // Returns the ScalaInstance only if it was not constructed via `update`

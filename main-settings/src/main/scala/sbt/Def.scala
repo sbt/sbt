@@ -232,7 +232,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskMacroImpl[A1]('a1) }
 
-  inline def taskDyn[A1](a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
+  inline def taskDyn[A1](inline a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskDynMacroImpl[A1]('a1) }
 
   inline def setting[A1](inline a: A1): Def.Initialize[A1] = ${ settingMacroImpl[A1]('a) }
