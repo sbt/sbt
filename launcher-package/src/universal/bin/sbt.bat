@@ -972,7 +972,7 @@ echo   --numeric-version   print the numeric sbt version (sbt sbtVersion)
 echo   --script-version    print the version of sbt script
 echo   -d ^| --debug        set sbt log level to debug
 echo   -debug-inc ^| --debug-inc
-echo                       enable extra debugging for the incremental debugger
+echo                       enable extra debugging for the incremental compiler
 echo   --no-colors         disable ANSI color codes
 echo   --color=auto^|always^|true^|false^|never
 echo                       enable or disable ANSI color codes      ^(sbt 1.3 and above^)

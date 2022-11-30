@@ -546,7 +546,7 @@ Usage: `basename "$0"` [options]
   shutdownall         shutdown all running sbt-launch processes
   -d | --debug        set sbt log level to debug
   -debug-inc | --debug-inc
-                      enable extra debugging for the incremental debugger
+                      enable extra debugging for the incremental compiler
   --no-colors         disable ANSI color codes
   --color=auto|always|true|false|never
                       enable or disable ANSI color codes      (sbt 1.3 and above)
