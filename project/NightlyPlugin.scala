@@ -14,7 +14,7 @@ object NightlyPlugin extends AutoPlugin {
         Seq(
           scalacheck % Test,
           junit % Test,
-          scalatest % Test,
+          (scalatest % Test).cross(CrossVersion.for3Use2_13),
           scalaVerify % Test,
           hedgehog % Test
         )
