@@ -52,7 +52,7 @@ ThisBuild / assemblyMergeStrategy := {
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-alpha8"
+val lm3Version = "2.0.0-alpha7"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -102,8 +102,9 @@ lazy val definitions = project
     libraryDependencies ++= Seq(
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
-      lmIvy.value,
+      lmIvy.value % Provided,
     ),
+    conflictWarning := ConflictWarning.disable,
     dontPublish,
   )
 
@@ -188,7 +189,10 @@ lazy val `lm-coursier-shaded` = project
         "org.apache.xbean",
         "org.codehaus",
         "org.iq80",
-        "org.tukaani"
+        "org.tukaani",
+        "scala.collection.compat",
+        "scala.util.control.compat",
+        "scala.xml",
       )
       for (ns <- toShade)
         yield ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
@@ -196,12 +200,10 @@ lazy val `lm-coursier-shaded` = project
     libraryDependencies ++= Seq(
       ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
-      ("org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1").cross(CrossVersion.for3Use2_13),
-      ("org.scala-lang.modules" %% "scala-xml" % "2.1.0").cross(CrossVersion.for3Use2_13),
-      // "org.scala-lang.modules" %% "scala-xml" % "2.1.0", // depending on that one so that it doesn't get shaded
-      lmIvy.value,
-      ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
+      lmIvy.value % Provided,
+      "org.scalatest" %% "scalatest" % "3.2.13" % Test,
     ),
+    conflictWarning := ConflictWarning.disable,
     dontPublish,
   )
 
