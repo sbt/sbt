@@ -44,7 +44,7 @@ object IPC {
   def server[T](f: IPC => Option[T]): T = serverImpl(makeServer, f)
 
   def server[T](port: Int)(f: IPC => Option[T]): T =
-    serverImpl(new ServerSocket(port, 1, loopback), f)
+    serverImpl(new ServerSocket(port, 50, loopback), f)
 
   private def serverImpl[T](server: ServerSocket, f: IPC => Option[T]): T = {
     @tailrec def listen(): T = {
