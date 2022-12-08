@@ -459,7 +459,7 @@ lazy val testingProj = (project in file("testing"))
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(
-      scalaXml.value.cross(CrossVersion.for3Use2_13),
+      scalaXml.value,
       testInterface,
       launcherInterface,
       sjsonNewScalaJson.value,
@@ -923,7 +923,7 @@ lazy val mainProj = (project in file("main"))
     },
     libraryDependencies ++=
       (Seq(
-        scalaXml.value.cross(CrossVersion.for3Use2_13),
+        scalaXml.value,
         sjsonNewScalaJson.value,
         sjsonNewCore.value,
         launcherInterface,
@@ -1040,7 +1040,7 @@ lazy val sbtClientProj = (project in file("client"))
     crossPaths := false,
     exportJars := true,
     libraryDependencies += jansi,
-    libraryDependencies += (scalatest % Test).cross(CrossVersion.for3Use2_13),
+    libraryDependencies += scalatest % Test,
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
