@@ -7,10 +7,12 @@ val luceneVersion = "4.0.0"
 val akkaVersion = "2.3.1"
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ThisBuild / organization := "org.example"
+ThisBuild / version := "1.0-SNAPSHOT"
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
     scalaVersion := "2.10.4",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     updateOptions := updateOptions.value.withCachedResolution(true)
@@ -48,10 +50,8 @@ lazy val c = project.
 lazy val root = (project in file(".")).
   settings(commonSettings: _*).
   settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0-SNAPSHOT",
     check := {
-      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}.sorted
+      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
       if (!(acp contains "netty-3.2.0.Final.jar")) {
         sys.error("netty-3.2.0.Final not found when it should be included: " + acp.toString)
       }

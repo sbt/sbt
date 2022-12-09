@@ -11,7 +11,7 @@ inThisBuild(Seq(
 ))
 
 def commonSettings: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+  ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
   dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
   fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
 )

@@ -23,8 +23,8 @@ lazy val root = (project in file("."))
       licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     )),
     ivyPaths := IvyPaths(
-      (baseDirectory in ThisBuild).value,
-      Some((baseDirectory in LocalRootProject).value / "ivy-cache")
+      (ThisBuild / baseDirectory).value,
+      Some((LocalRootProject / baseDirectory).value / "ivy-cache")
     ),
     libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "1.0.0",
 

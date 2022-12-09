@@ -10,7 +10,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
     scalaVersion := "2.10.4",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
   )

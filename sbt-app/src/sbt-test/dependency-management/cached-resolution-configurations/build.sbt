@@ -5,7 +5,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 def commonSettings: Vector[Def.Setting[_]] =
   Vector(
     organization := "com.example",
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
     resolvers += Resolver.file("buggy", (baseDirectory in LocalRootProject).value / "repo")(

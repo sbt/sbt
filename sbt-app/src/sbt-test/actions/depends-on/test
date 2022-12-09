@@ -17,7 +17,7 @@ $ touch succeed
 
 -> h fail
 $ absent h
-> set traceLevel in ThisBuild := 100
-> set logLevel in ThisBuild := Level.Debug
+> set ThisBuild / traceLevel := 100
+> set ThisBuild / logLevel := Level.Debug
 > h succeed
 $ exists h

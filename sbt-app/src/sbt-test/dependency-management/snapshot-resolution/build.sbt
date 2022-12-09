@@ -6,7 +6,7 @@ ThisBuild / useCoursier := false
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
+  ivyPaths := IvyPaths(baseDirectory.value, Some((ThisBuild / baseDirectory).value / "ivy" / "cache"))
 )
 
 lazy val sharedResolver: Resolver = {
