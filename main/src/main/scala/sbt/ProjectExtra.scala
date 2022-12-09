@@ -660,9 +660,10 @@ trait ProjectExtra:
 
     def projectToRef(p: Project): ProjectReference = LocalProject(p.id)
 
-    implicit def projectToLocalProject(p: Project): LocalProject = LocalProject(p.id)
-
      */
+
+  given projectToLocalProject: Conversion[Project, LocalProject] =
+    (p: Project) => LocalProject(p.id)
 
   extension [A1](in: Def.Initialize[Task[A1]])
     def updateState(f: (State, A1) => State): Def.Initialize[Task[A1]] =

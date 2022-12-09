@@ -36,7 +36,7 @@ $ absent sub/ran
 $ delete ran
 
 # define in sub project, but shouldn't run without aggregation
-> set Mark in sub := mark(sub).value
+> set sub / Mark := mark(sub).value
 > mark
 $ exists ran
 $ absent sub/ran
