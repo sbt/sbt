@@ -53,9 +53,9 @@ check := {
   same(globalValue, "global 0", "demo in Global")
   val projValue = (projC / demo).?.value
   same(projValue, Some("project projC Q R"), "demo in projC")
-  val qValue = (Quux / del in projC)(projC / del).?.value
+  val qValue = (projC / Quux / del).?.value
   same(qValue, Some(" Q R"), "del in projC in Quux")
-  val optInValue = (Quux / del in projE)(projE / del).value
+  val optInValue = (projE / Quux / del).value
   same(optInValue, " Q S R", "del in projE in Quux")
   val overrideOrgValue = (projE / organization).value
   same(overrideOrgValue, "S", "organization in projE")

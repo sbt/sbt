@@ -75,7 +75,7 @@ object R extends AutoPlugin {
     // tests proper ordering: R requires Q, so Q settings should come first
     Quux / del += " R",
     // tests that configurations are properly registered, enabling delegation from p to q
-    demo += (del in Pippy).value
+    demo += (Pippy / del).value
   )
 }
 

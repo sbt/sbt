@@ -10,7 +10,7 @@ import sjsonnew.JsonFormat
 import java.nio.file.{ Path => NioPath }
 
 import sbt.internal.FileChangesMacro
-
+import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
 import scala.language.experimental.macros
 
 package object sbt
@@ -59,6 +59,7 @@ package object sbt
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
-  // def config(name: String): Configuration =
-  //   macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
+  inline def config(name: String): Configuration = ${
+    ConfigurationMacro.configMacroImpl('{ name })
+  }
 }
