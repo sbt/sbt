@@ -665,6 +665,11 @@ trait ProjectExtra:
   given projectToLocalProject: Conversion[Project, LocalProject] =
     (p: Project) => LocalProject(p.id)
 
+  given classpathDependency[A](using
+      Conversion[A, ProjectReference]
+  ): Conversion[A, ClasspathDep[ProjectReference]] =
+    (a: A) => ClasspathDep.ClasspathDependency(a, None)
+
   extension [A1](in: Def.Initialize[Task[A1]])
     def updateState(f: (State, A1) => State): Def.Initialize[Task[A1]] =
       in(t => SessionVar.transform(t, f))
