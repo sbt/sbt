@@ -780,10 +780,19 @@ import Scoped.{ coerceTag, extendScoped }
 /** Constructs InputKeys, which are associated with input tasks to define a setting. */
 object InputKey:
 
+  def apply[A1: ClassTag](label: String): InputKey[A1] =
+    apply[A1](label, "", KeyRanks.DefaultInputRank)
+
   def apply[A1: ClassTag](
       label: String,
-      description: String = "",
-      rank: Int = KeyRanks.DefaultInputRank
+      description: String,
+  ): InputKey[A1] =
+    apply(label, description, KeyRanks.DefaultInputRank)
+
+  def apply[A1: ClassTag](
+      label: String,
+      description: String,
+      rank: Int,
   ): InputKey[A1] =
     given mf: ClassTag[InputTask[A1]] =
       ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], coerceTag[A1])
