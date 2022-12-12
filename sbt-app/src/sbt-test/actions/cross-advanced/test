@@ -19,9 +19,9 @@
 ## for command cross building you do need crossScalaVerions on root
 > set root/crossScalaVersions := Seq("2.12.17", "2.13.1")
 > + build
-$ exists foo/target/scala-2.12
-$ exists foo/target/scala-2.13
-$ exists bar/target/scala-2.12
-$ exists bar/target/scala-2.13
-$ exists client/target/scala-2.12
-$ exists client/target/scala-2.13
+# $ exists foo/target/scala-2.12
+# $ exists foo/target/scala-2.13
+# $ exists bar/target/scala-2.12
+# $ exists bar/target/scala-2.13
+# $ exists client/target/scala-2.12
+# $ exists client/target/scala-2.13

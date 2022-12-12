@@ -1098,7 +1098,7 @@ private[sbt] object Load {
       // 3. Use AddSettings instance to order all Setting[_]s appropriately
       val allSettings = {
         // TODO - This mechanism of applying settings could be off... It's in two places now...
-        lazy val defaultSbtFiles = configurationSources(p.base)
+        lazy val defaultSbtFiles = configurationSources(p.base.getCanonicalFile())
           .map(_.getAbsoluteFile().toPath())
           .map(converter.toVirtualFile)
         lazy val sbtFiles: Seq[VirtualFile] = defaultSbtFiles ++ extraSbtFiles
