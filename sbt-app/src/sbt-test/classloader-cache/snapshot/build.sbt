@@ -1,4 +1,5 @@
 ThisBuild / turbo := true
+ThisBuild / scalaVersion := "2.12.17"
 
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
@@ -19,9 +20,12 @@ val snapshot = (project in file(".")).settings(
   rewriteIvy := {
     val dir = Def.spaceDelimited().parsed.head
     sbt.IO.delete(baseDirectory.value / "ivy")
-    sbt.IO.copyDirectory(baseDirectory.value / s"libraries/library-$dir/ivy", baseDirectory.value / "ivy")
+    sbt.IO.copyDirectory(
+      baseDirectory.value / s"libraries/library-$dir/ivy",
+      baseDirectory.value / "ivy"
+    )
     Files.walk(file("ivy").getCanonicalFile.toPath).iterator.asScala.foreach { f =>
-     Files.setLastModifiedTime(f, FileTime.fromMillis(System.currentTimeMillis + 3000))
+      Files.setLastModifiedTime(f, FileTime.fromMillis(System.currentTimeMillis + 3000))
     }
   }
 )

@@ -18,37 +18,38 @@ def testTask[T](name: String, expected: String, task: TaskKey[T]) = TaskKey[Unit
 myTask := "root"
 testTask("testRunTaskRoot", "root", myTask)
 
-myTask in Compile := "root compile"
-testTask("testRunTaskRootCompile", "root compile", myTask in Compile)
+Compile / myTask := "root compile"
+testTask("testRunTaskRootCompile", "root compile", Compile / myTask)
 
-myTask in sub := "sub"
-testTask("testRunTaskSub", "sub", myTask in sub)
+sub / myTask := "sub"
+testTask("testRunTaskSub", "sub", sub / myTask)
 
-myTask in (sub, Compile) := "sub compile"
-testTask("testRunTaskSubCompile", "sub compile", myTask in (sub, Compile))
+sub / Compile / myTask := "sub compile"
+testTask("testRunTaskSubCompile", "sub compile", sub / Compile / myTask)
 
 def argFunction(f: String => String) = Def.inputTask {
   import complete.Parsers._
   f((OptSpace ~> StringBasic).parsed)
 }
 
-def testInputTask[T](name: String, expected: String, task: InputKey[T], arg: String) = TaskKey[Unit](name) := {
-  val s = state.value
-  val e = Project.extract(s)
-  val (_, result) = e.runInputTask(task, arg, s)
-  if (expected != result) {
-    throw sys.error(s"Error in test $name: Expected $expected but got $result")
+def testInputTask[T](name: String, expected: String, task: InputKey[T], arg: String) =
+  TaskKey[Unit](name) := {
+    val s = state.value
+    val e = Project.extract(s)
+    val (_, result) = e.runInputTask(task, arg, s)
+    if (expected != result) {
+      throw sys.error(s"Error in test $name: Expected $expected but got $result")
+    }
   }
-}
 
 myInputTask := argFunction(_.toUpperCase(Locale.ENGLISH)).evaluated
 testInputTask("testRunInputTaskRoot", "FOO", myInputTask, "foo")
 
 Compile / myInputTask := argFunction(_.toLowerCase(Locale.ENGLISH)).evaluated
-testInputTask("testRunInputTaskRootCompile", "foo", myInputTask in Compile, "FOO")
+testInputTask("testRunInputTaskRootCompile", "foo", Compile / myInputTask, "FOO")
 
 sub / myInputTask := argFunction(_.head.toString).evaluated
-testInputTask("testRunInputTaskSub", "f", myInputTask in sub, "foo")
+testInputTask("testRunInputTaskSub", "f", sub / myInputTask, "foo")
 
 sub / Compile / myInputTask := argFunction(_.tail).evaluated
-testInputTask("testRunInputTaskSubCompile", "oo", myInputTask in (sub, Compile), "foo")
+testInputTask("testRunInputTaskSubCompile", "oo", sub / Compile / myInputTask, "foo")

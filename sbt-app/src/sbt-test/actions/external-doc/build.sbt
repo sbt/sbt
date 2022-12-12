@@ -44,7 +44,7 @@ def expectedMappings = Def.task {
       }
     }
   }
-  val mc = (Compile / c / classDirectory).value -> apiBase("c")
+  val mc = (c / Compile / classDirectory).value -> apiBase("c")
   (mc +: ms).toMap
 }
 

@@ -4611,7 +4611,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
         scoped.scopedKey,
         ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config))
       ).zipWith(Def.task { ((config / fullClasspath).value, streams.value) }) { case (rTask, t) =>
-        (t, rTask).mapN { case ((cp: Keys.Classpath, s: Streams), r: ScalaRun) =>
+        (t, rTask).mapN { case ((cp, s), r) =>
           r.run(mainClass, data(cp), arguments, s.log).get
         }
       }.value

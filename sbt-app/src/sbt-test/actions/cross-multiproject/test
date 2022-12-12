@@ -1,64 +1,67 @@
+> show rootProj/projectID
 > + compile
-$ exists lib/target/scala-2.12
+
+$ exists lib/target/scala-3.2.1
 $ exists lib/target/scala-2.13
-$ exists sbt-foo/target/scala-2.12
+$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
 > clean
 > + libProj/compile
-$ exists lib/target/scala-2.12
+$ exists lib/target/scala-3.2.1
 $ exists lib/target/scala-2.13
--$ exists sbt-foo/target/scala-2.12
+-$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
 # test safe switching
 > clean
-> ++ 2.12.12 -v compile
-$ exists lib/target/scala-2.12
+> ++ 3.2.1 -v compile
+$ exists lib/target/scala-3.2.1
 -$ exists lib/target/scala-2.13
-$ exists sbt-foo/target/scala-2.12
+$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
 # Test legacy cross build with command support
 # > clean
 # > + build
-# $ exists lib/target/scala-2.12
+# $ exists lib/target/scala-3.2.1
 # $ exists lib/target/scala-2.13
-# $ exists sbt-foo/target/scala-2.12
+# $ exists sbt-foo/target/scala-3.2.1
 # -$ exists sbt-foo/target/scala-2.13
 
 # Test ++ leaves crossScalaVersions unchanged
 > clean
-> ++2.12.12
+> ++3.2.1
 > +extrasProj/compile
 $ exists extras/target/scala-2.13
-$ exists extras/target/scala-2.12
+$ exists extras/target/scala-3.2.1
 
 # test safe switching
 > clean
 > ++ 2.13.1 -v compile
 $ exists lib/target/scala-2.13
--$ exists lib/target/scala-2.12
-# -$ exists sbt-foo/target/scala-2.12
+-$ exists lib/target/scala-3.2.1
+# -$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
-# test wildcard switching (2.12)
+# test wildcard switching (3.2.1
 > clean
-> ++ 2.12.* -v compile
-$ exists lib/target/scala-2.12
+> ++ 3.* -v compile
+$ exists lib/target/scala-3.2.1
 -$ exists lib/target/scala-2.13
-$ exists sbt-foo/target/scala-2.12
+$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
 # test wildcard switching (2.13)
 > clean
 > ++ 2.13.x -v compile
 $ exists lib/target/scala-2.13
--$ exists lib/target/scala-2.12
-# -$ exists sbt-foo/target/scala-2.12
+-$ exists lib/target/scala-3.2.1
+# -$ exists sbt-foo/target/scala-3.2.1
 -$ exists sbt-foo/target/scala-2.13
 
 # test wildcard switching (no matches)
--> ++ 3.*
+-> ++ 4.*
 # test wildcard switching (multiple matches)
--> ++ 2.*
+> ++ 2.*
+

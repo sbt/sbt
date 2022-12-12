@@ -23,4 +23,4 @@ taskA := (taskA triggeredBy taskB).value
 taskE := (taskE runBefore taskF).value
 
 // test utils
-def touch(f: File): File = { IO touch f; f }
+def touch(f: File): File = { IO.touch(f); f }

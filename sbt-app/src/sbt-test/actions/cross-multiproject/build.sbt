@@ -1,8 +1,8 @@
-lazy val scala212 = "2.12.12"
+lazy val scala3 = "3.2.1"
 lazy val scala213 = "2.13.1"
 
-ThisBuild / crossScalaVersions := Seq(scala212, scala213)
-ThisBuild / scalaVersion       := scala212
+ThisBuild / crossScalaVersions := Seq(scala3, scala213)
+ThisBuild / scalaVersion       := scala3
 
 lazy val rootProj = (project in file("."))
   .aggregate(libProj, fooPlugin)
@@ -20,10 +20,11 @@ lazy val fooPlugin = (project in file("sbt-foo"))
   .enablePlugins(SbtPlugin)
   .settings(
     name := "sbt-foo",
-    crossScalaVersions := Seq(scala212)
+    crossScalaVersions := Seq(scala3),
   )
 
 lazy val extrasProj = (project in file("extras"))
   .settings(
     name := "foo-extras",
   )
+
