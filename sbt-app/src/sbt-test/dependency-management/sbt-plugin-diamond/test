@@ -1,0 +1,12 @@
+> v1/checkUpdate
+> v2/checkUpdate
+> v3/checkUpdate
+> v4/checkUpdate
+> v5/checkUpdate
+
+> set ThisBuild/useCoursier:=true
+> v1/checkUpdate
+> v2/checkUpdate
+> v3/checkUpdate
+> v4/checkUpdate
+> v5/checkUpdate
