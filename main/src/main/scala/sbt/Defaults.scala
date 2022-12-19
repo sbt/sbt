@@ -2827,8 +2827,51 @@ object Classpaths {
 
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
-    packagedArtifacts := packaged(defaultArtifactTasks).value
+    packagedArtifacts := packaged(defaultArtifactTasks).value ++
+      Def
+        .ifS(sbtPlugin.toTask)(mavenArtifactsOfSbtPlugin)(Def.task(Map.empty[Artifact, File]))
+        .value
   ) ++ RemoteCache.projectSettings
+
+  /**
+   * Produces the Maven-compatible artifacts of an sbt plugin.
+   * It adds the sbt-cross version suffix into the artifact names, and it generates a
+   * valid POM file, that is a POM file that Maven can resolve.
+   */
+  private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, File]]] =
+    Def.ifS(publishMavenStyle.toTask)(Def.task {
+      val crossVersion = sbtCrossVersion.value
+      val legacyArtifact = (makePom / artifact).value
+      val pom = makeMavenPomOfSbtPlugin.value
+      val legacyPackages = packaged(defaultPackages).value
+
+      def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+      val packages = legacyPackages.map { case (artifact, file) => addSuffix(artifact) -> file }
+      packages + (addSuffix(legacyArtifact) -> pom)
+    })(Def.task(Map.empty))
+
+  private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
+    val sbtV = sbtBinaryVersion.value
+    val scalaV = scalaBinaryVersion.value
+    name => name + s"_${scalaV}_$sbtV"
+  }
+
+  /**
+   * Generates a POM file that Maven can resolve.
+   * It appends the sbt cross version into all artifactIds of sbt plugins
+   * (the main one and the dependencies).
+   */
+  private def makeMavenPomOfSbtPlugin: Def.Initialize[Task[File]] = Def.task {
+    val config = makePomConfiguration.value
+    val nameWithCross = sbtCrossVersion.value(artifact.value.name)
+    val version = Keys.version.value
+    val pomFile = config.file.get.getParentFile / s"$nameWithCross-$version.pom"
+    val publisher = Keys.publisher.value
+    val ivySbt = Keys.ivySbt.value
+    val module = new ivySbt.Module(moduleSettings.value, appendSbtCrossVersion = true)
+    publisher.makePomFile(module, config.withFile(pomFile), streams.value.log)
+    pomFile
+  }
 
   val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,

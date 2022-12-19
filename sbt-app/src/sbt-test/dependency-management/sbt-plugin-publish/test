@@ -1,0 +1,11 @@
+> example / checkPackagedArtifacts
+
+> example / checkPublish
+> testMaven / checkUpdate
+> set testMaven / useCoursier := false
+> testMaven / checkUpdate
+
+> example / publishLocal
+> testLocal / checkUpdate
+> set testLocal / useCoursier := false
+> testLocal / checkUpdate
