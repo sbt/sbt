@@ -75,6 +75,31 @@ object CustomPomParser {
   private[this] val unqualifiedKeys =
     Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey, VersionSchemeKey)
 
+  /** In the new POM format of sbt plugins, the dependency to an sbt plugin
+   * contains the sbt cross-version _2.12_1.0. The reason is we want Maven to be able
+   * to resolve the dependency using the pattern:
+   * <org>/<artifact-name>_2.12_1.0/<version>/<artifact-name>_2.12_1.0-<version>.pom
+   * In sbt 1.x we use extra-attributes to resolve sbt plugins, so here we must remove
+   * the sbt cross-version and keep the extra-attributes.
+   * Parsing a dependency found in the new POM format produces the same module as
+   * if it is found in the old POM format. It used not to contain the sbt cross-version
+   * suffix, but that was invalid.
+   * Hence we can resolve conflicts between new and old POM formats.
+   *
+   * To compare the two formats you can look at the POMs in:
+   * https://repo1.maven.org/maven2/ch/epfl/scala/sbt-plugin-example-diamond_2.12_1.0/0.5.0/
+   */
+  private def removeSbtCrossVersion(
+      properties: Map[String, String],
+      moduleName: String
+  ): String = {
+    val sbtCrossVersion = for {
+      sbtVersion <- properties.get(s"e:$SbtVersionKey")
+      scalaVersion <- properties.get(s"e:$ScalaVersionKey")
+    } yield s"_${scalaVersion}_$sbtVersion"
+    sbtCrossVersion.map(moduleName.stripSuffix).getOrElse(moduleName)
+  }
+
   // packagings that should be jars, but that Ivy doesn't handle as jars
   // TODO - move this elsewhere.
   val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit", "scala-jar")
@@ -163,9 +188,12 @@ object CustomPomParser {
     import collection.JavaConverters._
     val oldExtra = qualifiedExtra(id)
     val newExtra = (oldExtra ++ properties).asJava
+    // remove the sbt plugin cross version from the resolved ModuleRevisionId
+    // sbt-plugin-example_2.12_1.0 => sbt-plugin-example
+    val nameWithoutCrossVersion = removeSbtCrossVersion(properties, id.getName)
     ModuleRevisionId.newInstance(
       id.getOrganisation,
-      id.getName,
+      nameWithoutCrossVersion,
       id.getBranch,
       id.getRevision,
       newExtra

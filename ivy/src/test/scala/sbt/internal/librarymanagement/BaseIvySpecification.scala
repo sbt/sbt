@@ -37,7 +37,8 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       deps: Vector[ModuleID],
       scalaFullVersion: Option[String],
       uo: UpdateOptions = UpdateOptions(),
-      overrideScalaVersion: Boolean = true
+      overrideScalaVersion: Boolean = true,
+      appendSbtCrossVersion: Boolean = false
   ): IvySbt#Module = {
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
@@ -55,7 +56,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       .withConfigurations(configurations)
       .withScalaModuleInfo(scalaModuleInfo)
     val ivySbt = new IvySbt(mkIvyConfiguration(uo))
-    new ivySbt.Module(moduleSetting)
+    new ivySbt.Module(moduleSetting, appendSbtCrossVersion)
   }
 
   def resolvers: Vector[Resolver] = Vector(Resolver.mavenCentral)
