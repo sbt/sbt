@@ -48,17 +48,16 @@ final class xMain extends xsbti.AppMain:
     new XMainConfiguration().run("xMain", configuration)
 end xMain
 
-private[sbt] object xMain {
-  private[sbt] def dealiasBaseDirectory(config: xsbti.AppConfiguration): xsbti.AppConfiguration = {
+private[sbt] object xMain:
+  private[sbt] def dealiasBaseDirectory(config: xsbti.AppConfiguration): xsbti.AppConfiguration =
     val dealiasedBase = config.baseDirectory.getCanonicalFile
-    if (config.baseDirectory == dealiasedBase) config
+    if config.baseDirectory == dealiasedBase then config
     else
       new xsbti.AppConfiguration {
         override def arguments: Array[String] = config.arguments()
         override val baseDirectory: File = dealiasedBase
         override def provider: AppProvider = config.provider()
       }
-  }
 
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     try {
@@ -172,7 +171,7 @@ private[sbt] object xMain {
       case _: UnsatisfiedLinkError => (None, None)
     }
   }
-}
+end xMain
 
 final class ScriptMain extends xsbti.AppMain {
   def run(configuration: xsbti.AppConfiguration): xsbti.MainResult =
