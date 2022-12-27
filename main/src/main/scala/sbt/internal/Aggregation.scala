@@ -251,12 +251,12 @@ object Aggregation {
       proj: Option[Reference],
       extra: BuildUtil[Proj],
       reverse: Boolean
-  ): Seq[ProjectRef] = {
+  ): Seq[ProjectRef] =
     val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap(ref =>
-      if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
-    )
-  }
+    resRef.toList.flatMap { ref =>
+      if reverse then extra.aggregates.reverse(ref)
+      else extra.aggregates.forward(ref)
+    }
 
   def aggregate[T, Proj](
       key: ScopedKey[T],

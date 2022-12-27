@@ -6,6 +6,11 @@ $ exists core/target/scala-3.0.2
 -$ exists subproj/target/scala-3.1.2
 
 > clean
+-$ exists core/target/scala-3.0.2
+-$ exists core/target/scala-3.1.2
+-$ exists subproj/target/scala-3.0.2
+-$ exists subproj/target/scala-3.1.2
+
 > ++3.1.2 compile
 
 -$ exists core/target/scala-3.0.2
