@@ -14,8 +14,9 @@ implicit lazy val BuildTargetCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       val canCompile = unbuilder.readField[Boolean]("canCompile")
       val canTest = unbuilder.readField[Boolean]("canTest")
       val canRun = unbuilder.readField[Boolean]("canRun")
+      val canDebug = unbuilder.readField[Boolean]("canDebug")
       unbuilder.endObject()
-      sbt.internal.bsp.BuildTargetCapabilities(canCompile, canTest, canRun)
+      sbt.internal.bsp.BuildTargetCapabilities(canCompile, canTest, canRun, canDebug)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ implicit lazy val BuildTargetCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
     builder.addField("canCompile", obj.canCompile)
     builder.addField("canTest", obj.canTest)
     builder.addField("canRun", obj.canRun)
+    builder.addField("canDebug", obj.canDebug)
     builder.endObject()
   }
 }

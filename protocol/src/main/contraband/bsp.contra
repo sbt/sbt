@@ -61,6 +61,9 @@ type BuildTargetCapabilities {
 
   ## This target can be run by the BSP server.
   canRun: Boolean!
+
+  ## This target can be debugged by the BSP server.
+  canDebug: Boolean!
 }
 
 type DebugSessionAddress {
@@ -190,6 +193,9 @@ type BuildServerCapabilities {
   # The languages the server supports run via method buildTarget/run
   runProvider: sbt.internal.bsp.RunProvider
 
+  # The languages the server supports debugging via method debugSession/start
+  debugProvider: sbt.internal.bsp.DebugProvider
+
   # The server can provide a list of targets that contain a
   # single text document via the method buildTarget/inverseSources
   # inverseSourcesProvider: Boolean
@@ -232,6 +238,10 @@ type TestProvider {
 }
 
 type RunProvider {
+  languageIds: [String]
+}
+
+type DebugProvider {
   languageIds: [String]
 }
 

@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait BuildServerCapabilitiesFormats { self: sbt.internal.bsp.codec.CompileProviderFormats with sbt.internal.bsp.codec.TestProviderFormats with sbt.internal.bsp.codec.RunProviderFormats with sjsonnew.BasicJsonProtocol =>
+trait BuildServerCapabilitiesFormats { self: sbt.internal.bsp.codec.CompileProviderFormats with sbt.internal.bsp.codec.TestProviderFormats with sbt.internal.bsp.codec.RunProviderFormats with sbt.internal.bsp.codec.DebugProviderFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.BuildServerCapabilities] = new JsonFormat[sbt.internal.bsp.BuildServerCapabilities] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.BuildServerCapabilities = {
     __jsOpt match {
@@ -14,6 +14,7 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       val compileProvider = unbuilder.readField[Option[sbt.internal.bsp.CompileProvider]]("compileProvider")
       val testProvider = unbuilder.readField[Option[sbt.internal.bsp.TestProvider]]("testProvider")
       val runProvider = unbuilder.readField[Option[sbt.internal.bsp.RunProvider]]("runProvider")
+      val debugProvider = unbuilder.readField[Option[sbt.internal.bsp.DebugProvider]]("debugProvider")
       val dependencySourcesProvider = unbuilder.readField[Option[Boolean]]("dependencySourcesProvider")
       val resourcesProvider = unbuilder.readField[Option[Boolean]]("resourcesProvider")
       val outputPathsProvider = unbuilder.readField[Option[Boolean]]("outputPathsProvider")
@@ -21,7 +22,7 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
       val jvmRunEnvironmentProvider = unbuilder.readField[Option[Boolean]]("jvmRunEnvironmentProvider")
       val jvmTestEnvironmentProvider = unbuilder.readField[Option[Boolean]]("jvmTestEnvironmentProvider")
       unbuilder.endObject()
-      sbt.internal.bsp.BuildServerCapabilities(compileProvider, testProvider, runProvider, dependencySourcesProvider, resourcesProvider, outputPathsProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
+      sbt.internal.bsp.BuildServerCapabilities(compileProvider, testProvider, runProvider, debugProvider, dependencySourcesProvider, resourcesProvider, outputPathsProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -31,6 +32,7 @@ implicit lazy val BuildServerCapabilitiesFormat: JsonFormat[sbt.internal.bsp.Bui
     builder.addField("compileProvider", obj.compileProvider)
     builder.addField("testProvider", obj.testProvider)
     builder.addField("runProvider", obj.runProvider)
+    builder.addField("debugProvider", obj.debugProvider)
     builder.addField("dependencySourcesProvider", obj.dependencySourcesProvider)
     builder.addField("resourcesProvider", obj.resourcesProvider)
     builder.addField("outputPathsProvider", obj.outputPathsProvider)

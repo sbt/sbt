@@ -50,6 +50,7 @@ object BuildServerProtocol {
     CompileProvider(BuildServerConnection.languages),
     TestProvider(BuildServerConnection.languages),
     RunProvider(BuildServerConnection.languages),
+    DebugProvider(Vector.empty),
     dependencySourcesProvider = true,
     resourcesProvider = true,
     outputPathsProvider = true,
@@ -609,7 +610,8 @@ object BuildServerProtocol {
       config <- configs
       if dep != thisProjectRef || config.name != thisConfig.name
     } yield (dep / config / Keys.bspTargetIdentifier)
-    val capabilities = BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true)
+    val capabilities =
+      BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true, canDebug = false)
     val tags = BuildTargetTag.fromConfig(configuration.name)
     Def.task {
       BuildTarget(
@@ -655,7 +657,12 @@ object BuildServerProtocol {
       toSbtTargetIdName(loadedUnit),
       projectStandard(loadedUnit.unit.localBase).toURI,
       Vector(),
-      BuildTargetCapabilities(canCompile = false, canTest = false, canRun = false),
+      BuildTargetCapabilities(
+        canCompile = false,
+        canTest = false,
+        canRun = false,
+        canDebug = false
+      ),
       BuildServerConnection.languages,
       Vector(),
       "sbt",
