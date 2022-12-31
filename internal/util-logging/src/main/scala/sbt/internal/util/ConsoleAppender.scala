@@ -126,11 +126,12 @@ object ConsoleAppender {
     def out: ConsoleOut
   }
   private[sbt] object Properties {
-    def from(terminal: Terminal): Properties = new Properties {
-      override def isAnsiSupported: Boolean = terminal.isAnsiSupported
-      override def isColorEnabled: Boolean = terminal.isColorEnabled
-      override def out = ConsoleOut.terminalOut(terminal)
-    }
+    def from(terminal: Terminal): Properties =
+      from(ConsoleOut.terminalOut(terminal), terminal.isAnsiSupported, terminal.isColorEnabled)
+
+    def safelyFrom(terminal: Terminal): Properties =
+      from(ConsoleOut.safeTerminalOut(terminal), terminal.isAnsiSupported, terminal.isColorEnabled)
+
     def from(o: ConsoleOut, ansi: Boolean, color: Boolean): Properties = new Properties {
       override def isAnsiSupported: Boolean = ansi
       override def isColorEnabled: Boolean = color
@@ -244,6 +245,18 @@ object ConsoleAppender {
    */
   def apply(name: String, terminal: Terminal): Appender = {
     new ConsoleAppender(name, Properties.from(terminal), noSuppressedMessage)
+  }
+
+  /**
+   * A new `ConsoleAppender` identified by `name`, and that writes to `terminal`.
+   * Printing to this Appender will not throw if the Terminal has been closed.
+   *
+   * @param name      An identifier for the `ConsoleAppender`.
+   * @param terminal  The terminal to which this appender corresponds
+   * @return A new `ConsoleAppender` that writes to `terminal`.
+   */
+  def safe(name: String, terminal: Terminal): Appender = {
+    new ConsoleAppender(name, Properties.safelyFrom(terminal), noSuppressedMessage)
   }
 
   /**

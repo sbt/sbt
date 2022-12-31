@@ -14,3 +14,4 @@ npm-debug.log
 .vscode/
 metals.sbt
 launcher-package/citest/freshly-baked
+.vscode

@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.io.PrintWriter
 import java.lang.ProcessBuilder.Redirect
 import scala.sys.process.Process
 import OutputStrategy._
@@ -15,6 +16,7 @@ import sbt.internal.util.{ RunningProcesses, Util }
 import Util.{ AnyOps, none }
 
 import java.lang.{ ProcessBuilder => JProcessBuilder }
+import java.util.Locale
 
 /**
  * Represents a command that can be forked.
@@ -57,7 +59,11 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       (classpathEnv map { value =>
         Fork.ClasspathEnvKey -> value
       })
-    val jpb = new JProcessBuilder(command.toArray: _*)
+    val jpb =
+      if (Fork.shouldUseArgumentsFile(options))
+        new JProcessBuilder(executable, Fork.createArgumentsFile(options))
+      else
+        new JProcessBuilder(command.toArray: _*)
     workingDirectory foreach (jpb directory _)
     environment foreach { case (k, v) => jpb.environment.put(k, v) }
     if (connectInput) {
@@ -124,5 +130,58 @@ object Fork {
   private[sbt] def javaCommand(javaHome: Option[File], name: String): File = {
     val home = javaHome.getOrElse(new File(System.getProperty("java.home")))
     new File(new File(home, "bin"), name)
+  }
+
+  /* copied from SysProp.scala for consistency while avoiding
+   * introducing a circular dependency
+   */
+  private def parseBoolean(value: String): Option[Boolean] =
+    value.toLowerCase(Locale.ENGLISH) match {
+      case "1" | "always" | "true" => Some(true)
+      case "0" | "never" | "false" => Some(false)
+      case "auto"                  => None
+      case _                       => None
+    }
+  private def booleanOpt(name: String): Option[Boolean] =
+    sys.props.get(name) match {
+      case Some(x) => parseBoolean(x)
+      case _ =>
+        sys.env.get(name.toUpperCase(Locale.ENGLISH).replace('.', '_')) match {
+          case Some(x) => parseBoolean(x)
+          case _       => None
+        }
+    }
+
+  /** Use an arguments file if:
+   * - we are on jdk >= 9
+   * - sbt.argfile is unset or not falsy
+   * - the command line length would exceed MaxConcatenatedOptionLength
+   */
+  private def shouldUseArgumentsFile(options: Seq[String]): Boolean =
+    (sys.props.getOrElse("java.vm.specification.version", "1").toFloat >= 9.0) &&
+      booleanOpt("sbt.argsfile").getOrElse(true) &&
+      (options.mkString.length > MaxConcatenatedOptionLength)
+
+  /**
+   * Create an arguments file from a sequence of command line arguments
+   * by quoting each argument to a line with escaped backslashes
+   *
+   * @param options command line options to write to the args file
+   * @return
+   */
+  private def createArgumentsFile(options: Seq[String]): String = {
+    val file = File.createTempFile(s"sbt-args", ".tmp")
+    file.deleteOnExit()
+
+    val pw = new PrintWriter(file)
+    options.foreach { option =>
+      pw.write("\"")
+      pw.write(option.replace("\\", "\\\\"))
+      pw.write("\"")
+      pw.write(System.lineSeparator())
+    }
+    pw.flush()
+    pw.close()
+    s"@${file.getAbsolutePath}"
   }
 }

@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.16"
+ThisBuild / scalaVersion := "2.12.17"
 
 import sbt.internal.CommandStrings.{ inspectBrief, inspectDetailed }
 import sbt.internal.Inspect

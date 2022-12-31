@@ -438,6 +438,7 @@ object Terminal {
     override def toString: String = s"ProxyTerminal(current = $t)"
   }
   private[sbt] def get: Terminal = ProxyTerminal
+  private[sbt] def current: Terminal = activeTerminal.get
 
   private[sbt] def withIn[T](in: InputStream)(f: => T): T = {
     val original = inputStream.get

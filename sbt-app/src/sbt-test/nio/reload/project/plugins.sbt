@@ -1,3 +1,5 @@
+ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
+
 libraryDependencies ++= {
   if (ScalafmtVersion.value == "2.0.4") {
     val sbtV = (sbtBinaryVersion in pluginCrossBuild).value

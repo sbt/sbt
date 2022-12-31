@@ -20,6 +20,7 @@ import lmcoursier.definitions.{
   Strict => CStrict,
 }
 import lmcoursier._
+import lmcoursier.syntax._
 import lmcoursier.credentials.Credentials
 import Keys._
 import sbt.internal.util.Util
