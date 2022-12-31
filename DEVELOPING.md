@@ -7,12 +7,15 @@ Create a [fork](https://docs.github.com/en/github/getting-started-with-github/fo
 
 ### Branch to work against
 
-sbt uses two branches for development:
+sbt uses **two or three** branches for development:
+Generally the default branch set on Github is what we recommend as the base line for PRs.
 
-- Development branch: `develop` (this is also called "master")
-- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
+- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.9.x` during 1.8.x series)
+- Development branch: `develop`
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.8.x` during 1.8.x series)
 
-The `develop` branch represents the next major version of sbt. Only new features are pushed to the `develop` branch. This is the branch that you will branch off of to make your changes.
+Currently `develop` branch represents the next major version of sbt, i.e. sbt 2.
+Next minor branch is where new features can be added as long as it is binary compatible with sbt 1.0.
 The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
 
 ### Instruction to build just sbt
