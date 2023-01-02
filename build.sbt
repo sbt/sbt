@@ -4,6 +4,7 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 import com.typesafe.tools.mima.core._
 import local.Scripted
 import java.nio.file.{ Files, Path => JPath }
+import java.util.Locale
 
 import scala.util.Try
 
@@ -1146,6 +1147,10 @@ lazy val serverTestProj = (project in file("server-test"))
   )
 
 val isWin = scala.util.Properties.isWin
+val isLinux = scala.util.Properties.isLinux
+val isArmArchitecture: Boolean = sys.props
+  .getOrElse("os.arch", "")
+  .toLowerCase(Locale.ROOT) == "aarch64"
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
@@ -1177,7 +1182,9 @@ lazy val sbtClientProj = (project in file("client"))
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtn"}",
-    ),
+    ) ++ (if (isLinux && isArmArchitecture)
+            Seq("-H:PageSize=65536") // Make sure binary runs on kernels with page size set to 4k, 16 and 64k
+          else Nil),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
       val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
