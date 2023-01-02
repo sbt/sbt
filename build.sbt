@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.7.2-SNAPSHOT"
+  val v = "1.8.1-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -43,10 +43,11 @@ ThisBuild / scmInfo := Some(
   ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
 )
 ThisBuild / resolvers += Resolver.mavenLocal
+ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
-Global / semanticdbVersion := "4.5.9"
+Global / semanticdbVersion := "4.5.13"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID

@@ -4,7 +4,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.16"
+  val scala212 = "2.12.17"
   val scala213 = "2.13.8"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
@@ -12,17 +12,17 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.7.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.7.0")
-  val zincVersion = nightlyVersion.getOrElse("1.7.1")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.8.0")
+  val zincVersion = nightlyVersion.getOrElse("1.8.0")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.3.3"
+  val launcherVersion = "1.4.1"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -77,7 +77,7 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.13"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
@@ -102,9 +102,9 @@ object Dependencies {
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang.modules" %% "scala-xml" % "2.0.1"
+      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
     } else {
-      "org.scala-lang.modules" %% "scala-xml" % "1.3.0"
+      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
     }
   )
   val scalaParsers = Def.setting(

@@ -3,6 +3,9 @@ on:
   pull_request:
   push:
 
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
 jobs:
   test:
     strategy:
@@ -41,7 +44,7 @@ jobs:
             java: 8
             distribution: adopt
             jobtype: 8
-          - os: windows-2019
+          - os: windows-latest
             java: 8
             distribution: adopt
             jobtype: 9
@@ -49,7 +52,7 @@ jobs:
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
-      SCALA_212: 2.12.16
+      SCALA_212: 2.12.17
       SCALA_213: 2.13.8
       SCALA_3: 3.1.0
       UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
@@ -97,11 +100,12 @@ jobs:
         key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
-      if: ${{ matrix.os == 'windows-2019' }}
+      if: ${{ matrix.os == 'windows-latest' }}
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
       run: |
+        rm -rf "$HOME/.sbt/boot/" || true
         # ./sbt -v --client mimaReportBinaryIssues
         ./sbt -v --client javafmtCheck
         ./sbt -v --client "Test/javafmtCheck"
