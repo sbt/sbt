@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.7.0"
+declare sbtn_version="1.8.1-M1"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -172,8 +172,14 @@ acquire_sbtn () {
   local archive_target=
   local url=
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    archive_target="$p/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
-    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+    arch=$(uname -m)
+    if [[ "$arch" == "aarch64" ]] || [[ "$arch" == "x86_64" ]]; then
+      archive_target="$p/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
+      url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
+    else
+      echoerr "sbtn is not supported on $arch"
+      exit 2
+    fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     archive_target="$p/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
     url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
@@ -189,7 +195,7 @@ acquire_sbtn () {
   if [[ -f "$target" ]]; then
     sbtn_command="$target"
   else
-    echoerr "downloading sbtn ${sbtn_v}"
+    echoerr "downloading sbtn ${sbtn_v} for ${arch}"
     download_url "$url" "$archive_target"
     if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
       tar zxf "$archive_target" --directory "$p"
@@ -710,7 +716,8 @@ detectNativeClient() {
   if [[ "$sbtn_command" != "" ]]; then
     :
   elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-linux"
+    arch=$(uname -m)
+    [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     [[ -f "${sbt_bin_dir}/sbtn-x86_64-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-apple-darwin"
   elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
