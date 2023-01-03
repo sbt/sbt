@@ -72,9 +72,11 @@ val exportRepoCsrDirectory = settingKey[File]("")
 
 val x86MacPlatform = "x86_64-apple-darwin"
 val x86LinuxPlatform = "x86_64-pc-linux"
+val aarch64LinuxPlatform = "aarch64-pc-linux"
 val x86WindowsPlatform = "x86_64-pc-win32"
 val x86MacImageName = s"sbtn-$x86MacPlatform"
 val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
+val aarch64LinuxImageName = s"sbtn-$aarch64LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
 organization in ThisBuild := "org.scala-sbt"
@@ -119,17 +121,19 @@ val root = (project in file(".")).
       file
     },
     // update sbt.sh at root
-    sbtnVersion := "1.7.0",
+    sbtnVersion := "1.8.1-M1",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
       val v = sbtnVersion.value
       val macosImageTar = s"sbtn-$x86MacPlatform-$v.tar.gz"
-      val linuxImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
+      val linuxX86ImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
+      val linuxAarch64ImageTar = s"sbtn-$aarch64LinuxPlatform-$v.tar.gz"
       val windowsImageZip = s"sbtn-$x86WindowsPlatform-$v.zip"
       val t = target.value
       val macosTar = t / macosImageTar
-      val linuxTar = t / linuxImageTar
+      val linuxX86Tar = t / linuxX86ImageTar
+      val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
       import dispatch.classic._
       if(!macosTar.exists && !isWindows && sbtIncludeSbtn) {
@@ -142,15 +146,25 @@ val root = (project in file(".")).
          s"tar zxvf $macosTar --directory $platformDir".!
          IO.move(platformDir / "sbtn", t / x86MacImageName)
       }
-      if(!linuxTar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(linuxTar)
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxTar))
-         try Http(url(s"$baseUrl/v$v/$linuxImageTar") >>> writer)
+      if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(linuxX86Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
+         try Http(url(s"$baseUrl/v$v/$linuxX86ImageTar") >>> writer)
          finally writer.close()
          val platformDir = t / x86LinuxPlatform
          IO.createDirectory(platformDir)
-         s"""tar zxvf $linuxTar --directory $platformDir""".!
+         s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
          IO.move(platformDir / "sbtn", t / x86LinuxImageName)
+      }
+      if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(linuxAarch64Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
+         try Http(url(s"$baseUrl/v$v/$linuxAarch64ImageTar") >>> writer)
+         finally writer.close()
+         val platformDir = t / aarch64LinuxPlatform
+         IO.createDirectory(platformDir)
+         s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
+         IO.move(platformDir / "sbtn", t / aarch64LinuxImageName)
       }
       if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
@@ -166,6 +180,7 @@ val root = (project in file(".")).
       else
         Seq(t / x86MacImageName -> s"bin/$x86MacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
+          t / aarch64LinuxImageName -> s"bin/$aarch64LinuxImageName",
           t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
     },
 
@@ -222,7 +237,7 @@ val root = (project in file(".")).
       val orig = (linuxPackageMappings in Rpm).value
       val nativeMappings = sbtnJarsMappings.value
       orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
-        case (x, p) => p.contains("sbtn-x86_64")
+        case (x, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
       }))
     },
     rpmVendor := "lightbend",

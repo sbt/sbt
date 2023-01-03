@@ -171,6 +171,7 @@ acquire_sbtn () {
   local target="$p/sbtn"
   local archive_target=
   local url=
+  local arch = "x86_64"
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     arch=$(uname -m)
     if [[ "$arch" == "aarch64" ]] || [[ "$arch" == "x86_64" ]]; then
