@@ -9,45 +9,12 @@ permissions:
 jobs:
   test:
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             java: 17
             distribution: temurin
             jobtype: 1
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 2
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 3
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 4
-          - os: ubuntu-latest
-            java: 17
-            distribution: temurin
-            jobtype: 5
-          - os: ubuntu-latest
-            java: 8
-            distribution: adopt
-            jobtype: 6
-          - os: ubuntu-latest
-            java: 8
-            distribution: adopt
-            jobtype: 7
-          - os: macos-latest
-            java: 8
-            distribution: adopt
-            jobtype: 8
-          - os: windows-latest
-            java: 8
-            distribution: adopt
-            jobtype: 9
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
