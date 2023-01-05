@@ -37,7 +37,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
   "InstallSbtn" should "extract native sbtn" ignore
     withTemp(".zip") { tmp =>
       withTemp(".exe") { sbtn =>
-        InstallSbtn.extractSbtn(term, "1.8.1", tmp, sbtn)
+        InstallSbtn.extractSbtn(term, "1.8.2", tmp, sbtn)
         val tmpDir = Files.createTempDirectory("sbtn-test").toRealPath()
         Files.createDirectories(tmpDir.resolve("project"))
         val foo = tmpDir.resolve("foo")
