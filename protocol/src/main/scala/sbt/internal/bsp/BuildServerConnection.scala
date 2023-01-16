@@ -66,7 +66,9 @@ object BuildServerConnection {
     val envPath = sys.env.collectFirst {
       case (k, v) if k.toUpperCase() == "PATH" => v
     }
-    val allPaths = envPath.map(_.split(File.pathSeparator).map(Paths.get(_))).getOrElse(Array.empty)
+    val allPaths = envPath match
+      case Some(path) => path.split(File.pathSeparator).toList.map(Paths.get(_))
+      case _          => Nil
     allPaths
       .map(_.resolve(fileName))
       .find(file => Files.exists(file) && Files.isExecutable(file))

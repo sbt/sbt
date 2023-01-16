@@ -91,7 +91,8 @@ object ConsoleOut {
     override def toString: String = s"TerminalOut"
   }
 
-  /** Same as terminalOut but it catches and ignores the ClosedChannelException
+  /**
+   * Same as terminalOut but it catches and ignores the ClosedChannelException
    */
   def safeTerminalOut(terminal: Terminal): ConsoleOut = {
     val out = terminalOut(terminal)
@@ -100,7 +101,7 @@ object ConsoleOut {
       override def print(s: String): Unit = catchException(out.print(s))
       override def println(s: String): Unit = catchException(out.println(s))
       override def println(): Unit = catchException(out.println())
-      override def flush(): Unit = catchException(out.flush)
+      override def flush(): Unit = catchException(out.flush())
       override def toString: String = s"SafeTerminalOut($terminal)"
       private def catchException(f: => Unit): Unit = {
         try f

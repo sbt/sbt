@@ -669,7 +669,12 @@ object BuildServerProtocol {
           if dep != thisProjectRef || config.name != thisConfig.name
         } yield (dep / config / Keys.bspTargetIdentifier)
         val capabilities =
-          BuildTargetCapabilities(canCompile = true, canTest = true, canRun = true, canDebug = false)
+          BuildTargetCapabilities(
+            canCompile = true,
+            canTest = true,
+            canRun = true,
+            canDebug = false
+          )
         val tags = BuildTargetTag.fromConfig(configuration.name)
         (
           buildTargetIdentifier,
