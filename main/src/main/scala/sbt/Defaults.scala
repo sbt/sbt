@@ -29,7 +29,7 @@ import sbt.Project.{
   // richTaskSessionVar,
   // sbtRichTaskPromise
 }
-import sbt.ProjectExtra.*
+import sbt.ProjectExtra.{ *, given }
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.State.StateOpsImpl
 import sbt.coursierint._
@@ -716,7 +716,7 @@ object Defaults extends BuildCommon {
       crossPaths.value
     ),
     cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
-    clean := clean.dependsOn(cleanIvy).value,
+    clean := clean.dependsOnTask(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
       if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
@@ -998,7 +998,11 @@ object Defaults extends BuildCommon {
       console := consoleTask.value,
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
-      discoveredMainClasses := (compile map discoverMainClasses storeAs discoveredMainClasses xtriggeredBy compile).value,
+      discoveredMainClasses := compile
+        .map(discoverMainClasses)
+        .storeAs(discoveredMainClasses)
+        .xtriggeredBy(compile)
+        .value,
       discoveredSbtPlugins := discoverSbtPluginNames.value,
       // This fork options, scoped to the configuration is used for tests
       forkOptions := forkOptionsTask.value,
@@ -3012,7 +3016,6 @@ object Classpaths {
       }
     },
     bootResolvers := {
-      import Scoped.syntax.richInitialize
       (appConfiguration map bootRepositories).value
     },
     fullResolvers :=
@@ -4012,7 +4015,7 @@ object Classpaths {
     }
 
   def projectResolverTask: Initialize[Task[Resolver]] =
-    projectDescriptors map { m =>
+    projectDescriptors.map { m =>
       val resolver = new ProjectResolver(ProjectResolver.InterProject, m)
       new RawRepository(resolver, resolver.getName)
     }

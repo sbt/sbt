@@ -27,7 +27,7 @@ package object sbt
     with sbt.BuildSyntax
     with sbt.OptionSyntax
     with sbt.SlashSyntax
-    with sbt.Import {
+    with sbt.Import:
   // IO
   def uri(s: String): URI = new URI(s)
   def file(s: String): File = new File(s)
@@ -62,4 +62,4 @@ package object sbt
   inline def config(name: String): Configuration = ${
     ConfigurationMacro.configMacroImpl('{ name })
   }
-}
+end sbt

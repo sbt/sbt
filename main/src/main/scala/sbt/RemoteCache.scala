@@ -17,9 +17,8 @@ import org.apache.ivy.core.resolve.DownloadOptions
 import org.apache.ivy.plugins.resolver.DependencyResolver
 import sbt.Defaults.prefix
 import sbt.Keys._
-import sbt.Project.*
-import sbt.ProjectExtra.inConfig
-import sbt.ProjectExtra.richInitializeTask
+import sbt.Project.{ inConfig => _, * }
+import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier

@@ -14,8 +14,7 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.SlashSyntax0._
 import sbt.Project._
-import sbt.ProjectExtra.storeAs
-import sbt.ProjectExtra.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.internal.graph._
 import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }

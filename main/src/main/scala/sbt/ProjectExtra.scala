@@ -148,7 +148,7 @@ object ProjectExtra extends ProjectExtra:
   val projectReturnKey: AttributeKey[List[File]] =
     AttributeKey[List[File]]("project-return", "Maintains a stack of builds visited using reload.")
 
-trait ProjectExtra:
+trait ProjectExtra extends Scoped.Syntax:
   import ProjectExtra.projectReturnKey
 
   def inConfig(conf: Configuration)(ss: Seq[Setting[_]]): Seq[Setting[_]] =
@@ -747,8 +747,8 @@ trait ProjectExtra:
 
   // These used to be in Project so that they didn't need to get imported (due to Initialize being nested in Project).
   // Moving Initialize and other settings types to Def and decoupling Project, Def, and Structure means these go here for now
-  implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
-    new Scoped.RichInitializeTask(init)
+  // given richInitializeTask[T]: Conversion[Initialize[Task[T]], Scoped.RichInitializeTask[T]] =
+  // (init: Initialize[Task[T]]) => new Scoped.RichInitializeTask(init)
 
   /*
   implicit def richInitializeInputTask[T](

@@ -7,7 +7,7 @@
 
 package sbt
 
-import scala.language.experimental.macros
+import scala.annotation.targetName
 
 import sbt.internal.util.Types._
 import sbt.internal.util.{ ~>, AList, AttributeKey, Settings, SourcePosition }
@@ -372,27 +372,93 @@ object Scoped:
     final def ??[T >: A1](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
   }
 
+  private[sbt] trait Syntax:
+    // richInitialize
+    extension [A1](init: Initialize[A1])
+      @targetName("mapTaskInitialize")
+      def map[A2](f: A1 => A2): Initialize[Task[A2]] = init(s => mktask(f(s)))
+
+      @targetName("flatMapValueInitialize")
+      def flatMapTaskValue[A2](f: A1 => Task[A2]): Initialize[Task[A2]] = init(f)
+
+    // richInitializeTask
+    extension [A1](init: Initialize[Task[A1]])
+      protected def onTask[A2](f: Task[A1] => Task[A2]): Initialize[Task[A2]] =
+        init.apply(f)
+
+      def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] =
+        onTask(_.result flatMap (f compose successM))
+      def map[A2](f: A1 => A2): Initialize[Task[A2]] =
+        onTask(_.result map (f compose successM))
+      def andFinally(fin: => Unit): Initialize[Task[A1]] =
+        onTask(_ andFinally fin)
+      def doFinally(t: Task[Unit]): Initialize[Task[A1]] =
+        onTask(_ doFinally t)
+      def ||[T >: A1](alt: Task[T]): Initialize[Task[T]] = onTask(_ || alt)
+      def &&[T](alt: Task[T]): Initialize[Task[T]] = onTask(_ && alt)
+      def tag(tags: Tag*): Initialize[Task[A1]] = onTask(_.tag(tags: _*))
+      def tagw(tags: (Tag, Int)*): Initialize[Task[A1]] = onTask(_.tagw(tags: _*))
+
+      // Task-specific extensions
+      def dependsOnTask[A2](task1: Initialize[Task[A2]]): Initialize[Task[A1]] =
+        dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
+      def dependsOnSeq(tasks: Seq[AnyInitTask]): Initialize[Task[A1]] =
+        init.zipWith(
+          Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks))
+        )((thisTask, deps) => thisTask.dependsOn(deps: _*))
+      def failure: Initialize[Task[Incomplete]] = init(_.failure)
+      def result: Initialize[Task[Result[A1]]] = init(_.result)
+      def xtriggeredBy[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
+        nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
+      def triggeredBy[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
+        nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
+      def runBefore[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
+        nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.runBefore)
+      private[this] def nonLocal(
+          tasks: Seq[AnyInitTask],
+          key: AttributeKey[Seq[Task[_]]]
+      ): Initialize[Task[A1]] =
+        Initialize
+          .joinAny[Task](coerceToAnyTaskSeq(tasks))
+          .zipWith(init)((ts, i) => i.copy(info = i.info.set(key, ts)))
+
+    extension [A1](init: Initialize[InputTask[A1]])
+      @targetName("onTaskInitializeInputTask")
+      protected def onTask[T](f: Task[A1] => Task[T]): Initialize[InputTask[T]] =
+        init(_ mapTask f)
+
+      @targetName("flatMapTaskValueInitializeInputTask")
+      def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[InputTask[T]] =
+        onTask(_.result flatMap (f compose successM))
+      @targetName("mapInitializeInputTask")
+      def map[A2](f: A1 => A2): Initialize[InputTask[A2]] =
+        onTask(_.result map (f compose successM))
+      @targetName("andFinallyInitializeInputTask")
+      def andFinally(fin: => Unit): Initialize[InputTask[A1]] = onTask(_ andFinally fin)
+      @targetName("doFinallyInitializeInputTask")
+      def doFinally(t: Task[Unit]): Initialize[InputTask[A1]] = onTask(_ doFinally t)
+      @targetName("||_InitializeInputTask")
+      def ||[T >: A1](alt: Task[T]): Initialize[InputTask[T]] = onTask(_ || alt)
+      @targetName("&&_InitializeInputTask")
+      def &&[T](alt: Task[T]): Initialize[InputTask[T]] = onTask(_ && alt)
+      @targetName("tagInitializeInputTask")
+      def tag(tags: Tag*): Initialize[InputTask[A1]] = onTask(_.tag(tags: _*))
+      @targetName("tagwInitializeInputTask")
+      def tagw(tags: (Tag, Int)*): Initialize[InputTask[A1]] = onTask(_.tagw(tags: _*))
+
+      // InputTask specific extensions
+      @targetName("dependsOnTaskInitializeInputTask")
+      def dependsOnTask[B1](task1: Initialize[Task[B1]]): Initialize[InputTask[A1]] =
+        dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
+      @targetName("dependsOnSeqInitializeInputTask")
+      def dependsOnSeq(tasks: Seq[AnyInitTask]): Initialize[InputTask[A1]] =
+        init.zipWith(Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks)))((thisTask, deps) =>
+          thisTask.mapTask(_.dependsOn(deps: _*))
+        )
+  end Syntax
+
   // Duplicated with ProjectExtra.
-  private[sbt] object syntax {
-    implicit def richInitializeTask[T](init: Initialize[Task[T]]): Scoped.RichInitializeTask[T] =
-      new Scoped.RichInitializeTask(init)
-
-    implicit def richInitializeInputTask[T](
-        init: Initialize[InputTask[T]]
-    ): Scoped.RichInitializeInputTask[T] =
-      new Scoped.RichInitializeInputTask(init)
-
-    implicit def richInitialize[T](i: Initialize[T]): Scoped.RichInitialize[T] =
-      new Scoped.RichInitialize[T](i)
-  }
-
-  /**
-   * Wraps an [[sbt.Def.Initialize]] instance to provide `map` and `flatMap` semantics.
-   */
-  final class RichInitialize[S](init: Initialize[S]) {
-    def map[T](f: S => T): Initialize[Task[T]] = init(s => mktask(f(s)))
-    def flatMap[T](f: S => Task[T]): Initialize[Task[T]] = init(f)
-  }
+  private[sbt] object syntax extends Syntax
 
   sealed trait DefinableTask[A1] { self: TaskKey[A1] =>
 
@@ -448,109 +514,6 @@ object Scoped:
 
   private def coerceToAnyTaskSeq(tasks: Seq[AnyInitTask]): Seq[Def.Initialize[Task[Any]]] =
     tasks.asInstanceOf[Seq[Def.Initialize[Task[Any]]]]
-
-  /**
-   * Enriches `Initialize[Task[S]]` types.
-   *
-   * @param i the original `Initialize[Task[S]]` value to enrich
-   * @tparam S the type of the underlying value
-   */
-  final class RichInitializeTask[S](i: Initialize[Task[S]]) extends RichInitTaskBase[S, Task] {
-    protected def onTask[T](f: Task[S] => Task[T]): Initialize[Task[T]] = i apply f
-
-    def dependsOn[B1](task1: Initialize[Task[B1]]): Initialize[Task[S]] =
-      dependsOn(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
-
-    def dependsOn(tasks: Seq[AnyInitTask]): Initialize[Task[S]] =
-      i.zipWith(
-        Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks))
-      )((thisTask, deps) => thisTask.dependsOn(deps: _*))
-
-    def failure: Initialize[Task[Incomplete]] = i(_.failure)
-    def result: Initialize[Task[Result[S]]] = i(_.result)
-
-    def xtriggeredBy[A1](tasks: Initialize[Task[A1]]*): Initialize[Task[S]] =
-      nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
-
-    def triggeredBy[A1](tasks: Initialize[Task[A1]]*): Initialize[Task[S]] =
-      nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
-
-    def runBefore[A1](tasks: Initialize[Task[A1]]*): Initialize[Task[S]] =
-      nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.runBefore)
-
-    private[this] def nonLocal(
-        tasks: Seq[AnyInitTask],
-        key: AttributeKey[Seq[Task[_]]]
-    ): Initialize[Task[S]] =
-      Initialize
-        .joinAny[Task](coerceToAnyTaskSeq(tasks))
-        .zipWith(i)((ts, i) => i.copy(info = i.info.set(key, ts)))
-  }
-
-  /**
-   * Enriches `Initialize[InputTask[S]]` types.
-   *
-   * @param i the original `Initialize[InputTask[S]]` value to enrich
-   * @tparam S the type of the underlying value
-   */
-  final class RichInitializeInputTask[S](i: Initialize[InputTask[S]])
-      extends RichInitTaskBase[S, InputTask] {
-
-    protected def onTask[T](f: Task[S] => Task[T]): Initialize[InputTask[T]] = i(_ mapTask f)
-
-    def dependsOn(tasks: AnyInitTask*): Initialize[InputTask[S]] =
-      i.zipWith(Initialize.joinAny[Task](coerceToAnyTaskSeq(tasks)))((thisTask, deps) =>
-        thisTask.mapTask(_.dependsOn(deps: _*))
-      )
-  }
-
-  /**
-   * Enriches `Initialize[R[S]]` types. Abstracts over the specific task-like type constructor.
-   *
-   * @tparam S the type of the underlying vault
-   * @tparam R the task-like type constructor (either Task or InputTask)
-   */
-  sealed abstract class RichInitTaskBase[S, R[_]] {
-    protected def onTask[T](f: Task[S] => Task[T]): Initialize[R[T]]
-
-    def flatMap[T](f: S => Task[T]): Initialize[R[T]] =
-      onTask(_.result flatMap (f compose successM))
-
-    def map[T](f: S => T): Initialize[R[T]] = onTask(_.result map (f compose successM))
-    def andFinally(fin: => Unit): Initialize[R[S]] = onTask(_ andFinally fin)
-    def doFinally(t: Task[Unit]): Initialize[R[S]] = onTask(_ doFinally t)
-
-    def ||[T >: S](alt: Task[T]): Initialize[R[T]] = onTask(_ || alt)
-    def &&[T](alt: Task[T]): Initialize[R[T]] = onTask(_ && alt)
-
-    def tag(tags: Tag*): Initialize[R[S]] = onTask(_.tag(tags: _*))
-    def tagw(tags: (Tag, Int)*): Initialize[R[S]] = onTask(_.tagw(tags: _*))
-
-    @deprecated(
-      "Use the `result` method to create a task that returns the full Result of this task.  Then, call `flatMap` on the new task.",
-      "0.13.0"
-    )
-    def flatMapR[T](f: Result[S] => Task[T]): Initialize[R[T]] = onTask(_.result flatMap f)
-
-    @deprecated(
-      "Use the `result` method to create a task that returns the full Result of this task.  Then, call `map` on the new task.",
-      "0.13.0"
-    )
-    def mapR[T](f: Result[S] => T): Initialize[R[T]] = onTask(_.result map f)
-
-    @deprecated(
-      "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `flatMap` on the new task.",
-      "0.13.0"
-    )
-    def flatFailure[T](f: Incomplete => Task[T]): Initialize[R[T]] =
-      onTask(_.result flatMap (f compose failM))
-
-    @deprecated(
-      "Use the `failure` method to create a task that returns Incomplete when this task fails and then call `map` on the new task.",
-      "0.13.0"
-    )
-    def mapFailure[T](f: Incomplete => T): Initialize[R[T]] = onTask(_.result map (f compose failM))
-  }
 
   type AnyInitTask = Initialize[Task[_]]
 

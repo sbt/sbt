@@ -14,7 +14,7 @@ import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
 import DefaultParsers._
 import sbt.internal.util.Types.idFun
-import sbt.ProjectExtra.*
+import sbt.ProjectExtra.{ failure => _, * }
 import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
@@ -188,12 +188,12 @@ object Act {
       show: Show[ScopedKey[_]]
   ): Parser[ParsedKey] =
     seq(allKeys) flatMap { ss =>
-      val default = ss.headOption match {
+      val default: Parser[ParsedKey] = ss.headOption match
         case None    => noValidKeys
         case Some(x) => success(x)
-      }
       selectFromValid(ss filter isValid(data), default)
     }
+
   def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(implicit
       show: Show[ScopedKey[_]]
   ): Parser[ParsedKey] =

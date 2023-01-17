@@ -11,7 +11,7 @@ package internal
 import sbt.Def._
 import sbt.Keys._
 // import sbt.Project.richInitializeTask
-import sbt.ProjectExtra.{ delegates, extract, richInitializeTask }
+import sbt.ProjectExtra.*
 import sbt.internal.io.Source
 import sbt.internal.nio.Globs
 import sbt.internal.util.AttributeMap
@@ -63,7 +63,7 @@ private[sbt] object WatchTransitiveDependencies {
   ): Def.Initialize[Task[Arguments]] =
     import sbt.TupleSyntax.*
     (
-      (streamsManager map { mgr =>
+      (streamsManager.map { mgr =>
         val stream = mgr(scopedKey)
         stream.open()
         stream

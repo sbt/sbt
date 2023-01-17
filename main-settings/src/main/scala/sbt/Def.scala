@@ -255,7 +255,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   ): Initialize[Task[A2]] =
     fab.zipWith(fin)((ab, in) => TaskExtra.select(ab, in))
 
-  import Scoped.syntax.* // { Def => _, DTask => _, Invisible => _, * }
+  import Scoped.syntax.{ *, given } // { Def => _, DTask => _, Invisible => _, * }
 
   // derived from select
   private[sbt] def branchS[A, B, C](

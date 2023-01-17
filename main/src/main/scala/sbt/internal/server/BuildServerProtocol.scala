@@ -16,7 +16,7 @@ import sbt.Def._
 import sbt.Def.{ parsed }
 import sbt.Keys._
 import sbt.Project._
-import sbt.ProjectExtra.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.Scoped.richTaskSeq
 import sbt.SlashSyntax0._

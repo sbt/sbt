@@ -22,7 +22,7 @@ import sbt.Keys.{
   publishConfiguration,
   useCoursier
 }
-import sbt.ProjectExtra.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.librarymanagement.PublishConfiguration
 import scala.collection.JavaConverters._
 import scala.xml.{ Node, PrefixedAttribute }
@@ -198,7 +198,7 @@ object IvyXml {
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
-    task := task.dependsOn {
+    task := task.dependsOnTask {
       Def.taskIf {
         if useCoursier.value then
           val currentProject = {

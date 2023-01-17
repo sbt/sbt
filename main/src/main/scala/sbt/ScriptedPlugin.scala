@@ -12,7 +12,7 @@ import java.io.File
 import sbt.Def._
 import sbt.Keys._
 import sbt.nio.Keys._
-import sbt.ProjectExtra.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ModuleUtilities
