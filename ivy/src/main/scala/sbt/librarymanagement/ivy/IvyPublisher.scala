@@ -29,9 +29,7 @@ class IvyPublisher private[sbt] (val ivySbt: IvySbt) extends PublisherInterface 
     IvyActions.publish(toModule(module), configuration, log)
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =
-    module match {
-      case m: Module @unchecked => m
-    }
+    module.asInstanceOf[Module]
 }
 
 object IvyPublisher {
