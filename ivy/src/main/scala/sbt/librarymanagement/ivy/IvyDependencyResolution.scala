@@ -23,9 +23,7 @@ class IvyDependencyResolution private[sbt] (val ivySbt: IvySbt)
     IvyActions.updateEither(toModule(module), configuration, uwconfig, log)
 
   private[sbt] def toModule(module: ModuleDescriptor): Module =
-    module match {
-      case m: Module @unchecked => m
-    }
+    module.asInstanceOf[Module]
 }
 
 object IvyDependencyResolution {
