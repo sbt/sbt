@@ -31,7 +31,7 @@ def withRepositories[T](pomXML: Elem)(f: NodeSeq => T) = {
 
 lazy val checkExtra = readPom map { pomXML =>
   checkProject(pomXML)
-  val extra =  pomXML \ extraTagName
+  val extra = pomXML \ extraTagName
   if (extra.isEmpty) sys.error("'" + extraTagName + "' not found in generated pom.xml.") else ()
 }
 
@@ -51,13 +51,18 @@ lazy val checkPom = Def task {
   checkProject(pomXML)
   val ivyRepositories = fullResolvers.value
   withRepositories(pomXML) { repositoriesElement =>
-    val repositories =  repositoriesElement \ "repository"
+    val repositories = repositoriesElement \ "repository"
     val writtenRepositories = repositories.map(read).distinct
-    val mavenStyleRepositories = ivyRepositories.collect {
-      case x: MavenRepository if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") => normalize(x)
-    } distinct;
+    val mavenStyleRepositories = (ivyRepositories.collect {
+      case x: MavenRepository
+          if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") =>
+        normalize(x)
+    }).distinct
 
-    lazy val explain = (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString("\n\t")
+    lazy val explain =
+      (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString(
+        "\n\t"
+      )
 
     if (writtenRepositories != mavenStyleRepositories)
       sys.error("Written repositories did not match declared repositories.\n\t" + explain)
@@ -74,4 +79,5 @@ def normalize(url: String): String = {
   if (base.endsWith("/")) base else s"$base/"
 }
 
-def normalize(repo: MavenRepository): MavenRepository = MavenRepository(repo.name, normalize(repo.root))
+def normalize(repo: MavenRepository): MavenRepository =
+  MavenRepository(repo.name, normalize(repo.root))

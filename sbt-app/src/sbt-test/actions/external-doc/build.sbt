@@ -6,6 +6,7 @@ Seq(
   ThisBuild / packageDoc / publishArtifact := false,
   packageSrc / publishArtifact := false,
   ThisBuild / organization := "org.example",
+  ThisBuild / scalaVersion := "3.2.1",
   version := "1.0",
 )
 
@@ -28,26 +29,24 @@ def scalaLibraryBase(v: String) = url(s"https://www.scala-lang.org/api/$v/")
 def addDep(projectName: String) =
   libraryDependencies += organization.value %% projectName % version.value
 
-
 val checkApiMappings = taskKey[Unit]("Verifies that the API mappings are collected as expected.")
 
 def expectedMappings = Def.task {
-  val version = scalaVersion.value
+  val stdLibVersion = "2.13.10"
   val binVersion = scalaBinaryVersion.value
   val ms = update.value.configuration(Compile).get.modules.flatMap { mod =>
-    mod.artifacts.flatMap { case (a,f) =>
+    mod.artifacts.flatMap { case (a, f) =>
       val n = a.name.stripSuffix("_" + binVersion)
       n match {
         case "a" | "b" | "c" => (f, apiBase(n)) :: Nil
-        case "scala-library" => (f, scalaLibraryBase(version)) :: Nil
-        case _ => Nil
+        case "scala-library" => (f, scalaLibraryBase(stdLibVersion)) :: Nil
+        case _               => Nil
       }
     }
   }
   val mc = (c / Compile / classDirectory).value -> apiBase("c")
   (mc +: ms).toMap
 }
-
 
 val a = project.settings(
   apiBaseSetting,
@@ -63,15 +62,17 @@ val b = project.settings(
 
 val c = project.settings(apiBaseSetting)
 
-val d = project.dependsOn( c ).settings(
-  externalResolvers := Seq(aResolver.value, bResolver.value),
-  addDep("a"),
-  addDep("b"),
-  checkApiMappings := {
-    val actual = (Compile / doc / apiMappings).value
-    println("Actual API Mappings: " + actual.mkString("\n\t", "\n\t", ""))
-    val expected = expectedMappings.value
-    println("Expected API Mappings: " + expected.mkString("\n\t", "\n\t", ""))
-    assert(actual == expected)
-  }
-)
+val d = project
+  .dependsOn(c)
+  .settings(
+    externalResolvers := Seq(aResolver.value, bResolver.value),
+    addDep("a"),
+    addDep("b"),
+    checkApiMappings := {
+      val actual = (Compile / doc / apiMappings).value
+      println("Actual API Mappings: " + actual.mkString("\n\t", "\n\t", ""))
+      val expected = expectedMappings.value
+      println("Expected API Mappings: " + expected.mkString("\n\t", "\n\t", ""))
+      assert(actual == expected)
+    }
+  )
