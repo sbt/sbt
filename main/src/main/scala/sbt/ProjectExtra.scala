@@ -53,6 +53,7 @@ import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
 import sbt.util.{ Show, Level }
 import sjsonnew.JsonFormat
+import scala.annotation.targetName
 import scala.concurrent.{ Await, TimeoutException }
 import scala.concurrent.duration.*
 
@@ -221,17 +222,6 @@ trait ProjectExtra extends Scoped.Syntax:
         ProjectRef(loaded.root, loaded.units(loaded.root).rootProjects.head),
         keyNameColor
       )
-
-    /*
-
-
-
-  final class Constructor(p: ProjectReference) {
-    def %(conf: Configuration): ClasspathDependency = %(conf.name)
-
-    def %(conf: String): ClasspathDependency = ClasspathDependency(p, Some(conf))
-  }
-     */
 
     def getOrError[T](state: State, key: AttributeKey[T], msg: String): T =
       state.get(key).getOrElse(sys.error(msg))
@@ -669,6 +659,12 @@ trait ProjectExtra extends Scoped.Syntax:
       Conversion[A, ProjectReference]
   ): Conversion[A, ClasspathDep[ProjectReference]] =
     (a: A) => ClasspathDep.ClasspathDependency(a, None)
+
+  extension (p: ProjectReference)
+    def %(conf: Configuration): ClasspathDep.ClasspathDependency = %(conf.name)
+    @targetName("percentString")
+    def %(conf: String): ClasspathDep.ClasspathDependency =
+      ClasspathDep.ClasspathDependency(p, Some(conf))
 
   extension [A1](in: Def.Initialize[Task[A1]])
     def updateState(f: (State, A1) => State): Def.Initialize[Task[A1]] =
