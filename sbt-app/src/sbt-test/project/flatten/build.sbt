@@ -10,7 +10,7 @@ lazy val root = (project in file("."))
     unmanagedSources / includeFilter := "*.java" | "*.scala"
   )
 
-def forConfig(conf: Configuration, name: String) = Project.inConfig(conf)( unpackageSettings(name) )
+def forConfig(conf: Configuration, name: String) = inConfig(conf)( unpackageSettings(name) )
 
 def unpackageSettings(name: String) = Seq(
   unmanagedSourceDirectories := (baseDirectory.value / name) :: Nil,

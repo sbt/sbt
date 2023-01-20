@@ -31,7 +31,7 @@ lazy val root = (project in file("."))
     // https://github.com/sbt/sbt/pull/1620
     // sbt resolves dependencies every compile when using %% with dependencyOverrides
     TaskKey[Unit]("check") := {
-      val s = (streams in update).value
+      val s = (update / streams).value
 
       val cacheDirectory = crossTarget.value / "update" / updateCacheName.value
       val cacheStoreFactory = sbt.util.CacheStoreFactory.directory(cacheDirectory)

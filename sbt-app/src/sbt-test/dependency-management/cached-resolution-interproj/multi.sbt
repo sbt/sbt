@@ -9,7 +9,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 

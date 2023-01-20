@@ -8,7 +8,7 @@ resolvers += Resolver.typesafeIvyRepo("releases")
 libraryDependencies += "bad" % "mvn" % "1.0"
 
 TaskKey[Unit]("check") := {
-  val cp = (fullClasspath in Compile).value
+  val cp = (Compile / fullClasspath).value
   def isTestJar(n: String): Boolean =
     (n contains "scalacheck") ||
     (n contains "specs2")

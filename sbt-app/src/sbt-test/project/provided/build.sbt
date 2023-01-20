@@ -1,10 +1,10 @@
 val rootRef = LocalProject("root")
 val sub = project
-val superRoot = project in file("super") dependsOn rootRef
+val superRoot = (project in file("super")).dependsOn(rootRef)
 
-val root = (project in file(".")).
-  dependsOn(sub % "provided->test").
-  settings (
+lazy val root = (project in file("."))
+  .dependsOn(sub % "provided->test")
+  .settings(
     TaskKey[Unit]("check") := {
       check0((sub / Test / fullClasspath).value, "sub test", true)
       check0((superRoot / Compile / fullClasspath).value, "superRoot main", false)
@@ -14,16 +14,14 @@ val root = (project in file(".")).
     }
   )
 
-def check0(cp: Seq[Attributed[File]], label: String, shouldSucceed: Boolean): Unit = {
+def check0(cp: Seq[Attributed[File]], label: String, shouldSucceed: Boolean): Unit =
   import sbt.internal.inc.classpath.ClasspathUtilities
   val loader = ClasspathUtilities.toLoader(cp.files)
   println("Checking " + label)
-  val err = try { Class.forName("org.example.ProvidedTest", false, loader); None }
-  catch { case e: Exception => Some(e) }
-
-  (err, shouldSucceed) match {
+  val err =
+    try { Class.forName("org.example.ProvidedTest", false, loader); None }
+    catch { case e: Exception => Some(e) }
+  (err, shouldSucceed) match
     case (None, true) | (Some(_), false) => ()
     case (None, false)                   => sys.error("Expected failure")
     case (Some(x), true)                 => throw x
-  }
-}

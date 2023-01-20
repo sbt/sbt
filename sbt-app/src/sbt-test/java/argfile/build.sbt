@@ -1,9 +1,9 @@
-scalaSource in Configurations.Compile := (sourceDirectory.value / " scala test ")
- javaSource in Configurations.Compile := (sourceDirectory.value / " java test ")
+Configurations.Compile / scalaSource := (sourceDirectory.value / " scala test ")
+Configurations.Compile / javaSource := (sourceDirectory.value / " java test ")
 
 TaskKey[Unit]("init") := {
-  val ss = (scalaSource in Configurations.Compile).value
-  val js = ( javaSource in Configurations.Compile).value
+  val ss = (Configurations.Compile / scalaSource).value
+  val js = (Configurations.Compile / javaSource).value
   import IO._
   createDirectories(ss :: js :: Nil)
   copyFile(file("changes") / "Test.scala", ss / " Test s.scala")

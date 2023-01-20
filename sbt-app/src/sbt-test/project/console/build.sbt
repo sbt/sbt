@@ -1,3 +1,4 @@
+ThisBuild / scalaVersion := "2.12.17"
 lazy val root = (project in file("."))
 lazy val sub1 = (project in file("sub1"))
 lazy val sub2 = (project in file("sub2"))

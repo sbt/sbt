@@ -14,7 +14,7 @@ lazy val root = (project in file(".")).
 
 def addExtra(name: String, f: (State, Seq[File]) => State) =
   Command.command(name) { s =>
-    f(s, (file("lib_managed") ** "*.jar").get)
+    f(s, (file("lib_managed") ** "*.jar").get())
   }
 def checkExtra =
   Command.command("check") { s =>
@@ -23,23 +23,24 @@ def checkExtra =
     assert(loader eq sbtLoader, "Different loader for sbt and extra: " + sbtLoader + " and " + loader)
     s
   }
+
 def addExtra1(s: State, extra: Seq[File]): State =
   {
     val cs = s.configuration.provider.components()
     val copied = cs.addToComponent("extra", extra.toArray)
     if(copied) s.reload else s
   }
-def addExtra2(s: State, extra: Seq[File]): State =
+
+def addExtra2(s: State, extra: Seq[File]): State = {
+  val reload = State.defaultReload(s)
+  val currentID = reload.app
+  val currentExtra = currentID.classpathExtra
+  val newExtra = (currentExtra ++ extra).distinct
+  if(newExtra.length == currentExtra.length)
+    s
+  else
   {
-    val reload = State.defaultReload(s)
-    val currentID = reload.app
-    val currentExtra = currentID.classpathExtra
-    val newExtra = (currentExtra ++ extra).distinct
-    if(newExtra.length == currentExtra.length)
-      s
-    else
-    {
-      val newID = ApplicationID(currentID).copy(extra = extra)
-      s.setNext(new State.Return(reload.copy(app = newID)))
-    }
+    val newID = ApplicationID(currentID).copy(extra = extra)
+    s.setNext(new State.Return(reload.copy(app = newID)))
   }
+}

@@ -3,9 +3,9 @@ ThisBuild / useCoursier := false
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
   scalaModuleInfo := None,
-  unmanagedJars in Compile ++= (scalaInstance map (_.allJars.toSeq)).value,
-  publishArtifact in packageSrc := false,
-  publishArtifact in packageDoc := false,
+  (Compile / unmanagedJars) ++= (scalaInstance map (_.allJars.toSeq)).value,
+  (packageSrc / publishArtifact) := false,
+  (packageDoc / publishArtifact) := false,
   publishMavenStyle := false
 )
 
@@ -14,7 +14,7 @@ lazy val dep = project.
     commonSettings,
     organization := "org.example",
     version := "1.0",
-    publishTo := (baseDirectory in ThisBuild apply { base =>
+    publishTo := ((ThisBuild / baseDirectory) apply { base =>
       Some(Resolver.file("file", base / "repo")(Resolver.ivyStylePatterns))
     }).value
   )
@@ -28,7 +28,7 @@ lazy val use = project.
       Some(Resolver.file("file", base / "repo")(Resolver.ivyStylePatterns))
     }).value,
     TaskKey[Unit]("check") := (baseDirectory map {base =>
-      val inCache = ( (base / "target" / "use-cache") ** "*.jar").get
+      val inCache = ( (base / "target" / "use-cache") ** "*.jar").get()
       assert(inCache.isEmpty, "Cache contained jars: " + inCache)
     }).value
   )

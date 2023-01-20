@@ -1,14 +1,15 @@
 import xsbti.AppConfiguration
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ThisBuild / scalaVersion := "2.12.17"
 
 def commonSettings: Vector[Def.Setting[_]] =
   Vector(
     organization := "com.example",
     ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
-    resolvers += Resolver.file("buggy", (baseDirectory in LocalRootProject).value / "repo")(
+    resolvers += Resolver.file("buggy", (LocalRootProject / baseDirectory).value / "repo")(
       Patterns(
         ivyPatterns = Vector("[organization]/[module]/[revision]/ivy.xml"),
         artifactPatterns = Vector("[organization]/[module]/[revision]/[artifact]"),

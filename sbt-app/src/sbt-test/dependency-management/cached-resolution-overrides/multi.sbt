@@ -7,7 +7,7 @@ ThisBuild / version := "1.0"
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     libraryDependencies := Seq(
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
       "commons-io" % "commons-io" % "1.3",

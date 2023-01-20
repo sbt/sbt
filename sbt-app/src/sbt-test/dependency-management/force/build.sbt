@@ -10,11 +10,11 @@ lazy val root = (project in file(".")).
 
 def libraryDeps(base: File) = {
   val slf4j = Seq("org.slf4j" % "slf4j-log4j12" % "1.1.0")  // Uses log4j 1.2.13
-  if ((base / "force").exists) slf4j :+ ("log4j" % "log4j" % "1.2.14" force()) else slf4j
+  if ((base / "force").exists) slf4j :+ ("log4j" % "log4j" % "1.2.14").force() else slf4j
 }
 
 def check(ver: String) =
-  (dependencyClasspath in Compile) map { jars =>
+  (Compile / dependencyClasspath) map { jars =>
     val log4j = jars map (_.data) collect {
       case f if f.getName contains "log4j-" => f.getName
     }

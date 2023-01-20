@@ -1,1 +1,1 @@
-logLevel in compile := Level.Debug
+(compile / logLevel) := Level.Debug

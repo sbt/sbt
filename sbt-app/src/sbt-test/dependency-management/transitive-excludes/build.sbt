@@ -9,9 +9,9 @@ libraryDependencies += "exclude.test" % "app" % "1.0.0"
 val checkDependencies = taskKey[Unit]("Checks that dependencies are correct.")
 
 checkDependencies := {
-  val hasBadJar = (fullClasspath in Compile).value.exists { jar => jar.data.getName contains "bottom-1.0.0.jar"}
-  val errorJarString = (fullClasspath in Compile).value.map(_.data.getName).mkString(" * ", "\n * ", "")
-  val hasBadMiddleJar = (fullClasspath in Compile).value.exists { jar => jar.data.getName contains "middle-1.0.0.jar"}
+  val hasBadJar = (Compile / fullClasspath).value.exists { jar => jar.data.getName contains "bottom-1.0.0.jar"}
+  val errorJarString = (Compile / fullClasspath).value.map(_.data.getName).mkString(" * ", "\n * ", "")
+  val hasBadMiddleJar = (Compile / fullClasspath).value.exists { jar => jar.data.getName contains "middle-1.0.0.jar"}
   assert(!hasBadMiddleJar, s"Failed to exclude excluded dependency on classpath!\nFound:\n$errorJarString")
   assert(!hasBadJar, s"Failed to exclude transitive excluded dependency on classpath!\nFound:\n$errorJarString")
   val modules =

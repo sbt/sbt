@@ -49,7 +49,7 @@ lazy val dependent = project
 TaskKey[Unit]("dumpResolvers") := {
   val log = streams.value.log
   log.info(s" -- dependent/fullResolvers -- ")
-  (fullResolvers in dependent).value foreach { r =>
+  (dependent / fullResolvers).value foreach { r =>
     log.info(s" * ${r}")
   }
 }

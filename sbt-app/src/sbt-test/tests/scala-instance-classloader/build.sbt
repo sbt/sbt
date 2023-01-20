@@ -11,11 +11,11 @@ lazy val root = (project in file("."))
     libraryDependencies += {
       "org.scala-lang" % "scala-compiler" % scalaVersion.value % OtherScala.name 
     },
-    managedClasspath in OtherScala := Classpaths.managedJars(OtherScala, classpathTypes.value, update.value),
+    OtherScala / managedClasspath := Classpaths.managedJars(OtherScala, classpathTypes.value, update.value),
 
     // Hack in the scala instance
     scalaInstance := {
-      val rawJars = (managedClasspath in OtherScala).value.map(_.data)
+      val rawJars = (OtherScala / managedClasspath).value.map(_.data)
       val scalaHome = (target.value / "scala-home")
       def removeVersion(name: String): String =
         name.replaceAll("\\-2.12.11", "")

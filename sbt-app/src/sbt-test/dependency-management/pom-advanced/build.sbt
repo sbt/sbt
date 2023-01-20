@@ -21,8 +21,8 @@ val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repositor
 
 def pomIncludeRepository(base: File, prev: MavenRepository => Boolean): MavenRepository => Boolean = {
   case r: MavenRepository if (r.name == "local-preloaded") => false
-  case r: MavenRepository if (base  / "repo.none" exists)  => false
-  case r: MavenRepository if (base / "repo.all" exists)    => true
+  case r: MavenRepository if (base  / "repo.none").exists  => false
+  case r: MavenRepository if (base / "repo.all").exists    => true
   case r: MavenRepository => prev(r)
 }
 
@@ -31,9 +31,9 @@ def addSlash(s: String): String = s match {
   case _ => s + "/"
 }
 
-def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams) {
+def checkPomRepositories(file: File, args: Seq[String], s: TaskStreams): Unit = {
   val repositories = scala.xml.XML.loadFile(file) \\ "repository"
-  val extracted = repositories.map { repo => MavenRepository(repo \ "name" text, addSlash(repo \ "url" text)) }
+  val extracted = repositories.map { repo => MavenRepository((repo \ "name").text, addSlash((repo \ "url").text)) }
   val expected = args.map(GlobFilter.apply)
   s.log.info("Extracted: " + extracted.mkString("\n\t", "\n\t", "\n"))
   s.log.info("Expected: " + args.mkString("\n\t", "\n\t", "\n"))

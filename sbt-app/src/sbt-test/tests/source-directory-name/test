@@ -1,2 +1,3 @@
+> ++2.12.17!
 > compile
 $ exists target/scala-2.12/classes/ch/epfl/scala/Client.class

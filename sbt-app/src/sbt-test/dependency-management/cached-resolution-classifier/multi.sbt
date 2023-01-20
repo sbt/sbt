@@ -7,7 +7,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
@@ -16,7 +16,7 @@ lazy val classifierTest = project.
   settings(commonSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "net.sf.json-lib" % "json-lib" % "2.4" classifier "jdk15" intransitive(),
+      ("net.sf.json-lib" % "json-lib" % "2.4").classifier("jdk15").intransitive(),
       "commons-io" % "commons-io" % "1.4"
     )
   )
@@ -34,11 +34,11 @@ lazy val a = project.
   settings(commonSettings: _*).
   settings(
     updateOptions := updateOptions.value.withCachedResolution(true),
-    artifact in (Compile, packageBin) := Artifact("demo"),
+    (Compile / packageBin / artifact) := Artifact("demo"),
     libraryDependencies := Seq(
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
-      "commons-io" % "commons-io" % "1.4" classifier "sources",
+      ("commons-io" % "commons-io" % "1.4").classifier("sources"),
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
     )
   )
@@ -50,7 +50,7 @@ lazy val b = project.
     libraryDependencies := Seq(
       "com.typesafe.akka" %% "akka-remote" % "2.3.4" exclude("com.typesafe.akka", "akka-actor_2.10"),
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
-      "commons-io" % "commons-io" % "1.4" classifier "sources",
+      ("commons-io" % "commons-io" % "1.4").classifier("sources"),
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
     ) 
   )
@@ -64,8 +64,8 @@ lazy val c = project.
 
 lazy val root = (project in file(".")).
   settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0",
+    (ThisBuild / organization) := "org.example",
+    (ThisBuild / version) := "1.0",
     check := {
       val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
       val bcp = (b / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted

@@ -5,7 +5,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
     ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
@@ -19,10 +19,10 @@ lazy val a = project.
   settings(cachedResolutionSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "org.springframework"  % "spring-core"     % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-tx"       % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-beans"    % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-context"  % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm")
+      ("org.springframework"  % "spring-core"     % "3.2.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-tx"       % "3.1.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-beans"    % "3.2.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-context"  % "3.1.2.RELEASE").force().exclude("org.springframework", "spring-asm")
     )
   )
 
@@ -30,10 +30,10 @@ lazy val b = project.
   settings(commonSettings: _*).
   settings(
     libraryDependencies := Seq(
-      "org.springframework"  % "spring-core"     % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-tx"       % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-beans"    % "3.2.2.RELEASE" force() exclude("org.springframework", "spring-asm"),
-      "org.springframework"  % "spring-context"  % "3.1.2.RELEASE" force() exclude("org.springframework", "spring-asm")
+      ("org.springframework"  % "spring-core"     % "3.2.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-tx"       % "3.1.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-beans"    % "3.2.2.RELEASE").force().exclude("org.springframework", "spring-asm"),
+      ("org.springframework"  % "spring-context"  % "3.1.2.RELEASE").force().exclude("org.springframework", "spring-asm")
     )
   )
 

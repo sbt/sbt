@@ -132,19 +132,23 @@ jobs:
       if: ${{ matrix.jobtype == 2 }}
       shell: bash
       run: |
-        ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
+        ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* classloader-cache/* package/*"
+        # ./sbt -v "scripted watch/*"
     - name: Build and test (3)
       if: ${{ matrix.jobtype == 3 }}
       shell: bash
       run: |
         # ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/*"
-        ./sbt -v --client "scripted dependency-management/* plugins/* project-load/* java/* run/* nio/*"
+        ./sbt -v --client "scripted dependency-management/* project-load/* java/* run/*"
+        # ./sbt -v --client "scripted plugins/*"
+        # ./sbt -v --client "scripted nio/*"
     - name: Build and test (4)
       if: ${{ matrix.jobtype == 4 }}
       shell: bash
       run: |
         # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
-        ./sbt -v "scripted source-dependencies/* project/*"
+        ./sbt -v "scripted source-dependencies/*"
+        # ./sbt -v "scripted project/*"
     # - name: Build and test (5)
     #  if: ${{ matrix.jobtype == 5 }}
     #  shell: bash

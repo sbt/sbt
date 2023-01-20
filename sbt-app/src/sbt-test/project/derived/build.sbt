@@ -10,15 +10,15 @@ lazy val customE = taskKey[String]("custom E")
 lazy val globalDepE = taskKey[String]("globally defined dependency of E")
 lazy val projectDepE = taskKey[String]("per-project dependency of E")
 
-organization in Global := "org.example"
+(Global / organization) := "org.example"
 
-version in Global := "1.0"
+(Global / version) := "1.0"
 
-customC in Global := "base"
+(Global / customC) := "base"
 
-name in Global := "global-name"
+(Global / name) := "global-name"
 
-globalDepE in Global := "globalE"
+(Global / globalDepE) := "globalE"
 
 // ---------------- Derived settings
 
@@ -61,30 +61,30 @@ def same[T](x: T, y: T): Unit = {
 }
 
 check := {
-  val aa = (customA in a).value
+  val aa = (a / customA).value
   same(aa, "a-b-a")
-  val bb = (customB in b).value
+  val bb = (b / customB).value
   same(bb, explicit)
-  val ac = (customC in a).value
+  val ac = (a / customC).value
   // TODO - Setting with multiple triggers is no longer added just once...
   //same(ac, "org.example-base-1.0")
-  val globalD = (customD in Global).?.value
+  val globalD = (Global / customD).?.value
   same(globalD, None)
-  val aD = (customD in a).value
-  val bD = (customD in b).value
+  val aD = (a / customD).value
+  val bD = (b / customD).value
   same(aD, "a")
   same(bD, "b")
-  val globalE = (customE in Global).?.value
+  val globalE = (Global / customE).?.value
   same(globalE, None)
-  val aE = (customE in a).value
-  val bE = (customE in b).value
+  val aE = (a / customE).value
+  val bE = (b / customE).value
   same(aE, "globalE-A")
   same(bE, "globalE-B")
 }
 
 checkEvery := {
-  val aD = (customD in a).value
+  val aD = (a / customD).value
   same(aD, "every")
-  val gD = (customD in b).value
+  val gD = (b / customD).value
   same(gD, "every")
 }

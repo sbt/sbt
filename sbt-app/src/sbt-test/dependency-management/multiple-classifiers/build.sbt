@@ -4,7 +4,7 @@ libraryDependencies ++= Seq("natives-windows", "natives-linux", "natives-osx") m
 
 autoScalaLibrary := false
 
-TaskKey[Unit]("check") := (dependencyClasspath in Compile map { cp =>
+TaskKey[Unit]("check") := ((Compile / dependencyClasspath) map { cp =>
 	assert(cp.size == 3, "Expected 3 jars, got: " + cp.files.mkString("(", ", ", ")"))
 }).value
 
