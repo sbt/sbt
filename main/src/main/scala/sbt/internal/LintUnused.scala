@@ -32,17 +32,24 @@ object LintUnused {
       aggregate,
       concurrentRestrictions,
       commands,
+      configuration,
       crossScalaVersions,
       crossSbtVersions,
+      evictionWarningOptions,
       initialize,
       lintUnusedKeysOnLoad,
       onLoad,
       onLoadMessage,
       onUnload,
+      pollInterval,
+      pushRemoteCacheArtifact,
+      sbt.nio.Keys.outputFileStamper,
       sbt.nio.Keys.watchTriggers,
       serverConnectionType,
       serverIdleTimeout,
       shellPrompt,
+      sLog,
+      traceLevel,
     ),
     includeLintKeys := Set(
       scalacOptions,
@@ -148,7 +155,7 @@ object LintUnused {
       case Some(data) => data.settingValue.isDefined
       case _          => false
     }
-    def isLocallyDefined(u: UnusedKey): Boolean = u.positions exists {
+    def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists {
       case pos: FilePosition => pos.path.contains(File.separator)
       case _                 => false
     }
