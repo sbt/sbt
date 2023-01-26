@@ -78,7 +78,8 @@ private[sbt] object Load {
       "JAVA_HOME" -> javaHome,
     )
     val loader = getClass.getClassLoader
-    val classpath = Attributed.blankSeq(provider.mainClasspath ++ scalaProvider.jars)
+    val classpath =
+      Attributed.blankSeq(provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq)
     val ivyConfiguration =
       InlineIvyConfiguration()
         .withPaths(IvyPaths(baseDirectory, bootIvyHome(state.configuration)))
@@ -339,7 +340,7 @@ private[sbt] object Load {
     val keys = Index.allKeys(settings)
     val attributeKeys = Index.attributeKeys(data) ++ keys.map(_.key)
     val scopedKeys = keys ++ data.allKeys((s, k) => ScopedKey(s, k)).toVector
-    val projectsMap = projects.mapValues(_.defined.keySet).toMap
+    val projectsMap = projects.view.mapValues(_.defined.keySet).toMap
     val configsMap: Map[String, Seq[Configuration]] =
       projects.values.flatMap(bu => bu.defined map { case (k, v) => (k, v.configurations) }).toMap
     val keyIndex = KeyIndex(scopedKeys.toVector, projectsMap, configsMap)
@@ -403,7 +404,7 @@ private[sbt] object Load {
               yield ((ref / ConfigKey(c.name) / configuration) :== c)
           val builtin: Seq[Setting[_]] =
             (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
-          val settings = builtin ++ project.settings ++ injectSettings.project
+          val settings = builtin ++ injectSettings.project ++ project.settings
           // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
           transformSettings(projectScope(ref), uri, rootProject, settings)
         }
@@ -769,6 +770,7 @@ private[sbt] object Load {
           () => eval,
           config.injectSettings,
           Nil,
+          Nil,
           memoSettings,
           config.log,
           createRoot,
@@ -886,7 +888,7 @@ private[sbt] object Load {
    * @param buildBase      The `baseDirectory` for the entire build.
    * @param plugins        A misnomer, this is actually the compiled BuildDefinition (classpath and such) for this project.
    * @param eval           A mechanism of generating an "Eval" which can compile scala code for us.
-   * @param injectSettings Settings we need to inject into projects.
+   * @param machineWideUserSettings Settings we need to inject into projects.
    * @param acc            An accumulated list of loaded projects, originally in newProjects.
    * @param memoSettings   A recording of all sbt files that have been loaded so far.
    * @param log            The logger used for this project.
@@ -902,7 +904,8 @@ private[sbt] object Load {
       buildBase: File,
       plugins: LoadedPlugins,
       eval: () => Eval,
-      injectSettings: InjectSettings,
+      machineWideUserSettings: InjectSettings,
+      commonSettings: Seq[Setting[_]],
       acc: Seq[Project],
       memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
       log: Logger,
@@ -914,14 +917,19 @@ private[sbt] object Load {
       converter: MappedFileConverter,
   ): LoadedProjects =
     /*timed(s"Load.loadTransitive(${ newProjects.map(_.id) })", log)*/ {
-
-      def load(newProjects: Seq[Project], acc: Seq[Project], generated: Seq[Path]) =
+      def load(
+          newProjects: Seq[Project],
+          acc: Seq[Project],
+          generated: Seq[Path],
+          commonSettings0: Seq[Setting[_]],
+      ) =
         loadTransitive(
           newProjects,
           buildBase,
           plugins,
           eval,
-          injectSettings,
+          machineWideUserSettings,
+          commonSettings0,
           acc,
           memoSettings,
           log,
@@ -966,7 +974,8 @@ private[sbt] object Load {
             p1,
             autoPlugins,
             plugins,
-            injectSettings,
+            commonSettings,
+            machineWideUserSettings,
             memoSettings,
             extraFiles,
             converter,
@@ -995,12 +1004,12 @@ private[sbt] object Load {
         val newProjects = rest ++ discovered ++ projectLevelExtra
         val newAcc = acc :+ finalRoot
         val newGenerated = generated ++ generatedConfigClassFiles
-        load(newProjects, newAcc, newGenerated)
+        load(newProjects, newAcc, newGenerated, finalRoot.commonSettings)
       }
 
       // Load all config files AND finalize the project at the root directory, if it exists.
       // Continue loading if we find any more.
-      newProjects match {
+      newProjects match
         case Seq(next, rest @ _*) =>
           log.debug(s"[Loading] Loading project ${next.id} @ ${next.base}")
           discoverAndLoad(next, rest)
@@ -1018,7 +1027,7 @@ private[sbt] object Load {
               case None =>
                 log.debug(s"[Loading] Found non-root projects $discoveredIdsStr")
                 // Here we do something interesting... We need to create an aggregate root project
-                val otherProjects = load(discovered, acc, Nil)
+                val otherProjects = load(discovered, acc, Nil, Nil)
                 val root = {
                   val existingIds = otherProjects.projects.map(_.id)
                   val defaultID = autoID(buildBase, context, existingIds)
@@ -1036,12 +1045,11 @@ private[sbt] object Load {
           val newAcc = finalRoot +: (acc ++ otherProjects.projects)
           val newGenerated =
             generated ++ otherProjects.generatedConfigClassFiles ++ generatedConfigClassFiles
-          load(newProjects, newAcc, newGenerated)
+          load(newProjects, newAcc, newGenerated, finalRoot.commonSettings)
         case Nil =>
           val projectIds = acc.map(_.id).mkString("(", ", ", ")")
           log.debug(s"[Loading] Done in $buildBase, returning: $projectIds")
           LoadedProjects(acc, generatedConfigClassFiles)
-      }
     }
 
   private[this] def translateAutoPluginException(
@@ -1085,7 +1093,8 @@ private[sbt] object Load {
       p: Project,
       projectPlugins: Seq[AutoPlugin],
       loadedPlugins: LoadedPlugins,
-      globalUserSettings: InjectSettings,
+      commonSettings0: Seq[Setting[_]],
+      machineWideUserSettings: InjectSettings,
       memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
       extraSbtFiles: Seq[VirtualFile],
       converter: MappedFileConverter,
@@ -1094,47 +1103,70 @@ private[sbt] object Load {
     timed(s"Load.resolveProject(${p.id})", log) {
       import AddSettings._
       val autoConfigs = projectPlugins.flatMap(_.projectConfigurations)
-
+      val auto = AddSettings.allDefaults
       // 3. Use AddSettings instance to order all Setting[_]s appropriately
-      val allSettings = {
+      // Settings are ordered as:
+      // AutoPlugin settings, common settings, machine-wide settings + project.settings(...)
+      def allAutoPluginSettings: Seq[Setting[_]] = {
+        // Filter the AutoPlugin settings we included based on which ones are
+        // intended in the AddSettings.AutoPlugins filter.
+        def autoPluginSettings(f: AutoPlugins) =
+          projectPlugins.filter(f.include).flatMap(_.projectSettings)
+        // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
+        def expandPluginSettings(auto: AddSettings): Seq[Setting[_]] =
+          auto match
+            case p: AutoPlugins => autoPluginSettings(p)
+            case q: Sequence =>
+              q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
+                b ++ expandPluginSettings(add)
+              }
+            case _ => Nil
+        expandPluginSettings(auto)
+      }
+      def buildWideCommonSettings: Seq[Setting[_]] = {
         // TODO - This mechanism of applying settings could be off... It's in two places now...
         lazy val defaultSbtFiles = configurationSources(p.base.getCanonicalFile())
           .map(_.getAbsoluteFile().toPath())
           .map(converter.toVirtualFile)
         lazy val sbtFiles: Seq[VirtualFile] = defaultSbtFiles ++ extraSbtFiles
-        // Filter the AutoPlugin settings we included based on which ones are
-        // intended in the AddSettings.AutoPlugins filter.
-        def autoPluginSettings(f: AutoPlugins) =
-          projectPlugins.filter(f.include).flatMap(_.projectSettings)
         // Grab all the settings we already loaded from sbt files
-        def settings(files: Seq[VirtualFile]): Seq[Setting[_]] = {
-          if (files.nonEmpty)
+        def settings(files: Seq[VirtualFile]): Seq[Setting[_]] =
+          if files.nonEmpty then
             log.info(
               s"${files.map(_.name()).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
             )
-          for {
+          else ()
+          for
             file <- files
             config <- memoSettings.get(file).toSeq
             setting <- config.settings
-          } yield setting
-        }
+          yield setting
+        def expandCommonSettings(auto: AddSettings): Seq[Setting[_]] =
+          auto match
+            case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
+            case q: Sequence =>
+              q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
+                b ++ expandCommonSettings(add)
+              }
+            case _ => Nil
+        commonSettings0 ++ expandCommonSettings(auto)
+      }
+      def allProjectSettings: Seq[Setting[_]] = {
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandSettings(auto: AddSettings): Seq[Setting[_]] =
           auto match
+            case User => machineWideUserSettings.cachedProjectLoaded(loadedPlugins.loader)
             case BuildScalaFiles => p.settings
-            case User            => globalUserSettings.cachedProjectLoaded(loadedPlugins.loader)
-            // case sf: SbtFiles        => settings(sf.files.map(f => IO.resolve(p.base, f)))
-            case sf: DefaultSbtFiles => settings(sbtFiles.filter(sf.include))
-            case p: AutoPlugins      => autoPluginSettings(p)
             case q: Sequence =>
               q.sequence.foldLeft(Seq.empty[Setting[_]]) { (b, add) =>
                 b ++ expandSettings(add)
               }
-        val auto = AddSettings.allDefaults
+            case _ => Nil
         expandSettings(auto)
       }
       // Finally, a project we can use in buildStructure.
-      p.copy(settings = allSettings)
+      p.copy(settings = allAutoPluginSettings ++ buildWideCommonSettings ++ allProjectSettings)
+        .setCommonSettings(buildWideCommonSettings)
         .setAutoPlugins(projectPlugins)
         .prefixConfigs(autoConfigs: _*)
     }
@@ -1448,7 +1480,7 @@ private[sbt] object Load {
 
   final class EvaluatedConfigurations(val eval: Eval, val settings: Seq[Setting[_]])
 
-  final case class InjectSettings(
+  case class InjectSettings(
       global: Seq[Setting[_]],
       project: Seq[Setting[_]],
       projectLoaded: ClassLoader => Seq[Setting[_]]

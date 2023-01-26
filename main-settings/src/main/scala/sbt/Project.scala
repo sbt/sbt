@@ -65,6 +65,8 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
   /** The [[AutoPlugin]]s enabled for this project.  This value is only available on a loaded Project. */
   private[sbt] def autoPlugins: Seq[AutoPlugin]
 
+  private[sbt] def commonSettings: Seq[Setting[_]]
+
   override final def hashCode: Int = id.hashCode ^ base.hashCode ^ getClass.hashCode
 
   override final def equals(o: Any) = o match {
@@ -161,6 +163,9 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   /** Definitively set the [[ProjectOrigin]] for this project. */
   private[sbt] def setProjectOrigin(origin: ProjectOrigin): Project = copy(projectOrigin = origin)
 
+  private[sbt] def setCommonSettings(settings: Seq[Setting[_]]): Project =
+    copy(commonSettings = settings)
+
   /**
    * Applies the given functions to this Project.
    * The second function is applied to the result of applying the first to this Project and so on.
@@ -180,6 +185,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
       aggregate: Seq[ProjectReference] = aggregate,
       dependencies: Seq[ClasspathDep[ProjectReference]] = dependencies,
       settings: Seq[Setting[_]] = settings,
+      commonSettings: Seq[Setting[_]] = commonSettings,
       configurations: Seq[Configuration] = configurations,
       plugins: Plugins = plugins,
       autoPlugins: Seq[AutoPlugin] = autoPlugins,
@@ -191,6 +197,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
       aggregate = aggregate,
       dependencies = dependencies,
       settings = settings,
+      commonSettings = commonSettings,
       configurations,
       plugins,
       autoPlugins,
@@ -218,6 +225,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
       aggregate = resolveRefs(aggregate),
       dependencies = resolveDeps(dependencies),
       settings,
+      commonSettings,
       configurations,
       plugins,
       autoPlugins,
@@ -227,7 +235,7 @@ end Project
 
 object Project:
   def apply(id: String, base: File): Project =
-    unresolved(id, base, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
+    unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Plugins.empty, Nil, ProjectOrigin.Organic)
 
   /** This is a variation of def apply that mixes in GeneratedRootProject. */
   private[sbt] def mkGeneratedRoot(
@@ -238,7 +246,7 @@ object Project:
     validProjectID(id).foreach(errMsg => sys.error(s"Invalid project ID: $errMsg"))
     val plugins = Plugins.empty
     val origin = ProjectOrigin.GenericRoot
-    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, plugins, Nil, origin)
+    new ProjectDef(id, base, aggregate, Nil, Nil, Nil, Nil, plugins, Nil, origin)
       with Project
       with GeneratedRootProject
 
@@ -248,6 +256,7 @@ object Project:
       val aggregate: Seq[PR],
       val dependencies: Seq[ClasspathDep[PR]],
       val settings: Seq[Def.Setting[_]],
+      val commonSettings: Seq[Def.Setting[_]],
       val configurations: Seq[Configuration],
       val plugins: Plugins,
       val autoPlugins: Seq[AutoPlugin],
@@ -265,6 +274,7 @@ object Project:
       aggregate: Seq[ProjectReference],
       dependencies: Seq[ClasspathDep[ProjectReference]],
       settings: Seq[Def.Setting[_]],
+      commonSettings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
       autoPlugins: Seq[AutoPlugin],
@@ -277,6 +287,7 @@ object Project:
       aggregate,
       dependencies,
       settings,
+      commonSettings,
       configurations,
       plugins,
       autoPlugins,
@@ -291,6 +302,7 @@ object Project:
       aggregate: Seq[ProjectRef],
       dependencies: Seq[ClasspathDep[ProjectRef]],
       settings: Seq[Def.Setting[_]],
+      commonSettings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
       autoPlugins: Seq[AutoPlugin],
@@ -302,6 +314,7 @@ object Project:
       aggregate,
       dependencies,
       settings,
+      commonSettings,
       configurations,
       plugins,
       autoPlugins,
