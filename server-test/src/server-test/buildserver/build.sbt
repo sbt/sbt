@@ -36,6 +36,12 @@ lazy val util = project.settings(
 
 lazy val diagnostics = project
 
+lazy val javaProj = project
+  .in(file("java-proj"))
+  .settings(
+    javacOptions += "-Xlint:all"
+  )
+
 def somethingBad = throw new MessageOnlyException("I am a bad build target")
 // other build targets should not be affected by this bad build target
 lazy val badBuildTarget = project.in(file("bad-build-target"))

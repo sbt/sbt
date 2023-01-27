@@ -245,6 +245,32 @@ object BuildServerTest extends AbstractServerTest {
 
   }
 
+  test("buildTarget/compile: Java diagnostics") { _ =>
+    val buildTarget = buildTargetUri("javaProj", "Compile")
+
+    compile(buildTarget)
+
+    assert(
+      svr.waitForString(10.seconds) { s =>
+        s.contains("build/publishDiagnostics") &&
+        s.contains("Hello.java") &&
+        s.contains(""""severity":2""") &&
+        s.contains("""missing type arguments for generic class java.util.List""")
+      },
+      "should send publishDiagnostics with serverity 2 for Hello.java"
+    )
+
+    assert(
+      svr.waitForString(1.seconds) { s =>
+        s.contains("build/publishDiagnostics") &&
+        s.contains("Hello.java") &&
+        s.contains(""""severity":1""") &&
+        s.contains("""incompatible types: int cannot be converted to java.lang.String""")
+      },
+      "should send publishDiagnostics with serverity 1 for Hello.java"
+    )
+  }
+
   test("buildTarget/scalacOptions") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
