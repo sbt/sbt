@@ -108,7 +108,7 @@ final class BuildServerReporterImpl(
       val hadProblems = bspCompileState.hasAnyProblems.remove(filePath)
 
       val reportedProblems = infos.getReportedProblems.toVector
-      val diagnostics = reportedProblems.flatMap(toDiagnostic)
+      val diagnostics = reportedProblems.map(toDiagnostic)
 
       // publish diagnostics if:
       // 1. file had any problems previously - we might want to update them with new ones
@@ -165,9 +165,9 @@ final class BuildServerReporterImpl(
   protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
       id <- problem.position.sourcePath.toOption
-      diagnostic <- toDiagnostic(problem)
       filePath <- toSafePath(VirtualFileRef.of(id))
     } {
+      val diagnostic = toDiagnostic(problem)
       problemsByFile(filePath) = problemsByFile.getOrElse(filePath, Vector.empty) :+ diagnostic
       val params = PublishDiagnosticsParams(
         TextDocumentIdentifier(filePath.toUri),
@@ -180,32 +180,27 @@ final class BuildServerReporterImpl(
     }
   }
 
-  private def toDiagnostic(problem: Problem): Option[Diagnostic] = {
+  private def toDiagnostic(problem: Problem): Diagnostic = {
     val pos = problem.position
-    for {
-      line <- pos.line.toOption.map(_.toLong - 1L)
-      pointer <- pos.pointer.toOption.map(_.toLong)
-    } yield {
-      val range = (
-        pos.startLine.toOption,
-        pos.startColumn.toOption,
-        pos.endLine.toOption,
-        pos.endColumn.toOption
-      ) match {
-        case (Some(sl), Some(sc), Some(el), Some(ec)) =>
-          Range(Position(sl.toLong - 1, sc.toLong), Position(el.toLong - 1, ec.toLong))
-        case _ =>
-          Range(Position(line, pointer), Position(line, pointer + 1))
-      }
+    val startLineOpt = pos.startLine.toOption.map(_.toLong - 1)
+    val startColumnOpt = pos.startColumn.toOption.map(_.toLong)
+    val endLineOpt = pos.endLine.toOption.map(_.toLong - 1)
+    val endColumnOpt = pos.endColumn.toOption.map(_.toLong)
 
-      Diagnostic(
-        range,
-        Option(toDiagnosticSeverity(problem.severity)),
-        problem.diagnosticCode().toOption.map(_.code),
-        Option("sbt"),
-        problem.message
-      )
-    }
+    def toPosition(lineOpt: Option[Long], columnOpt: Option[Long]): Option[Position] =
+      lineOpt.map(line => Position(line, columnOpt.getOrElse(0L)))
+
+    val startPos = toPosition(startLineOpt, startColumnOpt).getOrElse(Position(0L, 0L))
+    val endPosOpt = toPosition(endLineOpt, endColumnOpt)
+    val range = Range(startPos, endPosOpt.getOrElse(startPos))
+
+    Diagnostic(
+      range,
+      Option(toDiagnosticSeverity(problem.severity)),
+      problem.diagnosticCode().toOption.map(_.code),
+      Option("sbt"),
+      problem.message
+    )
   }
 
   private def toDiagnosticSeverity(severity: Severity): Long = severity match {
