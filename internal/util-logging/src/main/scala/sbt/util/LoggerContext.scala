@@ -187,6 +187,6 @@ object LoggerContext {
       loggers.clear()
     }
   }
-  private[sbt] def apply(useLog4J: Boolean) =
+  def apply(useLog4J: Boolean) =
     if (useLog4J) new Log4JLoggerContext(LogExchange.context) else new LoggerContextImpl
 }

@@ -64,7 +64,7 @@ object Keys {
   val extraAppenders = settingKey[AppenderSupplier]("A function that provides additional loggers for a given setting.").withRank(DSetting)
   val useLog4J = settingKey[Boolean]("Toggles whether or not to use log4j for sbt internal loggers.").withRank(Invisible)
   val logManager = settingKey[LogManager]("The log manager, which creates Loggers for different contexts.").withRank(DSetting)
-  private[sbt] val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)
+  val loggerContext = AttributeKey[LoggerContext]("sbt-logger-context", "The logger config which creates Loggers for different contexts.", Int.MaxValue)
   val logBuffered = settingKey[Boolean]("True if logging should be buffered until work completes.").withRank(CSetting)
   val sLog = settingKey[Logger]("Logger usable by settings during project loading.").withRank(CSetting)
   val serverLog = taskKey[Unit]("A dummy task to set server log level using Global / serverLog / logLevel.").withRank(CTask)
