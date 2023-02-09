@@ -181,8 +181,7 @@ object LoggerContext {
         case l    => l.clearAppenders()
       }
     }
-    def close(): Unit = {
-      closed.set(true)
+    def close(): Unit = if (closed.compareAndSet(false, true)) {
       loggers.forEach((_, l) => l.clearAppenders())
       loggers.clear()
     }
