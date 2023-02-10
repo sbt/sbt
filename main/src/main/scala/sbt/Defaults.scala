@@ -200,7 +200,8 @@ object Defaults extends BuildCommon {
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,
-      javaHome :== None,
+      releaseNotesURL := None
+        javaHome :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
@@ -3344,7 +3345,12 @@ object Classpaths {
         p1.extra(SbtPomExtraProperties.VERSION_SCHEME_KEY -> x)
       case _ => p1
     }
-    p2
+    val p3 = releaseNotesURL.value match {
+      case Some(u) =>
+        p1.extra("info.releaseNotesUrl" -> u.toExternalForm)
+      case _ => p2
+    }
+    p3
   }
   def pluginProjectID: Initialize[ModuleID] =
     Def.setting {

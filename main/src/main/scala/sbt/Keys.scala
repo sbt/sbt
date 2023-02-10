@@ -346,6 +346,7 @@ object Keys {
   val entryApiURL = AttributeKey[URL]("entryApiURL", "Base URL for the API documentation for a classpath entry.")
   val apiMappings = taskKey[Map[File, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
   val autoAPIMappings = settingKey[Boolean]("If true, automatically manages mappings to the API doc URL.").withRank(BMinusSetting)
+  val releaseNotesURL = settingKey[Option[URL]]("URL for release notes.").withRank(BMinusSetting)
   val scmInfo = settingKey[Option[ScmInfo]]("Basic SCM information for the project.").withRank(BMinusSetting)
   val projectInfo = settingKey[ModuleInfo]("Addition project information like formal name, homepage, licenses etc.").withRank(CSetting)
   val defaultConfiguration = settingKey[Option[Configuration]]("Defines the configuration used when none is specified for a dependency in ivyXML.").withRank(CSetting)
