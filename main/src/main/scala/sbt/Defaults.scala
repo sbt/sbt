@@ -200,8 +200,8 @@ object Defaults extends BuildCommon {
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,
-      releaseNotesURL := None
-        javaHome :== None,
+      releaseNotesURL := None,
+      javaHome :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
