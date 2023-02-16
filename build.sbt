@@ -24,7 +24,7 @@ inThisBuild(List(
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-val coursierVersion0 = "2.1.0-RC5"
+val coursierVersion0 = "2.1.0-RC6"
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -80,6 +80,7 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       // We depend on librarymanagement-ivy rather than just
@@ -114,6 +115,7 @@ lazy val `lm-coursier-shaded` = project
     Compile / sources := (`lm-coursier` / Compile / sources).value,
     shadedModules ++= Set(
       "io.get-coursier" %% "coursier",
+      "io.get-coursier" %% "coursier-sbt-maven-repository",
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
     ),
     validNamespaces += "lmcoursier",
@@ -188,6 +190,7 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       "io.get-coursier" %% "coursier" % coursierVersion0,
+      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       "org.scala-lang.modules" %% "scala-collection-compat" % "2.9.0",

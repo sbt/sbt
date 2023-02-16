@@ -44,7 +44,7 @@ check := {
   def containsRepo(repo: String): Boolean = {
     val accepted = Set(repo, repo.stripSuffix("/"))
     parsedCoursierResolvers.exists {
-      case m: coursier.maven.MavenRepository => accepted(m.root)
+      case m: coursier.maven.MavenRepositoryLike => accepted(m.root)
       case _ => false
     }
   }

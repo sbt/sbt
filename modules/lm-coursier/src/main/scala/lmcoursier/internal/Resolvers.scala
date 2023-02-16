@@ -6,7 +6,7 @@ import java.nio.file.Paths
 import coursier.cache.CacheUrl
 import coursier.core.{Authentication, Repository}
 import coursier.ivy.IvyRepository
-import coursier.maven.MavenRepository
+import coursier.maven.SbtMavenRepository
 import org.apache.ivy.plugins.resolver.IBiblioResolver
 import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
 import sbt.util.Logger
@@ -32,12 +32,12 @@ object Resolvers {
     log: Logger,
     authentication: Option[Authentication],
     classLoaders: Seq[ClassLoader]
-  ): Option[MavenRepository] =
+  ): Option[SbtMavenRepository] =
     try {
       CacheUrl.url(root, classLoaders) // ensure root is a URL whose protocol can be handled here
       val root0 = if (root.endsWith("/")) root else root + "/"
       Some(
-        MavenRepository(
+        SbtMavenRepository(
           root0,
           authentication = authentication
         )

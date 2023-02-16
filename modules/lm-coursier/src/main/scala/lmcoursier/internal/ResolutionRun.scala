@@ -4,7 +4,7 @@ import coursier.{Resolution, Resolve}
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
 import coursier.ivy.IvyRepository
-import coursier.maven.MavenRepository
+import coursier.maven.MavenRepositoryLike
 import coursier.params.rule.RuleResolution
 import sbt.util.Logger
 
@@ -63,7 +63,7 @@ object ResolutionRun {
           s"ivy:${r.pattern}"
         case _: InterProjectRepository =>
           "inter-project"
-        case r: MavenRepository =>
+        case r: MavenRepositoryLike =>
           r.root
         case r =>
           // should not happen
