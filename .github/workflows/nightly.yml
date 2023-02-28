@@ -15,6 +15,7 @@ jobs:
         include:
           - os: ubuntu-latest
             java: 8
+            distribution: adopt
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -39,10 +40,11 @@ jobs:
         repository: sbt/zinc
         ref: develop
         path: zinc
-    - name: Setup
-      uses: olafurpg/setup-scala@v13
+    - name: Setup JDK
+      uses: actions/setup-java@v3
       with:
-        java-version: "adopt@1.${{ matrix.java }}"
+        distribution: "${{ matrix.distribution }}"
+        java-version: "${{ matrix.java }}"
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Build and deploy
