@@ -3347,7 +3347,7 @@ object Classpaths {
     }
     val p3 = releaseNotesURL.value match {
       case Some(u) =>
-        p2.extra("info.releaseNotesUrl" -> u.toExternalForm)
+        p2.extra(SbtPomExtraProperties.POM_RELEASE_NOTES_KEY -> u.toExternalForm)
       case _ => p2
     }
     p3
