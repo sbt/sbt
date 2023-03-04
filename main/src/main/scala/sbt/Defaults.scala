@@ -2614,6 +2614,7 @@ object Defaults extends BuildCommon {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
         else ClassLoaderLayeringStrategy.ScalaLibrary
       },
+      publishLocal / skip := (publish / skip).value, // So we don't break previous behaviour
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -3585,15 +3586,57 @@ object Classpaths {
   ): Initialize[Task[Unit]] =
     publishTask(config)
 
+  private def logSkipPublish(log: Logger, ref: ProjectRef): Unit =
+    log.debug(s"Skipping publish* for ${ref.project}")
+
+  private def checkAndPublishLocal(
+      currentCon: PublishConfiguration,
+      publishLocalConf: PublishConfiguration,
+      publishSkipLocal: Boolean,
+      module: IvySbt#Module,
+      log: Logger,
+      ref: ProjectRef
+  )(notPublishLocal: () => Unit): Unit = {
+    if (currentCon == publishLocalConf) {
+      if (publishSkipLocal) {
+        logSkipPublish(log, ref)
+      } else {
+        IvyActions.publish(module, currentCon, log)
+      }
+    } else {
+      notPublishLocal()
+    }
+  }
+
   def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
     Def.taskIf {
       if ((publish / skip).value) {
-        val s = streams.value
+        val log = streams.value.log
         val ref = thisProjectRef.value
-        s.log.debug(s"Skipping publish* for ${ref.project}")
+        checkAndPublishLocal(
+          config.value,
+          publishLocalConfiguration.value,
+          (publishLocal / skip).value,
+          ivyModule.value,
+          log,
+          ref
+        ) { () =>
+          logSkipPublish(log, ref)
+        }
       } else {
-        val s = streams.value
-        IvyActions.publish(ivyModule.value, config.value, s.log)
+        val conf = config.value
+        val log = streams.value.log
+        val module = ivyModule.value
+        checkAndPublishLocal(
+          conf,
+          publishLocalConfiguration.value,
+          (publishLocal / skip).value,
+          module,
+          log,
+          thisProjectRef.value
+        ) { () =>
+          IvyActions.publish(module, conf, log)
+        }
       }
     } tag (Tags.Publish, Tags.Network)
 
