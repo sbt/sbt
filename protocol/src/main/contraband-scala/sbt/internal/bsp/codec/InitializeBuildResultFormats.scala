@@ -5,14 +5,8 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait InitializeBuildResultFormats { self: sbt.internal.bsp.codec.BuildServerCapabilitiesFormats
-  with sbt.internal.bsp.codec.CompileProviderFormats
-  with sjsonnew.BasicJsonProtocol
-  with sbt.internal.bsp.codec.TestProviderFormats
-  with sbt.internal.bsp.codec.RunProviderFormats
-  with sbt.internal.util.codec.JValueFormats
-  with sbt.internal.bsp.codec.DebugProviderFormats  =>
-  implicit lazy val InitializeBuildResultFormat: JsonFormat[sbt.internal.bsp.InitializeBuildResult] = new JsonFormat[sbt.internal.bsp.InitializeBuildResult] {
+trait InitializeBuildResultFormats { self: sbt.internal.bsp.codec.BuildServerCapabilitiesFormats with sbt.internal.bsp.codec.CompileProviderFormats with sjsonnew.BasicJsonProtocol with sbt.internal.bsp.codec.TestProviderFormats with sbt.internal.bsp.codec.RunProviderFormats with sbt.internal.bsp.codec.DebugProviderFormats with sbt.internal.util.codec.JValueFormats =>
+implicit lazy val InitializeBuildResultFormat: JsonFormat[sbt.internal.bsp.InitializeBuildResult] = new JsonFormat[sbt.internal.bsp.InitializeBuildResult] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.InitializeBuildResult = {
     __jsOpt match {
       case Some(__js) =>
