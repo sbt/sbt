@@ -270,6 +270,7 @@ object Defaults extends BuildCommon {
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
       updateOptions := UpdateOptions(),
       forceUpdatePeriod :== None,
+      platform :== Platform.jvm,
       // coursier settings
       csrExtraCredentials :== Nil,
       csrLogger := LMCoursier.coursierLoggerTask.value,
@@ -703,7 +704,7 @@ object Defaults extends BuildCommon {
         case CrossValue.Full     => CrossVersion.full
         case CrossValue.Binary   => CrossVersion.binary
       }
-      val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross)
+      val base = ModuleID(id.groupID, id.name, sv).withCrossVersion(cross).platform(Platform.jvm)
       CrossVersion(scalaV, binVersion)(base).withCrossVersion(Disabled())
     },
     crossSbtVersions := Vector((pluginCrossBuild / sbtVersion).value),
@@ -2960,7 +2961,9 @@ object Classpaths {
             case CrossValue.Full     => CrossVersion.binary
             case CrossValue.Binary   => CrossVersion.full
           }
-          val base = ModuleID(id.groupID, id.name, sbtVersion.value).withCrossVersion(cross)
+          val base = ModuleID(id.groupID, id.name, sbtVersion.value)
+            .withCrossVersion(cross)
+            .platform(Platform.jvm)
           CrossVersion(scalaVersion, binVersion)(base).withCrossVersion(Disabled())
         },
         shellPrompt := sbt.internal.ui.UITask.NoShellPrompt,
@@ -3084,6 +3087,7 @@ object Classpaths {
             overrideScalaVersion = true
           ).withScalaOrganization(scalaOrganization.value)
             .withScalaArtifacts(scalaArtifacts.value.toVector)
+            .withPlatform(platform.?.value)
         )
       }
     )).value,
@@ -3335,7 +3339,7 @@ object Classpaths {
           ScalaArtifacts.toolDependencies(sbtOrg, version) ++
             ScalaArtifacts.docToolDependencies(sbtOrg, version)
         } else ScalaArtifacts.toolDependencies(sbtOrg, version)
-      allToolDeps ++ pluginAdjust
+      allToolDeps.map(_.platform(Platform.jvm)) ++ pluginAdjust
     },
     // in case of meta build, exclude all sbt modules from the dependency graph, so we can use the sbt resolved by the launcher
     allExcludeDependencies := {
@@ -4162,7 +4166,8 @@ object Classpaths {
       version: String
   ): Seq[ModuleID] =
     if (auto)
-      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version)) :: Nil
+      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version))
+        .platform(Platform.jvm) :: Nil
     else
       Nil
 

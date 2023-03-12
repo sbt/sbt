@@ -49,6 +49,7 @@ object CoursierInputsTasks {
       description: String,
       homepage: Option[URL],
       vsOpt: Option[String],
+      projectPlatform: Option[String],
       log: Logger
   ): CProject = {
 
@@ -59,7 +60,8 @@ object CoursierInputsTasks {
       dependencies,
       configMap,
       sv,
-      sbv
+      sbv,
+      projectPlatform,
     )
     val proj1 = auOpt match {
       case Some(au) =>
@@ -88,6 +90,7 @@ object CoursierInputsTasks {
         description.value,
         homepage.value,
         versionScheme.value,
+        scalaModuleInfo.value.flatMap(_.platform),
         streams.value.log
       )
     }

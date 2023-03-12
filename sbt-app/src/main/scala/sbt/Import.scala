@@ -328,6 +328,7 @@ trait Import {
   val Patterns = sbt.librarymanagement.Patterns
   type Patterns = sbt.librarymanagement.Patterns
   type PatternsBasedRepository = sbt.librarymanagement.PatternsBasedRepository
+  val Platform = sbt.librarymanagement.Platform
   val PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type RawRepository = sbt.librarymanagement.RawRepository

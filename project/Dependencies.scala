@@ -15,7 +15,7 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha10")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha11")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha6")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -80,7 +80,7 @@ object Dependencies {
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
   // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
-  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha4"
+  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha5"
 
   lazy val sjsonNewVersion = "0.13.0"
   def sjsonNew(n: String) = Def.setting(
