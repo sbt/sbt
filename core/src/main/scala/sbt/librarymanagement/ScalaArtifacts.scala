@@ -57,12 +57,12 @@ object ScalaArtifacts {
 
   def libraryDependency(version: String): ModuleID = libraryDependency(Organization, version)
 
-  def libraryDependency(org: String, version: String): ModuleID = {
-    if (isScala3(version))
-      ModuleID(org, Scala3LibraryID, version).withCrossVersion(CrossVersion.binary)
-    else
-      ModuleID(org, LibraryID, version)
-  }
+  def libraryDependency(org: String, version: String): ModuleID =
+    if isScala3(version) then
+      ModuleID(org, Scala3LibraryID, version)
+        .withCrossVersion(CrossVersion.binary)
+        .platform(Platform.jvm)
+    else ModuleID(org, LibraryID, version).platform(Platform.jvm)
 
   private[sbt] def docToolDependencies(
       org: String,
@@ -79,6 +79,7 @@ object ScalaArtifacts {
         ModuleID(org, ScaladocID, version)
           .withConfigurations(Some(Configurations.ScalaDocTool.name + "->default(compile)"))
           .withCrossVersion(CrossVersion.binary)
+          .platform(Platform.jvm)
       )
     else Seq.empty
 
@@ -91,6 +92,7 @@ object ScalaArtifacts {
         ModuleID(org, Scala3CompilerID, version)
           .withConfigurations(Some(Configurations.ScalaTool.name + "->default(compile)"))
           .withCrossVersion(CrossVersion.binary)
+          .platform(Platform.jvm)
       )
     else
       Seq(
@@ -99,9 +101,11 @@ object ScalaArtifacts {
       )
 
   private[this] def scala2ToolDependency(org: String, id: String, version: String): ModuleID =
-    ModuleID(org, id, version).withConfigurations(
-      Some(Configurations.ScalaTool.name + "->default,optional(default)")
-    )
+    ModuleID(org, id, version)
+      .withConfigurations(
+        Some(Configurations.ScalaTool.name + "->default,optional(default)")
+      )
+      .platform(Platform.jvm)
 }
 
 object SbtArtifacts {

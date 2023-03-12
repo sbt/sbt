@@ -742,10 +742,13 @@ private[sbt] object IvySbt {
         case "" | Platform.jvm => m
         case _                 => m.withName(s"${m.name}_$platformName")
     (m: ModuleID) =>
-      (platform, m.platformOpt) match
-        case (Some(p), None) => addSuffix(m, p)
-        case (_, Some(p))    => addSuffix(m, p)
-        case _               => m
+      m.crossVersion match
+        case _: Disabled => m
+        case _ =>
+          (platform, m.platformOpt) match
+            case (Some(p), None) => addSuffix(m, p)
+            case (_, Some(p))    => addSuffix(m, p)
+            case _               => m
   }
 
   private def toIvyArtifact(
