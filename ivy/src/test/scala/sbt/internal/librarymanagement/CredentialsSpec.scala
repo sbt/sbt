@@ -19,7 +19,7 @@ class CredentialsSpec extends AnyFunSuite {
 
     Files.write(credentialsFile.toPath(), content.getBytes())
 
-    val Right(credentials) = Credentials.loadCredentials(credentialsFile)
+    val Right(credentials) = Credentials.loadCredentials(credentialsFile): @unchecked
 
     assert(credentials.realm == null)
 

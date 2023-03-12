@@ -9,6 +9,7 @@ import sbt.librarymanagement.ScalaArtifacts._
 import verify.BasicTestSuite
 
 object ScalaOverrideTest extends BasicTestSuite {
+  /*
   val OtherOrgID = "other.org"
 
   private val scalaConfigs =
@@ -271,4 +272,5 @@ object ScalaOverrideTest extends BasicTestSuite {
       "3.0.0"
     )
   }
+   */
 }

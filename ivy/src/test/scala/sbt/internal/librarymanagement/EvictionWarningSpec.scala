@@ -7,7 +7,8 @@ import sbt.librarymanagement.syntax._
 object EvictionWarningSpec extends BaseIvySpecification {
   // This is a specification to check the eviction warnings
 
-  import sbt.util.ShowLines._
+  import TestShowLines.*
+
   def scalaVersionDeps = Vector(scala2102, akkaActor230)
 
   test("Eviction of non-overridden scala-library whose scalaVersion should be detected") {

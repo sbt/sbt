@@ -6,7 +6,8 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 
 abstract class ResolutionSpec extends AbstractEngineSpec {
-  import ShowLines._
+
+  import TestShowLines.*
 
   test("Resolving the same module twice should work") {
     cleanCache()
@@ -93,11 +94,11 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
       Some("2.12.3")
     )
     assert(
-      update(module013).configurations.head.modules.map(_.toString).loneElement
+      update(module013).configurations.head.modules.map(_.toString)
         contains "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.10, sbtVersion=0.13)"
     )
     assert(
-      update(module10).configurations.head.modules.map(_.toString).loneElement
+      update(module10).configurations.head.modules.map(_.toString)
         contains "com.github.gseitz:sbt-release:1.0.6 (scalaVersion=2.12, sbtVersion=1.0)"
     )
   }

@@ -135,7 +135,7 @@ object EvictionError {
     )
   }
 
-  implicit val evictionErrorLines: ShowLines[EvictionError] = ShowLines { (a: EvictionError) =>
+  given evictionErrorLines: ShowLines[EvictionError] = ShowLines { (a: EvictionError) =>
     a.toLines
   }
 }

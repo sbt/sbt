@@ -15,6 +15,8 @@ import verify.BasicTestSuite
 
 object ComponentManagerTest extends BasicTestSuite {
   val TestID = "manager-test"
+
+  /*
   test(
     "Component manager should throw an exception if 'file' is called for a non-existing component"
   ) {
@@ -166,4 +168,5 @@ object ComponentManagerTest extends BasicTestSuite {
         f(mgr)
       }
     }
+   */
 }

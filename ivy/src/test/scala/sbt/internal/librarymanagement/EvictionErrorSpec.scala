@@ -8,7 +8,8 @@ import sbt.util.Level
 object EvictionErrorSpec extends BaseIvySpecification {
   // This is a specification to check the eviction errors
 
-  import sbt.util.ShowLines._
+  import TestShowLines.*
+  import EvictionError.given
 
   test("Eviction error should detect binary incompatible Scala libraries") {
     val deps = Vector(`scala2.10.4`, `akkaActor2.1.4`, `akkaActor2.3.0`)
