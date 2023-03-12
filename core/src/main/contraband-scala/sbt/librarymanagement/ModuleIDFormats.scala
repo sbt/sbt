@@ -24,8 +24,9 @@ implicit lazy val ModuleIDFormat: JsonFormat[sbt.librarymanagement.ModuleID] = n
       val extraAttributes = unbuilder.readField[Map[String, String]]("extraAttributes")
       val crossVersion = unbuilder.readField[sbt.librarymanagement.CrossVersion]("crossVersion")
       val branchName = unbuilder.readField[Option[String]]("branchName")
+      val platformOpt = unbuilder.readField[Option[String]]("platformOpt")
       unbuilder.endObject()
-      sbt.librarymanagement.ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName)
+      sbt.librarymanagement.ModuleID(organization, name, revision, configurations, isChanging, isTransitive, isForce, explicitArtifacts, inclusions, exclusions, extraAttributes, crossVersion, branchName, platformOpt)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -45,6 +46,7 @@ implicit lazy val ModuleIDFormat: JsonFormat[sbt.librarymanagement.ModuleID] = n
     builder.addField("extraAttributes", obj.extraAttributes)
     builder.addField("crossVersion", obj.crossVersion)
     builder.addField("branchName", obj.branchName)
+    builder.addField("platformOpt", obj.platformOpt)
     builder.endObject()
   }
 }

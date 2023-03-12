@@ -19,8 +19,9 @@ implicit lazy val ScalaModuleInfoFormat: JsonFormat[sbt.librarymanagement.ScalaM
       val overrideScalaVersion = unbuilder.readField[Boolean]("overrideScalaVersion")
       val scalaOrganization = unbuilder.readField[String]("scalaOrganization")
       val scalaArtifacts = unbuilder.readField[scala.Vector[String]]("scalaArtifacts")
+      val platform = unbuilder.readField[Option[String]]("platform")
       unbuilder.endObject()
-      sbt.librarymanagement.ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, scalaOrganization, scalaArtifacts)
+      sbt.librarymanagement.ScalaModuleInfo(scalaFullVersion, scalaBinaryVersion, configurations, checkExplicit, filterImplicit, overrideScalaVersion, scalaOrganization, scalaArtifacts, platform)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -35,6 +36,7 @@ implicit lazy val ScalaModuleInfoFormat: JsonFormat[sbt.librarymanagement.ScalaM
     builder.addField("overrideScalaVersion", obj.overrideScalaVersion)
     builder.addField("scalaOrganization", obj.scalaOrganization)
     builder.addField("scalaArtifacts", obj.scalaArtifacts)
+    builder.addField("platform", obj.platform)
     builder.endObject()
   }
 }

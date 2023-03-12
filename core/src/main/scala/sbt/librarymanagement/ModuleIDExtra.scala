@@ -33,6 +33,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def withExtraAttributes(extraAttributes: Map[String, String]): ModuleID
   def withCrossVersion(crossVersion: CrossVersion): ModuleID
   def withBranchName(branchName: Option[String]): ModuleID
+  def withPlatformOpt(platformOpt: Option[String]): ModuleID
 
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
@@ -205,6 +206,8 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def branch(branchName: String): ModuleID = withBranchName(Some(branchName))
 
   def branch(branchName: Option[String]): ModuleID = withBranchName(branchName)
+
+  def platform(platform: String): ModuleID = withPlatformOpt(Some(platform))
 }
 
 private[librarymanagement] abstract class ModuleIDFunctions {

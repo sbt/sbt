@@ -40,6 +40,7 @@ import scala.collection.mutable
 import scala.util.{ Success, Failure }
 import sbt.util._
 import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfiguration, _ }
+import sbt.librarymanagement.Platform
 import sbt.librarymanagement.ivy._
 import sbt.librarymanagement.syntax._
 
@@ -706,29 +707,45 @@ private[sbt] object IvySbt {
   private def substituteCross(m: ModuleSettings): ModuleSettings = {
     m.scalaModuleInfo match {
       case None     => m
-      case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion)
+      case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion, is.platform)
     }
   }
 
   private def substituteCross(
       m: ModuleSettings,
       scalaFullVersion: String,
-      scalaBinaryVersion: String
-  ): ModuleSettings = {
+      scalaBinaryVersion: String,
+      platform: Option[String],
+  ): ModuleSettings =
     m match {
       case ic: InlineConfiguration =>
-        val applyCross = CrossVersion(scalaFullVersion, scalaBinaryVersion)
+        val applyPlatform: ModuleID => ModuleID = substitutePlatform(platform)
+        val transform: ModuleID => ModuleID = (m: ModuleID) =>
+          val applyCross = CrossVersion(scalaFullVersion, scalaBinaryVersion)
+          applyCross(applyPlatform(m))
         def propagateCrossVersion(moduleID: ModuleID): ModuleID = {
           val crossExclusions: Vector[ExclusionRule] =
-            moduleID.exclusions.map(CrossVersion.substituteCross(_, ic.scalaModuleInfo))
-          applyCross(moduleID)
+            moduleID.exclusions
+              .map(CrossVersion.substituteCross(_, ic.scalaModuleInfo))
+          transform(moduleID)
             .withExclusions(crossExclusions)
         }
-        ic.withModule(applyCross(ic.module))
+        ic.withModule(transform(ic.module))
           .withDependencies(ic.dependencies.map(propagateCrossVersion))
-          .withOverrides(ic.overrides map applyCross)
+          .withOverrides(ic.overrides map transform)
       case _ => m
     }
+
+  private def substitutePlatform(platform: Option[String]): ModuleID => ModuleID = {
+    def addSuffix(m: ModuleID, platformName: String): ModuleID =
+      platformName match
+        case "" | Platform.jvm => m
+        case _                 => m.withName(s"${m.name}_$platformName")
+    (m: ModuleID) =>
+      (platform, m.platformOpt) match
+        case (Some(p), None) => addSuffix(m, p)
+        case (_, Some(p))    => addSuffix(m, p)
+        case _               => m
   }
 
   private def toIvyArtifact(

@@ -294,7 +294,13 @@
         { "name": "filterImplicit",       "type": "boolean"                                                                                                },
         { "name": "overrideScalaVersion", "type": "boolean"                                                                                                },
         { "name": "scalaOrganization",    "type": "String",               "default": "sbt.librarymanagement.ScalaArtifacts.Organization", "since": "0.0.1" },
-        { "name": "scalaArtifacts",       "type": "scala.Vector[String]", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" }
+        { "name": "scalaArtifacts",       "type": "scala.Vector[String]", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" },
+        {
+          "name": "platform",
+          "type": "Option[String]",
+          "default": "None",
+          "since": "2.0.0"
+        }
       ]
     },
     {
@@ -332,7 +338,8 @@
         { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
         { "name": "extraAttributes",   "type": "Map[String, String]",                    "default": "Map.empty",                        "since": "0.0.1" },
         { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",     "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
-        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" }
+        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" },
+        { "name": "platformOpt",       "type": "Option[String]",                         "default": "None",                             "since": "2.0.0" }
       ],
       "toString": [
         "this.toStringImpl"

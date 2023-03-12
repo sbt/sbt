@@ -18,6 +18,8 @@ trait BaseIvySpecification extends AbstractEngineSpec {
   def defaultModuleId: ModuleID =
     ModuleID("com.example", "foo", "0.1.0").withConfigurations(Some("compile"))
 
+  def scala2_13 = "2.13.10"
+
   lazy val log = ConsoleLogger()
   def lmEngine(uo: UpdateOptions = UpdateOptions()): DependencyResolution =
     IvyDependencyResolution(mkIvyConfiguration(uo))
@@ -37,7 +39,8 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       deps: Vector[ModuleID],
       scalaFullVersion: Option[String],
       uo: UpdateOptions = UpdateOptions(),
-      overrideScalaVersion: Boolean = true
+      overrideScalaVersion: Boolean = true,
+      platform: Option[String] = None,
   ): IvySbt#Module = {
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
@@ -48,6 +51,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
         filterImplicit = false,
         overrideScalaVersion = overrideScalaVersion
       )
+        .withPlatform(platform)
     }
 
     val moduleSetting: ModuleSettings = ModuleDescriptorConfiguration(moduleId, ModuleInfo("foo"))
