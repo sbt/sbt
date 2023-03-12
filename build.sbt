@@ -24,7 +24,7 @@ inThisBuild(List(
       case v   => v
     }
   },
-  version := "2.0.0-alpha4-SNAPSHOT",
+  version := "2.0.0-alpha6-SNAPSHOT",
   scalaVersion := scala3,
 ))
 
@@ -52,7 +52,7 @@ ThisBuild / assemblyMergeStrategy := {
 val coursierVersion0 = "2.1.0-M5"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-alpha7"
+val lm3Version = "2.0.0-alpha12"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString

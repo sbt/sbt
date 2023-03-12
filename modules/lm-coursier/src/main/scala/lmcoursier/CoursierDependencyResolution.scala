@@ -147,7 +147,8 @@ class CoursierDependencyResolution(
     val sbv = module0.scalaModuleInfo.map(_.scalaBinaryVersion).getOrElse {
       sv.split('.').take(2).mkString(".")
     }
-    val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true)
+    val projectPlatform = module0.scalaModuleInfo.flatMap(_.platform)
+    val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true, projectPlatform = projectPlatform)
     val interProjectDependencies = {
       val needed = conf.interProjectDependencies.exists { p =>
         p.module == mod && p.version == ver
