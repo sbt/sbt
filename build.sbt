@@ -18,13 +18,7 @@ inThisBuild(List(
   semanticdbEnabled := true,
   semanticdbVersion := "4.5.9",
   scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
-  scalafixScalaBinaryVersion := {
-    (ThisBuild / scalaBinaryVersion).value match {
-      case "3" => "2.13"
-      case v   => v
-    }
-  },
-  version := "2.0.0-alpha6-SNAPSHOT",
+  version := "2.0.0-alpha7-SNAPSHOT",
   scalaVersion := scala3,
 ))
 
