@@ -2535,7 +2535,7 @@ object Defaults extends BuildCommon {
   def copyResourcesTask =
     Def.task {
       val t = classDirectory.value
-      val dirs = resourceDirectories.value.toSet
+      val dirs = collection.SortedSet(resourceDirectories.value: _*)
       val s = streams.value
       val syncDir = crossTarget.value / (prefix(configuration.value.name) + "sync")
       val factory = CacheStoreFactory(syncDir)
