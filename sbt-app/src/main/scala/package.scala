@@ -59,6 +59,7 @@ package object sbt
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
 
+  @deprecated("custom config is deprecated; create a separate subproject instead", "1.9.0")
   def config(name: String): Configuration =
     macro sbt.librarymanagement.ConfigurationMacro.configMacroImpl
 }
