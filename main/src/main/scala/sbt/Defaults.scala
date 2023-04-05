@@ -2822,17 +2822,20 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
+        sbtPluginPublishLegacyMavenStyle := true,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
     )
 
+  private val publishSbtPluginMavenStyle = Def.task {
+    sbtPlugin.value && publishMavenStyle.value
+  }
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
-    packagedArtifacts := packaged(defaultArtifactTasks).value ++
-      Def
-        .ifS(sbtPlugin.toTask)(mavenArtifactsOfSbtPlugin)(Def.task(Map.empty[Artifact, File]))
-        .value
+    packagedArtifacts := Def
+      .ifS(publishSbtPluginMavenStyle)(mavenArtifactsOfSbtPlugin)(packaged(defaultArtifactTasks))
+      .value,
   ) ++ RemoteCache.projectSettings
 
   /**
@@ -2841,7 +2844,7 @@ object Classpaths {
    * valid POM file, that is a POM file that Maven can resolve.
    */
   private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, File]]] =
-    Def.ifS(publishMavenStyle.toTask)(Def.task {
+    Def.task {
       val crossVersion = sbtCrossVersion.value
       val legacyArtifact = (makePom / artifact).value
       val pom = makeMavenPomOfSbtPlugin.value
@@ -2849,8 +2852,13 @@ object Classpaths {
 
       def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
       val packages = legacyPackages.map { case (artifact, file) => addSuffix(artifact) -> file }
-      packages + (addSuffix(legacyArtifact) -> pom)
-    })(Def.task(Map.empty))
+      val legacyPackagedArtifacts = Def
+        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packaged(defaultArtifactTasks))(
+          Def.task(Map.empty[Artifact, File])
+        )
+        .value
+      packages + (addSuffix(legacyArtifact) -> pom) ++ legacyPackagedArtifacts
+    }
 
   private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
     val sbtV = sbtBinaryVersion.value

@@ -1,11 +1,19 @@
-> example / checkPackagedArtifacts
+> sbtPlugin1 / checkPackagedArtifacts
 
-> example / checkPublish
-> testMaven / checkUpdate
-> set testMaven / useCoursier := false
-> testMaven / checkUpdate
+> sbtPlugin1 / checkPublish
+> testMaven1 / checkUpdate
+> set testMaven1 / useCoursier := false
+> testMaven1 / checkUpdate
 
-> example / publishLocal
-> testLocal / checkUpdate
-> set testLocal / useCoursier := false
-> testLocal / checkUpdate
+> sbtPlugin1 / publishLocal
+> testLocal1 / checkUpdate
+> set testLocal1 / useCoursier := false
+> testLocal1 / checkUpdate
+
+> sbtPlugin2 / checkPackagedArtifacts
+
+# test publish without legacy artifacts and resolve
+> sbtPlugin2 / checkPublish
+> testMaven2 / checkUpdate
+> set testMaven2 / useCoursier := false
+> testMaven2 / checkUpdate
