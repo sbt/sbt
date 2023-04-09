@@ -391,6 +391,17 @@ private[librarymanagement] abstract class ResolverFunctions {
   def defaultRetrievePattern =
     "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
+  private[librarymanagement] def expandMavenSettings(str: String): String = {
+    // Aren't regular expressions beautifully clear and concise.
+    // This means "find all ${...}" blocks, with the first group of each being the text between curly brackets.
+    val findQuoted = "\\$\\{([^\\}]*)\\}".r
+    val env = "env\\.(.*)".r
+
+    findQuoted.replaceAllIn(str, _.group(1) match {
+      case env(variable) => sys.env.getOrElse(variable, "")
+      case property      => sys.props.getOrElse(property, "")
+    })
+  }
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
@@ -399,7 +410,7 @@ private[librarymanagement] abstract class ResolverFunctions {
         else
           ((XML.loadFile(file) \ "localRepository").text match {
             case ""    => None
-            case e @ _ => Some(new File(e))
+            case e @ _ => Some(new File(expandMavenSettings(e)))
           })
       } catch {
         // Occurs inside File constructor when property or environment variable does not exist
