@@ -2853,7 +2853,7 @@ object Classpaths {
     })(Def.task(Map.empty))
 
   private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
-    val sbtV = sbtBinaryVersion.value
+    val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
     val scalaV = scalaBinaryVersion.value
     name => name + s"_${scalaV}_$sbtV"
   }
