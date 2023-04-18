@@ -248,7 +248,7 @@ object Keys {
   val copyResources = taskKey[Seq[(File, File)]]("Copies resources to the output directory.").withRank(AMinusTask)
   val aggregate = settingKey[Boolean]("Configures task aggregation.").withRank(BMinusSetting)
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
-  private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
+  val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
   val auxiliaryClassFiles = taskKey[Seq[AuxiliaryClassFiles]]("The auxiliary class files that must be managed by Zinc (for instance the TASTy files)")
   val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
@@ -426,7 +426,7 @@ object Keys {
   val bspBuildTargetJVMRunEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmRunEnvironment request").withRank(DTask)
   val bspBuildTargetJVMTestEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmTestEnvironment request").withRank(DTask)
   val bspBuildTargetJvmEnvironmentItem = taskKey[JvmEnvironmentItem]("Computes JVM environment item").withRank(DTask)
-  
+
   val bspScalaTestClasses = inputKey[Unit]("Corresponds to buildTarget/scalaTestClasses request").withRank(DTask)
   val bspScalaTestClassesItem = taskKey[Seq[ScalaTestClassesItem]]("").withRank(DTask)
   val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
