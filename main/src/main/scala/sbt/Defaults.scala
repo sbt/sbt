@@ -946,11 +946,16 @@ object Defaults extends BuildCommon {
       compileAnalysisTargetRoot.value / compileAnalysisFilename.value
     },
     externalHooks := IncOptions.defaultExternal,
+    zincCompilationListeners := Seq.empty,
     incOptions := {
       val old = incOptions.value
+      val extHooks = externalHooks.value
+      val newExtHooks = extHooks.withInvalidationProfiler(
+        () => new DefaultRunProfiler(zincCompilationListeners.value)
+      )
       old
         .withAuxiliaryClassFiles(auxiliaryClassFiles.value.toArray)
-        .withExternalHooks(externalHooks.value)
+        .withExternalHooks(newExtHooks)
         .withClassfileManagerType(
           Option(
             TransactionalManagerType
