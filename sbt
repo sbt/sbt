@@ -573,7 +573,6 @@ Usage: `basename "$0"` [options]
   --sbt-version  <version>   use the specified version of sbt
   --sbt-jar      <path>      use the specified jar as the sbt launcher
 
-  # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
   --java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
