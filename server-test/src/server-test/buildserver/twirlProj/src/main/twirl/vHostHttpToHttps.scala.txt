@@ -1,0 +1,16 @@
+@(subDomain: String, mainDomain: String, redirectStatusCode: Int)
+@fullDomain=@{
+  if(mainDomaiiiiin) {
+    mainDomain
+  } else {
+    s"$subDomain.$mainDomain"
+  }
+}
+
+
+<VirtualHost *:80>
+  ServerName @fullDomain
+  RewriteEngine On
+  RewriteRule (.*) "https://%{HTTP_HOST}%{REQUEST_URI}" [R=@redirectStatusCode,L]
+
+</VirtualHost>

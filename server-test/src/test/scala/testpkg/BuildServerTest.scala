@@ -596,6 +596,56 @@ object BuildServerTest extends AbstractServerTest {
     assert(actualResult == expectedResult)
   }
 
+  test("buildTarget/compile twirl diagnostics (sourcePositionMapping)") { _ =>
+    val buildTarget = buildTargetUri("twirlProj", "Compile")
+    val testFile =
+      new File(svr.baseDirectory, s"twirlProj/src/main/twirl/vHostHttpToHttps.scala.txt")
+
+    compile(buildTarget)
+
+    assert(
+      svr.waitForString(10.seconds) { s =>
+        s.contains("build/publishDiagnostics") &&
+        s.contains("vHostHttpToHttps.scala.txt") &&
+        s.contains(""""severity":1""") &&
+        s.contains("""not found: value mainDomaiiiiin""")
+      },
+      "should send publishDiagnostics with serverity 1 for vHostHttpToHttps.scala.txt "
+    )
+    IO.write(
+      testFile,
+      """|@(subDomain: String, mainDomain: String, redirectStatusCode: Int)
+         |@fullDomain=@{
+         |  if(mainDomain) {
+         |    mainDomain
+         |  } else {
+         |    s"$subDomain.$mainDomain"
+         |  }
+         |}
+         |
+         |
+         |<VirtualHost *:80>
+         |  ServerName @fullDomain
+         |  RewriteEngine On
+         |  RewriteRule (.*) "https://%{HTTP_HOST}%{REQUEST_URI}" [R=@redirectStatusCode,L]
+         |
+         |</VirtualHost>
+         |""".stripMargin
+    )
+
+    compile(buildTarget)
+
+    assert(
+      svr.waitForString(30.seconds) { s =>
+        s.contains("build/publishDiagnostics") &&
+        s.contains("vHostHttpToHttps.scala.txt") &&
+        s.contains(""""diagnostics":[]""") &&
+        s.contains(""""reset":true""")
+      },
+      "should send publishDiagnostics with empty diagnostics"
+    )
+  }
+
   private def initializeRequest(): Int = {
     val params = InitializeBuildParams(
       "test client",
