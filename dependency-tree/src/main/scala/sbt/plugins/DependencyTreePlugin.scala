@@ -8,11 +8,14 @@
 package sbt
 package plugins
 
+import scala.annotation.nowarn
+
 object DependencyTreePlugin extends AutoPlugin {
   object autoImport extends DependencyTreeKeys
   override def trigger = AllRequirements
   override def requires = MiniDependencyTreePlugin
 
+  @nowarn
   val configurations = Vector(Compile, Test, IntegrationTest, Runtime, Provided, Optional)
 
   // MiniDependencyTreePlugin provides baseBasicReportingSettings for Compile and Test

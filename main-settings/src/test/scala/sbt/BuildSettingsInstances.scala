@@ -53,6 +53,7 @@ object BuildSettingsInstances {
     )
   }
 
+  @nowarn
   implicit def arbConfigKey: Arbitrary[ConfigKey] = Arbitrary {
     Gen.frequency(
       2 -> const[ConfigKey](Compile),
