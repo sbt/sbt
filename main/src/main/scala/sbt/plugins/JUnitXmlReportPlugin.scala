@@ -18,6 +18,7 @@ import sbt.Project.inConfig
 import sbt.internal._
 import sbt.io.syntax._
 import sbt.librarymanagement.Configurations.{ IntegrationTest, Test }
+import scala.annotation.nowarn
 
 /**
  * An experimental plugin that adds the ability for junit-xml to be generated.
@@ -50,6 +51,7 @@ object JUnitXmlReportPlugin extends AutoPlugin {
 
   import autoImport._
 
+  @nowarn
   override lazy val projectSettings: Seq[Setting[_]] =
     inConfig(Test)(testReportSettings) ++
       inConfig(IntegrationTest)(testReportSettings)

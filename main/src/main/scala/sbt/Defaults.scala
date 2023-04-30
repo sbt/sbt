@@ -2602,6 +2602,7 @@ object Defaults extends BuildCommon {
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
+  @nowarn
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
   }
