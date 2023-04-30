@@ -24,7 +24,9 @@ inThisBuild(List(
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-val coursierVersion0 = "2.1.0-RC6"
+lazy val coursierVersion0 = "2.1.2"
+lazy val coursierDep = ("io.get-coursier" %% "coursier" % coursierVersion0)
+  .exclude("com.github.luben", "zstd-jni")
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -60,7 +62,7 @@ lazy val definitions = project
     shared,
     crossScalaVersions := Seq(scala212, scala213),
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      coursierDep,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value,
     ),
@@ -79,7 +81,7 @@ lazy val `lm-coursier` = project
     Mima.settings,
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      coursierDep,
       "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
@@ -127,43 +129,6 @@ lazy val `lm-coursier-shaded` = project
       "licenses/javolution.license.TXT",
       "licenses/thoughtworks.TXT",
       "licenses/",
-      // zstd files, pulled via plexus-archiver
-      "darwin/",
-      "darwin/aarch64/",
-      "darwin/aarch64/libzstd-jni-1.5.2-5.dylib",
-      "darwin/x86_64/",
-      "darwin/x86_64/libzstd-jni-1.5.2-5.dylib",
-      "freebsd/",
-      "freebsd/amd64/",
-      "freebsd/amd64/libzstd-jni-1.5.2-5.so",
-      "freebsd/i386/",
-      "freebsd/i386/libzstd-jni-1.5.2-5.so",
-      "linux/",
-      "linux/aarch64/",
-      "linux/aarch64/libzstd-jni-1.5.2-5.so",
-      "linux/amd64/",
-      "linux/amd64/libzstd-jni-1.4.9-3.so",
-      "linux/amd64/libzstd-jni-1.4.9-4.so",
-      "linux/amd64/libzstd-jni-1.5.2-5.so",
-      "linux/arm/",
-      "linux/arm/libzstd-jni-1.5.2-5.so",
-      "linux/i386/",
-      "linux/i386/libzstd-jni-1.5.2-5.so",
-      "linux/loongarch64/",
-      "linux/loongarch64/libzstd-jni-1.5.2-5.so",
-      "linux/mips64/",
-      "linux/mips64/libzstd-jni-1.5.2-5.so",
-      "linux/ppc64/",
-      "linux/ppc64/libzstd-jni-1.5.2-5.so",
-      "linux/ppc64le/",
-      "linux/ppc64le/libzstd-jni-1.5.2-5.so",
-      "linux/s390x/",
-      "linux/s390x/libzstd-jni-1.5.2-5.so",
-      "win/",
-      "win/amd64/",
-      "win/amd64/libzstd-jni-1.5.2-5.dll",
-      "win/x86/",
-      "win/x86/libzstd-jni-1.5.2-5.dll",
     ),
     shadingRules ++= {
       val toShade = Seq(
@@ -189,7 +154,7 @@ lazy val `lm-coursier-shaded` = project
         yield ShadingRule.moveUnder(ns, "lmcoursier.internal.shaded")
     },
     libraryDependencies ++= Seq(
-      "io.get-coursier" %% "coursier" % coursierVersion0,
+      coursierDep,
       "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
