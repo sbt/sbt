@@ -24,9 +24,10 @@ inThisBuild(List(
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-lazy val coursierVersion0 = "2.1.2"
-lazy val coursierDep = ("io.get-coursier" %% "coursier" % coursierVersion0)
-  .exclude("com.github.luben", "zstd-jni")
+def coursierVersion0 = "2.1.2"
+def coursierDep = ("io.get-coursier" %% "coursier" % coursierVersion0)
+  .exclude("org.codehaus.plexus", "plexus-archiver")
+  .exclude("org.codehaus.plexus", "plexus-container-default")
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
