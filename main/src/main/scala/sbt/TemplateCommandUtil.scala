@@ -39,13 +39,27 @@ private[sbt] object TemplateCommandUtil {
     val extracted = (Project extract s0)
     val (s1, ivyConf) = extracted.runTask(Keys.ivyConfiguration, s0)
     val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
-    val arguments = inputArg.toList ++
+    val args0 = inputArg.toList ++
       (s0.remainingCommands match {
         case exec :: Nil if exec.commandLine == "shell" => Nil
         case xs                                         => xs map (_.commandLine)
       })
-    run(infos, arguments, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
-    TerminateAction :: s1.copy(remainingCommands = Nil)
+    def terminate = TerminateAction :: s1.copy(remainingCommands = Nil)
+    def reload = "reboot" :: s1.copy(remainingCommands = Nil)
+    if (args0.nonEmpty) {
+      run(infos, args0, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
+      terminate
+    } else {
+      fortifyArgs() match {
+        case Nil => terminate
+        case arg :: Nil if arg.endsWith(".local") =>
+          localRun(arg :: Nil, log)
+          reload
+        case args =>
+          run(infos, args, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
+          terminate
+      }
+    }
   }
 
   private def run(
@@ -141,6 +155,134 @@ private[sbt] object TemplateCommandUtil {
         case Right(files) => files.toList
       }
       xs.map(_.toPath)
+    }
+  }
+
+  private final val ScalaToolkitSlug = "scala/toolkit.local"
+  private final val TypelevelToolkitSlug = "typelevel/toolkit.local"
+  private final val SbtCrossPlatformSlug = "sbt/cross-platform.local"
+  private def fortifyArgs(): List[String] = {
+    val templates = List(
+      ScalaToolkitSlug -> "Scala Toolkit (beta) by Scala Center and VirtusLab",
+      TypelevelToolkitSlug -> "Toolkit to start building Typelevel apps",
+      SbtCrossPlatformSlug -> "A cross-JVM/JS/Native project",
+      "scala/scala-seed.g8" -> "Scala 2 seed template",
+      "playframework/play-scala-seed.g8" -> "A Play project in Scala",
+      "playframework/play-java-seed.g8" -> "A Play project in Java",
+      "scala-js/vite.g8" -> "A Scala.JS + Vite project",
+      "holdenk/sparkProjectTemplate.g8" -> "A Scala Spark project",
+      "spotify/scio.g8" -> "A Scio project",
+      "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
+    )
+    val mappingList = templates.zipWithIndex.map {
+      case (v, idx) => (idx + 1) -> v
+    }
+    System.out.println("")
+    System.out.println("Welcome to sbt new!")
+    System.out.println("Here are some templates to get started:")
+    mappingList.foreach {
+      case (k, (slug, desc)) =>
+        val key = if (k < 10) s" $k" else k.toString
+        System.out.println(s" $key) ${slug.padTo(33, ' ')} - $desc")
+    }
+    System.out.println(" q) quit")
+    val ans = ask("Select a template", "1")
+    val mappings = Map((mappingList.map { case (k, v) => k.toString -> v }): _*)
+    mappings.get(ans).map(_._1).toList
+  }
+
+  private def ask(question: String, default: String): String = {
+    System.out.print(s"$question (default: $default): ")
+    val ans0 = System.console().readLine()
+    if (ans0 == "") default
+    else ans0
+  }
+
+  private def localRun(
+      arguments: List[String],
+      log: Logger
+  ): Unit =
+    arguments match {
+      case ScalaToolkitSlug :: Nil     => scalaToolkitTemplate()
+      case TypelevelToolkitSlug :: Nil => typelevelToolkitTemplate()
+      case SbtCrossPlatformSlug :: Nil => sbtCrossPlatformTemplate()
+      case _ =>
+        System.err.println("Local template not found for: " + arguments.mkString(" "))
+    }
+
+  private final val defaultScalaV = "3.2.2"
+  private def scalaToolkitTemplate(): Unit = {
+    val defaultScalaToolkitV = "0.1.6"
+    val scalaV = ask("Scala version", defaultScalaV)
+    val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
+    val content = s"""
+val toolkit = "org.scala-lang" %% "toolkit" % "$toolkitV"
+// val toolkitTest = "org.scala-lang" %% "toolkit-test" % "$toolkitV"
+
+ThisBuild / scalaVersion := "$scalaV"
+libraryDependencies += toolkit
+// libraryDependencies += (toolkitTest % Test)
+"""
+    IO.write(new File("build.sbt"), content)
+    copyResource("ScalaMain.scala.txt", new File("src/main/scala/example/Main.scala"))
+    copyResource("MUnitSuite.scala.txt", new File("src/test/scala/example/ExampleSuite.scala"))
+  }
+
+  private def typelevelToolkitTemplate(): Unit = {
+    val defaultTypelevelToolkitV = "0.0.7"
+    val scalaV = ask("Scala version", defaultScalaV)
+    val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
+    val content = s"""
+val toolkit = "org.typelevel" %% "toolkit" % "$toolkitV"
+
+ThisBuild / scalaVersion := "$scalaV"
+libraryDependencies += toolkit
+"""
+    IO.write(new File("build.sbt"), content)
+    copyResource("TypelevelMain.scala.txt", new File("src/main/scala/example/Main.scala"))
+    copyResource(
+      "TypelevelExampleSuite.scala.txt",
+      new File("src/test/scala/example/ExampleSuite.scala")
+    )
+  }
+
+  private def sbtCrossPlatformTemplate(): Unit = {
+    val scalaV = ask("Scala version", defaultScalaV)
+    val content = s"""
+ThisBuild / scalaVersion := "$scalaV"
+
+lazy val core = (projectMatrix in file("core"))
+  .settings(
+    name := "core",
+  )
+  .jvmPlatform(scalaVersions = Seq("$scalaV"))
+  .jsPlatform(scalaVersions = Seq("$scalaV"))
+  .nativePlatform(scalaVersions = Seq("$scalaV"))
+"""
+    IO.write(new File("build.sbt"), content)
+
+    val pluginsContent = """
+addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.9.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.10.1")
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.4.10")
+"""
+    IO.write(new File("project/plugins.sbt"), pluginsContent)
+    copyResource("ScalaMain.scala.txt", new File("core/src/main/scala/example/Main.scala"))
+  }
+
+  private def copyResource(resourcePath: String, out: File): Unit = {
+    if (out.exists()) {
+      sys.error(s"the file $out already exists!")
+    }
+    if (!out.getParentFile().exists()) {
+      IO.createDirectory(out.getParentFile())
+    }
+    val is = getClass.getClassLoader().getResourceAsStream(resourcePath)
+    require(is ne null, s"Couldn't load '$resourcePath' from classpath.")
+    try {
+      IO.transfer(is, out)
+    } finally {
+      is.close()
     }
   }
 }
