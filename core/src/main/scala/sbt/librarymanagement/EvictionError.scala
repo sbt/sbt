@@ -83,47 +83,43 @@ object EvictionError {
       }
     }: _*)
 
-    def calculateCompatible(p: EvictionPair): (Boolean, String, Boolean, String) = {
-      val winnerOpt = p.winner map { _.module }
-      val extraAttributes = ((p.winner match {
-        case Some(r) => r.extraAttributes.toMap
-        case _       => Map.empty
-      }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
-        case Some(w) => w.extraAttributes.toMap
-        case _       => Map.empty
-      })
-      // prioritize user-defined version scheme to allow overriding the real scheme
-      val schemeOpt = userDefinedSchemes
-        .get((p.organization, p.name))
-        .orElse(userDefinedSchemes.get((p.organization, "*")))
-        .orElse(VersionSchemes.extractFromExtraAttributes(extraAttributes))
-        .orElse(userDefinedSchemes.get(("*", "*")))
-      val f = (winnerOpt, schemeOpt) match {
-        case (Some(_), Some(scheme)) => VersionSchemes.evalFunc(scheme)
-        case _                       => EvictionWarningOptions.guessTrue
-      }
-      val scheme =
-        if (isNameScalaSuffixed(p.name)) assumedVersionScheme
-        else assumedVersionSchemeJava
-      val guess = VersionSchemes.evalFunc(scheme)
-      (p.evicteds forall { r =>
-        f((r.module, winnerOpt, module.scalaModuleInfo))
-      }, schemeOpt.getOrElse("?"), p.evicteds forall { r =>
-        guess((r.module, winnerOpt, module.scalaModuleInfo))
-      }, scheme)
-    }
     pairs foreach {
       // don't report on a transitive eviction that does not have a winner
       // https://github.com/sbt/sbt/issues/4946
       case p if p.winner.isDefined =>
-        val r = calculateCompatible(p)
-        if (!r._1) {
-          incompatibleEvictions += (p -> r._2)
-        } else if (!r._3) {
-          assumedIncompatEvictions += (p -> r._4)
+        val winner = p.winner.get
+        def lookupUserDefined(org: String = "*", mod: String = "*") =
+          userDefinedSchemes.get((org, mod))
+        def fromWinnerPom = VersionSchemes.extractFromExtraAttributes(
+          winner.extraAttributes.toMap ++ winner.module.extraAttributes
+        )
+        // prioritize user-defined version scheme to allow overriding the real scheme
+        val userDefinedSchemeOrFromPom =
+          lookupUserDefined(p.organization, p.name)
+            .orElse(lookupUserDefined(p.organization))
+            .orElse(fromWinnerPom)
+            .orElse(lookupUserDefined())
+
+        val assumedScheme =
+          if (isNameScalaSuffixed(p.name)) assumedVersionScheme
+          else assumedVersionSchemeJava
+
+        def hasIncompatibleVersionForScheme(scheme: Option[String]) = {
+          val isCompat =
+            scheme.map(VersionSchemes.evalFunc).getOrElse(EvictionWarningOptions.guessTrue)
+          p.evicteds.exists { r =>
+            !isCompat((r.module, Some(winner.module), module.scalaModuleInfo))
+          }
         }
+
+        if (hasIncompatibleVersionForScheme(userDefinedSchemeOrFromPom))
+          incompatibleEvictions += (p -> userDefinedSchemeOrFromPom.getOrElse("?"))
+        else if (hasIncompatibleVersionForScheme(Some(assumedScheme)))
+          assumedIncompatEvictions += (p -> assumedScheme)
+
       case _ => ()
     }
+
     new EvictionError(
       incompatibleEvictions.toList,
       assumedIncompatEvictions.toList,
