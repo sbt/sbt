@@ -2857,7 +2857,14 @@ object Classpaths {
       val legacyPackages = packaged(defaultPackages).value
 
       def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
-      val packages = legacyPackages.map { case (artifact, file) => addSuffix(artifact) -> file }
+      def copyArtifact(artifact: Artifact, file: File): (Artifact, File) = {
+        val nameWithSuffix = crossVersion(artifact.name)
+        val targetFile =
+          new File(file.getParentFile, file.name.replace(artifact.name, nameWithSuffix))
+        IO.copyFile(file, targetFile)
+        artifact.withName(nameWithSuffix) -> targetFile
+      }
+      val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
       val legacyPackagedArtifacts = Def
         .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packaged(defaultArtifactTasks))(
           Def.task(Map.empty[Artifact, File])
