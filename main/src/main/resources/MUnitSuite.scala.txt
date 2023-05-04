@@ -1,4 +1,4 @@
-pacakge example
+package example
 
 class ExampleSuite extends munit.FunSuite:
 
