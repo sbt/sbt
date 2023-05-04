@@ -88,33 +88,34 @@ object EvictionError {
       // https://github.com/sbt/sbt/issues/4946
       case p if p.winner.isDefined =>
         val winner = p.winner.get
-        def lookupUserDefined(org: String = "*", mod: String = "*") =
+        def fromLibraryDependencySchemes(org: String = "*", mod: String = "*") =
           userDefinedSchemes.get((org, mod))
         def fromWinnerPom = VersionSchemes.extractFromExtraAttributes(
           winner.extraAttributes.toMap ++ winner.module.extraAttributes
         )
         // prioritize user-defined version scheme to allow overriding the real scheme
         val userDefinedSchemeOrFromPom =
-          lookupUserDefined(p.organization, p.name)
-            .orElse(lookupUserDefined(p.organization))
+          fromLibraryDependencySchemes(p.organization, p.name)
+            .orElse(fromLibraryDependencySchemes(p.organization))
             .orElse(fromWinnerPom)
-            .orElse(lookupUserDefined())
+            .orElse(fromLibraryDependencySchemes())
 
         val assumedScheme =
           if (isNameScalaSuffixed(p.name)) assumedVersionScheme
           else assumedVersionSchemeJava
 
-        def hasIncompatibleVersionForScheme(scheme: Option[String]) = {
+        def hasIncompatibleVersionForScheme(scheme: String) = {
           val isCompat =
-            scheme.map(VersionSchemes.evalFunc).getOrElse(EvictionWarningOptions.guessTrue)
+            VersionSchemes.evalFunc(scheme)
           p.evicteds.exists { r =>
             !isCompat((r.module, Some(winner.module), module.scalaModuleInfo))
           }
         }
 
-        if (hasIncompatibleVersionForScheme(userDefinedSchemeOrFromPom))
+        val userDefinedSchemeOrAlways = userDefinedSchemeOrFromPom.getOrElse(VersionSchemes.Always)
+        if (hasIncompatibleVersionForScheme(userDefinedSchemeOrAlways))
           incompatibleEvictions += (p -> userDefinedSchemeOrFromPom.getOrElse("?"))
-        else if (hasIncompatibleVersionForScheme(Some(assumedScheme)))
+        else if (hasIncompatibleVersionForScheme(assumedScheme))
           assumedIncompatEvictions += (p -> assumedScheme)
 
       case _ => ()
