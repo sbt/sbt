@@ -1,7 +1,7 @@
 scalaSource in Configurations.Compile := (sourceDirectory.value / " scala test ")
  javaSource in Configurations.Compile := (sourceDirectory.value / " java test ")
 
-TaskKey[Unit]("init") := {
+TaskKey[Unit]("init0") := {
   val ss = (scalaSource in Configurations.Compile).value
   val js = ( javaSource in Configurations.Compile).value
   import IO._

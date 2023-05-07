@@ -17,6 +17,7 @@ object BasicCommandStrings {
   val Shutdown: String = "shutdown"
   val Quit: String = "quit"
   val TemplateCommand: String = "new"
+  val TemplateCommandAlias: String = "init"
   val Cancel: String = "cancel"
 
   /** The command name to terminate the program.*/

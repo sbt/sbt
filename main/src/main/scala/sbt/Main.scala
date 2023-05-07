@@ -71,7 +71,7 @@ private[sbt] object xMain {
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == JavaClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
-      val isNew: String => Boolean = cmd => (cmd == "new")
+      val isNew: String => Boolean = cmd => (cmd == "new") || (cmd == "init")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
       lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
@@ -108,7 +108,7 @@ private[sbt] object xMain {
               .initialState(
                 rebasedConfig,
                 Seq(defaults, early),
-                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+                runEarly(DefaultsCommand) :: runEarly("error") :: runEarly(InitCommand) :: BootCommand :: Nil
               )
               .put(BasicKeys.detachStdio, detachStdio)
             StandardMain.runManaged(state)
@@ -289,7 +289,7 @@ object StandardMain {
 import sbt.BasicCommandStrings._
 import sbt.BasicCommands._
 import sbt.CommandUtil._
-import sbt.TemplateCommandUtil.templateCommand
+import sbt.TemplateCommandUtil.{ templateCommandAlias, templateCommand }
 import sbt.internal.CommandStrings._
 import sbt.internal.util.complete.DefaultParsers._
 
@@ -311,6 +311,7 @@ object BuiltinCommands {
       settingsCommand,
       loadProject,
       templateCommand,
+      templateCommandAlias,
       projects,
       project,
       set,

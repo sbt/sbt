@@ -11,7 +11,6 @@ import java.lang.reflect.InvocationTargetException
 import java.nio.file.Path
 import java.io.File
 
-import sbt.BasicCommandStrings.TerminateAction
 import sbt.SlashSyntax0._
 import sbt.io._, syntax._
 import sbt.util._
@@ -24,8 +23,10 @@ import sbt.internal.inc.classpath.ClasspathUtil
 import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
-  def templateCommand: Command =
-    Command(TemplateCommand, templateBrief, templateDetailed)(_ => templateCommandParser)(
+  def templateCommand: Command = templateCommand0(TemplateCommand)
+  def templateCommandAlias: Command = templateCommand0("init")
+  private def templateCommand0(command: String): Command =
+    Command(command, templateBrief, templateDetailed)(_ => templateCommandParser)(
       runTemplate
     )
 
