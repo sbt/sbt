@@ -110,6 +110,7 @@ private[sbt] object xMain {
                 Seq(defaults, early),
                 runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
               )
+              .put(BasicKeys.detachStdio, detachStdio)
             StandardMain.runManaged(state)
           }
         case _ if clientModByEnv || userCommands.exists(isClient) =>
