@@ -11,7 +11,6 @@ import java.lang.reflect.InvocationTargetException
 import java.nio.file.Path
 import java.io.File
 
-import sbt.BasicCommandStrings.TerminateAction
 import sbt.SlashSyntax0._
 import sbt.io._, syntax._
 import sbt.util._
@@ -24,8 +23,10 @@ import sbt.internal.inc.classpath.ClasspathUtil
 import BasicCommandStrings._, BasicKeys._
 
 private[sbt] object TemplateCommandUtil {
-  def templateCommand: Command =
-    Command(TemplateCommand, templateBrief, templateDetailed)(_ => templateCommandParser)(
+  def templateCommand: Command = templateCommand0(TemplateCommand)
+  def templateCommandAlias: Command = templateCommand0("init")
+  private def templateCommand0(command: String): Command =
+    Command(command, templateBrief, templateDetailed)(_ => templateCommandParser)(
       runTemplate
     )
 
@@ -288,7 +289,7 @@ libraryDependencies += (toolkitTest % Test)
   }
 
   private def typelevelToolkitTemplate(): Unit = {
-    val defaultTypelevelToolkitV = "0.0.7"
+    val defaultTypelevelToolkitV = "0.0.8"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
     val content = s"""
