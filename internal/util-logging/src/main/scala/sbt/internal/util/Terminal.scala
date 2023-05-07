@@ -176,9 +176,40 @@ trait Terminal extends AutoCloseable {
     else 0
   }
   private[sbt] def flush(): Unit = printStream.flush()
+
+  private[sbt] def readArrow: Int = withRawInput {
+    val in = System.in
+    val ESC = '\u001B'
+    val EOT = '\u0004'
+    var result: Int = -1
+    def readBracket: Int =
+      in.read() match {
+        case '[' => readAnsiControl
+        case _   => 0
+      }
+    def readAnsiControl: Int =
+      in.read() match {
+        case 'A' => Terminal.VK_UP
+        case 'B' => Terminal.VK_DOWN
+        case 'C' => Terminal.VK_RIGHT
+        case 'D' => Terminal.VK_LEFT
+        case _   => 0
+      }
+    in.read() match {
+      case ESC => readBracket
+      // Ctrl+D to quit
+      case EOT => -1
+      case c   => c
+    }
+  }
 }
 
 object Terminal {
+  private[sbt] final val VK_UP = 256
+  private[sbt] final val VK_DOWN = 257
+  private[sbt] final val VK_RIGHT = 258
+  private[sbt] final val VK_LEFT = 259
+
   val NO_BOOT_CLIENTS_CONNECTED: Int = -2
   // Disable noisy jline log spam
   if (System.getProperty("sbt.jline.verbose", "false") != "true")

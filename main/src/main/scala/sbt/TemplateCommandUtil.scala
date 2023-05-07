@@ -15,6 +15,7 @@ import sbt.BasicCommandStrings.TerminateAction
 import sbt.SlashSyntax0._
 import sbt.io._, syntax._
 import sbt.util._
+import sbt.internal.util.{ ConsoleAppender, Terminal => ITerminal }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
 import xsbti.AppConfiguration
 import sbt.librarymanagement._
@@ -161,39 +162,96 @@ private[sbt] object TemplateCommandUtil {
   private final val ScalaToolkitSlug = "scala/toolkit.local"
   private final val TypelevelToolkitSlug = "typelevel/toolkit.local"
   private final val SbtCrossPlatformSlug = "sbt/cross-platform.local"
-  private def fortifyArgs(): List[String] = {
-    val templates = List(
-      ScalaToolkitSlug -> "Scala Toolkit (beta) by Scala Center and VirtusLab",
-      TypelevelToolkitSlug -> "Toolkit to start building Typelevel apps",
-      SbtCrossPlatformSlug -> "A cross-JVM/JS/Native project",
-      "scala/scala-seed.g8" -> "Scala 2 seed template",
-      "playframework/play-scala-seed.g8" -> "A Play project in Scala",
-      "playframework/play-java-seed.g8" -> "A Play project in Java",
-      "scala-js/vite.g8" -> "A Scala.JS + Vite project",
-      "holdenk/sparkProjectTemplate.g8" -> "A Scala Spark project",
-      "spotify/scio.g8" -> "A Scio project",
-      "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
-    )
-    val mappingList = templates.zipWithIndex.map {
-      case (v, idx) => (idx + 1) -> v
+  private lazy val term: ITerminal = ITerminal.get
+  private lazy val isAnsiSupported = term.isAnsiSupported
+  private lazy val nonMoveLetters = ('a' to 'z').toList diff List('h', 'j', 'k', 'l', 'q')
+  private lazy val templates = List(
+    ScalaToolkitSlug -> "Scala Toolkit (beta) by Scala Center and VirtusLab",
+    TypelevelToolkitSlug -> "Toolkit to start building Typelevel apps",
+    SbtCrossPlatformSlug -> "A cross-JVM/JS/Native project",
+    "scala/scala-seed.g8" -> "Scala 2 seed template",
+    "playframework/play-scala-seed.g8" -> "A Play project in Scala",
+    "playframework/play-java-seed.g8" -> "A Play project in Java",
+    "scala-js/vite.g8" -> "A Scala.JS + Vite project",
+    "holdenk/sparkProjectTemplate.g8" -> "A Scala Spark project",
+    "spotify/scio.g8" -> "A Scio project",
+    "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
+  )
+  private def fortifyArgs(): List[String] =
+    if (System.console eq null) Nil
+    else
+      ITerminal.withStreams(true, false) {
+        val mappingList = templates.zipWithIndex.map {
+          case (v, idx) => nonMoveLetters(idx).toString -> v
+        }
+        val out = term.printStream
+        out.println("")
+        out.println("Welcome to sbt new!")
+        out.println("Here are some templates to get started:")
+        val ans = askTemplate(mappingList, 0)
+        val mappings = Map(mappingList: _*)
+        mappings.get(ans).map(_._1).toList
+      }
+
+  private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String = {
+    val msg = "Select a template"
+    displayMappings(mappingList, focus)
+    val focusValue = ('a' + focus).toChar.toString
+    if (!isAnsiSupported) ask(msg, focusValue)
+    else {
+      val out = term.printStream
+      out.print(s"$msg: ")
+      val ans0 = term.readArrow
+      def printThenReturn(ans: String): String = {
+        out.println(ans) // this is necessary to move the cursor
+        out.flush()
+        ans
+      }
+      ans0 match {
+        case '\r' | '\n'    => printThenReturn(focusValue)
+        case 'q' | 'Q' | -1 => printThenReturn("")
+        case 'j' | 'J' | ITerminal.VK_DOWN =>
+          clearMenu(mappingList)
+          askTemplate(mappingList, math.min(focus + 1, mappingList.size - 1))
+        case 'k' | 'K' | ITerminal.VK_UP =>
+          clearMenu(mappingList)
+          askTemplate(mappingList, math.max(focus - 1, 0))
+        case c if nonMoveLetters.contains(c.toChar) =>
+          printThenReturn(c.toChar.toString)
+        case _ =>
+          clearMenu(mappingList)
+          askTemplate(mappingList, focus)
+      }
     }
-    System.out.println("")
-    System.out.println("Welcome to sbt new!")
-    System.out.println("Here are some templates to get started:")
-    mappingList.foreach {
-      case (k, (slug, desc)) =>
-        val key = if (k < 10) s" $k" else k.toString
-        System.out.println(s" $key) ${slug.padTo(33, ' ')} - $desc")
+  }
+
+  private def clearMenu(mappingList: List[(String, (String, String))]): Unit = {
+    val out = term.printStream
+    out.print(ConsoleAppender.CursorLeft1000)
+    out.print(ConsoleAppender.cursorUp(mappingList.size + 1))
+  }
+
+  private def displayMappings(mappingList: List[(String, (String, String))], focus: Int): Unit = {
+    import scala.Console.{ RESET, REVERSED }
+    val out = term.printStream
+    mappingList.zipWithIndex.foreach {
+      case ((k, (slug, desc)), idx) =>
+        if (idx == focus && isAnsiSupported) {
+          out.print(REVERSED)
+        }
+        out.print(s" $k) ${slug.padTo(33, ' ')} - $desc")
+        if (idx == focus && isAnsiSupported) {
+          out.print(RESET)
+        }
+        out.println()
     }
-    System.out.println(" q) quit")
-    val ans = ask("Select a template", "1")
-    val mappings = Map((mappingList.map { case (k, v) => k.toString -> v }): _*)
-    mappings.get(ans).map(_._1).toList
+    out.println(" q) quit")
+    out.flush()
   }
 
   private def ask(question: String, default: String): String = {
     System.out.print(s"$question (default: $default): ")
-    val ans0 = System.console().readLine()
+    val ans0 = System.console.readLine()
     if (ans0 == "") default
     else ans0
   }
@@ -212,16 +270,17 @@ private[sbt] object TemplateCommandUtil {
 
   private final val defaultScalaV = "3.2.2"
   private def scalaToolkitTemplate(): Unit = {
-    val defaultScalaToolkitV = "0.1.6"
+    val defaultScalaToolkitV = "0.1.7"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
     val content = s"""
-val toolkit = "org.scala-lang" %% "toolkit" % "$toolkitV"
-// val toolkitTest = "org.scala-lang" %% "toolkit-test" % "$toolkitV"
+val toolkitV = "$toolkitV"
+val toolkit = "org.scala-lang" %% "toolkit" % toolkitV
+val toolkitTest = "org.scala-lang" %% "toolkit-test" % toolkitV
 
 ThisBuild / scalaVersion := "$scalaV"
 libraryDependencies += toolkit
-// libraryDependencies += (toolkitTest % Test)
+libraryDependencies += (toolkitTest % Test)
 """
     IO.write(new File("build.sbt"), content)
     copyResource("ScalaMain.scala.txt", new File("src/main/scala/example/Main.scala"))
