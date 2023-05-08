@@ -39,13 +39,19 @@ public interface Problem {
     return Optional.empty();
   }
 
+  /** @deprecated use {@link #diagnosticRelatedInformation()} instead. */
+  @Deprecated
+  default List<DiagnosticRelatedInformation> diagnosticRelatedInforamation() {
+    return diagnosticRelatedInformation();
+  }
+
   /**
    * The possible releated information for the diagnostic being reported.
    *
    * <p>NOTE: To avoid breaking compatibility we provide a default to account for older Scala
    * versions that do not have the concept of "related information".
    */
-  default List<DiagnosticRelatedInformation> diagnosticRelatedInforamation() {
+  default List<DiagnosticRelatedInformation> diagnosticRelatedInformation() {
     return Collections.emptyList();
   }
 }
