@@ -48,4 +48,29 @@ public interface Problem {
   default List<DiagnosticRelatedInformation> diagnosticRelatedInforamation() {
     return Collections.emptyList();
   }
+
+  /**
+   * Actions (aka quick fixes) that are able to either fix or address the issue that is causing this
+   * Problem.
+   *
+   * <p>For example given the following code:
+   *
+   * <pre>
+   *  trait Example:
+   *    def foo(): Unit
+   *    def bar(): Unit
+   *
+   *  class MyExample extends Example
+   * </pre>
+   *
+   * You could expect this to have multiple actions attatched:
+   *
+   * <ul>
+   *   <li>An option to implement a stub method for `foo()` and `bar()`
+   *   <li>An option to make `MyExample` abstract
+   * </ul>
+   */
+  default List<Action> actions() {
+    return Collections.emptyList();
+  }
 }
