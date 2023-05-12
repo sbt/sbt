@@ -10,7 +10,8 @@ package sbt.internal.util
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import sbt.util._
-import java.io.{ File, PrintWriter }
+import java.io.PrintWriter
+import java.nio.file.Files
 import sbt.io.Using
 import scala.annotation.nowarn
 
@@ -141,7 +142,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
   val console = ConsoleOut.systemOut
   def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(
     MainAppender.globalDefault(console),
-    File.createTempFile("sbt", ".log"),
+    Files.createTempFile("sbt", ".log").toFile(),
     console
   )
 }

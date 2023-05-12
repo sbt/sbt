@@ -9,6 +9,7 @@ package sbt
 
 import java.io.File
 import java.io.PrintWriter
+import java.nio.file.Files
 import java.lang.ProcessBuilder.Redirect
 import scala.sys.process.Process
 import OutputStrategy._
@@ -170,7 +171,7 @@ object Fork {
    * @return
    */
   private def createArgumentsFile(options: Seq[String]): String = {
-    val file = File.createTempFile(s"sbt-args", ".tmp")
+    val file = Files.createTempFile(s"sbt-args", ".tmp").toFile()
     file.deleteOnExit()
 
     val pw = new PrintWriter(file)

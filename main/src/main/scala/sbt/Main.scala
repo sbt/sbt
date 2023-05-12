@@ -239,7 +239,7 @@ object StandardMain {
   private[this] def initialGlobalLogging(file: Option[File]): GlobalLogging = {
     def createTemp(attempt: Int = 0): File = Retry {
       file.foreach(f => if (!f.exists()) IO.createDirectory(f))
-      File.createTempFile("sbt-global-log", ".log", file.orNull)
+      Files.createTempFile(file.map(_.toPath()).orNull, "sbt-global-log", ".log").toFile
     }
     GlobalLogging.initial(
       MainAppender.globalDefault(ConsoleOut.globalProxy),
