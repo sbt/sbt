@@ -369,7 +369,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(utilInterface, collectionProj, coreMacrosProj)
   .settings(
-    utilCommonSettings,
+    testedBaseSettings,
     name := "Util Logging",
     libraryDependencies ++=
       Seq(
@@ -383,7 +383,6 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         sjsonNewScalaJson.value,
         scalaReflect.value
       ),
-    libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
     Compile / scalacOptions ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
@@ -397,6 +396,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       if (name == "Throwable") Nil
       else old(tpe)
     },
+    Test / fork := true,
     utilMimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[DirectMissingMethodProblem]("sbt.internal.util.SuccessEvent.copy*"),
