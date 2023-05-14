@@ -11,6 +11,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+// Note: Update InterfaceUtil.scala as well.
+
 public interface Problem {
   String category();
 
