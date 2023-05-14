@@ -7,7 +7,6 @@
 
 package xsbti;
 
-import java.net.URI;
 import java.util.List;
 
 /**
@@ -22,6 +21,6 @@ import java.util.List;
  */
 public interface WorkspaceEdit {
 
-  /** List of [[xsbti.FileChanges]] that belong to this WorkspaceEdit. */
-  List<FileChanges> changes();
+  /** List of [[xsbti.TextEdit]] that belong to this WorkspaceEdit. */
+  List<TextEdit> changes();
 }
