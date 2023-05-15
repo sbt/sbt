@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.9.0-RC1"
+declare builtin_sbt_version="1.9.0-RC3"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
