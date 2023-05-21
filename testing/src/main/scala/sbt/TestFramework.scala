@@ -28,6 +28,7 @@ object TestFrameworks {
   val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
   val MUnit = TestFramework("munit.Framework")
   val ZIOTest = TestFramework("zio.test.sbt.ZTestFramework")
+  val WeaverTestCats = TestFramework("weaver.framework.CatsEffect")
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {
