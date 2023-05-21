@@ -2603,6 +2603,10 @@ object Defaults extends BuildCommon {
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
   @nowarn
+  @deprecated(
+    "Create a separate subproject instead of using IntegrationTest and in addition avoid using itSettings",
+    "1.9.0"
+  )
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
   }
