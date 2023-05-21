@@ -29,6 +29,9 @@ object TestFrameworks {
   val MUnit = TestFramework("munit.Framework")
   val ZIOTest = TestFramework("zio.test.sbt.ZTestFramework")
   val WeaverTestCats = TestFramework("weaver.framework.CatsEffect")
+
+  val All: Seq[TestFramework] =
+    Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, ZIOTest, WeaverTestCats)
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {
