@@ -289,14 +289,17 @@ libraryDependencies += (toolkitTest % Test)
   }
 
   private def typelevelToolkitTemplate(): Unit = {
-    val defaultTypelevelToolkitV = "0.0.8"
+    val defaultTypelevelToolkitV = "0.0.11"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
     val content = s"""
-val toolkit = "org.typelevel" %% "toolkit" % "$toolkitV"
+val toolkitV = "$toolkitV"
+val toolkit = "org.typelevel" %% "toolkit" % toolkitV
+val toolkitTest = "org.typelevel" %% "toolkit-test" % toolkitV
 
 ThisBuild / scalaVersion := "$scalaV"
 libraryDependencies += toolkit
+libraryDependencies += (toolkitTest % Test)
 """
     IO.write(new File("build.sbt"), content)
     copyResource("TypelevelMain.scala.txt", new File("src/main/scala/example/Main.scala"))
