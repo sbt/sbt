@@ -1221,10 +1221,7 @@ object Defaults extends BuildCommon {
   private[this] def testDefaults =
     Defaults.globalDefaults(
       Seq(
-        testFrameworks :== {
-          import sbt.TestFrameworks._
-          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, ZIOTest)
-        },
+        testFrameworks :== sbt.TestFrameworks.All,
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
