@@ -14,9 +14,7 @@ import scala.annotation.tailrec
 import scala.util.control.NonFatal
 
 object IPC {
-  private val portMin = 1025
-  private val portMax = 65536
-  private val loopback = InetAddress.getByName(null)
+  private[xsbt] val loopback = InetAddress.getByName(null)
 
   def client[T](port: Int)(f: IPC => T): T = ipc(new Socket(loopback, port))(f)
 
@@ -29,12 +27,10 @@ object IPC {
   def unmanagedServer: Server = new Server(makeServer)
 
   def makeServer: ServerSocket = {
-    val random = new java.util.Random
-    def nextPort = random.nextInt(portMax - portMin + 1) + portMin
 
     def createServer(attempts: Int): ServerSocket =
       if (attempts > 0) {
-        try new ServerSocket(nextPort, 1, loopback)
+        try new ServerSocket(0, 1, loopback)
         catch { case NonFatal(_) => createServer(attempts - 1) }
       } else sys.error("Could not connect to socket: maximum attempts exceeded")
 
@@ -63,18 +59,18 @@ object IPC {
     finally s.close()
 
   final class Server private[IPC] (s: ServerSocket) {
-    def port = s.getLocalPort
-    def close() = s.close()
+    def port: Int = s.getLocalPort
+    def close(): Unit = s.close()
     def isClosed: Boolean = s.isClosed
     def connection[T](f: IPC => T): T = IPC.ipc(s.accept())(f)
   }
 }
 
 final class IPC private (s: Socket) {
-  def port = s.getLocalPort
+  def port: Int = s.getLocalPort
   private val in = new BufferedReader(new InputStreamReader(s.getInputStream))
   private val out = new BufferedWriter(new OutputStreamWriter(s.getOutputStream))
 
-  def send(s: String) = { out.write(s); out.newLine(); out.flush() }
+  def send(s: String): Unit = { out.write(s); out.newLine(); out.flush() }
   def receive: String = in.readLine()
 }
