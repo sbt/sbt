@@ -180,8 +180,7 @@ final class BuildServerReporterImpl(
     }
   }
 
-  private def toDiagnostic(problem: Problem): Diagnostic = {
-    val pos = problem.position
+  private def toRange(pos: XPosition): Range = {
     val startLineOpt = pos.startLine.toOption.map(_.toLong - 1)
     val startColumnOpt = pos.startColumn.toOption.map(_.toLong)
     val endLineOpt = pos.endLine.toOption.map(_.toLong - 1)
@@ -192,14 +191,45 @@ final class BuildServerReporterImpl(
 
     val startPos = toPosition(startLineOpt, startColumnOpt).getOrElse(Position(0L, 0L))
     val endPosOpt = toPosition(endLineOpt, endColumnOpt)
-    val range = Range(startPos, endPosOpt.getOrElse(startPos))
+    Range(startPos, endPosOpt.getOrElse(startPos))
+  }
 
+  private def toDiagnostic(problem: Problem): Diagnostic = {
+    val actions0 = problem.actions().asScala.toVector
+    val data =
+      if (actions0.isEmpty) None
+      else
+        Some(
+          ScalaDiagnostic(
+            actions = actions0.map { a =>
+              ScalaAction(
+                title = a.title,
+                description = a.description.toOption,
+                edit = Some(
+                  ScalaWorkspaceEdit(
+                    changes = a.edit.changes().asScala.toVector.map { edit =>
+                      ScalaTextEdit(
+                        range = toRange(edit.position),
+                        newText = edit.newText,
+                      )
+                    }
+                  )
+                ),
+              )
+            }
+          )
+        )
     Diagnostic(
-      range,
-      Option(toDiagnosticSeverity(problem.severity)),
-      problem.diagnosticCode().toOption.map(_.code),
-      Option("sbt"),
-      problem.message
+      range = toRange(problem.position),
+      severity = Option(toDiagnosticSeverity(problem.severity)),
+      code = problem.diagnosticCode().toOption.map(_.code),
+      source = Option("sbt"),
+      message = problem.message,
+      relatedInformation = Vector.empty,
+      dataKind = data.map { _ =>
+        "scala"
+      },
+      data = data,
     )
   }
 
