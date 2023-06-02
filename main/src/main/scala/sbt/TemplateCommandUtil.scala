@@ -183,7 +183,7 @@ private[sbt] object TemplateCommandUtil {
     else
       ITerminal.withStreams(true, false) {
         val mappingList = templates.zipWithIndex.map {
-          case (v, idx) => nonMoveLetters(idx).toString -> v
+          case (v, idx) => toLetter(idx) -> v
         }
         val out = term.printStream
         out.println("")
@@ -194,10 +194,13 @@ private[sbt] object TemplateCommandUtil {
         mappings.get(ans).map(_._1).toList
       }
 
+  private def toLetter(idx: Int): String =
+    nonMoveLetters(idx).toString
+
   private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String = {
     val msg = "Select a template"
     displayMappings(mappingList, focus)
-    val focusValue = ('a' + focus).toChar.toString
+    val focusValue = toLetter(focus)
     if (!isAnsiSupported) ask(msg, focusValue)
     else {
       val out = term.printStream
