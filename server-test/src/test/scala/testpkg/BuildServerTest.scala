@@ -283,7 +283,7 @@ object BuildServerTest extends AbstractServerTest {
     assert(processing("buildTarget/scalacOptions"))
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") &&
-      (s contains "scala-library-2.13.8.jar")
+      (s contains "scala-library-2.13.10.jar")
     })
   }
 
