@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.10"
+ThisBuild / scalaVersion := "2.13.11"
 ThisBuild / scalacOptions += "-Ytasty-reader"
 
 lazy val scala3code = project
