@@ -874,13 +874,19 @@ object Terminal {
     override lazy val isAnsiSupported: Boolean =
       !isDumbTerminal && Terminal.isAnsiSupported && !isCI
     override private[sbt] def progressState: ProgressState = consoleProgressState.get
-    override def isEchoEnabled: Boolean =
-      try system.echo()
-      catch { case _: InterruptedIOException => false }
     override def isSuccessEnabled: Boolean = true
+    private lazy val echoEnabled: AtomicBoolean = new AtomicBoolean({
+      try system.echo()
+      catch {
+        case _: InterruptedIOException => false
+      }
+    })
+    override def isEchoEnabled: Boolean = echoEnabled.get()
     override def setEchoEnabled(toggle: Boolean): Unit =
-      try Util.ignoreResult(system.echo(toggle))
-      catch { case _: InterruptedIOException => }
+      try {
+        Util.ignoreResult(system.echo(toggle))
+        echoEnabled.set(toggle)
+      } catch { case _: InterruptedIOException => }
     override def getBooleanCapability(capability: String): Boolean =
       capabilityMap.get(capability).fold(false)(system.getBooleanCapability)
     override def getNumericCapability(capability: String): Integer =
