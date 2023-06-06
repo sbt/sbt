@@ -2,23 +2,23 @@
 ThisBuild / useCoursier := false
 
 Seq(
-	autoAPIMappings in ThisBuild := true,
-	publishArtifact in (ThisBuild, packageDoc) := false,
-	publishArtifact in packageSrc := false,
-	organization in ThisBuild := "org.example",
+	ThisBuild / autoAPIMappings := true,
+	ThisBuild / packageDoc / publishArtifact := false,
+	packageSrc / publishArtifact := false,
+	ThisBuild / organization := "org.example",
 	version := "1.0"
 )
 
 val aPublishResolver = Def.setting {
-	Resolver.file("a-resolver", baseDirectory.in(ThisBuild).value / "a-repo")
+	Resolver.file("a-resolver", (ThisBuild / baseDirectory).value / "a-repo")
 }
 val aResolver = Def.setting {
-	val dir = baseDirectory.in(ThisBuild).value
+	val dir = (ThisBuild / baseDirectory).value
 	"a-resolver" at s"file://${dir.getAbsolutePath}/a-repo"
 }
 
 val bResolver = Def.setting {
-	val dir = baseDirectory.in(ThisBuild).value / "b-repo"
+	val dir = (ThisBuild / baseDirectory).value / "b-repo"
 	Resolver.file("b-resolver", dir)(Resolver.defaultIvyPatterns)
 }
 
@@ -68,7 +68,7 @@ val d = project.dependsOn( c ).settings(
 	addDep("a"),
 	addDep("b"),
 	checkApiMappings := {
-		val actual = apiMappings.in(Compile,doc).value
+		val actual = (Compile / doc / apiMappings).value
 		println("Actual API Mappings: " + actual.mkString("\n\t", "\n\t", ""))
 		val expected = expectedMappings.value
 		println("Expected API Mappings: " + expected.mkString("\n\t", "\n\t", ""))

@@ -17,3 +17,8 @@
 > testMaven2 / checkUpdate
 > set testMaven2 / useCoursier := false
 > testMaven2 / checkUpdate
+
+> sbtPlugin2 / publishLocal
+> testLocal2 / checkUpdate
+> set testLocal2 / useCoursier := false
+> testLocal2 / checkUpdate

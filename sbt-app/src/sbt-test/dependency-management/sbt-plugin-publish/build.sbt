@@ -73,6 +73,18 @@ lazy val testMaven2 = project.in(file("test-maven-2"))
     ).value
   )
 
+lazy val testLocal2 = project.in(file("test-local-2"))
+  .settings(
+    addSbtPlugin("org.example" % "sbt-plugin-2" % "0.1.0-SNAPSHOT"),
+    checkUpdate := checkUpdateDef(
+      "sbt-plugin-2.jar", // resolved from local repository
+      "sbt-plugin-example-diamond_2.12_1.0-0.5.0.jar",
+      "sbt-plugin-example-left_2.12_1.0-0.3.0.jar",
+      "sbt-plugin-example-right_2.12_1.0-0.3.0.jar",
+      "sbt-plugin-example-bottom_2.12_1.0-0.3.0.jar",
+    ).value
+  )
+
 lazy val checkPackagedArtifacts = taskKey[Unit]("check the packaged artifacts")
 lazy val checkPublish = taskKey[Unit]("check publish")
 lazy val checkUpdate = taskKey[Unit]("check update")

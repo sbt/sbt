@@ -2835,14 +2835,21 @@ object Classpaths {
       )
     )
 
-  private val publishSbtPluginMavenStyle = Def.task {
-    sbtPlugin.value && publishMavenStyle.value
-  }
+  private lazy val publishSbtPluginMavenStyle = Def.task(sbtPlugin.value && publishMavenStyle.value)
+  private lazy val packagedDefaultArtifacts = packaged(defaultArtifactTasks)
+  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, File])
+
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
     packagedArtifacts := Def
-      .ifS(publishSbtPluginMavenStyle)(mavenArtifactsOfSbtPlugin)(packaged(defaultArtifactTasks))
+      .ifS(publishSbtPluginMavenStyle)(mavenArtifactsOfSbtPlugin)(packagedDefaultArtifacts)
       .value,
+    // publishLocal needs legacy artifacts (see https://github.com/sbt/sbt/issues/7285)
+    publishLocal / packagedArtifacts ++= {
+      if (sbtPlugin.value && !sbtPluginPublishLegacyMavenStyle.value) {
+        packagedDefaultArtifacts.value
+      } else Map.empty[Artifact, File]
+    }
   ) ++ RemoteCache.projectSettings
 
   /**
@@ -2867,9 +2874,7 @@ object Classpaths {
       }
       val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
       val legacyPackagedArtifacts = Def
-        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packaged(defaultArtifactTasks))(
-          Def.task(Map.empty[Artifact, File])
-        )
+        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packagedDefaultArtifacts)(emptyArtifacts)
         .value
       packages + (addSuffix(legacyArtifact) -> pom) ++ legacyPackagedArtifacts
     }
