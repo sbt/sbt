@@ -396,7 +396,7 @@ object Keys {
   val remoteCachePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.")
   val localCacheDirectory = settingKey[File]("Operating system specific cache directory.")
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
-  val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)
+  val exportPipelining = settingKey[Boolean]("Produce early output so downstream subprojects can do pipelining.").withRank(BSetting)
 
   // BSP keys
   val bspConfig = taskKey[Unit]("Create or update the BSP connection files").withRank(DSetting)
