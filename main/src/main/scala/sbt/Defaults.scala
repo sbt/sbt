@@ -2622,7 +2622,8 @@ object Defaults extends BuildCommon {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
         else ClassLoaderLayeringStrategy.ScalaLibrary
       },
-      publishLocal / skip := (publish / skip).value, // So we don't break previous behaviour
+      publishLocal / skip := (publish / skip).value,
+      publishM2 / skip := (publish / skip).value
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -2916,9 +2917,9 @@ object Classpaths {
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
-    publish := publishTask(publishConfiguration).value,
-    publishLocal := publishTask(publishLocalConfiguration).value,
-    publishM2 := publishTask(publishM2Configuration).value
+    publish := publishOrSkip(publishConfiguration, publish / skip).value,
+    publishLocal := publishOrSkip(publishLocalConfiguration, publishLocal / skip).value,
+    publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value
   )
 
   private[this] def baseGlobalDefaults =
@@ -3622,56 +3623,32 @@ object Classpaths {
   private def logSkipPublish(log: Logger, ref: ProjectRef): Unit =
     log.debug(s"Skipping publish* for ${ref.project}")
 
-  private def checkAndPublishLocal(
-      currentCon: PublishConfiguration,
-      publishLocalConf: PublishConfiguration,
-      publishSkipLocal: Boolean,
-      module: IvySbt#Module,
-      log: Logger,
-      ref: ProjectRef
-  )(notPublishLocal: () => Unit): Unit = {
-    if (currentCon == publishLocalConf) {
-      if (publishSkipLocal) {
-        logSkipPublish(log, ref)
-      } else {
-        IvyActions.publish(module, currentCon, log)
-      }
-    } else {
-      notPublishLocal()
-    }
+  @deprecated("use publishOrSkip instead", "1.9.1")
+  def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] = {
+    val skipKey =
+      if (config.key == publishLocalConfiguration.key) publishLocal / skip
+      else publish / skip
+    publishOrSkip(config, skipKey)
   }
 
-  def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
-    Def.taskIf {
-      if ((publish / skip).value) {
-        val log = streams.value.log
-        val ref = thisProjectRef.value
-        checkAndPublishLocal(
-          config.value,
-          publishLocalConfiguration.value,
-          (publishLocal / skip).value,
-          ivyModule.value,
-          log,
-          ref
-        ) { () =>
+  def publishOrSkip(
+      config: TaskKey[PublishConfiguration],
+      skip: TaskKey[Boolean]
+  ): Initialize[Task[Unit]] =
+    Def
+      .taskIf {
+        if (skip.value) {
+          val log = streams.value.log
+          val ref = thisProjectRef.value
           logSkipPublish(log, ref)
-        }
-      } else {
-        val conf = config.value
-        val log = streams.value.log
-        val module = ivyModule.value
-        checkAndPublishLocal(
-          conf,
-          publishLocalConfiguration.value,
-          (publishLocal / skip).value,
-          module,
-          log,
-          thisProjectRef.value
-        ) { () =>
+        } else {
+          val conf = config.value
+          val log = streams.value.log
+          val module = ivyModule.value
           IvyActions.publish(module, conf, log)
         }
       }
-    } tag (Tags.Publish, Tags.Network)
+      .tag(Tags.Publish, Tags.Network)
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
