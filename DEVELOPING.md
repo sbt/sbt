@@ -96,7 +96,7 @@ In order to see a change you've made to sbt's source code, this cache should be 
 
 By default sbt uses a snapshot version (this is a scala convention for quick local changes- it tells users that this version could change).
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers.
-This is important when testing perfomance, so that the slowness of the resolution does not impact sbt.
+This is important when testing performance, so that the slowness of the resolution does not impact sbt.
 
 You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`.
 A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
