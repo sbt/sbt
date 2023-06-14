@@ -185,11 +185,15 @@ final class BuildServerReporterImpl(
     val startColumnOpt = pos.startColumn.toOption.map(_.toLong)
     val endLineOpt = pos.endLine.toOption.map(_.toLong - 1)
     val endColumnOpt = pos.endColumn.toOption.map(_.toLong)
+    val lineOpt = pos.line.toOption.map(_.toLong - 1)
+    val columnOpt = pos.pointer.toOption.map(_.toLong)
 
     def toPosition(lineOpt: Option[Long], columnOpt: Option[Long]): Option[Position] =
       lineOpt.map(line => Position(line, columnOpt.getOrElse(0L)))
 
-    val startPos = toPosition(startLineOpt, startColumnOpt).getOrElse(Position(0L, 0L))
+    val startPos = toPosition(startLineOpt, startColumnOpt)
+      .orElse(toPosition(lineOpt, columnOpt))
+      .getOrElse(Position(0L, 0L))
     val endPosOpt = toPosition(endLineOpt, endColumnOpt)
     Range(startPos, endPosOpt.getOrElse(startPos))
   }
