@@ -173,11 +173,11 @@ private[sbt] object TemplateCommandUtil {
     "scala/scala-seed.g8" -> "Scala 2 seed template",
     "playframework/play-scala-seed.g8" -> "A Play project in Scala",
     "playframework/play-java-seed.g8" -> "A Play project in Java",
+    "softwaremill/tapir.g8" -> "A tapir project using Netty",
     "scala-js/vite.g8" -> "A Scala.JS + Vite project",
     "holdenk/sparkProjectTemplate.g8" -> "A Scala Spark project",
     "spotify/scio.g8" -> "A Scio project",
     "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
-    "softwaremill/tapir.g8" -> "A tapir project using Netty"
   )
   private def fortifyArgs(): List[String] =
     if (System.console eq null) Nil
