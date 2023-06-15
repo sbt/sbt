@@ -177,7 +177,7 @@ private[sbt] object TemplateCommandUtil {
     "holdenk/sparkProjectTemplate.g8" -> "A Scala Spark project",
     "spotify/scio.g8" -> "A Scio project",
     "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
-    "softwaremill/tapir.g8" -> "A tapir-based application using Netty and upickle"
+    "softwaremill/tapir.g8" -> "A tapir project using Netty"
   )
   private def fortifyArgs(): List[String] =
     if (System.console eq null) Nil
