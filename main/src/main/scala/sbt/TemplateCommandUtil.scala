@@ -41,6 +41,7 @@ private[sbt] object TemplateCommandUtil {
     val extracted = (Project extract s0)
     val (s1, ivyConf) = extracted.runTask(Keys.ivyConfiguration, s0)
     val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
+    val templateDescriptions = extracted.get(Keys.templateDescriptions)
     val args0 = inputArg.toList ++
       (s0.remainingCommands match {
         case exec :: Nil if exec.commandLine == "shell" => Nil
@@ -52,10 +53,10 @@ private[sbt] object TemplateCommandUtil {
       run(infos, args0, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
       terminate
     } else {
-      fortifyArgs() match {
+      fortifyArgs(templateDescriptions.toList) match {
         case Nil => terminate
         case arg :: Nil if arg.endsWith(".local") =>
-          localRun(arg :: Nil, log)
+          extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
           reload
         case args =>
           run(infos, args, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
@@ -166,7 +167,7 @@ private[sbt] object TemplateCommandUtil {
   private lazy val term: ITerminal = ITerminal.get
   private lazy val isAnsiSupported = term.isAnsiSupported
   private lazy val nonMoveLetters = ('a' to 'z').toList diff List('h', 'j', 'k', 'l', 'q')
-  private lazy val templates = List(
+  private[sbt] lazy val defaultTemplateDescriptions = List(
     ScalaToolkitSlug -> "Scala Toolkit (beta) by Scala Center and VirtusLab",
     TypelevelToolkitSlug -> "Toolkit to start building Typelevel apps",
     SbtCrossPlatformSlug -> "A cross-JVM/JS/Native project",
@@ -179,10 +180,11 @@ private[sbt] object TemplateCommandUtil {
     "spotify/scio.g8" -> "A Scio project",
     "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
   )
-  private def fortifyArgs(): List[String] =
+  private def fortifyArgs(templates: List[(String, String)]): List[String] =
     if (System.console eq null) Nil
     else
       ITerminal.withStreams(true, false) {
+        assert(templates.size <= 20, "template list cannot have more than 20 items")
         val mappingList = templates.zipWithIndex.map {
           case (v, idx) => toLetter(idx) -> v
         }
@@ -261,7 +263,9 @@ private[sbt] object TemplateCommandUtil {
     else ans0
   }
 
-  private def localRun(
+  // This is used by Defaults.runLocalTemplate, which implements
+  // templateRunLocal input task.
+  private[sbt] def defaultRunLocalTemplate(
       arguments: List[String],
       log: Logger
   ): Unit =

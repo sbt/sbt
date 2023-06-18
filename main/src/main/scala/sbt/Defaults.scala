@@ -361,6 +361,8 @@ object Defaults extends BuildCommon {
       fork :== false,
       initialize :== {},
       templateResolverInfos :== Nil,
+      templateDescriptions :== TemplateCommandUtil.defaultTemplateDescriptions,
+      templateRunLocal := templateRunLocalInputTask(runLocalTemplate).evaluated,
       forcegc :== sys.props
         .get("sbt.task.forcegc")
         .map(java.lang.Boolean.parseBoolean)
@@ -2644,6 +2646,19 @@ object Defaults extends BuildCommon {
       if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
       else IvyDependencyResolution(ivyConfiguration.value)
     }
+
+  def templateRunLocalInputTask(
+      runLocal: (Seq[String], Logger) => Unit
+  ): Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      import Def._
+      val s = streams.value
+      val args = spaceDelimited().parsed
+      runLocal(args, s.log)
+    }
+
+  def runLocalTemplate(arguments: Seq[String], log: Logger): Unit =
+    TemplateCommandUtil.defaultRunLocalTemplate(arguments.toList, log)
 }
 
 object Classpaths {

@@ -571,6 +571,8 @@ object Keys {
   val sbtBinaryVersion = settingKey[String]("Defines the binary compatibility version substring.").withRank(BPlusSetting)
   val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile', 'update', 'publish' and 'publishLocal'), setting skip to true will force the task to not to do its work.  The exact semantics may vary depending on the task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
+  val templateDescriptions = settingKey[Seq[(String, String)]]("List of templates with description used for 'new' / 'init'.")
+  val templateRunLocal = inputKey[Unit]("Runs a local template.").withRank(DTask)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
   val insideCI = SettingKey[Boolean]("insideCI", "Determines if the sbt is running in a Continuous Integration environment", AMinusSetting)
 
