@@ -185,7 +185,7 @@ val root = (project in file(".")).
     },
 
     // GENERAL LINUX PACKAGING STUFFS
-    maintainer := "Eugene Yokota <eugene.yokota@lightbend.com>",
+    maintainer := "Eugene Yokota <eed3si9n@gmail.com>",
     packageSummary := "sbt, the interactive build tool",
     packageDescription := """This script provides a native way to run sbt,
   a build tool for Scala and more.""",
@@ -240,7 +240,7 @@ val root = (project in file(".")).
         case (x, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
       }))
     },
-    rpmVendor := "lightbend",
+    rpmVendor := "scalacenter",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("Apache-2.0"),
     // This is intentionally empty. java-devel could bring in JDK 9-ea on Fedora,
@@ -262,7 +262,7 @@ val root = (project in file(".")).
         case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."
       }
     },
-    maintainer in Windows := "Lightbend, Inc.",
+    maintainer in Windows := "Scala Center",
     packageSummary in Windows := "sbt " + (version in Windows).value,
     packageDescription in Windows := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
