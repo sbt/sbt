@@ -93,7 +93,7 @@ private[sbt] object Clean {
         val delete = cleanDelete(scope).value
         val targetDir = (scope / target).?.value.map(_.toPath)
 
-        targetDir.filter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
+        targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
         (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
           if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
           else delete(x.toPath)

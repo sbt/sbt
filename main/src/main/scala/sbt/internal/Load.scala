@@ -1049,7 +1049,7 @@ private[sbt] object Load {
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
-          projectPlugins.filter(f.include).flatMap(_.projectSettings)
+          projectPlugins.withFilter(f.include).flatMap(_.projectSettings)
         // Grab all the settings we already loaded from sbt files
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)

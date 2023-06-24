@@ -239,7 +239,7 @@ trait TaskExtra extends TaskExtra0 {
     def lines: Task[List[String]] = lines0(None)
     def lines(sid: String): Task[List[String]] = lines0(Some(sid))
 
-    private def lines0[T](sid: Option[String]): Task[List[String]] =
+    private def lines0(sid: Option[String]): Task[List[String]] =
       streams map { s =>
         IO.readLines(s.readText(key(in), sid))
       }

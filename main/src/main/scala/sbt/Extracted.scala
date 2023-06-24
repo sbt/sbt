@@ -46,7 +46,7 @@ final case class Extracted(
     structure.data.get(inCurrent(key.scope), key.key)
 
   @nowarn
-  private[this] def inCurrent[T](scope: Scope): Scope =
+  private[this] def inCurrent(scope: Scope): Scope =
     if (scope.project == This) scope in currentRef else scope
 
   /**

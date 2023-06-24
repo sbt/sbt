@@ -4204,7 +4204,7 @@ object Classpaths {
       if (module.organization == scalaOrg) {
         val jarName = module.name + ".jar"
         val replaceWith = scalaJars(module.revision).toVector
-          .filter(_.getName == jarName)
+          .withFilter(_.getName == jarName)
           .map(f => (Artifact(f.getName.stripSuffix(".jar")), f))
         if (replaceWith.isEmpty) arts else replaceWith
       } else

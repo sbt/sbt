@@ -164,7 +164,7 @@ object TestResultLogger {
         "Canceled" -> canceledCount,
         "Pending" -> pendingCount
       )
-      val extra = otherCounts.filter(_._2 > 0).map { case (label, count) => s", $label $count" }
+      val extra = otherCounts.withFilter(_._2 > 0).map { case (label, count) => s", $label $count" }
 
       val postfix = base + extra.mkString
       results.overall match {

@@ -478,7 +478,7 @@ object BuiltinCommands {
   )(s: State): Parser[(Int, Option[String])] =
     verbosityParser ~ selectedParser(s, keepKeys).?
   def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
-    singleArgument(allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet)
+    singleArgument(allTaskAndSettingKeys(s).withFilter(keepKeys).map(_.label).toSet)
   def verbosityParser: Parser[Int] =
     success(1) | ((Space ~ "-") ~> (
       'v'.id.+.map(_.size + 1) |

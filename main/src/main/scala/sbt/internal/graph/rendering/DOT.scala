@@ -53,7 +53,7 @@ object DOT {
     // add extra edges from evicted to evicted-by module
     val evictedByEdges: Seq[Edge] =
       graph.nodes
-        .filter(_.isEvicted)
+        .withFilter(_.isEvicted)
         .map(m => Edge(m.id, m.id.copy(version = m.evictedByVersion.get)))
 
     // remove edges to new evicted-by module which is now replaced by a chain

@@ -185,7 +185,7 @@ object Cross {
             case (v, keys) =>
               val projects = keys.flatMap(project)
               keys.toSeq.flatMap { k =>
-                project(k).filter(projects.contains).flatMap { p =>
+                project(k).withFilter(projects.contains).flatMap { p =>
                   if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
                     val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
                       case ConfigKey(n) => n.head.toUpper + n.tail

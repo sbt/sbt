@@ -162,7 +162,7 @@ private[sbt] final class CommandExchange {
     commandQueue.removeIf { e =>
       e.source.map(_.channelName) == Some(c.name) && e.commandLine != Shutdown
     }
-    currentExec.filter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
+    currentExec.withFilter(_.source.map(_.channelName) == Some(c.name)).foreach { e =>
       Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = false))
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))

@@ -257,7 +257,7 @@ private[sbt] case class SbtParser(file: File, lines: Seq[String]) extends Parsed
           !(c contains "=")
         case _ => false
       }
-    parsedTrees.filter(isBadValDef).foreach { badTree =>
+    parsedTrees.withFilter(isBadValDef).foreach { badTree =>
       // Issue errors
       val positionLine = badTree.pos.line
       throw new MessageOnlyException(

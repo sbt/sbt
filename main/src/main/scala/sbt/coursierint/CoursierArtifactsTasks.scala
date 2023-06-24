@@ -126,7 +126,8 @@ object CoursierArtifactsTasks {
       // it puts it in all of them. See for example what happens to
       // the standalone JAR artifact of the coursier cli module.
       def allConfigsIfEmpty(configs: Iterable[ConfigRef]): Iterable[ConfigRef] =
-        if (configs.isEmpty) ivyConfs.filter(_.isPublic).map(c => ConfigRef(c.name)) else configs
+        if (configs.isEmpty) ivyConfs.withFilter(_.isPublic).map(c => ConfigRef(c.name))
+        else configs
 
       val extraSbtArtifactsPublication = for {
         artifact <- extraSbtArtifacts

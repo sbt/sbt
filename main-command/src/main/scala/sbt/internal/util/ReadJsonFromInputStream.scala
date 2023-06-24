@@ -33,7 +33,7 @@ private[sbt] object ReadJsonFromInputStream {
      */
     var headerBuffer = new Array[Byte](128)
     def expandHeaderBuffer(): Unit = {
-      val newHeaderBuffer = new Array[Byte](headerBuffer.size * 2)
+      val newHeaderBuffer = new Array[Byte](headerBuffer.length * 2)
       headerBuffer.view.zipWithIndex.foreach { case (b, i) => newHeaderBuffer(i) = b }
       headerBuffer = newHeaderBuffer
     }
