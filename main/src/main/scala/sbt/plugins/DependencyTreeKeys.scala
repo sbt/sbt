@@ -46,7 +46,7 @@ abstract class DependencyTreeKeys {
     "The boxes of nodes are painted with colors. Otherwise they're black."
   )
   val dependencyDotNodeLabel = settingKey[(String, String, String) => String](
-    "Returns a formated string of a dependency. Takes organization, name and version as parameters"
+    "Returns a formatted string of a dependency. Takes organization, name and version as parameters"
   )
   val dependencyDotHeader = settingKey[String](
     "The header of the dot file. (e.g. to set your preferred node shapes)"

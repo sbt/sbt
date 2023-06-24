@@ -188,7 +188,7 @@ private[sbt] object Server {
         IO.write(tokenfile, CompactPrinter(jsonToken), IO.utf8, true)
       }
 
-      /** Set the persmission of the file such that the only the owner can read/write it. */
+      /** Set the permission of the file such that the only the owner can read/write it. */
       private[this] def ownerOnly(file: File): Unit = {
         def acl(owner: UserPrincipal) = {
           val builder = AclEntry.newBuilder

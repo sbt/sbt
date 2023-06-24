@@ -9,7 +9,7 @@
 package sbt
 
 /**
- * InteractionService provides an abstration over standard input.
+ * InteractionService provides an abstraction over standard input.
  * In the future this could be used to ask for inputs from
  * other forms of sbt clients such as thin clients and IDEs.
  */
