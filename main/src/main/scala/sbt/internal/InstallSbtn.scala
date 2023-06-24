@@ -13,7 +13,7 @@ import Def._
 import Keys.{ sbtVersion, state, terminal }
 
 import java.io.{ File, FileInputStream, FileOutputStream, InputStream, IOException }
-import java.net.URL
+import java.net.URI
 import java.nio.file.{ Files, Path }
 import java.util.zip.ZipInputStream
 import sbt.io.IO
@@ -95,7 +95,7 @@ private[sbt] object InstallSbtn {
   }
   private[this] def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
     val zip = s"https://github.com/sbt/sbt/releases/download/v$version/sbt-$version.zip"
-    val url = new URL(zip)
+    val url = new URI(zip).toURL
     term.printStream.println(s"downloading $zip to $location")
     transfer(url.openStream(), location)
   }
@@ -133,7 +133,7 @@ private[sbt] object InstallSbtn {
   private[this] def downloadCompletion(completion: String, version: String, target: Path): Unit = {
     Files.createDirectories(target.getParent)
     val comp = s"https://raw.githubusercontent.com/sbt/sbt/v$version/client/completions/$completion"
-    transfer(new URL(comp).openStream, target)
+    transfer(new URI(comp).toURL.openStream, target)
   }
   private[this] def setupShell(
       shell: String,
