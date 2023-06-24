@@ -23,7 +23,7 @@ import java.nio.file.Path
  * @param modified the files that have been modified. This should be empty when no previous list of
  *                 files is available.
  * @param unmodified the files that have no changes. This should be empty when no previous list of
- *                   files is availab.e
+ *                   files is available
  */
 final case class FileChanges(
     created: Seq[Path],

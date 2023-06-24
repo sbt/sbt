@@ -155,7 +155,7 @@ object Fork {
 
   /** Use an arguments file if:
    * - we are on jdk >= 9
-   * - sbt.argfile is unset or not falsy
+   * - sbt.argsfile is unset or not falsy
    * - the command line length would exceed MaxConcatenatedOptionLength
    */
   private def shouldUseArgumentsFile(options: Seq[String]): Boolean =

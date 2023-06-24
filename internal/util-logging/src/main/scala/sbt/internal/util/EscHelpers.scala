@@ -32,7 +32,7 @@ object EscHelpers {
    *
    * The CSI (control sequence instruction) codes start with ESC + '['.   This is for testing the second character.
    *
-   * There is an additional CSI (one character) that we could test for, but is not frequnetly used, and we don't
+   * There is an additional CSI (one character) that we could test for, but is not frequently used, and we don't
    * check for it.
    *
    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes

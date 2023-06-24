@@ -70,7 +70,7 @@ object SettingsTest extends Properties("settings") {
         ).toSeq
 
         {
-          // Note: This causes a cycle refernec error, quite frequently.
+          // Note: This causes a cycle reference error, quite frequently.
           checkKey(last, Some(nr - 1), evaluate(setting(chk, value(0)) +: derivedSettings)) :| "Not derived?"
         } && {
           checkKey(last, None, evaluate(derivedSettings)) :| "Should not be derived"

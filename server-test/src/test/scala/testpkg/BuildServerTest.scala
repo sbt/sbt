@@ -257,7 +257,7 @@ object BuildServerTest extends AbstractServerTest {
         s.contains(""""severity":2""") &&
         s.contains("""missing type arguments for generic class java.util.List""")
       },
-      "should send publishDiagnostics with serverity 2 for Hello.java"
+      "should send publishDiagnostics with severity 2 for Hello.java"
     )
 
     assert(
@@ -267,7 +267,7 @@ object BuildServerTest extends AbstractServerTest {
         s.contains(""""severity":1""") &&
         s.contains("""incompatible types: int cannot be converted to java.lang.String""")
       },
-      "should send publishDiagnostics with serverity 1 for Hello.java"
+      "should send publishDiagnostics with severity 1 for Hello.java"
     )
   }
 
