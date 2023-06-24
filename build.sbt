@@ -1,5 +1,5 @@
 ThisBuild / organization := "com.eed3si9n"
-ThisBuild / dynverSonatypeSnapshots := true
+// ThisBuild / dynverSonatypeSnapshots := true
 ThisBuild / version := {
   val orig = (ThisBuild / version).value
   if (orig.endsWith("-SNAPSHOT")) "0.7.0-SNAPSHOT"
