@@ -2,7 +2,7 @@
 name: Submit Dependency Graph
 on:
   push:
-    branches: [1.7.x] # default branch of the project
+    branches: [1.9.x] # default branch of the project
 permissions: {}
 jobs:
   submit-graph:
