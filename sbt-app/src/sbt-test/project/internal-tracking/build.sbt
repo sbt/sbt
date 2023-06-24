@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.18"
 ThisBuild / trackInternalDependencies := TrackLevel.NoTracking
 
 lazy val root = (project in file("."))

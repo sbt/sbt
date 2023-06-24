@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.18"
 
 libraryDependencies += "org.scala-sbt" % "test-interface" % "1.0"
 

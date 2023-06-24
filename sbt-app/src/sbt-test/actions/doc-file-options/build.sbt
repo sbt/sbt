@@ -2,7 +2,7 @@ val newContents = "bbbbbbbbb"
 
 val rootContentFile = "root.txt"
 
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.18"
 
 lazy val root = (project in file("."))
   .settings(

@@ -2,7 +2,7 @@
 
 -> ++2.12.12
 
-> ++2.13.1 compile
+> ++2.13.11 compile
 
 $ exists core/target/scala-2.13
 -$ exists module/target/scala-2.13
