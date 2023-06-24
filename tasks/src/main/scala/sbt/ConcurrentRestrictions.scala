@@ -70,7 +70,6 @@ object ConcurrentRestrictions {
 
   /**
    * A ConcurrentRestrictions instance that places no restrictions on concurrently executing tasks.
-   * @param zero the constant placeholder used for t
    */
   def unrestricted[A]: ConcurrentRestrictions[A] =
     new ConcurrentRestrictions[A] {
