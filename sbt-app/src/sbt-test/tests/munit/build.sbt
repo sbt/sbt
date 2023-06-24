@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.18"
 
 lazy val munit = "org.scalameta" %% "munit" % "0.7.22"
 

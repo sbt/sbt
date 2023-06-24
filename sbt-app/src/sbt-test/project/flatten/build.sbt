@@ -1,6 +1,6 @@
 val unpackage = TaskKey[Unit]("unpackage")
 
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.18"
 
 lazy val root = (project in file("."))
   .settings(

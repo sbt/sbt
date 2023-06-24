@@ -35,7 +35,7 @@ $ exists target/api/pkg/J.html
 $ absent target/api/index.js
 
 > setDocExtension scala
-> ++2.13.3
+> ++2.13.11
 > clean
 $ absent target/api/A$.html
 > doc
