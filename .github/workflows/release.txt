@@ -12,16 +12,13 @@ jobs:
       JVM_OPTS:  -Xms2048M -Xmx2048M -Xss6M -XX:ReservedCodeCacheSize=256M -Dfile.encoding=UTF-8
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
-    - name: Setup Scala
-      uses: olafurpg/setup-scala@v10
+      uses: actions/checkout@v3
+    - name: Setup JDK
+      uses: actions/setup-java@v3
       with:
-        java-version: "adopt@1.8"
-    - name: Coursier cache
-      uses: coursier/cache-action@v5
-    - name: Test
-      run: |
-        sbt test packagedArtifacts
+        distribution: "temurin"
+        java-version: 8
+        cache: sbt
     - name: Release
       env:
         SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
