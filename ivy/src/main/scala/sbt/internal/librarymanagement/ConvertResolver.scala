@@ -3,7 +3,7 @@
  */
 package sbt.internal.librarymanagement
 
-import java.net.URL
+import java.net.URI
 import java.util.Collections
 
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
@@ -394,7 +394,7 @@ private[sbt] object ConvertResolver {
     private[this] val repo = new WarnOnOverwriteFileRepo()
     private[this] val progress = new RepositoryCopyProgressListener(this);
     override def getResource(source: String) = {
-      val url = new URL(source)
+      val url = new URI(source).toURL
       if (url.getProtocol == IO.FileScheme)
         new FileResource(repo, IO.toFile(url))
       else
@@ -402,7 +402,7 @@ private[sbt] object ConvertResolver {
     }
 
     override def put(source: File, destination: String, overwrite: Boolean): Unit = {
-      val url = new URL(destination)
+      val url = new URI(destination).toURL
       try {
         if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
         else {
