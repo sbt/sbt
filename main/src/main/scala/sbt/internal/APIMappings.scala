@@ -17,6 +17,7 @@ import sbt.librarymanagement.ModuleID
 
 import sbt.internal.util.Attributed
 import sbt.util.Logger
+import java.net.URI
 
 private[sbt] object APIMappings {
   def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
@@ -38,7 +39,7 @@ private[sbt] object APIMappings {
     } yield (entry, u)
 
   private[this] def parseURL(s: String, forEntry: File, log: Logger): Option[URL] =
-    try Some(new URL(s))
+    try Some(new URI(s).toURL)
     catch {
       case e: MalformedURLException =>
         log.warn(s"Invalid API base URL '$s' for classpath entry '$forEntry': ${e.toString}")

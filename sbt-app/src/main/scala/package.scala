@@ -32,7 +32,7 @@ package object sbt
   // IO
   def uri(s: String): URI = new URI(s)
   def file(s: String): File = new File(s)
-  def url(s: String): URL = new URL(s)
+  def url(s: String): URL = new URI(s).toURL
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
   implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)

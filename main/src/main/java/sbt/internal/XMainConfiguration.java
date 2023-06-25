@@ -12,6 +12,7 @@ import java.io.File;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URL;
 import xsbti.*;
 
@@ -72,7 +73,7 @@ public class XMainConfiguration {
       URL url = baseLoader.getResource(className);
       String path = url.toString().replaceAll(className.concat("$"), "");
       URL[] urlArray = new URL[1];
-      urlArray[0] = new URL(path);
+      urlArray[0] = new URI(path).toURL();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
       // This loader doesn't have the scala library in it so it's critical that none of the code
       // in this file use the scala library.
