@@ -162,7 +162,8 @@ object VersionNumber {
     }
   }
 
-  /** A variant of SemVar that seems to be common among the Scala libraries.
+  /**
+   * A variant of SemVar that seems to be common among the Scala libraries.
    * The second segment (y in x.y.z) increments breaks the binary compatibility even when x > 0.
    * Also API compatibility is expected even when the first segment is zero.
    */
@@ -172,7 +173,8 @@ object VersionNumber {
       PackVer.isCompatible(v1, v2)
   }
 
-  /** A variant of SemVar that seems to be common among the Scala libraries.
+  /**
+   * A variant of SemVar that seems to be common among the Scala libraries.
    * The second segment (y in x.y.z) increments breaks the binary compatibility even when x > 0.
    * Also API compatibility is expected even when the first segment is zero.
    */
@@ -193,7 +195,8 @@ object VersionNumber {
     }
   }
 
-  /** A variant of SemVar that enforces API compatibility when the first segment is zero.
+  /**
+   * A variant of SemVar that enforces API compatibility when the first segment is zero.
    */
   object EarlySemVer extends VersionNumberCompatibility {
     import SemVer._

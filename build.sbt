@@ -3,7 +3,7 @@ import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
 val _ = {
-  //https://github.com/sbt/contraband/issues/122
+  // https://github.com/sbt/contraband/issues/122
   sys.props += ("line.separator" -> "\n")
 }
 Global / semanticdbEnabled := !(Global / insideCI).value
@@ -90,11 +90,10 @@ val mimaSettings = Def settings (
     "1.4.0",
     "1.5.0",
     "1.6.0",
-  ) map (
-      version =>
-        organization.value %% moduleName.value % version
-          cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-    ),
+  ) map (version =>
+    organization.value %% moduleName.value % version
+      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  ),
 )
 
 lazy val lmRoot = (project in file("."))

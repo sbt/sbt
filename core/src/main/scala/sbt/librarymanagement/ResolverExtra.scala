@@ -185,7 +185,7 @@ private[librarymanagement] abstract class ResolverFunctions {
     "https://repository.apache.org/content/repositories/snapshots/"
   )
 
-  /** Add the local and Maven Central repositories to the user repositories.  */
+  /** Add the local and Maven Central repositories to the user repositories. */
   def combineDefaultResolvers(userResolvers: Vector[Resolver]): Vector[Resolver] =
     combineDefaultResolvers(userResolvers, mavenCentral = true)
 
@@ -232,7 +232,10 @@ private[librarymanagement] abstract class ResolverFunctions {
               single(JCenterRepository, jcenter) ++
                 (xs.partition(_ == DefaultMavenRepository) match {
                   case (_, xs) =>
-                    single(DefaultMavenRepository, mavenCentral) ++ xs // TODO - Do we need to filter out duplicates?
+                    single(
+                      DefaultMavenRepository,
+                      mavenCentral
+                    ) ++ xs // TODO - Do we need to filter out duplicates?
                 })
           })
     }
@@ -240,7 +243,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   private def single[T](value: T, nonEmpty: Boolean): Vector[T] =
     if (nonEmpty) Vector(value) else Vector.empty
 
-  /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns.  */
+  /** A base class for defining factories for interfaces to Ivy repositories that require a hostname , port, and patterns. */
   sealed abstract class Define[RepositoryType <: SshBasedRepository] {
 
     /** Subclasses should implement this method to */
@@ -269,8 +272,8 @@ private[librarymanagement] abstract class ResolverFunctions {
      * patterns will be resolved.  `basePatterns` are the initial patterns to use.
      * A ManagedProject has an implicit defining these initial patterns based on a setting for either Maven or Ivy style patterns.
      */
-    def apply(name: String, hostname: String, basePath: String)(
-        implicit basePatterns: Patterns
+    def apply(name: String, hostname: String, basePath: String)(implicit
+        basePatterns: Patterns
     ): RepositoryType =
       apply(name, Some(hostname), None, Some(basePath))
 
@@ -278,8 +281,8 @@ private[librarymanagement] abstract class ResolverFunctions {
      * Constructs this repository type with the given `name`, `hostname`, and `port`.  `basePatterns` are the initial patterns to use.
      * A ManagedProject has an implicit defining these initial patterns based on a setting for either Maven or Ivy style patterns.
      */
-    def apply(name: String, hostname: String, port: Int)(
-        implicit basePatterns: Patterns
+    def apply(name: String, hostname: String, port: Int)(implicit
+        basePatterns: Patterns
     ): RepositoryType =
       apply(name, Some(hostname), Some(port), None)
 
@@ -288,8 +291,8 @@ private[librarymanagement] abstract class ResolverFunctions {
      * patterns will be resolved.  `basePatterns` are the initial patterns to use.
      * A ManagedProject has an implicit defining these initial patterns based on a setting for either Maven or Ivy style patterns.
      */
-    def apply(name: String, hostname: String, port: Int, basePath: String)(
-        implicit basePatterns: Patterns
+    def apply(name: String, hostname: String, port: Int, basePath: String)(implicit
+        basePatterns: Patterns
     ): RepositoryType =
       apply(name, Some(hostname), Some(port), Some(basePath))
 
@@ -304,13 +307,13 @@ private[librarymanagement] abstract class ResolverFunctions {
       construct(name, SshConnection(None, hostname, port), resolvePatterns(basePath, basePatterns))
   }
 
-  /** A factory to construct an interface to an Ivy SSH resolver.*/
+  /** A factory to construct an interface to an Ivy SSH resolver. */
   object ssh extends Define[SshRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SshRepository(name, connection, patterns, None)
   }
 
-  /** A factory to construct an interface to an Ivy SFTP resolver.*/
+  /** A factory to construct an interface to an Ivy SFTP resolver. */
   object sftp extends Define[SftpRepository] {
     protected def construct(name: String, connection: SshConnection, patterns: Patterns) =
       SftpRepository(name, connection, patterns)
@@ -348,8 +351,8 @@ private[librarymanagement] abstract class ResolverFunctions {
     def apply(name: String, baseURL: URL)(implicit basePatterns: Patterns): URLRepository =
       baseRepository(baseURL.toURI.normalize.toString)(URLRepository(name, _))
   }
-  private def baseRepository[T](base: String)(construct: Patterns => T)(
-      implicit basePatterns: Patterns
+  private def baseRepository[T](base: String)(construct: Patterns => T)(implicit
+      basePatterns: Patterns
   ): T =
     construct(resolvePatterns(base, basePatterns))
 
@@ -381,7 +384,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   }
   def defaultFileConfiguration = FileConfiguration(true, None)
   def mavenStylePatterns = Patterns().withArtifactPatterns(Vector(mavenStyleBasePattern))
-  def ivyStylePatterns = defaultIvyPatterns //Patterns(Nil, Nil, false)
+  def ivyStylePatterns = defaultIvyPatterns // Patterns(Nil, Nil, false)
 
   def defaultPatterns = mavenStylePatterns
   def mavenStyleBasePattern =
@@ -397,10 +400,13 @@ private[librarymanagement] abstract class ResolverFunctions {
     val findQuoted = "\\$\\{([^\\}]*)\\}".r
     val env = "env\\.(.*)".r
 
-    findQuoted.replaceAllIn(str, _.group(1) match {
-      case env(variable) => sys.env.getOrElse(variable, "")
-      case property      => sys.props.getOrElse(property, "")
-    })
+    findQuoted.replaceAllIn(
+      str,
+      _.group(1) match {
+        case env(variable) => sys.env.getOrElse(variable, "")
+        case property      => sys.props.getOrElse(property, "")
+      }
+    )
   }
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
@@ -423,7 +429,9 @@ private[librarymanagement] abstract class ResolverFunctions {
       }
     sys.props.get("maven.repo.local").map(new File(_)) orElse
       loadHomeFromSettings(() => new File(sbt.io.Path.userHome, ".m2/settings.xml")) orElse
-      loadHomeFromSettings(() => new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")) getOrElse
+      loadHomeFromSettings(() =>
+        new File(new File(System.getenv("M2_HOME")), "conf/settings.xml")
+      ) getOrElse
       new File(sbt.io.Path.userHome, ".m2/repository")
   }
   // TODO - should this just be the *exact* same as mavenLocal?  probably...

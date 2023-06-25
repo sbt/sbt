@@ -14,20 +14,19 @@ object MergeDescriptorSpec extends BaseIvySpecification {
       None,
       UpdateOptions()
     )
-    m.withModule(log) {
-      case (_, md, _) =>
-        val deps = md.getDependencies
-        assert(deps.size == 1)
-        deps.headOption.getOrElse(sys.error("Dependencies not found")) match {
-          case dd @ MergedDescriptors(_, _) =>
-            val arts = dd.getAllDependencyArtifacts
-            val a0: DependencyArtifactDescriptor = arts.toList(0)
-            val a1: DependencyArtifactDescriptor = arts.toList(1)
-            val configs0 = a0.getConfigurations.toList
-            val configs1 = a1.getConfigurations.toList
-            assert(configs0 == List("compile"))
-            assert(configs1 == List("test"))
-        }
+    m.withModule(log) { case (_, md, _) =>
+      val deps = md.getDependencies
+      assert(deps.size == 1)
+      deps.headOption.getOrElse(sys.error("Dependencies not found")) match {
+        case dd @ MergedDescriptors(_, _) =>
+          val arts = dd.getAllDependencyArtifacts
+          val a0: DependencyArtifactDescriptor = arts.toList(0)
+          val a1: DependencyArtifactDescriptor = arts.toList(1)
+          val configs0 = a0.getConfigurations.toList
+          val configs1 = a1.getConfigurations.toList
+          assert(configs0 == List("compile"))
+          assert(configs1 == List("test"))
+      }
     }
   }
   def guavaTest =

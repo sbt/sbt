@@ -29,7 +29,7 @@ import sbt.internal.librarymanagement.IvyUtil.TransientNetworkException
 
 object IvyActions {
 
-  /** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'.*/
+  /** Installs the dependencies of the given 'module' from the resolver named 'from' to the resolver named 'to'. */
   def install(module: IvySbt#Module, from: String, to: String, log: Logger): Unit = {
     module.withModule(log) { (ivy, md, _) =>
       for (dependency <- md.getDependencies) {
@@ -57,7 +57,7 @@ object IvyActions {
       module.owner.cleanCachedResolutionCache()
     }
 
-  /** Creates a Maven pom from the given Ivy configuration*/
+  /** Creates a Maven pom from the given Ivy configuration */
   def makePomFile(module: IvySbt#Module, configuration: MakePomConfiguration, log: Logger): File = {
     import configuration.{
       allRepositories,
@@ -91,13 +91,12 @@ object IvyActions {
     val deliverIvyPattern = configuration.deliverIvyPattern
       .getOrElse(sys.error("deliverIvyPattern must be specified."))
     val status = getDeliverStatus(configuration.status)
-    module.withModule(log) {
-      case (ivy, md, _) =>
-        val revID = md.getModuleRevisionId
-        val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
-        options.setConfs(getConfigurations(md, configuration.configurations))
-        ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
-        deliveredFile(ivy, deliverIvyPattern, md)
+    module.withModule(log) { case (ivy, md, _) =>
+      val revID = md.getModuleRevisionId
+      val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
+      options.setConfs(getConfigurations(md, configuration.configurations))
+      ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
+      deliveredFile(ivy, deliverIvyPattern, md)
     }
   }
 
@@ -130,18 +129,17 @@ object IvyActions {
 
     val artifacts = Map(configuration.artifacts: _*)
     val checksums = configuration.checksums
-    module.withModule(log) {
-      case (ivy, md, _) =>
-        val resolver = ivy.getSettings.getResolver(resolverName)
-        if (resolver eq null) sys.error("Undefined resolver '" + resolverName + "'")
-        val ivyArtifact = ivyFile map { file =>
-          (MDArtifact.newIvyArtifact(md), file)
-        }
-        val cross = crossVersionMap(module.moduleSettings)
-        val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toList
-        withChecksums(resolver, checksums) {
-          publish(md, as, resolver, overwrite = configuration.overwrite)
-        }
+    module.withModule(log) { case (ivy, md, _) =>
+      val resolver = ivy.getSettings.getResolver(resolverName)
+      if (resolver eq null) sys.error("Undefined resolver '" + resolverName + "'")
+      val ivyArtifact = ivyFile map { file =>
+        (MDArtifact.newIvyArtifact(md), file)
+      }
+      val cross = crossVersionMap(module.moduleSettings)
+      val as = mapArtifacts(md, cross, artifacts) ++ ivyArtifact.toList
+      withChecksums(resolver, checksums) {
+        publish(md, as, resolver, overwrite = configuration.overwrite)
+      }
     }
   }
   private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Vector[String])(
@@ -193,35 +191,36 @@ object IvyActions {
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
-    module.withModule(log) {
-      case (ivy, moduleDescriptor, _) =>
-        // Warn about duplicated and inconsistent dependencies
-        val iw = IvySbt.inconsistentDuplicateWarning(moduleDescriptor)
-        iw.foreach(log.warn(_))
+    module.withModule(log) { case (ivy, moduleDescriptor, _) =>
+      // Warn about duplicated and inconsistent dependencies
+      val iw = IvySbt.inconsistentDuplicateWarning(moduleDescriptor)
+      iw.foreach(log.warn(_))
 
-        val metadataDirectory = configuration.metadataDirectory
+      val metadataDirectory = configuration.metadataDirectory
 
-        // Create inputs, resolve and retrieve the module descriptor
-        val inputs = ResolutionInputs(ivy, moduleDescriptor, configuration, log)
-        val resolutionResult: Either[ResolveException, UpdateReport] = {
-          if (module.owner.configuration.updateOptions.cachedResolution && metadataDirectory.isDefined) {
-            val cache =
-              metadataDirectory.getOrElse(sys.error("Missing directory for cached resolution."))
-            cachedResolveAndRetrieve(inputs, cache)
-          } else resolveAndRetrieve(inputs)
-        }
+      // Create inputs, resolve and retrieve the module descriptor
+      val inputs = ResolutionInputs(ivy, moduleDescriptor, configuration, log)
+      val resolutionResult: Either[ResolveException, UpdateReport] = {
+        if (
+          module.owner.configuration.updateOptions.cachedResolution && metadataDirectory.isDefined
+        ) {
+          val cache =
+            metadataDirectory.getOrElse(sys.error("Missing directory for cached resolution."))
+          cachedResolveAndRetrieve(inputs, cache)
+        } else resolveAndRetrieve(inputs)
+      }
 
-        // Convert to unresolved warning or retrieve update report
-        resolutionResult.fold(
-          exception => Left(UnresolvedWarning(exception, uwconfig)),
-          ur0 => {
-            val ur = configuration.retrieveManaged match {
-              case Some(retrieveConf) => retrieve(log, ivy, ur0, retrieveConf)
-              case _                  => ur0
-            }
-            Right(ur)
+      // Convert to unresolved warning or retrieve update report
+      resolutionResult.fold(
+        exception => Left(UnresolvedWarning(exception, uwconfig)),
+        ur0 => {
+          val ur = configuration.retrieveManaged match {
+            case Some(retrieveConf) => retrieve(log, ivy, ur0, retrieveConf)
+            case _                  => ur0
           }
-        )
+          Right(ur)
+        }
+      )
     }
   }
 
@@ -252,11 +251,10 @@ object IvyActions {
     exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
   def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
-    report.allMissing flatMap {
-      case (_, mod, art) =>
-        art.classifier.map { c =>
-          (restrictedCopy(mod, false), c)
-        }
+    report.allMissing flatMap { case (_, mod, art) =>
+      art.classifier.map { c =>
+        (restrictedCopy(mod, false), c)
+      }
     } groupBy (_._1) map { case (mod, pairs) => (mod, pairs.map(_._2).toSet) }
 
   /**
@@ -275,8 +273,8 @@ object IvyActions {
   )
 
   implicit def toIvyFilter(f: ArtifactTypeFilter): IvyFilter = new IvyFilter {
-    override def accept(o: Object): Boolean = Option(o) exists {
-      case a: IArtifact => applyFilter(a)
+    override def accept(o: Object): Boolean = Option(o) exists { case a: IArtifact =>
+      applyFilter(a)
     }
 
     def applyFilter(a: IArtifact): Boolean =
@@ -498,13 +496,12 @@ object IvyActions {
       checkFilesPresent(artifacts)
       try {
         resolver.beginPublishTransaction(module.getModuleRevisionId(), overwrite);
-        artifacts.foreach {
-          case (artifact, file) =>
-            IvyUtil.retryWithBackoff(
-              resolver.publish(artifact, file, overwrite),
-              TransientNetworkException.apply,
-              maxAttempts = LMSysProp.maxPublishAttempts
-            )
+        artifacts.foreach { case (artifact, file) =>
+          IvyUtil.retryWithBackoff(
+            resolver.publish(artifact, file, overwrite),
+            TransientNetworkException.apply,
+            maxAttempts = LMSysProp.maxPublishAttempts
+          )
         }
         resolver.commitPublishTransaction()
       } catch {

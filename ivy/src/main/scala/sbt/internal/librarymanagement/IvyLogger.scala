@@ -19,7 +19,7 @@ private[sbt] final class IvyLoggerInterface(logger: Logger) extends MessageLogge
       case MSG_ERR     => error(msg)
     }
   }
-  //DEBUG level messages are very verbose and rarely useful to users.
+  // DEBUG level messages are very verbose and rarely useful to users.
   // TODO: provide access to this information some other way
   def debug(msg: String): Unit = ()
   def verbose(msg: String): Unit = logger.verbose(msg)

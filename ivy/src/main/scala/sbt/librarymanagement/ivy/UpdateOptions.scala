@@ -79,12 +79,12 @@ final class UpdateOptions private[sbt] (
   override def equals(o: Any): Boolean = o match {
     case o: UpdateOptions =>
       this.circularDependencyLevel == o.circularDependencyLevel &&
-        this.interProjectFirst == o.interProjectFirst &&
-        this.latestSnapshots == o.latestSnapshots &&
-        this.cachedResolution == o.cachedResolution &&
-        this.gigahorse == o.gigahorse &&
-        this.resolverConverter == o.resolverConverter &&
-        this.moduleResolvers == o.moduleResolvers
+      this.interProjectFirst == o.interProjectFirst &&
+      this.latestSnapshots == o.latestSnapshots &&
+      this.cachedResolution == o.cachedResolution &&
+      this.gigahorse == o.gigahorse &&
+      this.resolverConverter == o.resolverConverter &&
+      this.moduleResolvers == o.moduleResolvers
     case _ => false
   }
 

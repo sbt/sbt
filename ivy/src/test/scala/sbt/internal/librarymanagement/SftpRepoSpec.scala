@@ -13,7 +13,7 @@ import java.nio.file.Paths
 object SftpRepoSpec extends BaseIvySpecification {
   val repo: Option[String] = None
 //  val repo: Option[String] = Some("some repo")
-  //a dependency which depends on another in the repo
+  // a dependency which depends on another in the repo
   def org(repo: String) = s"com.${repo}"
   def module(org: String) = org % "some-lib" % "version"
 

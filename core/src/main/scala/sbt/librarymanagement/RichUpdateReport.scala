@@ -12,16 +12,15 @@ final class RichUpdateReport(report: UpdateReport) {
   private[sbt] def recomputeStamps(): UpdateReport = {
     val files = report.cachedDescriptor +: allFiles
     val stamps = files
-      .map(
-        f =>
-          (
-            f,
-            // TODO: The list of files may also contain some odd files that do not actually exist like:
-            // "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml".
-            // IO.getModifiedTimeOrZero() will just return zero, but the list of files should not contain such
-            // files to begin with, in principle.
-            IO.getModifiedTimeOrZero(f)
-          )
+      .map(f =>
+        (
+          f,
+          // TODO: The list of files may also contain some odd files that do not actually exist like:
+          // "./target/ivyhome/resolution-cache/com.example/foo/0.4.0/resolved.xml.xml".
+          // IO.getModifiedTimeOrZero() will just return zero, but the list of files should not contain such
+          // files to begin with, in principle.
+          IO.getModifiedTimeOrZero(f)
+        )
       )
       .toMap
     UpdateReport(report.cachedDescriptor, report.configurations, report.stats, stamps)
@@ -65,13 +64,13 @@ final class RichUpdateReport(report: UpdateReport) {
       file
     }
 
-  /** Constructs a new report that only contains files matching the specified filter.*/
+  /** Constructs a new report that only contains files matching the specified filter. */
   def filter(f: DependencyFilter): UpdateReport =
     moduleReportMap { (configuration, modReport) =>
       modReport
         .withArtifacts(
-          modReport.artifacts filter {
-            case (art, _) => f(configuration, modReport.module, art)
+          modReport.artifacts filter { case (art, _) =>
+            f(configuration, modReport.module, art)
           }
         )
         .withMissingArtifacts(

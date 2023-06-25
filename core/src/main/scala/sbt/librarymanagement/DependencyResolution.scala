@@ -189,10 +189,9 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
           ((sourceArtifactTypes.toIterable map (_ -> Artifact.SourceClassifier))
             :: (docArtifactTypes.toIterable map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
         Right(r.substitute { (conf, mid, artFileSeq) =>
-          artFileSeq map {
-            case (art, f) =>
-              // Deduce the classifier from the type if no classifier is present already
-              art.withClassifier(art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
+          artFileSeq map { case (art, f) =>
+            // Deduce the classifier from the type if no classifier is present already
+            art.withClassifier(art.classifier orElse typeClassifierMap.get(art.`type`)) -> f
           }
         })
       case Left(w) => Left(w)
@@ -200,10 +199,9 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
   }
 
   protected def directDependenciesNames(module: ModuleDescriptor): String =
-    (module.directDependencies map {
-      case mID: ModuleID =>
-        import mID._
-        s"$organization % $name % $revision"
+    (module.directDependencies map { case mID: ModuleID =>
+      import mID._
+      s"$organization % $name % $revision"
     }).mkString(", ")
 }
 
