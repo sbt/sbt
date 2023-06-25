@@ -137,7 +137,7 @@ object DependencyTreeSettings {
           versionFilter match {
             case Some(version) => GraphModuleId(org, name, version) :: Nil
             case None =>
-              graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
+              graph.nodes.withFilter(m => m.id.organization == org && m.id.name == name).map(_.id)
           }
         val graphWidth = asciiGraphWidth.value
         val output =

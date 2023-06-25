@@ -72,7 +72,7 @@ object ScopeFilter {
      * static inspections will not show them.
      */
     def all(sfilter: => ScopeFilter): Initialize[Seq[T]] = Def.bind(getData) { data =>
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join
+      data.allScopes.toSeq.withFilter(sfilter(data)).map(s => Project.inScope(s, i)).join
     }
   }
   final class TaskKeyAll[T] private[sbt] (i: Initialize[Task[T]]) {
@@ -83,7 +83,7 @@ object ScopeFilter {
      */
     def all(sfilter: => ScopeFilter): Initialize[Task[Seq[T]]] = Def.bind(getData) { data =>
       import std.TaskExtra._
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join(_.join)
+      data.allScopes.toSeq.withFilter(sfilter(data)).map(s => Project.inScope(s, i)).join(_.join)
     }
   }
 

@@ -97,7 +97,7 @@ object Sync {
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap
-      .filter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
+      .withFilter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
       .map { case (target, srcs) => "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t") }
     if (dups.nonEmpty)
       sys.error("Duplicate mappings:" + dups.mkString)

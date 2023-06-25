@@ -53,7 +53,7 @@ object StackTrace {
 
       val els = t.getStackTrace()
       var i = 0
-      while ((i < els.size) && include(els(i))) {
+      while ((i < els.length) && include(els(i))) {
         appendElement(els(i))
         i += 1
       }

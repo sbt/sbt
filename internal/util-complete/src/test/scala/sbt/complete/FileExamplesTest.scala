@@ -83,7 +83,7 @@ class FileExamplesTest extends UnitSpec {
 
     def prefixedPathsOnly: List[String] =
       allRelativizedPaths
-        .filter(_ startsWith withCompletionPrefix)
+        .withFilter(_ startsWith withCompletionPrefix)
         .map(_ substring withCompletionPrefix.length)
 
     def createSampleDirStructure(tempDir: File): Unit = {
@@ -92,8 +92,8 @@ class FileExamplesTest extends UnitSpec {
       nestedFiles = toChildFiles(childDirectories(1), List("farfile1", "barfile2"))
       nestedDirectories = toChildFiles(childDirectories(1), List("fardir1", "bardir2"))
 
-      (childDirectories ++ nestedDirectories).map(_.mkdirs())
-      (childFiles ++ nestedFiles).map(_.createNewFile())
+      (childDirectories ++ nestedDirectories).foreach(_.mkdirs())
+      (childFiles ++ nestedFiles).foreach(_.createNewFile())
 
       baseDir = tempDir
     }
