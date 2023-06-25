@@ -36,7 +36,8 @@ private[sbt] object VersionSchemes {
       case x => sys.error(s"unknown version scheme: $x")
     }
 
-  /** info.versionScheme property will be included into POM after sbt 1.4.0.
+  /**
+   * info.versionScheme property will be included into POM after sbt 1.4.0.
    */
   def extractFromId(mid: ModuleID): Option[String] = extractFromExtraAttributes(mid.extraAttributes)
 

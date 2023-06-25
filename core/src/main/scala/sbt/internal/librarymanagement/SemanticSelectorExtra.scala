@@ -58,8 +58,8 @@ private[librarymanagement] abstract class SemComparatorExtra {
 
   protected def toStringImpl: String = {
     val versionStr = Seq(major, minor, patch)
-      .collect {
-        case Some(v) => v.toString
+      .collect { case Some(v) =>
+        v.toString
       }
       .mkString(".")
     val tagsStr = if (tags.nonEmpty) s"-${tags.mkString("-")}" else ""
@@ -177,8 +177,8 @@ private[librarymanagement] abstract class SemComparatorFunctions {
           }
           parse(
             numbers
-              .collect {
-                case Some(v) => v.toString
+              .collect { case Some(v) =>
+                v.toString
               }
               .mkString(".")
           )

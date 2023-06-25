@@ -37,10 +37,10 @@ private[librarymanagement] abstract class ModuleIDExtra {
   protected def toStringImpl: String =
     s"""$organization:$name:$revision""" +
       (configurations match { case Some(s) => ":" + s; case None => "" }) + {
-      val attr = attributeString
-      if (attr == "") ""
-      else " " + attr
-    } +
+        val attr = attributeString
+        if (attr == "") ""
+        else " " + attr
+      } +
       (if (extraAttributes.isEmpty) "" else " " + extraString)
 
   protected def attributeString: String = {
@@ -95,10 +95,10 @@ private[librarymanagement] abstract class ModuleIDExtra {
     })
 
   // () required for chaining
-  /** Do not follow dependencies of this module.  Synonym for `intransitive`.*/
+  /** Do not follow dependencies of this module.  Synonym for `intransitive`. */
   def notTransitive(): ModuleID = intransitive()
 
-  /** Do not follow dependencies of this module.  Synonym for `notTransitive`.*/
+  /** Do not follow dependencies of this module.  Synonym for `notTransitive`. */
   def intransitive(): ModuleID = withIsTransitive(false)
 
   /**

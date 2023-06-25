@@ -17,7 +17,7 @@ object IvyRepoSpec extends BaseIvySpecification {
     module(
       ourModuleID,
       Vector(dep),
-      None //, UpdateOptions().withCachedResolution(true)
+      None // , UpdateOptions().withCachedResolution(true)
     )
   }
 
@@ -31,13 +31,11 @@ object IvyRepoSpec extends BaseIvySpecification {
     val report = ivyUpdate(m)
 
     import Inside._
-    inside(report.configuration(ConfigRef("compile")).map(_.modules)) {
-      case Some(Seq(mr)) =>
-        inside(mr.artifacts) {
-          case Seq((ar, _)) =>
-            assert(ar.`type` == "jar")
-            assert(ar.extension == "jar")
-        }
+    inside(report.configuration(ConfigRef("compile")).map(_.modules)) { case Some(Seq(mr)) =>
+      inside(mr.artifacts) { case Seq((ar, _)) =>
+        assert(ar.`type` == "jar")
+        assert(ar.extension == "jar")
+      }
     }
   }
 
@@ -90,14 +88,12 @@ object IvyRepoSpec extends BaseIvySpecification {
         .get
 
     import Inside._
-    inside(report2.configuration(ConfigRef("compile")).map(_.modules)) {
-      case Some(Seq(mr)) =>
-        inside(mr.artifacts) {
-          case Seq((ar, _)) =>
-            assert(ar.name == "libmodule-source")
-            assert(ar.`type` == "src")
-            assert(ar.extension == "jar")
-        }
+    inside(report2.configuration(ConfigRef("compile")).map(_.modules)) { case Some(Seq(mr)) =>
+      inside(mr.artifacts) { case Seq((ar, _)) =>
+        assert(ar.name == "libmodule-source")
+        assert(ar.`type` == "src")
+        assert(ar.extension == "jar")
+      }
     }
   }
 

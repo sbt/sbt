@@ -121,7 +121,7 @@ object ComponentManagerTest extends BasicTestSuite {
     TestLogger { logger =>
       withTemporaryDirectory { temp =>
         // The actual classes we'll use at runtime.
-        //val mgr = new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), Some(ivyHome), logger)
+        // val mgr = new ComponentManager(xsbt.boot.Locks, new xsbt.boot.ComponentProvider(temp, true), Some(ivyHome), logger)
 
         // A stub component manager
         object provider extends ComponentProvider {

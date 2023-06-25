@@ -28,12 +28,22 @@ class CredentialsSpec extends AnyFunSuite {
 
   test("DirectCredentials.toString") {
     assert(
-      Credentials(realm = null, host = "example.org", userName = "username", passwd = "password").toString ==
+      Credentials(
+        realm = null,
+        host = "example.org",
+        userName = "username",
+        passwd = "password"
+      ).toString ==
         """DirectCredentials(null, "example.org", "username", ****)"""
     )
 
     assert(
-      Credentials(realm = "realm", host = "example.org", userName = "username", passwd = "password").toString ==
+      Credentials(
+        realm = "realm",
+        host = "example.org",
+        userName = "username",
+        passwd = "password"
+      ).toString ==
         """DirectCredentials("realm", "example.org", "username", ****)"""
     )
   }

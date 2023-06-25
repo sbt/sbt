@@ -37,13 +37,13 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    */
   def fullWith(prefix: String, suffix: String): CrossVersion = Full(prefix, suffix)
 
-  /** Cross-versions a module with the binary version (typically the binary Scala version).  */
+  /** Cross-versions a module with the binary version (typically the binary Scala version). */
   def binary: CrossVersion = Binary()
 
   /** Disables cross versioning for a module. */
   def disabled: CrossVersion = sbt.librarymanagement.Disabled
 
-  /** Cross-versions a module with a constant string (typically the binary Scala version).  */
+  /** Cross-versions a module with a constant string (typically the binary Scala version). */
   def constant(value: String): CrossVersion = Constant(value)
 
   /**
@@ -218,7 +218,7 @@ private[librarymanagement] abstract class CrossVersionFunctions {
    */
   def scalaApiVersion(v: String): Option[(Long, Long)] = CrossVersionUtil.scalaApiVersion(v)
 
-  /** Regular expression that extracts the major and minor components of a version into matched groups 1 and 2.*/
+  /** Regular expression that extracts the major and minor components of a version into matched groups 1 and 2. */
   val PartialVersion = CrossVersionUtil.PartialVersion
 
   /** Extracts the major and minor components of a version string `s` or returns `None` if the version is improperly formatted. */

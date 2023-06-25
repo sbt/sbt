@@ -16,11 +16,11 @@ object Credentials {
   def apply(file: File): Credentials =
     new FileCredentials(file)
 
-  /** Add the provided credentials to Ivy's credentials cache.*/
+  /** Add the provided credentials to Ivy's credentials cache. */
   def add(realm: String, host: String, userName: String, passwd: String): Unit =
     CredentialsStore.INSTANCE.addCredentials(realm, host, userName, passwd)
 
-  /** Load credentials from the given file into Ivy's credentials cache.*/
+  /** Load credentials from the given file into Ivy's credentials cache. */
   def add(path: File, log: Logger): Unit =
     loadCredentials(path) match {
       case Left(err) => log.warn(err)

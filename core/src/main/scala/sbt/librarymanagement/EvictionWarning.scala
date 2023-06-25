@@ -196,7 +196,7 @@ final class EvictionPair private[sbt] (
   override def equals(o: Any): Boolean = o match {
     case o: EvictionPair =>
       (this.organization == o.organization) &&
-        (this.name == o.name)
+      (this.name == o.name)
     case _ => false
   }
   override def hashCode: Int = {
@@ -279,10 +279,12 @@ object EvictionWarning {
     }
     confs flatMap { confReport =>
       confReport.details map { detail =>
-        if ((detail.modules exists { _.evicted }) &&
-            !(buffer exists { x =>
-              (x.organization == detail.organization) && (x.name == detail.name)
-            })) {
+        if (
+          (detail.modules exists { _.evicted }) &&
+          !(buffer exists { x =>
+            (x.organization == detail.organization) && (x.name == detail.name)
+          })
+        ) {
           buffer += detail
         }
       }
@@ -298,7 +300,7 @@ object EvictionWarning {
     module.scalaModuleInfo match {
       case Some(s) =>
         organization == s.scalaOrganization &&
-          (name == LibraryID) || (name == CompilerID)
+        (name == LibraryID) || (name == CompilerID)
       case _ => false
     }
 
