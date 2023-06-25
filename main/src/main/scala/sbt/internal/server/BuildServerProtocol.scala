@@ -1024,17 +1024,22 @@ object BuildServerProtocol {
 
   /**
    * Additional information about compilation status for given build target.
-   *
-   * @param hasAnyProblems keeps track of problems in given file so BSP reporter
-   * can omit unnecessary diagnostics updates.
-   * @param compiledAtLeastOnce keeps track of those projects that were compiled at
-   * least once so that we can decide to enable fresh reporting for projects that
-   * are compiled for the first time.
-   * see: https://github.com/scalacenter/bloop/issues/726
    */
   private[server] final class BspCompileState {
+
+    /**
+     * keeps track of problems in given file so BSP reporter
+     * can omit unnecessary diagnostics updates
+     */
     val hasAnyProblems: java.util.Set[Path] =
       java.util.concurrent.ConcurrentHashMap.newKeySet[Path]
+
+    /**
+     * keeps track of those projects that were compiled at
+     * least once so that we can decide to enable fresh reporting for projects that
+     * are compiled for the first time.
+     * see: https://github.com/scalacenter/bloop/issues/726
+     */
     val compiledAtLeastOnce: AtomicBoolean = new AtomicBoolean(false)
   }
 }
