@@ -278,9 +278,9 @@ private[sbt] object TemplateCommandUtil {
         System.err.println("Local template not found for: " + arguments.mkString(" "))
     }
 
-  private final val defaultScalaV = "3.2.2"
+  private final val defaultScalaV = "3.3.0"
   private def scalaToolkitTemplate(): Unit = {
-    val defaultScalaToolkitV = "0.1.7"
+    val defaultScalaToolkitV = "0.2.0"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
     val content = s"""
@@ -298,7 +298,7 @@ libraryDependencies += (toolkitTest % Test)
   }
 
   private def typelevelToolkitTemplate(): Unit = {
-    val defaultTypelevelToolkitV = "0.0.11"
+    val defaultTypelevelToolkitV = "0.1.3"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
     val content = s"""
