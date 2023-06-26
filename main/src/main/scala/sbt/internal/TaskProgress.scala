@@ -150,7 +150,9 @@ private[sbt] class TaskProgress(
       "console",
       "consoleProject",
       "consoleQuick",
-      "state"
+      "state",
+      "streams",
+      "streams-manager",
     )
   private[this] val hiddenTasks = Set(
     "compileEarly",
