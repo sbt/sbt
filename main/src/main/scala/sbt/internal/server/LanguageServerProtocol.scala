@@ -22,7 +22,9 @@ private[sbt] final case class LangServerError(code: Long, message: String)
 
 private[sbt] object LanguageServerProtocol {
   private val internalJsonProtocol = new sbt.internal.langserver.codec.JsonProtocol
-  with sbt.protocol.codec.JsonProtocol with sjsonnew.BasicJsonProtocol with InitializeOptionFormats
+    with sbt.protocol.codec.JsonProtocol
+    with sjsonnew.BasicJsonProtocol
+    with InitializeOptionFormats
 
   import internalJsonProtocol._
 

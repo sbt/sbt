@@ -57,7 +57,7 @@ object Append:
     override def appendValue(a: List[A1], b: V): List[A1] = a :+ (b: A1)
 
   given appendVectorImplicit[A1, V](using ev: Conversion[V, A1]): Sequence[Vector[A1], Vector[V], V]
-    with
+  with
     override def appendValues(a: Vector[A1], b: Vector[V]): Vector[A1] = a ++ b.map(x => (x: A1))
     override def appendValue(a: Vector[A1], b: V): Vector[A1] = a :+ (b: A1)
 

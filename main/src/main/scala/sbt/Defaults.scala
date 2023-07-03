@@ -2523,12 +2523,11 @@ object Defaults extends BuildCommon {
 
     mappers.foldRight({ (p: Position) =>
       withAbsoluteSource(p) // Fallback if sourcePositionMappers is empty
-    }) {
-      (mapper, previousPosition) =>
-        { (p: Position) =>
-          // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
-          mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
-        }
+    }) { (mapper, previousPosition) =>
+      { (p: Position) =>
+        // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
+        mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
+      }
     }
   }
 
