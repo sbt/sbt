@@ -600,6 +600,7 @@ object Keys {
     def apply(progress: ExecuteProgress[Task]): TaskProgress = new TaskProgress(progress)
   }
   private[sbt] val currentTaskProgress = AttributeKey[TaskProgress]("current-task-progress")
+  private[sbt] val currentCommandProgress = AttributeKey[Seq[CommandProgress]]("current-command-progress")
   private[sbt] val taskProgress = AttributeKey[sbt.internal.TaskProgress]("active-task-progress")
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
   val superShellMaxTasks = settingKey[Int]("The max number of tasks to display in the supershell progress report")
@@ -613,6 +614,7 @@ object Keys {
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
+  val commandProgress = settingKey[Seq[CommandProgress]]("Command progress listeners receive events when commands start and end, in addition to task progress events.")
   val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
   val lintIncludeFilter = settingKey[String => Boolean]("Filters key names that should be included in the lint check.")
   val lintExcludeFilter = settingKey[String => Boolean]("Filters key names that should be excluded in the lint check.")

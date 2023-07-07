@@ -184,12 +184,13 @@ object Command {
             }
     )
 
-  def process(command: String, state: State): State = {
+  def process(command: String, state: State, onParseError: String => Unit = _ => ()): State = {
     (if (command.contains(";")) parse(command, state.combinedParser)
     else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg
+        onParseError(errMsg)
         state.fail
     }
   }

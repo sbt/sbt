@@ -289,7 +289,12 @@ object EvaluateTask {
           extracted,
           structure
         )
-        val reporters = maker.map(_.progress) ++ state.get(Keys.taskProgress) ++
+        val reporters = maker.map(_.progress) ++ state.get(Keys.taskProgress) ++ getSetting(
+          Keys.commandProgress,
+          Seq(),
+          extracted,
+          structure
+        ) ++
           (if (SysProp.taskTimings)
              new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
            else Nil)

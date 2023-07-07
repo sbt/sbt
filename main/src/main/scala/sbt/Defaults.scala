@@ -341,6 +341,7 @@ object Defaults extends BuildCommon {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
       },
+      commandProgress := Seq(),
       // progressState is deprecated
       SettingKey[Option[ProgressState]]("progressState") := None,
       Previous.cache := new Previous(
