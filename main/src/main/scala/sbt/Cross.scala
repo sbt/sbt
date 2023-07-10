@@ -20,7 +20,7 @@ import sbt.internal.util.MessageOnlyException
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.{ SemanticSelector, VersionNumber }
+import sbt.librarymanagement.{ CrossVersion, SemanticSelector, VersionNumber }
 
 /**
  * Cross implements the Scala cross building commands:
@@ -340,8 +340,23 @@ object Cross {
           case (project, scalaVersions) =>
             val selector = SemanticSelector(version)
             scalaVersions.filter(v => selector.matches(VersionNumber(v))) match {
-              case Nil          => (project, None, scalaVersions)
               case Seq(version) => (project, Some(version), scalaVersions)
+              case Nil          =>
+                // The Scala version queried via ++, like ++2.13.1 was not found.
+                // However, it's possible to keep the build going by falling back to a
+                // binary-compatible Scala version if available.
+                // In sbt 1.6.x (prior to https://github.com/sbt/sbt/pull/6946), we use to
+                // use the queried ++2.13.1 version as the fallback, which was wrong and unsafe.
+                // Instead this picks an actual Scala version listed in `crossScalaVersion`.
+                val svOpt = scalaVersions.find(
+                  CrossVersion.isScalaBinaryCompatibleWith(newVersion = version, _)
+                )
+                svOpt.foreach { sv =>
+                  state.log.info(
+                    s"Falling back ${project.project} to listed $sv instead of unlisted $version"
+                  )
+                }
+                (project, svOpt, scalaVersions)
               case multiple =>
                 sys.error(
                   s"Multiple crossScalaVersions matched query '$version': ${multiple.mkString(", ")}"
