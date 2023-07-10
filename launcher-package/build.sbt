@@ -71,10 +71,12 @@ val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
 
 val x86MacPlatform = "x86_64-apple-darwin"
+val aarch64MacPlatform = "aarch64-apple-darwin"
 val x86LinuxPlatform = "x86_64-pc-linux"
 val aarch64LinuxPlatform = "aarch64-pc-linux"
 val x86WindowsPlatform = "x86_64-pc-win32"
 val x86MacImageName = s"sbtn-$x86MacPlatform"
+val aarch64MacImageName = s"sbtn-$aarch64MacPlatform"
 val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
 val aarch64LinuxImageName = s"sbtn-$aarch64LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
@@ -126,25 +128,37 @@ val root = (project in file(".")).
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
       val v = sbtnVersion.value
-      val macosImageTar = s"sbtn-$x86MacPlatform-$v.tar.gz"
+      val macosX86ImageTar = s"sbtn-$x86MacPlatform-$v.tar.gz"
+      val macosAarch64ImageTar = s"sbtn-$aarch64MacPlatform-$v.tar.gz"
       val linuxX86ImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
       val linuxAarch64ImageTar = s"sbtn-$aarch64LinuxPlatform-$v.tar.gz"
       val windowsImageZip = s"sbtn-$x86WindowsPlatform-$v.zip"
       val t = target.value
-      val macosTar = t / macosImageTar
+      val macosX86Tar = t / macosX86ImageTar
+      val macosAarch64Tar = t / macosAarch64ImageTar
       val linuxX86Tar = t / linuxX86ImageTar
       val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
       import dispatch.classic._
-      if(!macosTar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(macosTar)
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosTar))
-         try Http(url(s"$baseUrl/v$v/$macosImageTar") >>> writer)
+      if(!macosX86Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(macosX86Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosX86Tar))
+         try Http(url(s"$baseUrl/v$v/$macosX86ImageTar") >>> writer)
          finally writer.close()
          val platformDir = t / x86MacPlatform
          IO.createDirectory(platformDir)
-         s"tar zxvf $macosTar --directory $platformDir".!
+         s"tar zxvf $macosX86Tar --directory $platformDir".!
          IO.move(platformDir / "sbtn", t / x86MacImageName)
+      }
+      if(!macosAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(macosAarch64Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosAarch64Tar))
+         try Http(url(s"$baseUrl/v$v/$macosAarch64ImageTar") >>> writer)
+         finally writer.close()
+         val platformDir = t / aarch64MacPlatform
+         IO.createDirectory(platformDir)
+         s"tar zxvf $macosAarch64Tar --directory $platformDir".!
+         IO.move(platformDir / "sbtn", t / aarch64MacImageName)
       }
       if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxX86Tar)
@@ -179,6 +193,7 @@ val root = (project in file(".")).
       else if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
       else
         Seq(t / x86MacImageName -> s"bin/$x86MacImageName",
+          t / aarch64MacImageName -> s"bin/$aarch64MacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
           t / aarch64LinuxImageName -> s"bin/$aarch64LinuxImageName",
           t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
