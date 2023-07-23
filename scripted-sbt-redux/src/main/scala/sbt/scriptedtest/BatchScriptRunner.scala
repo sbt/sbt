@@ -18,7 +18,7 @@ private[sbt] object BatchScriptRunner {
 }
 
 /** Defines an alternative script runner that allows batch execution. */
-private[sbt] class BatchScriptRunner extends ScriptRunner {
+private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
   import BatchScriptRunner.States
 
   /** Defines a method to run batched execution.
@@ -63,4 +63,6 @@ private[sbt] class BatchScriptRunner extends ScriptRunner {
           throw new TestException(statement, "Command succeeded but failure was expected", null)
     }
   }
+
+  override def close(): Unit = ()
 }
