@@ -186,6 +186,11 @@ private[librarymanagement] abstract class ResolverFunctions {
     "https://repository.apache.org/content/repositories/snapshots/"
   )
 
+  val ApacheMavenStagingRepo = MavenRepository(
+    "apache-staging",
+    "https://repository.apache.org/content/groups/staging/"
+  )
+
   /** Add the local and Maven Central repositories to the user repositories. */
   def combineDefaultResolvers(userResolvers: Vector[Resolver]): Vector[Resolver] =
     combineDefaultResolvers(userResolvers, mavenCentral = true)
