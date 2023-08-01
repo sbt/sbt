@@ -1,0 +1,13 @@
+> plugin/publishLocal
+> plugin1/publishLocal
+> plugin2/publishLocal
+> dependentplugin/publishLocal
+
+$ copy-file changes/plugins.sbt project/plugins.sbt
+
+> reload
+
+$ copy-file changes/build.sbt build.sbt
+
+> reload
+> check

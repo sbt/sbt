@@ -4418,6 +4418,38 @@ trait BuildExtra extends BuildCommon with DefExtra {
       sbtPluginExtra(dependency, sbtV, scalaV)
     }
 
+  /**
+   * Overrides a dependency as an sbt plugin for the specific sbt version sbtVersion and Scala version scalaVersion.
+   * Typically, use the default values for these versions instead of specifying them explicitly.
+   */
+  def overrideSbtPlugin(
+      dependency: ModuleID,
+      sbtVersion: String,
+      scalaVersion: String
+  ): Setting[Seq[ModuleID]] =
+    dependencyOverrides += sbtPluginExtra(dependency, sbtVersion, scalaVersion)
+
+  /**
+   * Overrides dependency as an sbt plugin for the specific sbt version sbtVersion.
+   * Typically, use the default value for this version instead of specifying it explicitly
+   */
+  def overrideSbtPlugin(dependency: ModuleID, sbtVersion: String): Setting[Seq[ModuleID]] =
+    dependencyOverrides += {
+      val scalaV = (update / scalaBinaryVersion).value
+      sbtPluginExtra(dependency, sbtVersion, scalaV)
+    }
+
+  /**
+   * Overrides dependency as an sbt plugin for the sbt and Scala versions configured by
+   * sbtBinaryVersion and scalaBinaryVersion scoped to update.
+   */
+  def overrideSbtPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
+    dependencyOverrides += {
+      val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+      val scalaV = (update / scalaBinaryVersion).value
+      sbtPluginExtra(dependency, sbtV, scalaV)
+    }
+
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
   def compilerPlugin(dependency: ModuleID): ModuleID =
     dependency.withConfigurations(Some("plugin->default(compile)"))
