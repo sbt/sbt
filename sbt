@@ -320,7 +320,8 @@ addSbtScriptProperty () {
     :
   else
     sbt_script=$0
-    sbt_script=${sbt_script/ /%20}
+    # Use // to replace all spaces with %20.
+    sbt_script=${sbt_script// /%20}
     addJava "-Dsbt.script=$sbt_script"
   fi
 }
