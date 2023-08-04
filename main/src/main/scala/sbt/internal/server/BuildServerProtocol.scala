@@ -43,6 +43,7 @@ import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
 import sbt.testing.Framework
+import scala.collection.immutable.ListSet
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -903,7 +904,8 @@ object BuildServerProtocol {
       allDependencies
         .groupBy(_._1)
         .mapValues { deps =>
-          deps.flatMap { case (_, configs) => configs }.toSet
+          // We use a list set to maintain the order of configs
+          ListSet(deps.flatMap { case (_, configs) => configs }: _*)
         }
         .toSeq
     }
