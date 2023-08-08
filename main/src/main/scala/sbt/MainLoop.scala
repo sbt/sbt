@@ -239,7 +239,11 @@ object MainLoop {
         )
 
         val cmdProgressState =
-          getOrSet(progressState, sbt.Keys.currentCommandProgress, _.get(Keys.commandProgress))
+          getOrSet(
+            progressState,
+            sbt.Keys.currentCommandProgress,
+            _.getOpt(Keys.commandProgress).getOrElse(Seq())
+          )
 
         exchange.setState(cmdProgressState)
         exchange.setExec(Some(exec))
