@@ -11,16 +11,22 @@ package sbt
 import java.io.PrintWriter
 import java.util.concurrent.RejectedExecutionException
 import java.util.Properties
-import sbt.BasicCommandStrings.{StashOnFailure, networkExecPrefix}
+import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
 import sbt.internal.ShutdownHooks
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
-import sbt.internal.util.{AttributeKey, ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal}
-import sbt.internal.{ShutdownHooks, TaskProgress}
-import sbt.io.{IO, Using}
+import sbt.internal.util.{
+  AttributeKey,
+  ErrorHandling,
+  GlobalLogBacking,
+  Prompt,
+  Terminal => ITerminal
+}
+import sbt.internal.{ ShutdownHooks, TaskProgress }
+import sbt.io.{ IO, Using }
 import sbt.protocol._
-import sbt.util.{Logger, LoggerContext}
+import sbt.util.{ Logger, LoggerContext }
 
 import scala.annotation.tailrec
 import scala.concurrent.duration._

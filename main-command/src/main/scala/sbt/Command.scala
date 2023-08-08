@@ -184,7 +184,9 @@ object Command {
             }
     )
 
-  def process(command: String, state: State, onParseError: String => Unit = _ => ()): State = {
+  // overload instead of default parameter to keep binary compatibility
+  def process(command: String, state: State): State = process(command, state, _ => ())
+  def process(command: String, state: State, onParseError: String => Unit): State = {
     (if (command.contains(";")) parse(command, state.combinedParser)
     else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
