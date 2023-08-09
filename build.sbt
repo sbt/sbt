@@ -454,6 +454,23 @@ lazy val utilTracking = (project in file("util-tracking"))
   )
   .configure(addSbtIO)
 
+lazy val utilCacheResolver = (project in file("util-cache-resolver"))
+  .dependsOn(utilCache)
+  .settings(
+    utilCommonSettings,
+    testedBaseSettings,
+    name := "Util Cache Resolver",
+    libraryDependencies ++= Seq(
+      scalatest % Test,
+      zeroAllocationHashing,
+    ),
+    // utilMimaSettings,
+  )
+  .configure(
+    addSbtIO,
+    addSbtCompilerInterface,
+  )
+
 lazy val utilScripted = (project in file("internal") / "util-scripted")
   .dependsOn(utilLogging, utilInterface)
   .settings(
@@ -1268,6 +1285,7 @@ def allProjects =
     bundledLauncherProj,
     sbtClientProj,
     buildFileProj,
+    utilCacheResolver,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
