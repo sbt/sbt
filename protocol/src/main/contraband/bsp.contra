@@ -625,31 +625,6 @@ type ScalaBuildTarget {
   jars: [String]!
 }
 
-# sbt Extension
-
-## Contains sbt-specific metadata for providing editor support for sbt build files.
-## This metadata is embedded in the data: Option[Json] field of the BuildTarget definition
-## when the dataKind field contains "sbt".
-type SbtBuildTarget {
-  ## The sbt version. Useful to support version-dependent syntax.
-  sbtVersion: String!
-
-  ## A sequence of Scala imports that are automatically imported in the sbt build files.
-  autoImports: [String]!
-
-  ## The Scala build target describing the scala
-  ## version and scala jars used by this sbt version.
-  scalaBuildTarget: sbt.internal.bsp.ScalaBuildTarget!
-
-  ## An optional parent if the target has an sbt meta project.
-  parent: sbt.internal.bsp.BuildTargetIdentifier
-
-  ## The inverse of parent, list of targets that have this build target
-  ## defined as their parent. It can contain normal project targets or
-  ## sbt build targets if this target represents an sbt meta-meta build.
-  children: [sbt.internal.bsp.BuildTargetIdentifier]!
-}
-
 ## Scalac options
 ## The build target scalac options request is sent from the client to the server
 ## to query for the list of compiler options necessary to compile in a given list of targets.
@@ -676,6 +651,61 @@ type ScalacOptionsItem {
 
   ## The output directory for classfiles produced by this target
   classDirectory: java.net.URI
+}
+
+# Java Extension
+
+## Javac options
+## The build target javac options request is sent from the client to the server
+## to query for the list of compiler options necessary to compile in a given list of targets.
+type JavacOptionsParams {
+  targets: [sbt.internal.bsp.BuildTargetIdentifier]
+}
+
+type JavacOptionsResult {
+  items: [sbt.internal.bsp.JavacOptionsItem]
+}
+
+type JavacOptionsItem {
+  target: sbt.internal.bsp.BuildTargetIdentifier!
+
+  ## Additional arguments to the compiler.
+  ## For example, -deprecation.
+  options: [String]
+
+  ## The dependency classpath for this target, must be
+  ## identical to what is passed as arguments to
+  ## the -classpath flag in the command line interface
+  ## of scalac.
+  classpath: [java.net.URI]
+
+  ## The output directory for classfiles produced by this target
+  classDirectory: java.net.URI
+}
+
+# sbt Extension
+
+## Contains sbt-specific metadata for providing editor support for sbt build files.
+## This metadata is embedded in the data: Option[Json] field of the BuildTarget definition
+## when the dataKind field contains "sbt".
+type SbtBuildTarget {
+  ## The sbt version. Useful to support version-dependent syntax.
+  sbtVersion: String!
+
+  ## A sequence of Scala imports that are automatically imported in the sbt build files.
+  autoImports: [String]!
+
+  ## The Scala build target describing the scala
+  ## version and scala jars used by this sbt version.
+  scalaBuildTarget: sbt.internal.bsp.ScalaBuildTarget!
+
+  ## An optional parent if the target has an sbt meta project.
+  parent: sbt.internal.bsp.BuildTargetIdentifier
+
+  ## The inverse of parent, list of targets that have this build target
+  ## defined as their parent. It can contain normal project targets or
+  ## sbt build targets if this target represents an sbt meta-meta build.
+  children: [sbt.internal.bsp.BuildTargetIdentifier]!
 }
 
 ## https://build-server-protocol.github.io/docs/server-discovery.html

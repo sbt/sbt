@@ -32,8 +32,7 @@ object BuildServerTest extends AbstractServerTest {
   private def nextId(): Int = idGen.getAndIncrement()
 
   test("build/initialize") { _ =>
-    val id = nextId()
-    initializeRequest(id)
+    val id = initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"${id}"""") &&
       (s contains """"resourcesProvider":true""") &&
@@ -42,10 +41,7 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("workspace/buildTargets") { _ =>
-    svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "${nextId()}", "method": "workspace/buildTargets", "params": {} }"""
-    )
-    assert(processing("workspace/buildTargets"))
+    sendRequest("workspace/buildTargets")
     val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
     val utilTarget = result.targets.find(_.displayName.contains("util")).get
     assert(utilTarget.id.uri.toString.endsWith("#util/Compile"))
@@ -58,16 +54,14 @@ object BuildServerTest extends AbstractServerTest {
   test("buildTarget/sources") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
-    svr.sendJsonRpc(buildTargetSources(Seq(buildTarget, badBuildTarget)))
-    assert(processing("buildTarget/sources"))
+    buildTargetSources(Seq(buildTarget, badBuildTarget))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources.map(_.uri)
     assert(sources.contains(new File(svr.baseDirectory, "util/src/main/scala").toURI))
   }
   test("buildTarget/sources: base sources") { _ =>
     val buildTarget = buildTargetUri("buildserver", "Compile")
-    svr.sendJsonRpc(buildTargetSources(Seq(buildTarget)))
-    assert(processing("buildTarget/sources"))
+    buildTargetSources(Seq(buildTarget))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources
     val expectedSource = SourceItem(
@@ -80,8 +74,7 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/sources: sbt") { _ =>
     val x = new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-build")
-    svr.sendJsonRpc(buildTargetSources(Seq(x)))
-    assert(processing("buildTarget/sources"))
+    buildTargetSources(Seq(x))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources.map(_.uri).sorted
     val expectedSources = Vector(
@@ -99,17 +92,13 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/compile") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
-
-    compile(buildTarget, id = nextId())
-
-    assert(processing("buildTarget/compile"))
+    compile(buildTarget)
     val res = svr.waitFor[BspCompileResult](10.seconds)
     assert(res.statusCode == StatusCode.Success)
   }
 
   test("buildTarget/compile - reports compilation progress") { _ =>
     val buildTarget = buildTargetUri("runAndTest", "Compile")
-
     compile(buildTarget)
 
     // This doesn't always come back in 10s on CI.
@@ -271,18 +260,19 @@ object BuildServerTest extends AbstractServerTest {
     )
   }
 
-  test("buildTarget/scalacOptions") { _ =>
+  test("buildTarget/scalacOptions, buildTarget/javacOptions") { _ =>
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
-    val id = nextId()
-    svr.sendJsonRpc(
-      s"""{ "jsonrpc": "2.0", "id": "$id", "method": "buildTarget/scalacOptions", "params": {
-        |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
-        |} }""".stripMargin
-    )
-    assert(processing("buildTarget/scalacOptions"))
+    val id1 = scalacOptions(Seq(buildTarget, badBuildTarget))
+
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains s""""id":"$id"""") &&
+      (s contains s""""id":"$id1"""") &&
+      (s contains "scala-library-2.13.11.jar")
+    })
+
+    val id2 = javacOptions(Seq(buildTarget, badBuildTarget))
+    assert(svr.waitForString(10.seconds) { s =>
+      (s contains s""""id":"$id2"""") &&
       (s contains "scala-library-2.13.11.jar")
     })
   }
@@ -306,7 +296,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/cleanCache"))
+    assertProcessing("buildTarget/cleanCache")
     val res = svr.waitFor[CleanCacheResult](10.seconds)
     assert(res.cleaned)
     assert(targetDir.list().isEmpty)
@@ -316,7 +306,7 @@ object BuildServerTest extends AbstractServerTest {
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "${nextId()}", "method": "workspace/buildTargets", "params": {} }"""
     )
-    assert(processing("workspace/buildTargets"))
+    assertProcessing("workspace/buildTargets")
     val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
     val allTargets = result.targets.map(_.id.uri)
 
@@ -327,7 +317,7 @@ object BuildServerTest extends AbstractServerTest {
          |  ]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/cleanCache"))
+    assertProcessing("buildTarget/cleanCache")
     val res = svr.waitFor[CleanCacheResult](10.seconds)
     assert(res.cleaned)
   }
@@ -337,7 +327,7 @@ object BuildServerTest extends AbstractServerTest {
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "$id", "method": "workspace/reload"}"""
     )
-    assert(processing("workspace/reload"))
+    assertProcessing("workspace/reload")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") &&
       (s contains """"result":null""")
@@ -355,9 +345,8 @@ object BuildServerTest extends AbstractServerTest {
         |)
         |""".stripMargin
     )
-    val id = nextId()
+    val id = reloadWorkspace()
     // reload
-    reloadWorkspace(id)
     assert(
       svr.waitForString(10.seconds) { s =>
         s.contains(s""""buildTarget":{"uri":"$metaBuildTarget"}""") &&
@@ -405,7 +394,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/scalaMainClasses"))
+    assertProcessing("buildTarget/scalaMainClasses")
     assert(svr.waitForString(30.seconds) { s =>
       (s contains s""""id":"$id"""") &&
       (s contains """"class":"main.Main"""")
@@ -422,7 +411,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "data": { "class": "main.Main" }
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/run"))
+    assertProcessing("buildTarget/run")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains "build/logMessage") &&
       (s contains """"message":"Hello World!"""")
@@ -443,7 +432,7 @@ object BuildServerTest extends AbstractServerTest {
           |  "params": { "targets": [{ "uri": "$buildTarget" }] }
           |}""".stripMargin
     )
-    assert(processing("buildTarget/jvmRunEnvironment"))
+    assertProcessing("buildTarget/jvmRunEnvironment")
     assert {
       svr.waitForString(10.seconds) { s =>
         (s contains s""""id":"$id"""") &&
@@ -465,7 +454,7 @@ object BuildServerTest extends AbstractServerTest {
           |  "params": { "targets": [{ "uri": "$buildTarget" }] }
           |}""".stripMargin
     )
-    assert(processing("buildTarget/jvmTestEnvironment"))
+    assertProcessing("buildTarget/jvmTestEnvironment")
     assert {
       svr.waitForString(10.seconds) { s =>
         (s contains s""""id":"$id"""") &&
@@ -487,7 +476,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/scalaTestClasses"))
+    assertProcessing("buildTarget/scalaTestClasses")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") &&
       (s contains """"tests.FailingTest"""") &&
@@ -504,7 +493,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/test"))
+    assertProcessing("buildTarget/test")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") &&
       (s contains """"statusCode":2""")
@@ -528,7 +517,7 @@ object BuildServerTest extends AbstractServerTest {
          |  }
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/test"))
+    assertProcessing("buildTarget/test")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") &&
       (s contains """"statusCode":1""")
@@ -557,8 +546,7 @@ object BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/compile: respond error") { _ =>
     val buildTarget = buildTargetUri("respondError", "Compile")
-    val id = nextId()
-    compile(buildTarget, id)
+    val id = compile(buildTarget)
     assert(svr.waitForString(10.seconds) { s =>
       s.contains(s""""id":"$id"""") &&
       s.contains(""""error"""") &&
@@ -576,7 +564,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/resources"))
+    assertProcessing("buildTarget/resources")
     assert(svr.waitForString(10.seconds) { s =>
       (s contains s""""id":"$id"""") && (s contains "util/src/main/resources/")
     })
@@ -590,7 +578,7 @@ object BuildServerTest extends AbstractServerTest {
          |  "targets": [{ "uri": "$buildTarget" }, { "uri": "$badBuildTarget" }]
          |} }""".stripMargin
     )
-    assert(processing("buildTarget/outputPaths"))
+    assertProcessing("buildTarget/outputPaths")
     val actualResult = svr.waitFor[OutputPathsResult](10.seconds)
     val expectedResult = OutputPathsResult(
       items = Vector(
@@ -608,7 +596,7 @@ object BuildServerTest extends AbstractServerTest {
     assert(actualResult == expectedResult)
   }
 
-  private def initializeRequest(id: Int): Unit = {
+  private def initializeRequest(): Int = {
     val params = InitializeBuildParams(
       "test client",
       "1.0.0",
@@ -617,35 +605,55 @@ object BuildServerTest extends AbstractServerTest {
       BuildClientCapabilities(Vector("scala")),
       None
     )
-    svr.sendJsonRpc(request(id, "build/initialize", params))
+    sendRequest("build/initialize", params)
   }
 
-  private def processing(method: String, debug: Boolean = false): Boolean = {
-    svr.waitForString(10.seconds) { msg =>
+  private def assertProcessing(method: String, debug: Boolean = false): Unit = {
+    assert(svr.waitForString(10.seconds) { msg =>
       if (debug) println(msg)
-      msg.contains("build/logMessage") &&
-      msg.contains(s""""message":"Processing $method"""")
-    }
+      msg.contains("build/logMessage") && msg.contains(s""""message":"Processing $method"""")
+    })
   }
 
-  private def reloadWorkspace(id: Int = nextId()): Unit =
-    svr.sendJsonRpc(s"""{ "jsonrpc": "2.0", "id": "$id", "method": "workspace/reload"}""")
+  private def reloadWorkspace(): Int =
+    sendRequest("workspace/reload")
 
-  private def compile(buildTarget: URI, id: Int = nextId()): Unit = {
+  private def compile(buildTarget: URI): Int = {
     val params =
       CompileParams(targets = Vector(BuildTargetIdentifier(buildTarget)), None, Vector.empty)
-    svr.sendJsonRpc(request(id, "buildTarget/compile", params))
+    sendRequest("buildTarget/compile", params)
   }
 
-  private def buildTargetSources(buildTargets: Seq[URI], id: Int = nextId()): String = {
+  private def scalacOptions(buildTargets: Seq[URI]): Int = {
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
-    request(id, "buildTarget/sources", SourcesParams(targets))
+    sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
   }
 
-  private def request[T: JsonWriter](id: Int, method: String, params: T): String = {
-    val request = JsonRpcRequestMessage("2.0", id.toString, method, Converter.toJson(params).get)
-    val json = Converter.toJson(request).get
-    CompactPrinter(json)
+  private def javacOptions(buildTargets: Seq[URI]): Int = {
+    val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
+    sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
+  }
+
+  private def buildTargetSources(buildTargets: Seq[URI]): Int = {
+    val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
+    sendRequest("buildTarget/sources", SourcesParams(targets))
+  }
+
+  private def sendRequest(method: String): Int = {
+    val id = nextId()
+    val msg = JsonRpcRequestMessage("2.0", id.toString, method, None)
+    val json = Converter.toJson(msg).get
+    svr.sendJsonRpc(CompactPrinter(json))
+    id
+  }
+
+  private def sendRequest[T: JsonWriter](method: String, params: T): Int = {
+    val id = nextId()
+    val msg = JsonRpcRequestMessage("2.0", id.toString, method, Converter.toJson(params).get)
+    val json = Converter.toJson(msg).get
+    svr.sendJsonRpc(CompactPrinter(json))
+    assertProcessing(method)
+    id
   }
 
   private def buildTargetUri(project: String, config: String): URI =

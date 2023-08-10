@@ -1176,21 +1176,25 @@ private[sbt] object Load {
         val prod = (Configurations.Runtime / exportedProducts).value
         val cp = (Configurations.Runtime / fullClasspath).value
         val opts = (Configurations.Compile / scalacOptions).value
+        val javaOpts = (Configurations.Compile / javacOptions).value
         val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
         val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
         val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
         val managedSrcs = (Configurations.Compile / managedSources).value
         val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
+        val clsDir = (Configurations.Compile / classDirectory).value
         PluginData(
           removeEntries(cp, prod),
           prod,
           Some(fullResolvers.value.toVector),
           Some(update.value),
           opts,
+          javaOpts,
           unmanagedSrcDirs,
           unmanagedSrcs,
           managedSrcDirs,
           managedSrcs,
+          Some(clsDir),
           Some(buildTarget)
         )
       },
@@ -1244,11 +1248,7 @@ private[sbt] object Load {
   }
 
   def noPlugins(dir: File, config: LoadBuildConfiguration): LoadedPlugins =
-    loadPluginDefinition(
-      dir,
-      config,
-      PluginData(config.globalPluginClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
-    )
+    loadPluginDefinition(dir, config, PluginData(config.globalPluginClasspath))
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
     loadPluginDefinition(dir, config, buildPluginDefinition(dir, s, config))
@@ -1444,6 +1444,8 @@ final case class LoadBuildConfiguration(
           Nil,
           Nil,
           Nil,
+          Nil,
+          None,
           None
         )
       case None => PluginData(globalPluginClasspath)
