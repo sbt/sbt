@@ -47,16 +47,16 @@ object SettingMacro:
 
   def settingMacroImpl[A1: Type](in: Expr[A1])(using qctx: Quotes): Expr[Initialize[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
-    convert1.contMapN[A1, F, Id](in, convert1.appExpr)
+    convert1.contMapN[A1, F, Id](in, convert1.appExpr, None)
 
   def settingDynImpl[A1: Type](in: Expr[Initialize[A1]])(using qctx: Quotes): Expr[Initialize[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
-    convert1.contFlatMap[A1, F, Id](in, convert1.appExpr)
+    convert1.contFlatMap[A1, F, Id](in, convert1.appExpr, None)
 
   def inputMacroImpl[A1: Type](in: Expr[State => Parser[A1]])(using
       qctx: Quotes
   ): Expr[ParserGen[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
-    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr)
+    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr, None)
     '{ ParserGen[A1]($init1) }
 end SettingMacro

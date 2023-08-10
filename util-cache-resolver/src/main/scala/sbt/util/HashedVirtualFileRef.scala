@@ -17,5 +17,12 @@ class HashedVirtualFileRef(_id: String, hash: Long) extends VirtualFileRef:
       case _                       => false
     }
   override def hashCode(): Int = (_id, hash).##
-  override def toString(): String = s"HashedVirtualFileRef(${_id}, $hash)"
+  override def toString(): String = s"$hash>${_id}"
+end HashedVirtualFileRef
+
+object HashedVirtualFileRef:
+  def of(str: String): HashedVirtualFileRef =
+    val xs = str.split(">")
+    if xs.size != 2 then sys.error(s"invalid HashedVirtualFileRef $str")
+    else HashedVirtualFileRef(xs(1), xs(0).toLong)
 end HashedVirtualFileRef

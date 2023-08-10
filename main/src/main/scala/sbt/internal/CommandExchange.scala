@@ -30,7 +30,7 @@ import sbt.io.{ Hash, IO }
 import sbt.nio.Watch.NullLogger
 import sbt.protocol.Serialization.attach
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
-import sbt.util.Logger
+import sbt.util.{ InMemoryActionCacheStore, Logger }
 import sjsonnew.JsonFormat
 
 import scala.annotation.tailrec
@@ -196,6 +196,9 @@ private[sbt] final class CommandExchange {
     lazy val useJni = s.get(serverUseJni).getOrElse(false)
     lazy val enableBsp = s.get(bspEnabled).getOrElse(true)
     lazy val portfile = s.baseDir / "project" / "target" / "active.json"
+
+    // TODO: initialize somewhere else?
+    Def._cacheStore = InMemoryActionCacheStore()
 
     def onIncomingSocket(socket: Socket, instance: ServerInstance): Unit = {
       val name = newNetworkName

@@ -28,6 +28,7 @@ import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
+import sbt.internal.util.StringAttributeKeys.StringAttributeKey
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._
@@ -84,6 +85,7 @@ object Keys {
   val appConfiguration = settingKey[xsbti.AppConfiguration]("Provides access to the launched sbt configuration, including the ScalaProvider, Launcher, and GlobalLock.").withRank(DSetting)
   val thisProject = settingKey[ResolvedProject]("Provides the current project for the referencing scope.").withRank(CSetting)
   val thisProjectRef = settingKey[ProjectRef]("Provides a fully-resolved reference to the current project for the referencing scope.").withRank(CSetting)
+  val configurationStr = StringAttributeKey("configuration")
   val configuration = settingKey[Configuration]("Provides the current configuration of the referencing scope.").withRank(CSetting)
   val commands = settingKey[Seq[Command]]("Defines commands to be registered when this project or build is the current selected one.").withRank(CSetting)
   val initialize = settingKey[Unit]("A convenience setting for performing side-effects during initialization.").withRank(BSetting)
@@ -109,7 +111,10 @@ object Keys {
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
 
-  val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
+  // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
+  val analysis = StringAttributeKey("analysis")
+
+
   val suppressSbtShellNotification = settingKey[Boolean]("""True to suppress the "Executing in batch mode.." message.""").withRank(CSetting)
   val pollInterval = settingKey[FiniteDuration]("Interval between checks for modified sources by the continuous execution command.").withRank(BMinusSetting)
   val watchAntiEntropy = settingKey[FiniteDuration]("Duration for which the watch EventMonitor will ignore events for a file after that file has triggered a build.").withRank(BMinusSetting)
@@ -269,6 +274,7 @@ object Keys {
   val packageTimestamp = settingKey[Option[Long]]("Overwrites timestamps in JAR file to make the build reproducible; None keeps the existing timestamps (useful for web resources)").withRank(CSetting)
   val packageConfiguration = taskKey[Package.Configuration]("Collects all inputs needed for packaging.").withRank(DTask)
   val artifactPath = settingKey[File]("The location of a generated artifact.").withRank(BPlusSetting)
+  val artifactStr = StringAttributeKey("artifact")
   val artifact = settingKey[Artifact]("Describes an artifact.").withRank(BMinusSetting)
   val artifactClassifier = settingKey[Option[String]]("Sets the classifier used by the default artifact definition.").withRank(BSetting)
   val artifactName = settingKey[(ScalaVersion, ModuleID, Artifact) => String]("Function that produces the artifact name from its definition.").withRank(CSetting)
@@ -344,7 +350,7 @@ object Keys {
   val organizationHomepage = settingKey[Option[URL]]("Organization homepage.").withRank(BMinusSetting)
   val developers = settingKey[List[Developer]]("List of developers implicated in the project").withRank(BMinusSetting)
   val apiURL = settingKey[Option[URL]]("Base URL for API documentation.").withRank(BMinusSetting)
-  val entryApiURL = AttributeKey[URL]("entryApiURL", "Base URL for the API documentation for a classpath entry.")
+  val entryApiURL = StringAttributeKey("entryApiURL") // , "Base URL for the API documentation for a classpath entry.")
   val apiMappings = taskKey[Map[File, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
   val autoAPIMappings = settingKey[Boolean]("If true, automatically manages mappings to the API doc URL.").withRank(BMinusSetting)
   val scmInfo = settingKey[Option[ScmInfo]]("Basic SCM information for the project.").withRank(BMinusSetting)
@@ -511,6 +517,7 @@ object Keys {
   val moduleName = settingKey[String]("The name of the current module, used for dependency management.").withRank(BSetting)
   val version = settingKey[String]("The version/revision of the current module.").withRank(APlusSetting)
   val isSnapshot = settingKey[Boolean]("True if the version of the project is a snapshot version.").withRank(BPlusSetting)
+  val moduleIDStr = StringAttributeKey("moduleID")
   val moduleID = settingKey[ModuleID]("A dependency management descriptor.  This is currently used for associating a ModuleID with a classpath entry.").withRank(BPlusSetting)
   val projectID = settingKey[ModuleID]("The dependency management descriptor for the current module.").withRank(BMinusSetting)
   val overrideBuildResolvers = settingKey[Boolean]("Whether or not all the build resolvers should be overridden with what's defined from the launcher.").withRank(BMinusSetting)

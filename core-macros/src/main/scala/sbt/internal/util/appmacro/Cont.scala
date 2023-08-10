@@ -6,6 +6,8 @@ package appmacro
 import scala.collection.mutable.ListBuffer
 import scala.reflect.TypeTest
 import scala.quoted.*
+import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
+import sbt.util.{ ActionCache, ActionCacheStore }
 import sbt.util.Applicative
 import sbt.util.Monad
 import Types.Id
@@ -24,12 +26,13 @@ trait Cont:
      */
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
-        instanceExpr: Expr[Applicative[F]]
+        applicativeExpr: Expr[Applicative[F]],
+        storeExpr: Option[Expr[ActionCacheStore]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contMapN[A, F, Effect](tree, instanceExpr, conv.idTransform)
+      contMapN[A, F, Effect](tree, applicativeExpr, storeExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -37,13 +40,14 @@ trait Cont:
      */
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        storeExpr: Option[Expr[ActionCacheStore]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Left(tree), instanceExpr, inner)
+      contImpl[A, F, Effect](Left(tree), applicativeExpr, storeExpr, inner)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -51,12 +55,13 @@ trait Cont:
      */
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        storeExpr: Option[Expr[ActionCacheStore]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contFlatMap[A, F, Effect](tree, instanceExpr, conv.idTransform)
+      contFlatMap[A, F, Effect](tree, applicativeExpr, storeExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -64,13 +69,14 @@ trait Cont:
      */
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        storeExpr: Option[Expr[ActionCacheStore]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Right(tree), instanceExpr, inner)
+      contImpl[A, F, Effect](Right(tree), applicativeExpr, storeExpr, inner)
 
     def summonAppExpr[F[_]: Type]: Expr[Applicative[F]] =
       import conv.qctx
@@ -79,6 +85,22 @@ trait Cont:
       Expr
         .summon[Applicative[F]]
         .getOrElse(sys.error(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}"))
+
+    def summonHashWriter[A: Type]: Expr[HashWriter[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[HashWriter[A]]
+        .getOrElse(sys.error(s"HashWriter[A] not found for ${TypeRepr.of[A].typeSymbol}"))
+
+    def summonJsonFormat[A: Type]: Expr[JsonFormat[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[JsonFormat[A]]
+        .getOrElse(sys.error(s"JsonFormat[A] not found for ${TypeRepr.of[A].typeSymbol}"))
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
@@ -119,7 +141,8 @@ trait Cont:
      */
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        storeExprOpt: Option[Expr[ActionCacheStore]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -145,9 +168,23 @@ trait Cont:
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
-          '{
-            $instanceExpr.pure[A1] { () => $body }
-          }
+          storeExprOpt match
+            case Some(storeExpr) =>
+              val codeContentHash = Expr[Long](body.show.##)
+              val aJsonFormat = summonJsonFormat[A1]
+              '{
+                import BasicJsonProtocol.given
+                // given HashWriter[Unit] = $inputHashWriter
+                given JsonFormat[A1] = $aJsonFormat
+                val x = ActionCache.cache((), $codeContentHash)({ _ =>
+                  ($body, Nil)
+                })($storeExpr)
+                $applicativeExpr.pure[A1] { () => x.value }
+              }
+            case None =>
+              '{
+                $applicativeExpr.pure[A1] { () => $body }
+              }
         eitherTree match
           case Left(_) => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
@@ -158,7 +195,7 @@ trait Cont:
       def flatten(m: Expr[F[F[Effect[A]]]]): Expr[F[Effect[A]]] =
         '{
           {
-            val i1 = $instanceExpr.asInstanceOf[Monad[F]]
+            val i1 = $applicativeExpr.asInstanceOf[Monad[F]]
             i1.flatten[Effect[A]]($m.asInstanceOf[F[F[Effect[A]]]])
           }
         }
@@ -185,13 +222,30 @@ trait Cont:
                       convert[x](name, qual) transform { (tree: Term) =>
                         typed[x](Ref(param.symbol))
                     }
-                  transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
+                  val modifiedBody =
+                    transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
+                  storeExprOpt match
+                    case Some(storesExpr) =>
+                      val codeContentHash = Expr[Long](modifiedBody.##)
+                      val paramRef = Ref(param.symbol).asExprOf[a]
+                      val inputHashWriter = summonHashWriter[a]
+                      val aJsonFormat = summonJsonFormat[A1]
+                      '{
+                        given HashWriter[a] = $inputHashWriter
+                        given JsonFormat[A1] = $aJsonFormat
+                        ActionCache
+                          .cache($paramRef, $codeContentHash)({ _ =>
+                            ($modifiedBody, Nil)
+                          })($storesExpr)
+                          .value
+                      }.asTerm.changeOwner(sym)
+                    case None => modifiedBody.asTerm
                 }
               ).asExprOf[a => A1]
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
                 '{
-                  $instanceExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
+                  $applicativeExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
                 }.asTerm
               ).asExprOf[F[A1]]
         eitherTree match
@@ -205,38 +259,56 @@ trait Cont:
           val br = makeTuple(inputs)
           val lambdaTpe =
             MethodType(List("$p0"))(_ => List(br.inputTupleTypeRepr), _ => TypeRepr.of[A1])
-          val lambda = Lambda(
-            owner = Symbol.spliceOwner,
-            tpe = lambdaTpe,
-            rhsFn = (sym, params) => {
-              val p0 = params.head.asInstanceOf[Term]
-              // Called when transforming the tree to add an input.
-              //  For `qual` of type F[A], and a `selection` qual.value,
-              //  the call is addType(Type A, Tree qual)
-              // The result is a Tree representing a reference to
-              //  the bound value of the input.
-              val substitute = [x] =>
-                (name: String, tpe: Type[x], qual: Term, oldTree: Term) =>
-                  given Type[x] = tpe
-                  convert[x](name, qual) transform { (replacement: Term) =>
-                    val idx = inputs.indexWhere(input => input.qual == qual)
-                    Select
-                      .unique(Ref(p0.symbol), "apply")
-                      .appliedToTypes(List(br.inputTupleTypeRepr))
-                      .appliedToArgs(List(Literal(IntConstant(idx))))
+          br.inputTupleTypeRepr.asType match
+            case '[inputTypeTpe] =>
+              val lambda = Lambda(
+                owner = Symbol.spliceOwner,
+                tpe = lambdaTpe,
+                rhsFn = (sym, params) => {
+                  val p0 = params.head.asInstanceOf[Term]
+                  // Called when transforming the tree to add an input.
+                  //  For `qual` of type F[A], and a `selection` qual.value,
+                  //  the call is addType(Type A, Tree qual)
+                  // The result is a Tree representing a reference to
+                  //  the bound value of the input.
+                  val substitute = [x] =>
+                    (name: String, tpe: Type[x], qual: Term, oldTree: Term) =>
+                      given Type[x] = tpe
+                      convert[x](name, qual) transform { (replacement: Term) =>
+                        val idx = inputs.indexWhere(input => input.qual == qual)
+                        Select
+                          .unique(Ref(p0.symbol), "apply")
+                          .appliedToTypes(List(br.inputTupleTypeRepr))
+                          .appliedToArgs(List(Literal(IntConstant(idx))))
+                    }
+                  val modifiedBody =
+                    transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
+                  storeExprOpt match
+                    case Some(storeExpr) =>
+                      val codeContentHash = Expr[Long](modifiedBody.##)
+                      val p0Ref = Ref(p0.symbol).asExprOf[inputTypeTpe]
+                      val inputHashWriter = summonHashWriter[inputTypeTpe]
+                      val aJsonFormat = summonJsonFormat[A1]
+                      '{
+                        given HashWriter[inputTypeTpe] = $inputHashWriter
+                        given JsonFormat[A1] = $aJsonFormat
+                        ActionCache
+                          .cache($p0Ref, $codeContentHash)({ _ =>
+                            ($modifiedBody, Nil)
+                          })($storeExpr)
+                          .value
+                      }.asTerm.changeOwner(sym)
+                    case None =>
+                      modifiedBody.asTerm
                 }
-              transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
-            }
-          )
-          val tupleMapRepr = TypeRepr
-            .of[Tuple.Map]
-            .appliedTo(List(br.inputTupleTypeRepr, TypeRepr.of[F]))
-          tupleMapRepr.asType match
-            case '[tupleMap] =>
-              br.inputTupleTypeRepr.asType match
-                case '[inputTypeTpe] =>
+              )
+              val tupleMapRepr = TypeRepr
+                .of[Tuple.Map]
+                .appliedTo(List(br.inputTupleTypeRepr, TypeRepr.of[F]))
+              tupleMapRepr.asType match
+                case '[tupleMap] =>
                   '{
-                    given Applicative[F] = $instanceExpr
+                    given Applicative[F] = $applicativeExpr
                     AList
                       .tuple[inputTypeTpe & Tuple]
                       .mapN[F, A1](${

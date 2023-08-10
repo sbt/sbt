@@ -18,6 +18,7 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.VirtualFile
@@ -229,8 +230,14 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   import language.experimental.macros
 
+  private[sbt] var _cacheStore: ActionCacheStore = AggregateActionCacheStore.empty
+  def cacheStore: ActionCacheStore = _cacheStore
+
+  inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =
+    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = true) }
+
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskMacroImpl[A1]('a1) }
+    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = false) }
 
   inline def taskDyn[A1](inline a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskDynMacroImpl[A1]('a1) }
@@ -247,7 +254,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 
   inline def taskIf[A1](inline a: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskIfImpl[A1]('a) }
+    ${ TaskMacro.taskIfImpl[A1]('a, cached = true) }
 
   private[sbt] def selectITask[A1, A2](
       fab: Initialize[Task[Either[A1, A2]]],

@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.File
-import java.net.{ MalformedURLException, URL }
+import java.net.{ MalformedURLException, URI, URL }
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.ModuleID
@@ -23,9 +23,10 @@ private[sbt] object APIMappings {
 
   def extractFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
     entry.get(Keys.entryApiURL) match {
-      case Some(u) => Some((entry.data, u))
+      case Some(u) => Some((entry.data, URI(u).toURL))
       case None =>
-        entry.get(Keys.moduleID.key).flatMap { mid =>
+        entry.get(Keys.moduleIDStr).flatMap { str =>
+          val mid = Classpaths.moduleIdJsonKeyFormat.read(str)
           extractFromID(entry.data, mid, log)
         }
     }
@@ -46,6 +47,6 @@ private[sbt] object APIMappings {
 
   def store[T](attr: Attributed[T], entryAPI: Option[URL]): Attributed[T] = entryAPI match {
     case None    => attr
-    case Some(u) => attr.put(Keys.entryApiURL, u)
+    case Some(u) => attr.put(Keys.entryApiURL, u.toString)
   }
 }

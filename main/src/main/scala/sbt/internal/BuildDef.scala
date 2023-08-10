@@ -15,6 +15,7 @@ import Def.Setting
 import sbt.io.Hash
 import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
+import sbt.util.HashedVirtualFileRef
 
 trait BuildDef {
   def projectDefinitions(@deprecated("unused", "") baseDirectory: File): Seq[Project] = projects
@@ -73,6 +74,9 @@ private[sbt] object BuildDef {
   )
 
   def analyzed(in: Seq[Attributed[_]]): Seq[xsbti.compile.CompileAnalysis] =
-    in.flatMap { _.metadata.get(Keys.analysis) }
-
+    in.flatMap: a =>
+      a.metadata
+        .get(Keys.analysis)
+        .map: str =>
+          RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(str))
 }

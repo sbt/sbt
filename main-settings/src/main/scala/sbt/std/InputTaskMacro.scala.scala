@@ -98,7 +98,7 @@ object InputTaskMacro:
 
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
     val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
-    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, inner)
+    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, None, inner)
 
   private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
       f: Expr[A1] => Expr[F1[A1]]
@@ -106,13 +106,12 @@ object InputTaskMacro:
     import qctx.reflect.*
     val convert1 = new ParserConvert(qctx, 1000)
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
-    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, inner)
+    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, None, inner)
 
   private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
     import qctx.reflect.*
     val convert1 = new TaskConvert(qctx, 2000)
-    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr)
-
+    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr, None)
   /*
   private[this] def inputTaskDynMacro0[A1: Type](
       expr: Expr[Def.Initialize[Task[A1]]]
@@ -233,7 +232,11 @@ object InputTaskMacro:
           val p0 = params.head.asInstanceOf[Ident]
           val body2 =
             convert1
-              .contFlatMap[A2, TaskMacro.F, Id](body.asExprOf[TaskMacro.F[A2]], convert1.appExpr)
+              .contFlatMap[A2, TaskMacro.F, Id](
+                body.asExprOf[TaskMacro.F[A2]],
+                convert1.appExpr,
+                None,
+              )
               .asTerm
           object refTransformer extends TreeMap:
             override def transformTerm(tree: Term)(owner: Symbol): Term =

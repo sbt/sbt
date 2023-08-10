@@ -22,7 +22,13 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{ HashUtil, JarUtils }
+import sbt.internal.inc.{
+  CompileOutput,
+  FileAnalysisStore,
+  HashUtil,
+  JarUtils,
+  MappedFileConverter
+}
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
 import sbt.io.IO
@@ -34,14 +40,60 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.Logger
+import sbt.util.{ ActionCacheStore, HashedVirtualFileRef, Logger }
+import sjsonnew.JsonFormat
+import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
 
 import scala.annotation.nowarn
+import scala.collection.mutable
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
   final val cachedTestClassifier = "cached-test"
   final val commitLength = 10
+
+  def cacheStore: ActionCacheStore = Def.cacheStore
+
+  // TODO: cap with caffeine
+  private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
+    mutable.Map.empty
+
+  private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
+    analysisStore.getOrElseUpdate(
+      ref, {
+        val vfs = cacheStore.readBlobs(ref :: Nil)
+        val vf = vfs.head
+        IO.withTemporaryFile(vf.id, ".tmp"): file =>
+          IO.transfer(vf.input, file)
+          FileAnalysisStore.binary(file).get.get.getAnalysis
+      }
+    )
+
+  private[sbt] val tempConverter: MappedFileConverter = MappedFileConverter.empty
+  private[sbt] def postAnalysis(analysis: CompileAnalysis): HashedVirtualFileRef =
+    IO.withTemporaryFile("analysis", ".tmp", true): file =>
+      val output = CompileOutput.empty
+      val option = MiniOptions.of(Array(), Array(), Array())
+      val setup = MiniSetup.of(
+        output,
+        option,
+        "",
+        xsbti.compile.CompileOrder.Mixed,
+        false,
+        Array()
+      )
+      FileAnalysisStore.binary(file).set(AnalysisContents.create(analysis, setup))
+      val vf = tempConverter.toVirtualFile(file.toPath)
+      val refs = cacheStore.writeBlobs(vf :: Nil)
+      analysisStore(refs.head) = analysis
+      refs.head
+
+  private[sbt] def artifactToStr(art: Artifact): String = {
+    import LibraryManagementCodec._
+    import sjsonnew.support.scalajson.unsafe._
+    val format: JsonFormat[Artifact] = summon[JsonFormat[Artifact]]
+    CompactPrinter(Converter.toJsonUnsafe(art)(format))
+  }
 
   def gitCommitId: String =
     scala.sys.process.Process("git rev-parse HEAD").!!.trim.take(commitLength)

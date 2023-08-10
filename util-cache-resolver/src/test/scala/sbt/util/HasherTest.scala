@@ -1,6 +1,7 @@
 package sbt.util
 
-import java.io.{ ByteArrayInputStream, File, InputStream }
+import java.io.File
+import sbt.internal.util.StringVirtualFile1
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.murmurhash.Hasher
 import verify.BasicTestSuite
@@ -41,18 +42,10 @@ object HasherTest extends BasicTestSuite:
 
   test("VirtualFile hash") {
     import PathHashWriters.given
-    val x = StringVirtualFile("a.txt", "")
+    val x = StringVirtualFile1("a.txt", "")
     val actual = Hasher.hashUnsafe(x)
     assert(actual == blankATxtHash)
   }
-
-  case class StringVirtualFile(path: String, content: String)
-      extends BasicVirtualFileRef(path)
-      with VirtualFile:
-    override def contentHash: Long = HashUtil.farmHash(content.getBytes("UTF-8"))
-    override def input: InputStream = new ByteArrayInputStream(content.getBytes("UTF-8"))
-    override def toString: String = s"StringVirtualFile($path, <content>)"
-  end StringVirtualFile
 
   test("tuple") {
     import BasicJsonProtocol.given

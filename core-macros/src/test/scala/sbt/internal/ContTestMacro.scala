@@ -3,6 +3,7 @@ package sbt.internal
 import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.*
 import sbt.util.Applicative
+import sbt.util.{ ActionCacheStore, InMemoryActionCacheStore }
 import scala.quoted.*
 import ConvertTestMacro.InputInitConvert
 
@@ -16,6 +17,12 @@ object ContTestMacro:
     object ContSyntax extends Cont
     import ContSyntax.*
     val convert1: Convert[qctx.type] = new InputInitConvert(qctx)
-    convert1.contMapN[A, List, Id](expr, convert1.summonAppExpr[List], convert1.idTransform)
+    convert1.contMapN[A, List, Id](
+      expr,
+      convert1.summonAppExpr[List],
+      '{ Seq(inMemoryCache: ActionCacheStore) },
+      convert1.idTransform
+    )
 
+  lazy val inMemoryCache = InMemoryActionCacheStore()
 end ContTestMacro

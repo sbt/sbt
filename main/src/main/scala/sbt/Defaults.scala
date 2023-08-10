@@ -142,12 +142,21 @@ object Defaults extends BuildCommon {
 
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
 
-  def extractAnalysis[T](a: Attributed[T]): (T, CompileAnalysis) =
-    (a.data, a.metadata get Keys.analysis getOrElse Analysis.Empty)
+  def extractAnalysis[A1](a: Attributed[A1]): (A1, CompileAnalysis) =
+    (
+      a.data,
+      a.metadata.get(Keys.analysis) match
+        case Some(x) => RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(x))
+        case None    => Analysis.Empty
+    )
 
   def analysisMap[T](cp: Seq[Attributed[T]]): T => Option[CompileAnalysis] = {
-    val m = (for (a <- cp; an <- a.metadata get Keys.analysis) yield (a.data, an)).toMap
-    m.get _
+    val m = (for {
+      a <- cp
+      ref <- a.metadata.get(Keys.analysis)
+      an = RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(ref))
+    } yield (a.data, an)).toMap
+    m.get(_)
   }
 
   private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
@@ -1417,9 +1426,10 @@ object Defaults extends BuildCommon {
     Def.task {
       val cp = (test / fullClasspath).value
       val s = (test / streams).value
-      val ans: Seq[Analysis] = cp.flatMap(_.metadata get Keys.analysis) map { case a0: Analysis =>
-        a0
-      }
+      val ans: Seq[Analysis] = cp
+        .flatMap(_.metadata.get(Keys.analysis))
+        .map: str =>
+          RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(str)).asInstanceOf[Analysis]
       val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
       val stamps = collection.mutable.Map.empty[String, Long]
       def stamp(dep: String): Long = {
@@ -2693,22 +2703,28 @@ object Classpaths {
   import Defaults._
   import Keys._
 
-  def concatDistinct[T](a: Taskable[Seq[T]], b: Taskable[Seq[T]]): Initialize[Task[Seq[T]]] =
+  def concatDistinct[A](
+      a: Taskable[Seq[A]],
+      b: Taskable[Seq[A]]
+  ): Initialize[Task[Seq[A]]] =
     Def.task((a.toTask.value ++ b.toTask.value).distinct)
 
-  def concat[T](a: Taskable[Seq[T]], b: Taskable[Seq[T]]): Initialize[Task[Seq[T]]] =
+  def concat[A](a: Taskable[Seq[A]], b: Taskable[Seq[A]]): Initialize[Task[Seq[A]]] =
     Def.task(a.toTask.value ++ b.toTask.value)
 
   def concatSettings[T](a: Initialize[Seq[T]], b: Initialize[Seq[T]]): Initialize[Seq[T]] =
     Def.setting { a.value ++ b.value }
 
-  def concatDistinct[T]( // forward to widened variant
-      a: ScopedTaskable[Seq[T]],
-      b: ScopedTaskable[Seq[T]]
-  ): Initialize[Task[Seq[T]]] = concatDistinct(a: Taskable[Seq[T]], b)
+  def concatDistinct[A]( // forward to widened variant
+      a: ScopedTaskable[Seq[A]],
+      b: ScopedTaskable[Seq[A]]
+  ): Initialize[Task[Seq[A]]] = concatDistinct(a: Taskable[Seq[A]], b)
 
-  def concat[T](a: ScopedTaskable[Seq[T]], b: ScopedTaskable[Seq[T]]): Initialize[Task[Seq[T]]] =
-    concat(a: Taskable[Seq[T]], b) // forward to widened variant
+  def concat[A](
+      a: ScopedTaskable[Seq[A]],
+      b: ScopedTaskable[Seq[A]]
+  ): Initialize[Task[Seq[A]]] =
+    concat(a: Taskable[Seq[A]], b) // forward to widened variant
 
   def concatSettings[T](a: SettingKey[Seq[T]], b: SettingKey[Seq[T]]): Initialize[Seq[T]] =
     concatSettings(a: Initialize[Seq[T]], b) // forward to widened variant
@@ -2727,7 +2743,10 @@ object Classpaths {
   )
   private[this] def classpaths: Seq[Setting[_]] =
     Seq(
-      externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
+      externalDependencyClasspath := {
+        summon[JsonFormat[File]]
+        concat(unmanagedClasspath, managedClasspath).value
+      },
       dependencyClasspath := concat(internalDependencyClasspath, externalDependencyClasspath).value,
       fullClasspath := concatDistinct(exportedProducts, dependencyClasspath).value,
       internalDependencyClasspath := ClasspathImpl.internalDependencyClasspathTask.value,
@@ -3578,6 +3597,17 @@ object Classpaths {
         scalaCompilerBridgeDependencyResolution := (scalaCompilerBridgeScope / dependencyResolution).value
       )
 
+  val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
+    new sjsonnew.JsonKeyFormat[ModuleID] {
+      import LibraryManagementCodec._
+      import sjsonnew.support.scalajson.unsafe._
+      val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
+      def write(key: ModuleID): String =
+        CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
+      def read(key: String): ModuleID =
+        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(moduleIdFormat)
+    }
+
   def classifiersModuleTask: Initialize[Task[GetClassifiersModule]] =
     Def.task {
       val classifiers = transitiveClassifiers.value
@@ -3586,7 +3616,8 @@ object Classpaths {
       val pluginJars = pluginClasspath.filter(
         _.data.isFile
       ) // exclude directories: an approximation to whether they've been published
-      val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_ get moduleID.key)
+      val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_.get(moduleIDStr).map: str =>
+        moduleIdJsonKeyFormat.read(str))
       GetClassifiersModule(
         projectID.value,
         // TODO: Should it be sbt's scalaModuleInfo?
@@ -3622,17 +3653,6 @@ object Classpaths {
         IvyActions.publish(ivyModule.value, config.value, s.log)
       }
     } tag (Tags.Publish, Tags.Network)
-
-  val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
-    new sjsonnew.JsonKeyFormat[ModuleID] {
-      import LibraryManagementCodec._
-      import sjsonnew.support.scalajson.unsafe._
-      val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
-      def write(key: ModuleID): String =
-        CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
-      def read(key: String): ModuleID =
-        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(moduleIdFormat)
-    }
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
@@ -4188,10 +4208,10 @@ object Classpaths {
       .toSeq
       .map { case (_, module, art, file) =>
         Attributed(file)(
-          AttributeMap.empty
-            .put(artifact.key, art)
-            .put(moduleID.key, module)
-            .put(configuration.key, config)
+          StringAttributeMap.empty
+            .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
+            .put(Keys.moduleIDStr, moduleIdJsonKeyFormat.write(module))
+            .put(Keys.configurationStr, config.name)
         )
       }
       .distinct
@@ -4727,7 +4747,7 @@ trait BuildCommon {
   // these are for use for constructing Tasks
   def loadPrevious[T](task: TaskKey[T])(implicit f: JsonFormat[T]): Initialize[Task[Option[T]]] =
     Def.task { loadFromContext(task, resolvedScoped.value, state.value)(f) }
-  def getPrevious[T](task: TaskKey[T]): Initialize[Task[Option[T]]] =
+  def getPrevious[A](task: TaskKey[A]): Initialize[Task[Option[A]]] =
     Def.task { getFromContext(task, resolvedScoped.value, state.value) }
 
   private[sbt] def derive[T](s: Setting[T]): Setting[T] =

@@ -40,8 +40,8 @@ private[sbt] object ClasspathImpl {
         val xs = products map { _ -> analysis }
         for { (f, analysis) <- xs } yield APIMappings
           .store(analyzed(f, analysis), apiURL.value)
-          .put(moduleID.key, module)
-          .put(configuration.key, config)
+          .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
+          .put(Keys.configurationStr, config.name)
       } else {
         val c = fileConverter.value
         val ps = exportedProducts.value
@@ -57,9 +57,9 @@ private[sbt] object ClasspathImpl {
       val config = configuration.value
       for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings
         .store(analyzed(f, analysis), apiURL.value)
-        .put(artifact.key, art)
-        .put(moduleID.key, module)
-        .put(configuration.key, config)
+        .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
+        .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
+        .put(Keys.configurationStr, config.name)
     }
 
   def trackedExportedJarProducts(track: TrackLevel): Initialize[Task[Classpath]] =
@@ -70,9 +70,9 @@ private[sbt] object ClasspathImpl {
       val config = configuration.value
       for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings
         .store(analyzed(f, analysis), apiURL.value)
-        .put(artifact.key, art)
-        .put(moduleID.key, module)
-        .put(configuration.key, config)
+        .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
+        .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
+        .put(Keys.configurationStr, config.name)
     }
 
   private[this] def trackedExportedProductsImplTask(
@@ -328,7 +328,10 @@ private[sbt] object ClasspathImpl {
   }
 
   def analyzed[A](data: A, analysis: CompileAnalysis) =
-    Attributed.blank(data).put(Keys.analysis, analysis)
+    val ref = RemoteCache.postAnalysis(analysis)
+    Attributed
+      .blank(data)
+      .put(Keys.analysis, ref.toString)
 
   def interSort(
       projectRef: ProjectRef,
