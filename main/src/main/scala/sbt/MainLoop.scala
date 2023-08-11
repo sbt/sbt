@@ -229,20 +229,12 @@ object MainLoop {
               } else state
           }
         }
-        val progressState = getOrSet(
-          state,
-          sbt.Keys.currentTaskProgress,
-          extracted =>
-            new Keys.TaskProgress(
-              EvaluateTask.executeProgress(extracted, extracted.structure, state)
-            )
-        )
 
         val cmdProgressState =
           getOrSet(
-            progressState,
+            state,
             sbt.Keys.currentCommandProgress,
-            _.getOpt(Keys.commandProgress).getOrElse(Seq())
+            extracted => EvaluateTask.executeProgress(extracted, extracted.structure, state)
           )
 
         exchange.setState(cmdProgressState)
@@ -260,8 +252,8 @@ object MainLoop {
         }
 
         val currentCmdProgress =
-          cmdProgressState.get(sbt.Keys.currentCommandProgress).getOrElse(Nil)
-        currentCmdProgress.foreach(_.beforeCommand(exec.commandLine, progressState))
+          cmdProgressState.get(sbt.Keys.currentCommandProgress)
+        currentCmdProgress.foreach(_.beforeCommand(exec.commandLine, cmdProgressState))
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
          * it avoids an expensive parsing step for internal commands that are easy to parse.
@@ -310,9 +302,8 @@ object MainLoop {
           exchange.respondStatus(doneEvent)
         }
         exchange.setExec(None)
-        newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
+        newState.get(sbt.Keys.currentCommandProgress).foreach(_.stop())
         newState
-          .remove(sbt.Keys.currentTaskProgress)
           .remove(Keys.terminalKey)
           .remove(Keys.currentCommandProgress)
       }
