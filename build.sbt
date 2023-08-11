@@ -206,7 +206,6 @@ lazy val sbtRoot: Project = (project in file("."))
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Util.publishPomSettings,
     otherRootSettings,
-    Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
     publish / skip := true,
