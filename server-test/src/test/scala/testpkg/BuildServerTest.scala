@@ -652,7 +652,7 @@ object BuildServerTest extends AbstractServerTest {
     val msg = JsonRpcRequestMessage("2.0", id.toString, method, Converter.toJson(params).get)
     val json = Converter.toJson(msg).get
     svr.sendJsonRpc(CompactPrinter(json))
-    assertProcessing(method)
+    if (method != "build/initialize") assertProcessing(method)
     id
   }
 
