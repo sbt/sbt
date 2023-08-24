@@ -14,7 +14,7 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.9.1")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.9.1")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.9.2")
   val zincVersion = nightlyVersion.getOrElse("1.9.3")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -77,7 +77,7 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.0"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.1"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
