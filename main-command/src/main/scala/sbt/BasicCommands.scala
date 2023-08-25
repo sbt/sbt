@@ -130,7 +130,7 @@ object BasicCommands {
 
     val (extraArgs, remainingCommands) = s.remainingCommands match {
       case xs :+ exec if exec.commandLine.endsWith(Shell) => (xs, exec :: Nil)
-      case xs                                        => (xs, nil[Exec])
+      case xs                                             => (xs, nil[Exec])
     }
 
     val topic = (arg.toList ++ extraArgs.map(_.commandLine)) match {
