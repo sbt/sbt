@@ -129,8 +129,8 @@ object BasicCommands {
   def runHelp(s: State, h: Help)(arg: Option[String]): State = {
 
     val (extraArgs, remainingCommands) = s.remainingCommands match {
-      case xs :+ exec if exec.commandLine == "shell" => (xs, exec :: Nil)
-      case xs                                        => (xs, nil[Exec])
+      case xs :+ exec if exec.commandLine.endsWith(Shell) => (xs, exec :: Nil)
+      case xs                                             => (xs, nil[Exec])
     }
 
     val topic = (arg.toList ++ extraArgs.map(_.commandLine)) match {
