@@ -129,6 +129,10 @@ object BasicCommands {
   def runHelp(s: State, h: Help)(arg: Option[String]): State = {
 
     val (extraArgs, remainingCommands) = s.remainingCommands match {
+      /*
+      exec.commandLine.endsWith(Shell) is done to allow shells other than original shell works correctly with help command.
+      It's assumed here that shell name must end with "shell" suffix which is true for e.g. shell, oldshell or idea-shell (https://github.com/JetBrains/sbt-idea-shell/blob/072b10e405860feb834402563773f12976be34b9/src/main/scala/org/jetbrains/sbt/constants.scala#L7)
+       */
       case xs :+ exec if exec.commandLine.endsWith(Shell) => (xs, exec :: Nil)
       case xs                                             => (xs, nil[Exec])
     }
