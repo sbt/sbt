@@ -23,6 +23,7 @@ object FakeResolverSpecification extends BaseIvySpecification {
     val allFiles = getAllFiles(report)
 
     assert(report.allModules.length == 1)
+    assert(report.allModuleReports.length == 1)
     assert(report.configurations.length == 3)
     assert(allFiles.toSet.size == 1)
     assert(allFiles(1).getName == "artifact1-0.0.1-SNAPSHOT.jar")
@@ -34,6 +35,7 @@ object FakeResolverSpecification extends BaseIvySpecification {
     val allFiles = getAllFiles(report).toSet
 
     assert(report.allModules.length == 1)
+    assert(report.allModuleReports.length == 1)
     assert(report.configurations.length == 3)
     assert(allFiles.toSet.size == 2)
     assert(allFiles.map(_.getName) == Set("artifact1-1.0.0.jar", "artifact2-1.0.0.txt"))
