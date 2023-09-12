@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.11"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
 
