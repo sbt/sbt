@@ -5,7 +5,7 @@ import Parsers._
 lazy val root = (project in file("."))
   .settings(
     crossPaths := false,
-    crossScalaVersions := Seq("2.12.18", "2.13.11"),
+    crossScalaVersions := Seq("2.12.18", "2.13.12"),
     scalaVersion := "2.12.18",
     Compile / doc / scalacOptions += "-Xfatal-warnings",
     commands += Command.command("excludeB") { s =>

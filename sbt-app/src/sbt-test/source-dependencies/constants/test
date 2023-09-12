@@ -8,7 +8,7 @@ $ copy-file changes/A2.scala A.scala
 > run 2
 
 > clean
-> ++2.13.11!
+> ++2.13.12!
 
 $ copy-file changes/A1.scala A.scala
 > run 1

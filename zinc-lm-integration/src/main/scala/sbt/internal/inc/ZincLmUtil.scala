@@ -15,8 +15,10 @@ import sbt.librarymanagement.{
   DependencyResolution,
   ModuleID,
   ScalaArtifacts,
+  SemanticSelector,
   UnresolvedWarningConfiguration,
-  UpdateConfiguration
+  UpdateConfiguration,
+  VersionNumber,
 }
 import sbt.librarymanagement.syntax._
 import xsbti.ArtifactInfo.SbtOrganization
@@ -24,6 +26,8 @@ import xsbti._
 import xsbti.compile.{ ClasspathOptions, ScalaInstance => XScalaInstance }
 
 object ZincLmUtil {
+
+  final val scala2SbtBridgeStart = "2.13.12"
 
   /**
    * Instantiate a Scala compiler that is instrumented to analyze dependencies.
@@ -85,6 +89,11 @@ object ZincLmUtil {
   def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
     if (ScalaArtifacts.isScala3(scalaVersion)) {
       ModuleID(ScalaArtifacts.Organization, "scala3-sbt-bridge", scalaVersion)
+        .withConfigurations(Some(Compile.name))
+    } else if (VersionNumber(scalaVersion).matchesSemVer(
+                 SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
+               )) {
+      ModuleID(ScalaArtifacts.Organization, "scala2-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
     } else {
       val compilerBridgeId = scalaVersion match {
