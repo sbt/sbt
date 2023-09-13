@@ -35,6 +35,7 @@ object FrozenModeSpec extends BaseIvySpecification {
     val onlineResolution = update(toResolve, onlineConf)
     assert(onlineResolution.isRight)
     val numberResolved = onlineResolution.right.get.allModules.size
+    val numberReportsResolved = onlineResolution.right.get.allModuleReports.size
 
     cleanIvyCache()
     val singleFrozenResolution = update(toResolve, frozenConf)
@@ -42,6 +43,10 @@ object FrozenModeSpec extends BaseIvySpecification {
     assert(
       singleFrozenResolution.right.get.allModules.size == 1,
       s"The number of explicit modules in frozen mode should 1"
+    )
+    assert(
+      singleFrozenResolution.right.get.allModuleReports.size == 1,
+      s"The number of explicit module reports in frozen mode should 1"
     )
 
     cleanIvyCache()
@@ -52,6 +57,10 @@ object FrozenModeSpec extends BaseIvySpecification {
     assert(
       frozenResolution.right.get.allModules.size == numberResolved,
       s"The number of explicit modules in frozen mode should be equal than $numberResolved"
+    )
+    assert(
+      frozenResolution.right.get.allModuleReports.size == numberReportsResolved,
+      s"The number of explicit module reports in frozen mode should be equal than $numberReportsResolved"
     )
   }
 }
