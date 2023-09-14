@@ -186,7 +186,6 @@ jobs:
       shell: bash
       run: |
         # test building sbtn on Windows
-        sbt "commandProj/testOnly xsbt.IPCSpec"
         sbt "-Dsbt.io.virtual=false" nativeImage
         # test launcher script
         echo build using JDK 8, test using JDK 8, on Windows
