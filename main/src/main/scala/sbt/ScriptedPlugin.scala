@@ -36,7 +36,7 @@ object ScriptedPlugin extends AutoPlugin {
     val ScriptedConf = Configurations.config("scripted-sbt") hide
     val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
 
-    val scriptedSbt = settingKey[String]("")
+    val scriptedSbt = settingKey[String]("sbt version that is used when running scripted tests")
     val sbtLauncher = taskKey[File]("")
     val sbtTestDirectory = settingKey[File]("")
     val scriptedBufferLog = settingKey[Boolean]("")
