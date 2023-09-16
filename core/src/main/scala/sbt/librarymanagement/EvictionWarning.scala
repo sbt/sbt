@@ -191,6 +191,11 @@ final class EvictionPair private[sbt] (
     val includesDirect: Boolean,
     val showCallers: Boolean
 ) {
+  val evictedRevs: String = {
+    val revs = evicteds map { _.module.revision }
+    if (revs.size <= 1) revs.mkString else revs.distinct.mkString("{", ", ", "}")
+  }
+
   override def toString: String =
     EvictionPair.evictionPairLines.showLines(this).mkString
   override def equals(o: Any): Boolean = o match {
@@ -209,8 +214,6 @@ final class EvictionPair private[sbt] (
 
 object EvictionPair {
   implicit val evictionPairLines: ShowLines[EvictionPair] = ShowLines { (a: EvictionPair) =>
-    val revs = a.evicteds map { _.module.revision }
-    val revsStr = if (revs.size <= 1) revs.mkString else "{" + revs.mkString(", ") + "}"
     val seen: mutable.Set[ModuleID] = mutable.Set()
     val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
       val rev = r.module.revision
@@ -223,7 +226,7 @@ object EvictionPair {
       }
     }
     val winnerRev = a.winner match {
-      case Some(r) => s":${r.module.revision} is selected over ${revsStr}"
+      case Some(r) => s":${r.module.revision} is selected over ${a.evictedRevs}"
       case _       => " is evicted for all versions"
     }
     val title = s"\t* ${a.organization}:${a.name}$winnerRev"
