@@ -201,24 +201,12 @@ object BuildServerProtocol {
     }.evaluated,
     bspBuildTargetCleanCache / aggregate := false,
     bspBuildTargetScalacOptions := bspInputTask { (state, _, workspace, filter) =>
-      val builds = workspace.builds
       Def.task {
         val items = bspBuildTargetScalacOptionsItem.result.all(filter).value
         val appProvider = appConfiguration.value.provider()
         val sbtJars = appProvider.mainClasspath()
-        val buildItems = builds.map {
-          build =>
-            val plugins: LoadedPlugins = build._2.unit.plugins
-            val scalacOptions = plugins.pluginData.scalacOptions
-            val pluginClassPath = plugins.classpath
-            val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-            val item = ScalacOptionsItem(
-              build._1,
-              scalacOptions.toVector,
-              classpath,
-              new File(build._2.localBase, "project/target").toURI
-            )
-            Value(item)
+        val buildItems = workspace.builds.map {
+          case (targetId, build) => Value(scalacOptionsBuildItem(sbtJars, targetId, build))
         }
         val successfulItems = anyOrThrow(items ++ buildItems)
         val result = ScalacOptionsResult(successfulItems.toVector)
@@ -226,6 +214,20 @@ object BuildServerProtocol {
       }
     }.evaluated,
     bspBuildTargetScalacOptions / aggregate := false,
+    bspBuildTargetJavacOptions := bspInputTask { (state, _, workspace, filter) =>
+      Def.task {
+        val items = bspBuildTargetJavacOptionsItem.result.all(filter).value
+        val appProvider = appConfiguration.value.provider()
+        val sbtJars = appProvider.mainClasspath()
+        val buildItems = workspace.builds.map {
+          case (targetId, build) => Value(javacOptionsBuildItem(sbtJars, targetId, build))
+        }
+        val successfulItems = anyOrThrow(items ++ buildItems)
+        val result = JavacOptionsResult(successfulItems.toVector)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJavacOptions / aggregate := false,
     bspScalaTestClasses := bspInputTask { (state, _, workspace, filter) =>
       workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, state.log)
       Def.task {
@@ -286,7 +288,20 @@ object BuildServerProtocol {
     },
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
-    bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
+    bspBuildTargetScalacOptionsItem := {
+      val target = Keys.bspTargetIdentifier.value
+      val scalacOptions = Keys.scalacOptions.value.toVector
+      val classDirectory = Keys.classDirectory.value
+      val classpath = classpathTask.value
+      ScalacOptionsItem(target, scalacOptions, classpath, classDirectory.toURI)
+    },
+    bspBuildTargetJavacOptionsItem := {
+      val target = Keys.bspTargetIdentifier.value
+      val javacOptions = Keys.javacOptions.value.toVector
+      val classDirectory = Keys.classDirectory.value
+      val classpath = classpathTask.value
+      JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
+    },
     bspBuildTargetJVMRunEnvironment := bspInputTask { (state, _, _, filter) =>
       Def.task {
         val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
@@ -328,7 +343,7 @@ object BuildServerProtocol {
       }
     }
   )
-  private object Method {
+  private[sbt] object Method {
     final val Initialize = "build/initialize"
     final val BuildTargets = "workspace/buildTargets"
     final val Reload = "workspace/reload"
@@ -665,6 +680,34 @@ object BuildServerProtocol {
     )
   }
 
+  private def scalacOptionsBuildItem(
+      sbtJars: Seq[File],
+      targetId: BuildTargetIdentifier,
+      build: LoadedBuildUnit
+  ): ScalacOptionsItem = {
+    val plugins: LoadedPlugins = build.unit.plugins
+    val scalacOptions = plugins.pluginData.scalacOptions.toVector
+    val pluginClassPath = plugins.classpath
+    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val item = ScalacOptionsItem(targetId, scalacOptions, classpath, classDirectory)
+    item
+  }
+
+  private def javacOptionsBuildItem(
+      sbtJars: Seq[File],
+      targetId: BuildTargetIdentifier,
+      build: LoadedBuildUnit
+  ): JavacOptionsItem = {
+    val plugins: LoadedPlugins = build.unit.plugins
+    val javacOptions = plugins.pluginData.javacOptions.toVector
+    val pluginClassPath = plugins.classpath
+    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val item = JavacOptionsItem(targetId, javacOptions, classpath, classDirectory)
+    item
+  }
+
   private def bspInputTask[T](
       taskImpl: (
           State,
@@ -697,26 +740,17 @@ object BuildServerProtocol {
     )
   }
 
-  private def scalacOptionsTask: Def.Initialize[Task[ScalacOptionsItem]] = Def.taskDyn {
-    val target = Keys.bspTargetIdentifier.value
-    val scalacOptions = Keys.scalacOptions.value
-    val classDirectory = Keys.classDirectory.value
+  private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
     val externalDependencyClasspath = Keys.externalDependencyClasspath.value
-
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
     } yield ref / config / Keys.classDirectory
-
     Def.task {
       val classpath = internalDependencyClasspath.join.value.distinct ++
         externalDependencyClasspath.map(_.data)
-      ScalacOptionsItem(
-        target,
-        scalacOptions.toVector,
-        classpath.map(_.toURI).toVector,
-        classDirectory.toURI
-      )
+
+      classpath.map(_.toURI).toVector
     }
   }
 
