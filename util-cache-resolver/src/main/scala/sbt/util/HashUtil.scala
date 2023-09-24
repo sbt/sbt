@@ -16,4 +16,10 @@ object HashUtil:
 
     if Files.size(path) < largeFileLimit then farmHash(Files.readAllBytes(path))
     else farmHash(Hash(path.toFile))
+
+  private[sbt] def farmHashStr(path: Path): String =
+    "farm64-" + farmHash(path).toHexString
+
+  private[sbt] def toFarmHashString(digest: Long): String =
+    s"farm64-${digest.toHexString}"
 end HashUtil

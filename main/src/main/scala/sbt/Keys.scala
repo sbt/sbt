@@ -36,7 +36,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ Level, Logger, LoggerContext }
+import sbt.util.{ ActionCacheStore, Level, Logger, LoggerContext }
 import xsbti.{ FileConverter, VirtualFile }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
@@ -110,6 +110,7 @@ object Keys {
   val serverUseJni = SettingKey(BasicKeys.serverUseJni)
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
+  val cacheStores = settingKey[Seq[ActionCacheStore]]("Cache backends")
 
   // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val analysis = StringAttributeKey("analysis")

@@ -7,7 +7,8 @@
 
 package sbt.util
 
-import sjsonnew.{ BasicJsonProtocol, JsonFormat }
+import sjsonnew.{ BasicJsonProtocol, IsoString, IsoStringLong, JsonFormat }
+import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 
 trait BasicCacheImplicits { self: BasicJsonProtocol =>
 
@@ -22,4 +23,22 @@ trait BasicCacheImplicits { self: BasicJsonProtocol =>
 
   def singleton[T](t: T): SingletonCache[T] =
     SingletonCache.basicSingletonCache(asSingleton(t))
+
+  /**
+   * A string representation of HashedVirtualFileRef, delimited by `>`.
+   */
+  def hashedVirtualFileRefToStr(ref: HashedVirtualFileRef): String =
+    s"${ref.id}>${ref.contentHashStr}"
+
+  def strToHashedVirtualFileRef(s: String): HashedVirtualFileRef =
+    s.split(">").toList match {
+      case path :: hash :: Nil => HashedVirtualFileRef.of(path, hash)
+      case _ => throw new RuntimeException(s"invalid HashedVirtualFileRefIsoString $s")
+    }
+
+  implicit lazy val virtualFileRefIsoString: IsoString[VirtualFileRef] =
+    IsoString.iso(_.id, VirtualFileRef.of)
+
+  implicit lazy val hashedVirtualFileRefIsoString: IsoString[HashedVirtualFileRef] =
+    IsoString.iso(hashedVirtualFileRefToStr, strToHashedVirtualFileRef)
 }

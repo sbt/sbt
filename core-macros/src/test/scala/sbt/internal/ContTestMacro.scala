@@ -20,7 +20,7 @@ object ContTestMacro:
     convert1.contMapN[A, List, Id](
       expr,
       convert1.summonAppExpr[List],
-      '{ Seq(inMemoryCache: ActionCacheStore) },
+      None,
       convert1.idTransform
     )
 

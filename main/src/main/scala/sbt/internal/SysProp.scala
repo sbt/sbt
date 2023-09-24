@@ -218,7 +218,7 @@ object SysProp {
         .orElse(windowsCacheDir)
         .orElse(macCacheDir)
         .getOrElse(linuxCache)
-    baseCache.getAbsoluteFile / "v1"
+    baseCache.getAbsoluteFile / "v2"
   }
 
   lazy val sbtCredentialsEnv: Option[Credentials] =

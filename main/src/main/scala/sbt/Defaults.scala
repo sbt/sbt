@@ -25,7 +25,7 @@ import sbt.Project.{
   inScope,
   inTask,
   // richInitialize,
-  // richInitializeTask,
+  // richInitialize Task,
   // richTaskSessionVar,
   // sbtRichTaskPromise
 }
@@ -107,7 +107,7 @@ import sbt.internal.inc.{
   MixedAnalyzingCompiler,
   ScalaInstance
 }
-import xsbti.{ CrossValue, VirtualFile, VirtualFileRef }
+import xsbti.{ CrossValue, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile.{
   AnalysisContents,
   ClassFileManagerType,
@@ -146,15 +146,15 @@ object Defaults extends BuildCommon {
     (
       a.data,
       a.metadata.get(Keys.analysis) match
-        case Some(x) => RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(x))
-        case None    => Analysis.Empty
+        case Some(ref) => RemoteCache.getCachedAnalysis(ref)
+        case None      => Analysis.Empty
     )
 
   def analysisMap[T](cp: Seq[Attributed[T]]): T => Option[CompileAnalysis] = {
     val m = (for {
       a <- cp
       ref <- a.metadata.get(Keys.analysis)
-      an = RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(ref))
+      an = RemoteCache.getCachedAnalysis(ref)
     } yield (a.data, an)).toMap
     m.get(_)
   }
@@ -1429,7 +1429,7 @@ object Defaults extends BuildCommon {
       val ans: Seq[Analysis] = cp
         .flatMap(_.metadata.get(Keys.analysis))
         .map: str =>
-          RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(str)).asInstanceOf[Analysis]
+          RemoteCache.getCachedAnalysis(str).asInstanceOf[Analysis]
       val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
       val stamps = collection.mutable.Map.empty[String, Long]
       def stamp(dep: String): Long = {

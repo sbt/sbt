@@ -328,10 +328,12 @@ private[sbt] object ClasspathImpl {
   }
 
   def analyzed[A](data: A, analysis: CompileAnalysis) =
-    val ref = RemoteCache.postAnalysis(analysis)
-    Attributed
-      .blank(data)
-      .put(Keys.analysis, ref.toString)
+    RemoteCache.postAnalysis(analysis) match
+      case Some(ref) =>
+        Attributed
+          .blank(data)
+          .put(Keys.analysis, CacheImplicits.hashedVirtualFileRefToStr(ref))
+      case None => Attributed.blank(data)
 
   def interSort(
       projectRef: ProjectRef,

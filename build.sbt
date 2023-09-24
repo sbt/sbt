@@ -437,7 +437,10 @@ lazy val utilCache = (project in file("util-cache"))
       exclude[ReversedMissingMethodProblem]("sbt.util.HashFileInfo.hashArray"),
     )
   )
-  .configure(addSbtIO)
+  .configure(
+    addSbtIO,
+    addSbtCompilerInterface,
+  )
 
 // Builds on cache to provide caching for filesystem-related operations
 lazy val utilTracking = (project in file("util-tracking"))
@@ -752,7 +755,7 @@ lazy val protocolProj = (project in file("protocol"))
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(protocolProj, completeProj, utilLogging)
+  .dependsOn(protocolProj, completeProj, utilLogging, utilCacheResolver)
   .settings(
     testedBaseSettings,
     name := "Command",

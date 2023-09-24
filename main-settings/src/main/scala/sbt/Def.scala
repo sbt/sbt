@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.nio.file.Path
 import java.net.URI
 
 import scala.annotation.compileTimeOnly
@@ -18,7 +19,7 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore }
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, CacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.VirtualFile
@@ -230,8 +231,15 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   import language.experimental.macros
 
-  private[sbt] var _cacheStore: ActionCacheStore = AggregateActionCacheStore.empty
+  // These are here, as opposed to RemoteCahe, since we need them from TaskMacro etc
+  private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
   def cacheStore: ActionCacheStore = _cacheStore
+  private[sbt] var _outputDirectory: Option[Path] = None
+  def cacheConfiguration: CacheConfiguration =
+    CacheConfiguration(
+      _cacheStore,
+      _outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
+    )
 
   inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskMacroImpl[A1]('a1, cached = true) }
@@ -295,6 +303,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
    * method called `await` is injected which will run in a thread outside of concurrent restriction budget.
    */
   def promise[A]: PromiseWrap[A] = new PromiseWrap[A]()
+
+  inline def declareOutput(inline vf: VirtualFile): Unit =
+    InputWrapper.`wrapOutput_\u2603\u2603`[VirtualFile](vf)
+
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T

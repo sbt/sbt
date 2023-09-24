@@ -28,6 +28,7 @@ import scala.annotation.tailrec
 import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, JsonFormat }
+import sbt.util.CacheConfiguration
 
 object TaskMacro:
   final val AssignInitName = "set"
@@ -60,10 +61,10 @@ object TaskMacro:
       case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
       case _ =>
         val convert1 = new FullConvert(qctx, 0)
-        val storeExpr =
-          if cached then Some('{ Def.cacheStore })
+        val cacheConfigExpr =
+          if cached then Some('{ Def.cacheConfiguration })
           else None
-        convert1.contMapN[A1, F, Id](t, convert1.appExpr, storeExpr)
+        convert1.contMapN[A1, F, Id](t, convert1.appExpr, cacheConfigExpr)
 
   def taskIfImpl[A1: Type](expr: Expr[A1], cached: Boolean)(using
       qctx: Quotes

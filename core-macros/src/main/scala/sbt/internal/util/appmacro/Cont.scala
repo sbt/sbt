@@ -4,13 +4,16 @@ package util
 package appmacro
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.TypeTest
+import scala.reflect.{ ClassTag, TypeTest }
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
-import sbt.util.{ ActionCache, ActionCacheStore }
+import sbt.util.{ ActionCache, ActionCacheStore, CacheConfiguration }
 import sbt.util.Applicative
 import sbt.util.Monad
+import xsbti.VirtualFile
 import Types.Id
+import sbt.util.ActionValue
+import sbt.util.Cache
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -27,12 +30,12 @@ trait Cont:
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
         applicativeExpr: Expr[Applicative[F]],
-        storeExpr: Option[Expr[ActionCacheStore]],
+        cacheConfigExpr: Option[Expr[CacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contMapN[A, F, Effect](tree, applicativeExpr, storeExpr, conv.idTransform)
+      contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -41,13 +44,13 @@ trait Cont:
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
         applicativeExpr: Expr[Applicative[F]],
-        storeExpr: Option[Expr[ActionCacheStore]],
+        cacheConfigExpr: Option[Expr[CacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Left(tree), applicativeExpr, storeExpr, inner)
+      contImpl[A, F, Effect](Left(tree), applicativeExpr, cacheConfigExpr, inner)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -56,12 +59,12 @@ trait Cont:
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
         applicativeExpr: Expr[Applicative[F]],
-        storeExpr: Option[Expr[ActionCacheStore]],
+        cacheConfigExpr: Option[Expr[CacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contFlatMap[A, F, Effect](tree, applicativeExpr, storeExpr, conv.idTransform)
+      contFlatMap[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -70,13 +73,13 @@ trait Cont:
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
         applicativeExpr: Expr[Applicative[F]],
-        storeExpr: Option[Expr[ActionCacheStore]],
+        cacheConfigExpr: Option[Expr[CacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Right(tree), applicativeExpr, storeExpr, inner)
+      contImpl[A, F, Effect](Right(tree), applicativeExpr, cacheConfigExpr, inner)
 
     def summonAppExpr[F[_]: Type]: Expr[Applicative[F]] =
       import conv.qctx
@@ -101,6 +104,14 @@ trait Cont:
       Expr
         .summon[JsonFormat[A]]
         .getOrElse(sys.error(s"JsonFormat[A] not found for ${TypeRepr.of[A].typeSymbol}"))
+
+    def summonClassTag[A: Type]: Expr[ClassTag[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[ClassTag[A]]
+        .getOrElse(sys.error(s"ClassTag[A] not found for ${TypeRepr.of[A].typeSymbol}"))
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
@@ -142,7 +153,7 @@ trait Cont:
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
         applicativeExpr: Expr[Applicative[F]],
-        storeExprOpt: Option[Expr[ActionCacheStore]],
+        cacheConfigExprOpt: Option[Expr[CacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -159,6 +170,7 @@ trait Cont:
         case Right(r) => (r, faTpe)
 
       val inputBuf = ListBuffer[Input]()
+      val outputBuf = ListBuffer[Output]()
 
       def makeApp(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] = inputs match
         case Nil      => pure(body)
@@ -168,18 +180,12 @@ trait Cont:
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
-          storeExprOpt match
-            case Some(storeExpr) =>
-              val codeContentHash = Expr[Long](body.show.##)
-              val aJsonFormat = summonJsonFormat[A1]
+          cacheConfigExprOpt match
+            case Some(cacheConfigExpr) =>
               '{
-                import BasicJsonProtocol.given
-                // given HashWriter[Unit] = $inputHashWriter
-                given JsonFormat[A1] = $aJsonFormat
-                val x = ActionCache.cache((), $codeContentHash)({ _ =>
-                  ($body, Nil)
-                })($storeExpr)
-                $applicativeExpr.pure[A1] { () => x.value }
+                $applicativeExpr.pure[A1] { () =>
+                  ${ callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(body) }
+                }
               }
             case None =>
               '{
@@ -224,21 +230,17 @@ trait Cont:
                     }
                   val modifiedBody =
                     transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
-                  storeExprOpt match
-                    case Some(storesExpr) =>
-                      val codeContentHash = Expr[Long](modifiedBody.##)
-                      val paramRef = Ref(param.symbol).asExprOf[a]
-                      val inputHashWriter = summonHashWriter[a]
-                      val aJsonFormat = summonJsonFormat[A1]
-                      '{
-                        given HashWriter[a] = $inputHashWriter
-                        given JsonFormat[A1] = $aJsonFormat
-                        ActionCache
-                          .cache($paramRef, $codeContentHash)({ _ =>
-                            ($modifiedBody, Nil)
-                          })($storesExpr)
-                          .value
-                      }.asTerm.changeOwner(sym)
+                  cacheConfigExprOpt match
+                    case Some(cacheConfigExpr) =>
+                      if input.isCacheInput then
+                        callActionCacheWithA2(outputBuf.toList, cacheConfigExpr)(
+                          body = modifiedBody,
+                          input = Ref(param.symbol).asExprOf[a],
+                        ).asTerm.changeOwner(sym)
+                      else
+                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(
+                          modifiedBody
+                        ).asTerm.changeOwner(sym)
                     case None => modifiedBody.asTerm
                 }
               ).asExprOf[a => A1]
@@ -276,28 +278,23 @@ trait Cont:
                       given Type[x] = tpe
                       convert[x](name, qual) transform { (replacement: Term) =>
                         val idx = inputs.indexWhere(input => input.qual == qual)
-                        Select
-                          .unique(Ref(p0.symbol), "apply")
-                          .appliedToTypes(List(br.inputTupleTypeRepr))
-                          .appliedToArgs(List(Literal(IntConstant(idx))))
+                        applyTuple(p0, br.inputTupleTypeRepr, idx)
                     }
                   val modifiedBody =
                     transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
-                  storeExprOpt match
-                    case Some(storeExpr) =>
-                      val codeContentHash = Expr[Long](modifiedBody.##)
-                      val p0Ref = Ref(p0.symbol).asExprOf[inputTypeTpe]
-                      val inputHashWriter = summonHashWriter[inputTypeTpe]
-                      val aJsonFormat = summonJsonFormat[A1]
-                      '{
-                        given HashWriter[inputTypeTpe] = $inputHashWriter
-                        given JsonFormat[A1] = $aJsonFormat
-                        ActionCache
-                          .cache($p0Ref, $codeContentHash)({ _ =>
-                            ($modifiedBody, Nil)
-                          })($storeExpr)
-                          .value
-                      }.asTerm.changeOwner(sym)
+                  cacheConfigExprOpt match
+                    case Some(cacheConfigExpr) =>
+                      if inputs.exists(_.isCacheInput) then
+                        br.cacheInputTupleTypeRepr.asType match
+                          case '[cacheInputTpe] =>
+                            callActionCacheWithA2(outputBuf.toList, cacheConfigExpr)(
+                              body = modifiedBody,
+                              input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
+                            ).asTerm.changeOwner(sym)
+                      else
+                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(
+                          modifiedBody
+                        ).asTerm.changeOwner(sym)
                     case None =>
                       modifiedBody.asTerm
                 }
@@ -317,21 +314,78 @@ trait Cont:
                         ${ lambda.asExprOf[Tuple.Map[inputTypeTpe & Tuple, Id] => A1] }
                       )
                   }
-
         eitherTree match
           case Left(_) =>
             genMapN0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
             flatten(genMapN0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
+      def callActionCacheWithUnit[A1: Type](
+          outputs: List[Output],
+          cacheConfigExpr: Expr[CacheConfiguration]
+      )(body: Expr[A1]): Expr[A1] =
+        callActionCacheWithA2[A1, Unit](outputs, cacheConfigExpr)(
+          body = body,
+          input = '{ () }
+        )
+
+      def callActionCacheWithA2[A1: Type, A2: Type](
+          outputs: List[Output],
+          cacheConfigExpr: Expr[CacheConfiguration]
+      )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
+        val codeContentHash = Expr[Long](body.show.##)
+        val aJsonFormat = summonJsonFormat[A1]
+        val aClassTag = summonClassTag[A1]
+        val inputHashWriter =
+          if TypeRepr.of[A2] =:= TypeRepr.of[Unit] then
+            '{
+              import BasicJsonProtocol.*
+              summon[HashWriter[Unit]]
+            }.asExprOf[HashWriter[A2]]
+          else summonHashWriter[A2]
+        val block = letOutput(outputs)(body)
+        '{
+          given HashWriter[A2] = $inputHashWriter
+          given JsonFormat[A1] = $aJsonFormat
+          given ClassTag[A1] = $aClassTag
+          ActionCache
+            .cache($input, $codeContentHash)({ _ =>
+              $block
+            })($cacheConfigExpr)
+            .value
+        }
+
+      // wrap body in between output var declarations and var references
+      def letOutput[A1: Type](
+          outputs: List[Output]
+      )(body: Expr[A1]): Expr[(A1, Seq[VirtualFile])] =
+        Block(
+          outputs.map(_.toVarDef),
+          '{
+            (
+              $body,
+              List(${ Varargs[VirtualFile](outputs.map(_.toRef.asExprOf[VirtualFile])) }: _*)
+            )
+          }.asTerm
+        ).asExprOf[(A1, Seq[VirtualFile])]
+
+      val WrapOutputName = "wrapOutput_\u2603\u2603"
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
         (name: String, tpe: Type[a], qual: Term, oldTree: Term) =>
           given t: Type[a] = tpe
           convert[a](name, qual) transform { (replacement: Term) =>
-            inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
-            oldTree
+            if name != WrapOutputName then
+              // todo cache opt-out attribute
+              inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+              oldTree
+            else
+              val output = Output(TypeRepr.of[a], qual, freshName("o"), Symbol.spliceOwner)
+              outputBuf += output
+              if cacheConfigExprOpt.isDefined then output.toAssign
+              else oldTree
+            end if
         }
       val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
       val tr = makeApp(tx, inputBuf.toList)

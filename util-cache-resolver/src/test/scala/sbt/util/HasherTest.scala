@@ -5,13 +5,14 @@ import sbt.internal.util.StringVirtualFile1
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.murmurhash.Hasher
 import verify.BasicTestSuite
-import xsbti.{ BasicVirtualFileRef, VirtualFile }
+import xsbti.{ BasicVirtualFileRef, HashedVirtualFileRef, VirtualFile }
 
 object HasherTest extends BasicTestSuite:
   import BasicJsonProtocol.implicitHashWriter
 
   final val blankContentHash = -7286425919675154353L
-  final val blankATxtHash = 950705716L
+  val blankContentHashStr = "farm64-9ae16a3b2f90404f"
+  final val blankATxtHash = 1166939303L
 
   test("The IntJsonFormat should convert an Int to an int hash") {
     import BasicJsonProtocol.given
@@ -19,16 +20,16 @@ object HasherTest extends BasicTestSuite:
     assert(actual == 1527037976)
   }
 
-  test("StringLong hashing from the implicit scope") {
-    import StringLongs.StringLong
-    val x = StringLongs.StringLong("a.txt", blankContentHash)
+  test("StringString hashing from the implicit scope") {
+    import StringStrings.StringString
+    val x = StringString("a.txt", blankContentHashStr)
     val actual = Hasher.hashUnsafe(x)
     assert(actual == blankATxtHash)
   }
 
   test("HashedVirtualFileRef") {
     import PathHashWriters.given
-    val x = HashedVirtualFileRef("a.txt", blankContentHash)
+    val x = HashedVirtualFileRef.of("a.txt", blankContentHashStr)
     val actual = Hasher.hashUnsafe(x)
     assert(actual == blankATxtHash)
   }
@@ -37,7 +38,7 @@ object HasherTest extends BasicTestSuite:
     import PathHashWriters.given
     val x = File("LICENSE")
     val actual = Hasher.hashUnsafe(x)
-    assert(actual == 1218007292)
+    assert(actual == 63220201)
   }
 
   test("VirtualFile hash") {

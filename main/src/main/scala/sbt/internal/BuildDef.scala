@@ -15,7 +15,7 @@ import Def.Setting
 import sbt.io.Hash
 import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
-import sbt.util.HashedVirtualFileRef
+import xsbti.HashedVirtualFileRef
 
 trait BuildDef {
   def projectDefinitions(@deprecated("unused", "") baseDirectory: File): Seq[Project] = projects
@@ -78,5 +78,5 @@ private[sbt] object BuildDef {
       a.metadata
         .get(Keys.analysis)
         .map: str =>
-          RemoteCache.getCachedAnalysis(HashedVirtualFileRef.of(str))
+          RemoteCache.getCachedAnalysis(str)
 }

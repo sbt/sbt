@@ -78,6 +78,7 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
       case InputWrapper.WrapPreviousName => Converted.success(in)
       case InputWrapper.WrapInitName     => wrapInit[A](in)
       case InputWrapper.WrapTaskName     => wrapTask[A](in)
+      case InputWrapper.WrapOutputName   => Converted.success(in)
       case _                             => Converted.NotApplicable()
 
   private def wrapInit[A: Type](tree: Term): Converted =

@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.File
-import java.nio.file.Path
+import java.nio.file.{ Files, Path }
 
 import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, Artifact => IArtifact }
 import org.apache.ivy.core.report.DownloadStatus
@@ -40,8 +40,16 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.{ ActionCacheStore, HashedVirtualFileRef, Logger }
+import sbt.util.{
+  ActionCacheStore,
+  AggregateActionCacheStore,
+  CacheImplicits,
+  DiskActionCacheStore,
+  InMemoryActionCacheStore,
+  Logger
+}
 import sjsonnew.JsonFormat
+import xsbti.HashedVirtualFileRef
 import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
 
 import scala.annotation.nowarn
@@ -58,10 +66,23 @@ object RemoteCache {
   private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
     mutable.Map.empty
 
+  // TODO: figure out a good timing to initialize cache
+  // currently this is called twice so metabuild can call compile with a minimal setting
+  private[sbt] def initializeRemoteCache(s: State): Unit =
+    val caches = s.get(BasicKeys.cacheStores)
+    caches match
+      case Some(xs) => Def._cacheStore = AggregateActionCacheStore(xs)
+      case None     => Def._cacheStore = InMemoryActionCacheStore()
+    val outDir =
+      s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath())
+    Def._outputDirectory = Some(outDir)
+
+  private[sbt] def getCachedAnalysis(ref: String): CompileAnalysis =
+    getCachedAnalysis(CacheImplicits.strToHashedVirtualFileRef(ref))
   private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
     analysisStore.getOrElseUpdate(
       ref, {
-        val vfs = cacheStore.readBlobs(ref :: Nil)
+        val vfs = cacheStore.getBlobs(ref :: Nil)
         val vf = vfs.head
         IO.withTemporaryFile(vf.id, ".tmp"): file =>
           IO.transfer(vf.input, file)
@@ -70,7 +91,7 @@ object RemoteCache {
     )
 
   private[sbt] val tempConverter: MappedFileConverter = MappedFileConverter.empty
-  private[sbt] def postAnalysis(analysis: CompileAnalysis): HashedVirtualFileRef =
+  private[sbt] def postAnalysis(analysis: CompileAnalysis): Option[HashedVirtualFileRef] =
     IO.withTemporaryFile("analysis", ".tmp", true): file =>
       val output = CompileOutput.empty
       val option = MiniOptions.of(Array(), Array(), Array())
@@ -84,9 +105,12 @@ object RemoteCache {
       )
       FileAnalysisStore.binary(file).set(AnalysisContents.create(analysis, setup))
       val vf = tempConverter.toVirtualFile(file.toPath)
-      val refs = cacheStore.writeBlobs(vf :: Nil)
-      analysisStore(refs.head) = analysis
-      refs.head
+      val refs = cacheStore.putBlobs(vf :: Nil)
+      refs.headOption match
+        case Some(ref) =>
+          analysisStore(ref) = analysis
+          Some(ref)
+        case None => None
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._
@@ -118,6 +142,11 @@ object RemoteCache {
       val base = app.baseDirectory.getCanonicalFile
       // base is used only to resolve relative paths, which should never happen
       IvyPaths(base.toString, localCacheDirectory.value.toString)
+    },
+    cacheStores := {
+      List(
+        DiskActionCacheStore(localCacheDirectory.value.toPath())
+      )
     },
   )
 
