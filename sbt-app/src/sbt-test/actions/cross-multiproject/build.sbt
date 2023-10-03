@@ -5,7 +5,7 @@ ThisBuild / crossScalaVersions := Seq(scala212, scala213)
 ThisBuild / scalaVersion       := scala212
 
 lazy val rootProj = (project in file("."))
-  .aggregate(libProj, fooPlugin)
+  .aggregate(libProj, fooPlugin, externalProj)
   .settings(
     crossScalaVersions := Nil,
     addCommandAlias("build", "compile")
@@ -27,3 +27,5 @@ lazy val extrasProj = (project in file("extras"))
   .settings(
     name := "foo-extras",
   )
+
+lazy val externalProj = ProjectRef(file("ref"), "external")

@@ -118,12 +118,11 @@ object Cross {
   )(command: String): (Seq[ProjectRef], String) = {
     import extracted._
     import DefaultParsers._
-    val parser = (OpOrID <~ charClass(_ == '/', "/")) ~ any.* map {
-      case seg1 ~ cmd => (seg1, cmd.mkString)
-    }
+    val parser = ((('{' ~> URIClass <~ '}').? ~ OpOrID <~ '/') ~ any.*.string)
+      .map { case uri ~ seg1 ~ cmd => (uri, seg1, cmd) }
     Parser.parse(command, parser) match {
-      case Right((seg1, cmd)) =>
-        structure.allProjectRefs.find(_.project == seg1) match {
+      case Right((uri, seg1, cmd)) =>
+        structure.allProjectRefs.find(p => uri.contains(p.build.toString) && seg1 == p.project) match {
           case Some(proj) => (Seq(proj), cmd)
           case _          => (resolveAggregates(extracted), command)
         }
@@ -187,9 +186,10 @@ object Cross {
               keys.toSeq.flatMap { k =>
                 project(k).withFilter(projects.contains).flatMap { p =>
                   if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
-                    val parts = project(k).map(_.project) ++ k.scope.config.toOption.map {
-                      case ConfigKey(n) => n.head.toUpper + n.tail
-                    } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
+                    val parts = project(k).map(p => s"{${p.build}}${p.project}") ++
+                      k.scope.config.toOption.map(c => c.name.capitalize) ++
+                      k.scope.task.toOption.map(_.label) ++
+                      Some(k.key.label)
                     Some(v -> parts.mkString("", "/", fullArgs))
                   } else None
                 }
@@ -257,7 +257,7 @@ object Cross {
             val (aggs, aggCommand) = parseSlashCommand(Project.extract(state))(rawCmd)
             aggs
               .intersect(affectedRefs)
-              .map({ case ProjectRef(_, proj) => s"$proj/$aggCommand" })
+              .map(p => s"{${p.build}}${p.project}/$aggCommand")
               .mkString("all ", " ", "")
           }
         }
