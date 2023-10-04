@@ -370,7 +370,7 @@ lazy val utilPosition = (project in file("internal") / "util-position")
   )
 
 lazy val utilLogging = (project in file("internal") / "util-logging")
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(utilInterface, collectionProj, coreMacrosProj)
   .settings(
     testedBaseSettings,
