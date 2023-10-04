@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.11"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / usePipelining := true
 
 lazy val root = (project in file("."))

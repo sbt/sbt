@@ -112,20 +112,22 @@ if not defined _JAVACMD (
 
 if not defined _JAVACMD set _JAVACMD=java
 
-rem users can set JAVA_OPTS via .jvmopts (sbt-extras style)
-if exist .jvmopts for /F %%A in (.jvmopts) do (
-  set _jvmopts_line=%%A
-  if not "!_jvmopts_line:~0,1!" == "#" (
-    if defined _JAVA_OPTS (
-      set _JAVA_OPTS=!_JAVA_OPTS! %%A
-    ) else (
-      set _JAVA_OPTS=%%A
-    )
-  )
-)
+rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config. 
+if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS% 
 
-rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config.
-if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS%
+rem users can set JAVA_OPTS via .jvmopts (sbt-extras style) 
+if exist .jvmopts for /F %%A in (.jvmopts) do ( 
+  set _jvmopts_line=%%A 
+  if not "!_jvmopts_line:~0,1!" == "#" ( 
+    if defined _JAVA_OPTS ( 
+      set _JAVA_OPTS=!_JAVA_OPTS! %%A 
+    ) else ( 
+      set _JAVA_OPTS=%%A 
+    ) 
+  ) 
+) 
+ 
+rem If nothing is defined, use the defaults. 
 if not defined _JAVA_OPTS if defined default_java_opts set _JAVA_OPTS=!default_java_opts!
 
 rem We use the value of the SBT_OPTS environment variable if defined, rather than the config.

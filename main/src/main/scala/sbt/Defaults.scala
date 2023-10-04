@@ -716,7 +716,9 @@ object Defaults extends BuildCommon {
     clean := clean.dependsOn(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
-      if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
+      if (ScalaArtifacts.isScala3(sv) || VersionNumber(sv)
+            .matchesSemVer(SemanticSelector(s"=2.13 >=${ZincLmUtil.scala2SbtBridgeStart}")))
+        fetchBridgeBinaryJarTask(sv)
       else Def.task[Option[File]](None)
     }.value,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),

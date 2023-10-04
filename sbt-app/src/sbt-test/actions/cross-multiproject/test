@@ -36,7 +36,7 @@ $ exists extras/target/scala-2.12
 
 # test safe switching
 > clean
-> ++ 2.13.11 -v compile
+> ++ 2.13.12 -v compile
 $ exists lib/target/scala-2.13
 -$ exists lib/target/scala-2.12
 # -$ exists sbt-foo/target/scala-2.12

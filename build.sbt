@@ -11,7 +11,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "1.9.4-SNAPSHOT"
+  val v = "1.9.7-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
@@ -177,7 +177,9 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[DirectMissingMethodProblem]("sbt.PluginData.copy"),
     exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
     exclude[IncompatibleResultTypeProblem]("sbt.EvaluateTask.executeProgress"),
-    exclude[DirectMissingMethodProblem]("sbt.Keys.currentTaskProgress")
+    exclude[DirectMissingMethodProblem]("sbt.Keys.currentTaskProgress"),
+    exclude[IncompatibleResultTypeProblem]("sbt.PluginData.copy$default$10")
+
   ),
 )
 
@@ -208,7 +210,6 @@ lazy val sbtRoot: Project = (project in file("."))
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Util.publishPomSettings,
     otherRootSettings,
-    Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
     publish / skip := true,
@@ -369,7 +370,7 @@ lazy val utilPosition = (project in file("internal") / "util-position")
   )
 
 lazy val utilLogging = (project in file("internal") / "util-logging")
-  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin
   .dependsOn(utilInterface, collectionProj, coreMacrosProj)
   .settings(
     testedBaseSettings,

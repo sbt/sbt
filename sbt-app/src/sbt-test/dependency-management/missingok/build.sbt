@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.11"
+ThisBuild / scalaVersion := "2.13.12"
 libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.3",
   // non-existing

@@ -115,7 +115,7 @@ object FakeState {
       Nil
     )
 
-    val pluginData = PluginData(Nil, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
+    val pluginData = PluginData(Nil, Nil, None, None, Nil, Nil, Nil, Nil, Nil, Nil, None, None)
     val builds: DetectedModules[BuildDef] = new DetectedModules[BuildDef](Nil)
 
     val detectedAutoPlugins: Seq[DetectedAutoPlugin] =

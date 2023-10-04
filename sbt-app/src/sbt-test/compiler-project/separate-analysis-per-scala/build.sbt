@@ -1,5 +1,5 @@
 lazy val scala212 = "2.12.18"
-lazy val scala213 = "2.13.11"
+lazy val scala213 = "2.13.12"
 ThisBuild / scalaVersion := scala212
 
 lazy val root = (project in file("."))

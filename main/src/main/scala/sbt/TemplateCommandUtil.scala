@@ -172,6 +172,7 @@ private[sbt] object TemplateCommandUtil {
     ScalaToolkitSlug -> "Scala Toolkit (beta) by Scala Center and VirtusLab",
     TypelevelToolkitSlug -> "Toolkit to start building Typelevel apps",
     SbtCrossPlatformSlug -> "A cross-JVM/JS/Native project",
+    "scala/scala3.g8" -> "Scala 3 seed template",
     "scala/scala-seed.g8" -> "Scala 2 seed template",
     "playframework/play-scala-seed.g8" -> "A Play project in Scala",
     "playframework/play-java-seed.g8" -> "A Play project in Java",
