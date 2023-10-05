@@ -379,7 +379,13 @@ lazy val integrationTest = (project in file("integration-test"))
       "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
       "org.scala-sbt" %% "io" % "1.3.1" % Test
     ),
-    testFrameworks += new TestFramework("minitest.runner.Framework")
+    testFrameworks += new TestFramework("minitest.runner.Framework"),
+    test in Test := {
+      (test in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).value
+    },
+    testOnly in Test := {
+      (testOnly in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).evaluated
+    }
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
