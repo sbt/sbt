@@ -6,7 +6,6 @@ import sbt.io.IO
 import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Files
-import java.nio.file.Paths
 
 object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
   lazy val isWindows: Boolean =
@@ -15,7 +14,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     if (isWindows) new File("target/universal/stage/bin/sbt.bat")
     else new File("target/universal/stage/bin/sbt")
 
-  private val javaBinDir = Paths.get(sys.env("JAVA_HOME"), "bin").toFile.getAbsolutePath
+  private val javaBinDir = new File("integration-test", "bin").getAbsolutePath
 
   private def makeTest(
       name: String,
@@ -51,7 +50,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
         ).!!.linesIterator.toList
         f(out)
         ()
-      } finally  {
+      } finally {
         IO.delete(workingDirectory)
       }
     }
@@ -95,7 +94,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-Dsbt.supershell=false"))
   }
 
-  makeTest("sbt --sbt-version")("compile", "--sbt-version", "1.3.13", "-v") { out: List[String] =>
+  makeTest("sbt --sbt-version")("--sbt-version", "1.3.13", "-v") { out: List[String] =>
     assert(out.contains[String]("-Dsbt.version=1.3.13"))
   }
 
