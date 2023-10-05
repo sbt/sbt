@@ -95,7 +95,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-Dsbt.supershell=false"))
   }
 
-  makeTest("sbt --sbt-version")("--sbt-version", "1.3.13", "-v") { out: List[String] =>
+  makeTest("sbt --sbt-version")("compile", "--sbt-version", "1.3.13", "-v") { out: List[String] =>
     assert(out.contains[String]("-Dsbt.version=1.3.13"))
   }
 
