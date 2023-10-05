@@ -163,7 +163,7 @@ jobs:
         echo build using JDK 8 test using JDK 8 and JDK 11
         cd launcher-package
         sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
         cd citest && ./test.sh
         $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
         java -Xmx32m -version
@@ -178,7 +178,7 @@ jobs:
         echo build using JDK 8, test using JDK 8, on macOS
         cd launcher-package
         bin/coursier resolve
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
         cd citest && ./test.sh
     - name: Build and test (9)
       if: ${{ matrix.jobtype == 9 }}
@@ -190,7 +190,7 @@ jobs:
         echo build using JDK 8, test using JDK 8, on Windows
         cd launcher-package
         bin/coursier.bat resolve
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
+        sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
         cd citest
         ./test.bat
         test3/test3.bat
