@@ -244,7 +244,7 @@ object DependencyTreeSettings {
   def openBrowser(uriKey: TaskKey[URI]) =
     Def.task {
       val uri = uriKey.value
-      streams.value.log.info("Opening in browser...")
+      streams.value.log.info(s"Opening ${uri} in browser...")
       java.awt.Desktop.getDesktop.browse(uri)
       uri
     }
