@@ -37,7 +37,11 @@ private[sbt] object GCUtil {
       // Force the detection of finalizers for scala.reflect weakhashsets
       System.gc()
       // Force finalizers to run.
-      System.runFinalization()
+      try {
+        System.runFinalization()
+      } catch {
+        case _: NoSuchMethodError =>
+      }
       // Force actually cleaning the weak hash maps.
       System.gc()
     } catch {
