@@ -14,6 +14,8 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.FileAlreadyExistsException;
@@ -41,11 +43,11 @@ import xsbti.ScalaProvider;
 
 public class ScriptedLauncher {
   private static URL URLForClass(final Class<?> clazz)
-      throws MalformedURLException, ClassNotFoundException {
+      throws MalformedURLException, ClassNotFoundException, URISyntaxException {
     final String path = clazz.getCanonicalName().replace('.', '/') + ".class";
     final URL url = clazz.getClassLoader().getResource(path);
     if (url == null) throw new ClassNotFoundException(clazz.getCanonicalName());
-    return new URL(url.toString().replaceAll(path + "$", ""));
+    return new URI(url.toString().replaceAll(path + "$", "")).toURL();
   }
 
   public static Optional<Integer> launch(
@@ -57,7 +59,7 @@ public class ScriptedLauncher {
       final File[] classpath,
       String[] arguments)
       throws InvocationTargetException, ClassNotFoundException, NoSuchMethodException,
-          IllegalAccessException, IOException {
+          IllegalAccessException, IOException, URISyntaxException {
     String[] args = arguments;
     Object appID = null;
     if (System.getProperty("sbt.launch.jar") == null) {
@@ -136,7 +138,7 @@ public class ScriptedLauncher {
         swap(loader, previous);
       }
     } else {
-      final URL url = new URL("file:" + System.getProperty("sbt.launch.jar"));
+      final URL url = new URI("file:" + System.getProperty("sbt.launch.jar")).toURL();
       final URLClassLoader loader = new URLClassLoader(new URL[] {url}, top());
       final Class<?> boot = loader.loadClass("xsbt.boot.Boot");
       // If we don't initialize the arguments this way, then the call to invoke on
@@ -569,7 +571,9 @@ public class ScriptedLauncher {
       @Override
       public URL url() {
         try {
-          return new URL(url);
+          return new URI(url).toURL();
+        } catch (URISyntaxException e) {
+          throw new RuntimeException(e);
         } catch (MalformedURLException e) {
           throw new RuntimeException(e);
         }
