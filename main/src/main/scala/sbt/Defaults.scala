@@ -2542,7 +2542,8 @@ object Defaults extends BuildCommon {
       val cacheStore = factory.make("copy-resource")
       val converter = fileConverter.value
       val flt: File => Option[File] = flat(t)
-      val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
+      val transform: File => Option[File] =
+        (f: File) => rebase(resourceDirectories.value.sorted, t)(f).orElse(flt(f))
       val mappings: Seq[(File, File)] = resources.value.flatMap {
         case r if !dirs(r) => transform(r).map(r -> _)
         case _             => None
