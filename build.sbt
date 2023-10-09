@@ -44,14 +44,14 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := scala212,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
-  resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   resolvers += Resolver.sbtPluginRepo("releases"),
   testFrameworks += new TestFramework("verify.runner.Framework"),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala212, scala213),
-  resolvers += Resolver.sonatypeRepo("public"),
+  resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalacOptions := {
     val old = scalacOptions.value
     scalaVersion.value match {
