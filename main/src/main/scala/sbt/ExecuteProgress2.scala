@@ -13,6 +13,10 @@ import sbt.internal.util.RMap
  * Tracks command execution progress. In addition to ExecuteProgress, this interface
  * adds command start and end events, and gives access to the sbt.State at the beginning
  * and end of each command.
+ *
+ * Command progress callbacks are wrapping task progress callbacks. That is, the `beforeCommand`
+ * callback will be called before the `initial` callback from ExecuteProgress, and the
+ * `afterCommand` callback will be called after the `stop` callback from ExecuteProgress.
  */
 trait ExecuteProgress2 extends ExecuteProgress[Task] {
 
@@ -30,7 +34,9 @@ trait ExecuteProgress2 extends ExecuteProgress[Task] {
    * @param cmd    The command string.
    * @param result Left in case of an error. If the command cannot be parsed, it will be
    *               signalled as a ParseException with a detailed message. If the command
-   *               was cancelled by the user, as sbt.Cancelled.
+   *               was cancelled by the user, as sbt.Cancelled. If the command succeeded,
+   *               Right with the new state after command execution.
+   *
    */
   def afterCommand(cmd: String, result: Either[Throwable, State]): Unit
 }
