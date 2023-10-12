@@ -184,12 +184,17 @@ object Command {
             }
     )
 
-  def process(command: String, state: State): State = {
+  // overload instead of default parameter to keep binary compatibility
+  @deprecated("Use overload that takes the onParseError callback", since = "1.9.4")
+  def process(command: String, state: State): State = process(command, state, _ => ())
+
+  def process(command: String, state: State, onParseError: String => Unit): State = {
     (if (command.contains(";")) parse(command, state.combinedParser)
     else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
         state.log error errMsg
+        onParseError(errMsg)
         state.fail
     }
   }

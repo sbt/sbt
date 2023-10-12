@@ -176,6 +176,8 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[DirectMissingMethodProblem]("sbt.PluginData.apply"),
     exclude[DirectMissingMethodProblem]("sbt.PluginData.copy"),
     exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
+    exclude[IncompatibleResultTypeProblem]("sbt.EvaluateTask.executeProgress"),
+    exclude[DirectMissingMethodProblem]("sbt.Keys.currentTaskProgress"),
     exclude[IncompatibleResultTypeProblem]("sbt.PluginData.copy$default$10")
   ),
 )
@@ -189,11 +191,11 @@ lazy val sbtRoot: Project = (project in file("."))
     minimalSettings,
     onLoadMessage := {
       val version = sys.props("java.specification.version")
-      """           __    __ 
+      """           __    __
         |     _____/ /_  / /_
         |    / ___/ __ \/ __/
-        |   (__  ) /_/ / /_  
-        |  /____/_.___/\__/ 
+        |   (__  ) /_/ / /_
+        |  /____/_.___/\__/
         |Welcome to the build for sbt.
         |""".stripMargin +
         (if (version != "1.8")
