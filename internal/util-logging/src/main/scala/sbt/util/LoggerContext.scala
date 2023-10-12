@@ -46,7 +46,7 @@ object LoggerContext {
       case a: AbstractConfiguration => a
       case _                        => throw new IllegalStateException("")
     }
-    val loggers = new java.util.Vector[String]
+    val loggers = new java.util.HashSet[String]
     private[this] val closed = new AtomicBoolean(false)
     override def logger(
         name: String,

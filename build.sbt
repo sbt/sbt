@@ -428,6 +428,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       exclude[MissingTypesProblem]("sbt.internal.util.ConsoleAppender"),
       exclude[MissingTypesProblem]("sbt.internal.util.BufferedAppender"),
       exclude[MissingClassProblem]("sbt.internal.util.Terminal$BlockingInputStream$"),
+      exclude[IncompatibleResultTypeProblem]("sbt.util.LoggerContext#Log4JLoggerContext.loggers"),
     ),
   )
   .configure(addSbtIO)
