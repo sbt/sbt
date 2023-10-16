@@ -216,12 +216,12 @@ object Plugins extends PluginsFunctions {
             case Right(results) =>
               log.debug(s"  :: deduced result: ${results}")
               val selectedAtoms: List[Atom] = results.ordered
-              val selectedPlugins = selectedAtoms map { a =>
+              val selectedPlugins = (selectedAtoms map { a =>
                 byAtomMap.getOrElse(
                   a,
                   throw AutoPluginException(s"${a} was not found in atom map.")
                 )
-              }
+              }).sortBy(_.getClass.getName)
               val forbidden: Set[AutoPlugin] =
                 (selectedPlugins flatMap { Plugins.asExclusions }).toSet
               val c = selectedPlugins.toSet & forbidden
