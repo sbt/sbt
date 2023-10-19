@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.16"
+ThisBuild / scalaVersion := "2.12.18"
 ThisBuild / semanticdbEnabled := true
 ThisBuild / semanticdbIncludeInJar := true
 
