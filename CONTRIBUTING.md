@@ -98,34 +98,6 @@ Pull Requests
 
 See below for the branch to work against.
 
-### Adding notes
-
-Most pull requests should include a "Notes" file which documents the change.  This file should reside in the
-directory:
-
-    <sbt root>
-      notes/
-        <target release>/
-           <your-change-name>.md
-
-Notes files should have the following contents:
-
-* Bullet item description under one of the following sections:
-  - `### Bug fixes`
-  - `### Improvements`
-  - `### Fixes with compatibility implications`
-* Complete section describing new features.
-
-### Clean history
-
-Make sure you document each commit and squash them appropriately. You can use the following guides as a reference:
-
-* Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
-* Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
-
-Build from source
------------------
-
 See [DEVELOPING](./DEVELOPING.md)
 
 Profiling sbt
@@ -133,22 +105,8 @@ Profiling sbt
 
 See [PROFILING](./PROFILING.md)
 
-Other notes for maintainers
----------------------------
-
-### Publishing VS Code Extensions
-
-Reference https://code.visualstudio.com/docs/extensions/publish-extension
-
-```
-$ sbt
-> vscodePlugin/compile
-> exit
-cd vscode-sbt-scala/client
-# update version number in vscode-sbt-scala/client/package.json
-$ vsce package
-$ vsce publish
-```
+Other notes
+-----------
 
 ## Signing the CLA
 

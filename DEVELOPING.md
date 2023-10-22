@@ -7,15 +7,15 @@ Create a [fork](https://docs.github.com/en/github/getting-started-with-github/fo
 
 ### Branch to work against
 
-sbt uses **two or three** branches for development:
-Generally the default branch set on Github is what we recommend as the base line for PRs.
+sbt uses two or three branches for development:
+Use the **default** branch set on Github for bug fixes.
 
-- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.9.x` during 1.8.x series)
+- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.10.x` during 1.9.x series)
 - Development branch: `develop`
-- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.8.x` during 1.8.x series)
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.9.x` during 1.9.x series)
 
-Currently `develop` branch represents the next major version of sbt, i.e. sbt 2.
-Next minor branch is where new features can be added as long as it is binary compatible with sbt 1.0.
+The `develop` branch represents sbt 2.x, the next major sbt series.
+Next minor branch is where new features should be added as long as it is binary compatible with sbt 1.x.
 The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
 
 ### Instruction to build just sbt
@@ -166,6 +166,13 @@ command. To run a single test, such as the test in
     sbt "scripted project/global-plugin"
 
 ### Random tidbits
+
+### Clean history
+
+Make sure you document each commit and squash them appropriately. You can use the following guides as a reference:
+
+* Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
+* Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
 
 #### Import statements
 
