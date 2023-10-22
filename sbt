@@ -515,6 +515,7 @@ run() {
     execRunner "$java_cmd" \
       "${java_args[@]}" \
       "${sbt_options[@]}" \
+      "${java_tool_options[@]}" \
       -jar "$sbt_jar" \
       "${sbt_commands[@]}" \
       "${residual_args[@]}"
@@ -785,6 +786,7 @@ original_args=("$@")
 
 java_args=($JAVA_OPTS)
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
+java_tool_options=($JAVA_TOOL_OPTIONS)
 if [[ "$SBT_NATIVE_CLIENT" == "true" ]]; then
   use_sbtn=1
 fi

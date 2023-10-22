@@ -1,7 +1,11 @@
 package example.test
 
 import minitest._
+import sbt.io.IO
+
 import java.io.File
+import java.io.PrintWriter
+import java.nio.file.Files
 
 object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
   lazy val isWindows: Boolean =
@@ -16,28 +20,40 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
       name: String,
       javaOpts: String = "",
       sbtOpts: String = "",
+      sbtOptsFileContents: String = "",
+      javaToolOptions: String = ""
   )(args: String*)(f: List[String] => Any) = {
     test(name) {
-      val out =
-        sbtProcessWithOpts(args: _*)(javaOpts = javaOpts, sbtOpts = sbtOpts).!!.linesIterator.toList
-      f(out)
-      ()
-    }
-  }
+      val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
+      IO.copyDirectory(new File("citest"), workingDirectory)
 
-  def sbtProcess(args: String*) = sbtProcessWithOpts(args: _*)("", "")
-  def sbtProcessWithOpts(args: String*)(javaOpts: String, sbtOpts: String) = {
-    val path = sys.env("PATH")
-    sbt.internal.Process(
-      Seq(sbtScript.getAbsolutePath) ++ args,
-      new File("citest"),
-      "JAVA_OPTS" -> javaOpts,
-      "SBT_OPTS" -> sbtOpts,
-      if (isWindows)
-        "JAVACMD" -> new File(javaBinDir, "java.cmd").getAbsolutePath()
-      else
-        "PATH" -> (javaBinDir + File.pathSeparator + path)
-    )
+      try {
+        val sbtOptsFile = new File(workingDirectory, ".sbtopts")
+        sbtOptsFile.createNewFile()
+        val writer = new PrintWriter(sbtOptsFile)
+        try {
+          writer.write(sbtOptsFileContents)
+        } finally {
+          writer.close()
+        }
+        val path = sys.env.getOrElse("PATH", sys.env("Path"))
+        val out = sbt.internal.Process(
+          Seq(sbtScript.getAbsolutePath) ++ args,
+          workingDirectory,
+          "JAVA_OPTS" -> javaOpts,
+          "SBT_OPTS" -> sbtOpts,
+          "JAVA_TOOL_OPTIONS" -> javaToolOptions,
+          if (isWindows)
+            "JAVACMD" -> new File(javaBinDir, "java").getAbsolutePath()
+          else
+            "PATH" -> (javaBinDir + File.pathSeparator + path)
+        ).!!.linesIterator.toList
+        f(out)
+        ()
+      } finally {
+        IO.delete(workingDirectory)
+      }
+    }
   }
 
   makeTest("sbt -no-colors")("compile", "-no-colors", "-v") { out: List[String] =>
@@ -161,11 +177,9 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     assert(!out.contains[String]("-XX:+UseG1GC=-XX:+PrintGC"))
   }
 
-  test("sbt with -debug in SBT_OPTS appears in sbt commands") {
+  makeTest("sbt with -debug in SBT_OPTS appears in sbt commands", javaOpts = "", sbtOpts = "-debug")("compile", "-v") {out: List[String] =>
     if (isWindows) cancel("Test not supported on windows")
 
-    val out: List[String] =
-      sbtProcessWithOpts("compile", "-v")(javaOpts = "", sbtOpts = "-debug").!!.linesIterator.toList
     // Debug argument must appear in the 'commands' section (after the sbt-launch.jar argument) to work
     val sbtLaunchMatcher = """^.+sbt-launch.jar["]{0,1}$""".r
     val locationOfSbtLaunchJarArg = out.zipWithIndex.collectFirst {
@@ -196,14 +210,45 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
     assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
   }
 
-  test("sbt --script-version should print sbtVersion") {
-    val out = sbtProcess("--script-version").!!.trim
+  makeTest("sbt --script-version should print sbtVersion")("--script-version") { out: List[String] =>
     val expectedVersion = "^" + SbtRunnerTest.versionRegEx + "$"
-    assert(out.matches(expectedVersion))
+    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
     ()
   }
 
   makeTest("--sbt-cache")("--sbt-cache", "./cachePath") { out: List[String] =>
     assert(out.contains[String](s"-Dsbt.global.localcache=./cachePath"))
+  }
+
+  makeTest(
+    "sbt use .sbtopts file for memory options", sbtOptsFileContents =
+      """-J-XX:MaxInlineLevel=20
+        |-J-Xmx222m
+        |-J-Xms111m
+        |-J-Xss12m""".stripMargin
+
+  )("compile", "-v") { out: List[String] =>
+    assert(out.contains[String]("-XX:MaxInlineLevel=20"))
+    assert(out.contains[String]("-Xmx222m"))
+    assert(out.contains[String]("-Xms111m"))
+    assert(out.contains[String]("-Xss12m"))
+  }
+
+  makeTest(
+    "sbt use JAVA_OPTS for memory options", javaOpts = "-XX:MaxInlineLevel=20 -Xmx222m -Xms111m -Xss12m"
+  )("compile", "-v") { out: List[String] =>
+    assert(out.contains[String]("-XX:MaxInlineLevel=20"))
+    assert(out.contains[String]("-Xmx222m"))
+    assert(out.contains[String]("-Xms111m"))
+    assert(out.contains[String]("-Xss12m"))
+  }
+
+  makeTest(
+    "sbt use JAVA_TOOL_OPTIONS for memory options", javaToolOptions = "-XX:MaxInlineLevel=20 -Xmx222m -Xms111m -Xss12m"
+  )("compile", "-v") { out: List[String] =>
+    assert(out.contains[String]("-XX:MaxInlineLevel=20"))
+    assert(out.contains[String]("-Xmx222m"))
+    assert(out.contains[String]("-Xms111m"))
+    assert(out.contains[String]("-Xss12m"))
   }
 }
