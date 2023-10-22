@@ -6,7 +6,7 @@ testFrameworks := new TestFramework("build.MyFramework") :: Nil
 
 fork := true
 
-definedTests in Test += new sbt.TestDefinition(
+Test / definedTests += new sbt.TestDefinition(
       "my",
       // marker fingerprint since there are no test classes
       // to be discovered by sbt:

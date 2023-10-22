@@ -6,16 +6,17 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.17"
   val scala213 = "2.13.8"
+  val scala3 = "3.2.1"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
-  val baseScalaVersion = scala212
+  val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.8.0")
-  val zincVersion = nightlyVersion.getOrElse("1.8.0")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha11")
+  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha6")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -55,7 +56,8 @@ object Dependencies {
       moduleId: ModuleID,
       c: Option[Configuration] = None
   ) = (p: Project) => {
-    val m = moduleId.withConfigurations(c.map(_.name))
+    val m0 = moduleId.withConfigurations(c.map(_.name))
+    val m = m0
     path match {
       case Some(f) =>
         p.dependsOn(ClasspathDependency(ProjectRef(file(f), projectName), c.map(_.name)))
@@ -77,16 +79,24 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.13"
+  // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
+  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha5"
 
-  def sjsonNew(n: String) =
-    Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
+  lazy val sjsonNewVersion = "0.13.0"
+  def sjsonNew(n: String) = Def.setting(
+    "com.eed3si9n" %% n % sjsonNewVersion
+  ) // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
+  val sjsonNewCore = sjsonNew("sjson-new-core")
+
+  // val eval = ("com.eed3si9n.eval" % "eval" % "0.1.0").cross(CrossVersion.full)
+  val eval = "com.eed3si9n.eval" % "eval_3.1.1" % "0.1.0"
 
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi
-  val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
+  val jline =
+    "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
   val jline3Version = "3.19.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
@@ -99,6 +109,8 @@ object Dependencies {
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+
+  val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {
@@ -121,7 +133,7 @@ object Dependencies {
       "org.scala-lang" % "scala-reflect" % scalaVersion.value
     }
   )
-  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.0"
+  val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"

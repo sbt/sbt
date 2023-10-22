@@ -135,7 +135,8 @@ object Serialization {
   }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeCommand(bytes: Seq[Byte]): Either[String, CommandMessage] = {
@@ -153,7 +154,8 @@ object Serialization {
   }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeEvent(bytes: Seq[Byte]): Either[String, Any] = {
@@ -190,7 +192,8 @@ object Serialization {
     }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeEventMessage(bytes: Seq[Byte]): Either[String, EventMessage] = {

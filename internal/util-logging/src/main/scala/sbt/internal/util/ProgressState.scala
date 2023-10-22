@@ -159,11 +159,10 @@ private[sbt] object ProgressState {
   private val SERVER_IS_RUNNING_LENGTH = SERVER_IS_RUNNING.length + 3
 
   /**
-   * Receives a new task report and replaces the old one. In the event that the new
-   * report has fewer lines than the previous report, padding lines are added on top
-   * so that the console log lines remain contiguous. When a console line is printed
-   * at the info or greater level, we can decrement the padding because the console
-   * line will have filled in the blank line.
+   * Receives a new task report and replaces the old one. In the event that the new report has fewer
+   * lines than the previous report, padding lines are added on top so that the console log lines
+   * remain contiguous. When a console line is printed at the info or greater level, we can
+   * decrement the padding because the console line will have filled in the blank line.
    */
   private[sbt] def updateProgressState(
       pe: ProgressEvent,

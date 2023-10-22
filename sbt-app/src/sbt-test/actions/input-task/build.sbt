@@ -12,9 +12,9 @@ lazy val root = (project in file(".")).
   settings(
     name := "run-test",
     run2 := {
-       val one = (run in Compile).evaluated
+       val one = (Compile / run).evaluated
        val sep = separator.parsed
-       val two = (run in Compile).evaluated
+       val two = (Compile / run).evaluated
     },
     check := {
       val x = run2.toTask(" a b -- c d").value

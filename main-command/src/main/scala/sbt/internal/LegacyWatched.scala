@@ -46,15 +46,16 @@ private[sbt] object LegacyWatched {
       case Some(eventMonitor) =>
         Watched.printIfDefined(watched watchingMessage eventMonitor.state())
         @tailrec def impl(): State = {
-          val triggered = try eventMonitor.awaitEvent()
-          catch {
-            case NonFatal(e) =>
-              log.error(
-                "Error occurred obtaining files to watch.  Terminating continuous execution..."
-              )
-              s.handleError(e)
-              false
-          }
+          val triggered =
+            try eventMonitor.awaitEvent()
+            catch {
+              case NonFatal(e) =>
+                log.error(
+                  "Error occurred obtaining files to watch.  Terminating continuous execution..."
+                )
+                s.handleError(e)
+                false
+            }
           if (triggered) {
             Watched.printIfDefined(watched triggeredMessage eventMonitor.state())
             ClearOnFailure :: next :: FailureWall :: repeat :: s

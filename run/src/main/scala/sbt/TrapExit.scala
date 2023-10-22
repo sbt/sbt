@@ -10,29 +10,29 @@ package sbt
 import sbt.util.Logger
 
 /**
- * Provides an approximation to isolated execution within a single JVM.
- * System.exit calls are trapped to prevent the JVM from terminating.  This is useful for executing
- * user code that may call System.exit, but actually exiting is undesirable.
+ * Provides an approximation to isolated execution within a single JVM. System.exit calls are
+ * trapped to prevent the JVM from terminating. This is useful for executing user code that may call
+ * System.exit, but actually exiting is undesirable.
  *
  * Exit is simulated by disposing all top-level windows and interrupting user-started threads.
- * Threads are not stopped and shutdown hooks are not called.  It is
- * therefore inappropriate to use this with code that requires shutdown hooks, creates threads that
- * do not terminate, or if concurrent AWT applications are run.
- * This category of code should only be called by forking a new JVM.
+ * Threads are not stopped and shutdown hooks are not called. It is therefore inappropriate to use
+ * this with code that requires shutdown hooks, creates threads that do not terminate, or if
+ * concurrent AWT applications are run. This category of code should only be called by forking a new
+ * JVM.
  */
 object TrapExit {
 
   /**
-   * Run `execute` in a managed context, using `log` for debugging messages.
-   * `installManager` must be called before calling this method.
+   * Run `execute` in a managed context, using `log` for debugging messages. `installManager` must
+   * be called before calling this method.
    */
   @deprecated("TrapExit feature is removed; just call the function instead", "1.6.0")
   def apply(execute: => Unit, log: Logger): Int =
     runUnmanaged(execute, log)
 
   /**
-   * Installs the SecurityManager that implements the isolation and returns the previously installed SecurityManager, which may be null.
-   * This method must be called before using `apply`.
+   * Installs the SecurityManager that implements the isolation and returns the previously installed
+   * SecurityManager, which may be null. This method must be called before using `apply`.
    */
   @deprecated("TrapExit feature is removed; just call the function instead", "1.6.0")
   def installManager(): Nothing =

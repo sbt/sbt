@@ -13,6 +13,7 @@ import java.text.DateFormat
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.SlashSyntax0._
+import sbt.ProjectExtra.*
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
@@ -46,8 +47,8 @@ object Aggregation {
       success = true
     )
 
-  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(
-      implicit display: Show[ScopedKey[_]]
+  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(implicit
+      display: Show[ScopedKey[_]]
   ): Unit =
     xs match {
       case KeyValue(_, x: Seq[_]) :: Nil => print(x.mkString("* ", "\n* ", ""))
@@ -57,7 +58,7 @@ object Aggregation {
     }
 
   type Values[T] = Seq[KeyValue[T]]
-  type AnyKeys = Values[_]
+  type AnyKeys = Values[Any]
 
   def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]] =
     seq(ps.map { case KeyValue(k, p) => p.map(v => KeyValue(k, v)) })
@@ -69,13 +70,15 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
     Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
-  private def showRun[T](complete: Complete[T], show: ShowConfig)(
-      implicit display: Show[ScopedKey[_]]
+  private def showRun[T](complete: Complete[T], show: ShowConfig)(implicit
+      display: Show[ScopedKey[_]]
   ): Unit = {
     import complete._
     val log = state.log
     val extracted = Project.extract(state)
-    val success = results match { case Value(_) => true; case Inc(_) => false }
+    val success = results match
+      case Result.Value(_) => true
+      case Result.Inc(_)   => false
     results.toEither.right.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
@@ -100,25 +103,23 @@ object Aggregation {
     val start = System.currentTimeMillis
     val (newS, result) = withStreams(structure, s) { str =>
       val transform = nodeView(s, str, roots, extra)
-      runTask(toRun, s, str, structure.index.triggers, config)(transform)
+      runTask(toRun, s, str, structure.index.triggers, config)(using transform)
     }
     val stop = System.currentTimeMillis
     Complete(start, stop, result, newS)
   }
 
-  def runTasks[HL <: HList, T](
+  def runTasks[A1](
       s: State,
-      ts: Values[Task[T]],
+      ts: Values[Task[A1]],
       extra: DummyTaskMap,
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[_]]): State = {
-    val complete = timedRun[T](s, ts, extra)
+  )(using display: Show[ScopedKey[_]]): State =
+    val complete = timedRun[A1](s, ts, extra)
     showRun(complete, show)
-    complete.results match {
-      case Inc(i)   => complete.state.handleError(i)
-      case Value(_) => complete.state
-    }
-  }
+    complete.results match
+      case Result.Inc(i)   => complete.state.handleError(i)
+      case Result.Value(_) => complete.state
 
   def printSuccess(
       start: Long,
@@ -164,6 +165,7 @@ object Aggregation {
          val secs = f"${total % 60}%02d"
          s" ($maybeHours$mins:$secs)"
        })
+
     s"Total time: $totalString, completed $nowString"
   }
 
@@ -185,8 +187,8 @@ object Aggregation {
     }
   }
 
-  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(
-      implicit display: Show[ScopedKey[_]]
+  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(implicit
+      display: Show[ScopedKey[_]]
   ): Parser[() => State] = {
 
     // to make the call sites clearer
@@ -196,8 +198,7 @@ object Aggregation {
       Util.separate(in)(f)
 
     val kvs = keys.toList
-    if (kvs.isEmpty)
-      failure("No such setting/task")
+    if (kvs.isEmpty) failure("No such setting/task")
     else {
       val (inputTasks, other) = separate[InputTask[_]](kvs) {
         case KeyValue(k, v: InputTask[_]) => Left(KeyValue(k, v))
@@ -220,7 +221,11 @@ object Aggregation {
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
         } else
-          applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
+          applyDynamicTasks(
+            s,
+            inputTasks.map { case KeyValue(k, v: InputTask[a]) => KeyValue(k, castToAny(v)) },
+            show
+          )
       } else {
         val base =
           if (tasks.isEmpty) success(() => s)
@@ -234,8 +239,10 @@ object Aggregation {
       }
     }
   }
+
   // this is a hack to avoid duplicating method implementations
-  private[this] def castToAny[T[_]](t: T[_]): T[Any] = t.asInstanceOf[T[Any]]
+  private[this] def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] =>
+    (fa: F[a]) => fa.asInstanceOf[F[Any]]
 
   private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
     vs map { case KeyValue(k, v) => KeyValue(k, f(v)) }
@@ -244,12 +251,12 @@ object Aggregation {
       proj: Option[Reference],
       extra: BuildUtil[Proj],
       reverse: Boolean
-  ): Seq[ProjectRef] = {
+  ): Seq[ProjectRef] =
     val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap(
-      ref => if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
-    )
-  }
+    resRef.toList.flatMap { ref =>
+      if reverse then extra.aggregates.reverse(ref)
+      else extra.aggregates.forward(ref)
+    }
 
   def aggregate[T, Proj](
       key: ScopedKey[T],

@@ -85,7 +85,16 @@ object RunFromSourceMain {
       args: Seq[String],
       context: LoggerContext,
   ): Option[(File, Seq[String])] = {
-    try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args, context) map exit
+    try
+      launch(
+        defaultBootDirectory,
+        baseDir,
+        scalaVersion,
+        sbtVersion,
+        classpath,
+        args,
+        context
+      ) map exit
     catch {
       case r: xsbti.FullReload => Some((baseDir, r.arguments()))
       case scala.util.control.NonFatal(e) =>
@@ -149,11 +158,11 @@ object RunFromSourceMain {
         }
         val Name = """(.*)(?:\-[\d.]+)\.jar""".r
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
-        val module = "org.scala-lang" % "scala-compiler" % scalaVersion
+        val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
           case Left(w) => throw w.resolveException
           case Right(_) =>
-            val jars = (scalaHome1Temp ** "*.jar").get
+            val jars = (scalaHome1Temp ** "*.jar").get()
             assert(jars.nonEmpty, s"no jars for scala $scalaVersion")
             jars.foreach { f =>
               val name = f.getName match {

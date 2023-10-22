@@ -91,7 +91,7 @@ abstract class CommandChannel {
       if (cmd.nonEmpty) append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
       else false
   }
-  private[sbt] def onFastTrackTask: String => Boolean = { s: String =>
+  private[sbt] def onFastTrackTask: String => Boolean = { (s: String) =>
     fastTrack.synchronized(fastTrack.forEach { q =>
       q.add(new FastTrackTask(this, s))
       ()

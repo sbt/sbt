@@ -16,6 +16,7 @@ import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
+import org.checkerframework.checker.units.qual.A
 
 /**
  * A trait that indicates what file stamping implementation should be used to track the state of
@@ -25,7 +26,6 @@ sealed trait FileStamper
 
 /**
  * Provides implementations of [[FileStamper]].
- *
  */
 object FileStamper {
 
@@ -50,15 +50,14 @@ sealed trait FileStamp
  * Provides json formatters for [[FileStamp]].
  */
 object FileStamp {
-  private[sbt] type Id[T] = T
+  private[sbt] type Id[A] = A
 
-  private[sbt] implicit class Ops(val fileStamp: FileStamp) {
-    private[sbt] def stamp: XStamp = fileStamp match {
-      case f: FileHashImpl    => f.xstamp
-      case LastModified(time) => new IncLastModified(time)
-      case _                  => EmptyStamp
-    }
-  }
+  extension (fileStamp: FileStamp)
+    private[sbt] def stamp: XStamp =
+      fileStamp match
+        case f: FileHashImpl    => f.xstamp
+        case LastModified(time) => new IncLastModified(time)
+        case _                  => EmptyStamp
 
   private[sbt] def apply(path: Path, fileStamper: FileStamper): Option[FileStamp] =
     fileStamper match {
@@ -195,12 +194,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, Hash)]] {
         override def write[J](obj: Seq[(Path, Hash)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, h) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeString(h.hex)
-              builder.endArray()
+          obj.foreach { case (p, h) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeString(h.hex)
+            builder.endArray()
           }
           builder.endArray()
         }
@@ -226,12 +224,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, LastModified)]] {
         override def write[J](obj: Seq[(Path, LastModified)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, lm) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeLong(lm.time)
-              builder.endArray()
+          obj.foreach { case (p, lm) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeLong(lm.time)
+            builder.endArray()
           }
           builder.endArray()
         }

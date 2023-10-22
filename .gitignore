@@ -5,6 +5,7 @@ node_modules
 vscode-sbt-scala/client/server
 npm-debug.log
 *.vsix
+*_pid*.log
 !sbt/src/server-test/completions/target
 .big
 .idea

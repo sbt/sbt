@@ -41,7 +41,9 @@ trait TestsListener extends TestReportListener {
 
 }
 
-/** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
+/**
+ * Provides the overall `result` of a group of tests (a suite) and test counts for each result type.
+ */
 final class SuiteResult(
     val result: TestResult,
     val passedCount: Int,
@@ -98,7 +100,9 @@ final class SuiteResult(
 
 object SuiteResult {
 
-  /** Computes the overall result and counts for a suite with individual test results in `events`. */
+  /**
+   * Computes the overall result and counts for a suite with individual test results in `events`.
+   */
   def apply(events: Seq[TEvent]): SuiteResult = {
     def count(status: TStatus) = events.count(_.status == status)
     new SuiteResult(

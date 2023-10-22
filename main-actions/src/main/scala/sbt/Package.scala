@@ -11,7 +11,6 @@ import java.io.File
 import java.time.OffsetDateTime
 import java.util.jar.{ Attributes, Manifest }
 import scala.collection.JavaConverters._
-import sbt.internal.util.Types.:+:
 import sbt.io.IO
 
 import sjsonnew.JsonFormat
@@ -19,8 +18,6 @@ import sjsonnew.JsonFormat
 import sbt.util.Logger
 
 import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
-import sbt.internal.util.HNil
-import sbt.internal.util.HListFormats._
 import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.{ inputChanged, outputChanged }
@@ -107,7 +104,6 @@ object Package {
   )
 
   /**
-   *
    * @param conf the package configuration that should be build
    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
    * @param log feedback for the user
@@ -116,7 +112,6 @@ object Package {
     apply(conf, cacheStoreFactory, log, timeFromConfiguration(conf))
 
   /**
-   *
    * @param conf the package configuration that should be build
    * @param cacheStoreFactory used for jar caching. We try to avoid rebuilds as much as possible
    * @param log feedback for the user
@@ -132,32 +127,31 @@ object Package {
     val main = manifest.getMainAttributes
     for (option <- conf.options) {
       option match {
-        case JarManifest(mergeManifest)          => mergeManifests(manifest, mergeManifest); ()
-        case MainClass(mainClassName)            => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
+        case JarManifest(mergeManifest) => mergeManifests(manifest, mergeManifest); ()
+        case MainClass(mainClassName)   => main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
         case ManifestAttributes(attributes @ _*) => main.asScala ++= attributes; ()
         case FixedTimestamp(value)               => ()
-        case _                                   => log.warn("Ignored unknown package option " + option)
+        case _ => log.warn("Ignored unknown package option " + option)
       }
     }
     setVersion(main)
 
-    type Inputs = Seq[(File, String)] :+: FilesInfo[ModifiedFileInfo] :+: Manifest :+: HNil
+    type Inputs = (Seq[(File, String)], FilesInfo[ModifiedFileInfo], Manifest)
     val cachedMakeJar = inputChanged(cacheStoreFactory make "inputs") {
       (inChanged, inputs: Inputs) =>
         import exists.format
-        val sources :+: _ :+: manifest :+: HNil = inputs
+        val (sources, _, manifest) = inputs
         outputChanged(cacheStoreFactory make "output") { (outChanged, jar: PlainFileInfo) =>
           if (inChanged || outChanged) {
             makeJar(sources, jar.file, manifest, log, time)
             jar.file
             ()
-          } else
-            log.debug("Jar uptodate: " + jar.file)
+          } else log.debug("Jar uptodate: " + jar.file)
         }
     }
 
     val inputFiles = conf.sources.map(_._1).toSet
-    val inputs = conf.sources.distinct :+: lastModified(inputFiles) :+: manifest :+: HNil
+    val inputs = (conf.sources.distinct, lastModified(inputFiles), manifest)
     cachedMakeJar(inputs)(() => exists(conf.jar))
     ()
   }

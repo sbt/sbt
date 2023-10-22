@@ -81,10 +81,9 @@ object JLineCompletion {
 
   def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) = {
     val (insert, display) =
-      cs.foldLeft((Set.empty[String], Set.empty[String])) {
-        case (t @ (insert, display), comp) =>
-          if (comp.isEmpty) t
-          else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
+      cs.foldLeft((Set.empty[String], Set.empty[String])) { case (t @ (insert, display), comp) =>
+        if (comp.isEmpty) t
+        else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
       }
     (insert.toSeq, display.toSeq.sorted)
   }
@@ -135,8 +134,8 @@ object JLineCompletion {
   }
 
   /**
-   * `display` is assumed to be the exact strings requested to be displayed.
-   * In particular, duplicates should have been removed already.
+   * `display` is assumed to be the exact strings requested to be displayed. In particular,
+   * duplicates should have been removed already.
    */
   def showCompletions(display: Seq[String], reader: ConsoleReader): Unit = {
     printCompletions(display, reader)

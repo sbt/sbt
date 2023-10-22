@@ -7,6 +7,7 @@
 
 package sbt.std
 
+/*
 import org.scalatest.TestData
 
 import scala.tools.reflect.ToolBox
@@ -29,3 +30,4 @@ object TestUtil {
       case _               => throw new IllegalStateException("No classpath specified.")
     }
 }
+ */

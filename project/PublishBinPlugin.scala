@@ -45,7 +45,8 @@ object PublishBinPlugin extends AutoPlugin {
                 proj.withPublications(publications)
               }
               IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
-            } else
+            }
+          else
             Def.task(())
         }
       )

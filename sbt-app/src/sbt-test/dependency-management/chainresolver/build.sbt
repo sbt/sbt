@@ -4,10 +4,10 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
-    scalaVersion in ThisBuild := "2.11.12",
-    organization in ThisBuild := "com.example",
-    version in ThisBuild := "0.1.0-SNAPSHOT",
+    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    ThisBuild / scalaVersion := "2.11.12",
+    ThisBuild / organization := "com.example",
+    ThisBuild / version := "0.1.0-SNAPSHOT",
     autoScalaLibrary := false,
     crossPaths := false
   )

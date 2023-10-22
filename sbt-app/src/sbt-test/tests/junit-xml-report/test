@@ -6,6 +6,6 @@
 > clean
 > checkNoReport
 
-> set fork in Test := true
+> set Test / fork := true
 -> test
 > checkReport

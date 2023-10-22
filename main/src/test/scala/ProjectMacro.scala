@@ -10,7 +10,7 @@ package sbt
 import scala.util.control.NonFatal
 import org.scalacheck._
 import Prop._
-import Project.project
+import sbt.BuildSyntax.project
 import java.io.File
 
 class ProjectDefs {
@@ -67,6 +67,6 @@ object ProjectMacro extends Properties("ProjectMacro") {
       s"Actual id: ${p.id}" |:
       s"Actual dir: ${p.base}" |:
       (p.id == id) &&
-    (p.base.getName == dir)
+      (p.base.getName == dir)
   }
 }

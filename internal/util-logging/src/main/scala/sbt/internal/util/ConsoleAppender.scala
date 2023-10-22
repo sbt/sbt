@@ -40,27 +40,36 @@ object ConsoleLogger {
   /**
    * A new `ConsoleLogger` that logs to `out`.
    *
-   * @param out Where to log the messages.
-   * @return A new `ConsoleLogger` that logs to `out`.
+   * @param out
+   *   Where to log the messages.
+   * @return
+   *   A new `ConsoleLogger` that logs to `out`.
    */
   def apply(out: PrintStream): ConsoleLogger = apply(ConsoleOut.printStreamOut(out))
 
   /**
    * A new `ConsoleLogger` that logs to `out`.
    *
-   * @param out Where to log the messages.
-   * @return A new `ConsoleLogger` that logs to `out`.
+   * @param out
+   *   Where to log the messages.
+   * @return
+   *   A new `ConsoleLogger` that logs to `out`.
    */
   def apply(out: PrintWriter): ConsoleLogger = apply(ConsoleOut.printWriterOut(out))
 
   /**
    * A new `ConsoleLogger` that logs to `out`.
    *
-   * @param out                Where to log the messages.
-   * @param ansiCodesSupported `true` if `out` supported ansi codes, `false` otherwise.
-   * @param useFormat          `true` to show formatting, `false` to remove it from messages.
-   * @param suppressedMessage  How to show suppressed stack traces.
-   * @return A new `ConsoleLogger` that logs to `out`.
+   * @param out
+   *   Where to log the messages.
+   * @param ansiCodesSupported
+   *   `true` if `out` supported ansi codes, `false` otherwise.
+   * @param useFormat
+   *   `true` to show formatting, `false` to remove it from messages.
+   * @param suppressedMessage
+   *   How to show suppressed stack traces.
+   * @return
+   *   A new `ConsoleLogger` that logs to `out`.
    */
   def apply(
       out: ConsoleOut = ConsoleOut.systemOut,
@@ -73,8 +82,7 @@ object ConsoleLogger {
 }
 
 /**
- * A logger that logs to the console.  On supported systems, the level labels are
- * colored.
+ * A logger that logs to the console. On supported systems, the level labels are colored.
  */
 class ConsoleLogger private[ConsoleLogger] (
     out: ConsoleOut,
@@ -144,10 +152,9 @@ object ConsoleAppender {
 
   /**
    * Indicates whether formatting has been disabled in environment variables.
-   * 1. -Dsbt.log.noformat=true means no formatting.
-   * 2. -Dsbt.color=always/auto/never/true/false
-   * 3. -Dsbt.colour=always/auto/never/true/false
-   * 4. -Dsbt.log.format=always/auto/never/true/false
+   *   1. -Dsbt.log.noformat=true means no formatting. 2. -Dsbt.color=always/auto/never/true/false
+   *      3. -Dsbt.colour=always/auto/never/true/false 4.
+   * -Dsbt.log.format=always/auto/never/true/false
    */
   @deprecated("Use Terminal.isAnsiSupported or Terminal.isColorEnabled", "1.4.0")
   lazy val formatEnabledInEnv: Boolean = Terminal.isAnsiSupported
@@ -163,58 +170,74 @@ object ConsoleAppender {
   /**
    * A new `ConsoleAppender` that writes to standard output.
    *
-   * @return A new `ConsoleAppender` that writes to standard output.
+   * @return
+   *   A new `ConsoleAppender` that writes to standard output.
    */
   def apply(): Appender = apply(ConsoleOut.systemOut)
 
   /**
    * A new `ConsoleAppender` that appends log message to `out`.
    *
-   * @param out Where to write messages.
-   * @return A new `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @return
+   *   A new `ConsoleAppender`.
    */
   def apply(out: PrintStream): Appender = apply(ConsoleOut.printStreamOut(out))
 
   /**
    * A new `ConsoleAppender` that appends log messages to `out`.
    *
-   * @param out Where to write messages.
-   * @return A new `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @return
+   *   A new `ConsoleAppender`.
    */
   def apply(out: PrintWriter): Appender = apply(ConsoleOut.printWriterOut(out))
 
   /**
    * A new `ConsoleAppender` that writes to `out`.
    *
-   * @param out Where to write messages.
-   * @return A new `ConsoleAppender that writes to `out`.
+   * @param out
+   *   Where to write messages.
+   * @return
+   *   A new `ConsoleAppender that writes to `out`.
    */
   def apply(out: ConsoleOut): Appender = apply(generateName(), out)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to standard output.
    *
-   * @param name An identifier for the `ConsoleAppender`.
-   * @return A new `ConsoleAppender` that writes to standard output.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @return
+   *   A new `ConsoleAppender` that writes to standard output.
    */
   def apply(name: String): Appender = apply(name, ConsoleOut.systemOut)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name An identifier for the `ConsoleAppender`.
-   * @param out Where to write messages.
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(name: String, out: ConsoleOut): Appender = apply(name, out, Terminal.isAnsiSupported)
 
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name              An identifier for the `ConsoleAppender`.
-   * @param out               Where to write messages.
-   * @param suppressedMessage How to handle stack traces.
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @param suppressedMessage
+   *   How to handle stack traces.
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(
       name: String,
@@ -228,10 +251,14 @@ object ConsoleAppender {
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name      An identifier for the `ConsoleAppender`.
-   * @param out       Where to write messages.
-   * @param useFormat `true` to enable format (color, bold, etc.), `false` to remove formatting.
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @param useFormat
+   *   `true` to enable format (color, bold, etc.), `false` to remove formatting.
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(name: String, out: ConsoleOut, useFormat: Boolean): Appender =
     apply(name, out, useFormat || Terminal.isAnsiSupported, useFormat, noSuppressedMessage)
@@ -239,9 +266,12 @@ object ConsoleAppender {
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name      An identifier for the `ConsoleAppender`.
-   * @param terminal  The terminal to which this appender corresponds
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param terminal
+   *   The terminal to which this appender corresponds
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(name: String, terminal: Terminal): Appender = {
     new ConsoleAppender(name, Properties.from(terminal), noSuppressedMessage)
@@ -262,10 +292,14 @@ object ConsoleAppender {
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name      An identifier for the `ConsoleAppender`.
-   * @param terminal  The terminal to which this appender corresponds
-   * @param suppressedMessage How to handle stack traces.
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param terminal
+   *   The terminal to which this appender corresponds
+   * @param suppressedMessage
+   *   How to handle stack traces.
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(
       name: String,
@@ -278,12 +312,16 @@ object ConsoleAppender {
   /**
    * A new `ConsoleAppender` identified by `name`, and that writes to `out`.
    *
-   * @param name               An identifier for the `ConsoleAppender`.
-   * @param out                Where to write messages.
-   * @param ansiCodesSupported `true` if the output stream supports ansi codes, `false` otherwise.
-   * @param useFormat          `true` to enable format (color, bold, etc.), `false` to remove
-   *                           formatting.
-   * @return A new `ConsoleAppender` that writes to `out`.
+   * @param name
+   *   An identifier for the `ConsoleAppender`.
+   * @param out
+   *   Where to write messages.
+   * @param ansiCodesSupported
+   *   `true` if the output stream supports ansi codes, `false` otherwise.
+   * @param useFormat
+   *   `true` to enable format (color, bold, etc.), `false` to remove formatting.
+   * @return
+   *   A new `ConsoleAppender` that writes to `out`.
    */
   def apply(
       name: String,
@@ -302,8 +340,10 @@ object ConsoleAppender {
   /**
    * Converts the Log4J `level` to the corresponding sbt level.
    *
-   * @param level A level, as represented by Log4J.
-   * @return The corresponding level in sbt's world.
+   * @param level
+   *   A level, as represented by Log4J.
+   * @return
+   *   The corresponding level in sbt's world.
    */
   def toLevel(level: XLevel): Level.Value =
     level match {
@@ -319,8 +359,10 @@ object ConsoleAppender {
   /**
    * Converts the sbt `level` to the corresponding Log4J level.
    *
-   * @param level A level, as represented by sbt.
-   * @return The corresponding level in Log4J's world.
+   * @param level
+   *   A level, as represented by sbt.
+   * @return
+   *   The corresponding level in Log4J's world.
    */
   def toXLevel(level: Level.Value): XLevel =
     level match {
@@ -341,8 +383,7 @@ object ConsoleAppender {
 // https://logging.apache.org/log4j/2.x/log4j-core/apidocs/index.html
 
 /**
- * A logger that logs to the console.  On supported systems, the level labels are
- * colored.
+ * A logger that logs to the console. On supported systems, the level labels are colored.
  *
  * This logger is not thread-safe.
  */
@@ -357,12 +398,17 @@ class ConsoleAppender(
       log4j.synchronized {
         log4j.get match {
           case null =>
-            val l = new Log4JConsoleAppender(name, properties, suppressedMessage, { event =>
-              val level = ConsoleAppender.toLevel(event.getLevel)
-              val message = event.getMessage
-              try appendMessage(level, message)
-              catch { case _: ClosedChannelException => }
-            })
+            val l = new Log4JConsoleAppender(
+              name,
+              properties,
+              suppressedMessage,
+              { event =>
+                val level = ConsoleAppender.toLevel(event.getLevel)
+                val message = event.getMessage
+                try appendMessage(level, message)
+                catch { case _: ClosedChannelException => }
+              }
+            )
             log4j.set(l)
             l
           case l => l
@@ -404,11 +450,13 @@ trait Appender extends AutoCloseable {
   /**
    * Logs the stack trace of `t`, possibly shortening it.
    *
-   * The `traceLevel` parameter configures how the stack trace will be shortened.
-   * See `StackTrace.trimmed`.
+   * The `traceLevel` parameter configures how the stack trace will be shortened. See
+   * `StackTrace.trimmed`.
    *
-   * @param t          The `Throwable` whose stack trace to log.
-   * @param traceLevel How to shorten the stack trace.
+   * @param t
+   *   The `Throwable` whose stack trace to log.
+   * @param traceLevel
+   *   How to shorten the stack trace.
    */
   def trace(t: => Throwable, traceLevel: Int): Unit = {
     if (traceLevel >= 0)
@@ -423,8 +471,10 @@ trait Appender extends AutoCloseable {
   /**
    * Logs a `ControlEvent` to the log.
    *
-   * @param event   The kind of `ControlEvent`.
-   * @param message The message to log.
+   * @param event
+   *   The kind of `ControlEvent`.
+   * @param message
+   *   The message to log.
    */
   def control(event: ControlEvent.Value, message: => String): Unit =
     appendLog(labelColor(Level.Info), Level.Info.toString, BLUE, message)
@@ -432,8 +482,10 @@ trait Appender extends AutoCloseable {
   /**
    * Appends the message `message` to the to the log at level `level`.
    *
-   * @param level   The importance level of the message.
-   * @param message The message to log.
+   * @param level
+   *   The importance level of the message.
+   * @param message
+   *   The message to log.
    */
   def appendLog(level: Level.Value, message: => String): Unit = {
     appendLog(labelColor(level), level.toString, NO_COLOR, message)
@@ -442,8 +494,10 @@ trait Appender extends AutoCloseable {
   /**
    * Select the right color for the label given `level`.
    *
-   * @param level The label to consider to select the color.
-   * @return The color to use to color the label.
+   * @param level
+   *   The label to consider to select the color.
+   * @return
+   *   The color to use to color the label.
    */
   private def labelColor(level: Level.Value): String =
     level match {
@@ -457,11 +511,14 @@ trait Appender extends AutoCloseable {
    * `labelColor` if formatting is enabled. The lines of the messages are colored with
    * `messageColor` if formatting is enabled.
    *
-   * @param labelColor   The color to use to format the label.
-   * @param label        The label to prefix each line with. The label is shown between square
-   *                     brackets.
-   * @param messageColor The color to use to format the message.
-   * @param message      The message to write.
+   * @param labelColor
+   *   The color to use to format the label.
+   * @param label
+   *   The label to prefix each line with. The label is shown between square brackets.
+   * @param messageColor
+   *   The color to use to format the message.
+   * @param message
+   *   The message to write.
    */
   private def appendLog(
       labelColor: String,
@@ -535,7 +592,9 @@ trait Appender extends AutoCloseable {
       codec.showLines(te).toVector foreach { appendLog(Level.Error, _) }
     }
     if (traceLevel <= 2) {
-      suppressedMessage(new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)) foreach {
+      suppressedMessage(
+        new SuppressedTraceContext(traceLevel, ansiCodesSupported && useFormat)
+      ) foreach {
         appendLog(Level.Error, _)
       }
     }
@@ -545,7 +604,7 @@ trait Appender extends AutoCloseable {
     def appendEvent(oe: ObjectEvent[_]): Unit = {
       val contentType = oe.contentType
       contentType match {
-        case "sbt.internal.util.TraceEvent"    => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
+        case "sbt.internal.util.TraceEvent" => appendTraceEvent(oe.message.asInstanceOf[TraceEvent])
         case "sbt.internal.util.ProgressEvent" =>
         case _ =>
           LogExchange.stringCodec[AnyRef](contentType) match {
@@ -597,7 +656,7 @@ private[sbt] class ConsoleAppenderFromLog4J(
     delegate.append(new AbstractLogEvent {
       override def getLevel(): XLevel = ConsoleAppender.toXLevel(level)
       override def getMessage(): Message =
-        StringFormatterMessageFactory.INSTANCE.newMessage(message.toString, Array.empty)
+        StringFormatterMessageFactory.INSTANCE.newMessage(message.toString, Array.empty[AnyRef])
     })
   }
 }

@@ -59,15 +59,15 @@ lazy val b = project
 
 lazy val c = project.settings(
 	taskX := cGlobal,
-	taskX in Compile := cCompile,
-	taskX in Test := cTest
+	Compile / taskX := cCompile,
+	Test / taskX := cTest
 )
 
 lazy val d = project.settings(
 	taskX := dGlobal,
-	taskX in (Compile,console) := dConsole,
+	Compile / console / taskX := dConsole,
 	// these shouldn't get picked up
-	taskX in (Compile,compile) := Set(32366),
-	taskX in compile := Set(548686),
-	taskX in Configurations.IntegrationTest := Set(11111)
+	Compile / compile / taskX := Set(32366),
+	compile / taskX := Set(548686),
+	Configurations.IntegrationTest / taskX := Set(11111),
 )

@@ -92,7 +92,7 @@ object Keys {
   val onLoadMessage = settingKey[String]("Message to display when the project is loaded.").withRank(DSetting)
   val transformState = AttributeKey[State => State]("transformState", "State transformation to apply after tasks run.", DSetting)
 
-  val onComplete = settingKey[() => Unit]("Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.").withRank(DSetting)
+  val onComplete = Def.onComplete //  settingKey[() => Unit]("Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.").withRank(DSetting)
 
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
@@ -192,6 +192,7 @@ object Keys {
   val scalaBinaryVersion = settingKey[String]("The Scala version substring describing binary compatibility.").withRank(BPlusSetting)
   val crossScalaVersions = settingKey[Seq[String]]("The versions of Scala used when cross-building.").withRank(BPlusSetting)
   val crossVersion = settingKey[CrossVersion]("Configures handling of the Scala version when cross-building.").withRank(CSetting)
+  val platform = settingKey[String]("Configures the default suffix to be used for %% operator.").withRank(CSetting)
   val classpathOptions = settingKey[ClasspathOptions]("Configures handling of Scala classpaths.").withRank(DSetting)
   val discoveredSbtPlugins = taskKey[PluginDiscovery.DiscoveredNames]("The names of sbt plugin-related modules (modules that extend Build, Plugin, AutoPlugin) defined by this project.").withRank(CTask)
   val sbtPlugin = settingKey[Boolean]("If true, enables adding sbt as a dependency and auto-generation of the plugin descriptor file.").withRank(BMinusSetting)

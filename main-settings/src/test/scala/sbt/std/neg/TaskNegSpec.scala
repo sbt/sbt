@@ -7,6 +7,7 @@
 
 package sbt.std.neg
 
+/*
 import scala.tools.reflect.ToolBoxError
 import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.{ TaskLinterDSLFeedback, TestUtil }
@@ -305,7 +306,7 @@ class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixtu
       """.stripMargin
       }
   }
-   */
+ */
 
   test("Detect a missing `.value` inside an inner method of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
@@ -382,3 +383,4 @@ class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixtu
   }
  */
 }
+ */

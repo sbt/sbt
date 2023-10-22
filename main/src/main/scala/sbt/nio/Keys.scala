@@ -133,7 +133,6 @@ object Keys {
    *   watchTriggeredMessage := Watch.clearScreenOnTrigger
    * }}}
    * to the build.
-   *
    */
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the current watch iteration count, the path that triggered the build and the names of the commands to run."

@@ -12,7 +12,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
-import sbt.Project.richInitializeTask
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
 import sbt.internal.Aggregation.KeyValue
@@ -39,7 +40,7 @@ import scala.util.control.NonFatal
  */
 trait RunningTaskEngine {
 
-  /** Attempts to kill and shutdown the running task engine.*/
+  /** Attempts to kill and shutdown the running task engine. */
   def cancelAndShutdown(): Unit
 }
 
@@ -180,16 +181,15 @@ object EvaluateTask {
   // which is a little hard to control.
   def addShutdownHandler[A](thunk: () => A): Unit = {
     capturedThunk
-      .set(
-        () =>
-          try {
-            thunk()
-            ()
-          } catch {
-            case NonFatal(e) =>
-              System.err.println(s"Caught exception running shutdown hook: $e")
-              e.printStackTrace(System.err)
-          }
+      .set(() =>
+        try {
+          thunk()
+          ()
+        } catch {
+          case NonFatal(e) =>
+            System.err.println(s"Caught exception running shutdown hook: $e")
+            e.printStackTrace(System.err)
+        }
       )
   }
 
@@ -249,9 +249,14 @@ object EvaluateTask {
       structure: BuildStructure,
       state: State
   ): TaskCancellationStrategy =
-    getSetting(Keys.taskCancelStrategy, { (_: State) =>
-      TaskCancellationStrategy.Null
-    }, extracted, structure)(state)
+    getSetting(
+      Keys.taskCancelStrategy,
+      { (_: State) =>
+        TaskCancellationStrategy.Null
+      },
+      extracted,
+      structure
+    )(state)
 
   private[sbt] def executeProgress(
       extracted: Extracted,
@@ -265,13 +270,13 @@ object EvaluateTask {
           val progress = tp.progress
           override def initial(): Unit = progress.initial()
           override def afterRegistered(
-              task: Task[_],
-              allDeps: Iterable[Task[_]],
-              pendingDeps: Iterable[Task[_]]
+              task: Task[Any],
+              allDeps: Iterable[Task[Any]],
+              pendingDeps: Iterable[Task[Any]]
           ): Unit =
             progress.afterRegistered(task, allDeps, pendingDeps)
-          override def afterReady(task: Task[_]): Unit = progress.afterReady(task)
-          override def beforeWork(task: Task[_]): Unit = progress.beforeWork(task)
+          override def afterReady(task: Task[Any]): Unit = progress.afterReady(task)
+          override def beforeWork(task: Task[Any]): Unit = progress.beforeWork(task)
           override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
             progress.afterWork(task, result)
           override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
@@ -375,28 +380,31 @@ object EvaluateTask {
   ): Option[(State, Result[T])] = {
     withStreams(structure, state) { str =>
       for ((task, toNode) <- getTask(structure, taskKey, state, str, ref))
-        yield runTask(task, state, str, structure.index.triggers, config)(toNode)
+        yield runTask(task, state, str, structure.index.triggers, config)(using toNode)
     }
   }
 
   def logIncResult(result: Result[_], state: State, streams: Streams) = result match {
-    case Inc(i) => logIncomplete(i, state, streams); case _ => ()
+    case Result.Inc(i) => logIncomplete(i, state, streams); case _ => ()
   }
 
   def logIncomplete(result: Incomplete, state: State, streams: Streams): Unit = {
     val all = Incomplete linearize result
     val keyed =
-      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) => (key, msg, ex) }
+      all collect { case Incomplete(Some(key: ScopedKey[_]), _, msg, _, ex) =>
+        (key, msg, ex)
+      }
 
     import ExceptionCategory._
-    for ((key, msg, Some(ex)) <- keyed) {
+    for {
+      (key, msg, Some(ex)) <- keyed
+    } do
       def log = getStreams(key, streams).log
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()
         case m: MessageOnly => if (msg.isEmpty) log.error(m.message)
         case f: Full        => log.trace(f.exception)
       }
-    }
 
     for ((key, msg, ex) <- keyed if msg.isDefined || ex.isDefined) {
       val msgString = (msg.toList ++ ex.toList.map(ErrorHandling.reducedToString)).mkString("\n\t")
@@ -438,7 +446,7 @@ object EvaluateTask {
     for (t <- structure.data.get(resolvedScope, taskKey.key))
       yield (t, nodeView(state, streams, taskKey :: Nil))
   }
-  def nodeView[HL <: HList](
+  def nodeView(
       state: State,
       streams: Streams,
       roots: Seq[ScopedKey[_]],
@@ -466,7 +474,7 @@ object EvaluateTask {
       streams: Streams,
       triggers: Triggers[Task],
       config: EvaluateTaskConfig
-  )(implicit taskToNode: NodeView[Task]): (State, Result[T]) = {
+  )(using taskToNode: NodeView[Task]): (State, Result[T]) = {
     import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
 
     val log = state.log
@@ -476,9 +484,9 @@ object EvaluateTask {
     def tagMap(t: Task[_]): Tags.TagMap =
       t.info.get(tagsKey).getOrElse(Map.empty)
     val tags =
-      tagged[Task[_]](tagMap, Tags.predicate(config.restrictions))
+      tagged[Task[Any]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      cancellableCompletionService[Task[_], Completed](
+      cancellableCompletionService[Task[Any], Completed](
         tags,
         (s: String) => log.warn(s),
         (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
@@ -505,13 +513,16 @@ object EvaluateTask {
         Execute.config(config.checkCycles, overwriteNode),
         triggers,
         config.progressReporter
-      )(taskToNode)
+      )
       val (newState, result) =
         try {
-          val results = x.runKeep(root)(service)
+          given strategy: x.Strategy = service
+          val results = x.runKeep(root)
           storeValuesForPrevious(results, state, streams)
           applyResults(results, state, root)
-        } catch { case inc: Incomplete => (state, Inc(inc)) } finally shutdown()
+        } catch {
+          case inc: Incomplete => (state, Result.Inc(inc))
+        } finally shutdown()
       val replaced = transformInc(result)
       logIncResult(replaced, state, streams)
       (newState, replaced)
@@ -555,9 +566,9 @@ object EvaluateTask {
   def stateTransform(results: RMap[Task, Result]): State => State =
     Function.chain(
       results.toTypedSeq flatMap {
-        case results.TPair(_, Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
-        case results.TPair(Task(info, _), Value(v))                   => info.post(v) get transformState
-        case _                                                        => Nil
+        case results.TPair(_, Result.Value(KeyValue(_, st: StateTransform))) => Some(st.transform)
+        case results.TPair(Task(info, _), Result.Value(v)) => info.post(v) get transformState
+        case _                                             => Nil
       }
     )
 
@@ -595,7 +606,9 @@ object EvaluateTask {
 
   def liftAnonymous: Incomplete => Incomplete = {
     case i @ Incomplete(_, _, None, causes, None) =>
-      causes.find(inc => inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)) match {
+      causes.find(inc =>
+        inc.node.isEmpty && (inc.message.isDefined || inc.directCause.isDefined)
+      ) match {
         case Some(lift) => i.copy(directCause = lift.directCause, message = lift.message)
         case None       => i
       }
@@ -616,15 +629,15 @@ object EvaluateTask {
 
   def onResult[T, S](result: Result[T])(f: T => S): S =
     result match {
-      case Value(v) => f(v)
-      case Inc(inc) => throw inc
+      case Result.Value(v) => f(v)
+      case Result.Inc(inc) => throw inc
     }
 
   // if the return type Seq[Setting[_]] is not explicitly given, scalac hangs
   val injectStreams: ScopedKey[_] => Seq[Setting[_]] = scoped =>
     if (scoped.key == streams.key) {
       Seq(scoped.scope / streams := {
-        (streamsManager map { mgr =>
+        (streamsManager.map { mgr =>
           val stream = mgr(scoped)
           stream.open()
           stream

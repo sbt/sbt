@@ -12,6 +12,7 @@ val checkPersist = inputKey[Unit]("")
 val updateDemo = taskKey[Int]("")
 val check = inputKey[Unit]("")
 val sample = AttributeKey[Int]("demo-key")
+val dummyKey = taskKey[Unit]("")
 
 def updateDemoInit = state map { s => (s get sample getOrElse 9) + 1 }
 
@@ -22,7 +23,8 @@ lazy val root = (project in file(".")).
     inMemorySetting,
     persistedSetting,
     inMemoryCheck,
-    persistedCheck
+    persistedCheck,
+    dummyKey := (),
   )
 
 def demoState(s: State, i: Int): State = s put (sample, i + 1)
@@ -43,7 +45,11 @@ def  inMemoryCheck = checkKeep    := (inputCheck( (ctx, s) => Space ~> str( getF
 def persistedCheck = checkPersist := (inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )).evaluated
 
 def inputCheck[T](f: (ScopedKey[_], State) => Parser[T]): Initialize[InputTask[Unit]] =
-  InputTask( resolvedScoped(ctx => (s: State) => f(ctx, s)) )( dummyTask )
+  InputTask.separate( resolvedScoped(ctx => (s: State) => f(ctx, s)) )( dummyTask )
 
-def dummyTask = (key: Any) => maxErrors map { _ => () }
+import sbt.TupleSyntax.*
+// def dummyTask = (key: Any) => maxErrors mapN { _ => () }
+def dummyTask[A] = Def.setting {
+  (a: A) => dummyKey.taskValue
+}
 def str(o: Option[Int]) = o match { case None => "blue"; case Some(i) => i.toString }

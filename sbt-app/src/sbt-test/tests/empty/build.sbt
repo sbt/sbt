@@ -1,5 +1,5 @@
 testGrouping := {
-  val tests = (definedTests in Test).value
+  val tests = (Test / definedTests).value
   tests map { test =>
     new Tests.Group(
       name = test.name,

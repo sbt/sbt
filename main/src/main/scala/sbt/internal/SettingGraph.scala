@@ -12,16 +12,16 @@ import sbt.util.Show
 import java.io.File
 
 import Def.{ ScopedKey, compiled, flattenLocals }
-
 import Predef.{ any2stringadd => _, _ }
+import sbt.ProjectExtra.scopedKeyData
 import sbt.io.IO
 
 object SettingGraph {
-  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(
-      implicit display: Show[ScopedKey[_]]
+  def apply(structure: BuildStructure, basedir: File, scoped: ScopedKey[_], generation: Int)(using
+      display: Show[ScopedKey[_]]
   ): SettingGraph = {
     val cMap = flattenLocals(
-      compiled(structure.settings, false)(structure.delegates, structure.scopeLocal, display)
+      compiled(structure.settings, false)(using structure.delegates, structure.scopeLocal, display)
     )
     def loop(scoped: ScopedKey[_], generation: Int): SettingGraph = {
       val key = scoped.key

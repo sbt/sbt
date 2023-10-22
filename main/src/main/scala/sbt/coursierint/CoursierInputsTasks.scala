@@ -34,6 +34,7 @@ import sbt.librarymanagement.ivy.{
   Credentials,
   DirectCredentials => IvyDirectCredentials
 }
+import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make._
 import scala.collection.JavaConverters._
 
@@ -48,6 +49,7 @@ object CoursierInputsTasks {
       description: String,
       homepage: Option[URL],
       vsOpt: Option[String],
+      projectPlatform: Option[String],
       log: Logger
   ): CProject = {
 
@@ -58,7 +60,8 @@ object CoursierInputsTasks {
       dependencies,
       configMap,
       sv,
-      sbv
+      sbv,
+      projectPlatform,
     )
     val proj1 = auOpt match {
       case Some(au) =>
@@ -87,6 +90,7 @@ object CoursierInputsTasks {
         description.value,
         homepage.value,
         versionScheme.value,
+        scalaModuleInfo.value.flatMap(_.platform),
         streams.value.log
       )
     }
@@ -95,8 +99,8 @@ object CoursierInputsTasks {
     CModule(
       COrganization(id.getOrganisation),
       CModuleName(id.getName),
-      id.getExtraAttributes.asScala.map {
-        case (k0, v0) => k0.asInstanceOf[String] -> v0.asInstanceOf[String]
+      id.getExtraAttributes.asScala.map { case (k0, v0) =>
+        k0.asInstanceOf[String] -> v0.asInstanceOf[String]
       }.toMap
     )
 
@@ -141,21 +145,24 @@ object CoursierInputsTasks {
       c => m.getOrElse(c, CPublication("", CType(""), CExtension(""), CClassifier("")))
     }
 
-    configurations.map {
-      case (from, to) =>
-        from -> dependency(to, publications(to))
+    configurations.map { case (from, to) =>
+      from -> dependency(to, publications(to))
     }
   }
 
   private[sbt] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
-    Def.taskDyn {
-      val state = sbt.Keys.state.value
-      val projectRef = sbt.Keys.thisProjectRef.value
-      val projectRefs = Project.transitiveInterDependencies(state, projectRef)
-      Def.task {
-        csrProject.all(ScopeFilter(inProjects(projectRefs :+ projectRef: _*))).value
+    (Def
+      .task {
+        val state = sbt.Keys.state.value
+        val projectRef = sbt.Keys.thisProjectRef.value
+        val projectRefs = Project.transitiveInterDependencies(state, projectRef)
+        ScopeFilter(inProjects(projectRefs :+ projectRef: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          csrProject.all(filter).value
+        }
       }
-    }
 
   private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
     Def.task {
@@ -164,53 +171,53 @@ object CoursierInputsTasks {
 
       // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
       sbt.Keys.projectDescriptors.value
-        .map {
-          case (k, v) =>
-            moduleFromIvy(k) -> v
+        .map { case (k, v) =>
+          moduleFromIvy(k) -> v
         }
-        .filter {
-          case (module, _) =>
-            !projectModules(module)
+        .filter { case (module, _) =>
+          !projectModules(module)
         }
         .toVector
-        .map {
-          case (module, v) =>
-            val configurations = v.getConfigurations.map { c =>
-              CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
-            }.toMap
-            val deps = v.getDependencies.flatMap(dependencyFromIvy)
-            CProject(
-              module,
-              v.getModuleRevisionId.getRevision,
-              deps,
-              configurations,
-              Nil,
-              None,
-              Nil,
-              CInfo("", "", Nil, Nil, None)
-            )
+        .map { case (module, v) =>
+          val configurations = v.getConfigurations.map { c =>
+            CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
+          }.toMap
+          val deps = v.getDependencies.flatMap(dependencyFromIvy)
+          CProject(
+            module,
+            v.getModuleRevisionId.getRevision,
+            deps,
+            configurations,
+            Nil,
+            None,
+            Nil,
+            CInfo("", "", Nil, Nil, None)
+          )
         }
     }
   }
 
   private[sbt] def coursierFallbackDependenciesTask
       : Def.Initialize[sbt.Task[Seq[FallbackDependency]]] =
-    Def.taskDyn {
-      val s = state.value
-      val projectRef = thisProjectRef.value
-      val projects = Project.transitiveInterDependencies(s, projectRef)
+    (Def
+      .task {
+        val s = state.value
+        val projectRef = thisProjectRef.value
+        val projects = Project.transitiveInterDependencies(s, projectRef)
+        ScopeFilter(inProjects(projectRef +: projects: _*))
+      })
+      .flatMapTask { case filter =>
+        Def.task {
+          val allDeps =
+            allDependencies.all(filter).value.flatten
 
-      Def.task {
-        val allDeps =
-          allDependencies.all(ScopeFilter(inProjects(projectRef +: projects: _*))).value.flatten
-
-        FromSbt.fallbackDependencies(
-          allDeps,
-          scalaVersion.value,
-          scalaBinaryVersion.value
-        )
+          FromSbt.fallbackDependencies(
+            allDeps,
+            scalaVersion.value,
+            scalaBinaryVersion.value
+          )
+        }
       }
-    }
 
   val credentialsTask = Def.task {
     val log = streams.value.log

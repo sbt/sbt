@@ -15,6 +15,7 @@ import sbt.internal.util.AttributeKey
 import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
+import sbt.ProjectExtra.setProject
 import scala.annotation.nowarn
 
 final case class Extracted(
@@ -89,7 +90,7 @@ final case class Extracted(
     EvaluateTask.withStreams(structure, state) { str =>
       val nv = EvaluateTask.nodeView(state, str, rkey.scopedKey :: Nil)
       val (newS, result) =
-        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
+        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(using nv)
       (newS, EvaluateTask.processResult2(result))
     }
   }
@@ -100,7 +101,7 @@ final case class Extracted(
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
    */
-  def runAggregated[T](key: TaskKey[T], state: State): State = {
+  def runAggregated[A1](key: TaskKey[A1], state: State): State =
     val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
@@ -109,20 +110,19 @@ final case class Extracted(
       tasks,
       DummyTaskMap(Nil),
       show = Aggregation.defaultShow(state, false),
-    )(showKey)
-  }
+    )
 
   @nowarn
   private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
     key in Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope)
 
-  private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(
-      implicit display: Show[ScopedKey[_]]
+  private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit
+      display: Show[ScopedKey[_]]
   ): T =
     value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
 
-  private def getOrError[T](scope: Scope, key: AttributeKey[T])(
-      implicit display: Show[ScopedKey[_]]
+  private def getOrError[T](scope: Scope, key: AttributeKey[T])(implicit
+      display: Show[ScopedKey[_]]
   ): T =
     getOrError(scope, key, structure.data.get(scope, key))(display)
 
@@ -149,6 +149,7 @@ final case class Extracted(
       state: State,
       sessionSettings: Seq[Setting[_]],
   ): State = {
+    import sbt.ProjectExtra.extract
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newStructure = Load.reapply(sessionSettings ++ appendSettings, structure)

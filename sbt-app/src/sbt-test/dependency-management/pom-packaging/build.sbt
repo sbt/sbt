@@ -2,16 +2,16 @@ val root = project in file(".")
 
 val subJar = project in file("subJar")
 
-def warArtifact = artifact in (Compile, packageBin) ~= (_ withType "war" withExtension "war")
+def warArtifact = (Compile / packageBin / artifact) ~= (_ withType "war" withExtension "war")
 val subWar = project in file("subWar") settings warArtifact
 
-val subParent = project in file("subParent") settings (publishArtifact in Compile := false)
+val subParent = project in file("subParent") settings ((Compile / publishArtifact) := false)
 
 val checkPom = taskKey[Unit]("")
-checkPom in ThisBuild := {
-  checkPackaging((makePom in subJar).value, "jar")
-  checkPackaging((makePom in subWar).value, "war")
-  checkPackaging((makePom in subParent).value, "pom")
+(ThisBuild / checkPom) := {
+  checkPackaging((subJar / makePom).value, "jar")
+  checkPackaging((subWar / makePom).value, "war")
+  checkPackaging((subParent / makePom).value, "pom")
 }
 
 def checkPackaging(pom: File, expected: String) = {

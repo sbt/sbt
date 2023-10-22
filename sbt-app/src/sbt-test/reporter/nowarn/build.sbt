@@ -1,3 +1,5 @@
+ThisBuild / scalaVersion := "2.12.17"
+
 lazy val sub1 = project
 
 lazy val sub2 = project

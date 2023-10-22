@@ -8,8 +8,8 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
 
@@ -36,10 +36,10 @@ lazy val root = (project in file(".")).
     version := "1.0",
     updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
-      val ur = (update in a).value
-      val acp = (externalDependencyClasspath in Compile in a).value.map {_.data.getName}
-      val atestcp0 = (fullClasspath in Test in a).value
-      val atestcp = (externalDependencyClasspath in Test in a).value.map {_.data.getName}
+      val ur = (a / update).value
+      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}
+      val atestcp0 = (a / Test / fullClasspath).value
+      val atestcp = (a / Test / externalDependencyClasspath).value.map {_.data.getName}
       // This is checking to make sure interproject dependency works
       if (acp exists { _ contains "scalatest" }) {
         sys.error("scalatest found when it should NOT be included: " + acp.toString)

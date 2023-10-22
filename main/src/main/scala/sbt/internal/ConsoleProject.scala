@@ -8,6 +8,7 @@
 package sbt
 package internal
 
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
@@ -21,7 +22,8 @@ object ConsoleProject {
   ): Unit = {
     val extracted = Project extract state
     val cpImports = new Imports(extracted, state)
-    val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
+    val bindings =
+      ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
     val (state1, dependencyResolution) =
       extracted.runTask(Keys.dependencyResolution, state)
@@ -51,7 +53,8 @@ object ConsoleProject {
           componentProvider = app.provider.components,
           secondaryCacheDir = Option(zincDir),
           dependencyResolution = dependencyResolution,
-          compilerBridgeSource = extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
+          compilerBridgeSource =
+            extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
           scalaJarsTarget = zincDir,
           classLoaderCache = state1.get(BasicKeys.classLoaderCache),
           log = log
@@ -64,7 +67,7 @@ object ConsoleProject {
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     (new Console(compiler))(
-      unit.classpath,
+      unit.classpath.map(_.toFile),
       options,
       initCommands,
       cleanupCommands,

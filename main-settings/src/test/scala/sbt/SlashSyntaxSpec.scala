@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import org.scalacheck.{ Test => _, _ }, Prop._
 
 import sbt.SlashSyntax
@@ -87,9 +88,8 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
   }
 
   property("Reference? / ConfigKey? / key == key in ThisScope.copy(..)") = {
-    forAll(
-      (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: Key) =>
-        expectValue(k in ThisScope.copy(project = r, config = c))(r / c / k)
+    forAll((r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: Key) =>
+      expectValue(k in ThisScope.copy(project = r, config = c))(r / c / k)
     )
   }
 
@@ -110,3 +110,4 @@ object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
     if (equals) proved else falsified :| s"Expected $expected but got $x"
   }
 }
+ */

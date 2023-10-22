@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait DiagnosticFormats { self: sbt.internal.langserver.codec.RangeFormats with sjsonnew.BasicJsonProtocol =>
+trait DiagnosticFormats { self: sbt.internal.langserver.codec.RangeFormats with sbt.internal.langserver.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val DiagnosticFormat: JsonFormat[sbt.internal.langserver.Diagnostic] = new JsonFormat[sbt.internal.langserver.Diagnostic] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Diagnostic = {
     __jsOpt match {

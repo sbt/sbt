@@ -23,15 +23,15 @@ lazy val root = (project in file("."))
       licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     )),
     ivyPaths := IvyPaths(
-      (baseDirectory in ThisBuild).value,
-      Some((baseDirectory in LocalRootProject).value / "ivy-cache")
+      (ThisBuild / baseDirectory).value,
+      Some((LocalRootProject / baseDirectory).value / "ivy-cache")
     ),
     libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "1.0.0",
 
     // https://github.com/sbt/sbt/pull/1620
     // sbt resolves dependencies every compile when using %% with dependencyOverrides
     TaskKey[Unit]("check") := {
-      val s = (streams in update).value
+      val s = (update / streams).value
 
       val cacheDirectory = crossTarget.value / "update" / updateCacheName.value
       val cacheStoreFactory = sbt.util.CacheStoreFactory.directory(cacheDirectory)

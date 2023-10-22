@@ -25,7 +25,7 @@ sealed trait VirtualFileValueCache[A] {
 
 object VirtualFileValueCache {
   def definesClassCache(converter: FileConverter): VirtualFileValueCache[DefinesClass] = {
-    apply(converter) { x: VirtualFile =>
+    apply(converter) { (x: VirtualFile) =>
       if (x.name.toString != "rt.jar") Locate.definesClass(x)
       else (_: String) => false
     }
@@ -34,9 +34,13 @@ object VirtualFileValueCache {
     import collection.mutable.{ HashMap, Map }
     val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new HashMap
     make(
-      Stamper.timeWrap(stampCache, converter, {
-        case (vf: VirtualFile) => Stamper.forContentHash(vf)
-      })
+      Stamper.timeWrap(
+        stampCache,
+        converter,
+        { case (vf: VirtualFile) =>
+          Stamper.forContentHash(vf)
+        }
+      )
     )(f)
   }
   def make[A](stamp: VirtualFile => XStamp)(f: VirtualFile => A): VirtualFileValueCache[A] =
@@ -46,8 +50,8 @@ object VirtualFileValueCache {
 private[this] final class VirtualFileValueCache0[A](
     getStamp: VirtualFile => XStamp,
     make: VirtualFile => A
-)(
-    implicit equiv: Equiv[XStamp]
+)(implicit
+    equiv: Equiv[XStamp]
 ) extends VirtualFileValueCache[A] {
   private[this] val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]
 

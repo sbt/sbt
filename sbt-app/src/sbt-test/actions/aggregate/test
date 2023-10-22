@@ -11,13 +11,13 @@ $ exists ran
 $ delete ran
 
 # single project, aggregate = true on Mark
-> set aggregate in Mark := true
+> set Mark / aggregate := true
 > mark
 $ exists ran
 $ delete ran
 
 # single project, aggregate = false on Mark
-> set aggregate in Mark := false
+> set Mark / aggregate := false
 > mark
 $ exists ran
 $ delete ran
@@ -36,7 +36,7 @@ $ absent sub/ran
 $ delete ran
 
 # define in sub project, but shouldn't run without aggregation
-> set Mark in sub := mark(sub).value
+> set sub / Mark := mark(sub).value
 > mark
 $ exists ran
 $ absent sub/ran
@@ -58,8 +58,8 @@ $ touch aggregate
 > reload
 
 # add tasks to each subproject
-> set Mark in sub := mark(sub).value
-> set Mark in sub2 := mark(sub2).value
+> set sub / Mark := mark(sub).value
+> set sub2 / Mark := mark(sub2).value
 
 # check that aggregation works when root project has no task
 > mark
@@ -77,14 +77,14 @@ $ delete sub/ran sub/sub/ran
 > set Mark := mark.value
 
 # disable aggregation for sub/mark so that sub2/mark doesn't run
-> set aggregate in (sub,Mark) := false
+> set sub / Mark / aggregate := false
 > mark
 $ exists ran sub/ran
 $ absent sub/sub/ran
 $ delete ran sub/ran
 
 # the aggregation setting in a leaf shouldn't affect whether it can be run directly
-> set aggregate in (sub2, Mark) := false
+> set sub2 / Mark / aggregate := false
 > sub2/mark
 $ exists sub/sub/ran
 $ absent ran sub/ran

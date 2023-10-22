@@ -8,6 +8,7 @@
 package sbt
 
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
+import sbt.ProjectExtra.extract
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.protocol.JsonRpcResponseError
@@ -26,7 +27,7 @@ import scala.util.control.NonFatal
 
 object MainLoop {
 
-  /** Entry point to run the remaining commands in State with managed global logging.*/
+  /** Entry point to run the remaining commands in State with managed global logging. */
   def runLogged(state: State): xsbti.MainResult = {
 
     // We've disabled jline shutdown hooks to prevent classloader leaks, and have been careful to always restore
@@ -42,7 +43,7 @@ object MainLoop {
     }
   }
 
-  /** Run loop that evaluates remaining commands and manages changes to global logging configuration.*/
+  /** Run loop that evaluates remaining commands and manages changes to global logging configuration. */
   @tailrec def runLoggedLoop(state: State, logBacking: GlobalLogBacking): xsbti.MainResult =
     runAndClearLast(state, logBacking) match {
       case ret: Return => // delete current and last log files when exiting normally
@@ -97,7 +98,7 @@ object MainLoop {
     } else None
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
-    currentArtDirs.get foreach { dir =>
+    currentArtDirs.get().foreach { dir =>
       state.log.info(s"deleting $dir")
       IO.delete(dir)
     }
@@ -235,25 +236,28 @@ object MainLoop {
          * Dropping (FastTrackCommands.evaluate ... getOrElse) should be functionally identical
          * but slower.
          */
-        val newState = try {
-          FastTrackCommands
-            .evaluate(termState, exec.commandLine)
-            .getOrElse(Command.process(exec.commandLine, termState))
-        } catch {
-          case _: RejectedExecutionException =>
-            // No stack trace since this is just to notify the user which command they cancelled
-            object Cancelled extends Throwable(exec.commandLine, null, true, false) {
-              override def toString: String = s"Cancelled: ${exec.commandLine}"
-            }
-            throw Cancelled
-        } finally {
-          // Flush the terminal output after command evaluation to ensure that all output
-          // is displayed in the thin client before we report the command status. Also
-          // set the prompt to whatever it was before we started evaluating the task.
-          restoreTerminal()
-        }
-        if (exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
-            !exec.commandLine.startsWith(networkExecPrefix)) {
+        val newState =
+          try {
+            FastTrackCommands
+              .evaluate(termState, exec.commandLine)
+              .getOrElse(Command.process(exec.commandLine, termState))
+          } catch {
+            case _: RejectedExecutionException =>
+              // No stack trace since this is just to notify the user which command they cancelled
+              object Cancelled extends Throwable(exec.commandLine, null, true, false) {
+                override def toString: String = s"Cancelled: ${exec.commandLine}"
+              }
+              throw Cancelled
+          } finally {
+            // Flush the terminal output after command evaluation to ensure that all output
+            // is displayed in the thin client before we report the command status. Also
+            // set the prompt to whatever it was before we started evaluating the task.
+            restoreTerminal()
+          }
+        if (
+          exec.execId.fold(true)(!_.startsWith(networkExecPrefix)) &&
+          !exec.commandLine.startsWith(networkExecPrefix)
+        ) {
           val doneEvent = ExecStatusEvent(
             "Done",
             channelName,
@@ -331,8 +335,10 @@ object MainLoop {
   // it's handled by executing the shell again, instead of the state failing
   // so we also use that to indicate that the execution failed
   private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
-    if (prevState.onFailure.isDefined && state.onFailure.isEmpty &&
-        state.currentCommand.fold(true)(_.commandLine != StashOnFailure)) {
+    if (
+      prevState.onFailure.isDefined && state.onFailure.isEmpty &&
+      state.currentCommand.fold(true)(_.commandLine != StashOnFailure)
+    ) {
       ExitCode(ErrorCodes.UnknownError)
     } else ExitCode.Success
 }

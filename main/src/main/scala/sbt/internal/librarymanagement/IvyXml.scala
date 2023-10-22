@@ -22,6 +22,7 @@ import sbt.Keys.{
   publishConfiguration,
   useCoursier
 }
+import sbt.ProjectExtra.*
 import sbt.librarymanagement.PublishConfiguration
 import scala.collection.JavaConverters._
 import scala.xml.{ Node, PrefixedAttribute }
@@ -95,13 +96,12 @@ object IvyXml {
           new PrefixedAttribute("e", k, v, acc)
       }
 
-    val licenseElems = project.info.licenses.map {
-      case (name, urlOpt) =>
-        val n = <license name={name} />
+    val licenseElems = project.info.licenses.map { case (name, urlOpt) =>
+      val n = <license name={name} />
 
-        urlOpt.fold(n) { url =>
-          n % <x url={url} />.attributes
-        }
+      urlOpt.fold(n) { url =>
+        n % <x url={url} />.attributes
+      }
     }
 
     val descriptionElem = {
@@ -134,55 +134,56 @@ object IvyXml {
     }
 
     val publications = project.publications
-      .groupBy { case (_, p)             => p }
+      .groupBy { case (_, p) => p }
       .mapValues { _.map { case (cfg, _) => cfg } }
 
-    val publicationElems = publications.map {
-      case (pub, configs) =>
-        val n =
-          <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf={
-            configs.map(_.value).mkString(",")
-          } />
+    val publicationElems = publications.map { case (pub, configs) =>
+      val n =
+        <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf={
+          configs.map(_.value).mkString(",")
+        } />
 
-        if (pub.classifier.value.nonEmpty)
-          n % <x e:classifier={pub.classifier.value} />.attributes
-        else
-          n
+      if (pub.classifier.value.nonEmpty)
+        n % <x e:classifier={pub.classifier.value} />.attributes
+      else
+        n
     }
 
-    val dependencyElems = project.dependencies.toVector.map {
-      case (conf, dep) =>
-        val classifier = {
-          val pub = dep.publication
-          if (pub.classifier.value.nonEmpty)
-            Seq(
-              <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf="*" e:classifier={
-                pub.classifier.value
-              } />
-            )
-          else
-            Seq.empty
-        }
+    val dependencyElems = project.dependencies.toVector.map { case (conf, dep) =>
+      val classifier = {
+        val pub = dep.publication
+        if (pub.classifier.value.nonEmpty)
+          Seq(
+            <artifact name={pub.name} type={pub.`type`.value} ext={
+              pub.ext.value
+            } conf="*" e:classifier={
+              pub.classifier.value
+            } />
+          )
+        else
+          Seq.empty
+      }
 
-        val excludes = dep.exclusions.toSeq.map {
-          case (org, name) =>
-            <exclude org={org.value} module={name.value} name="*" type="*" ext="*" conf="" matcher="exact"/>
-        }
+      val excludes = dep.exclusions.toSeq.map { case (org, name) =>
+        <exclude org={org.value} module={
+          name.value
+        } name="*" type="*" ext="*" conf="" matcher="exact"/>
+      }
 
-        val n =
-          <dependency org={dep.module.organization.value} name={dep.module.name.value} rev={
-            dep.version
-          } conf={s"${conf.value}->${dep.configuration.value}"}>
+      val n =
+        <dependency org={dep.module.organization.value} name={dep.module.name.value} rev={
+          dep.version
+        } conf={s"${conf.value}->${dep.configuration.value}"}>
           {classifier}
           {excludes}
         </dependency>
 
-        val moduleAttrs = dep.module.attributes.foldLeft[xml.MetaData](xml.Null) {
-          case (acc, (k, v)) =>
-            new PrefixedAttribute("e", k, v, acc)
-        }
+      val moduleAttrs = dep.module.attributes.foldLeft[xml.MetaData](xml.Null) {
+        case (acc, (k, v)) =>
+          new PrefixedAttribute("e", k, v, acc)
+      }
 
-        n % moduleAttrs
+      n % moduleAttrs
     }
 
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">
@@ -197,24 +198,21 @@ object IvyXml {
       task: TaskKey[T],
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
-    task := task.dependsOn {
-      Def.taskDyn {
-        val doGen = useCoursier.value
-        if (doGen)
-          Def.task {
-            val currentProject = {
-              val proj = csrProject.value
-              val publications = csrPublications.value
-              proj.withPublications(publications)
-            }
-            IvyXml.writeFiles(
-              currentProject,
-              shadedConfigOpt,
-              sbt.Keys.ivySbt.value,
-              sbt.Keys.streams.value.log
-            )
-          } else
-          Def.task(())
+    task := task.dependsOnTask {
+      Def.taskIf {
+        if useCoursier.value then
+          val currentProject = {
+            val proj = csrProject.value
+            val publications = csrPublications.value
+            proj.withPublications(publications)
+          }
+          IvyXml.writeFiles(
+            currentProject,
+            shadedConfigOpt,
+            sbt.Keys.ivySbt.value,
+            sbt.Keys.streams.value.log
+          )
+        else ()
       }
     }.value
 

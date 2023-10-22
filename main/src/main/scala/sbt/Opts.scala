@@ -43,11 +43,14 @@ object Opts {
     import sbt.io.syntax._
     @deprecated("Use sonatypeOssReleases instead", "1.7.0")
     val sonatypeReleases = Resolver.sonatypeRepo("releases")
-    val sonatypeOssReleases = Resolver.sonatypeOssRepos("releases")
+    // todo: fix
+    // val sonatypeOssReleases = Resolver.sonatypeOssRepos("releases")
 
     @deprecated("Use sonatypeOssSnapshots instead", "1.7.0")
     val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
-    val sonatypeOssSnapshots = Resolver.sonatypeOssRepos("snapshots")
+
+    // todo: fix
+    // val sonatypeOssSnapshots = Resolver.sonatypeOssRepos("snapshots")
 
     val sonatypeStaging = MavenRepository(
       "sonatype-staging",
@@ -65,7 +68,7 @@ object DefaultOptions {
   import Opts._
   import sbt.io.syntax._
   import BuildPaths.{ getGlobalBase, getGlobalSettingsDirectory }
-  import Project.extract
+  import sbt.ProjectExtra.extract
   import Def.Setting
 
   def javac: Seq[String] = compile.encoding("UTF-8")
@@ -92,6 +95,10 @@ object DefaultOptions {
 
   def shellPrompt(version: String): State => String =
     s =>
-      "%s:%s:%s> ".format(s.configuration.provider.id.name, extract(s).currentProject.id, version)
+      "%s:%s:%s> ".format(
+        s.configuration.provider.id.name,
+        Project.extract(s).currentProject.id,
+        version
+      )
   def setupShellPrompt: Setting[_] = Keys.shellPrompt := { shellPrompt(Keys.version.value) }
 }

@@ -15,17 +15,21 @@ object Relation {
   def empty[A, B]: Relation[A, B] = make(Map.empty, Map.empty)
 
   /**
-   * Constructs a [[Relation]] from underlying `forward` and `reverse` representations, without checking that they are consistent.
-   * This is a low-level constructor and the alternatives [[empty]] and [[reconstruct]] should be preferred.
+   * Constructs a [[Relation]] from underlying `forward` and `reverse` representations, without
+   * checking that they are consistent. This is a low-level constructor and the alternatives
+   * [[empty]] and [[reconstruct]] should be preferred.
    */
   def make[A, B](forward: Map[A, Set[B]], reverse: Map[B, Set[A]]): Relation[A, B] =
     new MRelation(forward, reverse)
 
-  /** Constructs a relation such that for every entry `_1 -> _2s` in `forward` and every `_2` in `_2s`, `(_1, _2)` is in the relation. */
+  /**
+   * Constructs a relation such that for every entry `_1 -> _2s` in `forward` and every `_2` in
+   * `_2s`, `(_1, _2)` is in the relation.
+   */
   def reconstruct[A, B](forward: Map[A, Set[B]]): Relation[A, B] = {
     val reversePairs = for ((a, bs) <- forward.view; b <- bs.view) yield (b, a)
-    val reverse = reversePairs.foldLeft(Map.empty[B, Set[A]]) {
-      case (m, (b, a)) => add(m, b, a :: Nil)
+    val reverse = reversePairs.foldLeft(Map.empty[B, Set[A]]) { case (m, (b, a)) =>
+      add(m, b, a :: Nil)
     }
     make(forward filter { case (a, bs) => bs.nonEmpty }, reverse)
   }
@@ -53,19 +57,17 @@ object Relation {
 
   /** when both parameters taken by relation are the same type, switch calls a function on them. */
   private[sbt] def switch[X, Y](relation: Relation[X, X], f: X => Y): Relation[Y, Y] = {
-    val forward = relation.forwardMap.map {
-      case (first, second) =>
-        f(first) -> second.map(f)
+    val forward = relation.forwardMap.map { case (first, second) =>
+      f(first) -> second.map(f)
     }
-    val reverse = relation.reverseMap.map {
-      case (first, second) =>
-        f(first) -> second.map(f)
+    val reverse = relation.reverseMap.map { case (first, second) =>
+      f(first) -> second.map(f)
     }
     make(forward, reverse)
   }
 }
 
-/** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B.  */
+/** Binary relation between A and B.  It is a set of pairs (_1, _2) for _1 in A, _2 in B. */
 trait Relation[A, B] {
 
   /** Returns the set of all `_2`s such that `(_1, _2)` is in this relation. */
@@ -113,37 +115,41 @@ trait Relation[A, B] {
   /** Returns the number of pairs in this relation */
   def size: Int
 
-  /** Returns true iff `(a,b)` is in this relation*/
+  /** Returns true iff `(a,b)` is in this relation */
   def contains(a: A, b: B): Boolean
 
-  /** Returns a relation with only pairs `(a,b)` for which `f(a,b)` is true.*/
+  /** Returns a relation with only pairs `(a,b)` for which `f(a,b)` is true. */
   def filter(f: (A, B) => Boolean): Relation[A, B]
 
   /**
-   * Returns a pair of relations: the first contains only pairs `(a,b)` for which `f(a,b)` is true and
-   * the other only pairs `(a,b)` for which `f(a,b)` is false.
+   * Returns a pair of relations: the first contains only pairs `(a,b)` for which `f(a,b)` is true
+   * and the other only pairs `(a,b)` for which `f(a,b)` is false.
    */
   def partition(f: (A, B) => Boolean): (Relation[A, B], Relation[A, B])
 
   /** Partitions this relation into a map of relations according to some discriminator function. */
   def groupBy[K](discriminator: ((A, B)) => K): Map[K, Relation[A, B]]
 
-  /** Returns all pairs in this relation.*/
+  /** Returns all pairs in this relation. */
   def all: Traversable[(A, B)]
 
   /**
-   * Represents this relation as a `Map` from a `_1` to the set of `_2`s such that `(_1, _2)` is in this relation.
+   * Represents this relation as a `Map` from a `_1` to the set of `_2`s such that `(_1, _2)` is in
+   * this relation.
    *
-   * Specifically, there is one entry for each `_1` such that `(_1, _2)` is in this relation for some `_2`.
-   * The value associated with a given `_1` is the set of all `_2`s such that `(_1, _2)` is in this relation.
+   * Specifically, there is one entry for each `_1` such that `(_1, _2)` is in this relation for
+   * some `_2`. The value associated with a given `_1` is the set of all `_2`s such that `(_1, _2)`
+   * is in this relation.
    */
   def forwardMap: Map[A, Set[B]]
 
   /**
-   * Represents this relation as a `Map` from a `_2` to the set of `_1`s such that `(_1, _2)` is in this relation.
+   * Represents this relation as a `Map` from a `_2` to the set of `_1`s such that `(_1, _2)` is in
+   * this relation.
    *
-   * Specifically, there is one entry for each `_2` such that `(_1, _2)` is in this relation for some `_1`.
-   * The value associated with a given `_2` is the set of all `_1`s such that `(_1, _2)` is in this relation.
+   * Specifically, there is one entry for each `_2` such that `(_1, _2)` is in this relation for
+   * some `_1`. The value associated with a given `_2` is the set of all `_1`s such that `(_1, _2)`
+   * is in this relation.
    */
   def reverseMap: Map[B, Set[A]]
 }

@@ -115,7 +115,7 @@ object TestServer {
     }
     val scalaVersion = sys.props.get("sbt.server.scala.version") match {
       case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server scala version was specified.")
+      case _ => throw new IllegalStateException("No server scala version was specified.")
     }
     // Each test server instance will be executed in a Thread pool separated from the tests
     val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath)
@@ -176,7 +176,7 @@ case class TestServer(
   def waitForPortfile(duration: FiniteDuration): Unit = {
     val deadline = duration.fromNow
     var nextLog = 10.seconds.fromNow
-    while (portfileIsEmpty && !deadline.isOverdue && process.isAlive) {
+    while (portfileIsEmpty() && !deadline.isOverdue && process.isAlive) {
       if (nextLog.isOverdue) {
         hostLog("waiting for the server...")
         nextLog = 10.seconds.fromNow
@@ -192,8 +192,9 @@ case class TestServer(
 
   @tailrec
   private def connect(attempt: Int): Socket = {
-    val res = try Some(ClientSocket.socket(portfile)._1)
-    catch { case _: IOException if attempt < 10 => None }
+    val res =
+      try Some(ClientSocket.socket(portfile)._1)
+      catch { case _: IOException if attempt < 10 => None }
     res match {
       case Some(s) => s
       case _ =>
@@ -208,12 +209,15 @@ case class TestServer(
   private val lines = new LinkedBlockingQueue[String]
   val running = new AtomicBoolean(true)
   val readThread =
-    new Thread(() => {
-      while (running.get) {
-        try lines.put(sbt.ReadJson(in, running))
-        catch { case _: Exception => running.set(false) }
-      }
-    }, "sbt-server-test-read-thread") {
+    new Thread(
+      () => {
+        while (running.get) {
+          try lines.put(sbt.ReadJson(in, running))
+          catch { case _: Exception => running.set(false) }
+        }
+      },
+      "sbt-server-test-read-thread"
+    ) {
       setDaemon(true)
       start()
     }
@@ -282,7 +286,7 @@ case class TestServer(
     if (s != "") {
       out.write(s.getBytes("UTF-8"))
     }
-    writeEndLine
+    writeEndLine()
   }
 
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
@@ -305,14 +309,13 @@ case class TestServer(
         case s =>
           Parser
             .parseFromString(s)
-            .flatMap(
-              jvalue =>
-                Converter.fromJson[T](
-                  jvalue.toStandard
-                    .asInstanceOf[sjsonnew.shaded.scalajson.ast.JObject]
-                    .value("result")
-                    .toUnsafe
-                )
+            .flatMap(jvalue =>
+              Converter.fromJson[T](
+                jvalue.toStandard
+                  .asInstanceOf[sjsonnew.shaded.scalajson.ast.JObject]
+                  .value("result")
+                  .toUnsafe
+              )
             ) match {
             case Success(value) =>
               value

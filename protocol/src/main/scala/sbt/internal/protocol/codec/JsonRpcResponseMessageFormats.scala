@@ -31,15 +31,16 @@ trait JsonRpcResponseMessageFormats {
           case Some(js) =>
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
-            val id = try {
-              unbuilder.readField[String]("id")
-            } catch {
-              case _: DeserializationException =>
-                unbuilder.readField[Long]("id").toString
-            }
+            val id =
+              try {
+                unbuilder.readField[String]("id")
+              } catch {
+                case _: DeserializationException =>
+                  unbuilder.readField[Long]("id").toString
+              }
 
-            val result = unbuilder.lookupField("result") map {
-              case x: JValue => x
+            val result = unbuilder.lookupField("result") map { case x: JValue =>
+              x
             }
 
             val error =

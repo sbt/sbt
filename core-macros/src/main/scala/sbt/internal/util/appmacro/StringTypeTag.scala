@@ -7,21 +7,23 @@
 
 package sbt.internal.util.appmacro
 
-import scala.reflect.macros.blackbox
+final class StringTypeTag[A](val key: String):
+  override def toString(): String = key
+  override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
+    case x: StringTypeTag[_] => (this.key == x.key)
+    case _                   => false
+  })
+  override def hashCode: Int = key.##
+end StringTypeTag
 
-object StringTypeTag {
-  def impl[A: c.WeakTypeTag](c: blackbox.Context): c.Tree = {
-    import c.universe._
-    val tpe = weakTypeOf[A]
-    def typeToString(tpe: Type): String = tpe match {
-      case TypeRef(_, sym, args) if args.nonEmpty =>
-        val typeCon = tpe.typeSymbol.fullName
-        val typeArgs = args map typeToString
-        s"""$typeCon[${typeArgs.mkString(",")}]"""
-      case _ => tpe.toString
-    }
+object StringTypeTag:
+  inline given apply[A]: StringTypeTag[A] = ${ applyImpl[A] }
 
-    val key = Literal(Constant(typeToString(tpe)))
-    q"new sbt.internal.util.StringTypeTag[$tpe]($key)"
-  }
-}
+  def manually[A](key: String): StringTypeTag[A] = new StringTypeTag(key)
+
+  import scala.quoted.*
+  private def applyImpl[A: Type](using qctx: Quotes): Expr[StringTypeTag[A]] =
+    import qctx.reflect._
+    val tpe = TypeRepr.of[A]
+    '{ new StringTypeTag[A](${ Expr(tpe.dealias.show) }) }
+end StringTypeTag

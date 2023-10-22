@@ -83,5 +83,5 @@ object EventsTest extends AbstractServerTest {
       s contains """"result":{"status":"Task cancelled""""
     })
   }
- */
+   */
 }

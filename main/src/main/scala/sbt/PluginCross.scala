@@ -18,6 +18,7 @@ import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
 import sbt.librarymanagement.VersionNumber
 import Project.inScope
+import ProjectExtra.{ extract, getProject, setProject }
 import scala.annotation.nowarn
 
 /**
@@ -47,7 +48,7 @@ private[sbt] object PluginCross {
         val x = Project.extract(state)
         import x._
         state.log.info(s"Setting `sbtVersion in pluginCrossBuild` to $version")
-        val add = List(sbtVersion in GlobalScope in pluginCrossBuild :== version) ++
+        val add = List(GlobalScope / pluginCrossBuild / sbtVersion :== version) ++
           List(scalaVersion := scalaVersionSetting.value) ++
           inScope(GlobalScope.copy(project = Select(currentRef)))(
             Seq(scalaVersion := scalaVersionSetting.value)
@@ -73,17 +74,16 @@ private[sbt] object PluginCross {
       import x._
       ((currentRef / crossSbtVersions) get structure.data getOrElse Nil).toList
     }
-    Command.arb(requireSession(crossParser), pluginCrossHelp) {
-      case (state, command) =>
-        val x = Project.extract(state)
-        import x._
-        val versions = crossVersions(state)
-        val current = (pluginCrossBuild / sbtVersion)
-          .get(structure.data)
-          .map(PluginSwitchCommand + " " + _)
-          .toList
-        if (versions.isEmpty) command :: state
-        else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
+    Command.arb(requireSession(crossParser), pluginCrossHelp) { case (state, command) =>
+      val x = Project.extract(state)
+      import x._
+      val versions = crossVersions(state)
+      val current = (pluginCrossBuild / sbtVersion)
+        .get(structure.data)
+        .map(PluginSwitchCommand + " " + _)
+        .toList
+      if (versions.isEmpty) command :: state
+      else versions.map(PluginSwitchCommand + " " + _ + " " + command) ::: current ::: state
     }
   }
 

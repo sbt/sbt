@@ -20,6 +20,7 @@ import sbt.internal.util.Attributed
 import Def.{ ScopedKey, Setting }
 import Keys._
 import Configurations.{ Compile, Runtime }
+import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
 import sbt.SlashSyntax0._
 import java.io.File
 import org.apache.ivy.core.module.{ descriptor, id }
@@ -74,12 +75,12 @@ object GlobalPlugin {
     import structure.{ data, root, rootProject }
     val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
 
+    // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
+    val updateReport = (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
       val depMap = projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
-      // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
-      val updateReport = Def.taskDyn { Def.task { update.value } }.value
 
       GlobalPluginData(
         projectID.value,
@@ -88,7 +89,7 @@ object GlobalPlugin {
         resolvers.value.toVector,
         (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct
-      )(updateReport)
+      )(updateReport.value)
     }
     val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
     val task = resolvedTaskInit evaluate data
@@ -105,7 +106,7 @@ object GlobalPlugin {
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, roots)
       val config = EvaluateTask.extractedTaskConfig(Project.extract(state), structure, state)
-      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)
+      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(using nv)
       (newS, processResult2(result))
     }
   }

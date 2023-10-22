@@ -17,22 +17,34 @@ object Delegates extends Properties {
 
   override def tests: List[Test] =
     List(
-      property("generate non-empty configs", cGen.forAll.map { c =>
-        assert(c.nonEmpty)
-      }),
-      property("generate non-empty tasks", tGen.forAll.map { t =>
-        assert(t.nonEmpty)
-      }),
-      property("no duplicate scopes", keysGen.forAll.map { keys =>
-        allDelegates(keys) { (_, ds) =>
-          ds.distinct.size ==== ds.size
+      property(
+        "generate non-empty configs",
+        cGen.forAll.map { c =>
+          assert(c.nonEmpty)
         }
-      }),
-      property("delegates non-empty", keysGen.forAll.map { keys =>
-        allDelegates(keys) { (_, ds) =>
-          assert(ds.nonEmpty)
+      ),
+      property(
+        "generate non-empty tasks",
+        tGen.forAll.map { t =>
+          assert(t.nonEmpty)
         }
-      }),
+      ),
+      property(
+        "no duplicate scopes",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) { (_, ds) =>
+            ds.distinct.size ==== ds.size
+          }
+        }
+      ),
+      property(
+        "delegates non-empty",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) { (_, ds) =>
+            assert(ds.nonEmpty)
+          }
+        }
+      ),
       property("An initially Zero axis is Zero in all delegates", allAxes(alwaysZero)),
       property(
         "Projects precede builds precede Zero",
@@ -49,71 +61,73 @@ object Delegates extends Properties {
       ),
       property(
         "Initial scope present with all combinations of Global axes",
-        allAxes(
-          (s, ds, _) => globalCombinations(s, ds)
-        )
+        allAxes((s, ds, _) => globalCombinations(s, ds))
       ),
-      property("initial scope first", keysGen.forAll.map { keys =>
-        allDelegates(keys) { (scope, ds) =>
-          ds.head ==== scope
+      property(
+        "initial scope first",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) { (scope, ds) =>
+            ds.head ==== scope
+          }
         }
-      }),
-      property("global scope last", keysGen.forAll.map { keys =>
-        allDelegates(keys) { (_, ds) =>
-          ds.last ==== Scope.GlobalScope
+      ),
+      property(
+        "global scope last",
+        keysGen.forAll.map { keys =>
+          allDelegates(keys) { (_, ds) =>
+            ds.last ==== Scope.GlobalScope
+          }
         }
-      }),
+      ),
       property(
         "Project axis delegates to BuildRef then Zero",
         keysGen.forAll.map { keys =>
-          allDelegates(keys) {
-            (key, ds) =>
-              key.project match {
-                case Zero => success // filtering out of testing
-                case Select(rr: ResolvedReference) =>
-                  rr match {
-                    case BuildRef(_) =>
-                      assert(ds.indexOf(key) < ds.indexOf(key.copy(project = Zero)))
-                    case ProjectRef(uri, _) =>
-                      val buildScoped = key.copy(project = Select(BuildRef(uri)))
-                      val idxKey = ds.indexOf(key)
-                      val idxB = ds.indexOf(buildScoped)
-                      val z = key.copy(project = Zero)
-                      val idxZ = ds.indexOf(z)
-                      (z ==== Scope.GlobalScope)
-                        .or(
-                          assert((idxKey < idxB) && (idxB < idxZ))
-                            .log(s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ")
-                        )
-                  }
-                case Select(_) | This =>
-                  failure.log(s"Scope's reference should be resolved, but was ${key.project}")
-              }
+          allDelegates(keys) { (key, ds) =>
+            key.project match {
+              case Zero => success // filtering out of testing
+              case Select(rr: ResolvedReference) =>
+                rr match {
+                  case BuildRef(_) =>
+                    assert(ds.indexOf(key) < ds.indexOf(key.copy(project = Zero)))
+                  case ProjectRef(uri, _) =>
+                    val buildScoped = key.copy(project = Select(BuildRef(uri)))
+                    val idxKey = ds.indexOf(key)
+                    val idxB = ds.indexOf(buildScoped)
+                    val z = key.copy(project = Zero)
+                    val idxZ = ds.indexOf(z)
+                    (z ==== Scope.GlobalScope)
+                      .or(
+                        assert((idxKey < idxB) && (idxB < idxZ))
+                          .log(s"idxKey = $idxKey; idxB = $idxB; idxZ = $idxZ")
+                      )
+                }
+              case Select(_) | This =>
+                failure.log(s"Scope's reference should be resolved, but was ${key.project}")
+            }
           }
         }
       ),
       property(
         "Config axis delegates to parent configuration",
         keysGen.forAll.map { keys =>
-          allDelegates(keys) {
-            (key, ds) =>
-              key.config match {
-                case Zero => success
-                case Select(config) =>
-                  key.project match {
-                    case Select(p @ ProjectRef(_, _)) =>
-                      val r = keys.env.resolve(p)
-                      keys.env.inheritConfig(r, config).headOption.fold(success) { parent =>
-                        val idxKey = ds.indexOf(key)
-                        val a = key.copy(config = Select(parent))
-                        val idxA = ds.indexOf(a)
-                        assert(idxKey < idxA)
-                          .log(s"idxKey = $idxKey; a = $a; idxA = $idxA")
-                      }
-                    case _ => success
-                  }
-                case _ => success
-              }
+          allDelegates(keys) { (key, ds) =>
+            key.config match {
+              case Zero => success
+              case Select(config) =>
+                key.project match {
+                  case Select(p @ ProjectRef(_, _)) =>
+                    val r = keys.env.resolve(p)
+                    keys.env.inheritConfig(r, config).headOption.fold(success) { parent =>
+                      val idxKey = ds.indexOf(key)
+                      val a = key.copy(config = Select(parent))
+                      val idxA = ds.indexOf(a)
+                      assert(idxKey < idxA)
+                        .log(s"idxKey = $idxKey; a = $a; idxA = $idxA")
+                    }
+                  case _ => success
+                }
+              case _ => success
+            }
           }
         }
       )

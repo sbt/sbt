@@ -125,9 +125,11 @@ object LineReader {
           case _: Terminal.ConsoleTerminal => Some(Signals.register(() => terminal.write(-1)))
           case _                           => None
         }
-        try terminal.withRawInput {
-          Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
-        } catch {
+        try
+          terminal.withRawInput {
+            Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
+          }
+        catch {
           case e: EndOfFileException =>
             if (terminal == Terminal.console && System.console == null) None
             else Some("exit")
@@ -195,8 +197,8 @@ abstract class JLine extends LineReader {
 
   private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
-      Signals.withHandler(() => resume(), signal = Signals.CONT)(
-        () => readLineDirectRaw(prompt, mask)
+      Signals.withHandler(() => resume(), signal = Signals.CONT)(() =>
+        readLineDirectRaw(prompt, mask)
       )
     else
       readLineDirectRaw(prompt, mask)
@@ -236,16 +238,8 @@ abstract class JLine extends LineReader {
 
 @deprecated("Use LineReader apis", "1.4.0")
 private[sbt] object JLine {
-  @deprecated("For binary compatibility only", "1.4.0")
-  protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
-
   @deprecated("Handled by Terminal.fixTerminalProperty", "1.4.0")
   private[sbt] def fixTerminalProperty(): Unit = ()
-
-  @deprecated("For binary compatibility only", "1.4.0")
-  private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
-    if (injectThreadSleep) new InputStreamWrapper(originalIn, 2.milliseconds)
-    else originalIn
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
@@ -253,14 +247,14 @@ private[sbt] object JLine {
   private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTeminal
 
   /**
-   * For accessing the JLine Terminal object.
-   * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
+   * For accessing the JLine Terminal object. This ensures synchronized access as well as
+   * re-enabling echo after getting the Terminal.
    */
-  @deprecated(
-    "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
-    "1.4.0"
-  )
-  def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
+  // @deprecated(
+  //   "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
+  //   "1.4.0"
+  // )
+  // def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
 
   @deprecated("unused", "1.4.0")
   def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)
@@ -294,31 +288,6 @@ private[sbt] object JLine {
 
   @deprecated("Use LineReader.HandleCONT", "1.4.0")
   val HandleCONT = LineReader.HandleCONT
-}
-
-@deprecated("For binary compatibility only", "1.4.0")
-private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
-    extends FilterInputStream(is) {
-  @tailrec final override def read(): Int =
-    if (is.available() != 0) is.read()
-    else {
-      Thread.sleep(poll.toMillis)
-      read()
-    }
-
-  @tailrec final override def read(b: Array[Byte]): Int =
-    if (is.available() != 0) is.read(b)
-    else {
-      Thread.sleep(poll.toMillis)
-      read(b)
-    }
-
-  @tailrec final override def read(b: Array[Byte], off: Int, len: Int): Int =
-    if (is.available() != 0) is.read(b, off, len)
-    else {
-      Thread.sleep(poll.toMillis)
-      read(b, off, len)
-    }
 }
 
 final class FullReader(

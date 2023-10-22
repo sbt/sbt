@@ -179,14 +179,13 @@ object TestFramework {
   def getFingerprints(framework: Framework): Seq[Fingerprint] =
     framework.getClass.getMethod("fingerprints").invoke(framework) match {
       case fingerprints: Array[Fingerprint] => fingerprints.toList
-      case _                                => sys.error("Could not call 'fingerprints' on framework " + framework)
+      case _ => sys.error("Could not call 'fingerprints' on framework " + framework)
     }
 
   private[sbt] def safeForeach[T](it: Iterable[T], log: ManagedLogger)(f: T => Unit): Unit =
-    it.foreach(
-      i =>
-        try f(i)
-        catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
+    it.foreach(i =>
+      try f(i)
+      catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
     )
 
   private[sbt] def hashCode(f: Fingerprint): Int = f match {
@@ -221,9 +220,16 @@ object TestFramework {
     if (mappedTests.isEmpty)
       (() => (), Vector(), _ => () => ())
     else
-      createTestTasks(testLoader, runners.map {
-        case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))
-      }, mappedTests, tests, log, listeners)
+      createTestTasks(
+        testLoader,
+        runners.map { case (tf, r) =>
+          (frameworks(tf), new TestRunner(r, listeners, log))
+        },
+        mappedTests,
+        tests,
+        log,
+        listeners
+      )
   }
 
   private[this] def order(
@@ -270,14 +276,13 @@ object TestFramework {
 
     val startTask = foreachListenerSafe(_.doInit())
     val testTasks =
-      Map(tests.toSeq.flatMap {
-        case (framework, testDefinitions) =>
-          val runner = runners(framework)
-          val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
-          for (testTask <- testTasks) yield {
-            val taskDef = testTask.taskDef
-            (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
-          }
+      Map(tests.toSeq.flatMap { case (framework, testDefinitions) =>
+        val runner = runners(framework)
+        val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
+        for (testTask <- testTasks) yield {
+          val taskDef = testTask.taskDef
+          (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
+        }
       }: _*)
 
     val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))

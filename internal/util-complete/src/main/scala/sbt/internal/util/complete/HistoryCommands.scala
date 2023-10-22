@@ -61,14 +61,12 @@ object HistoryCommands {
     { printHistory(h, MaxLines, show); nil[String].some }
   }
 
-  lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map {
-    case (contains, str) =>
-      execute(h => if (contains) h !? str else h ! str)
+  lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map { case (contains, str) =>
+    execute(h => if (contains) h !? str else h ! str)
   }
 
-  lazy val execInt = flag('-') ~ num map {
-    case (neg, value) =>
-      execute(h => if (neg) h !- value else h ! value)
+  lazy val execInt = flag('-') ~ num map { case (neg, value) =>
+    execute(h => if (neg) h !- value else h ! value)
   }
 
   lazy val help = success((h: History) => { printHelp(); nil[String].some })

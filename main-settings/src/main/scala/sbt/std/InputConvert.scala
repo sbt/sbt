@@ -8,81 +8,116 @@
 package sbt
 package std
 
-import scala.reflect.macros._
-
+import sbt.internal.util.appmacro.{ Convert, ContextUtil }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.appmacro.{ Convert, Converted }
 import Def.Initialize
+import sbt.util.Applicative
+import sbt.internal.util.Types.Compose
+import scala.quoted.*
 
-object InputInitConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    nme match {
-      case InputWrapper.WrapInitName     => Converted.Success[c.type](in)
-      case InputWrapper.WrapInitTaskName => Converted.Failure[c.type](in.pos, initTaskErrorMessage)
-      case _                             => Converted.NotApplicable[c.type]
-    }
+class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
+
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    nme match
+      case InputWrapper.WrapInitName     => Converted.success(in)
+      case InputWrapper.WrapInitTaskName => Converted.Failure(in.pos, initTaskErrorMessage)
+      case _                             => Converted.NotApplicable()
 
   private def initTaskErrorMessage = "Internal sbt error: initialize+task wrapper not split"
-}
 
-/** Converts an input `Tree` of type `Parser[T]` or `State => Parser[T]` into a `Tree` of type `State => Parser[T]`.*/
-object ParserConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    nme match {
-      case ParserInput.WrapName     => Converted.Success[c.type](in)
-      case ParserInput.WrapInitName => Converted.Failure[c.type](in.pos, initParserErrorMessage)
-      case _                        => Converted.NotApplicable[c.type]
-    }
+  def appExpr: Expr[Applicative[Initialize]] =
+    '{ InitializeInstance.initializeMonad }
+end InputInitConvert
+
+/** Converts an input `Term` of type `Parser[A]` or `State => Parser[A]` into a `Term` of type `State => Parser[A]`. */
+class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
+
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    nme match
+      case ParserInput.WrapName     => Converted.success(in)
+      case ParserInput.WrapInitName => Converted.Failure(in.pos, initParserErrorMessage)
+      case _                        => Converted.NotApplicable()
 
   private def initParserErrorMessage = "Internal sbt error: initialize+parser wrapper not split"
-}
+
+  def appExpr: Expr[Applicative[ParserInstance.F1]] =
+    '{ ParserInstance.parserFunApplicative }
+end ParserConvert
 
 /** Convert instance for plain `Task`s not within the settings system. */
-object TaskConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    if (nme == InputWrapper.WrapTaskName) Converted.Success[c.type](in)
-    else Converted.NotApplicable[c.type]
-}
+class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    if nme == InputWrapper.WrapTaskName then Converted.success(in)
+    else Converted.NotApplicable()
 
-/** Converts an input `Tree` of type `Initialize[T]`, `Initialize[Task[T]]`, or `Task[T]` into a `Tree` of type `Initialize[Task[T]]`.*/
-object FullConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    nme match {
-      case InputWrapper.WrapInitTaskName => Converted.Success[c.type](in)
-      case InputWrapper.WrapPreviousName => Converted.Success[c.type](in)
-      case InputWrapper.WrapInitName     => wrapInit[T](c)(in)
-      case InputWrapper.WrapTaskName     => wrapTask[T](c)(in)
-      case _                             => Converted.NotApplicable[c.type]
-    }
-
-  private def wrapInit[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
-    val i = c.Expr[Initialize[T]](tree)
-    val t = c.universe.reify(Def.toITask(i.splice)).tree
-    Converted.Success[c.type](t)
-  }
-
-  private def wrapTask[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
-    val i = c.Expr[Task[T]](tree)
-    val t = c.universe.reify(Def.valueStrict[Task[T]](i.splice)).tree
-    Converted.Success[c.type](t)
-  }
-}
+  def appExpr[Expr[Monad[Task]]] =
+    '{ Task.taskMonad }
+end TaskConvert
 
 /**
- * Converts an input `Tree` of type `State => Parser[T]` or `Initialize[State => Parser[T]]`
- * into a `Tree` of type `Initialize[State => Parser[T]]`.
+ * Converts an input `Term` of type `Initialize[A]`, `Initialize[Task[A]]`, or `Task[A]` into
+ * a `Term` of type `Initialize[Task[A]]`.
  */
-object InitParserConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    nme match {
-      case ParserInput.WrapName     => wrap[T](c)(in)
-      case ParserInput.WrapInitName => Converted.Success[c.type](in)
-      case _                        => Converted.NotApplicable[c.type]
-    }
+class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
 
-  private def wrap[T: c.WeakTypeTag](c: blackbox.Context)(tree: c.Tree): Converted[c.type] = {
-    val e = c.Expr[State => Parser[T]](tree)
-    val t = c.universe.reify { Def.valueStrict[State => Parser[T]](e.splice) }
-    Converted.Success[c.type](t.tree)
-  }
-}
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    nme match
+      case InputWrapper.WrapInitTaskName => Converted.success(in)
+      case InputWrapper.WrapPreviousName => Converted.success(in)
+      case InputWrapper.WrapInitName     => wrapInit[A](in)
+      case InputWrapper.WrapTaskName     => wrapTask[A](in)
+      case _                             => Converted.NotApplicable()
+
+  private def wrapInit[A: Type](tree: Term): Converted =
+    val expr = tree.asExprOf[Initialize[A]]
+    val t = '{
+      Def.toITask[A]($expr)
+    }
+    Converted.success(t.asTerm)
+
+  private def wrapTask[A: Type](tree: Term): Converted =
+    val i = tree.asExprOf[Task[A]]
+    val t = '{
+      Def.valueStrict[Task[A]]($i)
+    }
+    Converted.success(t.asTerm)
+
+  def appExpr: Expr[Applicative[Compose[Initialize, Task]]] =
+    '{ FullInstance.initializeTaskMonad }
+end FullConvert
+
+/**
+ * Converts an input `Term` of type `State => Parser[A]` or `Initialize[State => Parser[A]]`
+ * into a `Term` of type `Initialize[State => Parser[A]]`.
+ */
+class InitParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
+
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    nme match
+      case ParserInput.WrapName     => wrap[A](in)
+      case ParserInput.WrapInitName => Converted.success(in)
+      case _                        => Converted.NotApplicable()
+
+  private def wrap[A: Type](tree: Term): Converted =
+    val e = tree.asExprOf[State => Parser[A]]
+    val t = '{
+      Def.valueStrict[State => Parser[A]]($e)
+    }
+    Converted.success(t.asTerm)
+
+end InitParserConvert

@@ -7,21 +7,20 @@
 
 package sbt
 
-trait CompletionService[A, R] {
+trait CompletionService[A, R]:
 
   /**
-   * Submits a work node A with work that returns R.
-   * In Execute this is used for tasks returning sbt.Completed.
+   * Submits a work node A with work that returns R. In Execute this is used for tasks returning
+   * sbt.Completed.
    */
   def submit(node: A, work: () => R): Unit
 
   /**
-   * Retrieves and removes the result from the next completed task,
-   * waiting if none are yet present.
+   * Retrieves and removes the result from the next completed task, waiting if none are yet present.
    * In Execute this is used for tasks returning sbt.Completed.
    */
   def take(): R
-}
+end CompletionService
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{
@@ -45,32 +44,39 @@ object CompletionService {
     )
     (apply[A, T](pool), () => { pool.shutdownNow(); () })
   }
+
   def apply[A, T](x: Executor): CompletionService[A, T] =
     apply(new ExecutorCompletionService[T](x))
+
   def apply[A, T](completion: JCompletionService[T]): CompletionService[A, T] =
     new CompletionService[A, T] {
       def submit(node: A, work: () => T) = { CompletionService.submit(work, completion); () }
       def take() = completion.take().get()
     }
+
   def submit[T](work: () => T, completion: JCompletionService[T]): () => T = {
     val future = submitFuture[T](work, completion)
     () => future.get
   }
+
   private[sbt] def submitFuture[A](work: () => A, completion: JCompletionService[A]): JFuture[A] = {
-    val future = try completion.submit {
-      new Callable[A] {
-        def call =
-          try {
-            work()
-          } catch {
-            case _: InterruptedException =>
-              throw Incomplete(None, message = Some("cancelled"))
+    val future =
+      try
+        completion.submit {
+          new Callable[A] {
+            def call =
+              try {
+                work()
+              } catch {
+                case _: InterruptedException =>
+                  throw Incomplete(None, message = Some("cancelled"))
+              }
           }
+        }
+      catch {
+        case _: RejectedExecutionException =>
+          throw Incomplete(None, message = Some("cancelled"))
       }
-    } catch {
-      case _: RejectedExecutionException =>
-        throw Incomplete(None, message = Some("cancelled"))
-    }
     future
   }
   def manage[A, T](

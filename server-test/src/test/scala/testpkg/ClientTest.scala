@@ -17,16 +17,18 @@ object ClientTest extends AbstractServerTest {
   override val testDirectory: String = "client"
   object NullInputStream extends InputStream {
     override def read(): Int = {
-      try this.synchronized(this.wait)
+      try this.synchronized(this.wait())
       catch { case _: InterruptedException => }
       -1
     }
   }
   val NullPrintStream = new PrintStream(_ => {}, false)
-  class CachingPrintStream extends { val cos = new CachingOutputStream }
-  with PrintStream(cos, true) {
+
+  class CachingPrintStream(cos: CachingOutputStream = new CachingOutputStream)
+      extends PrintStream(cos, true) {
     def lines = cos.lines
   }
+
   class CachingOutputStream extends OutputStream {
     private val byteBuffer = new mutable.ArrayBuffer[Byte]
     override def write(i: Int) = Util.ignoreResult(byteBuffer += i.toByte)

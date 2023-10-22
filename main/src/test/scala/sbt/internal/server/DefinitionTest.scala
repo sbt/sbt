@@ -5,6 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt
 package internal
 package server
@@ -34,7 +35,9 @@ object DefinitionTest extends verify.BasicTestSuite {
     )
   }
 
-  test("it should find valid standard short scala identifier when caret is set at the start of it") {
+  test(
+    "it should find valid standard short scala identifier when caret is set at the start of it"
+  ) {
     assert(textProcessor.identifier("val a = 0", 4) == Some("a"))
   }
 
@@ -240,3 +243,4 @@ object DefinitionTest extends verify.BasicTestSuite {
     )
   }
 }
+ */

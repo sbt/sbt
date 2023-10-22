@@ -3,8 +3,8 @@ import sbt.internal.inc.Analysis
 import xsbti.compile.{PreviousResult, CompileAnalysis, MiniSetup}
 import xsbti.compile.analysis.{ Compilation => XCompilation }
 
-previousCompile in Compile := {
-  val previous = (previousCompile in Compile).value
+(Compile / previousCompile) := {
+  val previous = (Compile / previousCompile).value
   if (!CompileState.isNew) {
     val res = PreviousResult.of(none[CompileAnalysis].asJava, none[MiniSetup].asJava)
     CompileState.isNew = true
@@ -17,13 +17,13 @@ previousCompile in Compile := {
  *  b) checks overall number of compilations performed
  */
 TaskKey[Unit]("checkCompilations") := {
-  val analysis = (compile in Compile).value match { case a: Analysis => a }
-  val srcDir = (scalaSource in Compile).value
+  val analysis = (Compile / compile).value match { case a: Analysis => a }
+  val srcDir = (Compile / scalaSource).value
   def findFile(className: String): VirtualFileRef = {
     analysis.relations.definesClass(className).head
   }
   val allCompilations = analysis.compilations.allCompilations
-  val recompiledFiles: Seq[Set[VirtualFileRef]] = allCompilations map { c: XCompilation =>
+  val recompiledFiles: Seq[Set[VirtualFileRef]] = allCompilations map { (c: XCompilation) =>
     val recompiledFiles = analysis.apis.internal.collect {
       case (cn, api) if api.compilationTimestamp == c.getStartTime => findFile(cn)
     }

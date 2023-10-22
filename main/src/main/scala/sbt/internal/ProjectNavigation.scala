@@ -10,9 +10,9 @@ package internal
 
 import java.net.URI
 import sbt.internal.util.complete, complete.{ DefaultParsers, Parser }, DefaultParsers._
-import sbt.compiler.Eval
+import sbt.internal.Eval
 import Keys.sessionSettings
-import Project.updateCurrent
+import sbt.ProjectExtra.{ extract, updateCurrent }
 
 object ProjectNavigation {
   def command(s: State): Parser[() => State] =
@@ -21,12 +21,12 @@ object ProjectNavigation {
 }
 
 final class ProjectNavigation(s: State) {
-  val extracted: Extracted = Project extract s
+  val extracted: Extracted = Project.extract(s)
   import extracted.{ currentRef, structure, session }
 
   def setProject(nuri: URI, nid: String): State = {
     val neval = if (currentRef.build == nuri) session.currentEval else mkEval(nuri)
-    updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
+    Project.updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
   }
 
   def mkEval(nuri: URI): () => Eval = Load.lazyEval(structure.units(nuri).unit)

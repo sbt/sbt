@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ScalacOptionsResultFormats { self: sbt.internal.bsp.codec.ScalacOptionsItemFormats with sjsonnew.BasicJsonProtocol =>
+trait ScalacOptionsResultFormats { self: sbt.internal.bsp.codec.ScalacOptionsItemFormats with sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ScalacOptionsResultFormat: JsonFormat[sbt.internal.bsp.ScalacOptionsResult] = new JsonFormat[sbt.internal.bsp.ScalacOptionsResult] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.ScalacOptionsResult = {
     __jsOpt match {

@@ -17,31 +17,30 @@ import scala.collection.mutable
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
  *
- * @tparam A the type of a task
+ * @tparam A
+ *   the type of a task
  */
 trait ConcurrentRestrictions[A] {
 
   /** Internal state type used to describe a set of tasks. */
   type G
 
-  /** Representation of zero tasks.*/
+  /** Representation of zero tasks. */
   def empty: G
 
-  /** Updates the description `g` to include a new task `a`.*/
+  /** Updates the description `g` to include a new task `a`. */
   def add(g: G, a: A): G
 
-  /** Updates the description `g` to remove a previously added task `a`.*/
+  /** Updates the description `g` to remove a previously added task `a`. */
   def remove(g: G, a: A): G
 
   /**
-   * Returns true if the tasks described by `g` are allowed to execute concurrently.
-   * The methods in this class must obey the following laws:
+   * Returns true if the tasks described by `g` are allowed to execute concurrently. The methods in
+   * this class must obey the following laws:
    *
-   * 1. forall g: G, a: A; valid(g) => valid(remove(g,a))
-   * 2. forall a: A; valid(add(empty, a))
-   * 3. forall g: G, a: A; valid(g) <=> valid(remove(add(g, a), a))
-   * 4. (implied by 1,2,3) valid(empty)
-   * 5. forall g: G, a: A, b: A; !valid(add(g,a)) => !valid(add(add(g,b), a))
+   *   1. forall g: G, a: A; valid(g) => valid(remove(g,a)) 2. forall a: A; valid(add(empty, a)) 3.
+   *      forall g: G, a: A; valid(g) <=> valid(remove(add(g, a), a)) 4. (implied by 1,2,3)
+   *      valid(empty) 5. forall g: G, a: A, b: A; !valid(add(g,a)) => !valid(add(add(g,b), a))
    */
   def valid(g: G): Boolean
 }
@@ -69,7 +68,8 @@ object ConcurrentRestrictions {
 
   /**
    * A ConcurrentRestrictions instance that places no restrictions on concurrently executing tasks.
-   * @param zero the constant placeholder used for t
+   * @param zero
+   *   the constant placeholder used for t
    */
   def unrestricted[A]: ConcurrentRestrictions[A] =
     new ConcurrentRestrictions[A] {
@@ -91,13 +91,13 @@ object ConcurrentRestrictions {
     }
   }
 
-  /** A key object used for associating information with a task.*/
+  /** A key object used for associating information with a task. */
   final case class Tag(name: String)
 
   val tagsKey =
     AttributeKey[TagMap]("tags", "Attributes restricting concurrent execution of tasks.")
 
-  /** A standard tag describing the number of tasks that do not otherwise have any tags.*/
+  /** A standard tag describing the number of tasks that do not otherwise have any tags. */
   val Untagged = Tag("untagged")
 
   /** A standard tag describing the total number of tasks. */
@@ -108,9 +108,12 @@ object ConcurrentRestrictions {
 
   /**
    * Implements concurrency restrictions on tasks based on Tags.
-   * @tparam A type of a task
-   * @param get extracts tags from a task
-   * @param validF defines whether a set of tasks are allowed to execute concurrently based on their merged tags
+   * @tparam A
+   *   type of a task
+   * @param get
+   *   extracts tags from a task
+   * @param validF
+   *   defines whether a set of tasks are allowed to execute concurrently based on their merged tags
    */
   def tagged[A](get: A => TagMap, validF: TagMap => Boolean): ConcurrentRestrictions[A] =
     new ConcurrentRestrictions[A] {
@@ -142,10 +145,14 @@ object ConcurrentRestrictions {
   private[this] val poolID = new AtomicInteger(1)
 
   /**
-   * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution.
-   * @return a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
-   * @tparam A the task type
-   * @tparam R the type of data that will be computed by the CompletionService.
+   * Constructs a CompletionService suitable for backing task execution based on the provided
+   * restrictions on concurrent task execution.
+   * @return
+   *   a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
+   * @tparam A
+   *   the task type
+   * @tparam R
+   *   the type of data that will be computed by the CompletionService.
    */
   def completionService[A, R](
       tags: ConcurrentRestrictions[A],
@@ -167,10 +174,13 @@ object ConcurrentRestrictions {
   ): (CompletionService[A, R], () => Unit) = {
     val pool = Executors.newCachedThreadPool()
     val service = completionService[A, R](pool, tags, warn, isSentinel)
-    (service, () => {
-      pool.shutdownNow()
-      ()
-    })
+    (
+      service,
+      () => {
+        pool.shutdownNow()
+        ()
+      }
+    )
   }
 
   def cancellableCompletionService[A, R](
@@ -180,11 +190,14 @@ object ConcurrentRestrictions {
   ): (CompletionService[A, R], Boolean => Unit) = {
     val pool = Executors.newCachedThreadPool()
     val service = completionService[A, R](pool, tags, warn, isSentinel)
-    (service, force => {
-      if (force) service.close()
-      pool.shutdownNow()
-      ()
-    })
+    (
+      service,
+      force => {
+        if (force) service.close()
+        pool.shutdownNow()
+        ()
+      }
+    )
   }
 
   def completionService[A, R](
@@ -196,8 +209,9 @@ object ConcurrentRestrictions {
   }
 
   /**
-   * Constructs a CompletionService suitable for backing task execution based on the provided restrictions on concurrent task execution
-   * and using the provided Executor to manage execution on threads.
+   * Constructs a CompletionService suitable for backing task execution based on the provided
+   * restrictions on concurrent task execution and using the provided Executor to manage execution
+   * on threads.
    */
   def completionService[A, R](
       backing: Executor,
@@ -220,13 +234,16 @@ object ConcurrentRestrictions {
       /** Backing service used to manage execution on threads once all constraints are satisfied. */
       private[this] val jservice = new ExecutorCompletionService[R](backing)
 
-      /** The description of the currently running tasks, used by `tags` to manage restrictions.*/
+      /** The description of the currently running tasks, used by `tags` to manage restrictions. */
       private[this] var tagState = tags.empty
 
       /** The number of running tasks. */
       private[this] var running = 0
 
-      /** Tasks that cannot be run yet because they cannot execute concurrently with the currently running tasks.*/
+      /**
+       * Tasks that cannot be run yet because they cannot execute concurrently with the currently
+       * running tasks.
+       */
       private[this] val pending = new LinkedList[Enqueue]
 
       private[this] val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty

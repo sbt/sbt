@@ -99,7 +99,7 @@ object BasicIO {
     in.close()
   }
 
-  def inheritInput(connect: Boolean) = { p: JProcessBuilder => if (connect) InheritInput(p) else false }
+  def inheritInput(connect: Boolean) = { (p: JProcessBuilder) => if (connect) InheritInput(p) else false }
 }
 private[sbt] object ExitCodes {
   def ignoreFirst: (Int, Int) => Int = (a, b) => b

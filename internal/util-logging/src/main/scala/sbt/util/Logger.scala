@@ -17,8 +17,8 @@ import java.util.Optional
 import java.util.function.Supplier
 
 /**
- * This is intended to be the simplest logging interface for use by code that wants to log.
- * It does not include configuring the logger.
+ * This is intended to be the simplest logging interface for use by code that wants to log. It does
+ * not include configuring the logger.
  */
 abstract class Logger extends xLogger {
   final def verbose(message: => String): Unit = debug(message)

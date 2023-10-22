@@ -16,6 +16,7 @@ import Def.ScopedKey
 import Types.idFun
 import java.io.File
 import Scope.Global
+import sbt.ProjectExtra.*
 
 object Inspect {
   sealed trait Mode
@@ -58,28 +59,27 @@ object Inspect {
   }
 
   def commandHandler(s: State, mode: Mode): Parser[() => String] = {
-    Space ~> commandParser(s).flatMap {
-      case (name, cmd) =>
-        cmd.tags.get(BasicCommands.CommandAliasKey) match {
-          case Some((_, aliasFor)) =>
-            def header = s"Alias for: $aliasFor"
-            Parser
-              .parse(" " ++ aliasFor, keyHandler(s)(mode))
-              .fold(
-                // If we can't find a task key for the alias target
-                // we don't display anymore information
-                _ => success(() => header),
-                success
-              )
-          case None =>
-            success(() => s"Command: $name")
-        }
+    Space ~> commandParser(s).flatMap { case (name, cmd) =>
+      cmd.tags.get(BasicCommands.CommandAliasKey) match {
+        case Some((_, aliasFor)) =>
+          def header = s"Alias for: $aliasFor"
+          Parser
+            .parse(" " ++ aliasFor, keyHandler(s)(mode))
+            .fold(
+              // If we can't find a task key for the alias target
+              // we don't display anymore information
+              _ => success(() => header),
+              success
+            )
+        case None =>
+          success(() => s"Command: $name")
+      }
     }
   }
 
   def commandParser: State => Parser[(String, Command)] = { s =>
-    oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect {
-      case (cmd, Some(name)) => DefaultParsers.literal(name).map(_ -> cmd)
+    oneOf(s.definedCommands.map(cmd => cmd -> cmd.nameOption) collect { case (cmd, Some(name)) =>
+      DefaultParsers.literal(name).map(_ -> cmd)
     })
   }
 
@@ -88,14 +88,16 @@ object Inspect {
     import extracted._
     option match {
       case Details(actual) =>
-        Project.details(structure, actual, sk.scope, sk.key)
+        Project.details(extracted.structure, actual, sk.scope, sk.key)
       case DependencyTreeMode =>
         val basedir = new File(Project.session(s).current.build)
-        Project.settingGraph(structure, basedir, sk).dependsAscii(get(sbt.Keys.asciiGraphWidth))
+        Project
+          .settingGraph(extracted.structure, basedir, sk)
+          .dependsAscii(get(sbt.Keys.asciiGraphWidth))
       case UsesMode =>
-        Project.showUses(Project.usedBy(structure, true, sk.key))
+        Project.showUses(Project.usedBy(extracted.structure, true, sk.key))
       case DefinitionsMode =>
-        Project.showDefinitions(sk.key, Project.definitions(structure, true, sk.key))
+        Project.showDefinitions(sk.key, Project.definitions(extracted.structure, true, sk.key))
     }
   }
 

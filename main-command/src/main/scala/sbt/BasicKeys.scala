@@ -17,6 +17,8 @@ import sbt.librarymanagement.ModuleID
 import sbt.util.Level
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
+import xsbti.VirtualFile
+import sbt.librarymanagement.Configuration
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -25,7 +27,7 @@ object BasicKeys {
     40
   )
 
-  val extraMetaSbtFiles = AttributeKey[Seq[File]](
+  val extraMetaSbtFiles = AttributeKey[Seq[VirtualFile]](
     "extraMetaSbtFile",
     "Additional plugin.sbt files.",
     10000

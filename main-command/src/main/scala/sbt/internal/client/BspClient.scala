@@ -25,7 +25,8 @@ object BspClient {
         while (!terminated.get) lock.wait()
       }
       0
-    } catch { case _: Throwable => 1 } finally sbtServer.close()
+    } catch { case _: Throwable => 1 }
+    finally sbtServer.close()
   }
 
   private[sbt] def transferTo(

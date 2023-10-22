@@ -11,7 +11,7 @@ lazy val root = (project in file(".")).
     scalaOverride := check("scala.App").value
   )
 
-def check(className: String): Def.Initialize[Task[Unit]] = fullClasspath in Compile map { cp =>
+def check(className: String): Def.Initialize[Task[Unit]] = (Compile / fullClasspath) map { cp =>
   val existing = cp.files.filter(_.getName contains "scala-library")
   println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
   println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))

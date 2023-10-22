@@ -12,7 +12,7 @@ import java.io.File
 import sbt.Def._
 import sbt.Keys._
 import sbt.nio.Keys._
-import sbt.Project._
+import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.internal.inc.ModuleUtilities
@@ -62,9 +62,11 @@ object ScriptedPlugin extends AutoPlugin {
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (pluginCrossBuild / sbtVersion).value,
-    sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,
+    sbtLauncher := getJars(ScriptedLaunchConf)
+      .map(_.get().head)
+      .value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match {
+    libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match
       case Some((0, 13)) =>
         Seq(
           "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf,
@@ -75,9 +77,13 @@ object ScriptedPlugin extends AutoPlugin {
           "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
           "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
         )
+      case Some((2, _)) =>
+        Seq(
+          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
+        )
       case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
       case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
-    }),
+    ),
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
@@ -103,7 +109,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
-      val cp = scriptedClasspath.value.get.map(_.toPath)
+      val cp = scriptedClasspath.value.get().map(_.toPath)
       val loader = ClasspathUtil.toLoader(cp, scalaInstance.value.loader)
       try {
         ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
@@ -122,9 +128,9 @@ object ScriptedPlugin extends AutoPlugin {
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
     import DefaultParsers._
 
-    val scriptedFiles
-        : NameFilter = ("test": NameFilter) | "test.script" | "pending" | "pending.script"
-    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
+    val scriptedFiles: NameFilter =
+      ("test": NameFilter) | "test.script" | "pending" | "pending.script"
+    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get() map {
       (f: File) =>
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
@@ -164,30 +170,31 @@ object ScriptedPlugin extends AutoPlugin {
         page <- pageP
         files = pagedFilenames(group, page)
         // TODO -  Fail the parser if we don't have enough files for the given page size
-        //if !files.isEmpty
+        // if !files.isEmpty
       } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
     val testIdAsGroup = matched(testID) map (test => Seq(test))
 
-    //(token(Space) ~> matched(testID)).*
+    // (token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
 
-  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
-    val args = scriptedParser(sbtTestDirectory.value).parsed
-    Def.unit(scriptedDependencies.value)
-    scriptedRun.value.run(
-      sbtTestDirectory.value,
-      scriptedBufferLog.value,
-      args,
-      sbtLauncher.value,
-      Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
-      scriptedLaunchOpts.value,
-      new java.util.ArrayList[File](),
-      scriptedParallelInstances.value
-    )
-  }
+  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val args = scriptedParser(sbtTestDirectory.value).parsed
+      Def.unit(scriptedDependencies.value)
+      scriptedRun.value.run(
+        sbtTestDirectory.value,
+        scriptedBufferLog.value,
+        args,
+        sbtLauncher.value,
+        Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
+        scriptedLaunchOpts.value,
+        new java.util.ArrayList[File](),
+        scriptedParallelInstances.value
+      )
+    }
 
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
     PathFinder(Classpaths.managedJars(config, classpathTypes.value, Keys.update.value).map(_.data))

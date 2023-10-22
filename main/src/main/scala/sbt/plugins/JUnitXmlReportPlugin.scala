@@ -14,7 +14,7 @@ import Def.{ Setting, settingKey }
 import Defaults._
 import Keys._
 import KeyRanks._
-import sbt.Project.inConfig
+import sbt.ProjectExtra.inConfig
 import sbt.internal._
 import sbt.io.syntax._
 import sbt.librarymanagement.Configurations.{ IntegrationTest, Test }

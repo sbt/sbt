@@ -6,8 +6,8 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
-    dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
+    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )
@@ -35,8 +35,8 @@ lazy val root = (project in file(".")).
     version := "1.0",
     updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
-      val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
-      val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
+      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
+      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
       if (acp exists { _.data.getName contains "commons-io" }) {
         sys.error("commons-io found when it should be excluded")
       }

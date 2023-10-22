@@ -15,7 +15,6 @@ import sbt.internal.util.{ JLine3, Terminal => ITerminal }
  * for an sbt server or it may control a remote client connected through sbtn. The
  * Terminal is particularly useful whenever an sbt task needs to receive input from
  * the user.
- *
  */
 trait Terminal {
 

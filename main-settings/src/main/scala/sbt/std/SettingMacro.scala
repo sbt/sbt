@@ -9,66 +9,54 @@ package sbt
 package std
 
 import Def.Initialize
-import sbt.internal.util.Types.{ Id, idFun }
-import sbt.internal.util.AList
+import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.{
+  Cont,
+  ContextUtil,
   Convert,
-  Converted,
-  Instance,
-  LinterDSL,
-  MixedBuilder,
-  MonadInstance
+  // LinterDSL,
 }
+import sbt.util.Applicative
+import scala.quoted.*
+import sbt.internal.util.complete.Parser
 
-object InitializeInstance extends MonadInstance {
-  type M[x] = Initialize[x]
-  def app[K[L[x]], Z](in: K[Initialize], f: K[Id] => Z)(implicit a: AList[K]): Initialize[Z] =
-    Def.app[K, Z](in)(f)(a)
-  def map[S, T](in: Initialize[S], f: S => T): Initialize[T] = Def.map(in)(f)
-  def flatten[T](in: Initialize[Initialize[T]]): Initialize[T] = Def.bind(in)(idFun[Initialize[T]])
-  def pure[T](t: () => T): Initialize[T] = Def.pure(t)
-}
+class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
+    extends Convert[C](qctx)
+    with ContextUtil[C](qctx, valStart):
+  import qctx.reflect.*
 
-import reflect.macros._
+  override def convert[A: Type](nme: String, in: Term): Converted =
+    nme match
+      case InputWrapper.WrapInitName => Converted.success(in)
+      case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName =>
+        Converted.Failure(in.pos, "A setting cannot depend on a task")
+      case InputWrapper.WrapPreviousName =>
+        Converted.Failure(in.pos, "A setting cannot depend on a task's previous value.")
+      case _ => Converted.NotApplicable()
 
-object InitializeConvert extends Convert {
-  def apply[T: c.WeakTypeTag](c: blackbox.Context)(nme: String, in: c.Tree): Converted[c.type] =
-    nme match {
-      case InputWrapper.WrapInitName                                 => convert[T](c)(in)
-      case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName => failTask[c.type](c)(in.pos)
-      case InputWrapper.WrapPreviousName                             => failPrevious[c.type](c)(in.pos)
-      case _                                                         => Converted.NotApplicable
-    }
+  def appExpr: Expr[Applicative[Initialize]] =
+    '{ InitializeInstance.initializeMonad }
+end InitializeConvert
 
-  private def convert[T: c.WeakTypeTag](c: blackbox.Context)(in: c.Tree): Converted[c.type] = {
-    val i = c.Expr[Initialize[T]](in)
-    val t = c.universe.reify(i.splice).tree
-    Converted.Success(t)
-  }
+object SettingMacro:
+  // import LinterDSL.{ Empty => EmptyLinter }
 
-  private def failTask[C <: blackbox.Context with Singleton](
-      c: C
-  )(pos: c.Position): Converted[c.type] =
-    Converted.Failure(pos, "A setting cannot depend on a task")
-  private def failPrevious[C <: blackbox.Context with Singleton](
-      c: C
-  )(pos: c.Position): Converted[c.type] =
-    Converted.Failure(pos, "A setting cannot depend on a task's previous value.")
-}
+  type F[x] = Initialize[x]
+  object ContSyntax extends Cont
+  import ContSyntax.*
 
-object SettingMacro {
-  import LinterDSL.{ Empty => EmptyLinter }
-  def settingMacroImpl[T: c.WeakTypeTag](c: blackbox.Context)(t: c.Expr[T]): c.Expr[Initialize[T]] =
-    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
-      Left(t),
-      Instance.idTransform[c.type]
-    )
+  def settingMacroImpl[A1: Type](in: Expr[A1])(using qctx: Quotes): Expr[Initialize[A1]] =
+    val convert1 = InitializeConvert(qctx, 0)
+    convert1.contMapN[A1, F, Id](in, convert1.appExpr)
 
-  def settingDynMacroImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(t: c.Expr[Initialize[T]]): c.Expr[Initialize[T]] =
-    Instance.contImpl[T, Id](c, InitializeInstance, InitializeConvert, MixedBuilder, EmptyLinter)(
-      Right(t),
-      Instance.idTransform[c.type]
-    )
-}
+  def settingDynImpl[A1: Type](in: Expr[Initialize[A1]])(using qctx: Quotes): Expr[Initialize[A1]] =
+    val convert1 = InitializeConvert(qctx, 0)
+    convert1.contFlatMap[A1, F, Id](in, convert1.appExpr)
+
+  def inputMacroImpl[A1: Type](in: Expr[State => Parser[A1]])(using
+      qctx: Quotes
+  ): Expr[ParserGen[A1]] =
+    val convert1 = InitializeConvert(qctx, 0)
+    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr)
+    '{ ParserGen[A1]($init1) }
+end SettingMacro

@@ -7,10 +7,12 @@ lazy val assertAbsolutePathConversion = taskKey[Unit]("checks source mappers con
 lazy val assertVirtualFile = taskKey[Unit]("checks source mappers handle virtual files")
 lazy val resetMessages = taskKey[Unit]("empties the messages list")
 
+ThisBuild / scalaVersion := "2.12.17"
+
 lazy val root = (project in file("."))
   .settings(
     extraAppenders := { s => Seq(ConsoleAppender(FakePrintWriter)) },
-    Compile / compile / compileOptions ~= { old: CompileOptions =>
+    Compile / compile / compileOptions ~= { (old: CompileOptions) =>
       old.withSources(StringVirtualFile("/tmp/A.scala",
         """object X""") +: old.sources) },
     assertEmptySourcePositionMappers := {

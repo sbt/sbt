@@ -42,8 +42,7 @@ object Resolve {
   def resolveConfig[P](index: BuildUtil[P], key: AttributeKey[_], mask: ScopeMask)(
       scope: Scope,
   ): Scope =
-    if (mask.config)
-      scope
+    if (mask.config) scope
     else {
       val (resolvedRef, proj) = scope.project match {
         case Zero | This => (None, index.thisRootProject)

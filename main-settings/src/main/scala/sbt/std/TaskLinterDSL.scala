@@ -11,11 +11,12 @@ import sbt.SettingKey
 import sbt.dsl.LinterLevel
 import sbt.dsl.LinterLevel.{ Abort, Warn }
 import sbt.internal.util.Terminal
-import sbt.internal.util.appmacro.{ Convert, LinterDSL }
+// import sbt.internal.util.appmacro.{ Convert, LinterDSL }
 
 import scala.io.AnsiColor
 import scala.reflect.macros.blackbox
 
+/*
 abstract class BaseTaskLinterDSL extends LinterDSL {
   def isDynamicTask: Boolean
   def convert: Convert
@@ -29,19 +30,19 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
     val initializeType = typeOf[sbt.Def.Initialize[_]]
 
     /*
-     * Lints a task tree.
-     *
-     * @param insideIf indicates whether or not the current tree is enclosed in an if statement.
-     *                It is generally illegal to call `.value` on a task within such a tree unless
-     *                the tree has been annotated with `@sbtUnchecked`.
-     * @param insideAnon indicates whether or not the current tree is enclosed in an anonymous
-     *                   function. It is generally illegal to call `.value` on a task within such
-     *                   a tree unless the tree has been annotated with `@sbtUnchecked`.
-     * @param uncheckedWrapper an optional tree that is provided to lint a tree in the form:
-     *                         `tree.value: @sbtUnchecked` for some tree. This can be used to
-     *                         prevent the linter from rejecting task evaluation within a
-     *                         conditional or an anonymous function.
-     */
+ * Lints a task tree.
+ *
+ * @param insideIf indicates whether or not the current tree is enclosed in an if statement.
+ *                It is generally illegal to call `.value` on a task within such a tree unless
+ *                the tree has been annotated with `@sbtUnchecked`.
+ * @param insideAnon indicates whether or not the current tree is enclosed in an anonymous
+ *                   function. It is generally illegal to call `.value` on a task within such
+ *                   a tree unless the tree has been annotated with `@sbtUnchecked`.
+ * @param uncheckedWrapper an optional tree that is provided to lint a tree in the form:
+ *                         `tree.value: @sbtUnchecked` for some tree. This can be used to
+ *                         prevent the linter from rejecting task evaluation within a
+ *                         conditional or an anonymous function.
+ */
     class traverser(insideIf: Boolean, insideAnon: Boolean, uncheckedWrapper: Option[Tree])
         extends Traverser {
 
@@ -128,12 +129,12 @@ abstract class BaseTaskLinterDSL extends LinterDSL {
           case Block(stmts, expr) =>
             if (!isDynamicTask) {
               /* The missing .value analysis is dumb on purpose because it's expensive.
-               * Detecting valid use cases of idents whose type is an sbt key is difficult
-               * and dangerous because we may miss some corner cases. Instead, we report
-               * on the easiest cases in which we are certain that the user does not want
-               * to have a stale key reference. Those are idents in the rhs of a val definition
-               * whose name is `_` and those idents that are in statement position inside blocks.
-               */
+ * Detecting valid use cases of idents whose type is an sbt key is difficult
+ * and dangerous because we may miss some corner cases. Instead, we report
+ * on the easiest cases in which we are certain that the user does not want
+ * to have a stale key reference. Those are idents in the rhs of a val definition
+ * whose name is `_` and those idents that are in statement position inside blocks.
+ */
               stmts.foreach {
                 // TODO: Consider using unused names analysis to be able to report on more cases
                 case ValDef(_, valName, _, rhs) if valName == termNames.WILDCARD =>
@@ -217,7 +218,7 @@ object TaskLinterDSLFeedback {
        |  Regular tasks always evaluate task dependencies (`.value`) regardless of `if` expressions.
        |$SolutionHeader:
        |  1. Use a conditional task `Def.taskIf(...)` to evaluate it when the `if` predicate is true or false.
-       |  2. Or turn the task body into a single `if` expression; the task is then auto-converted to a conditional task. 
+       |  2. Or turn the task body into a single `if` expression; the task is then auto-converted to a conditional task.
        |  3. Or make the static evaluation explicit by declaring `$task.value` outside the `if` expression.
        |  4. If you still want to force the static lookup, you may annotate the task lookup with `@sbtUnchecked`, e.g. `($task.value: @sbtUnchecked)`.
        |  5. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
@@ -241,3 +242,4 @@ object TaskLinterDSLFeedback {
        |  2. Add `import sbt.dsl.LinterLevel.Ignore` to your build file to disable all task linting.
     """.stripMargin
 }
+ */

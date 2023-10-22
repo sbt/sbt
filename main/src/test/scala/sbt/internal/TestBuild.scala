@@ -111,8 +111,7 @@ abstract class TestBuild {
         def makeKey(task: ScopeAxis[AttributeKey[_]]) =
           ScopedKey(skey.scope.copy(task = task), skey.key)
         val hasGlobal = tasks(Zero)
-        if (hasGlobal)
-          zero += skey
+        if (hasGlobal) zero += skey
         else {
           val keys = tasks map makeKey
           keys.size match {
@@ -241,7 +240,7 @@ abstract class TestBuild {
           throw e
       }
     }
-    val data = Def.makeWithCompiledMap(settings)(env.delegates, const(Nil), display)._2
+    val data = Def.makeWithCompiledMap(settings)(using env.delegates, const(Nil), display)._2
     val keys = data.allKeys((s, key) => ScopedKey(s, key))
     val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
@@ -273,7 +272,8 @@ abstract class TestBuild {
     end <- alphaNumChar
   } yield (List(c) ++ cs ++ List(end)).mkString
 
-  val optIDGen: Gen[Option[String]] = Gen.choice1(nonEmptyId.map(some.fn), Gen.constant(None))
+  val optIDGen: Gen[Option[String]] =
+    Gen.choice1(nonEmptyId.map(some[String]), Gen.constant(None))
 
   val pathGen = for {
     c <- alphaLowerChar
@@ -305,31 +305,34 @@ abstract class TestBuild {
   ): Gen[Vector[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
-        new Proj(id, deps.map { dep =>
-          ProjectRef(build, dep.id)
-        }, cs)
+        new Proj(
+          id,
+          deps.map { dep =>
+            ProjectRef(build, dep.id)
+          },
+          cs
+        )
       }
     }
 
-  def genConfigs(
-      implicit genName: Gen[String],
+  def genConfigs(implicit
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Configuration]] =
-    genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
-      (key, deps) =>
-        Configuration
-          .of(key.capitalize, key)
-          .withExtendsConfigs(deps.toVector)
+    genAcyclicDirect[Configuration, String](maxDeps, genName, count)((key, deps) =>
+      Configuration
+        .of(key.capitalize, key)
+        .withExtendsConfigs(deps.toVector)
     )
 
-  def genTasks(
-      implicit genName: Gen[String],
+  def genTasks(implicit
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Taskk]] =
-    genAcyclicDirect[Taskk, String](maxDeps, genName, count)(
-      (key, deps) => new Taskk(AttributeKey[String](key), deps)
+    genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
+      new Taskk(AttributeKey[String](key), deps)
     )
 
   def genAcyclicDirect[A, T](maxDeps: Range[Int], keyGen: Gen[T], max: Range[Int])(

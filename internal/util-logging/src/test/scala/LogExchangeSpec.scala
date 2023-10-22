@@ -8,29 +8,30 @@
 package sbt.util
 
 import sbt.internal.util._
-
+import sbt.internal.util.appmacro.StringTypeTag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 class LogExchangeSpec extends AnyFlatSpec with Matchers {
   import LogExchange._
 
-  checkTypeTag("stringTypeTagThrowable", stringTypeTagThrowable, StringTypeTag.fast[Throwable])
+  checkTypeTag("stringTypeTagThrowable", stringTypeTagThrowable, StringTypeTag[Throwable])
+
   checkTypeTag(
     "stringTypeTagTraceEvent",
     stringTypeTagTraceEvent,
-    StringTypeTag.fast[TraceEvent]
+    StringTypeTag[TraceEvent]
   )
   checkTypeTag(
     "stringTypeTagSuccessEvent",
     stringTypeTagSuccessEvent,
-    StringTypeTag.fast[SuccessEvent]
+    StringTypeTag[SuccessEvent]
   )
 
   private def checkTypeTag[A](name: String, inc: StringTypeTag[A], exp: StringTypeTag[A]): Unit =
     s"LogExchange.$name" should s"match real StringTypeTag[$exp]" in {
-      val StringTypeTag(incomingString) = inc
-      val StringTypeTag(expectedString) = exp
+      val incomingString = inc.key
+      val expectedString = exp.key
       if ((incomingString startsWith "scala.") || (expectedString startsWith "scala.")) {
         // > historically [Scala] has been inconsistent whether `scala.` is included, or not
         // > would it be hard to make the test accept either result?

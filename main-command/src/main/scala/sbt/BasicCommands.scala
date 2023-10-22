@@ -9,6 +9,7 @@ package sbt
 
 import java.nio.file.Paths
 import sbt.util.Level
+import sbt.internal.inc.PlainVirtualFile
 import sbt.internal.util.{ AttributeKey, FullReader, LineReader, Terminal }
 import sbt.internal.util.complete.{
   Completion,
@@ -39,6 +40,7 @@ import sbt.util.Level
 import scala.Function.tupled
 import scala.collection.mutable.ListBuffer
 import scala.util.control.NonFatal
+import xsbti.VirtualFile
 
 object BasicCommands {
   lazy val allBasicCommands: Seq[Command] = Seq(
@@ -74,7 +76,9 @@ object BasicCommands {
   def early: Command = Command.arb(earlyParser, earlyHelp)((s, other) => other :: s)
 
   private[this] def levelParser: Parser[String] =
-    Iterator(Level.Debug, Level.Info, Level.Warn, Level.Error) map (l => token(l.toString)) reduce (_ | _)
+    Iterator(Level.Debug, Level.Info, Level.Warn, Level.Error) map (l =>
+      token(l.toString)
+    ) reduce (_ | _)
 
   private[this] def addPluginSbtFileParser: Parser[File] = {
     token(AddPluginSbtFileCommand) ~> (":" | "=" | Space.map(_.toString)) ~> (StringBasic).examples(
@@ -87,8 +91,8 @@ object BasicCommands {
   private[this] def addPluginSbtFileStringParser: Parser[String] = {
     token(
       token(AddPluginSbtFileCommand) ~ (":" | "=" | Space.map(_.toString)) ~ (StringBasic)
-        .examples("/some/extra.sbt") map {
-        case s1 ~ s2 ~ s3 => s1 + s2 + s3
+        .examples("/some/extra.sbt") map { case s1 ~ s2 ~ s3 =>
+        s1 + s2 + s3
       }
     )
   }
@@ -106,19 +110,19 @@ object BasicCommands {
    * Adds additional *.sbt to the plugin build.
    * This must be combined with early command as: --addPluginSbtFile=/tmp/extra.sbt
    */
-  def addPluginSbtFile: Command = Command.arb(_ => addPluginSbtFileParser, addPluginSbtFileHelp) {
+  def addPluginSbtFile: Command = Command.arb(_ => addPluginSbtFileParser, addPluginSbtFileHelp()) {
     (s, extraSbtFile) =>
-      val extraFiles = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
-      s.put(BasicKeys.extraMetaSbtFiles, (extraFiles: Seq[File]) :+ extraSbtFile)
+      val existing: Seq[VirtualFile] = s.get(BasicKeys.extraMetaSbtFiles).toList.flatten
+      val vf = PlainVirtualFile(extraSbtFile.toPath())
+      s.put(BasicKeys.extraMetaSbtFiles, existing :+ vf)
   }
 
   def help: Command = Command.make(HelpCommand, helpBrief, helpDetailed)(helpParser)
 
   def helpParser(s: State): Parser[() => State] = {
-    val h = s.definedCommands.foldLeft(Help.empty)(
-      (a, b) =>
-        a ++ (try b.help(s)
-        catch { case NonFatal(_) => Help.empty })
+    val h = s.definedCommands.foldLeft(Help.empty)((a, b) =>
+      a ++ (try b.help(s)
+      catch { case NonFatal(_) => Help.empty })
     )
     val helpCommands = h.detail.keySet
     val spacedArg = singleArgument(helpCommands).?
@@ -136,8 +140,9 @@ object BasicCommands {
       case Nil => none[String]
       case xs  => xs.mkString(" ").some
     }
-    val message = try Help.message(h, topic)
-    catch { case NonFatal(ex) => ex.toString }
+    val message =
+      try Help.message(h, topic)
+      catch { case NonFatal(ex) => ex.toString }
     System.out.println(message)
     s.copy(remainingCommands = remainingCommands)
   }
@@ -276,8 +281,8 @@ object BasicCommands {
     matched((s.combinedParser: Parser[_]) | token(any, hide = const(true)))
 
   def ifLast: Command =
-    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)(
-      (s, arg) => if (s.remainingCommands.isEmpty) arg :: s else s
+    Command(IfLast, Help.more(IfLast, IfLastDetailed))(otherCommandParser)((s, arg) =>
+      if (s.remainingCommands.isEmpty) arg :: s else s
     )
 
   def append: Command =
@@ -286,15 +291,15 @@ object BasicCommands {
     )
 
   def setOnFailure: Command =
-    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)(
-      (s, arg) => s.copy(onFailure = Some(Exec(arg, s.source)))
+    Command(OnFailure, Help.more(OnFailure, OnFailureDetailed))(otherCommandParser)((s, arg) =>
+      s.copy(onFailure = Some(Exec(arg, s.source)))
     )
 
   def clearOnFailure: Command = Command.command(ClearOnFailure)(s => s.copy(onFailure = None))
 
   def stashOnFailure: Command =
-    Command.command(StashOnFailure)(
-      s => s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten)
+    Command.command(StashOnFailure)(s =>
+      s.copy(onFailure = None).update(OnFailureStack)(s.onFailure :: _.toList.flatten)
     )
 
   def popOnFailure: Command = Command.command(PopOnFailure) { s =>
@@ -346,8 +351,8 @@ object BasicCommands {
   private[this] def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
     def single(s: String) = Completions.single(Completion.displayOnly(s))
-    val compl = TokenCompletions.fixed(
-      (seen, _) => if (seen.startsWith("-")) Completions.nil else single("<class name>")
+    val compl = TokenCompletions.fixed((seen, _) =>
+      if (seen.startsWith("-")) Completions.nil else single("<class name>")
     )
     token(base, compl)
   }
@@ -391,7 +396,7 @@ object BasicCommands {
       val lines = hp.toList.flatMap(p => IO.readLines(p)).toIndexedSeq
       histFun(CHistory(lines, hp)) match {
         case Some(commands) =>
-          commands foreach println //printing is more appropriate than logging
+          commands foreach println // printing is more appropriate than logging
           (commands ::: s).continue
         case None => s.fail
       }

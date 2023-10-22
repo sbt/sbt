@@ -66,12 +66,14 @@ class ZincComponentManager(
     lockLocalCache(getOrElse(fromSecondary))
   }
 
-  /** Get the file for component 'id',
-   *  throwing an exception if no files or multiple files exist for the component. */
+  /**
+   * Get the file for component 'id',
+   *  throwing an exception if no files or multiple files exist for the component.
+   */
   def file(id: String)(ifMissing: IfMissing): File = {
     files(id)(ifMissing).toList match {
       case x :: Nil => x
-      case xs       => invalid(s"Expected single file for component '$id', found: ${xs.mkString(", ")}")
+      case xs => invalid(s"Expected single file for component '$id', found: ${xs.mkString(", ")}")
     }
   }
 
@@ -79,8 +81,10 @@ class ZincComponentManager(
   def define(id: String, files: Iterable[File]): Unit =
     lockLocalCache(provider.defineComponent(id, files.toSeq.toArray))
 
-  /** This is used to lock the local cache in project/boot/.
-   *  By checking the local cache first, we can avoid grabbing a global lock. */
+  /**
+   * This is used to lock the local cache in project/boot/.
+   *  By checking the local cache first, we can avoid grabbing a global lock.
+   */
   private def lockLocalCache[T](action: => T): T = lock(provider.lockFile)(action)
 
   /** This is used to ensure atomic access to components in the global Ivy cache. */

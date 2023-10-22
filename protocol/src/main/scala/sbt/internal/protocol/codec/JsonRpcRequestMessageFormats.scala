@@ -23,17 +23,18 @@ trait JsonRpcRequestMessageFormats {
           case Some(js) =>
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
-            val id = try {
-              unbuilder.readField[String]("id")
-            } catch {
-              case _: DeserializationException => {
-                val prefix = "\u2668" // Append prefix to show the original type was Number
-                prefix + unbuilder.readField[Long]("id").toString
+            val id =
+              try {
+                unbuilder.readField[String]("id")
+              } catch {
+                case _: DeserializationException => {
+                  val prefix = "\u2668" // Append prefix to show the original type was Number
+                  prefix + unbuilder.readField[Long]("id").toString
+                }
               }
-            }
             val method = unbuilder.readField[String]("method")
-            val params = unbuilder.lookupField("params") map {
-              case x: JValue => x
+            val params = unbuilder.lookupField("params") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcRequestMessage(jsonrpc, id, method, params)

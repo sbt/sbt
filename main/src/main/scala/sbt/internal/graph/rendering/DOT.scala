@@ -10,7 +10,7 @@ package internal
 package graph
 package rendering
 
-object DOT {
+object DOT:
   val EvictedStyle = "dashed"
 
   def dotGraph(
@@ -18,8 +18,8 @@ object DOT {
       dotHead: String,
       nodeFormation: (String, String, String) => String,
       labelRendering: HTMLLabelRendering,
-      colors: Boolean
-  ): String = {
+      colors: Boolean,
+  ): String =
     val nodes = {
       for (n <- graph.nodes) yield {
         val label = nodeFormation(n.id.organization, n.id.name, n.id.version)
@@ -27,9 +27,9 @@ object DOT {
         val penwidth = if (n.isEvicted) "3" else "5"
         val color = if (colors) {
           val orgHash = n.id.organization.hashCode
-          val r = (orgHash >> 16) & 0xFF
-          val g = (orgHash >> 8) & 0xFF
-          val b = (orgHash >> 0) & 0xFF
+          val r = (orgHash >> 16) & 0xff
+          val g = (orgHash >> 8) & 0xff
+          val b = (orgHash >> 0) & 0xff
           val r1 = (r * 0.90).toInt
           val g1 = (g * 0.90).toInt
           val b1 = (b * 0.90).toInt
@@ -79,24 +79,11 @@ object DOT {
     }.sorted.mkString("\n")
 
     s"$dotHead\n$nodes\n$edges\n}"
-  }
 
-  sealed trait HTMLLabelRendering {
-    def renderLabel(labelText: String): String
-  }
-
-  /**
-   *  Render HTML labels in Angle brackets as defined at http://graphviz.org/content/node-shapes#html
-   */
-  case object AngleBrackets extends HTMLLabelRendering {
-    def renderLabel(labelText: String): String = s"label=<$labelText>"
-  }
-
-  /**
-   * Render HTML labels with `labelType="html"` and label content in double quotes as supported by
-   * dagre-d3
-   */
-  case object LabelTypeHtml extends HTMLLabelRendering {
-    def renderLabel(labelText: String): String = s"""labelType="html" label="$labelText""""
-  }
-}
+  enum HTMLLabelRendering:
+    case AngleBrackets
+    case LabelTypeHtml
+    def renderLabel(labelText: String): String = this match
+      case AngleBrackets => s"label=<$labelText>"
+      case LabelTypeHtml => s"""labelType="html" label="$labelText""""
+end DOT

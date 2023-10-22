@@ -1,1 +1,1 @@
-fork in Test := true
+Test / fork := true

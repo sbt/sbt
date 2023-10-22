@@ -9,6 +9,6 @@ lazy val root = (project in file("."))
       IO.write(file, "object BuildInfo")
       file :: Nil
     },
-    sourceGenerators in Compile += buildInfo,
-    sourceGenerators in Compile += Def.task { Nil }
+    Compile / sourceGenerators += buildInfo,
+    Compile / sourceGenerators += Def.task { Nil },
   )

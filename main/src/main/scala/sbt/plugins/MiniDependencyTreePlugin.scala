@@ -9,7 +9,7 @@ package sbt
 package plugins
 
 import sbt.PluginTrigger.AllRequirements
-import sbt.Project._
+import sbt.ProjectExtra.*
 import sbt.librarymanagement.Configurations.{ Compile, Test }
 
 object MiniDependencyTreePlugin extends AutoPlugin {

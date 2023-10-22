@@ -5,20 +5,20 @@ val check = InputKey[Unit]("check")
 
 lazy val root = (project in file(".")).
   settings(
-    provided := (baseDirectory.value / "useProvided" exists),
+    provided := (baseDirectory.value / "useProvided").exists,
     configuration := (if (provided.value) Provided else Compile),
     libraryDependencies += "javax.servlet" % "servlet-api" % "2.5" % configuration.value.name,
-    managedClasspath in Provided := Classpaths.managedJars(Provided, classpathTypes.value, update.value),
+    Provided / managedClasspath := Classpaths.managedJars(Provided, classpathTypes.value, update.value),
     check := {
       val result = (
         Space ~> token(Compile.name.id | Runtime.name | Provided.name | Test.name) ~ token(Space ~> Bool)
       ).parsed
       val (conf, expected) = result
       val cp = conf match {
-        case Compile.name  => (fullClasspath in Compile).value
-        case Runtime.name  => (fullClasspath in Runtime).value
-        case Provided.name => (managedClasspath in Provided).value
-        case Test.name     => (fullClasspath in Test).value
+        case Compile.name  => (Compile / fullClasspath).value
+        case Runtime.name  => (Runtime / fullClasspath).value
+        case Provided.name => (Provided / managedClasspath).value
+        case Test.name     => (Test / fullClasspath).value
         case _             => sys.error(s"Invalid config: $conf")
       }
       checkServletAPI(cp.files, expected, conf)

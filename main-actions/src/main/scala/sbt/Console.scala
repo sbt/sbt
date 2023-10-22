@@ -11,6 +11,7 @@ import java.io.File
 import java.nio.channels.ClosedChannelException
 import sbt.internal.inc.{ AnalyzingCompiler, MappedFileConverter, PlainVirtualFile }
 import sbt.internal.util.{ DeprecatedJLine, Terminal }
+import sbt.internal.util.Terminal.TerminalOps
 import sbt.util.Logger
 import xsbti.compile.{ Compilers, Inputs }
 
@@ -18,7 +19,7 @@ import scala.util.Try
 
 final class Console(compiler: AnalyzingCompiler) {
 
-  /** Starts an interactive scala interpreter session with the given classpath.*/
+  /** Starts an interactive scala interpreter session with the given classpath. */
   def apply(classpath: Seq[File], log: Logger): Try[Unit] =
     apply(classpath, Nil, "", "", log)
 
@@ -57,9 +58,16 @@ final class Console(compiler: AnalyzingCompiler) {
   )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
     def console0(): Unit =
       try {
-        compiler.console(classpath map { x =>
-          PlainVirtualFile(x.toPath)
-        }, MappedFileConverter.empty, options, initialCommands, cleanupCommands, log)(
+        compiler.console(
+          classpath map { x =>
+            PlainVirtualFile(x.toPath)
+          },
+          MappedFileConverter.empty,
+          options,
+          initialCommands,
+          cleanupCommands,
+          log
+        )(
           loader,
           bindings
         )
@@ -71,7 +79,7 @@ final class Console(compiler: AnalyzingCompiler) {
       terminal.withRawOutput {
         jline.TerminalFactory.set(terminal.toJLine)
         DeprecatedJLine.setTerminalOverride(jline3term)
-        terminal.withRawInput(Run.executeSuccess(console0))
+        terminal.withRawInput(Run.executeSuccess(console0()))
       }
     } finally {
       sys.props("scala.color") = previous

@@ -44,13 +44,12 @@ private[sbt] object SizeParser {
     ((numberParser <~ SpaceClass
       .examples(" ", "b", "B", "g", "G", "k", "K", "m", "M")
       .*) ~ unitParser.?)
-      .map {
-        case (number, unit) =>
-          unit match {
-            case None | Some(Bytes) => multiply(number, right = 1L)
-            case Some(KiloBytes)    => multiply(number, right = 1024L)
-            case Some(MegaBytes)    => multiply(number, right = 1024L * 1024)
-            case Some(GigaBytes)    => multiply(number, right = 1024L * 1024 * 1024)
-          }
+      .map { case (number, unit) =>
+        unit match {
+          case None | Some(Bytes) => multiply(number, right = 1L)
+          case Some(KiloBytes)    => multiply(number, right = 1024L)
+          case Some(MegaBytes)    => multiply(number, right = 1024L * 1024)
+          case Some(GigaBytes)    => multiply(number, right = 1024L * 1024 * 1024)
+        }
       }
 }

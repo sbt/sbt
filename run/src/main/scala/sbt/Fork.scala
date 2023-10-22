@@ -21,16 +21,18 @@ import java.util.Locale
 /**
  * Represents a command that can be forked.
  *
- * @param commandName The java-like binary to fork.  This is expected to exist in bin/ of the Java home directory.
- * @param runnerClass If Some, this will be prepended to the `arguments` passed to the `apply` or `fork` methods.
+ * @param commandName
+ *   The java-like binary to fork. This is expected to exist in bin/ of the Java home directory.
+ * @param runnerClass
+ *   If Some, this will be prepended to the `arguments` passed to the `apply` or `fork` methods.
  */
 final class Fork(val commandName: String, val runnerClass: Option[String]) {
 
   /**
-   * Forks the configured process, waits for it to complete, and returns the exit code.
-   * The command executed is the `commandName` defined for this Fork instance.
-   * It is configured according to `config`.
-   * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
+   * Forks the configured process, waits for it to complete, and returns the exit code. The command
+   * executed is the `commandName` defined for this Fork instance. It is configured according to
+   * `config`. If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to
+   * define the arguments passed to the forked command.
    */
   def apply(config: ForkOptions, arguments: Seq[String]): Int = {
     val p = fork(config, arguments)
@@ -43,10 +45,11 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
   }
 
   /**
-   * Forks the configured process and returns a `Process` that can be used to wait for completion or to terminate the forked process.
-   * The command executed is the `commandName` defined for this Fork instance.
-   * It is configured according to `config`.
-   * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
+   * Forks the configured process and returns a `Process` that can be used to wait for completion or
+   * to terminate the forked process. The command executed is the `commandName` defined for this
+   * Fork instance. It is configured according to `config`. If `runnerClass` is defined for this
+   * Fork instance, it is prepended to `arguments` to define the arguments passed to the forked
+   * command.
    */
   def fork(config: ForkOptions, arguments: Seq[String]): Process = {
     import config.{ envVars => env, _ }
@@ -108,7 +111,10 @@ object Fork {
   private[this] def isClasspathOption(s: String) =
     s == ClasspathOptionLong || s == ClasspathOptionShort
 
-  /** Maximum length of classpath string before passing the classpath in an environment variable instead of an option. */
+  /**
+   * Maximum length of classpath string before passing the classpath in an environment variable
+   * instead of an option.
+   */
   private[this] val MaxConcatenatedOptionLength = 5000
 
   private def fitClasspath(options: Seq[String]): (Option[String], Seq[String]) =
@@ -152,7 +158,8 @@ object Fork {
         }
     }
 
-  /** Use an arguments file if:
+  /**
+   * Use an arguments file if:
    * - we are on jdk >= 9
    * - sbt.argfile is unset or not falsy
    * - the command line length would exceed MaxConcatenatedOptionLength

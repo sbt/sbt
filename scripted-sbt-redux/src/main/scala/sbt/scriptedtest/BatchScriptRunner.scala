@@ -23,7 +23,8 @@ private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
   import BatchScriptRunner.States
   private[this] val service = Executors.newCachedThreadPool()
 
-  /** Defines a method to run batched execution.
+  /**
+   * Defines a method to run batched execution.
    *
    * @param statements The list of handlers and statements.
    * @param states The states of the runner. In case it's empty, inherited apply is called.
@@ -46,10 +47,9 @@ private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
   private val timeout = 5.minutes
   def processStatement(handler: StatementHandler, statement: Statement, states: States): Unit = {
     val state = states(handler).asInstanceOf[handler.State]
-    val nextStateFuture = service.submit(
-      () =>
-        try Right(handler(statement.command, statement.arguments, state))
-        catch { case e: Exception => Left(e) }
+    val nextStateFuture = service.submit(() =>
+      try Right(handler(statement.command, statement.arguments, state))
+      catch { case e: Exception => Left(e) }
     )
     try {
       nextStateFuture.get(timeout.toMillis, TimeUnit.MILLISECONDS) match {

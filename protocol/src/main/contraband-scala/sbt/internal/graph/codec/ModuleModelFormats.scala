@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.graph.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ModuleModelFormats { self: sbt.internal.graph.codec.ModuleModelFormats with sjsonnew.BasicJsonProtocol =>
+trait ModuleModelFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ModuleModelFormat: JsonFormat[sbt.internal.graph.ModuleModel] = new JsonFormat[sbt.internal.graph.ModuleModel] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.graph.ModuleModel = {
     __jsOpt match {

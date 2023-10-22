@@ -51,14 +51,14 @@ object ConsoleOut {
   private[this] final val OverwriteLine = "\u001B[A\r\u001B[2K"
 
   /**
-   * ConsoleOut instance that is backed by System.out.  It overwrites the previously printed line
-   * if the function `f(lineToWrite, previousLine)` returns true.
+   * ConsoleOut instance that is backed by System.out. It overwrites the previously printed line if
+   * the function `f(lineToWrite, previousLine)` returns true.
    *
    * The ConsoleOut returned by this method assumes that the only newlines are from println calls
    * and not in the String arguments.
    */
   def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = new ConsoleOut {
-    val lockObject = System.out
+    val lockObject: PrintStream = System.out
     private[this] var last: Option[String] = None
     private[this] var current = new java.lang.StringBuffer
     def print(s: String): Unit = synchronized { current.append(s); () }
@@ -91,7 +91,8 @@ object ConsoleOut {
     override def toString: String = s"TerminalOut"
   }
 
-  /** Same as terminalOut but it catches and ignores the ClosedChannelException
+  /**
+   * Same as terminalOut but it catches and ignores the ClosedChannelException
    */
   def safeTerminalOut(terminal: Terminal): ConsoleOut = {
     val out = terminalOut(terminal)
@@ -100,7 +101,7 @@ object ConsoleOut {
       override def print(s: String): Unit = catchException(out.print(s))
       override def println(s: String): Unit = catchException(out.println(s))
       override def println(): Unit = catchException(out.println())
-      override def flush(): Unit = catchException(out.flush)
+      override def flush(): Unit = catchException(out.flush())
       override def toString: String = s"SafeTerminalOut($terminal)"
       private def catchException(f: => Unit): Unit = {
         try f

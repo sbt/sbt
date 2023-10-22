@@ -12,7 +12,7 @@ lazy val root = (project in file(".")).
   )
 
 def checkClasspath(conf: Configuration) =
-  fullClasspath in conf map { cp =>
+  (conf / fullClasspath) map { cp =>
     try {
       val loader = ClasspathUtilities.toLoader(cp.files)
       Class.forName("org.jsoup.Jsoup", false, loader)

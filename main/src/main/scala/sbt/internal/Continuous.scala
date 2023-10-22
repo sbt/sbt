@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import sbt.BasicCommandStrings._
 import sbt.Def._
 import sbt.Keys._
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 import sbt.internal.Continuous.{ ContinuousState, FileStampRepository }
 import sbt.internal.LabeledFunctions._
@@ -70,7 +71,6 @@ import scala.util.control.NonFatal
  * For now Continuous extends DeprecatedContinuous to minimize the number of deprecation warnings
  * produced by this file. In sbt 2.0, the DeprecatedContinuous mixin should be eliminated and
  * the deprecated apis should no longer be supported.
- *
  */
 private[sbt] object Continuous extends DeprecatedContinuous {
   private type Event = FileEvent[FileAttributes]
@@ -316,8 +316,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       isCommand: Boolean,
       commands: Seq[String],
       fileStampCache: FileStamp.Cache
-  )(
-      implicit extracted: Extracted
+  )(implicit
+      extracted: Extracted
   ): Callbacks = {
     val project = extracted.currentRef
     val beforeCommand = () => configs.foreach(_.watchSettings.beforeCommand())
@@ -356,10 +356,9 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   ): (Watch.Action, String, Int, State) => State = {
     configs.flatMap(_.watchSettings.onTermination).distinct match {
       case Seq(head, tail @ _*) =>
-        tail.foldLeft(head) {
-          case (onTermination, configOnTermination) =>
-            (action, cmd, count, state) =>
-              configOnTermination(action, cmd, count, onTermination(action, cmd, count, state))
+        tail.foldLeft(head) { case (onTermination, configOnTermination) =>
+          (action, cmd, count, state) =>
+            configOnTermination(action, cmd, count, onTermination(action, cmd, count, state))
         }
       case _ =>
         if (isCommand) Watch.defaultCommandOnTermination else Watch.defaultTaskOnTermination
@@ -602,9 +601,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
                 else Update(event)
               )
             }
-          acceptedConfigParameters.flatMap {
-            case (_, _, callback) =>
-              watchEvent.map(e => e -> callback(count, e))
+          acceptedConfigParameters.flatMap { case (_, _, callback) =>
+            watchEvent.map(e => e -> callback(count, e))
           }
         } else Nil
       }
@@ -626,39 +624,41 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       }
     }
 
-    ((count: Int) => {
-      val interrupted = new AtomicBoolean(false)
-      def getEvent: Option[(Watch.Event, Watch.Action)] = {
-        val events =
-          try antiEntropyMonitor.poll(Duration.Inf)
-          catch { case _: InterruptedException => interrupted.set(true); Nil }
-        val actions = events.flatMap(onEvent(count, _))
-        if (actions.exists(_._2 != Watch.Ignore)) {
-          val builder = new StringBuilder
-          val min = actions.minBy {
-            case (e, a) =>
+    (
+      (count: Int) => {
+        val interrupted = new AtomicBoolean(false)
+        def getEvent: Option[(Watch.Event, Watch.Action)] = {
+          val events =
+            try antiEntropyMonitor.poll(Duration.Inf)
+            catch { case _: InterruptedException => interrupted.set(true); Nil }
+          val actions = events.flatMap(onEvent(count, _))
+          if (actions.exists(_._2 != Watch.Ignore)) {
+            val builder = new StringBuilder
+            val min = actions.minBy { case (e, a) =>
               if (builder.nonEmpty) builder.append(", ")
               val path = e.path
               builder.append(path)
               builder.append(" -> ")
               builder.append(a.toString)
               a
-          }
-          logger.debug(s"Received file event actions: $builder. Returning: $min")
-          if (min._2 == Watch.Trigger) onTrigger(count, min._1)
-          if (min._2 == Watch.ShowOptions) None else Some(min)
-        } else None
-      }
+            }
+            logger.debug(s"Received file event actions: $builder. Returning: $min")
+            if (min._2 == Watch.Trigger) onTrigger(count, min._1)
+            if (min._2 == Watch.ShowOptions) None else Some(min)
+          } else None
+        }
 
-      @tailrec def impl(): Option[(Watch.Event, Watch.Action)] = getEvent match {
-        case None =>
-          if (interrupted.get || Thread.interrupted) None
-          else impl()
-        case r => r
-      }
+        @tailrec def impl(): Option[(Watch.Event, Watch.Action)] = getEvent match {
+          case None =>
+            if (interrupted.get || Thread.interrupted) None
+            else impl()
+          case r => r
+        }
 
-      impl()
-    }, () => monitor.close())
+        impl()
+      },
+      () => monitor.close()
+    )
   }
 
   private[this] class WatchExecutor(name: String) extends AutoCloseable {
@@ -718,10 +718,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         thread.joinFor(1.second)
       }
       def result: Try[R] =
-        try queue.take match {
-          case Right(r) => Success(r)
-          case Left(_)  => Failure(new NullPointerException)
-        } catch { case t: InterruptedException => Failure(t) }
+        try
+          queue.take match {
+            case Right(r) => Success(r)
+            case Left(_)  => Failure(new NullPointerException)
+          }
+        catch { case t: InterruptedException => Failure(t) }
     }
   }
 
@@ -773,13 +775,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       val default: String => Watch.Action =
         string => parse(inputStream(string), systemInBuilder, fullParser)
       val alt = alternative
-        .map {
-          case (key, handler) =>
-            val is = extracted.runTask(key, state)._2
-            () => handler(is)
+        .map { case (key, handler) =>
+          val is = extracted.runTask(key, state)._2
+          () => handler(is)
         }
         .getOrElse(() => Watch.Ignore)
-      string: String =>
+      (string: String) =>
         ((if (string.nonEmpty) default(string) else Watch.Ignore) :: alt() :: Nil).min
     }
     executor => {
@@ -923,8 +924,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * @param key the [[ScopedKey]] instance that sets the [[Scope]] for the settings we're extracting
    * @param extracted the [[Extracted]] instance for the build
    */
-  private final class WatchSettings private[Continuous] (val key: ScopedKey[_])(
-      implicit extracted: Extracted
+  private final class WatchSettings private[Continuous] (val key: ScopedKey[_])(implicit
+      extracted: Extracted
   ) {
     val antiEntropy: FiniteDuration =
       key.get(watchAntiEntropy).getOrElse(Watch.defaultAntiEntropy)
@@ -972,17 +973,17 @@ private[sbt] object Continuous extends DeprecatedContinuous {
    * @param inputs        the transitive task inputs (see [[SettingsGraph]])
    * @param watchSettings the [[WatchSettings]] instance for the task
    */
-  private final class Config private[internal] (
+  private final class Config(
       val command: String,
       val dynamicInputs: mutable.Set[DynamicInput],
-      val watchSettings: WatchSettings
-  ) {
+      val watchSettings: WatchSettings,
+  ):
     def inputs() = dynamicInputs.toSeq.sorted
     private[sbt] def watchState(count: Int): DeprecatedWatchState =
       WatchState.empty(inputs().map(_.glob)).withCount(count)
 
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
-  }
+  end Config
 
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
     lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)
@@ -1015,10 +1016,15 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         extra = scope.extra.toOption.isDefined
       )
       Scope
-        .displayMasked(scope, " ", (_: Reference) match {
-          case p: ProjectRef => s"${p.project.trim} /"
-          case _             => "Global /"
-        }, mask)
+        .displayMasked(
+          scope,
+          " ",
+          (_: Reference) match {
+            case p: ProjectRef => s"${p.project.trim} /"
+            case _             => "Global /"
+          },
+          mask
+        )
         .dropRight(3) // delete trailing "/"
         .trim
     }

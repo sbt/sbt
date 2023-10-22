@@ -88,9 +88,9 @@ object TaskTest {
       Execute.config(checkCycles),
       Execute.noTriggers,
       ExecuteProgress.empty[Task]
-    )(taskToNode(idK[Task]))
+    )(using taskToNode(idK[Task]))
     try {
-      x.run(root)(service)
+      x.run(root)(using service.asInstanceOf)
     } finally {
       shutdown()
     }
@@ -101,7 +101,7 @@ object TaskTest {
       restrictions: ConcurrentRestrictions[Task[_]]
   ): T =
     run(root, checkCycles, restrictions) match {
-      case Value(v) => v
-      case Inc(i)   => throw i
+      case Result.Value(v) => v
+      case Result.Inc(i)   => throw i
     }
 }

@@ -9,7 +9,7 @@ package sbt.internal.util
 
 import sbt.util._
 
-/** Implements the level-setting methods of Logger.*/
+/** Implements the level-setting methods of Logger. */
 abstract class BasicLogger extends AbstractLogger {
   private var traceEnabledVar: Int = java.lang.Integer.MAX_VALUE
   private var level: Level.Value = Level.Info

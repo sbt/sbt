@@ -12,6 +12,7 @@ import sbt.internal.util.{ AttributeKey, Dag, Types }
 import sbt.librarymanagement.{ ConfigRef, Configuration }
 import Types.const
 import Def.Initialize
+import sbt.Project.inScope
 import java.net.URI
 
 object ScopeFilter {
@@ -64,32 +65,41 @@ object ScopeFilter {
       }
     }
 
-  final class SettingKeyAll[T] private[sbt] (i: Initialize[T]) {
+  final class SettingKeyAll[A] private[sbt] (i: Initialize[A]):
 
     /**
      * Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Seq[T]] = Def.bind(getData) { data =>
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join
-    }
-  }
-  final class TaskKeyAll[T] private[sbt] (i: Initialize[Task[T]]) {
+    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] =
+      Def.flatMap(getData) { data =>
+        data.allScopes.toSeq
+          .filter(sfilter(data))
+          .map(s => Project.inScope(s, i))
+          .join
+      }
+  end SettingKeyAll
+
+  final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
 
     /**
      * Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[T]]] = Def.bind(getData) { data =>
-      import std.TaskExtra._
-      data.allScopes.toSeq.filter(sfilter(data)).map(s => Project.inScope(s, i)).join(_.join)
-    }
-  }
+    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] =
+      Def.flatMap(getData) { data =>
+        import std.TaskExtra._
+        data.allScopes.toSeq
+          .filter(sfilter(data))
+          .map(s => Project.inScope(s, i))
+          .join(_.join)
+      }
+  end TaskKeyAll
 
   private[sbt] val Make = new Make {}
   trait Make {
 
-    /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`.*/
+    /** Selects the Scopes used in `<key>.all(<ScopeFilter>)`. */
     type ScopeFilter = Base[Scope]
 
     /** Selects Scopes with a Zero task axis. */
@@ -154,17 +164,17 @@ object ScopeFilter {
         classpath = true
       )
 
-    /** Selects Scopes that have a project axis with one of the provided values.*/
+    /** Selects Scopes that have a project axis with one of the provided values. */
     def inProjects(projects: ProjectReference*): ProjectFilter =
       ScopeFilter.inProjects(projects: _*)
 
-    /** Selects Scopes that have a task axis with one of the provided values.*/
+    /** Selects Scopes that have a task axis with one of the provided values. */
     def inTasks(tasks: Scoped*): TaskFilter = {
       val ts = tasks.map(_.key).toSet
       selectAxis[AttributeKey[_]](const(ts))
     }
 
-    /** Selects Scopes that have a task axis with one of the provided values.*/
+    /** Selects Scopes that have a task axis with one of the provided values. */
     def inConfigurations(configs: Configuration*): ConfigurationFilter = {
       val cs = configs.map(_.name).toSet
       selectAxis[ConfigKey](const(c => cs(c.name)))
@@ -188,13 +198,13 @@ object ScopeFilter {
    * Information provided to Scope filters.  These provide project relationships,
    * project reference resolution, and the list of all static Scopes.
    */
-  private final class Data(
+  private[sbt] final class Data(
       val units: Map[URI, LoadedBuildUnit],
       val resolve: ProjectReference => ProjectRef,
       val allScopes: Set[Scope]
   )
 
-  /** Constructs a Data instance from the list of static scopes and the project relationships.*/
+  /** Constructs a Data instance from the list of static scopes and the project relationships. */
   private[this] val getData: Initialize[Data] =
     Def.setting {
       val build = Keys.loadedBuild.value
@@ -219,6 +229,7 @@ object ScopeFilter {
       aggregate: Boolean
   ): ProjectRef => Seq[ProjectRef] =
     ref =>
+      import sbt.ProjectExtra.getProject
       Project.getProject(ref, structure).toList flatMap { p =>
         (if (classpath) p.dependencies.map(_.project) else Nil) ++
           (if (aggregate) p.aggregate else Nil)
@@ -265,16 +276,16 @@ object ScopeFilter {
     }
   }
 
-  /** Base functionality for filters on values of type `In` that need access to build data.*/
+  /** Base functionality for filters on values of type `In` that need access to build data. */
   sealed abstract class Base[In] { self =>
 
     /** Implements this filter. */
     private[ScopeFilter] def apply(data: Data): In => Boolean
 
-    /** Constructs a filter that selects values that match this filter but not `other`.*/
+    /** Constructs a filter that selects values that match this filter but not `other`. */
     def --(other: Base[In]): Base[In] = this && -other
 
-    /** Constructs a filter that selects values that match this filter and `other`.*/
+    /** Constructs a filter that selects values that match this filter and `other`. */
     def &&(other: Base[In]): Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
@@ -283,7 +294,7 @@ object ScopeFilter {
       }
     }
 
-    /** Constructs a filter that selects values that match this filter or `other`.*/
+    /** Constructs a filter that selects values that match this filter or `other`. */
     def ||(other: Base[In]): Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)
@@ -292,7 +303,7 @@ object ScopeFilter {
       }
     }
 
-    /** Constructs a filter that selects values that do not match this filter.*/
+    /** Constructs a filter that selects values that do not match this filter. */
     def unary_- : Base[In] = new Base[In] {
       private[sbt] def apply(data: Data): In => Boolean = {
         val a = self(data)

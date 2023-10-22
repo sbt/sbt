@@ -34,9 +34,14 @@ trait SlashSyntax {
   implicit def sbtSlashSyntaxRichReferenceAxis(a: ScopeAxis[Reference]): RichReference =
     new RichReference(Scope(a, This, This, This))
 
-  implicit def sbtSlashSyntaxRichReference(r: Reference): RichReference = Select(r)
-  implicit def sbtSlashSyntaxRichProject[A](p: A)(implicit x: A => Reference): RichReference =
-    (p: Reference)
+  // implicit def sbtSlashSyntaxRichReference(r: Reference): RichReference = Select(r)
+
+  // Implement in Reference directly
+  // given sbtSlashSyntaxRichReference: Conversion[Reference, RichReference] =
+  //   (r: Reference) => Select(r)
+
+  given sbtSlashSyntaxRichProject[A](using Conversion[A, Reference]): Conversion[A, RichReference] =
+    (a: A) => Select(a: Reference)
 
   implicit def sbtSlashSyntaxRichConfigKey(c: ConfigKey): RichConfiguration =
     new RichConfiguration(Scope(This, Select(c), This, This))
@@ -62,7 +67,7 @@ object SlashSyntax {
   sealed trait HasSlashKey {
     protected def scope: Scope
     @nowarn
-    final def /[K](key: Scoped.ScopingSetting[K]): K = key in scope
+    final def /[K](key: Scoped.ScopingSetting[K]): K = key.in(scope)
   }
 
   sealed trait HasSlashKeyOrAttrKey extends HasSlashKey {

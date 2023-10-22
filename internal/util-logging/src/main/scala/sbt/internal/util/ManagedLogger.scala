@@ -11,6 +11,7 @@ import sbt.internal.util.codec.JsonProtocol._
 import sbt.util._
 import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
+import sbt.internal.util.appmacro.StringTypeTag
 
 private[sbt] trait MiniLogger {
   def log[T](level: Level.Value, message: ObjectEvent[T]): Unit
@@ -45,7 +46,7 @@ class ManagedLogger(
     if (terminal.fold(true)(_.isSuccessEnabled)) {
       infoEvent[SuccessEvent](SuccessEvent(message))(
         implicitly[JsonFormat[SuccessEvent]],
-        StringTypeTag.fast[SuccessEvent],
+        StringTypeTag[SuccessEvent],
       )
     }
   }
@@ -54,30 +55,14 @@ class ManagedLogger(
     LogExchange.registerStringCodec[A]
   }
 
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  final def debugEvent[A](event: => A, f: JsonFormat[A], t: TypeTag[A]): Unit =
-    debugEvent(event)(f, StringTypeTag.apply(t))
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  final def infoEvent[A](event: => A, f: JsonFormat[A], t: TypeTag[A]): Unit =
-    infoEvent(event)(f, StringTypeTag.apply(t))
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  final def warnEvent[A](event: => A, f: JsonFormat[A], t: TypeTag[A]): Unit =
-    warnEvent(event)(f, StringTypeTag.apply(t))
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  final def errorEvent[A](event: => A, f: JsonFormat[A], t: TypeTag[A]): Unit =
-    errorEvent(event)(f, StringTypeTag.apply(t))
-
   final def debugEvent[A: JsonFormat: StringTypeTag](event: => A): Unit =
     logEvent(Level.Debug, event)
   final def infoEvent[A: JsonFormat: StringTypeTag](event: => A): Unit = logEvent(Level.Info, event)
   final def warnEvent[A: JsonFormat: StringTypeTag](event: => A): Unit = logEvent(Level.Warn, event)
   final def errorEvent[A: JsonFormat: StringTypeTag](event: => A): Unit =
     logEvent(Level.Error, event)
-  @deprecated("Use macro-powered StringTypeTag.fast instead", "1.4.0")
-  def logEvent[A](level: Level.Value, event: => A, f: JsonFormat[A], t: TypeTag[A]): Unit =
-    logEvent(level, event)(f, StringTypeTag.apply(t))
-  def logEvent[A: JsonFormat](level: Level.Value, event: => A)(
-      implicit tag: StringTypeTag[A]
+  def logEvent[A: JsonFormat](level: Level.Value, event: => A)(implicit
+      tag: StringTypeTag[A]
   ): Unit = {
     val v: A = event
     // println("logEvent " + tag.key)

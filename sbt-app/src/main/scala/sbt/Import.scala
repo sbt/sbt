@@ -135,13 +135,13 @@ trait Import {
   type Attributed[D] = sbt.internal.util.Attributed[D]
   type BasicLogger = sbt.internal.util.BasicLogger
   type BufferedLogger = sbt.internal.util.BufferedLogger
-  val Classes = sbt.internal.util.Classes
+  // val Classes = sbt.internal.util.Classes
   val ConsoleLogger = sbt.internal.util.ConsoleLogger
   type ConsoleLogger = sbt.internal.util.ConsoleLogger
   val ConsoleOut = sbt.internal.util.ConsoleOut
   type ConsoleOut = sbt.internal.util.ConsoleOut
   val Dag = sbt.internal.util.Dag
-  type Dag[A <: Dag[A]] = sbt.internal.util.Dag[A]
+  // type Dag[A <: Dag[A]] = sbt.internal.util.Dag[A]
   type DelegatingPMap[K[_], V[_]] = sbt.internal.util.DelegatingPMap[K, V]
   val ErrorHandling = sbt.internal.util.ErrorHandling
   type EvaluateSettings[S] = sbt.internal.util.EvaluateSettings[S]
@@ -156,23 +156,23 @@ trait Import {
   type FullLogger = sbt.internal.util.FullLogger
   val FullReader = sbt.internal.util.FullReader
   type FullReader = sbt.internal.util.FullReader
-  val HCons = sbt.internal.util.HCons
-  type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
-  val HList = sbt.internal.util.HList
-  type HList = sbt.internal.util.HList
-  val HNil = sbt.internal.util.HNil
-  type HNil = sbt.internal.util.HNil
+  // val HCons = sbt.internal.util.HCons
+  // type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
+  // val HList = sbt.internal.util.HList
+  // type HList = sbt.internal.util.HList
+  // val HNil = sbt.internal.util.HNil
+  // type HNil = sbt.internal.util.HNil
   val IDSet = sbt.internal.util.IDSet
   type IDSet[T] = sbt.internal.util.IDSet[T]
   val IMap = sbt.internal.util.IMap
   type IMap[K[_], V[_]] = sbt.internal.util.IMap[K, V]
   type Init[S] = sbt.internal.util.Init[S]
   type JLine = sbt.internal.util.JLine
-  val KCons = sbt.internal.util.KCons
-  type KCons[H, +T <: KList[M], +M[_]] = sbt.internal.util.KCons[H, T, M]
-  type KList[+M[_]] = sbt.internal.util.KList[M]
-  val KNil = sbt.internal.util.KNil
-  type KNil = sbt.internal.util.KNil
+  // val KCons = sbt.internal.util.KCons
+  // type KCons[H, +T <: KList[M], +M[_]] = sbt.internal.util.KCons[H, T, M]
+  // type KList[+M[_]] = sbt.internal.util.KList[M]
+  // val KNil = sbt.internal.util.KNil
+  // type KNil = sbt.internal.util.KNil
   val LinePosition = sbt.internal.util.LinePosition
   type LinePosition = sbt.internal.util.LinePosition
   val LineRange = sbt.internal.util.LineRange
@@ -201,13 +201,13 @@ trait Import {
   type SuppressedTraceContext = sbt.internal.util.SuppressedTraceContext
   type TranslatedException = sbt.internal.util.TranslatedException
   type TranslatedIOException = sbt.internal.util.TranslatedIOException
-  val TypeFunctions = sbt.internal.util.TypeFunctions
+  // val TypeFunctions = sbt.internal.util.TypeFunctions
   type TypeFunctions = sbt.internal.util.TypeFunctions
   val Types = sbt.internal.util.Types
-  type Types = sbt.internal.util.Types
+  // type Types = sbt.internal.util.Types
   type UnprintableException = sbt.internal.util.UnprintableException
   val Util = sbt.internal.util.Util
-  val ~> = sbt.internal.util.~>
+  // val ~> = sbt.internal.util.~>
   type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
 
   // sbt.internal.util.complete
@@ -297,7 +297,10 @@ trait Import {
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
-  val License = sbt.librarymanagement.License
+
+  // todo: fix
+  // val License = sbt.librarymanagement.License
+
   type LogicalClock = sbt.librarymanagement.LogicalClock
   val LogicalClock = sbt.librarymanagement.LogicalClock
   type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
@@ -325,6 +328,7 @@ trait Import {
   val Patterns = sbt.librarymanagement.Patterns
   type Patterns = sbt.librarymanagement.Patterns
   type PatternsBasedRepository = sbt.librarymanagement.PatternsBasedRepository
+  val Platform = sbt.librarymanagement.Platform
   val PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type RawRepository = sbt.librarymanagement.RawRepository

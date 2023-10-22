@@ -3,7 +3,7 @@ ThisBuild / useCoursier := false
 scalaOrganization := "org.other"
 scalaVersion := "3.0.0-M2"
 
-resolvers += Resolver.file("buggy", (baseDirectory in LocalRootProject).value / "repo")(
+resolvers += Resolver.file("buggy", (LocalRootProject / baseDirectory).value / "repo")(
   Patterns(
     ivyPatterns = Vector("[organization]/[module]/[revision]/ivy.xml"),
     artifactPatterns = Vector("[organization]/[module]/[revision]/dummy.jar"),

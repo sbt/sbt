@@ -18,8 +18,8 @@ object TestLogger {
   import sbt.protocol.testing.codec.JsonProtocol._
 
   implicit val testStringEventShowLines: ShowLines[TestStringEvent] =
-    ShowLines[TestStringEvent]({
-      case a: TestStringEvent => List(a.value)
+    ShowLines[TestStringEvent]({ case a: TestStringEvent =>
+      List(a.value)
     })
 
   private def generateName: String = "test-" + generateId.incrementAndGet

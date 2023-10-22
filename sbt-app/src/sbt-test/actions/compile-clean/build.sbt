@@ -1,4 +1,5 @@
 import sbt.nio.file.Glob
 
-cleanKeepGlobs in Compile +=
-  Glob((classDirectory in Compile in compile).value, "X.class")
+ThisBuild / scalaVersion := "2.12.17"
+Compile / cleanKeepGlobs +=
+  Glob((Compile / compile / classDirectory).value, "X.class")

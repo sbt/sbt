@@ -1,7 +1,7 @@
 lazy val p1 = (project in file("p1")).
   settings(
     checkTask(expectedMongo),
-    libraryDependencies += "org.mongodb" %% "casbah" % "2.4.1" pomOnly(),
+    libraryDependencies += ("org.mongodb" %% "casbah" % "2.4.1").pomOnly(),
     inThisBuild(List(
       organization := "org.example",
       version := "1.0",

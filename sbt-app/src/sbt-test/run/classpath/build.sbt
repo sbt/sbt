@@ -1,1 +1,1 @@
-externalDependencyClasspath in Runtime += file("conf")
+(Runtime / externalDependencyClasspath) += file("conf")

@@ -16,10 +16,10 @@ class FileExamplesTest extends UnitSpec {
 
   "listing all files in an absolute base directory" should
     "produce the entire base directory's contents" in {
-    withDirectoryStructure() { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.allRelativizedPaths)
+      withDirectoryStructure() { ds =>
+        ds.fileExamples().toList should contain theSameElementsAs (ds.allRelativizedPaths)
+      }
     }
-  }
 
   "listing files with a prefix that matches none" should "produce an empty list" in {
     withDirectoryStructure(withCompletionPrefix = "z") { ds =>

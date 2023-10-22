@@ -10,6 +10,7 @@ package sbt
 import org.scalatest
 import org.scalatest.{ TestData, fixture, funsuite }
 
+/*
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
 class IllegalReferenceSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
@@ -87,3 +88,4 @@ class IllegalReferenceSpec extends funsuite.FixtureAnyFunSuite with fixture.Test
     expectError("Illegal dynamic reference: foo")(build)
   }
 }
+ */

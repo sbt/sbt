@@ -31,7 +31,7 @@ def inlineXML(addInfo: Boolean, organization: String, moduleID: String, version:
     <dependency org="org.scala-tools.testing" name="scalacheck_2.9.1" rev="1.9"/>
 
 def checkDownload = Def task {
-  if ((dependencyClasspath in Compile).value.isEmpty) sys.error("Dependency not downloaded"); ()
+  if ((Compile / dependencyClasspath).value.isEmpty) sys.error("Dependency not downloaded"); ()
 }
 
 def checkInfo = Def task {

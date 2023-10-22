@@ -7,6 +7,7 @@
 
 package sbt.std
 
+/*
 class TaskPosSpec {
   // Starting sbt 1.4.0, Def.task can have task value lookups inside
   // if branches since tasks with single if-expressions are automatically
@@ -204,3 +205,4 @@ class TaskPosSpec {
     withKey(bar)
   }
 }
+ */

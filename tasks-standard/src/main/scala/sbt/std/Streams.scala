@@ -20,9 +20,9 @@ import sbt.util._
 
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
- * Represents a set of streams associated with a context.
- * In sbt, this is a named set of streams for a particular scoped key.
- * For example, logging for test:compile is by default sent to the "out" stream in the test:compile context.
+ * Represents a set of streams associated with a context. In sbt, this is a named set of streams for
+ * a particular scoped key. For example, logging for test:compile is by default sent to the "out"
+ * stream in the test:compile context.
  */
 sealed trait TaskStreams[Key] {
 
@@ -36,16 +36,16 @@ sealed trait TaskStreams[Key] {
   def getOutput(sid: String = default): Output
 
   /**
-   * Provides a reader to read text from the stream `sid` for `key`.
-   * It is the caller's responsibility to coordinate writing to the stream.
-   * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
+   * Provides a reader to read text from the stream `sid` for `key`. It is the caller's
+   * responsibility to coordinate writing to the stream. That is, no synchronization or ordering is
+   * provided and so this method should only be called when writing is complete.
    */
   def readText(key: Key, sid: String = default): BufferedReader
 
   /**
-   * Provides an output stream to read from the stream `sid` for `key`.
-   * It is the caller's responsibility to coordinate writing to the stream.
-   * That is, no synchronization or ordering is provided and so this method should only be called when writing is complete.
+   * Provides an output stream to read from the stream `sid` for `key`. It is the caller's
+   * responsibility to coordinate writing to the stream. That is, no synchronization or ordering is
+   * provided and so this method should only be called when writing is complete.
    */
   def readBinary(a: Key, sid: String = default): BufferedInputStream
 
@@ -61,7 +61,7 @@ sealed trait TaskStreams[Key] {
   /** Provides an output stream for writing to the stream with the given ID. */
   def binary(sid: String = default): BufferedOutputStream
 
-  /** A cache directory that is unique to the context of this streams instance.*/
+  /** A cache directory that is unique to the context of this streams instance. */
   def cacheDirectory: File
 
   def cacheStoreFactory: CacheStoreFactory
@@ -70,7 +70,7 @@ sealed trait TaskStreams[Key] {
   /** Obtains the default logger. */
   final lazy val log: ManagedLogger = log(default)
 
-  /** Creates a Logger that logs to stream with ID `sid`.*/
+  /** Creates a Logger that logs to stream with ID `sid`. */
   def log(sid: String): ManagedLogger
 
   private[this] def getID(s: Option[String]) = s getOrElse default
@@ -165,23 +165,22 @@ object Streams {
         make(a, sid)(f => new FileOutput(f))
 
       def readText(a: Key, sid: String = default): BufferedReader =
-        make(a, sid)(
-          f => new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset))
+        make(a, sid)(f =>
+          new BufferedReader(new InputStreamReader(new FileInputStream(f), IO.defaultCharset))
         )
 
       def readBinary(a: Key, sid: String = default): BufferedInputStream =
         make(a, sid)(f => new BufferedInputStream(new FileInputStream(f)))
 
       def text(sid: String = default): PrintWriter =
-        make(a, sid)(
-          f =>
-            new PrintWriter(
-              new DeferredWriter(
-                new BufferedWriter(
-                  new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)
-                )
+        make(a, sid)(f =>
+          new PrintWriter(
+            new DeferredWriter(
+              new BufferedWriter(
+                new OutputStreamWriter(new FileOutputStream(f), IO.defaultCharset)
               )
             )
+          )
         )
 
       def binary(sid: String = default): BufferedOutputStream =
@@ -206,9 +205,11 @@ object Streams {
           case null => newLock
           case l    => l
         }
-        try lock.synchronized {
-          if (!file.exists) IO.touch(file, setModified = false)
-        } finally {
+        try
+          lock.synchronized {
+            if (!file.exists) IO.touch(file, setModified = false)
+          }
+        finally {
           streamLocks.remove(parent)
           ()
         }

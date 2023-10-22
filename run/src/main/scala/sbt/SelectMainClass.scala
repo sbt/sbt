@@ -45,8 +45,7 @@ object SelectMainClass {
   private def toInt(s: String, size: Int): Option[Int] =
     try {
       val i = s.toInt
-      if (i > 0 && i <= size)
-        (i - 1).some
+      if (i > 0 && i <= size) (i - 1).some
       else {
         println("Number out of range: was " + i + ", expected number between 1 and " + size)
         none

@@ -32,7 +32,8 @@ object Resolvers {
 
     if (from.isDirectory) Some { () =>
       if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) }
-    } else None
+    }
+    else None
   }
 
   val remote: Resolver = (info: ResolveInfo) => {

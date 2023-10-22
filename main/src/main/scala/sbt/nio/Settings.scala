@@ -86,22 +86,22 @@ private[sbt] object Settings {
           val taskKey = TaskKey(sk.key) in sk.scope
           // We create a previous reference so that clean automatically works without the
           // user having to explicitly call previous anywhere.
-          val init = Previous.runtime(taskKey).zip(taskKey) {
-            case (_, t) => t.map(implicitly[ToSeqPath[T]].apply)
+          val init = Previous.runtime(taskKey).zip(taskKey) { case (_, t) =>
+            t.map(implicitly[ToSeqPath[T]].apply)
           }
           val key = Def.ScopedKey(taskKey.scope in taskKey.key, Keys.dynamicFileOutputs.key)
           addTaskDefinition(Def.setting[Task[Seq[Path]]](key, init, setting.pos)) ::
             outputsAndStamps(taskKey)
         }
-        ak.manifest.typeArguments match {
-          case t :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
+        ak.manifest.typeArguments match
+          case (t: Manifest[_]) :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
             t.typeArguments match {
               case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
               case _                                                      => default
             }
-          case t :: Nil if pathClass.isAssignableFrom(t.runtimeClass) => mkSetting[Path]
-          case _                                                      => default
-        }
+          case (t: Manifest[_]) :: Nil if pathClass.isAssignableFrom(t.runtimeClass) =>
+            mkSetting[Path]
+          case _ => default
       case _ => Nil
     }
   }
@@ -223,14 +223,13 @@ private[sbt] object Settings {
     val seen = ConcurrentHashMap.newKeySet[Path]
     val prevMap = new ConcurrentHashMap[Path, FileStamp]()
     previous.foreach { case (k, v) => prevMap.put(k, v); () }
-    current.foreach {
-      case (path, currentStamp) =>
-        if (seen.add(path)) {
-          prevMap.remove(path) match {
-            case null => createdBuilder += path
-            case old  => (if (old != currentStamp) modifiedBuilder else unmodifiedBuilder) += path
-          }
+    current.foreach { case (path, currentStamp) =>
+      if (seen.add(path)) {
+        prevMap.remove(path) match {
+          case null => createdBuilder += path
+          case old  => (if (old != currentStamp) modifiedBuilder else unmodifiedBuilder) += path
         }
+      }
     }
     prevMap.forEach((p, _) => deletedBuilder += p)
     val unmodified = unmodifiedBuilder.result()
@@ -264,12 +263,19 @@ private[sbt] object Settings {
   @nowarn
   private[sbt] def cleanImpl[T: JsonFormat: ToSeqPath](taskKey: TaskKey[T]): Def.Setting[_] = {
     val taskScope = taskKey.scope in taskKey.key
-    addTaskDefinition(sbt.Keys.clean in taskScope := Def.taskDyn {
-      // the clean file task needs to run first because the previous cache gets blown away
-      // by the second task
-      Def.unit(Clean.cleanFileOutputTask(taskKey).value)
-      Clean.task(taskScope, full = false)
-    }.value)
+    addTaskDefinition(
+      sbt.Keys.clean in taskScope :=
+        // the clean file task needs to run first because the previous cache gets blown away
+        // by the second task
+        Def
+          .task {
+            Def.unit(Clean.cleanFileOutputTask(taskKey).value)
+          }
+          .flatMapTask { case _ =>
+            Clean.task(taskScope, full = false)
+          }
+          .value
+    )
   }
 
   /**

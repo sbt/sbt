@@ -47,10 +47,13 @@ private[internal] trait DeprecatedContinuous {
         }
       )
       .put(legacyWatchState, legacyState)
-      .put(Watched.Configuration, new Watched {
-        override def watchSources(s: State): Seq[Source] =
-          s.get(legacyWatchState).map(_.get.sources).getOrElse(Nil)
-      })
+      .put(
+        Watched.Configuration,
+        new Watched {
+          override def watchSources(s: State): Seq[Source] =
+            s.get(legacyWatchState).map(_.get.sources).getOrElse(Nil)
+        }
+      )
   }
   def updateLegacyWatchState(state: State, globs: Seq[Glob], count: Int): Unit = {
     state.get(legacyWatchState).foreach { ref =>

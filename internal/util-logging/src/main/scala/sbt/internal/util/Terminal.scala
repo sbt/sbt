@@ -26,7 +26,8 @@ trait Terminal extends AutoCloseable {
    * config which is updated if it has been more than a second since the last update. It is thus
    * possible for this value to be stale.
    *
-   * @return the terminal width.
+   * @return
+   *   the terminal width.
    */
   def getWidth: Int
 
@@ -35,78 +36,88 @@ trait Terminal extends AutoCloseable {
    * config which is updated if it has been more than a second since the last update. It is thus
    * possible for this value to be stale.
    *
-   * @return the terminal height.
+   * @return
+   *   the terminal height.
    */
   def getHeight: Int
 
   /**
-   * Returns the height and width of the current line that is displayed on the terminal. If the
-   * most recently flushed byte is a newline, this will be `(0, 0)`.
+   * Returns the height and width of the current line that is displayed on the terminal. If the most
+   * recently flushed byte is a newline, this will be `(0, 0)`.
    *
-   * @return the (height, width) pair
+   * @return
+   *   the (height, width) pair
    */
   def getLineHeightAndWidth(line: String): (Int, Int)
 
   /**
    * Gets the input stream for this Terminal. This could be a wrapper around System.in for the
    * process or it could be a remote input stream for a network channel.
-   * @return the input stream.
+   * @return
+   *   the input stream.
    */
   def inputStream: InputStream
 
   /**
    * Gets the output stream for this Terminal.
-   * @return the output stream.
+   * @return
+   *   the output stream.
    */
   def outputStream: OutputStream
 
   /**
    * Gets the error stream for this Terminal.
-   * @return the error stream.
+   * @return
+   *   the error stream.
    */
   def errorStream: OutputStream
 
   /**
    * Returns true if the terminal supports ansi characters.
    *
-   * @return true if the terminal supports ansi escape codes.
+   * @return
+   *   true if the terminal supports ansi escape codes.
    */
   def isAnsiSupported: Boolean
 
   /**
    * Returns true if color is enabled for this terminal.
    *
-   * @return true if color is enabled for this terminal.
+   * @return
+   *   true if color is enabled for this terminal.
    */
   def isColorEnabled: Boolean
 
   /**
    * Returns true if the terminal has echo enabled.
    *
-   * @return true if the terminal has echo enabled.
+   * @return
+   *   true if the terminal has echo enabled.
    */
   def isEchoEnabled: Boolean
 
   /**
-   * Returns true if the terminal has success enabled, which it may not if it is for batch
-   * commands because the client will print the success results when received from the
-   * server.
+   * Returns true if the terminal has success enabled, which it may not if it is for batch commands
+   * because the client will print the success results when received from the server.
    *
-   * @return true if the terminal has success enabled
+   * @return
+   *   true if the terminal has success enabled
    */
   def isSuccessEnabled: Boolean
 
   /**
    * Returns true if the terminal has supershell enabled.
    *
-   * @return true if the terminal has supershell enabled.
+   * @return
+   *   true if the terminal has supershell enabled.
    */
   def isSupershellEnabled: Boolean
 
   /**
    * Toggles whether or not the terminal should echo characters back to stdout
    *
-   * @return the previous value of the toggle
+   * @return
+   *   the previous value of the toggle
    */
   def setEchoEnabled(toggle: Boolean): Unit
 
@@ -118,17 +129,19 @@ trait Terminal extends AutoCloseable {
 
   /**
    * Returns the last line written to the terminal's output stream.
-   * @return the last line
+   * @return
+   *   the last line
    */
   private[sbt] def getLastLine: Option[String]
 
   /**
-   * Returns the buffered lines that have been written to the terminal. The
-   * main use case is to display the system startup log lines when a client
-   * connects to a booting server. This could also be used to implement a more
-   * tmux like experience where multiple clients connect to the same console.
+   * Returns the buffered lines that have been written to the terminal. The main use case is to
+   * display the system startup log lines when a client connects to a booting server. This could
+   * also be used to implement a more tmux like experience where multiple clients connect to the
+   * same console.
    *
-   * @return the lines
+   * @return
+   *   the lines
    */
   private[sbt] def getLines: Seq[String]
 
@@ -143,7 +156,8 @@ trait Terminal extends AutoCloseable {
   private[sbt] final def withRawInput[T](f: => T): T = {
     enterRawMode()
     try f
-    catch { case e: InterruptedIOException => throw new InterruptedException } finally exitRawMode()
+    catch { case e: InterruptedIOException => throw new InterruptedException }
+    finally exitRawMode()
   }
   private[sbt] def enterRawMode(): Unit
   private[sbt] def exitRawMode(): Unit
@@ -162,8 +176,10 @@ trait Terminal extends AutoCloseable {
    * Returns the number of lines that the input string will cover given the current width of the
    * terminal.
    *
-   * @param line the input line
-   * @return the number of lines that the line will cover on the terminal
+   * @param line
+   *   the input line
+   * @return
+   *   the number of lines that the line will cover on the terminal
    */
   private[sbt] def lineCount(line: String): Int = {
     val lines = EscHelpers.stripColorsAndMoves(line).split('\n')
@@ -249,11 +265,12 @@ object Terminal {
   }
 
   /**
-   * Returns true if System.in is attached. When sbt is run as a subprocess, like in scripted or
-   * as a server, System.in will not be attached and this method will return false. Otherwise
-   * it will return true.
+   * Returns true if System.in is attached. When sbt is run as a subprocess, like in scripted or as
+   * a server, System.in will not be attached and this method will return false. Otherwise it will
+   * return true.
    *
-   * @return true if System.in is attached.
+   * @return
+   *   true if System.in is attached.
    */
   def systemInIsAttached: Boolean = attached.get
 
@@ -264,7 +281,8 @@ object Terminal {
 
   /**
    * Returns an InputStream that will throw a [[ClosedChannelException]] if read returns -1.
-   * @return the wrapped InputStream.
+   * @return
+   *   the wrapped InputStream.
    */
   private[sbt] def throwOnClosedSystemIn(in: InputStream): InputStream = new InputStream {
     override def available(): Int = in.available()
@@ -276,11 +294,12 @@ object Terminal {
   }
 
   /**
-   * Provides a wrapper around System.in. The wrapped stream in will check if the terminal is attached
-   * in available and read. If a read returns -1, it will mark System.in as unattached so that
-   * it can be detected by [[systemInIsAttached]].
+   * Provides a wrapper around System.in. The wrapped stream in will check if the terminal is
+   * attached in available and read. If a read returns -1, it will mark System.in as unattached so
+   * that it can be detected by [[systemInIsAttached]].
    *
-   * @return the wrapped InputStream
+   * @return
+   *   the wrapped InputStream
    */
   private[sbt] def wrappedSystemIn: InputStream = WrappedSystemIn
 
@@ -303,10 +322,9 @@ object Terminal {
 
   /**
    * Indicates whether formatting has been disabled in environment variables.
-   * 1. -Dsbt.log.noformat=true means no formatting.
-   * 2. -Dsbt.color=always/auto/never/true/false
-   * 3. -Dsbt.colour=always/auto/never/true/false
-   * 4. -Dsbt.log.format=always/auto/never/true/false
+   *   1. -Dsbt.log.noformat=true means no formatting. 2. -Dsbt.color=always/auto/never/true/false
+   *      3. -Dsbt.colour=always/auto/never/true/false 4.
+   * -Dsbt.log.format=always/auto/never/true/false
    */
   private[this] lazy val logFormatEnabled: Option[Boolean] = {
     sys.props.get("sbt.log.noformat") match {
@@ -342,11 +360,14 @@ object Terminal {
   private[sbt] def canPollSystemIn: Boolean = hasConsole && !isDumbTerminal && hasVirtualIO
 
   /**
-   *
-   * @param isServer toggles whether or not this is a server of client process
-   * @param f the thunk to run
-   * @tparam T the result type of the thunk
-   * @return the result of the thunk
+   * @param isServer
+   *   toggles whether or not this is a server of client process
+   * @param f
+   *   the thunk to run
+   * @tparam T
+   *   the result type of the thunk
+   * @return
+   *   the result of the thunk
    */
   private[sbt] def withStreams[T](isServer: Boolean, isSubProcess: Boolean)(f: => T): T = {
     // In ci environments, don't touch the io streams unless run with -Dsbt.io.virtual=true
@@ -526,13 +547,15 @@ object Terminal {
       if (!closed.get)
         readThread.synchronized {
           readThread.set(Thread.currentThread)
-          try buffer.poll match {
-            case null =>
-              readQueue.put(())
-              result.put(buffer.take)
-            case b if b == -1 => throw new ClosedChannelException
-            case b            => result.put(b)
-          } finally readThread.set(null)
+          try
+            buffer.poll match {
+              case null =>
+                readQueue.put(())
+                result.put(buffer.take)
+              case b if b == -1 => throw new ClosedChannelException
+              case b            => result.put(b)
+            }
+          finally readThread.set(null)
         }
     override def read(): Int = {
       val result = new LinkedBlockingQueue[Integer]
@@ -584,34 +607,33 @@ object Terminal {
   /**
    * A wrapped instance of a jline.Terminal2 instance. It should only ever be changed when the
    * backgrounds sbt with ctrl+z and then foregrounds sbt which causes a call to reset. The
-   * Terminal.console method returns this terminal and the ConsoleChannel delegates its
-   * terminal method to it.
+   * Terminal.console method returns this terminal and the ConsoleChannel delegates its terminal
+   * method to it.
    */
   private[this] val consoleTerminalHolder: AtomicReference[Terminal] =
     new AtomicReference(SimpleTerminal)
 
   /**
-   * The terminal that is currently being used by the proxyInputStream and proxyOutputStream.
-   * It is set through the Terminal.set method which is called by the SetTerminal command, which
-   * is used to change the terminal during task evaluation. This allows us to route System.in and
-   * System.out through the terminal's input and output streams.
+   * The terminal that is currently being used by the proxyInputStream and proxyOutputStream. It is
+   * set through the Terminal.set method which is called by the SetTerminal command, which is used
+   * to change the terminal during task evaluation. This allows us to route System.in and System.out
+   * through the terminal's input and output streams.
    */
   private[this] val activeTerminal = new AtomicReference[Terminal](consoleTerminalHolder.get)
 
   /**
-   * The boot input stream allows a remote client to forward input to the sbt process while
-   * it is still loading. It works by updating proxyInputStream to read from the
-   * value of bootInputStreamHolder if it is non-null as well as from the normal process
-   * console io (assuming there is console io).
+   * The boot input stream allows a remote client to forward input to the sbt process while it is
+   * still loading. It works by updating proxyInputStream to read from the value of
+   * bootInputStreamHolder if it is non-null as well as from the normal process console io (assuming
+   * there is console io).
    */
   private[this] val bootInputStreamHolder = new AtomicReference[InputStream]
 
   /**
-   * The boot output stream allows sbt to relay the bytes written to stdout to one or
-   * more remote clients while the sbt build is loading and hasn't yet loaded a server.
-   * The output stream of TerminalConsole is updated to write to value of
-   * bootOutputStreamHolder when it is non-null as well as the normal process console
-   * output stream.
+   * The boot output stream allows sbt to relay the bytes written to stdout to one or more remote
+   * clients while the sbt build is loading and hasn't yet loaded a server. The output stream of
+   * TerminalConsole is updated to write to value of bootOutputStreamHolder when it is non-null as
+   * well as the normal process console output stream.
    */
   private[this] val bootOutputStreamHolder = new AtomicReference[OutputStream]
   private[sbt] def setBootStreams(
@@ -912,7 +934,7 @@ object Terminal {
       val out: OutputStream,
       override val errorStream: OutputStream,
       override private[sbt] val name: String
-  ) extends Terminal {
+  ) extends Terminal { self =>
     private[sbt] def getSizeImpl: (Int, Int)
     private[this] val sizeRefreshPeriod = 1.second
     private[this] val size =
@@ -951,7 +973,7 @@ object Terminal {
 
     override val outputStream = new OutputStream {
       override def write(b: Int): Unit = throwIfClosed {
-        write(Array((b & 0xFF).toByte))
+        write(Array((b & 0xff).toByte))
       }
       override def write(b: Array[Byte]): Unit = throwIfClosed {
         withWriteLock(doWrite(b))
@@ -964,8 +986,12 @@ object Terminal {
     private def doWrite(rawBytes: Array[Byte]): Unit = withPrintStream { ps =>
       val (toWrite, len) =
         if (rawBytes.contains(27.toByte)) {
-          if (!isAnsiSupported || !isColorEnabled)
-            EscHelpers.strip(rawBytes, stripAnsi = !isAnsiSupported, stripColor = !isColorEnabled)
+          if (!Terminal.isAnsiSupported || !Terminal.isColorEnabled)
+            EscHelpers.strip(
+              rawBytes,
+              stripAnsi = !Terminal.isAnsiSupported,
+              stripColor = !Terminal.isColorEnabled
+            )
           else (rawBytes, rawBytes.length)
         } else (rawBytes, rawBytes.length)
       val bytes = if (len < toWrite.length) toWrite.take(len) else toWrite
@@ -999,7 +1025,7 @@ object Terminal {
     }
   }
   private lazy val nullInputStream: InputStream = () => {
-    try this.synchronized(this.wait)
+    try this.synchronized(this.wait())
     catch { case _: InterruptedException => }
     -1
   }

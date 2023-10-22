@@ -4,6 +4,13 @@
 
 // DO NOT EDIT MANUALLY
 package sbt
+/**
+ * Indicate whether the project was created organically, synthesized by a plugin,
+ * or is a "generic root" project supplied by sbt when a project doesn't exist for `file(".")`.
+ * Type for AutoPlugin's trigger method.
+ * Determines whether an AutoPlugin will be activated for a project when the
+ * `requires` clause is satisfied.
+ */
 final class JavaVersion private (
   val numbers: Vector[Long],
   val tags: Vector[String],

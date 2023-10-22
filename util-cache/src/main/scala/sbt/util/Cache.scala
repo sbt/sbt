@@ -16,8 +16,7 @@ sealed trait CacheResult[K]
 case class Hit[O](value: O) extends CacheResult[O]
 
 /**
- * A cache miss.
- * `update` associates the missing key with `O` in the cache.
+ * A cache miss. `update` associates the missing key with `O` in the cache.
  */
 case class Miss[O](update: O => Unit) extends CacheResult[O]
 
@@ -42,8 +41,10 @@ object Cache {
   /**
    * Returns a function that represents a cache that inserts on miss.
    *
-   * @param cacheFile The store that backs this cache.
-   * @param default   A function that computes a default value to insert on
+   * @param cacheFile
+   *   The store that backs this cache.
+   * @param default
+   *   A function that computes a default value to insert on
    */
   def cached[I, O](cacheFile: File)(default: I => O)(implicit cache: Cache[I, O]): I => O =
     cached(CacheStore(cacheFile))(default)
@@ -51,8 +52,10 @@ object Cache {
   /**
    * Returns a function that represents a cache that inserts on miss.
    *
-   * @param store    The store that backs this cache.
-   * @param default  A function that computes a default value to insert on
+   * @param store
+   *   The store that backs this cache.
+   * @param default
+   *   A function that computes a default value to insert on
    */
   def cached[I, O](store: CacheStore)(default: I => O)(implicit cache: Cache[I, O]): I => O =
     key =>

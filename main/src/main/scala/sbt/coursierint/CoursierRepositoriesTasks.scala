@@ -10,6 +10,7 @@ package coursierint
 
 import sbt.librarymanagement._
 import sbt.Keys._
+import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 
@@ -48,8 +49,7 @@ object CoursierRepositoriesTasks {
       if (resolvers.exists(fastRepo) && resolvers.exists(slowRepo)) {
         val (slow, other) = resolvers.partition(slowRepo)
         other ++ slow
-      } else
-        resolvers
+      } else resolvers
   }
 
   // local-preloaded-ivy contains dangling ivy.xml without JAR files
@@ -92,7 +92,8 @@ object CoursierRepositoriesTasks {
       }
   }
 
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+  private val pluginIvySnapshotsBase =
+    Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
     val resolvers =
@@ -123,14 +124,17 @@ object CoursierRepositoriesTasks {
   }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    Def.taskDyn {
-      val s = state.value
-      val projectRef = thisProjectRef.value
-      val dependencyRefs = Project.transitiveInterDependencies(s, projectRef)
-      Def.task {
-        val resolvers = csrResolvers.all(ScopeFilter(inProjects(projectRef))).value ++
-          csrResolvers.all(ScopeFilter(inProjects(dependencyRefs: _*))).value
-        resolvers.flatten
+    (Def
+      .task {
+        val s = state.value
+        val projectRef = thisProjectRef.value
+        val dependencyRefs = Project.transitiveInterDependencies(s, projectRef)
+        (ScopeFilter(inProjects(projectRef)), ScopeFilter(inProjects(dependencyRefs: _*)))
+      })
+      .flatMapTask { case (filter1, filter2) =>
+        Def.task {
+          val resolvers = csrResolvers.all(filter1).value ++ csrResolvers.all(filter2).value
+          resolvers.flatten
+        }
       }
-    }
 }

@@ -19,9 +19,10 @@ import lmcoursier.definitions.{
   Reconciliation,
   Strict => CStrict,
 }
-import lmcoursier._
-import lmcoursier.syntax._
+import lmcoursier.*
+import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
+import lmcoursier.syntax.*
 import Keys._
 import sbt.internal.util.Util
 import sbt.librarymanagement._
@@ -65,7 +66,7 @@ object LMCoursier {
       .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
       case Some(dir) => dir
       case _ =>
-        if (Util.isWindows) windowsCacheDirectory
+        if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
     }
   }
@@ -153,9 +154,8 @@ object LMCoursier {
         log
       )
       .toVector
-      .map {
-        case (o, n) =>
-          (o.value, n.value)
+      .map { case (o, n) =>
+        (o.value, n.value)
       }
       .sorted
     val autoScala = autoScalaLib && scalaModInfo.forall(

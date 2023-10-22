@@ -17,6 +17,7 @@ import lmcoursier.definitions.{
 }
 import sbt.librarymanagement._
 import sbt.Keys._
+import sbt.ProjectExtra.extract
 import sbt.SlashSyntax0._
 
 object CoursierArtifactsTasks {
@@ -106,9 +107,8 @@ object CoursierArtifactsTasks {
         )
       }
 
-      val sbtArtifactsPublication = sbtArtifacts.collect {
-        case Some((config, artifact)) =>
-          config -> artifactPublication(artifact)
+      val sbtArtifactsPublication = sbtArtifacts.collect { case Some((config, artifact)) =>
+        config -> artifactPublication(artifact)
       }
 
       val stdArtifactsSet = sbtArtifacts.flatMap(_.map { case (_, a) => a }.toSeq).toSet

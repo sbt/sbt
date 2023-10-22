@@ -90,7 +90,12 @@ object BuildUtil {
   }
 
   def baseImports: Seq[String] =
-    "import _root_.scala.xml.{TopScope=>$scope}" :: "import _root_.sbt._" :: "import _root_.sbt.Keys._" :: "import _root_.sbt.nio.Keys._" :: Nil
+    ("import _root_.scala.xml.{TopScope=>$scope}"
+      :: "import _root_.sbt.*"
+      :: "import _root_.sbt.given"
+      :: "import _root_.sbt.Keys.*"
+      :: "import _root_.sbt.nio.Keys.*"
+      :: Nil)
 
   def getImports(unit: BuildUnit): Seq[String] =
     unit.plugins.detected.imports ++ unit.definitions.dslDefinitions.imports
@@ -106,14 +111,17 @@ object BuildUtil {
   def importNamesRoot(names: Seq[String]): Seq[String] = importNames(names map rootedName)
 
   /** Wildcard import `._` for all values. */
-  def importAll(values: Seq[String]): Seq[String] = importNames(values map { _ + "._" })
+  def importAll(values: Seq[String]): Seq[String] = importNames(values.flatMap { (x: String) =>
+    Seq(s"$x.*", s"$x.given")
+  })
   def importAllRoot(values: Seq[String]): Seq[String] = importAll(values map rootedName)
   def rootedName(s: String): String = if (s contains '.') "_root_." + s else s
 
   def aggregationRelation(units: Map[URI, LoadedBuildUnit]): Relation[ProjectRef, ProjectRef] = {
     val depPairs =
       for {
-        (uri, unit) <- units.toIterable // don't lose this toIterable, doing so breaks actions/cross-multiproject & actions/update-state-fail
+        (uri, unit) <-
+          units.toSeq // don't lose this toSeq, doing so breaks actions/cross-multiproject & actions/update-state-fail
         project <- unit.projects
         ref = ProjectRef(uri, project.id)
         agg <- project.aggregate

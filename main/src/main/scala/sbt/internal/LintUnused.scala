@@ -12,6 +12,7 @@ import Keys._
 import Def.{ Setting, ScopedKey }
 import sbt.internal.util.{ FilePosition, NoPosition, SourcePosition }
 import java.io.File
+import ProjectExtra.{ extract, scopedKeyData }
 import Scope.Global
 import sbt.SlashSyntax0._
 import sbt.Def._
@@ -31,17 +32,24 @@ object LintUnused {
       aggregate,
       concurrentRestrictions,
       commands,
+      configuration,
       crossScalaVersions,
       crossSbtVersions,
+      evictionWarningOptions,
       initialize,
       lintUnusedKeysOnLoad,
       onLoad,
       onLoadMessage,
       onUnload,
+      pollInterval,
+      pushRemoteCacheArtifact,
+      sbt.nio.Keys.outputFileStamper,
       sbt.nio.Keys.watchTriggers,
       serverConnectionType,
       serverIdleTimeout,
       shellPrompt,
+      sLog,
+      traceLevel,
     ),
     includeLintKeys := Set(
       scalacOptions,
@@ -97,13 +105,12 @@ object LintUnused {
       if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
       else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
       buffer.append(" ")
-      result foreach {
-        case (_, str, positions) =>
-          buffer.append(s"* $str")
-          positions foreach {
-            case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
-            case _                 => ()
-          }
+      result foreach { case (_, str, positions) =>
+        buffer.append(s"* $str")
+        positions foreach {
+          case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
+          case _                 => ()
+        }
       }
       buffer.append(" ")
       buffer.append(
@@ -148,7 +155,7 @@ object LintUnused {
       case Some(data) => data.settingValue.isDefined
       case _          => false
     }
-    def isLocallyDefined(u: UnusedKey): Boolean = u.positions exists {
+    def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists {
       case pos: FilePosition => pos.path.contains(File.separator)
       case _                 => false
     }

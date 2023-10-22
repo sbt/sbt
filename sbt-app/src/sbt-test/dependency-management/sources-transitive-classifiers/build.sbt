@@ -2,13 +2,13 @@ ThisBuild / useCoursier := false
 
 lazy val root = (project in file("."))
   .settings(
-    libraryDependencies += "net.liftweb" % "lift-webkit" % "1.0" intransitive(),
-    libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5" intransitive(),
+    libraryDependencies += ("net.liftweb" % "lift-webkit" % "1.0").intransitive(),
+    libraryDependencies += ("org.scalacheck" % "scalacheck" % "1.5").intransitive(),
     autoScalaLibrary := false,
     managedScalaInstance := false,
     transitiveClassifiers := Seq("sources"),
     TaskKey[Unit]("checkSources") := (updateClassifiers map checkSources).value,
-    TaskKey[Unit]("checkBinaries") := (update map checkBinaries).value
+    TaskKey[Unit]("checkBinaries") := (update map checkBinaries).value,
   )
 
 def getSources(report: UpdateReport)  = report.matching(artifactFilter(`classifier` = "sources") )

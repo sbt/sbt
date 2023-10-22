@@ -26,12 +26,15 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     with ExecuteProgress[Task] {
   @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
   def this(reportOnShutdown: Boolean) =
-    this(reportOnShutdown, new Logger {
-      override def trace(t: => Throwable): Unit = {}
-      override def success(message: => String): Unit = {}
-      override def log(level: Level.Value, message: => String): Unit =
-        ConsoleOut.systemOut.println(message)
-    })
+    this(
+      reportOnShutdown,
+      new Logger {
+        override def trace(t: => Throwable): Unit = {}
+        override def success(message: => String): Unit = {}
+        override def log(level: Level.Value, message: => String): Unit =
+          ConsoleOut.systemOut.println(message)
+      }
+    )
   private[this] var start = 0L
   private[this] val threshold = SysProp.taskTimingsThreshold
   private[this] val omitPaths = SysProp.taskTimingsOmitPaths
@@ -47,7 +50,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       start = System.nanoTime
   }
 
-  override def afterReady(task: Task[_]): Unit = ()
+  override def afterReady(task: Task[Any]): Unit = ()
   override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
   override def afterAllCompleted(results: RMap[Task, Result]): Unit =
     if (!reportOnShutdown) {
@@ -64,17 +67,15 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     val times = timingsByName.toSeq
       .sortBy(_._2.get)
       .reverse
-      .map {
-        case (name, time) =>
-          (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
+      .map { case (name, time) =>
+        (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
       }
       .filter { _._2 > threshold }
     if (times.size > 0) {
       val maxTaskNameLength = times.map { _._1.length }.max
       val maxTime = times.map { _._2 }.max.toString.length
-      times.foreach {
-        case (taskName, time) =>
-          logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
+      times.foreach { case (taskName, time) =>
+        logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
             .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
     }

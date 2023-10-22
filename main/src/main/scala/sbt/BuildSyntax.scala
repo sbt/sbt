@@ -10,11 +10,21 @@ package sbt
 import sbt.internal.DslEntry
 import sbt.librarymanagement.Configuration
 
-private[sbt] trait BuildSyntax {
+private[sbt] trait BuildSyntax:
   import scala.language.experimental.macros
-  def settingKey[T](description: String): SettingKey[T] = macro std.KeyMacro.settingKeyImpl[T]
-  def taskKey[T](description: String): TaskKey[T] = macro std.KeyMacro.taskKeyImpl[T]
-  def inputKey[T](description: String): InputKey[T] = macro std.KeyMacro.inputKeyImpl[T]
+
+  /**
+   * Creates a new Project.  This is a macro that expects to be assigned directly to a val.
+   * The name of the val is used as the project ID and the name of the base directory of the project.
+   */
+  inline def project: Project =
+    ${ std.KeyMacro.projectImpl }
+  inline def settingKey[A1](inline description: String): SettingKey[A1] =
+    ${ std.KeyMacro.settingKeyImpl[A1]('description) }
+  inline def taskKey[A1](inline description: String): TaskKey[A1] =
+    ${ std.KeyMacro.taskKeyImpl[A1]('description) }
+  inline def inputKey[A1](inline description: String): InputKey[A1] =
+    ${ std.KeyMacro.inputKeyImpl[A1]('description) }
 
   def enablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslEnablePlugins(ps)
   def disablePlugins(ps: AutoPlugin*): DslEntry = DslEntry.DslDisablePlugins(ps)
@@ -25,5 +35,6 @@ private[sbt] trait BuildSyntax {
 
   implicit def sbtStateToUpperStateOps(s: State): UpperStateOps =
     new UpperStateOps.UpperStateOpsImpl(s)
-}
+end BuildSyntax
+
 private[sbt] object BuildSyntax extends BuildSyntax

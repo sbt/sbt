@@ -11,6 +11,7 @@ package internal
 import sbt.internal.util.{ AttributeKey, Dag, Relation, Util }
 import sbt.util.Logger
 
+import sbt.ProjectExtra.*
 import Def.Setting
 import sbt.SlashSyntax0._
 import Plugins._
@@ -73,8 +74,7 @@ private[sbt] class PluginsDebug(
           s"\n\nThere are other available plugins that provide $notFoundKey, but they are " +
             s"impossible to add: $impossiblePlugins"
       possibleString + imPostfix
-    } else if (impossible.isEmpty)
-      s"No available plugin provides key $notFoundKey."
+    } else if (impossible.isEmpty) s"No available plugin provides key $notFoundKey."
     else {
       val explanations = impossible.map(explainPluginEnable)
       val preamble = s"Plugins are available that could provide $notFoundKey"
@@ -189,14 +189,15 @@ private[sbt] object PluginsDebug {
       val s3 =
         s"Switch to a project in one of those builds using `project` and rerun this command for more information."
       s"$s1\n\t$s2\n$s3"
-    } else if (definesPlugin(currentProject))
-      debug.activatedHelp(plugin)
+    } else if (definesPlugin(currentProject)) debug.activatedHelp(plugin)
     else {
       val thisAggregated =
         BuildUtil.dependencies(structure.units).aggregateTransitive.getOrElse(currentRef, Nil)
       val definedInAggregated = thisAggregated.filter(ref => definesPlugin(projectForRef(ref)))
       if (definedInAggregated.nonEmpty) {
-        val projectNames = definedInAggregated.map(_.project) // TODO: usually in this build, but could technically require the build to be qualified
+        val projectNames = definedInAggregated.map(
+          _.project
+        ) // TODO: usually in this build, but could technically require the build to be qualified
         val s2 = projectNames.mkString("\n\t")
         s"Plugin ${plugin.label} is not activated on this project, but this project aggregates projects where it is activated:\n\t$s2"
       } else {
@@ -238,7 +239,7 @@ private[sbt] object PluginsDebug {
   /** Describes the steps to activate a plugin in some context. */
   sealed abstract class PluginEnable
 
-  /** Describes a [[plugin]] that is already activated in the [[context]].*/
+  /** Describes a [[plugin]] that is already activated in the [[context]]. */
   final case class PluginActivated(plugin: AutoPlugin, context: Context) extends PluginEnable
 
   sealed abstract class EnableDeactivated extends PluginEnable
@@ -404,13 +405,13 @@ private[sbt] object PluginsDebug {
   def explainPluginEnable(ps: PluginEnable): String =
     ps match {
       case PluginRequirements(
-          plugin,
-          _,
-          blockingExcludes,
-          enablingPlugins,
-          extraEnabledPlugins,
-          toBeRemoved,
-          deactivate
+            plugin,
+            _,
+            blockingExcludes,
+            enablingPlugins,
+            extraEnabledPlugins,
+            toBeRemoved,
+            deactivate
           ) =>
         def indent(str: String) = if (str.isEmpty) "" else s"\t$str"
         def note(str: String) = if (str.isEmpty) "" else s"Note: $str"
@@ -423,7 +424,7 @@ private[sbt] object PluginsDebug {
             Nil
         parts.filterNot(_.isEmpty).mkString("\n")
       case PluginImpossible(plugin, _, contradictions) => pluginImpossible(plugin, contradictions)
-      case PluginActivated(plugin, _)                  => s"Plugin ${plugin.label} already activated."
+      case PluginActivated(plugin, _) => s"Plugin ${plugin.label} already activated."
     }
 
   /**
@@ -447,7 +448,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def excludedPluginsError(transitive: Boolean)(dependencies: List[AutoPlugin]) =
     s"Required ${transitiveString(transitive)}dependencies were excluded:\n\t${labels(dependencies)
-      .mkString("\n\t")}"
+        .mkString("\n\t")}"
 
   private[this] def transitiveString(transitive: Boolean) =
     if (transitive) "(transitive) " else ""

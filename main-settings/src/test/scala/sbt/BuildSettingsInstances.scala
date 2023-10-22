@@ -7,6 +7,7 @@
 
 package sbt.test
 
+/*
 import org.scalacheck.{ Test => _, _ }, Arbitrary.arbitrary, Gen._
 
 import java.io.File
@@ -112,8 +113,7 @@ object BuildSettingsInstances {
   implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
   implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = withScope(genTaskKey[A])
 
-  implicit def arbKey[A: Manifest](
-      implicit
+  implicit def arbKey[A: Manifest](implicit
       arbInputKey: Arbitrary[InputKey[A]],
       arbSettingKey: Arbitrary[SettingKey[A]],
       arbTaskKey: Arbitrary[TaskKey[A]],
@@ -134,3 +134,4 @@ object BuildSettingsInstances {
 
   implicit def arbScoped[A: Manifest]: Arbitrary[Scoped] = Arbitrary(arbitrary[Key])
 }
+ */

@@ -5,12 +5,13 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
+package sbt
+package internal
 
 import sbt.Def._
 import sbt.Keys._
-import sbt.Project.richInitializeTask
-import sbt._
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.*
 import sbt.internal.io.Source
 import sbt.internal.nio.Globs
 import sbt.internal.util.AttributeMap
@@ -36,10 +37,10 @@ private[sbt] object WatchTransitiveDependencies {
     withParams((e, cm) => Def.task(transitiveDynamicInputs(argumentsImpl(key, e, cm).value)))
   private def withParams[R](
       f: (Extracted, CompiledMap) => Def.Initialize[Task[R]]
-  ): Def.Initialize[Task[R]] = Def.taskDyn {
-    val extracted = Project.extract(state.value)
-    f(extracted, compile(extracted.structure))
-  }
+  ): Def.Initialize[Task[R]] =
+    Def.task { Project.extract(state.value) }.flatMapTask { extracted =>
+      f(extracted, compile(extracted.structure))
+    }
 
   private[sbt] def compile(structure: BuildStructure): CompiledMap = structure.compiledMap
   private[sbt] final class Arguments(
@@ -59,37 +60,45 @@ private[sbt] object WatchTransitiveDependencies {
       scopedKey: ScopedKey[_],
       extracted: Extracted,
       compiledMap: CompiledMap
-  ): Def.Initialize[Task[Arguments]] = Def.task {
-    val log = (streamsManager map { mgr =>
-      val stream = mgr(scopedKey)
-      stream.open()
-      stream
-    }).value.log
-    val configs = (internalDependencyConfigurations in scopedKey.scope).value
-    new Arguments(
-      scopedKey,
-      extracted,
-      compiledMap,
-      log,
-      configs,
-      state.value
-    )
-  }
+  ): Def.Initialize[Task[Arguments]] =
+    import sbt.TupleSyntax.*
+    (
+      (streamsManager.map { mgr =>
+        val stream = mgr(scopedKey)
+        stream.open()
+        stream
+      }).toTaskable,
+      (internalDependencyConfigurations in scopedKey.scope).toTaskable,
+      state,
+    ).mapN { case (log, configs, st) =>
+      new Arguments(
+        scopedKey,
+        extracted,
+        compiledMap,
+        log.log,
+        configs,
+        st
+      )
+    }
   private val ShowTransitive = "(?:show)?(?:[ ]*)(.*)/(?:[ ]*)transitive(?:Inputs|Globs|Triggers)".r
-  private def arguments: Def.Initialize[Task[Arguments]] = Def.taskDyn {
-    Def.task {
-      val extracted = Project.extract(state.value)
-      val compiledMap = compile(extracted.structure)
-      state.value.currentCommand.map(_.commandLine) match {
-        case Some(ShowTransitive(key)) =>
-          Parser.parse(key.trim, Act.scopedKeyParser(state.value)) match {
-            case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
-            case _                => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
-          }
-        case Some(_) => argumentsImpl(Keys.resolvedScoped.value, extracted, compiledMap)
+  private def arguments: Def.Initialize[Task[Arguments]] =
+    Def
+      .task {
+        val extracted = Project.extract(state.value)
+        val compiledMap = compile(extracted.structure)
+        val st = state.value
+        val rs = Keys.resolvedScoped.value
+        (extracted, compiledMap, st, rs)
       }
-    }.value
-  }
+      .flatMapTask { case (extracted, compiledMap, st, rs) =>
+        st.currentCommand.map(_.commandLine) match
+          case Some(ShowTransitive(key)) =>
+            Parser.parse(key.trim, Act.scopedKeyParser(st)) match
+              case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
+              case _                => argumentsImpl(rs, extracted, compiledMap)
+          case Some(_) => argumentsImpl(rs, extracted, compiledMap)
+      }
+
   private[sbt] def transitiveDynamicInputs(args: Arguments): Seq[DynamicInput] = {
     import args._
     val taskScope = Project.fillTaskAxis(scopedKey).scope
@@ -139,21 +148,20 @@ private[sbt] object WatchTransitiveDependencies {
         .toIndexedSeq
     val projects = projectScopes.flatMap(_.project.toOption).distinct.toSet
     val scopes: Seq[Either[Scope, Seq[Glob]]] =
-      data.flatMap {
-        case (s, am) =>
-          if (s == Scope.Global || s.project.toOption.exists(projects.contains))
-            am.get(Keys.watchSources.key) match {
-              case Some(k) =>
-                k.work match {
-                  // Avoid extracted.runTask if possible.
-                  case Pure(w, _) => Some(Right(w().map(_.toGlob)))
-                  case _          => Some(Left(s))
-                }
-              case _ => None
-            }
-          else {
-            None
+      data.flatMap { case (s, am) =>
+        if (s == Scope.Global || s.project.toOption.exists(projects.contains))
+          am.get(Keys.watchSources.key) match {
+            case Some(k) =>
+              k.work match {
+                // Avoid extracted.runTask if possible.
+                case Action.Pure(w, _) => Some(Right(w().map(_.toGlob)))
+                case _                 => Some(Left(s))
+              }
+            case _ => None
           }
+        else {
+          None
+        }
       }.toSeq
     def toDynamicInput(glob: Glob): DynamicInput =
       DynamicInput(glob, FileStamper.LastModified, forceTrigger = true)
@@ -214,7 +222,7 @@ private[sbt] object WatchTransitiveDependencies {
           // Append the Keys.triggers key in case there are no other references to Keys.triggers.
           val transitiveTrigger = compiled.key.scope.task.toOption match {
             case _: Some[_] => ScopedKey(compiled.key.scope, watchTriggers.key)
-            case None       => ScopedKey(Project.fillTaskAxis(compiled.key).scope, watchTriggers.key)
+            case None => ScopedKey(Project.fillTaskAxis(compiled.key).scope, watchTriggers.key)
           }
           val newRest = rest ++ newDependencies ++ (if (newVisited(transitiveTrigger)) Nil
                                                     else Some(transitiveTrigger))

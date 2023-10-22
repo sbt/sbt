@@ -12,10 +12,6 @@ import java.io.File
 import sbt.io.syntax._
 import sbt.io.IO
 import sbt.internal.inc.{ RawCompiler, ScalaInstance }
-import sbt.internal.util.Types.:+:
-import sbt.internal.util.HListFormats._
-import sbt.internal.util.HNil
-import sbt.internal.util.HListFormats._
 import sbt.util.CacheImplicits._
 import sbt.util.Tracked.inputChanged
 import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
@@ -50,12 +46,22 @@ object RawCompileLike {
       doCompile: Gen
   ): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
-      type Inputs =
-        FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+:
-          Seq[String] :+: Int :+: HNil
-      val inputs: Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+:
-        FilesInfo(classpath.toSet.map(lastModified.fileOrDirectoryMax)) :+: classpath :+:
-        outputDirectory :+: options :+: maxErrors :+: HNil
+      type Inputs = (
+          FilesInfo[HashFileInfo],
+          FilesInfo[ModifiedFileInfo],
+          Seq[File],
+          File,
+          Seq[String],
+          Int,
+      )
+      val inputs: Inputs = (
+        hash(sources.toSet ++ optionFiles(options, fileInputOpts)),
+        FilesInfo[ModifiedFileInfo](classpath.toSet.map(lastModified.fileOrDirectoryMax)),
+        classpath,
+        outputDirectory,
+        options,
+        maxErrors
+      )
       val cachedComp = inputChanged(cacheStoreFactory make "inputs") { (inChanged, in: Inputs) =>
         inputChanged(cacheStoreFactory make "output") {
           (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
@@ -70,8 +76,7 @@ object RawCompileLike {
 
   def prepare(description: String, doCompile: Gen): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
-      if (sources.isEmpty)
-        log.info("No sources available, skipping " + description + "...")
+      if (sources.isEmpty) log.info("No sources available, skipping " + description + "...")
       else {
         log.info(description.capitalize + " to " + outputDirectory.absolutePath + "...")
         IO.delete(outputDirectory)

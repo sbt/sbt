@@ -14,6 +14,7 @@ import sbt.Def._
 import sbt.Keys._
 import sbt.SlashSyntax0._
 import sbt.Project._
+import sbt.ProjectExtra.*
 import sbt.internal.graph._
 import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }
@@ -40,7 +41,7 @@ object DependencyTreeSettings {
         .withCachedResolution(false),
       dependencyTreeIgnoreMissingUpdate / ivyConfiguration := {
         // inTask will make sure the new definition will pick up `updateOptions in dependencyTreeIgnoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
       },
       dependencyTreeIgnoreMissingUpdate / ivyModule := {
         // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
@@ -54,7 +55,7 @@ object DependencyTreeSettings {
         .withMissingOk(true),
       dependencyTreeIgnoreMissingUpdate := {
         // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
       },
     )
 
@@ -71,9 +72,8 @@ object DependencyTreeSettings {
         val sv = scalaVersion.value
         val g = dependencyTreeIgnoreMissingUpdate.value
           .configuration(configuration.value)
-          .map(
-            report =>
-              SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
+          .map(report =>
+            SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
           )
           .getOrElse(ModuleGraph.empty)
         if (dependencyTreeIncludeScalaLibrary.value) g
@@ -109,7 +109,7 @@ object DependencyTreeSettings {
         dependencyTreeModuleGraph0.value,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
+        rendering.DOT.HTMLLabelRendering.AngleBrackets,
         dependencyDotNodeColors.value
       ),
       dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
@@ -194,7 +194,7 @@ object DependencyTreeSettings {
         graph,
         dependencyDotHeader.value,
         dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
+        rendering.DOT.HTMLLabelRendering.AngleBrackets,
         dependencyDotNodeColors.value
       )
       val link = DagreHTML.createLink(dotGraph, target.value)
@@ -253,24 +253,24 @@ object DependencyTreeSettings {
   import sbt.internal.util.complete.DefaultParsers._
   val artifactPatternParser: Def.Initialize[State => Parser[ArtifactPattern]] =
     Keys.resolvedScoped { ctx => (state: State) =>
-      val graph = Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
-        Nil,
-        Nil
-      )
+      val graph =
+        Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
+          Nil,
+          Nil
+        )
 
       graph.nodes
         .map(_.id)
         .groupBy(m => (m.organization, m.name))
-        .map {
-          case ((org, name), modules) =>
-            val versionParsers: Seq[Parser[Option[String]]] =
-              modules.map { id =>
-                token(Space ~> id.version).?
-              }
-
-            (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
-              case ((org, name), version) => ArtifactPattern(org, name, version)
+        .map { case ((org, name), modules) =>
+          val versionParsers: Seq[Parser[Option[String]]] =
+            modules.map { id =>
+              token(Space ~> id.version).?
             }
+
+          (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
+            case ((org, name), version) => ArtifactPattern(org, name, version)
+          }
         }
         .reduceOption(_ | _)
         .getOrElse {
@@ -278,9 +278,8 @@ object DependencyTreeSettings {
           ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
             StringBasic,
             "<module>"
-          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map {
-            case ((org, mod), version) =>
-              ArtifactPattern(org, mod, version)
+          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map { case ((org, mod), version) =>
+            ArtifactPattern(org, mod, version)
           }
         }
     }

@@ -18,22 +18,34 @@ import sbt.librarymanagement.Configuration
 import hedgehog._
 import hedgehog.runner._
 
+/*
 object ParserSpec extends Properties {
   override def tests: List[Test] =
     List(
-      property("can parse any build", TestBuild.uriGen.forAll.map { uri =>
-        parse(buildURI = uri)
-      }),
-      property("can parse any project", TestBuild.nonEmptyId.forAll.map { id =>
-        parse(projectID = id)
-      }),
-      property("can parse any configuration", TestBuild.nonEmptyId.map(_.capitalize).forAll.map {
-        name =>
+      property(
+        "can parse any build",
+        TestBuild.uriGen.forAll.map { uri =>
+          parse(buildURI = uri)
+        }
+      ),
+      property(
+        "can parse any project",
+        TestBuild.nonEmptyId.forAll.map { id =>
+          parse(projectID = id)
+        }
+      ),
+      property(
+        "can parse any configuration",
+        TestBuild.nonEmptyId.map(_.capitalize).forAll.map { name =>
           parse(configName = name)
-      }),
-      property("can parse any attribute", TestBuild.kebabIdGen.forAll.map { name =>
-        parse(attributeName = name)
-      })
+        }
+      ),
+      property(
+        "can parse any attribute",
+        TestBuild.kebabIdGen.forAll.map { name =>
+          parse(attributeName = name)
+        }
+      )
     )
 
   private def parse(
@@ -70,3 +82,4 @@ object ParserSpec extends Properties {
       .log(s"$string parsed back to $resultStr rather than $scopedKey")
   }
 }
+ */

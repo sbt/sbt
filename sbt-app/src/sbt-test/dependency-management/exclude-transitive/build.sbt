@@ -1,4 +1,5 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ThisBuild / scalaVersion := "2.12.17"
 
 lazy val root = (project in file(".")).
   settings(
@@ -12,7 +13,7 @@ def transitive(dep: ModuleID)(base: File) =
   if((base / "transitive").exists) dep else dep.intransitive()
 
 def check(transitive: Boolean) =
-  (dependencyClasspath in Compile) map { downloaded =>
+  (Compile / dependencyClasspath) map { downloaded =>
     val jars = downloaded.size
     if(transitive) {
       if (jars <= 2)
