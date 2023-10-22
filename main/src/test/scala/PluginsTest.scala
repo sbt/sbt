@@ -48,7 +48,7 @@ object PluginsTest extends verify.BasicTestSuite {
         assertEquals(
           s"""Contradiction in enabled plugins:
   - requested: sbt.AI$$S
-  - enabled: sbt.AI$$S, sbt.AI$$Q, sbt.AI$$R, sbt.AI$$B, sbt.AI$$A
+  - enabled: sbt.AI$$A, sbt.AI$$B, sbt.AI$$Q, sbt.AI$$R, sbt.AI$$S
   - conflict: sbt.AI$$R is enabled by sbt.AI$$Q; excluded by sbt.AI$$S""",
           e.message
         )
@@ -63,8 +63,8 @@ object PluginsTest extends verify.BasicTestSuite {
         assertEquals(
           s"""Contradiction in enabled plugins:
   - requested: sbt.AI$$T && sbt.AI$$U
-  - enabled: sbt.AI$$U, sbt.AI$$T, sbt.AI$$A, sbt.AI$$Q, sbt.AI$$R, sbt.AI$$B
-  - conflict: sbt.AI$$Q is enabled by sbt.AI$$A && sbt.AI$$B; required by sbt.AI$$T, sbt.AI$$R; excluded by sbt.AI$$U
+  - enabled: sbt.AI$$A, sbt.AI$$B, sbt.AI$$Q, sbt.AI$$R, sbt.AI$$T, sbt.AI$$U
+  - conflict: sbt.AI$$Q is enabled by sbt.AI$$A && sbt.AI$$B; required by sbt.AI$$R, sbt.AI$$T; excluded by sbt.AI$$U
   - conflict: sbt.AI$$R is enabled by sbt.AI$$Q; excluded by sbt.AI$$T""",
           e.message
         )
