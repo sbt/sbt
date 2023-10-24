@@ -12,7 +12,6 @@ package internal
 import java.io.File
 import java.net.URL
 import java.nio.file.Path
-
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
 import sbt.SlashSyntax0._
@@ -22,10 +21,12 @@ import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.util.Attributed
 import sbt.internal.util.Attributed.data
 import sbt.io.IO
+import sbt.librarymanagement.ScalaArtifacts
 import sbt.nio.FileStamp
 import sbt.nio.FileStamp.LastModified
 import sbt.nio.Keys._
 import sbt.util.Logger
+import xsbti.ArtifactInfo
 
 private[sbt] object ClassLoaders {
   private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
@@ -154,14 +155,24 @@ private[sbt] object ClassLoaders {
           case _: AllLibraryJars => true
           case _                 => false
         }
+        val cpFiles = fullCP.map(_._1)
         val scalaLibraryLayer = {
+          val jars =
+            if (ScalaArtifacts.isScala3(si.version) || Classpaths.isScala213(si.version))
+              cpFiles
+                .filter(f => {
+                  val name = f.getName
+                  name.contains(ArtifactInfo.ScalaLibraryID) || si.libraryJars
+                    .exists(_.getName == name)
+                })
+                .toArray
+            else si.libraryJars
           cache.apply(
-            si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
+            jars.map(j => j -> IO.getModifiedTimeOrZero(j)).toList,
             interfaceLoader,
-            () => new ScalaLibraryClassLoader(si.libraryJars.map(_.toURI.toURL), interfaceLoader)
+            () => new ScalaLibraryClassLoader(jars.map(_.toURI.toURL), interfaceLoader)
           )
         }
-        val cpFiles = fullCP.map(_._1)
 
         val allDependencies = cpFiles.filter(allDependenciesSet)
         def isReflectJar(f: File): Boolean =
