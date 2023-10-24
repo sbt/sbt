@@ -730,14 +730,14 @@ object Defaults extends BuildCommon {
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
+    classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
+    console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
-      classpathOptions :== ClasspathOptionsUtil.boot,
-      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
@@ -3108,14 +3108,15 @@ object Classpaths {
     allExcludeDependencies := excludeDependencies.value,
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
+        val sv = (update / scalaVersion).value
         Option(
           ScalaModuleInfo(
-            (update / scalaVersion).value,
+            sv,
             (update / scalaBinaryVersion).value,
             Vector.empty,
             filterImplicit = false,
             checkExplicit = true,
-            overrideScalaVersion = true
+            overrideScalaVersion = !ScalaArtifacts.isScala3(sv) && !isScala213(sv)
           ).withScalaOrganization(scalaOrganization.value)
             .withScalaArtifacts(scalaArtifacts.value.toVector)
         )
@@ -3514,14 +3515,15 @@ object Classpaths {
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
           scalaOrganization := ScalaArtifacts.Organization,
           scalaModuleInfo := {
+            val sv = scalaVersion.value
             Some(
               ScalaModuleInfo(
-                scalaVersion.value,
+                sv,
                 scalaBinaryVersion.value,
                 Vector(),
                 checkExplicit = false,
                 filterImplicit = false,
-                overrideScalaVersion = true
+                overrideScalaVersion = !ScalaArtifacts.isScala3(sv) && !isScala213(sv)
               ).withScalaOrganization(scalaOrganization.value)
             )
           },
@@ -3932,6 +3934,8 @@ object Classpaths {
 
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+
+  private[sbt] def isScala213(sv: String) = sv.startsWith("2.13.")
 
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =
