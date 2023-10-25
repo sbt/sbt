@@ -33,7 +33,6 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 import xsbti.CompileFailed
 
-import java.nio.file.Path
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -44,6 +43,8 @@ import scala.util.{ Failure, Success, Try }
 import scala.annotation.nowarn
 import sbt.testing.Framework
 import scala.collection.immutable.ListSet
+import xsbti.VirtualFileRef
+import java.util.concurrent.atomic.AtomicReference
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -329,11 +330,13 @@ object BuildServerProtocol {
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
       val meta = isMetaBuild.value
+      val spms = sourcePositionMappers.value
       if (bspEnabled.value) {
         new BuildServerReporterImpl(
           targetId,
           bspCompileStateInstance,
           converter,
+          Defaults.foldMappers(spms, reportAbsolutePath.value, fileConverter.value),
           meta,
           logger,
           underlying
@@ -1064,11 +1067,14 @@ object BuildServerProtocol {
   private[server] final class BspCompileState {
 
     /**
-     * keeps track of problems in given file so BSP reporter
-     * can omit unnecessary diagnostics updates
+     * keeps track of problems in a given file in a map of virtual source file to text documents.
+     * In most cases the only text document is the source file. In case of source generation,
+     * e.g. Twirl, the text documents are the input files, e.g. the Twirl files.
+     * We use the sourcePositionMappers to build this map.
      */
-    val hasAnyProblems: java.util.Set[Path] =
-      java.util.concurrent.ConcurrentHashMap.newKeySet[Path]
+    val problemsBySourceFiles
+        : AtomicReference[Map[VirtualFileRef, Vector[TextDocumentIdentifier]]] =
+      new AtomicReference(Map.empty)
 
     /**
      * keeps track of those projects that were compiled at
@@ -1076,6 +1082,6 @@ object BuildServerProtocol {
      * are compiled for the first time.
      * see: https://github.com/scalacenter/bloop/issues/726
      */
-    val compiledAtLeastOnce: AtomicBoolean = new AtomicBoolean(false)
+    val isFirstReport: AtomicBoolean = new AtomicBoolean(true)
   }
 }
