@@ -8,8 +8,6 @@
 
 package sbt.internal.server
 
-import java.nio.file.Path
-
 import sbt.StandardMain
 import sbt.internal.bsp._
 import sbt.internal.util.ManagedLogger
@@ -75,16 +73,9 @@ sealed trait BuildServerReporter extends Reporter {
 }
 
 /**
-
-An implementation of the BuildServerReporter for communicating with the Build Server.
-Sends diagnostic messages to the client, handling success and failure cases.
-@param buildTarget the identifier of the build target
-@param bspCompileState state representing what has already been reported in previous compilation.
-@param converter a file converter for converting between VirtualFileRef and Path
-@param sourcePositionMapper a function to map an xsbti.Position from the generated file (the Scala file) to the source file of the generator (e.g. Twirl file)
-@param isMetaBuild a flag indicating if this is a meta build
-@param logger a ManagedLogger for logging messages
-@param underlying the underlying reporter instance which reports to the sbt shell or native clients
+ * @param bspCompileState what has already been reported in previous compilation.
+ * @param sourcePositionMapper a function that maps an xsbti.Position from the generated source
+ * (the Scala file) to the input file of the generator (e.g. Twirl file)
  */
 final class BuildServerReporterImpl(
     buildTarget: BuildTargetIdentifier,
@@ -99,15 +90,13 @@ final class BuildServerReporterImpl(
   import sbt.internal.inc.JavaInterfaceUtil._
 
   private lazy val exchange = StandardMain.exchange
-  //keeps track of problems in a given file by mapping its VirtualFileRef to a Vector of problems.
-  //N.B : In case of a source generator file (Twirl), the given file is the generated one (Scala).
   private val problemsByFile = mutable.Map[VirtualFileRef, Vector[Problem]]()
 
   // sometimes the compiler returns a fake position such as <macro>
   // on Windows, this causes InvalidPathException (see #5994 and #6720)
-  private def toSafePath(ref: VirtualFileRef): Option[Path] =
+  private def toDocument(ref: VirtualFileRef): Option[TextDocumentIdentifier] =
     if (ref.id().contains("<")) None
-    else Some(converter.toPath(ref))
+    else Some(TextDocumentIdentifier(converter.toPath(ref).toUri))
 
   /**
    * Send diagnostics from the compilation to the client.
@@ -115,104 +104,46 @@ final class BuildServerReporterImpl(
    *
    * @param analysis current compile analysis
    */
-  override def sendSuccessReport(
-      analysis: CompileAnalysis,
-  ): Unit = {
-    val shouldReportAllProblems = !bspCompileState.compiledAtLeastOnce.getAndSet(true)
-    for {
-      (source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala
-      sourcePath <- toSafePath(source)
-    } {
-      // clear problems for current file
-      val oldDocuments =
-        bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).getOrElse(source, Seq.empty)
-
+  override def sendSuccessReport(analysis: CompileAnalysis): Unit = {
+    for ((source, infos) <- analysis.readSourceInfos.getAllSourceInfos.asScala) {
       val problems = infos.getReportedProblems.toVector
+      sendReport(source, problems)
+    }
+    notifyFirstReport()
+  }
 
-      // publish diagnostics if:
-      // 1. file had any problems previously - we might want to update them with new ones
-      // 2. file has fresh problems - we might want to update old ones
-      // 3. build project is compiled first time - shouldReportAllProblems is set
-      val shouldPublish = oldDocuments.nonEmpty || problems.nonEmpty || shouldReportAllProblems
-
-      if (shouldPublish) {
-        // Group diagnostics by document
-        val diagsByDocuments = problems
-          .flatMap(mapProblemToDiagnostic)
-          .groupBy { case (document, _) => document }
-          .mapValues(_.map { case (_, diag) => diag })
-
-        //Get a set of these diagnostics to remove duplicates
-        val newDocuments = diagsByDocuments.keySet
-
-        bspCompileState.problemsBySourceFiles.updateAndGet(_ + (source -> newDocuments.toVector))
-
-        val sourceDocument = TextDocumentIdentifier(sourcePath.toUri)
-        val allDocuments = (newDocuments ++ oldDocuments + sourceDocument)
-        // Iterate through both new and old documents, sending diagnostics for each
-        allDocuments.foreach { document =>
-          val diags: Vector[Diagnostic] = diagsByDocuments
-            .getOrElse(document, Vector.empty)
-          val params = PublishDiagnosticsParams(
-            document,
-            buildTarget,
-            originId = None,
-            diags,
-            reset = true
-          )
-          // Notify the client with the diagnostics
-          exchange.notifyEvent("build/publishDiagnostics", params)
-        }
-      }
+  override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
+    for (source <- sources) {
+      val problems = problemsByFile.getOrElse(source, Vector.empty)
+      sendReport(source, problems)
     }
   }
 
-  /**
-   *This method sends a failure report to the client when the compilation fails. It takes an array of virtual files
-   *as the input parameter and processes the reported problems for each source.
-  @param sources an array of virtual files representing the source files
-   */
-  override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
-    val shouldReportAllProblems = !bspCompileState.compiledAtLeastOnce.get
-    // Iterate through all source files
-    for {
-      source <- sources
-    } {
-      // Get the problems associated with the current source file
-      val problems = problemsByFile.getOrElse(source, Vector.empty)
+  private def sendReport(source: VirtualFileRef, problems: Vector[Problem]): Unit = {
+    val oldDocuments = getAndClearPreviousDocuments(source)
 
-      val oldDocuments =
-        bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).getOrElse(source, Seq.empty)
-      // Determine if diagnostics should be published
-      // 1. The file had problems previously - we might want to update them with new ones
-      // 2. The file has fresh problems - we might want to update old ones
-      // 3. The build project is compiled for the first time - shouldReportAllProblems is set
-      val shouldPublish = oldDocuments.nonEmpty || problems.nonEmpty || shouldReportAllProblems
+    // publish diagnostics if:
+    // 1. file had any problems previously: update them with new ones
+    // 2. file has fresh problems: report them
+    // 3. build project is compiled for the first time: send success report
+    if (oldDocuments.nonEmpty || problems.nonEmpty || isFirstReport) {
+      val diagsByDocuments = problems
+        .flatMap(mapProblemToDiagnostic)
+        .groupBy { case (document, _) => document }
+        .mapValues(_.map { case (_, diag) => diag })
+      updateNewDocuments(source, diagsByDocuments.keys.toVector)
 
-      if (shouldPublish) {
-        // Group diagnostics by document
-        val diagsByDocuments = problems
-          .flatMap(mapProblemToDiagnostic)
-          .groupBy { case (document, _) => document }
-          .mapValues(_.map { case (_, diag) => diag })
-
-        val newDocuments = diagsByDocuments.keySet
-
-        bspCompileState.problemsBySourceFiles.updateAndGet(_ + (source -> newDocuments.toVector))
-
-        // Iterate through both new and old documents, sending diagnostics for each
-        (newDocuments ++ oldDocuments).foreach { document =>
-          val diags: Vector[Diagnostic] = diagsByDocuments
-            .getOrElse(document, Vector.empty)
-          val params = PublishDiagnosticsParams(
-            document,
-            buildTarget,
-            originId = None,
-            diags,
-            reset = true
-          )
-          exchange.notifyEvent("build/publishDiagnostics", params)
-        }
+      // send a report for the new documents, the old ones and the source file
+      (diagsByDocuments.keySet ++ oldDocuments ++ toDocument(source)).foreach { document =>
+        val diags = diagsByDocuments.getOrElse(document, Vector.empty)
+        val params = PublishDiagnosticsParams(
+          document,
+          buildTarget,
+          originId = None,
+          diags,
+          reset = true
+        )
+        exchange.notifyEvent("build/publishDiagnostics", params)
       }
     }
   }
@@ -220,7 +151,6 @@ final class BuildServerReporterImpl(
   protected override def publishDiagnostic(problem: Problem): Unit = {
     for {
       id <- problem.position.sourcePath.toOption
-      // mapProblemToDiagnostic  maps the position in the Scala source file back to the source of the generator that generated this Scala file.
       (document, diagnostic) <- mapProblemToDiagnostic(problem)
     } {
       val fileRef = VirtualFileRef.of(id)
@@ -237,20 +167,32 @@ final class BuildServerReporterImpl(
     }
   }
 
-  /**
+  private def getAndClearPreviousDocuments(source: VirtualFileRef): Seq[TextDocumentIdentifier] =
+    bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).getOrElse(source, Seq.empty)
 
-   * This function maps a given problem  in a Scala source file  to a diagnostic in the source of the generator that generated this Scala
-   * or the the file itself in case it was not generated.
-   * @param problem the problem to be converted into a diagnostic
+  private def updateNewDocuments(
+      source: VirtualFileRef,
+      documents: Vector[TextDocumentIdentifier]
+  ): Unit = {
+    val _ = bspCompileState.problemsBySourceFiles.updateAndGet(_ + (source -> documents))
+  }
+
+  private def isFirstReport: Boolean = bspCompileState.isFirstReport.get
+  private def notifyFirstReport(): Unit = {
+    val _ = bspCompileState.isFirstReport.set(false)
+  }
+
+  /**
+   * Map a given problem, in a Scala source file, to a Diagnostic in an user-facing source file.
+   * E.g. if the source file is generated from Twirl, the diagnostic will be reported to the Twirl file.
    */
   private def mapProblemToDiagnostic(
       problem: Problem
   ): Option[(TextDocumentIdentifier, Diagnostic)] = {
-    // Map the position of the problem  from the generated file to the origin , this way we send the original position of the problem instead of the generated one
     val mappedPosition = sourcePositionMapper(problem.position)
     for {
-      id <- mappedPosition.sourcePath.toOption
-      path <- toSafePath(VirtualFileRef.of(id))
+      mappedSource <- mappedPosition.sourcePath.toOption
+      document <- toDocument(VirtualFileRef.of(mappedSource))
     } yield {
       val diagnostic = Diagnostic(
         toRange(mappedPosition),
@@ -259,7 +201,7 @@ final class BuildServerReporterImpl(
         Option("sbt"),
         problem.message
       )
-      (TextDocumentIdentifier(path.toUri), diagnostic)
+      (document, diagnostic)
     }
   }
 

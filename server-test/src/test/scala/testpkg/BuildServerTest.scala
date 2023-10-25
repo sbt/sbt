@@ -596,53 +596,48 @@ object BuildServerTest extends AbstractServerTest {
     assert(actualResult == expectedResult)
   }
 
-  test("buildTarget/compile twirl diagnostics (sourcePositionMapping)") { _ =>
+  test("buildTarget/compile: twirl diagnostics (sourcePositionMappers)") { _ =>
     val buildTarget = buildTargetUri("twirlProj", "Compile")
-    val testFile =
-      new File(svr.baseDirectory, s"twirlProj/src/main/twirl/vHostHttpToHttps.scala.txt")
+    val testFile = new File(svr.baseDirectory, s"twirlProj/src/main/twirl/main.scala.html")
 
     compile(buildTarget)
-
     assert(
       svr.waitForString(10.seconds) { s =>
         s.contains("build/publishDiagnostics") &&
-        s.contains("vHostHttpToHttps.scala.txt") &&
+        s.contains("main.scala.html") &&
         s.contains(""""severity":1""") &&
-        s.contains("""not found: value mainDomaiiiiin""")
+        s.contains("not found: value tilte")
       },
-      "should send publishDiagnostics with serverity 1 for vHostHttpToHttps.scala.txt "
+      "should report diagnostic in Twirl file"
     )
+
     IO.write(
       testFile,
-      """|@(subDomain: String, mainDomain: String, redirectStatusCode: Int)
-         |@fullDomain=@{
-         |  if(mainDomain) {
-         |    mainDomain
-         |  } else {
-         |    s"$subDomain.$mainDomain"
-         |  }
-         |}
+      """|@(title: String, paragraphs: Seq[String])
          |
-         |
-         |<VirtualHost *:80>
-         |  ServerName @fullDomain
-         |  RewriteEngine On
-         |  RewriteRule (.*) "https://%{HTTP_HOST}%{REQUEST_URI}" [R=@redirectStatusCode,L]
-         |
-         |</VirtualHost>
+         |<!DOCTYPE HTML>
+         |<html lang="en">
+         |  <head>
+         |    <title>@title</title>
+         |  </head>
+         |  <body>
+         |    <h1>@title</h1>
+         |    @for(paragraph <- paragraphs) {
+         |      <p>@paragraph</p>
+         |    }
+         |  </body>
+         |</html>
          |""".stripMargin
     )
-
     compile(buildTarget)
-
-    assert(
+    assert.apply(
       svr.waitForString(30.seconds) { s =>
         s.contains("build/publishDiagnostics") &&
-        s.contains("vHostHttpToHttps.scala.txt") &&
+        s.contains("main.scala.html") &&
         s.contains(""""diagnostics":[]""") &&
         s.contains(""""reset":true""")
       },
-      "should send publishDiagnostics with empty diagnostics"
+      "should reset diagnostic in Twirl file"
     )
   }
 
