@@ -2225,6 +2225,9 @@ object Defaults extends BuildCommon {
       val si = (task / scalaInstance).value
       val s = streams.value
       val cpFiles = data((task / classpath).value)
+      // TODO on 2.13 `cpFiles` has the updated scala-library from depencencies, si.allJars has the scalaVersion
+      // scala-library, so we get both.
+      // Also, `makeLoader` uses `si.loaderLibraryOnly` as the parent loader, which again is the scalaVersion library.
       val fullcp = (cpFiles ++ si.allJars).distinct
       val tempDir = IO.createUniqueDirectory((task / taskTemporaryDirectory).value).toPath
       val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
