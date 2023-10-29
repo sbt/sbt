@@ -110,8 +110,8 @@ private[sbt] object LibraryManagement {
       !force &&
       !depsUpdated &&
       !inChanged &&
-      out.allFiles.forall(f => fileUptodate(f, out.stamps, log)) &&
-      fileUptodate(out.cachedDescriptor, out.stamps, log)
+      out.allFiles.forall(f => fileUptodate(f.toString, out.stamps, log)) &&
+      fileUptodate(out.cachedDescriptor.toString, out.stamps, log)
     }
 
     /* Skip resolve if last output exists, otherwise error. */
@@ -166,7 +166,8 @@ private[sbt] object LibraryManagement {
     handler((extraInputHash, settings, withoutClock))
   }
 
-  private[this] def fileUptodate(file: File, stamps: Map[File, Long], log: Logger): Boolean = {
+  private[this] def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
+    val file = File(file0)
     val exists = file.exists
     // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
     // that UpdateReport was persisted but Coursier cache was not.
@@ -175,7 +176,7 @@ private[sbt] object LibraryManagement {
     }
     // coursier doesn't populate stamps
     val timeStampIsSame = stamps
-      .get(file)
+      .get(file0)
       .forall(_ == IO.getModifiedTimeOrZero(file))
     exists && timeStampIsSame
   }

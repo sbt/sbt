@@ -17,7 +17,15 @@ import sbt.util.CacheImplicits._
 import sbt.util.{ CacheStore, FileInfo }
 import sbt.io.IO
 import sbt.librarymanagement.LibraryManagementCodec
-import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
+import sjsonnew.{
+  Builder,
+  IsoString,
+  IsoStringLong,
+  JsonFormat,
+  PathOnlyFormats,
+  Unbuilder,
+  deserializationError,
+}
 import xsbti.{ FileConverter, VirtualFileRef }
 
 /**
@@ -126,11 +134,20 @@ object Sync {
       }
     }
 
+  private lazy val fileIsoString: IsoString[File] =
+    val iso = summon[IsoStringLong[File]]
+    IsoString.iso(
+      (file: File) => iso.to(file)._1,
+      (s: String) => iso.from((s, 0)),
+    )
+
   def writeInfo[F <: FileInfo](
       store: CacheStore,
       relation: Relation[File, File],
       info: Map[File, F]
   )(implicit infoFormat: JsonFormat[F]): Unit =
+    given IsoString[File] = fileIsoString
+    import PathOnlyFormats.given
     store.write((relation, info))
 
   def writeInfoVirtual[F <: FileInfo](
@@ -213,6 +230,8 @@ object Sync {
   private def readUncaught[F <: FileInfo](
       store: CacheStore
   )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+    given IsoString[File] = fileIsoString
+    import PathOnlyFormats.given
     store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 
   private def readUncaughtVirtual[F <: FileInfo](

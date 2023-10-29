@@ -65,7 +65,7 @@ object RemoteCache {
       val app = appConfiguration.value
       val base = app.baseDirectory.getCanonicalFile
       // base is used only to resolve relative paths, which should never happen
-      IvyPaths(base, localCacheDirectory.value)
+      IvyPaths(base.toString, localCacheDirectory.value.toString)
     },
   )
 

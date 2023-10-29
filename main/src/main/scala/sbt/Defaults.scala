@@ -3043,7 +3043,10 @@ object Classpaths {
         }
       }).value,
     moduleName := normalizedName.value,
-    ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+    ivyPaths := IvyPaths(
+      baseDirectory.value.toString,
+      bootIvyHome(appConfiguration.value).map(_.toString)
+    ),
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value
@@ -3055,7 +3058,7 @@ object Classpaths {
         else if (ip.ivyHome == defaultIvyCache) old
         else
           ip.ivyHome match {
-            case Some(home) => home / "coursier-cache"
+            case Some(home) => new File(home) / "coursier-cache"
             case _          => old
           }
       } else Classpaths.dummyCoursierDirectory(ac)
