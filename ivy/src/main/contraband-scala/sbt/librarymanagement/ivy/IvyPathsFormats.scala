@@ -11,8 +11,8 @@ implicit lazy val IvyPathsFormat: JsonFormat[sbt.librarymanagement.ivy.IvyPaths]
     __jsOpt match {
       case Some(__js) =>
       unbuilder.beginObject(__js)
-      val baseDirectory = unbuilder.readField[java.io.File]("baseDirectory")
-      val ivyHome = unbuilder.readField[Option[java.io.File]]("ivyHome")
+      val baseDirectory = unbuilder.readField[String]("baseDirectory")
+      val ivyHome = unbuilder.readField[Option[String]]("ivyHome")
       unbuilder.endObject()
       sbt.librarymanagement.ivy.IvyPaths(baseDirectory, ivyHome)
       case None =>

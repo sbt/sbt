@@ -123,7 +123,7 @@ private[librarymanagement] abstract class UpdateReportExtra {
   def cachedDescriptor: File
   def configurations: Vector[ConfigurationReport]
   def stats: UpdateStats
-  private[sbt] def stamps: Map[File, Long]
+  private[sbt] def stamps: Map[String, Long]
 
   /** All resolved modules in all configurations. */
   def allModules: Vector[ModuleID] = {

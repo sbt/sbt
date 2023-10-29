@@ -131,10 +131,10 @@ final class IvySbt(
         IvySbt.loadURI(is, e.uri.getOrElse(sys.error("uri must be specified!")))
       case i: InlineIvyConfiguration =>
         val paths = getIvyPaths(i.paths)
-        is.setBaseDir(paths.baseDirectory)
+        is.setBaseDir(new File(paths.baseDirectory))
         is.setVariable("ivy.checksums", i.checksums mkString ",")
         is.setVariable(ConvertResolver.ManagedChecksums, i.managedChecksums.toString)
-        paths.ivyHome foreach is.setDefaultIvyUserDir
+        paths.ivyHome.foreach { (h) => is.setDefaultIvyUserDir(new File(h)) }
         IvySbt.configureCache(is, i.resolutionCacheDir)
         IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, configuration.updateOptions, log)
         IvySbt.setModuleConfigurations(is, i.moduleConfigurations, log)
