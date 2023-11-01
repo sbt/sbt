@@ -234,7 +234,7 @@ object Defaults extends BuildCommon {
       bgCopyClasspath :== true,
       closeClassLoaders :== SysProp.closeClassLoaders,
       allowZombieClassLoaders :== true,
-      packageTimestamp :== Package.defaultTimestamp,
+      packageTimestamp :== Pkg.defaultTimestamp,
     ) ++ BuildServerProtocol.globalSettings
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
@@ -1726,10 +1726,10 @@ object Defaults extends BuildCommon {
           val ts = packageTimestamp.value
           val old = packageOptions.value
 
-          Package.addSpecManifestAttributes(n, ver, orgName) +:
-            Package.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
-            Package.setFixedTimestamp(ts) +:
-            main.map(Package.MainClass.apply) ++: old
+          Pkg.addSpecManifestAttributes(n, ver, orgName) +:
+            Pkg.addImplManifestAttributes(n, ver, homepage.value, org, orgName) +:
+            Pkg.setFixedTimestamp(ts) +:
+            main.map(Pkg.MainClass.apply) ++: old
         }
       )
     ) ++
@@ -1738,11 +1738,11 @@ object Defaults extends BuildCommon {
           packageOptions := {
             val old = packageOptions.value
             val ts = packageTimestamp.value
-            Package.addSpecManifestAttributes(
+            Pkg.addSpecManifestAttributes(
               name.value,
               version.value,
               organizationName.value
-            ) +: Package.setFixedTimestamp(ts) +: old
+            ) +: Pkg.setFixedTimestamp(ts) +: old
           }
         )
       ) ++
@@ -1912,18 +1912,22 @@ object Defaults extends BuildCommon {
     Def.task {
       val config = packageConfiguration.value
       val s = streams.value
-      Package(
+      Pkg(
         config,
         s.cacheStoreFactory,
         s.log,
-        Package.timeFromConfiguration(config)
+        Pkg.timeFromConfiguration(config)
       )
       config.jar
     }
 
-  def packageConfigurationTask: Initialize[Task[Package.Configuration]] =
+  def packageConfigurationTask: Initialize[Task[Pkg.Configuration]] =
     Def.task {
-      new Package.Configuration(mappings.value, artifactPath.value, packageOptions.value)
+      Pkg.Configuration(
+        mappings.value,
+        artifactPath.value,
+        packageOptions.value,
+      )
     }
 
   def askForMainClass(classes: Seq[String]): Option[String] =

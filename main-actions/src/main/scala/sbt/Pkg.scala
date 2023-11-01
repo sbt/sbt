@@ -32,7 +32,7 @@ sealed trait PackageOption
  *
  * @see [[https://docs.oracle.com/javase/tutorial/deployment/jar/index.html]]
  */
-object Package {
+object Pkg:
   final case class JarManifest(m: Manifest) extends PackageOption {
     assert(m != null)
   }
@@ -200,10 +200,6 @@ object Package {
     }: _*)
   }
 
-  @deprecated("Specify whether to use a static timestamp", "1.4.0")
-  def makeJar(sources: Seq[(File, String)], jar: File, manifest: Manifest, log: Logger): Unit =
-    makeJar(sources, jar, manifest, log, None)
-
   def makeJar(
       sources: Seq[(File, String)],
       jar: File,
@@ -233,4 +229,4 @@ object Package {
     },
     bs => new Manifest(new java.io.ByteArrayInputStream(bs))
   )
-}
+end Pkg

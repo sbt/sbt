@@ -273,7 +273,7 @@ object Keys {
 
   val packageOptions = taskKey[Seq[PackageOption]]("Options for packaging.").withRank(BTask)
   val packageTimestamp = settingKey[Option[Long]]("Overwrites timestamps in JAR file to make the build reproducible; None keeps the existing timestamps (useful for web resources)").withRank(CSetting)
-  val packageConfiguration = taskKey[Package.Configuration]("Collects all inputs needed for packaging.").withRank(DTask)
+  val packageConfiguration = taskKey[Pkg.Configuration]("Collects all inputs needed for packaging.").withRank(DTask)
   val artifactPath = settingKey[File]("The location of a generated artifact.").withRank(BPlusSetting)
   val artifactStr = StringAttributeKey("artifact")
   val artifact = settingKey[Artifact]("Describes an artifact.").withRank(BMinusSetting)
