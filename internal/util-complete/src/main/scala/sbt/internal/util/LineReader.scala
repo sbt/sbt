@@ -110,6 +110,11 @@ object LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
         val term = JLine3(terminal)
         val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
+
+        if (Util.isEmacs) {
+          reader.setKeyMap(JLineReader.SAFE)
+        }
+
         try {
           inputrcFileContents.foreach { bytes =>
             InputRC.configure(
