@@ -117,7 +117,9 @@ private[sbt] object InstallSbtn {
       val sbtnAlternativeMsg = alternativeArch.map(name => s" (or $name)")
       nativeArchFound.orElse(alternativeArchFound) match {
         case None =>
-          throw new IllegalStateException(s"couldn't find $sbtnName$sbtnAlternativeMsg in $sbtZip")
+          throw new IllegalStateException(
+            s"couldn't find $nativeArch$sbtnAlternativeMsg in $sbtZip"
+          )
         case Some(value) =>
           write(value)
       }
