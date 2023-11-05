@@ -95,7 +95,7 @@ trait Cont:
       given qctx.type = qctx
       Expr
         .summon[HashWriter[A]]
-        .getOrElse(sys.error(s"HashWriter[A] not found for ${TypeRepr.of[A].typeSymbol}"))
+        .getOrElse(sys.error(s"HashWriter[A] not found for ${TypeRepr.of[A].show}"))
 
     def summonJsonFormat[A: Type]: Expr[JsonFormat[A]] =
       import conv.qctx
@@ -103,7 +103,7 @@ trait Cont:
       given qctx.type = qctx
       Expr
         .summon[JsonFormat[A]]
-        .getOrElse(sys.error(s"JsonFormat[A] not found for ${TypeRepr.of[A].typeSymbol}"))
+        .getOrElse(sys.error(s"JsonFormat[A] not found for ${TypeRepr.of[A].show}"))
 
     def summonClassTag[A: Type]: Expr[ClassTag[A]] =
       import conv.qctx
@@ -111,7 +111,7 @@ trait Cont:
       given qctx.type = qctx
       Expr
         .summon[ClassTag[A]]
-        .getOrElse(sys.error(s"ClassTag[A] not found for ${TypeRepr.of[A].typeSymbol}"))
+        .getOrElse(sys.error(s"ClassTag[A] not found for ${TypeRepr.of[A].show}"))
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.

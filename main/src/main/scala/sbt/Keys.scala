@@ -36,8 +36,8 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ ActionCacheStore, Level, Logger, LoggerContext }
-import xsbti.{ FileConverter, VirtualFile }
+import sbt.util.{ cacheOptOut, ActionCacheStore, Level, Logger, LoggerContext }
+import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
 
@@ -111,6 +111,7 @@ object Keys {
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
   val cacheStores = settingKey[Seq[ActionCacheStore]]("Cache backends")
+  val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 
   // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
   val analysis = StringAttributeKey("analysis")
@@ -257,6 +258,7 @@ object Keys {
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
   val auxiliaryClassFiles = taskKey[Seq[AuxiliaryClassFiles]]("The auxiliary class files that must be managed by Zinc (for instance the TASTy files)")
+  @cacheOptOut
   val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
   val reportAbsolutePath = settingKey[Boolean]("Report absolute paths during compilation.")
@@ -265,21 +267,21 @@ object Keys {
   private[sbt] val reusableStamper = taskKey[ReadStamps]("The stamper can be reused across subprojects and sessions.")
 
   // package keys
-  val packageBin = taskKey[File]("Produces a main artifact, such as a binary jar.").withRank(ATask)
-  val `package` = taskKey[File]("Produces the main artifact, such as a binary jar.  This is typically an alias for the task that actually does the packaging.").withRank(APlusTask)
-  val packageDoc = taskKey[File]("Produces a documentation artifact, such as a jar containing API documentation.").withRank(AMinusTask)
-  val packageSrc = taskKey[File]("Produces a source artifact, such as a jar containing sources and resources.").withRank(AMinusTask)
-  val packageCache = taskKey[File]("Produces the main artifact for caching.")
+  val packageBin = taskKey[VirtualFileRef]("Produces a main artifact, such as a binary jar.").withRank(ATask)
+  val `package` = taskKey[VirtualFileRef]("Produces the main artifact, such as a binary jar.  This is typically an alias for the task that actually does the packaging.").withRank(APlusTask)
+  val packageDoc = taskKey[VirtualFileRef]("Produces a documentation artifact, such as a jar containing API documentation.").withRank(AMinusTask)
+  val packageSrc = taskKey[VirtualFileRef]("Produces a source artifact, such as a jar containing sources and resources.").withRank(AMinusTask)
+  val packageCache = taskKey[VirtualFileRef]("Produces the main artifact for caching.")
 
   val packageOptions = taskKey[Seq[PackageOption]]("Options for packaging.").withRank(BTask)
   val packageTimestamp = settingKey[Option[Long]]("Overwrites timestamps in JAR file to make the build reproducible; None keeps the existing timestamps (useful for web resources)").withRank(CSetting)
   val packageConfiguration = taskKey[Pkg.Configuration]("Collects all inputs needed for packaging.").withRank(DTask)
-  val artifactPath = settingKey[File]("The location of a generated artifact.").withRank(BPlusSetting)
+  val artifactPath = settingKey[VirtualFileRef]("The location of a generated artifact.").withRank(BPlusSetting)
   val artifactStr = StringAttributeKey("artifact")
   val artifact = settingKey[Artifact]("Describes an artifact.").withRank(BMinusSetting)
   val artifactClassifier = settingKey[Option[String]]("Sets the classifier used by the default artifact definition.").withRank(BSetting)
   val artifactName = settingKey[(ScalaVersion, ModuleID, Artifact) => String]("Function that produces the artifact name from its definition.").withRank(CSetting)
-  val mappings = taskKey[Seq[(File, String)]]("Defines the mappings from a file to a path, used by packaging, for example.").withRank(BTask)
+  val mappings = taskKey[Seq[(HashedVirtualFileRef, String)]]("Defines the mappings from a file to a path, used by packaging, for example.").withRank(BTask)
   val fileMappings = taskKey[Seq[(File, File)]]("Defines the mappings from a file to a file, used for copying files, for example.").withRank(BMinusTask)
 
   // Run Keys
@@ -399,7 +401,7 @@ object Keys {
   val pushRemoteCacheConfiguration = taskKey[PublishConfiguration]("")
   val pushRemoteCacheTo = settingKey[Option[Resolver]]("The resolver to publish remote cache to.")
   val remoteCacheResolvers = settingKey[Seq[Resolver]]("Resolvers for remote cache.")
-  val remoteCachePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.")
+  val remoteCachePom = taskKey[VirtualFileRef]("Generates a pom for publishing when publishing Maven-style.")
   val localCacheDirectory = settingKey[File]("Operating system specific cache directory.")
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
   val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)
@@ -496,12 +498,12 @@ object Keys {
   val makePomConfiguration = settingKey[MakePomConfiguration]("Configuration for generating a pom.").withRank(DSetting)
   val makeIvyXmlConfiguration = taskKey[PublishConfiguration]("Configuration for generating ivy.xml.").withRank(DSetting)
   val makeIvyXmlLocalConfiguration = taskKey[PublishConfiguration]("Configuration for generating ivy.xml.").withRank(DSetting)
-  val packagedArtifacts = taskKey[Map[Artifact, File]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
+  val packagedArtifacts = taskKey[Map[Artifact, VirtualFileRef]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
   val publishMavenStyle = settingKey[Boolean]("Configures whether to generate and publish a pom (true) or Ivy file (false).").withRank(BSetting)
   val credentials = taskKey[Seq[Credentials]]("The credentials to use for updating and publishing.").withRank(BMinusTask)
   val allCredentials = taskKey[Seq[Credentials]]("Aggregated credentials across current and root subprojects. Do not rewire this task.").withRank(DTask)
 
-  val makePom = taskKey[File]("Generates a pom for publishing when publishing Maven-style.").withRank(BPlusTask)
+  val makePom = taskKey[VirtualFileRef]("Generates a pom for publishing when publishing Maven-style.").withRank(BPlusTask)
   val deliver = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
   val deliverLocal = taskKey[File]("Generates the Ivy file for publishing to the local repository.").withRank(BTask)
   // makeIvyXml is currently identical to the confusingly-named "deliver", which may be deprecated in the future
@@ -516,6 +518,7 @@ object Keys {
   val pomAllRepositories = settingKey[Boolean]("If true, includes repositories used in module configurations in the pom repositories section.  If false, only the common repositories are included.").withRank(BMinusSetting)
 
   val moduleName = settingKey[String]("The name of the current module, used for dependency management.").withRank(BSetting)
+  val outputPath = settingKey[String]("Path of the output directory relative from the rootOutputDirectory.").withRank(DSetting)
   val version = settingKey[String]("The version/revision of the current module.").withRank(APlusSetting)
   val isSnapshot = settingKey[Boolean]("True if the version of the project is a snapshot version.").withRank(BPlusSetting)
   val moduleIDStr = StringAttributeKey("moduleID")
@@ -558,7 +561,7 @@ object Keys {
   val managedDirectory = settingKey[File]("Directory to which managed dependencies are retrieved.").withRank(BSetting)
   val classpathTypes = settingKey[Set[String]]("Artifact types that are included on the classpath.").withRank(BSetting)
   val publishArtifact = settingKey[Boolean]("Enables (true) or disables (false) publishing an artifact.").withRank(AMinusSetting)
-  val packagedArtifact = taskKey[(Artifact, File)]("Generates a packaged artifact, returning the Artifact and the produced File.").withRank(CTask)
+  val packagedArtifact = taskKey[(Artifact, VirtualFileRef)]("Generates a packaged artifact, returning the Artifact and the produced File.").withRank(CTask)
   val checksums = settingKey[Seq[String]]("The list of checksums to generate and to verify for dependencies.").withRank(BSetting)
   val forceUpdatePeriod = settingKey[Option[FiniteDuration]]("Duration after which to force a full update to occur").withRank(CSetting)
   val versionScheme = settingKey[Option[String]]("""Version scheme used for the subproject: Supported values are Some("early-semver"), Some("pvp"), and Some("semver-spec")""").withRank(BSetting)
@@ -592,6 +595,7 @@ object Keys {
   val forcegc = settingKey[Boolean]("Enables (true) or disables (false) forcing garbage collection after task run when needed.").withRank(BMinusSetting)
   val minForcegcInterval = settingKey[Duration]("Minimal interval to check for forcing garbage collection.")
   val settingsData = std.FullInstance.settingsData
+  @cacheOptOut
   val streams = taskKey[TaskStreams]("Provides streams for logging and persisting data.").withRank(DTask)
   val taskDefinitionKey = Def.taskDefinitionKey
   val (executionRoots, dummyRoots) = Def.dummy[Seq[ScopedKey[_]]]("executionRoots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")

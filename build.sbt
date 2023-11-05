@@ -680,6 +680,7 @@ lazy val actionsProj = (project in file("main-actions"))
     stdTaskProj,
     taskProj,
     testingProj,
+    utilCacheResolver,
     utilLogging,
     utilRelation,
     utilTracking,

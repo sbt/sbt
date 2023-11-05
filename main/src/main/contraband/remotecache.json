@@ -14,7 +14,7 @@
         },
         {
           "name": "packaged",
-          "type": "sbt.TaskKey[java.io.File]"
+          "type": "sbt.TaskKey[xsbti.VirtualFileRef]"
         }
       ],
       "types": [

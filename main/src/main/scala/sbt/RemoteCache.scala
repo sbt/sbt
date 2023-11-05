@@ -49,7 +49,7 @@ import sbt.util.{
   Logger
 }
 import sjsonnew.JsonFormat
-import xsbti.HashedVirtualFileRef
+import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
 
 import scala.annotation.nowarn
@@ -143,6 +143,12 @@ object RemoteCache {
       // base is used only to resolve relative paths, which should never happen
       IvyPaths(base.toString, localCacheDirectory.value.toString)
     },
+    rootOutputDirectory := {
+      appConfiguration.value.baseDirectory
+        .toPath()
+        .resolve("target")
+        .resolve("out")
+    },
     cacheStores := {
       List(
         DiskActionCacheStore(localCacheDirectory.value.toPath())
@@ -198,17 +204,20 @@ object RemoteCache {
     remoteCachePom / pushRemoteCacheArtifact := true,
     remoteCachePom := {
       val s = streams.value
+      val converter = fileConverter.value
       val config = (remoteCachePom / makePomConfiguration).value
       val publisher = Keys.publisher.value
       publisher.makePomFile((pushRemoteCache / ivyModule).value, config, s.log)
-      config.file.get
+      converter.toVirtualFile(config.file.get.toPath)
     },
     remoteCachePom / artifactPath := {
       Defaults.prefixArtifactPathSetting(makePom / artifact, "remote-cache").value
     },
     remoteCachePom / makePomConfiguration := {
+      val converter = fileConverter.value
       val config = makePomConfiguration.value
-      config.withFile((remoteCachePom / artifactPath).value)
+      val out = converter.toPath((remoteCachePom / artifactPath).value)
+      config.withFile(out.toFile())
     },
     remoteCachePom / remoteCacheArtifact := {
       PomRemoteCacheArtifact((makePom / artifact).value, remoteCachePom)
@@ -259,17 +268,20 @@ object RemoteCache {
     inTask(packageCache)(
       Seq(
         packageCache.in(Defaults.TaskZero) := {
+          val converter = fileConverter.value
           val original = packageBin.in(Defaults.TaskZero).value
+          val originalFile = converter.toPath(original)
           val artp = artifactPath.value
+          val artpFile = converter.toPath(artp)
           val af = compileAnalysisFile.value
-          IO.copyFile(original, artp)
+          IO.copyFile(originalFile.toFile(), artpFile.toFile())
           // skip zip manipulation if the artp is a blank file
-          if (af.exists && artp.length() > 0) {
-            JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
+          if (af.exists && artpFile.toFile().length() > 0) {
+            JarUtils.includeInJar(artpFile.toFile(), Vector(af -> s"META-INF/inc_compile.zip"))
           }
           val rf = getResourceFilePaths().value
           if (rf.exists) {
-            JarUtils.includeInJar(artp, Vector(rf -> s"META-INF/copy-resources.txt"))
+            JarUtils.includeInJar(artpFile.toFile(), Vector(rf -> s"META-INF/copy-resources.txt"))
           }
           // val testStream = (test / streams).?.value
           // testStream foreach { s =>
@@ -319,12 +331,17 @@ object RemoteCache {
         combineHash(extractHash(inputs) ++ extractHash(cp) ++ extraInc)
       },
       pushRemoteCacheConfiguration := {
+        val converter = fileConverter.value
+        val artifacts = (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector.map {
+          case (a, vf) =>
+            a -> converter.toPath(vf).toFile
+        }
         Classpaths.publishConfig(
           (pushRemoteCacheConfiguration / publishMavenStyle).value,
           Classpaths.deliverPattern(crossTarget.value),
           if (isSnapshot.value) "integration" else "release",
           ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-          (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector,
+          artifacts,
           (pushRemoteCacheConfiguration / checksums).value.toVector,
           Classpaths.getPublishTo(pushRemoteCacheTo.value).name,
           ivyLoggingLevel.value,
@@ -536,12 +553,12 @@ object RemoteCache {
     // }
   }
 
-  private def defaultArtifactTasks: Seq[TaskKey[File]] =
+  private def defaultArtifactTasks: Seq[TaskKey[VirtualFileRef]] =
     Seq(Compile / packageCache, Test / packageCache)
 
   private def enabledOnly[A](
       key: SettingKey[A],
-      pkgTasks: Seq[TaskKey[File]]
+      pkgTasks: Seq[TaskKey[VirtualFileRef]]
   ): Def.Initialize[Seq[A]] =
     (Classpaths.forallIn(key, pkgTasks) zipWith
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect { case (a, true) =>

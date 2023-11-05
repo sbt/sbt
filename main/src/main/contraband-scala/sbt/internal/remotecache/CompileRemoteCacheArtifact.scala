@@ -6,7 +6,7 @@
 package sbt.internal.remotecache
 final class CompileRemoteCacheArtifact private (
   artifact: sbt.librarymanagement.Artifact,
-  packaged: sbt.TaskKey[java.io.File],
+  packaged: sbt.TaskKey[xsbti.VirtualFileRef],
   val extractDirectory: java.io.File,
   val analysisFile: java.io.File) extends sbt.internal.remotecache.RemoteCacheArtifact(artifact, packaged) with Serializable {
   
@@ -22,13 +22,13 @@ final class CompileRemoteCacheArtifact private (
   override def toString: String = {
     "CompileRemoteCacheArtifact(" + artifact + ", " + packaged + ", " + extractDirectory + ", " + analysisFile + ")"
   }
-  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[java.io.File] = packaged, extractDirectory: java.io.File = extractDirectory, analysisFile: java.io.File = analysisFile): CompileRemoteCacheArtifact = {
+  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, analysisFile: java.io.File = analysisFile): CompileRemoteCacheArtifact = {
     new CompileRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile)
   }
   def withArtifact(artifact: sbt.librarymanagement.Artifact): CompileRemoteCacheArtifact = {
     copy(artifact = artifact)
   }
-  def withPackaged(packaged: sbt.TaskKey[java.io.File]): CompileRemoteCacheArtifact = {
+  def withPackaged(packaged: sbt.TaskKey[xsbti.VirtualFileRef]): CompileRemoteCacheArtifact = {
     copy(packaged = packaged)
   }
   def withExtractDirectory(extractDirectory: java.io.File): CompileRemoteCacheArtifact = {
@@ -40,5 +40,5 @@ final class CompileRemoteCacheArtifact private (
 }
 object CompileRemoteCacheArtifact {
   
-  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[java.io.File], extractDirectory: java.io.File, analysisFile: java.io.File): CompileRemoteCacheArtifact = new CompileRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile)
+  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef], extractDirectory: java.io.File, analysisFile: java.io.File): CompileRemoteCacheArtifact = new CompileRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile)
 }

@@ -6,7 +6,7 @@
 package sbt.internal.remotecache
 final class CustomRemoteCacheArtifact private (
   artifact: sbt.librarymanagement.Artifact,
-  packaged: sbt.TaskKey[java.io.File],
+  packaged: sbt.TaskKey[xsbti.VirtualFileRef],
   val extractDirectory: java.io.File,
   val preserveLastModified: Boolean) extends sbt.internal.remotecache.RemoteCacheArtifact(artifact, packaged) with Serializable {
   
@@ -22,13 +22,13 @@ final class CustomRemoteCacheArtifact private (
   override def toString: String = {
     "CustomRemoteCacheArtifact(" + artifact + ", " + packaged + ", " + extractDirectory + ", " + preserveLastModified + ")"
   }
-  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[java.io.File] = packaged, extractDirectory: java.io.File = extractDirectory, preserveLastModified: Boolean = preserveLastModified): CustomRemoteCacheArtifact = {
+  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, preserveLastModified: Boolean = preserveLastModified): CustomRemoteCacheArtifact = {
     new CustomRemoteCacheArtifact(artifact, packaged, extractDirectory, preserveLastModified)
   }
   def withArtifact(artifact: sbt.librarymanagement.Artifact): CustomRemoteCacheArtifact = {
     copy(artifact = artifact)
   }
-  def withPackaged(packaged: sbt.TaskKey[java.io.File]): CustomRemoteCacheArtifact = {
+  def withPackaged(packaged: sbt.TaskKey[xsbti.VirtualFileRef]): CustomRemoteCacheArtifact = {
     copy(packaged = packaged)
   }
   def withExtractDirectory(extractDirectory: java.io.File): CustomRemoteCacheArtifact = {
@@ -40,5 +40,5 @@ final class CustomRemoteCacheArtifact private (
 }
 object CustomRemoteCacheArtifact {
   
-  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[java.io.File], extractDirectory: java.io.File, preserveLastModified: Boolean): CustomRemoteCacheArtifact = new CustomRemoteCacheArtifact(artifact, packaged, extractDirectory, preserveLastModified)
+  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef], extractDirectory: java.io.File, preserveLastModified: Boolean): CustomRemoteCacheArtifact = new CustomRemoteCacheArtifact(artifact, packaged, extractDirectory, preserveLastModified)
 }
