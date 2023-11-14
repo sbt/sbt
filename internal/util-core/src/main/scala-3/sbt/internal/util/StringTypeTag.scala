@@ -5,7 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal.util.appmacro
+package sbt.internal.util
 
 final class StringTypeTag[A](val key: String):
   override def toString(): String = key

@@ -12,7 +12,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.core.{ LoggerContext => XLoggerContext }
 import org.apache.logging.log4j.{ LogManager => XLogManager }
 import sbt.internal.util.{ Appender, ManagedLogger, TraceEvent, SuccessEvent, Util }
-import sbt.internal.util.appmacro.StringTypeTag
+import sbt.internal.util.StringTypeTag
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.concurrent
@@ -44,23 +44,14 @@ sealed abstract class LogExchange {
     ()
   }
 
-  // Construct these StringTypeTags manually, because they're used at the very startup of sbt
-  // and we'll try not to initialize the universe by using the StringTypeTag.apply that requires a TypeTag
-  // A better long-term solution could be to make StringTypeTag.apply a macro.
-  lazy val stringTypeTagThrowable = StringTypeTag.manually[Throwable]("java.lang.Throwable")
-  lazy val stringTypeTagTraceEvent =
-    StringTypeTag.manually[TraceEvent]("sbt.internal.util.TraceEvent")
-  lazy val stringTypeTagSuccessEvent =
-    StringTypeTag.manually[SuccessEvent]("sbt.internal.util.SuccessEvent")
-
   private[sbt] def initStringCodecs(): Unit = {
     import sbt.internal.util.codec.SuccessEventShowLines._
     import sbt.internal.util.codec.ThrowableShowLines._
     import sbt.internal.util.codec.TraceEventShowLines._
 
-    registerStringCodecByStringTypeTag(stringTypeTagThrowable)
-    registerStringCodecByStringTypeTag(stringTypeTagTraceEvent)
-    registerStringCodecByStringTypeTag(stringTypeTagSuccessEvent)
+    registerStringCodec[Throwable]
+    registerStringCodec[TraceEvent]
+    registerStringCodec[SuccessEvent]
   }
 
   // This is a dummy layout to avoid casting error during PatternLayout.createDefaultLayout()
@@ -86,11 +77,8 @@ sealed abstract class LogExchange {
     stringCodecs.getOrElseUpdate(tag, v).asInstanceOf[ShowLines[A]]
 
   private[sbt] def registerStringCodec[A: ShowLines: StringTypeTag]: Unit = {
-    registerStringCodecByStringTypeTag(implicitly[StringTypeTag[A]])
-  }
-
-  private[sbt] def registerStringCodecByStringTypeTag[A: ShowLines](tag: StringTypeTag[A]): Unit = {
     val ev = implicitly[ShowLines[A]]
+    val tag = implicitly[StringTypeTag[A]]
     val _ = getOrElseUpdateStringCodec(tag.key, ev)
   }
 

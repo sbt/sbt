@@ -257,12 +257,11 @@ lazy val bundledLauncherProj =
 /* ** subproject declarations ** */
 
 val collectionProj = (project in file("util-collection"))
-  .dependsOn(utilPosition)
+  .dependsOn(utilPosition, utilCore)
   .settings(
     name := "Collections",
     testedBaseSettings,
     utilCommonSettings,
-    Util.keywordsSettings,
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, major)) if major <= 12 => Seq()
@@ -335,9 +334,22 @@ lazy val utilPosition = (project in file("internal") / "util-position")
     utilMimaSettings,
   )
 
+lazy val utilCore = project.in(file("internal") / "util-core")
+  .settings(
+    utilCommonSettings,
+    name := "Util Core",
+    libraryDependencies ++= {
+      if (scalaBinaryVersion.value.startsWith("2")) {
+        Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+      } else Seq.empty
+    },
+    Util.keywordsSettings,
+    utilMimaSettings
+  )
+
 lazy val utilLogging = (project in file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface, collectionProj, coreMacrosProj)
+  .dependsOn(utilInterface, utilCore)
   .settings(
     utilCommonSettings,
     name := "Util Logging",

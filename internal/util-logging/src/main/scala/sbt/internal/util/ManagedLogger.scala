@@ -9,9 +9,8 @@ package sbt.internal.util
 
 import sbt.internal.util.codec.JsonProtocol._
 import sbt.util._
-import scala.reflect.runtime.universe.TypeTag
 import sjsonnew.JsonFormat
-import sbt.internal.util.appmacro.StringTypeTag
+import sbt.internal.util.StringTypeTag
 
 private[sbt] trait MiniLogger {
   def log[T](level: Level.Value, message: ObjectEvent[T]): Unit
@@ -44,10 +43,7 @@ class ManagedLogger(
   // send special event for success since it's not a real log level
   override def success(message: => String): Unit = {
     if (terminal.fold(true)(_.isSuccessEnabled)) {
-      infoEvent[SuccessEvent](SuccessEvent(message))(
-        implicitly[JsonFormat[SuccessEvent]],
-        StringTypeTag[SuccessEvent],
-      )
+      infoEvent[SuccessEvent](SuccessEvent(message))
     }
   }
 
