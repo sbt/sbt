@@ -12,7 +12,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout
 import org.apache.logging.log4j.core.{ LoggerContext => XLoggerContext }
 import org.apache.logging.log4j.{ LogManager => XLogManager }
 import sbt.internal.util.{ Appender, ManagedLogger, TraceEvent, SuccessEvent, Util }
-import sbt.internal.util.StringTypeTag
+import sbt.internal.util.appmacro.StringTypeTag
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.concurrent

@@ -6,7 +6,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal.util
+package sbt.internal.util.appmacro
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox
@@ -33,6 +33,6 @@ object StringTypeTag {
     }
 
     val key = Literal(Constant(typeToString(tpe)))
-    q"new sbt.internal.util.StringTypeTag[$tpe]($key)"
+    q"new sbt.internal.util.appmacro.StringTypeTag[$tpe]($key)"
   }
 }

@@ -10,7 +10,7 @@ package sbt.internal.util
 import sbt.internal.util.codec.JsonProtocol._
 import sbt.util._
 import sjsonnew.JsonFormat
-import sbt.internal.util.StringTypeTag
+import sbt.internal.util.appmacro.StringTypeTag
 
 private[sbt] trait MiniLogger {
   def log[T](level: Level.Value, message: ObjectEvent[T]): Unit
