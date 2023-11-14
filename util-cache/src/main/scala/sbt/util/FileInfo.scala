@@ -64,7 +64,7 @@ final case class FilesInfo[F <: FileInfo] private[sbt] (files: Set[F])
 object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 
-  given format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
+  implicit def format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
     projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
   def full: FileInfo.Style = FileInfo.full
