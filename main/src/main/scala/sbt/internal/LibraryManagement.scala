@@ -185,7 +185,11 @@ private[sbt] object LibraryManagement {
     import config.{ updateConfiguration => c, module => mod }
     import mod.{ id, dependencies => deps, scalaModuleInfo }
     val base = restrictedCopy(id, true).withName(id.name + "$" + label)
-    val module = lm.moduleDescriptor(base, deps, scalaModuleInfo)
+    val moduleSettings = ModuleDescriptorConfiguration(base, ModuleInfo(base.name))
+      .withScalaModuleInfo(scalaModuleInfo)
+      .withDependencies(deps)
+      .withConfigurations(mod.configurations)
+    val module = lm.moduleDescriptor(moduleSettings)
     val report = lm.update(module, c, uwconfig, log) match {
       case Right(r) => r
       case Left(w) =>
