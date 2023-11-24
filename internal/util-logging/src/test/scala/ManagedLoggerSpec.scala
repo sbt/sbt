@@ -92,7 +92,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     } {
       pool.submit(new Runnable {
         def run(): Unit = {
-          val stringTypeTag = StringTypeTag[List[Int]]
+          val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
           val log = newLogger(s"foo$i")
           context.addAppender(s"foo$i", asyncStdout -> Level.Info)
           if (i % 100 == 0) {

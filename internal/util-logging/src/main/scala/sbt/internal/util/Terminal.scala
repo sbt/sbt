@@ -604,6 +604,9 @@ object Terminal {
   private[sbt] def withPrintStream[T](f: PrintStream => T): T = console.withPrintStream(f)
   private[this] val attached = new AtomicBoolean(true)
 
+  private[sbt] val NullTerminal = new DefaultTerminal(nullInputStream, _ => (), _ => ())
+  private[sbt] val SimpleTerminal = new DefaultTerminal(originalIn, originalOut, originalErr)
+
   /**
    * A wrapped instance of a jline.Terminal2 instance. It should only ever be changed when the
    * backgrounds sbt with ctrl+z and then foregrounds sbt which causes a call to reset. The
@@ -1029,7 +1032,11 @@ object Terminal {
     catch { case _: InterruptedException => }
     -1
   }
-  private[sbt] class DefaultTerminal extends Terminal {
+  private[sbt] class DefaultTerminal(
+      val inputStream: InputStream,
+      val outputStream: OutputStream,
+      val errorStream: OutputStream
+  ) extends Terminal {
     override def close(): Unit = {}
     override private[sbt] def progressState: ProgressState = new ProgressState(1)
     override private[sbt] def enterRawMode(): Unit = {}
@@ -1042,15 +1049,12 @@ object Terminal {
     override def getNumericCapability(capability: String): Integer = null
     override def getStringCapability(capability: String): String = null
     override def getWidth: Int = 0
-    override def inputStream: InputStream = nullInputStream
     override def isAnsiSupported: Boolean = Terminal.isAnsiSupported
     override def isColorEnabled: Boolean = isColorEnabledProp.getOrElse(Terminal.isColorEnabled)
     override def isEchoEnabled: Boolean = false
     override def isSuccessEnabled: Boolean = true
     override def isSupershellEnabled: Boolean = false
     override def setEchoEnabled(toggle: Boolean): Unit = {}
-    override def outputStream: OutputStream = _ => {}
-    override def errorStream: OutputStream = _ => {}
     override private[sbt] def getAttributes: Map[String, String] = Map.empty
     override private[sbt] def setAttributes(attributes: Map[String, String]): Unit = {}
     override private[sbt] def setSize(width: Int, height: Int): Unit = {}
@@ -1060,11 +1064,5 @@ object Terminal {
     override private[sbt] def withPrintStream[T](f: PrintStream => T): T = f(printStream)
     override private[sbt] def write(bytes: Int*): Unit = {}
     override private[sbt] def withRawOutput[R](f: => R): R = f
-  }
-  private[sbt] object NullTerminal extends DefaultTerminal
-  private[sbt] object SimpleTerminal extends DefaultTerminal {
-    override lazy val inputStream: InputStream = originalIn
-    override lazy val outputStream: OutputStream = originalOut
-    override lazy val errorStream: OutputStream = originalErr
   }
 }

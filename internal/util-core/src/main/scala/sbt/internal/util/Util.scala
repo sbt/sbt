@@ -9,14 +9,8 @@ package sbt.internal.util
 
 import java.util.Locale
 
-import scala.reflect.macros.blackbox
-import scala.language.experimental.macros
-
 object Util {
   def makeList[T](size: Int, value: T): List[T] = List.fill(size)(value)
-
-  // def separateE[A, B](ps: Seq[Either[A, B]]): (Seq[A], Seq[B]) =
-  //   separate(ps)(Types.idFun)
 
   def separate[T, A, B](ps: Seq[T])(f: T => Either[A, B]): (Seq[A], Seq[B]) = {
     val (a, b) = ps.foldLeft((Nil: Seq[A], Nil: Seq[B]))((xs, y) => prependEither(xs, f(y)))
@@ -45,8 +39,10 @@ object Util {
 
   def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) s"`${s}`" else s
 
-  def ignoreResult[A](f: => A): Unit =
-    f; ()
+  def ignoreResult[A](f: => A): Unit = {
+    val _ = f
+    ()
+  }
 
   lazy val isMac: Boolean =
     System.getProperty("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
@@ -74,7 +70,4 @@ object Util {
   implicit class AnyOps[A](private val value: A) extends AnyVal {
     def some: Option[A] = (Some(value): Option[A])
   }
-  // class Macro(val c: blackbox.Context) {
-  //   def ignore(f: c.Tree): c.Expr[Unit] = c.universe.reify({ c.Expr[Any](f).splice; () })
-  // }
 }
