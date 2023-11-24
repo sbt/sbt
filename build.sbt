@@ -950,6 +950,8 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
+    // TODO: Fix doc
+    Compile / doc / sources := Nil,
     // mimaSettings,
     // mimaBinaryIssueFilters ++= Vector(),
   )
