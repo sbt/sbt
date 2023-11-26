@@ -11,7 +11,7 @@ $ copy-file changes/use.sbt build.sbt
 > update
 > update
 
-$ delete target/.ivy2/local
+$ delete ivy/cache/local
 -> update
 
 $ copy-file changes/resolver.sbt resolver.sbt

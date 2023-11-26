@@ -8,9 +8,12 @@ val akkaVersion = "2.3.1"
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    localCache,
     scalaVersion := "2.10.4",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
   )

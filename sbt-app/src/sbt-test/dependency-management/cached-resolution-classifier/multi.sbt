@@ -4,9 +4,12 @@ lazy val check = taskKey[Unit]("Runs the check")
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    localCache,
     dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     scalaVersion := "2.10.4",
     resolvers += Resolver.sonatypeRepo("snapshots")

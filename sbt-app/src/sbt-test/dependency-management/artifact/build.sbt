@@ -19,7 +19,7 @@ lazy val Dev = config("dev").extend(Compile)
 lazy val root = (project in file("."))
   .configs(Dev)
   .settings(
-    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    ivyPaths := IvyPaths(baseDirectory.value.toString, Some((target.value / "ivy-cache").toString)),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
     scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
     resolvers += baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }.value,

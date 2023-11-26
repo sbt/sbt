@@ -1,8 +1,7 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
 
 libraryDependencies += "org.scalacheck" % "scalacheck" % "1.5"
-
-ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
 
 TaskKey[Unit]("check") := {
   val report = update.value

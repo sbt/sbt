@@ -6,9 +6,12 @@ val junit = "junit" % "junit" % "4.13.1"
 ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    localCache,
     dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     resolvers += Resolver.sonatypeRepo("snapshots")
   )

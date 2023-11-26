@@ -10,8 +10,11 @@ inThisBuild(Seq(
   updateOptions := updateOptions.value.withCachedResolution(true)
 ))
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+  localCache,
   dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
   fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
 )

@@ -4,9 +4,12 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 ThisBuild / organization := "org.example"
 ThisBuild / version := "1.0"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths((ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
+    localCache,
     dependencyCacheDirectory := (LocalRootProject / baseDirectory).value / "dependency",
     libraryDependencies := Seq(
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
