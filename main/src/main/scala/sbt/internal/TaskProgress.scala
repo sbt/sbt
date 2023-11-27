@@ -26,7 +26,7 @@ private[sbt] class TaskProgress(
     threshold: FiniteDuration,
     logger: Logger
 ) extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task]
+    with ExecuteProgress
     with AutoCloseable {
   private[this] val lastTaskCount = new AtomicInteger(0)
   private[this] val reportLoop = new AtomicReference[AutoCloseable]
@@ -90,7 +90,7 @@ private[sbt] class TaskProgress(
     }
     Util.ignoreResult(pending.add(executor.submit(runnable)))
   }
-  override def beforeWork(task: Task[Any]): Unit =
+  override def beforeWork(task: Task[?]): Unit =
     if (!closed.get) {
       super.beforeWork(task)
       reportLoop.get match {
@@ -108,7 +108,7 @@ private[sbt] class TaskProgress(
       logger.debug(s"called beforeWork for ${taskName(task)} after task progress was closed")
     }
 
-  override def afterReady(task: Task[Any]): Unit =
+  override def afterReady(task: Task[?]): Unit =
     if (!closed.get) {
       try {
         Util.ignoreResult(executor.submit((() => {

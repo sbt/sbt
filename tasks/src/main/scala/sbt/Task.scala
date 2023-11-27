@@ -35,7 +35,7 @@ final case class Task[A](info: Info[A], work: Action[A]):
 end Task
 
 object Task:
-  import sbt.std.TaskExtra.*
+  import sbt.std.TaskExtra0.*
 
   given taskMonad: Monad[Task] with
     type F[a] = Task[a]

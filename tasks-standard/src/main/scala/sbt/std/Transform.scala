@@ -45,10 +45,10 @@ object Transform:
 
   def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))
 
-  def taskToNode(pre: [A] => Task[A] => Task[A]): NodeView[Task] =
-    new NodeView[Task]:
+  def taskToNode(pre: [A] => Task[A] => Task[A]): NodeView =
+    new NodeView:
       import Action.*
-      def apply[T](t: Task[T]): Node[Task, T] = pre(t).work match
+      def apply[T](t: Task[T]): Node[T] = pre(t).work match
         case Pure(eval, _)   => uniform(Nil)(_ => Right(eval()))
         case m: Mapped[a, k] => toNode[a, k](m.in)(right[a] compose m.f)(m.alist)
         case m: FlatMapped[a, k] =>
@@ -67,13 +67,13 @@ object Transform:
 
   def uniform[A1, D](tasks: Seq[Task[D]])(
       f: Seq[Result[D]] => Either[Task[A1], A1]
-  ): Node[Task, A1] =
+  ): Node[A1] =
     toNode[A1, [F[_]] =>> List[F[D]]](tasks.toList)(f)(AList.list[D])
 
   def toNode[A1, K1[F[_]]: AList](
       inputs: K1[Task]
-  )(f: K1[Result] => Either[Task[A1], A1]): Node[Task, A1] =
-    new Node[Task, A1]:
+  )(f: K1[Result] => Either[Task[A1], A1]): Node[A1] =
+    new Node[A1]:
       type K[F[_]] = K1[F]
       val in = inputs
       lazy val alist: AList[K] = AList[K]

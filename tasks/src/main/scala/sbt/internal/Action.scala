@@ -63,6 +63,7 @@ enum Action[A]:
 end Action
 
 object Action:
+  import sbt.std.TaskExtra0.*
 
   /**
    * Encode this computation as a flatMap.
@@ -72,12 +73,12 @@ object Action:
   ): Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]] =
     val alist = AList.tuple[Tuple1[Either[A1, A2]]]
     val f: Either[A1, A2] => Task[A2] = {
-      case Right(b) => std.TaskExtra.task(b)
-      case Left(a)  => std.TaskExtra.singleInputTask(s.fin).map(_(a))
+      case Right(b) => task(b)
+      case Left(a)  => singleInputTask(s.fin).map(_(a))
     }
     Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]](
       Tuple1(s.fab),
-      { case Tuple1(r) => (f compose std.TaskExtra.successM)(r) },
+      { case Tuple1(r) => f.compose(successM)(r) },
       alist,
     )
 end Action

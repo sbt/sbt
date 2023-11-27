@@ -13,6 +13,7 @@ import sbt.internal.util.AttributeKey
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.{ Future => JFuture, RejectedExecutionException }
 import scala.collection.mutable
+import scala.jdk.CollectionConverters.*
 
 /**
  * Describes restrictions on concurrent execution for a set of tasks.
@@ -55,7 +56,6 @@ import annotation.tailrec
 
 object ConcurrentRestrictions {
   private[this] val completionServices = new java.util.WeakHashMap[CompletionService[_, _], Boolean]
-  import scala.collection.JavaConverters._
   def cancelAll() = completionServices.keySet.asScala.toVector.foreach {
     case a: AutoCloseable => a.close()
     case _                =>

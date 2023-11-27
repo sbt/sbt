@@ -82,15 +82,15 @@ object TaskTest {
       restrictions: ConcurrentRestrictions[Task[_]]
   ): Result[T] = {
     val (service, shutdown) =
-      completionService[Task[_], Completed](restrictions, (x: String) => System.err.println(x))
+      completionService[Task[?], Completed](restrictions, (x: String) => System.err.println(x))
 
-    val x = new Execute[Task](
+    val x = new Execute(
       Execute.config(checkCycles),
       Execute.noTriggers,
-      ExecuteProgress.empty[Task]
+      ExecuteProgress.empty
     )(using taskToNode(idK[Task]))
     try {
-      x.run(root)(using service.asInstanceOf)
+      x.run(root)(using service)
     } finally {
       shutdown()
     }

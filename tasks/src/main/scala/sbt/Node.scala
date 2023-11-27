@@ -17,11 +17,11 @@ import sbt.internal.util.AList
  * @tparam A
  *   the type computed by this node
  */
-private[sbt] trait Node[Effect[_], A]:
+private[sbt] trait Node[A]:
   type K[L[x]]
-  def in: K[Effect]
+  def in: K[Task]
   def alist: AList[K]
 
   /** Computes the result of this task given the results from the inputs. */
-  def work(inputs: K[Result]): Either[Effect[A], A]
+  def work(inputs: K[Result]): Either[Task[A], A]
 end Node

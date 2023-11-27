@@ -14,7 +14,7 @@ import sbt.internal.util.RMap
  * except `started` and `finished`, which is called from the executing task's thread. All methods
  * should return quickly to avoid task execution overhead.
  */
-trait ExecuteProgress[F[_]] {
+trait ExecuteProgress {
   def initial(): Unit
 
   /**
@@ -22,20 +22,24 @@ trait ExecuteProgress[F[_]] {
    * `task` are `allDeps` and the subset of those dependencies that have not completed are
    * `pendingDeps`.
    */
-  def afterRegistered(task: F[Any], allDeps: Iterable[F[Any]], pendingDeps: Iterable[F[Any]]): Unit
+  def afterRegistered(
+      task: Task[?],
+      allDeps: Iterable[Task[?]],
+      pendingDeps: Iterable[Task[?]]
+  ): Unit
 
   /**
    * Notifies that all of the dependencies of `task` have completed and `task` is therefore ready to
    * run. The task has not been scheduled on a thread yet.
    */
-  def afterReady(task: F[Any]): Unit
+  def afterReady(task: Task[?]): Unit
 
   /**
    * Notifies that the work for `task` is starting after this call returns. This is called from the
    * thread the task executes on, unlike most other methods in this callback. It is called
    * immediately before the task's work starts with minimal intervening executor overhead.
    */
-  def beforeWork(task: F[Any]): Unit
+  def beforeWork(task: Task[?]): Unit
 
   /**
    * Notifies that the work for `task` work has finished. The task may have computed the next task
@@ -45,16 +49,16 @@ trait ExecuteProgress[F[_]] {
    * executes on, unlike most other methods in this callback. It is immediately called after the
    * task's work is complete with minimal intervening executor overhead.
    */
-  def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit
+  def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit
 
   /**
    * Notifies that `task` has completed. The task's work is done with a final `result`. Any tasks
    * called by `task` have completed.
    */
-  def afterCompleted[A](task: F[A], result: Result[A]): Unit
+  def afterCompleted[A](task: Task[A], result: Result[A]): Unit
 
   /** All tasks have completed with the final `results` provided. */
-  def afterAllCompleted(results: RMap[F, Result]): Unit
+  def afterAllCompleted(results: RMap[Task, Result]): Unit
 
   /** Notifies that either all tasks have finished or cancelled. */
   def stop(): Unit
@@ -64,46 +68,46 @@ trait ExecuteProgress[F[_]] {
  * This module is experimental and subject to binary and source incompatible changes at any time.
  */
 object ExecuteProgress {
-  def empty[F[_]]: ExecuteProgress[F] = new ExecuteProgress[F] {
+  def empty: ExecuteProgress = new ExecuteProgress {
     override def initial(): Unit = ()
     override def afterRegistered(
-        task: F[Any],
-        allDeps: Iterable[F[Any]],
-        pendingDeps: Iterable[F[Any]]
+        task: Task[?],
+        allDeps: Iterable[Task[?]],
+        pendingDeps: Iterable[Task[?]]
     ): Unit =
       ()
-    override def afterReady(task: F[Any]): Unit = ()
-    override def beforeWork(task: F[Any]): Unit = ()
-    override def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit = ()
-    override def afterCompleted[A](task: F[A], result: Result[A]): Unit = ()
-    override def afterAllCompleted(results: RMap[F, Result]): Unit = ()
+    override def afterReady(task: Task[?]): Unit = ()
+    override def beforeWork(task: Task[?]): Unit = ()
+    override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = ()
+    override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = ()
+    override def afterAllCompleted(results: RMap[Task, Result]): Unit = ()
     override def stop(): Unit = ()
   }
 
-  def aggregate[F[_]](reporters: Seq[ExecuteProgress[F]]) = new ExecuteProgress[F] {
+  def aggregate(reporters: Seq[ExecuteProgress]) = new ExecuteProgress {
     override def initial(): Unit = {
       reporters foreach { _.initial() }
     }
     override def afterRegistered(
-        task: F[Any],
-        allDeps: Iterable[F[Any]],
-        pendingDeps: Iterable[F[Any]]
+        task: Task[?],
+        allDeps: Iterable[Task[?]],
+        pendingDeps: Iterable[Task[?]]
     ): Unit = {
       reporters foreach { _.afterRegistered(task, allDeps, pendingDeps) }
     }
-    override def afterReady(task: F[Any]): Unit = {
+    override def afterReady(task: Task[?]): Unit = {
       reporters foreach { _.afterReady(task) }
     }
-    override def beforeWork(task: F[Any]): Unit = {
+    override def beforeWork(task: Task[?]): Unit = {
       reporters foreach { _.beforeWork(task) }
     }
-    override def afterWork[A](task: F[A], result: Either[F[A], Result[A]]): Unit = {
+    override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
       reporters foreach { _.afterWork(task, result) }
     }
-    override def afterCompleted[A](task: F[A], result: Result[A]): Unit = {
+    override def afterCompleted[A](task: Task[A], result: Result[A]): Unit = {
       reporters foreach { _.afterCompleted(task, result) }
     }
-    override def afterAllCompleted(results: RMap[F, Result]): Unit = {
+    override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
       reporters foreach { _.afterAllCompleted(results) }
     }
     override def stop(): Unit = {

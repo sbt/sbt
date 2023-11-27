@@ -102,7 +102,7 @@ object TaskCancellationStrategy {
 sealed trait EvaluateTaskConfig {
   def restrictions: Seq[Tags.Rule]
   def checkCycles: Boolean
-  def progressReporter: ExecuteProgress[Task]
+  def progressReporter: ExecuteProgress
   def cancelStrategy: TaskCancellationStrategy
 
   /** If true, we force a finalizer/gc run (or two) after task execution completes when needed. */
@@ -118,7 +118,7 @@ object EvaluateTaskConfig {
   def apply(
       restrictions: Seq[Tags.Rule],
       checkCycles: Boolean,
-      progressReporter: ExecuteProgress[Task],
+      progressReporter: ExecuteProgress,
       cancelStrategy: TaskCancellationStrategy,
       forceGarbageCollection: Boolean,
       minForcegcInterval: Duration
@@ -135,7 +135,7 @@ object EvaluateTaskConfig {
   private[this] case class DefaultEvaluateTaskConfig(
       restrictions: Seq[Tags.Rule],
       checkCycles: Boolean,
-      progressReporter: ExecuteProgress[Task],
+      progressReporter: ExecuteProgress,
       cancelStrategy: TaskCancellationStrategy,
       forceGarbageCollection: Boolean,
       minForcegcInterval: Duration
@@ -168,7 +168,7 @@ object EvaluateTask {
 
   @nowarn
   lazy private val sharedProgress = new TaskTimings(reportOnShutdown = true)
-  def taskTimingProgress: Option[ExecuteProgress[Task]] =
+  def taskTimingProgress: Option[ExecuteProgress] =
     if (SysProp.taskTimingsOnShutdown) Some(sharedProgress)
     else None
 
@@ -194,14 +194,14 @@ object EvaluateTask {
   }
 
   lazy private val sharedTraceEvent = new TaskTraceEvent()
-  def taskTraceEvent: Option[ExecuteProgress[Task]] =
+  def taskTraceEvent: Option[ExecuteProgress] =
     if (SysProp.traces) {
       Some(sharedTraceEvent)
     } else None
 
   // sbt-pgp calls this
   @deprecated("No longer used", "1.3.0")
-  private[sbt] def defaultProgress(): ExecuteProgress[Task] = ExecuteProgress.empty[Task]
+  private[sbt] def defaultProgress(): ExecuteProgress = ExecuteProgress.empty
 
   val SystemProcessors = Runtime.getRuntime.availableProcessors
 
@@ -262,21 +262,21 @@ object EvaluateTask {
       extracted: Extracted,
       structure: BuildStructure,
       state: State
-  ): ExecuteProgress[Task] = {
+  ): ExecuteProgress = {
     state
       .get(currentTaskProgress)
       .map { tp =>
-        new ExecuteProgress[Task] {
+        new ExecuteProgress {
           val progress = tp.progress
           override def initial(): Unit = progress.initial()
           override def afterRegistered(
-              task: Task[Any],
-              allDeps: Iterable[Task[Any]],
-              pendingDeps: Iterable[Task[Any]]
+              task: Task[?],
+              allDeps: Iterable[Task[?]],
+              pendingDeps: Iterable[Task[?]]
           ): Unit =
             progress.afterRegistered(task, allDeps, pendingDeps)
-          override def afterReady(task: Task[Any]): Unit = progress.afterReady(task)
-          override def beforeWork(task: Task[Any]): Unit = progress.beforeWork(task)
+          override def afterReady(task: Task[?]): Unit = progress.afterReady(task)
+          override def beforeWork(task: Task[?]): Unit = progress.beforeWork(task)
           override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
             progress.afterWork(task, result)
           override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
@@ -298,9 +298,9 @@ object EvaluateTask {
              new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
            else Nil)
         reporters match {
-          case xs if xs.isEmpty   => ExecuteProgress.empty[Task]
+          case xs if xs.isEmpty   => ExecuteProgress.empty
           case xs if xs.size == 1 => xs.head
-          case xs                 => ExecuteProgress.aggregate[Task](xs)
+          case xs                 => ExecuteProgress.aggregate(xs)
         }
       }
   }
@@ -440,7 +440,7 @@ object EvaluateTask {
       state: State,
       streams: Streams,
       ref: ProjectRef
-  ): Option[(Task[T], NodeView[Task])] = {
+  ): Option[(Task[T], NodeView)] = {
     val thisScope = Load.projectScope(ref)
     val resolvedScope = Scope.replaceThis(thisScope)(taskKey.scope)
     for (t <- structure.data.get(resolvedScope, taskKey.key))
@@ -451,7 +451,7 @@ object EvaluateTask {
       streams: Streams,
       roots: Seq[ScopedKey[_]],
       dummies: DummyTaskMap = DummyTaskMap(Nil)
-  ): NodeView[Task] =
+  ): NodeView =
     Transform(
       (dummyRoots, roots) :: (Def.dummyStreamsManager, streams) :: (dummyState, state) :: dummies
     )
@@ -472,24 +472,24 @@ object EvaluateTask {
       root: Task[T],
       state: State,
       streams: Streams,
-      triggers: Triggers[Task],
+      triggers: Triggers,
       config: EvaluateTaskConfig
-  )(using taskToNode: NodeView[Task]): (State, Result[T]) = {
+  )(using taskToNode: NodeView): (State, Result[T]) = {
     import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
 
     val log = state.log
     log.debug(
       s"Running task... Cancel: ${config.cancelStrategy}, check cycles: ${config.checkCycles}, forcegc: ${config.forceGarbageCollection}"
     )
-    def tagMap(t: Task[_]): Tags.TagMap =
+    def tagMap(t: Task[?]): Tags.TagMap =
       t.info.get(tagsKey).getOrElse(Map.empty)
     val tags =
-      tagged[Task[Any]](tagMap, Tags.predicate(config.restrictions))
+      tagged[Task[?]](tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      cancellableCompletionService[Task[Any], Completed](
+      cancellableCompletionService[Task[?], Completed](
         tags,
         (s: String) => log.warn(s),
-        (t: Task[_]) => tagMap(t).contains(Tags.Sentinel)
+        (t: Task[?]) => tagMap(t).contains(Tags.Sentinel)
       )
 
     def shutdownImpl(force: Boolean): Unit = {
@@ -505,11 +505,11 @@ object EvaluateTask {
     def shutdown(): Unit = shutdownImpl(false)
     // propagate the defining key for reporting the origin
     def overwriteNode(i: Incomplete): Boolean = i.node match {
-      case Some(t: Task[_]) => transformNode(t).isEmpty
+      case Some(t: Task[?]) => transformNode(t).isEmpty
       case _                => true
     }
     def run() = {
-      val x = new Execute[Task](
+      val x = new Execute(
         Execute.config(config.checkCycles, overwriteNode),
         triggers,
         config.progressReporter
@@ -578,11 +578,9 @@ object EvaluateTask {
       Incomplete.transformBU(i)(convertCyclicInc andThen taskToKey andThen liftAnonymous)
     }
   def taskToKey: Incomplete => Incomplete = {
-    case in @ Incomplete(Some(node: Task[_]), _, _, _, _) => in.copy(node = transformNode(node))
+    case in @ Incomplete(Some(node: Task[?]), _, _, _, _) => in.copy(node = transformNode(node))
     case i                                                => i
   }
-
-  type AnyCyclic = Execute[({ type A[_] <: AnyRef })#A]#CyclicException[_]
 
   def convertCyclicInc: Incomplete => Incomplete = {
     case in @ Incomplete(
@@ -590,15 +588,15 @@ object EvaluateTask {
           _,
           _,
           _,
-          Some(c: Execute[({ type A[_] <: AnyRef })#A @unchecked]#CyclicException[_])
+          Some(c: Execute#CyclicException)
         ) =>
       in.copy(directCause = Some(new RuntimeException(convertCyclic(c))))
     case i => i
   }
 
-  def convertCyclic(c: AnyCyclic): String =
+  def convertCyclic(c: Execute#CyclicException): String =
     (c.caller, c.target) match {
-      case (caller: Task[_], target: Task[_]) =>
+      case (caller: Task[?], target: Task[?]) =>
         c.toString + (if (caller eq target) "(task: " + name(caller) + ")"
                       else "(caller: " + name(caller) + ", target: " + name(target) + ")")
       case _ => c.toString

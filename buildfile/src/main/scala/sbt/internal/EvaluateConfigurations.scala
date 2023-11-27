@@ -356,15 +356,15 @@ object BuildUtilLite:
 end BuildUtilLite
 
 object Index {
-  def taskToKeyMap(data: Settings[Scope]): Map[Task[_], ScopedKey[Task[_]]] = {
+  def taskToKeyMap(data: Settings[Scope]): Map[Task[?], ScopedKey[Task[?]]] = {
 
     val pairs = data.scopes flatMap (scope =>
-      data.data(scope).entries collect { case AttributeEntry(key, value: Task[_]) =>
-        (value, ScopedKey(scope, key.asInstanceOf[AttributeKey[Task[_]]]))
+      data.data(scope).entries.collect { case AttributeEntry(key, value: Task[?]) =>
+        (value, ScopedKey[Task[?]](scope, key.asInstanceOf))
       }
     )
 
-    pairs.toMap[Task[_], ScopedKey[Task[_]]]
+    pairs.toMap
   }
 
   def allKeys(settings: Seq[Setting[_]]): Set[ScopedKey[_]] = {
@@ -403,28 +403,28 @@ object Index {
       )
   }
 
-  private[this] type TriggerMap = collection.mutable.HashMap[Task[Any], Seq[Task[Any]]]
+  private[this] type TriggerMap = collection.mutable.HashMap[Task[?], Seq[Task[?]]]
 
-  def triggers(ss: Settings[Scope]): Triggers[Task] = {
+  def triggers(ss: Settings[Scope]): Triggers = {
     val runBefore = new TriggerMap
     val triggeredBy = new TriggerMap
     ss.data.values foreach (
-      _.entries foreach {
-        case AttributeEntry(_, value: Task[Any]) =>
+      _.entries.foreach {
+        case AttributeEntry(_, value: Task[?]) =>
           val as = value.info.attributes
-          update(runBefore, value, as.get(Def.runBefore.asInstanceOf))
-          update(triggeredBy, value, as.get(Def.triggeredBy.asInstanceOf))
+          update(runBefore, value, as.get(Def.runBefore))
+          update(triggeredBy, value, as.get(Def.triggeredBy))
         case _ => ()
       }
     )
     val onComplete = (GlobalScope / Def.onComplete) get ss getOrElse (() => ())
-    new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
+    new Triggers(runBefore, triggeredBy, map => { onComplete(); map })
   }
 
   private[this] def update(
       map: TriggerMap,
-      base: Task[Any],
-      tasksOpt: Option[Seq[Task[Any]]]
+      base: Task[?],
+      tasksOpt: Option[Seq[Task[?]]]
   ): Unit =
     for {
       tasks <- tasksOpt

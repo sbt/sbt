@@ -15,7 +15,7 @@ import scala.collection.mutable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[Task] {
+private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
 
   private[this] val showScopedKey = Def.showShortKey(None)
@@ -68,9 +68,9 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
   }
 
   override def afterRegistered(
-      task: Task[Any],
-      allDeps: Iterable[Task[Any]],
-      pendingDeps: Iterable[Task[Any]]
+      task: Task[?],
+      allDeps: Iterable[Task[?]],
+      pendingDeps: Iterable[Task[?]]
   ): Unit = {
     // we need this to infer anonymous task names
     pendingDeps foreach { t =>
@@ -80,7 +80,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
     }
   }
 
-  override def beforeWork(task: Task[Any]): Unit = {
+  override def beforeWork(task: Task[?]): Unit = {
     timings.put(task, new Timer)
     ()
   }

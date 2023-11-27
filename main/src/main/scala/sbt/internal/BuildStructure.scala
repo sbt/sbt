@@ -71,7 +71,7 @@ final class BuildStructure(
 final class StructureIndex(
     val keyMap: Map[String, AttributeKey[_]],
     val taskToKey: Map[Task[_], ScopedKey[Task[_]]],
-    val triggers: Triggers[Task],
+    val triggers: Triggers,
     val keyIndex: KeyIndex,
     val aggregateKeyIndex: KeyIndex,
 )
