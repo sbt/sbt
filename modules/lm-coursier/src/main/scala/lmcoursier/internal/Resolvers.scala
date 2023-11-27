@@ -17,8 +17,12 @@ object Resolvers {
 
   private def mavenCompatibleBaseOpt(patterns: Patterns): Option[String] =
     if (patterns.isMavenCompatible) {
-      val baseIvyPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
-      val baseArtifactPattern = patterns.ivyPatterns.head.takeWhile(c => c != '[' && c != '(')
+      //input  : /Users/user/custom/repo/[organisation]/[module](_[scalaVersion])(_[sbtVersion])/[revision]/[artifact]-[revision](-[classifier]).[ext]
+      //output : /Users/user/custom/repo/
+      def basePattern(pattern: String): String = pattern.takeWhile(c => c != '[' && c != '(')
+
+      val baseIvyPattern = basePattern(patterns.ivyPatterns.head)
+      val baseArtifactPattern = basePattern(patterns.artifactPatterns.head)
 
       if (baseIvyPattern == baseArtifactPattern)
         Some(baseIvyPattern)
