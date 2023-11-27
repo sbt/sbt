@@ -1,0 +1,36 @@
+# define a test jar and publish locally as ivy.xml
+#  and to a file repository as pom.xml
+
+$ copy-file changes/def/build.sbt build.sbt
+$ copy-file changes/def/Def.java src/test/java/Def.java
+> reload
+> publishLocal
+> publish
+> clean
+
+$ delete build.sbt
+$ delete src/test/java/Def.java
+
+# use the test jar from the maven repository
+#  by requesting the "tests" classifier
+
+$ copy-file changes/use/build.sbt build.sbt
+$ copy-file changes/use/Use.java Use.java
+$ copy-file changes/use/pom.sbt pom.sbt
+> reload
+> compile
+> clean
+
+# necessary because the cache can't deal with two different types of metadata
+$ delete ivy-cache/cache
+
+
+# then, use the test jar via the Ivy repository
+#  by requesting the "test" configuration
+
+$ delete pom.sbt
+$ copy-file changes/use/local.sbt local.sbt
+> reload
+> show update
+> export dependencyClasspath
+> compile
