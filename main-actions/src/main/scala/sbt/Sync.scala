@@ -162,7 +162,6 @@ object Sync {
       fileConverter.toVirtualFile(file.toPath) -> fileInfo
     }
 
-    import LibraryManagementCodec._
     import sjsonnew.IsoString
     implicit def virtualFileRefStringIso: IsoString[VirtualFileRef] =
       IsoString.iso[VirtualFileRef](_.toString, VirtualFileRef.of(_))
