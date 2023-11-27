@@ -1,2 +1,2 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
-ivyPaths := { IvyPaths(baseDirectory.value, Some(target.value / ".ivy2")) }
+ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))

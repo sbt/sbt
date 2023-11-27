@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 ivyPaths := {
 	val base = baseDirectory.value
-	IvyPaths(base, Some(base / "ivy-cache"))
+	IvyPaths(base.toString, Some((base / "ivy-cache").toString))
 }
 
 managedScalaInstance := false

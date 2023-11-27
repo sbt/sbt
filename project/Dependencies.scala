@@ -6,7 +6,7 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.17"
   val scala213 = "2.13.8"
-  val scala3 = "3.2.1"
+  val scala3 = "3.3.1"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
@@ -15,8 +15,8 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha11")
-  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha6")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha13")
+  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha8")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -80,9 +80,9 @@ object Dependencies {
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
   // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
-  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha5"
+  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha7"
 
-  lazy val sjsonNewVersion = "0.13.0"
+  lazy val sjsonNewVersion = "0.14.0-M1"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
   ) // contrabandSjsonNewVersion.value

@@ -14,8 +14,11 @@ lazy val b = project.settings(common: _*).settings(
   libraryDependencies := Seq(organization.value %% "a" % version.value)
 )
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 lazy val common = Seq(
+  localCache,
   autoScalaLibrary := false, // avoid downloading fresh scala-library/scala-compiler
   managedScalaInstance := false,
-  ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache"))
 )

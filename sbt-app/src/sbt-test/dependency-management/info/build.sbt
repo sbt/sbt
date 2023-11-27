@@ -3,9 +3,12 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 import scala.xml._
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    localCache,
     ivyXML := inlineXML(customInfo.value, organization.value, moduleName.value, version.value),
     scalaVersion := "2.9.1",
     projectID ~= (_ cross false),

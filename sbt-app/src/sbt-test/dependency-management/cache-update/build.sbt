@@ -2,6 +2,9 @@ ThisBuild / scalaVersion        := "2.10.4"
 ThisBuild / dependencyOverrides += "com.github.nscala-time" %% "nscala-time" % "1.0.0"
 ThisBuild / csrCacheDirectory   := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 lazy val root = (project in file("."))
   .dependsOn(p1 % Compile)
   .settings(
@@ -22,10 +25,7 @@ lazy val root = (project in file("."))
       description := "An HTTP client for Scala with Async Http Client underneath.",
       licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     )),
-    ivyPaths := IvyPaths(
-      (ThisBuild / baseDirectory).value,
-      Some((LocalRootProject / baseDirectory).value / "ivy-cache")
-    ),
+    localCache,
     libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "1.0.0",
 
     // https://github.com/sbt/sbt/pull/1620

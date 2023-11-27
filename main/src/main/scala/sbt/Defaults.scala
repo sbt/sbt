@@ -2523,12 +2523,11 @@ object Defaults extends BuildCommon {
 
     mappers.foldRight({ (p: Position) =>
       withAbsoluteSource(p) // Fallback if sourcePositionMappers is empty
-    }) {
-      (mapper, previousPosition) =>
-        { (p: Position) =>
-          // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
-          mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
-        }
+    }) { (mapper, previousPosition) =>
+      { (p: Position) =>
+        // To each mapper we pass the position with the absolute source (only if reportAbsolutePath = true of course)
+        mapper(withAbsoluteSource(p)).getOrElse(previousPosition(p))
+      }
     }
   }
 
@@ -3044,7 +3043,10 @@ object Classpaths {
         }
       }).value,
     moduleName := normalizedName.value,
-    ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
+    ivyPaths := IvyPaths(
+      baseDirectory.value.toString,
+      bootIvyHome(appConfiguration.value).map(_.toString)
+    ),
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value
@@ -3056,7 +3058,7 @@ object Classpaths {
         else if (ip.ivyHome == defaultIvyCache) old
         else
           ip.ivyHome match {
-            case Some(home) => home / "coursier-cache"
+            case Some(home) => new File(home) / "coursier-cache"
             case _          => old
           }
       } else Classpaths.dummyCoursierDirectory(ac)

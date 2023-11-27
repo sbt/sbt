@@ -11,8 +11,7 @@ import java.io.File
 
 import scala.util.control.NonFatal
 import sbt.io.{ Hash, IO }
-import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
-import CacheImplicits.{ arrayFormat => _, _ }
+import sjsonnew.{ arrayFormat => _, _ }
 import sbt.nio.file._
 import sbt.nio.file.syntax._
 
@@ -118,7 +117,7 @@ object FileInfo {
     implicit val format: JsonFormat[HashModifiedFileInfo] = new JsonFormat[HashModifiedFileInfo] {
       def write[J](obj: HashModifiedFileInfo, builder: Builder[J]) = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("hash", obj.hashArray)
         builder.addField("lastModified", obj.lastModified)
         builder.endObject()
@@ -127,11 +126,11 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val hash = unbuilder.readField[Array[Byte]]("hash")
           val lastModified = unbuilder.readField[Long]("lastModified")
           unbuilder.endObject()
-          FileHashModifiedArrayRepr(file, hash, lastModified)
+          FileHashModifiedArrayRepr(new File(file), hash, lastModified)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
@@ -148,7 +147,7 @@ object FileInfo {
     implicit val format: JsonFormat[HashFileInfo] = new JsonFormat[HashFileInfo] {
       def write[J](obj: HashFileInfo, builder: Builder[J]) = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("hash", obj.hashArray)
         builder.endObject()
       }
@@ -156,10 +155,10 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val hash = unbuilder.readField[Array[Byte]]("hash")
           unbuilder.endObject()
-          FileHashArrayRepr(file, hash)
+          FileHashArrayRepr(new File(file), hash)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
@@ -182,18 +181,18 @@ object FileInfo {
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
-            val file = unbuilder.readField[File]("file")
-            val lastModified = unbuilder.readField[Long]("lastModified")
+            val file = unbuilder.readField[String]("file")
+            val lastModified = unbuilder.readField[String]("lastModified").toLong
             unbuilder.endObject()
-            FileModified(file, lastModified)
+            FileModified(new File(file), lastModified)
           case None =>
             deserializationError("Expected JsObject but found None")
         }
 
       override def write[J](obj: ModifiedFileInfo, builder: Builder[J]): Unit = {
         builder.beginObject()
-        builder.addField("file", obj.file)
-        builder.addField("lastModified", obj.lastModified)
+        builder.addField[String]("file", obj.file.toString)
+        builder.addField[String]("lastModified", obj.lastModified.toString)
         builder.endObject()
       }
     }
@@ -232,7 +231,7 @@ object FileInfo {
     implicit val format: JsonFormat[PlainFileInfo] = new JsonFormat[PlainFileInfo] {
       def write[J](obj: PlainFileInfo, builder: Builder[J]): Unit = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("exists", obj.exists)
         builder.endObject()
       }
@@ -240,10 +239,10 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val exists = unbuilder.readField[Boolean]("exists")
           unbuilder.endObject()
-          PlainFile(file, exists)
+          PlainFile(new File(file), exists)
         case None => deserializationError("Expected JsObject but found None")
       }
     }

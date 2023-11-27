@@ -2,9 +2,12 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    localCache,
     libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "https://jsoup.org/packages/jsoup-1.9.1.jar",
     ivyLoggingLevel := UpdateLogging.Full,
     TaskKey[Unit]("checkInTest") := checkClasspath(Test).value,

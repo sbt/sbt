@@ -3,10 +3,13 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 val checkIvyXml = taskKey[Unit]("Checks the ivy.xml transform was correct")
 
-lazy val root = (project in file(".")).
-  settings(
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
+lazy val root = (project in file("."))
+  .settings(
+    localCache,
     name := "test-parent-pom",
-    ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache")),
     resolvers += MavenCache("Maven2 Local Test", baseDirectory.value / "local-repo"),
     libraryDependencies += "com.example" % "example-child" % "1.0-SNAPSHOT",
     libraryDependencies += "org.apache.geronimo.specs" % "geronimo-jta_1.1_spec" % "1.1.1",

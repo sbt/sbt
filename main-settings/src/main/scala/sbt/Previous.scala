@@ -27,7 +27,8 @@ private[sbt] final class Previous(streams: Streams, referenced: IMap[Previous.Ke
   // We can't use mapValues to transform the map because mapValues is lazy and evaluates the
   // transformation function every time a value is fetched from the map, defeating the entire
   // purpose of ReferencedValue.
-  for (referenced.TPair(k, v) <- referenced.toTypedSeq) map = map.put(k, new ReferencedValue(v))
+  for case referenced.TPair(k, v) <- referenced.toTypedSeq do
+    map = map.put(k, new ReferencedValue(v))
 
   private[this] final class ReferencedValue[T](referenced: Referenced[T]) {
     lazy val previousValue: Option[T] = referenced.read(streams)
@@ -122,10 +123,10 @@ object Previous {
 
     // We first collect all of the successful tasks and write their scoped key into a map
     // along with their values.
-    val successfulTaskResults = (for {
-      results.TPair(task, Result.Value(v)) <- results.toTypedSeq
+    val successfulTaskResults = (for
+      case results.TPair(task, Result.Value(v)) <- results.toTypedSeq
       key <- task.info.attributes.get(Def.taskDefinitionKey).asInstanceOf[Option[AnyTaskKey]]
-    } yield key -> v).toMap
+    yield key -> v).toMap
     // We then traverse the successful results and look up all of the referenced values for
     // each of these tasks. This can be a many to one relationship if multiple tasks refer
     // the previous value of another task. For each reference we find, we check if the task has

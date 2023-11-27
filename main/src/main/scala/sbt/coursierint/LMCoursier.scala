@@ -92,7 +92,7 @@ object LMCoursier {
       createLogger: Option[CacheLogger],
       cacheDirectory: File,
       reconciliation: Seq[(ModuleMatchers, Reconciliation)],
-      ivyHome: Option[File],
+      ivyHome: Option[String],
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       log: Logger
@@ -140,7 +140,7 @@ object LMCoursier {
       createLogger: Option[CacheLogger],
       cacheDirectory: File,
       reconciliation: Seq[(ModuleMatchers, Reconciliation)],
-      ivyHome: Option[File],
+      ivyHome: Option[String],
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       updateConfig: Option[UpdateConfiguration],
@@ -192,7 +192,7 @@ object LMCoursier {
       .withCache(cacheDirectory)
       .withReconciliation(reconciliation.toVector)
       .withLog(log)
-      .withIvyHome(ivyHome)
+      .withIvyHome(ivyHome.map(new File(_)))
       .withStrict(strict)
       .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)

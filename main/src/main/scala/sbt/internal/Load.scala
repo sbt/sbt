@@ -82,7 +82,9 @@ private[sbt] object Load {
       Attributed.blankSeq(provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq)
     val ivyConfiguration =
       InlineIvyConfiguration()
-        .withPaths(IvyPaths(baseDirectory, bootIvyHome(state.configuration)))
+        .withPaths(
+          IvyPaths(baseDirectory.toString, bootIvyHome(state.configuration).map(_.toString))
+        )
         .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
         .withLog(log)
     val dependencyResolution = IvyDependencyResolution(ivyConfiguration)

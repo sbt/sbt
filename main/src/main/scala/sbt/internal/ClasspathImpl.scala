@@ -335,19 +335,16 @@ private[sbt] object ClasspathImpl {
       conf: Configuration,
       data: Settings[Scope],
       deps: BuildDependencies
-  ): Seq[(ProjectRef, String)] = {
+  ): Seq[(ProjectRef, String)] =
     val visited = (new LinkedHashSet[(ProjectRef, String)]).asScala
-    def visit(p: ProjectRef, c: Configuration): Unit = {
+    def visit(p: ProjectRef, c: Configuration): Unit =
       val applicableConfigs = allConfigs(c)
-      for {
-        ac <- applicableConfigs
-      } // add all configurations in this project
+      for ac <- applicableConfigs do
+        // add all configurations in this project
         visited add (p -> ac.name)
         val masterConfs = names(getConfigurations(projectRef, data).toVector)
 
-        for {
-          ClasspathDep.ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p)
-        } {
+        for case ClasspathDep.ResolvedClasspathDependency(dep, confMapping) <- deps.classpath(p) do
           val configurations = getConfigurations(dep, data)
           val mapping =
             mapped(
@@ -358,21 +355,15 @@ private[sbt] object ClasspathImpl {
               "*->compile"
             )
           // map master configuration 'c' and all extended configurations to the appropriate dependency configuration
-          for {
+          for
             ac <- applicableConfigs
             depConfName <- mapping(ac.name)
-          } {
-            for {
-              depConf <- confOpt(configurations, depConfName)
-            } if (!visited((dep, depConfName))) {
-              visit(dep, depConf)
-            }
-          }
-        }
-    }
+          do
+            for depConf <- confOpt(configurations, depConfName) do
+              if !visited((dep, depConfName)) then visit(dep, depConf)
     visit(projectRef, conf)
     visited.toSeq
-  }
+  end interSort
 
   def mapped(
       confString: Option[String],

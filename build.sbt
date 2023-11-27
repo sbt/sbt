@@ -10,7 +10,7 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-alpha6-SNAPSHOT"
+  val v = "2.0.0-alpha8-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / version2_13 := "2.0.0-alpha1-SNAPSHOT"
@@ -950,6 +950,8 @@ lazy val mainProj = (project in file("main"))
     Test / testOptions += Tests
       .Argument(TestFrameworks.ScalaCheck, "-minSuccessfulTests", "1000"),
     SettingKey[Boolean]("usePipelining") := false,
+    // TODO: Fix doc
+    Compile / doc / sources := Nil,
     // mimaSettings,
     // mimaBinaryIssueFilters ++= Vector(),
   )

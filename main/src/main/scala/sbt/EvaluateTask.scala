@@ -396,9 +396,8 @@ object EvaluateTask {
       }
 
     import ExceptionCategory._
-    for {
-      (key, msg, Some(ex)) <- keyed
-    } do
+    for case (key, msg, Some(ex)) <- keyed
+    do
       def log = getStreams(key, streams).log
       ExceptionCategory(ex) match {
         case AlreadyHandled => ()

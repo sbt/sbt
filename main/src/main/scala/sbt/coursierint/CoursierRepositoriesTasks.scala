@@ -67,7 +67,7 @@ object CoursierRepositoriesTasks {
     val result2 =
       paths.ivyHome match {
         case Some(ivyHome) =>
-          val ivyHomeUri = ivyHome.getPath
+          val ivyHomeUri = ivyHome
           result1 map {
             case r: FileRepository =>
               val ivyPatterns = r.patterns.ivyPatterns map {
