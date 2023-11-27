@@ -22,7 +22,7 @@ object TaskGen extends std.TaskExtra {
   val TaskListGen = MaxTasksGen.flatMap(size => Gen.listOfN(size, Arbitrary.arbInt.arbitrary))
 
   def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] = {
-    val (service, shutdown) = CompletionService[Task[?], Completed](maxWorkers)
+    val (service, shutdown) = CompletionService(maxWorkers)
     val dummies = std.Transform.DummyTaskMap(Nil)
     val x = new Execute(
       Execute.config(checkCycles),

@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
-// import sbt.Project.richInitializeTask
 import sbt.ProjectExtra.*
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
@@ -483,10 +482,9 @@ object EvaluateTask {
     )
     def tagMap(t: Task[?]): Tags.TagMap =
       t.info.get(tagsKey).getOrElse(Map.empty)
-    val tags =
-      tagged[Task[?]](tagMap, Tags.predicate(config.restrictions))
+    val tags = tagged(tagMap, Tags.predicate(config.restrictions))
     val (service, shutdownThreads) =
-      cancellableCompletionService[Task[?], Completed](
+      cancellableCompletionService(
         tags,
         (s: String) => log.warn(s),
         (t: Task[?]) => tagMap(t).contains(Tags.Sentinel)
@@ -516,7 +514,7 @@ object EvaluateTask {
       )
       val (newState, result) =
         try {
-          given strategy: x.Strategy = service
+          given strategy: CompletionService = service
           val results = x.runKeep(root)
           storeValuesForPrevious(results, state, streams)
           applyResults(results, state, root)

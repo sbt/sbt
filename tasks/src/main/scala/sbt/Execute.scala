@@ -62,7 +62,6 @@ private[sbt] final class Execute(
     progress: ExecuteProgress
 )(using view: NodeView) {
   import Execute.*
-  type Strategy = CompletionService[Task[?], Completed]
 
   private[this] val forward = taskMap[IDSet[Task[?]]]
   private[this] val reverse = taskMap[Iterable[Task[?]]]
@@ -87,12 +86,12 @@ private[sbt] final class Execute(
   def dump: String =
     "State: " + state.toString + "\n\nResults: " + results + "\n\nCalls: " + callers + "\n\n"
 
-  def run[A](root: Task[A])(using strategy: Strategy): Result[A] =
+  def run[A](root: Task[A])(using strategy: CompletionService): Result[A] =
     try {
       runKeep(root)(root)
     } catch { case i: Incomplete => Result.Inc(i) }
 
-  def runKeep[A](root: Task[A])(using strategy: Strategy): RMap[Task, Result] = {
+  def runKeep[A](root: Task[A])(using strategy: CompletionService): RMap[Task, Result] = {
     assert(state.isEmpty, "Execute already running/ran.")
 
     addNew(root)
@@ -104,7 +103,7 @@ private[sbt] final class Execute(
     finalResults
   }
 
-  def processAll()(using strategy: Strategy): Unit = {
+  def processAll()(using strategy: CompletionService): Unit = {
     @tailrec def next(): Unit = {
       pre {
         assert(reverse.nonEmpty, "Nothing to process.")
@@ -137,7 +136,7 @@ private[sbt] final class Execute(
   }
   def dumpCalling: String = state.filter(_._2 == Calling).mkString("\n\t")
 
-  def call[A](node: Task[A], target: Task[A])(using strategy: Strategy): Unit = {
+  def call[A](node: Task[A], target: Task[A])(using strategy: CompletionService): Unit = {
     if (config.checkCycles) cycleCheck(node, target)
     pre {
       assert(running(node))
@@ -162,7 +161,7 @@ private[sbt] final class Execute(
     }
   }
 
-  def retire[A](node: Task[A], result: Result[A])(using strategy: Strategy): Unit = {
+  def retire[A](node: Task[A], result: Result[A])(using strategy: CompletionService): Unit = {
     pre {
       assert(running(node) | calling(node))
       readyInv(node)
@@ -194,7 +193,7 @@ private[sbt] final class Execute(
       case Result.Inc(i)      => Result.Inc(Incomplete(Some(node), tpe = i.tpe, causes = i :: Nil))
     }
 
-  def notifyDone(node: Task[?], dependent: Task[?])(using strategy: Strategy): Unit = {
+  def notifyDone(node: Task[?], dependent: Task[?])(using strategy: CompletionService): Unit = {
     val f = forward(dependent)
     f -= node
     if (f.isEmpty) {
@@ -208,7 +207,7 @@ private[sbt] final class Execute(
    * inputs and dependencies have completed. Its computation is then evaluated and made available
    * for nodes that have it as an input.
    */
-  def addChecked[A](node: Task[A])(using strategy: Strategy): Unit = {
+  def addChecked[A](node: Task[A])(using strategy: CompletionService): Unit = {
     if (!added(node)) addNew(node)
 
     post { addedInv(node) }
@@ -219,7 +218,7 @@ private[sbt] final class Execute(
    * have finished, the node's computation is scheduled to run. The node's dependencies will be
    * added (transitively) if they are not already registered.
    */
-  def addNew(node: Task[?])(using strategy: Strategy): Unit = {
+  def addNew(node: Task[?])(using strategy: CompletionService): Unit = {
     pre { newPre(node) }
 
     val v = register(node)
@@ -253,7 +252,7 @@ private[sbt] final class Execute(
    * Called when a pending 'node' becomes runnable. All of its dependencies must be done. This
    * schedules the node's computation with 'strategy'.
    */
-  def ready(node: Task[?])(using strategy: Strategy): Unit = {
+  def ready(node: Task[?])(using strategy: CompletionService): Unit = {
     pre {
       assert(pending(node))
       readyInv(node)
@@ -279,7 +278,7 @@ private[sbt] final class Execute(
   }
 
   /** Send the work for this node to the provided Strategy. */
-  def submit(node: Task[?])(using strategy: Strategy): Unit = {
+  def submit(node: Task[?])(using strategy: CompletionService): Unit = {
     val v = viewCache(node)
     val rs = v.alist.transform(v.in)(getResult)
     // v.alist.transform(v.in)(getResult)
@@ -290,7 +289,9 @@ private[sbt] final class Execute(
    * Evaluates the computation 'f' for 'node'. This returns a Completed instance, which contains the
    * post-processing to perform after the result is retrieved from the Strategy.
    */
-  def work[A](node: Task[A], f: => Either[Task[A], A])(using strategy: Strategy): Completed = {
+  def work[A](node: Task[A], f: => Either[Task[A], A])(using
+      strategy: CompletionService
+  ): Completed = {
     progress.beforeWork(node)
     val rawResult = wideConvert(f).left.map {
       case i: Incomplete => if (config.overwriteNode(i)) i.copy(node = Some(node)) else i
