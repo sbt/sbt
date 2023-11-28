@@ -1,13 +1,18 @@
 package lmcoursier.internal
 
 import coursier.{Resolution, Resolve}
+import coursier.cache.internal.ThreadUtil
 import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
 import coursier.core._
+import coursier.error.ResolutionError
+import coursier.error.ResolutionError.CantDownloadModule
 import coursier.ivy.IvyRepository
 import coursier.maven.MavenRepositoryLike
 import coursier.params.rule.RuleResolution
+import coursier.util.Task
 import sbt.util.Logger
 
+import scala.concurrent.duration.FiniteDuration
 import scala.collection.mutable
 
 // private[coursier]
@@ -79,47 +84,85 @@ object ResolutionRun {
     if (verbosityLevel >= 2)
       log.info(initialMessage)
 
-    Resolve()
-      // re-using various caches from a resolution of a configuration we extend
-      .withInitialResolution(startingResolutionOpt)
-      .withDependencies(
-        params.dependencies.collect {
-          case (config, dep) if configs(config) =>
-            dep
-        }
-      )
-      .withRepositories(repositories)
-      .withResolutionParams(
-        params
-          .params
-          .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
-          .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
-          .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
-          .withTypelevel(params.params.typelevel)
-          .withRules(rules)
-      )
-      .withCache(
-        params
-          .cache
-          .withLogger(
-            params.loggerOpt.getOrElse {
-              RefreshLogger.create(
-                if (RefreshLogger.defaultFallbackMode)
-                  new FallbackRefreshDisplay()
-                else
-                  ProgressBarRefreshDisplay.create(
-                    if (printOptionalMessage) log.info(initialMessage),
-                    if (printOptionalMessage || verbosityLevel >= 2)
-                      log.info(s"Resolved ${params.projectName} dependencies")
-                  )
-              )
-            }
-          )
-      )
-      .either() match {
-        case Left(err) if params.missingOk => Right(err.resolution)
-        case others => others
-      }
+    val resolveTask: Resolve[Task] = {
+      Resolve()
+        // re-using various caches from a resolution of a configuration we extend
+        .withInitialResolution(startingResolutionOpt)
+        .withDependencies(
+          params.dependencies.collect {
+            case (config, dep) if configs(config) =>
+              dep
+          }
+        )
+        .withRepositories(repositories)
+        .withResolutionParams(
+          params
+            .params
+            .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
+            .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
+            .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
+            .withTypelevel(params.params.typelevel)
+            .withRules(rules)
+        )
+        .withCache(
+          params
+            .cache
+            .withLogger(
+              params.loggerOpt.getOrElse {
+                RefreshLogger.create(
+                  if (RefreshLogger.defaultFallbackMode)
+                    new FallbackRefreshDisplay()
+                  else
+                    ProgressBarRefreshDisplay.create(
+                      if (printOptionalMessage) log.info(initialMessage),
+                      if (printOptionalMessage || verbosityLevel >= 2)
+                        log.info(s"Resolved ${params.projectName} dependencies")
+                    )
+                )
+              }
+            )
+        )
+    }
+
+    val (period, maxAttempts) = params.retry
+    val finalResult: Either[ResolutionError, Resolution] = {
+
+      def retry(attempt: Int, waitOnError: FiniteDuration): Task[Either[ResolutionError, Resolution]] =
+        resolveTask
+          .io
+          .attempt
+          .flatMap {
+            case Left(e: ResolutionError) =>
+              val hasConnectionTimeouts = e.errors.exists {
+                case err: CantDownloadModule => err.perRepositoryErrors.exists(_.contains("Connection timed out"))
+                case _                       => false
+              }
+              if (hasConnectionTimeouts)
+                if (attempt + 1 >= maxAttempts) {
+                  log.error(s"Failed, maximum iterations ($maxAttempts) reached")
+                  Task.point(Left(e))
+                }
+                else {
+                  log.warn(s"Attempt ${attempt + 1} failed: $e")
+                  Task.completeAfter(retryScheduler, waitOnError).flatMap { _ =>
+                    retry(attempt + 1, waitOnError * 2)
+                  }
+                }
+              else
+                Task.point(Left(e))
+            case Left(ex) =>
+              Task.fail(ex)
+            case Right(value) =>
+              Task.point(Right(value))
+          }
+
+      retry(0, period).unsafeRun()(resolveTask.cache.ec)
+    }
+
+    finalResult match {
+      case Left(err) if params.missingOk => Right(err.resolution)
+      case others => others
+    }
   }
 
   def resolutions(
@@ -164,4 +207,5 @@ object ResolutionRun {
     }
   }
 
+  private lazy val retryScheduler = ThreadUtil.fixedScheduledThreadPool(1)
 }

@@ -9,7 +9,7 @@ import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCou
 import sbt.librarymanagement.{Resolver, UpdateConfiguration, ModuleID, CrossVersion, ModuleInfo, ModuleDescriptorConfiguration}
 import xsbti.Logger
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 import java.net.URL
 import java.net.URLClassLoader
 
@@ -59,4 +59,5 @@ import java.net.URLClassLoader
   providedInCompile: Boolean = false, // unused, kept for binary compatibility
   @since
   protocolHandlerDependencies: Seq[ModuleID] = Vector.empty,
+  retry: Option[(FiniteDuration, Int)] = None,
 )

@@ -254,6 +254,7 @@ class CoursierDependencyResolution(
         .withExclusions(excludeDependencies),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
+      retry = conf.retry.getOrElse(ResolutionParams.defaultRetry),
     )
 
     def artifactsParams(resolutions: Map[Configuration, Resolution]): ArtifactsParams =

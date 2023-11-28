@@ -11,6 +11,7 @@ import lmcoursier.definitions.ToCoursier
 import coursier.util.Task
 
 import scala.collection.mutable
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 // private[coursier]
 final case class ResolutionParams(
@@ -30,6 +31,7 @@ final case class ResolutionParams(
   params: coursier.params.ResolutionParams,
   strictOpt: Option[Strict],
   missingOk: Boolean,
+  retry: (FiniteDuration, Int)
 ) {
 
   lazy val allConfigExtends: Map[Configuration, Set[Configuration]] = {
@@ -106,4 +108,5 @@ object ResolutionParams {
     ) ++ sys.props
   }
 
+  val defaultRetry: (FiniteDuration, Int) = (1.seconds, 3)
 }

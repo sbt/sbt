@@ -9,7 +9,7 @@ import coursier.util.Artifact
 import sbt.librarymanagement.{GetClassifiersModule, Resolver}
 import sbt.{InputKey, SettingKey, TaskKey}
 
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.{Duration, FiniteDuration}
 
 object Keys {
   val coursierParallelDownloads = SettingKey[Int]("coursier-parallel-downloads")
