@@ -23,7 +23,7 @@ import sbt.util.{ Level, Logger }
  */
 private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task] {
+    with ExecuteProgress {
   @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
   def this(reportOnShutdown: Boolean) =
     this(
@@ -50,9 +50,9 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       start = System.nanoTime
   }
 
-  override def afterReady(task: Task[Any]): Unit = ()
-  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit =
+  override def afterReady(task: TaskId[?]): Unit = ()
+  override def afterCompleted[T](task: TaskId[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
     if (!reportOnShutdown) {
       report()
     }

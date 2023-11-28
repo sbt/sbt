@@ -25,7 +25,7 @@ import Scope.GlobalScope
 import sbt.SlashSyntax0.*
 import sbt.internal.parser.SbtParser
 import sbt.io.IO
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import xsbti.VirtualFile
 import xsbti.VirtualFileRef
 
@@ -403,14 +403,14 @@ object Index {
       )
   }
 
-  private[this] type TriggerMap = collection.mutable.HashMap[Task[Any], Seq[Task[Any]]]
+  private[this] type TriggerMap = collection.mutable.HashMap[TaskId[?], Seq[TaskId[?]]]
 
-  def triggers(ss: Settings[Scope]): Triggers[Task] = {
+  def triggers(ss: Settings[Scope]): Triggers = {
     val runBefore = new TriggerMap
     val triggeredBy = new TriggerMap
     ss.data.values foreach (
       _.entries foreach {
-        case AttributeEntry(_, value: Task[Any]) =>
+        case AttributeEntry(_, value: Task[?]) =>
           val as = value.info.attributes
           update(runBefore, value, as.get(Def.runBefore.asInstanceOf))
           update(triggeredBy, value, as.get(Def.triggeredBy.asInstanceOf))
@@ -418,13 +418,13 @@ object Index {
       }
     )
     val onComplete = (GlobalScope / Def.onComplete) get ss getOrElse (() => ())
-    new Triggers[Task](runBefore, triggeredBy, map => { onComplete(); map })
+    new Triggers(runBefore, triggeredBy, map => { onComplete(); map })
   }
 
   private[this] def update(
       map: TriggerMap,
-      base: Task[Any],
-      tasksOpt: Option[Seq[Task[Any]]]
+      base: Task[?],
+      tasksOpt: Option[Seq[Task[?]]]
   ): Unit =
     for {
       tasks <- tasksOpt

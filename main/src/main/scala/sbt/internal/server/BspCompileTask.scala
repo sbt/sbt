@@ -66,7 +66,7 @@ object BspCompileTask {
 case class BspCompileTask private (
     targetId: BuildTargetIdentifier,
     targetName: String,
-    id: TaskId,
+    id: sbt.internal.bsp.TaskId,
     startTimeMillis: Long
 ) {
   import sbt.internal.bsp.codec.JsonProtocol._

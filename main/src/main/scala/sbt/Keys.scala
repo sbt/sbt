@@ -590,9 +590,9 @@ object Keys {
   val state = Def.stateKey
   val streamsManager = Def.streamsManagerKey
   // wrapper to work around SI-2915
-  final class TaskProgress(val progress: ExecuteProgress[Task])
+  final class TaskProgress(val progress: ExecuteProgress)
   object TaskProgress {
-    def apply(progress: ExecuteProgress[Task]): TaskProgress = new TaskProgress(progress)
+    def apply(progress: ExecuteProgress): TaskProgress = new TaskProgress(progress)
   }
   private[sbt] val currentTaskProgress = AttributeKey[TaskProgress]("current-task-progress")
   private[sbt] val taskProgress = AttributeKey[sbt.internal.TaskProgress]("active-task-progress")
