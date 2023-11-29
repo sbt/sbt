@@ -21,17 +21,15 @@ import sjsonnew.support.scalajson.unsafe.CompactPrinter
  * as Chrome Trace Event Format.
  * This class is activated by adding -Dsbt.traces=true to the JVM options.
  */
-private[sbt] final class TaskTraceEvent
-    extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task] {
+private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
   private[this] var start = 0L
   private[this] val console = ConsoleOut.systemOut
 
   override def initial(): Unit = ()
-  override def afterReady(task: Task[Any]): Unit = ()
-  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit = ()
+  override def afterReady(task: TaskId[?]): Unit = ()
+  override def afterCompleted[T](task: TaskId[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = ()
   override def stop(): Unit = ()
 
   start = System.nanoTime

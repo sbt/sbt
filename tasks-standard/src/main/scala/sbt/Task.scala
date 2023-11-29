@@ -16,7 +16,7 @@ import sbt.util.Monad
 /**
  * Combines metadata `info` and a computation `work` to define a task.
  */
-final case class Task[A](info: Info[A], work: Action[A]):
+final case class Task[A](info: Info[A], work: Action[A]) extends TaskId[A]:
   override def toString = info.name getOrElse ("Task(" + info + ")")
   override def hashCode = info.hashCode
 
@@ -28,7 +28,10 @@ final case class Task[A](info: Info[A], work: Action[A]):
     withInfo(info = nextInfo)
   }
 
-  def tags: TagMap = info get tagsKey getOrElse TagMap.empty
+  def tags: TagMap = info.get(tagsKey).getOrElse(TagMap.empty)
+  def name: Option[String] = info.name
+
+  def attributes: AttributeMap = info.attributes
 
   private[sbt] def withInfo(info: Info[A]): Task[A] =
     Task(info = info, work = this.work)

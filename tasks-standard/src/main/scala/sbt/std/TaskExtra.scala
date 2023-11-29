@@ -144,7 +144,7 @@ trait TaskExtra extends TaskExtra0 {
       : Conversion[(Task[A1], Task[A2]), MultiInTask[[F[_]] =>> Tuple.Map[(A1, A2), F]]] =
     multT2Task(_)
 
-  final implicit def multInputTask[K[F[_]]: AList](tasks: K[Task]): MultiInTask[K] =
+  final implicit def multInputTask[K[+F[_]]: AList](tasks: K[Task]): MultiInTask[K] =
     new MultiInTask[K]:
       override def flatMapN[A](f: K[Id] => Task[A]): Task[A] =
         Task(Info(), Action.FlatMapped[A, K](tasks, f compose allM, AList[K]))

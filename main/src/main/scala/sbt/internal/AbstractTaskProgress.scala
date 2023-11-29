@@ -10,18 +10,18 @@ package internal
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[Task] {
+private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
 
   private[this] val showScopedKey = Def.showShortKey(None)
-  private[this] val anonOwners = new ConcurrentHashMap[Task[_], Task[_]]
-  private[this] val calledBy = new ConcurrentHashMap[Task[_], Task[_]]
-  private[this] val timings = new ConcurrentHashMap[Task[_], Timer]
+  private[this] val anonOwners = new ConcurrentHashMap[TaskId[_], TaskId[_]]
+  private[this] val calledBy = new ConcurrentHashMap[TaskId[_], TaskId[_]]
+  private[this] val timings = new ConcurrentHashMap[TaskId[_], Timer]
   private[sbt] def timingsByName: mutable.Map[String, AtomicLong] = {
     val result = new ConcurrentHashMap[String, AtomicLong]
     timings.forEach { (task, timing) =>
@@ -34,18 +34,18 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
     result.asScala
   }
   private[sbt] def anyTimings = !timings.isEmpty
-  def currentTimings: Iterator[(Task[_], Timer)] = timings.asScala.iterator
+  def currentTimings: Iterator[(TaskId[_], Timer)] = timings.asScala.iterator
 
-  private[internal] def exceededThreshold(task: Task[_], threshold: FiniteDuration): Boolean =
+  private[internal] def exceededThreshold(task: TaskId[_], threshold: FiniteDuration): Boolean =
     timings.get(task) match {
       case null => false
       case t    => t.durationMicros > threshold.toMicros
     }
   private[internal] def timings(
-      tasks: java.util.Set[Task[_]],
+      tasks: java.util.Set[TaskId[_]],
       thresholdMicros: Long
-  ): Vector[(Task[_], Long)] = {
-    val result = new VectorBuilder[(Task[_], Long)]
+  ): Vector[(TaskId[_], Long)] = {
+    val result = new VectorBuilder[(TaskId[_], Long)]
     val now = System.nanoTime
     tasks.forEach { t =>
       timings.get(t) match {
@@ -60,7 +60,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
     result.result()
   }
   def activeTasks(now: Long) = {
-    val result = new VectorBuilder[(Task[_], FiniteDuration)]
+    val result = new VectorBuilder[(TaskId[_], FiniteDuration)]
     timings.forEach { (task, timing) =>
       if (timing.isActive) result += task -> (now - timing.startNanos).nanos
     }
@@ -68,25 +68,26 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
   }
 
   override def afterRegistered(
-      task: Task[Any],
-      allDeps: Iterable[Task[Any]],
-      pendingDeps: Iterable[Task[Any]]
+      task: TaskId[?],
+      allDeps: Iterable[TaskId[?]],
+      pendingDeps: Iterable[TaskId[?]]
   ): Unit = {
     // we need this to infer anonymous task names
-    pendingDeps foreach { t =>
-      if (TaskName.transformNode(t).isEmpty) {
-        anonOwners.put(t, task)
+    pendingDeps
+      .filter {
+        case t: Task[?] => TaskName.transformNode(t).isEmpty
+        case _          => true
       }
-    }
+      .foreach(anonOwners.put(_, task))
   }
 
-  override def beforeWork(task: Task[Any]): Unit = {
+  override def beforeWork(task: TaskId[?]): Unit = {
     timings.put(task, new Timer)
     ()
   }
 
   protected def clearTimings: Boolean = false
-  override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit = {
+  override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit = {
     if (clearTimings) timings.remove(task)
     else
       timings.get(task) match {
@@ -100,21 +101,23 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress[
     }
   }
 
-  private[this] val taskNameCache = new ConcurrentHashMap[Task[_], String]
-  protected def taskName(t: Task[_]): String = taskNameCache.get(t) match {
+  private[this] val taskNameCache = new ConcurrentHashMap[TaskId[_], String]
+  protected def taskName(t: TaskId[_]): String = taskNameCache.get(t) match {
     case null =>
       val name = taskName0(t)
       taskNameCache.putIfAbsent(t, name)
       name
     case name => name
   }
-  private[this] def taskName0(t: Task[_]): String = {
+  private[this] def taskName0(t: TaskId[_]): String = {
     def definedName(node: Task[_]): Option[String] =
-      node.info.name orElse TaskName.transformNode(node).map(showScopedKey.show)
+      node.info.name.orElse(TaskName.transformNode(node).map(showScopedKey.show))
     def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map taskName
-    def nameDelegate(t: Task[_]): Option[Task[_]] =
-      Option(anonOwners.get(t)) orElse Option(calledBy.get(t))
-    definedName(t) orElse inferredName(t) getOrElse TaskName.anonymousName(t)
+    def nameDelegate(t: Task[_]): Option[TaskId[_]] =
+      Option(anonOwners.get(t)).orElse(Option(calledBy.get(t)))
+    t match
+      case t: Task[?] => definedName(t).orElse(inferredName(t)).getOrElse(TaskName.anonymousName(t))
+      case _          => TaskName.anonymousName(t)
   }
 }
 

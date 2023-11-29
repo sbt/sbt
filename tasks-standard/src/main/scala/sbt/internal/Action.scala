@@ -27,11 +27,11 @@ enum Action[A]:
   // private[sbt] def mapTask(f: [A1] => Task[A1] => Task[A1]) = this
 
   /** Applies a function to the result of evaluating a heterogeneous list of other tasks. */
-  case Mapped[A, K[F[_]]](in: K[Task], f: K[Result] => A, alist: AList[K]) extends Action[A]
+  case Mapped[A, K[+F[_]]](in: K[Task], f: K[Result] => A, alist: AList[K]) extends Action[A]
 // private[sbt] def mapTask(g: Task ~> Task) = Mapped[A, K](alist.transform(in, g), f, alist)
 
   /** Computes another task to evaluate based on results from evaluating other tasks. */
-  case FlatMapped[A, K[F[_]]](
+  case FlatMapped[A, K[+F[_]]](
       in: K[Task],
       f: K[Result] => Task[A],
       alist: AList[K],
@@ -63,6 +63,7 @@ enum Action[A]:
 end Action
 
 object Action:
+  import sbt.std.TaskExtra.*
 
   /**
    * Encode this computation as a flatMap.
@@ -72,12 +73,12 @@ object Action:
   ): Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]] =
     val alist = AList.tuple[Tuple1[Either[A1, A2]]]
     val f: Either[A1, A2] => Task[A2] = {
-      case Right(b) => std.TaskExtra.task(b)
-      case Left(a)  => std.TaskExtra.singleInputTask(s.fin).map(_(a))
+      case Right(b) => task(b)
+      case Left(a)  => singleInputTask(s.fin).map(_(a))
     }
     Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]](
       Tuple1(s.fab),
-      { case Tuple1(r) => (f compose std.TaskExtra.successM)(r) },
+      { case Tuple1(r) => f.compose(successM)(r) },
       alist,
     )
 end Action

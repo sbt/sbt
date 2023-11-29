@@ -534,7 +534,7 @@ object Scoped:
         .apply(deps => nop.dependsOn(deps: _*))
   }
 
-  sealed abstract class RichTaskables[K[L[x]]](final val keys: K[Taskable])(using
+  sealed abstract class RichTaskables[K[+L[x]]](final val keys: K[Taskable])(using
       a: AList[K]
   ):
 

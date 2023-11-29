@@ -115,7 +115,7 @@ object Previous {
   /** Persists values of tasks t where there is some task referencing it via t.previous. */
   private[sbt] def complete(
       referenced: References,
-      results: RMap[Task, Result],
+      results: RMap[TaskId, Result],
       streams: Streams
   ): Unit = {
     val map = referenced.getReferences
@@ -124,7 +124,7 @@ object Previous {
     // We first collect all of the successful tasks and write their scoped key into a map
     // along with their values.
     val successfulTaskResults = (for
-      case results.TPair(task, Result.Value(v)) <- results.toTypedSeq
+      results.TPair(task: Task[?], Result.Value(v)) <- results.toTypedSeq
       key <- task.info.attributes.get(Def.taskDefinitionKey).asInstanceOf[Option[AnyTaskKey]]
     yield key -> v).toMap
     // We then traverse the successful results and look up all of the referenced values for

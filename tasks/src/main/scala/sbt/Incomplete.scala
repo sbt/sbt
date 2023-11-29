@@ -11,6 +11,7 @@ import scala.collection.mutable.ListBuffer
 
 import sbt.internal.util.IDSet
 import Incomplete.{ Error, Value => IValue }
+import scala.jdk.CollectionConverters.*
 
 /**
  * Describes why a task did not complete.
@@ -45,7 +46,6 @@ object Incomplete extends Enumeration {
   def transformTD(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, true)(f)
   def transformBU(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, false)(f)
   def transform(i: Incomplete, topDown: Boolean)(f: Incomplete => Incomplete): Incomplete = {
-    import collection.JavaConverters._
     val visited: collection.mutable.Map[Incomplete, Incomplete] =
       (new java.util.IdentityHashMap[Incomplete, Incomplete]).asScala
     def visit(inc: Incomplete): Incomplete =

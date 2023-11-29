@@ -382,10 +382,11 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     (TaskKey[A](name, description, DTask), dummyTask(name))
 
   private[sbt] def dummyTask[T](name: String): Task[T] = {
-    import std.TaskExtra.{ task => newTask, _ }
+    import std.TaskExtra.{ task => newTask, toTaskInfo }
     val base: Task[T] = newTask(
       sys.error("Dummy task '" + name + "' did not get converted to a full task.")
-    ) named name
+    )
+      .named(name)
     base.copy(info = base.info.set(isDummyTask, true))
   }
 
