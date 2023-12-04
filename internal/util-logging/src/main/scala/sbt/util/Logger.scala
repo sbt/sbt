@@ -40,11 +40,13 @@ abstract class Logger extends xLogger {
   def success(message: => String): Unit
   def log(level: Level.Value, message: => String): Unit
 
+  def verbose(msg: Supplier[String]): Unit = debug(msg)
   def debug(msg: Supplier[String]): Unit = log(Level.Debug, msg)
   def warn(msg: Supplier[String]): Unit = log(Level.Warn, msg)
   def info(msg: Supplier[String]): Unit = log(Level.Info, msg)
   def error(msg: Supplier[String]): Unit = log(Level.Error, msg)
   def trace(msg: Supplier[Throwable]): Unit = trace(msg.get())
+  def success(msg: Supplier[String]): Unit = success(msg.get())
   def log(level: Level.Value, msg: Supplier[String]): Unit = log(level, msg.get)
 }
 
