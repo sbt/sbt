@@ -1949,7 +1949,7 @@ object Defaults extends BuildCommon {
     }
 
   def packageTaskSettings(
-      key: TaskKey[VirtualFileRef],
+      key: TaskKey[HashedVirtualFileRef],
       mappingsTask: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]]
   ) =
     inTask(key)(
@@ -1963,7 +1963,7 @@ object Defaults extends BuildCommon {
       )
     )
 
-  def packageTask: Initialize[Task[VirtualFileRef]] =
+  def packageTask: Initialize[Task[HashedVirtualFileRef]] =
     Def.cachedTask {
       val config = packageConfiguration.value
       val s = streams.value
@@ -2913,12 +2913,12 @@ object Classpaths {
   }
 
   def defaultPackageKeys = Seq(packageBin, packageSrc, packageDoc)
-  lazy val defaultPackages: Seq[TaskKey[VirtualFileRef]] =
+  lazy val defaultPackages: Seq[TaskKey[HashedVirtualFileRef]] =
     for
       task <- defaultPackageKeys
       conf <- Seq(Compile, Test)
     yield (conf / task)
-  lazy val defaultArtifactTasks: Seq[TaskKey[VirtualFileRef]] = makePom +: defaultPackages
+  lazy val defaultArtifactTasks: Seq[TaskKey[HashedVirtualFileRef]] = makePom +: defaultPackages
 
   def findClasspathConfig(
       map: Configuration => Configuration,
@@ -2938,16 +2938,16 @@ object Classpaths {
   }
 
   def packaged(
-      pkgTasks: Seq[TaskKey[VirtualFileRef]]
-  ): Initialize[Task[Map[Artifact, VirtualFileRef]]] =
-    enabledOnly(packagedArtifact.toSettingKey, pkgTasks) apply (_.join.map(_.toMap))
+      pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
+  ): Initialize[Task[Map[Artifact, HashedVirtualFileRef]]] =
+    enabledOnly(packagedArtifact.toSettingKey, pkgTasks).apply(_.join.map(_.toMap))
 
-  def artifactDefs(pkgTasks: Seq[TaskKey[VirtualFileRef]]): Initialize[Seq[Artifact]] =
+  def artifactDefs(pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]): Initialize[Seq[Artifact]] =
     enabledOnly(artifact, pkgTasks)
 
   def enabledOnly[T](
       key: SettingKey[T],
-      pkgTasks: Seq[TaskKey[VirtualFileRef]]
+      pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
   ): Initialize[Seq[T]] =
     (forallIn(key, pkgTasks) zipWith forallIn(publishArtifact, pkgTasks))(_ zip _ collect {
       case (a, true) => a

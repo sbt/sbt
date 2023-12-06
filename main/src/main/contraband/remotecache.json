@@ -14,7 +14,7 @@
         },
         {
           "name": "packaged",
-          "type": "sbt.TaskKey[xsbti.VirtualFileRef]"
+          "type": "sbt.TaskKey[xsbti.HashedVirtualFileRef]"
         }
       ],
       "types": [

@@ -6,7 +6,7 @@
 package sbt.internal.remotecache
 abstract class RemoteCacheArtifact(
   val artifact: sbt.librarymanagement.Artifact,
-  val packaged: sbt.TaskKey[xsbti.VirtualFileRef]) extends Serializable {
+  val packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef]) extends Serializable {
   
   
   

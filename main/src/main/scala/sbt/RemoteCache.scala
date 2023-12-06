@@ -290,7 +290,7 @@ object RemoteCache {
           //     JarUtils.includeInJar(artp, Vector(sf -> s"META-INF/succeeded_tests"))
           //   }
           // }
-          artp
+          converter.toVirtualFile(artpFile)
         },
         pushRemoteCacheArtifact := true,
         remoteCacheArtifact := cacheArtifactTask.value,
@@ -553,12 +553,12 @@ object RemoteCache {
     // }
   }
 
-  private def defaultArtifactTasks: Seq[TaskKey[VirtualFileRef]] =
+  private def defaultArtifactTasks: Seq[TaskKey[HashedVirtualFileRef]] =
     Seq(Compile / packageCache, Test / packageCache)
 
   private def enabledOnly[A](
       key: SettingKey[A],
-      pkgTasks: Seq[TaskKey[VirtualFileRef]]
+      pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
   ): Def.Initialize[Seq[A]] =
     (Classpaths.forallIn(key, pkgTasks) zipWith
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect { case (a, true) =>

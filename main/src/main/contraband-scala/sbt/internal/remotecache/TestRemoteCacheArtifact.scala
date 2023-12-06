@@ -6,7 +6,7 @@
 package sbt.internal.remotecache
 final class TestRemoteCacheArtifact private (
   artifact: sbt.librarymanagement.Artifact,
-  packaged: sbt.TaskKey[xsbti.VirtualFileRef],
+  packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef],
   val extractDirectory: java.io.File,
   val analysisFile: java.io.File,
   val testResult: java.io.File) extends sbt.internal.remotecache.RemoteCacheArtifact(artifact, packaged) with Serializable {
@@ -23,13 +23,13 @@ final class TestRemoteCacheArtifact private (
   override def toString: String = {
     "TestRemoteCacheArtifact(" + artifact + ", " + packaged + ", " + extractDirectory + ", " + analysisFile + ", " + testResult + ")"
   }
-  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, analysisFile: java.io.File = analysisFile, testResult: java.io.File = testResult): TestRemoteCacheArtifact = {
+  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, analysisFile: java.io.File = analysisFile, testResult: java.io.File = testResult): TestRemoteCacheArtifact = {
     new TestRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile, testResult)
   }
   def withArtifact(artifact: sbt.librarymanagement.Artifact): TestRemoteCacheArtifact = {
     copy(artifact = artifact)
   }
-  def withPackaged(packaged: sbt.TaskKey[xsbti.VirtualFileRef]): TestRemoteCacheArtifact = {
+  def withPackaged(packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef]): TestRemoteCacheArtifact = {
     copy(packaged = packaged)
   }
   def withExtractDirectory(extractDirectory: java.io.File): TestRemoteCacheArtifact = {
@@ -44,5 +44,5 @@ final class TestRemoteCacheArtifact private (
 }
 object TestRemoteCacheArtifact {
   
-  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[xsbti.VirtualFileRef], extractDirectory: java.io.File, analysisFile: java.io.File, testResult: java.io.File): TestRemoteCacheArtifact = new TestRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile, testResult)
+  def apply(artifact: sbt.librarymanagement.Artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef], extractDirectory: java.io.File, analysisFile: java.io.File, testResult: java.io.File): TestRemoteCacheArtifact = new TestRemoteCacheArtifact(artifact, packaged, extractDirectory, analysisFile, testResult)
 }
