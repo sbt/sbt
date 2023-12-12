@@ -7,7 +7,7 @@
 
 package sbt.util
 
-import sjsonnew.{ BasicJsonProtocol, IsoString, IsoStringLong, JsonFormat }
+import sjsonnew.{ BasicJsonProtocol, IsoString, JsonFormat }
 import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 
 trait BasicCacheImplicits { self: BasicJsonProtocol =>
