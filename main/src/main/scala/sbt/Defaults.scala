@@ -566,8 +566,8 @@ object Defaults extends BuildCommon {
     // going back and forth between 1.3.x and 1.4.x.
     historyPath := (historyPath or target(t => Option(t / ".history3"))).value,
     sourceDirectory := baseDirectory.value / "src",
-    sourceManaged := crossTarget.value / "src_managed",
-    resourceManaged := crossTarget.value / "resource_managed",
+    sourceManaged := target.value / "src_managed",
+    resourceManaged := target.value / "resource_managed",
     // Adds subproject build.sbt files to the global list of build files to monitor
     Scope.Global / checkBuildSources / pollInterval :==
       new FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS),
@@ -657,7 +657,7 @@ object Defaults extends BuildCommon {
   // This exists for binary compatibility and probably never should have been public.
   def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
   lazy val outputConfigPaths: Seq[Setting[_]] = Seq(
-    classDirectory := crossTarget.value / (prefix(configuration.value.name) + "classes"),
+    classDirectory := target.value / (prefix(configuration.value.name) + "classes"),
     backendOutput := {
       val converter = fileConverter.value
       val dir = classDirectory.value
@@ -668,12 +668,12 @@ object Defaults extends BuildCommon {
       (earlyOutput / artifactPath).value match
         case vf: VirtualFile => vf
     },
-    semanticdbTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "meta"),
-    compileAnalysisTargetRoot := crossTarget.value / (prefix(configuration.value.name) + "zinc"),
-    earlyCompileAnalysisTargetRoot := crossTarget.value / (prefix(
+    semanticdbTargetRoot := target.value / (prefix(configuration.value.name) + "meta"),
+    compileAnalysisTargetRoot := target.value / (prefix(configuration.value.name) + "zinc"),
+    earlyCompileAnalysisTargetRoot := target.value / (prefix(
       configuration.value.name
     ) + "early-zinc"),
-    doc / target := crossTarget.value / (prefix(configuration.value.name) + "api")
+    doc / target := target.value / (prefix(configuration.value.name) + "api")
   )
 
   // This is included into JvmPlugin.projectSettings
@@ -972,7 +972,7 @@ object Defaults extends BuildCommon {
             Option(
               TransactionalManagerType
                 .of( // https://github.com/sbt/sbt/issues/1673
-                  crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
+                  target.value / s"${prefix(configuration.value.name)}classes.bak",
                   streams.value.log
                 ): ClassFileManagerType
             ).toOptional
@@ -1868,7 +1868,7 @@ object Defaults extends BuildCommon {
     Def.setting {
       val f = artifactName.value
       val converter = fileConverter.value
-      val p = crossTarget.value /
+      val p = target.value /
         (prefix(configuration.value.name) + extraPrefix) / f(
           ScalaVersion(
             (artifactName / scalaVersion).value,
@@ -1887,7 +1887,7 @@ object Defaults extends BuildCommon {
     Def.setting {
       val f = artifactName.value
       val converter = fileConverter.value
-      val p = crossTarget.value / extraPrefix / f(
+      val p = target.value / extraPrefix / f(
         ScalaVersion(
           (artifactName / scalaVersion).value,
           (artifactName / scalaBinaryVersion).value
@@ -1901,7 +1901,7 @@ object Defaults extends BuildCommon {
   def artifactPathSetting(art: SettingKey[Artifact]): Initialize[VirtualFileRef] =
     Def.setting {
       val f = artifactName.value
-      val p = crossTarget.value / f(
+      val p = target.value / f(
         ScalaVersion(
           (artifactName / scalaVersion).value,
           (artifactName / scalaBinaryVersion).value
@@ -2472,6 +2472,7 @@ object Defaults extends BuildCommon {
               s.log,
               Pkg.timeFromConfiguration(pkgConfig)
             )
+            s.log.info(s"written $out")
             Def.declareOutput(out)
             analysisResult.hasModified() -> (out: HashedVirtualFileRef)
           })
@@ -2706,7 +2707,7 @@ object Defaults extends BuildCommon {
       val t = classDirectory.value
       val dirs = resourceDirectories.value.toSet
       val s = streams.value
-      val syncDir = crossTarget.value / (prefix(configuration.value.name) + "sync")
+      val syncDir = target.value / (prefix(configuration.value.name) + "sync")
       val factory = CacheStoreFactory(syncDir)
       val cacheStore = factory.make("copy-resource")
       val converter = fileConverter.value
@@ -3030,7 +3031,6 @@ object Classpaths {
   val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,
     packagedArtifacts :== Map.empty,
-    crossTarget := target.value,
     makePom := {
       val converter = fileConverter.value
       val config = makePomConfiguration.value
@@ -3189,7 +3189,7 @@ object Classpaths {
       val p = platform.value
       val m = moduleName.value
       val sv = scalaVersion.value
-      s"$p/$sv/$m"
+      s"$p/scala-$sv/$m"
     },
     ivyPaths := IvyPaths(
       baseDirectory.value.toString,
@@ -3337,7 +3337,7 @@ object Classpaths {
     makeIvyXmlConfiguration := {
       makeIvyXmlConfig(
         publishMavenStyle.value,
-        sbt.Classpaths.deliverPattern(crossTarget.value),
+        sbt.Classpaths.deliverPattern(target.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         (publish / checksums).value.toVector,
@@ -3360,7 +3360,7 @@ object Classpaths {
       }
       publishConfig(
         publishMavenStyle.value,
-        deliverPattern(crossTarget.value),
+        deliverPattern(target.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         artifacts,
@@ -3373,7 +3373,7 @@ object Classpaths {
     makeIvyXmlLocalConfiguration := {
       makeIvyXmlConfig(
         false, // publishMavenStyle.value,
-        sbt.Classpaths.deliverPattern(crossTarget.value),
+        sbt.Classpaths.deliverPattern(target.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         (publish / checksums).value.toVector,
@@ -3389,7 +3389,7 @@ object Classpaths {
       }
       publishConfig(
         false, // publishMavenStyle.value,
-        deliverPattern(crossTarget.value),
+        deliverPattern(target.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         artifacts,
@@ -3405,7 +3405,7 @@ object Classpaths {
       }
       publishConfig(
         true,
-        deliverPattern(crossTarget.value),
+        deliverPattern(target.value),
         if (isSnapshot.value) "integration" else "release",
         ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
         artifacts,
@@ -3641,7 +3641,7 @@ object Classpaths {
             moduleConfigurations = Vector.empty,
             checksums = checksums.value.toVector,
             managedChecksums = false,
-            resolutionCacheDir = Some(crossTarget.value / "resolution-cache"),
+            resolutionCacheDir = Some(target.value / "resolution-cache"),
           ),
           ivySbt := ivySbt0.value,
           classifiersModule := classifiersModuleTask.value,
@@ -3719,7 +3719,7 @@ object Classpaths {
             moduleConfigurations = Vector.empty,
             checksums = checksums.value.toVector,
             managedChecksums = false,
-            resolutionCacheDir = Some(crossTarget.value / "bridge-resolution-cache"),
+            resolutionCacheDir = Some(target.value / "bridge-resolution-cache"),
           )
         )
       ) ++ Seq(
@@ -3883,7 +3883,7 @@ object Classpaths {
       appConfiguration.toTaskable,
       Defaults.unmanagedScalaInstanceOnly.toTaskable,
       dependencyCacheDirectory.toTaskable,
-      crossTarget.toTaskable,
+      target.toTaskable,
       executionRoots.toTaskable,
       resolvedScoped.toTaskable,
       forceUpdatePeriod.toTaskable,
@@ -4244,7 +4244,7 @@ object Classpaths {
         .withModuleConfigurations(moduleConfigurations.value.toVector)
         .withLock(lock(appConfiguration.value))
         .withChecksums((update / checksums).value.toVector)
-        .withResolutionCacheDir(crossTarget.value / "resolution-cache")
+        .withResolutionCacheDir(target.value / "resolution-cache")
         .withUpdateOptions(updateOptions.value)
         .withLog(s.log)
     }

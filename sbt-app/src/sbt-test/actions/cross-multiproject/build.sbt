@@ -1,7 +1,7 @@
 lazy val scala3 = "3.2.1"
 lazy val scala213 = "2.13.1"
 
-ThisBuild / crossScalaVersions := Seq(scala3, scala213)
+crossScalaVersions := Seq(scala3, scala213)
 ThisBuild / scalaVersion       := scala3
 
 lazy val rootProj = (project in file("."))

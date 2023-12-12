@@ -4,6 +4,6 @@
 
 > ++2.13.1 compile
 
-$ exists core/target/scala-2.13
--$ exists module/target/scala-2.13
--$ exists module/target/scala-2.12
+$ exists target/out/jvm/scala-2.13.1/core/core_2.13-0.1.0-SNAPSHOT-noresources.jar
+-$ exists target/out/jvm/scala-2.13.1/module
+-$ exists target/out/jvm/scala-2.12.18/module
