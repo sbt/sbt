@@ -8,8 +8,6 @@
 package sbt
 package internal
 
-import sbt.internal.util.AList
-
 // Action, Task, and Info are intentionally invariant in their type parameter.
 //  Various natural transformations used, such as PMap, require invariant type constructors for correctness
 
@@ -27,14 +25,14 @@ enum Action[A]:
   // private[sbt] def mapTask(f: [A1] => Task[A1] => Task[A1]) = this
 
   /** Applies a function to the result of evaluating a heterogeneous list of other tasks. */
-  case Mapped[A, K[+F[_]]](in: K[Task], f: K[Result] => A, alist: AList[K]) extends Action[A]
+  case Mapped[A, Tup <: Tuple](in: Tuple.Map[Tup, Task], f: Tuple.Map[Tup, Result] => A)
+      extends Action[A]
 // private[sbt] def mapTask(g: Task ~> Task) = Mapped[A, K](alist.transform(in, g), f, alist)
 
   /** Computes another task to evaluate based on results from evaluating other tasks. */
-  case FlatMapped[A, K[+F[_]]](
-      in: K[Task],
-      f: K[Result] => Task[A],
-      alist: AList[K],
+  case FlatMapped[A, Tup <: Tuple](
+      in: Tuple.Map[Tup, Task],
+      f: Tuple.Map[Tup, Result] => Task[A]
   ) extends Action[A]
   // private[sbt] def mapTask(g: Task ~> Task) =
   //  FlatMapped[A, K](alist.transform(in, g), g.fn[A] compose f, alist)
@@ -70,15 +68,13 @@ object Action:
    */
   private[sbt] def asFlatMapped[A1, A2](
       s: Action.Selected[A1, A2]
-  ): Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]] =
-    val alist = AList.tuple[Tuple1[Either[A1, A2]]]
+  ): Action.FlatMapped[A2, Tuple1[Either[A1, A2]]] =
     val f: Either[A1, A2] => Task[A2] = {
       case Right(b) => task(b)
       case Left(a)  => singleInputTask(s.fin).map(_(a))
     }
-    Action.FlatMapped[A2, [F[_]] =>> Tuple1[F[Either[A1, A2]]]](
+    Action.FlatMapped[A2, Tuple1[Either[A1, A2]]](
       Tuple1(s.fab),
       { case Tuple1(r) => f.compose(successM)(r) },
-      alist,
     )
 end Action

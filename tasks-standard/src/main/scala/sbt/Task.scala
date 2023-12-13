@@ -8,8 +8,8 @@
 package sbt
 
 import sbt.internal.Action
-import sbt.internal.util.Types._
-import sbt.internal.util.{ ~>, AList, AttributeKey, AttributeMap }
+import sbt.internal.util.Types.const
+import sbt.internal.util.{ ~>, AttributeKey, AttributeMap }
 import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
 import sbt.util.Monad
 
@@ -51,7 +51,7 @@ object Task:
 
     override def map[A1, A2](in: Task[A1])(f: A1 => A2): Task[A2] = in.map(f)
     override def flatMap[A1, A2](in: F[A1])(f: A1 => F[A2]): F[A2] = in.flatMap(f)
-    override def flatten[A1](in: Task[Task[A1]]): Task[A1] = in.flatMap(idFun[Task[A1]])
+    override def flatten[A1](in: Task[Task[A1]]): Task[A1] = in.flatMap(identity)
 end Task
 
 /**

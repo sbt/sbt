@@ -9,7 +9,6 @@ package sbt.test
 
 import sbt._
 import sbt.Def.Initialize
-import sbt.internal.util.AList
 import sbt.internal.util.Types.Id
 
 object TupleSyntaxTest:

@@ -9,8 +9,8 @@ package sbt
 package std
 
 import sbt.internal.Action
-import sbt.internal.util.Types._
-import sbt.internal.util.{ ~>, AList, DelegatingPMap, RMap }
+import sbt.internal.util.{ ~>, DelegatingPMap, RMap }
+import sbt.internal.util.TupleMapExtension.*
 import TaskExtra.{ all, existToAny }
 import sbt.internal.util.Types.*
 
@@ -49,15 +49,12 @@ object Transform:
     new NodeView:
       import Action.*
       def apply[T](t: TaskId[T]): Node[T] = pre(t).work match
-        case Pure(eval, _)   => uniform(Nil)(_ => Right(eval()))
-        case m: Mapped[a, k] => toNode[a, k](m.in)(right[a] compose m.f)(m.alist)
-        case m: FlatMapped[a, k] =>
-          toNode[a, k](m.in)(left[Task[a]] compose m.f)(m.alist) // (m.alist)
+        case Pure(eval, _)       => uniform(Nil)(_ => Right(eval()))
+        case m: Mapped[a, t]     => toNode(m.in)(right[a].compose(m.f))
+        case m: FlatMapped[a, t] => toNode(m.in)(left[Task[a]].compose(m.f))
         case s: Selected[a1, a2] =>
           val m = Action.asFlatMapped[a1, a2](s)
-          toNode[a2, [F[_]] =>> Tuple1[F[Either[a1, a2]]]](m.in)(left[Task[a2]] compose m.f)(
-            m.alist
-          )
+          toNode(m.in)(left[Task[a2]].compose(m.f))
         case DependsOn(in, deps) => uniform(existToAny(deps))(const(Left(in)) compose all)
         case Join(in, f)         => uniform(in)(f)
 
@@ -68,15 +65,19 @@ object Transform:
   def uniform[A1, D](tasks: Seq[Task[D]])(
       f: Seq[Result[D]] => Either[Task[A1], A1]
   ): Node[A1] =
-    toNode[A1, [F[_]] =>> List[F[D]]](tasks.toList)(f)(AList.list[D])
-
-  def toNode[A1, K1[F[_]]: AList](
-      inputs: K1[TaskId]
-  )(f: K1[Result] => Either[Task[A1], A1]): Node[A1] =
     new Node[A1]:
-      type K[F[_]] = K1[F]
-      val in = inputs
-      lazy val alist: AList[K] = AList[K]
-      def work(results: K[Result]) = f(results)
+      type Inputs = Seq[Result[D]]
+      def dependencies: List[TaskId[D]] = tasks.toList
+      def computeInputs(f: [a] => (x: TaskId[a]) => Result[a]): Inputs = tasks.map(f[D])
+      def work(inputs: Inputs) = f(inputs)
+
+  def toNode[A1, Tup <: Tuple](
+      deps: Tuple.Map[Tup, TaskId]
+  )(f: Tuple.Map[Tup, Result] => Either[Task[A1], A1]): Node[A1] =
+    new Node[A1]:
+      type Inputs = Tuple.Map[Tup, Result]
+      def dependencies: List[TaskId[?]] = deps.iterator.toList
+      def computeInputs(f: [a] => TaskId[a] => Result[a]) = deps.transform(f)
+      def work(inputs: Inputs) = f(inputs)
 
 end Transform

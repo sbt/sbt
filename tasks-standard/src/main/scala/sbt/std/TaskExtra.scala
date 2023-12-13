@@ -10,17 +10,17 @@ package std
 
 import scala.sys.process.{ BasicIO, ProcessIO, ProcessBuilder }
 
-import sbt.internal.util.{ AList, AttributeMap }
-import sbt.internal.util.Types._
+import sbt.internal.util.AttributeMap
+import sbt.internal.util.TupleMapExtension.*
 import java.io.{ BufferedInputStream, BufferedReader, File, InputStream }
 import sbt.io.IO
 import sbt.internal.Action
 
-sealed trait MultiInTask[K[F[_]]] {
-  def flatMapN[A](f: K[Id] => Task[A]): Task[A]
-  def flatMapR[A](f: K[Result] => Task[A]): Task[A]
-  def mapN[A](f: K[Id] => A): Task[A]
-  def mapR[A](f: K[Result] => A): Task[A]
+sealed trait MultiInTask[Tup <: Tuple] {
+  def flatMapN[A](f: Tup => Task[A]): Task[A]
+  def flatMapR[A](f: Tuple.Map[Tup, Result] => Task[A]): Task[A]
+  def mapN[A](f: Tup => A): Task[A]
+  def mapR[A](f: Tuple.Map[Tup, Result] => A): Task[A]
   def flatFailure[A](f: Seq[Incomplete] => Task[A]): Task[A]
   def mapFailure[A](f: Seq[Incomplete] => A): Task[A]
 }
@@ -123,7 +123,7 @@ trait TaskExtra extends TaskExtra0 {
   final implicit def toTasks[S](in: Seq[() => S]): Seq[Task[S]] = in.map(toTask)
   final implicit def iterableTask[S](in: Seq[S]): ForkTask[S, Seq] = new ForkTask[S, Seq] {
     def fork[T](f: S => T): Seq[Task[T]] = in.map(x => task(f(x)))
-    def tasks: Seq[Task[S]] = fork(idFun)
+    def tasks: Seq[Task[S]] = fork(identity)
   }
 
   import TaskExtra.{ allM, anyFailM, failM, successM }
@@ -134,75 +134,62 @@ trait TaskExtra extends TaskExtra0 {
     def reduced(f: (S, S) => S): Task[S] = TaskExtra.reduced(in.toIndexedSeq, f)
   }
 
-  final implicit def multT2Task[A1, A2](
-      in: (Task[A1], Task[A2])
-  ): MultiInTask[[F[_]] =>> Tuple.Map[(A1, A2), F]] =
-    given AList[[F[_]] =>> Tuple.Map[(A1, A2), F]] = AList.tuple[(A1, A2)]
-    multInputTask[[F[_]] =>> Tuple.Map[(A1, A2), F]](in)
+  final implicit def multT2Task[A1, A2](in: (Task[A1], Task[A2])): MultiInTask[(A1, A2)] =
+    multInputTask[(A1, A2)](in)
 
-  given multT2TaskConv[A1, A2]
-      : Conversion[(Task[A1], Task[A2]), MultiInTask[[F[_]] =>> Tuple.Map[(A1, A2), F]]] =
+  given multT2TaskConv[A1, A2]: Conversion[(Task[A1], Task[A2]), MultiInTask[(A1, A2)]] =
     multT2Task(_)
 
-  final implicit def multInputTask[K[+F[_]]: AList](tasks: K[Task]): MultiInTask[K] =
-    new MultiInTask[K]:
-      override def flatMapN[A](f: K[Id] => Task[A]): Task[A] =
-        Task(Info(), Action.FlatMapped[A, K](tasks, f compose allM, AList[K]))
-      override def flatMapR[A](f: K[Result] => Task[A]): Task[A] =
-        Task(Info(), Action.FlatMapped[A, K](tasks, f, AList[K]))
+  final implicit def multInputTask[Tup <: Tuple](tasks: Tuple.Map[Tup, Task]): MultiInTask[Tup] =
+    new MultiInTask[Tup]:
+      override def flatMapN[A](f: Tup => Task[A]): Task[A] =
+        Task(Info(), Action.FlatMapped(tasks, f.compose(allM)))
+      override def flatMapR[A](f: Tuple.Map[Tup, Result] => Task[A]): Task[A] =
+        Task(Info(), Action.FlatMapped(tasks, f))
 
-      override def mapN[A](f: K[Id] => A): Task[A] =
-        Task(Info(), Action.Mapped[A, K](tasks, f compose allM, AList[K]))
-      override def mapR[A](f: K[Result] => A): Task[A] =
-        Task(Info(), Action.Mapped[A, K](tasks, f, AList[K]))
+      override def mapN[A](f: Tup => A): Task[A] =
+        Task(Info(), Action.Mapped(tasks, f.compose(allM)))
+      override def mapR[A](f: Tuple.Map[Tup, Result] => A): Task[A] =
+        Task(Info(), Action.Mapped(tasks, f))
       override def flatFailure[A](f: Seq[Incomplete] => Task[A]): Task[A] =
-        Task(Info(), Action.FlatMapped[A, K](tasks, f compose anyFailM, AList[K]))
+        Task(Info(), Action.FlatMapped(tasks, f.compose(anyFailM)))
       override def mapFailure[A](f: Seq[Incomplete] => A): Task[A] =
-        Task(Info(), Action.Mapped[A, K](tasks, f compose anyFailM, AList[K]))
+        Task(Info(), Action.Mapped(tasks, f.compose(anyFailM)))
 
   final implicit def singleInputTask[S](in: Task[S]): SingleInTask[S] =
     new SingleInTask[S]:
       // type K[L[x]] = L[S]
-      given alist: AList[[F[_]] =>> Tuple.Map[Tuple1[S], F]] = AList.tuple[Tuple1[S]]
 
-      def failure: Task[Incomplete] = mapFailure(idFun)
-      def result: Task[Result[S]] = mapR(idFun)
+      def failure: Task[Incomplete] = mapFailure(identity)
+      def result: Task[Result[S]] = mapR(identity)
 
       private def newInfo[A]: Info[A] = TaskExtra.newInfo(in.info)
 
       override def flatMapR[A](f: Result[S] => Task[A]): Task[A] =
         Task(
           newInfo,
-          Action.FlatMapped[A, [F[_]] =>> Tuple.Map[Tuple1[S], F]](
-            AList.toTuple(in),
-            AList.fromTuple(f),
-            alist,
-          )
+          Action.FlatMapped[A, Tuple1[S]](Tuple1(in), { case Tuple1(a) => f(a) })
         )
 
       override def mapR[A](f: Result[S] => A): Task[A] =
         Task(
           newInfo,
-          Action.Mapped[A, [F[_]] =>> Tuple.Map[Tuple1[S], F]](
-            AList.toTuple(in),
-            AList.fromTuple(f),
-            alist,
-          )
+          Action.Mapped[A, Tuple1[S]](Tuple1(in), { case Tuple1(a) => f(a) })
         )
 
       override def dependsOn(tasks: Task[_]*): Task[S] = Task(newInfo, Action.DependsOn(in, tasks))
 
-      override def flatMapN[T](f: S => Task[T]): Task[T] = flatMapR(f compose successM)
+      override def flatMapN[T](f: S => Task[T]): Task[T] = flatMapR(f.compose(successM))
 
       override inline def flatMap[T](f: S => Task[T]): Task[T] = flatMapN[T](f)
 
-      override def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f compose failM)
+      override def flatFailure[T](f: Incomplete => Task[T]): Task[T] = flatMapR(f.compose(failM))
 
-      override def mapN[T](f: S => T): Task[T] = mapR(f compose successM)
+      override def mapN[T](f: S => T): Task[T] = mapR(f.compose(successM))
 
       override inline def map[T](f: S => T): Task[T] = mapN(f)
 
-      override def mapFailure[T](f: Incomplete => T): Task[T] = mapR(f compose failM)
+      override def mapFailure[T](f: Incomplete => T): Task[T] = mapR(f.compose(failM))
 
       def andFinally(fin: => Unit): Task[S] = mapR(x => Result.tryValue[S]({ fin; x }))
       def doFinally(t: Task[Unit]): Task[S] =
@@ -300,11 +287,10 @@ object TaskExtra extends TaskExtra {
     }
 
   def reducePair[A1](a: Task[A1], b: Task[A1], f: (A1, A1) => A1): Task[A1] =
-    given AList[[F[_]] =>> Tuple.Map[(A1, A1), F]] = AList.tuple[(A1, A1)]
-    multInputTask[[F[_]] =>> Tuple.Map[(A1, A1), F]]((a, b)) mapN f.tupled
+    multInputTask[(A1, A1)]((a, b)).mapN(f.tupled)
 
-  def anyFailM[K[F[_]]: AList]: K[Result] => Seq[Incomplete] = in => {
-    val incs = failuresM[K](AList[K])(in)
+  def anyFailM[Tup <: Tuple]: Tuple.Map[Tup, Result] => Seq[Incomplete] = in => {
+    val incs = failuresM[Tup](in)
     if incs.isEmpty then expectedFailure
     else incs
   }
@@ -321,13 +307,13 @@ object TaskExtra extends TaskExtra {
     case Result.Value(a) => a
   }
 
-  def allM[K[F[_]]: AList]: K[Result] => K[Id] = in => {
-    val incs = failuresM[K](AList[K])(in)
-    if incs.isEmpty then AList[K].transform[Result, Id](in)(Result.tryValue) // .asInstanceOf
+  def allM[Tup <: Tuple]: Tuple.Map[Tup, Result] => Tup = in => {
+    val incs = failuresM[Tup](in)
+    if incs.isEmpty then in.unmap(Result.tryValue)
     else throw incompleteDeps(incs)
   }
-  def failuresM[K[F[_]]: AList]: K[Result] => Seq[Incomplete] = x =>
-    failures[Any](AList[K].toList(x))
+  def failuresM[Tup <: Tuple]: Tuple.Map[Tup, Result] => Seq[Incomplete] = x =>
+    failures(x.iterator.toList)
 
   def all[D](in: Seq[Result[D]]): Seq[D] = {
     val incs = failures(in)
