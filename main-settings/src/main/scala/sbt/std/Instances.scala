@@ -10,8 +10,7 @@ package std
 
 import Def.Initialize
 import sbt.util.{ Applicative, Monad }
-import sbt.internal.util.AList
-import sbt.internal.util.Types.{ const, Id, Compose, idFun }
+import sbt.internal.util.Types.{ const, Compose }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 
 object InitializeInstance:
@@ -80,33 +79,19 @@ object FullInstance:
       FullInstance.flatten[A1](in)
 
   def flatten[A1](in: Initialize[Task[Initialize[Task[A1]]]]): Initialize[Task[A1]] =
-    type K[L[x]] =
-      AList.Tuple3K[Task[Initialize[Task[A1]]], Task[SS], [a] => Initialize[a] => Initialize[a]][
-        L
-      ]
-    Def.app[K, Task[A1]]((in, settingsData, Def.capturedTransformations)) {
+    type Tup = (Task[Initialize[Task[A1]]], Task[SS], [a] => Initialize[a] => Initialize[a])
+    Def.app[Tup, Task[A1]]((in, settingsData, Def.capturedTransformations)) {
       case (a: Task[Initialize[Task[A1]]], data: Task[SS], f) =>
-        import TaskExtra.multT2Task
-        (a, data).flatMapN { case (a, d) => f(a) evaluate d }
-    }(AList.tuple3[Task[Initialize[Task[A1]]], Task[SS], [a] => Initialize[a] => Initialize[a]])
+        TaskExtra.multT2Task((a, data)).flatMapN { case (a, d) => f(a) evaluate d }
+    }
 
   def flattenFun[A1, A2](
       in: Initialize[Task[A1 => Initialize[Task[A2]]]]
   ): Initialize[A1 => Task[A2]] =
-    type K[L[x]] =
-      AList.Tuple3K[Task[A1 => Initialize[Task[A2]]], Task[SS], [a] => Initialize[a] => Initialize[
-        a
-      ]][L]
-    Def.app[K, A1 => Task[A2]]((in, settingsData, Def.capturedTransformations)) {
-      case (a: Task[A1 => Initialize[Task[A2]]] @unchecked, data: Task[SS] @unchecked, f) => {
-        (s: A1) =>
-          import TaskExtra.multT2Task
-          (a, data) flatMapN { case (af, d) => f(af(s)) evaluate d }
-      }
-    }(
-      AList.tuple3[Task[A1 => Initialize[Task[A2]]], Task[SS], [a] => Initialize[a] => Initialize[
-        a
-      ]]
-    )
+    type Tup = (Task[A1 => Initialize[Task[A2]]], Task[SS], [a] => Initialize[a] => Initialize[a])
+    Def.app[Tup, A1 => Task[A2]]((in, settingsData, Def.capturedTransformations)) {
+      case (a: Task[A1 => Initialize[Task[A2]]] @unchecked, data: Task[SS] @unchecked, f) =>
+        (s: A1) => TaskExtra.multT2Task((a, data)).flatMapN { case (af, d) => f(af(s)) evaluate d }
+    }
 
 end FullInstance

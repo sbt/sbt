@@ -7,15 +7,11 @@
 
 package sbt
 
-import sbt.internal.util.AList
-
 object Test extends std.TaskExtra:
   def t2[A1, A2](a1: Task[A1], a2: Task[A2]) =
-    given AList[[F[_]] =>> Tuple.Map[(A1, A2), F]] = AList.tuple[(A1, A2)]
-    multInputTask[[F[_]] =>> Tuple.Map[(A1, A2), F]]((a1, a2))
+    multInputTask[(A1, A2)]((a1, a2))
   def t3[A1, A2, A3](a1: Task[A1], a2: Task[A2], a3: Task[A3]) =
-    given AList[[F[_]] =>> Tuple.Map[(A1, A2, A3), F]] = AList.tuple[(A1, A2, A3)]
-    multInputTask[[F[_]] =>> Tuple.Map[(A1, A2, A3), F]]((a1, a2, a3))
+    multInputTask[(A1, A2, A3)]((a1, a2, a3))
 
   val a = task(3)
   val b = task[Boolean](sys.error("test"))

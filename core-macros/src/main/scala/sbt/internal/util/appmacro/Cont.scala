@@ -4,11 +4,9 @@ package util
 package appmacro
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.TypeTest
 import scala.quoted.*
 import sbt.util.Applicative
 import sbt.util.Monad
-import Types.Id
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -237,13 +235,9 @@ trait Cont:
                 case '[inputTypeTpe] =>
                   '{
                     given Applicative[F] = $instanceExpr
-                    AList
-                      .tuple[inputTypeTpe & Tuple]
-                      .mapN[F, A1](${
-                        br.tupleExpr.asInstanceOf[Expr[Tuple.Map[inputTypeTpe & Tuple, F]]]
-                      })(
-                        ${ lambda.asExprOf[Tuple.Map[inputTypeTpe & Tuple, Id] => A1] }
-                      )
+                    import TupleMapExtension.*
+                    ${ br.tupleExpr.asInstanceOf[Expr[Tuple.Map[inputTypeTpe & Tuple, F]]] }
+                      .mapN(${ lambda.asExprOf[inputTypeTpe & Tuple => A1] })
                   }
 
         eitherTree match

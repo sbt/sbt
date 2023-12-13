@@ -11,14 +11,13 @@ import java.util.concurrent.ExecutionException
 
 import sbt.internal.util.ErrorHandling.wideConvert
 import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
-import sbt.internal.util.Types.*
+import sbt.internal.util.Types.const
 import sbt.internal.util.Util.nilSeq
 
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import mutable.Map
-import sbt.internal.util.AList
 
 private[sbt] object Execute {
   def taskMap[A]: Map[TaskId[?], A] = (new java.util.IdentityHashMap[TaskId[?], A]).asScala
@@ -28,7 +27,7 @@ private[sbt] object Execute {
   private[sbt] def completed(p: => Unit): Completed = new Completed {
     def process(): Unit = p
   }
-  def noTriggers[TaskId[_]] = new Triggers(Map.empty, Map.empty, idFun)
+  def noTriggers[TaskId[_]] = new Triggers(Map.empty, Map.empty, identity)
 
   def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config =
     new Config(checkCycles, overwriteNode)
@@ -280,8 +279,7 @@ private[sbt] final class Execute(
   /** Send the work for this node to the provided Strategy. */
   def submit(node: TaskId[?])(using strategy: CompletionService): Unit = {
     val v = viewCache(node)
-    val rs = v.alist.transform(v.in)(getResult)
-    // v.alist.transform(v.in)(getResult)
+    val rs = v.computeInputs(getResult)
     strategy.submit(node, () => work(node, v.work(rs)))
   }
 
@@ -325,7 +323,7 @@ private[sbt] final class Execute(
 
   def dependencies(node: TaskId[?]): Iterable[TaskId[?]] = dependencies(viewCache(node))
   def dependencies(v: Node[?]): Iterable[TaskId[?]] =
-    v.alist.toList(v.in).filter(dep => view.inline1(dep).isEmpty)
+    v.dependencies.filter(dep => view.inline1(dep).isEmpty)
 
   def runBefore(node: TaskId[?]): Seq[TaskId[?]] = triggers.runBefore.getOrElse(node, nilSeq)
   def triggeredBy(node: TaskId[?]): Seq[TaskId[?]] = triggers.injectFor.getOrElse(node, nilSeq)

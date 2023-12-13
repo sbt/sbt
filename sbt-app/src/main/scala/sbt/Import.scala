@@ -121,8 +121,6 @@ trait Import {
   val Tracked = sbt.util.Tracked
 
   // sbt.internal.util
-  val AList = sbt.internal.util.AList
-  type AList[K[L[x]]] = sbt.internal.util.AList[K]
   type AbstractRMap[K[_], V[_]] = sbt.internal.util.AbstractRMap[K, V]
   type AlreadyHandledException = sbt.internal.util.AlreadyHandledException
   val AttributeEntry = sbt.internal.util.AttributeEntry

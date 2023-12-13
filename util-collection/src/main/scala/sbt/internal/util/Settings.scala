@@ -10,6 +10,7 @@ package sbt.internal.util
 import Types.*
 import sbt.util.Show
 import Util.{ nil, nilSeq }
+import scala.jdk.CollectionConverters.*
 
 sealed trait Settings[ScopeType]:
   def data: Map[ScopeType, AttributeMap]
@@ -108,19 +109,16 @@ trait Init[ScopeType]:
   def flatMap[A1, A2](in: Initialize[A1])(f: A1 => Initialize[A2]): Initialize[A2] = Bind(f, in)
 
   def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
-    Apply[[F[_]] =>> F[A1], A2](f, in, AList.single[A1])
+    app[Tuple1[A1], A2](Tuple1(in)) { case Tuple1(x) => f(x) }
 
-  def app[K[L[x]], A2](inputs: K[Initialize])(f: K[Id] => A2)(implicit
-      alist: AList[K]
-  ): Initialize[A2] = Apply[K, A2](f, inputs, alist)
+  def app[Tup <: Tuple, A2](inputs: Tuple.Map[Tup, Initialize])(f: Tup => A2): Initialize[A2] =
+    Apply[Tup, A2](f, inputs)
 
   def ap[A1, A2](ff: Initialize[A1 => A2])(in: Initialize[A1]): Initialize[A2] =
-    app[[F[_]] =>> (F[A1 => A2], F[A1]), A2]((ff, in)) { (f, a1) =>
-      f(a1)
-    }(AList.tuple2[A1 => A2, A1])
+    app[(A1 => A2, A1), A2]((ff, in)) { (f, a1) => f(a1) }
 
   def uniform[A1, A2](inputs: Seq[Initialize[A1]])(f: Seq[A1] => A2): Initialize[A2] =
-    Apply[[F[_]] =>> List[F[A1]], A2](f, inputs.toList, AList.list[A1])
+    Uniform[A1, A2](f, inputs.toList)
 
   /**
    * The result of this initialization is the validated `key`.
@@ -168,8 +166,8 @@ trait Init[ScopeType]:
   def empty(implicit delegates: ScopeType => Seq[ScopeType]): Settings[ScopeType] =
     Settings0(Map.empty, delegates)
 
-  def asTransform(s: Settings[ScopeType]): [A] => ScopedKey[A] => Id[A] = [A] =>
-    (sk: ScopedKey[A]) => getValue(s, sk)
+  def asTransform(s: Settings[ScopeType]): [A] => ScopedKey[A] => A =
+    [A] => (sk: ScopedKey[A]) => getValue(s, sk)
 
   def getValue[T](s: Settings[ScopeType], k: ScopedKey[T]) =
     s.get(k.scope, k.key) getOrElse (throw new InvalidReference(k))
@@ -187,7 +185,6 @@ trait Init[ScopeType]:
       case r                    => others.add(r)
     }
     result.addAll(others)
-    import scala.collection.JavaConverters._
     result.asScala.toVector
   }
 
@@ -285,7 +282,6 @@ trait Init[ScopeType]:
         delegateForKey(sMap, k, delegates(k.scope), ref, selfRefOk || !isFirst)
     }
 
-    import scala.collection.JavaConverters._
     val undefined = new java.util.ArrayList[Undefined]
     val result = new java.util.concurrent.ConcurrentHashMap[ScopedKey[_], Any]
     val backing = sMap.toSeq
@@ -437,9 +433,7 @@ trait Init[ScopeType]:
     ): Flattened =
       new Flattened(
         key,
-        deps.flatMap(dep =>
-          if (dep.key.isLocal) cmap(dep).dependencies else Seq[ScopedKey[_]](dep).toIterable
-        )
+        deps.flatMap(dep => if (dep.key.isLocal) cmap(dep).dependencies else Seq[ScopedKey[_]](dep))
       )
 
     val empty = Map.empty[ScopedKey[_], Flattened]
@@ -660,13 +654,13 @@ trait Init[ScopeType]:
     private[sbt] def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1]
 
     def evaluate(map: Settings[ScopeType]): A1
-    def zip[A2](o: Initialize[A2]): Initialize[(A1, A2)] = zipTupled(o)(idFun)
+    def zip[A2](o: Initialize[A2]): Initialize[(A1, A2)] = zipTupled(o)(identity)
 
     def zipWith[A2, U](o: Initialize[A2])(f: (A1, A2) => U): Initialize[U] =
       zipTupled(o)(f.tupled)
 
     private[this] def zipTupled[A2, U](o: Initialize[A2])(f: ((A1, A2)) => U): Initialize[U] =
-      Apply[[F[_]] =>> Tuple.Map[(A1, A2), F], U](f, (this, o), AList.tuple2[A1, A2])
+      Apply[(A1, A2), U](f, (this, o))
 
     /** A fold on the static attributes of this and nested Initializes. */
     private[sbt] def processAttributes[S](init: S)(f: (S, AttributeMap) => S): S
@@ -677,10 +671,10 @@ trait Init[ScopeType]:
 
     final class JoinInitSeq[A1](s: Seq[Initialize[A1]]):
       def joinWith[A2](f: Seq[A1] => A2): Initialize[A2] = uniform(s)(f)
-      def join: Initialize[Seq[A1]] = uniform(s)(idFun)
+      def join: Initialize[Seq[A1]] = uniform(s)(identity)
     end JoinInitSeq
 
-    def join[A1](inits: Seq[Initialize[A1]]): Initialize[Seq[A1]] = uniform(inits)(idFun)
+    def join[A1](inits: Seq[Initialize[A1]]): Initialize[Seq[A1]] = uniform(inits)(identity)
 
     def joinAny[F[_]]: [a] => Seq[Initialize[F[a]]] => Initialize[Seq[F[Any]]] = [a] =>
       (inits: Seq[Initialize[F[a]]]) => join(inits.asInstanceOf[Seq[Initialize[F[Any]]]])
@@ -805,7 +799,7 @@ trait Init[ScopeType]:
     (fa: Initialize[A]) => (fa.mapReferenced(g))
   private[this] def mapConstantK(g: MapConstant): [A] => Initialize[A] => Initialize[A] = [A] =>
     (fa: Initialize[A]) => (fa.mapConstant(g))
-  private[this] def evaluateK(g: Settings[ScopeType]): [A] => Initialize[A] => Id[A] = [A] =>
+  private[this] def evaluateK(g: Settings[ScopeType]): [A] => Initialize[A] => A = [A] =>
     (fa: Initialize[A]) => (fa.evaluate(g))
   private[this] def deps(ls: Seq[Initialize[_]]): Seq[ScopedKey[_]] = ls.flatMap(_.dependencies)
 
@@ -847,7 +841,7 @@ trait Init[ScopeType]:
    * @tparam A1 the type of both the value this `Initialize` defines and the type of the associated `ScopedKey`.
    */
   trait KeyedInitialize[A1] extends Keyed[A1, A1]:
-    final val transform = idFun[A1]
+    final val transform = identity[A1]
   end KeyedInitialize
 
   private[sbt] final class TransformCapture(val f: [x] => Initialize[x] => Initialize[x])
@@ -957,34 +951,60 @@ trait Init[ScopeType]:
       init
   end StaticScopes
 
-  private[sbt] final class Apply[K[F[x]], A1](
-      val f: K[Id] => A1,
-      val inputs: K[Initialize],
-      val alist: AList[K]
-  ) extends Initialize[A1]:
-    override def dependencies: Seq[ScopedKey[_]] = deps(alist.toList(inputs))
-    override def mapReferenced(g: MapScoped): Initialize[A1] = mapInputs(mapReferencedK(g))
-    override def mapConstant(g: MapConstant): Initialize[A1] = mapInputs(mapConstantK(g))
+  private[sbt] final class Uniform[A1, A2](val f: Seq[A1] => A2, val inputs: List[Initialize[A1]])
+      extends Initialize[A2]:
+    override def dependencies: Seq[ScopedKey[_]] = deps(inputs)
+    override def mapReferenced(g: MapScoped): Initialize[A2] =
+      Uniform(f, inputs.map(_.mapReferenced(g)))
+    override def mapConstant(g: MapConstant): Initialize[A2] =
+      Uniform(f, inputs.map(_.mapConstant(g)))
+    override def apply[A3](g: A2 => A3): Initialize[A3] = Uniform(g.compose(f), inputs)
+    override def evaluate(ss: Settings[ScopeType]): A2 = f(inputs.map(_.evaluate(ss)))
 
-    override def apply[A2](g: A1 => A2): Initialize[A2] = Apply(g compose f, inputs, alist)
-
-    def mapInputs(g: [a] => Initialize[a] => Initialize[a]): Initialize[A1] =
-      Apply(f, alist.transform(inputs) { g }, alist)
-
-    override def evaluate(ss: Settings[ScopeType]): A1 =
-      f(alist.transform(inputs) { evaluateK(ss) })
-
-    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] =
-      val tx = alist.transform(inputs) { validateKeyReferencedK(g) }
-      val undefs = alist.toList(tx).flatMap(_.left.toSeq.flatten)
-      val get = [A] => (fa: ValidatedInit[A]) => (fa.right.get)
-      if undefs.isEmpty then Right(Apply(f, alist.transform(tx) { get }, alist))
+    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A2] =
+      val tx = inputs.map(_.validateKeyReferenced(g))
+      val undefs = tx.flatMap(_.left.toSeq.flatten)
+      if undefs.isEmpty then Right(Uniform(f, tx.map(_.right.get)))
       else Left(undefs)
 
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
-      alist.toList(inputs).foldLeft(init) { (v, i) =>
-        i.processAttributes(v)(f)
-      }
+      inputs.foldLeft(init)((v, i) => i.processAttributes(v)(f))
+
+  /*   private[sbt] final class Mapped[A1, A2](f: A1 => A2, input: Initialize[A1]) extends Initialize[A1]:
+    override def dependencies: Seq[ScopedKey[_]] = deps(Seq(inputs))
+    override def mapReferenced(g: MapScoped): Initialize[A2] = Mapped(f, input.mapReferenced(g))
+    override def mapConstant(g: MapConstant): Initialize[A2] = Mapped(f, input.mapConstant(g))
+    override def apply[A3](g: A2 => A3): Initialize[A3] = Mapped(g.compose(f), input)
+    override def evaluate(ss: Settings[ScopeType]): A2 = f(input.evaluate(ss))
+    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] = input.validateKeyReferenced(g)
+    private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
+      input.processAttributes(init)(f) */
+
+  private[sbt] final class Apply[Tup <: Tuple, A1](
+      val f: Tup => A1,
+      val inputs: Tuple.Map[Tup, Initialize]
+  ) extends Initialize[A1]:
+    import sbt.internal.util.TupleMapExtension.*
+
+    override def dependencies: Seq[ScopedKey[_]] = deps(inputs.iterator.toList)
+    override def mapReferenced(g: MapScoped): Initialize[A1] =
+      Apply(f, inputs.transform(mapReferencedK(g)))
+    override def mapConstant(g: MapConstant): Initialize[A1] =
+      Apply(f, inputs.transform(mapConstantK(g)))
+
+    override def apply[A2](g: A1 => A2): Initialize[A2] = Apply(g compose f, inputs)
+
+    override def evaluate(ss: Settings[ScopeType]): A1 = f(inputs.unmap(evaluateK(ss)))
+
+    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] =
+      val tx: Tuple.Map[Tup, ValidatedInit] = inputs.transform(validateKeyReferencedK(g))
+      val undefs = tx.iterator.flatMap(_.left.toSeq.flatten)
+      val get = [A] => (fa: ValidatedInit[A]) => (fa.right.get)
+      if undefs.isEmpty then Right(Apply(f, tx.transform(get)))
+      else Left(undefs.toSeq)
+
+    private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
+      inputs.iterator.toList.foldLeft(init) { (v, i) => i.processAttributes(v)(f) }
   end Apply
 
   private def remove[A](s: Seq[A], v: A) = s.filterNot(_ == v)

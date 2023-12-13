@@ -20,11 +20,6 @@ trait TypeFunctions:
 
   type Compose[F1[_], F2[_]] = [a] =>> F1[F2[a]]
 
-  /**
-   * Example: calling `SplitK[K1, Task]` returns the type lambda `F[a] => K1[F[Task[a]]`.
-   */
-  type SplitK[K1[F1[_]], F2[_]] = [f[_]] =>> K1[Compose[f, F2]]
-
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
   private type AnyLeft[A] = Left[A, Nothing]
   private type AnyRight[A] = Right[Nothing, A]
