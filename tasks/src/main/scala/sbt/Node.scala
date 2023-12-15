@@ -7,21 +7,16 @@
 
 package sbt
 
-import sbt.internal.util.AList
-
 /**
  * Represents a task node in a format understood by the task evaluation engine Execute.
- *
- * @tparam Effect
- *   the task type constructor
  * @tparam A
  *   the type computed by this node
  */
 private[sbt] trait Node[A]:
-  type K[L[x]]
-  def in: K[TaskId]
-  def alist: AList[K]
+  type Inputs
+  def dependencies: List[TaskId[?]]
+  def computeInputs(f: [a] => TaskId[a] => Result[a]): Inputs
 
   /** Computes the result of this task given the results from the inputs. */
-  def work(inputs: K[Result]): Either[TaskId[A], A]
+  def work(inputs: Inputs): Either[TaskId[A], A]
 end Node

@@ -10,7 +10,7 @@ package std
 
 import Def.{ Initialize, Setting }
 import sbt.util.{ ActionCacheStore, Applicative, Monad }
-import sbt.internal.util.Types.{ Id, Compose, const, idFun }
+import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.{
   Cont,
   ContextUtil,
@@ -21,7 +21,7 @@ import sbt.internal.util.appmacro.{
   // MonadInstance
 }
 // import Instance.Transform
-import sbt.internal.util.{ AList, LinePosition, NoPosition, SourcePosition, ~> }
+import sbt.internal.util.{ LinePosition, NoPosition, SourcePosition, ~> }
 
 import language.experimental.macros
 import scala.annotation.tailrec

@@ -10,7 +10,6 @@ package sbt.internal.util
 import java.lang.Runnable
 import java.util.concurrent.{ atomic, Executor, LinkedBlockingQueue }
 import atomic.{ AtomicBoolean, AtomicInteger }
-import Types.Id
 
 enum EvaluationState:
   case New
@@ -38,26 +37,19 @@ abstract class EvaluateSettings[ScopeType]:
   private[this] val transform: [A] => Initialize[A] => INode[A] = [A] =>
     (fa: Initialize[A]) =>
       fa match
-        case k: Keyed[s, A] @unchecked => single(getStatic(k.scopedKey), k.transform)
-        case a: Apply[k, A] @unchecked =>
-          MixedNode[k, A](
-            a.alist.transform[Initialize, INode](a.inputs) { transform },
-            a.f,
-            a.alist
-          )
-        case b: Bind[s, A] @unchecked =>
-          new BindNode[s, A](transform(b.in), x => transform(b.f(x)))
-        case v: Value[A] @unchecked             => constant(v.value)
-        case v: ValidationCapture[A] @unchecked => strictConstant(v.key: A)
-        case t: TransformCapture                => strictConstant(t.f: A)
-        case o: Optional[s, A] @unchecked =>
+        case k: Keyed[s, A]   => single(getStatic(k.scopedKey), k.transform)
+        case u: Uniform[s, A] => UniformNode(u.inputs.map(transform[s]), u.f)
+        case a: Apply[k, A] =>
+          MixedNode[k, A](TupleMapExtension.transform(a.inputs) { transform }, a.f)
+        case b: Bind[s, A]           => BindNode[s, A](transform(b.in), x => transform(b.f(x)))
+        case v: Value[A]             => constant(v.value)
+        case v: ValidationCapture[a] => strictConstant(v.key: A)
+        case t: TransformCapture     => strictConstant(t.f: A)
+        case o: Optional[s, A] =>
           o.a match
             case None    => constant(() => o.f(None))
             case Some(i) => single[s, A](transform(i), x => o.f(Some(x)))
-        case x if x == StaticScopes =>
-          // can't convince scalac that StaticScopes => T == Set[Scope]
-          strictConstant(allScopes.asInstanceOf[A])
-  //  allScopes.asInstanceOf[A]
+        case StaticScopes => strictConstant(allScopes)
 
   private[this] lazy val roots: Seq[INode[_]] = compiledSettings.flatMap { cs =>
     (cs.settings map { s =>
@@ -88,7 +80,7 @@ abstract class EvaluateSettings[ScopeType]:
       else ss.set(key.scope, key.key, node.get)
     }
 
-  private[this] lazy val getValue: [A] => INode[A] => Id[A] = [A] => (fa: INode[A]) => fa.get
+  private[this] lazy val getValue: [A] => INode[A] => A = [A] => (fa: INode[A]) => fa.get
 
   private[this] def submitEvaluate(node: INode[_]) = submit(node.evaluate())
 
@@ -210,10 +202,10 @@ abstract class EvaluateSettings[ScopeType]:
   private[this] def strictConstant[A1](v: A1): INode[A1] = constant(() => v)
 
   private[this] def constant[A1](f: () => A1): INode[A1] =
-    MixedNode[[F[_]] =>> Unit, A1]((), _ => f(), AList.empty)
+    MixedNode[EmptyTuple, A1](EmptyTuple, _ => f())
 
   private[this] def single[A1, A2](in: INode[A1], f: A1 => A2): INode[A2] =
-    MixedNode[[F[_]] =>> F[A1], A2](in, f, AList.single[A1])
+    MixedNode[Tuple1[A1], A2](Tuple1(in), { case Tuple1(a) => f(a) })
 
   private[this] final class BindNode[A1, A2](in: INode[A1], f: A1 => INode[A2]) extends INode[A2]:
     protected def dependsOn: Seq[INode[_]] = in :: Nil
@@ -224,10 +216,15 @@ abstract class EvaluateSettings[ScopeType]:
     }
   end BindNode
 
-  private[this] final class MixedNode[K[L[x]], A1](in: K[INode], f: K[Id] => A1, alist: AList[K])
+  private[this] final class MixedNode[Tup <: Tuple, A1](in: Tuple.Map[Tup, INode], f: Tup => A1)
       extends INode[A1]:
-    protected override def dependsOn: Seq[INode[_]] = alist.toList(in)
-    protected override def evaluate0(): Unit = setValue(f(alist.transform(in) { getValue }))
-  end MixedNode
+    import TupleMapExtension.*
+    protected override def dependsOn: Seq[INode[_]] = in.iterator.toList
+    protected override def evaluate0(): Unit = setValue(f(in.unmap(getValue)))
+
+  private[this] final class UniformNode[A1, A2](in: List[INode[A1]], f: List[A1] => A2)
+      extends INode[A2]:
+    protected override def dependsOn: Seq[INode[_]] = in
+    protected override def evaluate0(): Unit = setValue(f(in.map(_.get)))
 
 end EvaluateSettings
