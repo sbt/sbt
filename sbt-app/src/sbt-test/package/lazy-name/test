@@ -6,17 +6,18 @@
 
 > set name := "lazy-package-name"
 > set crossPaths := false
+> set scalaVersion := "3.3.1"
 
 > set version := "0.1.1"
 > package
-$ exists target/lazy-package-name-0.1.1.jar
+$ exists target/out/jvm/scala-3.3.1/lazy-package-name/lazy-package-name-0.1.1.jar
 > clean
 
 > set version := "0.1.2"
 > package
-$ exists target/lazy-package-name-0.1.2.jar
+$ exists target/out/jvm/scala-3.3.1/lazy-package-name/lazy-package-name-0.1.2.jar
 > clean
 
 > set version := "0.1.3"
 > package
-$ exists target/lazy-package-name-0.1.3.jar
+$ exists target/out/jvm/scala-3.3.1/lazy-package-name/lazy-package-name-0.1.3.jar

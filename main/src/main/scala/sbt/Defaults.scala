@@ -2450,7 +2450,8 @@ object Defaults extends BuildCommon {
             store.set(contents)
             Def.declareOutput(analysisOut)
             val dir = classDirectory.value
-            if (dir / "META-INF").exists then IO.delete(dir)
+            if (dir / "META-INF" / "MANIFEST.MF").exists then
+              IO.delete(dir / "META-INF" / "MANIFEST.MF")
             // inline mappings
             val mappings = Path
               .allSubpaths(dir)
@@ -4204,7 +4205,7 @@ object Classpaths {
     val rawJar = compileIncremental.value._2
     val rawJarPath = c.toPath(rawJar)
     IO.unzip(rawJarPath.toFile, dir.toFile)
-    IO.delete(dir.toFile / "META-INF")
+    IO.delete(dir.toFile / "META-INF" / "MANIFEST.MF")
     dir.toFile :: Nil
   }
 
