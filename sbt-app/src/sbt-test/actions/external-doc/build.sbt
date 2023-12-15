@@ -44,7 +44,8 @@ def expectedMappings = Def.task {
       }
     }
   }
-  val mc = (c / Compile / classDirectory).value -> apiBase("c")
+  val converter = fileConverter.value
+  val mc = converter.toPath((c / Compile / packageBin).value).toFile -> apiBase("c")
   (mc +: ms).toMap
 }
 
