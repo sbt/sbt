@@ -45,7 +45,7 @@ val y2 = project.settings(
 )
 
 TaskKey[Unit]("check") := {
-  val x1cp = (x1 / Compile / externalDependencyClasspath).value.map(_.data.getName).sorted
+  val x1cp = (x1 / Compile / externalDependencyClasspath).value.map(_.data.name).sorted
   def x1cpStr = x1cp.mkString("\n* ", "\n* ", "")
 
   // if (!(x1cp contains "slf4j-api-1.6.6.jar"))

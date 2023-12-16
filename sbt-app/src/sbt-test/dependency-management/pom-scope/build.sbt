@@ -20,7 +20,10 @@ lazy val root = (project in file(".")).
     )
   )
 
-def checkPom = makePom map { pom =>
+val checkPom = Def.task {
+  val vf = makePom.value
+  val converter = fileConverter.value
+  val pom = converter.toPath(vf).toFile
   val expected = Seq(
     ("a", None, false, None),
     ("b", Some("runtime"), true, None),

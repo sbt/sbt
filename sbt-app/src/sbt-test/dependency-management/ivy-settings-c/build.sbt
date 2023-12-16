@@ -3,7 +3,11 @@ ThisBuild / useCoursier := false
 lazy val commonSettings = Seq(
   autoScalaLibrary := false,
   scalaModuleInfo := None,
-  (Compile / unmanagedJars) ++= (scalaInstance map (_.allJars.toSeq)).value,
+  (Compile / unmanagedJars) ++= {
+    val converter = fileConverter.value
+    val xs = scalaInstance.value.allJars.toSeq
+    xs.map(_.toPath).map(x => converter.toVirtualFile(x): HashedVirtualFileRef)
+  },
   (packageSrc / publishArtifact) := false,
   (packageDoc / publishArtifact) := false,
   publishMavenStyle := false

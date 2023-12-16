@@ -7,7 +7,7 @@ val checkScalaLibrary = TaskKey[Unit]("checkScalaLibrary")
 checkScalaLibrary := {
   val scalaLibsJars = (Compile / managedClasspath)
     .value
-    .map(_.data.getName)
+    .map(_.data.name)
     .filter(_.startsWith("scala-library"))
     .sorted
   val expectedScalaLibsJars = Seq(

@@ -6,8 +6,9 @@ lazy val root = (project in file(".")).
     libraryDependencies += { ("org.scala-tools.sbinary" %% "sbinary" % "0.4.1").withSources().withJavadoc() },
     libraryDependencies += { ("org.scala-sbt" % "io" % "0.13.8").intransitive() },
     checkPom := {
+      val converter = fileConverter.value
       val pomFile = makePom.value
-      val pom = xml.XML.loadFile(pomFile)
+      val pom = xml.XML.loadFile(converter.toPath(pomFile).toFile)
       val tpe = pom \\ "type"
       if (tpe.nonEmpty) {
         sys.error("Expected no <type> sections, got: " + tpe + " in \n\n" + pom)

@@ -7,6 +7,7 @@ def runTestTask(pre: Def.Initialize[Task[Unit]]) =
     val cp = (Compile / fullClasspath).value
     val main = (Compile / mainClass).value getOrElse sys.error("No main class found")
     val args = baseDirectory.value.getAbsolutePath :: Nil
+    given FileConverter = fileConverter.value
     r.run(main, cp.files, args, streams.value.log).get
   }
 

@@ -67,33 +67,33 @@ lazy val root = (project in file(".")).
     ThisBuild / version := "1.0",
     check := {
       // sys.error(dependencyCacheDirectory.value.toString)
-      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      val ccp = (c / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      val dcp = (d / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
+      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val ccp = (c / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val dcp = (d / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
 
-      if (!(acp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+      if (!(acp exists {_.data.name contains "spring-core-3.2.2.RELEASE"})) {
         sys.error("spring-core-3.2.2 is not found on a")
       }
-      if (!(bcp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+      if (!(bcp exists {_.data.name contains "spring-core-3.2.2.RELEASE"})) {
         sys.error("spring-core-3.2.2 is not found on b")
       }
-      if (!(ccp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+      if (!(ccp exists {_.data.name contains "spring-core-3.2.2.RELEASE"})) {
         sys.error("spring-core-3.2.2 is not found on c")
       }
-      if (!(dcp exists {_.data.getName contains "spring-core-3.2.2.RELEASE"})) {
+      if (!(dcp exists {_.data.name contains "spring-core-3.2.2.RELEASE"})) {
         sys.error("spring-core-3.2.2 is not found on d\n" + dcp.toString)
       }
-      if (!(acp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+      if (!(acp exists {_.data.name contains "spring-tx-3.1.2.RELEASE"})) {
         sys.error("spring-tx-3.1.2 is not found on a")
       }
-      if (!(bcp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+      if (!(bcp exists {_.data.name contains "spring-tx-3.1.2.RELEASE"})) {
         sys.error("spring-tx-3.1.2 is not found on b")
       }
-      if (!(ccp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+      if (!(ccp exists {_.data.name contains "spring-tx-3.1.2.RELEASE"})) {
         sys.error("spring-tx-3.1.2 is not found on c")
       }
-      if (!(dcp exists {_.data.getName contains "spring-tx-3.1.2.RELEASE"})) {
+      if (!(dcp exists {_.data.name contains "spring-tx-3.1.2.RELEASE"})) {
         sys.error("spring-tx-3.1.2 is not found on d")
       }
       if (acp == bcp) ()

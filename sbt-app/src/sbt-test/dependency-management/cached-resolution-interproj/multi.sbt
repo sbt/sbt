@@ -40,9 +40,9 @@ lazy val root = (project in file(".")).
     updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
       val ur = (a / update).value
-      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}
+      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.name}
       val atestcp0 = (a / Test / fullClasspath).value
-      val atestcp = (a / Test / externalDependencyClasspath).value.map {_.data.getName}
+      val atestcp = (a / Test / externalDependencyClasspath).value.map {_.data.name}
       // This is checking to make sure interproject dependency works
       if (acp exists { _ contains "scalatest" }) {
         sys.error("scalatest found when it should NOT be included: " + acp.toString)
