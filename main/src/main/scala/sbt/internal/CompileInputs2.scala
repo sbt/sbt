@@ -6,8 +6,10 @@ import xsbti.HashedVirtualFileRef
 
 // CompileOption has the list of sources etc
 case class CompileInputs2(
-    classpath: Seq[HashedVirtualFileRef],
-    sources: Seq[HashedVirtualFileRef],
+    classpath: Vector[HashedVirtualFileRef],
+    sources: Vector[HashedVirtualFileRef],
+    scalacOptions: Vector[String],
+    javacOptions: Vector[String],
 )
 
 object CompileInputs2:
@@ -15,14 +17,21 @@ object CompileInputs2:
 
   given IsoLList.Aux[
     CompileInputs2,
-    Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: LNil
+    Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
+      Vector[String] :*: LNil
   ] =
     LList.iso(
       { (v: CompileInputs2) =>
-        ("classpath", v.classpath.toVector) :*: ("sources", v.sources.toVector) :*: LNil
+        ("classpath", v.classpath) :*:
+          ("sources", v.sources) :*:
+          ("scalacOptions", v.scalacOptions) :*:
+          ("javacOptions", v.javacOptions) :*:
+          LNil
       },
-      { (in: Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: LNil) =>
-        CompileInputs2(in.head, in.tail.head)
+      {
+        (in: Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
+          Vector[String] :*: LNil) =>
+          CompileInputs2(in.head, in.tail.head, in.tail.tail.head, in.tail.tail.tail.head)
       }
     )
   given JsonFormat[CompileInputs2] = summon

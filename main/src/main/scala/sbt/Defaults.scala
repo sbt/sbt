@@ -2633,7 +2633,9 @@ object Defaults extends BuildCommon {
         val inputs = compileInputs.value
         CompileInputs2(
           data(cp0).toVector,
-          inputs.options.sources,
+          inputs.options.sources.toVector,
+          scalacOptions.value.toVector,
+          javacOptions.value.toVector,
         )
       },
     )
