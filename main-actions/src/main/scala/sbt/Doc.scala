@@ -12,7 +12,7 @@ import sbt.internal.inc.{ AnalyzingCompiler, PlainVirtualFile }
 import sbt.internal.util.ManagedLogger
 import sbt.util.CacheStoreFactory
 import sbt.util.Logger
-import xsbti.Reporter
+import xsbti.{ FileConverter, Reporter }
 import xsbti.compile.JavaTools
 import sbt.internal.inc.MappedFileConverter
 
@@ -24,13 +24,14 @@ object Doc {
       cacheStoreFactory: CacheStoreFactory,
       compiler: AnalyzingCompiler
   ): Gen =
-    scaladoc(label, cacheStoreFactory, compiler, Seq())
+    scaladoc(label, cacheStoreFactory, compiler, Seq(), MappedFileConverter.empty)
 
   def scaladoc(
       label: String,
       cacheStoreFactory: CacheStoreFactory,
       compiler: AnalyzingCompiler,
-      fileInputOptions: Seq[String]
+      fileInputOptions: Seq[String],
+      converter: FileConverter,
   ): Gen =
     cached(
       cacheStoreFactory,
@@ -39,13 +40,9 @@ object Doc {
         label + " Scala API documentation",
         (sources, classpath, outputDirectory, options, maxErrors, log) => {
           compiler.doc(
-            sources map { x =>
-              PlainVirtualFile(x.toPath)
-            },
-            classpath map { x =>
-              PlainVirtualFile(x.toPath)
-            },
-            MappedFileConverter.empty,
+            sources.map(_.toPath()).map(converter.toVirtualFile),
+            classpath.map(_.toPath()).map(converter.toVirtualFile),
+            converter,
             outputDirectory.toPath,
             options,
             maxErrors,

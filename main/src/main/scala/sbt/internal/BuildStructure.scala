@@ -23,6 +23,7 @@ import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attribute
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
 import scala.annotation.nowarn
+import xsbti.FileConverter
 
 final class BuildStructure(
     val units: Map[URI, LoadedBuildUnit],
@@ -109,9 +110,10 @@ final class LoadedBuildUnit(
    * It includes build definition and plugin classes and classes for .sbt file statements and expressions.
    */
   def classpath: Seq[Path] =
+    val converter = unit.converter
     unit.definitions.target.map(
       _.toPath()
-    ) ++ unit.plugins.classpath.map(_.toPath()) ++ unit.definitions.dslDefinitions.classpath
+    ) ++ unit.plugins.classpath.map(converter.toPath) ++ unit.definitions.dslDefinitions.classpath
 
   /**
    * The class loader to use for this build unit's publicly visible code.
@@ -239,7 +241,7 @@ final class LoadedPlugins(
     val loader: ClassLoader,
     val detected: DetectedPlugins
 ) {
-  def fullClasspath: Seq[Attributed[File]] = pluginData.classpath
+  def fullClasspath: Def.Classpath = pluginData.classpath
   def classpath = data(fullClasspath)
 }
 
@@ -253,7 +255,8 @@ final class BuildUnit(
     val uri: URI,
     val localBase: File,
     val definitions: LoadedDefinitions,
-    val plugins: LoadedPlugins
+    val plugins: LoadedPlugins,
+    val converter: FileConverter,
 ) {
   override def toString =
     if (uri.getScheme == "file") localBase.toString

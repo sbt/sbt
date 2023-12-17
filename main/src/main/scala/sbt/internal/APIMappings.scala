@@ -16,28 +16,38 @@ import sbt.librarymanagement.ModuleID
 
 import sbt.internal.util.Attributed
 import sbt.util.Logger
+import xsbti.HashedVirtualFileRef
 
 private[sbt] object APIMappings {
-  def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
+  def extract(
+      cp: Seq[Attributed[HashedVirtualFileRef]],
+      log: Logger
+  ): Seq[(HashedVirtualFileRef, URL)] =
     cp.flatMap(entry => extractFromEntry(entry, log))
 
-  def extractFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
-    entry.get(Keys.entryApiURL) match {
+  def extractFromEntry(
+      entry: Attributed[HashedVirtualFileRef],
+      log: Logger
+  ): Option[(HashedVirtualFileRef, URL)] =
+    entry.get(Keys.entryApiURL) match
       case Some(u) => Some((entry.data, URI(u).toURL))
       case None =>
         entry.get(Keys.moduleIDStr).flatMap { str =>
           val mid = Classpaths.moduleIdJsonKeyFormat.read(str)
           extractFromID(entry.data, mid, log)
         }
-    }
 
-  private[this] def extractFromID(entry: File, mid: ModuleID, log: Logger): Option[(File, URL)] =
-    for {
+  private[this] def extractFromID(
+      entry: HashedVirtualFileRef,
+      mid: ModuleID,
+      log: Logger
+  ): Option[(HashedVirtualFileRef, URL)] =
+    for
       urlString <- mid.extraAttributes.get(SbtPomExtraProperties.POM_API_KEY)
       u <- parseURL(urlString, entry, log)
-    } yield (entry, u)
+    yield (entry, u)
 
-  private[this] def parseURL(s: String, forEntry: File, log: Logger): Option[URL] =
+  private[this] def parseURL(s: String, forEntry: HashedVirtualFileRef, log: Logger): Option[URL] =
     try Some(new URL(s))
     catch {
       case e: MalformedURLException =>
@@ -45,8 +55,8 @@ private[sbt] object APIMappings {
         None
     }
 
-  def store[T](attr: Attributed[T], entryAPI: Option[URL]): Attributed[T] = entryAPI match {
-    case None    => attr
-    case Some(u) => attr.put(Keys.entryApiURL, u.toString)
-  }
+  def store[A](attr: Attributed[A], entryAPI: Option[URL]): Attributed[A] =
+    entryAPI match
+      case None    => attr
+      case Some(u) => attr.put(Keys.entryApiURL, u.toString)
 }

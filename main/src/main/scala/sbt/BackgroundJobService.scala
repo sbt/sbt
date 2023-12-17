@@ -16,6 +16,7 @@ import java.io.File
 
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
+import xsbti.FileConverter
 
 abstract class BackgroundJobService extends Closeable {
 
@@ -70,14 +71,20 @@ abstract class BackgroundJobService extends Closeable {
   def waitFor(job: JobHandle): Unit
 
   /** Copies classpath to temporary directories. */
-  def copyClasspath(products: Classpath, full: Classpath, workingDirectory: File): Classpath
+  def copyClasspath(
+      products: Classpath,
+      full: Classpath,
+      workingDirectory: File,
+      converter: FileConverter
+  ): Classpath
 
   private[sbt] def copyClasspath(
       products: Classpath,
       full: Classpath,
       workingDirectory: File,
-      hashContents: Boolean
-  ): Classpath = copyClasspath(products, full, workingDirectory)
+      hashContents: Boolean,
+      converter: FileConverter,
+  ): Classpath = copyClasspath(products, full, workingDirectory, converter)
 }
 
 object BackgroundJobService {

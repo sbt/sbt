@@ -28,7 +28,7 @@ import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResoluti
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
-import xsbti.VirtualFile
+import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 import java.io.File
 import java.net.URI
@@ -71,15 +71,20 @@ private[sbt] object Load {
     val launcher = scalaProvider.launcher
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
     val javaHome = Paths.get(sys.props("java.home"))
+    val out = baseDirectory.toPath.resolve("target").resolve("out")
     val rootPaths = Map(
+      "OUT" -> out,
       "BASE" -> baseDirectory.toPath,
       "SBT_BOOT" -> launcher.bootDirectory.toPath,
       "IVY_HOME" -> launcher.ivyHome.toPath,
       "JAVA_HOME" -> javaHome,
     )
     val loader = getClass.getClassLoader
-    val classpath =
-      Attributed.blankSeq(provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq)
+    val converter = MappedFileConverter(rootPaths, false)
+    val cp0 = provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq
+    val classpath = Attributed.blankSeq(
+      cp0.map(_.toPath).map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+    )
     val ivyConfiguration =
       InlineIvyConfiguration()
         .withPaths(
@@ -127,7 +132,7 @@ private[sbt] object Load {
       inject,
       None,
       Nil,
-      converter = MappedFileConverter(rootPaths, false),
+      converter = converter,
       log
     )
   }
@@ -172,10 +177,11 @@ private[sbt] object Load {
   def buildGlobalSettings(
       base: File,
       files: Seq[VirtualFile],
-      config: LoadBuildConfiguration
+      config: LoadBuildConfiguration,
   ): ClassLoader => Seq[Setting[_]] = {
+    val converter = config.converter
     val eval = mkEval(
-      classpath = data(config.globalPluginClasspath).map(_.toPath()),
+      classpath = data(config.globalPluginClasspath).map(converter.toPath),
       base = base,
       options = defaultEvalOptions,
     )
@@ -443,9 +449,10 @@ private[sbt] object Load {
   }
 
   def mkEval(unit: BuildUnit): Eval = {
+    val converter = unit.converter
     val defs = unit.definitions
     mkEval(
-      (defs.target ++ unit.plugins.classpath).map(_.toPath()),
+      (defs.target).map(_.toPath) ++ unit.plugins.classpath.map(converter.toPath),
       defs.base,
       unit.plugins.pluginData.scalacOptions,
     )
@@ -541,7 +548,7 @@ private[sbt] object Load {
   }
 
   def addOverrides(unit: BuildUnit, loaders: BuildLoader): BuildLoader =
-    loaders updatePluginManagement PluginManagement.extractOverrides(unit.plugins.fullClasspath)
+    loaders.updatePluginManagement(PluginManagement.extractOverrides(unit.plugins.fullClasspath))
 
   def addResolvers(unit: BuildUnit, isRoot: Boolean, loaders: BuildLoader): BuildLoader =
     unit.definitions.builds.flatMap(_.buildLoaders).toList match {
@@ -740,6 +747,7 @@ private[sbt] object Load {
       val buildLevelExtraProjects = plugs.detected.autoPlugins flatMap { d =>
         d.value.extraProjects map { _.setProjectOrigin(ProjectOrigin.ExtraProject) }
       }
+      val converter = config.converter
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) {
@@ -752,7 +760,7 @@ private[sbt] object Load {
         //       new BuildServerEvalReporter(buildTarget, new ConsoleReporter(settings))
         //   }
         mkEval(
-          classpath = plugs.classpath.map(_.toPath()),
+          classpath = plugs.classpath.map(converter.toPath),
           defDir,
           plugs.pluginData.scalacOptions,
           mkReporter,
@@ -834,7 +842,7 @@ private[sbt] object Load {
         plugs.detected.builds.names,
         valDefinitions
       )
-      new BuildUnit(uri, normBase, loadedDefs, plugs)
+      new BuildUnit(uri, normBase, loadedDefs, plugs, converter)
     }
 
   private[this] def autoID(
@@ -1266,11 +1274,10 @@ private[sbt] object Load {
     )
   }
 
-  def globalPluginClasspath(globalPlugin: Option[GlobalPlugin]): Seq[Attributed[File]] =
-    globalPlugin match {
+  def globalPluginClasspath(globalPlugin: Option[GlobalPlugin]): Def.Classpath =
+    globalPlugin match
       case Some(cp) => cp.data.fullClasspath
       case None     => Nil
-    }
 
   /** These are the settings defined when loading a project "meta" build. */
   @nowarn
@@ -1287,6 +1294,7 @@ private[sbt] object Load {
         val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
         val managedSrcs = (Configurations.Compile / managedSources).value
         val buildTarget = (Configurations.Compile / bspTargetIdentifier).value
+        val converter = fileConverter.value
         PluginData(
           removeEntries(cp, prod),
           prod,
@@ -1297,7 +1305,8 @@ private[sbt] object Load {
           unmanagedSrcs,
           managedSrcDirs,
           managedSrcs,
-          Some(buildTarget)
+          Some(buildTarget),
+          converter,
         )
       },
       scalacOptions += "-Wconf:cat=unused-nowarn:s",
@@ -1306,14 +1315,13 @@ private[sbt] object Load {
   )
 
   private[this] def removeEntries(
-      cp: Seq[Attributed[File]],
-      remove: Seq[Attributed[File]]
-  ): Seq[Attributed[File]] = {
+      cp: Def.Classpath,
+      remove: Def.Classpath
+  ): Def.Classpath =
     val files = data(remove).toSet
     cp filter { f =>
       !files.contains(f.data)
     }
-  }
 
   def enableSbtPlugin(config: LoadBuildConfiguration): LoadBuildConfiguration =
     config.copy(
@@ -1353,7 +1361,19 @@ private[sbt] object Load {
     loadPluginDefinition(
       dir,
       config,
-      PluginData(config.globalPluginClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
+      PluginData(
+        config.globalPluginClasspath,
+        Nil,
+        None,
+        None,
+        Nil,
+        Nil,
+        Nil,
+        Nil,
+        Nil,
+        None,
+        config.converter,
+      )
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1392,11 +1412,11 @@ private[sbt] object Load {
    */
   def buildPluginClasspath(
       config: LoadBuildConfiguration,
-      depcp: Seq[Attributed[File]]
-  ): Def.Classpath = {
-    if (depcp.isEmpty) config.classpath
+      depcp: Def.Classpath,
+  ): Def.Classpath =
+    if depcp.isEmpty
+    then config.classpath
     else (depcp ++ config.classpath).distinct
-  }
 
   /**
    * Creates a classloader with a hierarchical structure, where the parent
@@ -1412,22 +1432,27 @@ private[sbt] object Load {
       config: LoadBuildConfiguration,
       dependencyClasspath: Def.Classpath,
       definitionClasspath: Def.Classpath
-  ): ClassLoader = {
+  ): ClassLoader =
     val manager = config.pluginManagement
-    val parentLoader: ClassLoader = {
-      if (dependencyClasspath.isEmpty) manager.initialLoader
-      else {
+    val converter = config.converter
+    val parentLoader: ClassLoader =
+      if dependencyClasspath.isEmpty then manager.initialLoader
+      else
         // Load only the dependency classpath for the common plugin classloader
         val loader = manager.loader
-        loader.add(sbt.io.Path.toURLs(data(dependencyClasspath)))
+        loader.add(
+          sbt.io.Path.toURLs(
+            data(dependencyClasspath)
+              .map(converter.toPath)
+              .map(_.toFile())
+          )
+        )
         loader
-      }
-    }
-
     // Load the definition classpath separately to avoid conflicts, see #511.
-    if (definitionClasspath.isEmpty) parentLoader
-    else ClasspathUtil.toLoader(data(definitionClasspath).map(_.toPath), parentLoader)
-  }
+    if definitionClasspath.isEmpty then parentLoader
+    else
+      val cp = data(definitionClasspath).map(converter.toPath)
+      ClasspathUtil.toLoader(cp, parentLoader)
 
   def buildPluginDefinition(dir: File, s: State, config: LoadBuildConfiguration): PluginData = {
     val (eval, pluginDef) = apply(dir, s, config)
@@ -1554,9 +1579,10 @@ final case class LoadBuildConfiguration(
           Nil,
           Nil,
           Nil,
-          None
+          None,
+          converter,
         )
-      case None => PluginData(globalPluginClasspath)
+      case None => PluginData(globalPluginClasspath, converter)
     }
     val baseDir = globalPlugin match {
       case Some(x) => x.base

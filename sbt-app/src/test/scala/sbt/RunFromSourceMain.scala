@@ -45,7 +45,7 @@ object RunFromSourceMain {
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
     val context = LoggerContext()
     val log = context.logger("RunFromSourceMain.fork", None, None)
-    try runner.fork("sbt.RunFromSourceMain", cp, options, log)
+    try runner.fork("sbt.RunFromSourceMain", cp.map(_.toPath()), options, log)
     finally context.close()
   }
 

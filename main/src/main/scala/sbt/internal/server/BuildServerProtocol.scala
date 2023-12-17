@@ -249,8 +249,11 @@ object BuildServerProtocol {
           val buildItems = builds.map { build =>
             val plugins: LoadedPlugins = build._2.unit.plugins
             val scalacOptions = plugins.pluginData.scalacOptions
-            val pluginClassPath = plugins.classpath
-            val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+            val pluginClasspath = plugins.classpath
+            val converter = plugins.pluginData.converter
+            val classpath =
+              pluginClasspath.map(converter.toPath).map(_.toFile).map(_.toURI).toVector ++
+                (sbtJars).map(_.toURI).toVector
             val item = ScalacOptionsItem(
               build._1,
               scalacOptions.toVector,
@@ -772,7 +775,12 @@ object BuildServerProtocol {
 
   private def jvmEnvironmentItem(): Initialize[Task[JvmEnvironmentItem]] = Def.task {
     val target = Keys.bspTargetIdentifier.value
-    val classpath = Keys.fullClasspath.value.map(_.data.toURI).toVector
+    val converter = fileConverter.value
+    val classpath = Keys.fullClasspath.value
+      .map(_.data)
+      .map(converter.toPath)
+      .map(_.toFile.toURI)
+      .toVector
     val jvmOptions = Keys.javaOptions.value.toVector
     val baseDir = Keys.baseDirectory.value.getAbsolutePath
     val env = envVars.value
@@ -796,7 +804,7 @@ object BuildServerProtocol {
         val internalDependencyClasspath = for {
           (ref, configs) <- bspInternalDependencyConfigurations.value
           config <- configs
-        } yield ref / config / Keys.classDirectory
+        } yield ref / config / Keys.packageBin
         (
           target,
           scalacOptions,
@@ -814,12 +822,17 @@ object BuildServerProtocol {
               internalDependencyClasspath
             ) =>
           Def.task {
-            val classpath = internalDependencyClasspath.join.value.distinct ++
+            val converter = fileConverter.value
+            val cp0 = internalDependencyClasspath.join.value.distinct ++
               externalDependencyClasspath.map(_.data)
+            val classpath = cp0
+              .map(converter.toPath)
+              .map(_.toFile.toURI)
+              .toVector
             ScalacOptionsItem(
               target,
               scalacOptions.toVector,
-              classpath.map(_.toURI).toVector,
+              classpath,
               classDirectory.toURI
             )
           }
@@ -964,8 +977,10 @@ object BuildServerProtocol {
         .toMap
     )
     val runner = new ForkRun(forkOpts)
+    val converter = fileConverter.value
+    val cp = classpath.map(converter.toPath)
     val statusCode = runner
-      .run(mainClass.`class`, classpath, mainClass.arguments, logger)
+      .run(mainClass.`class`, cp, mainClass.arguments, logger)
       .fold(
         _ => StatusCode.Error,
         _ => StatusCode.Success

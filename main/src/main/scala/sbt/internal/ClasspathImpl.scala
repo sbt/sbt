@@ -23,31 +23,28 @@ import sbt.librarymanagement.Configurations.names
 import sbt.std.TaskExtra._
 import sbt.util._
 import scala.collection.JavaConverters._
-import xsbti.VirtualFileRef
+import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
 
 private[sbt] object ClasspathImpl {
 
   // Since we can't predict the path for pickleProduct,
   // we can't reduce the track level.
-  def exportedPicklesTask: Initialize[Task[VirtualClasspath]] =
+  def exportedPicklesTask: Initialize[Task[Classpath]] =
     Def.task {
       // conditional task: do not refactor
-      if (exportPipelining.value) {
+      if exportPipelining.value then
         val module = projectID.value
         val config = configuration.value
         val products = pickleProducts.value
         val analysis = compileEarly.value
         val xs = products map { _ -> analysis }
-        for { (f, analysis) <- xs } yield APIMappings
+        for (f, analysis) <- xs
+        yield APIMappings
           .store(analyzed(f, analysis), apiURL.value)
           .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
           .put(Keys.configurationStr, config.name)
-      } else {
-        val c = fileConverter.value
-        val ps = exportedProducts.value
-        ps.map(attr => attr.map(x => c.toVirtualFile(x.toPath)))
-      }
+      else exportedProducts.value
     }
 
   def trackedExportedProducts(track: TrackLevel): Initialize[Task[Classpath]] =
@@ -56,9 +53,9 @@ private[sbt] object ClasspathImpl {
       val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
-      val converter = fileConverter.value
-      for { (f, analysis) <- trackedExportedProductsImplTask(track).value } yield APIMappings
-        .store(analyzed(converter.toPath(f).toFile(), analysis), apiURL.value)
+      for (f, analysis) <- trackedExportedProductsImplTask(track).value
+      yield APIMappings
+        .store(analyzed[HashedVirtualFileRef](f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
         .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
         .put(Keys.configurationStr, config.name)
@@ -71,8 +68,9 @@ private[sbt] object ClasspathImpl {
       val module = projectID.value
       val config = configuration.value
       val converter = fileConverter.value
-      for { (f, analysis) <- trackedJarProductsImplTask(track).value } yield APIMappings
-        .store(analyzed(converter.toPath(f).toFile(), analysis), apiURL.value)
+      for (f, analysis) <- trackedJarProductsImplTask(track).value
+      yield APIMappings
+        .store(analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
         .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
         .put(Keys.configurationStr, config.name)
@@ -80,7 +78,7 @@ private[sbt] object ClasspathImpl {
 
   private[this] def trackedExportedProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(VirtualFileRef, CompileAnalysis)]]] =
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
     Def.taskIf {
       if {
         val _ = (packageBin / dynamicDependency).value
@@ -91,7 +89,7 @@ private[sbt] object ClasspathImpl {
 
   private[this] def trackedNonJarProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(VirtualFileRef, CompileAnalysis)]]] =
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
     (Def
       .task {
         val dirs = productDirectories.value
@@ -128,7 +126,7 @@ private[sbt] object ClasspathImpl {
 
   private[this] def trackedJarProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(VirtualFileRef, CompileAnalysis)]]] =
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
     (Def
       .task {
         val converter = fileConverter.value
@@ -147,8 +145,9 @@ private[sbt] object ClasspathImpl {
           }
         case (_, vf, _) =>
           Def.task {
+            val converter = fileConverter.value
             val analysisOpt = previousCompile.value.analysis.toOption
-            Seq(vf) map { x =>
+            Seq(vf).map(converter.toPath).map(converter.toVirtualFile).map { x =>
               (
                 x,
                 if (analysisOpt.isDefined) analysisOpt.get
@@ -202,7 +201,7 @@ private[sbt] object ClasspathImpl {
       )
     }
 
-  def internalDependencyPicklePathTask: Initialize[Task[VirtualClasspath]] = {
+  def internalDependencyPicklePathTask: Initialize[Task[Classpath]] = {
     def implTask(
         projectRef: ProjectRef,
         conf: Configuration,
@@ -211,8 +210,8 @@ private[sbt] object ClasspathImpl {
         deps: BuildDependencies,
         track: TrackLevel,
         log: Logger
-    ): Initialize[Task[VirtualClasspath]] =
-      Def.value[Task[VirtualClasspath]] {
+    ): Initialize[Task[Classpath]] =
+      Def.value[Task[Classpath]] {
         interDependencies(projectRef, deps, conf, self, data, track, false, log)(
           exportedPickles,
           exportedPickles,
@@ -259,11 +258,20 @@ private[sbt] object ClasspathImpl {
       log: Logger
   ): Initialize[Task[Classpath]] =
     Def.value[Task[Classpath]] {
-      interDependencies(projectRef, deps, conf, self, data, track, false, log)(
+      interDependencies[Attributed[HashedVirtualFileRef]](
+        projectRef,
+        deps,
+        conf,
+        self,
+        data,
+        track,
+        false,
+        log,
+      )(
         exportedProductJarsNoTracking,
         exportedProductJarsIfMissing,
         exportedProductJars
-      )
+      ): Task[Classpath]
     }
 
   def unmanagedDependenciesTask: Initialize[Task[Classpath]] =

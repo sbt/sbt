@@ -30,6 +30,7 @@ import scala.annotation.nowarn
 import scala.Console.RED
 import scala.concurrent.duration.Duration
 import scala.util.control.NonFatal
+import xsbti.FileConverter
 
 /**
  * An API that allows you to cancel executing tasks upon some signal.
@@ -142,8 +143,8 @@ object EvaluateTaskConfig {
 }
 
 final case class PluginData(
-    dependencyClasspath: Seq[Attributed[File]],
-    definitionClasspath: Seq[Attributed[File]],
+    dependencyClasspath: Def.Classpath,
+    definitionClasspath: Def.Classpath,
     resolvers: Option[Vector[Resolver]],
     report: Option[UpdateReport],
     scalacOptions: Seq[String],
@@ -151,14 +152,15 @@ final case class PluginData(
     unmanagedSources: Seq[File],
     managedSourceDirectories: Seq[File],
     managedSources: Seq[File],
-    buildTarget: Option[BuildTargetIdentifier]
+    buildTarget: Option[BuildTargetIdentifier],
+    converter: FileConverter,
 ) {
-  val classpath: Seq[Attributed[File]] = definitionClasspath ++ dependencyClasspath
+  val classpath: Def.Classpath = definitionClasspath ++ dependencyClasspath
 }
 
 object PluginData {
-  private[sbt] def apply(dependencyClasspath: Def.Classpath): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
+  private[sbt] def apply(dependencyClasspath: Def.Classpath, converter: FileConverter): PluginData =
+    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None, converter)
 }
 
 object EvaluateTask {

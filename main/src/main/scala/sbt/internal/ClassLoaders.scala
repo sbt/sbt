@@ -25,6 +25,7 @@ import sbt.nio.FileStamp
 import sbt.nio.FileStamp.LastModified
 import sbt.nio.Keys._
 import sbt.util.Logger
+import xsbti.HashedVirtualFileRef
 
 private[sbt] object ClassLoaders {
   private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
@@ -36,14 +37,21 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
-    val cp = fullClasspath.value.map(_.data)
+    val converter = fileConverter.value
+    val cp = fullClasspath.value
+      .map(_.data)
+      .map(converter.toPath)
+      .map(_.toFile)
     val dependencyStamps = modifiedTimes((dependencyClasspathFiles / outputFileStamps).value).toMap
     def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
     val rawCP = cp.map(f => f -> getLm(f))
     val fullCP =
-      if (si.isManagedVersion) rawCP
+      if si.isManagedVersion then rawCP
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
-    val exclude = dependencyJars(exportedProducts).value.toSet ++ si.libraryJars
+    val exclude: Set[File] = dependencyJars(exportedProducts).value
+      .map(converter.toPath)
+      .map(_.toFile)
+      .toSet ++ si.libraryJars
     val logger = state.value.globalLogging.full
     val close = closeClassLoaders.value
     val allowZombies = allowZombieClassLoaders.value
@@ -51,7 +59,11 @@ private[sbt] object ClassLoaders {
       strategy = classLoaderLayeringStrategy.value,
       si = si,
       fullCP = fullCP,
-      allDependenciesSet = dependencyJars(dependencyClasspath).value.filterNot(exclude).toSet,
+      allDependenciesSet = dependencyJars(dependencyClasspath).value
+        .map(converter.toPath)
+        .map(_.toFile)
+        .filterNot(exclude)
+        .toSet,
       cache = extendedClassLoaderCache.value,
       resources = ClasspathUtil.createClasspathResources(fullCP.map(_._1.toPath), si),
       tmp = IO.createUniqueDirectory(taskTemporaryDirectory.value),
@@ -71,6 +83,7 @@ private[sbt] object ClassLoaders {
         val opts = forkOptions.value
         new ForkRun(opts)
       else {
+        val converter = fileConverter.value
         val resolvedScope = resolvedScoped.value.scope
         val instance = scalaInstance.value
         val s = streams.value
@@ -91,20 +104,25 @@ private[sbt] object ClassLoaders {
           )
           s.log.warn(s"$showJavaOptions will be ignored, $showFork is set to false")
 
-        val exclude = dependencyJars(exportedProducts).value.toSet ++ instance.libraryJars
-        val allDeps = dependencyJars(dependencyClasspath).value.filterNot(exclude)
+        val exclude = dependencyJars(exportedProducts).value
+          .map(converter.toPath)
+          .map(_.toFile)
+          .toSet ++ instance.libraryJars
+        val allDeps = dependencyJars(dependencyClasspath).value
+          .map(converter.toPath)
+          .map(_.toFile)
+          .filterNot(exclude)
         val logger = state.value.globalLogging.full
         val allowZombies = allowZombieClassLoaders.value
         val close = closeClassLoaders.value
         val newLoader =
-          (classpath: Seq[File]) => {
-            val mappings = classpath.map(f => f.getName -> f).toMap
-            val cp = classpath.map(_.toPath)
+          (cp: Seq[Path]) => {
+            val mappings = cp.map(_.toFile()).map(f => f.getName -> f).toMap
             val transformedDependencies = allDeps.map(f => mappings.getOrElse(f.getName, f))
             buildLayers(
               strategy = classLoaderLayeringStrategy.value: @sbtUnchecked,
               si = instance,
-              fullCP = classpath.map(f => f -> IO.getModifiedTimeOrZero(f)),
+              fullCP = cp.map(_.toFile()).map(f => f -> IO.getModifiedTimeOrZero(f)),
               allDependenciesSet = transformedDependencies.toSet,
               cache = extendedClassLoaderCache.value: @sbtUnchecked,
               resources = ClasspathUtil.createClasspathResources(cp, instance),
@@ -218,8 +236,9 @@ private[sbt] object ClassLoaders {
   }
 
   private def dependencyJars(
-      key: sbt.TaskKey[Seq[Attributed[File]]]
-  ): Def.Initialize[Task[Seq[File]]] = Def.task(data(key.value).filter(_.getName.endsWith(".jar")))
+      key: sbt.TaskKey[Seq[Attributed[HashedVirtualFileRef]]]
+  ): Def.Initialize[Task[Seq[HashedVirtualFileRef]]] =
+    Def.task(data(key.value).filter(_.id.endsWith(".jar")))
 
   private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm

@@ -352,7 +352,6 @@ object Keys {
 
   // Classpath/Dependency Management Keys
   type Classpath = Def.Classpath
-  type VirtualClasspath = Def.VirtualClasspath
 
   val name = settingKey[String]("Project name.").withRank(APlusSetting)
   val normalizedName = settingKey[String]("Project name transformed from mixed case and spaces to lowercase and dash-separated.").withRank(BSetting)
@@ -366,7 +365,7 @@ object Keys {
   val developers = settingKey[List[Developer]]("List of developers implicated in the project").withRank(BMinusSetting)
   val apiURL = settingKey[Option[URL]]("Base URL for API documentation.").withRank(BMinusSetting)
   val entryApiURL = StringAttributeKey("entryApiURL") // , "Base URL for the API documentation for a classpath entry.")
-  val apiMappings = taskKey[Map[File, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
+  val apiMappings = taskKey[Map[HashedVirtualFileRef, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
   val autoAPIMappings = settingKey[Boolean]("If true, automatically manages mappings to the API doc URL.").withRank(BMinusSetting)
   val scmInfo = settingKey[Option[ScmInfo]]("Basic SCM information for the project.").withRank(BMinusSetting)
   val projectInfo = settingKey[ModuleInfo]("Addition project information like formal name, homepage, licenses etc.").withRank(CSetting)
@@ -384,16 +383,15 @@ object Keys {
   val internalDependencyClasspath = taskKey[Classpath]("The internal (inter-project) classpath.").withRank(CTask)
   val externalDependencyClasspath = taskKey[Classpath]("The classpath consisting of library dependencies, both managed and unmanaged.").withRank(BMinusTask)
   val dependencyClasspath = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies.").withRank(BPlusTask)
-  val dependencyVirtualClasspath = taskKey[VirtualClasspath]("The classpath consisting of internal and external, managed and unmanaged dependencies.").withRank(CTask)
-  val dependencyPicklePath = taskKey[VirtualClasspath]("The classpath consisting of internal pickles and external, managed and unmanaged dependencies. This task is promise-blocked.")
-  val internalDependencyPicklePath = taskKey[VirtualClasspath]("The internal (inter-project) pickles. This task is promise-blocked.")
+  val dependencyPicklePath = taskKey[Classpath]("The classpath consisting of internal pickles and external, managed and unmanaged dependencies. This task is promise-blocked.")
+  val internalDependencyPicklePath = taskKey[Classpath]("The internal (inter-project) pickles. This task is promise-blocked.")
   val fullClasspath = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.").withRank(BPlusTask)
   val trackInternalDependencies = settingKey[TrackLevel]("The level of tracking for the internal (inter-project) dependency.").withRank(BSetting)
   val exportToInternal = settingKey[TrackLevel]("The level of tracking for this project by the internal callers.").withRank(BSetting)
   val exportedProductJars = taskKey[Classpath]("Build products that go on the exported classpath as JARs.")
   val exportedProductJarsIfMissing = taskKey[Classpath]("Build products that go on the exported classpath as JARs if missing.")
   val exportedProductJarsNoTracking = taskKey[Classpath]("Just the exported classpath as JARs without triggering the compilation.")
-  val exportedPickles = taskKey[VirtualClasspath]("Build products that go on the exported compilation classpath as JARs. Note this is promise-blocked.").withRank(DTask)
+  val exportedPickles = taskKey[Classpath]("Build products that go on the exported compilation classpath as JARs. Note this is promise-blocked.").withRank(DTask)
   val pickleProducts = taskKey[Seq[VirtualFile]]("Pickle JARs").withRank(DTask)
   val internalDependencyAsJars = taskKey[Classpath]("The internal (inter-project) classpath as JARs.")
   val dependencyClasspathAsJars = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies, all as JARs.")

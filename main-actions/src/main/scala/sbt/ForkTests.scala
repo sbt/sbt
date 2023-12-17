@@ -19,13 +19,15 @@ import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
 import sbt.internal.util.Util.{ AnyOps, none }
 import sbt.internal.util.{ Terminal => UTerminal }
+import xsbti.{ FileConverter, HashedVirtualFileRef }
 
 private[sbt] object ForkTests {
   def apply(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tags: (Tag, Int)*
@@ -36,10 +38,12 @@ private[sbt] object ForkTests {
     def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
 
     val main =
-      if (opts.tests.isEmpty)
+      if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
+        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel).tagw(
+          config.tags: _*
+        )
     main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
@@ -49,31 +53,34 @@ private[sbt] object ForkTests {
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
-    apply(runners, opts, config, classpath, fork, log, tags: _*)
+    apply(runners, opts, config, classpath, converter, fork, log, tags: _*)
   }
 
   def apply(
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tag: Tag
   ): Task[TestOutput] = {
-    apply(runners, tests, config, classpath, fork, log, tag -> 1)
+    apply(runners, tests, config, classpath, converter, fork, log, tag -> 1)
   }
 
   private[this] def mainTestTask(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       parallel: Boolean
@@ -148,8 +155,8 @@ private[sbt] object ForkTests {
         testListeners.foreach(_.doInit())
         val acceptorThread = new Thread(Acceptor)
         acceptorThread.start()
-
-        val fullCp = classpath ++ Seq(
+        val cpFiles = classpath.map(converter.toPath).map(_.toFile())
+        val fullCp = cpFiles ++ Seq(
           IO.classLocationPath[ForkMain].toFile,
           IO.classLocationPath[Framework].toFile
         )

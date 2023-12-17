@@ -51,7 +51,11 @@ object IvyConsole {
       val depSettings: Seq[Setting[_]] = Seq(
         libraryDependencies ++= managed.reverse,
         resolvers ++= repos.reverse.toVector,
-        Compile / unmanagedJars ++= Attributed blankSeq unmanaged.reverse,
+        Compile / unmanagedJars ++= {
+          val converter = fileConverter.value
+          val u = unmanaged.reverse.map(_.toPath).map(converter.toVirtualFile)
+          Attributed.blankSeq(u)
+        },
         Global / logLevel := Level.Warn,
         Global / showSuccess := false
       )

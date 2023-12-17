@@ -22,13 +22,13 @@ import sbt.internal.util.{ Terminal => ITerminal, * }
 import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, CacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
-import xsbti.VirtualFile
+import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import sjsonnew.JsonFormat
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
-  type Classpath = Seq[Attributed[File]]
-  type VirtualClasspath = Seq[Attributed[VirtualFile]]
+  type Classpath = Seq[Attributed[HashedVirtualFileRef]]
+  // type FileClasspath = Seq[Attributed[File]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 
