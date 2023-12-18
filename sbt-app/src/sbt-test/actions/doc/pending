@@ -4,10 +4,11 @@
 
 # hybrid project, only scaladoc run
 > doc
-$ exists target/api/index.js
-$ exists target/api/A$.html
-$ absent target/api/scala
-$ absent target/api/java
+> packageBin
+$ exists target/out/jvm/scala-2.12.18/root/api/index.js
+$ exists target/out/jvm/scala-2.12.18/root/api/A$.html
+$ absent target/out/jvm/scala-2.12.18/root/api/scala
+$ absent target/out/jvm/scala-2.12.18/root/api/java
 
 > setDocExtension scala
 
@@ -18,30 +19,29 @@ $ copy-file changes/B.scala B.scala
 > clean ; compile ; doc
 
 # pure scala project, only scaladoc at top level
-$ exists target/api/index.js
-$ exists target/api/A$.html
-$ exists target/api/B$.html
-$ absent target/api/package-list
-$ absent target/api/scala
-$ absent target/api/java
+$ exists target/out/jvm/scala-2.12.18/root/api/index.js
+$ exists target/out/jvm/scala-2.12.18/root/api/A$.html
+$ exists target/out/jvm/scala-2.12.18/root/api/B$.html
+$ absent target/out/jvm/scala-2.12.18/root/api/package-list
+$ absent target/out/jvm/scala-2.12.18/root/api/scala
+$ absent target/out/jvm/scala-2.12.18/root/api/java
 
 > setDocExtension java
 
-> clean ; doc
+> clean
+
+# pending because Javadoc doesn't work
+> doc
 
 # pure java project, only javadoc at top level
-$ exists target/api/index.html
-$ exists target/api/pkg/J.html
-$ absent target/api/index.js
+$ exists target/out/jvm/scala-2.12.18/root/api/index.html
+$ exists target/out/jvm/scala-2.12.18/root/api/pkg/J.html
+$ absent target/out/jvm/scala-2.12.18/root/api/index.js
 
 > setDocExtension scala
-> ++2.13.3
+> ++2.13.x
 > clean
-$ absent target/api/A$.html
+$ absent target/out/jvm/scala-2.12.18/root/api/A$.html
 > doc
-$ exists target/api/A$.html
-$ exists target/api/B$.html
-
-# pending
-# $ absent target/api/scala
-# $ absent target/api/java
+$ exists target/out/jvm/scala-2.13.3/root/api/A$.html
+$ exists target/out/jvm/scala-2.13.3/root/api/B$.html

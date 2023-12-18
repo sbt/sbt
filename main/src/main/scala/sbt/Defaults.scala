@@ -2287,28 +2287,28 @@ object Defaults extends BuildCommon {
                 converter.toPath(k).toFile() -> v
               }
               val options = sOpts ++ Opts.doc.externalAPI(xapisFiles)
-              val runDoc = Doc.scaladoc(
-                label,
-                s.cacheStoreFactory sub "scala",
-                cs.scalac match {
-                  case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
-                },
-                fiOpts,
-                converter,
-              )
+              val scalac = cs.scalac match
+                case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               def isScala3Doc(module: ModuleID): Boolean = {
                 module.configurations.exists(_.startsWith(Configurations.ScalaDocTool.name)) &&
                 module.name == ScalaArtifacts.Scala3DocID
               }
-              if (ScalaArtifacts.isScala3M123(sv) && !allDeps.exists(isScala3Doc)) {
-                Array(
-                  "Unresolved scala3doc artifact",
-                  "add 'ThisBuild / resolvers += Resolver.JCenterRepository'"
-                ).foreach(m => s.log.error(m))
-              }
-              val docSrcs = if (ScalaArtifacts.isScala3(sv)) tFiles else srcs
-              val cpFiles = cp.map(converter.toPath).map(_.toFile())
-              runDoc(docSrcs, cpFiles, out, options, maxErrors.value, s.log)
+              val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
+              // todo: cache this
+              if docSrcFiles.nonEmpty then
+                IO.delete(out)
+                IO.createDirectory(out)
+                // use PlainVirtualFile since Scaladoc currently doesn't handle actual VirtualFiles
+                scalac.doc(
+                  docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
+                  cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
+                  converter,
+                  out.toPath(),
+                  options,
+                  maxErrors.value,
+                  s.log,
+                )
+              else ()
             case (_, true) =>
               val javadoc =
                 sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)

@@ -1,3 +1,2 @@
-object Main{
-
+object Main {
 }
