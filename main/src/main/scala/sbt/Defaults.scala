@@ -1968,6 +1968,7 @@ object Defaults extends BuildCommon {
         s.log,
         Pkg.timeFromConfiguration(config)
       )
+      s.log.debug(s"wrote $out")
       Def.declareOutput(out)
       out
     }
@@ -2507,7 +2508,7 @@ object Defaults extends BuildCommon {
               s.log,
               Pkg.timeFromConfiguration(pkgConfig)
             )
-            s.log.info(s"written $out")
+            s.log.debug(s"wrote $out")
             Def.declareOutput(out)
             analysisResult.hasModified() -> (out: HashedVirtualFileRef)
           })
