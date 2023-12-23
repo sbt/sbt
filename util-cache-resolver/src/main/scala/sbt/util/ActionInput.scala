@@ -3,7 +3,7 @@ package sbt.util
 /**
  * An action input is a wrapper around hash.
  */
-class ActionInput(hash: String):
+private[sbt] class ActionInput(hash: String):
   def inputHash: String = hash
   override def equals(o: Any): Boolean =
     o match {

@@ -13,8 +13,8 @@ object ActionCache:
   )(
       config: CacheConfiguration
   ): ActionResult[O] =
-    val hash: Long = otherInputs * 13L + Hasher.hashUnsafe[I](key)
-    val input = ActionInput(hash.toHexString)
+    val hashInput: Array[Long] = Array(otherInputs, Hasher.hashUnsafe[I](key))
+    val input = ActionInput(HashUtil.sha256HashStr(hashInput))
     val store = config.store
     val outputDirectory = config.outputDirectory
     val result: Option[ActionResult[O]] = store.get[O](input)
