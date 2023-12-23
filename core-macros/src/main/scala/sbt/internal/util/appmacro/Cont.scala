@@ -12,7 +12,6 @@ import sbt.util.Applicative
 import sbt.util.Monad
 import xsbti.VirtualFile
 import Types.Id
-import sbt.util.ActionValue
 import sbt.util.Cache
 
 /**

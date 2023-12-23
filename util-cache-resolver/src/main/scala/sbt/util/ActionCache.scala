@@ -12,20 +12,20 @@ object ActionCache:
       action: I => (O, Seq[VirtualFile])
   )(
       config: CacheConfiguration
-  ): ActionValue[O] =
+  ): ActionResult[O] =
     val hash: Long = otherInputs * 13L + Hasher.hashUnsafe[I](key)
     val input = ActionInput(hash.toHexString)
     val store = config.store
     val outputDirectory = config.outputDirectory
-    val result: Option[ActionValue[O]] = store.get[O](input)
+    val result: Option[ActionResult[O]] = store.get[O](input)
     result match
       case Some(value) =>
-        store.syncBlobs(value.outputs, outputDirectory)
+        store.syncBlobs(value.outputFiles, outputDirectory)
         value // return the value
       case None =>
         val (newResult, outputs) = action(key)
         val value = store.put[O](input, newResult, outputs)
-        store.syncBlobs(value.outputs, outputDirectory)
+        store.syncBlobs(value.outputFiles, outputDirectory)
         value
 end ActionCache
 

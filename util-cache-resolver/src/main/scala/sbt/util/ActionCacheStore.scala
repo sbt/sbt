@@ -27,12 +27,12 @@ trait ActionCacheStore:
       key: ActionInput,
       value: A1,
       blobs: Seq[VirtualFile],
-  ): ActionValue[A1]
+  ): ActionResult[A1]
 
   /**
    * Get the value for the key from the cache store.
    */
-  def get[A1: ClassTag: JsonFormat](key: ActionInput): Option[ActionValue[A1]]
+  def get[A1: ClassTag: JsonFormat](key: ActionInput): Option[ActionResult[A1]]
 
   /**
    * Put VirtualFile blobs to the cache store for later retrieval.
@@ -51,8 +51,8 @@ trait ActionCacheStore:
 end ActionCacheStore
 
 class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends ActionCacheStore:
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionValue[A1]] =
-    var result: Option[ActionValue[A1]] = None
+  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
+    var result: Option[ActionResult[A1]] = None
     stores.foreach: store =>
       if result.isEmpty then result = store.get[A1](input)
     result
@@ -61,8 +61,8 @@ class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends ActionCac
       key: ActionInput,
       value: A1,
       blobs: Seq[VirtualFile],
-  ): ActionValue[A1] =
-    var result: Option[ActionValue[A1]] = None
+  ): ActionResult[A1] =
+    var result: Option[ActionResult[A1]] = None
     stores.foreach: store =>
       val v = store.put[A1](key, value, blobs)
       if result.isEmpty then result = Some(v)
@@ -95,19 +95,19 @@ end AggregateActionCacheStore
 class InMemoryActionCacheStore extends ActionCacheStore:
   private val underlying: mutable.Map[ActionInput, JValue] = mutable.Map.empty
 
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionValue[A1]] =
+  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
     underlying
       .get(input)
       .map: j =>
-        Converter.fromJsonUnsafe[ActionValue[A1]](j)
+        Converter.fromJsonUnsafe[ActionResult[A1]](j)
 
   override def put[A1: ClassTag: JsonFormat](
       key: ActionInput,
       value: A1,
       blobs: Seq[VirtualFile],
-  ): ActionValue[A1] =
+  ): ActionResult[A1] =
     val refs = putBlobs(blobs)
-    val v = ActionValue(value, refs)
+    val v = ActionResult(value, refs)
     val json = Converter.toJsonUnsafe(v)
     underlying(key) = json
     v
@@ -144,13 +144,13 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
     dir
   }
 
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionValue[A1]] =
+  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
     val acFile = acBase.toFile / input.inputHash
     if acFile.exists then
       val str = IO.read(acFile)
       val json = Parser.parseUnsafe(str)
       try
-        val value = Converter.fromJsonUnsafe[ActionValue[A1]](json)
+        val value = Converter.fromJsonUnsafe[ActionResult[A1]](json)
         Some(value)
       catch case NonFatal(_) => None
     else None
@@ -159,10 +159,10 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
       key: ActionInput,
       value: A1,
       blobs: Seq[VirtualFile],
-  ): ActionValue[A1] =
+  ): ActionResult[A1] =
     val acFile = acBase.toFile / key.inputHash
     val refs = putBlobs(blobs)
-    val v = ActionValue(value, refs)
+    val v = ActionResult(value, refs)
     val json = Converter.toJsonUnsafe(v)
     IO.write(acFile, CompactPrinter(json))
     v

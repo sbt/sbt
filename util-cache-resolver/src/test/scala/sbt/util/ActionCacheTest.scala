@@ -54,9 +54,9 @@ object ActionCacheTest extends BasicTestSuite:
       val config = CacheConfiguration(cache, tempDir.toPath())
       val v1 = ActionCache.cache[(Int, Int), Int]((1, 1), 1L)(action)(config)
       assert(v1.value == 2)
-      // ActionValue only contains the reference to the files.
+      // ActionResult only contains the reference to the files.
       // To retrieve them, separately call readBlobs or syncBlobs.
-      val files1 = cache.syncBlobs(v1.outputs, tempDir.toPath())
+      val files1 = cache.syncBlobs(v1.outputFiles, tempDir.toPath())
       val file1 = files1(0)
       assert(file1.toFile().exists())
       val content = IO.read(file1.toFile())
