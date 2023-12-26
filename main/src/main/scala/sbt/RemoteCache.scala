@@ -83,10 +83,12 @@ object RemoteCache {
     analysisStore.getOrElseUpdate(
       ref, {
         val vfs = cacheStore.getBlobs(ref :: Nil)
-        val vf = vfs.head
-        IO.withTemporaryFile(vf.id, ".tmp"): file =>
-          IO.transfer(vf.input, file)
-          FileAnalysisStore.binary(file).get.get.getAnalysis
+        vfs.headOption match
+          case Some(vf) =>
+            IO.withTemporaryFile(vf.name, ".tmp"): file =>
+              IO.transfer(vf.input, file)
+              FileAnalysisStore.binary(file).get.get.getAnalysis
+          case _ => sbt.internal.inc.Analysis.empty
       }
     )
 
