@@ -2304,19 +2304,21 @@ object Defaults extends BuildCommon {
                 )
               else ()
             case (_, true) =>
-              val javadoc =
-                sbt.inc.Doc.cachedJavadoc(label, s.cacheStoreFactory sub "java", cs.javaTools)
-              javadoc.run(
-                srcs.toList map { x =>
-                  converter.toVirtualFile(x.toPath)
-                },
-                cp.map(converter.toPath).map(converter.toVirtualFile),
-                converter,
-                out.toPath,
-                javacOptions.value.toList,
+              import sbt.internal.inc.javac.JavaCompilerArguments
+              val javaSourcesOnly: VirtualFile => Boolean = _.id.endsWith(".java")
+              val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
+              val options = javacOptions.value.toList
+              cs.javaTools.javadoc.run(
+                srcs.toArray
+                  .map { x =>
+                    converter.toVirtualFile(x.toPath)
+                  }
+                  .filter(javaSourcesOnly),
+                JavaCompilerArguments(Nil, classpath, options).toArray,
+                CompileOutput(out.toPath),
                 IncToolOptionsUtil.defaultIncToolOptions(),
+                reporter,
                 s.log,
-                reporter
               )
             case _ => () // do nothing
           }
