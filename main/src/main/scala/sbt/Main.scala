@@ -956,10 +956,10 @@ object BuiltinCommands {
   def doLoadProject(s0: State, action: LoadAction): State = {
     welcomeBanner(s0)
     checkSBTVersionChanged(s0)
+    RemoteCache.initializeRemoteCache(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
     val s2 = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
-    RemoteCache.initializeRemoteCache(s2)
     val (eval, structure) =
       try Load.defaultLoad(s2, base, s2.log, Project.inPluginProject(s2), Project.extraBuilds(s2))
       catch {

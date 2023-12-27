@@ -69,13 +69,15 @@ object RemoteCache {
   // TODO: figure out a good timing to initialize cache
   // currently this is called twice so metabuild can call compile with a minimal setting
   private[sbt] def initializeRemoteCache(s: State): Unit =
-    val caches = s.get(BasicKeys.cacheStores)
-    caches match
-      case Some(xs) => Def._cacheStore = AggregateActionCacheStore(xs)
-      case None     => Def._cacheStore = InMemoryActionCacheStore()
     val outDir =
       s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath())
     Def._outputDirectory = Some(outDir)
+    val caches = s.get(BasicKeys.cacheStores)
+    caches match
+      case Some(xs) => Def._cacheStore = AggregateActionCacheStore(xs)
+      case None =>
+        val tempDiskCache = (s.baseDir / "target" / "bootcache").toPath()
+        Def._cacheStore = DiskActionCacheStore(tempDiskCache)
 
   private[sbt] def getCachedAnalysis(ref: String): CompileAnalysis =
     getCachedAnalysis(CacheImplicits.strToHashedVirtualFileRef(ref))

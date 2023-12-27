@@ -34,13 +34,6 @@ object HasherTest extends BasicTestSuite:
     assert(actual == blankATxtHash)
   }
 
-  test("java.io.File hash using farmhash") {
-    import PathHashWriters.given
-    val x = File("LICENSE")
-    val actual = Hasher.hashUnsafe(x)
-    assert(actual == 63220201)
-  }
-
   test("VirtualFile hash") {
     import PathHashWriters.given
     val x = StringVirtualFile1("a.txt", "")

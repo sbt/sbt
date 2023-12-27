@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
 import sbt.internal.util.PlainVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
-import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile, VirtualFileRef }
 import sbt.nio.file.FileAttributes
 
 /**
@@ -113,10 +113,8 @@ class InMemoryActionCacheStore extends ActionCacheStore:
     v
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    blobs.map: b =>
-      val contentHash = s"farm64-${b.contentHash.toHexString}"
-      val ref = HashedVirtualFileRef.of(b.id, contentHash)
-      ref
+    blobs.map: (b: VirtualFile) =>
+      (b: HashedVirtualFileRef)
 
   // we won't keep the blobs in-memory so return Nil
   override def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
@@ -168,17 +166,18 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
     v
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    blobs.map: b =>
-      val contentHash = s"farm64-${b.contentHash.toHexString}"
-      val ref = HashedVirtualFileRef.of(b.id, contentHash)
-      val outFile = casBase.toFile / contentHash
+    blobs.map: (b: VirtualFile) =>
+      val outFile = casBase.toFile / b.contentHashStr
       IO.transfer(b.input, outFile)
-      ref
+      (b: HashedVirtualFileRef)
 
   override def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
     refs.flatMap: r =>
       val casFile = casBase.toFile / r.contentHashStr
-      if casFile.exists then Some(PlainVirtualFile1(casFile.toPath(), r.id))
+      if casFile.exists then
+        r match
+          case p: PathBasedFile => Some(p)
+          case _                => None
       else None
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =

@@ -467,6 +467,7 @@ lazy val utilCacheResolver = (project in file("util-cache-resolver"))
       scalatest % Test,
       zeroAllocationHashing,
     ),
+    Test / fork := true,
     // utilMimaSettings,
   )
   .configure(
