@@ -334,7 +334,8 @@ object ProjectMatrix {
     private def makeSources(dirSuffix: String, svDirSuffix: String): Setting[_] = {
       unmanagedSourceDirectories ++= Seq(
         scalaSource.value.getParentFile / s"scala${dirSuffix}",
-        scalaSource.value.getParentFile / s"scala$svDirSuffix"
+        scalaSource.value.getParentFile / s"scala$svDirSuffix",
+        javaSource.value.getParentFile / s"java${dirSuffix}"
       )
     }
 
