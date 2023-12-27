@@ -427,15 +427,12 @@ lazy val utilRelation = (project in file("internal") / "util-relation")
 lazy val utilCache = (project in file("util-cache"))
   .settings(
     utilCommonSettings,
+    testedBaseSettings,
     name := "Util Cache",
     libraryDependencies ++=
       Seq(sjsonNewScalaJson.value, sjsonNewMurmurhash.value, scalaReflect.value),
-    libraryDependencies ++= Seq(scalatest % "test"),
     utilMimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // Added a method to a sealed trait, technically not a problem for Scala
-      exclude[ReversedMissingMethodProblem]("sbt.util.HashFileInfo.hashArray"),
-    )
+    Test / fork := true,
   )
   .configure(
     addSbtIO,
@@ -456,24 +453,6 @@ lazy val utilTracking = (project in file("util-tracking"))
     )
   )
   .configure(addSbtIO)
-
-lazy val utilCacheResolver = (project in file("util-cache-resolver"))
-  .dependsOn(utilCache)
-  .settings(
-    utilCommonSettings,
-    testedBaseSettings,
-    name := "Util Cache Resolver",
-    libraryDependencies ++= Seq(
-      scalatest % Test,
-      zeroAllocationHashing,
-    ),
-    Test / fork := true,
-    // utilMimaSettings,
-  )
-  .configure(
-    addSbtIO,
-    addSbtCompilerInterface,
-  )
 
 lazy val utilScripted = (project in file("internal") / "util-scripted")
   .dependsOn(utilLogging, utilInterface)
@@ -681,7 +660,7 @@ lazy val actionsProj = (project in file("main-actions"))
     stdTaskProj,
     taskProj,
     testingProj,
-    utilCacheResolver,
+    utilCache,
     utilLogging,
     utilRelation,
     utilTracking,
@@ -757,7 +736,7 @@ lazy val protocolProj = (project in file("protocol"))
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(protocolProj, completeProj, utilLogging, utilCacheResolver)
+  .dependsOn(protocolProj, completeProj, utilLogging, utilCache)
   .settings(
     testedBaseSettings,
     name := "Command",
@@ -825,7 +804,7 @@ lazy val commandProj = (project in file("main-command"))
 lazy val coreMacrosProj = (project in file("core-macros"))
   .dependsOn(
     collectionProj,
-    utilCacheResolver,
+    utilCache,
   )
   .settings(
     testedBaseSettings,
@@ -1293,21 +1272,20 @@ def allProjects =
     bundledLauncherProj,
     sbtClientProj,
     buildFileProj,
-    utilCacheResolver,
+    utilCache,
+    utilTracking,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
 lazy val lowerUtilProjects =
   Seq(
     utilCore,
-    utilCache,
     utilControl,
     utilInterface,
     utilLogging,
     utilPosition,
     utilRelation,
     utilScripted,
-    utilTracking
   )
 
 lazy val nonRoots = allProjects.map(p => LocalProject(p.id))

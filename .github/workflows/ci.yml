@@ -52,7 +52,7 @@ jobs:
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
-      UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
+      UTIL_TESTS: "utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test"
       SBT_LOCAL: false
       TEST_SBT_VER: 1.5.0
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
