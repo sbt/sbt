@@ -21,10 +21,10 @@ import sbt.nio.file.FileAttributes
 trait ActionCacheStore:
   /**
    * Put a value and blobs to the cache store for later retrieval,
-   * based on the key input.
+   * based on the `actionDigest`.
    */
   def put[A1: ClassTag: JsonFormat](
-      key: ActionInput,
+      actionDigest: Digest,
       value: A1,
       blobs: Seq[VirtualFile],
   ): ActionResult[A1]
@@ -32,7 +32,7 @@ trait ActionCacheStore:
   /**
    * Get the value for the key from the cache store.
    */
-  def get[A1: ClassTag: JsonFormat](key: ActionInput): Option[ActionResult[A1]]
+  def get[A1: ClassTag: JsonFormat](input: Digest): Option[ActionResult[A1]]
 
   /**
    * Put VirtualFile blobs to the cache store for later retrieval.
@@ -51,20 +51,20 @@ trait ActionCacheStore:
 end ActionCacheStore
 
 class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends ActionCacheStore:
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
+  override def get[A1: ClassTag: JsonFormat](input: Digest): Option[ActionResult[A1]] =
     var result: Option[ActionResult[A1]] = None
     stores.foreach: store =>
       if result.isEmpty then result = store.get[A1](input)
     result
 
   override def put[A1: ClassTag: JsonFormat](
-      key: ActionInput,
+      actionDigest: Digest,
       value: A1,
       blobs: Seq[VirtualFile],
   ): ActionResult[A1] =
     var result: Option[ActionResult[A1]] = None
     stores.foreach: store =>
-      val v = store.put[A1](key, value, blobs)
+      val v = store.put[A1](actionDigest, value, blobs)
       if result.isEmpty then result = Some(v)
     result.get
 
@@ -93,16 +93,16 @@ object AggregateActionCacheStore:
 end AggregateActionCacheStore
 
 class InMemoryActionCacheStore extends ActionCacheStore:
-  private val underlying: mutable.Map[ActionInput, JValue] = mutable.Map.empty
+  private val underlying: mutable.Map[Digest, JValue] = mutable.Map.empty
 
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
+  override def get[A1: ClassTag: JsonFormat](input: Digest): Option[ActionResult[A1]] =
     underlying
       .get(input)
       .map: j =>
         Converter.fromJsonUnsafe[ActionResult[A1]](j)
 
   override def put[A1: ClassTag: JsonFormat](
-      key: ActionInput,
+      key: Digest,
       value: A1,
       blobs: Seq[VirtualFile],
   ): ActionResult[A1] =
@@ -142,8 +142,8 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
     dir
   }
 
-  override def get[A1: ClassTag: JsonFormat](input: ActionInput): Option[ActionResult[A1]] =
-    val acFile = acBase.toFile / input.inputHash
+  override def get[A1: ClassTag: JsonFormat](input: Digest): Option[ActionResult[A1]] =
+    val acFile = acBase.toFile / input.toString
     if acFile.exists then
       val str = IO.read(acFile)
       val json = Parser.parseUnsafe(str)
@@ -154,11 +154,11 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
     else None
 
   override def put[A1: ClassTag: JsonFormat](
-      key: ActionInput,
+      key: Digest,
       value: A1,
       blobs: Seq[VirtualFile],
   ): ActionResult[A1] =
-    val acFile = acBase.toFile / key.inputHash
+    val acFile = acBase.toFile / key.toString
     val refs = putBlobs(blobs)
     val v = ActionResult(value, refs)
     val json = Converter.toJsonUnsafe(v)
@@ -167,13 +167,13 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
     blobs.map: (b: VirtualFile) =>
-      val outFile = casBase.toFile / b.contentHashStr
+      val outFile = casBase.toFile / Digest(b.contentHashStr).toString
       IO.transfer(b.input, outFile)
       (b: HashedVirtualFileRef)
 
   override def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
     refs.flatMap: r =>
-      val casFile = casBase.toFile / r.contentHashStr
+      val casFile = casBase.toFile / Digest(r.contentHashStr).toString
       if casFile.exists then
         r match
           case p: PathBasedFile => Some(p)
@@ -182,7 +182,7 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: r =>
-      val casFile = casBase.toFile / r.contentHashStr
+      val casFile = casBase.toFile / Digest(r.contentHashStr).toString
       if casFile.exists then
         val shortPath =
           if r.id.startsWith("${OUT}/") then r.id.drop(7)

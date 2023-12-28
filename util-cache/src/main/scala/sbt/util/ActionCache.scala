@@ -14,7 +14,7 @@ object ActionCache:
       config: CacheConfiguration
   ): ActionResult[O] =
     val hashInput: Array[Long] = Array(otherInputs, Hasher.hashUnsafe[I](key))
-    val input = ActionInput(HashUtil.sha256HashStr(hashInput))
+    val input = Digest(HashUtil.sha256HashStr(hashInput))
     val store = config.store
     val outputDirectory = config.outputDirectory
     val result: Option[ActionResult[O]] = store.get[O](input)
