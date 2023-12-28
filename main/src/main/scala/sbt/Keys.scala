@@ -36,7 +36,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ cacheOptOut, ActionCacheStore, Level, Logger, LoggerContext }
+import sbt.util.{ cacheLevel, ActionCacheStore, Level, Logger, LoggerContext }
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
@@ -85,11 +85,11 @@ object Keys {
   val appConfiguration = settingKey[xsbti.AppConfiguration]("Provides access to the launched sbt configuration, including the ScalaProvider, Launcher, and GlobalLock.").withRank(DSetting)
   val thisProject = settingKey[ResolvedProject]("Provides the current project for the referencing scope.").withRank(CSetting)
 
-  @cacheOptOut(reason = "contains file path")
+  @cacheLevel(include = Array.empty)
   val thisProjectRef = settingKey[ProjectRef]("Provides a fully-resolved reference to the current project for the referencing scope.").withRank(CSetting)
   val configurationStr = StringAttributeKey("configuration")
 
-  @cacheOptOut("")
+  @cacheLevel(include = Array.empty)
   val configuration = settingKey[Configuration]("Provides the current configuration of the referencing scope.").withRank(CSetting)
   val commands = settingKey[Seq[Command]]("Defines commands to be registered when this project or build is the current selected one.").withRank(CSetting)
   val initialize = settingKey[Unit]("A convenience setting for performing side-effects during initialization.").withRank(BSetting)
@@ -170,7 +170,7 @@ object Keys {
   val resources = taskKey[Seq[File]]("All resource files, both managed and unmanaged.").withRank(BTask)
 
   // Output paths
-  @cacheOptOut(reason = "File is machine-specific")
+  @cacheLevel(include = Array.empty)
   val classDirectory = settingKey[File]("Directory for compiled classes and copied resources.").withRank(AMinusSetting)
   val earlyOutput = settingKey[VirtualFile]("JAR file for pickles used for build pipelining")
   val backendOutput = settingKey[VirtualFile]("Directory or JAR file for compiled classes and copied resources")
@@ -197,7 +197,7 @@ object Keys {
   val asciiGraphWidth = settingKey[Int]("Determines maximum width of the settings graph in ASCII mode").withRank(AMinusSetting)
   val compileOptions = taskKey[CompileOptions]("Collects basic options to configure compilers").withRank(DTask)
 
-  @cacheOptOut(reason = "contains uncachable settings")
+  @cacheLevel(include = Array.empty)
   val compileInputs = taskKey[Inputs]("Collects all inputs needed for compilation.").withRank(DTask)
   val compileInputs2 = taskKey[CompileInputs2]("")
   val scalaHome = settingKey[Option[File]]("If Some, defines the local Scala installation to use for compilation, running, and testing.").withRank(ASetting)
@@ -243,7 +243,7 @@ object Keys {
   private[sbt] val compileScalaBackend = taskKey[CompileResult]("Compiles only Scala sources if pipelining is enabled. Compiles both Scala and Java sources otherwise").withRank(Invisible)
   private[sbt] val compileEarly = taskKey[CompileAnalysis]("Compiles only Scala sources if pipelining is enabled, and produce an early output (pickle JAR)").withRank(Invisible)
 
-  @cacheOptOut("this is just for timing signal, so no need to cache")
+  @cacheLevel(include = Array.empty)
   private[sbt] val earlyOutputPing = taskKey[PromiseWrap[Boolean]]("When pipelining is enabled, this returns true when early output (pickle JAR) is created; false otherwise").withRank(Invisible)
   private[sbt] val compileJava = taskKey[CompileResult]("Compiles only Java sources (called only for pipelining)").withRank(Invisible)
   private[sbt] val compileSplit = taskKey[CompileResult]("When pipelining is enabled, compile Scala then Java; otherwise compile both").withRank(Invisible)
@@ -256,7 +256,7 @@ object Keys {
   val compileAnalysisFile = taskKey[File]("Zinc analysis storage.").withRank(DSetting)
   val earlyCompileAnalysisFile = taskKey[File]("Zinc analysis storage for early compilation").withRank(DSetting)
 
-  @cacheOptOut
+  @cacheLevel(include = Array.empty)
   val compileIncSetup = taskKey[Setup]("Configures aspects of incremental compilation.").withRank(DTask)
   val compilerCache = taskKey[GlobalsCache]("Cache of scala.tools.nsc.Global instances.  This should typically be cached so that it isn't recreated every task run.").withRank(DTask)
   val stateCompilerCache = AttributeKey[GlobalsCache]("stateCompilerCache", "Internal use: Global cache.")
@@ -270,7 +270,7 @@ object Keys {
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
   val auxiliaryClassFiles = taskKey[Seq[AuxiliaryClassFiles]]("The auxiliary class files that must be managed by Zinc (for instance the TASTy files)")
-  @cacheOptOut
+  @cacheLevel(include = Array.empty)
   val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
   val reportAbsolutePath = settingKey[Boolean]("Report absolute paths during compilation.")
@@ -421,7 +421,7 @@ object Keys {
   val bspEnabled = SettingKey[Boolean](BasicKeys.bspEnabled)
   val bspSbtEnabled = settingKey[Boolean]("Should BSP export meta-targets for the SBT build itself?")
 
-  @cacheOptOut(reason = "target identifier includes file path")
+  @cacheLevel(include = Array.empty)
   val bspTargetIdentifier = settingKey[BuildTargetIdentifier]("Build target identifier of a project and configuration.").withRank(DSetting)
   val bspWorkspace = settingKey[Map[BuildTargetIdentifier, Scope]]("Mapping of BSP build targets to sbt scopes").withRank(DSetting)
   private[sbt] val bspFullWorkspace = settingKey[BspFullWorkspace]("Mapping of BSP build targets to sbt scopes and meta-targets for the SBT build itself").withRank(DSetting)
@@ -453,7 +453,7 @@ object Keys {
   val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
   val bspScalaMainClassesItem = taskKey[ScalaMainClassesItem]("").withRank(DTask)
 
-  @cacheOptOut(reason = "no need to invalidate based on this")
+  @cacheLevel(include = Array.empty)
   val bspReporter = taskKey[BuildServerReporter]("").withRank(DTask)
 
   val useCoursier = settingKey[Boolean]("Use Coursier for dependency resolution.").withRank(BSetting)
@@ -609,7 +609,7 @@ object Keys {
   val forcegc = settingKey[Boolean]("Enables (true) or disables (false) forcing garbage collection after task run when needed.").withRank(BMinusSetting)
   val minForcegcInterval = settingKey[Duration]("Minimal interval to check for forcing garbage collection.")
   val settingsData = std.FullInstance.settingsData
-  @cacheOptOut
+  @cacheLevel(include = Array.empty)
   val streams = taskKey[TaskStreams]("Provides streams for logging and persisting data.").withRank(DTask)
   val taskDefinitionKey = Def.taskDefinitionKey
   val (executionRoots, dummyRoots) = Def.dummy[Seq[ScopedKey[_]]]("executionRoots", "The list of root tasks for this task execution.  Roots are the top-level tasks that were directly requested to be run.")

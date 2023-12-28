@@ -19,7 +19,7 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, CacheConfiguration, InMemoryActionCacheStore }
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
@@ -235,8 +235,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
   def cacheStore: ActionCacheStore = _cacheStore
   private[sbt] var _outputDirectory: Option[Path] = None
-  def cacheConfiguration: CacheConfiguration =
-    CacheConfiguration(
+  def cacheConfiguration: BuildWideCacheConfiguration =
+    BuildWideCacheConfiguration(
       _cacheStore,
       _outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
     )

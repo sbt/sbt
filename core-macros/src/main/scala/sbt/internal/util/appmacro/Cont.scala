@@ -7,12 +7,17 @@ import scala.collection.mutable.ListBuffer
 import scala.reflect.{ ClassTag, TypeTest }
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
-import sbt.util.{ ActionCache, ActionCacheStore, CacheConfiguration }
-import sbt.util.Applicative
-import sbt.util.Monad
+import sbt.util.{
+  ActionCache,
+  ActionCacheStore,
+  Applicative,
+  BuildWideCacheConfiguration,
+  Cache,
+  CacheLevelTag,
+  Monad,
+}
 import xsbti.VirtualFile
 import Types.Id
-import sbt.util.Cache
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -29,7 +34,7 @@ trait Cont:
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExpr: Option[Expr[CacheConfiguration]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
@@ -43,7 +48,7 @@ trait Cont:
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExpr: Option[Expr[CacheConfiguration]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -58,7 +63,7 @@ trait Cont:
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExpr: Option[Expr[CacheConfiguration]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
@@ -72,7 +77,7 @@ trait Cont:
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExpr: Option[Expr[CacheConfiguration]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -152,7 +157,7 @@ trait Cont:
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExprOpt: Option[Expr[CacheConfiguration]],
+        cacheConfigExprOpt: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -178,12 +183,13 @@ trait Cont:
 
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
+        val tags = CacheLevelTag.all.toList
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
           cacheConfigExprOpt match
             case Some(cacheConfigExpr) =>
               '{
                 $applicativeExpr.pure[A1] { () =>
-                  ${ callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(body) }
+                  ${ callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, tags)(body) }
                 }
               }
             case None =>
@@ -232,12 +238,12 @@ trait Cont:
                   cacheConfigExprOpt match
                     case Some(cacheConfigExpr) =>
                       if input.isCacheInput then
-                        callActionCacheWithA2(outputBuf.toList, cacheConfigExpr)(
+                        callActionCacheWithA2(outputBuf.toList, cacheConfigExpr, input.tags)(
                           body = modifiedBody,
                           input = Ref(param.symbol).asExprOf[a],
                         ).asTerm.changeOwner(sym)
                       else
-                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(
+                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, input.tags)(
                           modifiedBody
                         ).asTerm.changeOwner(sym)
                     case None => modifiedBody.asTerm
@@ -284,14 +290,24 @@ trait Cont:
                   cacheConfigExprOpt match
                     case Some(cacheConfigExpr) =>
                       if inputs.exists(_.isCacheInput) then
+                        val tags = inputs
+                          .filter(_.isCacheInput)
+                          .map(_.tags.toSet)
+                          .reduce(_ & _)
+                          .toList
+                        require(
+                          tags.nonEmpty,
+                          s"""cacheLevelTag union must be non-empty: ${inputs.mkString("\n")}"""
+                        )
                         br.cacheInputTupleTypeRepr.asType match
                           case '[cacheInputTpe] =>
-                            callActionCacheWithA2(outputBuf.toList, cacheConfigExpr)(
+                            callActionCacheWithA2(outputBuf.toList, cacheConfigExpr, tags)(
                               body = modifiedBody,
                               input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
                             ).asTerm.changeOwner(sym)
                       else
-                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr)(
+                        val tags = CacheLevelTag.all.toList
+                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, tags)(
                           modifiedBody
                         ).asTerm.changeOwner(sym)
                     case None =>
@@ -317,16 +333,18 @@ trait Cont:
 
       def callActionCacheWithUnit[A1: Type](
           outputs: List[Output],
-          cacheConfigExpr: Expr[CacheConfiguration]
+          cacheConfigExpr: Expr[BuildWideCacheConfiguration],
+          tags: List[CacheLevelTag],
       )(body: Expr[A1]): Expr[A1] =
-        callActionCacheWithA2[A1, Unit](outputs, cacheConfigExpr)(
+        callActionCacheWithA2[A1, Unit](outputs, cacheConfigExpr, tags)(
           body = body,
-          input = '{ () }
+          input = '{ () },
         )
 
       def callActionCacheWithA2[A1: Type, A2: Type](
           outputs: List[Output],
-          cacheConfigExpr: Expr[CacheConfiguration]
+          cacheConfigExpr: Expr[BuildWideCacheConfiguration],
+          tags: List[CacheLevelTag],
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
         val codeContentHash = Expr[Long](body.show.##)
         val aJsonFormat = summonJsonFormat[A1]
@@ -338,13 +356,14 @@ trait Cont:
               summon[HashWriter[Unit]]
             }.asExprOf[HashWriter[A2]]
           else summonHashWriter[A2]
+        val tagsExpr = '{ List(${ Varargs(tags.map(Expr[CacheLevelTag](_))) }: _*) }
         val block = letOutput(outputs)(body)
         '{
           given HashWriter[A2] = $inputHashWriter
           given JsonFormat[A1] = $aJsonFormat
           given ClassTag[A1] = $aClassTag
           ActionCache
-            .cache($input, $codeContentHash)({ _ =>
+            .cache($input, $codeContentHash, $tagsExpr)({ _ =>
               $block
             })($cacheConfigExpr)
             .value

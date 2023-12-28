@@ -28,7 +28,6 @@ import scala.annotation.tailrec
 import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, JsonFormat }
-import sbt.util.CacheConfiguration
 
 object TaskMacro:
   final val AssignInitName = "set"

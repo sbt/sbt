@@ -5,6 +5,8 @@ import scala.compiletime.summonInline
 import scala.quoted.*
 import scala.reflect.TypeTest
 import scala.collection.mutable
+import sbt.util.cacheLevel
+import sbt.util.CacheLevelTag
 
 trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int):
   import qctx.reflect.*
@@ -41,7 +43,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
         tupleTypeRepr(inputs.filter(_.isCacheInput).map(_.tpe))
       override def cacheInputExpr(tupleTerm: Term): Expr[Tuple] =
         Expr.ofTupleFromSeq(inputs.zipWithIndex.flatMap { case (input, idx) =>
-          if input.isCacheInput then
+          if input.tags.nonEmpty then
             input.tpe.asType match
               case '[a] =>
                 Some(applyTuple(tupleTerm, inputTupleTypeRepr, idx).asExprOf[a])
@@ -61,7 +63,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
       case x :: xs => TypeRepr.of[scala.*:].appliedTo(List(x, tupleTypeRepr(xs)))
       case Nil     => TypeRepr.of[EmptyTuple]
 
-  private val cacheOptOutSym = Symbol.requiredClass("sbt.util.cacheOptOut")
+  private val cacheLevelSym = Symbol.requiredClass("sbt.util.cacheLevel")
   final class Input(
       val tpe: TypeRepr,
       val qual: Term,
@@ -69,17 +71,28 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
       val name: String,
   ):
     override def toString: String =
-      s"Input($tpe, $qual, $term, $name)"
+      s"Input($tpe, $qual, $term, $name, $tags)"
 
-    def isCacheInput: Boolean = isCacheInput(qual)
-    private def isCacheInput(tree: Term): Boolean =
+    def isCacheInput: Boolean = tags.nonEmpty
+    lazy val tags = extractTags(qual)
+    private def extractTags(tree: Term): List[CacheLevelTag] =
+      def getAnnotation(tree: Term) =
+        Option(tree.tpe.termSymbol) match
+          case Some(x) => x.getAnnotation(cacheLevelSym)
+          case None    => tree.symbol.getAnnotation(cacheLevelSym)
+      def extractTags0(tree: Term) =
+        getAnnotation(tree) match
+          case Some(annot) =>
+            annot.asExprOf[cacheLevel] match
+              case '{ cacheLevel(include = Array.empty[CacheLevelTag]($_)) } => Nil
+              case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) } =>
+                include.value.get.toList
+              case _ => sys.error(Printer.TreeStructure.show(annot) + " does not match")
+          case None => CacheLevelTag.all.toList
       tree match
-        case Inlined(_, _, tree) => isCacheInput(tree)
-        case Apply(_, List(arg)) => isCacheInput(arg)
-        case _ =>
-          Option(tree.tpe.termSymbol) match
-            case Some(x) => !x.hasAnnotation(cacheOptOutSym)
-            case None    => !tree.symbol.hasAnnotation(cacheOptOutSym)
+        case Inlined(_, _, tree) => extractTags(tree)
+        case Apply(_, List(arg)) => extractTags(arg)
+        case _                   => extractTags0(tree)
 
   /**
    * Represents an output expression via Def.declareOutput
