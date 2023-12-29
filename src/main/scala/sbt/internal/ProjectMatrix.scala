@@ -499,7 +499,7 @@ object ProjectMatrix {
           acc.customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.scalaABIVersion(sv)), process)
         }
       } else {
-        customRow(autoScalaLibrary, Seq(VirtualAxis.jvm), process)
+        customRow(autoScalaLibrary, axisValues ++ Seq(VirtualAxis.jvm), process)
       }
 
     override def customRow(
