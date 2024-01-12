@@ -1150,6 +1150,23 @@ object Defaults extends BuildCommon {
       .configuration(Configurations.ScalaTool)
       .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
 
+    if (Classpaths.isScala213(sv)) {
+      for {
+        compileReport <- fullReport.configuration(Configurations.Compile)
+        libName <- ScalaArtifacts.Artifacts
+      } {
+        for (lib <- compileReport.modules.find(_.module.name == libName)) {
+          val libVer = lib.module.revision
+          if (VersionNumber(sv).matchesSemVer(SemanticSelector(s"<$libVer")))
+            sys.error(
+              s"""`${name.value}/scalaVersion` needs to be upgraded to $libVer. To support backwards-only
+                 |binary compatibility (SIP-51), the Scala compiler cannot be older than $libName on the
+                 |dependency classpath. See `${name.value}/evicted` why $libName was upgraded from $sv to $libVer.
+                 |""".stripMargin
+            )
+        }
+      }
+    }
     def file(id: String): File = {
       val files = for {
         m <- toolReport.modules if m.module.name.startsWith(id)
