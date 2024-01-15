@@ -168,7 +168,7 @@ class CoursierDependencyResolution(
     val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = conf.cachePolicies.map(ToCoursier.cachePolicy)
     val checksums = conf.checksums
-    val projectName = "" // used for logging only…
+    val projectName = module0.module.name
 
     val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
 
