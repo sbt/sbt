@@ -3665,7 +3665,8 @@ object Classpaths {
           val conf = config.value
           val log = streams.value.log
           val module = ivyModule.value
-          IvyActions.publish(module, conf, log)
+          val publisherInterface = publisher.value
+          publisherInterface.publish(module, conf, log)
         }
       }
       .tag(Tags.Publish, Tags.Network)
