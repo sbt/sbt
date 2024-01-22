@@ -79,7 +79,7 @@ private[sbt] object Load {
     val dependencyResolution = IvyDependencyResolution(ivyConfiguration)
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
-    val classpathOptions = ClasspathOptionsUtil.boot
+    val classpathOptions = ClasspathOptionsUtil.noboot(si.version)
     val scalac = ZincLmUtil.scalaCompiler(
       scalaInstance = si,
       classpathOptions = classpathOptions,

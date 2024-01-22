@@ -730,14 +730,14 @@ object Defaults extends BuildCommon {
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
+    classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
+    console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
-      classpathOptions :== ClasspathOptionsUtil.boot,
-      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
