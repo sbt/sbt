@@ -74,7 +74,8 @@ package object syntax {
         sbtClassifiers = false,
         providedInCompile = false,
         protocolHandlerDependencies = Vector.empty,
-        retry = None
+        retry = None,
+        sameVersions = Nil,
       )
   }
 

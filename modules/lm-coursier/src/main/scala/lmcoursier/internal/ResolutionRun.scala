@@ -39,7 +39,7 @@ object ResolutionRun {
         params.mainRepositories ++
         params.fallbackDependenciesRepositories
 
-    val rules = params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
+    val rules = params.params.rules ++ params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
@@ -182,7 +182,7 @@ object ResolutionRun {
     SbtCoursierCache.default.resolutionOpt(params.resolutionKey).map(Right(_)).getOrElse {
       val resOrError =
         Lock.maybeSynchronized(needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode) {
-          var map = new mutable.HashMap[Configuration, Resolution]
+          val map = new mutable.HashMap[Configuration, Resolution]
           val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](Right(())) {
             case (acc, (config, extends0)) =>
               for {

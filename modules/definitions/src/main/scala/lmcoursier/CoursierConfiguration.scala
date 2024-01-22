@@ -1,12 +1,12 @@
 package lmcoursier
 
 import java.io.File
-
-import dataclass.{ data, since }
+import dataclass.{data, since}
 import coursier.cache.CacheDefaults
+import coursier.params.rule.{Rule, RuleResolution}
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{Authentication, CacheLogger, CachePolicy, FromCoursier, Module, ModuleMatchers, Project, Reconciliation, Strict}
-import sbt.librarymanagement.{Resolver, UpdateConfiguration, ModuleID, CrossVersion, ModuleInfo, ModuleDescriptorConfiguration}
+import sbt.librarymanagement.{CrossVersion, InclExclRule, ModuleDescriptorConfiguration, ModuleID, ModuleInfo, Resolver, UpdateConfiguration}
 import xsbti.Logger
 
 import scala.concurrent.duration.{Duration, FiniteDuration}
@@ -60,4 +60,5 @@ import java.net.URLClassLoader
   @since
   protocolHandlerDependencies: Seq[ModuleID] = Vector.empty,
   retry: Option[(FiniteDuration, Int)] = None,
+  sameVersions: Seq[Set[InclExclRule]] = Nil,
 )

@@ -1,6 +1,7 @@
 package lmcoursier.definitions
 
 import lmcoursier.credentials.{Credentials, DirectCredentials, FileCredentials}
+import sbt.librarymanagement.InclExclRule
 
 // TODO Make private[lmcoursier]
 // private[coursier]
@@ -31,11 +32,14 @@ object ToCoursier {
       .withHttpsOnly(authentication.httpsOnly)
       .withPassOnRedirect(authentication.passOnRedirect)
 
-  def module(module: Module): coursier.core.Module =
+  def module(mod: Module): coursier.core.Module =
+    module(mod.organization.value, mod.name.value, mod.attributes)
+
+  def module(organization: String, name: String, attributes: Map[String, String] = Map.empty): coursier.core.Module =
     coursier.core.Module(
-      coursier.core.Organization(module.organization.value),
-      coursier.core.ModuleName(module.name.value),
-      module.attributes
+      coursier.core.Organization(organization),
+      coursier.core.ModuleName(name),
+      attributes
     )
 
   def moduleMatchers(matcher: ModuleMatchers): coursier.util.ModuleMatchers =
@@ -60,6 +64,13 @@ object ToCoursier {
   def reconciliation(rs: Vector[(ModuleMatchers, Reconciliation)]):
     Vector[(coursier.util.ModuleMatchers, coursier.core.Reconciliation)] =
     rs map { case (m, r) => (moduleMatchers(m), reconciliation(r)) }
+
+  def sameVersions(sv: Seq[Set[InclExclRule]]):
+    Seq[(coursier.params.rule.SameVersion, coursier.params.rule.RuleResolution)] =
+    sv.map { libs =>
+      val matchers = libs.map(rule => coursier.util.ModuleMatcher(module(rule.organization, rule.name)))
+      coursier.params.rule.SameVersion(matchers) -> coursier.params.rule.RuleResolution.TryResolve
+    }
 
   def dependency(dependency: Dependency): coursier.core.Dependency =
     coursier.core.Dependency(
