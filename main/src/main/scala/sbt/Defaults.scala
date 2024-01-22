@@ -3934,6 +3934,8 @@ object Classpaths {
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
+  private[sbt] def isScala213(sv: String) = sv.startsWith("2.13.")
+
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =
       a == "2.13" && (b.startsWith("0.") || b.startsWith("3"))
