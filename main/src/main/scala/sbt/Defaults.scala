@@ -1149,9 +1149,29 @@ object Defaults extends BuildCommon {
     val sv = scalaVersion.value
     val fullReport = update.value
 
-    val toolReport = fullReport
-      .configuration(Configurations.ScalaTool)
-      .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    // For Scala 3, update scala-library.jar in `scala-tool` and `scala-doc-tool` in case a newer version
+    // is present in the `compile` configuration. This is needed once forwards binary compatibility is dropped
+    // to avoid NoSuchMethod exceptions when expanding macros.
+    def updateLibraryToCompileConfiguration(report: ConfigurationReport) =
+      if (!ScalaArtifacts.isScala3(sv)) report
+      else
+        (for {
+          compileConf <- fullReport.configuration(Configurations.Compile)
+          compileLibMod <- compileConf.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          reportLibMod <- report.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          if VersionNumber(reportLibMod.module.revision)
+            .matchesSemVer(SemanticSelector(s"<${compileLibMod.module.revision}"))
+        } yield {
+          val newMods = report.modules
+            .filterNot(_.module.name == ScalaArtifacts.LibraryID) :+ compileLibMod
+          report.withModules(newMods)
+        }).getOrElse(report)
+
+    val toolReport = updateLibraryToCompileConfiguration(
+      fullReport
+        .configuration(Configurations.ScalaTool)
+        .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    )
 
     if (Classpaths.isScala213(sv)) {
       for {
@@ -1182,6 +1202,7 @@ object Defaults extends BuildCommon {
     val allDocJars =
       fullReport
         .configuration(Configurations.ScalaDocTool)
+        .map(updateLibraryToCompileConfiguration)
         .toSeq
         .flatMap(_.modules)
         .flatMap(_.artifacts.map(_._2))
