@@ -271,6 +271,9 @@ object Defaults extends BuildCommon {
       csrLogger := LMCoursier.coursierLoggerTask.value,
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
+      csrSameVersions := Seq(
+        ScalaArtifacts.Artifacts.map(a => InclExclRule(scalaOrganization.value, a)).toSet
+      )
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
