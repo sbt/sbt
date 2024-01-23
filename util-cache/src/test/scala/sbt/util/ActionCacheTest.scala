@@ -35,9 +35,11 @@ object ActionCacheTest extends BasicTestSuite:
     }
     IO.withTemporaryDirectory: (tempDir) =>
       val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
-      val v1 = ActionCache.cache[(Int, Int), Int]((1, 1), 1L, tags)(action)(config)
+      val v1 =
+        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1.value == 2)
-      val v2 = ActionCache.cache[(Int, Int), Int]((1, 1), 1L, tags)(action)(config)
+      val v2 =
+        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v2.value == 2)
       // check that the action has been invoked only once
       assert(called == 1)
@@ -55,7 +57,8 @@ object ActionCacheTest extends BasicTestSuite:
     }
     IO.withTemporaryDirectory: (tempDir) =>
       val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
-      val v1 = ActionCache.cache[(Int, Int), Int]((1, 1), 1L, tags)(action)(config)
+      val v1 =
+        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1.value == 2)
       // ActionResult only contains the reference to the files.
       // To retrieve them, separately call readBlobs or syncBlobs.
@@ -65,7 +68,8 @@ object ActionCacheTest extends BasicTestSuite:
       val content = IO.read(file1.toFile())
       assert(content == "2")
 
-      val v2 = ActionCache.cache[(Int, Int), Int]((1, 1), 1L, tags)(action)(config)
+      val v2 =
+        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v2.value == 2)
       // check that the action has been invoked only once
       assert(called == 1)

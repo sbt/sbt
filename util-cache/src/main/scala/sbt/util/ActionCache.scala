@@ -9,17 +9,32 @@ import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
 
 object ActionCache:
+  /**
+   * This is a key function that drives remote caching.
+   * This is intended to be called from the cached task macro for the most part.
+   *
+   * - key: This represents the input key for this action, typically consists
+   *   of all the input into the action. For the purpose of caching,
+   *   all we need from the input is to generate some hash value.
+   * - codeContentHash: This hash represents the Scala code of the task.
+   *   Even if the input tasks are the same, the code part needs to be tracked.
+   * - extraHash: Reserved for later, which we might use to invalidate the cache.
+   * - tags: Tags to track cache level.
+   * - action: The actual action to be cached.
+   * - config: The configuration that's used to store where the cache backends are.
+   */
   def cache[I: HashWriter, O: JsonFormat: ClassTag](
       key: I,
-      otherInputs: Long,
+      codeContentHash: Digest,
+      extraHash: Digest,
       tags: List[CacheLevelTag],
   )(
       action: I => (O, Seq[VirtualFile])
   )(
       config: BuildWideCacheConfiguration
   ): ActionResult[O] =
-    val hashInput: Array[Long] = Array(otherInputs, Hasher.hashUnsafe[I](key))
-    val input = Digest(HashUtil.sha256HashStr(hashInput))
+    val input =
+      Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
     val store = config.store
     val outputDirectory = config.outputDirectory
     val result: Option[ActionResult[O]] = store.get[O](input)

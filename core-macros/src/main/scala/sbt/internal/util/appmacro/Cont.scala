@@ -14,6 +14,7 @@ import sbt.util.{
   BuildWideCacheConfiguration,
   Cache,
   CacheLevelTag,
+  Digest,
   Monad,
 }
 import xsbti.VirtualFile
@@ -347,6 +348,7 @@ trait Cont:
           tags: List[CacheLevelTag],
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
         val codeContentHash = Expr[Long](body.show.##)
+        val extraHash = Expr[Long](0L)
         val aJsonFormat = summonJsonFormat[A1]
         val aClassTag = summonClassTag[A1]
         val inputHashWriter =
@@ -363,7 +365,12 @@ trait Cont:
           given JsonFormat[A1] = $aJsonFormat
           given ClassTag[A1] = $aClassTag
           ActionCache
-            .cache($input, $codeContentHash, $tagsExpr)({ _ =>
+            .cache(
+              $input,
+              codeContentHash = Digest.dummy($codeContentHash),
+              extraHash = Digest.dummy($extraHash),
+              tags = $tagsExpr
+            )({ _ =>
               $block
             })($cacheConfigExpr)
             .value
