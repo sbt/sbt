@@ -251,7 +251,8 @@ class CoursierDependencyResolution(
         .withForceVersion(conf.forceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
         .withTypelevel(typelevel)
         .withReconciliation(ToCoursier.reconciliation(conf.reconciliation))
-        .withExclusions(excludeDependencies),
+        .withExclusions(excludeDependencies)
+        .withRules(ToCoursier.sameVersions(conf.sameVersions)),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
       retry = conf.retry.getOrElse(ResolutionParams.defaultRetry),
