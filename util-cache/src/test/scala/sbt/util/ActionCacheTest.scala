@@ -2,6 +2,7 @@ package sbt.util
 
 import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
+import sbt.io.syntax.*
 import verify.BasicTestSuite
 import java.nio.file.Paths
 import xsbti.VirtualFile
@@ -37,10 +38,10 @@ object ActionCacheTest extends BasicTestSuite:
       val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
       val v1 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
-      assert(v1.value == 2)
+      assert(v1 == 2)
       val v2 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
-      assert(v2.value == 2)
+      assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
 
@@ -59,18 +60,17 @@ object ActionCacheTest extends BasicTestSuite:
       val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
       val v1 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
-      assert(v1.value == 2)
+      assert(v1 == 2)
       // ActionResult only contains the reference to the files.
       // To retrieve them, separately call readBlobs or syncBlobs.
-      val files1 = cache.syncBlobs(v1.outputFiles, tempDir.toPath())
-      val file1 = files1(0)
-      assert(file1.toFile().exists())
-      val content = IO.read(file1.toFile())
+      val file1 = tempDir / "a.txt"
+      assert(file1.exists())
+      val content = IO.read(file1)
       assert(content == "2")
 
       val v2 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
-      assert(v2.value == 2)
+      assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
 

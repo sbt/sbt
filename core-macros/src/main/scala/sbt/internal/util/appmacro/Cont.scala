@@ -373,7 +373,6 @@ trait Cont:
             )({ _ =>
               $block
             })($cacheConfigExpr)
-            .value
         }
 
       // wrap body in between output var declarations and var references

@@ -32,21 +32,18 @@ object ActionCache:
       action: I => (O, Seq[VirtualFile])
   )(
       config: BuildWideCacheConfiguration
-  ): ActionResult[O] =
+  ): O =
     val input =
       Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
     val store = config.store
-    val outputDirectory = config.outputDirectory
-    val result: Option[ActionResult[O]] = store.get[O](input)
-    result match
-      case Some(value) =>
-        store.syncBlobs(value.outputFiles, outputDirectory)
-        value // return the value
-      case None =>
+    val result = store
+      .get[O](input)
+      .getOrElse:
         val (newResult, outputs) = action(key)
-        val value = store.put[O](input, newResult, outputs)
-        store.syncBlobs(value.outputFiles, outputDirectory)
-        value
+        store.put[O](input, newResult, outputs)
+    // run the side effect to sync the output files
+    store.syncBlobs(result.outputFiles, config.outputDirectory)
+    result.value
 end ActionCache
 
 class BuildWideCacheConfiguration(
