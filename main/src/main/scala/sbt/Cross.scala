@@ -398,7 +398,7 @@ object Cross {
             scope / scalaVersion := version,
             scope / crossScalaVersions := scalaVersions,
             scope / scalaHome := Some(home),
-            scope / scalaInstance := Def.task { inst }.value,
+            scope / scalaInstance := inst,
           )
         case None =>
           Seq(

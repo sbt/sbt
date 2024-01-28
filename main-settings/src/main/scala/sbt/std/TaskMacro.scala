@@ -70,18 +70,13 @@ object TaskMacro:
   ): Expr[Initialize[Task[A1]]] =
     import qctx.reflect.*
     val convert1 = new FullConvert(qctx, 1000)
-    // val aJsonFormat = convert1.summonJsonFormat[A1]
     expr match
       case '{ if ($cond) then $thenp else $elsep } =>
         '{
-          // given JsonFormat[A1] = $aJsonFormat
-          import BasicJsonProtocol.given
           Def.ifS[A1](Def.task($cond))(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
       case '{ ${ stats }: a; if ($cond) then $thenp else $elsep } =>
         '{
-          // given JsonFormat[A1] = $aJsonFormat
-          import BasicJsonProtocol.given
           Def.ifS[A1](Def.task { $stats; $cond })(Def.task[A1]($thenp))(Def.task[A1]($elsep))
         }
       case _ =>

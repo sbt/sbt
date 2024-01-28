@@ -1035,9 +1035,7 @@ object Defaults extends BuildCommon {
       // note that we use the same runner and mainClass as plain run
       mainBgRunMainTaskForConfig(This),
       mainBgRunTaskForConfig(This)
-    ) ++ inTask(run)(runnerSettings ++ newRunnerSettings) ++ compileIncrementalTaskSettings(
-      compileIncremental
-    )
+    ) ++ inTask(run)(runnerSettings ++ newRunnerSettings) ++ compileIncrementalTaskSettings
 
   private[this] lazy val configGlobal = globalDefaults(
     Seq(
@@ -2458,10 +2456,10 @@ object Defaults extends BuildCommon {
     analysis
   }
 
-  def compileIncrementalTaskSettings(key: TaskKey[(Boolean, HashedVirtualFileRef)]) =
-    inTask(key)(
+  def compileIncrementalTaskSettings =
+    inTask(compileIncremental)(
       Seq(
-        (TaskZero / key) := (Def
+        (TaskZero / compileIncremental) := (Def
           .cachedTask {
             val s = streams.value
             val ci = (compile / compileInputs).value
@@ -2517,7 +2515,7 @@ object Defaults extends BuildCommon {
           .tag(Tags.Compile, Tags.CPU)
           .value,
         packagedArtifact := {
-          val (hasModified, out) = key.value
+          val (hasModified, out) = compileIncremental.value
           artifact.value -> out
         },
         artifact := artifactSetting.value,
@@ -2666,7 +2664,6 @@ object Defaults extends BuildCommon {
       },
       // todo: Zinc's hashing should automatically handle directories
       compileInputs2 := {
-        val c = fileConverter.value
         val cp0 = classpathTask.value
         val inputs = compileInputs.value
         CompileInputs2(
@@ -2899,10 +2896,7 @@ object Classpaths {
   )
   private[this] def classpaths: Seq[Setting[_]] =
     Seq(
-      externalDependencyClasspath := {
-        summon[JsonFormat[File]]
-        concat(unmanagedClasspath, managedClasspath).value
-      },
+      externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
       dependencyClasspath := concat(internalDependencyClasspath, externalDependencyClasspath).value,
       fullClasspath := concatDistinct(exportedProducts, dependencyClasspath).value,
       internalDependencyClasspath := ClasspathImpl.internalDependencyClasspathTask.value,
