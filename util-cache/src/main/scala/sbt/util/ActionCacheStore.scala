@@ -51,41 +51,44 @@ trait ActionCacheStore:
 end ActionCacheStore
 
 class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends ActionCacheStore:
+  extension [A1](xs: Seq[A1])
+    // unlike collectFirst this accepts A1 => Option[A2]
+    inline def collectFirst1[A2](f: A1 => Option[A2]): Option[A2] =
+      xs.foldLeft(Option.empty[A2]): (res, x) =>
+        res.orElse(f(x))
+
+    // unlike collectFirst this accepts A1 => Seq[A2]
+    inline def collectFirst2[A2](f: A1 => Seq[A2]): Seq[A2] =
+      xs.foldLeft(Seq.empty[A2]): (res, x) =>
+        if res.isEmpty then f(x) else res
+
   override def get[A1: ClassTag: JsonFormat](input: Digest): Option[ActionResult[A1]] =
-    var result: Option[ActionResult[A1]] = None
-    stores.foreach: store =>
-      if result.isEmpty then result = store.get[A1](input)
-    result
+    stores.collectFirst1(_.get[A1](input))
 
   override def put[A1: ClassTag: JsonFormat](
       actionDigest: Digest,
       value: A1,
       blobs: Seq[VirtualFile],
   ): ActionResult[A1] =
-    var result: Option[ActionResult[A1]] = None
-    stores.foreach: store =>
-      val v = store.put[A1](actionDigest, value, blobs)
-      if result.isEmpty then result = Some(v)
-    result.get
+    (stores
+      .foldLeft(Option.empty[ActionResult[A1]]): (res, store) =>
+        // put the value into all stores
+        val v = store.put[A1](actionDigest, value, blobs)
+        res.orElse(Some(v))
+      )
+      .get
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
-    var result: Seq[HashedVirtualFileRef] = Nil
-    stores.foreach: store =>
+    stores.foldLeft(Seq.empty[HashedVirtualFileRef]): (res, store) =>
+      // put the blobs in all stores
       val xs = store.putBlobs(blobs)
-      if result.isEmpty then result = xs
-    result
+      if res.isEmpty then xs else res
 
   override def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
-    var result: Seq[VirtualFile] = Nil
-    stores.foreach: store =>
-      if result.isEmpty then result = store.getBlobs(refs)
-    result
+    stores.collectFirst2(_.getBlobs(refs))
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    var result: Seq[Path] = Nil
-    stores.foreach: store =>
-      if result.isEmpty then result = store.syncBlobs(refs, outputDirectory)
-    result
+    stores.collectFirst2(_.syncBlobs(refs, outputDirectory))
 end AggregateActionCacheStore
 
 object AggregateActionCacheStore:
