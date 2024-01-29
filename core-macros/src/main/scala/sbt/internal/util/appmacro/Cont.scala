@@ -181,6 +181,7 @@ trait Cont:
         case Nil      => pure(body)
         case x :: Nil => genMap(body, x)
         case xs       => genMapN(body, xs)
+      def unitExpr: Expr[Unit] = '{ () }
 
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
@@ -190,7 +191,12 @@ trait Cont:
             case Some(cacheConfigExpr) =>
               '{
                 $applicativeExpr.pure[A1] { () =>
-                  ${ callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, tags)(body) }
+                  ${
+                    callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
+                      body = body,
+                      input = unitExpr,
+                    )
+                  }
                 }
               }
             case None =>
@@ -239,13 +245,18 @@ trait Cont:
                   cacheConfigExprOpt match
                     case Some(cacheConfigExpr) =>
                       if input.isCacheInput then
-                        callActionCacheWithA2(outputBuf.toList, cacheConfigExpr, input.tags)(
+                        callActionCache(outputBuf.toList, cacheConfigExpr, input.tags)(
                           body = modifiedBody,
                           input = Ref(param.symbol).asExprOf[a],
                         ).asTerm.changeOwner(sym)
                       else
-                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, input.tags)(
-                          modifiedBody
+                        callActionCache[A1, Unit](
+                          outputBuf.toList,
+                          cacheConfigExpr,
+                          input.tags,
+                        )(
+                          body = modifiedBody,
+                          input = unitExpr,
                         ).asTerm.changeOwner(sym)
                     case None => modifiedBody.asTerm
                 }
@@ -302,14 +313,15 @@ trait Cont:
                         )
                         br.cacheInputTupleTypeRepr.asType match
                           case '[cacheInputTpe] =>
-                            callActionCacheWithA2(outputBuf.toList, cacheConfigExpr, tags)(
+                            callActionCache(outputBuf.toList, cacheConfigExpr, tags)(
                               body = modifiedBody,
                               input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
                             ).asTerm.changeOwner(sym)
                       else
                         val tags = CacheLevelTag.all.toList
-                        callActionCacheWithUnit(outputBuf.toList, cacheConfigExpr, tags)(
-                          modifiedBody
+                        callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
+                          body = modifiedBody,
+                          input = unitExpr,
                         ).asTerm.changeOwner(sym)
                     case None =>
                       modifiedBody.asTerm
@@ -332,17 +344,8 @@ trait Cont:
           case Right(_) =>
             flatten(genMapN0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
-      def callActionCacheWithUnit[A1: Type](
-          outputs: List[Output],
-          cacheConfigExpr: Expr[BuildWideCacheConfiguration],
-          tags: List[CacheLevelTag],
-      )(body: Expr[A1]): Expr[A1] =
-        callActionCacheWithA2[A1, Unit](outputs, cacheConfigExpr, tags)(
-          body = body,
-          input = '{ () },
-        )
-
-      def callActionCacheWithA2[A1: Type, A2: Type](
+      // call `ActionCache.cache`
+      def callActionCache[A1: Type, A2: Type](
           outputs: List[Output],
           cacheConfigExpr: Expr[BuildWideCacheConfiguration],
           tags: List[CacheLevelTag],
