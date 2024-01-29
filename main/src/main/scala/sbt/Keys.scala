@@ -28,7 +28,7 @@ import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
-import sbt.internal.util.StringAttributeKeys.StringAttributeKey
+import sbt.internal.util.StringAttributeKey
 import sbt.io._
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec._

@@ -4413,10 +4413,11 @@ object Classpaths {
       .map { case (_, module, art, file) =>
         val vf = converter.toVirtualFile(file.toPath())
         Attributed(vf)(
-          StringAttributeMap.empty
-            .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
-            .put(Keys.moduleIDStr, moduleIdJsonKeyFormat.write(module))
-            .put(Keys.configurationStr, config.name)
+          Map(
+            Keys.artifactStr -> RemoteCache.artifactToStr(art),
+            Keys.moduleIDStr -> moduleIdJsonKeyFormat.write(module),
+            Keys.configurationStr -> config.name,
+          )
         )
       }
       .distinct
