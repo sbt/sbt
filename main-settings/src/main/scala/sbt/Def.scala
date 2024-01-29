@@ -28,7 +28,6 @@ import sjsonnew.JsonFormat
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   type Classpath = Seq[Attributed[HashedVirtualFileRef]]
-  // type FileClasspath = Seq[Attributed[File]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 

@@ -68,10 +68,6 @@ object Append:
   implicit def appendLong: Value[Long, Long] = _ + _
   implicit def appendDouble: Value[Double, Double] = _ + _
 
-  // given Sequence[Classpath, Seq[File], File] with
-  //   override def appendValues(a: Classpath, b: Seq[File]): Classpath = a ++ Attributed.blankSeq(b)
-  //   override def appendValue(a: Classpath, b: File): Classpath = a :+ Attributed.blank(b)
-
   given Sequence[Classpath, Seq[HashedVirtualFileRef], HashedVirtualFileRef] with
     override def appendValues(a: Classpath, b: Seq[HashedVirtualFileRef]): Classpath =
       a ++ Attributed.blankSeq(b)
