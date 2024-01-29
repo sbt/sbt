@@ -31,6 +31,7 @@ import sbt.internal.inc.{
 }
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
+import sbt.internal.inc.Analysis
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
@@ -85,12 +86,12 @@ object RemoteCache {
     analysisStore.getOrElseUpdate(
       ref, {
         val vfs = cacheStore.getBlobs(ref :: Nil)
-        vfs.headOption match
-          case Some(vf) =>
-            IO.withTemporaryFile(vf.name, ".tmp"): file =>
-              IO.transfer(vf.input, file)
-              FileAnalysisStore.binary(file).get.get.getAnalysis
-          case _ => sbt.internal.inc.Analysis.empty
+        if vfs.nonEmpty then
+          val outputDirectory = Def.cacheConfiguration.outputDirectory
+          cacheStore.syncBlobs(vfs, outputDirectory).headOption match
+            case Some(file) => FileAnalysisStore.binary(file.toFile()).get.get.getAnalysis
+            case None       => Analysis.empty
+        else Analysis.empty
       }
     )
 
