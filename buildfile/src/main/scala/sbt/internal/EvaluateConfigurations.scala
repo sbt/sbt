@@ -393,8 +393,7 @@ object Index {
         case (k, xs) if xs.size > 1 => (k, xs)
       }
       .toVector
-    if (duplicates.isEmpty)
-      multiMap.collect { case (k, v) if validID(k) => (k, v.head) } toMap
+    if duplicates.isEmpty then multiMap.collect { case (k, v) if validID(k) => (k, v.head) }.toMap
     else
       sys.error(
         duplicates map { case (k, tps) =>

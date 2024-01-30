@@ -304,11 +304,11 @@ trait ProjectExtra extends Scoped.Syntax:
       val msg = (ref / Keys.onLoadMessage) get structure.data getOrElse ""
       if (!msg.isEmpty) s.log.info(msg)
       def get[T](k: SettingKey[T]): Option[T] = (ref / k) get structure.data
-      def commandsIn(axis: ResolvedReference) = (axis / commands) get structure.data toList
+      def commandsIn(axis: ResolvedReference) = (axis / commands).get(structure.data).toList
 
       val allCommands = commandsIn(ref) ++ commandsIn(
         BuildRef(ref.build)
-      ) ++ ((Global / commands) get structure.data toList)
+      ) ++ (Global / commands).get(structure.data).toList
       val history = get(historyPath).flatMap(identity)
       val prompt = get(shellPrompt)
       val newPrompt = get(colorShellPrompt)

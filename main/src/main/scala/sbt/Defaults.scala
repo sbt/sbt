@@ -2944,8 +2944,8 @@ object Classpaths {
       unmanagedJars := findUnmanagedJars(
         configuration.value,
         unmanagedBase.value,
-        (unmanagedJars / includeFilter) value,
-        (unmanagedJars / excludeFilter) value,
+        (unmanagedJars / includeFilter).value,
+        (unmanagedJars / excludeFilter).value,
         fileConverter.value,
       )
     ).map(exportVirtualClasspath) ++ Seq(
@@ -3606,7 +3606,7 @@ object Classpaths {
 
   private[sbt] def defaultProjectID: Initialize[ModuleID] = Def.setting {
     val p0 = ModuleID(organization.value, moduleName.value, version.value)
-      .cross((projectID / crossVersion) value)
+      .cross((projectID / crossVersion).value)
       .artifacts(artifacts.value: _*)
     val p1 = apiURL.value match {
       case Some(u) => p0.extra(SbtPomExtraProperties.POM_API_KEY -> u.toExternalForm)
@@ -4227,7 +4227,7 @@ object Classpaths {
       (proj / ivyModule).get(data)
     }.join
     ivyModules.mapN { mod =>
-      mod map { _.dependencyMapping(log) } toMap;
+      mod.map { _.dependencyMapping(log) }.toMap
     }
 
   def projectResolverTask: Initialize[Task[Resolver]] =

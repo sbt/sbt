@@ -189,9 +189,7 @@ abstract class TestBuild {
   }
 
   def mapBy[K, T](s: Seq[T])(f: T => K): Map[K, T] =
-    s map { t =>
-      (f(t), t)
-    } toMap;
+    s.map(t => (f(t), t)).toMap
 
   lazy val keysGen: Gen[TestKeys] =
     for {

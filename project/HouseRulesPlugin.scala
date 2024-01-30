@@ -9,28 +9,28 @@ object HouseRulesPlugin extends AutoPlugin {
 
   lazy val baseSettings: Seq[Def.Setting[_]] = Seq(
     scalacOptions ++= Seq("-encoding", "utf8"),
-    scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked", "-Xlint"),
+    scalacOptions ++= Seq("-deprecation", "-feature", "-unchecked"),
     scalacOptions += "-language:higherKinds",
     scalacOptions += "-language:implicitConversions",
     scalacOptions ++= "-Xfuture".ifScala213OrMinus.value.toList,
-    scalacOptions += "-Xlint",
+    scalacOptions ++= "-Xlint".ifScala2.value.toList,
+    // TODO: uncomment once we can build without warnings on Scala 3
     // scalacOptions ++= "-Xfatal-warnings"
-    //   .ifScala(v => {
+    //   .ifScala3x(_ => {
     //     sys.props.get("sbt.build.fatal") match {
     //       case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
-    //       case _       => v == 12
+    //       case _       => true
     //     }
     //   })
     //   .value
     //   .toList,
     scalacOptions ++= "-Ykind-projector".ifScala3.value.toList,
-    scalacOptions ++= "-Ysemanticdb".ifScala3.value.toList,
     scalacOptions ++= "-Yinline-warnings".ifScala211OrMinus.value.toList,
     scalacOptions ++= "-Yno-adapted-args".ifScala212OrMinus.value.toList,
-    scalacOptions += "-Ywarn-dead-code",
-    scalacOptions += "-Ywarn-numeric-widen",
-    scalacOptions += "-Ywarn-value-discard",
-    scalacOptions ++= "-Ywarn-unused-import".ifScala(v => 11 <= v && v <= 12).value.toList
+    scalacOptions ++= "-Ywarn-dead-code".ifScala2.value.toList,
+    scalacOptions ++= "-Ywarn-numeric-widen".ifScala2.value.toList,
+    scalacOptions ++= "-Ywarn-value-discard".ifScala2.value.toList,
+    scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList
   ) ++ Seq(Compile, Test).flatMap(c =>
     (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")
   )
@@ -38,14 +38,17 @@ object HouseRulesPlugin extends AutoPlugin {
   private def scalaPartV = Def setting (CrossVersion partialVersion scalaVersion.value)
 
   private implicit final class AnyWithIfScala[A](val __x: A) {
-    def ifScala(p: Long => Boolean) =
-      Def setting (scalaPartV.value collect { case (2, y) if p(y) => __x })
-    def ifScalaLte(v: Long) = ifScala(_ <= v)
-    def ifScalaGte(v: Long) = ifScala(_ >= v)
+    def ifScala2x(p: Long => Boolean) =
+      Def.setting(scalaPartV.value collect { case (2, y) if p(y) => __x })
+    def ifScala3x(p: Long => Boolean) =
+      Def.setting(scalaPartV.value collect { case (3, y) if p(y) => __x })
+    def ifScalaLte(v: Long) = ifScala2x(_ <= v)
+    def ifScalaGte(v: Long) = ifScala2x(_ >= v)
     def ifScala211OrMinus = ifScalaLte(11)
     def ifScala211OrPlus = ifScalaGte(11)
     def ifScala212OrMinus = ifScalaLte(12)
     def ifScala213OrMinus = ifScalaLte(13)
+    def ifScala2 = ifScala2x(_ => true)
     def ifScala3 = Def.setting(
       if (scalaBinaryVersion.value == "3") Seq(__x)
       else Nil

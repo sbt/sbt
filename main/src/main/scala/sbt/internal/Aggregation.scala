@@ -96,8 +96,8 @@ object Aggregation {
 
     val extracted = Project extract s
     import extracted.structure
-    val toRun = ts map { case KeyValue(k, t) => t.map(v => KeyValue(k, v)) } join;
-    val roots = ts map { case KeyValue(k, _) => k }
+    val toRun = ts.map { case KeyValue(k, t) => t.map(v => KeyValue(k, v)) }.join
+    val roots = ts.map { case KeyValue(k, _) => k }
     val config = extractedTaskConfig(extracted, structure, s)
 
     val start = System.currentTimeMillis

@@ -86,7 +86,7 @@ object Cross {
   private def crossRestoreSessionParser: Parser[String] = token(CrossRestoreSessionCommand)
 
   private[sbt] def requireSession[T](p: State => Parser[T]): State => Parser[T] =
-    s => if (s get sessionSettings isEmpty) failure("No project loaded") else p(s)
+    s => if s.get(sessionSettings).isEmpty then failure("No project loaded") else p(s)
 
   private def resolveAggregates(extracted: Extracted): Seq[ProjectRef] = {
 
