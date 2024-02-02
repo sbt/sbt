@@ -79,6 +79,7 @@ object ScriptedPlugin extends AutoPlugin {
         )
       case Some((2, _)) =>
         Seq(
+          "org.scala-sbt" %% "scripted-sbt-redux" % scriptedSbt.value % ScriptedConf,
           "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
         )
       case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
