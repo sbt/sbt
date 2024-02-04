@@ -1,0 +1,7 @@
+> check
+
+> check2
+
+$ delete src/main/scala/B.scala
+
+> check3
