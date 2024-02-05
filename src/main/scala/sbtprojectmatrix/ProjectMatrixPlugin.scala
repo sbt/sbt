@@ -7,6 +7,7 @@ import scala.language.experimental.macros
 
 trait ProjectMatrixKeys {
     val virtualAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
+    val projectMatrixBaseDirectory = settingKey[File]("Base directory of the current project matrix")
 }
 
 object ProjectMatrixKeys extends ProjectMatrixKeys
