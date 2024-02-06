@@ -270,7 +270,8 @@ object ProjectMatrix {
             inConfig(Compile)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             projectDependencies := projectDependenciesTask.value,
-            ProjectMatrixKeys.virtualAxes := axes
+            ProjectMatrixKeys.virtualAxes := axes,
+            ProjectMatrixKeys.projectMatrixBaseDirectory := base,
           )
           .settings(self.settings)
           .configure(transforms: _*)

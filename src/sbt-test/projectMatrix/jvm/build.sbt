@@ -19,6 +19,7 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     check := {
       assert(moduleName.value == "core", s"moduleName is ${moduleName.value}")
+      assert(projectMatrixBaseDirectory.value == file("core"))
     },
   )
   .jvmPlatform(scalaVersions = Seq(scala213, scala212))
@@ -27,6 +28,7 @@ lazy val intf = (projectMatrix in file("intf"))
   .settings(
     check := {
       assert(moduleName.value == "intf", s"moduleName is ${moduleName.value}")
+      assert(projectMatrixBaseDirectory.value == file("intf"))
     },
   )
   .jvmPlatform(autoScalaLibrary = false)
