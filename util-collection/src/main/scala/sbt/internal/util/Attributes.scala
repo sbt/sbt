@@ -12,15 +12,32 @@ import scala.reflect.ClassTag
 import sbt.util.OptJsonWriter
 import sjsonnew.*
 
-// T must be invariant to work properly.
+enum KeyTag[A]:
+  case Setting[A](typeArg: Class[?]) extends KeyTag[A]
+  case Task[A](typeArg: Class[?]) extends KeyTag[A]
+  case InputTask[A](typeArg: Class[?]) extends KeyTag[A]
+
+  override def toString: String = this match
+    case Setting(typeArg)   => typeArg.toString
+    case Task(typeArg)      => s"Task[$typeArg]"
+    case InputTask(typeArg) => s"InputTask[$typeArg]"
+
+  def typeArg: Class[?]
+  def isSetting: Boolean = isInstanceOf[Setting[?]]
+  def isTaskOrInputTask: Boolean = !isSetting
+end KeyTag
+
+object KeyTag:
+  given [A: ClassTag]: KeyTag[A] = Setting[A](summon[ClassTag[A]].runtimeClass)
+
+// A must be invariant to work properly.
 //  Because it is sealed and the only instances go through AttributeKey.apply,
-//  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
+//  a single AttributeKey instance cannot conform to AttributeKey[A] for different As
 
 sealed trait AttributeKey[A]:
 
   /** The runtime evidence for `A`. */
-  def manifest: ClassTag[A]
-  // def classTag: ClassTag[A]
+  def tag: KeyTag[A]
 
   /** The label is the identifier for the key and is camelCase by convention. */
   def label: String
@@ -59,37 +76,37 @@ private[sbt] abstract class SharedAttributeKey[A] extends AttributeKey[A]:
   override final def hashCode = label.hashCode
   override final def equals(o: Any) =
     (this eq o.asInstanceOf[AnyRef]) || (o match {
-      case a: SharedAttributeKey[t] => a.label == this.label && a.manifest == this.manifest
+      case a: SharedAttributeKey[t] => a.label == this.label && a.tag == this.tag
       case _                        => false
     })
   final def isLocal: Boolean = false
 end SharedAttributeKey
 
 object AttributeKey {
-  def apply[A: ClassTag: OptJsonWriter](name: String): AttributeKey[A] =
+  def apply[A: KeyTag: OptJsonWriter](name: String): AttributeKey[A] =
     make(name, None, Nil, Int.MaxValue)
 
-  def apply[A: ClassTag: OptJsonWriter](name: String, rank: Int): AttributeKey[A] =
+  def apply[A: KeyTag: OptJsonWriter](name: String, rank: Int): AttributeKey[A] =
     make(name, None, Nil, rank)
 
-  def apply[A: ClassTag: OptJsonWriter](name: String, description: String): AttributeKey[A] =
+  def apply[A: KeyTag: OptJsonWriter](name: String, description: String): AttributeKey[A] =
     apply(name, description, Nil)
 
-  def apply[A: ClassTag: OptJsonWriter](
+  def apply[A: KeyTag: OptJsonWriter](
       name: String,
       description: String,
       rank: Int
   ): AttributeKey[A] =
     apply(name, description, Nil, rank)
 
-  def apply[A: ClassTag: OptJsonWriter](
+  def apply[A: KeyTag: OptJsonWriter](
       name: String,
       description: String,
       extend: Seq[AttributeKey[_]]
   ): AttributeKey[A] =
     apply(name, description, extend, Int.MaxValue)
 
-  def apply[A: ClassTag: OptJsonWriter](
+  def apply[A: KeyTag: OptJsonWriter](
       name: String,
       description: String,
       extend: Seq[AttributeKey[_]],
@@ -98,40 +115,39 @@ object AttributeKey {
     make(name, Some(description), extend, rank)
 
   private[sbt] def copyWithRank[A](a: AttributeKey[A], rank: Int): AttributeKey[A] =
-    make(a.label, a.description, a.extend, rank)(using a.manifest, a.optJsonWriter)
+    make(a.label, a.description, a.extend, rank)(using a.tag, a.optJsonWriter)
 
-  private[this] def make[A](
+  private[this] def make[A: KeyTag: OptJsonWriter](
       name: String,
       description0: Option[String],
       extend0: Seq[AttributeKey[_]],
       rank0: Int
-  )(using mf: ClassTag[A], ojw: OptJsonWriter[A]): AttributeKey[A] =
+  ): AttributeKey[A] =
     new SharedAttributeKey[A]:
       require(
         name.headOption.exists(_.isLower),
         s"A named attribute key must start with a lowercase letter: $name"
       )
 
-      override def manifest: ClassTag[A] = mf
+      override def tag: KeyTag[A] = summon
       override val label: String = Util.hyphenToCamel(name)
       override def description: Option[String] = description0
       override def extend: Seq[AttributeKey[_]] = extend0
       override def rank: Int = rank0
-      override def optJsonWriter: OptJsonWriter[A] = ojw
+      override def optJsonWriter: OptJsonWriter[A] = summon
 
-  private[sbt] def local[A](using ct: ClassTag[A], ojw: OptJsonWriter[A]): AttributeKey[A] =
+  private[sbt] def local[A: KeyTag: OptJsonWriter]: AttributeKey[A] =
     new AttributeKey[A]:
-      override def manifest: ClassTag[A] = ct
+      override def tag: KeyTag[A] = summon
       override def label: String = LocalLabel
       override def description: Option[String] = None
       override def extend: Seq[AttributeKey[_]] = Nil
       override def toString = label
       override def isLocal: Boolean = true
       override def rank: Int = Int.MaxValue
-      override val optJsonWriter: OptJsonWriter[A] = ojw
+      override val optJsonWriter: OptJsonWriter[A] = summon
 
   private[sbt] final val LocalLabel = "$" + "local"
-
 }
 
 /**

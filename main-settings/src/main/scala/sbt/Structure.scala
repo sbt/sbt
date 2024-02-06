@@ -10,7 +10,7 @@ package sbt
 import scala.annotation.targetName
 
 import sbt.internal.util.Types.*
-import sbt.internal.util.{ AttributeKey, Settings, SourcePosition }
+import sbt.internal.util.{ AttributeKey, KeyTag, Settings, SourcePosition }
 import sbt.internal.util.TupleMapExtension.*
 import sbt.util.OptJsonWriter
 import sbt.ConcurrentRestrictions.Tag
@@ -258,11 +258,6 @@ object Scoped:
 
   implicit def inputScopedToKey[T](s: InputKey[T]): ScopedKey[InputTask[T]] =
     ScopedKey(s.scope, s.key)
-
-  private[sbt] def coerceTag[A1: ClassTag]: Manifest[A1] =
-    summon[ClassTag[A1]] match
-      case mf: Manifest[A1] => mf
-      case tag              => ManifestFactory.classType[A1](tag.runtimeClass)
 
   /**
    * Mixin trait for adding convenience vocabulary associated with specifying the [[Scope]] of a setting.
@@ -736,10 +731,12 @@ end TupleSyntax
 
 object TupleSyntax extends TupleSyntax
 
-import Scoped.{ coerceTag, extendScoped }
+import Scoped.extendScoped
 
 /** Constructs InputKeys, which are associated with input tasks to define a setting. */
 object InputKey:
+  private given [A: ClassTag]: KeyTag[InputTask[A]] =
+    KeyTag.Task(summon[ClassTag[A]].runtimeClass)
 
   def apply[A1: ClassTag](label: String): InputKey[A1] =
     apply[A1](label, "", KeyRanks.DefaultInputRank)
@@ -755,8 +752,6 @@ object InputKey:
       description: String,
       rank: Int,
   ): InputKey[A1] =
-    given mf: ClassTag[InputTask[A1]] =
-      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], coerceTag[A1])
     apply(AttributeKey[InputTask[A1]](label, description, rank))
 
   def apply[A1: ClassTag](
@@ -773,8 +768,6 @@ object InputKey:
       extend1: Scoped,
       extendN: Scoped*
   ): InputKey[A1] =
-    given mf: ClassTag[InputTask[A1]] =
-      ManifestFactory.classType[InputTask[A1]](classOf[InputTask[A1]], coerceTag[A1])
     apply(AttributeKey[InputTask[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[InputTask[A1]]): InputKey[A1] =
@@ -784,27 +777,19 @@ end InputKey
 
 /** Constructs TaskKeys, which are associated with tasks to define a setting. */
 object TaskKey:
+  private given [A: ClassTag]: KeyTag[Task[A]] = KeyTag.Task(summon[ClassTag[A]].runtimeClass)
+
   def apply[A1: ClassTag](label: String): TaskKey[A1] =
-    apply[A1](
-      label = label,
-      description = "",
-      rank = Int.MaxValue,
-    )
+    apply[A1](label = label, description = "", rank = Int.MaxValue)
 
   def apply[A1: ClassTag](label: String, description: String): TaskKey[A1] =
-    apply[A1](
-      label = label,
-      description = description,
-      rank = Int.MaxValue,
-    )
+    apply[A1](label = label, description = description, rank = Int.MaxValue)
 
   def apply[A1: ClassTag](
       label: String,
       description: String,
       rank: Int,
   ): TaskKey[A1] =
-    given mf: ClassTag[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, rank))
 
   def apply[A1: ClassTag](
@@ -813,8 +798,6 @@ object TaskKey:
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
-    given mf: ClassTag[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN)))
 
   def apply[A1: ClassTag](
@@ -824,25 +807,18 @@ object TaskKey:
       extend1: Scoped,
       extendN: Scoped*
   ): TaskKey[A1] =
-    given mf: ClassTag[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
     apply(AttributeKey[Task[A1]](label, description, extendScoped(extend1, extendN), rank))
 
   def apply[A1](akey: AttributeKey[Task[A1]]): TaskKey[A1] =
     Scoped.scopedTask(Scope.ThisScope, akey)
 
-  def local[A1: ClassTag]: TaskKey[A1] =
-    given mf: ClassTag[Task[A1]] =
-      ManifestFactory.classType[Task[A1]](classOf[Task[A1]], coerceTag[A1])
-    apply[A1](AttributeKey.local[Task[A1]])
+  def local[A1: ClassTag]: TaskKey[A1] = apply[A1](AttributeKey.local[Task[A1]])
 
 end TaskKey
 
 /** Constructs SettingKeys, which are associated with a value to define a basic setting. */
 object SettingKey:
-  def apply[A1: ClassTag: OptJsonWriter](
-      label: String,
-  ): SettingKey[A1] =
+  def apply[A1: ClassTag: OptJsonWriter](label: String): SettingKey[A1] =
     apply[A1](
       label = label,
       description = "",

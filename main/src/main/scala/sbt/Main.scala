@@ -440,14 +440,14 @@ object BuiltinCommands {
 
   private[this] def quiet[T](t: => T): Option[T] =
     try Some(t)
-    catch { case _: Exception => None }
+    catch case _: Exception => None
 
   def settingsCommand: Command =
     showSettingLike(
       SettingsCommand,
       settingsPreamble,
       KeyRanks.MainSettingCutoff,
-      key => !isTask(key.manifest)
+      key => key.tag.isSetting
     )
 
   def tasks: Command =
@@ -455,7 +455,7 @@ object BuiltinCommands {
       TasksCommand,
       tasksPreamble,
       KeyRanks.MainTaskCutoff,
-      key => isTask(key.manifest)
+      key => key.tag.isTaskOrInputTask
     )
 
   def showSettingLike(
@@ -517,11 +517,6 @@ object BuiltinCommands {
   def sortByRank(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] = keys.sortBy(_.rank)
   def withDescription(keys: Seq[AttributeKey[_]]): Seq[AttributeKey[_]] =
     keys.filter(_.description.isDefined)
-
-  def isTask(
-      mf: ClassTag[_]
-  )(using taskMF: ClassTag[Task[_]], inputMF: ClassTag[InputTask[_]]): Boolean =
-    mf.runtimeClass == taskMF.runtimeClass || mf.runtimeClass == inputMF.runtimeClass
 
   def topNRanked(n: Int) = (keys: Seq[AttributeKey[_]]) => sortByRank(keys).take(n)
 

@@ -14,7 +14,7 @@ import java.util.concurrent.ConcurrentHashMap
 import sbt.Keys._
 import sbt.internal.Clean.ToSeqPath
 import sbt.internal.Continuous.FileStampRepository
-import sbt.internal.util.AttributeKey
+import sbt.internal.util.KeyTag
 import sbt.internal.{ Clean, Continuous, DynamicInput, WatchTransitiveDependencies }
 import sbt.nio.FileStamp.Formats._
 import sbt.nio.FileStamper.{ Hash, LastModified }
@@ -53,7 +53,7 @@ private[sbt] object Settings {
 
   /**
    * This method checks if the setting is for a task with a return type in:
-   * `File`, `Seq[File]`, `Path`, `Seq[Path`. If it does, then we inject a number of
+   * `File`, `Seq[File]`, `Path`, `Seq[Path]`. If it does, then we inject a number of
    * task definition settings that allow the user to check if the output paths of
    * the task have changed. It also adds a custom clean task that will delete the
    * paths returned by the task, provided that they are in the task's target directory. We also
@@ -68,10 +68,11 @@ private[sbt] object Settings {
       setting: Def.Setting[_],
       fileOutputScopes: Set[Scope]
   ): List[Def.Setting[_]] = {
-    setting.key.key match {
-      case ak: AttributeKey[_] if taskClass.isAssignableFrom(ak.manifest.runtimeClass) =>
+    val attributeKey = setting.key.key
+    attributeKey.tag match {
+      case tag: KeyTag.Task[?] =>
         def default: List[Def.Setting[_]] = {
-          val scope = setting.key.scope.copy(task = Select(ak))
+          val scope = setting.key.scope.copy(task = Select(attributeKey))
           if (fileOutputScopes.contains(scope)) {
             val sk = setting.asInstanceOf[Def.Setting[Task[Any]]].key
             val scopedKey = Keys.dynamicFileOutputs in (sk.scope in sk.key)
@@ -93,15 +94,15 @@ private[sbt] object Settings {
           addTaskDefinition(Def.setting[Task[Seq[Path]]](key, init, setting.pos)) ::
             outputsAndStamps(taskKey)
         }
-        ak.manifest.typeArguments match
-          case (t: Manifest[_]) :: Nil if seqClass.isAssignableFrom(t.runtimeClass) =>
-            t.typeArguments match {
-              case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
-              case _                                                      => default
-            }
-          case (t: Manifest[_]) :: Nil if pathClass.isAssignableFrom(t.runtimeClass) =>
-            mkSetting[Path]
-          case _ => default
+        if seqClass.isAssignableFrom(tag.typeArg) then
+          // TODO fix this: maybe using the taskKey macro to convey the information
+          // t.typeArguments match {
+          //   case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
+          //   case _                                                      => default
+          // }
+          default
+        else if pathClass.isAssignableFrom(tag.typeArg) then mkSetting[Path]
+        else default
       case _ => Nil
     }
   }
@@ -161,7 +162,6 @@ private[sbt] object Settings {
     }) :: fileStamps(scopedKey) :: allFilesImpl(scope) :: changedInputFilesImpl(scope)
   }
 
-  private[this] val taskClass = classOf[Task[_]]
   private[this] val seqClass = classOf[Seq[_]]
   private[this] val pathClass = classOf[java.nio.file.Path]
 

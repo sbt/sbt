@@ -104,7 +104,7 @@ object SettingQuery {
   def getJsonWriter[A](key: AttributeKey[A]): Either[String, JsonWriter[A]] =
     key.optJsonWriter match {
       case SomeJsonWriter(jw) => Right(jw)
-      case NoJsonWriter()     => Left(s"JsonWriter for ${key.manifest} not found")
+      case NoJsonWriter()     => Left(s"JsonWriter for ${key.tag} not found")
     }
 
   def toJson[A: JsonWriter](x: A): JValue = Converter toJsonUnsafe x
@@ -128,7 +128,7 @@ object SettingQuery {
     for {
       key <- key
       json <- getSettingJsonValue(structure, key)
-    } yield SettingQuerySuccess(json, key.key.manifest.toString)
+    } yield SettingQuerySuccess(json, key.key.tag.toString)
   }
 
   def handleSettingQuery(req: SettingQuery, structure: BuildStructure): SettingQueryResponse =
