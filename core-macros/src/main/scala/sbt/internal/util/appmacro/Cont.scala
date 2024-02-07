@@ -76,7 +76,9 @@ trait Cont:
       given qctx.type = qctx
       Expr
         .summon[Applicative[F]]
-        .getOrElse(sys.error(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}"))
+        .getOrElse(
+          report.errorAndAbort(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}")
+        )
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
