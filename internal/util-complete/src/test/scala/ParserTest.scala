@@ -8,8 +8,6 @@
 package sbt.internal.util
 package complete
 
-import scala.collection.StringOps
-
 object JLineTest {
   import DefaultParsers._
 
@@ -155,12 +153,12 @@ object ParserExample {
     val an = repeat(a, min = n, max = n)
     val ann = aqn ~ an
 
-    def r = apply(ann)(new StringOps("a") * (n * 2)).resultEmpty
+    def r = apply(ann)("a" * (n * 2)).resultEmpty
     println(r.isValid)
   }
   def run2(n: Int): Unit = {
     val ab = "ab".?.*
-    val r = apply(ab)(new StringOps("a") * n).resultEmpty
+    val r = apply(ab)("a" * n).resultEmpty
     println(r)
   }
 }

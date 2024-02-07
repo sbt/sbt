@@ -9,7 +9,6 @@ package sbt
 
 import java.io.File
 import java.util.regex.{ Pattern, PatternSyntaxException }
-import scala.collection.immutable.StringOps
 
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
@@ -43,7 +42,7 @@ object CommandUtil {
       for ((a, b) <- in) yield pre + fill(a, width) + sep + b
     }
 
-  def fill(s: String, size: Int): String = s + StringOps(" ") * math.max(size - s.length, 0)
+  def fill(s: String, size: Int): String = s + " " * math.max(size - s.length, 0)
 
   def withAttribute[T](s: State, key: AttributeKey[T], ifMissing: String)(f: T => State): State =
     s get key match {

@@ -13,13 +13,12 @@ import sbt.internal.util.complete.Parser
 
 object MultiParserSpec {
   val parser: Parser[Seq[String]] = BasicCommands.multiParserImpl(None)
-  implicit class StringOps(val s: String) {
+  extension (s: String)
     def parse: Seq[String] = Parser.parse(s, parser) match {
       case Right(x) => x
       case Left(x)  => sys.error(s)
     }
     def parseEither: Either[String, Seq[String]] = Parser.parse(s, parser)
-  }
 }
 import sbt.MultiParserSpec._
 class MultiParserSpec extends AnyFlatSpec {
