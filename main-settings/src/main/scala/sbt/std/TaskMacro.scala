@@ -43,7 +43,7 @@ object TaskMacro:
   final val appendNMigration =
     "`<++=` operator is removed. Try `lhs ++= { x.value }`\n  or see https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
   final val assignMigration =
-    """`<<=` operator is removed. Use `key := { x.value }` or `key ~= (old => { newValue })`.
+    """`<<=` operator is removed. Use `key := { x.value }` or `key ~= {old => newValue }`.
       |See https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html""".stripMargin
 
   type F[x] = Initialize[Task[x]]
@@ -105,49 +105,17 @@ object TaskMacro:
   // Error macros (Restligeist)
   // These macros are there just so we can fail old operators like `<<=` and provide useful migration information.
 
-  def fakeSettingAssignImpl[A1: Type](app: Expr[Initialize[A1]])(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.assignMigration)
+  def errorAndAbort(message: String)(using quotes: Quotes): Nothing =
+    quotes.reflect.report.errorAndAbort(message)
 
-  def fakeSettingAppend1Position[A1: Type, A2: Type](
-      @deprecated("unused", "") v: Expr[Initialize[A2]]
-  )(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.append1Migration)
+  def fakeAssignImpl(using qctx: Quotes): Nothing =
+    qctx.reflect.report.errorAndAbort(assignMigration)
 
-  def fakeSettingAppendNPosition[A1: Type, A2: Type](
-      @deprecated("unused", "") vs: Expr[Initialize[A2]]
-  )(using
-      qctx: Quotes
-  ): Expr[Setting[A1]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.appendNMigration)
+  def fakeAppend1Impl(using qctx: Quotes): Nothing =
+    qctx.reflect.report.errorAndAbort(append1Migration)
 
-  def fakeItaskAssignPosition[A1: Type](
-      @deprecated("unused", "") app: Expr[Initialize[Task[A1]]]
-  )(using qctx: Quotes): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.assignMigration)
-
-  def fakeTaskAppend1Position[A1: Type, A2: Type](
-      @deprecated("unused", "") v: Expr[Initialize[Task[A2]]]
-  )(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.append1Migration)
-
-  def fakeTaskAppendNPosition[A1: Type, A2: Type](
-      @deprecated("unused", "") vs: Expr[Initialize[Task[A2]]]
-  )(using
-      qctx: Quotes
-  ): Expr[Setting[Task[A1]]] =
-    import qctx.reflect.*
-    report.errorAndAbort(TaskMacro.appendNMigration)
+  def fakeAppendNImpl(using qctx: Quotes): Nothing =
+    qctx.reflect.report.errorAndAbort(appendNMigration)
 
   // Implementations of <<= macro variations for tasks and settings.
   // These just get the source position of the call site.

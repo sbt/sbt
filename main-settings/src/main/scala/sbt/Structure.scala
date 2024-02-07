@@ -92,15 +92,12 @@ sealed abstract class SettingKey[A1]
   final inline def ++=[A2](inline vs: A2)(using Append.Values[A1, A2]): Setting[A1] =
     appendN(settingMacro[A2](vs))
 
-  final def appendN[V](vs: Initialize[V])(using
-      ev: Append.Values[A1, V]
-  ): Setting[A1] = make(vs)(ev.appendValues)
+  final def appendN[V](vs: Initialize[V])(using ev: Append.Values[A1, V]): Setting[A1] =
+    make(vs)(ev.appendValues)
 
-  final inline def <+=[A2](inline v: Initialize[A2]): Setting[A1] =
-    ${ TaskMacro.fakeSettingAppend1Position[A1, A2]('v) }
+  final inline def <+=[A2](v: Initialize[A2]): Setting[A1] = ${ TaskMacro.fakeAppend1Impl }
 
-  final inline def <++=[A2](inline vs: Initialize[A2]): Setting[A1] =
-    ${ TaskMacro.fakeSettingAppendNPosition[A1, A2]('vs) }
+  final inline def <++=[A2](vs: Initialize[A2]): Setting[A1] = ${ TaskMacro.fakeAppendNImpl }
 
   final inline def -=[A2](inline v: A2)(using Remove.Value[A1, A2]): Setting[A1] =
     remove1(settingMacro[A2](v))
@@ -172,11 +169,11 @@ sealed abstract class TaskKey[A1]
       ev: Append.Values[A1, A2]
   ): Setting[Task[A1]] = make(vs)(ev.appendValues)
 
-  inline def <+=[A2](inline v: Initialize[Task[A2]]): Setting[Task[A1]] =
-    ${ TaskMacro.fakeTaskAppend1Position[A1, A2]('v) }
+  inline def <+=[A2](v: Initialize[Task[A2]]): Setting[Task[A1]] =
+    ${ TaskMacro.fakeAppend1Impl }
 
-  inline def <++=[A2](inline vs: Initialize[Task[A2]]): Setting[Task[A1]] =
-    ${ TaskMacro.fakeTaskAppendNPosition[A1, A2]('vs) }
+  inline def <++=[A2](vs: Initialize[Task[A2]]): Setting[Task[A1]] =
+    ${ TaskMacro.fakeAppendNImpl }
 
   final inline def -=[A2](v: A2)(using Remove.Value[A1, A2]): Setting[Task[A1]] =
     remove1[A2](taskMacro[A2](v))
@@ -334,8 +331,7 @@ object Scoped:
     private[sbt] final inline def :==(inline app: A1): Setting[A1] =
       set(Def.valueStrict(app))
 
-    inline def <<=(inline app: Initialize[A1]): Setting[A1] =
-      ${ TaskMacro.fakeSettingAssignImpl('app) }
+    inline def <<=(app: Initialize[A1]): Setting[A1] = ${ TaskMacro.fakeAssignImpl }
 
     /** In addition to creating Def.setting(...), this captures the source position. */
     inline def set(inline app: Initialize[A1]): Setting[A1] =
@@ -479,8 +475,7 @@ object Scoped:
     inline def :=(inline a: A1): Setting[Task[A1]] =
       set(taskMacro(a))
 
-    inline def <<=(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
-      ${ TaskMacro.fakeItaskAssignPosition[A1]('app) }
+    inline def <<=(app: Initialize[Task[A1]]): Setting[Task[A1]] = ${ TaskMacro.fakeAssignImpl }
 
     /** In addition to creating Def.setting(...), this captures the source position. */
     inline def set(inline app: Initialize[Task[A1]]): Setting[Task[A1]] =
