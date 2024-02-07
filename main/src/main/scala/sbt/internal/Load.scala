@@ -1466,9 +1466,10 @@ private[sbt] object Load {
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
     val session = s get Keys.sessionSettings
     val currentProject = session map (_.currentProject) getOrElse Map.empty
-    val currentBuild = session map (_.currentBuild) filter (uri =>
-      structure.units.keys exists (uri ==)
-    ) getOrElse structure.root
+    val currentBuild = session
+      .map(_.currentBuild)
+      .filter(uri => structure.units.keys.exists(uri == _))
+      .getOrElse(structure.root)
     new SessionSettings(
       currentBuild,
       projectMap(structure, currentProject),

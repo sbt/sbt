@@ -384,7 +384,7 @@ private[sbt] object PluginsDebug {
 
   private[this] def includeAll[T <: Basic](basic: Set[T]): Plugins = And(basic.toList)
   private[this] def excludeAll(plugins: Set[AutoPlugin]): Plugins =
-    And(plugins map (p => Exclude(p)) toList)
+    And(plugins.map(p => Exclude(p)).toList)
 
   private[this] def excludes(bs: Seq[Basic]): Set[AutoPlugin] =
     bs.collect { case Exclude(b) => b }.toSet

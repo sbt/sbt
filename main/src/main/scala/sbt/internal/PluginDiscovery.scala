@@ -183,9 +183,9 @@ object PluginDiscovery:
 
   private[this] def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing = {
     val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
-    val evictedModules = evicted map { id =>
+    val evictedModules = evicted.map { id =>
       (id.organization, id.name)
-    } distinct;
+    }.distinct
     val evictedStrings = evictedModules map { case (o, n) => o + ":" + n }
     val msgBase = "Binary incompatibility in plugins detected."
     val msgExtra =

@@ -866,8 +866,8 @@ object BuildServerProtocol {
     }
   }
 
-  private val jsonParser: Parser[JValue] = (Parsers.any *).map(_.mkString)
-  .map(JsonParser.parseUnsafe)
+  private val jsonParser: Parser[JValue] = (Parsers.any.*).map(_.mkString)
+    .map(JsonParser.parseUnsafe)
 
   private def bspRunTask: Def.Initialize[InputTask[Unit]] =
     Def.input((s: State) => jsonParser).flatMapTask { json =>

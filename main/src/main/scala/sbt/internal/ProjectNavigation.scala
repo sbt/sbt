@@ -16,7 +16,7 @@ import sbt.ProjectExtra.{ extract, updateCurrent }
 
 object ProjectNavigation {
   def command(s: State): Parser[() => State] =
-    if (s get sessionSettings isEmpty) failure("No project loaded")
+    if s.get(sessionSettings).isEmpty then failure("No project loaded")
     else (new ProjectNavigation(s)).command
 }
 

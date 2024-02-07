@@ -596,7 +596,7 @@ object Act {
     else data.get(scope, key)
 
   def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
-    if (s get sessionSettings isEmpty) failure("No project loaded") else p
+    if s.get(sessionSettings).isEmpty then failure("No project loaded") else p
 
   sealed trait ParsedAxis[+T] {
     final def isExplicit = this != Omitted

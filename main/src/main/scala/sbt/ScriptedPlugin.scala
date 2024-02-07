@@ -32,8 +32,8 @@ object ScriptedPlugin extends AutoPlugin {
   sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
 
   object autoImport {
-    val ScriptedConf = Configurations.config("scripted-sbt") hide
-    val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
+    val ScriptedConf = Configurations.config("scripted-sbt").hide
+    val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch").hide
 
     val scriptedSbt = settingKey[String]("")
     val sbtLauncher = taskKey[File]("")

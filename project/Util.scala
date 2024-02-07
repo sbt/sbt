@@ -26,14 +26,6 @@ object Util {
   )
 
   lazy val baseScalacOptions = Seq(
-    scalacOptions ++= Seq(
-      "-Xelide-below",
-      "0",
-      "-language:existentials",
-      "-language:postfixOps",
-      "-Yrangepos",
-      "-Wconf:cat=unused-nowarn:s",
-    ),
     Compile / doc / scalacOptions -= "-Xlint",
     Compile / doc / scalacOptions -= "-Xfatal-warnings",
   )

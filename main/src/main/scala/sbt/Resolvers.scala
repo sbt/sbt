@@ -138,7 +138,7 @@ object Resolvers {
       if (Util.isNonCygwinWindows) "cmd" +: "/c" +: command
       else command,
       cwd
-    ) !;
+    ).!
     if (result != 0)
       sys.error("Nonzero exit code (" + result + "): " + command.mkString(" "))
   }
