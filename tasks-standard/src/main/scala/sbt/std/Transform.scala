@@ -20,9 +20,6 @@ object Transform:
 
   def fromDummyStrict[T](original: Task[T], value: T): Task[T] = fromDummy(original)(value)
 
-  implicit def to_~>|[K[_], V[_]](map: RMap[K, V]): ~>|[K, V] =
-    [A] => (k: K[A]) => map.get(k)
-
   final case class DummyTaskMap(mappings: List[TaskAndValue[_]]) {
     def ::[T](tav: (Task[T], T)): DummyTaskMap =
       DummyTaskMap(new TaskAndValue(tav._1, tav._2) :: mappings)
@@ -30,17 +27,17 @@ object Transform:
 
   final class TaskAndValue[T](val task: Task[T], val value: T)
 
-  def dummyMap(dummyMap: DummyTaskMap): TaskId ~>| Task = {
+  def dummyMap(dummyMap: DummyTaskMap): [A] => TaskId[A] => Option[Task[A]] = {
     val pmap = new DelegatingPMap[TaskId, Task](new collection.mutable.ListMap)
     def add[T](dummy: TaskAndValue[T]): Unit = {
       pmap(dummy.task) = fromDummyStrict(dummy.task, dummy.value)
     }
     dummyMap.mappings.foreach(x => add(x))
-    pmap
+    ([A] => (task: TaskId[A]) => pmap.get(task))
   }
 
   /** Applies `map`, returning the result if defined or returning the input unchanged otherwise. */
-  implicit def getOrId(map: TaskId ~>| Task): [A] => TaskId[A] => Task[A] =
+  private def getOrId(map: [A] => TaskId[A] => Option[Task[A]]): [A] => TaskId[A] => Task[A] =
     [A] => (in: TaskId[A]) => map(in).getOrElse(in.asInstanceOf)
 
   def apply(dummies: DummyTaskMap) = taskToNode(getOrId(dummyMap(dummies)))

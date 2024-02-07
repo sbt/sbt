@@ -44,12 +44,6 @@ trait TypeFunctions:
       f: [a] => F1[a] => F2[a]
   ): [a] => Compose[F1, F3][a] => Compose[F2, F3][a] =
     f.asInstanceOf[[a] => Compose[F1, F3][a] => Compose[F2, F3][a]]
-
-  /*
-  type Endo[T] = T => T
-  type ~>|[A[_], B[_]] = A ~> Compose[Option, B]#Apply
-   */
-  type ~>|[F1[_], F2[_]] = [A] => F1[A] => Option[F2[A]]
 end TypeFunctions
 
 /*
