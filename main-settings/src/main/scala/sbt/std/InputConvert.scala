@@ -12,7 +12,6 @@ import sbt.internal.util.appmacro.{ Convert, ContextUtil }
 import sbt.internal.util.complete.Parser
 import Def.Initialize
 import sbt.util.Applicative
-import sbt.internal.util.Types.Compose
 import scala.quoted.*
 
 class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
@@ -94,7 +93,7 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
     }
     Converted.success(t.asTerm)
 
-  def appExpr: Expr[Applicative[Compose[Initialize, Task]]] =
+  def appExpr: Expr[Applicative[[a] =>> Initialize[Task[a]]]] =
     '{ FullInstance.initializeTaskMonad }
 end FullConvert
 

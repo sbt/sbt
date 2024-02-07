@@ -11,15 +11,6 @@ trait TypeFunctions:
   type Id[X] = X
   type NothingK[X] = Nothing
 
-  /*
-  import TypeFunctions._
-  sealed trait Const[A] { type Apply[B] = A }
-  sealed trait ConstK[A] { type l[L[x]] = A }
-  type ConstK[A] = [F[_]] =>> A
-   */
-
-  type Compose[F1[_], F2[_]] = [a] =>> F1[F2[a]]
-
   sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
   private type AnyLeft[A] = Left[A, Nothing]
   private type AnyRight[A] = Right[Nothing, A]
@@ -40,10 +31,6 @@ trait TypeFunctions:
   final def idK[F[_]]: [a] => F[a] => F[a] = [a] =>
     (fa: F[a]) => fa // .setToString("TypeFunctions.idK")
 
-  inline def nestCon[F1[_], F2[_], F3[_]](
-      f: [a] => F1[a] => F2[a]
-  ): [a] => Compose[F1, F3][a] => Compose[F2, F3][a] =
-    f.asInstanceOf[[a] => Compose[F1, F3][a] => Compose[F2, F3][a]]
 end TypeFunctions
 
 /*
