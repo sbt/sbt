@@ -10,7 +10,7 @@ package sbt
 import java.util.concurrent.ExecutionException
 
 import sbt.internal.util.ErrorHandling.wideConvert
-import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap, ~> }
+import sbt.internal.util.{ DelegatingPMap, IDSet, PMap, RMap }
 import sbt.internal.util.Types.const
 import sbt.internal.util.Util.nilSeq
 

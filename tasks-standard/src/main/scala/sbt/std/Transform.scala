@@ -9,7 +9,7 @@ package sbt
 package std
 
 import sbt.internal.Action
-import sbt.internal.util.{ ~>, DelegatingPMap, RMap }
+import sbt.internal.util.{ DelegatingPMap, RMap }
 import sbt.internal.util.TupleMapExtension.*
 import TaskExtra.{ all, existToAny }
 import sbt.internal.util.Types.*

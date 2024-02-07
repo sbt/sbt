@@ -11,7 +11,6 @@ trait TypeFunctions:
   type Id[X] = X
   type NothingK[X] = Nothing
 
-  sealed trait ∙[A[_], B[_]] { type l[T] = A[B[T]] }
   private type AnyLeft[A] = Left[A, Nothing]
   private type AnyRight[A] = Right[Nothing, A]
   final val left: [A] => A => AnyLeft[A] = [A] => (a: A) => Left(a)
@@ -55,16 +54,6 @@ object TypeFunctions extends TypeFunctions:
 
 end TypeFunctions
  */
-
-trait ~>[-F1[_], +F2[_]] { outer =>
-  def apply[A](f1: F1[A]): F2[A]
-  // directly on ~> because of type inference limitations
-  final def ∙[F3[_]](g: F3 ~> F1): F3 ~> F2 = new ~>[F3, F2] {
-    override def apply[A](f3: F3[A]) = outer.apply(g(f3))
-  }
-  final def ∙[C, D](g: C => D)(implicit ev: D <:< F1[D]): C => F2[D] = i => apply(ev(g(i)))
-  lazy val fn: [A] => F1[A] => F2[A] = [A] => (f1: F1[A]) => outer.apply[A](f1)
-}
 
 /*
 object ~> {

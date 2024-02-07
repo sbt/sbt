@@ -10,7 +10,7 @@ package sbt
 import scala.annotation.targetName
 
 import sbt.internal.util.Types.*
-import sbt.internal.util.{ ~>, AttributeKey, Settings, SourcePosition }
+import sbt.internal.util.{ AttributeKey, Settings, SourcePosition }
 import sbt.internal.util.TupleMapExtension.*
 import sbt.util.OptJsonWriter
 import sbt.ConcurrentRestrictions.Tag

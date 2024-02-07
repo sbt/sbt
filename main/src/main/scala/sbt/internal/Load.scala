@@ -22,7 +22,7 @@ import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUt
 import sbt.internal.server.BuildServerEvalReporter
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ Attributed, Settings, ~> }
+import sbt.internal.util.{ Attributed, Settings }
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver }

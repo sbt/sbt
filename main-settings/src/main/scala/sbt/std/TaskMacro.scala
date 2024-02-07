@@ -21,7 +21,7 @@ import sbt.internal.util.appmacro.{
   // MonadInstance
 }
 // import Instance.Transform
-import sbt.internal.util.{ LinePosition, NoPosition, SourcePosition, ~> }
+import sbt.internal.util.{ LinePosition, NoPosition, SourcePosition }
 
 import language.experimental.macros
 import scala.annotation.tailrec
