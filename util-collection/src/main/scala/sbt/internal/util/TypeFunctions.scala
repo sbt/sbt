@@ -11,54 +11,13 @@ trait TypeFunctions:
   type Id[X] = X
   type NothingK[X] = Nothing
 
-  private type AnyLeft[A] = Left[A, Nothing]
-  private type AnyRight[A] = Right[Nothing, A]
-  final val left: [A] => A => AnyLeft[A] = [A] => (a: A) => Left(a)
+  final val left: [A] => A => Left[A, Nothing] = [A] => (a: A) => Left(a)
 
-  final val right: [A] => A => AnyRight[A] = [A] => (a: A) => Right(a)
+  final val right: [A] => A => Right[Nothing, A] = [A] => (a: A) => Right(a)
 
   final val some: [A] => A => Some[A] = [A] => (a: A) => Some(a)
-  // Id ~> Left[*, Nothing] =
-  // λ[Id ~> AnyLeft](Left(_)).setToString("TypeFunctions.left")
-  // final val right: Id ~> Right[Nothing, *] =
-  //   λ[Id ~> AnyRight](Right(_)).setToString("TypeFunctions.right")
-  // final val some: Id ~> Some[*] = λ[Id ~> Some](Some(_)).setToString("TypeFunctions.some")
 
-  final def idFun[A]: A => A = ((a: A) => a) // .setToString("TypeFunctions.id")
-  final def const[A, B](b: B): A => B = ((_: A) => b) // .setToString(s"TypeFunctions.const($b)")
-
-  final def idK[F[_]]: [a] => F[a] => F[a] = [a] =>
-    (fa: F[a]) => fa // .setToString("TypeFunctions.idK")
+  final def idFun[A]: A => A = ((a: A) => a)
+  final def const[A, B](b: B): A => B = ((_: A) => b)
 
 end TypeFunctions
-
-/*
-object TypeFunctions extends TypeFunctions:
-
-  private implicit class Ops[T[_], R[_]](val underlying: T ~> R) extends AnyVal {
-    def setToString(string: String): T ~> R = new (T ~> R) {
-      override def apply[U](a: T[U]): R[U] = underlying(a)
-      override def toString: String = string
-      override def equals(o: Any): Boolean = underlying.equals(o)
-      override def hashCode: Int = underlying.hashCode
-    }
-  }
-  private implicit class FunctionOps[A, B](val f: A => B) extends AnyVal {
-    def setToString(string: String): A => B = new (A => B) {
-      override def apply(a: A): B = f(a)
-      override def toString: String = string
-      override def equals(o: Any): Boolean = f.equals(o)
-      override def hashCode: Int = f.hashCode
-    }
-  }
-
-end TypeFunctions
- */
-
-/*
-object ~> {
-  import TypeFunctions._
-  val Id: Id ~> Id = idK[Id]
-  implicit def tcIdEquals: Id ~> Id = Id
-}
- */
