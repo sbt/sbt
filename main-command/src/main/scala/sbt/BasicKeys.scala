@@ -8,13 +8,13 @@
 package sbt
 
 import java.io.File
-
+import java.nio.file.Path
 import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
-import sbt.util.Level
+import sbt.util.{ ActionCacheStore, Level }
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import xsbti.VirtualFile
@@ -103,6 +103,20 @@ object BasicKeys {
     AttributeKey[Boolean](
       "bspEnabled",
       "Enable/Disable BSP for this build, project or configuration",
+      10000
+    )
+
+  val cacheStores =
+    AttributeKey[Seq[ActionCacheStore]](
+      "cacheStores",
+      "Cache backends",
+      10000
+    )
+
+  val rootOutputDirectory =
+    AttributeKey[Path](
+      "rootOutputDirectory",
+      "Build-wide output directory",
       10000
     )
 

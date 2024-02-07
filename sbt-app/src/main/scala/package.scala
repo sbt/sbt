@@ -68,6 +68,7 @@ package object sbt
   final val ThisScope = Scope.ThisScope
   final val Global = Scope.Global
   final val GlobalScope = Scope.GlobalScope
+  val `Package` = Pkg
 
   inline def config(name: String): Configuration = ${
     ConfigurationMacro.configMacroImpl('{ name })

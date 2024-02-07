@@ -366,5 +366,7 @@ trait Import {
   type IvyPaths = sbt.librarymanagement.ivy.IvyPaths
   val IvyPaths = sbt.librarymanagement.ivy.IvyPaths
 
+  type FileConverter = xsbti.FileConverter
+  type HashedVirtualFileRef = xsbti.HashedVirtualFileRef
   type IncOptions = xsbti.compile.IncOptions
 }

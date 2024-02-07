@@ -70,9 +70,9 @@ lazy val root = (project in file(".")).
     (ThisBuild / organization) := "org.example",
     (ThisBuild / version) := "1.0",
     check := {
-      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
-      val bcp = (b / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
-      val ccp = (c / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"}
+      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.name}.sorted
+      val bcp = (b / Compile / externalDependencyClasspath).value.map {_.data.name}.sorted
+      val ccp = (c / Compile / externalDependencyClasspath).value.map {_.data.name}.sorted filterNot { _ == "demo_2.10.jar"}
       if (!(acp contains "commons-io-1.4-sources.jar")) {
         sys.error("commons-io-1.4-sources not found when it should be included: " + acp.toString)
       }
@@ -90,9 +90,9 @@ lazy val root = (project in file(".")).
         "\n - b (plain)         " + bcpWithoutSource.toString +
         "\n - c (inter-project) " + ccpWithoutSource.toString)
 
-      val atestcp = (a / Test / externalDependencyClasspath).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
-      val btestcp = (b / Test / externalDependencyClasspath).value.map {_.data.getName}.sorted filterNot { _ == "commons-io-1.4.jar"}
-      val ctestcp = (c / Test / externalDependencyClasspath).value.map {_.data.getName}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"}
+      val atestcp = (a / Test / externalDependencyClasspath).value.map {_.data.name}.sorted filterNot { _ == "commons-io-1.4.jar"}
+      val btestcp = (b / Test / externalDependencyClasspath).value.map {_.data.name}.sorted filterNot { _ == "commons-io-1.4.jar"}
+      val ctestcp = (c / Test / externalDependencyClasspath).value.map {_.data.name}.sorted filterNot { _ == "demo_2.10.jar"} filterNot { _ == "commons-io-1.4.jar"}
       if (ctestcp contains "junit-4.13.1.jar") {
         sys.error("junit found when it should be excluded: " + ctestcp.toString)
       }

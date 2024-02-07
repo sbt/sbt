@@ -38,16 +38,16 @@ lazy val root = (project in file(".")).
     version := "1.0",
     updateOptions := updateOptions.value.withCachedResolution(true),
     check := {
-      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      if (acp exists { _.data.getName contains "commons-io" }) {
+      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      if (acp exists { _.data.name contains "commons-io" }) {
         sys.error("commons-io found when it should be excluded")
       }
-      if (acp exists { _.data.getName contains "commons-codec" }) {
+      if (acp exists { _.data.name contains "commons-codec" }) {
         sys.error("commons-codec found when it should be excluded")
       }
       // This is checking to make sure excluded graph is not getting picked up
-      if (!(bcp exists { _.data.getName contains "commons-io" })) {
+      if (!(bcp exists { _.data.name contains "commons-io" })) {
         sys.error("commons-io NOT found when it should NOT be excluded")
       }
     }

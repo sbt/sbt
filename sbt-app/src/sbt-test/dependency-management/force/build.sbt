@@ -19,7 +19,7 @@ def libraryDeps(base: File) = {
 def check(ver: String) =
   (Compile / dependencyClasspath) map { jars =>
     val log4j = jars map (_.data) collect {
-      case f if f.getName contains "log4j-" => f.getName
+      case f if f.name contains "log4j-" => f.name
     }
     if (log4j.size != 1 || !log4j.head.contains(ver))
       sys.error("Did not download the correct jar.")

@@ -1,3 +1,5 @@
+import xsbti.HashedVirtualFileRef
+
 // https://github.com/coursier/coursier/issues/1123
 ThisBuild / useCoursier := false
 
@@ -34,17 +36,18 @@ val checkApiMappings = taskKey[Unit]("Verifies that the API mappings are collect
 def expectedMappings = Def.task {
   val stdLibVersion = "2.13.10"
   val binVersion = scalaBinaryVersion.value
+  val converter = fileConverter.value
   val ms = update.value.configuration(Compile).get.modules.flatMap { mod =>
     mod.artifacts.flatMap { case (a, f) =>
       val n = a.name.stripSuffix("_" + binVersion)
       n match {
-        case "a" | "b" | "c" => (f, apiBase(n)) :: Nil
-        case "scala-library" => (f, scalaLibraryBase(stdLibVersion)) :: Nil
+        case "a" | "b" | "c" => (converter.toVirtualFile(f.toPath()): HashedVirtualFileRef, apiBase(n)) :: Nil
+        case "scala-library" => (converter.toVirtualFile(f.toPath()): HashedVirtualFileRef, scalaLibraryBase(stdLibVersion)) :: Nil
         case _               => Nil
       }
     }
   }
-  val mc = (c / Compile / classDirectory).value -> apiBase("c")
+  val mc = (c / Compile / packageBin).value -> apiBase("c")
   (mc +: ms).toMap
 }
 

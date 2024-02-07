@@ -54,7 +54,7 @@ lazy val root = (project in file(".")).
   settings(commonSettings: _*).
   settings(
     check := {
-      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.getName}.sorted
+      val acp = (a / Compile / externalDependencyClasspath).value.map {_.data.name}.sorted
       if (!(acp contains "netty-3.2.0.Final.jar")) {
         sys.error("netty-3.2.0.Final not found when it should be included: " + acp.toString)
       }

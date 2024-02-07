@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.nio.file.{ Path => NioPath }
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier.{ isPublic, isStatic }
 import sbt.internal.inc.ScalaInstance
@@ -20,11 +21,16 @@ import scala.sys.process.Process
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
 
-sealed trait ScalaRun {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit]
-}
+sealed trait ScalaRun:
+  def run(mainClass: String, classpath: Seq[NioPath], options: Seq[String], log: Logger): Try[Unit]
+
 class ForkRun(config: ForkOptions) extends ScalaRun {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
+  def run(
+      mainClass: String,
+      classpath: Seq[NioPath],
+      options: Seq[String],
+      log: Logger
+  ): Try[Unit] = {
     def processExitCode(exitCode: Int, label: String): Try[Unit] =
       if (exitCode == 0) Success(())
       else
@@ -47,7 +53,12 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
     processExitCode(exitCode, "runner")
   }
 
-  def fork(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Process = {
+  def fork(
+      mainClass: String,
+      classpath: Seq[NioPath],
+      options: Seq[String],
+      log: Logger
+  ): Process = {
     log.info(s"running (fork) $mainClass ${Run.runOptionsStr(options)}")
 
     val c = configLogged(log)
@@ -64,23 +75,23 @@ class ForkRun(config: ForkOptions) extends ScalaRun {
 
   private def scalaOptions(
       mainClass: String,
-      classpath: Seq[File],
-      options: Seq[String]
+      classpath: Seq[NioPath],
+      options: Seq[String],
   ): Seq[String] =
-    "-classpath" :: Path.makeString(classpath) :: mainClass :: options.toList
+    "-classpath" :: Path.makeString(classpath.map(_.toFile())) :: mainClass :: options.toList
 }
 
-class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolean)
+class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boolean)
     extends ScalaRun {
   def this(instance: ScalaInstance, trapExit: Boolean, nativeTmp: File) =
     this(
-      (cp: Seq[File]) => ClasspathUtil.makeLoader(cp.map(_.toPath), instance, nativeTmp.toPath),
+      (cp: Seq[NioPath]) => ClasspathUtil.makeLoader(cp, instance, nativeTmp.toPath),
       trapExit
     )
 
   private[sbt] def runWithLoader(
       loader: ClassLoader,
-      classpath: Seq[File],
+      classpath: Seq[NioPath],
       mainClass: String,
       options: Seq[String],
       log: Logger
@@ -122,15 +133,19 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
   }
 
   /** Runs the class 'mainClass' using the given classpath and options using the scala runner. */
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger): Try[Unit] = {
+  def run(
+      mainClass: String,
+      classpath: Seq[NioPath],
+      options: Seq[String],
+      log: Logger
+  ): Try[Unit] = {
     val loader = newLoader(classpath)
     try runWithLoader(loader, classpath, mainClass, options, log)
     finally
-      loader match {
+      loader match
         case ac: AutoCloseable  => ac.close()
         case c: ClasspathFilter => c.close()
         case _                  =>
-      }
   }
   private def invokeMain(
       loader: ClassLoader,
@@ -173,8 +188,8 @@ class Run(private[sbt] val newLoader: Seq[File] => ClassLoader, trapExit: Boolea
 }
 
 /** This module is an interface to starting the scala interpreter or runner. */
-object Run {
-  def run(mainClass: String, classpath: Seq[File], options: Seq[String], log: Logger)(implicit
+object Run:
+  def run(mainClass: String, classpath: Seq[NioPath], options: Seq[String], log: Logger)(implicit
       runner: ScalaRun
   ) =
     runner.run(mainClass, classpath, options, log)
@@ -195,4 +210,4 @@ object Run {
       case str if str.contains(" ") => "\"" + str + "\""
       case str                      => str
     }).mkString(" ")
-}
+end Run

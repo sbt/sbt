@@ -13,13 +13,15 @@ import java.io.File
 import java.net.URL
 import Attributed.data
 import sbt.internal.BuildDef.analyzed
+import xsbti.FileConverter
 import xsbt.api.{ Discovered, Discovery }
 import xsbti.compile.CompileAnalysis
 import sbt.internal.inc.ModuleUtilities
 
 import sbt.io.IO
+import scala.reflect.ClassTag
 
-object PluginDiscovery {
+object PluginDiscovery:
 
   /**
    * Relative paths of resources that list top-level modules that are available.
@@ -39,8 +41,8 @@ object PluginDiscovery {
 
   /** Discovers and loads the sbt-plugin-related top-level modules from the classpath and source analysis in `data` and using the provided class `loader`. */
   def discoverAll(data: PluginData, loader: ClassLoader): DetectedPlugins = {
-    def discover[T](resource: String)(implicit manifest: Manifest[T]) =
-      binarySourceModules[T](data, loader, resource)
+    def discover[A1: ClassTag](resource: String) =
+      binarySourceModules[A1](data, loader, resource)
     import Paths._
     // TODO - Fix this once we can autodetect AutoPlugins defined by sbt itself.
     val defaultAutoPlugins = Seq(
@@ -97,13 +99,14 @@ object PluginDiscovery {
    * available as analyzed source and extending from any of `subclasses` as per [[sourceModuleNames]].
    */
   def binarySourceModuleNames(
-      classpath: Seq[Attributed[File]],
+      classpath: Def.Classpath,
+      converter: FileConverter,
       loader: ClassLoader,
       resourceName: String,
       subclasses: String*
   ): Seq[String] =
     (
-      binaryModuleNames(data(classpath), loader, resourceName) ++
+      binaryModuleNames(classpath, converter, loader, resourceName) ++
         (analyzed(classpath) flatMap (a => sourceModuleNames(a, subclasses: _*)))
     ).distinct
 
@@ -125,42 +128,52 @@ object PluginDiscovery {
    * doesn't bring in any resources outside of the intended `classpath`, such as from parent loaders.
    */
   def binaryModuleNames(
-      classpath: Seq[File],
+      classpath: Def.Classpath,
+      converter: FileConverter,
       loader: ClassLoader,
       resourceName: String
-  ): Seq[String] = {
+  ): Seq[String] =
     import collection.JavaConverters._
-    loader.getResources(resourceName).asScala.toSeq.filter(onClasspath(classpath)) flatMap { u =>
+    loader
+      .getResources(resourceName)
+      .asScala
+      .toSeq
+      .filter(onClasspath(classpath, converter)) flatMap { u =>
       IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
     }
-  }
 
   /** Returns `true` if `url` is an entry in `classpath`. */
-  def onClasspath(classpath: Seq[File])(url: URL): Boolean =
-    IO.urlAsFile(url) exists (classpath.contains _)
+  def onClasspath(classpath: Def.Classpath, converter: FileConverter)(url: URL): Boolean =
+    val cpFiles = classpath.map(_.data).map(converter.toPath).map(_.toFile)
+    IO.urlAsFile(url) exists (cpFiles.contains _)
 
-  private[sbt] def binarySourceModules[T](
+  private[sbt] def binarySourceModules[A: ClassTag](
       data: PluginData,
       loader: ClassLoader,
       resourceName: String
-  )(implicit classTag: reflect.ClassTag[T]): DetectedModules[T] = {
+  ): DetectedModules[A] =
     val classpath = data.classpath
+    val classTag = summon[ClassTag[A]]
     val namesAndValues =
-      if (classpath.isEmpty) Nil
-      else {
+      if classpath.isEmpty then Nil
+      else
         val names =
-          binarySourceModuleNames(classpath, loader, resourceName, classTag.runtimeClass.getName)
-        loadModules[T](data, names, loader)
-      }
-    new DetectedModules(namesAndValues)
-  }
+          binarySourceModuleNames(
+            classpath,
+            data.converter,
+            loader,
+            resourceName,
+            classTag.runtimeClass.getName
+          )
+        loadModules[A](data, names, loader)
+    DetectedModules(namesAndValues)
 
-  private[this] def loadModules[T: reflect.ClassTag](
+  private[this] def loadModules[A: reflect.ClassTag](
       data: PluginData,
       names: Seq[String],
       loader: ClassLoader
-  ): Seq[(String, T)] =
-    try ModuleUtilities.getCheckedObjects[T](names, loader)
+  ): Seq[(String, A)] =
+    try ModuleUtilities.getCheckedObjects[A](names, loader)
     catch {
       case e: ExceptionInInitializerError =>
         val cause = e.getCause
@@ -183,4 +196,4 @@ object PluginDiscovery {
         )
     throw new IncompatiblePluginsException(msgBase + msgExtra, t)
   }
-}
+end PluginDiscovery

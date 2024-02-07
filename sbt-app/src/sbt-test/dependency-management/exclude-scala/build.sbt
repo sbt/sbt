@@ -11,13 +11,16 @@ lazy val root = (project in file(".")).
     scalaOverride := check("scala.App").value
   )
 
-def check(className: String): Def.Initialize[Task[Unit]] = (Compile / fullClasspath) map { cp =>
-  val existing = cp.files.filter(_.getName contains "scala-library")
-  println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
-  println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
-  val loader = ClasspathUtilities.toLoader(existing)
-  Class.forName(className, false, loader)
-}
+def check(className: String): Def.Initialize[Task[Unit]] =
+  import sbt.TupleSyntax.*
+  (Compile / fullClasspath, fileConverter.toTaskable) mapN { (cp, c) =>
+    given FileConverter = c
+    val existing = cp.files.filter(_.toFile.getName contains "scala-library")
+    println("Full classpath: " + cp.mkString("\n\t", "\n\t", ""))
+    println("scala-library.jar: " + existing.mkString("\n\t", "\n\t", ""))
+    val loader = ClasspathUtilities.toLoader(existing.map(_.toFile()))
+    Class.forName(className, false, loader)
+  }
 
 def dependencies(base: File) =
   if( ( base / "stm").exists ) ("org.scala-tools" % "scala-stm_2.8.2" % "0.6") :: Nil

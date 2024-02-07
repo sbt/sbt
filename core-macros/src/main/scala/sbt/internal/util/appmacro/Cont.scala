@@ -4,9 +4,21 @@ package util
 package appmacro
 
 import scala.collection.mutable.ListBuffer
+import scala.reflect.{ ClassTag, TypeTest }
 import scala.quoted.*
-import sbt.util.Applicative
-import sbt.util.Monad
+import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
+import sbt.util.{
+  ActionCache,
+  ActionCacheStore,
+  Applicative,
+  BuildWideCacheConfiguration,
+  Cache,
+  CacheLevelTag,
+  Digest,
+  Monad,
+}
+import xsbti.VirtualFile
+import Types.Id
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -22,12 +34,13 @@ trait Cont:
      */
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
-        instanceExpr: Expr[Applicative[F]]
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contMapN[A, F, Effect](tree, instanceExpr, conv.idTransform)
+      contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -35,13 +48,14 @@ trait Cont:
      */
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Left(tree), instanceExpr, inner)
+      contImpl[A, F, Effect](Left(tree), applicativeExpr, cacheConfigExpr, inner)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -49,12 +63,13 @@ trait Cont:
      */
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contFlatMap[A, F, Effect](tree, instanceExpr, conv.idTransform)
+      contFlatMap[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors. It is
@@ -62,13 +77,14 @@ trait Cont:
      */
     def contFlatMap[A: Type, F[_], Effect[_]: Type](
         tree: Expr[F[A]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
         eatpe: Type[Effect[A]],
     ): Expr[F[Effect[A]]] =
-      contImpl[A, F, Effect](Right(tree), instanceExpr, inner)
+      contImpl[A, F, Effect](Right(tree), applicativeExpr, cacheConfigExpr, inner)
 
     def summonAppExpr[F[_]: Type]: Expr[Applicative[F]] =
       import conv.qctx
@@ -77,6 +93,30 @@ trait Cont:
       Expr
         .summon[Applicative[F]]
         .getOrElse(sys.error(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}"))
+
+    def summonHashWriter[A: Type]: Expr[HashWriter[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[HashWriter[A]]
+        .getOrElse(sys.error(s"HashWriter[A] not found for ${TypeRepr.of[A].show}"))
+
+    def summonJsonFormat[A: Type]: Expr[JsonFormat[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[JsonFormat[A]]
+        .getOrElse(sys.error(s"JsonFormat[A] not found for ${TypeRepr.of[A].show}"))
+
+    def summonClassTag[A: Type]: Expr[ClassTag[A]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+      Expr
+        .summon[ClassTag[A]]
+        .getOrElse(sys.error(s"ClassTag[A] not found for ${TypeRepr.of[A].show}"))
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
@@ -117,7 +157,8 @@ trait Cont:
      */
     def contImpl[A: Type, F[_], Effect[_]: Type](
         eitherTree: Either[Expr[A], Expr[F[A]]],
-        instanceExpr: Expr[Applicative[F]],
+        applicativeExpr: Expr[Applicative[F]],
+        cacheConfigExprOpt: Option[Expr[BuildWideCacheConfiguration]],
         inner: conv.TermTransform[Effect]
     )(using
         iftpe: Type[F],
@@ -134,18 +175,34 @@ trait Cont:
         case Right(r) => (r, faTpe)
 
       val inputBuf = ListBuffer[Input]()
+      val outputBuf = ListBuffer[Output]()
 
       def makeApp(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] = inputs match
         case Nil      => pure(body)
         case x :: Nil => genMap(body, x)
         case xs       => genMapN(body, xs)
+      def unitExpr: Expr[Unit] = '{ () }
 
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
+        val tags = CacheLevelTag.all.toList
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
-          '{
-            $instanceExpr.pure[A1] { () => $body }
-          }
+          cacheConfigExprOpt match
+            case Some(cacheConfigExpr) =>
+              '{
+                $applicativeExpr.pure[A1] { () =>
+                  ${
+                    callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
+                      body = body,
+                      input = unitExpr,
+                    )
+                  }
+                }
+              }
+            case None =>
+              '{
+                $applicativeExpr.pure[A1] { () => $body }
+              }
         eitherTree match
           case Left(_) => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
@@ -156,7 +213,7 @@ trait Cont:
       def flatten(m: Expr[F[F[Effect[A]]]]): Expr[F[Effect[A]]] =
         '{
           {
-            val i1 = $instanceExpr.asInstanceOf[Monad[F]]
+            val i1 = $applicativeExpr.asInstanceOf[Monad[F]]
             i1.flatten[Effect[A]]($m.asInstanceOf[F[F[Effect[A]]]])
           }
         }
@@ -183,13 +240,31 @@ trait Cont:
                       convert[x](name, qual) transform { (tree: Term) =>
                         typed[x](Ref(param.symbol))
                     }
-                  transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
+                  val modifiedBody =
+                    transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
+                  cacheConfigExprOpt match
+                    case Some(cacheConfigExpr) =>
+                      if input.isCacheInput then
+                        callActionCache(outputBuf.toList, cacheConfigExpr, input.tags)(
+                          body = modifiedBody,
+                          input = Ref(param.symbol).asExprOf[a],
+                        ).asTerm.changeOwner(sym)
+                      else
+                        callActionCache[A1, Unit](
+                          outputBuf.toList,
+                          cacheConfigExpr,
+                          input.tags,
+                        )(
+                          body = modifiedBody,
+                          input = unitExpr,
+                        ).asTerm.changeOwner(sym)
+                    case None => modifiedBody.asTerm
                 }
               ).asExprOf[a => A1]
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
                 '{
-                  $instanceExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
+                  $applicativeExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
                 }.asTerm
               ).asExprOf[F[A1]]
         eitherTree match
@@ -203,57 +278,137 @@ trait Cont:
           val br = makeTuple(inputs)
           val lambdaTpe =
             MethodType(List("$p0"))(_ => List(br.inputTupleTypeRepr), _ => TypeRepr.of[A1])
-          val lambda = Lambda(
-            owner = Symbol.spliceOwner,
-            tpe = lambdaTpe,
-            rhsFn = (sym, params) => {
-              val p0 = params.head.asInstanceOf[Term]
-              // Called when transforming the tree to add an input.
-              //  For `qual` of type F[A], and a `selection` qual.value,
-              //  the call is addType(Type A, Tree qual)
-              // The result is a Tree representing a reference to
-              //  the bound value of the input.
-              val substitute = [x] =>
-                (name: String, tpe: Type[x], qual: Term, oldTree: Term) =>
-                  given Type[x] = tpe
-                  convert[x](name, qual) transform { (replacement: Term) =>
-                    val idx = inputs.indexWhere(input => input.qual == qual)
-                    Select
-                      .unique(Ref(p0.symbol), "apply")
-                      .appliedToTypes(List(br.inputTupleTypeRepr))
-                      .appliedToArgs(List(Literal(IntConstant(idx))))
+          br.inputTupleTypeRepr.asType match
+            case '[inputTypeTpe] =>
+              val lambda = Lambda(
+                owner = Symbol.spliceOwner,
+                tpe = lambdaTpe,
+                rhsFn = (sym, params) => {
+                  val p0 = params.head.asInstanceOf[Term]
+                  // Called when transforming the tree to add an input.
+                  //  For `qual` of type F[A], and a `selection` qual.value,
+                  //  the call is addType(Type A, Tree qual)
+                  // The result is a Tree representing a reference to
+                  //  the bound value of the input.
+                  val substitute = [x] =>
+                    (name: String, tpe: Type[x], qual: Term, oldTree: Term) =>
+                      given Type[x] = tpe
+                      convert[x](name, qual) transform { (replacement: Term) =>
+                        val idx = inputs.indexWhere(input => input.qual == qual)
+                        applyTuple(p0, br.inputTupleTypeRepr, idx)
+                    }
+                  val modifiedBody =
+                    transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
+                  cacheConfigExprOpt match
+                    case Some(cacheConfigExpr) =>
+                      if inputs.exists(_.isCacheInput) then
+                        val tags = inputs
+                          .filter(_.isCacheInput)
+                          .map(_.tags.toSet)
+                          .reduce(_ & _)
+                          .toList
+                        require(
+                          tags.nonEmpty,
+                          s"""cacheLevelTag union must be non-empty: ${inputs.mkString("\n")}"""
+                        )
+                        br.cacheInputTupleTypeRepr.asType match
+                          case '[cacheInputTpe] =>
+                            callActionCache(outputBuf.toList, cacheConfigExpr, tags)(
+                              body = modifiedBody,
+                              input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
+                            ).asTerm.changeOwner(sym)
+                      else
+                        val tags = CacheLevelTag.all.toList
+                        callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
+                          body = modifiedBody,
+                          input = unitExpr,
+                        ).asTerm.changeOwner(sym)
+                    case None =>
+                      modifiedBody.asTerm
                 }
-              transformWrappers(body.asTerm.changeOwner(sym), substitute, sym)
-            }
-          )
-          val tupleMapRepr = TypeRepr
-            .of[Tuple.Map]
-            .appliedTo(List(br.inputTupleTypeRepr, TypeRepr.of[F]))
-          tupleMapRepr.asType match
-            case '[tupleMap] =>
-              br.inputTupleTypeRepr.asType match
-                case '[inputTypeTpe] =>
+              )
+              val tupleMapRepr = TypeRepr
+                .of[Tuple.Map]
+                .appliedTo(List(br.inputTupleTypeRepr, TypeRepr.of[F]))
+              tupleMapRepr.asType match
+                case '[tupleMap] =>
                   '{
-                    given Applicative[F] = $instanceExpr
+                    given Applicative[F] = $applicativeExpr
                     import TupleMapExtension.*
                     ${ br.tupleExpr.asInstanceOf[Expr[Tuple.Map[inputTypeTpe & Tuple, F]]] }
                       .mapN(${ lambda.asExprOf[inputTypeTpe & Tuple => A1] })
                   }
-
         eitherTree match
           case Left(_) =>
             genMapN0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
             flatten(genMapN0[F[Effect[A]]](inner(body).asExprOf[F[Effect[A]]]))
 
+      // call `ActionCache.cache`
+      def callActionCache[A1: Type, A2: Type](
+          outputs: List[Output],
+          cacheConfigExpr: Expr[BuildWideCacheConfiguration],
+          tags: List[CacheLevelTag],
+      )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
+        val codeContentHash = Expr[Long](body.show.##)
+        val extraHash = Expr[Long](0L)
+        val aJsonFormat = summonJsonFormat[A1]
+        val aClassTag = summonClassTag[A1]
+        val inputHashWriter =
+          if TypeRepr.of[A2] =:= TypeRepr.of[Unit] then
+            '{
+              import BasicJsonProtocol.*
+              summon[HashWriter[Unit]]
+            }.asExprOf[HashWriter[A2]]
+          else summonHashWriter[A2]
+        val tagsExpr = '{ List(${ Varargs(tags.map(Expr[CacheLevelTag](_))) }: _*) }
+        val block = letOutput(outputs)(body)
+        '{
+          given HashWriter[A2] = $inputHashWriter
+          given JsonFormat[A1] = $aJsonFormat
+          given ClassTag[A1] = $aClassTag
+          ActionCache
+            .cache(
+              $input,
+              codeContentHash = Digest.dummy($codeContentHash),
+              extraHash = Digest.dummy($extraHash),
+              tags = $tagsExpr
+            )({ _ =>
+              $block
+            })($cacheConfigExpr)
+        }
+
+      // wrap body in between output var declarations and var references
+      def letOutput[A1: Type](
+          outputs: List[Output]
+      )(body: Expr[A1]): Expr[(A1, Seq[VirtualFile])] =
+        Block(
+          outputs.map(_.toVarDef),
+          '{
+            (
+              $body,
+              List(${ Varargs[VirtualFile](outputs.map(_.toRef.asExprOf[VirtualFile])) }: _*)
+            )
+          }.asTerm
+        ).asExprOf[(A1, Seq[VirtualFile])]
+
+      val WrapOutputName = "wrapOutput_\u2603\u2603"
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
         (name: String, tpe: Type[a], qual: Term, oldTree: Term) =>
           given t: Type[a] = tpe
           convert[a](name, qual) transform { (replacement: Term) =>
-            inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
-            oldTree
+            if name != WrapOutputName then
+              // todo cache opt-out attribute
+              inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+              oldTree
+            else
+              val output = Output(TypeRepr.of[a], qual, freshName("o"), Symbol.spliceOwner)
+              outputBuf += output
+              if cacheConfigExprOpt.isDefined then output.toAssign
+              else oldTree
+            end if
         }
       val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
       val tr = makeApp(tx, inputBuf.toList)

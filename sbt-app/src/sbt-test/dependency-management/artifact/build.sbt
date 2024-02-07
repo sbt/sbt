@@ -28,7 +28,11 @@ lazy val root = (project in file("."))
     Compile / packageBin / artifact := mainArtifact,
     libraryDependencies ++= (if (baseDirectory.value / "retrieve").exists then publishedID :: Nil else Nil),
       // needed to add a jar with a different type to the managed classpath
-    Compile / unmanagedClasspath ++= scalaInstance.value.libraryJars.toSeq,
+    Compile / unmanagedClasspath ++= {
+      val converter = fileConverter.value
+      val xs = scalaInstance.value.libraryJars.toSeq
+      xs.map(x => converter.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     classpathTypes := Set(tpe),
 
     // custom configuration artifacts
@@ -66,7 +70,8 @@ def retrieveID = org % "test-retrieve" % "2.0"
 def checkTask(classpath: TaskKey[Classpath]) =
   Def.task {
     val deps = libraryDependencies.value
-    val cp = (Compile / classpath).value.files
+    given FileConverter = fileConverter.value
+    val cp = (Compile / classpath).value.files.map(_.toFile())
     val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
     try { Class.forName("test.Test", false, loader); () }
     catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }

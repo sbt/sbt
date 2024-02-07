@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.File
-import java.nio.file.Path
+import java.nio.file.{ Files, Path }
 
 import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, Artifact => IArtifact }
 import org.apache.ivy.core.report.DownloadStatus
@@ -22,9 +22,16 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{ HashUtil, JarUtils }
+import sbt.internal.inc.{
+  CompileOutput,
+  FileAnalysisStore,
+  HashUtil,
+  JarUtils,
+  MappedFileConverter
+}
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
+import sbt.internal.inc.Analysis
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
@@ -34,14 +41,88 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.Logger
+import sbt.util.{
+  ActionCacheStore,
+  AggregateActionCacheStore,
+  CacheImplicits,
+  DiskActionCacheStore,
+  InMemoryActionCacheStore,
+  Logger
+}
+import sjsonnew.JsonFormat
+import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
+import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
 
 import scala.annotation.nowarn
+import scala.collection.mutable
 
 object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
   final val cachedTestClassifier = "cached-test"
   final val commitLength = 10
+
+  def cacheStore: ActionCacheStore = Def.cacheStore
+
+  // TODO: cap with caffeine
+  private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
+    mutable.Map.empty
+
+  // TODO: figure out a good timing to initialize cache
+  // currently this is called twice so metabuild can call compile with a minimal setting
+  private[sbt] def initializeRemoteCache(s: State): Unit =
+    val outDir =
+      s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath())
+    Def._outputDirectory = Some(outDir)
+    val caches = s.get(BasicKeys.cacheStores)
+    caches match
+      case Some(xs) => Def._cacheStore = AggregateActionCacheStore(xs)
+      case None =>
+        val tempDiskCache = (s.baseDir / "target" / "bootcache").toPath()
+        Def._cacheStore = DiskActionCacheStore(tempDiskCache)
+
+  private[sbt] def getCachedAnalysis(ref: String): CompileAnalysis =
+    getCachedAnalysis(CacheImplicits.strToHashedVirtualFileRef(ref))
+  private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
+    analysisStore.getOrElseUpdate(
+      ref, {
+        val vfs = cacheStore.getBlobs(ref :: Nil)
+        if vfs.nonEmpty then
+          val outputDirectory = Def.cacheConfiguration.outputDirectory
+          cacheStore.syncBlobs(vfs, outputDirectory).headOption match
+            case Some(file) => FileAnalysisStore.binary(file.toFile()).get.get.getAnalysis
+            case None       => Analysis.empty
+        else Analysis.empty
+      }
+    )
+
+  private[sbt] val tempConverter: MappedFileConverter = MappedFileConverter.empty
+  private[sbt] def postAnalysis(analysis: CompileAnalysis): Option[HashedVirtualFileRef] =
+    IO.withTemporaryFile("analysis", ".tmp", true): file =>
+      val output = CompileOutput.empty
+      val option = MiniOptions.of(Array(), Array(), Array())
+      val setup = MiniSetup.of(
+        output,
+        option,
+        "",
+        xsbti.compile.CompileOrder.Mixed,
+        false,
+        Array()
+      )
+      FileAnalysisStore.binary(file).set(AnalysisContents.create(analysis, setup))
+      val vf = tempConverter.toVirtualFile(file.toPath)
+      val refs = cacheStore.putBlobs(vf :: Nil)
+      refs.headOption match
+        case Some(ref) =>
+          analysisStore(ref) = analysis
+          Some(ref)
+        case None => None
+
+  private[sbt] def artifactToStr(art: Artifact): String = {
+    import LibraryManagementCodec._
+    import sjsonnew.support.scalajson.unsafe._
+    val format: JsonFormat[Artifact] = summon[JsonFormat[Artifact]]
+    CompactPrinter(Converter.toJsonUnsafe(art)(format))
+  }
 
   def gitCommitId: String =
     scala.sys.process.Process("git rev-parse HEAD").!!.trim.take(commitLength)
@@ -66,6 +147,17 @@ object RemoteCache {
       val base = app.baseDirectory.getCanonicalFile
       // base is used only to resolve relative paths, which should never happen
       IvyPaths(base.toString, localCacheDirectory.value.toString)
+    },
+    rootOutputDirectory := {
+      appConfiguration.value.baseDirectory
+        .toPath()
+        .resolve("target")
+        .resolve("out")
+    },
+    cacheStores := {
+      List(
+        DiskActionCacheStore(localCacheDirectory.value.toPath())
+      )
     },
   )
 
@@ -117,17 +209,20 @@ object RemoteCache {
     remoteCachePom / pushRemoteCacheArtifact := true,
     remoteCachePom := {
       val s = streams.value
+      val converter = fileConverter.value
       val config = (remoteCachePom / makePomConfiguration).value
       val publisher = Keys.publisher.value
       publisher.makePomFile((pushRemoteCache / ivyModule).value, config, s.log)
-      config.file.get
+      converter.toVirtualFile(config.file.get.toPath)
     },
     remoteCachePom / artifactPath := {
       Defaults.prefixArtifactPathSetting(makePom / artifact, "remote-cache").value
     },
     remoteCachePom / makePomConfiguration := {
+      val converter = fileConverter.value
       val config = makePomConfiguration.value
-      config.withFile((remoteCachePom / artifactPath).value)
+      val out = converter.toPath((remoteCachePom / artifactPath).value)
+      config.withFile(out.toFile())
     },
     remoteCachePom / remoteCacheArtifact := {
       PomRemoteCacheArtifact((makePom / artifact).value, remoteCachePom)
@@ -178,17 +273,20 @@ object RemoteCache {
     inTask(packageCache)(
       Seq(
         packageCache.in(Defaults.TaskZero) := {
+          val converter = fileConverter.value
           val original = packageBin.in(Defaults.TaskZero).value
+          val originalFile = converter.toPath(original)
           val artp = artifactPath.value
+          val artpFile = converter.toPath(artp)
           val af = compileAnalysisFile.value
-          IO.copyFile(original, artp)
+          IO.copyFile(originalFile.toFile(), artpFile.toFile())
           // skip zip manipulation if the artp is a blank file
-          if (af.exists && artp.length() > 0) {
-            JarUtils.includeInJar(artp, Vector(af -> s"META-INF/inc_compile.zip"))
+          if (af.exists && artpFile.toFile().length() > 0) {
+            JarUtils.includeInJar(artpFile.toFile(), Vector(af -> s"META-INF/inc_compile.zip"))
           }
           val rf = getResourceFilePaths().value
           if (rf.exists) {
-            JarUtils.includeInJar(artp, Vector(rf -> s"META-INF/copy-resources.txt"))
+            JarUtils.includeInJar(artpFile.toFile(), Vector(rf -> s"META-INF/copy-resources.txt"))
           }
           // val testStream = (test / streams).?.value
           // testStream foreach { s =>
@@ -197,7 +295,7 @@ object RemoteCache {
           //     JarUtils.includeInJar(artp, Vector(sf -> s"META-INF/succeeded_tests"))
           //   }
           // }
-          artp
+          converter.toVirtualFile(artpFile)
         },
         pushRemoteCacheArtifact := true,
         remoteCacheArtifact := cacheArtifactTask.value,
@@ -238,12 +336,17 @@ object RemoteCache {
         combineHash(extractHash(inputs) ++ extractHash(cp) ++ extraInc)
       },
       pushRemoteCacheConfiguration := {
+        val converter = fileConverter.value
+        val artifacts = (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector.map {
+          case (a, vf) =>
+            a -> converter.toPath(vf).toFile
+        }
         Classpaths.publishConfig(
           (pushRemoteCacheConfiguration / publishMavenStyle).value,
           Classpaths.deliverPattern(crossTarget.value),
           if (isSnapshot.value) "integration" else "release",
           ivyConfigurations.value.map(c => ConfigRef(c.name)).toVector,
-          (pushRemoteCacheConfiguration / packagedArtifacts).value.toVector,
+          artifacts,
           (pushRemoteCacheConfiguration / checksums).value.toVector,
           Classpaths.getPublishTo(pushRemoteCacheTo.value).name,
           ivyLoggingLevel.value,
@@ -455,12 +558,12 @@ object RemoteCache {
     // }
   }
 
-  private def defaultArtifactTasks: Seq[TaskKey[File]] =
+  private def defaultArtifactTasks: Seq[TaskKey[HashedVirtualFileRef]] =
     Seq(Compile / packageCache, Test / packageCache)
 
   private def enabledOnly[A](
       key: SettingKey[A],
-      pkgTasks: Seq[TaskKey[File]]
+      pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
   ): Def.Initialize[Seq[A]] =
     (Classpaths.forallIn(key, pkgTasks) zipWith
       Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect { case (a, true) =>

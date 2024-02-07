@@ -1,0 +1,47 @@
+-> doc
+
+> excludeB
+
+# hybrid project, only scaladoc run
+> doc
+> packageBin
+$ exists target/out/jvm/scala-2.12.18/root/api/index.js
+$ exists target/out/jvm/scala-2.12.18/root/api/A$.html
+$ absent target/out/jvm/scala-2.12.18/root/api/scala
+$ absent target/out/jvm/scala-2.12.18/root/api/java
+
+> setDocExtension scala
+
+# The original B.scala fails scaladoc
+$ copy-file changes/B.scala B.scala
+# compile task is superfluous. Since doc task preceded by compile task has been problematic due to scala
+# compiler's way of handling empty classpath. We have it here to test that our workaround works.
+> clean ; compile ; doc
+
+# pure scala project, only scaladoc at top level
+$ exists target/out/jvm/scala-2.12.18/root/api/index.js
+$ exists target/out/jvm/scala-2.12.18/root/api/A$.html
+$ exists target/out/jvm/scala-2.12.18/root/api/B$.html
+$ absent target/out/jvm/scala-2.12.18/root/api/package-list
+$ absent target/out/jvm/scala-2.12.18/root/api/scala
+$ absent target/out/jvm/scala-2.12.18/root/api/java
+
+> setDocExtension java
+
+> clean
+
+# pending because Javadoc doesn't work
+> doc
+
+# pure java project, only javadoc at top level
+$ exists target/out/jvm/scala-2.12.18/root/api/index.html
+$ exists target/out/jvm/scala-2.12.18/root/api/pkg/J.html
+$ absent target/out/jvm/scala-2.12.18/root/api/index.js
+
+> setDocExtension scala
+> ++2.13.x
+> clean
+$ absent target/out/jvm/scala-2.12.18/root/api/A$.html
+> doc
+$ exists target/out/jvm/scala-2.13.3/root/api/A$.html
+$ exists target/out/jvm/scala-2.13.3/root/api/B$.html

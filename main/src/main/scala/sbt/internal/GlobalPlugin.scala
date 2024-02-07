@@ -46,7 +46,7 @@ object GlobalPlugin {
     )
   private[this] def injectInternalClasspath(
       config: Configuration,
-      cp: Seq[Attributed[File]]
+      cp: Def.Classpath,
   ): Setting[_] =
     (config / internalDependencyClasspath) ~= { prev =>
       (prev ++ cp).distinct

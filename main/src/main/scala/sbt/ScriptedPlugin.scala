@@ -198,6 +198,13 @@ object ScriptedPlugin extends AutoPlugin {
     }
 
   private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
-    PathFinder(Classpaths.managedJars(config, classpathTypes.value, Keys.update.value).map(_.data))
+    val converter = Keys.fileConverter.value
+    PathFinder(
+      Classpaths
+        .managedJars(config, classpathTypes.value, Keys.update.value, converter)
+        .map(_.data)
+        .map(converter.toPath)
+        .map(_.toFile())
+    )
   }
 }

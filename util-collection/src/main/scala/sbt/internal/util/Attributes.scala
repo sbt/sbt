@@ -10,15 +10,12 @@ package sbt.internal.util
 import Types._
 import scala.reflect.ClassTag
 import sbt.util.OptJsonWriter
+import sjsonnew.*
 
 // T must be invariant to work properly.
 //  Because it is sealed and the only instances go through AttributeKey.apply,
 //  a single AttributeKey instance cannot conform to AttributeKey[T] for different Ts
 
-/**
- * A key in an [[AttributeMap]] that constrains its associated value to be of type `T`. The key is
- * uniquely defined by its `label` and type `T`, represented at runtime by `manifest`.
- */
 sealed trait AttributeKey[A]:
 
   /** The runtime evidence for `A`. */
@@ -51,6 +48,11 @@ sealed trait AttributeKey[A]:
   def optJsonWriter: OptJsonWriter[A]
 
 end AttributeKey
+
+opaque type StringAttributeKey = String
+object StringAttributeKey:
+  def apply(s: String): StringAttributeKey = s
+end StringAttributeKey
 
 private[sbt] abstract class SharedAttributeKey[A] extends AttributeKey[A]:
   override final def toString = label
@@ -256,6 +258,11 @@ private class BasicAttributeMap(private val backing: Map[AttributeKey[_], Any])
   override def toString = entries.mkString("(", ", ", ")")
 }
 
+/**
+ * An immutable map where both key and value are String.
+ */
+type StringAttributeMap = scala.collection.immutable.Map[StringAttributeKey, String]
+
 // type inference required less generality
 /** A map entry where `key` is constrained to only be associated with a fixed value of type `T`. */
 final case class AttributeEntry[T](key: AttributeKey[T], value: T) {
@@ -263,22 +270,19 @@ final case class AttributeEntry[T](key: AttributeKey[T], value: T) {
 }
 
 /** Associates a `metadata` map with `data`. */
-final case class Attributed[D](data: D)(val metadata: AttributeMap) {
-
+final case class Attributed[A1](data: A1)(val metadata: StringAttributeMap):
   /** Retrieves the associated value of `key` from the metadata. */
-  def get[T](key: AttributeKey[T]): Option[T] = metadata.get(key)
+  def get(key: StringAttributeKey): Option[String] = metadata.get(key)
 
   /** Defines a mapping `key -> value` in the metadata. */
-  def put[T](key: AttributeKey[T], value: T): Attributed[D] =
-    Attributed(data)(metadata.put(key, value))
+  def put(key: StringAttributeKey, value: String): Attributed[A1] =
+    Attributed(data)(metadata.updated(key, value))
 
   /** Transforms the data by applying `f`. */
-  def map[T](f: D => T): Attributed[T] = Attributed(f(data))(metadata)
+  def map[A2](f: A1 => A2): Attributed[A2] = Attributed(f(data))(metadata)
+end Attributed
 
-}
-
-object Attributed {
-
+object Attributed:
   /** Extracts the underlying data from the sequence `in`. */
   def data[T](in: Seq[Attributed[T]]): Seq[T] = in.map(_.data)
 
@@ -286,6 +290,26 @@ object Attributed {
   def blankSeq[T](in: Seq[T]): Seq[Attributed[T]] = in map blank
 
   /** Associates an empty metadata map with `data`. */
-  def blank[T](data: T): Attributed[T] = Attributed(data)(AttributeMap.empty)
+  def blank[T](data: T): Attributed[T] = Attributed(data)(Map.empty)
 
-}
+  import sjsonnew.BasicJsonProtocol.*
+  given JsonFormat[StringAttributeMap] = projectFormat(
+    (m: StringAttributeMap) =>
+      m.toSeq.map: entry =>
+        (entry._1.toString, entry._2),
+    (entries: Seq[(String, String)]) =>
+      Map((entries.map: entry =>
+        (StringAttributeKey(entry._1), entry._2)): _*),
+  )
+
+  given [A1: ClassTag: JsonFormat]
+      : IsoLList.Aux[Attributed[A1], A1 :*: StringAttributeMap :*: LNil] =
+    LList.iso(
+      { (a: Attributed[A1]) =>
+        ("data", a.data) :*: ("metadata", a.metadata) :*: LNil
+      },
+      { (in: A1 :*: StringAttributeMap :*: LNil) =>
+        Attributed(in.head)(in.tail.head)
+      }
+    )
+end Attributed

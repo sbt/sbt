@@ -1,7 +1,11 @@
 import scala.xml._
 
 lazy val root = (project in file(".")) settings (
-  readPom := (makePom map XML.loadFile).value,
+  readPom := {
+    val vf = makePom.value
+    val converter = fileConverter.value
+    XML.loadFile(converter.toPath(vf).toFile)
+  },
   TaskKey[Unit]("checkPom") := checkPom.value,
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,

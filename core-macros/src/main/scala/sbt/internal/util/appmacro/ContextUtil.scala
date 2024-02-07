@@ -5,6 +5,8 @@ import scala.compiletime.summonInline
 import scala.quoted.*
 import scala.reflect.TypeTest
 import scala.collection.mutable
+import sbt.util.cacheLevel
+import sbt.util.CacheLevelTag
 
 trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int):
   import qctx.reflect.*
@@ -15,10 +17,6 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
     counter = counter + 1
     s"$$${prefix}${counter}"
 
-  /**
-   * Constructs a new, synthetic, local var with type `tpe`, a unique name, initialized to
-   * zero-equivalent (Zero[A]), and owned by `parent`.
-   */
   def freshValDef(parent: Symbol, tpe: TypeRepr, rhs: Term): ValDef =
     tpe.asType match
       case '[a] =>
@@ -37,14 +35,27 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
 
   def makeTuple(inputs: List[Input]): BuilderResult =
     new BuilderResult:
-      override def inputTupleTypeRepr: TypeRepr =
+      override lazy val inputTupleTypeRepr: TypeRepr =
         tupleTypeRepr(inputs.map(_.tpe))
       override def tupleExpr: Expr[Tuple] =
         Expr.ofTupleFromSeq(inputs.map(_.term.asExpr))
+      override def cacheInputTupleTypeRepr: TypeRepr =
+        tupleTypeRepr(inputs.filter(_.isCacheInput).map(_.tpe))
+      override def cacheInputExpr(tupleTerm: Term): Expr[Tuple] =
+        Expr.ofTupleFromSeq(inputs.zipWithIndex.flatMap { case (input, idx) =>
+          if input.tags.nonEmpty then
+            input.tpe.asType match
+              case '[a] =>
+                Some(applyTuple(tupleTerm, inputTupleTypeRepr, idx).asExprOf[a])
+          else None
+        })
 
   trait BuilderResult:
     def inputTupleTypeRepr: TypeRepr
     def tupleExpr: Expr[Tuple]
+    def cacheInputTupleTypeRepr: TypeRepr
+    def cacheInputExpr(tupleTerm: Term): Expr[Tuple]
+
   end BuilderResult
 
   def tupleTypeRepr(param: List[TypeRepr]): TypeRepr =
@@ -52,14 +63,69 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int)
       case x :: xs => TypeRepr.of[scala.*:].appliedTo(List(x, tupleTypeRepr(xs)))
       case Nil     => TypeRepr.of[EmptyTuple]
 
+  private val cacheLevelSym = Symbol.requiredClass("sbt.util.cacheLevel")
   final class Input(
       val tpe: TypeRepr,
       val qual: Term,
       val term: Term,
-      val name: String
+      val name: String,
   ):
     override def toString: String =
-      s"Input($tpe, $qual, $term, $name)"
+      s"Input($tpe, $qual, $term, $name, $tags)"
+
+    def isCacheInput: Boolean = tags.nonEmpty
+    lazy val tags = extractTags(qual)
+    private def extractTags(tree: Term): List[CacheLevelTag] =
+      def getAnnotation(tree: Term) =
+        Option(tree.tpe.termSymbol) match
+          case Some(x) => x.getAnnotation(cacheLevelSym)
+          case None    => tree.symbol.getAnnotation(cacheLevelSym)
+      def extractTags0(tree: Term) =
+        getAnnotation(tree) match
+          case Some(annot) =>
+            annot.asExprOf[cacheLevel] match
+              case '{ cacheLevel(include = Array.empty[CacheLevelTag]($_)) } => Nil
+              case '{ cacheLevel(include = Array[CacheLevelTag]($include*)) } =>
+                include.value.get.toList
+              case _ => sys.error(Printer.TreeStructure.show(annot) + " does not match")
+          case None => CacheLevelTag.all.toList
+      tree match
+        case Inlined(_, _, tree) => extractTags(tree)
+        case Apply(_, List(arg)) => extractTags(arg)
+        case _                   => extractTags0(tree)
+
+  /**
+   * Represents an output expression via Def.declareOutput
+   */
+  final class Output(
+      val tpe: TypeRepr,
+      val term: Term,
+      val name: String,
+      val parent: Symbol,
+  ):
+    override def toString: String =
+      s"Output($tpe, $term, $name)"
+    val placeholder: Symbol =
+      tpe.asType match
+        case '[a] =>
+          Symbol.newVal(
+            parent,
+            name,
+            tpe,
+            Flags.Mutable,
+            Symbol.noSymbol
+          )
+    def toVarDef: ValDef =
+      ValDef(placeholder, rhs = Some('{ null }.asTerm))
+    def toAssign: Term = Assign(toRef, term)
+    def toRef: Ref = Ref(placeholder)
+  end Output
+
+  def applyTuple(tupleTerm: Term, tpe: TypeRepr, idx: Int): Term =
+    Select
+      .unique(Ref(tupleTerm.symbol), "apply")
+      .appliedToTypes(List(tpe))
+      .appliedToArgs(List(Literal(IntConstant(idx))))
 
   trait TermTransform[F[_]]:
     def apply(in: Term): Term

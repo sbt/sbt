@@ -15,9 +15,11 @@ lazy val root = (project in file(".")).
   )
 
 def checkClasspath(conf: Configuration) =
-  (conf / fullClasspath) map { cp =>
+  import sbt.TupleSyntax.*
+  (conf / fullClasspath, fileConverter.toTaskable) mapN { (cp, c) =>
+    given FileConverter = c
     try {
-      val loader = ClasspathUtilities.toLoader(cp.files)
+      val loader = ClasspathUtilities.toLoader(cp.files.map(_.toFile()))
       Class.forName("org.jsoup.Jsoup", false, loader)
       ()
     }

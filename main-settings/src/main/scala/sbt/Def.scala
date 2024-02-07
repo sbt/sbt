@@ -8,6 +8,7 @@
 package sbt
 
 import java.io.File
+import java.nio.file.Path
 import java.net.URI
 
 import scala.annotation.compileTimeOnly
@@ -18,15 +19,15 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
-import xsbti.VirtualFile
+import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import sjsonnew.JsonFormat
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
-  type Classpath = Seq[Attributed[File]]
-  type VirtualClasspath = Seq[Attributed[VirtualFile]]
+  type Classpath = Seq[Attributed[HashedVirtualFileRef]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 
@@ -229,8 +230,21 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   import language.experimental.macros
 
+  // These are here, as opposed to RemoteCahe, since we need them from TaskMacro etc
+  private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
+  def cacheStore: ActionCacheStore = _cacheStore
+  private[sbt] var _outputDirectory: Option[Path] = None
+  def cacheConfiguration: BuildWideCacheConfiguration =
+    BuildWideCacheConfiguration(
+      _cacheStore,
+      _outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
+    )
+
+  inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =
+    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = true) }
+
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskMacroImpl[A1]('a1) }
+    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = false) }
 
   inline def taskDyn[A1](inline a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskDynMacroImpl[A1]('a1) }
@@ -247,7 +261,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 
   inline def taskIf[A1](inline a: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskIfImpl[A1]('a) }
+    ${ TaskMacro.taskIfImpl[A1]('a, cached = true) }
 
   private[sbt] def selectITask[A1, A2](
       fab: Initialize[Task[Either[A1, A2]]],
@@ -288,6 +302,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
    * method called `await` is injected which will run in a thread outside of concurrent restriction budget.
    */
   def promise[A]: PromiseWrap[A] = new PromiseWrap[A]()
+
+  inline def declareOutput(inline vf: VirtualFile): Unit =
+    InputWrapper.`wrapOutput_\u2603\u2603`[VirtualFile](vf)
+
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T

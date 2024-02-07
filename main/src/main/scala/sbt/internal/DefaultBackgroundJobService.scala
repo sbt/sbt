@@ -30,6 +30,8 @@ import scala.concurrent.duration._
 import scala.util.Try
 import sbt.util.LoggerContext
 import java.util.concurrent.TimeoutException
+import xsbti.FileConverter
+import xsbti.HashedVirtualFileRef
 
 /**
  * Interface between sbt and a thing running in the background.
@@ -232,18 +234,21 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       products: Classpath,
       full: Classpath,
       workingDirectory: File,
-      hashFileContents: Boolean
+      hashFileContents: Boolean,
+      converter: FileConverter,
   ): Classpath = {
-    def syncTo(dir: File)(source0: Attributed[File]): Attributed[File] = {
-      val source = source0.data
+    def syncTo(
+        dir: File
+    )(source0: Attributed[HashedVirtualFileRef]): Attributed[HashedVirtualFileRef] = {
+      val source1 = source0.data
+      val source = converter.toPath(source1).toFile()
       val hash8 = Hash.toHex(Hash(source.toString)).take(8)
       val id: File => String = if (hashFileContents) hash else lastModified
       val dest = dir / hash8 / id(source) / source.getName
-      if (!dest.exists) {
+      if !dest.exists then
         if (source.isDirectory) IO.copyDirectory(source, dest)
         else IO.copyFile(source, dest)
-      }
-      Attributed.blank(dest)
+      Attributed.blank(converter.toVirtualFile(dest.toPath))
     }
     val xs = (products.toVector map { syncTo(workingDirectory / "target") }) ++
       ((full diff products) map { syncTo(serviceTempDir / "target") })
@@ -298,9 +303,10 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   override def copyClasspath(
       products: Classpath,
       full: Classpath,
-      workingDirectory: File
+      workingDirectory: File,
+      converter: FileConverter,
   ): Classpath =
-    copyClasspath(products, full, workingDirectory, hashFileContents = true)
+    copyClasspath(products, full, workingDirectory, hashFileContents = true, converter)
 }
 
 private[sbt] object BackgroundThreadPool {

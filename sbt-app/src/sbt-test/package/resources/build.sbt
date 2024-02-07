@@ -1,10 +1,9 @@
 import Path.makeString
 
 name := "Main Resources Test"
-
 version := "0.1"
-
 crossPaths := false
+scalaVersion := "3.3.1"
 
 packageOptions := {
   def manifestExtra = {

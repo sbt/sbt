@@ -8,7 +8,7 @@ lazy val root = (project in file(".")).
     provided := (baseDirectory.value / "useProvided").exists,
     configuration := (if (provided.value) Provided else Compile),
     libraryDependencies += "javax.servlet" % "servlet-api" % "2.5" % configuration.value.name,
-    Provided / managedClasspath := Classpaths.managedJars(Provided, classpathTypes.value, update.value),
+    Provided / managedClasspath := Classpaths.managedJars(Provided, classpathTypes.value, update.value, fileConverter.value),
     check := {
       val result = (
         Space ~> token(Compile.name.id | Runtime.name | Provided.name | Test.name) ~ token(Space ~> Bool)
@@ -21,7 +21,8 @@ lazy val root = (project in file(".")).
         case Test.name     => (Test / fullClasspath).value
         case _             => sys.error(s"Invalid config: $conf")
       }
-      checkServletAPI(cp.files, expected, conf)
+      given FileConverter = fileConverter.value
+      checkServletAPI(cp.files.map(_.toFile()), expected, conf)
     }
   )
 

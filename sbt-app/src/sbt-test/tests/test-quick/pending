@@ -9,7 +9,7 @@ $ copy-file changed/A.scala src/main/scala/A.scala
 > compile
 $ sleep 2000
 # Create is run. Delete is not since it doesn't have src/main dependency.
--> testQuick
+> testQuick
 > testOnly Delete
 # Previous run of Create failed, re-run.
 > testQuick Create

@@ -1,4 +1,4 @@
-import java.net.URLClassLoader
+import sbt.internal.inc.classpath.ClasspathUtilities
 
 lazy val root = (project in file(".")).
   settings(
@@ -7,8 +7,11 @@ lazy val root = (project in file(".")).
   )
 
 def checkTask(className: String) =
-  (Configurations.Runtime / fullClasspath) map { runClasspath =>
-    val cp = runClasspath.map(_.data.toURI.toURL).toArray
-    Class.forName(className, false, new URLClassLoader(cp))
+  import sbt.TupleSyntax.*
+  (Configurations.Runtime / fullClasspath, fileConverter) mapN { (runClasspath, c) =>
+    given FileConverter = c
+    val cp = runClasspath.files
+    val loader = ClasspathUtilities.toLoader(cp.map(_.toFile()))
+    Class.forName(className, false, loader)
     ()
   }

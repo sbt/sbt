@@ -1,0 +1,18 @@
+> startServer
+> pure1
+$ exists target/out/a.txt
+> clean
+> pure1
+$ exists target/out/a.txt
+
+> clean
+> map1
+$ exists target/out/a.txt
+$ exists target/out/b1.txt
+$ exists target/out/b2.txt
+
+> clean
+> mapN1
+$ exists target/out/a.txt
+$ exists target/out/b1.txt
+$ exists target/out/c.txt

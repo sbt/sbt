@@ -15,6 +15,7 @@ import sbt.Def.{ Classpath, Initialize }
 import sbt.internal.io.Source
 import sbt.internal.util.Attributed
 import sbt.io.{ AllPassFilter, NothingFilter }
+import xsbti.HashedVirtualFileRef
 
 object Append:
   @implicitNotFound("No Append.Value[${A1}, ${A2}] found, so ${A2} cannot be appended to ${A1}")
@@ -67,11 +68,11 @@ object Append:
   implicit def appendLong: Value[Long, Long] = _ + _
   implicit def appendDouble: Value[Double, Double] = _ + _
 
-  implicit def appendClasspath: Sequence[Classpath, Seq[File], File] =
-    new Sequence[Classpath, Seq[File], File] {
-      def appendValues(a: Classpath, b: Seq[File]): Classpath = a ++ Attributed.blankSeq(b)
-      def appendValue(a: Classpath, b: File): Classpath = a :+ Attributed.blank(b)
-    }
+  given Sequence[Classpath, Seq[HashedVirtualFileRef], HashedVirtualFileRef] with
+    override def appendValues(a: Classpath, b: Seq[HashedVirtualFileRef]): Classpath =
+      a ++ Attributed.blankSeq(b)
+    override def appendValue(a: Classpath, b: HashedVirtualFileRef): Classpath =
+      a :+ Attributed.blank(b)
 
   implicit def appendSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
     new Sequence[Set[T], Set[V], V] {

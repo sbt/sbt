@@ -43,8 +43,8 @@ lazy val b = project.
 lazy val root = (project in file(".")).
   settings(
     check := {
-      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
-      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.getName}
+      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
       if (acp == bcp) ()
       else sys.error("Different classpaths are found:" +
         "\n - a (overrides + cached) " + acp.toString +

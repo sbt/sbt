@@ -26,6 +26,7 @@ object InputWrapper:
 
   private[std] final val WrapTaskName = "wrapTask_\u2603\u2603"
   private[std] final val WrapInitName = "wrapInit_\u2603\u2603"
+  private[std] final val WrapOutputName = "wrapOutput_\u2603\u2603"
   private[std] final val WrapInitTaskName = "wrapInitTask_\u2603\u2603"
   private[std] final val WrapInitInputName = "wrapInitInputTask_\u2603\u2603"
   private[std] final val WrapInputName = "wrapInputTask_\u2603\u2603"
@@ -40,6 +41,11 @@ object InputWrapper:
     "`value` can only be used within a task or setting macro, such as :=, +=, ++=, Def.task, or Def.setting."
   )
   def `wrapInit_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
+
+  @compileTimeOnly(
+    "`declareOutput` can only be used within a task macro, such as Def.cachedTask."
+  )
+  def `wrapOutput_\u2603\u2603`[A](@deprecated("unused", "") in: Any): A = implDetailError
 
   @compileTimeOnly(
     "`value` can only be called on a task within a task definition macro, such as :=, +=, ++=, or Def.task."

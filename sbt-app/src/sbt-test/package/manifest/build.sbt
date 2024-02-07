@@ -1,12 +1,10 @@
 import java.util.jar.{Attributes, Manifest}
 import Path.makeString
 
+scalaVersion := "2.12.18"
 name := "Jar Manifest Test"
-
 version := "0.2"
-
 crossPaths := false
-
 mainClass := Some("jartest.Main")
 
 Compile / packageBin / packageOptions := {

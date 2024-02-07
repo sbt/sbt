@@ -9,7 +9,7 @@ package sbt
 package std
 
 import Def.{ Initialize, Setting }
-import sbt.util.{ Applicative, Monad }
+import sbt.util.{ ActionCacheStore, Applicative, Monad }
 import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.{
   Cont,
@@ -27,7 +27,7 @@ import language.experimental.macros
 import scala.annotation.tailrec
 import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
-import sjsonnew.JsonFormat
+import sjsonnew.{ BasicJsonProtocol, JsonFormat }
 
 object TaskMacro:
   final val AssignInitName = "set"
@@ -53,15 +53,23 @@ object TaskMacro:
 
   // import LinterDSL.{ Empty => EmptyLinter }
 
-  def taskMacroImpl[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
+  def taskMacroImpl[A1: Type](t: Expr[A1], cached: Boolean)(using
+      qctx: Quotes
+  ): Expr[Initialize[Task[A1]]] =
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t)
+      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
       case _ =>
         val convert1 = new FullConvert(qctx, 0)
-        convert1.contMapN[A1, F, Id](t, convert1.appExpr)
+        val cacheConfigExpr =
+          if cached then Some('{ Def.cacheConfiguration })
+          else None
+        convert1.contMapN[A1, F, Id](t, convert1.appExpr, cacheConfigExpr)
 
-  def taskIfImpl[A1: Type](expr: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
+  def taskIfImpl[A1: Type](expr: Expr[A1], cached: Boolean)(using
+      qctx: Quotes
+  ): Expr[Initialize[Task[A1]]] =
     import qctx.reflect.*
+    val convert1 = new FullConvert(qctx, 1000)
     expr match
       case '{ if ($cond) then $thenp else $elsep } =>
         '{
@@ -78,7 +86,7 @@ object TaskMacro:
       t: Expr[Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     val convert1 = new FullConvert(qctx, 1000)
-    convert1.contFlatMap[A1, F, Id](t, convert1.appExpr)
+    convert1.contFlatMap[A1, F, Id](t, convert1.appExpr, None)
 
   /** Translates <task: TaskKey[T]>.previous(format) to Previous.runtime(<task>)(format).value */
   def previousImpl[A1: Type](t: Expr[TaskKey[A1]])(using
