@@ -16,18 +16,18 @@ abstract class CheckIfParsedSpec(
   test(s"${this.getClass.getName} should parse sbt file") {
     files foreach { case (content, description, nonEmptyImports, nonEmptyStatements) =>
       println(s"""${getClass.getSimpleName}: "$description" """)
-      val (imports, statements) = split(content)(splitter)
+      val (imports, statements) = splitter(content)
       assert(
         nonEmptyStatements == statements.nonEmpty,
-        s"""$description
-             |***${shouldContains(nonEmptyStatements)} statements***
-             |$content """.stripMargin
+        s"""|$description
+            |***${shouldContains(nonEmptyStatements)} statements***
+            |$content """.stripMargin
       )
       assert(
         nonEmptyImports == imports.nonEmpty,
-        s"""$description
-             |***${shouldContains(nonEmptyImports)} imports***
-             |$content """.stripMargin
+        s"""|$description
+            |***${shouldContains(nonEmptyImports)} imports***
+            |$content """.stripMargin
       )
     }
   }
