@@ -14,12 +14,10 @@ import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.parser.SbtParser._
-import scala.compat.Platform.EOL
 import dotty.tools.dotc.ast.Trees.Lazy
-import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.ast.untpd.Tree
+import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
@@ -85,12 +83,12 @@ private[sbt] object SbtParser:
 
     override def doReport(dia: Diagnostic)(using Context): Unit =
       import scala.jdk.OptionConverters.*
-      val sourcePath = dia.position.asScala.getOrElse(sys.error("missing position")).source.path
+      val sourcePath = dia.position.toScala.getOrElse(sys.error("missing position")).source.path
       val reporter = getReporter(sourcePath)
       reporter.doReport(dia)
     override def report(dia: Diagnostic)(using Context): Unit =
       import scala.jdk.OptionConverters.*
-      val sourcePath = dia.position.asScala.getOrElse(sys.error("missing position")).source.path
+      val sourcePath = dia.position.toScala.getOrElse(sys.error("missing position")).source.path
       val reporter = getReporter(sourcePath)
       reporter.report(dia)
 
@@ -127,7 +125,7 @@ private[sbt] object SbtParser:
         val seq = reporter.pendingMessages.map { info =>
           s"""[$fileName]:${info.pos.line}: ${info.msg}"""
         }
-        val errorMessage = seq.mkString(EOL)
+        val errorMessage = seq.mkString(System.lineSeparator)
         val error: String =
           if (errorMessage.contains(XML_ERROR))
             s"$errorMessage\n${SbtParser.XmlErrorMessage}"
@@ -141,62 +139,42 @@ private[sbt] object SbtParser:
   private[sbt] val globalReporter = UniqueParserReporter()
   private[sbt] val defaultGlobalForParser = ParseDriver()
   private[sbt] final class ParseDriver extends Driver:
-    import dotty.tools.dotc.config.Settings.Setting._
+    override protected val sourcesRequired: Boolean = false
     val compileCtx0 = initCtx.fresh
-    val options = List("-classpath", s"$defaultClasspath", "dummy.scala")
+    val options = List("-classpath", s"$defaultClasspath")
     val compileCtx1 = setup(options.toArray, compileCtx0) match
       case Some((_, ctx)) => ctx
       case _              => sys.error(s"initialization failed for $options")
-    val outputDir = VirtualDirectory("output")
-    val compileCtx2 = compileCtx1.fresh
-      .setSetting(
-        compileCtx1.settings.outputDir,
-        outputDir
-      )
+    val compileCtx: Context = compileCtx1.fresh
+      .setSetting(compileCtx1.settings.outputDir, VirtualDirectory("output"))
       .setReporter(globalReporter)
-    val compileCtx = compileCtx2
     val compiler = newCompiler(using compileCtx)
   end ParseDriver
 
   /**
    * Parse code reusing the same [[Run]] instance.
    *
-   * @param code The code to be parsed.
    * @param filePath The file name where the code comes from.
-   * @param reporterId0 The reporter id is the key used to get the pertinent
+   * @param reporterId The reporter id is the key used to get the pertinent
    *                    reporter. Given that the parsing reuses a global
    *                    instance, this reporter id makes sure that every parsing
    *                    session gets its own errors in a concurrent setting.
    *                    The reporter id must be unique per parsing session.
-   * @return
+   * @return the parsed trees
    */
-  private[sbt] def parse(
-      code: String,
-      filePath: String,
-      reporterId0: Option[String]
-  ): (List[untpd.Tree], String, SourceFile) =
+  private def parse(filePath: String, reporterId: String)(using Context): List[Tree] =
     import defaultGlobalForParser.*
-    given ctx: Context = compileCtx
-    val reporterId = reporterId0.getOrElse(s"$filePath-${Random.nextInt}")
     val reporter = globalReporter.getOrCreateReporter(reporterId)
     reporter.removeBufferedMessages
-    val moduleName = "SyntheticModule"
-    val wrapCode = s"""object $moduleName {
-                      |$code
-                      |}""".stripMargin
-    val wrapperFile = SourceFile(
-      VirtualFile(reporterId, wrapCode.getBytes(StandardCharsets.UTF_8)),
-      scala.io.Codec.UTF8
-    )
-    val parser = Parsers.Parser(wrapperFile)
+    val parser = Parsers.Parser(ctx.source)
     val t = parser.parse()
     val parsedTrees = t match
-      case untpd.PackageDef(_, List(untpd.ModuleDef(_, untpd.Template(_, _, _, trees)))) =>
+      case PackageDef(_, List(ModuleDef(_, Template(_, _, _, trees)))) =>
         trees match
-          case ts: List[untpd.Tree]       => ts
-          case ts: Lazy[List[untpd.Tree]] => ts.complete
+          case ts: List[Tree]       => ts
+          case ts: Lazy[List[Tree]] => ts.complete
     globalReporter.throwParserErrorsIfAny(reporter, filePath)
-    (parsedTrees, reporterId, wrapperFile)
+    parsedTrees
 end SbtParser
 
 private class SbtParserInit {
@@ -257,24 +235,36 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
       lines: Seq[String]
   ): (Seq[(String, Int)], Seq[(String, LineRange)], Seq[(String, Tree)]) = {
     // import sbt.internal.parser.MissingBracketHandler.findMissingText
-    val indexedLines = lines.toIndexedSeq
-    val content = indexedLines.mkString(END_OF_LINE)
+    val code = lines.toIndexedSeq.mkString(END_OF_LINE)
+    val wrapCode = s"""object SyntheticModule {
+                      |$code
+                      |}""".stripMargin
     val fileName = path.id
-    val (parsedTrees, reporterId, sourceFile) = parse(content, fileName, None)
-    given ctx: Context = compileCtx
+    val reporterId = s"$fileName-${Random.nextInt}"
+    val sourceFile = SourceFile(
+      VirtualFile(reporterId, wrapCode.getBytes(StandardCharsets.UTF_8)),
+      scala.io.Codec.UTF8
+    )
+    given Context = compileCtx.fresh.setSource(sourceFile)
+    val parsedTrees = parse(fileName, reporterId)
 
-    val (imports: Seq[untpd.Tree], statements: Seq[untpd.Tree]) =
+    // Check No val (a,b) = foo *or* val a,b = foo as these are problematic to range positions and the WHOLE architecture.
+    parsedTrees.withFilter(_.isInstanceOf[PatDef]).foreach { badTree =>
+      throw new MessageOnlyException(
+        s"[${fileName}]:${badTree.line}: Pattern matching in val statements is not supported"
+      )
+    }
+
+    val (imports: Seq[Tree], statements: Seq[Tree]) =
       parsedTrees.partition {
-        case _: untpd.Import => true
-        case _               => false
+        case _: Import => true
+        case _         => false
       }
 
-    def convertStatement(tree: untpd.Tree)(using ctx: Context): Option[(String, Tree, LineRange)] =
+    def convertStatement(tree: Tree)(using Context): Option[(String, Tree, LineRange)] =
       if tree.span.exists then
-        // not sure why I need to reconstruct the position myself
-        val pos = SourcePosition(sourceFile, tree.span)
-        val statement = String(pos.linesSlice).trim()
-        val lines = pos.lines
+        val statement = String(tree.sourcePos.linesSlice).trim
+        val lines = tree.sourcePos.lines
         val wrapperLineOffset = 0
         Some(
           (

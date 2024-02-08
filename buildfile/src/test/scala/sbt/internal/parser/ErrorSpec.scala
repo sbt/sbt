@@ -9,34 +9,32 @@ package sbt
 package internal
 package parser
 
-import java.io.File
 import sbt.internal.util.MessageOnlyException
 import scala.io.Source
 import sbt.internal.inc.PlainVirtualFileConverter
 
+import java.nio.file.Files
+import java.nio.file.Paths
+import verify.sourcecode.SourceLocation
+
 object ErrorSpec extends AbstractSpec {
 
   val converter = PlainVirtualFileConverter.converter
-  // implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
-  test("Parser should contains file name and line number") {
-    val rootPath = getClass.getResource("/error-format/").getPath
+  test("errors should contain file name and line number") {
+    val rootPath = Paths.get(getClass.getResource("/error-format/").toURI)
     println(s"Reading files from: $rootPath")
-    new File(rootPath).listFiles foreach { file =>
-      print(s"Processing ${file.getName}: ")
 
-      val vf = converter.toVirtualFile(file.toPath())
-      val buildSbt = Source.fromFile(file).getLines().mkString("\n")
-      try {
-        SbtParser(vf, buildSbt.linesIterator.toSeq)
-      } catch {
-        case exp: MessageOnlyException =>
-          val message = exp.getMessage
-          println(s"${exp.getMessage}")
-          assert(message.contains(file.getName))
-      }
-      // todo:
-      // containsLineNumber(buildSbt)
+    Files.list(rootPath).forEach { file =>
+      print(s"Processing ${file.getFileName}: ")
+
+      val vf = converter.toVirtualFile(file)
+      val buildSbt = Source.fromFile(file.toUri).getLines.mkString("\n")
+      val message =
+        interceptMessageException(SbtParser(vf, buildSbt.linesIterator.toSeq)).getMessage
+      println(message)
+      assert(message.contains(file.getFileName.toString))
+      containsLineNumber(message)
     }
   }
 
@@ -78,19 +76,14 @@ object ErrorSpec extends AbstractSpec {
     }
   }
 
-  private def containsLineNumber(buildSbt: String) = {
-    try {
-      split(buildSbt)
-      throw new IllegalStateException(s"${classOf[MessageOnlyException].getName} expected")
-    } catch {
-      case exception: MessageOnlyException =>
-        val error = exception.getMessage
-        """(\d+)""".r.findFirstIn(error) match {
-          case Some(_) => true
-          case None =>
-            println(s"Number not found in $error")
-            false
-        }
-    }
-  }
+  private def containsLineNumber(message: String) =
+    """\d+""".r.findFirstIn(message).getOrElse(fail(s"Line number not found in $message"))
+
+  private def interceptMessageException(callback: => Unit)(using
+      pos: SourceLocation
+  ): MessageOnlyException =
+    try
+      callback
+      throw new AssertionError(s"$pos: expected a MessageOnlyException to be thrown")
+    catch case ex: MessageOnlyException => ex
 }
