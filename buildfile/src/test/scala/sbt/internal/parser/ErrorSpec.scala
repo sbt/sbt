@@ -38,27 +38,6 @@ object ErrorSpec extends AbstractSpec {
     }
   }
 
-  // test("it should handle wrong parsing") {
-  //   intercept[MessageOnlyException] {
-  //     val buildSbt =
-  //       """
-  //         |libraryDependencies ++= Seq("a" % "b" % "2") map {
-  //         |(dependency) =>{
-  //         | dependency
-  //         | } /* */ //
-  //         |}
-  //       """.stripMargin
-  //     MissingBracketHandler.findMissingText(
-  //       buildSbt,
-  //       buildSbt.length,
-  //       2,
-  //       "fake.txt",
-  //       new MessageOnlyException("fake")
-  //     )
-  //     ()
-  //   }
-  // }
-
   test("it should handle xml error") {
     try {
       val buildSbt =
