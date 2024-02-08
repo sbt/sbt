@@ -9,7 +9,7 @@ package sbt
 
 import sbt.internal.Action
 import sbt.internal.util.Types.const
-import sbt.internal.util.{ ~>, AttributeKey, AttributeMap }
+import sbt.internal.util.{ AttributeKey, AttributeMap }
 import ConcurrentRestrictions.{ Tag, TagMap, tagsKey }
 import sbt.util.Monad
 

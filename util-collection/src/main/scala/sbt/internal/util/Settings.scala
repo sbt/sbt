@@ -89,7 +89,7 @@ trait Init[ScopeType]:
    * This can be useful when dealing with dynamic Initialize values.
    */
   lazy val capturedTransformations: Initialize[[x] => Initialize[x] => Initialize[x]] =
-    TransformCapture(idK[Initialize])
+    TransformCapture([a] => (init: Initialize[a]) => init)
 
   def setting[A1](
       key: ScopedKey[A1],

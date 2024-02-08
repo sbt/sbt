@@ -7,8 +7,6 @@
 
 package sbt.util
 
-import sbt.internal.util.Types.Compose
-
 trait Applicative[F[_]] extends Apply[F]:
   def pure[A1](x: () => A1): F[A1]
 
@@ -20,14 +18,12 @@ object Applicative:
   given Applicative[Option] = OptionInstances.optionMonad
   given Applicative[List] = ListInstances.listMonad
 
-  given [F1[_], F2[_]](using Applicative[F1], Applicative[F2]): Applicative[Compose[F1, F2]] with
+  given [F1[_], F2[_]](using Applicative[F1], Applicative[F2]): Applicative[[a] =>> F1[F2[a]]] with
     type F[x] = F1[F2[x]]
     val F1 = summon[Applicative[F1]]
     val F2 = summon[Applicative[F2]]
     override def pure[A1](x: () => A1): F1[F2[A1]] = F1.pure(() => F2.pure(x))
-    override def ap[A1, A2](f1f2f: Compose[F1, F2][A1 => A2])(
-        f1f2a: Compose[F1, F2][A1]
-    ): F1[F2[A2]] =
+    override def ap[A1, A2](f1f2f: F1[F2[A1 => A2]])(f1f2a: F1[F2[A1]]): F1[F2[A2]] =
       F1.ap(F1.map(f1f2f) { (f2f: F2[A1 => A2]) => (f2a: F2[A1]) => F2.ap(f2f)(f2a) })(f1f2a)
 
 end Applicative

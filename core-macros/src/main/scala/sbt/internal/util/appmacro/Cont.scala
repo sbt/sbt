@@ -92,7 +92,9 @@ trait Cont:
       given qctx.type = qctx
       Expr
         .summon[Applicative[F]]
-        .getOrElse(sys.error(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}"))
+        .getOrElse(
+          report.errorAndAbort(s"Applicative[F] not found for ${TypeRepr.of[F].typeSymbol}")
+        )
 
     def summonHashWriter[A: Type]: Expr[HashWriter[A]] =
       import conv.qctx

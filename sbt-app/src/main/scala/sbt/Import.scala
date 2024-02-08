@@ -206,7 +206,7 @@ trait Import {
   type UnprintableException = sbt.internal.util.UnprintableException
   val Util = sbt.internal.util.Util
   // val ~> = sbt.internal.util.~>
-  type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
+  // type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
 
   // sbt.internal.util.complete
   object complete {

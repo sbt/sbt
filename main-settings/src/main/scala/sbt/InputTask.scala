@@ -10,7 +10,7 @@ package sbt
 import sbt.internal.util.complete.Parser
 import Def.{ Initialize, ScopedKey }
 import std.TaskExtra._
-import sbt.internal.util.{ ~>, AttributeKey, Types }
+import sbt.internal.util.{ AttributeKey, Types }
 import sbt.internal.util.Types._
 import sbt.internal.util.Util._
 import sbt.util.Applicative

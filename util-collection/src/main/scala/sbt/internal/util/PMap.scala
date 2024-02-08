@@ -26,15 +26,14 @@ trait RMap[K[_], V[_]] {
   sealed case class TPair[T](key: K[T], value: V[T])
 }
 
-trait IMap[K[_], V[_]] extends (K ~> V) with RMap[K, V] {
+trait IMap[K[_], V[_]] extends RMap[K, V] {
   def put[T](k: K[T], v: V[T]): IMap[K, V]
   def remove[T](k: K[T]): IMap[K, V]
   def mapValue[T](k: K[T], init: V[T], f: V[T] => V[T]): IMap[K, V]
   def mapValues[V2[_]](f: [A] => V[A] => V2[A]): IMap[K, V2]
-  def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]): (IMap[K, VL], IMap[K, VR])
 }
 
-trait PMap[K[_], V[_]] extends (K ~> V) with RMap[K, V] {
+trait PMap[K[_], V[_]] extends RMap[K, V] {
   def update[T](k: K[T], v: V[T]): Unit
   def remove[T](k: K[T]): Option[V[T]]
   def getOrUpdate[T](k: K[T], make: => V[T]): V[T]
@@ -79,21 +78,6 @@ object IMap {
       new IMap0[K, V2](Map(backing.iterator.map { case (k, v) =>
         k -> f(v.asInstanceOf[V[Any]])
       }.toArray: _*))
-
-    def mapSeparate[VL[_], VR[_]](f: V ~> λ[T => Either[VL[T], VR[T]]]) = {
-      val left = new java.util.concurrent.ConcurrentHashMap[K[Any], VL[Any]]
-      val right = new java.util.concurrent.ConcurrentHashMap[K[Any], VR[Any]]
-      Par(backing.toVector).foreach { case (k, v) =>
-        f(v.asInstanceOf[V[Any]]) match {
-          case Left(l)  => left.put(k, l)
-          case Right(r) => right.put(k, r)
-        }
-      }
-      (
-        new IMap0[K, VL](new WrappedMap(left.asInstanceOf)),
-        new IMap0[K, VR](new WrappedMap(right.asInstanceOf))
-      )
-    }
 
     def toSeq = backing.toSeq.asInstanceOf[Seq[(K[Any], V[Any])]]
     def keys = backing.keys.asInstanceOf[Iterable[K[Any]]]

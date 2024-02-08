@@ -10,7 +10,7 @@ package std
 
 import Def.Initialize
 import sbt.util.{ Applicative, Monad }
-import sbt.internal.util.Types.{ const, Compose }
+import sbt.internal.util.Types.const
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 
 object InitializeInstance:
@@ -28,8 +28,8 @@ end InitializeInstance
 private[std] object ComposeInstance:
   import InitializeInstance.initializeMonad
   val InitInstance = summon[Applicative[Initialize]]
-  val F1F2: Applicative[Compose[Initialize, Task]] =
-    summon[Applicative[Compose[Initialize, Task]]]
+  val F1F2: Applicative[[a] =>> Initialize[Task[a]]] =
+    summon[Applicative[[a] =>> Initialize[Task[a]]]]
 end ComposeInstance
 
 object ParserInstance:
@@ -60,8 +60,8 @@ object FullInstance:
   )
 
   given Monad[Initialize] = InitializeInstance.initializeMonad
-  val F1F2: Applicative[Compose[Initialize, Task]] = ComposeInstance.F1F2
-  given initializeTaskMonad: Monad[Compose[Initialize, Task]] with
+  val F1F2: Applicative[[a] =>> Initialize[Task[a]]] = ComposeInstance.F1F2
+  given initializeTaskMonad: Monad[[a] =>> Initialize[Task[a]]] with
     type F[x] = Initialize[Task[x]]
     override def pure[A1](x: () => A1): Initialize[Task[A1]] = F1F2.pure(x)
     override def ap[A1, A2](ff: Initialize[Task[A1 => A2]])(

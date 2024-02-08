@@ -377,6 +377,7 @@ trait ParserMain {
 
   implicit def literalRichCharParser(c: Char): RichParser[Char] = richParser(c)
   implicit def literalRichStringParser(s: String): RichParser[String] = richParser(s)
+  extension (s: String) def *(n: Int): String = augmentString(s).*(n)
 
   /**
    * Construct a parser that is valid, but has no valid result. This is used as a way to provide a
