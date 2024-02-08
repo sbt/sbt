@@ -39,7 +39,7 @@ private[sbt] object SbtParser:
   val END_OF_LINE_CHAR = '\n'
   val END_OF_LINE = String.valueOf(END_OF_LINE_CHAR)
   private[parser] val NOT_FOUND_INDEX = -1
-  private[sbt] val FAKE_FILE = VirtualFileRef.of("fake") // new File("fake")
+  private[sbt] val FAKE_FILE = VirtualFileRef.of("fake")
   private[parser] val XML_ERROR = "';' expected but 'val' found."
 
   private val XmlErrorMessage =
