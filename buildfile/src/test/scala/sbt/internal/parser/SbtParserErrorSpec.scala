@@ -17,7 +17,7 @@ import java.nio.file.Files
 import java.nio.file.Paths
 import verify.sourcecode.SourceLocation
 
-object ErrorSpec extends AbstractSpec {
+object SbtParserErrorSpec extends AbstractSpec {
 
   val converter = PlainVirtualFileConverter.converter
 
