@@ -736,7 +736,7 @@ import Scoped.extendScoped
 /** Constructs InputKeys, which are associated with input tasks to define a setting. */
 object InputKey:
   private given [A: ClassTag]: KeyTag[InputTask[A]] =
-    KeyTag.Task(summon[ClassTag[A]].runtimeClass)
+    KeyTag.InputTask(summon[ClassTag[A]].runtimeClass)
 
   def apply[A1: ClassTag](label: String): InputKey[A1] =
     apply[A1](label, "", KeyRanks.DefaultInputRank)
