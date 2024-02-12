@@ -388,18 +388,15 @@ object Index {
   )(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
     val multiMap = settings.groupBy(label)
     val duplicates = multiMap.iterator
-      .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.manifest)) }
-      .collect {
-        case (k, xs) if xs.size > 1 => (k, xs)
-      }
+      .collect { case (k, xs) if xs.size > 1 => (k, xs.map(_.tag)) }
+      .collect { case (k, xs) if xs.size > 1 => (k, xs) }
       .toVector
     if duplicates.isEmpty then multiMap.collect { case (k, v) if validID(k) => (k, v.head) }.toMap
     else
-      sys.error(
-        duplicates map { case (k, tps) =>
-          "'" + k + "' (" + tps.mkString(", ") + ")"
-        } mkString ("Some keys were defined with the same name but different types: ", ", ", "")
-      )
+      val duplicateStr = duplicates
+        .map { case (k, tps) => s"'$k' (${tps.mkString(", ")})" }
+        .mkString(",")
+      sys.error(s"Some keys were defined with the same name but different types: $duplicateStr")
   }
 
   private[this] type TriggerMap = collection.mutable.HashMap[TaskId[?], Seq[TaskId[?]]]

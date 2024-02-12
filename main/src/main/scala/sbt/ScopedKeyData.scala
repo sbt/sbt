@@ -8,26 +8,20 @@
 package sbt
 
 import Def.ScopedKey
+import sbt.internal.util.KeyTag
 
 final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
   import sbt.internal.util.Types.const
   val key = scoped.key
   val scope = scoped.scope
-  def typeName: String = fold(fmtMf("Task[%s]"), fmtMf("InputTask[%s]"), key.manifest.toString)
-  def settingValue: Option[Any] = fold(const(None), const(None), Some(value))
+  def typeName: String = key.tag.toString
+  def settingValue: Option[Any] =
+    key.tag match
+      case KeyTag.Setting(_) => Some(value)
+      case _                 => None
   def description: String =
-    fold(
-      fmtMf("Task: %s"),
-      fmtMf("Input task: %s"),
-      "Setting: %s = %s" format (key.manifest.toString, value.toString)
-    )
-  def fold[T](targ: OptManifest[_] => T, itarg: OptManifest[_] => T, s: => T): T =
-    key.manifest.runtimeClass match
-      case TaskClass      => targ(key.manifest.typeArguments.head)
-      case InputTaskClass => itarg(key.manifest.typeArguments.head)
-      case _              => s
-  def fmtMf(s: String): OptManifest[_] => String = s format _
-
-  private val TaskClass = classOf[Task[_]]
-  private val InputTaskClass = classOf[InputTask[_]]
+    key.tag match
+      case KeyTag.Task(typeArg)      => s"Task: $typeArg"
+      case KeyTag.InputTask(typeArg) => s"Input task: $typeArg"
+      case KeyTag.Setting(typeArg)   => s"Setting: $typeArg = $value"
 }
