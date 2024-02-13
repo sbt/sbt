@@ -6,7 +6,8 @@
  */
 
 package sbt.internal.util.codec
-import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
+
+import sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import xsbti.Position
 import java.util.Optional
 

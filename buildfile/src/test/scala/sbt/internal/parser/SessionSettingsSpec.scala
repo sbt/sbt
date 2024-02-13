@@ -9,71 +9,64 @@ package sbt
 package internal
 package parser
 
-/*
-import java.io.{ File, FilenameFilter }
+import sbt.internal.inc.PlainVirtualFileConverter
+import sbt.internal.parser.SbtRefactorings.SessionSetting
 
+import java.io.File
+import java.io.FilenameFilter
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 import scala.io.Source
-import SessionSettings.SessionSetting
+import scala.jdk.CollectionConverters.*
 
 abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {
-  protected val rootPath = getClass.getResource("/" + folder).getPath
-  println(s"Reading files from: $rootPath")
-  protected val rootDir = new File(rootPath)
+  private val rootDir = Paths.get(getClass.getResource("/" + folder).toURI)
+  println(s"Reading files from: $rootDir")
+  private val converter = PlainVirtualFileConverter.converter
 
-  test("SessionSettings should be identical for empty map") {
-    def unit(f: File) = Seq((Source.fromFile(f).getLines().toList, Seq()))
-    runTestOnFiles(unit)
+  testOnFiles("should be identical for empty map") { f =>
+    Seq((readLines(f), Seq()))
   }
 
-  test("it should replace statements") {
-    runTestOnFiles(replace)
-  }
-
-  private def runTestOnFiles(
-      expectedResultAndMap: File => Seq[(List[String], Seq[SessionSetting])]
-  ): Unit = {
-
-    val allFiles = rootDir
-      .listFiles(new FilenameFilter() {
-        def accept(dir: File, name: String) = name.endsWith(".sbt.txt")
-      })
-      .toList
-    allFiles foreach { file =>
-      val originalLines = Source.fromFile(file).getLines().toList
-      expectedResultAndMap(file) foreach { case (expectedResultList, commands) =>
-        val resultList = SbtRefactorings.applySessionSettings((file, originalLines), commands)
-        val expected = SbtParser(file, expectedResultList)
-        val result = SbtParser(file, resultList._2)
-        assert(result.settings == expected.settings)
-      }
-    }
-  }
-
-  protected def replace(f: File) = {
-    val dirs = rootDir
-      .listFiles(new FilenameFilter() {
-        def accept(dir: File, name: String) = {
-          val startsWith = f.getName + "_"
-          name.startsWith(startsWith)
-        }
-      })
-      .toSeq
+  testOnFiles("should replace statements") { f =>
+    val dirs = listFiles(rootDir)(_.startsWith(s"${f.getFileName}_"))
     dirs.flatMap { dir =>
-      val files = dir.listFiles(new FilenameFilter {
-        override def accept(dir: File, name: String) = name.endsWith(".set")
-      })
+      val files = listFiles(dir)(_.endsWith(".set"))
       files.map { file =>
-        val seq = Source.fromFile(file).getLines().toSeq
-        val result = Source.fromFile(file.getAbsolutePath + ".result").getLines().toList
+        val seq = readLines(file)
+        val result = readLines(Paths.get(s"$file.result"))
         val sessionSettings = seq.map(line => (null, Seq(line)))
         (result, sessionSettings)
       }
     }
   }
 
+  private def testOnFiles(name: String)(
+      expectedResultAndMap: Path => Seq[(Seq[String], Seq[SessionSetting])]
+  ): Unit = test(name) {
+
+    val allFiles = listFiles(rootDir)(_.endsWith(".sbt.txt"))
+
+    allFiles.foreach { file =>
+      val originalLines = readLines(file)
+      val virtualFile = converter.toVirtualFile(file)
+      expectedResultAndMap(file).foreach { case (expectedResultList, commands) =>
+        val resultList = SbtRefactorings.applySessionSettings(originalLines, commands)
+        val expected = SbtParser(virtualFile, expectedResultList)
+        val result = SbtParser(virtualFile, resultList)
+        assert(result.settings == expected.settings)
+      }
+    }
+  }
+
+  private def listFiles(dir: Path)(filter: String => Boolean): Seq[Path] =
+    Files.walk(dir).iterator.asScala.filter(f => filter(f.getFileName.toString)).toSeq
+
+  private def readLines(file: Path): Seq[String] =
+    Files.readAllLines(file).asScala.toList
 }
 
-class SessionSettingsSpec extends AbstractSessionSettingsSpec("session-settings")
+object SessionSettingsSpec extends AbstractSessionSettingsSpec("session-settings")
 
-class SessionSettingsQuickSpec extends AbstractSessionSettingsSpec("session-settings-quick")
- */
+object SessionSettingsQuickSpec extends AbstractSessionSettingsSpec("session-settings-quick")

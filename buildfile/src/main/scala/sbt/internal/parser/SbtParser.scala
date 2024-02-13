@@ -38,6 +38,7 @@ import dotty.tools.dotc.config.Printers
 private[sbt] object SbtParser:
   val END_OF_LINE_CHAR = '\n'
   val END_OF_LINE = String.valueOf(END_OF_LINE_CHAR)
+  val WRAPPER_POSITION_OFFSET = 25 // size of the wrapper object
   private[parser] val NOT_FOUND_INDEX = -1
   private[sbt] val FAKE_FILE = VirtualFileRef.of("fake")
   private[parser] val XML_ERROR = "';' expected but 'val' found."
@@ -263,16 +264,9 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
 
     def convertStatement(tree: Tree)(using Context): Option[(String, Tree, LineRange)] =
       if tree.span.exists then
-        val statement = String(tree.sourcePos.linesSlice).trim
-        val lines = tree.sourcePos.lines
-        val wrapperLineOffset = 0
-        Some(
-          (
-            statement,
-            tree,
-            LineRange(lines.start + wrapperLineOffset, lines.end + wrapperLineOffset)
-          )
-        )
+        val pos = tree.sourcePos
+        val statement = String(pos.source.content.slice(pos.start, pos.end)).trim
+        Some((statement, tree, LineRange(pos.lines.start, pos.lines.end)))
       else None
     val stmtTreeLineRange = statements.flatMap(convertStatement)
     val importsLineRange = importsToLineRanges(sourceFile, imports)
@@ -290,12 +284,10 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
   private def importsToLineRanges(
       sourceFile: SourceFile,
       imports: Seq[Tree]
-  )(using context: Context): Seq[(String, Int)] =
+  )(using Context): Seq[(String, Int)] =
     imports.map { tree =>
-      // not sure why I need to reconstruct the position myself
-      val pos = SourcePosition(sourceFile, tree.span)
-      val content = String(pos.linesSlice).trim()
-      val wrapperLineOffset = 0
-      (content, pos.line + wrapperLineOffset)
+      val pos = tree.sourcePos
+      val content = String(pos.source.content.slice(pos.start, pos.end)).trim
+      (content, tree.sourcePos.line)
     }
 end SbtParser

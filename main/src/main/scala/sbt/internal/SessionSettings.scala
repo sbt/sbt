@@ -107,8 +107,6 @@ object SessionSettings:
   // (Setting[_], Seq[String])
 
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
-  type SbtConfigFile = sbt.internal.parser.SbtRefactorings.SbtConfigFile
-  // (File, Seq[String])
 
   /**
    * This will re-evaluate all Setting[_]'s on this session against the current build state and
@@ -246,7 +244,7 @@ object SessionSettings:
     }
     val newSettings = settings diff replace
     val oldContent = IO.readLines(writeTo)
-    val (_, exist) = SbtRefactorings.applySessionSettings((writeTo, oldContent), replace)
+    val exist = SbtRefactorings.applySessionSettings(oldContent, replace)
     val adjusted = if (newSettings.nonEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
     val lines = adjusted ++ newSettings.flatMap(x => x._2 :+ "")
     IO.writeLines(writeTo, lines)
