@@ -90,8 +90,7 @@ object Dependencies {
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
   val sjsonNewCore = sjsonNew("sjson-new-core")
 
-  // val eval = ("com.eed3si9n.eval" % "eval" % "0.1.0").cross(CrossVersion.full)
-  val eval = "com.eed3si9n.eval" % "eval_3.1.1" % "0.1.0"
+  val eval = ("com.eed3si9n.eval" % "eval" % "0.3.0").cross(CrossVersion.full)
 
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi
