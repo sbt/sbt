@@ -19,31 +19,29 @@ private[sbt] object SbtRefactorings:
 
   /** A session setting is simply a tuple of a Setting[_] and the strings which define it. */
   type SessionSetting = (Def.Setting[_], Seq[String])
-  type SbtConfigFile = (File, Seq[String])
   val emptyString = ""
   val reverseOrderingInt = Ordering[Int].reverse
 
   /**
    * Refactoring a `.sbt` file so that the new settings are used instead of any existing settings.
-   * @param configFile SbtConfigFile with the lines of an sbt file as a List[String] where each string is one line
+   * @param lines the lines of an sbt file as a List[String] where each string is one line
    * @param commands A List of settings (space separate) that should be inserted into the current file.
    *                 If the settings replaces a value, it will replace the original line in the .sbt file.
    *                 If in the `.sbt` file we have multiply value for one settings -
    *                 the first will be replaced and the other will be removed.
-   * @return a SbtConfigFile with new lines which represent the contents of the refactored .sbt file.
+   * @return the new lines which represent the content of the refactored .sbt file.
    */
   def applySessionSettings(
-      configFile: SbtConfigFile,
+      lines: Seq[String],
       commands: Seq[SessionSetting]
-  ): SbtConfigFile = {
-    val (file, lines) = configFile
+  ): Seq[String] = {
     val split = SbtParser(FAKE_FILE, lines)
     given ctx: Context = SbtParser.defaultGlobalForParser.compileCtx
     val recordedCommands = recordCommands(commands, split)
     val sortedRecordedCommands = recordedCommands.sortBy(_._1)(reverseOrderingInt)
 
     val newContent = replaceFromBottomToTop(lines.mkString(END_OF_LINE), sortedRecordedCommands)
-    (file, newContent.linesIterator.toList)
+    newContent.linesIterator.toList
   }
 
   private def replaceFromBottomToTop(
@@ -78,7 +76,8 @@ private[sbt] object SbtRefactorings:
         val replacement =
           if (acc.isEmpty) command.mkString(END_OF_LINE)
           else emptyString
-        (tree.sourcePos.start, st, replacement) +: acc
+        val pos = tree.sourcePos.start - SbtParser.WRAPPER_POSITION_OFFSET
+        (pos, st, replacement) +: acc
       } else {
         acc
       }
@@ -93,14 +92,9 @@ private[sbt] object SbtRefactorings:
     seq.toMap
   }
 
-  // todo: revisit
-  private def extractSettingName(tree: untpd.Tree): String =
-    tree.toString()
-    // tree.children match {
-    //   case h :: _ =>
-    //     extractSettingName(h)
-    //   case _ =>
-    //     tree.toString()
-    // }
+  private def extractSettingName(tree: untpd.Tree): String = tree match
+    case untpd.Ident(name)        => name.toString
+    case untpd.InfixOp(lhs, _, _) => extractSettingName(lhs)
+    case other                    => other.toString
 
 end SbtRefactorings
