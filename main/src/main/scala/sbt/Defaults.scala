@@ -2316,11 +2316,11 @@ object Defaults extends BuildCommon {
     val ci = (compile / compileInputs).value
     val ping = earlyOutputPing.value
     val reporter = (compile / bspReporter).value
-    BspCompileTask.compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
-      task =>
+    BspCompileTask
+      .compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value, ci) { task =>
         // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
         compileIncrementalTaskImpl(task, s, ci, ping, reporter)
-    }
+      }
   }
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {

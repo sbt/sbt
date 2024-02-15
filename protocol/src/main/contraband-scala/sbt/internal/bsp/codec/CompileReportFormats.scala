@@ -16,8 +16,9 @@ implicit lazy val CompileReportFormat: JsonFormat[sbt.internal.bsp.CompileReport
       val errors = unbuilder.readField[Int]("errors")
       val warnings = unbuilder.readField[Int]("warnings")
       val time = unbuilder.readField[Option[Int]]("time")
+      val noOp = unbuilder.readField[Option[Boolean]]("noOp")
       unbuilder.endObject()
-      sbt.internal.bsp.CompileReport(target, originId, errors, warnings, time)
+      sbt.internal.bsp.CompileReport(target, originId, errors, warnings, time, noOp)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -29,6 +30,7 @@ implicit lazy val CompileReportFormat: JsonFormat[sbt.internal.bsp.CompileReport
     builder.addField("errors", obj.errors)
     builder.addField("warnings", obj.warnings)
     builder.addField("time", obj.time)
+    builder.addField("noOp", obj.noOp)
     builder.endObject()
   }
 }

@@ -530,6 +530,9 @@ type CompileReport {
 
   ## The total number of milliseconds it took to compile the target.
   time: Int
+
+  ## The compilation was a noOp compilation.
+  noOp: Boolean
 }
 
 ## Test Request
