@@ -133,7 +133,6 @@ object BuildServerTest extends AbstractServerTest {
          |}""".stripMargin
     )
 
-    reloadWorkspace()
     compile(buildTarget)
 
     assertMessage(
@@ -156,22 +155,20 @@ object BuildServerTest extends AbstractServerTest {
     reloadWorkspace()
     compile(buildTarget)
 
-    assertMessage(
-      "build/publishDiagnostics",
-      "Diagnostics.scala",
-      "\"diagnostics\":[]"
-    )(
+    assertMessage("build/publishDiagnostics", "Diagnostics.scala", "\"diagnostics\":[]")(
       duration = 30.seconds,
       message = "should send publishDiagnostics with empty diagnostics"
     )
+    assertMessage("build/taskFinish", "\"noOp\":true")(debug = true)
 
     // trigger no-op compilation
     compile(buildTarget)
 
     assert(
-      !svr.waitForString(20.seconds) { s =>
-        s.contains("build/publishDiagnostics") &&
-        s.contains("Diagnostics.scala")
+      svr.waitForString(20.seconds) { s =>
+        if (s.contains("build/publishDiagnostics") && s.contains("Diagnostics.scala"))
+          throw new Exception("shouldn't send publishDiagnostics if noOp compilation")
+        else s.contains("build/taskFinish") && s.contains("\"noOp\":true")
       },
       "shouldn't send publishDiagnostics if there's no change in diagnostics (were empty, are empty)"
     )
