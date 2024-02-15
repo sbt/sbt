@@ -131,9 +131,8 @@ private[sbt] object xMain:
               )
               .put(BasicKeys.detachStdio, detachStdio)
             val state = bootServerSocket match {
-              // todo: fix this
-              // case Some(l) => state0.put(Keys.bootServerSocket, l)
-              case _ => state0
+              case Some(l) => state0.put(Keys.bootServerSocket, l)
+              case _       => state0
             }
             try StandardMain.runManaged(state)
             finally bootServerSocket.foreach(_.close())
