@@ -40,11 +40,19 @@ sealed trait ProjectMatrix extends CompositeProject {
   /** Adds classpath dependencies on internal or external projects. */
   def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix
 
+  /** Adds classpath dependencies on internal or external non-matrix projects. */
+  def dependsOn(deps: ClasspathDep[ProjectReference]*)(implicit dummyImplicit: DummyImplicit): ProjectMatrix
+
   /**
    * Adds projects to be aggregated.  When a user requests a task to run on this project from the command line,
    * the task will also be run in aggregated projects.
    */
   def aggregate(refs: ProjectMatrixReference*): ProjectMatrix
+
+  /**
+   * Allows non-matrix projects to be aggregated in a matrix project.
+   */
+  def aggregate(refs: ProjectReference*)(implicit dummyImplicit: DummyImplicit): ProjectMatrix
 
   /** Appends settings to the current settings sequence for this project. */
   def settings(ss: Def.SettingsDefinition*): ProjectMatrix
@@ -199,7 +207,9 @@ object ProjectMatrix {
       val scalaVersions: Seq[String],
       val rows: Seq[ProjectRow],
       val aggregate: Seq[ProjectMatrixReference],
+      val nonMatrixAggregate: Seq[ProjectReference],
       val dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
+      val nonMatrixDependencies: Seq[ClasspathDep[ProjectReference]],
       val settings: Seq[Def.Setting[_]],
       val configurations: Seq[Configuration],
       val plugins: Plugins,
@@ -239,12 +249,12 @@ object ProjectMatrix {
           case pa: VirtualAxis.PlatformAxis => pa
         }).headOption.getOrElse(sys.error(s"platform axis is missing in $axes"))
         val childId = projectIds(r)
-        val deps = dependencies map { resolveMatrixDependency(_, r) }
-        val aggs = aggregate map {
+        val deps = dependencies.map { resolveMatrixDependency(_, r) } ++ nonMatrixDependencies
+        val aggs = aggregate.map {
           case ref: LocalProjectMatrix =>
             val other = lookupMatrix(ref)
             resolveMatrixAggregate(other, r)
-        }
+        } ++ nonMatrixAggregate
         val dotSbtMatrix = new java.io.File(".sbt") / "matrix"
         IO.createDirectory(dotSbtMatrix)
         val p = Project(childId, dotSbtMatrix / childId)
@@ -350,8 +360,14 @@ object ProjectMatrix {
     override def aggregate(refs: ProjectMatrixReference*): ProjectMatrix =
       copy(aggregate = (aggregate: Seq[ProjectMatrixReference]) ++ refs)
 
+    override def aggregate(refs: ProjectReference*)(implicit dummyImplicit: DummyImplicit): ProjectMatrix =
+      copy(nonMatrixAggregate = (nonMatrixAggregate: Seq[ProjectReference]) ++ refs)
+
     override def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix =
       copy(dependencies = dependencies ++ deps)
+
+    override def dependsOn(deps: ClasspathDep[ProjectReference]*)(implicit dummyImplicit: DummyImplicit) =
+      copy(nonMatrixDependencies = nonMatrixDependencies ++ deps)
 
     /** Appends settings to the current settings sequence for this project. */
     override def settings(ss: Def.SettingsDefinition*): ProjectMatrix =
@@ -526,7 +542,9 @@ object ProjectMatrix {
         scalaVersions: Seq[String] = scalaVersions,
         rows: Seq[ProjectRow] = rows,
         aggregate: Seq[ProjectMatrixReference] = aggregate,
+        nonMatrixAggregate: Seq[ProjectReference] = nonMatrixAggregate,
         dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]] = dependencies,
+        nonMatrixDependencies: Seq[ClasspathDep[ProjectReference]] = nonMatrixDependencies,
         settings: Seq[Setting[_]] = settings,
         configurations: Seq[Configuration] = configurations,
         plugins: Plugins = plugins,
@@ -539,7 +557,9 @@ object ProjectMatrix {
         scalaVersions,
         rows,
         aggregate,
+        nonMatrixAggregate,
         dependencies,
+        nonMatrixDependencies,
         settings,
         configurations,
         plugins,
@@ -554,7 +574,7 @@ object ProjectMatrix {
   // called by macro
   def apply(id: String, base: sbt.File): ProjectMatrix = {
     val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("2.13.3"))
-    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil, defaultDefAxes)
+    val matrix = unresolved(id, base, Nil, Nil, Nil, Nil, Nil, Nil, Nil, Nil, Plugins.Empty, Nil, defaultDefAxes)
     allMatrices(id) = matrix
     matrix
   }
@@ -565,7 +585,9 @@ object ProjectMatrix {
       scalaVersions: Seq[String],
       rows: Seq[ProjectRow],
       aggregate: Seq[ProjectMatrixReference],
+      nonMatrixAggregate: Seq[ProjectReference],
       dependencies: Seq[MatrixClasspathDep[ProjectMatrixReference]],
+      nonMatrixDependencies: Seq[ClasspathDep[ProjectReference]],
       settings: Seq[Def.Setting[_]],
       configurations: Seq[Configuration],
       plugins: Plugins,
@@ -578,7 +600,9 @@ object ProjectMatrix {
       scalaVersions,
       rows,
       aggregate,
+      nonMatrixAggregate,
       dependencies,
+      nonMatrixDependencies,
       settings,
       configurations,
       plugins,

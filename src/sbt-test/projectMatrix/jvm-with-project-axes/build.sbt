@@ -28,6 +28,8 @@ lazy val app: ProjectMatrix = (projectMatrix in file("app"))
     name := "app",
     ivyPaths := (ThisBuild / ivyPaths).value
   )
+  .aggregate(domain)
+  .dependsOn(domain)
   .customRow(
     autoScalaLibrary = false,
     scalaVersions = Seq(scala212),
@@ -43,4 +45,9 @@ lazy val app: ProjectMatrix = (projectMatrix in file("app"))
     _.settings(
       libraryDependencies += "com.typesafe" % "config" % "1.3.3"
     )
+  )
+
+lazy val domain = (project in file("domain"))
+  .settings(
+    scalaVersion := scala212
   )
