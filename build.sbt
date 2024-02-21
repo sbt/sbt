@@ -1177,7 +1177,7 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImageVersion := "22.2.0",
+    nativeImageVersion := "22.3.3",
     nativeImageOutput := target.value / "bin" / "sbtn",
     nativeImageOptions ++= Seq(
       "--no-fallback",

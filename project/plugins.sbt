@@ -10,5 +10,5 @@ addSbtPlugin("de.heikoseeberger" % "sbt-header" % "5.6.5")
 addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "1.2.0")
 addSbtPlugin("com.typesafe" % "sbt-mima-plugin" % "0.8.1")
 addSbtPlugin("com.swoval" % "sbt-java-format" % "0.3.1")
-addSbtPlugin("org.scalameta" % "sbt-native-image" % "0.3.1")
+addSbtPlugin("org.scalameta" % "sbt-native-image" % "0.3.2")
 addDependencyTreePlugin
