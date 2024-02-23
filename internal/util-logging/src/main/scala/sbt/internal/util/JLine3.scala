@@ -19,8 +19,8 @@ import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Attributes.{ InputFlag, LocalFlag }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
-import org.jline.terminal.impl.jansi.JansiSupportImpl
-import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
+import org.jline.terminal.impl.jansi.JansiTerminalProvider
+import org.jline.terminal.spi.{ SystemStream, TerminalProvider }
 import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
@@ -32,25 +32,22 @@ private[sbt] object JLine3 {
   private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
   private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
   private[this] def windowsJansi(): org.jline.terminal.Terminal = {
-    val support = new JansiSupportImpl
-    val winConsole = support.isWindowsConsole();
+    val provider = new JansiTerminalProvider
     val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
-    val term = JansiWinSysTerminal.createTerminal(
+    provider.winSysTerminal(
       "console",
       termType,
       OSUtils.IS_CONEMU,
       Charset.forName("UTF-8"),
-      -1,
       false,
       SignalHandler.SIG_DFL,
-      true
+      true,
+      SystemStream.Output
     )
-    term.disableScrolling()
-    term
   }
   private val jansi = {
     val (major, minor) =
-      (JansiSupportImpl.getJansiMajorVersion, JansiSupportImpl.getJansiMinorVersion)
+      (JansiTerminalProvider.getJansiMajorVersion, JansiTerminalProvider.getJansiMinorVersion)
     (major > 1 || minor >= 18) && Util.isWindows
   }
   private[util] def system: org.jline.terminal.Terminal = {
@@ -119,6 +116,11 @@ private[sbt] object JLine3 {
           }
         }
       }
+
+      // returns 'null' if the terminal was created with no provider
+      override def getProvider(): TerminalProvider = null
+      // returns 'null' if the terminal is not bound to a system stream.
+      override def getSystemStream(): SystemStream = null
       override val input: InputStream = new InputStream {
         override def read: Int = {
           val res = term.inputStream match {
@@ -180,7 +182,7 @@ private[sbt] object JLine3 {
           case null => -1
           case i    => i.toInt
         }
-        override def readBuffered(buf: Array[Char]): Int = {
+        override def readBuffered(buf: Array[Char], off: Int, len: Int, timeout: Long): Int = {
           if (buffer.isEmpty) fillBuffer()
           buffer.take match {
             case i if i == -1 => -1
