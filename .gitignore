@@ -4,6 +4,7 @@ out
 node_modules
 vscode-sbt-scala/client/server
 npm-debug.log
+sbt-launch.jar
 *.vsix
 !sbt/src/server-test/completions/target
 .big
