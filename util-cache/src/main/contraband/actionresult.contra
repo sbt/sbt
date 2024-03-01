@@ -1,0 +1,17 @@
+package sbt.util
+@target(Scala)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("ActionResultCodec")
+
+## An ActionResult represents a result from executing a task.
+## In addition to the value typically represented in the return type
+## of a task, ActionResult tracks the file output and other side effects.
+##
+## See also https://github.com/bazelbuild/remote-apis/blob/96942a2107c702ed3ca4a664f7eeb7c85ba8dc77/build/bazel/remote/execution/v2/remote_execution.proto#L1056
+type ActionResult {
+  outputFiles: [xsbti.HashedVirtualFileRef] @since("0.1.0")
+  origin: String @since("0.2.0")
+  exitCode: Int @since("0.3.0")
+  contents: [java.nio.ByteBuffer] @since("0.4.0")
+  isExecutable: [Boolean] @since("0.5.0")
+}

@@ -113,6 +113,11 @@ object RemoteCache {
         DiskActionCacheStore(localCacheDirectory.value.toPath(), fileConverter.value)
       )
     },
+    remoteCache := SysProp.remoteCache,
+    remoteCacheTlsCertificate := SysProp.remoteCacheTlsCertificate,
+    remoteCacheTlsClientCertificate := SysProp.remoteCacheTlsClientCertificate,
+    remoteCacheTlsClientKey := SysProp.remoteCacheTlsClientKey,
+    remoteCacheHeaders := SysProp.remoteCacheHeaders,
   )
 
   lazy val projectSettings: Seq[Def.Setting[_]] = (Seq(

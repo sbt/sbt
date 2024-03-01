@@ -2,6 +2,7 @@ package sbt.util
 
 import sjsonnew.IsoString
 import sbt.io.Hash
+import xsbti.HashedVirtualFileRef
 import java.io.{ BufferedInputStream, InputStream }
 import java.nio.ByteBuffer
 import java.security.{ DigestInputStream, MessageDigest }
@@ -11,30 +12,36 @@ opaque type Digest = String
 object Digest:
   private val sha256_upper = "SHA-256"
 
-  extension (d: Digest) def toBytes: Array[Byte] = parse(d)
+  extension (d: Digest)
+    def contentHashStr: String =
+      val tokens = parse(d)
+      s"${tokens._1}-${tokens._2}"
+    def toBytes: Array[Byte] = parse(d)._4
+    def sizeBytes: Long = parse(d)._3
 
   def apply(s: String): Digest =
     validateString(s)
     s
 
-  def apply(algo: String, bytes: Array[Byte]): Digest =
-    algo + "-" + toHexString(bytes)
+  def apply(algo: String, digest: Array[Byte], sizeBytes: Long): Digest =
+    algo + "-" + toHexString(digest) + "/" + sizeBytes.toString
+
+  def apply(ref: HashedVirtualFileRef): Digest =
+    apply(ref.contentHashStr() + "/" + ref.sizeBytes.toString)
 
   // used to wrap a Long value as a fake Digest, which will
   // later be hashed using sha256 anyway.
   def dummy(value: Long): Digest =
-    apply("murmur3", longsToBytes(Array(0L, value)))
+    apply("murmur3", longsToBytes(Array(0L, value)), 0)
 
   lazy val zero: Digest = dummy(0L)
 
   def sha256Hash(bytes: Array[Byte]): Digest =
-    apply("sha256", hashBytes(sha256_upper, bytes))
+    apply("sha256", hashBytes(sha256_upper, bytes), bytes.length)
 
   def sha256Hash(longs: Array[Long]): Digest =
-    apply("sha256", hashBytes(sha256_upper, longs))
-
-  def sha256Hash(input: InputStream): Digest =
-    apply("sha256", hashBytes(sha256_upper, input))
+    val bytes = hashBytes(sha256_upper, longs)
+    apply("sha256", bytes, bytes.length)
 
   def sha256Hash(digests: Digest*): Digest =
     sha256Hash(digests.toSeq.map(_.toBytes).flatten.toArray[Byte])
@@ -62,16 +69,26 @@ object Digest:
     parse(s)
     ()
 
-  private def parse(s: String): Array[Byte] =
+  private def parse(s: String): (String, String, Long, Array[Byte]) =
     val tokens = s.split("-").toList
     tokens match
-      case "murmur3" :: value :: Nil => parseHex(value, 128)
-      case "md5" :: value :: Nil     => parseHex(value, 128)
-      case "sha1" :: value :: Nil    => parseHex(value, 160)
-      case "sha256" :: value :: Nil  => parseHex(value, 256)
-      case "sha384" :: value :: Nil  => parseHex(value, 384)
-      case "sha512" :: value :: Nil  => parseHex(value, 512)
-      case _                         => throw IllegalArgumentException(s"unexpected digest: $s")
+      case head :: rest :: Nil =>
+        val subtokens = head :: rest.split("/").toList
+        subtokens match
+          case (a @ "murmur3") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 128))
+          case (a @ "md5") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 128))
+          case (a @ "sha1") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 160))
+          case (a @ "sha256") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 256))
+          case (a @ "sha384") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 384))
+          case (a @ "sha512") :: value :: sizeBytes :: Nil =>
+            (a, value, sizeBytes.toLong, parseHex(value, 512))
+          case _ => throw IllegalArgumentException(s"unexpected digest: $s")
+      case _ => throw IllegalArgumentException(s"unexpected digest: $s")
 
   private def parseHex(value: String, expectedBytes: Int): Array[Byte] =
     val bs = Hash.fromHex(value)

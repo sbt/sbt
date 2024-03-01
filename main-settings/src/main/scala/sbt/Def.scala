@@ -233,10 +233,12 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
   def cacheStore: ActionCacheStore = _cacheStore
   private[sbt] var _outputDirectory: Option[Path] = None
+  private[sbt] val cacheEventLog: CacheEventLog = CacheEventLog()
   def cacheConfiguration: BuildWideCacheConfiguration =
     BuildWideCacheConfiguration(
       _cacheStore,
       _outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
+      cacheEventLog,
     )
 
   inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =

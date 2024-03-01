@@ -9,6 +9,7 @@ package sbt
 package internal
 
 import java.io.File
+import java.net.URI
 import java.nio.file.{ Path, Paths }
 import java.util.Locale
 
@@ -98,6 +99,21 @@ object SysProp {
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
   def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
+  def remoteCache: Option[URI] = sys.props
+    .get("sbt.remote_cache")
+    .map(URI(_))
+  def remoteCacheTlsCertificate: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_certificate")
+    .map(File(_))
+  def remoteCacheTlsClientCertificate: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_client_certificate")
+    .map(File(_))
+  def remoteCacheTlsClientKey: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_client_key")
+    .map(File(_))
+  def remoteCacheHeaders: List[String] = sys.props
+    .get("sbt.remote_cache.header")
+    .toList
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")

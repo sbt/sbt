@@ -28,10 +28,11 @@ object Aggregation {
       success: Boolean
   )
 
-  final case class Complete[T](
+  final case class Complete[A](
       start: Long,
       stop: Long,
-      results: sbt.Result[Seq[KeyValue[T]]],
+      results: sbt.Result[Seq[KeyValue[A]]],
+      cacheSummary: String,
       state: State
   )
 
@@ -68,44 +69,43 @@ object Aggregation {
   )(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
     Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
-  private def showRun[T](complete: Complete[T], show: ShowConfig)(implicit
-      display: Show[ScopedKey[_]]
-  ): Unit = {
-    import complete._
+  private def showRun[A](complete: Complete[A], show: ShowConfig)(implicit
+      display: Show[ScopedKey[?]]
+  ): Unit =
+    import complete.*
     val log = state.log
     val extracted = Project.extract(state)
     val success = results match
       case Result.Value(_) => true
       case Result.Inc(_)   => false
     results.toEither.foreach { r =>
-      if (show.taskValues) printSettings(r, show.print)
+      if show.taskValues then printSettings(r, show.print) else ()
     }
-    if (show.success && !state.get(suppressShow).getOrElse(false))
-      printSuccess(start, stop, extracted, success, log)
-  }
+    if show.success && !state.get(suppressShow).getOrElse(false) then
+      printSuccess(start, stop, extracted, success, cacheSummary, log)
+    else ()
 
-  def timedRun[T](
+  def timedRun[A](
       s: State,
-      ts: Values[Task[T]],
-      extra: DummyTaskMap
-  ): Complete[T] = {
+      ts: Values[Task[A]],
+      extra: DummyTaskMap,
+  ): Complete[A] =
     import EvaluateTask._
     import std.TaskExtra._
-
-    val extracted = Project extract s
+    val extracted = Project.extract(s)
     import extracted.structure
     val toRun = ts.map { case KeyValue(k, t) => t.map(v => KeyValue(k, v)) }.join
     val roots = ts.map { case KeyValue(k, _) => k }
     val config = extractedTaskConfig(extracted, structure, s)
-
     val start = System.currentTimeMillis
-    val (newS, result) = withStreams(structure, s) { str =>
+    val cacheEventLog = Def.cacheConfiguration.cacheEventLog
+    cacheEventLog.clear()
+    val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
       runTask(toRun, s, str, structure.index.triggers, config)(using transform)
-    }
     val stop = System.currentTimeMillis
-    Complete(start, stop, result, newS)
-  }
+    val cacheSummary = cacheEventLog.summary
+    Complete(start, stop, result, cacheSummary, newS)
 
   def runTasks[A1](
       s: State,
@@ -124,20 +124,22 @@ object Aggregation {
       stop: Long,
       extracted: Extracted,
       success: Boolean,
-      log: Logger
-  ): Unit = {
-    import extracted._
+      cacheSummary: String,
+      log: Logger,
+  ): Unit =
+    import extracted.*
     def get(key: SettingKey[Boolean]): Boolean =
       (currentRef / key).get(structure.data) getOrElse true
-
-    if (get(showSuccess)) {
-      if (get(showTiming)) {
-        val msg = timingString(start, stop, structure.data, currentRef)
-        if (success) log.success(msg) else if (Terminal.get.isSuccessEnabled) log.error(msg)
-      } else if (success)
-        log.success("")
-    }
-  }
+    if get(showSuccess) then
+      if get(showTiming) then
+        val msg = timingString(start, stop, structure.data, currentRef) + (
+          if cacheSummary == "" then ""
+          else ", " + cacheSummary
+        )
+        if success then log.success(msg)
+        else if Terminal.get.isSuccessEnabled then log.error(msg)
+      else if success then log.success("")
+    else ()
 
   private def timingString(
       startTime: Long,
@@ -149,23 +151,19 @@ object Aggregation {
     timing(format, startTime, endTime)
   }
 
-  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String = {
-    val nowString = format.format(new java.util.Date(endTime))
+  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String =
     val total = (endTime - startTime + 500) / 1000
     val totalString = s"$total s" +
-      (if (total <= 60) ""
+      (if total <= 60 then ""
        else {
-         val maybeHours = total / 3600 match {
+         val maybeHours = total / 3600 match
            case 0 => ""
            case h => f"$h%02d:"
-         }
          val mins = f"${total % 3600 / 60}%02d"
          val secs = f"${total % 60}%02d"
          s" ($maybeHours$mins:$secs)"
        })
-
-    s"Total time: $totalString, completed $nowString"
-  }
+    s"elapsed time: $totalString"
 
   def defaultFormat: DateFormat = {
     import java.text.DateFormat

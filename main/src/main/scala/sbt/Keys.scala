@@ -9,7 +9,7 @@ package sbt
 
 import java.nio.file.{ Path => NioPath }
 import java.io.File
-import java.net.URL
+import java.net.{ URL, URI }
 import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
@@ -116,6 +116,16 @@ object Keys {
   val fullServerHandlers = SettingKey(BasicKeys.fullServerHandlers)
   val serverHandlers = settingKey[Seq[ServerHandler]]("User-defined server handlers.")
   val cacheStores = settingKey[Seq[ActionCacheStore]]("Cache backends")
+  @cacheLevel(include = Array.empty)
+  val remoteCache = settingKey[Option[URI]]("URI of the remote cache")
+  @cacheLevel(include = Array.empty)
+  val remoteCacheTlsCertificate = settingKey[Option[File]]("Path to a TLS certificate (*.crt) that is trusted to sign server certificates")
+  @cacheLevel(include = Array.empty)
+  val remoteCacheTlsClientCertificate = settingKey[Option[File]]("Path to a TLS client certificate *.crt used with remoteCacheTlsClientKey ")
+  @cacheLevel(include = Array.empty)
+  val remoteCacheTlsClientKey = settingKey[Option[File]]("Path to a TLS client key *.pem used with remoteCacheTlsClientCertificate")
+  @cacheLevel(include = Array.empty)
+  val remoteCacheHeaders = settingKey[Seq[String]]("List of key=value headers to be sent to the remote cache.")
   val rootOutputDirectory = SettingKey(BasicKeys.rootOutputDirectory)
 
   // val analysis = AttributeKey[CompileAnalysis]("analysis", "Analysis of compilation, including dependencies and generated outputs.", DSetting)
