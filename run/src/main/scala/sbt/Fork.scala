@@ -52,16 +52,14 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
    * command.
    */
   def fork(config: ForkOptions, arguments: Seq[String]): Process = {
-    import config.{ envVars => env, _ }
+    import config.*
     val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
     val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
     val (classpathEnv, options) = Fork.fitClasspath(preOptions)
     val command = executable +: options
 
-    val environment: List[(String, String)] = env.toList ++
-      (classpathEnv map { value =>
-        Fork.ClasspathEnvKey -> value
-      })
+    val environment: List[(String, String)] = envVars.toList ++
+      classpathEnv.map(value => Fork.ClasspathEnvKey -> value)
     val jpb =
       if (Fork.shouldUseArgumentsFile(options))
         new JProcessBuilder(executable, Fork.createArgumentsFile(options))

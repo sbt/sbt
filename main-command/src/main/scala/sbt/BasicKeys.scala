@@ -18,7 +18,6 @@ import sbt.util.{ ActionCacheStore, Level }
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import xsbti.VirtualFile
-import sbt.librarymanagement.Configuration
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](

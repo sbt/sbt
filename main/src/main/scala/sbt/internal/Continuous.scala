@@ -433,6 +433,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     }
   }
 
+  @nowarn
   private def getFileEvents(
       configs: Seq[Config],
       logger: Logger,
@@ -986,11 +987,13 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     def arguments(logger: Logger): Arguments = new Arguments(logger, inputs())
   end Config
 
+  @nowarn
   private def getStartMessage(key: ScopedKey[_])(implicit e: Extracted): StartMessage = Some {
     lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
 
+  @nowarn
   private def getTriggerMessage(
       key: ScopedKey[_]
   )(implicit e: Extracted): TriggerMessage = {

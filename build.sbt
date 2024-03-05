@@ -368,10 +368,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
     Compile / generateContrabands / contrabandCodecsDependencies := List(sjsonNewCore.value),
-    Compile / scalacOptions ++= (scalaVersion.value match {
-      case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
-      case _                          => List()
-    }),
+    Compile / scalacOptions ++= Seq("-Wunused:imports,implicits,nowarn"),
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -479,7 +476,7 @@ lazy val testingProj = (project in file("testing"))
       sjsonNewScalaJson.value,
       sjsonNewCore.value,
     ),
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -576,7 +573,7 @@ lazy val runProj = (project in file("run"))
   .settings(
     testedBaseSettings,
     name := "Run",
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -699,7 +696,7 @@ lazy val protocolProj = (project in file("protocol"))
     testedBaseSettings,
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -746,7 +743,7 @@ lazy val commandProj = (project in file("main-command"))
       sjsonNewScalaJson.value,
       templateResolverApi
     ),
-    Compile / scalacOptions += "-Ywarn-unused:-locals,-explicits,-privates",
+    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",

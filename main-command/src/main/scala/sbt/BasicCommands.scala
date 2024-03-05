@@ -27,7 +27,6 @@ import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
 
-import Function.tupled
 import Command.applyEffect
 import BasicCommandStrings._
 import CommandUtil._
@@ -35,7 +34,6 @@ import BasicKeys._
 import java.io.File
 
 import sbt.io.IO
-import sbt.util.Level
 
 import scala.Function.tupled
 import scala.collection.mutable.ListBuffer

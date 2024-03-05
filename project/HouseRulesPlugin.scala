@@ -38,9 +38,9 @@ object HouseRulesPlugin extends AutoPlugin {
 
   private implicit final class AnyWithIfScala[A](val __x: A) {
     def ifScala2x(p: Long => Boolean) =
-      Def.setting(scalaPartV.value collect { case (2, y) if p(y) => __x })
+      Def.setting(scalaPartV.value.collect { case (2, y) if p(y) => __x })
     def ifScala3x(p: Long => Boolean) =
-      Def.setting(scalaPartV.value collect { case (3, y) if p(y) => __x })
+      Def.setting(scalaPartV.value.collect { case (3, y) if p(y) => __x })
     def ifScalaLte(v: Long) = ifScala2x(_ <= v)
     def ifScalaGte(v: Long) = ifScala2x(_ >= v)
     def ifScala211OrMinus = ifScalaLte(11)

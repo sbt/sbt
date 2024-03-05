@@ -122,7 +122,7 @@ final class TestLogging(
 
 class TestLogger(val logging: TestLogging) extends TestsListener {
   import TestLogger._
-  import logging.{ global => log, logTest, managed }
+  import logging.{ global, logTest, managed }
   import sbt.protocol.testing.codec.JsonProtocol._
 
   def doInit(): Unit = managed.logEvent(Level.Info, TestInitEvent())
@@ -135,8 +135,8 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
     managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
 
   def endGroup(name: String, t: Throwable): Unit = {
-    log.trace(t)
-    log.error(s"Could not run test $name: $t")
+    global.trace(t)
+    global.error(s"Could not run test $name: $t")
     managed.logEvent(
       Level.Info,
       EndTestGroupErrorEvent(name, (t.getMessage + t.getStackTrace.toString).mkString("\n"))
