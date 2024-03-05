@@ -26,10 +26,7 @@ import sjsonnew.{
 }
 
 import sbt.util.Logger
-import sbt.util.{ CacheStoreFactory, FilesInfo, ModifiedFileInfo, PlainFileInfo }
-import sbt.util.FileInfo.{ exists, lastModified }
 import sbt.util.CacheImplicits._
-import sbt.util.Tracked.{ inputChanged, outputChanged }
 import scala.sys.process.Process
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
@@ -115,7 +112,6 @@ object Pkg:
       Vector[(HashedVirtualFileRef, String)] :*: VirtualFileRef :*: Seq[PackageOption] :*: LNil
     ] =
       import sbt.util.CacheImplicits.given
-      import sbt.util.PathHashWriters.given
       LList.iso(
         (c: Configuration) =>
           ("sources", c.sources.toVector) :*: ("jar", c.jar) :*: ("options", c.options) :*: LNil,

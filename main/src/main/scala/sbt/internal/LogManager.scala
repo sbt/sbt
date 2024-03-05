@@ -18,7 +18,6 @@ import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.util.{ Level, Logger, LoggerContext }
 
 import java.io.PrintWriter
-import scala.annotation.nowarn
 
 sealed abstract class LogManager {
   def apply(
@@ -61,7 +60,6 @@ object LogManager {
 
   // This is called by mkStreams
   //
-  @nowarn
   def construct(
       data: Settings[Scope],
       state: State

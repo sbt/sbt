@@ -9,7 +9,6 @@ package sbt
 package internal
 
 import sbt.internal.util.Types.const
-import java.io.File
 import xsbti.VirtualFile
 
 /**

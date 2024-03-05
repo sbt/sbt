@@ -25,8 +25,6 @@ import org.jline.utils.ClosedException
 import sbt.internal.util.complete.Parser
 import sbt.io.syntax._
 
-import scala.annotation.tailrec
-import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import java.nio.channels.ClosedByInterruptException
 import java.net.MalformedURLException

@@ -9,7 +9,7 @@ package sbt
 package internal
 
 import java.io.File
-import java.nio.file.{ Files, Path }
+import java.nio.file.Path
 
 import org.apache.ivy.core.module.descriptor.{ DefaultArtifact, Artifact => IArtifact }
 import org.apache.ivy.core.report.DownloadStatus
@@ -46,14 +46,12 @@ import sbt.util.{
   AggregateActionCacheStore,
   CacheImplicits,
   DiskActionCacheStore,
-  InMemoryActionCacheStore,
   Logger
 }
 import sjsonnew.JsonFormat
 import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
 
-import scala.annotation.nowarn
 import scala.collection.mutable
 
 object RemoteCache {
@@ -266,7 +264,6 @@ object RemoteCache {
     file
   }
 
-  @nowarn
   def configCacheSettings[A <: RemoteCacheArtifact](
       cacheArtifactTask: Def.Initialize[Task[A]]
   ): Seq[Def.Setting[_]] =

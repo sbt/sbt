@@ -2,7 +2,6 @@ package sbt.util
 
 import java.nio.file.{ Files, Path }
 import net.openhft.hashing.LongHashFunction
-import scala.util.Try
 
 object HashUtil:
   private[sbt] def farmHash(bytes: Array[Byte]): Long =

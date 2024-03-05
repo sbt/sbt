@@ -10,7 +10,6 @@ package internal
 
 import java.net.URI
 import sbt.internal.util.complete, complete.{ DefaultParsers, Parser }, DefaultParsers._
-import sbt.internal.Eval
 import Keys.sessionSettings
 import sbt.ProjectExtra.{ extract, updateCurrent }
 

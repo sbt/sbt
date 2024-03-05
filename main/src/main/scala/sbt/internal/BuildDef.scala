@@ -15,7 +15,6 @@ import Def.Setting
 import sbt.io.Hash
 import sbt.internal.util.Attributed
 import sbt.internal.inc.ReflectUtilities
-import xsbti.HashedVirtualFileRef
 
 trait BuildDef {
   def projectDefinitions(@deprecated("unused", "") baseDirectory: File): Seq[Project] = projects

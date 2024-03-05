@@ -12,7 +12,7 @@ package server
 import java.net.URI
 import java.nio.file._
 
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
@@ -27,7 +27,6 @@ import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.parser.SbtParser
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.protocol.codec.JsonRPCProtocol
-import sbt.internal.langserver
 import sbt.internal.langserver.{ ErrorCodes, Location, Position, Range, TextDocumentPositionParams }
 import sbt.util.Logger
 import sbt.Keys._
@@ -239,7 +238,6 @@ private[sbt] object Definition {
     result.future
   }
 
-  @nowarn
   def lspDefinition(
       jsonDefinition: JValue,
       requestId: String,

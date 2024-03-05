@@ -3,7 +3,6 @@ package sbt.internal
 import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.*
 import sbt.util.Applicative
-import sbt.util.{ ActionCacheStore, InMemoryActionCacheStore }
 import scala.quoted.*
 import ConvertTestMacro.InputInitConvert
 

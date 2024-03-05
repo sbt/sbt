@@ -13,7 +13,6 @@ import java.net.URI
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.util.{ Left, Right }
 import sbt.util.{ SomeJsonWriter, NoJsonWriter }
-import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.protocol._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe._

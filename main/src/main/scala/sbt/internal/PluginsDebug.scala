@@ -13,7 +13,6 @@ import sbt.util.Logger
 
 import sbt.ProjectExtra.*
 import Def.Setting
-import sbt.SlashSyntax0._
 import Plugins._
 import PluginsDebug._
 import java.net.URI

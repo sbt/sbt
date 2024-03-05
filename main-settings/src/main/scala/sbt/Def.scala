@@ -7,11 +7,9 @@
 
 package sbt
 
-import java.io.File
 import java.nio.file.Path
 import java.net.URI
 
-import scala.annotation.compileTimeOnly
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import sbt.KeyRanks.{ DTask, Invisible }
@@ -19,7 +17,7 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
+import sbt.util.{ ActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
@@ -270,7 +268,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   ): Initialize[Task[A2]] =
     fab.zipWith(fin)((ab, in) => TaskExtra.select(ab, in))
 
-  import Scoped.syntax.{ *, given } // { Def => _, DTask => _, Invisible => _, * }
+  import Scoped.syntax.*
 
   // derived from select
   private[sbt] def branchS[A, B, C](

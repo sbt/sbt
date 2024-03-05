@@ -8,10 +8,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.Attributed
 import java.io.File
 import java.net.URL
-import Attributed.data
 import sbt.internal.BuildDef.analyzed
 import xsbti.FileConverter
 import xsbt.api.{ Discovered, Discovery }

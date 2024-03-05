@@ -26,7 +26,6 @@ object InputTaskMacro:
   private[this] def inputTaskMacro0[A1: Type](tree: Expr[A1])(using
       qctx: Quotes
   ): Expr[Def.Initialize[InputTask[A1]]] =
-    import qctx.reflect.*
     // println(s"tree = ${tree.show}")
     iInitializeMacro(tree) { et =>
       val pt: Expr[State => Parser[Task[A1]]] = iParserMacro(et) { pt =>
@@ -109,7 +108,6 @@ object InputTaskMacro:
     convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, None, inner)
 
   private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
-    import qctx.reflect.*
     val convert1 = new TaskConvert(qctx, 2000)
     convert1.contMapN[A1, Task, Id](tree, convert1.appExpr, None)
   /*
@@ -218,7 +216,6 @@ object InputTaskMacro:
   ): Expr[Def.Initialize[InputTask[A2]]] =
     import qctx.reflect.*
     val convert1 = new FullConvert(qctx, 1000)
-    import convert1.Converted
     def mkInputTask(params: List[ValDef], body: Term): Expr[Def.Initialize[InputTask[A2]]] =
       val lambdaTpe =
         MethodType(params.map(_.name))(

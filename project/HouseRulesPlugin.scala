@@ -30,6 +30,13 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions ++= "-Ywarn-numeric-widen".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-value-discard".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList,
+    scalacOptions ++= {
+      scalaPartV.value match {
+        case Some((3, _)) => Seq("-Wunused:imports,implicits,nowarn")
+        case Some((2, _)) => Seq("-Ywarn-unused:-privates,-locals,-explicits")
+        case _            => Seq.empty
+      }
+    },
     scalacOptions ++= "-Xsource:3".ifScala2.value.toList
   ) ++ Seq(Compile, Test).flatMap(c =>
     (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")

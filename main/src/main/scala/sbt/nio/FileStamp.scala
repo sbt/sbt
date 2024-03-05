@@ -16,7 +16,6 @@ import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
-import org.checkerframework.checker.units.qual.A
 
 /**
  * A trait that indicates what file stamping implementation should be used to track the state of

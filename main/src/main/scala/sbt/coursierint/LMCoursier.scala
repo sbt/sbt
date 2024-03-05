@@ -22,7 +22,6 @@ import lmcoursier.definitions.{
 import lmcoursier.*
 import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
-import lmcoursier.syntax.*
 import Keys._
 import sbt.internal.util.Util
 import sbt.librarymanagement._
@@ -34,7 +33,6 @@ import sbt.librarymanagement.ivy.{
 import sbt.util.Logger
 import sbt.io.syntax._
 import xsbti.AppConfiguration
-import sbt.SlashSyntax0._
 
 object LMCoursier {
   private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =

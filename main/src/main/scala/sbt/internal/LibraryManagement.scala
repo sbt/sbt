@@ -188,17 +188,17 @@ private[sbt] object LibraryManagement {
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
-    import config.{ updateConfiguration => c, module => mod }
-    import mod.{ id, dependencies => deps, scalaModuleInfo }
+    import config.{ updateConfiguration, module }
+    import module.{ id, dependencies, scalaModuleInfo }
     val base = restrictedCopy(id, true).withName(id.name + "$" + label)
-    val module = lm.moduleDescriptor(base, deps, scalaModuleInfo)
-    val report = lm.update(module, c, uwconfig, log) match {
+    val mod = lm.moduleDescriptor(base, dependencies, scalaModuleInfo)
+    val report = lm.update(mod, updateConfiguration, uwconfig, log) match {
       case Right(r) => r
       case Left(w) =>
         throw w.resolveException
     }
     val newConfig = config
-      .withModule(mod.withDependencies(report.allModules))
+      .withModule(module.withDependencies(report.allModules))
     lm.updateClassifiers(newConfig, uwconfig, Vector(), log)
   }
 

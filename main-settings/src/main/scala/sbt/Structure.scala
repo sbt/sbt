@@ -17,8 +17,7 @@ import sbt.ConcurrentRestrictions.Tag
 import sbt.Def.{ Initialize, ScopedKey, Setting, setting }
 import std.TaskMacro
 import std.TaskExtra.{ task => mktask, _ }
-import scala.reflect.{ ClassTag, ManifestFactory }
-import scala.annotation.nowarn
+import scala.reflect.ClassTag
 
 /** An abstraction on top of Settings for build configuration and task definition. */
 sealed trait Scoped extends Equals:
@@ -80,7 +79,7 @@ sealed abstract class SettingKey[A1]
   inline def settingMacro[A](inline a: A): Initialize[A] =
     ${ std.SettingMacro.settingMacroImpl[A]('a) }
 
-  final inline def :=(inline v: A1): Setting[A1 @nowarn] =
+  final inline def :=(inline v: A1): Setting[A1] =
     ${ TaskMacro.settingAssignMacroImpl('this, 'v) }
 
   final inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[A1] =

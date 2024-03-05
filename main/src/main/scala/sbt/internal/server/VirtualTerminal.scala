@@ -44,7 +44,6 @@ import sbt.protocol.{
   TerminalSetRawModeCommand,
 }
 import sbt.protocol.codec.JsonProtocol._
-import sbt.protocol.TerminalGetSizeResponse
 
 object VirtualTerminal {
   private[this] val pendingTerminalProperties =

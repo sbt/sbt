@@ -8,11 +8,10 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ complete, LineRange, RangePosition, Types }
+import sbt.internal.util.{ complete, LineRange, RangePosition }
 
 import java.io.File
 import java.net.URI
-import sbt.ProjectExtra.extract
 import Def.{ ScopedKey, Setting }
 import SessionSettings._
 import sbt.ProjectExtra.{ extract, getProject, session, structure }

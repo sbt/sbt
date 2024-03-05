@@ -364,7 +364,6 @@ lazy val utilLogging = project
       ),
     libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
     Compile / generateContrabands / contrabandCodecsDependencies := List(sjsonNewCore.value),
-    Compile / scalacOptions ++= Seq("-Wunused:imports,implicits,nowarn"),
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -472,7 +471,6 @@ lazy val testingProj = (project in file("testing"))
       sjsonNewScalaJson.value,
       sjsonNewCore.value,
     ),
-    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -569,7 +567,6 @@ lazy val runProj = (project in file("run"))
   .settings(
     testedBaseSettings,
     name := "Run",
-    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -692,7 +689,6 @@ lazy val protocolProj = (project in file("protocol"))
     testedBaseSettings,
     name := "Protocol",
     libraryDependencies ++= Seq(sjsonNewScalaJson.value, sjsonNewCore.value, ipcSocket),
-    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -739,7 +735,6 @@ lazy val commandProj = (project in file("main-command"))
       sjsonNewScalaJson.value,
       templateResolverApi
     ),
-    Compile / scalacOptions += "-Wunused:imports,implicits,nowarn",
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",

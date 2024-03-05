@@ -77,7 +77,6 @@ object FileChangesMacro:
       changeKey: Expr[TaskKey[Seq[(NioPath, FileStamp)] => FileChanges]],
       mapKey: Expr[TaskKey[Seq[(NioPath, FileStamp)]]],
   )(using qctx: Quotes): Expr[FileChanges] =
-    import qctx.reflect.*
     val taskScope = getTaskScope[A](in)
     '{
       val ts: Scope = $taskScope

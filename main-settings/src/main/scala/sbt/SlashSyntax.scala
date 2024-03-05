@@ -66,7 +66,6 @@ object SlashSyntax {
 
   sealed trait HasSlashKey {
     protected def scope: Scope
-    @nowarn
     final def /[K](key: Scoped.ScopingSetting[K]): K = key.in(scope)
   }
 
@@ -84,7 +83,6 @@ object SlashSyntax {
     def /(c: Configuration): RichConfiguration = new RichConfiguration(scope in c)
 
     // This is for handling `Zero / Zero / name`.
-    @nowarn
     def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
       new RichConfiguration(scope.copy(config = configAxis))
   }

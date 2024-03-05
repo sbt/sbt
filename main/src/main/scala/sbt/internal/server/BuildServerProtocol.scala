@@ -13,7 +13,6 @@ import java.net.URI
 import sbt.BuildPaths.{ configurationSources, projectStandard }
 import sbt.BuildSyntax._
 import sbt.Def._
-import sbt.Def.{ parsed }
 import sbt.Keys._
 import sbt.Project._
 import sbt.ProjectExtra.*
@@ -41,7 +40,7 @@ import scala.collection.mutable
 
 // import scala.annotation.nowarn
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Success, Try }
+import scala.util.{ Failure, Success }
 import scala.annotation.nowarn
 import sbt.testing.Framework
 

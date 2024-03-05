@@ -16,7 +16,6 @@ import sbt.internal.io.TranslatedException
 import sbt.util.CacheImplicits._
 import sbt.util.{ CacheStore, FileInfo }
 import sbt.io.IO
-import sbt.librarymanagement.LibraryManagementCodec
 import sjsonnew.{
   Builder,
   IsoString,

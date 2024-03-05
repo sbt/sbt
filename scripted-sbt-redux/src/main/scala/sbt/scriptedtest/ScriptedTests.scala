@@ -20,7 +20,7 @@ import RemoteSbtCreatorProp._
 
 import scala.annotation.nowarn
 import scala.collection.parallel.ForkJoinTaskSupport
-import scala.collection.{ GenSeq, mutable }
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 final class ScriptedTests(

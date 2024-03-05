@@ -112,7 +112,6 @@ final case class Extracted(
       show = Aggregation.defaultShow(state, false),
     )
 
-  @nowarn
   private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
     key in Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope)
 
@@ -149,7 +148,6 @@ final case class Extracted(
       state: State,
       sessionSettings: Seq[Setting[_]],
   ): State = {
-    import sbt.ProjectExtra.extract
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newStructure = Load.reapply(sessionSettings ++ appendSettings, structure)

@@ -1,9 +1,7 @@
 package sbt.internal.util.appmacro
 
-import sbt.internal.util.Types.Id
 import scala.compiletime.summonInline
 import scala.quoted.*
-import scala.reflect.TypeTest
 import scala.collection.mutable
 import sbt.util.cacheLevel
 import sbt.util.CacheLevelTag

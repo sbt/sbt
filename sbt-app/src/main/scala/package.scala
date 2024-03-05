@@ -9,7 +9,6 @@ import sbt.nio.FileStamp
 import sjsonnew.JsonFormat
 import java.nio.file.{ Path => NioPath }
 
-import sbt.internal.FileChangesMacro
 import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
 import scala.language.experimental.macros
 

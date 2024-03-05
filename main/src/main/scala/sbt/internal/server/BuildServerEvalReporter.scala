@@ -10,21 +10,20 @@ package sbt.internal.server
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.reporting.{ Diagnostic => ScalaDiagnostic }
 import dotty.tools.dotc.reporting.Reporter
-import sbt.StandardMain.exchange
+// import sbt.StandardMain.exchange
 import sbt.internal.ForwardingReporter
 import sbt.internal.bsp
 import sbt.internal.bsp.{
   BuildTargetIdentifier,
   Diagnostic,
-  DiagnosticSeverity,
-  PublishDiagnosticsParams,
-  Range,
-  TextDocumentIdentifier
+  // DiagnosticSeverity,
+  // PublishDiagnosticsParams,
+  // Range,
+  // TextDocumentIdentifier
 }
 
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.Path
 import scala.collection.mutable
-import sbt.internal.bsp.codec.JsonProtocol._
 
 class BuildServerEvalReporter(buildTarget: BuildTargetIdentifier, delegate: Reporter)
     extends ForwardingReporter(delegate):

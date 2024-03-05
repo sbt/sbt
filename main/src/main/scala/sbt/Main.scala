@@ -823,9 +823,9 @@ object BuiltinCommands {
   def showProjects(s: State): Unit = {
     val extracted = Project extract s
     import extracted._
-    import currentRef.{ build => curi, project => cid }
-    listBuild(curi, structure.units(curi), true, cid, s.log)
-    for ((uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
+    listBuild(currentRef.build, structure.units(currentRef.build), true, currentRef.project, s.log)
+    for ((uri, build) <- structure.units if currentRef.build != uri)
+      listBuild(uri, build, false, currentRef.project, s.log)
   }
 
   def transformExtraBuilds(s: State, f: List[URI] => List[URI]): State = {

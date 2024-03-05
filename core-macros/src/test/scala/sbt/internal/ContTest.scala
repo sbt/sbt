@@ -4,7 +4,6 @@ import sbt.internal.util.appmacro.*
 import verify.*
 import ContTestMacro.*
 import sbt.util.Applicative
-import sjsonnew.BasicJsonProtocol
 
 object ContTest extends BasicTestSuite:
   test("pure") {

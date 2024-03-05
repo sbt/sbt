@@ -36,7 +36,7 @@ import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.util.Logger
 
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
@@ -422,7 +422,6 @@ final class NetworkChannel(
     }
   }
 
-  @nowarn
   protected def onCompletionRequest(execId: Option[String], cp: CompletionParams) = {
     if (initialized) {
       try {

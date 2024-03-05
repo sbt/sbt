@@ -9,8 +9,6 @@ package sbt
 package internal
 package parser
 
-import java.io.File
-
 import sbt.internal.util.LineRange
 import xsbti.VirtualFileRef
 

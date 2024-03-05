@@ -9,7 +9,6 @@ package sbt
 package std
 
 import java.io.File
-import scala.annotation.tailrec
 import scala.quoted.*
 import scala.reflect.ClassTag
 

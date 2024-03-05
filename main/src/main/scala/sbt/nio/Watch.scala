@@ -14,7 +14,6 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
-import sbt.SlashSyntax0._
 import sbt._
 import sbt.internal.LabeledFunctions._
 import sbt.internal.nio.FileEvent

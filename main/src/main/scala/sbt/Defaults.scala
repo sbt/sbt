@@ -29,7 +29,7 @@ import sbt.Project.{
   // richTaskSessionVar,
   // sbtRichTaskPromise
 }
-import sbt.ProjectExtra.{ *, given }
+import sbt.ProjectExtra.*
 import sbt.Scope.{ GlobalScope, ThisScope, fillTaskAxis }
 import sbt.State.StateOpsImpl
 import sbt.coursierint._
@@ -88,7 +88,6 @@ import sbt.util.CacheImplicits.given
 import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
-import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.compile.TastyFiles
 import xsbti.{ FileConverter, Position }
 
@@ -1068,15 +1067,15 @@ object Defaults extends BuildCommon {
   private def watchTransitiveSourcesTaskImpl(
       key: TaskKey[Seq[Source]]
   ): Initialize[Task[Seq[Source]]] = {
-    import ScopeFilter.Make.{ inDependencies => inDeps, _ }
-    val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDeps(ThisProject))
+    import ScopeFilter.Make.*
+    val selectDeps = ScopeFilter(inAggregates(ThisProject) || inDependencies(ThisProject))
     val allWatched = (key ?? Nil).all(selectDeps)
     Def.task { allWatched.value.flatten }
   }
 
   def transitiveUpdateTask: Initialize[Task[Seq[UpdateReport]]] = {
-    import ScopeFilter.Make.{ inDependencies => inDeps, _ }
-    val selectDeps = ScopeFilter(inDeps(ThisProject, includeRoot = false))
+    import ScopeFilter.Make.*
+    val selectDeps = ScopeFilter(inDependencies(ThisProject, includeRoot = false))
     val allUpdates = update.?.all(selectDeps)
     // If I am a "build" (a project inside project/) then I have a globalPluginUpdate.
     Def.task { allUpdates.value.flatten ++ globalPluginUpdate.?.value }
@@ -1440,10 +1439,10 @@ object Defaults extends BuildCommon {
           stamps.getOrElse(
             c, {
               val x = {
-                import analysis.{ apis, relations => rel }
-                rel.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                  rel.externalDeps(c).map(stamp) ++
-                  rel.productClassName.reverse(c).flatMap { pc =>
+                import analysis.{ apis, relations }
+                relations.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
+                  relations.externalDeps(c).map(stamp) ++
+                  relations.productClassName.reverse(c).flatMap { pc =>
                     apis.internal.get(pc).map(_.compilationTimestamp)
                   } + Long.MinValue
               }.max
@@ -3046,7 +3045,6 @@ object Classpaths {
       case (a, true) => a
     })
 
-  @nowarn
   def forallIn[T](
       key: Scoped.ScopingSetting[SettingKey[T]], // should be just SettingKey[T] (mea culpa)
       pkgTasks: Seq[TaskKey[_]],
@@ -4217,7 +4215,6 @@ object Classpaths {
         depMap(bd.classpathTransitiveRefs(thisProj), data, s.log)
     }
 
-  @nowarn
   private[sbt] def depMap(
       projects: Seq[ProjectRef],
       data: Settings[Scope],

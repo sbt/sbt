@@ -10,7 +10,7 @@ package sbt
 import scala.collection.mutable.ListBuffer
 
 import sbt.internal.util.IDSet
-import Incomplete.{ Error, Value => IValue }
+import Incomplete.{ Value => IValue }
 import scala.jdk.CollectionConverters.*
 
 /**

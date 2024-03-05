@@ -12,14 +12,12 @@ import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
-import sbt.ProjectExtra.{ checkTargets, prefixConfigs, setProject, showLoadingKey, structure }
+import sbt.ProjectExtra.{ prefixConfigs, setProject, showLoadingKey, structure }
 import sbt.Scope.GlobalScope
 import sbt.SlashSyntax0._
-import sbt.internal.{ Eval, EvalReporter }
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
-import sbt.internal.server.BuildServerEvalReporter
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings }

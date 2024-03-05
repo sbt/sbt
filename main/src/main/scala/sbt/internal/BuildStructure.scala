@@ -16,13 +16,11 @@ import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
 import BuildStreams.Streams
-import sbt.LocalRootProject
 import sbt.io.syntax._
 import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, Attributed, Settings }
 import sbt.internal.util.Attributed.data
 import sbt.util.Logger
-import scala.annotation.nowarn
 import xsbti.FileConverter
 
 final class BuildStructure(
@@ -400,7 +398,6 @@ object BuildStreams {
   def refTarget(ref: ResolvedReference, fallbackBase: File, data: Settings[Scope]): File =
     refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
 
-  @nowarn
   def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =
     (Keys.target in scope get data getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
 }

@@ -12,12 +12,9 @@ package parser
 import sbt.internal.inc.PlainVirtualFileConverter
 import sbt.internal.parser.SbtRefactorings.SessionSetting
 
-import java.io.File
-import java.io.FilenameFilter
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import scala.io.Source
 import scala.jdk.CollectionConverters.*
 
 abstract class AbstractSessionSettingsSpec(folder: String) extends AbstractSpec {

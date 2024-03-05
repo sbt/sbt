@@ -4,22 +4,18 @@ package util
 package appmacro
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.{ ClassTag, TypeTest }
+import scala.reflect.ClassTag
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
 import sbt.util.{
   ActionCache,
-  ActionCacheStore,
   Applicative,
   BuildWideCacheConfiguration,
-  Cache,
   CacheLevelTag,
   Digest,
   Monad,
 }
 import xsbti.VirtualFile
-import Types.Id
-import scala.annotation.nowarn
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -267,7 +263,7 @@ trait Cont:
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
                 '{
-                  $applicativeExpr.map[a @nowarn, A1]($expr.asInstanceOf[F[a @nowarn]])($lambda)
+                  $applicativeExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
                 }.asTerm
               ).asExprOf[F[A1]]
         eitherTree match

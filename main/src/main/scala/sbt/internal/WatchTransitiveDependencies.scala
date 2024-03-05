@@ -55,7 +55,6 @@ private[sbt] object WatchTransitiveDependencies {
     def data: Map[Scope, AttributeMap] = extracted.structure.data.data
   }
 
-  @nowarn
   private def argumentsImpl(
       scopedKey: ScopedKey[_],
       extracted: Extracted,
@@ -138,7 +137,6 @@ private[sbt] object WatchTransitiveDependencies {
     (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct.sorted
   }
 
-  @nowarn
   private def legacy(keys: Seq[ScopedKey[_]], args: Arguments): Seq[DynamicInput] = {
     import args._
     val projectScopes =

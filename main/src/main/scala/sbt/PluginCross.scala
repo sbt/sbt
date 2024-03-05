@@ -18,14 +18,12 @@ import sbt.internal.CommandStrings._
 import Cross.{ spacedFirst, requireSession }
 import sbt.librarymanagement.VersionNumber
 import Project.inScope
-import ProjectExtra.{ extract, getProject, setProject }
-import scala.annotation.nowarn
+import ProjectExtra.{ extract, setProject }
 
 /**
  * Module responsible for plugin cross building.
  */
 private[sbt] object PluginCross {
-  @nowarn
   lazy val pluginSwitch: Command = {
     def switchParser(state: State): Parser[(String, String)] = {
       lazy val switchArgs = token(NotSpace.examples()) ~ (token(

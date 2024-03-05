@@ -17,7 +17,6 @@ import sbt.util.StampedFormat
 import sjsonnew.JsonFormat
 
 import scala.util.control.NonFatal
-import scala.annotation.nowarn
 
 /**
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
