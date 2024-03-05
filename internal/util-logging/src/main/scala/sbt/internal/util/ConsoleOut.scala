@@ -60,7 +60,7 @@ object ConsoleOut {
   def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = new ConsoleOut {
     val lockObject: PrintStream = System.out
     private[this] var last: Option[String] = None
-    private[this] var current = new java.lang.StringBuffer
+    private[this] val current = new java.lang.StringBuffer
     def print(s: String): Unit = synchronized { current.append(s); () }
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
@@ -128,7 +128,7 @@ object ConsoleOut {
     case c => c
   }
   def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.print(s)
     def println(s: String) = out.println(s)
     def println() = out.println()
@@ -136,7 +136,7 @@ object ConsoleOut {
     override def toString: String = s"PrintStreamConsoleOut($out)"
   }
   def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.print(s)
     def println(s: String) = { out.println(s); flush() }
     def println() = { out.println(); flush() }
@@ -144,7 +144,7 @@ object ConsoleOut {
     override def toString: String = s"PrintWriterConsoleOut($out)"
   }
   def bufferedWriterOut(out: BufferedWriter): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.write(s)
     def println(s: String) = { out.write(s); println() }
     def println() = { out.newLine(); flush() }

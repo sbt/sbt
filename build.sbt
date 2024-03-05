@@ -55,7 +55,7 @@ Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
 ThisBuild / evictionErrorLevel := Level.Info
 
-def commonBaseSettings: Seq[Setting[_]] = Def.settings(
+def commonSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(
     HeaderLicense.Custom(
       """|sbt
@@ -68,7 +68,7 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := baseScalaVersion,
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
-  resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
   Global / concurrentRestrictions += Util.testExclusiveRestriction,
@@ -101,20 +101,15 @@ def commonBaseSettings: Seq[Setting[_]] = Def.settings(
   Test / publishArtifact := false,
   run / fork := true,
 )
-def commonSettings: Seq[Setting[_]] =
-  commonBaseSettings :+ {
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value == "3") {
-        Nil
-      } else {
-        Seq(compilerPlugin(kindProjector))
-      }
-    }
-  }
 
 def utilCommonSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
-  crossScalaVersions := Seq(scala212, scala213, scala3)
+  crossScalaVersions := Seq(scala212, scala213, scala3),
+  libraryDependencies += Dependencies.scalaCollectionCompat,
+  libraryDependencies ++= {
+    if (scalaBinaryVersion.value == "3") Nil
+    else Seq(compilerPlugin(kindProjector))
+  }
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -258,12 +253,12 @@ lazy val bundledLauncherProj =
 
 /* ** subproject declarations ** */
 
-val collectionProj = (project in file("util-collection"))
+val collectionProj = project
+  .in(file("util-collection"))
   .dependsOn(utilPosition, utilCore)
   .settings(
     name := "Collections",
     testedBaseSettings,
-    baseSettings,
     libraryDependencies ++= Seq(sjsonNewScalaJson.value),
     libraryDependencies ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, major)) if major <= 12 => Seq()
@@ -349,7 +344,8 @@ lazy val utilCore = project
     utilMimaSettings
   )
 
-lazy val utilLogging = (project in file("internal") / "util-logging")
+lazy val utilLogging = project
+  .in(file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(utilInterface, utilCore)
   .settings(
@@ -421,9 +417,9 @@ lazy val utilRelation = (project in file("internal") / "util-relation")
   )
 
 // Persisted caching based on sjson-new
-lazy val utilCache = (project in file("util-cache"))
+lazy val utilCache = project
+  .in(file("util-cache"))
   .settings(
-    utilCommonSettings,
     testedBaseSettings,
     name := "Util Cache",
     libraryDependencies ++=
@@ -1044,7 +1040,7 @@ lazy val sbtClientProj = (project in file("client"))
   .enablePlugins(NativeImagePlugin)
   .dependsOn(commandProj)
   .settings(
-    commonBaseSettings,
+    commonSettings,
     publish / skip := true,
     name := "sbt-client",
     mimaPreviousArtifacts := Set.empty,

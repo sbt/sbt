@@ -133,6 +133,7 @@ object Dependencies {
     }
   )
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
+  val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0"
 
   // specify all of log4j modules to prevent misalignment
   def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"

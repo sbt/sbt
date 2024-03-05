@@ -29,7 +29,8 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions ++= "-Ywarn-dead-code".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-numeric-widen".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-value-discard".ifScala2.value.toList,
-    scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList
+    scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList,
+    scalacOptions ++= "-Xsource:3".ifScala2.value.toList
   ) ++ Seq(Compile, Test).flatMap(c =>
     (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")
   )

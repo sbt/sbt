@@ -8,6 +8,7 @@
 package sbt.internal.util
 
 import Relation._
+import scala.collection.compat.*
 
 object Relation {
 
@@ -178,7 +179,7 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
     else new MRelation(add(fwd, from, to), to.foldLeft(rev)((map, t) => add(map, t, from :: Nil)))
 
   def ++(rs: Iterable[(A, B)]) = rs.foldLeft(this: Relation[A, B]) { _ + _ }
-  def ++(other: Relation[A, B]) =
+  def ++(other: Relation[A, B]): Relation[A, B] =
     new MRelation[A, B](combine(fwd, other.forwardMap), combine(rev, other.reverseMap))
 
   def --(ts: Iterable[A]): Relation[A, B] = ts.foldLeft(this: Relation[A, B]) { _ - _ }

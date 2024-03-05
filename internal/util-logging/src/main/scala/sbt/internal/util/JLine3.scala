@@ -31,8 +31,6 @@ private[sbt] object JLine3 {
   private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
   private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
   private[this] def windowsJansi(): org.jline.terminal.Terminal = {
-    val support = new JansiSupportImpl
-    val winConsole = support.isWindowsConsole();
     val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
     val term = JansiWinSysTerminal.createTerminal(
       "console",
@@ -219,14 +217,6 @@ private[sbt] object JLine3 {
         attributesFromMap(term.getAttributes)
       }
     }
-  }
-  private def enterRawModeImpl(term: JTerminal): Attributes = {
-    val prvAttr = term.getAttributes()
-    val newAttr = new Attributes(prvAttr)
-    newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO, LocalFlag.IEXTEN), false)
-    newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
-    term.setAttributes(newAttr)
-    prvAttr
   }
   // We need to set the ENABLE_PROCESS_INPUT flag for ctrl+c to be treated as a signal in windows
   // https://docs.microsoft.com/en-us/windows/console/setconsolemode
