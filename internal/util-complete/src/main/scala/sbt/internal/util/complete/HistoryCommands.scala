@@ -76,7 +76,7 @@ object HistoryCommands {
     val lines = h.lines.toArray
     command.foreach(lines(lines.length - 1) = _)
     h.path foreach { h =>
-      IO.writeLines(h, lines)
+      IO.writeLines(h, lines.toSeq)
     }
     command.toList.some
   }

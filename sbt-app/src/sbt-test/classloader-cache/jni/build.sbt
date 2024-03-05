@@ -1,5 +1,5 @@
 import java.nio.file._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 val copyTestResources = inputKey[Unit]("Copy the native libraries to the base directory")
 val appendToLibraryPath = taskKey[Unit]("Append the base directory to the java.library.path system property")

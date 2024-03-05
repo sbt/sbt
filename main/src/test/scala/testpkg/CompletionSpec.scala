@@ -4,7 +4,7 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package testpkg
 
 import java.net.URI
@@ -19,7 +19,6 @@ import hedgehog._
 import hedgehog.runner._
 import _root_.sbt.internal.util.complete.Parser
 
-/*
 object CompletionSpec extends Properties {
   override def tests: List[Test] =
     List(

@@ -230,7 +230,7 @@ object Parser extends ParserMain:
         case Some(av) => success(f(av))
         case None =>
           a match {
-            case m: MapParser[_, A] => m.map(f)
+            case m: MapParser[?, ?] => m.map(f)
             case _                  => new MapParser(a, f)
           }
       }

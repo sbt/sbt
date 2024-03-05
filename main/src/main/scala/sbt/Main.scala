@@ -41,6 +41,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
+import scala.util.boundary
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain:
@@ -59,7 +60,7 @@ private[sbt] object xMain:
         override def provider: AppProvider = config.provider()
       }
 
-  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = boundary {
     try {
       import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
@@ -79,7 +80,7 @@ private[sbt] object xMain:
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
       lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
-        case (_, Some(e)) => return e
+        case (_, Some(e)) => boundary.break(e)
         case (s, _)       => s
       }
       else None
@@ -570,7 +571,7 @@ object BuiltinCommands {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
     val result = Load
-      .mkEval(classpath.map(_.toPath()), s.baseDir, Nil)
+      .mkEval(classpath.map(_.toPath()).toSeq, s.baseDir, Nil)
       .evalInfer(expression = arg, imports = EvalImports(Nil))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
   }
@@ -1146,7 +1147,7 @@ object BuiltinCommands {
     if (SysProp.allowRootDir) ()
     else {
       val baseDir = state.baseDir
-      import scala.collection.JavaConverters._
+      import scala.jdk.CollectionConverters.*
       // this should return / on Unix and C:\ for Windows.
       val rootOpt = FileSystems.getDefault.getRootDirectories.asScala.toList.headOption
       rootOpt foreach { root =>

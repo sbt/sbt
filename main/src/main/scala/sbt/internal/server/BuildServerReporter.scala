@@ -24,7 +24,7 @@ import xsbti.{
   Position => XPosition
 }
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 
 sealed trait BuildServerReporter extends Reporter {

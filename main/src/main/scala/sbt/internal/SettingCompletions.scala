@@ -333,7 +333,7 @@ private[sbt] object SettingCompletions {
     else if (showDescriptions) {
       val withDescriptions = in map { case (id, key) => (id, description(key)) }
       val padded = CommandUtil.aligned("", "   ", withDescriptions)
-      (padded, in).zipped.map { case (line, (id, _)) =>
+      padded.zip(in).map { case (line, (id, _)) =>
         Completion.tokenDisplay(append = appendString(id), display = line + "\n")
       }
     } else

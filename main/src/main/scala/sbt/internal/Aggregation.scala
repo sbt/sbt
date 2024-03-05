@@ -79,7 +79,7 @@ object Aggregation {
     val success = results match
       case Result.Value(_) => true
       case Result.Inc(_)   => false
-    results.toEither.right.foreach { r =>
+    results.toEither.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
     if (show.success && !state.get(suppressShow).getOrElse(false))

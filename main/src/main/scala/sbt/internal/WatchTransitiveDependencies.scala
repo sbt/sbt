@@ -91,12 +91,12 @@ private[sbt] object WatchTransitiveDependencies {
         (extracted, compiledMap, st, rs)
       }
       .flatMapTask { case (extracted, compiledMap, st, rs) =>
-        st.currentCommand.map(_.commandLine) match
-          case Some(ShowTransitive(key)) =>
+        st.currentCommand.get.commandLine match
+          case ShowTransitive(key) =>
             Parser.parse(key.trim, Act.scopedKeyParser(st)) match
               case Right(scopedKey) => argumentsImpl(scopedKey, extracted, compiledMap)
               case _                => argumentsImpl(rs, extracted, compiledMap)
-          case Some(_) => argumentsImpl(rs, extracted, compiledMap)
+          case _ => argumentsImpl(rs, extracted, compiledMap)
       }
 
   private[sbt] def transitiveDynamicInputs(args: Arguments): Seq[DynamicInput] = {

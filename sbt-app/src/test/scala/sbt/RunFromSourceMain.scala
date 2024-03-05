@@ -96,7 +96,7 @@ object RunFromSourceMain {
         context
       ) map exit
     catch {
-      case r: xsbti.FullReload => Some((baseDir, r.arguments()))
+      case r: xsbti.FullReload => Some((baseDir, r.arguments.toSeq))
       case scala.util.control.NonFatal(e) =>
         e.printStackTrace(); errorAndExit(e.toString)
     }

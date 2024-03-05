@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import sbt.io.IO
 import sbt.util.Logger
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * This classloader doesn't load any classes. It is able to create a two layer bundled ClassLoader
@@ -141,7 +141,7 @@ private[internal] class NativeLookup extends NativeLoader {
 
   private[this] def findLibrary0(name: String): String = {
     val mappedName = System.mapLibraryName(name)
-    val search = searchPaths.toStream flatMap relativeLibrary(mappedName)
+    val search = searchPaths.to(LazyList).flatMap(relativeLibrary(mappedName))
     search.headOption.map(copy).orNull
   }
 

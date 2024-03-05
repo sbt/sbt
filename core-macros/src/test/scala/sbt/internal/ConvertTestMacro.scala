@@ -27,8 +27,8 @@ object ConvertTestMacro:
     convert1.transformWrappers(expr.asTerm, substitute, Symbol.spliceOwner).asExprOf[Boolean]
 
   class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C)
-      extends Convert[C](qctx)
-      with ContextUtil[C](qctx, 0):
+      extends Convert[C]
+      with ContextUtil[C](0):
     // with TupleBuilder[C](qctx)
     // with TupleNBuilder[C](qctx):
     import qctx.reflect.*

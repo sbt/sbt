@@ -46,19 +46,19 @@ object Sync {
       store: CacheStore,
       inStyle: FileInfo.Style = FileInfo.lastModified,
       outStyle: FileInfo.Style = FileInfo.exists
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle)
 
   def sync(
       store: CacheStore,
       fileConverter: FileConverter
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, FileInfo.lastModified, fileConverter)
 
   def sync(
       store: CacheStore,
       inStyle: FileInfo.Style = FileInfo.lastModified,
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle, MappedFileConverter.empty)
 
   /** this function ensures that the latest files in /src are also in /target, so that they are synchronised */
@@ -66,7 +66,7 @@ object Sync {
       store: CacheStore,
       inStyle: FileInfo.Style,
       fileConverter: FileConverter
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     mappings => {
       val relation = Relation.empty ++ mappings
       noDuplicateTargets(relation)

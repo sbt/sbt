@@ -899,7 +899,7 @@ object Defaults extends BuildCommon {
     ) ++
     configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
       compileOutputs := {
-        import scala.collection.JavaConverters._
+        import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
         val classFiles =
           manipulateBytecode.value.analysis.readStamps.getAllProductStamps.keySet.asScala
@@ -1236,8 +1236,8 @@ object Defaults extends BuildCommon {
     makeScalaInstance(
       dummy.version,
       dummy.libraryJars,
-      dummy.compilerJars,
-      dummy.allJars,
+      dummy.compilerJars.toSeq,
+      dummy.allJars.toSeq,
       state.value,
       scalaInstanceTopLoader.value,
     )
@@ -1264,7 +1264,7 @@ object Defaults extends BuildCommon {
       loadedTestFrameworks := {
         val loader = testLoader.value
         val log = streams.value.log
-        testFrameworks.value.flatMap(f => f.create(loader, log).map(x => (f, x)).toIterable).toMap
+        testFrameworks.value.flatMap(f => f.create(loader, log).map(x => (f, x))).toMap
       },
       definedTests := detectTests.value,
       definedTestNames := (definedTests map (_.map(
@@ -2449,7 +2449,7 @@ object Defaults extends BuildCommon {
     }
     val map = managedFileStampCache.value
     val analysis = analysisResult.analysis
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     analysis.readStamps.getAllProductStamps.asScala.foreach { case (f: VirtualFileRef, s) =>
       map.put(c.toPath(f), sbt.nio.FileStamp.fromZincStamp(s))
     }
@@ -4046,7 +4046,7 @@ object Classpaths {
           includeDetails = includeDetails,
           log = s.log
         )
-    }
+    }: @nowarn
 
   private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] =
     Def.task {
@@ -4064,7 +4064,7 @@ object Classpaths {
             (s.key.key == libraryDependencies.key) &&
             (s.key.scope.project == Select(projRef))
           }
-          Map(settings flatMap { case s: Setting[Seq[ModuleID]] @unchecked =>
+          Map(settings.asInstanceOf[Seq[Setting[Seq[ModuleID]]]].flatMap { s =>
             s.init.evaluate(empty) map { _ -> s.pos }
           }: _*)
         } catch {
@@ -4394,11 +4394,11 @@ object Classpaths {
       if cond then
         Def.task {
           val converter = fileConverter.value
-          (scalaInstance.value.libraryJars: Seq[File])
+          scalaInstance.value.libraryJars.toSeq
             .map(_.toPath)
             .map(converter.toVirtualFile)
         }
-      else Def.task { (Nil: Seq[HashedVirtualFileRef]) }
+      else Def.task { Seq.empty[HashedVirtualFileRef] }
     }
 
   import DependencyFilter._

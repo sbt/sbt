@@ -136,7 +136,7 @@ object ScriptedPlugin extends AutoPlugin {
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
     }
-    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
+    val pairMap = pairs.groupBy(_._1).view.mapValues(_.map(_._2).toSet)
 
     val id = charClass(c => !c.isWhitespace && c != '/', "not whitespace and not '/'").+.string
     val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')

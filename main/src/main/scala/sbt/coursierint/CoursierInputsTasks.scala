@@ -36,7 +36,7 @@ import sbt.librarymanagement.ivy.{
 }
 import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 object CoursierInputsTasks {
   private def coursierProject0(
@@ -186,7 +186,7 @@ object CoursierInputsTasks {
           CProject(
             module,
             v.getModuleRevisionId.getRevision,
-            deps,
+            deps.toSeq,
             configurations,
             Nil,
             None,

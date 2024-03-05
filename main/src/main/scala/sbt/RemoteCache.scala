@@ -367,7 +367,7 @@ object RemoteCache {
         List((packageCache / remoteCacheArtifact).value)
       },
       pullRemoteCache := {
-        import scala.collection.JavaConverters._
+        import scala.jdk.CollectionConverters.*
         val log = streams.value.log
         val r = remoteCacheResolvers.value.head
         val p = remoteCacheProjectId.value

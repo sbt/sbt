@@ -4,10 +4,9 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt.std.neg
 
-/*
 import scala.tools.reflect.ToolBoxError
 import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.{ TaskLinterDSLFeedback, TestUtil }

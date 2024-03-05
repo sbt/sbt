@@ -536,7 +536,7 @@ class ScriptedRunner {
       javaCommand = "java",
       launchOpts,
       prescripted,
-      RunFromSourceBased(scalaVersion, sbtVersion, classpath),
+      RunFromSourceBased(scalaVersion, sbtVersion, classpath.toSeq),
       instances
     )
 
@@ -626,7 +626,7 @@ class ScriptedRunner {
       instances
     )
 
-  private def reportErrors(errors: GenSeq[String]): Unit =
+  private def reportErrors(errors: Seq[String]): Unit =
     if (errors.nonEmpty) sys.error(errors.mkString("Failed tests:\n\t", "\n\t", "\n")) else ()
 
   def runAll(toRun: Seq[ScriptedTests.TestRunner]): Unit =
@@ -696,12 +696,13 @@ private[sbt] final class ListTests(
 
   def filter = DirectoryFilter -- HiddenFileFilter
 
-  def listTests: Seq[ScriptedTest] = {
-    IO.listFiles(baseDirectory, filter) flatMap { group =>
-      val groupName = group.getName
-      listTests(group).map(ScriptedTest(groupName, _))
-    }
-  }
+  def listTests: Seq[ScriptedTest] =
+    IO.listFiles(baseDirectory, filter)
+      .flatMap { group =>
+        val groupName = group.getName
+        listTests(group).map(ScriptedTest(groupName, _))
+      }
+      .toSeq
 
   private[this] def listTests(group: File): Set[String] = {
     val groupName = group.getName

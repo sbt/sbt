@@ -115,7 +115,7 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
         <testsuite hostname={hostname} name={name} tests={tests.toString} errors={
           errors.toString
         } failures={
-          failures + ""
+          failures.toString
         } skipped={ignoredSkippedPending.toString} time={(duration / 1000.0).toString} timestamp={
           formatISO8601DateTime(timestamp)
         }>

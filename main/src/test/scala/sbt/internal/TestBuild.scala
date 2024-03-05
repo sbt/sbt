@@ -97,7 +97,7 @@ abstract class TestBuild {
 
       // task axis of Scope is set to Zero and the value of the second map is the original task axis
       val taskAxesMappings =
-        for ((scope, keys) <- data.data.toIterable; key <- keys.keys)
+        for ((scope, keys) <- data.data; key <- keys.keys)
           yield (ScopedKey(scope.copy(task = Zero), key), scope.task): (
               ScopedKey[_],
               ScopeAxis[AttributeKey[_]]

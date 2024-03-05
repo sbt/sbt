@@ -601,9 +601,9 @@ object Act {
   sealed trait ParsedAxis[+T] {
     final def isExplicit = this != Omitted
   }
-  final object ParsedGlobal extends ParsedAxis[Nothing]
-  final object ParsedZero extends ParsedAxis[Nothing]
-  final object Omitted extends ParsedAxis[Nothing]
+  object ParsedGlobal extends ParsedAxis[Nothing]
+  object ParsedZero extends ParsedAxis[Nothing]
+  object Omitted extends ParsedAxis[Nothing]
   final class ParsedValue[T](val value: T) extends ParsedAxis[T]
   def value[T](t: Parser[T]): Parser[ParsedAxis[T]] = t map { v =>
     new ParsedValue(v)

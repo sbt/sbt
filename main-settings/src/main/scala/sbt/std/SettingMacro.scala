@@ -21,8 +21,8 @@ import scala.quoted.*
 import sbt.internal.util.complete.Parser
 
 class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
-    extends Convert[C](qctx)
-    with ContextUtil[C](qctx, valStart):
+    extends Convert[C]
+    with ContextUtil[C](valStart):
   import qctx.reflect.*
 
   override def convert[A: Type](nme: String, in: Term): Converted =

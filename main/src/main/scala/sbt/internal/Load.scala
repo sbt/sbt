@@ -686,7 +686,7 @@ private[sbt] object Load {
     val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
     new LoadedBuildUnit(
       unit.unit,
-      unit.defined.mapValues(resolve).toMap,
+      unit.defined.view.mapValues(resolve).toMap,
       unit.rootProjects,
       unit.buildSettings
     )
@@ -1441,11 +1441,9 @@ private[sbt] object Load {
         // Load only the dependency classpath for the common plugin classloader
         val loader = manager.loader
         loader.add(
-          sbt.io.Path.toURLs(
-            data(dependencyClasspath)
-              .map(converter.toPath)
-              .map(_.toFile())
-          )
+          sbt.io.Path
+            .toURLs(data(dependencyClasspath).map(converter.toPath).map(_.toFile()))
+            .toSeq
         )
         loader
     // Load the definition classpath separately to avoid conflicts, see #511.

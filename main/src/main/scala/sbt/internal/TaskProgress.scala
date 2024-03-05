@@ -13,7 +13,7 @@ import java.util.concurrent.{ RejectedExecutionException, TimeUnit }
 
 import sbt.internal.util._
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.concurrent.duration._
 import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeoutException }
 import sbt.util.Logger

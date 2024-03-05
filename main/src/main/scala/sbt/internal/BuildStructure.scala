@@ -293,7 +293,7 @@ final class PartBuildUnit(
 ) extends BuildUnitBase {
 
   def resolve(f: Project => ResolvedProject): LoadedBuildUnit =
-    new LoadedBuildUnit(unit, defined.mapValues(f).toMap, rootProjects, buildSettings)
+    new LoadedBuildUnit(unit, defined.view.mapValues(f).toMap, rootProjects, buildSettings)
 
   def resolveRefs(f: ProjectReference => ProjectRef): LoadedBuildUnit = resolve(_ resolve f)
 }
@@ -371,7 +371,8 @@ object BuildStreams {
       case _ => Nil
     }
   def showAMap(a: AttributeMap): String =
-    a.entries.toStream
+    a.entries
+      .to(LazyList)
       .sortBy(_.key.label)
       .flatMap {
         // The Previous.scopedKeyAttribute is an implementation detail that allows us to get a

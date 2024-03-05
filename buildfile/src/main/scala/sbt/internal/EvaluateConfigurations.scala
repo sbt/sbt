@@ -173,24 +173,15 @@ private[sbt] object EvaluateConfigurations {
     val allGeneratedFiles: Seq[Path] = (definitions.generated ++ dslEntries.flatMap(_.generated))
     loader => {
       val projects = {
-        val compositeProjects = definitions.values(loader).collect { case p: CompositeProject =>
-          p
-        }
+        val compositeProjects = definitions
+          .values(loader)
+          .collect { case p: CompositeProject => p }
         // todo: resolveBase?
         CompositeProject.expand(compositeProjects) // .map(resolveBase(file.getParentFile, _))
       }
-      val (settingsRaw, manipulationsRaw) =
-        dslEntries map (_.result apply loader) partition {
-          case DslEntry.ProjectSettings(_) => true
-          case _                           => false
-        }
-      val settings = settingsRaw flatMap {
-        case DslEntry.ProjectSettings(settings) => settings
-        case _                                  => Nil
-      }
-      val manipulations = manipulationsRaw map { case DslEntry.ProjectManipulation(f) =>
-        f
-      }
+      val loadedDslEntries = dslEntries.map(_.result.apply(loader))
+      val settings = loadedDslEntries.collect { case DslEntry.ProjectSettings(s) => s }.flatten
+      val manipulations = loadedDslEntries.collect { case DslEntry.ProjectManipulation(f) => f }
       // TODO -get project manipulations.
       new LoadedSbtFile(
         settings,

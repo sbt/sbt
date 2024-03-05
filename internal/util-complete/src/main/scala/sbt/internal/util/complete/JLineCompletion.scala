@@ -11,7 +11,7 @@ package complete
 import jline.console.ConsoleReader
 import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 object JLineCompletion {
   def installCustomCompletor(reader: ConsoleReader, parser: Parser[_]): Unit =
@@ -57,7 +57,7 @@ object JLineCompletion {
   // always provides dummy completions so that the custom completion handler gets called
   //   (ConsoleReader doesn't call the handler if there aren't any completions)
   //   the custom handler will then throw away the candidates and call the custom function
-  private[this] final object DummyCompletor extends Completer {
+  private[this] object DummyCompletor extends Completer {
     override def complete(
         buffer: String,
         cursor: Int,

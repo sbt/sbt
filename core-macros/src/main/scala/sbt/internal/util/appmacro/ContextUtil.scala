@@ -8,8 +8,9 @@ import scala.collection.mutable
 import sbt.util.cacheLevel
 import sbt.util.CacheLevelTag
 
-trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int):
+trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   import qctx.reflect.*
+  val qctx: C
   given qctx.type = qctx
 
   private var counter: Int = valStart - 1

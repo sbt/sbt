@@ -24,6 +24,7 @@ import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import sjsonnew.JsonFormat
+import scala.reflect.ClassTag
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
@@ -396,7 +397,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
    */
   def unit(a: Any): Unit = ()
 
-  private[sbt] def dummy[A: Manifest](name: String, description: String): (TaskKey[A], Task[A]) =
+  private[sbt] def dummy[A: ClassTag](name: String, description: String): (TaskKey[A], Task[A]) =
     (TaskKey[A](name, description, DTask), dummyTask(name))
 
   private[sbt] def dummyTask[T](name: String): Task[T] = {
@@ -420,11 +421,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   private[sbt] val (stateKey: TaskKey[State], dummyState: Task[State]) =
     dummy[State]("state", "Current build state.")
 
-  private[sbt] val (
-    streamsManagerKey: TaskKey[std.Streams[ScopedKey[_]]],
-    dummyStreamsManager: Task[std.Streams[ScopedKey[_]]]
-  ) =
-    Def.dummy[std.Streams[ScopedKey[_]]](
+  private[sbt] val (streamsManagerKey, dummyStreamsManager) =
+    Def.dummy[std.Streams[ScopedKey[?]]](
       "streams-manager",
       "Streams manager, which provides streams for different contexts."
     )

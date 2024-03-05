@@ -21,7 +21,7 @@ import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
 import org.jline.terminal.impl.jansi.JansiSupportImpl
 import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
 import org.jline.utils.OSUtils
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
 

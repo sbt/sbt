@@ -8,7 +8,7 @@
 package sbt.internal.util
 
 import java.util.concurrent.LinkedBlockingQueue
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 private[sbt] sealed trait Prompt {
   def mkPrompt: () => String

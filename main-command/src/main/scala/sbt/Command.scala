@@ -293,6 +293,6 @@ object Help {
 }
 
 trait CommandDefinitions extends (State => State) {
-  def commands: Seq[Command] = ReflectUtilities.allVals[Command](this).values.toSeq
+  def commands: Seq[Command] = ReflectUtilities.allValsC(this, classOf[Command]).values.toSeq
   def apply(s: State): State = s ++ commands
 }

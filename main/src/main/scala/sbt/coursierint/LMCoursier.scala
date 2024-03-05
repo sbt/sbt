@@ -340,7 +340,7 @@ object LMCoursier {
           ()
       }
     }
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     (ThisBuild / Keys.credentials).value foreach registerCredentials
     (LocalRootProject / Keys.credentials).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials

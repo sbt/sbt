@@ -261,11 +261,9 @@ object LogManager {
     // val execId: Option[String] = execOpt flatMap { _.execId }
     val log = context.logger(loggerName, channelName, None)
     context.clearAppenders(loggerName)
-    val consoleOpt = consoleLocally(state, console) map {
-      case a: Appender =>
-        a.setTrace(screenTrace)
-        a
-      case a => a
+    val consoleOpt = consoleLocally(state, console).map { a =>
+      a.setTrace(screenTrace)
+      a
     }
     consoleOpt.foreach(a => context.addAppender(loggerName, a -> screenLevel))
     context.addAppender(loggerName, relay -> backingLevel)

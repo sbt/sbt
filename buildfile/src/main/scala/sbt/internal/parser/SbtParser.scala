@@ -54,7 +54,7 @@ private[sbt] object SbtParser:
     """.stripMargin
 
   private final val defaultClasspath =
-    sbt.io.Path.makeString(sbt.io.IO.classLocationPath[Product].toFile :: Nil)
+    sbt.io.Path.makeString(sbt.io.IO.classLocationPath(classOf[Product]).toFile :: Nil)
 
   def isIdentifier(ident: String): Boolean =
     val code = s"val $ident = 0; val ${ident}${ident} = $ident"

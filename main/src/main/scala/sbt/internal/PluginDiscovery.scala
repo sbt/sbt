@@ -133,7 +133,7 @@ object PluginDiscovery:
       loader: ClassLoader,
       resourceName: String
   ): Seq[String] =
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     loader
       .getResources(resourceName)
       .asScala

@@ -179,6 +179,7 @@ object Cross {
             project(k).toSeq.flatMap(crossVersions(extracted, _).map(v => v -> k))
           }
           .groupBy(_._1)
+          .view
           .mapValues(_.map(_._2).toSet)
         val commandsByVersion = keysByVersion.toSeq
           .flatMap { case (v, keys) =>
@@ -188,7 +189,7 @@ object Cross {
                 if (p == extracted.currentRef || !projects.contains(extracted.currentRef)) {
                   val parts =
                     project(k).map(_.project) ++ k.scope.config.toOption.map { case ConfigKey(n) =>
-                      n.head.toUpper + n.tail
+                      s"${n.head.toUpper}${n.tail}"
                     } ++ k.scope.task.toOption.map(_.label) ++ Some(k.key.label)
                   Some(v -> parts.mkString("", "/", fullArgs))
                 } else None
@@ -196,6 +197,7 @@ object Cross {
             }
           }
           .groupBy(_._1)
+          .view
           .mapValues(_.map(_._2))
           .toSeq
           .sortBy(_._1)

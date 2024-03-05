@@ -3,7 +3,7 @@ ThisBuild / scalaVersion := "2.12.17"
 
 import java.nio.file.Files
 import java.nio.file.attribute.FileTime
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 val rewriteIvy = inputKey[Unit]("Rewrite ivy directory")
 
 ThisBuild / useCoursier := false

@@ -327,7 +327,7 @@ private[sbt] object CrossJava {
           // We have a key, we're likely to be able to cross build this using the per project behaviour.
 
           // Group all the projects by scala version
-          projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
+          projVersions.groupBy(_._2).view.mapValues(_.map(_._1)).toSeq.flatMap {
             case (version, Seq(project)) =>
               // If only one project for a version, issue it directly
               Seq(s"$JavaSwitchCommand $verbose $version", s"$project/$aggCommand")

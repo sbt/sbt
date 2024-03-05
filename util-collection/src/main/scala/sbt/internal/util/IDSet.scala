@@ -7,7 +7,7 @@
 
 package sbt.internal.util
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 /** A mutable set interface that uses object identity to test for set membership. */
 trait IDSet[T] {
@@ -24,7 +24,7 @@ trait IDSet[T] {
 }
 
 object IDSet {
-  implicit def toTraversable[T]: IDSet[T] => Traversable[T] = _.all
+  implicit def toTraversable[T]: IDSet[T] => Iterable[T] = _.all
   def apply[T](values: T*): IDSet[T] = fromIterable(values)
 
   def apply[T](values: Iterable[T]): IDSet[T] = fromIterable(values)

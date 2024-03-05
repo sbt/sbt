@@ -56,7 +56,7 @@ object BspCompileTask {
       targetId: BuildTargetIdentifier,
       elapsedTimeMillis: Long
   ): CompileReport = {
-    val countBySeverity = problems.groupBy(_.severity()).mapValues(_.size)
+    val countBySeverity = problems.groupBy(_.severity).view.mapValues(_.size)
     val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
     val errors = countBySeverity.getOrElse(Severity.Error, 0)
     CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt))
@@ -79,15 +79,11 @@ case class BspCompileTask private (
   }
 
   private[sbt] def notifySuccess(result: CompileResult): Unit = {
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
-    val problems = result match {
-      case compileResult: CompileResult =>
-        val sourceInfos = compileResult.analysis().readSourceInfos().getAllSourceInfos.asScala
-        sourceInfos.values.flatMap(_.getReportedProblems).toSeq
-      case _ => Seq()
-    }
+    val sourceInfos = result.analysis().readSourceInfos().getAllSourceInfos.asScala
+    val problems = sourceInfos.values.flatMap(_.getReportedProblems).toSeq
     val report = compileReport(problems, targetId, elapsedTimeMillis)
     val params = TaskFinishParams(
       id,

@@ -28,7 +28,7 @@ object ScriptedRunnerImpl {
     val context = LoggerContext()
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, handlersProvider)
     val logger = newLogger(context)
-    val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
+    val allTests = get(tests.toSeq, resourceBaseDirectory, logger) flatMap {
       case ScriptedTest(group, name) =>
         runner.scriptedTest(group, name, logger, context)
     }
@@ -197,7 +197,8 @@ final case class ScriptedTest(group: String, name: String) {
 }
 
 object ListTests {
-  def list(directory: File, filter: java.io.FileFilter) = wrapNull(directory.listFiles(filter))
+  def list(directory: File, filter: java.io.FileFilter): Seq[File] =
+    wrapNull(directory.listFiles(filter)).toSeq
 }
 import ListTests._
 final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log: Logger) {

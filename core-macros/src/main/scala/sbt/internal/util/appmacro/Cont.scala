@@ -19,6 +19,7 @@ import sbt.util.{
 }
 import xsbti.VirtualFile
 import Types.Id
+import scala.annotation.nowarn
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -266,7 +267,7 @@ trait Cont:
               val expr = input.term.asExprOf[F[a]]
               typed[F[A1]](
                 '{
-                  $applicativeExpr.map[a, A1]($expr.asInstanceOf[F[a]])($lambda)
+                  $applicativeExpr.map[a @nowarn, A1]($expr.asInstanceOf[F[a @nowarn]])($lambda)
                 }.asTerm
               ).asExprOf[F[A1]]
         eitherTree match

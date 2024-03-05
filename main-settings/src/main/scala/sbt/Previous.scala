@@ -17,6 +17,7 @@ import sbt.util.StampedFormat
 import sjsonnew.JsonFormat
 
 import scala.util.control.NonFatal
+import scala.annotation.nowarn
 
 /**
  * Reads the previous value of tasks on-demand.  The read values are cached so that they are only read once per task execution.
@@ -123,10 +124,12 @@ object Previous {
 
     // We first collect all of the successful tasks and write their scoped key into a map
     // along with their values.
-    val successfulTaskResults = (for
-      results.TPair(task: Task[?], Result.Value(v)) <- results.toTypedSeq
-      key <- task.info.attributes.get(Def.taskDefinitionKey).asInstanceOf[Option[AnyTaskKey]]
-    yield key -> v).toMap
+    val successfulTaskResults = (
+      for
+        case results.TPair(task: Task[?], Result.Value(v)) <- results.toTypedSeq
+        key <- task.info.attributes.get(Def.taskDefinitionKey).asInstanceOf[Option[AnyTaskKey]]
+      yield key -> v
+    ).toMap
     // We then traverse the successful results and look up all of the referenced values for
     // each of these tasks. This can be a many to one relationship if multiple tasks refer
     // the previous value of another task. For each reference we find, we check if the task has
@@ -168,8 +171,8 @@ object Previous {
       .zip(Def.validated(skey, selfRefOk = true))
       .zip(Global / references)
       .zip(Def.resolvedScoped)
-    inputs { case (((prevTask, resolved), refs), inTask: ScopedKey[Task[_]] @unchecked) =>
-      val key = Key(resolved, inTask)
+    inputs { case (((prevTask, resolved), refs), inTask) =>
+      val key = Key(resolved, inTask.asInstanceOf[ScopedKey[Task[Any]]])
       refs.recordReference(key, format) // always evaluated on project load
       prevTask.map(_.get(key)) // evaluated if this task is evaluated
     }

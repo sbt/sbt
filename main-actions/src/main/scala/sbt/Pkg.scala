@@ -10,7 +10,7 @@ package sbt
 import java.io.File
 import java.time.OffsetDateTime
 import java.util.jar.{ Attributes, Manifest }
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import sbt.io.IO
 
 import sjsonnew.{
@@ -122,7 +122,7 @@ object Pkg:
         (in: Vector[(HashedVirtualFileRef, String)] :*: VirtualFileRef :*: Seq[PackageOption] :*:
           LNil) => Configuration(in.head, in.tail.head, in.tail.tail.head),
       )
-    given JsonFormat[Configuration] = summon[JsonFormat[Configuration]]
+    given JsonFormat[Configuration] = isolistFormat
   end Configuration
 
   /**
@@ -158,12 +158,11 @@ object Pkg:
     val main = manifest.getMainAttributes
     for option <- conf.options do
       option match
-        case PackageOption.JarManifest(mergeManifest) => mergeManifests(manifest, mergeManifest); ()
+        case PackageOption.JarManifest(mergeManifest) => mergeManifests(manifest, mergeManifest)
         case PackageOption.MainClass(mainClassName) =>
-          main.put(Attributes.Name.MAIN_CLASS, mainClassName); ()
-        case PackageOption.ManifestAttributes(attributes @ _*) => main.asScala ++= attributes; ()
+          main.put(Attributes.Name.MAIN_CLASS, mainClassName)
+        case PackageOption.ManifestAttributes(attributes @ _*) => main.asScala ++= attributes
         case PackageOption.FixedTimestamp(value)               => ()
-        case _ => log.warn("Ignored unknown package option " + option)
     setVersion(main)
     manifest
 

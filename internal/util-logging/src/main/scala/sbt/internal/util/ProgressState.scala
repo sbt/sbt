@@ -20,7 +20,7 @@ import sbt.internal.util.ConsoleAppender.{
 }
 
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 private[sbt] final class ProgressState(
     val progressLines: AtomicReference[Seq[String]],
@@ -96,7 +96,7 @@ private[sbt] final class ProgressState(
   ): Unit = {
     if (hasProgress) {
       val canClearPrompt = currentLineBytes.get.isEmpty
-      addBytes(terminal, bytes)
+      addBytes(terminal, bytes.toSeq)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
         case a: Prompt.AskUser if a.render().nonEmpty && canClearPrompt => toWrite ++= cleanPrompt

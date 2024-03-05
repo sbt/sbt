@@ -19,7 +19,7 @@ import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.security.MessageDigest
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.quoted.*
 import sbt.io.Hash
 
@@ -255,13 +255,13 @@ class Eval(
   private[this] def getGeneratedFiles(moduleName: String): Seq[Path] =
     backingDir match
       case Some(dir) =>
-        asScala(
-          Files
-            .list(dir)
-            .filter(!Files.isDirectory(_))
-            .filter(_.getFileName.toString.contains(moduleName))
-            .iterator
-        ).toList
+        Files
+          .list(dir)
+          .filter(!Files.isDirectory(_))
+          .filter(_.getFileName.toString.contains(moduleName))
+          .iterator
+          .asScala
+          .toList
       case None => Nil
 
   private[this] def makeModuleName(hash: String): String = "$Wrap" + hash.take(10)

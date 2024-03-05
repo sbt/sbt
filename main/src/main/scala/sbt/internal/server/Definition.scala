@@ -13,7 +13,7 @@ import java.net.URI
 import java.nio.file._
 
 import scala.annotation.{ nowarn, tailrec }
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
 import scala.util.matching.Regex

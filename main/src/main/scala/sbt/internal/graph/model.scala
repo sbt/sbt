@@ -11,7 +11,7 @@ package graph
 
 import java.io.File
 import sjsonnew._
-import scala.collection.mutable.{ HashMap, MultiMap, Set }
+import scala.collection.mutable
 
 private[sbt] case class GraphModuleId(
     organization: String,
@@ -97,12 +97,12 @@ private[sbt] case class ModuleGraph(nodes: Seq[Module], edges: Seq[Edge]) {
   def createMap(
       bindingFor: ((GraphModuleId, GraphModuleId)) => (GraphModuleId, GraphModuleId)
   ): Map[GraphModuleId, Seq[Module]] = {
-    val m = new HashMap[GraphModuleId, Set[Module]] with MultiMap[GraphModuleId, Module]
+    val map = mutable.Map.empty[GraphModuleId, mutable.Set[Module]]
     edges.foreach { entry =>
       val (f, t) = bindingFor(entry)
-      module(t).foreach(m.addBinding(f, _))
+      module(t).foreach { m => map.getOrElseUpdate(f, mutable.Set.empty) += m }
     }
-    m.toMap.mapValues(_.toSeq.sortBy(_.id.idString)).toMap.withDefaultValue(Nil)
+    map.view.mapValues(_.toSeq.sortBy(_.id.idString)).toMap.withDefaultValue(Nil)
   }
 
   def roots: Seq[Module] =
