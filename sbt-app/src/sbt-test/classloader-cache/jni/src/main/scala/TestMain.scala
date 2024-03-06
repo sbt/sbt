@@ -1,7 +1,7 @@
 package sbt
 
 import java.nio.file._
-import scala.jdk.CollectionConverters.*
+import scala.collection.JavaConverters._
 
 object TestMain {
   def main(args: Array[String]): Unit = {
