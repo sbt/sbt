@@ -3507,7 +3507,7 @@ object Classpaths {
     ) ++ Seq(
       csrProject := CoursierInputsTasks.coursierProjectTask.value,
       csrConfiguration := LMCoursier.coursierConfigurationTask.value,
-      csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
+      csrResolvers := CoursierRepositoriesTasks.coursierResolversTask(fullResolvers).value,
       csrRecursiveResolvers := CoursierRepositoriesTasks.coursierRecursiveResolversTask.value,
       csrSbtResolvers := CoursierRepositoriesTasks.coursierSbtResolversTask.value,
       csrInterProjectDependencies := CoursierInputsTasks.coursierInterProjectDependenciesTask.value,
@@ -3744,7 +3744,8 @@ object Classpaths {
         Seq(
           dependencyResolution := dependencyResolutionTask.value,
           csrConfiguration := LMCoursier.scalaCompilerBridgeConfigurationTask.value,
-          csrResolvers := CoursierRepositoriesTasks.coursierResolversTask.value,
+          csrResolvers :=
+            CoursierRepositoriesTasks.coursierResolversTask(scalaCompilerBridgeResolvers).value,
           externalResolvers := scalaCompilerBridgeResolvers.value,
           ivyConfiguration := InlineIvyConfiguration(
             lock = Option(lock(appConfiguration.value)),
