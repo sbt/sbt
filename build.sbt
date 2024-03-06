@@ -896,7 +896,7 @@ lazy val buildFileProj = (project in file("buildfile"))
     addSbtLmCore,
     addSbtLmIvy,
     addSbtCompilerInterface,
-    addSbtZincCompile
+    addSbtZincCompileCore
   )
 
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
@@ -952,7 +952,7 @@ lazy val mainProj = (project in file("main"))
     addSbtLmCore,
     addSbtLmIvy,
     addSbtCompilerInterface,
-    addSbtZincCompile
+    addSbtZincCompileCore
   )
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
