@@ -4,21 +4,18 @@ package util
 package appmacro
 
 import scala.collection.mutable.ListBuffer
-import scala.reflect.{ ClassTag, TypeTest }
+import scala.reflect.ClassTag
 import scala.quoted.*
 import sjsonnew.{ BasicJsonProtocol, HashWriter, JsonFormat }
 import sbt.util.{
   ActionCache,
-  ActionCacheStore,
   Applicative,
   BuildWideCacheConfiguration,
-  Cache,
   CacheLevelTag,
   Digest,
   Monad,
 }
 import xsbti.VirtualFile
-import Types.Id
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It

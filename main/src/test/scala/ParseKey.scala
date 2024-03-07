@@ -4,7 +4,7 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt
 
 import sbt.Def.{ ScopedKey, displayFull, displayMasked }
@@ -16,7 +16,6 @@ import hedgehog._
 import hedgehog.core.{ ShrinkLimit, SuccessCount }
 import hedgehog.runner._
 
-/*
 /**
  * Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
  * This includes properly resolving omitted components.

@@ -9,7 +9,7 @@ package sbt
 package std
 
 import sbt.internal.Action
-import sbt.internal.util.{ DelegatingPMap, RMap }
+import sbt.internal.util.DelegatingPMap
 import sbt.internal.util.TupleMapExtension.*
 import TaskExtra.{ all, existToAny }
 import sbt.internal.util.Types.*
@@ -28,7 +28,7 @@ object Transform:
   final class TaskAndValue[T](val task: Task[T], val value: T)
 
   def dummyMap(dummyMap: DummyTaskMap): [A] => TaskId[A] => Option[Task[A]] = {
-    val pmap = new DelegatingPMap[TaskId, Task](new collection.mutable.ListMap)
+    val pmap = new DelegatingPMap[TaskId, Task](new collection.mutable.HashMap)
     def add[T](dummy: TaskAndValue[T]): Unit = {
       pmap(dummy.task) = fromDummyStrict(dummy.task, dummy.value)
     }

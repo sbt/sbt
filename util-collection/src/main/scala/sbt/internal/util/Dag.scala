@@ -13,8 +13,8 @@ trait Dag[Node <: Dag[Node]] { self: Node =>
   def topologicalSort = Dag.topologicalSort(self)(_.dependencies)
 }
 object Dag {
-  import scala.collection.{ mutable, JavaConverters }
-  import JavaConverters.asScalaSetConverter
+  import scala.collection.mutable
+  import scala.jdk.CollectionConverters.*
 
   def topologicalSort[T](root: T)(dependencies: T => Iterable[T]): List[T] =
     topologicalSort(root :: Nil)(dependencies)

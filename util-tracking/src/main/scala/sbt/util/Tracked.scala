@@ -11,7 +11,6 @@ import scala.util.{ Failure, Try, Success => USuccess }
 
 import java.io.File
 import sbt.io.IO
-import sbt.io.syntax._
 import sbt.internal.util.EmptyCacheError
 
 import sjsonnew.{ JsonFormat, JsonWriter }

@@ -146,7 +146,7 @@ object InterfaceUtil {
     val get2: A2 = a2
     override def toString: String = s"ConcreteT2($a1, $a2)"
     override def equals(o: Any): Boolean = o match {
-      case o: ConcreteT2[A1, A2] =>
+      case o: ConcreteT2[?, ?] =>
         this.get1 == o.get1 &&
         this.get2 == o.get2
       case _ => false

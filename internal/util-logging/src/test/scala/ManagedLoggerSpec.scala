@@ -13,11 +13,9 @@ import sbt.util._
 import sbt.internal.util.appmacro.StringTypeTag
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
-import scala.annotation.nowarn
 
 class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
   val context = LoggerContext()
-  @nowarn
   // TODO create a new appender for testing purposes - 3/12/21
   val asyncStdout = ConsoleAppender()
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)

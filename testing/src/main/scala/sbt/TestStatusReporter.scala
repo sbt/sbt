@@ -35,7 +35,7 @@ private[sbt] class TestStatusReporter(f: File) extends TestsListener {
 private[sbt] object TestStatus {
   import java.util.Properties
   def read(f: File): concurrent.Map[String, Long] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     val properties = new Properties
     IO.load(properties, f)
     val result = new ConcurrentHashMap[String, Long]()

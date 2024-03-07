@@ -415,10 +415,8 @@ object Tests {
     tasks.join.map(_.foldLeft(Map.empty[String, SuiteResult]) { case (sum, e) =>
       val merged = sum.toSeq ++ e.toSeq
       val grouped = merged.groupBy(_._1)
-      grouped
-        .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty) { case (resultSum, result) =>
-          resultSum + result
-        })
+      grouped.view
+        .mapValues(_.map(_._2).foldLeft(SuiteResult.Empty)(_ + _))
         .toMap
     })
   }

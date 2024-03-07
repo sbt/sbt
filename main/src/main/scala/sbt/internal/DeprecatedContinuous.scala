@@ -11,7 +11,6 @@ package internal
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
-import sbt.{ ProjectRef, State, Watched }
 import sbt.internal.io.{ EventMonitor, Source, WatchState => WS }
 import sbt.internal.util.AttributeKey
 import sbt.nio.file.Glob
@@ -63,11 +62,10 @@ private[internal] trait DeprecatedContinuous {
   }
 }
 
-@nowarn
 private[sbt] object DeprecatedContinuous {
   private[sbt] val taskDefinitions: Seq[Def.Setting[_]] = Seq(
-    sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
+    /* sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
     sbt.Keys.watch := sbt.Defaults.watchSetting.value,
-    sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated,
+    sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated, */
   )
 }

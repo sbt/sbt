@@ -1,6 +1,5 @@
 package sbt.util
 
-import java.io.InputStream
 import java.nio.file.{ Files, Path }
 import sjsonnew.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
@@ -9,11 +8,9 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.collection.mutable
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
-import sbt.internal.util.PlainVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
-import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile, VirtualFileRef }
-import sbt.nio.file.FileAttributes
+import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
 
 /**
  * An abstration of a remote or local cache store.

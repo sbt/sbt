@@ -3,9 +3,9 @@ package internal
 package util
 
 import java.io.InputStream
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{ Files, Path }
 import sbt.util.{ Digest, HashUtil }
-import xsbti.{ BasicVirtualFileRef, FileConverter, PathBasedFile, VirtualFileRef, VirtualFile }
+import xsbti.{ BasicVirtualFileRef, PathBasedFile }
 
 class PlainVirtualFile1(path: Path, id: String) extends BasicVirtualFileRef(id) with PathBasedFile:
   override def contentHash: Long = HashUtil.farmHash(path)

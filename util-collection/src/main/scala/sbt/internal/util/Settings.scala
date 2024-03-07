@@ -964,7 +964,7 @@ trait Init[ScopeType]:
     override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A2] =
       val tx = inputs.map(_.validateKeyReferenced(g))
       val undefs = tx.flatMap(_.left.toSeq.flatten)
-      if undefs.isEmpty then Right(Uniform(f, tx.map(_.right.get)))
+      if undefs.isEmpty then Right(Uniform(f, tx.map(_.toOption.get)))
       else Left(undefs)
 
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
@@ -999,7 +999,7 @@ trait Init[ScopeType]:
     override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] =
       val tx: Tuple.Map[Tup, ValidatedInit] = inputs.transform(validateKeyReferencedK(g))
       val undefs = tx.iterator.flatMap(_.left.toSeq.flatten)
-      val get = [A] => (fa: ValidatedInit[A]) => (fa.right.get)
+      val get = [A] => (fa: ValidatedInit[A]) => fa.toOption.get
       if undefs.isEmpty then Right(Apply(f, tx.transform(get)))
       else Left(undefs.toSeq)
 

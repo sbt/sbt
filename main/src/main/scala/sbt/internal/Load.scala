@@ -12,14 +12,12 @@ import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
-import sbt.ProjectExtra.{ checkTargets, prefixConfigs, setProject, showLoadingKey, structure }
+import sbt.ProjectExtra.{ prefixConfigs, setProject, showLoadingKey, structure }
 import sbt.Scope.GlobalScope
 import sbt.SlashSyntax0._
-import sbt.internal.{ Eval, EvalReporter }
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
-import sbt.internal.server.BuildServerEvalReporter
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings }
@@ -686,7 +684,7 @@ private[sbt] object Load {
     val resolve = (_: Project).resolve(ref => Scope.resolveProjectRef(uri, rootProject, ref))
     new LoadedBuildUnit(
       unit.unit,
-      unit.defined.mapValues(resolve).toMap,
+      unit.defined.view.mapValues(resolve).toMap,
       unit.rootProjects,
       unit.buildSettings
     )
@@ -1441,11 +1439,9 @@ private[sbt] object Load {
         // Load only the dependency classpath for the common plugin classloader
         val loader = manager.loader
         loader.add(
-          sbt.io.Path.toURLs(
-            data(dependencyClasspath)
-              .map(converter.toPath)
-              .map(_.toFile())
-          )
+          sbt.io.Path
+            .toURLs(data(dependencyClasspath).map(converter.toPath).map(_.toFile()))
+            .toSeq
         )
         loader
     // Load the definition classpath separately to avoid conflicts, see #511.

@@ -8,18 +8,15 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ AttributeKey, complete, KeyTag, Relation, Settings, Types, Util }
+import sbt.internal.util.{ AttributeKey, complete, Relation, Settings, Util }
 import sbt.util.Show
 import sbt.librarymanagement.Configuration
 
 import ProjectExtra.{ relation }
 import Def.{ ScopedKey, Setting }
 import Scope.Global
-import Types.idFun
 import complete._
 import DefaultParsers._
-import scala.annotation.nowarn
-import scala.reflect.ClassTag
 
 /**
  * The resulting `session` and verbose and quiet summaries of the result of a set operation.
@@ -56,7 +53,6 @@ private[sbt] object SettingCompletions {
     def resolve(s: Setting[_]): Seq[Setting[_]] =
       Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
 
-    @nowarn
     def rescope[T](setting: Setting[T]): Seq[Setting[_]] = {
       val akey = setting.key.key
       val global = ScopedKey(Global, akey)
@@ -333,7 +329,7 @@ private[sbt] object SettingCompletions {
     else if (showDescriptions) {
       val withDescriptions = in map { case (id, key) => (id, description(key)) }
       val padded = CommandUtil.aligned("", "   ", withDescriptions)
-      (padded, in).zipped.map { case (line, (id, _)) =>
+      padded.zip(in).map { case (line, (id, _)) =>
         Completion.tokenDisplay(append = appendString(id), display = line + "\n")
       }
     } else

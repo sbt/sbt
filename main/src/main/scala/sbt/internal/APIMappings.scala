@@ -8,7 +8,6 @@
 package sbt
 package internal
 
-import java.io.File
 import java.net.{ MalformedURLException, URI, URL }
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties

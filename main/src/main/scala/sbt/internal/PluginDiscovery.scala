@@ -8,10 +8,8 @@
 package sbt
 package internal
 
-import sbt.internal.util.Attributed
 import java.io.File
 import java.net.URL
-import Attributed.data
 import sbt.internal.BuildDef.analyzed
 import xsbti.FileConverter
 import xsbt.api.{ Discovered, Discovery }
@@ -133,7 +131,7 @@ object PluginDiscovery:
       loader: ClassLoader,
       resourceName: String
   ): Seq[String] =
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     loader
       .getResources(resourceName)
       .asScala

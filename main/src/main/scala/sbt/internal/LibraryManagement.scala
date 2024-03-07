@@ -21,8 +21,8 @@ import sbt.io.IO
 import sbt.io.syntax._
 import sbt.ProjectExtra.*
 import sjsonnew.JsonFormat
-import scala.compat.Platform.EOL
 import scala.concurrent.duration.FiniteDuration
+import scala.annotation.nowarn
 
 private[sbt] object LibraryManagement {
   implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
@@ -92,7 +92,7 @@ private[sbt] object LibraryManagement {
              || assumedEvictionErrorLevel != Level.Error
            ) Nil
            else evictionError.toAssumedLines)
-      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(EOL))
+      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(System.lineSeparator))
       else {
         if (evictionError.incompatibleEvictions.isEmpty) ()
         else evictionError.lines.foreach(log.log(evictionLevel, _: String))
@@ -188,17 +188,17 @@ private[sbt] object LibraryManagement {
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
-    import config.{ updateConfiguration => c, module => mod }
-    import mod.{ id, dependencies => deps, scalaModuleInfo }
+    import config.{ updateConfiguration, module }
+    import module.{ id, dependencies, scalaModuleInfo }
     val base = restrictedCopy(id, true).withName(id.name + "$" + label)
-    val module = lm.moduleDescriptor(base, deps, scalaModuleInfo)
-    val report = lm.update(module, c, uwconfig, log) match {
+    val mod = lm.moduleDescriptor(base, dependencies, scalaModuleInfo)
+    val report = lm.update(mod, updateConfiguration, uwconfig, log) match {
       case Right(r) => r
       case Left(w) =>
         throw w.resolveException
     }
     val newConfig = config
-      .withModule(mod.withDependencies(report.allModules))
+      .withModule(module.withDependencies(report.allModules))
     lm.updateClassifiers(newConfig, uwconfig, Vector(), log)
   }
 
@@ -244,6 +244,7 @@ private[sbt] object LibraryManagement {
    * Resolves and optionally retrieves classified artifacts, such as javadocs and sources,
    * for dependency definitions, transitively.
    */
+  @nowarn
   def updateClassifiersTask: Def.Initialize[Task[UpdateReport]] =
     TupleWrap[
       (
@@ -417,15 +418,17 @@ private[sbt] object LibraryManagement {
                 default = Map.empty[ModuleID, Vector[ConfigRef]]
               )
           val report = f(excludes)
-          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
-            .extractExcludes(report)
-            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
+          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++
+            IvyActions
+              .extractExcludes(report)
+              .view
+              .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
           IvyActions
             .addExcluded(
               report,
               classifiers.toVector,
-              allExcludes.mapValues(_.map(_.name).toSet).toMap
+              allExcludes.view.mapValues(_.map(_.name).toSet).toMap
             )
         }
       }

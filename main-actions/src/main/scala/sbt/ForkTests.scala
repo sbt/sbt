@@ -157,8 +157,8 @@ private[sbt] object ForkTests {
         acceptorThread.start()
         val cpFiles = classpath.map(converter.toPath).map(_.toFile())
         val fullCp = cpFiles ++ Seq(
-          IO.classLocationPath[ForkMain].toFile,
-          IO.classLocationPath[Framework].toFile
+          IO.classLocationPath(classOf[ForkMain]).toFile,
+          IO.classLocationPath(classOf[Framework]).toFile,
         )
         val options = Seq(
           "-classpath",
@@ -220,10 +220,11 @@ private final class React(
     case t: Throwable =>
       log.trace(t); react()
     case Array(group: String, tEvents: Array[Event]) =>
+      val events = tEvents.toSeq
       listeners.foreach(_ startGroup group)
-      val event = TestEvent(tEvents)
+      val event = TestEvent(events)
       listeners.foreach(_ testEvent event)
-      val suiteResult = SuiteResult(tEvents)
+      val suiteResult = SuiteResult(events)
       results += group -> suiteResult
       listeners.foreach(_.endGroup(group, suiteResult.result))
       react()

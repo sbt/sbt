@@ -23,7 +23,7 @@ import xsbti.ScalaProvider
 import xsbti.compile.{ ClasspathOptions, ScalaInstance }
 
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 private object ClassLoaderCache {
@@ -227,7 +227,6 @@ private[sbt] class ClassLoaderCache(
           case null        =>
           case classLoader => close(classLoader)
         }
-      case (_, _) =>
     }
     delegate.clear()
   }

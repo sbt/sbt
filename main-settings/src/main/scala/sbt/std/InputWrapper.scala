@@ -11,12 +11,6 @@ package std
 import scala.language.experimental.macros
 
 import scala.annotation.compileTimeOnly
-import scala.quoted.*
-// import scala.reflect.macros._
-
-import Def.Initialize
-import sbt.internal.util.appmacro.ContextUtil
-import sbt.internal.util.complete.Parser
 
 /** Implementation detail.  The wrap methods temporarily hold inputs (as a Tree, at compile time) until a task or setting macro processes it. */
 object InputWrapper:

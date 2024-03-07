@@ -44,7 +44,7 @@ object VirtualFileValueCache {
     )(f)
   }
   def make[A](stamp: VirtualFile => XStamp)(f: VirtualFile => A): VirtualFileValueCache[A] =
-    new VirtualFileValueCache0[A](stamp, f)
+    new VirtualFileValueCache0[A](stamp, f)(using Equiv.universal)
 }
 
 private[this] final class VirtualFileValueCache0[A](

@@ -9,7 +9,6 @@ package sbt.test
 
 import sbt._
 import sbt.Def.Initialize
-import sbt.internal.util.Types.Id
 
 object TupleSyntaxTest:
   def t1[A](a: SettingKey[A], b: TaskKey[A], c: Def.Initialize[A], d: Def.Initialize[Task[A]]) = {

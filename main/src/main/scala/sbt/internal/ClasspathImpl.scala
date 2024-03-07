@@ -22,7 +22,7 @@ import sbt.librarymanagement.{ Configuration, TrackLevel }
 import sbt.librarymanagement.Configurations.names
 import sbt.std.TaskExtra._
 import sbt.util._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
 
@@ -411,7 +411,7 @@ private[sbt] object ClasspathImpl {
       depConfs: Seq[String],
       default: String => Seq[String]
   ): String => Seq[String] =
-    union(confString.split(";") map parseSingleMapping(masterConfs, depConfs, default))
+    union(confString.split(";").map(parseSingleMapping(masterConfs, depConfs, default)).toSeq)
 
   def parseSingleMapping(
       masterConfs: Seq[String],

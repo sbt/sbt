@@ -44,7 +44,6 @@ import sbt.protocol.{
   TerminalSetRawModeCommand,
 }
 import sbt.protocol.codec.JsonProtocol._
-import sbt.protocol.TerminalGetSizeResponse
 
 object VirtualTerminal {
   private[this] val pendingTerminalProperties =
@@ -85,7 +84,7 @@ object VirtualTerminal {
     queue
   }
   private[sbt] def cancelRequests(name: String): Unit = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     pendingTerminalCapabilities.asScala.foreach {
       case (k @ (`name`, _), q) =>
         pendingTerminalCapabilities.remove(k)

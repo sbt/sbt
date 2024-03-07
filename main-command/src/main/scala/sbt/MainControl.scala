@@ -43,8 +43,8 @@ object ApplicationID {
       delegate.name,
       delegate.version,
       delegate.mainClass,
-      delegate.mainComponents,
+      delegate.mainComponents.toSeq,
       delegate.crossVersionedValue,
-      delegate.classpathExtra
+      delegate.classpathExtra.toSeq
     )
 }

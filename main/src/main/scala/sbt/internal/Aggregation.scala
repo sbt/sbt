@@ -12,14 +12,12 @@ import java.text.DateFormat
 
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
-import sbt.SlashSyntax0._
 import sbt.ProjectExtra.*
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
-import scala.annotation.nowarn
 
 sealed trait Aggregation
 object Aggregation {
@@ -79,7 +77,7 @@ object Aggregation {
     val success = results match
       case Result.Value(_) => true
       case Result.Inc(_)   => false
-    results.toEither.right.foreach { r =>
+    results.toEither.foreach { r =>
       if (show.taskValues) printSettings(r, show.print)
     }
     if (show.success && !state.get(suppressShow).getOrElse(false))
@@ -297,7 +295,6 @@ object Aggregation {
       ScopedKey(resolved, key.key)
     }
 
-  @nowarn
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
     Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
   private[sbt] val suppressShow =

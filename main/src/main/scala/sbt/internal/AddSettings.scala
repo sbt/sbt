@@ -9,7 +9,6 @@ package sbt
 package internal
 
 import sbt.internal.util.Types.const
-import java.io.File
 import xsbti.VirtualFile
 
 /**
@@ -22,13 +21,13 @@ object AddSettings {
   private[sbt] final class Sequence(val sequence: Seq[AddSettings]) extends AddSettings {
     override def toString: String = s"Sequence($sequence)"
   }
-  private[sbt] final object User extends AddSettings
+  private[sbt] object User extends AddSettings
   private[sbt] final class AutoPlugins(val include: AutoPlugin => Boolean) extends AddSettings
   private[sbt] final class DefaultSbtFiles(val include: VirtualFile => Boolean) extends AddSettings
   // private[sbt] final class SbtFiles(val files: Seq[File]) extends AddSettings {
   //   override def toString: String = s"SbtFiles($files)"
   // }
-  private[sbt] final object BuildScalaFiles extends AddSettings
+  private[sbt] object BuildScalaFiles extends AddSettings
 
   /** Adds all settings from autoplugins. */
   val autoPlugins: AddSettings =

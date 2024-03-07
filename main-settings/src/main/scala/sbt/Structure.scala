@@ -17,7 +17,7 @@ import sbt.ConcurrentRestrictions.Tag
 import sbt.Def.{ Initialize, ScopedKey, Setting, setting }
 import std.TaskMacro
 import std.TaskExtra.{ task => mktask, _ }
-import scala.reflect.{ ClassTag, ManifestFactory }
+import scala.reflect.ClassTag
 
 /** An abstraction on top of Settings for build configuration and task definition. */
 sealed trait Scoped extends Equals:

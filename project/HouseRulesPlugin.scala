@@ -14,23 +14,30 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions += "-language:implicitConversions",
     scalacOptions ++= "-Xfuture".ifScala213OrMinus.value.toList,
     scalacOptions ++= "-Xlint".ifScala2.value.toList,
-    // TODO: uncomment once we can build without warnings on Scala 3
-    // scalacOptions ++= "-Xfatal-warnings"
-    //   .ifScala3x(_ => {
-    //     sys.props.get("sbt.build.fatal") match {
-    //       case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
-    //       case _       => true
-    //     }
-    //   })
-    //   .value
-    //   .toList,
+    scalacOptions ++= "-Xfatal-warnings"
+      .ifScala3x(_ => {
+        sys.props.get("sbt.build.fatal") match {
+          case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
+          case _       => true
+        }
+      })
+      .value
+      .toList,
     scalacOptions ++= "-Ykind-projector".ifScala3.value.toList,
     scalacOptions ++= "-Yinline-warnings".ifScala211OrMinus.value.toList,
     scalacOptions ++= "-Yno-adapted-args".ifScala212OrMinus.value.toList,
     scalacOptions ++= "-Ywarn-dead-code".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-numeric-widen".ifScala2.value.toList,
     scalacOptions ++= "-Ywarn-value-discard".ifScala2.value.toList,
-    scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList
+    scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList,
+    scalacOptions ++= {
+      scalaPartV.value match {
+        case Some((3, _)) => Seq("-Wunused:imports,implicits,nowarn")
+        case Some((2, _)) => Seq("-Ywarn-unused:-privates,-locals,-explicits")
+        case _            => Seq.empty
+      }
+    },
+    scalacOptions ++= "-Xsource:3".ifScala2.value.toList
   ) ++ Seq(Compile, Test).flatMap(c =>
     (c / console / scalacOptions) --= Seq("-Ywarn-unused-import", "-Xlint")
   )
@@ -39,9 +46,9 @@ object HouseRulesPlugin extends AutoPlugin {
 
   private implicit final class AnyWithIfScala[A](val __x: A) {
     def ifScala2x(p: Long => Boolean) =
-      Def.setting(scalaPartV.value collect { case (2, y) if p(y) => __x })
+      Def.setting(scalaPartV.value.collect { case (2, y) if p(y) => __x })
     def ifScala3x(p: Long => Boolean) =
-      Def.setting(scalaPartV.value collect { case (3, y) if p(y) => __x })
+      Def.setting(scalaPartV.value.collect { case (3, y) if p(y) => __x })
     def ifScalaLte(v: Long) = ifScala2x(_ <= v)
     def ifScalaGte(v: Long) = ifScala2x(_ >= v)
     def ifScala211OrMinus = ifScalaLte(11)

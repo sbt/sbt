@@ -233,10 +233,10 @@ object State {
   final class Return(val result: xsbti.MainResult) extends Next
 
   /** Indicates that global logging should be rotated. */
-  final object ClearGlobalLog extends Next
+  object ClearGlobalLog extends Next
 
   /** Indicates that the previous log file should be preserved instead of discarded. */
-  final object KeepLastLog extends Next
+  object KeepLastLog extends Next
 
   /**
    * Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
@@ -424,7 +424,7 @@ object State {
                           .sameElements(rest.map(_.toURI.toURL)) =>
                       cache.cachedCustomClassloader(
                         jars.toList,
-                        () => new UncloseableURLLoader(jars, fullScalaLoader)
+                        () => new UncloseableURLLoader(jars.toSeq, fullScalaLoader)
                       )
                       ()
                     case _ =>

@@ -56,8 +56,10 @@ object CoursierRepositoriesTasks {
   // https://github.com/sbt/sbt/issues/4661
   private final val keepPreloaded = false // coursierKeepPreloaded.value
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    val result0 = fullResolvers.value.filterNot(_ == projectResolver.value)
+  def coursierResolversTask(
+      resolversKey: TaskKey[Seq[Resolver]]
+  ): Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+    val result0 = resolversKey.value.filterNot(_ == projectResolver.value)
     val reorderResolvers = true // coursierReorderResolvers.value
 
     val paths = ivyPaths.value

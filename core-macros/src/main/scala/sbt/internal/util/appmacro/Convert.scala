@@ -18,7 +18,7 @@ import scala.quoted.*
  * code matched using `appTransformer`, which is a generic function with a single type param and a
  * single term param like `X.wrapInit[A](...)`.
  */
-trait Convert[C <: Quotes & Singleton](override val qctx: C) extends ContextUtil[C]:
+trait Convert[C <: Quotes & Singleton] extends ContextUtil[C]:
   import qctx.reflect.*
 
   def convert[A: Type](nme: String, in: Term): Converted

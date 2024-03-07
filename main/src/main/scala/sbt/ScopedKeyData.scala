@@ -11,7 +11,6 @@ import Def.ScopedKey
 import sbt.internal.util.KeyTag
 
 final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
-  import sbt.internal.util.Types.const
   val key = scoped.key
   val scope = scoped.scope
   def typeName: String = key.tag.toString

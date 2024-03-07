@@ -14,12 +14,10 @@ import sbt.internal.util.complete.DefaultParsers.validID
 import sbt.internal.util.Types.some
 import sbt.internal.util.{ AttributeKey, Relation }
 import sbt.librarymanagement.Configuration
-import scala.annotation.nowarn
 
 object KeyIndex {
   def empty: ExtendableKeyIndex = new KeyIndex0(emptyBuildIndex)
 
-  @nowarn
   def apply(
       known: Iterable[ScopedKey[_]],
       projects: Map[URI, Set[String]],
@@ -29,7 +27,6 @@ object KeyIndex {
     known.par.foldLeft(base(projects, configurations)) { _ add _ }
   }
 
-  @nowarn
   def aggregate(
       known: Iterable[ScopedKey[_]],
       extra: BuildUtil[_],

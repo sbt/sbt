@@ -41,6 +41,7 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.Duration
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
+import scala.util.boundary
 
 /** This class is the entry point for sbt. */
 final class xMain extends xsbti.AppMain:
@@ -59,7 +60,7 @@ private[sbt] object xMain:
         override def provider: AppProvider = config.provider()
       }
 
-  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
+  private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = boundary {
     try {
       import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
@@ -79,7 +80,7 @@ private[sbt] object xMain:
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
       lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
-        case (_, Some(e)) => return e
+        case (_, Some(e)) => boundary.break(e)
         case (s, _)       => s
       }
       else None
@@ -131,9 +132,8 @@ private[sbt] object xMain:
               )
               .put(BasicKeys.detachStdio, detachStdio)
             val state = bootServerSocket match {
-              // todo: fix this
-              // case Some(l) => state0.put(Keys.bootServerSocket, l)
-              case _ => state0
+              case Some(l) => state0.put(Keys.bootServerSocket, l)
+              case _       => state0
             }
             try StandardMain.runManaged(state)
             finally bootServerSocket.foreach(_.close())
@@ -571,7 +571,7 @@ object BuiltinCommands {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
     val result = Load
-      .mkEval(classpath.map(_.toPath()), s.baseDir, Nil)
+      .mkEval(classpath.map(_.toPath()).toSeq, s.baseDir, Nil)
       .evalInfer(expression = arg, imports = EvalImports(Nil))
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(app.loader)}")
   }
@@ -823,9 +823,9 @@ object BuiltinCommands {
   def showProjects(s: State): Unit = {
     val extracted = Project extract s
     import extracted._
-    import currentRef.{ build => curi, project => cid }
-    listBuild(curi, structure.units(curi), true, cid, s.log)
-    for ((uri, build) <- structure.units if curi != uri) listBuild(uri, build, false, cid, s.log)
+    listBuild(currentRef.build, structure.units(currentRef.build), true, currentRef.project, s.log)
+    for ((uri, build) <- structure.units if currentRef.build != uri)
+      listBuild(uri, build, false, currentRef.project, s.log)
   }
 
   def transformExtraBuilds(s: State, f: List[URI] => List[URI]): State = {
@@ -1147,7 +1147,7 @@ object BuiltinCommands {
     if (SysProp.allowRootDir) ()
     else {
       val baseDir = state.baseDir
-      import scala.collection.JavaConverters._
+      import scala.jdk.CollectionConverters.*
       // this should return / on Unix and C:\ for Windows.
       val rootOpt = FileSystems.getDefault.getRootDirectories.asScala.toList.headOption
       rootOpt foreach { root =>

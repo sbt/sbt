@@ -16,7 +16,7 @@ import sbt.internal.util.Terminal
 import sbt.protocol.EventMessage
 import sbt.util.Level
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * A command channel represents an IO device such as network socket or human

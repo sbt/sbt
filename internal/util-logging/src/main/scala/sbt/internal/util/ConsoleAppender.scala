@@ -373,8 +373,6 @@ object ConsoleAppender {
     }
 
   private[sbt] def generateName(): String = "out-" + generateId.incrementAndGet
-
-  private[this] def ansiSupported: Boolean = Terminal.console.isAnsiSupported
 }
 
 // See http://stackoverflow.com/questions/24205093/how-to-create-a-custom-appender-in-log4j2

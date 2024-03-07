@@ -60,22 +60,21 @@ sealed case class FixedSetExamples(examples: Iterable[String]) extends ExampleSo
  *   the part of the path already written by the user.
  */
 class FileExamples(base: File, prefix: String = "") extends ExampleSource {
-  override def apply(): Stream[String] = files(base).map(_ substring prefix.length)
+  override def apply(): LazyList[String] = files(base).map(_.substring(prefix.length))
 
   override def withAddedPrefix(addedPrefix: String): FileExamples =
     new FileExamples(base, prefix + addedPrefix)
 
-  protected def files(directory: File): Stream[String] = {
-    val childPaths = IO.listFiles(directory).toStream
-    val prefixedDirectChildPaths = childPaths map { IO.relativize(base, _).get } filter {
-      _ startsWith prefix
-    }
-    val dirsToRecurseInto = childPaths filter { _.isDirectory } map {
-      IO.relativize(base, _).get
-    } filter {
-      dirStartsWithPrefix
-    }
-    prefixedDirectChildPaths append dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
+  protected def files(directory: File): LazyList[String] = {
+    val childPaths = LazyList(IO.listFiles(directory)*)
+    val prefixedDirectChildPaths = childPaths
+      .map(IO.relativize(base, _).get)
+      .filter(_.startsWith(prefix))
+    val dirsToRecurseInto = childPaths
+      .filter(_.isDirectory)
+      .map(IO.relativize(base, _).get)
+      .filter(dirStartsWithPrefix)
+    prefixedDirectChildPaths ++ dirsToRecurseInto.flatMap(dir => files(new File(base, dir)))
   }
 
   private def dirStartsWithPrefix(relativizedPath: String): Boolean =

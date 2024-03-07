@@ -2,7 +2,7 @@ package sbt.util
 
 import java.io.File
 import java.nio.file.Path
-import sjsonnew.{ Builder, HashWriter, JsonWriter }
+import sjsonnew.{ Builder, HashWriter }
 import StringStrings.StringString
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 

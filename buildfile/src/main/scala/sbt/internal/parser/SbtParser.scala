@@ -16,12 +16,9 @@ import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.parser.SbtParser._
 import dotty.tools.dotc.ast.Trees.Lazy
 import dotty.tools.dotc.ast.untpd.*
-import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.VirtualDirectory
 import dotty.tools.io.VirtualFile
 import dotty.tools.dotc.parsing.*
@@ -30,10 +27,7 @@ import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.reporting.StoreReporter
 import scala.util.Random
-import scala.util.{ Failure, Success }
 import xsbti.VirtualFileRef
-import dotty.tools.dotc.printing.Printer
-import dotty.tools.dotc.config.Printers
 
 private[sbt] object SbtParser:
   val END_OF_LINE_CHAR = '\n'
@@ -54,7 +48,7 @@ private[sbt] object SbtParser:
     """.stripMargin
 
   private final val defaultClasspath =
-    sbt.io.Path.makeString(sbt.io.IO.classLocationPath[Product].toFile :: Nil)
+    sbt.io.Path.makeString(sbt.io.IO.classLocationPath(classOf[Product]).toFile :: Nil)
 
   def isIdentifier(ident: String): Boolean =
     val code = s"val $ident = 0; val ${ident}${ident} = $ident"
@@ -164,7 +158,6 @@ private[sbt] object SbtParser:
    * @return the parsed trees
    */
   private def parse(filePath: String, reporterId: String)(using Context): List[Tree] =
-    import defaultGlobalForParser.*
     val reporter = globalReporter.getOrCreateReporter(reporterId)
     reporter.removeBufferedMessages
     val parser = Parsers.Parser(ctx.source)

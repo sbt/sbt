@@ -7,11 +7,9 @@
 
 package sbt
 
-import java.io.File
 import java.nio.file.Path
 import java.net.URI
 
-import scala.annotation.compileTimeOnly
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import sbt.KeyRanks.{ DTask, Invisible }
@@ -19,11 +17,12 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
+import sbt.util.{ ActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import sjsonnew.JsonFormat
+import scala.reflect.ClassTag
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
@@ -269,7 +268,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   ): Initialize[Task[A2]] =
     fab.zipWith(fin)((ab, in) => TaskExtra.select(ab, in))
 
-  import Scoped.syntax.{ *, given } // { Def => _, DTask => _, Invisible => _, * }
+  import Scoped.syntax.*
 
   // derived from select
   private[sbt] def branchS[A, B, C](
@@ -396,7 +395,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
    */
   def unit(a: Any): Unit = ()
 
-  private[sbt] def dummy[A: Manifest](name: String, description: String): (TaskKey[A], Task[A]) =
+  private[sbt] def dummy[A: ClassTag](name: String, description: String): (TaskKey[A], Task[A]) =
     (TaskKey[A](name, description, DTask), dummyTask(name))
 
   private[sbt] def dummyTask[T](name: String): Task[T] = {
@@ -420,11 +419,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   private[sbt] val (stateKey: TaskKey[State], dummyState: Task[State]) =
     dummy[State]("state", "Current build state.")
 
-  private[sbt] val (
-    streamsManagerKey: TaskKey[std.Streams[ScopedKey[_]]],
-    dummyStreamsManager: Task[std.Streams[ScopedKey[_]]]
-  ) =
-    Def.dummy[std.Streams[ScopedKey[_]]](
+  private[sbt] val (streamsManagerKey, dummyStreamsManager) =
+    Def.dummy[std.Streams[ScopedKey[?]]](
       "streams-manager",
       "Streams manager, which provides streams for different contexts."
     )

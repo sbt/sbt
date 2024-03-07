@@ -36,7 +36,7 @@ import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.util.Logger
 
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.util.Try
@@ -422,7 +422,6 @@ final class NetworkChannel(
     }
   }
 
-  @nowarn
   protected def onCompletionRequest(execId: Option[String], cp: CompletionParams) = {
     if (initialized) {
       try {
@@ -667,7 +666,7 @@ final class NetworkChannel(
     new Terminal.WriteableInputStream(inputStream, name)
   import sjsonnew.BasicJsonProtocol._
 
-  import scala.collection.JavaConverters._
+  import scala.jdk.CollectionConverters.*
   private[this] val outputBuffer = new LinkedBlockingQueue[Byte]
   private[this] val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
     new Thread(r, s"$name-output-buffer-timer-thread")
@@ -799,13 +798,14 @@ final class NetworkChannel(
     }
     private[this] def waitForPending(f: TerminalPropertiesResponse => Boolean): Boolean = {
       if (closed.get || !isAttached) false
-      withThread(
-        {
-          if (pending.get) pending.synchronized(pending.wait())
-          Option(properties.get).map(f).getOrElse(false)
-        },
-        false
-      )
+      else
+        withThread(
+          {
+            if (pending.get) pending.synchronized(pending.wait())
+            Option(properties.get).map(f).getOrElse(false)
+          },
+          false
+        )
     }
     private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
     override private[sbt] val progressState: ProgressState = new ProgressState(

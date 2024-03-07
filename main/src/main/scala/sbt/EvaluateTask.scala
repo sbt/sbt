@@ -475,7 +475,7 @@ object EvaluateTask {
       triggers: Triggers,
       config: EvaluateTaskConfig
   )(using taskToNode: NodeView): (State, Result[T]) = {
-    import ConcurrentRestrictions.{ cancellableCompletionService, tagged, tagsKey }
+    import ConcurrentRestrictions.{ cancellableCompletionService, tagged }
 
     val log = state.log
     log.debug(

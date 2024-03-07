@@ -32,11 +32,9 @@ sealed trait Reference:
   def /(c: Configuration): RichConfiguration = RichConfiguration(asScope in c)
 
   // This is for handling `Zero / Zero / name`.
-  @nowarn
   def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
     new RichConfiguration(asScope.copy(config = configAxis))
 
-  @nowarn
   final def /[K](key: Scoped.ScopingSetting[K]): K = key.in(asScope)
 
   @nowarn

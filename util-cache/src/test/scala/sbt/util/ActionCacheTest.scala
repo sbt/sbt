@@ -4,7 +4,6 @@ import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
-import java.nio.file.Paths
 import xsbti.VirtualFile
 
 object ActionCacheTest extends BasicTestSuite:

@@ -9,12 +9,9 @@ package sbt
 package std
 
 import Def.{ Initialize, Setting }
-import sbt.util.{ ActionCacheStore, Applicative, Monad }
 import sbt.internal.util.Types.Id
 import sbt.internal.util.appmacro.{
   Cont,
-  ContextUtil,
-  Convert,
   // Instance,
   // LinterDSL,
   // MixedBuilder,
@@ -24,10 +21,8 @@ import sbt.internal.util.appmacro.{
 import sbt.internal.util.{ LinePosition, NoPosition, SourcePosition }
 
 import language.experimental.macros
-import scala.annotation.tailrec
-import scala.reflect.internal.util.UndefinedPosition
 import scala.quoted.*
-import sjsonnew.{ BasicJsonProtocol, JsonFormat }
+import sjsonnew.JsonFormat
 
 object TaskMacro:
   final val AssignInitName = "set"
@@ -104,7 +99,6 @@ object TaskMacro:
   def settingAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableSetting[A1]], v: Expr[A1])(using
       qctx: Quotes
   ): Expr[Setting[A1]] =
-    import qctx.reflect.*
     val init = SettingMacro.settingMacroImpl[A1](v)
     '{
       $rec.set0($init, $sourcePosition)

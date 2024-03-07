@@ -8,6 +8,7 @@
 package sbt.internal.util
 
 import Relation._
+import scala.collection.compat.*
 
 object Relation {
 
@@ -34,7 +35,7 @@ object Relation {
     make(forward filter { case (a, bs) => bs.nonEmpty }, reverse)
   }
 
-  def merge[A, B](rels: Traversable[Relation[A, B]]): Relation[A, B] =
+  def merge[A, B](rels: Iterable[Relation[A, B]]): Relation[A, B] =
     rels.foldLeft(Relation.empty[A, B])(_ ++ _)
 
   private[sbt] def remove[X, Y](map: M[X, Y], from: X, to: Y): M[X, Y] =
@@ -48,7 +49,7 @@ object Relation {
   private[sbt] def combine[X, Y](a: M[X, Y], b: M[X, Y]): M[X, Y] =
     b.foldLeft(a)((map, mapping) => add(map, mapping._1, mapping._2))
 
-  private[sbt] def add[X, Y](map: M[X, Y], from: X, to: Traversable[Y]): M[X, Y] =
+  private[sbt] def add[X, Y](map: M[X, Y], from: X, to: Iterable[Y]): M[X, Y] =
     map.updated(from, get(map, from) ++ to)
 
   private[sbt] def get[X, Y](map: M[X, Y], t: X): Set[Y] = map.getOrElse(t, Set.empty[Y])
@@ -83,19 +84,19 @@ trait Relation[A, B] {
   def +(a: A, b: B): Relation[A, B]
 
   /** Includes in the relation `(a, b)` for all `b` in `bs`. */
-  def +(a: A, bs: Traversable[B]): Relation[A, B]
+  def +(a: A, bs: Iterable[B]): Relation[A, B]
 
   /** Returns the union of the relation `r` with this relation. */
   def ++(r: Relation[A, B]): Relation[A, B]
 
   /** Includes the given pairs in this relation. */
-  def ++(rs: Traversable[(A, B)]): Relation[A, B]
+  def ++(rs: Iterable[(A, B)]): Relation[A, B]
 
   /** Removes all elements `(_1, _2)` for all `_1` in `_1s` from this relation. */
-  def --(_1s: Traversable[A]): Relation[A, B]
+  def --(_1s: Iterable[A]): Relation[A, B]
 
   /** Removes all `pairs` from this relation. */
-  def --(pairs: TraversableOnce[(A, B)]): Relation[A, B]
+  def --(pairs: IterableOnce[(A, B)]): Relation[A, B]
 
   /** Removes all `relations` from this relation. */
   def --(relations: Relation[A, B]): Relation[A, B]
@@ -107,10 +108,10 @@ trait Relation[A, B] {
   def -(pair: (A, B)): Relation[A, B]
 
   /** Returns the set of all `_1`s such that `(_1, _2)` is in this relation. */
-  def _1s: collection.Set[A]
+  def _1s: Set[A]
 
   /** Returns the set of all `_2`s such that `(_1, _2)` is in this relation. */
-  def _2s: collection.Set[B]
+  def _2s: Set[B]
 
   /** Returns the number of pairs in this relation */
   def size: Int
@@ -131,7 +132,7 @@ trait Relation[A, B] {
   def groupBy[K](discriminator: ((A, B)) => K): Map[K, Relation[A, B]]
 
   /** Returns all pairs in this relation. */
-  def all: Traversable[(A, B)]
+  def all: Iterable[(A, B)]
 
   /**
    * Represents this relation as a `Map` from a `_1` to the set of `_2`s such that `(_1, _2)` is in
@@ -168,22 +169,22 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
 
   def size = (fwd.valuesIterator map (_.size)).sum
 
-  def all: Traversable[(A, B)] =
-    fwd.iterator.flatMap { case (a, bs) => bs.iterator.map(b => (a, b)) }.toTraversable
+  def all: Iterable[(A, B)] =
+    fwd.iterator.flatMap { case (a, bs) => bs.iterator.map(b => (a, b)) }.to(Iterable)
 
   def +(pair: (A, B)) = this + (pair._1, Set(pair._2))
   def +(from: A, to: B) = this + (from, to :: Nil)
-  def +(from: A, to: Traversable[B]) =
+  def +(from: A, to: Iterable[B]) =
     if (to.isEmpty) this
     else new MRelation(add(fwd, from, to), to.foldLeft(rev)((map, t) => add(map, t, from :: Nil)))
 
-  def ++(rs: Traversable[(A, B)]) = rs.foldLeft(this: Relation[A, B]) { _ + _ }
-  def ++(other: Relation[A, B]) =
+  def ++(rs: Iterable[(A, B)]) = rs.foldLeft(this: Relation[A, B]) { _ + _ }
+  def ++(other: Relation[A, B]): Relation[A, B] =
     new MRelation[A, B](combine(fwd, other.forwardMap), combine(rev, other.reverseMap))
 
-  def --(ts: Traversable[A]): Relation[A, B] = ts.foldLeft(this: Relation[A, B]) { _ - _ }
-  def --(pairs: TraversableOnce[(A, B)]): Relation[A, B] =
-    pairs.foldLeft(this: Relation[A, B])(_ - _)
+  def --(ts: Iterable[A]): Relation[A, B] = ts.foldLeft(this: Relation[A, B]) { _ - _ }
+  def --(pairs: IterableOnce[(A, B)]): Relation[A, B] =
+    pairs.iterator.foldLeft(this: Relation[A, B])(_ - _)
   def --(relations: Relation[A, B]): Relation[A, B] = --(relations.all)
 
   def -(pair: (A, B)): Relation[A, B] =
@@ -205,14 +206,14 @@ private final class MRelation[A, B](fwd: Map[A, Set[B]], rev: Map[B, Set[A]])
   }
 
   def groupBy[K](discriminator: ((A, B)) => K): Map[K, Relation[A, B]] =
-    (all.groupBy(discriminator) mapValues { Relation.empty[A, B] ++ _ }).toMap
+    all.groupBy(discriminator).view.mapValues { Relation.empty[A, B] ++ _ }.toMap
 
   def contains(a: A, b: B): Boolean = forward(a)(b)
 
   override def equals(other: Any) = other match {
     // We assume that the forward and reverse maps are consistent, so we only use the forward map
     // for equality. Note that key -> Empty is semantically the same as key not existing.
-    case o: MRelation[A, B] =>
+    case o: MRelation[?, ?] =>
       forwardMap.filterNot(_._2.isEmpty) == o.forwardMap.filterNot(_._2.isEmpty)
     case _ => false
   }

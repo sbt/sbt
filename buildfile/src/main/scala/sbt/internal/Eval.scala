@@ -2,13 +2,11 @@ package sbt
 package internal
 
 import dotty.tools.dotc.ast
-import dotty.tools.dotc.ast.{ tpd, untpd }
+import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
-import dotty.tools.dotc.config.ScalaSettings
 import dotty.tools.dotc.core.Contexts.{ atPhase, Context }
 import dotty.tools.dotc.core.{ Flags, Names, Phases, Symbols, Types }
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.parsing.Parsers.Parser
 import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
@@ -19,7 +17,7 @@ import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
 import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.security.MessageDigest
-import scala.collection.JavaConverters.*
+import scala.jdk.CollectionConverters.*
 import scala.quoted.*
 import sbt.io.Hash
 
@@ -53,7 +51,6 @@ class Eval(
     case None     => EvalReporter.store
 
   final class EvalDriver extends Driver:
-    import dotty.tools.dotc.config.Settings.Setting._
     val compileCtx0 = initCtx.fresh
     val options = nonCpOptions ++ Seq("-classpath", classpathString, "dummy.scala")
     val compileCtx1 = setup(options.toArray, compileCtx0) match
@@ -255,13 +252,13 @@ class Eval(
   private[this] def getGeneratedFiles(moduleName: String): Seq[Path] =
     backingDir match
       case Some(dir) =>
-        asScala(
-          Files
-            .list(dir)
-            .filter(!Files.isDirectory(_))
-            .filter(_.getFileName.toString.contains(moduleName))
-            .iterator
-        ).toList
+        Files
+          .list(dir)
+          .filter(!Files.isDirectory(_))
+          .filter(_.getFileName.toString.contains(moduleName))
+          .iterator
+          .asScala
+          .toList
       case None => Nil
 
   private[this] def makeModuleName(hash: String): String = "$Wrap" + hash.take(10)

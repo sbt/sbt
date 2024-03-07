@@ -1,14 +1,13 @@
 package sbt.internal.util.appmacro
 
-import sbt.internal.util.Types.Id
 import scala.compiletime.summonInline
 import scala.quoted.*
-import scala.reflect.TypeTest
 import scala.collection.mutable
 import sbt.util.cacheLevel
 import sbt.util.CacheLevelTag
 
-trait ContextUtil[C <: Quotes & scala.Singleton](val qctx: C, val valStart: Int):
+trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
+  val qctx: C
   import qctx.reflect.*
   given qctx.type = qctx
 

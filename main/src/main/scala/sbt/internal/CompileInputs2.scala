@@ -34,5 +34,4 @@ object CompileInputs2:
           CompileInputs2(in.head, in.tail.head, in.tail.tail.head, in.tail.tail.tail.head)
       }
     )
-  given JsonFormat[CompileInputs2] = summon
 end CompileInputs2

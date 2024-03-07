@@ -16,9 +16,9 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
 import java.io.{ File, FileOutputStream, InputStream, OutputStream }
 import java.net.URI
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.tailrec
 
-@nowarn object TreeView {
+object TreeView {
   def createJson(graph: ModuleGraph): String = {
     val moduleModels = graph.roots
       .map(module => processSubtree(graph, module))

@@ -258,7 +258,7 @@ object TestFramework {
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
 
-    map.toMap.mapValues(_.toSet).toMap
+    map.view.mapValues(_.toSet).toMap
   }
 
   private def createTestTasks(
@@ -334,7 +334,7 @@ object TestFramework {
       runner,
       (r: TestRunner) => withContextLoader(loader) { r.run(taskDef, testTask) }
     ) {
-      def tags = testTask.tags
+      def tags = testTask.tags.toSeq
     }
 }
 

@@ -7,7 +7,6 @@
 
 package sbt.internal.util
 
-import scala.language.experimental.macros
 import scala.annotation.tailrec
 import scala.reflect.macros.blackbox
 import scala.reflect.internal.util.UndefinedPosition

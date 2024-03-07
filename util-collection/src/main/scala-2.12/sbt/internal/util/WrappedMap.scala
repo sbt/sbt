@@ -7,7 +7,7 @@
 
 package sbt.internal.util
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 private[util] class WrappedMap[K, V](val jmap: java.util.Map[K, V]) extends Map[K, V] {
   def +[V1 >: V](kv: (K, V1)): scala.collection.immutable.Map[K, V1] =
     jmap.asScala.toMap + kv

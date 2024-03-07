@@ -4,10 +4,9 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt
 
-/*
 import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.{ AttributeKey, AttributeMap }
 import sbt.io.syntax.file

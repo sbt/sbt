@@ -8,11 +8,10 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ complete, LineRange, RangePosition, Types }
+import sbt.internal.util.{ complete, LineRange, RangePosition }
 
 import java.io.File
 import java.net.URI
-import sbt.ProjectExtra.extract
 import Def.{ ScopedKey, Setting }
 import SessionSettings._
 import sbt.ProjectExtra.{ extract, getProject, session, structure }
@@ -229,7 +228,7 @@ object SessionSettings:
 
     val (_, oldShifted, replace) = inFile.foldLeft((0, List[Setting[_]](), Seq[SessionSetting]())) {
       case ((offs, olds, repl), s) =>
-        val RangePosition(_, r @ LineRange(start, end)) = s.pos
+        val RangePosition(_, r @ LineRange(start, end)) = s.pos: @unchecked
         settings find (_._1.key == s.key) match {
           case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
             val shifted = ns withPos RangePosition(

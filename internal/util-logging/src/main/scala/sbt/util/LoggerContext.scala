@@ -11,7 +11,7 @@ import sbt.internal.util._
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * Provides a context for generating loggers during task evaluation. The logger context can be

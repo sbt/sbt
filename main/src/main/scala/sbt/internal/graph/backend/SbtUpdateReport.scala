@@ -11,7 +11,7 @@ package graph
 package backend
 
 import scala.language.implicitConversions
-import scala.language.reflectiveCalls
+import scala.reflect.Selectable.reflectiveSelectable
 import sbt.librarymanagement.{ ModuleID, ModuleReport, ConfigurationReport }
 
 object SbtUpdateReport {

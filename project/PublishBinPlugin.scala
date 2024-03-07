@@ -21,7 +21,9 @@ object PublishBinPlugin extends AutoPlugin {
   override val globalSettings = Seq(publishLocalBin := (()))
 
   override val projectSettings: Seq[Def.Setting[_]] = Def settings (
-    publishLocalBin := Classpaths.publishTask(publishLocalBinConfig).value,
+    publishLocalBin := Classpaths
+      .publishOrSkip(publishLocalBinConfig, publishLocalBin / skip)
+      .value,
     publishLocalBinConfig := Classpaths.publishConfig(
       false, // publishMavenStyle.value,
       Classpaths.deliverPattern(crossTarget.value),

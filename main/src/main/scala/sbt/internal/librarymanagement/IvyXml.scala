@@ -24,7 +24,7 @@ import sbt.Keys.{
 }
 import sbt.ProjectExtra.*
 import sbt.librarymanagement.PublishConfiguration
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.xml.{ Node, PrefixedAttribute }
 
 object IvyXml {
@@ -135,6 +135,7 @@ object IvyXml {
 
     val publications = project.publications
       .groupBy { case (_, p) => p }
+      .view
       .mapValues { _.map { case (cfg, _) => cfg } }
 
     val publicationElems = publications.map { case (pub, configs) =>

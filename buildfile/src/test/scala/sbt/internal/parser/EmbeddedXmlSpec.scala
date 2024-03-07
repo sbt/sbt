@@ -9,7 +9,6 @@ package sbt.internal.parser
 
 import sbt.internal.util.MessageOnlyException
 
-/*
 object EmbeddedXmlSpec extends CheckIfParsedSpec {
 
   test("File with xml content  should Handle last xml part") {
@@ -36,7 +35,7 @@ object EmbeddedXmlSpec extends CheckIfParsedSpec {
                        |""".stripMargin
 
     try {
-      split(buildSbt)
+      splitter(buildSbt)
       sys.error("expected MessageOnlyException")
     } catch {
       case exception: MessageOnlyException =>
@@ -163,8 +162,6 @@ object EmbeddedXmlSpec extends CheckIfParsedSpec {
         |
         |</aaa>
         |
-        |
-        |
       """.stripMargin,
       "xml with blank line",
       false,
@@ -173,4 +170,3 @@ object EmbeddedXmlSpec extends CheckIfParsedSpec {
   )
 
 }
- */

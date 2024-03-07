@@ -19,6 +19,7 @@ import sbt.io._
 
 import scala.concurrent.duration._
 import scala.util.Properties
+import scala.annotation.nowarn
 
 @deprecated("Watched is no longer used to implement continuous execution", "1.3.0")
 trait Watched {
@@ -52,6 +53,8 @@ trait Watched {
 object Watched {
 
   type WatchSource = Source
+
+  @nowarn
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   private def waitMessage(project: String): String =
@@ -82,6 +85,7 @@ object Watched {
 
   }
 
+  @nowarn
   private[sbt] val newWatchService: () => WatchService =
     (() => createWatchService()).label("Watched.newWatchService")
   def createWatchService(pollDelay: FiniteDuration): WatchService = {

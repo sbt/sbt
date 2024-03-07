@@ -14,7 +14,7 @@ import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 import sbt.Def._
 import sbt.Keys._
 // import sbt.Project.richInitializeTask
-import sbt.ProjectExtra.{ *, given }
+import sbt.ProjectExtra.*
 import sbt.SlashSyntax0._
 import sbt.io.syntax._
 import sbt.nio.Keys._

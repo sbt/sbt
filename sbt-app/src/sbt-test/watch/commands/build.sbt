@@ -1,6 +1,6 @@
 import java.nio.file.Files
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 val foo = taskKey[Unit]("foo")
 foo := {

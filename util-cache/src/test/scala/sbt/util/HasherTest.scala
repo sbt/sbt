@@ -1,14 +1,12 @@
 package sbt.util
 
-import java.io.File
 import sbt.internal.util.StringVirtualFile1
 import sjsonnew.BasicJsonProtocol
 import sjsonnew.support.murmurhash.Hasher
 import verify.BasicTestSuite
-import xsbti.{ BasicVirtualFileRef, HashedVirtualFileRef, VirtualFile }
+import xsbti.HashedVirtualFileRef
 
 object HasherTest extends BasicTestSuite:
-  import BasicJsonProtocol.implicitHashWriter
 
   final val blankContentHash = -7286425919675154353L
   val blankContentHashStr = "farm64-9ae16a3b2f90404f"

@@ -5,6 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt.std
 
 import sbt.SettingKey
@@ -16,7 +17,6 @@ import sbt.internal.util.Terminal
 import scala.io.AnsiColor
 import scala.reflect.macros.blackbox
 
-/*
 abstract class BaseTaskLinterDSL extends LinterDSL {
   def isDynamicTask: Boolean
   def convert: Convert

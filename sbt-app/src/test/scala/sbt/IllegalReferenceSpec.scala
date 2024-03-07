@@ -4,13 +4,12 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt
 
 import org.scalatest
 import org.scalatest.{ TestData, fixture, funsuite }
 
-/*
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
 class IllegalReferenceSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {

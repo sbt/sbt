@@ -10,7 +10,6 @@ package sbt
 import java.io.File
 import java.nio.file.{ Path => NioPath }
 import java.net.URI
-import java.util.Locale
 // import Project._
 import Keys.{
   stateBuildStructure,
@@ -46,12 +45,10 @@ import sbt.internal.{
   LoadedBuild,
   LoadedBuildUnit,
   SettingGraph,
-  SettingCompletions,
   SessionSettings
 }
-import sbt.internal.util.{ AttributeKey, AttributeMap, Dag, Relation, Settings }
+import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
 import sbt.internal.util.Types.const
-import sbt.internal.util.complete.DefaultParsers
 import sbt.internal.server.ServerHandler
 import sbt.librarymanagement.Configuration
 import sbt.util.{ ActionCacheStore, Show, Level }
@@ -373,7 +370,7 @@ trait ProjectExtra extends Scoped.Syntax:
     private[this] def overlappingTargets(
         targets: Seq[(ProjectRef, File)]
     ): Map[File, Seq[ProjectRef]] =
-      targets.groupBy(_._2).filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
+      targets.groupBy(_._2).view.filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
 
     private[this] def allTargets(data: Settings[Scope]): Seq[(ProjectRef, File)] = {
       import ScopeFilter._

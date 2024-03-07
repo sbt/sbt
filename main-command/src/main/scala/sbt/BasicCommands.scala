@@ -27,7 +27,6 @@ import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient
 import DefaultParsers._
 
-import Function.tupled
 import Command.applyEffect
 import BasicCommandStrings._
 import CommandUtil._
@@ -35,7 +34,6 @@ import BasicKeys._
 import java.io.File
 
 import sbt.io.IO
-import sbt.util.Level
 
 import scala.Function.tupled
 import scala.collection.mutable.ListBuffer
@@ -491,12 +489,10 @@ object BasicCommands {
 
   def runAlias(s: State, args: Option[(String, Option[Option[String]])]): State =
     args match {
-      case None =>
-        printAliases(s); s
-      case Some(x ~ None) if !x.isEmpty =>
-        printAlias(s, x.trim); s
+      case Some(x ~ None) if !x.isEmpty   => printAlias(s, x.trim); s
       case Some(name ~ Some(None))        => removeAlias(s, name.trim)
       case Some(name ~ Some(Some(value))) => addAlias(s, name.trim, value.trim)
+      case _                              => printAliases(s); s
     }
   def addAlias(s: State, name: String, value: String): State =
     if (Command validID name) {

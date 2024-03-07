@@ -13,7 +13,6 @@ import java.net.URI
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import scala.util.{ Left, Right }
 import sbt.util.{ SomeJsonWriter, NoJsonWriter }
-import sbt.librarymanagement.LibraryManagementCodec._
 import sbt.protocol._
 import sjsonnew._
 import sjsonnew.support.scalajson.unsafe._
@@ -26,7 +25,7 @@ object SettingQuery {
   // Similar to Act.ParsedAxis / Act.projectRef / Act.resolveProject except you can't omit the project reference
 
   sealed trait ParsedExplicitAxis[+T]
-  final object ParsedExplicitGlobal extends ParsedExplicitAxis[Nothing]
+  object ParsedExplicitGlobal extends ParsedExplicitAxis[Nothing]
   final class ParsedExplicitValue[T](val value: T) extends ParsedExplicitAxis[T]
   def explicitValue[T](t: Parser[T]): Parser[ParsedExplicitAxis[T]] = t map { v =>
     new ParsedExplicitValue(v)

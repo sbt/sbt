@@ -9,7 +9,6 @@ import sbt.nio.FileStamp
 import sjsonnew.JsonFormat
 import java.nio.file.{ Path => NioPath }
 
-import sbt.internal.FileChangesMacro
 import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
 import scala.language.experimental.macros
 
@@ -43,7 +42,7 @@ package object sbt
   def file(s: String): File = new File(s)
   def url(s: String): URL = new URL(s)
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
-  implicit def filesToFinder(cc: Traversable[File]): sbt.io.PathFinder =
+  implicit def filesToFinder(cc: Iterable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)
   /*
    * Provides macro extension methods. Because the extension methods are all macros, no instance

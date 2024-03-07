@@ -9,7 +9,6 @@ package sbt
 package internal
 package parser
 
-import java.io.File
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
 

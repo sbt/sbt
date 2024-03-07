@@ -12,7 +12,7 @@ import java.lang.management.ManagementFactory
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import sbt.util.Logger
 
@@ -61,7 +61,7 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
 
   override protected def emitWarning(total: Long, over: Option[Long]): Unit = {
     val totalSeconds = total / 1000.0
-    val amountMsg = over.fold(totalSeconds + " seconds") { d =>
+    val amountMsg = over.fold(s"$totalSeconds seconds") { d =>
       "In the last " + (d / 1000.0).ceil.toInt + f" seconds, $totalSeconds (${total.toDouble / d * 100}%.1f%%)"
     }
     val msg = s"$amountMsg were spent in GC. " +

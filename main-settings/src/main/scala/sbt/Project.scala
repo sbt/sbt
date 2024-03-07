@@ -10,11 +10,11 @@ package sbt
 import java.io.File
 import java.util.Locale
 import sbt.librarymanagement.Configuration
-import sbt.Def.{ Flattened, Initialize, ScopedKey, Setting }
+import sbt.Def.{ Initialize, ScopedKey, Setting }
 import sbt.internal.util.Dag
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.DefaultParsers
-import Scope.{ Global, ThisScope }
+import Scope.ThisScope
 
 sealed trait ProjectDefinition[PR <: ProjectReference] {
 
