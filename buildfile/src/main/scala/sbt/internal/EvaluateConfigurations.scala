@@ -26,6 +26,7 @@ import sbt.SlashSyntax0.*
 import sbt.internal.parser.SbtParser
 import sbt.io.IO
 import scala.jdk.CollectionConverters.*
+import xsbti.PathBasedFile
 import xsbti.VirtualFile
 import xsbti.VirtualFileRef
 
@@ -151,7 +152,9 @@ private[sbt] object EvaluateConfigurations {
   ): LazyClassLoaded[LoadedSbtFile] = {
     // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
     //        detection for which project project manipulations should be applied.
-    val name = file.id
+    val name = file match
+      case file: PathBasedFile => file.toPath.toString
+      case file                => file.id
     val parsed = parseConfiguration(file, lines, imports, offset)
     val (importDefs, definitions) =
       if (parsed.definitions.isEmpty) (Nil, DefinedSbtValues.empty)

@@ -21,6 +21,7 @@ import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUt
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings }
+import sbt.internal.server.BuildServerEvalReporter
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
@@ -33,7 +34,6 @@ import java.net.URI
 import java.nio.file.{ Path, Paths }
 import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
-// import scala.tools.nsc.reporters.ConsoleReporter
 
 private[sbt] object Load {
   // note that there is State passed in but not pulled out
@@ -469,7 +469,7 @@ private[sbt] object Load {
       nonCpOptions = options,
       classpath = classpath,
       backingDir = Option(evalOutputDirectory(base).toPath()),
-      mkReporter = Option(() => (mkReporter(): dotty.tools.dotc.reporting.Reporter)),
+      mkReporter = Option(() => mkReporter()),
     )
 
   /**
@@ -749,14 +749,10 @@ private[sbt] object Load {
 
       // NOTE - because we create an eval here, we need a clean-eval later for this URI.
       lazy val eval = timed("Load.loadUnit: mkEval", log) {
-        def mkReporter() = EvalReporter.console
-        // todo:
-        // def mkReporter(settings: scala.tools.nsc.Settings): EvalReporter =
-        //   plugs.pluginData.buildTarget match {
-        //     case None => EvalReporter.console // (settings)
-        //     case Some(buildTarget) =>
-        //       new BuildServerEvalReporter(buildTarget, new ConsoleReporter(settings))
-        //   }
+        def mkReporter(): EvalReporter = plugs.pluginData.buildTarget match {
+          case None              => EvalReporter.console
+          case Some(buildTarget) => new BuildServerEvalReporter(buildTarget, EvalReporter.console)
+        }
         mkEval(
           classpath = plugs.classpath.map(converter.toPath),
           defDir,
