@@ -65,28 +65,65 @@ private[sbt] object InstallSbtn {
       if (Properties.isWin) "pc-win32.exe"
       else if (Properties.isLinux) "pc-linux"
       else "apple-darwin"
-    val isArmArchitecture: Boolean = sys.props
-      .getOrElse("os.arch", "")
-      .toLowerCase(java.util.Locale.ROOT) == "aarch64"
-    val arch = if (Properties.isLinux && isArmArchitecture) "aarch64" else "x86_64"
-    val sbtnName = s"sbt/bin/sbtn-$arch-$bin"
+
+    val isArmArchitecture: Boolean = {
+      val prop = sys.props
+        .getOrElse("os.arch", "")
+        .toLowerCase(java.util.Locale.ROOT)
+
+      prop == "arm64" || prop == "aarch64"
+    }
+
+    def sbtnName(arch: String) = s"sbt/bin/sbtn-$arch-$bin"
+
+    val arch = if (isArmArchitecture) "aarch64" else "x86_64"
+    val alternativeArch =
+      (if (Properties.isMac && isArmArchitecture) Option("x86_64") else None).map(sbtnName)
+
+    val nativeArch = sbtnName(arch)
+
     val fis = new FileInputStream(sbtZip.toFile)
     val zipInputStream = new ZipInputStream(fis)
-    var foundBinary = false
+
     try {
-      var entry = zipInputStream.getNextEntry
-      while (entry != null) {
-        if (entry.getName == sbtnName) {
-          foundBinary = true
-          term.printStream.println(s"extracting $sbtZip!$sbtnName to $sbtn")
-          transfer(zipInputStream, sbtn)
-          sbtn.toFile.setExecutable(true)
-          entry = null
-        } else {
-          entry = zipInputStream.getNextEntry
-        }
+      def write(name: String) = {
+
+        term.printStream.println(s"extracting $sbtZip!$name to $sbtn")
+        transfer(zipInputStream, sbtn)
+        sbtn.toFile.setExecutable(true)
       }
-      if (!foundBinary) throw new IllegalStateException(s"couldn't find $sbtnName in $sbtZip")
+
+      var alternativeArchFound = Option.empty[String]
+      var nativeArchFound = Option.empty[String]
+
+      Iterator
+        .continually(zipInputStream.getNextEntry())
+        .takeWhile(_ != null)
+        .takeWhile { entry =>
+          if (entry.getName() == nativeArch) {
+            nativeArchFound = Some(nativeArch)
+            false
+          } else {
+            alternativeArch.foreach { arch =>
+              if (arch == entry.getName())
+                alternativeArchFound = Some(arch)
+            }
+
+            true
+          }
+        }
+        .length
+
+      val sbtnAlternativeMsg = alternativeArch.map(name => s" (or $name)")
+      nativeArchFound.orElse(alternativeArchFound) match {
+        case None =>
+          throw new IllegalStateException(
+            s"couldn't find $nativeArch$sbtnAlternativeMsg in $sbtZip"
+          )
+        case Some(value) =>
+          write(value)
+      }
+
     } finally {
       fis.close()
       zipInputStream.close()
