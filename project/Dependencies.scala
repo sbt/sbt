@@ -4,7 +4,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.18"
+  val scala212 = "2.12.19"
   val scala213 = "2.13.12"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
@@ -102,9 +102,9 @@ object Dependencies {
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
     } else {
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
     }
   )
   val scalaParsers = Def.setting(

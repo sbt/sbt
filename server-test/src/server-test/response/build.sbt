@@ -1,6 +1,6 @@
 import sbt.internal.server.{ ServerHandler, ServerIntent }
 
-ThisBuild / scalaVersion := "2.12.18"
+ThisBuild / scalaVersion := "2.12.19"
 
 Global / serverLog / logLevel := Level.Debug
 // custom handler

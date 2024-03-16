@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.18"
+ThisBuild / scalaVersion := "2.12.19"
 
 val defaultSettings = Seq(
   libraryDependencies += scalaVersion("org.scala-lang" % "scala-reflect" % _ ).value

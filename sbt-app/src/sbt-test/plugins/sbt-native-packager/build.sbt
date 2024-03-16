@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.18"
+ThisBuild / scalaVersion := "2.12.19"
 
 name := "hello"
 enablePlugins(JavaAppPackaging)

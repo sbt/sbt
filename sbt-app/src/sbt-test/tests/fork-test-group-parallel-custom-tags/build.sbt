@@ -1,5 +1,5 @@
 val specs = "org.specs2" %% "specs2-core" % "4.3.4"
-ThisBuild / scalaVersion := "2.12.18"
+ThisBuild / scalaVersion := "2.12.19"
 
 val TestATypeTag = Tags.Tag("TestA")
 val TestBTypeTag = Tags.Tag("TestB")
