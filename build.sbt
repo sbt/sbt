@@ -10,10 +10,10 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-alpha9-SNAPSHOT"
+  val v = "2.0.0-alpha10-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
-ThisBuild / version2_13 := "2.0.0-alpha9-SNAPSHOT"
+ThisBuild / version2_13 := "2.0.0-alpha10-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
@@ -265,6 +265,7 @@ val collectionProj = project
       case _                               => Seq(scalaPar)
     }),
     mimaSettings,
+    conflictWarning := ConflictWarning.disable,
   )
 
 // Command line-related utilities.
@@ -471,6 +472,7 @@ lazy val testingProj = (project in file("testing"))
       sjsonNewScalaJson.value,
       sjsonNewCore.value,
     ),
+    conflictWarning := ConflictWarning.disable,
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
