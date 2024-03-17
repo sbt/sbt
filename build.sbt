@@ -1264,6 +1264,8 @@ def allProjects =
     buildFileProj,
     utilCache,
     utilTracking,
+    collectionProj,
+    coreMacrosProj,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
