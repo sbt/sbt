@@ -73,8 +73,8 @@ object RemoteCache {
     Def._outputDirectory = Some(outDir)
     val caches = s.get(BasicKeys.cacheStores)
     caches match
-      case Some(xs) => Def._cacheStore = AggregateActionCacheStore(xs)
-      case None =>
+      case Some(xs) if xs.nonEmpty => Def._cacheStore = AggregateActionCacheStore(xs)
+      case _ =>
         val tempDiskCache = (s.baseDir / "target" / "bootcache").toPath()
         Def._cacheStore = DiskActionCacheStore(tempDiskCache)
 

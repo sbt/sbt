@@ -39,9 +39,7 @@ sealed trait BuildServerReporter extends Reporter {
 
   protected def publishDiagnostic(problem: Problem): Unit
 
-  def sendSuccessReport(
-      analysis: CompileAnalysis,
-  ): Unit
+  def sendSuccessReport(analysis: CompileAnalysis): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
 

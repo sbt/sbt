@@ -152,7 +152,7 @@ object Command {
   def combine(cmds: Seq[Command]): State => Parser[() => State] = {
     val (simple, arbs) = separateCommands(cmds)
     state =>
-      arbs.map(_ parser state).foldLeft(simpleParser(simple)(state))(_ | _)
+      arbs.map(_.parser(state)).foldLeft(simpleParser(simple)(state))(_ | _)
   }
 
   private[this] def separateCommands(
@@ -188,7 +188,7 @@ object Command {
     else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
-        state.log error errMsg
+        state.log.error(errMsg)
         state.fail
     }
   }
