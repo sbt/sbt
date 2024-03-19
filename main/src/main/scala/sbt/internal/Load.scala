@@ -78,7 +78,7 @@ private[sbt] object Load {
       "JAVA_HOME" -> javaHome,
     )
     val loader = getClass.getClassLoader
-    val converter = MappedFileConverter(rootPaths, false)
+    val converter = MappedFileConverter(rootPaths, true)
     val cp0 = provider.mainClasspath.toIndexedSeq ++ scalaProvider.jars.toIndexedSeq
     val classpath = Attributed.blankSeq(
       cp0.map(_.toPath).map(p => converter.toVirtualFile(p): HashedVirtualFileRef)

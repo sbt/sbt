@@ -13,7 +13,7 @@ import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 import scala.collection.mutable
 
-object ClientTest extends AbstractServerTest {
+class ClientTest extends AbstractServerTest {
   override val testDirectory: String = "client"
   object NullInputStream extends InputStream {
     override def read(): Int = {
@@ -88,28 +88,28 @@ object ClientTest extends AbstractServerTest {
     )
     cps.lines
   }
-  test("exit success") { c =>
+  test("exit success") {
     assert(client("willSucceed") == 0)
   }
-  test("exit failure") { _ =>
+  test("exit failure") {
     assert(client("willFail") == 1)
   }
-  test("two commands") { _ =>
+  test("two commands") {
     assert(client("compile;willSucceed") == 0)
   }
-  test("two commands with failing second") { _ =>
+  test("two commands with failing second") {
     assert(client("compile;willFail") == 1)
   }
-  test("two commands with leading failure") { _ =>
+  test("two commands with leading failure") {
     assert(client("willFail;willSucceed") == 1)
   }
-  test("three commands") { _ =>
+  test("three commands") {
     assert(client("compile;clean;willSucceed") == 0)
   }
-  test("three commands with middle failure") { _ =>
+  test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
   }
-  test("compi completions") { _ =>
+  test("compi completions") {
     val expected = Vector(
       "compile",
       "compile:",
@@ -131,7 +131,7 @@ object ClientTest extends AbstractServerTest {
 
     assert(complete("compi").toVector == expected)
   }
-  test("testOnly completions") { _ =>
+  test("testOnly completions") {
     val testOnlyExpected = Vector(
       "testOnly",
       "testOnly/",
@@ -143,7 +143,7 @@ object ClientTest extends AbstractServerTest {
     val testOnlyOptionsExpected = Vector("--", ";", "test.pkg.FooSpec")
     assert(complete("testOnly ") == testOnlyOptionsExpected)
   }
-  test("quote with semi") { _ =>
+  test("quote with semi") {
     assert(complete("\"compile; fooB") == Vector("compile; fooBar"))
   }
 }

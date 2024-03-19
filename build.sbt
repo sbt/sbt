@@ -995,7 +995,6 @@ lazy val serverTestProj = (project in file("server-test"))
   .dependsOn(sbtProj % "compile->test", scriptedSbtReduxProj % "compile->test")
   .settings(
     testedBaseSettings,
-    bspEnabled := false,
     publish / skip := true,
     // make server tests serial
     Test / watchTriggers += baseDirectory.value.toGlob / "src" / "server-test" / **,

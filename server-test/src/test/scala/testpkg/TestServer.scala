@@ -12,7 +12,6 @@ import java.net.Socket
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.AtomicBoolean
-import verify._
 import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 import sbt.io.IO
 import sbt.io.syntax._
@@ -24,8 +23,10 @@ import scala.annotation.tailrec
 import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{ Failure, Success, Try }
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.BeforeAndAfterAll
 
-trait AbstractServerTest extends TestSuite[Unit] {
+trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
   private var temp: File = _
   var svr: TestServer = _
   def testDirectory: String
@@ -38,7 +39,7 @@ trait AbstractServerTest extends TestSuite[Unit] {
     else p1
   }
 
-  override def setupSuite(): Unit = {
+  override def beforeAll(): Unit = {
     val base = Files.createTempDirectory(
       Files.createDirectories(targetDir.toPath.resolve("test-server")),
       "server-test"
@@ -47,15 +48,13 @@ trait AbstractServerTest extends TestSuite[Unit] {
     val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
     val sbtVersion = TestProperties.version
     val scalaVersion = TestProperties.scalaVersion
-    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath, temp)
+    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath.toSeq, temp)
   }
-  override def tearDownSuite(): Unit = {
+  override protected def afterAll(): Unit = {
     svr.bye()
     svr = null
     IO.delete(temp)
   }
-  override def setup(): Unit = ()
-  override def tearDown(env: Unit): Unit = ()
 }
 
 object TestServer {
@@ -118,7 +117,7 @@ object TestServer {
       case _ => throw new IllegalStateException("No server scala version was specified.")
     }
     // Each test server instance will be executed in a Thread pool separated from the tests
-    val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath)
+    val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath.toSeq)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
@@ -164,7 +163,13 @@ case class TestServer(
   val forkOptions =
     ForkOptions()
       .withOutputStrategy(OutputStrategy.StdoutOutput)
-      .withRunJVMOptions(Vector("-Djline.terminal=none", "-Dsbt.io.virtual=false"))
+      .withRunJVMOptions(
+        Vector(
+          "-Djline.terminal=none",
+          "-Dsbt.io.virtual=false",
+          // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=1044"
+        )
+      )
   val process =
     RunFromSourceMain.fork(forkOptions, baseDirectory, scalaVersion, sbtVersion, classpath)
 
@@ -227,9 +232,7 @@ case class TestServer(
     s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true } } }"""
   )
 
-  def test(f: TestServer => Future[Assertion]): Future[Assertion] = {
-    f(this)
-  }
+  def test(f: TestServer => Future[Unit]): Future[Unit] = f(this)
 
   def bye(): Unit =
     try {
@@ -298,7 +301,7 @@ case class TestServer(
       }
     impl()
   }
-  final def waitFor[T: JsonReader](duration: FiniteDuration): T = {
+  final def waitFor[T: JsonReader](duration: FiniteDuration, debug: Boolean = false): T = {
     val deadline = duration.fromNow
     var lastEx: Throwable = null
     @tailrec def impl(): T =
@@ -307,16 +310,17 @@ case class TestServer(
           if (lastEx != null) throw lastEx
           else throw new TimeoutException
         case s =>
+          if debug then println(s)
           Parser
             .parseFromString(s)
-            .flatMap(jvalue =>
+            .flatMap { jvalue =>
               Converter.fromJson[T](
                 jvalue.toStandard
                   .asInstanceOf[sjsonnew.shaded.scalajson.ast.JObject]
                   .value("result")
                   .toUnsafe
               )
-            ) match {
+            } match {
             case Success(value) =>
               value
             case Failure(exception) =>

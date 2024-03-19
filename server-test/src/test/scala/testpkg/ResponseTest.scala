@@ -10,32 +10,30 @@ package testpkg
 import scala.concurrent.duration._
 
 // starts svr using server-test/response and perform custom server tests
-object ResponseTest extends AbstractServerTest {
+class ResponseTest extends AbstractServerTest {
   override val testDirectory: String = "response"
 
-  test("response from a command") { _ =>
-    svr.sendJsonRpc(
-      """{ "jsonrpc": "2.0", "id": "10", "method": "foo/export", "params": {} }"""
-    )
+  test("response from a command") {
+    svr.sendJsonRpc("""{ "jsonrpc": "2.0", "id": "10", "method": "foo/export", "params": {} }""")
     assert(svr.waitForString(10.seconds) { s =>
       if (!s.contains("systemOut")) println(s)
       (s contains """"id":"10"""") &&
-      (s contains "scala-library.jar")
+      (s contains "scala-library-2.12.17.jar")
     })
   }
 
-  test("response from a task") { _ =>
+  test("response from a task") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "11", "method": "foo/rootClasspath", "params": {} }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
       if (!s.contains("systemOut")) println(s)
       (s contains """"id":"11"""") &&
-      (s contains "scala-library.jar")
+      (s contains "scala-library-2.12.17.jar")
     })
   }
 
-  test("a command failure") { _ =>
+  test("a command failure") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "12", "method": "foo/fail", "params": {} }"""
     )
@@ -45,7 +43,7 @@ object ResponseTest extends AbstractServerTest {
     })
   }
 
-  test("a command failure with custom code") { _ =>
+  test("a command failure with custom code") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "13", "method": "foo/customfail", "params": {} }"""
     )
@@ -55,7 +53,7 @@ object ResponseTest extends AbstractServerTest {
     })
   }
 
-  test("a command with a notification") { _ =>
+  test("a command with a notification") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "14", "method": "foo/notification", "params": {} }"""
     )
@@ -65,7 +63,7 @@ object ResponseTest extends AbstractServerTest {
     })
   }
 
-  test("respond concurrently from a task and the handler") { _ =>
+  test("respond concurrently from a task and the handler") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "15", "method": "foo/respondTwice", "params": {} }"""
     )
@@ -84,7 +82,7 @@ object ResponseTest extends AbstractServerTest {
     }
   }
 
-  test("concurrent result and error") { _ =>
+  test("concurrent result and error") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "16", "method": "foo/resultAndError", "params": {} }"""
     )
@@ -103,7 +101,7 @@ object ResponseTest extends AbstractServerTest {
     }
   }
 
-  test("response to a notification should not be sent") { _ =>
+  test("response to a notification should not be sent") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "method": "foo/customNotification", "params": {} }"""
     )
