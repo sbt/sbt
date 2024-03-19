@@ -277,6 +277,7 @@ object ProjectMatrix {
             target := base.getAbsoluteFile / "target" / svDirSuffix.dropWhile(_ == '-'),
             crossTarget := Keys.target.value,
             sourceDirectory := base.getAbsoluteFile / "src",
+            unmanagedBase := base.getAbsoluteFile / "lib",
             inConfig(Compile)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             inConfig(Test)(makeSources(nonScalaDirSuffix, svDirSuffix)),
             projectDependencies := projectDependenciesTask.value,
