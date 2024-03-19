@@ -183,6 +183,7 @@ case class TestServer(
     try IO.read(portfile).isEmpty
     catch { case _: IOException => true }
   def waitForPortfile(duration: FiniteDuration): Unit = {
+    hostLog(s"wait $duration until the server is ready to respond")
     val deadline = duration.fromNow
     var nextLog = 10.seconds.fromNow
     while (portfileIsEmpty() && !deadline.isOverdue && process.isAlive) {
@@ -195,9 +196,7 @@ case class TestServer(
     if (deadline.isOverdue) sys.error(s"Timeout. $portfile is not found.")
     if (!process.isAlive) sys.error(s"Server unexpectedly terminated.")
   }
-  private val waitDuration: FiniteDuration = 1.minute
-  hostLog(s"wait $waitDuration until the server is ready to respond")
-  waitForPortfile(waitDuration)
+  waitForPortfile(1.minute)
 
   @tailrec
   private def connect(attempt: Int): Socket = {

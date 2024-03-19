@@ -1007,7 +1007,7 @@ object Defaults extends BuildCommon {
       discoveredMainClasses := compile
         .map(discoverMainClasses)
         .storeAs(discoveredMainClasses)
-        .xtriggeredBy(compile)
+        .triggeredBy(compile)
         .value,
       discoveredSbtPlugins := discoverSbtPluginNames.value,
       // This fork options, scoped to the configuration is used for tests
@@ -1268,9 +1268,11 @@ object Defaults extends BuildCommon {
         testFrameworks.value.flatMap(f => f.create(loader, log).map(x => (f, x))).toMap
       },
       definedTests := detectTests.value,
-      definedTestNames := (definedTests map (_.map(
-        _.name
-      ).distinct) storeAs definedTestNames triggeredBy compile).value,
+      definedTestNames := definedTests
+        .map(_.map(_.name).distinct)
+        .storeAs(definedTestNames)
+        .triggeredBy(compile)
+        .value,
       testQuick / testFilter := testQuickFilter.value,
       executeTests := {
         import sbt.TupleSyntax.*

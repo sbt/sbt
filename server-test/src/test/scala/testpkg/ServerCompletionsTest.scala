@@ -14,7 +14,6 @@ class ServerCompletionsTest extends AbstractServerTest {
   override val testDirectory: String = "completions"
 
   test("return basic completions on request") {
-    pending // TODO fix completion request failed
     val completionStr = """{ "query": "" }"""
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
@@ -35,7 +34,6 @@ class ServerCompletionsTest extends AbstractServerTest {
   }
 
   test("return completions for user classes") {
-    pending // TODO fix empty items
     val completionStr = """{ "query": "testOnly org." }"""
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": 17, "method": "sbt/completion", "params": $completionStr }"""

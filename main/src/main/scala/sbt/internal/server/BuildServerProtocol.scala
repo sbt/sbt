@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
 
 import scala.util.control.NonFatal
-import scala.util.{ Failure, Success }
+import scala.util.{ Try, Failure, Success }
 import scala.annotation.nowarn
 import sbt.testing.Framework
 
@@ -790,12 +790,12 @@ object BuildServerProtocol {
     }
   }
 
-  private val jsonParser: Parser[JValue] = (Parsers.any.*).map(_.mkString)
-    .map(JsonParser.parseUnsafe)
+  private val jsonParser: Parser[Try[JValue]] = Parsers.any.*.map(_.mkString)
+    .map(JsonParser.parseFromString)
 
   private def bspRunTask: Def.Initialize[InputTask[Unit]] =
-    Def.input((s: State) => jsonParser).flatMapTask { json =>
-      val runParams = Converter.fromJson[RunParams](json).get
+    Def.input(_ => jsonParser).flatMapTask { json =>
+      val runParams = json.flatMap(Converter.fromJson[RunParams]).get
       val defaultClass = Keys.mainClass.value
       val defaultJvmOptions = Keys.javaOptions.value
 
@@ -837,8 +837,8 @@ object BuildServerProtocol {
     }
 
   private def bspTestTask: Def.Initialize[InputTask[Unit]] =
-    Def.input((s: State) => jsonParser).flatMapTask { json =>
-      val testParams = Converter.fromJson[TestParams](json).get
+    Def.input(_ => jsonParser).flatMapTask { json =>
+      val testParams = json.flatMap(Converter.fromJson[TestParams]).get
       val workspace = bspFullWorkspace.value
 
       val resultTask: Def.Initialize[Task[Result[Seq[Unit]]]] = testParams.dataKind match {

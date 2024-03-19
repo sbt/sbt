@@ -403,8 +403,6 @@ object Scoped:
         )((thisTask, deps) => thisTask.dependsOn(deps: _*))
       def failure: Initialize[Task[Incomplete]] = init(_.failure)
       def result: Initialize[Task[Result[A1]]] = init(_.result)
-      def xtriggeredBy[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
-        nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
       def triggeredBy[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
         nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
       def runBefore[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =

@@ -84,7 +84,6 @@ private[sbt] object LanguageServerProtocol {
           onCancellationRequest(Option(r.id), param)
 
         case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
-          import sbt.protocol.codec.JsonProtocol._
           val param = Converter.fromJson[CP](json(r)).get
           onCompletionRequest(Option(r.id), param)
 
