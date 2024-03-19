@@ -6,10 +6,10 @@
 
 # check root
 $ mkdir lib
-$ copy-file strayJar/target/scala-2.12/strayJar_2.12-0.1.0-SNAPSHOT.jar lib/strayJar.jar
+$ copy-file strayJar/target/scala-2.12/strayjar_2.12-0.1.0-SNAPSHOT.jar lib/strayJar.jar
 > root2_12/compile
 
 # check ss
 $ mkdir ss/lib
-$ copy-file strayJar/target/scala-2.12/strayJar_2.12-0.1.0-SNAPSHOT.jar ss/lib/strayJar.jar
+$ copy-file strayJar/target/scala-2.12/strayjar_2.12-0.1.0-SNAPSHOT.jar ss/lib/strayJar.jar
 > ss/compile
