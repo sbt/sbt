@@ -1,6 +1,7 @@
 ThisBuild / scalaVersion := "2.13.8"
 
 Global / serverLog / logLevel := Level.Debug
+Global / cacheStores := Seq.empty
 
 lazy val runAndTest = project.in(file("run-and-test"))
   .settings(

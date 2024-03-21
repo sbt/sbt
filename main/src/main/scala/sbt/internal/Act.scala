@@ -103,7 +103,7 @@ object Act {
       keyMap: Map[String, AttributeKey[_]],
       data: Settings[Scope]
   ): Parser[ParsedKey] =
-    scopedKeyFull(index, current, defaultConfigs, keyMap) flatMap { choices =>
+    scopedKeyFull(index, current, defaultConfigs, keyMap).flatMap { choices =>
       select(choices, data)(showRelativeKey2(current))
     }
 
@@ -355,7 +355,7 @@ object Act {
     val normKeys = taskKeys(_.label)
     val valid = allKnown ++ normKeys
     val suggested = normKeys.map(_._1).toSet
-    val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key") map valid
+    val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key").map(valid)
 
     ((token(
       value(keyP).map(_ -> slashSeq)
@@ -515,7 +515,7 @@ object Act {
         }
       }
       action match {
-        case SingleAction => akp flatMap evaluate
+        case SingleAction => akp.flatMap(evaluate)
         case ShowAction | PrintAction | MultiAction =>
           rep1sep(akp, token(Space)) flatMap { pairs =>
             val flat: mutable.ListBuffer[(ScopedKey[_], Seq[String])] = mutable.ListBuffer.empty

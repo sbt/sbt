@@ -10,10 +10,10 @@ package testpkg
 import scala.concurrent.duration._
 
 // starts svr using server-test/handshake and perform basic tests
-object HandshakeTest extends AbstractServerTest {
+class HandshakeTest extends AbstractServerTest {
   override val testDirectory: String = "handshake"
 
-  test("handshake") { _ =>
+  test("handshake") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "3", "method": "sbt/setting", "params": { "setting": "root/name" } }"""
     )
@@ -22,7 +22,7 @@ object HandshakeTest extends AbstractServerTest {
     })
   }
 
-  test("return number id when number id is sent") { _ =>
+  test("return number id when number id is sent") {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": 3, "method": "sbt/setting", "params": { "setting": "root/name" } }"""
     )

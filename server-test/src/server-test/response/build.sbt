@@ -48,26 +48,28 @@ lazy val fooClasspath = taskKey[Unit]("")
 lazy val root = (project in file("."))
   .settings(
     name := "response",
-    commands += Command.command("fooExport") { s0: State =>
+    commands += Command.command("fooExport") { (s0: State) =>
       val (s1, cp) = s0.unsafeRunTask(Compile / fullClasspath)
-      s0.respondEvent(cp.map(_.data))
+      val converter = s1.setting(fileConverter)
+      s1.respondEvent(cp.map(a => converter.toPath(a.data)))
       s1
     },
-    commands += Command.command("fooFail") { s0: State =>
+    commands += Command.command("fooFail") { (s0: State) =>
       sys.error("fail message")
     },
-    commands += Command.command("fooCustomFail") { s0: State =>
+    commands += Command.command("fooCustomFail") { (s0: State) =>
       import sbt.internal.protocol.JsonRpcResponseError
       throw JsonRpcResponseError(500, "some error")
     },
-    commands += Command.command("fooNotification") { s0: State =>
+    commands += Command.command("fooNotification") { (s0: State) =>
       import CacheImplicits._
       s0.notifyEvent("foo/something", "something")
       s0
     },
     fooClasspath := {
       val s = state.value
+      val converter = fileConverter.value
       val cp = (Compile / fullClasspath).value
-      s.respondEvent(cp.map(_.data))
+      s.respondEvent(cp.map(a => converter.toPath(a.data)))
     }
   )

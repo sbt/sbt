@@ -7,7 +7,6 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Contexts.{ atPhase, Context }
 import dotty.tools.dotc.core.{ Flags, Names, Phases, Symbols, Types }
 import dotty.tools.dotc.Driver
-import dotty.tools.dotc.reporting.Reporter
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{ PlainDirectory, Directory, VirtualDirectory, VirtualFile }
@@ -31,7 +30,7 @@ class Eval(
     nonCpOptions: Seq[String],
     classpath: Seq[Path],
     backingDir: Option[Path],
-    mkReporter: Option[() => Reporter]
+    mkReporter: Option[() => EvalReporter]
 ):
   import Eval.*
 
@@ -46,9 +45,9 @@ class Eval(
     .map(_.toString)
     .mkString(":")
   private lazy val driver: EvalDriver = new EvalDriver
-  private lazy val reporter = mkReporter match
-    case Some(fn) => fn()
-    case None     => EvalReporter.store
+  private lazy val reporter: EvalReporter = mkReporter match
+    case Some(f) => f()
+    case None    => EvalReporter.store
 
   final class EvalDriver extends Driver:
     val compileCtx0 = initCtx.fresh
@@ -83,6 +82,7 @@ class Eval(
       line: Int
   ): EvalResult =
     val ev = new EvalType[String]:
+      override def sourceName: String = srcName
       override def makeSource(moduleName: String): SourceFile =
         val returnType = tpeName match
           case Some(tpe) => s": $tpe"
@@ -148,6 +148,7 @@ class Eval(
     require(definitions.nonEmpty, "definitions to evaluate cannot be empty.")
     val extraHash0 = extraHash
     val ev = new EvalType[Seq[String]]:
+      override def sourceName: String = srcName
       override def makeSource(moduleName: String): SourceFile =
         val header =
           imports.strings.mkString("\n") +
@@ -176,7 +177,6 @@ class Eval(
           StandardOpenOption.CREATE,
           StandardOpenOption.TRUNCATE_EXISTING
         )
-
       override def extraHash: String = extraHash0
 
     val inter = evalCommon[Seq[String]](definitions.map(_._1), imports, tpeName = Some(""), ev)
@@ -203,13 +203,16 @@ class Eval(
     val d = digester.digest()
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
-    val (extra, loader) = backingDir match
-      case Some(backing) if classExists(backing, moduleName) =>
-        val loader = (parent: ClassLoader) =>
-          (new URLClassLoader(Array(backing.toUri.toURL), parent): ClassLoader)
-        val extra = ev.read(cacheFile(backing, moduleName))
-        (extra, loader)
-      case _ => compileAndLoad(ev, moduleName)
+    val (extra, loader) =
+      try
+        backingDir match
+          case Some(backing) if classExists(backing, moduleName) =>
+            val loader = (parent: ClassLoader) =>
+              (new URLClassLoader(Array(backing.toUri.toURL), parent): ClassLoader)
+            val extra = ev.read(cacheFile(backing, moduleName))
+            (extra, loader)
+          case _ => compileAndLoad(ev, moduleName)
+      finally reporter.finalReport(ev.sourceName)
     val generatedFiles = getGeneratedFiles(moduleName)
     EvalIntermediate(
       extra = extra,
@@ -277,19 +280,19 @@ object Eval:
   def apply(): Eval =
     new Eval(Nil, currentClasspath, None, None)
 
-  def apply(mkReporter: () => Reporter): Eval =
+  def apply(mkReporter: () => EvalReporter): Eval =
     new Eval(Nil, currentClasspath, None, Some(mkReporter))
 
   def apply(
       backingDir: Path,
-      mkReporter: () => Reporter,
+      mkReporter: () => EvalReporter,
   ): Eval =
     new Eval(Nil, currentClasspath, Some(backingDir), Some(mkReporter))
 
   def apply(
       nonCpOptions: Seq[String],
       backingDir: Path,
-      mkReporter: () => Reporter,
+      mkReporter: () => EvalReporter,
   ): Eval =
     new Eval(nonCpOptions, currentClasspath, Some(backingDir), Some(mkReporter))
 
@@ -326,6 +329,7 @@ object Eval:
   end EvalSourceFile
 
   trait EvalType[A]:
+    def sourceName: String
     def makeSource(moduleName: String): SourceFile
 
     /** Extracts additional information after the compilation unit is evaluated. */

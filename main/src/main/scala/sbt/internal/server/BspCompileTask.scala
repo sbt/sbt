@@ -9,57 +9,23 @@ package sbt.internal.server
 
 import sbt._
 import sbt.internal.bsp._
-import sbt.internal.io.Retry
-import sbt.internal.server.BspCompileTask.{ compileReport, exchange }
 import sbt.librarymanagement.Configuration
 import sjsonnew.support.scalajson.unsafe.Converter
-import xsbti.compile.CompileResult
+import xsbti.compile.CompileAnalysis
 import xsbti.{ CompileFailed, Problem, Severity }
 
-import scala.util.control.NonFatal
-
 object BspCompileTask {
-  private lazy val exchange = StandardMain.exchange
 
-  def compute(targetId: BuildTargetIdentifier, project: ProjectRef, config: Configuration)(
-      compile: BspCompileTask => CompileResult
-  ): CompileResult = {
-    val task = BspCompileTask(targetId, project, config)
-    try {
-      task.notifyStart()
-      val result = Retry(compile(task))
-      task.notifySuccess(result)
-      result
-    } catch {
-      case NonFatal(cause) =>
-        val compileFailed = cause match {
-          case failed: CompileFailed => Some(failed)
-          case _                     => None
-        }
-        task.notifyFailure(compileFailed)
-        throw cause
-    }
-  }
-
-  private def apply(
+  def start(
       targetId: BuildTargetIdentifier,
       project: ProjectRef,
       config: Configuration
   ): BspCompileTask = {
     val taskId = TaskId(BuildServerTasks.uniqueId, Vector())
     val targetName = BuildTargetName.fromScope(project.project, config.name)
-    BspCompileTask(targetId, targetName, taskId, System.currentTimeMillis())
-  }
-
-  private def compileReport(
-      problems: Seq[Problem],
-      targetId: BuildTargetIdentifier,
-      elapsedTimeMillis: Long
-  ): CompileReport = {
-    val countBySeverity = problems.groupBy(_.severity).view.mapValues(_.size)
-    val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
-    val errors = countBySeverity.getOrElse(Severity.Error, 0)
-    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt))
+    val task = BspCompileTask(targetId, targetName, taskId, System.currentTimeMillis())
+    task.notifyStart()
+    task
   }
 }
 
@@ -75,16 +41,16 @@ case class BspCompileTask private (
     val message = s"Compiling $targetName"
     val data = Converter.toJsonUnsafe(CompileTask(targetId))
     val params = TaskStartParams(id, startTimeMillis, message, "compile-task", data)
-    exchange.notifyEvent("build/taskStart", params)
+    StandardMain.exchange.notifyEvent("build/taskStart", params)
   }
 
-  private[sbt] def notifySuccess(result: CompileResult): Unit = {
+  private[sbt] def notifySuccess(analysis: CompileAnalysis): Unit = {
     import scala.jdk.CollectionConverters.*
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
-    val sourceInfos = result.analysis().readSourceInfos().getAllSourceInfos.asScala
+    val sourceInfos = analysis.readSourceInfos().getAllSourceInfos.asScala
     val problems = sourceInfos.values.flatMap(_.getReportedProblems).toSeq
-    val report = compileReport(problems, targetId, elapsedTimeMillis)
+    val report = compileReport(problems, elapsedTimeMillis)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -93,7 +59,7 @@ case class BspCompileTask private (
       "compile-report",
       Converter.toJsonUnsafe(report)
     )
-    exchange.notifyEvent("build/taskFinish", params)
+    StandardMain.exchange.notifyEvent("build/taskFinish", params)
   }
 
   private[sbt] def notifyProgress(percentage: Int, total: Int): Unit = {
@@ -110,14 +76,14 @@ case class BspCompileTask private (
       Some("compile-progress"),
       Some(data)
     )
-    exchange.notifyEvent("build/taskProgress", params)
+    StandardMain.exchange.notifyEvent("build/taskProgress", params)
   }
 
   private[sbt] def notifyFailure(cause: Option[CompileFailed]): Unit = {
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
     val problems = cause.map(_.problems().toSeq).getOrElse(Seq.empty[Problem])
-    val report = compileReport(problems, targetId, elapsedTimeMillis)
+    val report = compileReport(problems, elapsedTimeMillis)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -126,6 +92,13 @@ case class BspCompileTask private (
       "compile-report",
       Converter.toJsonUnsafe(report)
     )
-    exchange.notifyEvent("build/taskFinish", params)
+    StandardMain.exchange.notifyEvent("build/taskFinish", params)
+  }
+
+  private def compileReport(problems: Seq[Problem], elapsedTimeMillis: Long): CompileReport = {
+    val countBySeverity = problems.groupBy(_.severity).view.mapValues(_.size)
+    val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
+    val errors = countBySeverity.getOrElse(Severity.Error, 0)
+    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt))
   }
 }

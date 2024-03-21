@@ -106,9 +106,11 @@ import sbt.internal.inc.{
   MixedAnalyzingCompiler,
   ScalaInstance
 }
-import xsbti.{ CrossValue, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import sbt.internal.io.Retry
+import xsbti.{ CompileFailed, CrossValue, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile.{
   AnalysisContents,
+  AnalysisStore,
   ClassFileManagerType,
   ClasspathOptionsUtil,
   CompileAnalysis,
@@ -1005,7 +1007,7 @@ object Defaults extends BuildCommon {
       discoveredMainClasses := compile
         .map(discoverMainClasses)
         .storeAs(discoveredMainClasses)
-        .xtriggeredBy(compile)
+        .triggeredBy(compile)
         .value,
       discoveredSbtPlugins := discoverSbtPluginNames.value,
       // This fork options, scoped to the configuration is used for tests
@@ -1266,9 +1268,11 @@ object Defaults extends BuildCommon {
         testFrameworks.value.flatMap(f => f.create(loader, log).map(x => (f, x))).toMap
       },
       definedTests := detectTests.value,
-      definedTestNames := (definedTests map (_.map(
-        _.name
-      ).distinct) storeAs definedTestNames triggeredBy compile).value,
+      definedTestNames := definedTests
+        .map(_.map(_.name).distinct)
+        .storeAs(definedTestNames)
+        .triggeredBy(compile)
+        .value,
       testQuick / testFilter := testQuickFilter.value,
       executeTests := {
         import sbt.TupleSyntax.*
@@ -2393,11 +2397,10 @@ object Defaults extends BuildCommon {
    */
   private[sbt] def compileScalaBackendTask: Initialize[Task[CompileResult]] = Def.task {
     val setup: Setup = compileIncSetup.value
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     val _ = compileIncremental.value
     val exportP = exportPipelining.value
     // Save analysis midway if pipelining is enabled
-    val store = MixedAnalyzingCompiler.staticCachedStore(setup.cachePath, !useBinary)
+    val store = analysisStore
     val contents = store.unsafeGet()
     if (exportP) {
       // this stores the eary analysis (again) in case the subproject contains a macro
@@ -2422,9 +2425,7 @@ object Defaults extends BuildCommon {
         .debug(s"${name.value}: compileEarly: blocking on earlyOutputPing")
       earlyOutputPing.await.value
     }) {
-      val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store =
-        MixedAnalyzingCompiler.staticCachedStore(earlyCompileAnalysisFile.value.toPath, !useBinary)
+      val store = earlyAnalysisStore
       store.get.toOption match {
         case Some(contents) => contents.getAnalysis
         case _              => Analysis.empty
@@ -2436,13 +2437,11 @@ object Defaults extends BuildCommon {
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
+    val store = analysisStore
     val c = fileConverter.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store =
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
@@ -2455,73 +2454,72 @@ object Defaults extends BuildCommon {
     analysis
   }
 
-  def compileIncrementalTaskSettings =
-    inTask(compileIncremental)(
-      Seq(
-        (TaskZero / compileIncremental) := (Def
-          .cachedTask {
-            val s = streams.value
-            val ci = (compile / compileInputs).value
-            // This is a cacheable version
-            val ci2 = (compile / compileInputs2).value
-            val ping = (TaskZero / earlyOutputPing).value
-            val reporter = (compile / bspReporter).value
-            val setup: Setup = (TaskZero / compileIncSetup).value
-            val useBinary: Boolean = enableBinaryCompileAnalysis.value
-            val c = fileConverter.value
-            val analysisResult: CompileResult =
-              BspCompileTask
-                .compute(bspTargetIdentifier.value, thisProjectRef.value, configuration.value) {
-                  bspTask =>
-                    // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-                    compileIncrementalTaskImpl(bspTask, s, ci, ping, reporter)
-                }
-            val analysisOut = c.toVirtualFile(setup.cachePath())
-            val store =
-              MixedAnalyzingCompiler.staticCachedStore(setup.cachePath, !useBinary)
-            val contents =
-              AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
-            store.set(contents)
-            Def.declareOutput(analysisOut)
-            val dir = classDirectory.value
-            if (dir / "META-INF" / "MANIFEST.MF").exists then
-              IO.delete(dir / "META-INF" / "MANIFEST.MF")
-            // inline mappings
-            val mappings = Path
-              .allSubpaths(dir)
-              .filter(_._1.isFile())
-              .map { case (p, path) =>
-                val vf = c.toVirtualFile(p.toPath())
-                (vf: HashedVirtualFileRef) -> path
-              }
-              .toSeq
-            // inlined to avoid caching mappings
-            val pkgConfig = Pkg.Configuration(
-              mappings,
-              artifactPath.value,
-              packageOptions.value,
-            )
-            val out = Pkg(
-              pkgConfig,
-              c,
-              s.log,
-              Pkg.timeFromConfiguration(pkgConfig)
-            )
-            s.log.debug(s"wrote $out")
-            Def.declareOutput(out)
-            analysisResult.hasModified() -> (out: HashedVirtualFileRef)
-          })
-          .tag(Tags.Compile, Tags.CPU)
-          .value,
-        packagedArtifact := {
-          val (hasModified, out) = compileIncremental.value
-          artifact.value -> out
-        },
-        artifact := artifactSetting.value,
-        artifactClassifier := Some("noresources"),
-        artifactPath := artifactPathSetting(artifact).value,
-      )
+  def compileIncrementalTaskSettings = inTask(compileIncremental)(
+    Seq(
+      (TaskZero / compileIncremental) := {
+        val bspTask = (compile / bspCompileTask).value
+        val result = cachedCompileIncrementalTask.result.value
+        val reporter = (compile / bspReporter).value
+        val store = analysisStore
+        val ci = (compile / compileInputs).value
+        result match
+          case Result.Value(res) =>
+            val analysis = store.unsafeGet().getAnalysis()
+            reporter.sendSuccessReport(analysis)
+            bspTask.notifySuccess(analysis)
+            res
+          case Result.Inc(cause) =>
+            val compileFailed = cause.directCause.collect { case c: CompileFailed => c }
+            reporter.sendFailureReport(ci.options.sources)
+            bspTask.notifyFailure(compileFailed)
+            throw cause
+      },
+      packagedArtifact := {
+        val (hasModified, out) = compileIncremental.value
+        artifact.value -> out
+      },
+      artifact := artifactSetting.value,
+      artifactClassifier := Some("noresources"),
+      artifactPath := artifactPathSetting(artifact).value,
     )
+  )
+
+  private val cachedCompileIncrementalTask = Def
+    .cachedTask {
+      val s = streams.value
+      val ci = (compile / compileInputs).value
+      val bspTask = (compile / bspCompileTask).value
+      // This is a cacheable version
+      val ci2 = (compile / compileInputs2).value
+      val ping = (TaskZero / earlyOutputPing).value
+      val setup: Setup = (TaskZero / compileIncSetup).value
+      val store = analysisStore
+      val c = fileConverter.value
+      // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
+      val analysisResult = Retry(compileIncrementalTaskImpl(bspTask, s, ci, ping))
+      val analysisOut = c.toVirtualFile(setup.cachePath())
+      val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
+      store.set(contents)
+      Def.declareOutput(analysisOut)
+      val dir = classDirectory.value
+      if (dir / "META-INF" / "MANIFEST.MF").exists then IO.delete(dir / "META-INF" / "MANIFEST.MF")
+      // inline mappings
+      val mappings = Path
+        .allSubpaths(dir)
+        .filter(_._1.isFile())
+        .map { case (p, path) =>
+          val vf = c.toVirtualFile(p.toPath())
+          (vf: HashedVirtualFileRef) -> path
+        }
+        .toSeq
+      // inlined to avoid caching mappings
+      val pkgConfig = Pkg.Configuration(mappings, artifactPath.value, packageOptions.value)
+      val out = Pkg(pkgConfig, c, s.log, Pkg.timeFromConfiguration(pkgConfig))
+      s.log.debug(s"wrote $out")
+      Def.declareOutput(out)
+      analysisResult.hasModified() -> (out: HashedVirtualFileRef)
+    }
+    .tag(Tags.Compile, Tags.CPU)
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
@@ -2549,8 +2547,7 @@ object Defaults extends BuildCommon {
       task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
-      promise: PromiseWrap[Boolean],
-      reporter: BuildServerReporter,
+      promise: PromiseWrap[Boolean]
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) =
@@ -2565,16 +2562,12 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val setup: Setup = ci.setup
     val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
-    try
-      val result = incCompiler.compile(i, s.log)
-      reporter.sendSuccessReport(result.getAnalysis)
-      result
+    try incCompiler.compile(i, s.log)
     catch
       case e: Throwable =>
         if !promise.isCompleted then
           promise.failure(e)
           ConcurrentRestrictions.cancelAllSentinels()
-        reporter.sendFailureReport(ci.options.sources)
         throw e
     finally x.close() // workaround for #937
   }
@@ -2591,12 +2584,8 @@ object Defaults extends BuildCommon {
       override def definesClass(classpathEntry: VirtualFile): DefinesClass =
         cachedPerEntryDefinesClassLookup(classpathEntry)
     val extra = extraIncOptions.value.map(t2)
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
-    val eapath = earlyCompileAnalysisFile.value.toPath
-    val eaOpt =
-      if exportPipelining.value then
-        Some(MixedAnalyzingCompiler.staticCachedStore(eapath, !useBinary))
-      else None
+    val store = earlyAnalysisStore
+    val eaOpt = if exportPipelining.value then Some(store) else None
     Setup.of(
       lookup,
       (compile / skip).value,
@@ -2672,6 +2661,8 @@ object Defaults extends BuildCommon {
           javacOptions.value.toVector,
         )
       },
+      bspCompileTask :=
+        BspCompileTask.start(bspTargetIdentifier.value, thisProjectRef.value, configuration.value)
     )
   }
 
@@ -2698,8 +2689,7 @@ object Defaults extends BuildCommon {
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
-      val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val store = analysisStore
       val prev = store.get().toOption match {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
@@ -2710,6 +2700,18 @@ object Defaults extends BuildCommon {
       prev
     }
   )
+
+  private inline def analysisStore: AnalysisStore = {
+    val setup = compileIncSetup.value
+    val useBinary = enableBinaryCompileAnalysis.value
+    MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+  }
+
+  private inline def earlyAnalysisStore: AnalysisStore = {
+    val earlyAnalysisPath = earlyCompileAnalysisFile.value.toPath
+    val useBinary = enableBinaryCompileAnalysis.value
+    MixedAnalyzingCompiler.staticCachedStore(earlyAnalysisPath, !useBinary)
+  }
 
   def printWarningsTask: Initialize[Task[Unit]] =
     Def.task {
@@ -4828,7 +4830,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
             }
           }
         })
-        .value
+        .evaluated
     ) ++ inTask(scoped)((config / forkOptions) := forkOptionsTask.value)
   }
 

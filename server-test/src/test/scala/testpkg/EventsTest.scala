@@ -11,11 +11,11 @@ import scala.concurrent.duration._
 import java.util.concurrent.atomic.AtomicInteger
 
 // starts svr using server-test/events and perform event related tests
-object EventsTest extends AbstractServerTest {
+class EventsTest extends AbstractServerTest {
   override val testDirectory: String = "events"
   val currentID = new AtomicInteger(1000)
 
-  test("report task failures in case of exceptions") { _ =>
+  test("report task failures in case of exceptions") {
     val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": $id, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
@@ -25,7 +25,7 @@ object EventsTest extends AbstractServerTest {
     })
   }
 
-  test("return error if cancelling non-matched task id") { _ =>
+  test("return error if cancelling non-matched task id") {
     val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id":$id, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
