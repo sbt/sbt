@@ -32,10 +32,6 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
   def testDirectory: String
   def testPath: Path = temp.toPath.resolve(testDirectory)
 
-  def sbtVersion = sys.props
-    .get("sbt.server.version")
-    .getOrElse(throw new IllegalStateException("No server version was specified."))
-
   private val targetDir: File = {
     val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
     val p1 = new File("target").getAbsoluteFile
