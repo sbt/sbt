@@ -283,8 +283,7 @@ private[sbt] object Load {
       )
     }
 
-    // todo: fix this
-    // Project.checkTargets(data) foreach sys.error
+    checkTargets(data).foreach(sys.error)
     val index = timed("Load.apply: structureIndex", log) {
       structureIndex(data, settings, loaded.extra(data), projects)
     }
@@ -302,6 +301,29 @@ private[sbt] object Load {
       config.converter,
     )
     (rootEval, bs)
+  }
+
+  private def checkTargets(data: Settings[Scope]): Option[String] =
+    val dups = overlappingTargets(allTargets(data))
+    if (dups.isEmpty) None
+    else {
+      val dupStr = dups.map { case (dir, scopes) =>
+        s"${dir.getAbsolutePath}:\n\t${scopes.mkString("\n\t")}"
+      }.mkString
+      Some(s"Overlapping output directories:$dupStr")
+    }
+
+  private def overlappingTargets(targets: Seq[(ProjectRef, File)]): Map[File, Seq[ProjectRef]] =
+    targets.groupBy(_._2).view.filter(_._2.size > 1).mapValues(_.map(_._1)).toMap
+
+  private def allTargets(data: Settings[Scope]): Seq[(ProjectRef, File)] = {
+    import ScopeFilter._
+    val allProjects = ScopeFilter(Make.inAnyProject)
+    val targetAndRef = Def.setting { (Keys.thisProjectRef.value, Keys.target.value) }
+    new SettingKeyAll(Def.optional(targetAndRef)(identity))
+      .all(allProjects)
+      .evaluate(data)
+      .flatMap(x => x)
   }
 
   // map dependencies on the special tasks:
