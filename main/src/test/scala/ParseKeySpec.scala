@@ -4,7 +4,6 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-/*
 package sbt
 
 import sbt.Def.{ ScopedKey, displayFull, displayMasked }
@@ -20,7 +19,7 @@ import hedgehog.runner._
  * Tests that the scoped key parser in Act can correctly parse a ScopedKey converted by Def.show*Key.
  * This includes properly resolving omitted components.
  */
-object ParseKey extends Properties {
+object ParseKeySpec extends Properties {
   val exampleCount = 1000
 
   override def tests: List[Test] = List(
@@ -195,4 +194,3 @@ object ParseKey extends Properties {
     allProjects(label)
   }
 }
- */
