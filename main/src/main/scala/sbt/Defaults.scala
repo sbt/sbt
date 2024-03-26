@@ -724,7 +724,8 @@ object Defaults extends BuildCommon {
     clean := clean.dependsOnTask(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
-      if (ScalaArtifacts.isScala3(sv)) fetchBridgeBinaryJarTask(sv)
+      val managed = managedScalaInstance.value
+      if (ScalaArtifacts.isScala3(sv) && managed) fetchBridgeBinaryJarTask(sv)
       else Def.task[Option[File]](None)
     }.value,
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
