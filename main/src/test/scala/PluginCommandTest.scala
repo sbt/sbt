@@ -4,7 +4,6 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-/*
 package sbt
 
 import java.io._
@@ -18,15 +17,14 @@ import sbt.internal.util.{
   GlobalLogging,
   MainAppender,
   Settings,
-  Terminal => ITerminal,
+  Terminal,
 }
+import sbt.internal.inc.PlainVirtualFileConverter
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
 package subpackage {
-
   object PluginCommandTestPlugin1 extends AutoPlugin { override def requires = empty }
-
 }
 
 object PluginCommandTest extends verify.BasicTestSuite {
@@ -73,7 +71,7 @@ object FakeState {
     val logFile = File.createTempFile("sbt", ".log")
     try {
       val state = FakeState(logFile, enabledPlugins: _*)
-      ITerminal.withOut(new PrintStream(outBuffer, true)) {
+      Terminal.withOut(new PrintStream(outBuffer, true)) {
         MainLoop.processCommand(Exec(input, None), state)
       }
       new String(outBuffer.toByteArray)
@@ -115,7 +113,8 @@ object FakeState {
       Nil
     )
 
-    val pluginData = PluginData(Nil, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None)
+    val converter = PlainVirtualFileConverter.converter
+    val pluginData = PluginData(Nil, converter)
     val builds: DetectedModules[BuildDef] = new DetectedModules[BuildDef](Nil)
 
     val detectedAutoPlugins: Seq[DetectedAutoPlugin] =
@@ -123,7 +122,7 @@ object FakeState {
     val detectedPlugins = new DetectedPlugins(detectedAutoPlugins, builds)
     val loadedPlugins =
       new LoadedPlugins(base, pluginData, ClassLoader.getSystemClassLoader, detectedPlugins)
-    val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins)
+    val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins, converter)
 
     val (partBuildUnit: PartBuildUnit, _) = Load.loaded(buildUnit)
     val loadedBuildUnit = Load.resolveProjects(base.toURI, partBuildUnit, _ => testProject.id)
@@ -167,4 +166,3 @@ object FakeState {
   }
 
 }
- */

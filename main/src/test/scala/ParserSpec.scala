@@ -4,7 +4,6 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-/*
 package sbt
 
 import java.net.URI
@@ -81,4 +80,3 @@ object ParserSpec extends Properties {
       .log(s"$string parsed back to $resultStr rather than $scopedKey")
   }
 }
- */
