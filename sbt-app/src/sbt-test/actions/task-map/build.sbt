@@ -4,6 +4,8 @@ val taskB = taskKey[File]("")
 val taskE = taskKey[File]("")
 val taskF = taskKey[File]("")
 
+scalaVersion := "3.3.1"
+name := "task-map"
 taskA := touch(target.value / "a")
 taskB := touch(target.value / "b")
 
@@ -14,13 +16,13 @@ taskF := touch(target.value / "f")
 // means "a" will be triggered by "b"
 // said differently, invoking "b" will run "b" and then run "a"
 
-taskA := (taskA triggeredBy taskB).value
+taskA := taskA.triggeredBy(taskB).value
 
 //   e <<= e runBefore f
 // means "e" will be run before running "f"
 // said differently, invoking "f" will run "e" and then run "f"
 
-taskE := (taskE runBefore taskF).value
+taskE := taskE.runBefore(taskF).value
 
 // test utils
 def touch(f: File): File = { IO.touch(f); f }

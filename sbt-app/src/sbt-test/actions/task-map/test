@@ -1,0 +1,9 @@
+> taskB
+$ exists target/out/jvm/scala-3.3.1/task-map/b
+# TODO fix triggeredBy
+# $ exists target/out/jvm/scala-3.3.1/task-map/a
+
+> taskF
+# TODO fix runBefore
+# $ exists target/out/jvm/scala-3.3.1/task-map/e
+$ exists target/out/jvm/scala-3.3.1/task-map/f
