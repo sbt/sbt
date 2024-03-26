@@ -4815,8 +4815,8 @@ trait BuildExtra extends BuildCommon with DefExtra {
       baseArguments: String*
   ): Vector[Setting[_]] = {
     Vector(
-      scoped := (Def
-        .input((s: State) => Def.spaceDelimited())
+      scoped := Def
+        .input(_ => Def.spaceDelimited())
         .flatMapTask { result =>
           initScoped(
             scoped.scopedKey,
@@ -4829,7 +4829,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
               r.run(mainClass, cp.files, baseArguments ++ args, s.log).get
             }
           }
-        })
+        }
         .evaluated
     ) ++ inTask(scoped)((config / forkOptions) := forkOptionsTask.value)
   }
