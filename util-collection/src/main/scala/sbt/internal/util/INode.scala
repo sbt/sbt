@@ -40,7 +40,7 @@ abstract class EvaluateSettings[ScopeType]:
         case k: Keyed[s, A]   => single(getStatic(k.scopedKey), k.transform)
         case u: Uniform[s, A] => UniformNode(u.inputs.map(transform[s]), u.f)
         case a: Apply[k, A] =>
-          MixedNode[k, A](TupleMapExtension.transform(a.inputs) { transform }, a.f)
+          MixedNode[k, A](TupleMapExtension.transform(a.inputs)(transform), a.f)
         case b: Bind[s, A]           => BindNode[s, A](transform(b.in), x => transform(b.f(x)))
         case v: Value[A]             => constant(v.value)
         case v: ValidationCapture[a] => strictConstant(v.key: A)
@@ -89,8 +89,7 @@ abstract class EvaluateSettings[ScopeType]:
 
   private[this] def submit(work: => Unit): Unit =
     startWork()
-    // new Runnable { def run = if (!cancel.get()) run0(work) }
-    executor.execute(() => if !cancel.get() then run0(work) else ())
+    executor.execute(() => if !cancel.get() then run0(work))
 
   private[this] def run0(work: => Unit): Unit =
     try {
@@ -102,7 +101,6 @@ abstract class EvaluateSettings[ScopeType]:
 
   private[this] def workComplete(): Unit =
     if running.decrementAndGet() == 0 then complete.put(None)
-    else ()
 
   private[this] sealed abstract class INode[A1]:
     private[this] var state: EvaluationState = New
@@ -116,9 +114,12 @@ abstract class EvaluateSettings[ScopeType]:
         keyString
 
     private[this] def keyString =
-      (static.toSeq.flatMap { case (key, value) =>
-        if (value eq this) init.showFullKey.show(key) :: Nil else List.empty[String]
-      }).headOption getOrElse "non-static"
+      static.toSeq
+        .flatMap { case (key, value) =>
+          if (value eq this) init.showFullKey.show(key) :: Nil else Nil
+        }
+        .headOption
+        .getOrElse("non-static")
 
     final def get: A1 = synchronized {
       assert(value != null, toString + " not evaluated")

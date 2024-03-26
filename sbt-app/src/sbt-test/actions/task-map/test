@@ -1,0 +1,7 @@
+> taskB
+$ exists target/out/jvm/scala-3.3.1/task-map/b
+$ exists target/out/jvm/scala-3.3.1/task-map/a
+
+> taskF
+$ exists target/out/jvm/scala-3.3.1/task-map/e
+$ exists target/out/jvm/scala-3.3.1/task-map/f

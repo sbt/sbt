@@ -25,13 +25,6 @@ object InitializeInstance:
       Def.flatMap[A1, A2](fa)(f)
 end InitializeInstance
 
-private[std] object ComposeInstance:
-  import InitializeInstance.initializeMonad
-  val InitInstance = summon[Applicative[Initialize]]
-  val F1F2: Applicative[[a] =>> Initialize[Task[a]]] =
-    summon[Applicative[[a] =>> Initialize[Task[a]]]]
-end ComposeInstance
-
 object ParserInstance:
   type F1[x] = State => Parser[x]
   // import sbt.internal.util.Classes.Applicative
@@ -59,11 +52,17 @@ object FullInstance:
     KeyRanks.DTask
   )
 
-  given Monad[Initialize] = InitializeInstance.initializeMonad
-  val F1F2: Applicative[[a] =>> Initialize[Task[a]]] = ComposeInstance.F1F2
+  val F1F2: Applicative[[a] =>> Initialize[Task[a]]] = Applicative.given_Applicative_F1(using
+    InitializeInstance.initializeMonad,
+    Task.taskMonad
+  )
   given initializeTaskMonad: Monad[[a] =>> Initialize[Task[a]]] with
     type F[x] = Initialize[Task[x]]
     override def pure[A1](x: () => A1): Initialize[Task[A1]] = F1F2.pure(x)
+
+    override def map[A1, A2](fa: Initialize[Task[A1]])(f: A1 => A2): Initialize[Task[A2]] =
+      F1F2.map(fa)(f)
+
     override def ap[A1, A2](ff: Initialize[Task[A1 => A2]])(
         fa: Initialize[Task[A1]]
     ): Initialize[Task[A2]] =
