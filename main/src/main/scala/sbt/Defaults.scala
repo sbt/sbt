@@ -271,6 +271,9 @@ object Defaults extends BuildCommon {
       csrLogger := LMCoursier.coursierLoggerTask.value,
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
+      csrSameVersions := Seq(
+        ScalaArtifacts.Artifacts.map(a => InclExclRule(scalaOrganization.value, a)).toSet
+      )
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -730,14 +733,14 @@ object Defaults extends BuildCommon {
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
+    classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
+    console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
-      classpathOptions :== ClasspathOptionsUtil.boot,
-      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
@@ -1146,10 +1149,47 @@ object Defaults extends BuildCommon {
     val sv = scalaVersion.value
     val fullReport = update.value
 
-    val toolReport = fullReport
-      .configuration(Configurations.ScalaTool)
-      .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    // For Scala 3, update scala-library.jar in `scala-tool` and `scala-doc-tool` in case a newer version
+    // is present in the `compile` configuration. This is needed once forwards binary compatibility is dropped
+    // to avoid NoSuchMethod exceptions when expanding macros.
+    def updateLibraryToCompileConfiguration(report: ConfigurationReport) =
+      if (!ScalaArtifacts.isScala3(sv)) report
+      else
+        (for {
+          compileConf <- fullReport.configuration(Configurations.Compile)
+          compileLibMod <- compileConf.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          reportLibMod <- report.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          if VersionNumber(reportLibMod.module.revision)
+            .matchesSemVer(SemanticSelector(s"<${compileLibMod.module.revision}"))
+        } yield {
+          val newMods = report.modules
+            .filterNot(_.module.name == ScalaArtifacts.LibraryID) :+ compileLibMod
+          report.withModules(newMods)
+        }).getOrElse(report)
 
+    val toolReport = updateLibraryToCompileConfiguration(
+      fullReport
+        .configuration(Configurations.ScalaTool)
+        .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    )
+
+    if (Classpaths.isScala213(sv)) {
+      for {
+        compileReport <- fullReport.configuration(Configurations.Compile)
+        libName <- ScalaArtifacts.Artifacts
+      } {
+        for (lib <- compileReport.modules.find(_.module.name == libName)) {
+          val libVer = lib.module.revision
+          if (VersionNumber(sv).matchesSemVer(SemanticSelector(s"<$libVer")))
+            sys.error(
+              s"""`${name.value}/scalaVersion` needs to be upgraded to $libVer. To support backwards-only
+                 |binary compatibility (SIP-51), the Scala compiler cannot be older than $libName on the
+                 |dependency classpath. See `${name.value}/evicted` why $libName was upgraded from $sv to $libVer.
+                 |""".stripMargin
+            )
+        }
+      }
+    }
     def file(id: String): File = {
       val files = for {
         m <- toolReport.modules if m.module.name.startsWith(id)
@@ -1162,6 +1202,7 @@ object Defaults extends BuildCommon {
     val allDocJars =
       fullReport
         .configuration(Configurations.ScalaDocTool)
+        .map(updateLibraryToCompileConfiguration)
         .toSeq
         .flatMap(_.modules)
         .flatMap(_.artifacts.map(_._2))
@@ -3933,6 +3974,8 @@ object Classpaths {
 
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
+
+  private[sbt] def isScala213(sv: String) = sv.startsWith("2.13.")
 
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =

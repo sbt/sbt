@@ -47,6 +47,9 @@ object Statistics {
     }
 
     def format(stats: ModuleStats): String = {
+      import java.util.Locale
+      val dl = Locale.getDefault
+      Locale.setDefault(Locale.US)
       import stats._
       def mb(bytes: Long): Double = bytes.toDouble / 1000000
       val selfSize =
@@ -54,7 +57,10 @@ object Statistics {
           case Some(size) => f"${mb(size)}%7.3f"
           case None       => "-------"
         }
-      f"${mb(transitiveSize)}%7.3f MB $selfSize MB $numTransitiveDependencies%4d $numDirectDependencies%4d ${id.idString}%s"
+      val r =
+        f"${mb(transitiveSize)}%7.3f MB $selfSize MB $numTransitiveDependencies%4d $numDirectDependencies%4d ${id.idString}%s"
+      Locale.setDefault(dl)
+      r
     }
 
     val allStats =
