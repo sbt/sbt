@@ -93,7 +93,7 @@ object TaskMacro:
         '{
           InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1]($t)($ev))
         }
-      case _ => report.errorAndAbort(s"JsonFormat[${Type.of[A1]}] missing")
+      case _ => report.errorAndAbort(s"JsonFormat[${Type.show[A1]}] missing")
 
   /** Implementation of := macro for settings. */
   def settingAssignMacroImpl[A1: Type](rec: Expr[Scoped.DefinableSetting[A1]], v: Expr[A1])(using
@@ -147,7 +147,7 @@ object TaskMacro:
               $rec.+=($v2.taskValue)(using $ev)
             }
           case _ =>
-            report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[Task[a]]}] missing")
+            report.errorAndAbort(s"Append.Value[${Type.show[A1]}, ${Type.show[Task[a]]}] missing")
       case _ =>
         Expr.summon[Append.Value[A1, A2]] match
           case Some(ev) =>
@@ -155,7 +155,8 @@ object TaskMacro:
             '{
               $rec.append1[A2]($init)(using $ev)
             }
-          case _ => report.errorAndAbort(s"Append.Value[${Type.of[A1]}, ${Type.of[A2]}] missing")
+          case _ =>
+            report.errorAndAbort(s"Append.Value[${Type.show[A1]}, ${Type.show[A2]}] missing")
 
   /*
   private[this] def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(
