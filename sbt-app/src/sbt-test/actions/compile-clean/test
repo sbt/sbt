@@ -1,0 +1,22 @@
+$ touch target/cant-touch-this
+
+> Test/products
+$ exists target/out/jvm/scala-2.12.17/compile-clean/classes/A.class
+$ exists target/out/jvm/scala-2.12.17/compile-clean/test-classes/B.class
+
+> Test/clean
+$ exists target/cant-touch-this
+# TODO it should clean only test classes
+# $ exists target/out/jvm/scala-2.12.17/compile-clean/classes/A.class
+# $ exists target/out/jvm/scala-2.12.17/compile-clean/classes/X.class
+$ absent target/out/jvm/scala-2.12.17/compile-clean/test-classes/B.class
+
+# compiling everything again, but now cleaning only compile classes
+> Test/products
+> Compile/clean
+$ exists target/cant-touch-this
+# TODO it should clean only compile classes
+$ absent target/out/jvm/scala-2.12.17/compile-clean/classes/A.class
+# $ exists target/out/jvm/scala-2.12.17/compile-clean/test-classes/B.class
+# TODO and X has to be kept, because of the cleanKeepFiles override
+# $ exists target/out/jvm/scala-2.12.17/compile-clean/classes/X.class
