@@ -24,22 +24,19 @@ def checkExtra =
     s
   }
 
-def addExtra1(s: State, extra: Seq[File]): State =
-  {
-    val cs = s.configuration.provider.components()
-    val copied = cs.addToComponent("extra", extra.toArray)
-    if(copied) s.reload else s
-  }
+def addExtra1(s: State, extra: Seq[File]): State = {
+  val cs = s.configuration.provider.components()
+  val copied = cs.addToComponent("extra", extra.toArray)
+  if(copied) s.reload else s
+}
 
 def addExtra2(s: State, extra: Seq[File]): State = {
   val reload = State.defaultReload(s)
   val currentID = reload.app
   val currentExtra = currentID.classpathExtra
   val newExtra = (currentExtra ++ extra).distinct
-  if(newExtra.length == currentExtra.length)
-    s
-  else
-  {
+  if(newExtra.length == currentExtra.length) s
+  else {
     val newID = ApplicationID(currentID).copy(extra = extra)
     s.setNext(new State.Return(reload.copy(app = newID)))
   }
