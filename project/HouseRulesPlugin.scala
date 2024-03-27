@@ -32,7 +32,7 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions ++= "-Ywarn-unused-import".ifScala2x(v => 11 <= v && v <= 12).value.toList,
     scalacOptions ++= {
       scalaPartV.value match {
-        case Some((3, _)) => Seq("-Wunused:imports,implicits,nowarn")
+        case Some((3, _)) => Seq("-Wunused:imports,implicits") // ,nowarn
         case Some((2, _)) => Seq("-Ywarn-unused:-privates,-locals,-explicits")
         case _            => Seq.empty
       }
