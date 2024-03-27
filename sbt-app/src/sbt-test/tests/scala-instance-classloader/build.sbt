@@ -11,19 +11,20 @@ lazy val root = (project in file("."))
     libraryDependencies += {
       "org.scala-lang" % "scala-compiler" % scalaVersion.value % OtherScala.name 
     },
-    OtherScala / managedClasspath := Classpaths.managedJars(OtherScala, classpathTypes.value, update.value),
+    OtherScala / managedClasspath := 
+      Classpaths.managedJars(OtherScala, classpathTypes.value, update.value, fileConverter.value),
 
     // Hack in the scala instance
     scalaInstance := {
-      val rawJars = (OtherScala / managedClasspath).value.map(_.data)
+      val converter = fileConverter.value
+      val rawJars = (OtherScala / managedClasspath).value.map(c => converter.toPath(c.data).toFile)
       val scalaHome = (target.value / "scala-home")
-      def removeVersion(name: String): String =
-        name.replaceAll("\\-2.12.11", "")
+      val sv = scalaVersion.value
+      def removeVersion(name: String): String = name.replaceAll(s"\\-$sv", "")
       for(jar <- rawJars) {
-        val tjar = scalaHome / s"lib/${removeVersion(jar.getName)}"
-        IO.copyFile(jar, tjar)
+        IO.copyFile(jar, scalaHome / s"lib" / removeVersion(jar.getName))
       }
-      IO.listFiles(scalaHome).foreach(f => System.err.println(s" * $f}"))
+      IO.listFiles(scalaHome / "lib").foreach(f => System.err.println(s" * $f"))
       ScalaInstance(scalaHome, appConfiguration.value.provider.scalaProvider.launcher)
     },
 
