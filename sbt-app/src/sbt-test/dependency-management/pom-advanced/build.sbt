@@ -6,15 +6,17 @@ lazy val root = (project in file(".")).
   settings(
     resolvers ++= Seq(local, Resolver.sonatypeRepo("releases"), Resolver.sonatypeRepo("snapshots")),
     InputKey[Unit]("checkPom") := {
+      val converter = fileConverter.value
       val result = spaceDelimited("<args>").parsed
-      checkPomRepositories(makePom.value, result, streams.value)
+      val pomFile = converter.toPath(makePom.value)
+      checkPomRepositories(pomFile.toFile, result, streams.value)
     },
     makePomConfiguration := {
       val conf = makePomConfiguration.value
       conf
         .withFilterRepositories(pomIncludeRepository(baseDirectory.value, conf.filterRepositories))
     },
-    ivyPaths := baseDirectory( dir => IvyPaths(dir, Some(dir / "ivy-home"))).value
+    ivyPaths := baseDirectory(dir => IvyPaths(dir.toString, Some((dir / "ivy-home").toString))).value
   )
 
 val local = "local-maven-repo" at "file://" + (Path.userHome / ".m2" /"repository").absolutePath

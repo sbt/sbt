@@ -1,0 +1,6 @@
+> compile
+$ exists target/out/jvm/scala-3.3.1/clean-managed/src_managed/foo.txt target/out/jvm/scala-3.3.1/clean-managed/src_managed/bar.txt
+
+> clean
+$ absent target/out/jvm/scala-3.3.1/clean-managed/src_managed/foo.txt
+$ exists target/out/jvm/scala-3.3.1/clean-managed/src_managed/bar.txt

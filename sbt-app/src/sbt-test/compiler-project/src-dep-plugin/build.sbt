@@ -1,5 +1,6 @@
-import Configurations.{CompilerPlugin => CPlugin}
-
-lazy val use = project.dependsOn(RootProject(file("def")) % CPlugin).settings(
-	autoCompilerPlugins := true
-)
+lazy val use = project
+  .dependsOn(RootProject(file("def")) % Configurations.CompilerPlugin)
+  .settings(
+    scalaVersion := "2.12.17",
+    autoCompilerPlugins := true
+  )

@@ -12,6 +12,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.net.URLConnection;
 import xsbti.*;
 
 /**
@@ -66,6 +67,12 @@ public class XMainConfiguration {
 
   private xsbti.AppConfiguration makeConfiguration(xsbti.AppConfiguration configuration) {
     try {
+      boolean isScripted = Boolean.parseBoolean(System.getProperty("sbt.scripted"));
+      if (isScripted) {
+        // in batch scripted tests, we disable caching jar files
+        // to avoid interference between tests
+        URLConnection.setDefaultUseCaches("jar", false);
+      }
       ClassLoader baseLoader = XMainConfiguration.class.getClassLoader();
       String className = "sbt/internal/XMainConfiguration.class";
       URL url = baseLoader.getResource(className);

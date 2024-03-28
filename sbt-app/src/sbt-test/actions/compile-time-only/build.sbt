@@ -1,7 +1,5 @@
-ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
-
+ThisBuild / evictionErrorLevel := Level.Info
 libraryDependencies += "org.scala-sbt" % "sbt" % sbtVersion.value
-
 
 lazy val expectErrorNotCrash = taskKey[Unit]("Ensures that sbt properly set types on Trees so that the compiler doesn't crash on a bad reference to .value, but gives a proper error instead.")
 

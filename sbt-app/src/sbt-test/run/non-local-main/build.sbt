@@ -1,3 +1,5 @@
+ThisBuild / scalaVersion := "2.12.17"
+
 lazy val main = project.settings(
   organization := "org.scala-sbt.testsuite.example",
   name := "has-main",

@@ -1,0 +1,2 @@
+> compile
+$ exists target/out/jvm/scala-2.12.12/root/src_managed/BuildInfo.scala

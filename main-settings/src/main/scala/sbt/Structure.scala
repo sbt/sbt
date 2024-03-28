@@ -82,7 +82,7 @@ sealed abstract class SettingKey[A1]
   final inline def :=(inline v: A1): Setting[A1] =
     ${ TaskMacro.settingAssignMacroImpl('this, 'v) }
 
-  final inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[A1] =
+  final inline def +=[A2](inline v: A2)(using inline ev: Append.Value[A1, A2]): Setting[A1] =
     ${ TaskMacro.settingAppend1Impl[A1, A2]('this, 'v) }
 
   final inline def append1[A2](v: Initialize[A2])(using

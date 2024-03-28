@@ -319,7 +319,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     inline def value: A1 = InputWrapper.`wrapInitTask_\u2603\u2603`[A1](in)
 
     /**
-     * This treats the `Initailize[Task[A]]` as a setting that returns the Task value,
+     * This treats the `Initialize[Task[A]]` as a setting that returns the Task value,
      * instead of evaluating the task.
      */
     inline def taskValue: Task[A1] = InputWrapper.`wrapInit_\u2603\u2603`[Task[A1]](in)

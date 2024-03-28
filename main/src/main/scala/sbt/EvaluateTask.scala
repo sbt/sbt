@@ -337,10 +337,9 @@ object EvaluateTask {
 
   def evalPluginDef(pluginDef: BuildStructure, state: State): PluginData = {
     val root = ProjectRef(pluginDef.root, Load.getRootProject(pluginDef.units)(pluginDef.root))
-    val pluginKey = pluginData
     val config = extractedTaskConfig(Project.extract(state), pluginDef, state)
     val evaluated =
-      apply(pluginDef, ScopedKey(pluginKey.scope, pluginKey.key), state, root, config)
+      apply(pluginDef, ScopedKey(pluginData.scope, pluginData.key), state, root, config)
     val (newS, result) = evaluated getOrElse sys.error(
       "Plugin data does not exist for plugin definition at " + pluginDef.root
     )
