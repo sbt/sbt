@@ -48,7 +48,7 @@ object Dependencies {
   val sbtV = "1.0"
   val scalaV = "2.12"
 
-  val jsch = "com.jcraft" % "jsch" % "0.1.54" intransitive ()
+  val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
