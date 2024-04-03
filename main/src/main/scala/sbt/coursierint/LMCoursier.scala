@@ -93,7 +93,8 @@ object LMCoursier {
       ivyHome: Option[String],
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
-      log: Logger
+      log: Logger,
+      protocolHandlerDependencies: Seq[ModuleID]
   ): CoursierConfiguration =
     coursierConfiguration(
       rs,
@@ -117,7 +118,8 @@ object LMCoursier {
       strict,
       depsOverrides,
       None,
-      log
+      log,
+      protocolHandlerDependencies
     )
 
   def coursierConfiguration(
@@ -142,7 +144,8 @@ object LMCoursier {
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       updateConfig: Option[UpdateConfiguration],
-      log: Logger
+      log: Logger,
+      protocolHandlerDependencies: Seq[ModuleID],
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
       .exclusions(
@@ -194,6 +197,7 @@ object LMCoursier {
       .withStrict(strict)
       .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)
+      .withProtocolHandlerDependencies(protocolHandlerDependencies)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -220,7 +224,8 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
-      streams.value.log
+      streams.value.log,
+      csrProtocolHandlerDependencies.value,
     )
   }
 
@@ -248,7 +253,8 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
-      streams.value.log
+      streams.value.log,
+      csrProtocolHandlerDependencies.value
     )
   }
 
@@ -276,7 +282,8 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
-      streams.value.log
+      streams.value.log,
+      csrProtocolHandlerDependencies.value,
     )
   }
 
@@ -304,7 +311,8 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
-      streams.value.log
+      streams.value.log,
+      csrProtocolHandlerDependencies.value,
     )
   }
 
