@@ -22,16 +22,10 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{
-  CompileOutput,
-  FileAnalysisStore,
-  HashUtil,
-  JarUtils,
-  MappedFileConverter
-}
+import sbt.internal.inc.{ CompileOutput, HashUtil, JarUtils, MappedFileConverter }
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
-import sbt.internal.inc.Analysis
+import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
@@ -50,7 +44,7 @@ import sbt.util.{
 }
 import sjsonnew.JsonFormat
 import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
-import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
+import xsbti.compile.{ AnalysisContents, AnalysisStore, CompileAnalysis, MiniSetup, MiniOptions }
 
 import scala.collection.mutable
 
@@ -83,13 +77,10 @@ object RemoteCache {
   private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
     analysisStore.getOrElseUpdate(
       ref, {
-        val vfs = cacheStore.getBlobs(ref :: Nil)
-        if vfs.nonEmpty then
-          val outputDirectory = Def.cacheConfiguration.outputDirectory
-          cacheStore.syncBlobs(vfs, outputDirectory).headOption match
-            case Some(file) => FileAnalysisStore.binary(file.toFile()).get.get.getAnalysis
-            case None       => Analysis.empty
-        else Analysis.empty
+        val outputDirectory = Def.cacheConfiguration.outputDirectory
+        cacheStore.syncBlobs(ref :: Nil, outputDirectory).headOption match
+          case Some(file) => analysisStore(file).get.get.getAnalysis
+          case None       => Analysis.empty
       }
     )
 
@@ -106,7 +97,7 @@ object RemoteCache {
         false,
         Array()
       )
-      FileAnalysisStore.binary(file).set(AnalysisContents.create(analysis, setup))
+      analysisStore(file.toPath).set(AnalysisContents.create(analysis, setup))
       val vf = tempConverter.toVirtualFile(file.toPath)
       val refs = cacheStore.putBlobs(vf :: Nil)
       refs.headOption match
@@ -114,6 +105,9 @@ object RemoteCache {
           analysisStore(ref) = analysis
           Some(ref)
         case None => None
+
+  private def analysisStore(file: Path): AnalysisStore =
+    MixedAnalyzingCompiler.staticCachedStore(file, true)
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._

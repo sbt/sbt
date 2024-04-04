@@ -1427,40 +1427,35 @@ object Defaults extends BuildCommon {
     Def.task {
       val cp = (test / fullClasspath).value
       val s = (test / streams).value
-      val ans: Seq[Analysis] = cp
+      val analyses: Seq[Analysis] = cp
         .flatMap(_.metadata.get(Keys.analysis))
         .map: str =>
           RemoteCache.getCachedAnalysis(str).asInstanceOf[Analysis]
       val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
       val stamps = collection.mutable.Map.empty[String, Long]
-      def stamp(dep: String): Long = {
-        val stamps = for (a <- ans) yield intlStamp(dep, a, Set.empty)
-        if (stamps.isEmpty) Long.MinValue
-        else stamps.max
-      }
-      def intlStamp(c: String, analysis: Analysis, s: Set[String]): Long = {
-        if (s contains c) Long.MinValue
+      def stamp(dep: String): Option[Long] =
+        analyses.flatMap(internalStamp(dep, _, Set.empty)).maxOption
+      def internalStamp(c: String, analysis: Analysis, alreadySeen: Set[String]): Option[Long] = {
+        if (alreadySeen.contains(c)) None
         else
-          stamps.getOrElse(
-            c, {
-              val x = {
-                import analysis.{ apis, relations }
-                relations.internalClassDeps(c).map(intlStamp(_, analysis, s + c)) ++
-                  relations.externalDeps(c).map(stamp) ++
-                  relations.productClassName.reverse(c).flatMap { pc =>
-                    apis.internal.get(pc).map(_.compilationTimestamp)
-                  } + Long.MinValue
-              }.max
-              if (x != Long.MinValue) {
-                stamps(c) = x
-              }
-              x
+          def computeAndStoreStamp: Option[Long] = {
+            import analysis.{ apis, relations }
+            val internalDeps = relations
+              .internalClassDeps(c)
+              .flatMap(internalStamp(_, analysis, alreadySeen + c))
+            val externalDeps = relations.externalDeps(c).flatMap(stamp)
+            val classStamps = relations.productClassName.reverse(c).flatMap { pc =>
+              apis.internal.get(pc).map(_.compilationTimestamp)
             }
-          )
+            val maxStamp = (internalDeps ++ externalDeps ++ classStamps).maxOption
+            maxStamp.foreach(maxStamp => stamps(c) = maxStamp)
+            maxStamp
+          }
+          stamps.get(c).orElse(computeAndStoreStamp)
       }
       def noSuccessYet(test: String) = succeeded.get(test) match {
         case None     => true
-        case Some(ts) => stamps.synchronized(stamp(test)) > ts
+        case Some(ts) => stamps.synchronized(stamp(test)).exists(_ > ts)
       }
       args =>
         for (filter <- selectedFilter(args))
