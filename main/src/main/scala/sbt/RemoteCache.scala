@@ -22,10 +22,9 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{ CompileOutput, HashUtil, JarUtils, MappedFileConverter }
+import sbt.internal.inc.{ HashUtil, JarUtils }
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
-import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
@@ -35,16 +34,10 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.{
-  ActionCacheStore,
-  AggregateActionCacheStore,
-  CacheImplicits,
-  DiskActionCacheStore,
-  Logger
-}
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, DiskActionCacheStore, Logger }
 import sjsonnew.JsonFormat
 import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
-import xsbti.compile.{ AnalysisContents, AnalysisStore, CompileAnalysis, MiniSetup, MiniOptions }
+import xsbti.compile.CompileAnalysis
 
 import scala.collection.mutable
 
@@ -71,43 +64,6 @@ object RemoteCache {
       case _ =>
         val tempDiskCache = (s.baseDir / "target" / "bootcache").toPath()
         Def._cacheStore = DiskActionCacheStore(tempDiskCache)
-
-  private[sbt] def getCachedAnalysis(ref: String): CompileAnalysis =
-    getCachedAnalysis(CacheImplicits.strToHashedVirtualFileRef(ref))
-  private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
-    analysisStore.getOrElseUpdate(
-      ref, {
-        val outputDirectory = Def.cacheConfiguration.outputDirectory
-        cacheStore.syncBlobs(ref :: Nil, outputDirectory).headOption match
-          case Some(file) => analysisStore(file).get.get.getAnalysis
-          case None       => Analysis.empty
-      }
-    )
-
-  private[sbt] val tempConverter: MappedFileConverter = MappedFileConverter.empty
-  private[sbt] def postAnalysis(analysis: CompileAnalysis): Option[HashedVirtualFileRef] =
-    IO.withTemporaryFile("analysis", ".tmp", true): file =>
-      val output = CompileOutput.empty
-      val option = MiniOptions.of(Array(), Array(), Array())
-      val setup = MiniSetup.of(
-        output,
-        option,
-        "",
-        xsbti.compile.CompileOrder.Mixed,
-        false,
-        Array()
-      )
-      analysisStore(file.toPath).set(AnalysisContents.create(analysis, setup))
-      val vf = tempConverter.toVirtualFile(file.toPath)
-      val refs = cacheStore.putBlobs(vf :: Nil)
-      refs.headOption match
-        case Some(ref) =>
-          analysisStore(ref) = analysis
-          Some(ref)
-        case None => None
-
-  private def analysisStore(file: Path): AnalysisStore =
-    MixedAnalyzingCompiler.staticCachedStore(file, true)
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._
@@ -556,10 +512,10 @@ object RemoteCache {
       key: SettingKey[A],
       pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
   ): Def.Initialize[Seq[A]] =
-    (Classpaths.forallIn(key, pkgTasks) zipWith
-      Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect { case (a, true) =>
-      a
-    })
+    Classpaths
+      .forallIn(key, pkgTasks)
+      .zipWith(Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))
+      .apply(_.zip(_).collect { case (a, true) => a })
 
   private def extractHash(inputs: Seq[(Path, FileStamp)]): Vector[String] =
     inputs.toVector map { case (_, stamp0) =>

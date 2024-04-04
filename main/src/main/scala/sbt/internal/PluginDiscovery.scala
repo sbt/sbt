@@ -105,7 +105,7 @@ object PluginDiscovery:
   ): Seq[String] =
     (
       binaryModuleNames(classpath, converter, loader, resourceName) ++
-        (analyzed(classpath) flatMap (a => sourceModuleNames(a, subclasses: _*)))
+        analyzed(classpath, converter).flatMap(a => sourceModuleNames(a, subclasses: _*))
     ).distinct
 
   /** Discovers top-level modules in `analysis` that inherit from any of `subclasses`. */

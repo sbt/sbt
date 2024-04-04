@@ -13,7 +13,7 @@ import sbt.io.syntax.*
 import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
 
 /**
- * An abstration of a remote or local cache store.
+ * An abstraction of a remote or local cache store.
  */
 trait ActionCacheStore:
   /**

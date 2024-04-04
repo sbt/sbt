@@ -15,15 +15,13 @@ import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.nio.file.{ Glob, RecursiveGlob }
 import sbt.Def.Initialize
-import sbt.internal.inc.Analysis
-import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.util.{ Attributed, Dag, Settings }
 import sbt.librarymanagement.{ Configuration, TrackLevel }
 import sbt.librarymanagement.Configurations.names
 import sbt.std.TaskExtra._
 import sbt.util._
 import scala.jdk.CollectionConverters.*
-import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
+import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
 
 private[sbt] object ClasspathImpl {
@@ -38,10 +36,13 @@ private[sbt] object ClasspathImpl {
         val config = configuration.value
         val products = pickleProducts.value
         val analysis = compileEarly.value
-        val xs = products map { _ -> analysis }
+        val converter = fileConverter.value
+        val analysisFile = converter.toVirtualFile(earlyCompileAnalysisFile.value.toPath)
+
+        val xs = products.map(_ -> analysis)
         for (f, analysis) <- xs
         yield APIMappings
-          .store(analyzed(f, analysis), apiURL.value)
+          .store(analyzed(f, analysisFile), apiURL.value)
           .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
           .put(Keys.configurationStr, config.name)
       else exportedProducts.value
@@ -55,7 +56,7 @@ private[sbt] object ClasspathImpl {
       val config = configuration.value
       for (f, analysis) <- trackedExportedProductsImplTask(track).value
       yield APIMappings
-        .store(analyzed[HashedVirtualFileRef](f, analysis), apiURL.value)
+        .store(analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
         .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
         .put(Keys.configurationStr, config.name)
@@ -67,7 +68,6 @@ private[sbt] object ClasspathImpl {
       val art = (packageBin / artifact).value
       val module = projectID.value
       val config = configuration.value
-      val converter = fileConverter.value
       for (f, analysis) <- trackedJarProductsImplTask(track).value
       yield APIMappings
         .store(analyzed(f, analysis), apiURL.value)
@@ -78,7 +78,7 @@ private[sbt] object ClasspathImpl {
 
   private[this] def trackedExportedProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     Def.taskIf {
       if {
         val _ = (packageBin / dynamicDependency).value
@@ -89,44 +89,38 @@ private[sbt] object ClasspathImpl {
 
   private[this] def trackedNonJarProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
-    (Def
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
+    Def
       .task {
         val dirs = productDirectories.value
         val view = fileTreeView.value
         (TrackLevel.intersection(track, exportToInternal.value), dirs, view)
-      })
+      }
       .flatMapTask {
         case (TrackLevel.TrackAlways, _, _) =>
           Def.task {
             val converter = fileConverter.value
-            val a = compile.value
-            products.value
-              .map { x => converter.toVirtualFile(x.toPath()) }
-              .map { (_, a) }
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            products.value.map(x => (converter.toVirtualFile(x.toPath()), analysisFile))
           }
         case (TrackLevel.TrackIfMissing, dirs, view)
             if view.list(dirs.map(Glob(_, RecursiveGlob / "*.class"))).isEmpty =>
           Def.task {
             val converter = fileConverter.value
-            val a = compile.value
-            products.value
-              .map { x => converter.toVirtualFile(x.toPath()) }
-              .map { (_, a) }
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            products.value.map(x => (converter.toVirtualFile(x.toPath()), analysisFile))
           }
         case (_, dirs, _) =>
           Def.task {
             val converter = fileConverter.value
-            val analysis = previousCompile.value.analysis.toOption.getOrElse(Analysis.empty)
-            dirs
-              .map { x => converter.toVirtualFile(x.toPath()) }
-              .map(_ -> analysis)
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            dirs.map { x => (converter.toVirtualFile(x.toPath()), analysisFile) }
           }
       }
 
   private[this] def trackedJarProductsImplTask(
       track: TrackLevel
-  ): Initialize[Task[Seq[(HashedVirtualFileRef, CompileAnalysis)]]] =
+  ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     (Def
       .task {
         val converter = fileConverter.value
@@ -137,23 +131,21 @@ private[sbt] object ClasspathImpl {
       .flatMapTask {
         case (TrackLevel.TrackAlways, _, _) =>
           Def.task {
-            Seq((packageBin.value, compile.value))
+            val converter = fileConverter.value
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            Seq((packageBin.value, analysisFile))
           }
         case (TrackLevel.TrackIfMissing, _, jar) if !jar.toFile().exists =>
           Def.task {
-            Seq((packageBin.value, compile.value))
+            val converter = fileConverter.value
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            Seq((packageBin.value, analysisFile))
           }
         case (_, vf, _) =>
           Def.task {
             val converter = fileConverter.value
-            val analysisOpt = previousCompile.value.analysis.toOption
-            Seq(vf).map(converter.toPath).map(converter.toVirtualFile).map { x =>
-              (
-                x,
-                if (analysisOpt.isDefined) analysisOpt.get
-                else Analysis.empty
-              )
-            }
+            val analysisFile = converter.toVirtualFile(compileAnalysisFile.value.toPath)
+            Seq(vf).map { x => (converter.toVirtualFile(x), analysisFile) }
           }
       }
 
@@ -351,13 +343,8 @@ private[sbt] object ClasspathImpl {
     (tasks.toSeq.join).map(_.flatten.distinct)
   }
 
-  def analyzed[A](data: A, analysis: CompileAnalysis) =
-    RemoteCache.postAnalysis(analysis) match
-      case Some(ref) =>
-        Attributed
-          .blank(data)
-          .put(Keys.analysis, CacheImplicits.hashedVirtualFileRefToStr(ref))
-      case None => Attributed.blank(data)
+  def analyzed[A](data: A, analysisFile: VirtualFile): Attributed[A] =
+    Attributed.blank(data).put(Keys.analysis, analysisFile.id)
 
   def interSort(
       projectRef: ProjectRef,
