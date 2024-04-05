@@ -30,6 +30,7 @@ import testing.{
 }
 
 import scala.annotation.tailrec
+import scala.util.control.NonFatal
 import sbt.internal.util.ManagedLogger
 import sbt.util.Logger
 import sbt.protocol.testing.TestResult
@@ -534,15 +535,19 @@ object Tests {
     case analysis: Analysis =>
       val acs: Seq[xsbti.api.AnalyzedClass] = analysis.apis.internal.values.toVector
       acs.flatMap { ac =>
-        val companions = ac.api
-        val all =
-          Seq(companions.classApi: Definition, companions.objectApi: Definition) ++
-            (companions.classApi.structure.declared.toSeq: Seq[Definition]) ++
-            (companions.classApi.structure.inherited.toSeq: Seq[Definition]) ++
-            (companions.objectApi.structure.declared.toSeq: Seq[Definition]) ++
-            (companions.objectApi.structure.inherited.toSeq: Seq[Definition])
-
-        all
+        try
+          val companions = ac.api
+          val all =
+            Seq(companions.classApi: Definition, companions.objectApi: Definition) ++
+              (companions.classApi.structure.declared.toSeq: Seq[Definition]) ++
+              (companions.classApi.structure.inherited.toSeq: Seq[Definition]) ++
+              (companions.objectApi.structure.declared.toSeq: Seq[Definition]) ++
+              (companions.objectApi.structure.inherited.toSeq: Seq[Definition])
+          all
+        catch
+          case NonFatal(e) =>
+            if e.getMessage.startsWith("No companions") then Nil
+            else throw e
       }.toSeq
   }
   def discover(
