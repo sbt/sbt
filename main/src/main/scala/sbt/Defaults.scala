@@ -899,11 +899,9 @@ object Defaults extends BuildCommon {
       compileOutputs := {
         import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
-        val classFiles =
-          manipulateBytecode.value.analysis.readStamps.getAllProductStamps.keySet.asScala
-        (classFiles.toSeq map { x =>
-          c.toPath(x)
-        }) :+ compileAnalysisFile.value.toPath
+        val (_, jarFile) = compileIncremental.value
+        val classFiles = compile.value.readStamps.getAllProductStamps.keySet.asScala
+        classFiles.toSeq.map(c.toPath) :+ compileAnalysisFile.value.toPath :+ c.toPath(jarFile)
       },
       compileOutputs := compileOutputs.triggeredBy(compile).value,
       tastyFiles := Def.taskIf {
