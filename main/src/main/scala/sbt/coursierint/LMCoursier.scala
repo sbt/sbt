@@ -74,6 +74,7 @@ object LMCoursier {
   def relaxedForAllModules: Seq[(ModuleMatchers, Reconciliation)] =
     Vector((ModuleMatchers.all, Reconciliation.Relaxed))
 
+  // For binary compatibility / MiMa
   def coursierConfiguration(
       rs: Seq[Resolver],
       interProjectDependencies: Seq[CProject],
@@ -119,6 +120,58 @@ object LMCoursier {
       strict,
       depsOverrides,
       None,
+      Nil,
+      log
+    )
+
+  // For binary compatibility / MiMa
+  def coursierConfiguration(
+      rs: Seq[Resolver],
+      interProjectDependencies: Seq[CProject],
+      extraProjects: Seq[CProject],
+      fallbackDeps: Seq[FallbackDependency],
+      appConfig: AppConfiguration,
+      classifiers: Option[Seq[Classifier]],
+      profiles: Set[String],
+      scalaOrg: String,
+      scalaVer: String,
+      scalaBinaryVer: String,
+      autoScalaLib: Boolean,
+      scalaModInfo: Option[ScalaModuleInfo],
+      excludeDeps: Seq[InclExclRule],
+      credentials: Seq[Credentials],
+      createLogger: Option[CacheLogger],
+      cacheDirectory: File,
+      reconciliation: Seq[(ModuleMatchers, Reconciliation)],
+      ivyHome: Option[File],
+      strict: Option[CStrict],
+      depsOverrides: Seq[ModuleID],
+      updateConfig: Option[UpdateConfiguration],
+      log: Logger
+  ): CoursierConfiguration =
+    coursierConfiguration(
+      rs,
+      interProjectDependencies,
+      extraProjects,
+      fallbackDeps,
+      appConfig,
+      classifiers,
+      profiles,
+      scalaOrg,
+      scalaVer,
+      scalaBinaryVer,
+      autoScalaLib,
+      scalaModInfo,
+      excludeDeps,
+      credentials,
+      createLogger,
+      cacheDirectory,
+      reconciliation,
+      ivyHome,
+      strict,
+      depsOverrides,
+      updateConfig,
+      Nil,
       log
     )
 
@@ -144,6 +197,7 @@ object LMCoursier {
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       updateConfig: Option[UpdateConfiguration],
+      sameVersions: Seq[Set[InclExclRule]],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -197,6 +251,7 @@ object LMCoursier {
       .withStrict(strict)
       .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)
+      .withSameVersions(sameVersions)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -212,7 +267,7 @@ object LMCoursier {
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -223,6 +278,7 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
       streams.value.log
     )
   }
@@ -240,7 +296,7 @@ object LMCoursier {
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -251,6 +307,7 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
       streams.value.log
     )
   }
@@ -268,7 +325,7 @@ object LMCoursier {
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -279,6 +336,7 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
       streams.value.log
     )
   }
@@ -296,7 +354,7 @@ object LMCoursier {
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
@@ -307,6 +365,7 @@ object LMCoursier {
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
       streams.value.log
     )
   }

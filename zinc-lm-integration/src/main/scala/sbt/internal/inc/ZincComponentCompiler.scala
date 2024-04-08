@@ -57,7 +57,11 @@ private[sbt] object ZincComponentCompiler {
         scalaInstance: XScalaInstance,
         logger: Logger,
     ): File = lock.synchronized {
-      val raw = new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, logger)
+      val raw = new RawCompiler(
+        scalaInstance,
+        ClasspathOptionsUtil.autoNoboot(scalaInstance.version),
+        logger
+      )
       val zinc =
         new ZincComponentCompiler(raw, manager, dependencyResolution, bridgeSources, logger)
       logger.debug(f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
