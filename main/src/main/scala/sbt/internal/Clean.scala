@@ -24,6 +24,7 @@ import sbt.nio.file.Glob.{ GlobOps }
 import sbt.util.Level
 import sjsonnew.JsonFormat
 import scala.annotation.nowarn
+import xsbti.{ PathBasedFile, VirtualFileRef }
 
 private[sbt] object Clean {
 
@@ -142,8 +143,13 @@ private[sbt] object Clean {
   private[sbt] object ToSeqPath:
     given identitySeqPath: ToSeqPath[Seq[Path]] = identity[Seq[Path]](_)
     given seqFile: ToSeqPath[Seq[File]] = _.map(_.toPath)
+    given virtualFileRefSeq: ToSeqPath[Seq[VirtualFileRef]] =
+      _.collect { case f: PathBasedFile => f.toPath }
     given path: ToSeqPath[Path] = _ :: Nil
     given file: ToSeqPath[File] = _.toPath :: Nil
+    given virtualFileRef: ToSeqPath[VirtualFileRef] =
+      case f: PathBasedFile => Seq(f.toPath)
+      case _                => Nil
   end ToSeqPath
 
   private[this] implicit class ToSeqPathOps[T](val t: T) extends AnyVal {

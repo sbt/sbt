@@ -25,6 +25,8 @@ import sjsonnew.JsonFormat
 
 import scala.annotation.nowarn
 import scala.collection.immutable.VectorBuilder
+import java.io.File
+import xsbti.VirtualFileRef
 
 private[sbt] object Settings {
   private[sbt] def inject(transformed: Seq[Def.Setting[_]]): Seq[Def.Setting[_]] = {
@@ -68,43 +70,53 @@ private[sbt] object Settings {
       setting: Def.Setting[_],
       fileOutputScopes: Set[Scope]
   ): List[Def.Setting[_]] = {
-    val attributeKey = setting.key.key
-    attributeKey.tag match {
+    setting.key.key.tag match {
       case tag: KeyTag.Task[?] =>
-        def default: List[Def.Setting[_]] = {
-          val scope = setting.key.scope.copy(task = Select(attributeKey))
-          if (fileOutputScopes.contains(scope)) {
-            val sk = setting.asInstanceOf[Def.Setting[Task[Any]]].key
-            val scopedKey = Keys.dynamicFileOutputs in (sk.scope in sk.key)
-            addTaskDefinition {
-              val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ => Nil))
-              Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)
-            } :: allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(scope) :: Nil
-          } else Nil
-        }
-        def mkSetting[T: JsonFormat: ToSeqPath]: List[Def.Setting[_]] = {
-          val sk = setting.asInstanceOf[Def.Setting[Task[T]]].key
-          val taskKey = TaskKey(sk.key) in sk.scope
-          // We create a previous reference so that clean automatically works without the
-          // user having to explicitly call previous anywhere.
-          val init = Previous.runtime(taskKey).zip(taskKey) { case (_, t) =>
-            t.map(implicitly[ToSeqPath[T]].apply)
-          }
-          val key = Def.ScopedKey(taskKey.scope in taskKey.key, Keys.dynamicFileOutputs.key)
-          addTaskDefinition(Def.setting[Task[Seq[Path]]](key, init, setting.pos)) ::
-            outputsAndStamps(taskKey)
-        }
-        if seqClass.isAssignableFrom(tag.typeArg) then
-          // TODO fix this: maybe using the taskKey macro to convey the information
-          // t.typeArguments match {
-          //   case p :: Nil if pathClass.isAssignableFrom(p.runtimeClass) => mkSetting[Seq[Path]]
-          //   case _                                                      => default
-          // }
-          default
-        else if pathClass.isAssignableFrom(tag.typeArg) then mkSetting[Path]
-        else default
+        if pathClass.isAssignableFrom(tag.typeArg) then addOutputAndStampTasks[Path](setting)
+        else if fileClass.isAssignableFrom(tag.typeArg) then addOutputAndStampTasks[File](setting)
+        else if virtualFileRefClass.isAssignableFrom(tag.typeArg) then
+          addOutputAndStampTasks[VirtualFileRef](setting)
+        else addDefaultTasks(setting, fileOutputScopes)
+      case tag: KeyTag.SeqTask[?] =>
+        if pathClass.isAssignableFrom(tag.typeArg) then addOutputAndStampTasks[Seq[Path]](setting)
+        else if fileClass.isAssignableFrom(tag.typeArg) then
+          addOutputAndStampTasks[Seq[File]](setting)
+        else if virtualFileRefClass.isAssignableFrom(tag.typeArg) then
+          addOutputAndStampTasks[Seq[VirtualFileRef]](setting)
+        else addDefaultTasks(setting, fileOutputScopes)
       case _ => Nil
     }
+  }
+
+  @nowarn
+  private def addDefaultTasks(
+      setting: Def.Setting[_],
+      fileOutputScopes: Set[Scope]
+  ): List[Def.Setting[_]] = {
+    val scope = setting.key.scope.copy(task = Select(setting.key.key))
+    if (fileOutputScopes.contains(scope)) {
+      val sk = setting.asInstanceOf[Def.Setting[Task[Any]]].key
+      val scopedKey = Keys.dynamicFileOutputs in (sk.scope in sk.key)
+      val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ => Nil))
+      addTaskDefinition(Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)) ::
+        allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(scope) :: Nil
+    } else Nil
+  }
+
+  @nowarn
+  private def addOutputAndStampTasks[T: JsonFormat: ToSeqPath](
+      setting: Def.Setting[_]
+  ): List[Def.Setting[_]] = {
+    val sk = setting.asInstanceOf[Def.Setting[Task[T]]].key
+    val taskKey = TaskKey(sk.key) in sk.scope
+    // We create a previous reference so that clean automatically works without the
+    // user having to explicitly call previous anywhere.
+    val init = Previous.runtime(taskKey).zip(taskKey) { case (_, t) =>
+      t.map(implicitly[ToSeqPath[T]].apply)
+    }
+    val key = Def.ScopedKey(taskKey.scope in taskKey.key, Keys.dynamicFileOutputs.key)
+    addTaskDefinition(Def.setting[Task[Seq[Path]]](key, init, setting.pos)) ::
+      outputsAndStamps(taskKey)
   }
 
   private[sbt] val inject: Def.ScopedKey[_] => Seq[Def.Setting[_]] = scopedKey =>
@@ -161,7 +173,9 @@ private[sbt] object Settings {
   }
 
   private[this] val seqClass = classOf[Seq[_]]
-  private[this] val pathClass = classOf[java.nio.file.Path]
+  private[this] val pathClass = classOf[Path]
+  private val fileClass = classOf[File]
+  private val virtualFileRefClass = classOf[VirtualFileRef]
 
   /**
    * Returns all of the paths for the regular files described by a glob. Directories and hidden

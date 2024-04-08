@@ -12,70 +12,54 @@ import java.io.File
 import scala.quoted.*
 import scala.reflect.ClassTag
 
-import sbt.util.OptJsonWriter
+import sbt.util.{ NoJsonWriter, OptJsonWriter }
+import sbt.internal.util.{ AttributeKey, KeyTag }
 
 private[sbt] object KeyMacro:
-  def settingKeyImpl[A1: Type](
-      description: Expr[String]
-  )(using qctx: Quotes): Expr[SettingKey[A1]] =
-    keyImpl2[A1, SettingKey[A1]]("settingKey") { (name, mf, ojw) =>
-      val n = Expr(name)
-      '{
-        SettingKey[A1]($n, $description)($mf, $ojw)
-      }
-    }
+  def settingKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[SettingKey[A1]] =
+    val name = definingValName(errorMsg("settingKey"))
+    val tag = '{ KeyTag.Setting[A1](${ summonRuntimeClass[A1] }) }
+    val ojw = Expr
+      .summon[OptJsonWriter[A1]]
+      .getOrElse(errorAndAbort(s"OptJsonWriter[A] not found for ${Type.show[A1]}"))
+    '{ SettingKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, $ojw)) }
 
-  def taskKeyImpl[A1: Type](description: Expr[String])(using qctx: Quotes): Expr[TaskKey[A1]] =
-    keyImpl[A1, TaskKey[A1]]("taskKey") { (name, mf) =>
-      val n = Expr(name)
-      '{
-        TaskKey[A1]($n, $description)($mf)
-      }
-    }
+  def taskKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[TaskKey[A1]] =
+    val name = definingValName(errorMsg("taskKey"))
+    val tag: Expr[KeyTag[Task[A1]]] = Type.of[A1] match
+      case '[Seq[a]] =>
+        '{ KeyTag.SeqTask(${ summonRuntimeClass[a] }) }
+      case _ => '{ KeyTag.Task(${ summonRuntimeClass[A1] }) }
+    '{ TaskKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, NoJsonWriter())) }
 
-  def inputKeyImpl[A1: Type](description: Expr[String])(using qctx: Quotes): Expr[InputKey[A1]] =
-    keyImpl[A1, InputKey[A1]]("inputKey") { (name, mf) =>
-      val n = Expr(name)
-      '{
-        InputKey[A1]($n, $description)($mf)
-      }
-    }
+  def inputKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[InputKey[A1]] =
+    val name = definingValName(errorMsg("inputTaskKey"))
+    val tag: Expr[KeyTag[InputTask[A1]]] = '{ KeyTag.InputTask(${ summonRuntimeClass[A1] }) }
+    '{ InputKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, NoJsonWriter())) }
 
-  private def keyImpl[A1: Type, A2: Type](methodName: String)(
-      f: (String, Expr[ClassTag[A1]]) => Expr[A2]
-  )(using qctx: Quotes): Expr[A2] =
-    val tpe = summon[Type[A1]]
-    f(
-      definingValName(errorMsg(methodName)),
-      Expr.summon[ClassTag[A1]].getOrElse(sys.error("ClassTag[A] not found for $tpe"))
-    )
+  def projectImpl(using Quotes): Expr[Project] =
+    val name = definingValName(errorMsg2)
+    '{ Project($name, new File($name)) }
 
-  private def keyImpl2[A1: Type, A2: Type](methodName: String)(
-      f: (String, Expr[ClassTag[A1]], Expr[OptJsonWriter[A1]]) => Expr[A2]
-  )(using qctx: Quotes): Expr[A2] =
-    val tpe = summon[Type[A1]]
-    f(
-      definingValName(errorMsg(methodName)),
-      Expr.summon[ClassTag[A1]].getOrElse(sys.error("ClassTag[A] not found for $tpe")),
-      Expr.summon[OptJsonWriter[A1]].getOrElse(sys.error("OptJsonWriter[A] not found for $tpe")),
-    )
+  private def summonRuntimeClass[A: Type](using Quotes): Expr[Class[?]] =
+    val classTag = Expr
+      .summon[ClassTag[A]]
+      .getOrElse(errorAndAbort(s"ClassTag[${Type.show[A]}] not found"))
+    '{ $classTag.runtimeClass }
 
-  def projectImpl(using qctx: Quotes): Expr[Project] =
-    val name = Expr(definingValName(errorMsg2("project")))
-    '{
-      Project($name, new File($name))
-    }
+  private def errorAndAbort(msg: String)(using q: Quotes): Nothing =
+    q.reflect.report.errorAndAbort(msg)
 
   private def errorMsg(methodName: String): String =
     s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`."""
 
-  private def errorMsg2(methodName: String): String =
-    s"""$methodName must be directly assigned to a val, such as `val x = ($methodName in file("core"))`."""
+  private def errorMsg2: String =
+    """project must be directly assigned to a val, such as `val x = project.in(file("core"))`."""
 
-  private def definingValName(errorMsg: String)(using qctx: Quotes): String =
+  private def definingValName(errorMsg: String)(using qctx: Quotes): Expr[String] =
     val term = enclosingTerm
-    if term.isValDef then term.name
-    else sys.error(errorMsg)
+    if term.isValDef then Expr(term.name)
+    else errorAndAbort(errorMsg)
 
   def enclosingTerm(using qctx: Quotes) =
     import qctx.reflect._
