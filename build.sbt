@@ -55,11 +55,12 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   scalacOptions := {
     val old = scalacOptions.value
     scalaVersion.value match {
-      case sv if sv.startsWith("2.10") =>
-        old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
-      case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
       case sv if sv.startsWith("2.12") =>
-        old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
+        old ++ List(
+          "-Ywarn-unused",
+          "-Ywarn-unused-import",
+          "-Ywarn-unused:-nowarn",
+        )
       case _ => old
     }
   },

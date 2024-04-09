@@ -117,7 +117,13 @@ object CrossVersionUtil {
   }
 
   def binarySbtVersion(full: String): String =
-    binaryVersionWithApi(full, TransitionSbtVersion)(sbtApiVersion)
+    sbtApiVersion(full) match {
+      case Some((0, minor)) if minor < 12 => full
+      case Some((0, minor))               => s"0.$minor"
+      case Some((1, minor))               => s"1.$minor"
+      case Some((major, _))               => major.toString
+      case _                              => full
+    }
 
   private[this] def isNewer(major: Long, minor: Long, minMajor: Long, minMinor: Long): Boolean =
     major > minMajor || (major == minMajor && minor >= minMinor)
