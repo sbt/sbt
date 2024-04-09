@@ -254,6 +254,7 @@ object Keys {
   val compileAnalysisFilename = taskKey[String]("Defines the filename used for compileAnalysisFile.").withRank(DTask)
   val compileAnalysisTargetRoot = settingKey[File]("The output directory to produce Zinc Analysis files").withRank(DSetting)
   val earlyCompileAnalysisTargetRoot = settingKey[File]("The output directory to produce Zinc Analysis files").withRank(DSetting)
+  @cacheLevel(include = Array.empty)
   val compileAnalysisFile = taskKey[File]("Zinc analysis storage.").withRank(DSetting)
   val earlyCompileAnalysisFile = taskKey[File]("Zinc analysis storage for early compilation").withRank(DSetting)
 
