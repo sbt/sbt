@@ -96,23 +96,23 @@ class CrossVersionTest extends UnitSpec {
   "binarySbtVersion" should "for 0.11.3 return 0.11.3" in {
     binarySbtVersion("0.11.3") shouldBe "0.11.3"
   }
-  it should "for 0.12.0-M1 return 0.12.0-M1" in {
-    binarySbtVersion("0.12.0-M1") shouldBe "0.12.0-M1"
+  it should "for 2.0.0 return 2" in {
+    binarySbtVersion("2.0.0") shouldBe "2"
   }
-  it should "for 0.12.0-RC1 return 0.12" in {
-    binarySbtVersion("0.12.0-RC1") shouldBe "0.12"
+  it should "for 2.0.0-M1 return 2.0.0-M1" in {
+    binarySbtVersion("2.0.0-M1") shouldBe "2.0.0-M1"
   }
-  it should "for 0.12.0 return 0.12" in {
-    binarySbtVersion("0.12.0") shouldBe "0.12"
+  it should "for 2.0.0-RC1 return 2" in {
+    binarySbtVersion("2.0.0-RC1") shouldBe "2"
   }
-  it should "for 0.12.1-SNAPSHOT return 0.12" in {
-    binarySbtVersion("0.12.1-SNAPSHOT") shouldBe "0.12"
+  it should "for 2.1.0-M1 return 2" in {
+    binarySbtVersion("2.1.0-M1") shouldBe "2"
   }
-  it should "for 0.12.1-RC1 return 0.12" in {
-    binarySbtVersion("0.12.1-RC1") shouldBe "0.12"
+  it should "for 2.1.0 return 2" in {
+    binarySbtVersion("2.1.0") shouldBe "2"
   }
-  it should "for 0.12.1 return 0.12" in {
-    binarySbtVersion("0.12.1") shouldBe "0.12"
+  it should "for 0.13.1 return 0.13" in {
+    binarySbtVersion("0.13.1") shouldBe "0.13"
   }
   it should "for 1.0.0-M6 return 1.0.0-M6" in {
     binarySbtVersion("1.0.0-M6") shouldBe "1.0.0-M6"
@@ -143,9 +143,6 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 1.10.0 return 1.0" in {
     binarySbtVersion("1.10.0") shouldBe "1.0"
-  }
-  it should "for 2.0.0 return 2.0" in {
-    binarySbtVersion("2.0.0") shouldBe "2.0"
   }
 
   "scalaApiVersion" should "for xyz return None" in {
