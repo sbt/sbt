@@ -88,8 +88,6 @@ import sbt.util.CacheImplicits.given
 import sbt.util.InterfaceUtil.{ t2, toJavaFunction => f1 }
 import sbt.util._
 import sjsonnew._
-import xsbti.compile.TastyFiles
-import xsbti.{ FileConverter, Position }
 
 import scala.annotation.nowarn
 import scala.collection.immutable.ListMap
@@ -108,7 +106,16 @@ import sbt.internal.inc.{
   ScalaInstance
 }
 import sbt.internal.io.Retry
-import xsbti.{ CompileFailed, CrossValue, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import xsbti.{
+  AppConfiguration,
+  CompileFailed,
+  CrossValue,
+  FileConverter,
+  HashedVirtualFileRef,
+  Position,
+  VirtualFile,
+  VirtualFileRef
+}
 import xsbti.compile.{
   AnalysisContents,
   AnalysisStore,
@@ -129,6 +136,7 @@ import xsbti.compile.{
   PerClasspathEntryLookup,
   PreviousResult,
   Setup,
+  TastyFiles,
   TransactionalManagerType
 }
 
@@ -232,7 +240,27 @@ object Defaults extends BuildCommon {
       closeClassLoaders :== SysProp.closeClassLoaders,
       allowZombieClassLoaders :== true,
       packageTimestamp :== Pkg.defaultTimestamp,
+      rootPaths := {
+        val app = appConfiguration.value
+        val coursierCache = csrCacheDirectory.value.toPath
+        val out = rootOutputDirectory.value
+        getRootPaths(out, app) + ("CSR_CACHE" -> coursierCache)
+      },
+      fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value)
     ) ++ BuildServerProtocol.globalSettings
+
+  private[sbt] def getRootPaths(out: NioPath, app: AppConfiguration): ListMap[String, NioPath] =
+    val base = app.baseDirectory.getCanonicalFile.toPath
+    val boot = app.provider.scalaProvider.launcher.bootDirectory.toPath
+    val ih = app.provider.scalaProvider.launcher.ivyHome.toPath
+    val javaHome = Paths.get(sys.props("java.home"))
+    ListMap(
+      "OUT" -> out,
+      "BASE" -> base,
+      "SBT_BOOT" -> boot,
+      "IVY_HOME" -> ih,
+      "JAVA_HOME" -> javaHome
+    )
 
   private[sbt] lazy val globalIvyCore: Seq[Setting[_]] =
     Seq(
@@ -282,6 +310,10 @@ object Defaults extends BuildCommon {
       csrLogger := LMCoursier.coursierLoggerTask.value,
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
+      csrCacheDirectory := {
+        if (useCoursier.value) LMCoursier.defaultCacheLocation
+        else Classpaths.dummyCoursierDirectory(appConfiguration.value)
+      }
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -410,24 +442,6 @@ object Defaults extends BuildCommon {
 
   private[sbt] lazy val buildLevelJvmSettings: Seq[Setting[_]] = Seq(
     exportPipelining := usePipelining.value,
-    rootPaths := {
-      val app = appConfiguration.value
-      val base = app.baseDirectory.getCanonicalFile
-      val boot = app.provider.scalaProvider.launcher.bootDirectory
-      val ih = app.provider.scalaProvider.launcher.ivyHome
-      val coursierCache = csrCacheDirectory.value
-      val javaHome = Paths.get(sys.props("java.home"))
-      val out = rootOutputDirectory.value
-      ListMap(
-        "OUT" -> out,
-        "BASE" -> base.toPath,
-        "SBT_BOOT" -> boot.toPath,
-        "CSR_CACHE" -> coursierCache.toPath,
-        "IVY_HOME" -> ih.toPath,
-        "JAVA_HOME" -> javaHome,
-      )
-    },
-    fileConverter := MappedFileConverter(rootPaths.value, allowMachinePath.value),
     sourcePositionMappers := Nil, // Never set a default sourcePositionMapper, see #6352! Whatever you are trying to solve, do it in the foldMappers method.
     // The virtual file value cache needs to be global or sbt will run out of direct byte buffer memory.
     classpathDefinesClassCache := VirtualFileValueCache.definesClassCache(fileConverter.value),
@@ -525,14 +539,6 @@ object Defaults extends BuildCommon {
       }
       .getOrElse(pos)
   }
-
-  // csrCacheDirectory is scoped to ThisBuild to allow customization.
-  private[sbt] lazy val buildLevelIvySettings: Seq[Setting[_]] = Seq(
-    csrCacheDirectory := {
-      if (useCoursier.value) LMCoursier.defaultCacheLocation
-      else Classpaths.dummyCoursierDirectory(appConfiguration.value)
-    },
-  )
 
   def defaultTestTasks(key: Scoped): Seq[Setting[_]] =
     inTask(key)(
