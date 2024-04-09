@@ -305,12 +305,12 @@ class BuildServerTest extends AbstractServerTest {
   test("workspace/reload: send diagnostic and respond with error") {
     // write an other-build.sbt file that does not compile
     val otherBuildFile = svr.baseDirectory.toPath.resolve("other-build.sbt")
-    Files.writeString(
+    Files.write(
       otherBuildFile,
       """|val someSettings = Seq(
          |  scalacOptions ++= "-deprecation"
          |)
-         |""".stripMargin
+         |""".stripMargin.getBytes
     )
     // reload
     reloadWorkspace(id = 52)
@@ -331,12 +331,12 @@ class BuildServerTest extends AbstractServerTest {
       }
     )
     // fix the other-build.sbt file and reload again
-    Files.writeString(
+    Files.write(
       otherBuildFile,
       """|val someSettings = Seq(
          |  scalacOptions += "-deprecation"
          |)
-         |""".stripMargin
+         |""".stripMargin.getBytes
     )
     reloadWorkspace(id = 52)
     // assert received an empty diagnostic
