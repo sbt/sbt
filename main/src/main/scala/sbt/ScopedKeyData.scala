@@ -21,6 +21,7 @@ final case class ScopedKeyData[A](scoped: ScopedKey[A], value: Any) {
   def description: String =
     key.tag match
       case KeyTag.Task(typeArg)      => s"Task: $typeArg"
+      case KeyTag.SeqTask(typeArg)   => s"Task: Seq[$typeArg]"
       case KeyTag.InputTask(typeArg) => s"Input task: $typeArg"
       case KeyTag.Setting(typeArg)   => s"Setting: $typeArg = $value"
 }

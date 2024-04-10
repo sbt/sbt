@@ -295,6 +295,10 @@ trait Import {
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
+  import sbt.librarymanagement.{ InclExclRule, DependencyBuilders }
+  given Conversion[String, InclExclRule] = InclExclRule.stringToExclusionRule
+  given Conversion[DependencyBuilders.OrganizationArtifactName, InclExclRule] =
+    InclExclRule.organizationArtifactNameToExclusionRule
 
   // todo: fix
   // val License = sbt.librarymanagement.License

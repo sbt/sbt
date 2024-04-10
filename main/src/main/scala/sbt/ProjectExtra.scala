@@ -56,6 +56,7 @@ import sjsonnew.JsonFormat
 import scala.annotation.targetName
 import scala.concurrent.{ Await, TimeoutException }
 import scala.concurrent.duration.*
+import ClasspathDep.*
 
 /*
 sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
@@ -637,13 +638,12 @@ trait ProjectExtra extends Scoped.Syntax:
   given classpathDependency[A](using
       Conversion[A, ProjectReference]
   ): Conversion[A, ClasspathDep[ProjectReference]] =
-    (a: A) => ClasspathDep.ClasspathDependency(a, None)
+    (a: A) => ClasspathDependency(a, None)
 
   extension (p: ProjectReference)
-    def %(conf: Configuration): ClasspathDep.ClasspathDependency = %(conf.name)
+    def %(conf: Configuration): ClasspathDependency = %(conf.name)
     @targetName("percentString")
-    def %(conf: String): ClasspathDep.ClasspathDependency =
-      ClasspathDep.ClasspathDependency(p, Some(conf))
+    def %(conf: String): ClasspathDependency = ClasspathDependency(p, Some(conf))
 
   extension [A1](in: Def.Initialize[Task[A1]])
     def updateState(f: (State, A1) => State): Def.Initialize[Task[A1]] =
@@ -712,11 +712,12 @@ trait ProjectExtra extends Scoped.Syntax:
       p: T
   )(implicit ev: T => ProjectReference): Constructor =
     new Constructor(p)
-
-  implicit def classpathDependency[T](
-      p: T
-  )(implicit ev: T => ProjectReference): ClasspathDependency = ClasspathDependency(p, None)
    */
+
+  implicit def classpathDependency[T](p: T)(implicit
+      ev: T => ProjectReference
+  ): ClasspathDependency =
+    ClasspathDependency(ev(p), None)
 
   // Duplicated with Structure
 

@@ -229,7 +229,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   import language.experimental.macros
 
-  // These are here, as opposed to RemoteCahe, since we need them from TaskMacro etc
+  // These are here, as opposed to RemoteCache, since we need them from TaskMacro etc
   private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
   def cacheStore: ActionCacheStore = _cacheStore
   private[sbt] var _outputDirectory: Option[Path] = None
@@ -319,7 +319,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     inline def value: A1 = InputWrapper.`wrapInitTask_\u2603\u2603`[A1](in)
 
     /**
-     * This treats the `Initailize[Task[A]]` as a setting that returns the Task value,
+     * This treats the `Initialize[Task[A]]` as a setting that returns the Task value,
      * instead of evaluating the task.
      */
     inline def taskValue: Task[A1] = InputWrapper.`wrapInit_\u2603\u2603`[Task[A1]](in)

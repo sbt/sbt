@@ -22,16 +22,9 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{
-  CompileOutput,
-  FileAnalysisStore,
-  HashUtil,
-  JarUtils,
-  MappedFileConverter
-}
+import sbt.internal.inc.{ MappedFileConverter, HashUtil, JarUtils }
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
-import sbt.internal.inc.Analysis
 import sbt.io.IO
 import sbt.io.syntax._
 import sbt.librarymanagement._
@@ -41,16 +34,10 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.{
-  ActionCacheStore,
-  AggregateActionCacheStore,
-  CacheImplicits,
-  DiskActionCacheStore,
-  Logger
-}
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, DiskActionCacheStore, Logger }
 import sjsonnew.JsonFormat
-import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
-import xsbti.compile.{ AnalysisContents, CompileAnalysis, MiniSetup, MiniOptions }
+import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
+import xsbti.compile.CompileAnalysis
 
 import scala.collection.mutable
 
@@ -58,8 +45,6 @@ object RemoteCache {
   final val cachedCompileClassifier = "cached-compile"
   final val cachedTestClassifier = "cached-test"
   final val commitLength = 10
-
-  def cacheStore: ActionCacheStore = Def.cacheStore
 
   // TODO: cap with caffeine
   private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
@@ -69,51 +54,22 @@ object RemoteCache {
   // currently this is called twice so metabuild can call compile with a minimal setting
   private[sbt] def initializeRemoteCache(s: State): Unit =
     val outDir =
-      s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath())
+      s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath)
     Def._outputDirectory = Some(outDir)
-    val caches = s.get(BasicKeys.cacheStores)
-    caches match
-      case Some(xs) if xs.nonEmpty => Def._cacheStore = AggregateActionCacheStore(xs)
-      case _ =>
-        val tempDiskCache = (s.baseDir / "target" / "bootcache").toPath()
-        Def._cacheStore = DiskActionCacheStore(tempDiskCache)
-
-  private[sbt] def getCachedAnalysis(ref: String): CompileAnalysis =
-    getCachedAnalysis(CacheImplicits.strToHashedVirtualFileRef(ref))
-  private[sbt] def getCachedAnalysis(ref: HashedVirtualFileRef): CompileAnalysis =
-    analysisStore.getOrElseUpdate(
-      ref, {
-        val vfs = cacheStore.getBlobs(ref :: Nil)
-        if vfs.nonEmpty then
-          val outputDirectory = Def.cacheConfiguration.outputDirectory
-          cacheStore.syncBlobs(vfs, outputDirectory).headOption match
-            case Some(file) => FileAnalysisStore.binary(file.toFile()).get.get.getAnalysis
-            case None       => Analysis.empty
-        else Analysis.empty
-      }
-    )
-
-  private[sbt] val tempConverter: MappedFileConverter = MappedFileConverter.empty
-  private[sbt] def postAnalysis(analysis: CompileAnalysis): Option[HashedVirtualFileRef] =
-    IO.withTemporaryFile("analysis", ".tmp", true): file =>
-      val output = CompileOutput.empty
-      val option = MiniOptions.of(Array(), Array(), Array())
-      val setup = MiniSetup.of(
-        output,
-        option,
-        "",
-        xsbti.compile.CompileOrder.Mixed,
-        false,
-        Array()
-      )
-      FileAnalysisStore.binary(file).set(AnalysisContents.create(analysis, setup))
-      val vf = tempConverter.toVirtualFile(file.toPath)
-      val refs = cacheStore.putBlobs(vf :: Nil)
-      refs.headOption match
-        case Some(ref) =>
-          analysisStore(ref) = analysis
-          Some(ref)
-        case None => None
+    def defaultCache =
+      val fileConverter = s
+        .get(Keys.fileConverter.key)
+        .getOrElse {
+          MappedFileConverter(
+            Defaults.getRootPaths(outDir, s.configuration),
+            allowMachinePath = true
+          )
+        }
+      DiskActionCacheStore((s.baseDir / "target" / "bootcache").toPath, fileConverter)
+    Def._cacheStore = s
+      .get(BasicKeys.cacheStores)
+      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
+      .getOrElse(defaultCache)
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._
@@ -154,7 +110,7 @@ object RemoteCache {
     },
     cacheStores := {
       List(
-        DiskActionCacheStore(localCacheDirectory.value.toPath())
+        DiskActionCacheStore(localCacheDirectory.value.toPath(), fileConverter.value)
       )
     },
   )
@@ -562,10 +518,10 @@ object RemoteCache {
       key: SettingKey[A],
       pkgTasks: Seq[TaskKey[HashedVirtualFileRef]]
   ): Def.Initialize[Seq[A]] =
-    (Classpaths.forallIn(key, pkgTasks) zipWith
-      Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))(_ zip _ collect { case (a, true) =>
-      a
-    })
+    Classpaths
+      .forallIn(key, pkgTasks)
+      .zipWith(Classpaths.forallIn(pushRemoteCacheArtifact, pkgTasks))
+      .apply(_.zip(_).collect { case (a, true) => a })
 
   private def extractHash(inputs: Seq[(Path, FileStamp)]): Vector[String] =
     inputs.toVector map { case (_, stamp0) =>

@@ -105,7 +105,7 @@ object PluginDiscovery:
   ): Seq[String] =
     (
       binaryModuleNames(classpath, converter, loader, resourceName) ++
-        (analyzed(classpath) flatMap (a => sourceModuleNames(a, subclasses: _*)))
+        analyzed(classpath, converter).flatMap(a => sourceModuleNames(a, subclasses: _*))
     ).distinct
 
   /** Discovers top-level modules in `analysis` that inherit from any of `subclasses`. */
@@ -136,9 +136,10 @@ object PluginDiscovery:
       .getResources(resourceName)
       .asScala
       .toSeq
-      .filter(onClasspath(classpath, converter)) flatMap { u =>
-      IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
-    }
+      .filter(onClasspath(classpath, converter))
+      .flatMap { u =>
+        IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
+      }
 
   /** Returns `true` if `url` is an entry in `classpath`. */
   def onClasspath(classpath: Def.Classpath, converter: FileConverter)(url: URL): Boolean =

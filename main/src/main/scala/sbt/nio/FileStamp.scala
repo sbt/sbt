@@ -16,6 +16,7 @@ import sbt.io.IO
 import sbt.nio.file.FileAttributes
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
+import xsbti.VirtualFileRef
 
 /**
  * A trait that indicates what file stamping implementation should be used to track the state of
@@ -102,65 +103,49 @@ object FileStamp {
   private[sbt] final case class Error(exception: IOException) extends FileStamp
 
   object Formats {
-    implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
-      override def write[J](obj: Seq[Path], builder: Builder[J]): Unit = {
-        builder.beginArray()
-        obj.foreach { path =>
-          builder.writeString(path.toString)
+    implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] =
+      asStringArray(_.toString, Paths.get(_))
+    implicit val seqFileJsonFormatter: JsonFormat[Seq[File]] =
+      asStringArray(_.toString, new File(_))
+    implicit val seqVirtualFileRefJsonFormatter: JsonFormat[Seq[VirtualFileRef]] =
+      asStringArray(_.id, VirtualFileRef.of)
+
+    implicit val fileJsonFormatter: JsonFormat[File] = fromSeqJsonFormat[File]
+    implicit val pathJsonFormatter: JsonFormat[Path] = fromSeqJsonFormat[Path]
+    implicit val virtualFileRefJsonFormatter: JsonFormat[VirtualFileRef] =
+      fromSeqJsonFormat[VirtualFileRef]
+
+    private def asStringArray[T](toStr: T => String, fromStr: String => T): JsonFormat[Seq[T]] =
+      new JsonFormat[Seq[T]] {
+        override def write[J](obj: Seq[T], builder: Builder[J]): Unit = {
+          builder.beginArray()
+          obj.foreach { x => builder.writeString(toStr(x)) }
+          builder.endArray()
         }
-        builder.endArray()
+
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[T] =
+          jsOpt match {
+            case Some(js) =>
+              val size = unbuilder.beginArray(js)
+              val res = (1 to size) map { _ =>
+                fromStr(unbuilder.readString(unbuilder.nextElement))
+              }
+              unbuilder.endArray()
+              res
+            case None =>
+              deserializationError("Expected JsArray but found None")
+          }
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[Path] =
-        jsOpt match {
-          case Some(js) =>
-            val size = unbuilder.beginArray(js)
-            val res = (1 to size) map { _ =>
-              Paths.get(unbuilder.readString(unbuilder.nextElement))
-            }
-            unbuilder.endArray()
-            res
-          case None =>
-            deserializationError("Expected JsArray but found None")
-        }
-    }
+    private def fromSeqJsonFormat[T](using seqJsonFormat: JsonFormat[Seq[T]]): JsonFormat[T] =
+      new JsonFormat[T] {
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
+          seqJsonFormat.read(jsOpt, unbuilder).head
 
-    implicit val seqFileJsonFormatter: JsonFormat[Seq[File]] = new JsonFormat[Seq[File]] {
-      override def write[J](obj: Seq[File], builder: Builder[J]): Unit = {
-        builder.beginArray()
-        obj.foreach { file =>
-          builder.writeString(file.toString)
-        }
-        builder.endArray()
+        override def write[J](obj: T, builder: Builder[J]): Unit =
+          seqJsonFormat.write(obj :: Nil, builder)
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[File] =
-        jsOpt match {
-          case Some(js) =>
-            val size = unbuilder.beginArray(js)
-            val res = (1 to size) map { _ =>
-              new File(unbuilder.readString(unbuilder.nextElement))
-            }
-            unbuilder.endArray()
-            res
-          case None =>
-            deserializationError("Expected JsArray but found None")
-        }
-    }
-    implicit val fileJsonFormatter: JsonFormat[File] = new JsonFormat[File] {
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): File =
-        seqFileJsonFormatter.read(jsOpt, unbuilder).head
-
-      override def write[J](obj: File, builder: Builder[J]): Unit =
-        seqFileJsonFormatter.write(obj :: Nil, builder)
-    }
-    implicit val pathJsonFormatter: JsonFormat[Path] = new JsonFormat[Path] {
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Path =
-        seqPathJsonFormatter.read(jsOpt, unbuilder).head
-
-      override def write[J](obj: Path, builder: Builder[J]): Unit =
-        seqPathJsonFormatter.write(obj :: Nil, builder)
-    }
     implicit val seqPathFileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
       new JsonFormat[Seq[(Path, FileStamp)]] {
         override def write[J](obj: Seq[(Path, FileStamp)], builder: Builder[J]): Unit = {

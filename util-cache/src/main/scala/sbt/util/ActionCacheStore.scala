@@ -10,10 +10,10 @@ import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import sbt.io.IO
 import sbt.io.syntax.*
-import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
+import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFile }
 
 /**
- * An abstration of a remote or local cache store.
+ * An abstraction of a remote or local cache store.
  */
 trait ActionCacheStore:
   /**
@@ -129,7 +129,7 @@ class InMemoryActionCacheStore extends ActionCacheStore:
     underlying.toString()
 end InMemoryActionCacheStore
 
-class DiskActionCacheStore(base: Path) extends ActionCacheStore:
+class DiskActionCacheStore(base: Path, fileConverter: FileConverter) extends ActionCacheStore:
   lazy val casBase: Path = {
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
@@ -181,13 +181,10 @@ class DiskActionCacheStore(base: Path) extends ActionCacheStore:
       else None
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    refs.flatMap: r =>
-      val casFile = casBase.toFile / Digest(r.contentHashStr).toString
+    refs.flatMap: ref =>
+      val casFile = casBase.toFile / Digest(ref.contentHashStr).toString
       if casFile.exists then
-        val shortPath =
-          if r.id.startsWith("${OUT}/") then r.id.drop(7)
-          else r.id
-        val outPath = outputDirectory.resolve(shortPath)
+        val outPath = fileConverter.toPath(ref)
         Files.createDirectories(outPath.getParent())
         if outPath.toFile().exists() then IO.delete(outPath.toFile())
         Some(Files.createSymbolicLink(outPath, casFile.toPath))

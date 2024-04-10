@@ -10,20 +10,14 @@ val commonSettings = Seq(
 
 lazy val root = (project in file("."))
   .aggregate(sub1, sub2)
-  .settings(
-    commonSettings
-  )
+  .settings(commonSettings)
 
 lazy val rootRef = LocalProject("root")
 
 lazy val sub1 = project
   .dependsOn(rootRef)
-  .settings(
-    commonSettings
-  )
+  .settings(commonSettings)
 
 lazy val sub2 = project
   .dependsOn(rootRef)
-  .settings(
-    commonSettings
-  )
+  .settings(commonSettings)

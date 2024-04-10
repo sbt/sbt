@@ -15,11 +15,13 @@ import sjsonnew.*
 enum KeyTag[A]:
   case Setting[A](typeArg: Class[?]) extends KeyTag[A]
   case Task[A](typeArg: Class[?]) extends KeyTag[A]
+  case SeqTask[A](typeArg: Class[?]) extends KeyTag[A]
   case InputTask[A](typeArg: Class[?]) extends KeyTag[A]
 
   override def toString: String = this match
     case Setting(typeArg)   => typeArg.toString
     case Task(typeArg)      => s"Task[$typeArg]"
+    case SeqTask(typeArg)   => s"Task[Seq[$typeArg]]"
     case InputTask(typeArg) => s"InputTask[$typeArg]"
 
   def typeArg: Class[?]

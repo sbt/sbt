@@ -23,6 +23,8 @@ object Applicative:
     val F1 = summon[Applicative[F1]]
     val F2 = summon[Applicative[F2]]
     override def pure[A1](x: () => A1): F1[F2[A1]] = F1.pure(() => F2.pure(x))
+    override def map[A1, A2](fa: F1[F2[A1]])(f: A1 => A2): F1[F2[A2]] =
+      F1.map(fa)(f2 => F2.map(f2)(f))
     override def ap[A1, A2](f1f2f: F1[F2[A1 => A2]])(f1f2a: F1[F2[A1]]): F1[F2[A2]] =
       F1.ap(F1.map(f1f2f) { (f2f: F2[A1 => A2]) => (f2a: F2[A1]) => F2.ap(f2f)(f2a) })(f1f2a)
 

@@ -199,7 +199,7 @@ private[sbt] object Definition {
   }
 
   def collectAnalysesTask = Def.task {
-    val cacheFile: String = compileIncSetup.value.cacheFile.getAbsolutePath
+    val cacheFile: String = compileAnalysisFile.value.getAbsolutePath
     val useBinary = enableBinaryCompileAnalysis.value
     val s = state.value
     s.log.debug(s"analysis location ${cacheFile -> useBinary}")

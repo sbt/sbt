@@ -1,5 +1,3 @@
-# compiles a new State => State instance
-> compile
 # puts the classes in a stable location (out spaced/ to test escaping)
 > copyOutputDir
 

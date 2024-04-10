@@ -1217,6 +1217,7 @@ private[sbt] object Load {
 
     // Default sbt files to read, if needed
     lazy val defaultSbtFiles = configurationSources(projectBase)
+      .filterNot(_.isHidden)
       .map(_.getAbsoluteFile().toPath)
       .map(converter.toVirtualFile)
     lazy val sbtFiles = defaultSbtFiles ++ extraSbtFiles
@@ -1264,11 +1265,9 @@ private[sbt] object Load {
         // case sf: SbtFiles =>
         //   sf.files
         //     .map(f => IO.resolve(projectBase, f))
-        //     .filterNot(_.isHidden)
         //     .map(_.toPath)
         case sf: DefaultSbtFiles =>
           sbtFiles.filter(sf.include)
-        // .filterNot(_.isHidden)
         // .map(_.toPath)
         case q: Sequence =>
           q.sequence.foldLeft(Seq.empty[VirtualFile]) { (b, add) =>
