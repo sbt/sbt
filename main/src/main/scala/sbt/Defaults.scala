@@ -100,13 +100,7 @@ import scala.xml.NodeSeq
 
 // incremental compiler
 import sbt.SlashSyntax0._
-import sbt.internal.inc.{
-  Analysis,
-  AnalyzingCompiler,
-  ManagedLoggedReporter,
-  MixedAnalyzingCompiler,
-  ScalaInstance
-}
+import sbt.internal.inc.{ Analysis, AnalyzingCompiler, ManagedLoggedReporter, ScalaInstance }
 import xsbti.{ CrossValue, VirtualFile, VirtualFileRef }
 import xsbti.compile.{
   AnalysisContents,
@@ -875,7 +869,12 @@ object Defaults extends BuildCommon {
   }
 
   def defaultCompileSettings: Seq[Setting[_]] =
-    globalDefaults(enableBinaryCompileAnalysis := true)
+    globalDefaults(
+      Seq(
+        enableBinaryCompileAnalysis :== true,
+        enableConsistentCompileAnalysis :== SysProp.analysis2024,
+      )
+    )
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++
     inTask(compile)(compileInputsSettings) ++
@@ -2299,13 +2298,15 @@ object Defaults extends BuildCommon {
    */
   private[sbt] def compileScalaBackendTask: Initialize[Task[CompileResult]] = Def.task {
     val setup: Setup = compileIncSetup.value
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     val analysisResult: CompileResult = compileIncremental.value
     val exportP = exportPipelining.value
     // Save analysis midway if pipelining is enabled
     if (analysisResult.hasModified && exportP) {
-      val store =
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val store = AnalysisUtil.staticCachedStore(
+        analysisFile = setup.cacheFile.toPath,
+        useTextAnalysis = !enableBinaryCompileAnalysis.value,
+        useConsistent = enableConsistentCompileAnalysis.value,
+      )
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
       // this stores the eary analysis (again) in case the subproject contains a macro
@@ -2325,9 +2326,11 @@ object Defaults extends BuildCommon {
         .debug(s"${name.value}: compileEarly: blocking on earlyOutputPing")
       earlyOutputPing.await.value
     }) {
-      val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store =
-        MixedAnalyzingCompiler.staticCachedStore(earlyCompileAnalysisFile.value.toPath, !useBinary)
+      val store = AnalysisUtil.staticCachedStore(
+        analysisFile = earlyCompileAnalysisFile.value.toPath,
+        useTextAnalysis = !enableBinaryCompileAnalysis.value,
+        useConsistent = enableConsistentCompileAnalysis.value,
+      )
       store.get.toOption match {
         case Some(contents) => contents.getAnalysis
         case _              => Analysis.empty
@@ -2338,13 +2341,15 @@ object Defaults extends BuildCommon {
   }
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
     val setup: Setup = compileIncSetup.value
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     val c = fileConverter.value
     // TODO - expose bytecode manipulation phase.
     val analysisResult: CompileResult = manipulateBytecode.value
     if (analysisResult.hasModified) {
-      val store =
-        MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val store = AnalysisUtil.staticCachedStore(
+        analysisFile = setup.cacheFile.toPath,
+        useTextAnalysis = !enableBinaryCompileAnalysis.value,
+        useConsistent = enableConsistentCompileAnalysis.value,
+      )
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
     }
@@ -2444,11 +2449,16 @@ object Defaults extends BuildCommon {
         cachedPerEntryDefinesClassLookup(classpathEntry)
     }
     val extra = extraIncOptions.value.map(t2)
-    val useBinary: Boolean = enableBinaryCompileAnalysis.value
     val eapath = earlyCompileAnalysisFile.value.toPath
     val eaOpt =
-      if (exportPipelining.value) Some(MixedAnalyzingCompiler.staticCachedStore(eapath, !useBinary))
-      else None
+      if (exportPipelining.value) {
+        val store = AnalysisUtil.staticCachedStore(
+          analysisFile = eapath,
+          useTextAnalysis = !enableBinaryCompileAnalysis.value,
+          useConsistent = enableConsistentCompileAnalysis.value,
+        )
+        Some(store)
+      } else None
     Setup.of(
       lookup,
       (compile / skip).value,
@@ -2538,8 +2548,11 @@ object Defaults extends BuildCommon {
   def compileAnalysisSettings: Seq[Setting[_]] = Seq(
     previousCompile := {
       val setup = compileIncSetup.value
-      val useBinary: Boolean = enableBinaryCompileAnalysis.value
-      val store = MixedAnalyzingCompiler.staticCachedStore(setup.cacheFile.toPath, !useBinary)
+      val store = AnalysisUtil.staticCachedStore(
+        analysisFile = setup.cacheFile.toPath,
+        useTextAnalysis = !enableBinaryCompileAnalysis.value,
+        useConsistent = enableConsistentCompileAnalysis.value,
+      )
       val prev = store.get().toOption match {
         case Some(contents) =>
           val analysis = Option(contents.getAnalysis).toOptional
