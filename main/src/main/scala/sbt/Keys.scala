@@ -174,7 +174,7 @@ object Keys {
   @cacheLevel(include = Array.empty)
   val classDirectory = settingKey[File]("Directory for compiled classes and copied resources.").withRank(AMinusSetting)
   val earlyOutput = settingKey[VirtualFile]("JAR file for pickles used for build pipelining")
-  val backendOutput = settingKey[VirtualFile]("Directory or JAR file for compiled classes and copied resources")
+  val backendOutput = settingKey[VirtualFile]("Output directory of the compiler backend")
   val cleanFiles = taskKey[Seq[File]]("The files to recursively delete during a clean.").withRank(BSetting)
   val cleanKeepFiles = settingKey[Seq[File]]("Files or directories to keep during a clean. Must be direct children of target.").withRank(CSetting)
   val cleanKeepGlobs = settingKey[Seq[Glob]]("Globs to keep during a clean. Must be direct children of target.").withRank(CSetting)

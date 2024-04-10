@@ -663,7 +663,7 @@ object Defaults extends BuildCommon {
     classDirectory := target.value / (prefix(configuration.value.name) + "classes"),
     backendOutput := {
       val converter = fileConverter.value
-      val dir = classDirectory.value
+      val dir = target.value / (prefix(configuration.value.name) + "backend")
       converter.toVirtualFile(dir.toPath)
     },
     earlyOutput / artifactPath := configArtifactPathSetting(artifact, "early").value,
@@ -913,11 +913,16 @@ object Defaults extends BuildCommon {
       tastyFiles := Def.taskIf {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) {
           val _ = compile.value
-          val tastyFiles = classDirectory.value.**("*.tasty").get()
+          val c = fileConverter.value
+          val dir = c.toPath(backendOutput.value).toFile
+          val tastyFiles = dir.**("*.tasty").get()
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
       }.value,
-      clean := (compileOutputs / clean).value,
+      clean := {
+        (compileOutputs / clean).value
+        (products / clean).value
+      },
       earlyOutputPing := Def.promise[Boolean],
       compileProgress := {
         val s = streams.value
@@ -2458,8 +2463,14 @@ object Defaults extends BuildCommon {
         val reporter = (compile / bspReporter).value
         val store = analysisStore(compileAnalysisFile)
         val ci = (compile / compileInputs).value
+        val c = fileConverter.value
+        val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
+            val rawJarPath = c.toPath(res._2)
+            IO.delete(dir)
+            IO.unzip(rawJarPath.toFile, dir)
+            IO.delete(dir / "META-INF" / "MANIFEST.MF")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2497,9 +2508,7 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
       Def.declareOutput(analysisOut)
-      val dir = classDirectory.value
-      if (dir / "META-INF" / "MANIFEST.MF").exists then IO.delete(dir / "META-INF" / "MANIFEST.MF")
-      // inline mappings
+      val dir = ci.options.classesDirectory.toFile()
       val mappings = Path
         .allSubpaths(dir)
         .filter(_._1.isFile())
@@ -4233,14 +4242,18 @@ object Classpaths {
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
-    Def.unit(copyResources.value)
-    Def.unit(compile.value)
-    val dir = c.toPath(backendOutput.value)
+    val resources = copyResources.value.map(_._2).toSet
+    val dir = classDirectory.value
     val rawJar = compileIncremental.value._2
     val rawJarPath = c.toPath(rawJar)
-    IO.unzip(rawJarPath.toFile, dir.toFile)
-    IO.delete(dir.toFile / "META-INF" / "MANIFEST.MF")
-    dir.toFile :: Nil
+    // delete outdated files
+    Path
+      .allSubpaths(dir)
+      .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
+      .foreach(IO.delete)
+    IO.unzip(rawJarPath.toFile, dir)
+    IO.delete(dir / "META-INF" / "MANIFEST.MF")
+    dir :: Nil
   }
 
   private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {

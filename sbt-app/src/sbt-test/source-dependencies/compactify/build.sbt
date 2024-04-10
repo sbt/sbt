@@ -1,7 +1,9 @@
-TaskKey[Unit]("outputEmpty") := ((Configurations.Compile / classDirectory) map { outputDirectory =>
-  def classes = (outputDirectory ** "*.class").get()
-  if (!classes.isEmpty) sys.error("Classes existed:\n\t" + classes.mkString("\n\t")) else ()
-}).value
+TaskKey[Unit]("outputEmpty") := {
+  val c = fileConverter.value
+  val dir = c.toPath((Compile / backendOutput).value).toFile()
+  def classes = dir.**("*.class").get()
+  if (!classes.isEmpty) sys.error("Classes existed:\n\t" + classes.mkString("\n\t"))
+}
 
 // apparently Travis CI stopped allowing long file names
 // it fails with the default setting of 255 characters so

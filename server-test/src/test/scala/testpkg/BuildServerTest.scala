@@ -254,7 +254,7 @@ class BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/cleanCache") {
     def classFile = svr.baseDirectory.toPath.resolve(
-      "target/out/jvm/scala-2.13.8/runandtest/classes/main/Main.class"
+      "target/out/jvm/scala-2.13.8/runandtest/backend/main/Main.class"
     )
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     compile(buildTarget, id = 43)
