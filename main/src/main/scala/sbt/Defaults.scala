@@ -1653,7 +1653,7 @@ object Defaults extends BuildCommon {
                     + "These issues, along with others that were not enumerated above, may be"
                     + " resolved by changing the class loader layering strategy.\n"
                     + "The Flat and ScalaLibrary strategies bundle the full project classpath in"
-                    + " the same class loader.\nTo use one of these strategies, set the "
+                    + " the same class loader.\nTo use one of these strategies, set the"
                     + " ClassLoaderLayeringStrategy key\nin your configuration, for example:\n\n"
                     + s"set ${projectId}Test / classLoaderLayeringStrategy :="
                     + " ClassLoaderLayeringStrategy.ScalaLibrary\n"
