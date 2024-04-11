@@ -4655,7 +4655,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     )
 
   /**
-   * Adds Maven resolver plugin.
+   * Adds remote cache plugin.
    */
   def addRemoteCachePlugin: Setting[Seq[ModuleID]] =
     libraryDependencies += sbtPluginExtra(
