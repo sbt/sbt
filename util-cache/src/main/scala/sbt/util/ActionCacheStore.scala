@@ -213,26 +213,26 @@ class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
       putBlob(b.input, Digest(b))
       (b: HashedVirtualFileRef)
 
-  def toOutFile(digest: Digest): Path =
+  def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
   def putBlob(input: InputStream, digest: Digest): Path =
-    val outFile = toOutFile(digest)
-    IO.transfer(input, outFile.toFile())
-    outFile
+    val casFile = toCasFile(digest)
+    IO.transfer(input, casFile.toFile())
+    casFile
 
   def putBlob(input: ByteBuffer, digest: Digest): Path =
-    val outFile = toOutFile(digest)
+    val casFile = toCasFile(digest)
     input.flip()
-    val file = RandomAccessFile(outFile.toFile(), "rw")
+    val file = RandomAccessFile(casFile.toFile(), "rw")
     try
       file.getChannel().write(input)
-      outFile
+      casFile
     finally file.close()
 
   private def getBlobs(refs: Seq[HashedVirtualFileRef]): Seq[VirtualFile] =
     refs.flatMap: r =>
-      val casFile = toOutFile(Digest(r))
+      val casFile = toCasFile(Digest(r))
       if casFile.toFile().exists then
         r match
           case p: PathBasedFile => Some(p)
@@ -243,7 +243,7 @@ class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: ref =>
-      val casFile = toOutFile(Digest(ref))
+      val casFile = toCasFile(Digest(ref))
       if casFile.toFile().exists then
         val outPath = fileConverter.toPath(ref)
         Files.createDirectories(outPath.getParent())
@@ -253,7 +253,7 @@ class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     refs.flatMap: r =>
-      val casFile = toOutFile(Digest(r))
+      val casFile = toCasFile(Digest(r))
       if casFile.toFile().exists then Some(r)
       else None
 end DiskActionCacheStore
