@@ -1180,11 +1180,16 @@ object Defaults extends BuildCommon {
       } {
         for (lib <- compileReport.modules.find(_.module.name == libName)) {
           val libVer = lib.module.revision
+          val n = name.value
           if (VersionNumber(sv).matchesSemVer(SemanticSelector(s"<$libVer")))
             sys.error(
-              s"""`${name.value}/scalaVersion` needs to be upgraded to $libVer. To support backwards-only
-                 |binary compatibility (SIP-51), the Scala compiler cannot be older than $libName on the
-                 |dependency classpath. See `${name.value}/evicted` why $libName was upgraded from $sv to $libVer.
+              s"""expected `$n/scalaVersion` to be "$libVer" or later,
+                 |but found "$sv"; upgrade scalaVerion to fix the build.
+                 |
+                 |to support backwards-only binary compatibility (SIP-51),
+                 |the Scala 2.13 compiler cannot be older than $libName on the
+                 |dependency classpath.
+                 |see `$n/evicted` to know why $libName $libVer is getting pulled in.
                  |""".stripMargin
             )
         }
