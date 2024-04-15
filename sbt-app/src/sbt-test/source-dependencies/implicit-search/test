@@ -5,5 +5,7 @@ $ copy-file changes/C.scala C.scala
 -> run
 
 $ copy-file changes/A2.scala A.scala
+$ sleep 1000
+
 > compile
 > run
