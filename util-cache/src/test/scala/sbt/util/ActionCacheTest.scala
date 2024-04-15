@@ -1,5 +1,6 @@
 package sbt.util
 
+import sbt.internal.util.CacheEventLog
 import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
@@ -40,7 +41,7 @@ object ActionCacheTest extends BasicTestSuite:
       (a + b, Nil)
     }
     IO.withTemporaryDirectory: (tempDir) =>
-      val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
+      val config = BuildWideCacheConfiguration(cache, tempDir.toPath(), CacheEventLog())
       val v1 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1 == 2)
@@ -62,7 +63,7 @@ object ActionCacheTest extends BasicTestSuite:
         val out = StringVirtualFile1(s"$tempDir/a.txt", (a + b).toString)
         (a + b, Seq(out))
       }
-      val config = BuildWideCacheConfiguration(cache, tempDir.toPath())
+      val config = BuildWideCacheConfiguration(cache, tempDir.toPath(), CacheEventLog())
       val v1 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1 == 2)

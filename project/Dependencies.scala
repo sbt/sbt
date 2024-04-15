@@ -16,7 +16,7 @@ object Dependencies {
   private val ioVersion = nightlyVersion.getOrElse("1.8.0")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha13")
-  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha12")
+  val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha13")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -106,6 +106,8 @@ object Dependencies {
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
+  val remoteapis =
+    "com.eed3si9n.remoteapis.shaded" % "shaded-remoteapis-java" % "2.3.0-M1-52317e00d8d4c37fa778c628485d220fb68a8d08"
 
   val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
 

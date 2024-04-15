@@ -1,0 +1,16 @@
+package sbt.util
+@target(Scala)
+
+type UpdateActionResultRequest {
+  actionDigest: sbt.util.Digest!
+  outputFiles: [xsbti.VirtualFile] @since("0.1.0")
+  exitCode: Int @since("0.2.0")
+  isExecutable: [Boolean] @since("0.3.0")
+}
+
+type GetActionResultRequest {
+  actionDigest: sbt.util.Digest!
+  inlineStdout: Boolean @since("0.1.0")
+  inlineStderr: Boolean @since("0.1.0")
+  inlineOutputFiles: [String] @since("0.2.0")
+}

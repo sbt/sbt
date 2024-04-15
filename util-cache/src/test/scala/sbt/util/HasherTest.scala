@@ -27,7 +27,7 @@ object HasherTest extends BasicTestSuite:
 
   test("HashedVirtualFileRef") {
     import PathHashWriters.given
-    val x = HashedVirtualFileRef.of("a.txt", blankContentHashStr)
+    val x = HashedVirtualFileRef.of("a.txt", blankContentHashStr, 0L)
     val actual = Hasher.hashUnsafe(x)
     assert(actual == blankATxtHash)
   }

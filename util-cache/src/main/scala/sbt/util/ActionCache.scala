@@ -1,10 +1,14 @@
 package sbt.util
 
+import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
+import sbt.io.IO
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import xsbti.VirtualFile
+import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
 
@@ -33,22 +37,48 @@ object ActionCache:
   )(
       config: BuildWideCacheConfiguration
   ): O =
+    val store = config.store
+    val cacheEventLog = config.cacheEventLog
     val input =
       Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
-    val store = config.store
-    val result = store
-      .get[O](input)
-      .getOrElse:
-        val (newResult, outputs) = action(key)
-        store.put[O](input, newResult, outputs)
-    // run the side effect to sync the output files
-    store.syncBlobs(result.outputFiles, config.outputDirectory)
-    result.value
+    val valuePath = config.outputDirectory.resolve(s"value/${input}.json").toString
+    def organicTask: O =
+      cacheEventLog.append(ActionCacheEvent.NotFound)
+      // run action(...) and combine the newResult with outputs
+      val (newResult, outputs) = action(key)
+      val json = Converter.toJsonUnsafe(newResult)
+      val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+      val newOutputs = Vector(valueFile) ++ outputs.toVector
+      store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
+        case Right(result) =>
+          store.syncBlobs(result.outputFiles, config.outputDirectory)
+          newResult
+        case Left(e) => throw e
+    def valueFromStr(str: String, origin: Option[String]): O =
+      cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
+      val json = Parser.parseUnsafe(str)
+      Converter.fromJsonUnsafe[O](json)
+    store.get(
+      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
+    ) match
+      case Right(result) =>
+        // some protocol can embed values into the result
+        result.contents.headOption match
+          case Some(head) =>
+            store.syncBlobs(result.outputFiles, config.outputDirectory)
+            val str = String(head.array(), StandardCharsets.UTF_8)
+            valueFromStr(str, result.origin)
+          case _ =>
+            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            if paths.isEmpty then organicTask
+            else valueFromStr(IO.read(paths.head.toFile()), result.origin)
+      case Left(_) => organicTask
 end ActionCache
 
 class BuildWideCacheConfiguration(
     val store: ActionCacheStore,
     val outputDirectory: Path,
+    val cacheEventLog: CacheEventLog,
 ):
   override def toString(): String =
     s"BuildWideCacheConfiguration(store = $store, outputDirectory = $outputDirectory)"

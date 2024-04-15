@@ -35,6 +35,12 @@ object ContrabandConfig {
     case "scalajson.ast.unsafe.JValue" | "sjsonnew.shaded.scalajson.ast.unsafe.JValue" => { _ =>
       "sbt.internal.util.codec.JValueFormats" :: Nil
     }
+    case "xsbti.HashedVirtualFileRef" => { _ =>
+      "sbt.internal.util.codec.HashedVirtualFileRefFormats" :: Nil
+    }
+    case "java.nio.ByteBuffer" => { _ =>
+      "sbt.internal.util.codec.ByteBufferFormats" :: Nil
+    }
   }
 
   /** Returns the list of formats required to encode the given `TpeRef`. */

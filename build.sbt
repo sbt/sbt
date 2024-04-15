@@ -419,11 +419,26 @@ lazy val utilRelation = (project in file("internal") / "util-relation")
 // Persisted caching based on sjson-new
 lazy val utilCache = project
   .in(file("util-cache"))
+  .enablePlugins(
+    ContrabandPlugin,
+    // we generate JsonCodec only for actionresult.conta
+    // JsonCodecPlugin,
+  )
+  .dependsOn(utilLogging)
   .settings(
     testedBaseSettings,
     name := "Util Cache",
     libraryDependencies ++=
-      Seq(sjsonNewScalaJson.value, sjsonNewMurmurhash.value, scalaReflect.value),
+      Seq(
+        sjsonNewCore.value,
+        sjsonNewScalaJson.value,
+        sjsonNewMurmurhash.value,
+        scalaReflect.value
+      ),
+    Compile / managedSourceDirectories +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := ContrabandConfig.getFormats,
     utilMimaSettings,
     Test / fork := true,
   )
@@ -643,6 +658,19 @@ lazy val dependencyTreeProj = (project in file("dependency-tree"))
     publishMavenStyle := true,
     // mimaSettings,
     mimaPreviousArtifacts := Set.empty,
+  )
+
+lazy val remoteCacheProj = (project in file("sbt-remote-cache"))
+  .dependsOn(sbtProj)
+  .settings(
+    sbtPlugin := true,
+    baseSettings,
+    name := "sbt-remote-cache",
+    pluginCrossBuild / sbtVersion := version.value,
+    publishMavenStyle := true,
+    // mimaSettings,
+    mimaPreviousArtifacts := Set.empty,
+    libraryDependencies += remoteapis,
   )
 
 // Implementation and support code for defining actions.
@@ -1266,6 +1294,7 @@ def allProjects =
     utilTracking,
     collectionProj,
     coreMacrosProj,
+    remoteCacheProj,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
