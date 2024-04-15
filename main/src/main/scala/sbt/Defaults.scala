@@ -1183,7 +1183,7 @@ object Defaults extends BuildCommon {
           if (VersionNumber(sv).matchesSemVer(SemanticSelector(s"<$libVer")))
             sys.error(
               s"""expected `$n/scalaVersion` to be "$libVer" or later,
-                 |but found "$sv"; upgrade scalaVerion to fix the build.
+                 |but found "$sv"; upgrade scalaVersion to fix the build.
                  |
                  |to support backwards-only binary compatibility (SIP-51),
                  |the Scala 2.13 compiler cannot be older than $libName on the
