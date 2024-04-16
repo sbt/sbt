@@ -25,6 +25,7 @@ object RemoteCachePlugin extends AutoPlugin:
             clientCertChain = remoteCacheTlsClientCertificate.value.map(_.toPath),
             clientPrivateKey = remoteCacheTlsClientKey.value.map(_.toPath),
             remoteHeaders = remoteCacheHeaders.value.toList,
+            converter = fileConverter.value,
             disk = disk,
           )
           orig ++ Seq(r)

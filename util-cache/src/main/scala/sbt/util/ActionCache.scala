@@ -51,7 +51,7 @@ object ActionCache:
       val newOutputs = Vector(valueFile) ++ outputs.toVector
       store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
         case Right(result) =>
-          store.syncBlobs(result.outputFiles, config.outputDirectory)
+          store.syncBlobs(result.outputFiles)
           newResult
         case Left(e) => throw e
     def valueFromStr(str: String, origin: Option[String]): O =
@@ -65,11 +65,11 @@ object ActionCache:
         // some protocol can embed values into the result
         result.contents.headOption match
           case Some(head) =>
-            store.syncBlobs(result.outputFiles, config.outputDirectory)
+            store.syncBlobs(result.outputFiles)
             val str = String(head.array(), StandardCharsets.UTF_8)
             valueFromStr(str, result.origin)
           case _ =>
-            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            val paths = store.syncBlobs(result.outputFiles)
             if paths.isEmpty then organicTask
             else valueFromStr(IO.read(paths.head.toFile()), result.origin)
       case Left(_) => organicTask

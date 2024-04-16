@@ -48,6 +48,7 @@ object GrpcActionCacheStore:
       clientCertChain: Option[Path],
       clientPrivateKey: Option[Path],
       remoteHeaders: List[String],
+      converter: FileConverter,
       disk: DiskActionCacheStore,
   ): GrpcActionCacheStore =
     val b: ManagedChannelBuilder[?] = uri.getScheme() match
@@ -81,7 +82,7 @@ object GrpcActionCacheStore:
       case Some(x) if x.startsWith("/") => x.drop(1)
       case Some(x)                      => x
       case None                         => ""
-    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, disk)
+    new GrpcActionCacheStore(channel, instanceName, remoteHeaders, converter, disk)
 
   class AuthCallCredentials(remoteHeaders: List[String]) extends CallCredentials:
     val pairs = remoteHeaders.map: h =>
@@ -111,6 +112,7 @@ class GrpcActionCacheStore(
     channel: ManagedChannel,
     instanceName: String,
     remoteHeaders: List[String],
+    converter: FileConverter,
     disk: DiskActionCacheStore,
 ) extends AbstractActionCacheStore:
   lazy val creds = GrpcActionCacheStore.AuthCallCredentials(remoteHeaders)
@@ -185,7 +187,7 @@ class GrpcActionCacheStore(
   /**
    * https://github.com/bazelbuild/remote-apis/blob/9ff14cecffe5287ba337f857731ceadfc2d80de9/build/bazel/remote/execution/v2/remote_execution.proto#L403
    */
-  override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+  override def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
     val result = doGetBlobs(refs)
     val blobs = result.getResponsesList().asScala.toList
     val allOk = blobs.forall(_.getStatus().getCode() == 0)
@@ -193,14 +195,11 @@ class GrpcActionCacheStore(
       // do not assume the responses to come in order
       val lookupResponse: Map[Digest, BatchReadBlobsResponse.Response] =
         Map(blobs.map(res => toDigest(res.getDigest) -> res): _*)
-      refs.map: r =>
-        val digest = Digest(r)
+      refs.map: ref =>
+        val digest = Digest(ref)
         val blob = lookupResponse(digest)
         val casFile = disk.putBlob(blob.getData().newInput(), digest)
-        val shortPath =
-          if r.id.startsWith("${OUT}/") then r.id.drop(7)
-          else r.id
-        val outPath = outputDirectory.resolve(shortPath)
+        val outPath = converter.toPath(ref)
         Files.createDirectories(outPath.getParent())
         if outPath.toFile().exists() then IO.delete(outPath.toFile())
         Files.createSymbolicLink(outPath, casFile)

@@ -24,7 +24,7 @@ object ActionCacheTest extends BasicTestSuite:
       val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
       val hashRefs = cache.putBlobs(in :: Nil)
       assert(hashRefs.size == 1)
-      val actual = cache.syncBlobs(hashRefs, tempDir.toPath()).head
+      val actual = cache.syncBlobs(hashRefs).head
       assert(actual.getFileName().toString() == "a.txt")
 
   test("In-memory cache can hold action value"):

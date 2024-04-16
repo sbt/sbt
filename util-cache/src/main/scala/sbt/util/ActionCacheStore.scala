@@ -45,7 +45,7 @@ trait ActionCacheStore:
   /**
    * Materialize blobs to the output directory.
    */
-  def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path]
+  def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path]
 
   /**
    * Find if blobs are present in the storage.
@@ -101,8 +101,8 @@ class AggregateActionCacheStore(stores: Seq[ActionCacheStore]) extends AbstractA
       val xs = store.putBlobs(blobs)
       if res.isEmpty then xs else res
 
-  override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    stores.collectFirst2(_.syncBlobs(refs, outputDirectory), refs.size)
+  override def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
+    stores.collectFirst2(_.syncBlobs(refs), refs.size)
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     stores.collectFirst2(_.findBlobs(refs), refs.size)
@@ -154,7 +154,7 @@ class InMemoryActionCacheStore extends AbstractActionCacheStore:
 
   // we won't keep the blobs in-memory so return Nil
   // to implement this correctly, we'd have to grab the content from the original file
-  override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+  override def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
     Nil
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
@@ -241,7 +241,7 @@ class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
             Some(StringVirtualFile1(r.id, content))
       else None
 
-  override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+  override def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
     refs.flatMap: ref =>
       val casFile = toCasFile(Digest(ref))
       if casFile.toFile().exists then
