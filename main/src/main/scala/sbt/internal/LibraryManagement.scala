@@ -110,13 +110,16 @@ private[sbt] object LibraryManagement {
     }
 
     /* Skip resolve if last output exists, otherwise error. */
-    def skipResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
+    def skipResolve(cache: CacheStore)(inputs: UpdateInputs): UpdateReport = {
       import sbt.librarymanagement.LibraryManagementCodec._
-      Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
-        case (_, Some(out)) => markAsCached(out)
-        case _ =>
-          sys.error("Skipping update requested, but update has not previously run successfully.")
-      }
+      val cachedReport = Tracked
+        .lastOutput[UpdateInputs, UpdateReport](cache) {
+          case (_, Some(out)) => out
+          case _ =>
+            sys.error("Skipping update requested, but update has not previously run successfully.")
+        }
+        .apply(inputs)
+      markAsCached(cachedReport)
     }
 
     // Mark UpdateReport#stats as "cached." This is used by the dependers later
@@ -127,15 +130,21 @@ private[sbt] object LibraryManagement {
     def doResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       val doCachedResolve = { (inChanged: Boolean, updateInputs: UpdateInputs) =>
         import sbt.librarymanagement.LibraryManagementCodec._
-        val cachedResolve = Tracked.lastOutput[UpdateInputs, UpdateReport](cache) {
-          case (_, Some(out)) if upToDate(inChanged, out) => markAsCached(out)
-          case pair =>
-            log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
-            resolve
-        }
-        import scala.util.control.Exception.catching
-        catching(classOf[NullPointerException], classOf[OutOfMemoryError])
-          .withApply { t =>
+        try {
+          var isCached = false
+          val report = Tracked
+            .lastOutput[UpdateInputs, UpdateReport](cache) {
+              case (_, Some(out)) if upToDate(inChanged, out) =>
+                isCached = true
+                out
+              case pair =>
+                log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
+                resolve
+            }
+            .apply(updateInputs)
+          if (isCached) markAsCached(report) else report
+        } catch {
+          case t @ (_: NullPointerException | _: OutOfMemoryError) =>
             val resolvedAgain = resolve
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
@@ -143,8 +152,7 @@ private[sbt] object LibraryManagement {
             resolvedAgain.toString.linesIterator.foreach(log.warn(_))
             log.trace(t)
             resolvedAgain
-          }
-          .apply(cachedResolve(updateInputs))
+        }
       }
       import LibraryManagementCodec._
       Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
@@ -155,7 +163,7 @@ private[sbt] object LibraryManagement {
     val extraInputHash = module.extraInputHash
     val settings = module.moduleSettings
     val outStore = cacheStoreFactory.make("output")
-    val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
+    val handler = if (skip && !force) skipResolve(outStore)(_) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
     handler((extraInputHash, settings, withoutClock))
@@ -257,7 +265,7 @@ private[sbt] object LibraryManagement {
           forceUpdatePeriod.value match {
             case None => false
             case Some(period) =>
-              val fullUpdateOutput = cacheDirectory / "out"
+              val fullUpdateOutput = cacheDirectory / "output"
               val now = System.currentTimeMillis
               val diff = now - fullUpdateOutput.lastModified()
               val elapsedDuration = new scala.concurrent.duration.FiniteDuration(

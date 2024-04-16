@@ -1,8 +1,8 @@
-$ absent target/resolution-cache
+$ absent target/scala-2.12/resolution-cache
 > compile
-$ exists target/resolution-cache
+$ exists target/scala-2.12/resolution-cache
 > checkLastUpdateTime
-$ sleep 10000
+$ sleep 5000
 > compile
 # This is expected to fail
 -> checkLastUpdateTime
