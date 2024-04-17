@@ -41,7 +41,7 @@ object ActionCache:
     val cacheEventLog = config.cacheEventLog
     val input =
       Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
-    val valuePath = config.outputDirectory.resolve(s"value/${input}.json").toString
+    val valuePath = s"value/${input}.json"
     def organicTask: O =
       cacheEventLog.append(ActionCacheEvent.NotFound)
       // run action(...) and combine the newResult with outputs
