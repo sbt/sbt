@@ -57,6 +57,7 @@ import scala.annotation.targetName
 import scala.concurrent.{ Await, TimeoutException }
 import scala.concurrent.duration.*
 import ClasspathDep.*
+import xsbti.FileConverter
 
 /*
 sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeProject {
@@ -322,6 +323,7 @@ trait ProjectExtra extends Scoped.Syntax:
       val hs: Option[Seq[ServerHandler]] = get(ThisBuild / fullServerHandlers)
       val caches: Option[Seq[ActionCacheStore]] = get(cacheStores)
       val rod: Option[NioPath] = get(rootOutputDirectory)
+      val fileConverter: Option[FileConverter] = get(Keys.fileConverter)
       val commandDefs = allCommands.distinct.flatten[Command].map(_ tag (projectCommand, true))
       val newDefinedCommands = commandDefs ++ BasicCommands.removeTagged(
         s.definedCommands,
@@ -349,6 +351,7 @@ trait ProjectExtra extends Scoped.Syntax:
           .setCond(fullServerHandlers.key, hs)
           .setCond(cacheStores.key, caches)
           .setCond(rootOutputDirectory.key, rod)
+          .setCond(BasicKeys.fileConverter, fileConverter)
       s.copy(
         attributes = newAttrs,
         definedCommands = newDefinedCommands

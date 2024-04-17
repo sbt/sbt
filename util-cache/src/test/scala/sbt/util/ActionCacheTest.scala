@@ -6,6 +6,11 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
 import xsbti.VirtualFile
+import xsbti.FileConverter
+import xsbti.VirtualFileRef
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.Files
 
 object ActionCacheTest extends BasicTestSuite:
   val tags = CacheLevelTag.all.toList
@@ -35,12 +40,12 @@ object ActionCacheTest extends BasicTestSuite:
       (a + b, Nil)
     }
     IO.withTemporaryDirectory: (tempDir) =>
-      val config = BuildWideCacheConfiguration(cache, tempDir.toPath(), CacheEventLog())
+      val config = getCacheConfig(cache, tempDir)
       val v1 =
-        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1 == 2)
       val v2 =
-        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
@@ -50,16 +55,16 @@ object ActionCacheTest extends BasicTestSuite:
 
   def testActionCacheWithBlob(cache: ActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
-    var called = 0
-    val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
-      called += 1
-      val out = StringVirtualFile1("a.txt", (a + b).toString)
-      (a + b, Seq(out))
-    }
     IO.withTemporaryDirectory: (tempDir) =>
-      val config = BuildWideCacheConfiguration(cache, tempDir.toPath(), CacheEventLog())
+      var called = 0
+      val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
+        called += 1
+        val out = StringVirtualFile1(s"$tempDir/a.txt", (a + b).toString)
+        (a + b, Seq(out))
+      }
+      val config = getCacheConfig(cache, tempDir)
       val v1 =
-        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v1 == 2)
       // ActionResult only contains the reference to the files.
       // To retrieve them, separately call readBlobs or syncBlobs.
@@ -69,7 +74,7 @@ object ActionCacheTest extends BasicTestSuite:
       assert(content == "2")
 
       val v2 =
-        ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
       assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
@@ -87,4 +92,17 @@ object ActionCacheTest extends BasicTestSuite:
       },
       keepDirectory = false
     )
+
+  def getCacheConfig(cache: ActionCacheStore, outputDir: File): BuildWideCacheConfiguration =
+    val logger = new Logger:
+      override def trace(t: => Throwable): Unit = ()
+      override def success(message: => String): Unit = ()
+      override def log(level: Level.Value, message: => String): Unit = ()
+    BuildWideCacheConfiguration(cache, outputDir.toPath(), fileConverter, logger, CacheEventLog())
+
+  def fileConverter = new FileConverter:
+    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
+    override def toVirtualFile(path: Path): VirtualFile =
+      val content = if Files.isRegularFile(path) then new String(Files.readAllBytes(path)) else ""
+      StringVirtualFile1(path.toString, content)
 end ActionCacheTest

@@ -34,7 +34,7 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, DiskActionCacheStore, Logger }
+import sbt.util.{ ActionCacheStore, DiskActionCacheStore, Logger }
 import sjsonnew.JsonFormat
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
@@ -49,16 +49,6 @@ object RemoteCache {
   // TODO: cap with caffeine
   private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
     mutable.Map.empty
-
-  // TODO: figure out a good timing to initialize cache
-  // currently this is called twice so metabuild can call compile with a minimal setting
-  private[sbt] def initializeRemoteCache(s: State): Unit =
-    Def._outputDirectory = s.get(BasicKeys.rootOutputDirectory)
-    Def._cacheStore = s
-      .get(BasicKeys.cacheStores)
-      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
-      .getOrElse(DiskActionCacheStore((s.baseDir / "target" / "bootcache").toPath))
-    Def._fileConverter = s.get(Keys.fileConverter.key)
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._
