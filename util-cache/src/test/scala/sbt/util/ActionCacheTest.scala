@@ -5,13 +5,7 @@ import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
-import xsbti.FileConverter
 import xsbti.VirtualFile
-import xsbti.VirtualFileRef
-
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 
 object ActionCacheTest extends BasicTestSuite:
   val tags = CacheLevelTag.all.toList
@@ -20,10 +14,10 @@ object ActionCacheTest extends BasicTestSuite:
     withDiskCache(testHoldBlob)
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
+    val in = StringVirtualFile1("a.txt", "foo")
+    val hashRefs = cache.putBlobs(in :: Nil)
+    assert(hashRefs.size == 1)
     IO.withTemporaryDirectory: tempDir =>
-      val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
-      val hashRefs = cache.putBlobs(in :: Nil)
-      assert(hashRefs.size == 1)
       val actual = cache.syncBlobs(hashRefs, tempDir.toPath()).head
       assert(actual.getFileName().toString() == "a.txt")
 
@@ -55,14 +49,14 @@ object ActionCacheTest extends BasicTestSuite:
     withDiskCache(testActionCacheWithBlob)
 
   def testActionCacheWithBlob(cache: ActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
+      called += 1
+      val out = StringVirtualFile1("a.txt", (a + b).toString)
+      (a + b, Seq(out))
+    }
     IO.withTemporaryDirectory: (tempDir) =>
-      import sjsonnew.BasicJsonProtocol.*
-      var called = 0
-      val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
-        called += 1
-        val out = StringVirtualFile1(s"$tempDir/a.txt", (a + b).toString)
-        (a + b, Seq(out))
-      }
       val config = BuildWideCacheConfiguration(cache, tempDir.toPath(), CacheEventLog())
       val v1 =
         ActionCache.cache[(Int, Int), Int]((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
@@ -88,15 +82,9 @@ object ActionCacheTest extends BasicTestSuite:
     IO.withTemporaryDirectory(
       { tempDir0 =>
         val tempDir = tempDir0.toPath
-        val cache = DiskActionCacheStore(tempDir, fileConverter)
+        val cache = DiskActionCacheStore(tempDir)
         f(cache)
       },
       keepDirectory = false
     )
-
-  def fileConverter = new FileConverter:
-    override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
-    override def toVirtualFile(path: Path): VirtualFile =
-      val content = if Files.isRegularFile(path) then new String(Files.readAllBytes(path)) else ""
-      StringVirtualFile1(path.toString, content)
 end ActionCacheTest

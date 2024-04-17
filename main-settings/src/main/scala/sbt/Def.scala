@@ -23,6 +23,7 @@ import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
 import sjsonnew.JsonFormat
 import scala.reflect.ClassTag
+import xsbti.FileConverter
 
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
 object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
@@ -233,6 +234,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
   def cacheStore: ActionCacheStore = _cacheStore
   private[sbt] var _outputDirectory: Option[Path] = None
+  private[sbt] var _fileConverter: Option[FileConverter] = None
   private[sbt] val cacheEventLog: CacheEventLog = CacheEventLog()
   def cacheConfiguration: BuildWideCacheConfiguration =
     BuildWideCacheConfiguration(
