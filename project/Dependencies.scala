@@ -93,7 +93,7 @@ object Dependencies {
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val jansi = "org.fusesource.jansi" % "jansi" % "2.4.0"
+  val jansi = "org.fusesource.jansi" % "jansi" % "2.4.1"
   val scalatest = "org.scalatest" %% "scalatest" % "3.2.10"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.15.4"
   val junit = "junit" % "junit" % "4.13.1"
