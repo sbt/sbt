@@ -98,13 +98,12 @@ object Aggregation {
     val roots = ts.map { case KeyValue(k, _) => k }
     val config = extractedTaskConfig(extracted, structure, s)
     val start = System.currentTimeMillis
-    val cacheEventLog = Def.cacheConfiguration.cacheEventLog
-    cacheEventLog.clear()
+    Def.cacheEventLog.clear()
     val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
       runTask(toRun, s, str, structure.index.triggers, config)(using transform)
     val stop = System.currentTimeMillis
-    val cacheSummary = cacheEventLog.summary
+    val cacheSummary = Def.cacheEventLog.summary
     Complete(start, stop, result, cacheSummary, newS)
 
   def runTasks[A1](

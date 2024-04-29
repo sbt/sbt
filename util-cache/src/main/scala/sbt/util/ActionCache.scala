@@ -7,7 +7,7 @@ import scala.annotation.{ meta, StaticAnnotation }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-import xsbti.VirtualFile
+import xsbti.{ FileConverter, VirtualFile }
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
@@ -37,30 +37,47 @@ object ActionCache:
   )(
       config: BuildWideCacheConfiguration
   ): O =
-    val store = config.store
-    val cacheEventLog = config.cacheEventLog
+    import config.*
     val input =
       Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
-    val valuePath = config.outputDirectory.resolve(s"value/${input}.json").toString
+    val valuePath = s"value/${input}.json"
+
     def organicTask: O =
-      cacheEventLog.append(ActionCacheEvent.NotFound)
       // run action(...) and combine the newResult with outputs
-      val (newResult, outputs) = action(key)
-      val json = Converter.toJsonUnsafe(newResult)
-      val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
-      val newOutputs = Vector(valueFile) ++ outputs.toVector
-      store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
-        case Right(result) =>
-          store.syncBlobs(result.outputFiles, config.outputDirectory)
-          newResult
-        case Left(e) => throw e
+      val (result, outputs) =
+        try action(key)
+        catch
+          case e: Exception =>
+            cacheEventLog.append(ActionCacheEvent.Error)
+            throw e
+      val json = Converter.toJsonUnsafe(result)
+      val uncacheableOutputs =
+        outputs.filter(f => !fileConverter.toPath(f).startsWith(outputDirectory))
+      if uncacheableOutputs.nonEmpty then
+        cacheEventLog.append(ActionCacheEvent.Error)
+        logger.error(
+          s"Cannot cache task because its output files are outside the output directory: \n" +
+            uncacheableOutputs.mkString("  - ", "\n  - ", "")
+        )
+        result
+      else
+        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+        val valueFile = StringVirtualFile1(s"value/${input}.json", CompactPrinter(json))
+        val newOutputs = Vector(valueFile) ++ outputs.toVector
+        store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
+          case Right(cachedResult) =>
+            store.syncBlobs(cachedResult.outputFiles, config.outputDirectory)
+            result
+          case Left(e) => throw e
+
     def valueFromStr(str: String, origin: Option[String]): O =
       cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
-    store.get(
+
+    val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
-    ) match
+    store.get(getRequest) match
       case Right(result) =>
         // some protocol can embed values into the result
         result.contents.headOption match
@@ -78,6 +95,8 @@ end ActionCache
 class BuildWideCacheConfiguration(
     val store: ActionCacheStore,
     val outputDirectory: Path,
+    val fileConverter: FileConverter,
+    val logger: Logger,
     val cacheEventLog: CacheEventLog,
 ):
   override def toString(): String =

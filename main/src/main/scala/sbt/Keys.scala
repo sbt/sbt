@@ -37,7 +37,7 @@ import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, Upda
 import sbt.nio.file.Glob
 import sbt.testing.Framework
 import sbt.util.{ cacheLevel, ActionCacheStore, Level, Logger, LoggerContext }
-import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
 
@@ -283,7 +283,7 @@ object Keys {
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
   val auxiliaryClassFiles = taskKey[Seq[AuxiliaryClassFiles]]("The auxiliary class files that must be managed by Zinc (for instance the TASTy files)")
   @cacheLevel(include = Array.empty)
-  val fileConverter = settingKey[FileConverter]("The file converter used to convert between Path and VirtualFile")
+  val fileConverter = SettingKey(BasicKeys.fileConverter)
   val allowMachinePath = settingKey[Boolean]("Allow machine-specific paths during conversion.")
   val reportAbsolutePath = settingKey[Boolean]("Report absolute paths during compilation.")
   val rootPaths = settingKey[Map[String, NioPath]]("The root paths used to abstract machine-specific paths.")

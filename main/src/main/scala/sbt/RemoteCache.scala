@@ -22,7 +22,7 @@ import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.SlashSyntax0._
 import sbt.coursierint.LMCoursier
-import sbt.internal.inc.{ MappedFileConverter, HashUtil, JarUtils }
+import sbt.internal.inc.{ HashUtil, JarUtils }
 import sbt.internal.librarymanagement._
 import sbt.internal.remotecache._
 import sbt.io.IO
@@ -34,7 +34,7 @@ import sbt.nio.FileStamp
 import sbt.nio.Keys.{ inputFileStamps, outputFileStamps }
 import sbt.std.TaskExtra._
 import sbt.util.InterfaceUtil.toOption
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, DiskActionCacheStore, Logger }
+import sbt.util.{ ActionCacheStore, DiskActionCacheStore, Logger }
 import sjsonnew.JsonFormat
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
@@ -49,27 +49,6 @@ object RemoteCache {
   // TODO: cap with caffeine
   private[sbt] val analysisStore: mutable.Map[HashedVirtualFileRef, CompileAnalysis] =
     mutable.Map.empty
-
-  // TODO: figure out a good timing to initialize cache
-  // currently this is called twice so metabuild can call compile with a minimal setting
-  private[sbt] def initializeRemoteCache(s: State): Unit =
-    val outDir =
-      s.get(BasicKeys.rootOutputDirectory).getOrElse((s.baseDir / "target" / "out").toPath)
-    Def._outputDirectory = Some(outDir)
-    def defaultCache =
-      val fileConverter = s
-        .get(Keys.fileConverter.key)
-        .getOrElse {
-          MappedFileConverter(
-            Defaults.getRootPaths(outDir, s.configuration),
-            allowMachinePath = true
-          )
-        }
-      DiskActionCacheStore((s.baseDir / "target" / "bootcache").toPath, fileConverter)
-    Def._cacheStore = s
-      .get(BasicKeys.cacheStores)
-      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
-      .getOrElse(defaultCache)
 
   private[sbt] def artifactToStr(art: Artifact): String = {
     import LibraryManagementCodec._
@@ -110,7 +89,7 @@ object RemoteCache {
     },
     cacheStores := {
       List(
-        DiskActionCacheStore(localCacheDirectory.value.toPath(), fileConverter.value)
+        DiskActionCacheStore(localCacheDirectory.value.toPath())
       )
     },
     remoteCache := SysProp.remoteCache,

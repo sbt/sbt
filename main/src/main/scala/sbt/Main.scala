@@ -951,7 +951,6 @@ object BuiltinCommands {
   def doLoadProject(s0: State, action: LoadAction): State = {
     welcomeBanner(s0)
     checkSBTVersionChanged(s0)
-    RemoteCache.initializeRemoteCache(s0)
     val (s1, base) = Project.loadAction(SessionVar.clear(s0), action)
     IO.createDirectory(base)
     val s2 = if (s1 has Keys.stateCompilerCache) s1 else registerCompilerCache(s1)
@@ -974,7 +973,6 @@ object BuiltinCommands {
       st => setupGlobalFileTreeRepository(addCacheStoreFactoryFactory(st))
     )
     val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
-    RemoteCache.initializeRemoteCache(s4)
     addSuperShellParams(CheckBuildSources.init(LintUnused.lintUnusedFunc(s4)))
   }
 

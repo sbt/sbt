@@ -13,7 +13,7 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.internal.util.StringVirtualFile1
 import sbt.internal.util.codec.ActionResultCodec.given
-import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFile }
+import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
 import java.io.InputStream
 
 /**
@@ -166,8 +166,7 @@ class InMemoryActionCacheStore extends AbstractActionCacheStore:
     underlying.toString()
 end InMemoryActionCacheStore
 
-class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
-    extends AbstractActionCacheStore:
+class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
   lazy val casBase: Path = {
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
@@ -242,10 +241,13 @@ class DiskActionCacheStore(base: Path, fileConverter: FileConverter)
       else None
 
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
-    refs.flatMap: ref =>
-      val casFile = toCasFile(Digest(ref))
+    refs.flatMap: r =>
+      val casFile = toCasFile(Digest(r))
       if casFile.toFile().exists then
-        val outPath = fileConverter.toPath(ref)
+        val shortPath =
+          if r.id.startsWith("${OUT}/") then r.id.drop(7)
+          else r.id
+        val outPath = outputDirectory.resolve(shortPath)
         Files.createDirectories(outPath.getParent())
         if outPath.toFile().exists() then IO.delete(outPath.toFile())
         Some(Files.createSymbolicLink(outPath, casFile))

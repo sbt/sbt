@@ -7,7 +7,6 @@
 
 package sbt
 
-import java.nio.file.Path
 import java.net.URI
 
 import scala.annotation.tailrec
@@ -17,7 +16,7 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, BuildWideCacheConfiguration, InMemoryActionCacheStore }
+import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, cacheLevel , DiskActionCacheStore }
 import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile }
@@ -229,17 +228,40 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   import language.experimental.macros
 
+  private[sbt] val isDummyTask = AttributeKey[Boolean](
+    "is-dummy-task",
+    "Internal: used to identify dummy tasks. sbt injects values for these tasks at the start of task execution.",
+    Invisible
+  )
+
+  private[sbt] val (stateKey: TaskKey[State], dummyState: Task[State]) =
+    dummy[State]("state", "Current build state.")
+
+  private[sbt] val (streamsManagerKey, dummyStreamsManager) =
+    Def.dummy[std.Streams[ScopedKey[?]]](
+      "streams-manager",
+      "Streams manager, which provides streams for different contexts."
+    )
+
   // These are here, as opposed to RemoteCache, since we need them from TaskMacro etc
-  private[sbt] var _cacheStore: ActionCacheStore = InMemoryActionCacheStore()
-  def cacheStore: ActionCacheStore = _cacheStore
-  private[sbt] var _outputDirectory: Option[Path] = None
   private[sbt] val cacheEventLog: CacheEventLog = CacheEventLog()
-  def cacheConfiguration: BuildWideCacheConfiguration =
+  @cacheLevel(include = Array.empty)
+  val cacheConfiguration: Initialize[Task[BuildWideCacheConfiguration]] = Def.task {
+    val state = stateKey.value
+    val outputDirectory = state.get(BasicKeys.rootOutputDirectory)
+    val cacheStore = state
+      .get(BasicKeys.cacheStores)
+      .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
+      .getOrElse(DiskActionCacheStore(state.baseDir.toPath.resolve("target/bootcache")))
+    val fileConverter = state.get(BasicKeys.fileConverter)
     BuildWideCacheConfiguration(
-      _cacheStore,
-      _outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
+      cacheStore,
+      outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
+      fileConverter.getOrElse(sys.error("outputDirectory has not been set")),
+      state.log,
       cacheEventLog,
     )
+  }
 
   inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskMacroImpl[A1]('a1, cached = true) }
@@ -401,9 +423,9 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     (TaskKey[A](name, description, DTask), dummyTask(name))
 
   private[sbt] def dummyTask[T](name: String): Task[T] = {
-    import std.TaskExtra.{ task => newTask, toTaskInfo }
-    val base: Task[T] = newTask(
-      sys.error("Dummy task '" + name + "' did not get converted to a full task.")
+    import TaskExtra.toTaskInfo
+    val base: Task[T] = TaskExtra.task(
+      sys.error(s"Dummy task '$name' did not get converted to a full task.")
     )
       .named(name)
     base.copy(info = base.info.set(isDummyTask, true))
@@ -411,21 +433,6 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   private[sbt] def isDummy(t: Task[_]): Boolean =
     t.info.attributes.get(isDummyTask) getOrElse false
-
-  private[sbt] val isDummyTask = AttributeKey[Boolean](
-    "is-dummy-task",
-    "Internal: used to identify dummy tasks.  sbt injects values for these tasks at the start of task execution.",
-    Invisible
-  )
-
-  private[sbt] val (stateKey: TaskKey[State], dummyState: Task[State]) =
-    dummy[State]("state", "Current build state.")
-
-  private[sbt] val (streamsManagerKey, dummyStreamsManager) =
-    Def.dummy[std.Streams[ScopedKey[?]]](
-      "streams-manager",
-      "Streams manager, which provides streams for different contexts."
-    )
 end Def
 
 // these need to be mixed into the sbt package object

@@ -71,7 +71,6 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   ):
     override def toString: String =
       s"Input($tpe, $qual, $term, $name, $tags)"
-
     def isCacheInput: Boolean = tags.nonEmpty
     lazy val tags = extractTags(qual)
     private def extractTags(tree: Term): List[CacheLevelTag] =

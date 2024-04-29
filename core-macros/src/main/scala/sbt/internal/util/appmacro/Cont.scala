@@ -32,11 +32,8 @@ trait Cont:
     def contMapN[A: Type, F[_], Effect[_]: Type](
         tree: Expr[A],
         applicativeExpr: Expr[Applicative[F]],
-        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]],
-    )(using
-        iftpe: Type[F],
-        eatpe: Type[Effect[A]],
-    ): Expr[F[Effect[A]]] =
+        cacheConfigExpr: Option[Expr[BuildWideCacheConfiguration]]
+    )(using iftpe: Type[F], eatpe: Type[Effect[A]]): Expr[F[Effect[A]]] =
       contMapN[A, F, Effect](tree, applicativeExpr, cacheConfigExpr, conv.idTransform)
 
     /**
@@ -176,32 +173,15 @@ trait Cont:
       val inputBuf = ListBuffer[Input]()
       val outputBuf = ListBuffer[Output]()
 
-      def makeApp(body: Term, inputs: List[Input]): Expr[F[Effect[A]]] = inputs match
-        case Nil      => pure(body)
-        case x :: Nil => genMap(body, x)
-        case xs       => genMapN(body, xs)
       def unitExpr: Expr[Unit] = '{ () }
 
       // no inputs, so construct F[A] via Instance.pure or pure+flatten
       def pure(body: Term): Expr[F[Effect[A]]] =
         val tags = CacheLevelTag.all.toList
         def pure0[A1: Type](body: Expr[A1]): Expr[F[A1]] =
-          cacheConfigExprOpt match
-            case Some(cacheConfigExpr) =>
-              '{
-                $applicativeExpr.pure[A1] { () =>
-                  ${
-                    callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
-                      body = body,
-                      input = unitExpr,
-                    )
-                  }
-                }
-              }
-            case None =>
-              '{
-                $applicativeExpr.pure[A1] { () => $body }
-              }
+          '{
+            $applicativeExpr.pure[A1] { () => $body }
+          }
         eitherTree match
           case Left(_) => pure0[Effect[A]](inner(body).asExprOf[Effect[A]])
           case Right(_) =>
@@ -236,27 +216,20 @@ trait Cont:
                   val substitute = [x] =>
                     (name: String, tpe: Type[x], qual: Term, replace: Term) =>
                       given t: Type[x] = tpe
-                      convert[x](name, qual) transform { (tree: Term) =>
-                        typed[x](Ref(param.symbol))
-                    }
+                      convert[x](name, qual).transform { _ => typed[x](Ref(param.symbol)) }
                   val modifiedBody =
                     transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
                   cacheConfigExprOpt match
                     case Some(cacheConfigExpr) =>
-                      if input.isCacheInput then
-                        callActionCache(outputBuf.toList, cacheConfigExpr, input.tags)(
-                          body = modifiedBody,
-                          input = Ref(param.symbol).asExprOf[a],
-                        ).asTerm.changeOwner(sym)
-                      else
-                        callActionCache[A1, Unit](
-                          outputBuf.toList,
-                          cacheConfigExpr,
-                          input.tags,
-                        )(
-                          body = modifiedBody,
-                          input = unitExpr,
-                        ).asTerm.changeOwner(sym)
+                      val modifiedCacheConfigExpr =
+                        transformWrappers(cacheConfigExpr.asTerm.changeOwner(sym), substitute, sym)
+                          .asExprOf[BuildWideCacheConfiguration]
+                      val tags = CacheLevelTag.all.toList
+                      callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
+                        body = modifiedBody,
+                        input = unitExpr,
+                      ).asTerm
+                        .changeOwner(sym)
                     case None => modifiedBody.asTerm
                 }
               ).asExprOf[a => A1]
@@ -300,6 +273,9 @@ trait Cont:
                     transformWrappers(body.asTerm.changeOwner(sym), substitute, sym).asExprOf[A1]
                   cacheConfigExprOpt match
                     case Some(cacheConfigExpr) =>
+                      val modifiedCacheConfigExpr =
+                        transformWrappers(cacheConfigExpr.asTerm.changeOwner(sym), substitute, sym)
+                          .asExprOf[BuildWideCacheConfiguration]
                       if inputs.exists(_.isCacheInput) then
                         val tags = inputs
                           .filter(_.isCacheInput)
@@ -312,13 +288,13 @@ trait Cont:
                         )
                         br.cacheInputTupleTypeRepr.asType match
                           case '[cacheInputTpe] =>
-                            callActionCache(outputBuf.toList, cacheConfigExpr, tags)(
+                            callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
                               body = modifiedBody,
                               input = br.cacheInputExpr(p0).asExprOf[cacheInputTpe],
                             ).asTerm.changeOwner(sym)
                       else
                         val tags = CacheLevelTag.all.toList
-                        callActionCache[A1, Unit](outputBuf.toList, cacheConfigExpr, tags)(
+                        callActionCache(outputBuf.toList, cacheConfigExpr, tags)(
                           body = modifiedBody,
                           input = unitExpr,
                         ).asTerm.changeOwner(sym)
@@ -409,7 +385,11 @@ trait Cont:
               else oldTree
             end if
         }
-      val tx = transformWrappers(expr.asTerm, record, Symbol.spliceOwner)
-      val tr = makeApp(tx, inputBuf.toList)
-      tr
+      val exprWithConfig =
+        cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)
+      val body = transformWrappers(exprWithConfig.asTerm, record, Symbol.spliceOwner)
+      inputBuf.toList match
+        case Nil      => pure(body)
+        case x :: Nil => genMap(body, x)
+        case xs       => genMapN(body, xs)
 end Cont

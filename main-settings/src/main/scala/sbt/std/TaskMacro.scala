@@ -23,6 +23,7 @@ import sbt.internal.util.{ LinePosition, NoPosition, SourcePosition }
 import language.experimental.macros
 import scala.quoted.*
 import sjsonnew.JsonFormat
+import sbt.util.BuildWideCacheConfiguration
 
 object TaskMacro:
   final val AssignInitName = "set"
@@ -55,10 +56,17 @@ object TaskMacro:
       case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
       case _ =>
         val convert1 = new FullConvert(qctx, 0)
-        val cacheConfigExpr =
-          if cached then Some('{ Def.cacheConfiguration })
-          else None
-        convert1.contMapN[A1, F, Id](t, convert1.appExpr, cacheConfigExpr)
+        if cached then
+          convert1.contMapN[A1, F, Id](
+            t,
+            convert1.appExpr,
+            Some('{
+              InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
+                Def.cacheConfiguration
+              )
+            })
+          )
+        else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
 
   def taskIfImpl[A1: Type](expr: Expr[A1], cached: Boolean)(using
       qctx: Quotes

@@ -17,7 +17,7 @@ import sbt.librarymanagement.ModuleID
 import sbt.util.{ ActionCacheStore, Level }
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
-import xsbti.VirtualFile
+import xsbti.{ FileConverter, VirtualFile }
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -118,6 +118,12 @@ object BasicKeys {
       "Build-wide output directory",
       10000
     )
+
+  val fileConverter = AttributeKey[FileConverter](
+    "fileConverter",
+    "The file converter used to convert between Path and VirtualFile",
+    10000
+  )
 
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
