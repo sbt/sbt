@@ -20,7 +20,7 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import sbt.internal.util.ConsoleAppender._
 import sbt.util._
 import org.apache.logging.log4j.core.AbstractLogEvent
-import org.apache.logging.log4j.message.StringFormatterMessageFactory
+import org.apache.logging.log4j.message.SimpleMessageFactory
 import java.util.concurrent.atomic.AtomicReference
 
 object ConsoleLogger {
@@ -598,7 +598,7 @@ private[sbt] class ConsoleAppenderFromLog4J(
     delegate.append(new AbstractLogEvent {
       override def getLevel(): XLevel = ConsoleAppender.toXLevel(level)
       override def getMessage(): Message =
-        StringFormatterMessageFactory.INSTANCE.newMessage(message.toString, Array.empty)
+        SimpleMessageFactory.INSTANCE.newMessage(message.toString, Array.empty)
     })
   }
 }
