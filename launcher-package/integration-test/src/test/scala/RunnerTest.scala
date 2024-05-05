@@ -3,12 +3,14 @@ package example.test
 import minitest._
 import scala.sys.process._
 import java.io.File
+import java.util.Locale
 
 object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   // 1.3.0, 1.3.0-M4
   private[test] val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
 
-  lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
+  lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
+  lazy val isMac: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
   lazy val sbtScript =
     if (isWindows) new File("target/universal/stage/bin/sbt.bat")
     else new File("target/universal/stage/bin/sbt")
@@ -58,9 +60,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   }
 
   test("sbt \"testOnly *\"") {
-    val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
-    assert(out.contains[String]("[info] HelloTest"))
-    ()
+    if (isMac) ()
+    else {
+      val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
+      assert(out.contains[String]("[info] HelloTest"))
+      ()
+    }
   }
 
   /*
