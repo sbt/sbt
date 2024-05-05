@@ -735,6 +735,10 @@ object Defaults extends BuildCommon {
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
+      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
+      classpathOptions :== ClasspathOptionsUtil.boot,
+      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
+      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
