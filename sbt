@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.9.0"
+declare sbtn_version="1.10.0"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -182,8 +182,8 @@ acquire_sbtn () {
       exit 2
     fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
-    archive_target="$p/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
-    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+    archive_target="$p/sbtn-universal-apple-darwin-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-universal-apple-darwin-${sbtn_v}.tar.gz"
   elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
     target="$p/sbtn.exe"
     archive_target="$p/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
