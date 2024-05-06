@@ -65,10 +65,16 @@ private[sbt] object InstallSbtn {
       if (Properties.isWin) "pc-win32.exe"
       else if (Properties.isLinux) "pc-linux"
       else "apple-darwin"
-    val isArmArchitecture: Boolean = sys.props
-      .getOrElse("os.arch", "")
-      .toLowerCase(java.util.Locale.ROOT) == "aarch64"
-    val arch = if (Properties.isLinux && isArmArchitecture) "aarch64" else "x86_64"
+    val isArmArchitecture: Boolean = {
+      val prop = sys.props
+        .getOrElse("os.arch", "")
+        .toLowerCase(java.util.Locale.ROOT)
+      prop == "arm64" || prop == "aarch64"
+    }
+    val arch =
+      if (Properties.isWin) "x86_64"
+      else if (Properties.isLinux && isArmArchitecture) "aarch64"
+      else "universal"
     val sbtnName = s"sbt/bin/sbtn-$arch-$bin"
     val fis = new FileInputStream(sbtZip.toFile)
     val zipInputStream = new ZipInputStream(fis)
