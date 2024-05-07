@@ -26,7 +26,7 @@ lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.
       }))
 
 lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.15"
+lazy val scala212 = "2.12.19"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
@@ -34,8 +34,8 @@ lazy val jansi = {
 }
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
 lazy val scala212Jline = "jline" % "jline" % "2.14.6"
-// use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.14/versions.properties#L21
-lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "1.0.6"
+// use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.19/versions.properties
+lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "2.2.0"
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
 
 lazy val sbt013ExtraDeps = {
@@ -70,11 +70,13 @@ val debianBuildId = settingKey[Int]("build id for Debian")
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
 
-val x86MacPlatform = "x86_64-apple-darwin"
+val universalMacPlatform = "universal-apple-darwin"
 val x86LinuxPlatform = "x86_64-pc-linux"
+val aarch64LinuxPlatform = "aarch64-pc-linux"
 val x86WindowsPlatform = "x86_64-pc-win32"
-val x86MacImageName = s"sbtn-$x86MacPlatform"
+val universalMacImageName = s"sbtn-$universalMacPlatform"
 val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
+val aarch64LinuxImageName = s"sbtn-$aarch64LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
 organization in ThisBuild := "org.scala-sbt"
@@ -119,38 +121,50 @@ val root = (project in file(".")).
       file
     },
     // update sbt.sh at root
-    sbtnVersion := "1.7.0",
+    sbtnVersion := "1.10.0",
     sbtnJarsBaseUrl := "https://github.com/sbt/sbtn-dist/releases/download",
     sbtnJarsMappings := {
       val baseUrl = sbtnJarsBaseUrl.value
       val v = sbtnVersion.value
-      val macosImageTar = s"sbtn-$x86MacPlatform-$v.tar.gz"
-      val linuxImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
+      val macosUniversalImageTar = s"sbtn-$universalMacPlatform-$v.tar.gz"
+      val linuxX86ImageTar = s"sbtn-$x86LinuxPlatform-$v.tar.gz"
+      val linuxAarch64ImageTar = s"sbtn-$aarch64LinuxPlatform-$v.tar.gz"
       val windowsImageZip = s"sbtn-$x86WindowsPlatform-$v.zip"
       val t = target.value
-      val macosTar = t / macosImageTar
-      val linuxTar = t / linuxImageTar
+      val macosUniversalTar = t / macosUniversalImageTar
+      val linuxX86Tar = t / linuxX86ImageTar
+      val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
       import dispatch.classic._
-      if(!macosTar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(macosTar)
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosTar))
-         try Http(url(s"$baseUrl/v$v/$macosImageTar") >>> writer)
+      if(!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(macosUniversalTar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
+         try Http(url(s"$baseUrl/v$v/$macosUniversalImageTar") >>> writer)
          finally writer.close()
-         val platformDir = t / x86MacPlatform
+         val platformDir = t / universalMacPlatform
          IO.createDirectory(platformDir)
-         s"tar zxvf $macosTar --directory $platformDir".!
-         IO.move(platformDir / "sbtn", t / x86MacImageName)
+         s"tar zxvf $macosUniversalTar --directory $platformDir".!
+         IO.move(platformDir / "sbtn", t / universalMacImageName)
       }
-      if(!linuxTar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(linuxTar)
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxTar))
-         try Http(url(s"$baseUrl/v$v/$linuxImageTar") >>> writer)
+      if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(linuxX86Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
+         try Http(url(s"$baseUrl/v$v/$linuxX86ImageTar") >>> writer)
          finally writer.close()
          val platformDir = t / x86LinuxPlatform
          IO.createDirectory(platformDir)
-         s"""tar zxvf $linuxTar --directory $platformDir""".!
+         s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
          IO.move(platformDir / "sbtn", t / x86LinuxImageName)
+      }
+      if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
+         IO.touch(linuxAarch64Tar)
+         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
+         try Http(url(s"$baseUrl/v$v/$linuxAarch64ImageTar") >>> writer)
+         finally writer.close()
+         val platformDir = t / aarch64LinuxPlatform
+         IO.createDirectory(platformDir)
+         s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
+         IO.move(platformDir / "sbtn", t / aarch64LinuxImageName)
       }
       if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
@@ -164,13 +178,14 @@ val root = (project in file(".")).
       if (!sbtIncludeSbtn) Seq()
       else if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
       else
-        Seq(t / x86MacImageName -> s"bin/$x86MacImageName",
+        Seq(t / universalMacImageName -> s"bin/$universalMacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
+          t / aarch64LinuxImageName -> s"bin/$aarch64LinuxImageName",
           t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
     },
 
     // GENERAL LINUX PACKAGING STUFFS
-    maintainer := "Eugene Yokota <eugene.yokota@lightbend.com>",
+    maintainer := "Eugene Yokota <eed3si9n@gmail.com>",
     packageSummary := "sbt, the interactive build tool",
     packageDescription := """This script provides a native way to run sbt,
   a build tool for Scala and more.""",
@@ -222,10 +237,10 @@ val root = (project in file(".")).
       val orig = (linuxPackageMappings in Rpm).value
       val nativeMappings = sbtnJarsMappings.value
       orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
-        case (x, p) => p.contains("sbtn-x86_64")
+        case (x, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
       }))
     },
-    rpmVendor := "lightbend",
+    rpmVendor := "scalacenter",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("Apache-2.0"),
     // This is intentionally empty. java-devel could bring in JDK 9-ea on Fedora,
@@ -247,7 +262,7 @@ val root = (project in file(".")).
         case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."
       }
     },
-    maintainer in Windows := "Lightbend, Inc.",
+    maintainer in Windows := "Scala Center",
     packageSummary in Windows := "sbt " + (version in Windows).value,
     packageDescription in Windows := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
@@ -349,7 +364,13 @@ lazy val integrationTest = (project in file("integration-test"))
       "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
       "org.scala-sbt" %% "io" % "1.3.1" % Test
     ),
-    testFrameworks += new TestFramework("minitest.runner.Framework")
+    testFrameworks += new TestFramework("minitest.runner.Framework"),
+    test in Test := {
+      (test in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).value
+    },
+    testOnly in Test := {
+      (testOnly in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).evaluated
+    }
   )
 
 def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {

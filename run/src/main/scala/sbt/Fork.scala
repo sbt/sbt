@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -159,7 +160,7 @@ object Fork {
   /**
    * Use an arguments file if:
    * - we are on jdk >= 9
-   * - sbt.argfile is unset or not falsy
+   * - sbt.argsfile is unset or not falsy
    * - the command line length would exceed MaxConcatenatedOptionLength
    */
   private def shouldUseArgumentsFile(options: Seq[String]): Boolean =

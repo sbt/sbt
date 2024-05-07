@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,10 +9,8 @@
 package sbt
 package scriptedtest
 
-import java.util.concurrent.{ Executors, TimeUnit, TimeoutException }
-
 import scala.collection.mutable
-import scala.concurrent.duration._
+
 import sbt.internal.scripted._
 
 private[sbt] object BatchScriptRunner {
@@ -21,7 +20,6 @@ private[sbt] object BatchScriptRunner {
 /** Defines an alternative script runner that allows batch execution. */
 private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
   import BatchScriptRunner.States
-  private[this] val service = Executors.newCachedThreadPool()
 
   /**
    * Defines a method to run batched execution.
@@ -44,7 +42,6 @@ private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
     }
   }
 
-  private val timeout = 5.minutes
   def processStatement(handler: StatementHandler, statement: Statement, states: States): Unit = {
     val state = states(handler).asInstanceOf[handler.State]
     val nextStateFuture = service.submit(() =>
@@ -73,5 +70,5 @@ private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
     }
   }
 
-  override def close(): Unit = service.shutdown()
+  override def close(): Unit = ()
 }

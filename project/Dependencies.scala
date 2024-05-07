@@ -4,7 +4,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
-  val scala212 = "2.12.18"
+  val scala212 = "2.12.19"
   val scala213 = "2.13.12"
   val scala3 = "3.3.1"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
@@ -13,7 +13,7 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.8.0")
+  private val ioVersion = nightlyVersion.getOrElse("1.10.0")
   private val lmVersion =
     sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-alpha13")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-alpha13")
@@ -23,11 +23,11 @@ object Dependencies {
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.4.1"
+  val launcherVersion = "1.4.2"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
-  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.5.0"
+  val ipcSocket = "org.scala-sbt.ipcsocket" % "ipcsocket" % "1.6.2"
 
   private val compilerInterface = "org.scala-sbt" % "compiler-interface" % zincVersion
   private val compilerClasspath = "org.scala-sbt" %% "zinc-classpath" % zincVersion
@@ -93,14 +93,14 @@ object Dependencies {
   // JLine 3 version must be coordinated together with JAnsi version
   // and the JLine 2 fork version, which uses the same JAnsi
   val jline =
-    "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-a1b0ffbb8f64bb820f4f84a0c07a0c0964507493"
-  val jline3Version = "3.19.0"
+    "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-9c3b6aca11c57e339441442bbf58e550cdfecb79"
+  val jline3Version = "3.24.1"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val jansi = "org.fusesource.jansi" % "jansi" % "2.1.0"
+  val jansi = "org.fusesource.jansi" % "jansi" % "2.4.1"
   val scalatest = "org.scalatest" %% "scalatest" % "3.2.10"
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.15.4"
   val junit = "junit" % "junit" % "4.13.1"
@@ -113,9 +113,9 @@ object Dependencies {
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
     } else {
-      "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
+      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
     }
   )
   val scalaParsers = Def.setting(

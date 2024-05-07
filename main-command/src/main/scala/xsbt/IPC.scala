@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -17,6 +18,7 @@ object IPC {
   private val portMin = 1025
   private val portMax = 65536
   private val loopback = InetAddress.getByName(null)
+  private[xsbt] val socketBacklog = 50 // 50 is the default backlog size for the java.net.Socket
 
   def client[T](port: Int)(f: IPC => T): T = ipc(new Socket(loopback, port))(f)
 
@@ -34,7 +36,7 @@ object IPC {
 
     def createServer(attempts: Int): ServerSocket =
       if (attempts > 0) {
-        try new ServerSocket(nextPort, 1, loopback)
+        try new ServerSocket(nextPort, socketBacklog, loopback)
         catch { case NonFatal(_) => createServer(attempts - 1) }
       } else sys.error("Could not connect to socket: maximum attempts exceeded")
 

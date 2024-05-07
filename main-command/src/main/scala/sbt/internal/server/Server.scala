@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -187,7 +188,7 @@ private[sbt] object Server {
         IO.write(tokenfile, CompactPrinter(jsonToken), IO.utf8, true)
       }
 
-      /** Set the persmission of the file such that the only the owner can read/write it. */
+      /** Set the permission of the file such that the only the owner can read/write it. */
       private[this] def ownerOnly(file: File): Unit = {
         def acl(owner: UserPrincipal) = {
           val builder = AclEntry.newBuilder

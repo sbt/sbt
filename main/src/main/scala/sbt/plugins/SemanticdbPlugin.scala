@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -26,7 +27,7 @@ object SemanticdbPlugin extends AutoPlugin {
     semanticdbEnabled := SysProp.semanticdb,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List(),
-    semanticdbVersion := "4.5.13"
+    semanticdbVersion := "4.7.8"
   )
 
   override lazy val projectSettings: Seq[Def.Setting[_]] = Seq(

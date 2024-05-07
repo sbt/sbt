@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,6 +11,25 @@ package sbt.internal
 private[sbt] object Banner {
   def apply(version: String): Option[String] =
     version match {
+      case v if v.startsWith("1.10.0") =>
+        Some(s"""
+                |Here are some highlights of sbt 1.10.0:
+                |  - SIP-51 support for Scala 2.13 evolution
+                |  - Various Zinc fixes
+                |  - ConsistentAnalysisFormat: new Zinc Analysis serialization
+                |  - CommandProgress API
+                |See https://eed3si9n.com/sbt-1.10.0 for full release notes.
+                |Hide the banner for this release by running `skipBanner`.
+                |""".stripMargin.linesIterator.mkString("\n"))
+      case v if v.startsWith("1.9.0") =>
+        Some(s"""
+                |Here are some highlights of sbt 1.9.0:
+                |  - POM consistency of sbt plugin publishing
+                |  - sbt new, a text-based adventure
+                |  - Deprecation of IntegrationTest configuration
+                |See https://eed3si9n.com/sbt-1.9.0 for full release notes.
+                |Hide the banner for this release by running `skipBanner`.
+                |""".stripMargin.linesIterator.mkString("\n"))
       case v if v.startsWith("1.7.0") =>
         Some(s"""
                 |Here are some highlights of this release:

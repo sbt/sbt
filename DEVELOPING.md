@@ -7,15 +7,15 @@ Create a [fork](https://docs.github.com/en/github/getting-started-with-github/fo
 
 ### Branch to work against
 
-sbt uses **two or three** branches for development:
-Generally the default branch set on Github is what we recommend as the base line for PRs.
+sbt uses two or three branches for development:
+Use the **default** branch set on Github for bug fixes.
 
-- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.9.x` during 1.8.x series)
+- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.10.x` during 1.9.x series)
 - Development branch: `develop`
-- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.8.x` during 1.8.x series)
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.9.x` during 1.9.x series)
 
-Currently `develop` branch represents the next major version of sbt, i.e. sbt 2.
-Next minor branch is where new features can be added as long as it is binary compatible with sbt 1.0.
+The `develop` branch represents sbt 2.x, the next major sbt series.
+Next minor branch is where new features should be added as long as it is binary compatible with sbt 1.x.
 The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
 
 ### Instruction to build just sbt
@@ -96,7 +96,7 @@ In order to see a change you've made to sbt's source code, this cache should be 
 
 By default sbt uses a snapshot version (this is a scala convention for quick local changes- it tells users that this version could change).
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers.
-This is important when testing perfomance, so that the slowness of the resolution does not impact sbt.
+This is important when testing performance, so that the slowness of the resolution does not impact sbt.
 
 You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`.
 A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
@@ -166,6 +166,13 @@ command. To run a single test, such as the test in
     sbt "scripted project/global-plugin"
 
 ### Random tidbits
+
+### Clean history
+
+Make sure you document each commit and squash them appropriately. You can use the following guides as a reference:
+
+* Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
+* Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
 
 #### Import statements
 

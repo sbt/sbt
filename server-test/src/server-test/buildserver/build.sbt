@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.13.8"
+ThisBuild / scalaVersion := "2.13.11"
 
 Global / serverLog / logLevel := Level.Debug
 Global / cacheStores := Seq.empty
@@ -36,6 +36,16 @@ lazy val util = project.settings(
 )
 
 lazy val diagnostics = project
+
+lazy val javaProj = project
+  .in(file("java-proj"))
+  .settings(
+    javacOptions += "-Xlint:all"
+  )
+
+lazy val twirlProj = project
+  .in(file("twirlProj"))
+  .enablePlugins(SbtTwirl)
 
 def somethingBad = throw new MessageOnlyException("I am a bad build target")
 // other build targets should not be affected by this bad build target

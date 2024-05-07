@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -24,6 +25,8 @@ import java.util.concurrent.RejectedExecutionException
 import scala.annotation.tailrec
 import scala.concurrent.duration._
 import scala.util.control.NonFatal
+
+import java.text.ParseException
 
 object MainLoop {
 
@@ -208,16 +211,25 @@ object MainLoop {
     )
     try {
       def process(): State = {
-        val progressState = state.get(sbt.Keys.currentTaskProgress) match {
-          case Some(_) => state
-          case _ =>
-            if (state.get(Keys.stateBuildStructure).isDefined) {
-              val extracted = Project.extract(state)
-              val progress = EvaluateTask.executeProgress(extracted, extracted.structure, state)
-              state.put(sbt.Keys.currentTaskProgress, new Keys.TaskProgress(progress))
-            } else state
+        def getOrSet[T](state: State, key: AttributeKey[T], value: Extracted => T): State = {
+          state.get(key) match {
+            case Some(_) => state
+            case _ =>
+              if (state.get(Keys.stateBuildStructure).isDefined) {
+                val extracted = Project.extract(state)
+                state.put(key, value(extracted))
+              } else state
+          }
         }
-        exchange.setState(progressState)
+
+        val cmdProgressState =
+          getOrSet(
+            state,
+            sbt.Keys.currentCommandProgress,
+            extracted => EvaluateTask.executeProgress(extracted, extracted.structure, state)
+          )
+
+        exchange.setState(cmdProgressState)
         exchange.setExec(Some(exec))
         val (restoreTerminal, termState) = channelName.flatMap(exchange.channelForName) match {
           case Some(c) =>
@@ -227,9 +239,13 @@ object MainLoop {
             (() => {
               ITerminal.set(prevTerminal)
               c.terminal.flush()
-            }) -> progressState.put(Keys.terminalKey, Terminal(c.terminal))
-          case _ => (() => ()) -> progressState.put(Keys.terminalKey, Terminal(ITerminal.get))
+            }) -> cmdProgressState.put(Keys.terminalKey, Terminal(c.terminal))
+          case _ => (() => ()) -> cmdProgressState.put(Keys.terminalKey, Terminal(ITerminal.get))
         }
+
+        val currentCmdProgress =
+          cmdProgressState.get(sbt.Keys.currentCommandProgress)
+        currentCmdProgress.foreach(_.beforeCommand(exec.commandLine, cmdProgressState))
         /*
          * FastTrackCommands.evaluate can be significantly faster than Command.process because
          * it avoids an expensive parsing step for internal commands that are easy to parse.
@@ -268,8 +284,10 @@ object MainLoop {
           exchange.respondStatus(doneEvent)
         }
         exchange.setExec(None)
-        newState.get(sbt.Keys.currentTaskProgress).foreach(_.progress.stop())
-        newState.remove(sbt.Keys.currentTaskProgress).remove(Keys.terminalKey)
+        newState.get(sbt.Keys.currentCommandProgress).foreach(_.stop())
+        newState
+          .remove(Keys.terminalKey)
+          .remove(Keys.currentCommandProgress)
       }
       state.get(CheckBuildSourcesKey) match {
         case Some(cbs) =>
@@ -341,4 +359,9 @@ object MainLoop {
     ) {
       ExitCode(ErrorCodes.UnknownError)
     } else ExitCode.Success
+}
+
+// No stack trace since this is just to notify the user which command they cancelled
+class Cancelled(cmdLine: String) extends Throwable(cmdLine, null, true, false) {
+  override def toString: String = s"Cancelled: $cmdLine"
 }

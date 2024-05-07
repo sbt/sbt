@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -32,7 +33,7 @@ private[sbt] object ReadJsonFromInputStream {
      */
     var headerBuffer = new Array[Byte](128)
     def expandHeaderBuffer(): Unit = {
-      val newHeaderBuffer = new Array[Byte](headerBuffer.size * 2)
+      val newHeaderBuffer = new Array[Byte](headerBuffer.length * 2)
       headerBuffer.view.zipWithIndex.foreach { case (b, i) => newHeaderBuffer(i) = b }
       headerBuffer = newHeaderBuffer
     }

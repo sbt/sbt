@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -56,7 +57,13 @@ private[sbt] object ZincComponentCompiler {
         scalaInstance: XScalaInstance,
         logger: Logger,
     ): File = lock.synchronized {
-      val raw = new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, logger)
+      val raw = new RawCompiler(
+        scalaInstance,
+        // TODO:
+        // ClasspathOptionsUtil.autoNoboot(scalaInstance.version),
+        ClasspathOptionsUtil.auto,
+        logger
+      )
       val zinc =
         new ZincComponentCompiler(raw, manager, dependencyResolution, bridgeSources, logger)
       logger.debug(f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))

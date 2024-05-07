@@ -1,6 +1,7 @@
 sbt
 https://www.scala-sbt.org/
-Copyright 2011 - 2019, Lightbend, Inc.
+Copyright 2023, Scala center
+Copyright 2011 - 2022, Lightbend, Inc.
 Copyright 2008 - 2010, Mark Harrah
 Licensed under Apache v2 license (see LICENSE)
 

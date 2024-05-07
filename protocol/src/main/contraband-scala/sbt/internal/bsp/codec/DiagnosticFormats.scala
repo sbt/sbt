@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait DiagnosticFormats { self: sbt.internal.bsp.codec.RangeFormats with sbt.internal.bsp.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
+trait DiagnosticFormats { self: sbt.internal.bsp.codec.RangeFormats with sbt.internal.bsp.codec.PositionFormats with sjsonnew.BasicJsonProtocol with sbt.internal.bsp.codec.DiagnosticRelatedInformationFormats with sbt.internal.bsp.codec.LocationFormats with sbt.internal.bsp.codec.ScalaDiagnosticFormats with sbt.internal.bsp.codec.ScalaActionFormats with sbt.internal.bsp.codec.ScalaWorkspaceEditFormats with sbt.internal.bsp.codec.ScalaTextEditFormats =>
 implicit lazy val DiagnosticFormat: JsonFormat[sbt.internal.bsp.Diagnostic] = new JsonFormat[sbt.internal.bsp.Diagnostic] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.Diagnostic = {
     __jsOpt match {
@@ -16,8 +16,11 @@ implicit lazy val DiagnosticFormat: JsonFormat[sbt.internal.bsp.Diagnostic] = ne
       val code = unbuilder.readField[Option[String]]("code")
       val source = unbuilder.readField[Option[String]]("source")
       val message = unbuilder.readField[String]("message")
+      val relatedInformation = unbuilder.readField[Vector[sbt.internal.bsp.DiagnosticRelatedInformation]]("relatedInformation")
+      val dataKind = unbuilder.readField[Option[String]]("dataKind")
+      val data = unbuilder.readField[Option[sbt.internal.bsp.ScalaDiagnostic]]("data")
       unbuilder.endObject()
-      sbt.internal.bsp.Diagnostic(range, severity, code, source, message)
+      sbt.internal.bsp.Diagnostic(range, severity, code, source, message, relatedInformation, dataKind, data)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -29,6 +32,9 @@ implicit lazy val DiagnosticFormat: JsonFormat[sbt.internal.bsp.Diagnostic] = ne
     builder.addField("code", obj.code)
     builder.addField("source", obj.source)
     builder.addField("message", obj.message)
+    builder.addField("relatedInformation", obj.relatedInformation)
+    builder.addField("dataKind", obj.dataKind)
+    builder.addField("data", obj.data)
     builder.endObject()
   }
 }

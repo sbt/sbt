@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -40,7 +41,7 @@ package object sbt
   // IO
   def uri(s: String): URI = new URI(s)
   def file(s: String): File = new File(s)
-  def url(s: String): URL = new URL(s)
+  def url(s: String): URL = new URI(s).toURL
   implicit def fileToRichFile(file: File): sbt.io.RichFile = new sbt.io.RichFile(file)
   implicit def filesToFinder(cc: Iterable[File]): sbt.io.PathFinder =
     sbt.io.PathFinder.strict(cc)

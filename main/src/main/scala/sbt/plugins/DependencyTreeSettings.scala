@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -136,7 +137,7 @@ object DependencyTreeSettings {
           versionFilter match {
             case Some(version) => GraphModuleId(org, name, version) :: Nil
             case None =>
-              graph.nodes.filter(m => m.id.organization == org && m.id.name == name).map(_.id)
+              graph.nodes.withFilter(m => m.id.organization == org && m.id.name == name).map(_.id)
           }
         val graphWidth = asciiGraphWidth.value
         val output =
@@ -243,7 +244,7 @@ object DependencyTreeSettings {
   def openBrowser(uriKey: TaskKey[URI]) =
     Def.task {
       val uri = uriKey.value
-      streams.value.log.info("Opening in browser...")
+      streams.value.log.info(s"Opening ${uri} in browser...")
       java.awt.Desktop.getDesktop.browse(uri)
       uri
     }

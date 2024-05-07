@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -31,8 +32,10 @@ object VirtualFileValueCache {
     }
   }
   def apply[A](converter: FileConverter)(f: VirtualFile => A): VirtualFileValueCache[A] = {
-    import collection.mutable.{ HashMap, Map }
-    val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new HashMap
+    import collection.concurrent.Map
+    import java.util.concurrent.ConcurrentHashMap
+    import scala.collection.JavaConverters._
+    val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new ConcurrentHashMap().asScala
     make(
       Stamper.timeWrap(
         stampCache,

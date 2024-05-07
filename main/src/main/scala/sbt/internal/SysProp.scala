@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -154,6 +155,8 @@ object SysProp {
   def useLog4J: Boolean = getOrFalse("sbt.log.uselog4j")
   def turbo: Boolean = getOrFalse("sbt.turbo")
   def pipelining: Boolean = getOrFalse("sbt.pipelining")
+  // opt-in or out of Zinc's consistent Analysis format.
+  def analysis2024: Boolean = getOrTrue("sbt.analysis2024")
 
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
   def taskTimingsOnShutdown: Boolean = getOrFalse("sbt.task.timings.on.shutdown")

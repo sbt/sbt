@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -22,7 +23,7 @@ import java.nio.file.Path
  * @param modified the files that have been modified. This should be empty when no previous list of
  *                 files is available.
  * @param unmodified the files that have no changes. This should be empty when no previous list of
- *                   files is availab.e
+ *                   files is available
  */
 final case class FileChanges(
     created: Seq[Path],

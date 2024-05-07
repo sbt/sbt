@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,7 +13,6 @@ import java.net.{ MalformedURLException, URI, URL }
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.ModuleID
-
 import sbt.internal.util.Attributed
 import sbt.util.Logger
 import xsbti.HashedVirtualFileRef
@@ -47,7 +47,8 @@ private[sbt] object APIMappings {
     yield (entry, u)
 
   private[this] def parseURL(s: String, forEntry: HashedVirtualFileRef, log: Logger): Option[URL] =
-    try Some(new URL(s))
+    try
+      Some(new URI(s).toURL)
     catch {
       case e: MalformedURLException =>
         log.warn(s"Invalid API base URL '$s' for classpath entry '$forEntry': ${e.toString}")

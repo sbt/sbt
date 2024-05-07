@@ -2,27 +2,6 @@ import sbt._
 import sbt.Keys._
 
 object Transform {
-  private val conscriptConfigs = taskKey[Unit]("")
-
-  def conscriptSettings(launch: Reference) = Seq(
-    conscriptConfigs := {
-      val sourceFile = (launch / Compile / managedResources).value
-        .find(_.getName == "sbt.boot.properties")
-        .getOrElse(sys.error("No managed boot.properties file."))
-      val source = IO.readLines(sourceFile)
-      val conscriptBase = (Compile / sourceDirectory).value / "conscript"
-      IO.delete(conscriptBase)
-      val pairs = Seq(
-        "sbt.xMain" -> "xsbt",
-        "sbt.ScriptMain" -> "scalas",
-        "sbt.ConsoleMain" -> "screpl",
-      )
-      for ((main, dir) <- pairs) {
-        val lines = source.map(l => if (l.trim.startsWith("class:")) s"  class: $main" else l)
-        IO.writeLines(conscriptBase / dir / "launchconfig", lines)
-      }
-    },
-  )
 
   def configSettings = Seq(
     resourceGenerators += Def.task {

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -232,7 +233,8 @@ object Keys {
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge when scalaCompilerBridgeBinaryJar is None").withRank(CSetting)
   val scalaCompilerBridgeScope = taskKey[Unit]("The compiler bridge scope.").withRank(DTask)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
-  val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format")
+  val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format").withRank(DSetting)
+  val enableConsistentCompileAnalysis = settingKey[Boolean]("Writes the analysis file in consistent binary format").withRank(DSetting)
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
   val semanticdbEnabled = settingKey[Boolean]("Enables SemanticDB Scalac plugin").withRank(CSetting)
   val semanticdbCompilerPlugin = settingKey[ModuleID]("SemanticDB Scalac plugin").withRank(CSetting)
@@ -281,6 +283,7 @@ object Keys {
   val aggregate = settingKey[Boolean]("Configures task aggregation.").withRank(BMinusSetting)
   val sourcePositionMappers = taskKey[Seq[xsbti.Position => Option[xsbti.Position]]]("Maps positions in generated source files to the original source it was generated from").withRank(DTask)
   private[sbt] val externalHooks = taskKey[ExternalHooks]("The external hooks used by zinc.")
+  val zincCompilationListeners = settingKey[Seq[RunProfiler]]("Listeners that receive information about incremental compiler decisions.").withRank(DSetting)
   val auxiliaryClassFiles = taskKey[Seq[AuxiliaryClassFiles]]("The auxiliary class files that must be managed by Zinc (for instance the TASTy files)")
   @cacheLevel(include = Array.empty)
   val fileConverter = SettingKey(BasicKeys.fileConverter)
@@ -379,6 +382,7 @@ object Keys {
   val entryApiURL = StringAttributeKey("entryApiURL") // , "Base URL for the API documentation for a classpath entry.")
   val apiMappings = taskKey[Map[HashedVirtualFileRef, URL]]("Mappings from classpath entry to API documentation base URL.").withRank(BMinusSetting)
   val autoAPIMappings = settingKey[Boolean]("If true, automatically manages mappings to the API doc URL.").withRank(BMinusSetting)
+  val releaseNotesURL = settingKey[Option[URL]]("URL for release notes.").withRank(BMinusSetting)
   val scmInfo = settingKey[Option[ScmInfo]]("Basic SCM information for the project.").withRank(BMinusSetting)
   val projectInfo = settingKey[ModuleInfo]("Addition project information like formal name, homepage, licenses etc.").withRank(CSetting)
   val defaultConfiguration = settingKey[Option[Configuration]]("Defines the configuration used when none is specified for a dependency in ivyXML.").withRank(CSetting)
@@ -426,7 +430,7 @@ object Keys {
   val remoteCachePom = taskKey[HashedVirtualFileRef]("Generates a pom for publishing when publishing Maven-style.")
   val localCacheDirectory = settingKey[File]("Operating system specific cache directory.")
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
-  val exportPipelining = settingKey[Boolean]("Product early output so downstream subprojects can do pipelining.").withRank(BSetting)
+  val exportPipelining = settingKey[Boolean]("Produce early output so downstream subprojects can do pipelining.").withRank(BSetting)
 
   // BSP keys
   val bspConfig = taskKey[Unit]("Create or update the BSP connection files").withRank(DSetting)
@@ -456,14 +460,16 @@ object Keys {
   val bspBuildTargetCleanCache = inputKey[Unit]("Corresponds to buildTarget/cleanCache request").withRank(DTask)
   val bspBuildTargetScalacOptions = inputKey[Unit]("").withRank(DTask)
   val bspBuildTargetScalacOptionsItem = taskKey[ScalacOptionsItem]("").withRank(DTask)
+  val bspBuildTargetJavacOptions = inputKey[Unit]("Implementation of buildTarget/javacOptions").withRank(DTask)
+  val bspBuildTargetJavacOptionsItem = taskKey[JavacOptionsItem]("Item of buildTarget/javacOptions").withRank(DTask)
 
-  val bspBuildTargetJVMRunEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmRunEnvironment request").withRank(DTask)
-  val bspBuildTargetJVMTestEnvironment = inputKey[Unit]("Corresponds to the buildTarget/jvmTestEnvironment request").withRank(DTask)
+  val bspBuildTargetJVMRunEnvironment = inputKey[Unit]("Implementation of buildTarget/jvmRunEnvironment").withRank(DTask)
+  val bspBuildTargetJVMTestEnvironment = inputKey[Unit]("Implementation of buildTarget/jvmTestEnvironment").withRank(DTask)
   val bspBuildTargetJvmEnvironmentItem = taskKey[JvmEnvironmentItem]("Computes JVM environment item").withRank(DTask)
-  
-  val bspScalaTestClasses = inputKey[Unit]("Corresponds to buildTarget/scalaTestClasses request").withRank(DTask)
+
+  val bspScalaTestClasses = inputKey[Unit]("Implementation of buildTarget/scalaTestClasses").withRank(DTask)
   val bspScalaTestClassesItem = taskKey[Seq[ScalaTestClassesItem]]("").withRank(DTask)
-  val bspScalaMainClasses = inputKey[Unit]("Corresponds to buildTarget/scalaMainClasses request").withRank(DTask)
+  val bspScalaMainClasses = inputKey[Unit]("Implementation of buildTarget/scalaMainClasses").withRank(DTask)
   val bspScalaMainClassesItem = taskKey[ScalaMainClassesItem]("").withRank(DTask)
 
   @cacheLevel(include = Array.empty)
@@ -484,6 +490,7 @@ object Keys {
   val csrExtraCredentials = taskKey[Seq[lmcoursier.credentials.Credentials]]("")
   val csrPublications = taskKey[Seq[(lmcoursier.definitions.Configuration, lmcoursier.definitions.Publication)]]("")
   val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
+  val csrSameVersions = settingKey[Seq[Set[InclExclRule]]]("Modules to keep at the same version.")
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
@@ -527,6 +534,7 @@ object Keys {
   val makeIvyXmlLocalConfiguration = taskKey[PublishConfiguration]("Configuration for generating ivy.xml.").withRank(DSetting)
   val packagedArtifacts = taskKey[Map[Artifact, HashedVirtualFileRef]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
   val publishMavenStyle = settingKey[Boolean]("Configures whether to generate and publish a pom (true) or Ivy file (false).").withRank(BSetting)
+  val sbtPluginPublishLegacyMavenStyle = settingKey[Boolean]("Configuration for generating the legacy pom of sbt plugins, to publish to Maven").withRank(CSetting)
   val credentials = taskKey[Seq[Credentials]]("The credentials to use for updating and publishing.").withRank(BMinusTask)
   val allCredentials = taskKey[Seq[Credentials]]("Aggregated credentials across current and root subprojects. Do not rewire this task.").withRank(DTask)
 
@@ -605,8 +613,10 @@ object Keys {
   val sbtDependency = settingKey[ModuleID]("Provides a definition for declaring the current version of sbt.").withRank(BMinusSetting)
   val sbtVersion = settingKey[String]("Provides the version of sbt.  This setting should not be modified.").withRank(AMinusSetting)
   val sbtBinaryVersion = settingKey[String]("Defines the binary compatibility version substring.").withRank(BPlusSetting)
-  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile', 'update', and 'publish'), setting skip to true will force the task to not to do its work.  This exact semantics may vary by task.").withRank(BSetting)
+  val skip = taskKey[Boolean]("For tasks that support it (currently only 'compile', 'update', 'publish' and 'publishLocal'), setting skip to true will force the task to not to do its work.  The exact semantics may vary depending on the task.").withRank(BSetting)
   val templateResolverInfos = settingKey[Seq[TemplateResolverInfo]]("Template resolvers used for 'new'.").withRank(BSetting)
+  val templateDescriptions = settingKey[Seq[(String, String)]]("List of templates with description used for 'new' / 'init'.")
+  val templateRunLocal = inputKey[Unit]("Runs a local template.").withRank(DTask)
   val interactionService = taskKey[InteractionService]("Service used to ask for user input through the current user interface(s).").withRank(CTask)
   val insideCI = SettingKey[Boolean]("insideCI", "Determines if the sbt is running in a Continuous Integration environment", AMinusSetting)
 
@@ -633,7 +643,7 @@ object Keys {
   object TaskProgress {
     def apply(progress: ExecuteProgress): TaskProgress = new TaskProgress(progress)
   }
-  private[sbt] val currentTaskProgress = AttributeKey[TaskProgress]("current-task-progress")
+  private[sbt] val currentCommandProgress = AttributeKey[ExecuteProgress2]("current-command-progress")
   private[sbt] val taskProgress = AttributeKey[sbt.internal.TaskProgress]("active-task-progress")
   val useSuperShell = settingKey[Boolean]("Enables (true) or disables the super shell.")
   val superShellMaxTasks = settingKey[Int]("The max number of tasks to display in the supershell progress report")
@@ -647,6 +657,7 @@ object Keys {
   private[sbt] val postProgressReports = settingKey[Unit]("Internally used to modify logger.").withRank(DTask)
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
+  val commandProgress = settingKey[Seq[ExecuteProgress2]]("Command progress listeners receive events when commands start and end, in addition to task progress events.")
   val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
   val lintIncludeFilter = settingKey[String => Boolean]("Filters key names that should be included in the lint check.")
   val lintExcludeFilter = settingKey[String => Boolean]("Filters key names that should be excluded in the lint check.")

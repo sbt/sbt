@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,7 @@
 package sbt
 
 /**
- * InteractionService provides an abstration over standard input.
+ * InteractionService provides an abstraction over standard input.
  * In the future this could be used to ask for inputs from
  * other forms of sbt clients such as thin clients and IDEs.
  */

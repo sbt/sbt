@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -33,7 +34,6 @@ import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser => JsonParser }
 import xsbti.CompileFailed
 
-import java.nio.file.Path
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -42,6 +42,9 @@ import scala.util.control.NonFatal
 import scala.util.{ Try, Failure, Success }
 import scala.annotation.nowarn
 import sbt.testing.Framework
+import scala.collection.immutable.ListSet
+import xsbti.VirtualFileRef
+import java.util.concurrent.atomic.AtomicReference
 
 object BuildServerProtocol {
   import sbt.internal.bsp.codec.JsonProtocol._
@@ -216,11 +219,28 @@ object BuildServerProtocol {
       state.value.respondEvent(result)
     }.evaluated,
     bspBuildTargetScalacOptions / aggregate := false,
-    bspBuildTargetJVMRunEnvironment := bspInputTask { (_, filter) =>
-      val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
-      val successfulItems = anyOrThrow(items)
-      val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
-      state.value.respondEvent(result)
+    bspBuildTargetJavacOptions := bspInputTask { (state, _, workspace, filter) =>
+      Def.task {
+        val items = bspBuildTargetJavacOptionsItem.result.all(filter).value
+        val appProvider = appConfiguration.value.provider()
+        val sbtJars = appProvider.mainClasspath()
+        val buildItems = workspace.builds.map { case (targetId, build) =>
+          Value(javacOptionsBuildItem(sbtJars, targetId, build))
+        }
+        val successfulItems = anyOrThrow(items ++ buildItems)
+        val result = JavacOptionsResult(successfulItems.toVector)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJavacOptions / aggregate := false,
+    bspScalaTestClasses := bspInputTask { (state, _, workspace, filter) =>
+      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, state.log)
+      Def.task {
+        val items = bspScalaTestClassesItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items).flatten.toVector
+        val result = ScalaTestClassesResult(successfulItems.toVector, None)
+        state.respondEvent(result)
+      }
     }.evaluated,
     bspBuildTargetJVMRunEnvironment / aggregate := false,
     bspBuildTargetJVMTestEnvironment := bspInputTask { (_, filter) =>
@@ -289,7 +309,36 @@ object BuildServerProtocol {
     },
     bspBuildTargetCompileItem := bspCompileTask.value,
     bspBuildTargetRun := bspRunTask.evaluated,
-    bspBuildTargetScalacOptionsItem := scalacOptionsTask.value,
+    bspBuildTargetScalacOptionsItem := {
+      val target = Keys.bspTargetIdentifier.value
+      val scalacOptions = Keys.scalacOptions.value.toVector
+      val classDirectory = Keys.classDirectory.value
+      val classpath = classpathTask.value
+      ScalacOptionsItem(target, scalacOptions, classpath, classDirectory.toURI)
+    },
+    bspBuildTargetJavacOptionsItem := {
+      val target = Keys.bspTargetIdentifier.value
+      val javacOptions = Keys.javacOptions.value.toVector
+      val classDirectory = Keys.classDirectory.value
+      val classpath = classpathTask.value
+      JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
+    },
+    bspBuildTargetJVMRunEnvironment := bspInputTask { (state, _, _, filter) =>
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
+        state.respondEvent(result)
+      }
+    }.evaluated,
+    bspBuildTargetJVMTestEnvironment := bspInputTask { (state, _, _, filter) =>
+      Def.task {
+        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+        val successfulItems = anyOrThrow(items)
+        val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
+        state.respondEvent(result)
+      }
+    }.evaluated,
     bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
@@ -301,11 +350,13 @@ object BuildServerProtocol {
       val underlying = (Keys.compile / compilerReporter).value
       val logger = streams.value.log
       val meta = isMetaBuild.value
+      val spms = sourcePositionMappers.value
       if (bspEnabled.value) {
         new BuildServerReporterImpl(
           targetId,
           bspCompileStateInstance,
           converter,
+          Defaults.foldMappers(spms, reportAbsolutePath.value, fileConverter.value),
           meta,
           logger,
           underlying
@@ -315,7 +366,7 @@ object BuildServerProtocol {
       }
     }
   )
-  private object Method {
+  private[sbt] object Method {
     final val Initialize = "build/initialize"
     final val BuildTargets = "workspace/buildTargets"
     final val Reload = "workspace/reload"
@@ -685,8 +736,41 @@ object BuildServerProtocol {
     )
   }
 
-  private inline def bspInputTask[T](
-      inline taskImpl: (BspFullWorkspace, ScopeFilter) => T
+  private def scalacOptionsBuildItem(
+      sbtJars: Seq[File],
+      targetId: BuildTargetIdentifier,
+      build: LoadedBuildUnit
+  ): ScalacOptionsItem = {
+    val plugins: LoadedPlugins = build.unit.plugins
+    val scalacOptions = plugins.pluginData.scalacOptions.toVector
+    val pluginClassPath = plugins.classpath
+    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val item = ScalacOptionsItem(targetId, scalacOptions, classpath, classDirectory)
+    item
+  }
+
+  private def javacOptionsBuildItem(
+      sbtJars: Seq[File],
+      targetId: BuildTargetIdentifier,
+      build: LoadedBuildUnit
+  ): JavacOptionsItem = {
+    val plugins: LoadedPlugins = build.unit.plugins
+    val javacOptions = plugins.pluginData.javacOptions.toVector
+    val pluginClassPath = plugins.classpath
+    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
+    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val item = JavacOptionsItem(targetId, javacOptions, classpath, classDirectory)
+    item
+  }
+
+  private def bspInputTask[T](
+      taskImpl: (
+          State,
+          Seq[BuildTargetIdentifier],
+          BspFullWorkspace,
+          ScopeFilter
+      ) => Def.Initialize[Task[T]]
   ): Def.Initialize[InputTask[T]] =
     Def
       .input(_ => targetIdentifierParser)
@@ -761,6 +845,20 @@ object BuildServerProtocol {
             )
           }
       }
+
+  private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
+    val externalDependencyClasspath = Keys.externalDependencyClasspath.value
+    val internalDependencyClasspath = for {
+      (ref, configs) <- bspInternalDependencyConfigurations.value
+      config <- configs
+    } yield ref / config / Keys.classDirectory
+    Def.task {
+      val classpath = internalDependencyClasspath.join.value.distinct ++
+        externalDependencyClasspath.map(_.data)
+
+      classpath.map(_.toURI).toVector
+    }
+  }
 
   private def dependencySourcesItemTask: Def.Initialize[Task[DependencySourcesItem]] = Def.task {
     val targetId = Keys.bspTargetIdentifier.value
@@ -941,7 +1039,8 @@ object BuildServerProtocol {
       allDependencies
         .groupBy(_._1)
         .mapValues { deps =>
-          deps.flatMap { case (_, configs) => configs }.toSet
+          // We use a list set to maintain the order of configs
+          ListSet(deps.flatMap { case (_, configs) => configs }: _*)
         }
         .toSeq
     }
@@ -1061,17 +1160,25 @@ object BuildServerProtocol {
 
   /**
    * Additional information about compilation status for given build target.
-   *
-   * @param hasAnyProblems keeps track of problems in given file so BSP reporter
-   * can omit unnecessary diagnostics updates.
-   * @param compiledAtLeastOnce keeps track of those projects that were compiled at
-   * least once so that we can decide to enable fresh reporting for projects that
-   * are compiled for the first time.
-   * see: https://github.com/scalacenter/bloop/issues/726
    */
   private[server] final class BspCompileState {
-    val hasAnyProblems: java.util.Set[Path] =
-      java.util.concurrent.ConcurrentHashMap.newKeySet[Path]
-    val compiledAtLeastOnce: AtomicBoolean = new AtomicBoolean(false)
+
+    /**
+     * keeps track of problems in a given file in a map of virtual source file to text documents.
+     * In most cases the only text document is the source file. In case of source generation,
+     * e.g. Twirl, the text documents are the input files, e.g. the Twirl files.
+     * We use the sourcePositionMappers to build this map.
+     */
+    val problemsBySourceFiles
+        : AtomicReference[Map[VirtualFileRef, Vector[TextDocumentIdentifier]]] =
+      new AtomicReference(Map.empty)
+
+    /**
+     * keeps track of those projects that were compiled at
+     * least once so that we can decide to enable fresh reporting for projects that
+     * are compiled for the first time.
+     * see: https://github.com/scalacenter/bloop/issues/726
+     */
+    val isFirstReport: AtomicBoolean = new AtomicBoolean(true)
   }
 }

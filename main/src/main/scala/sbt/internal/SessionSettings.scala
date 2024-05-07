@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -43,9 +44,9 @@ final case class SessionSettings(
   )
 
   /**
-   * Modifiy the current state.
+   * Modify the current state.
    *
-   * @param build  The buid with which we scope new settings.
+   * @param build  The build with which we scope new settings.
    * @param project The project reference with which we scope new settings.
    * @param eval  The mechanism to compile new settings.
    * @return  A new SessionSettings object
@@ -297,7 +298,7 @@ list, list-all
 	Prints a numbered list of session settings defined.
 	The numbers may be used to remove individual settings or ranges of settings using 'remove'.
 	For 'list', only the settings for the current project are printed.
-	For 'list-all', all settings in all projets are printed.
+	For 'list-all', all settings in all projects are printed.
 
 remove <range-spec>
 

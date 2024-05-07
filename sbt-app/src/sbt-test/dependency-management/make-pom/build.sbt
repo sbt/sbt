@@ -9,7 +9,11 @@ lazy val root = (project in file(".")) settings (
   TaskKey[Unit]("checkPom") := checkPom.value,
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
+  TaskKey[Unit]("checkAPIURL") := checkAPIURL.value,
+  TaskKey[Unit]("checkReleaseNotesURL") := checkReleaseNotesURL.value,
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  apiURL := Some(url("https://www.scala-sbt.org/1.x/api/")),
+  releaseNotesURL := Some(url("https://github.com/sbt/sbt/releases")),
   makePomConfiguration := {
     val p = makePomConfiguration.value
     p.withExtra(<extra-tag/>)
@@ -48,6 +52,16 @@ lazy val checkVersionPlusMapping = (readPom) map { (pomXml) =>
     if (dep \ "version").text != "[1.3,1.4)"
   } sys.error(s"Found dependency with invalid maven version: $dep")
   ()
+}
+
+lazy val checkAPIURL = (readPom) map { (pomXml) =>
+  val notes = pomXml \ "properties" \ "info.apiURL"
+  if (notes.isEmpty) sys.error("'apiURL' not found in generated pom.xml.") else ()
+}
+
+lazy val checkReleaseNotesURL = (readPom) map { (pomXml) =>
+  val notes = pomXml \ "properties" \ "info.releaseNotesUrl"
+  if (notes.isEmpty) sys.error("'releaseNotesUrl' not found in generated pom.xml.") else ()
 }
 
 lazy val checkPom = Def task {

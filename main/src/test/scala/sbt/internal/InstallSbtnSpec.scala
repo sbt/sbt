@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -37,7 +38,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
   "InstallSbtn" should "extract native sbtn" ignore
     withTemp(".zip") { tmp =>
       withTemp(".exe") { sbtn =>
-        InstallSbtn.extractSbtn(term, "1.4.1", tmp, sbtn)
+        InstallSbtn.extractSbtn(term, "1.9.0", tmp, sbtn)
         val tmpDir = Files.createTempDirectory("sbtn-test").toRealPath()
         Files.createDirectories(tmpDir.resolve("project"))
         val foo = tmpDir.resolve("foo")
@@ -46,7 +47,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
         IO.write(tmpDir.resolve("build.sbt").toFile, build)
         IO.write(
           tmpDir.resolve("project").resolve("build.properties").toFile,
-          "sbt.version=1.4.1"
+          "sbt.version=1.9.0"
         )
         try {
           val proc =

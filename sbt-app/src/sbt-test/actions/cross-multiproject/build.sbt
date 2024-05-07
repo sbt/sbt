@@ -2,10 +2,10 @@ lazy val scala3 = "3.2.1"
 lazy val scala213 = "2.13.1"
 
 crossScalaVersions := Seq(scala3, scala213)
-ThisBuild / scalaVersion       := scala3
+ThisBuild / scalaVersion := scala3
 
 lazy val rootProj = (project in file("."))
-  .aggregate(libProj, fooPlugin)
+  .aggregate(libProj, fooPlugin, externalProj)
   .settings(
     crossScalaVersions := Nil,
     addCommandAlias("build", "compile")
@@ -27,4 +27,3 @@ lazy val extrasProj = (project in file("extras"))
   .settings(
     name := "foo-extras",
   )
-

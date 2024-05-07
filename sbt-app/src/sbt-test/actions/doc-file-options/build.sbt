@@ -12,6 +12,9 @@ lazy val root = (project in file("."))
     },
     TaskKey[Unit]("check") := {
       val packageHtml = (Compile / doc / target).value / "index.html"
-      assert(IO.read(packageHtml).contains(newContents), s"does not contains ${newContents} in ${packageHtml}" )
+      assert(
+        IO.read(packageHtml).contains(newContents),
+        s"does not contains ${newContents} in ${packageHtml}"
+      )
     }
   )

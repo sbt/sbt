@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -215,6 +216,7 @@ object Defaults extends BuildCommon {
       autoCompilerPlugins :== true,
       scalaHome :== None,
       apiURL := None,
+      releaseNotesURL := None,
       javaHome :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
@@ -384,6 +386,7 @@ object Defaults extends BuildCommon {
         val rs = EvaluateTask.taskTimingProgress.toVector ++ EvaluateTask.taskTraceEvent.toVector
         rs map { Keys.TaskProgress(_) }
       },
+      commandProgress := Seq(),
       // progressState is deprecated
       SettingKey[Option[ProgressState]]("progressState") := None,
       Previous.cache := new Previous(
@@ -405,6 +408,8 @@ object Defaults extends BuildCommon {
       fork :== false,
       initialize :== {},
       templateResolverInfos :== Nil,
+      templateDescriptions :== TemplateCommandUtil.defaultTemplateDescriptions,
+      templateRunLocal := templateRunLocalInputTask(runLocalTemplate).evaluated,
       forcegc :== sys.props
         .get("sbt.task.forcegc")
         .map(java.lang.Boolean.parseBoolean)
@@ -739,13 +744,17 @@ object Defaults extends BuildCommon {
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
+    classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
+    console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
   private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
+      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
       classpathOptions :== ClasspathOptionsUtil.boot,
+      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
       console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
@@ -881,7 +890,12 @@ object Defaults extends BuildCommon {
   }
 
   def defaultCompileSettings: Seq[Setting[_]] =
-    globalDefaults(enableBinaryCompileAnalysis := true)
+    globalDefaults(
+      Seq(
+        enableBinaryCompileAnalysis :== true,
+        enableConsistentCompileAnalysis :== SysProp.analysis2024,
+      )
+    )
 
   lazy val configTasks: Seq[Setting[_]] = docTaskSettings(doc) ++
     inTask(compile)(compileInputsSettings) ++
@@ -967,14 +981,18 @@ object Defaults extends BuildCommon {
       externalHooks := IncOptions.defaultExternal,
       incOptions := {
         val old = incOptions.value
+        val extHooks = externalHooks.value
+        val newExtHooks = extHooks.withInvalidationProfiler(() =>
+          new DefaultRunProfiler(zincCompilationListeners.value)
+        )
         old
           .withAuxiliaryClassFiles(auxiliaryClassFiles.value.toArray)
-          .withExternalHooks(externalHooks.value)
+          .withExternalHooks(newExtHooks)
           .withClassfileManagerType(
             Option(
               TransactionalManagerType
                 .of( // https://github.com/sbt/sbt/issues/1673
-                  target.value / s"${prefix(configuration.value.name)}classes.bak",
+                  crossTarget.value / s"${prefix(configuration.value.name)}classes.bak",
                   streams.value.log
                 ): ClassFileManagerType
             ).toOptional
@@ -1172,10 +1190,52 @@ object Defaults extends BuildCommon {
     val sv = scalaVersion.value
     val fullReport = update.value
 
-    val toolReport = fullReport
-      .configuration(Configurations.ScalaTool)
-      .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    // For Scala 3, update scala-library.jar in `scala-tool` and `scala-doc-tool` in case a newer version
+    // is present in the `compile` configuration. This is needed once forwards binary compatibility is dropped
+    // to avoid NoSuchMethod exceptions when expanding macros.
+    def updateLibraryToCompileConfiguration(report: ConfigurationReport) =
+      if (!ScalaArtifacts.isScala3(sv)) report
+      else
+        (for {
+          compileConf <- fullReport.configuration(Configurations.Compile)
+          compileLibMod <- compileConf.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          reportLibMod <- report.modules.find(_.module.name == ScalaArtifacts.LibraryID)
+          if VersionNumber(reportLibMod.module.revision)
+            .matchesSemVer(SemanticSelector(s"<${compileLibMod.module.revision}"))
+        } yield {
+          val newMods = report.modules
+            .filterNot(_.module.name == ScalaArtifacts.LibraryID) :+ compileLibMod
+          report.withModules(newMods)
+        }).getOrElse(report)
 
+    val toolReport = updateLibraryToCompileConfiguration(
+      fullReport
+        .configuration(Configurations.ScalaTool)
+        .getOrElse(sys.error(noToolConfiguration(managedScalaInstance.value)))
+    )
+
+    if (Classpaths.isScala213(sv)) {
+      for {
+        compileReport <- fullReport.configuration(Configurations.Compile)
+        libName <- ScalaArtifacts.Artifacts
+      } {
+        for (lib <- compileReport.modules.find(_.module.name == libName)) {
+          val libVer = lib.module.revision
+          val n = name.value
+          if (VersionNumber(sv).matchesSemVer(SemanticSelector(s"<$libVer")))
+            sys.error(
+              s"""expected `$n/scalaVersion` to be "$libVer" or later,
+                 |but found "$sv"; upgrade scalaVersion to fix the build.
+                 |
+                 |to support backwards-only binary compatibility (SIP-51),
+                 |the Scala 2.13 compiler cannot be older than $libName on the
+                 |dependency classpath.
+                 |see `$n/evicted` to know why $libName $libVer is getting pulled in.
+                 |""".stripMargin
+            )
+        }
+      }
+    }
     def file(id: String): File = {
       val files = for {
         m <- toolReport.modules if m.module.name.startsWith(id)
@@ -1188,6 +1248,7 @@ object Defaults extends BuildCommon {
     val allDocJars =
       fullReport
         .configuration(Configurations.ScalaDocTool)
+        .map(updateLibraryToCompileConfiguration)
         .toSeq
         .flatMap(_.modules)
         .flatMap(_.artifacts.map(_._2))
@@ -1253,10 +1314,7 @@ object Defaults extends BuildCommon {
   private[this] def testDefaults =
     Defaults.globalDefaults(
       Seq(
-        testFrameworks :== {
-          import sbt.TestFrameworks._
-          Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, ZIOTest)
-        },
+        testFrameworks :== sbt.TestFrameworks.All,
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
@@ -2755,7 +2813,8 @@ object Defaults extends BuildCommon {
       val cacheStore = factory.make("copy-resource")
       val converter = fileConverter.value
       val flt: File => Option[File] = flat(t)
-      val transform: File => Option[File] = (f: File) => rebase(dirs, t)(f).orElse(flt(f))
+      val transform: File => Option[File] =
+        (f: File) => rebase(resourceDirectories.value.sorted, t)(f).orElse(flt(f))
       val mappings: Seq[(File, File)] = resources.value.flatMap {
         case r if !dirs(r) => transform(r).map(r -> _)
         case _             => None
@@ -2817,6 +2876,11 @@ object Defaults extends BuildCommon {
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
+  @nowarn
+  @deprecated(
+    "Create a separate subproject instead of using IntegrationTest and in addition avoid using itSettings",
+    "1.9.0"
+  )
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
   }
@@ -2835,6 +2899,8 @@ object Defaults extends BuildCommon {
         if (turbo.value) ClassLoaderLayeringStrategy.AllLibraryJars
         else ClassLoaderLayeringStrategy.ScalaLibrary
       },
+      publishLocal / skip := (publish / skip).value,
+      publishM2 / skip := (publish / skip).value
     )
   // build.sbt is treated a Scala source of metabuild, so to enable deprecation flag on build.sbt we set the option here.
   lazy val deprecationSettings: Seq[Setting[_]] =
@@ -2855,6 +2921,19 @@ object Defaults extends BuildCommon {
       if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
       else IvyDependencyResolution(ivyConfiguration.value)
     }
+
+  def templateRunLocalInputTask(
+      runLocal: (Seq[String], Logger) => Unit
+  ): Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      import Def._
+      val s = streams.value
+      val args = spaceDelimited().parsed
+      runLocal(args, s.log)
+    }
+
+  def runLocalTemplate(arguments: Seq[String], log: Logger): Unit =
+    TemplateCommandUtil.defaultRunLocalTemplate(arguments.toList, log)
 }
 
 object Classpaths {
@@ -3061,15 +3140,78 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
+        sbtPluginPublishLegacyMavenStyle := true,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
     )
 
+  private lazy val publishSbtPluginMavenStyle = Def.task(sbtPlugin.value && publishMavenStyle.value)
+  private lazy val packagedDefaultArtifacts = packaged(defaultArtifactTasks)
+  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, File])
+
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
-    packagedArtifacts := packaged(defaultArtifactTasks).value
+    packagedArtifacts := Def
+      .ifS(publishSbtPluginMavenStyle)(mavenArtifactsOfSbtPlugin)(packagedDefaultArtifacts)
+      .value,
+    // publishLocal needs legacy artifacts (see https://github.com/sbt/sbt/issues/7285)
+    publishLocal / packagedArtifacts ++= {
+      if (sbtPlugin.value && !sbtPluginPublishLegacyMavenStyle.value) {
+        packagedDefaultArtifacts.value
+      } else Map.empty[Artifact, File]
+    }
   ) ++ RemoteCache.projectSettings
+
+  /**
+   * Produces the Maven-compatible artifacts of an sbt plugin.
+   * It adds the sbt-cross version suffix into the artifact names, and it generates a
+   * valid POM file, that is a POM file that Maven can resolve.
+   */
+  private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, File]]] =
+    Def.task {
+      val crossVersion = sbtCrossVersion.value
+      val legacyArtifact = (makePom / artifact).value
+      val pom = makeMavenPomOfSbtPlugin.value
+      val legacyPackages = packaged(defaultPackages).value
+
+      def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+      def copyArtifact(artifact: Artifact, file: File): (Artifact, File) = {
+        val nameWithSuffix = crossVersion(artifact.name)
+        val targetFile =
+          new File(file.getParentFile, file.name.replace(artifact.name, nameWithSuffix))
+        IO.copyFile(file, targetFile)
+        artifact.withName(nameWithSuffix) -> targetFile
+      }
+      val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
+      val legacyPackagedArtifacts = Def
+        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packagedDefaultArtifacts)(emptyArtifacts)
+        .value
+      packages + (addSuffix(legacyArtifact) -> pom) ++ legacyPackagedArtifacts
+    }
+
+  private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
+    val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+    val scalaV = scalaBinaryVersion.value
+    name => name + s"_${scalaV}_$sbtV"
+  }
+
+  /**
+   * Generates a POM file that Maven can resolve.
+   * It appends the sbt cross version into all artifactIds of sbt plugins
+   * (the main one and the dependencies).
+   */
+  private def makeMavenPomOfSbtPlugin: Def.Initialize[Task[File]] = Def.task {
+    val config = makePomConfiguration.value
+    val nameWithCross = sbtCrossVersion.value(artifact.value.name)
+    val version = Keys.version.value
+    val pomFile = config.file.get.getParentFile / s"$nameWithCross-$version.pom"
+    val publisher = Keys.publisher.value
+    val ivySbt = Keys.ivySbt.value
+    val module = new ivySbt.Module(moduleSettings.value, appendSbtCrossVersion = true)
+    publisher.makePomFile(module, config.withFile(pomFile), streams.value.log)
+    pomFile
+  }
 
   val ivyPublishSettings: Seq[Setting[_]] = publishGlobalDefaults ++ Seq(
     artifacts :== Nil,
@@ -3085,9 +3227,9 @@ object Classpaths {
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
-    publish := publishTask(publishConfiguration).value,
-    publishLocal := publishTask(publishLocalConfiguration).value,
-    publishM2 := publishTask(publishM2Configuration).value
+    publish := publishOrSkip(publishConfiguration, publish / skip).value,
+    publishLocal := publishOrSkip(publishLocalConfiguration, publishLocal / skip).value,
+    publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value
   )
 
   private[this] def baseGlobalDefaults =
@@ -3622,7 +3764,12 @@ object Classpaths {
         p1.extra(SbtPomExtraProperties.VERSION_SCHEME_KEY -> x)
       case _ => p1
     }
-    p2
+    val p3 = releaseNotesURL.value match {
+      case Some(u) =>
+        p2.extra(SbtPomExtraProperties.POM_RELEASE_NOTES_KEY -> u.toExternalForm)
+      case _ => p2
+    }
+    p3
   }
   def pluginProjectID: Initialize[ModuleID] =
     Def.setting {
@@ -3837,17 +3984,36 @@ object Classpaths {
   ): Initialize[Task[Unit]] =
     publishTask(config)
 
-  def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] =
-    Def.taskIf {
-      if ((publish / skip).value) {
-        val s = streams.value
-        val ref = thisProjectRef.value
-        s.log.debug(s"Skipping publish* for ${ref.project}")
-      } else {
-        val s = streams.value
-        IvyActions.publish(ivyModule.value, config.value, s.log)
+  private def logSkipPublish(log: Logger, ref: ProjectRef): Unit =
+    log.debug(s"Skipping publish* for ${ref.project}")
+
+  @deprecated("use publishOrSkip instead", "1.9.1")
+  def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] = {
+    val skipKey =
+      if (config.key == publishLocalConfiguration.key) publishLocal / skip
+      else publish / skip
+    publishOrSkip(config, skipKey)
+  }
+
+  def publishOrSkip(
+      config: TaskKey[PublishConfiguration],
+      skip: TaskKey[Boolean]
+  ): Initialize[Task[Unit]] =
+    Def
+      .taskIf {
+        if (skip.value) {
+          val log = streams.value.log
+          val ref = thisProjectRef.value
+          logSkipPublish(log, ref)
+        } else {
+          val conf = config.value
+          val log = streams.value.log
+          val module = ivyModule.value
+          val publisherInterface = publisher.value
+          publisherInterface.publish(module, conf, log)
+        }
       }
-    } tag (Tags.Publish, Tags.Network)
+      .tag(Tags.Publish, Tags.Network)
 
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
@@ -4184,6 +4350,8 @@ object Classpaths {
   def deliverPattern(outputPath: File): String =
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
+  private[sbt] def isScala213(sv: String) = sv.startsWith("2.13.")
+
   private[sbt] def isScala2Scala3Sandwich(sbv1: String, sbv2: String): Boolean = {
     def compare(a: String, b: String): Boolean =
       a == "2.13" && (b.startsWith("0.") || b.startsWith("3"))
@@ -4488,7 +4656,7 @@ object Classpaths {
       if (module.organization == scalaOrg) {
         val jarName = module.name + ".jar"
         val replaceWith = scalaJars(module.revision).toVector
-          .filter(_.getName == jarName)
+          .withFilter(_.getName == jarName)
           .map(f => (Artifact(f.getName.stripSuffix(".jar")), f))
         if (replaceWith.isEmpty) arts else replaceWith
       } else arts
