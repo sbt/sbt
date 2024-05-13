@@ -1,6 +1,6 @@
 package sbt.internal.librarymanagement
 
-import java.net.URL
+import java.net.URI
 import java.io.File
 
 import sbt.librarymanagement._
@@ -43,7 +43,7 @@ object DMSerializationSpec extends BasicTestSuite {
   }
 
   test("""Artifact("foo", url("http://example.com/")) should roundtrip""") {
-    roundtrip(Artifact("foo", new URL("http://example.com/")))
+    roundtrip(Artifact("foo", new URI("http://example.com/").toURL))
   }
 
   test("""Artifact("foo").extra(("key", "value")) should roundtrip""") {
@@ -75,7 +75,7 @@ object DMSerializationSpec extends BasicTestSuite {
       new File("./foo"),
       Vector(configurationReportExample),
       UpdateStats(0, 0, 0, false),
-      Map(new File("./foo") -> 0)
+      Map(new File("./foo").toString -> 0)
     )
   lazy val configurationReportExample =
     ConfigurationReport(

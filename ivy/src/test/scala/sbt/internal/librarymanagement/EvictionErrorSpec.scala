@@ -98,6 +98,23 @@ object EvictionErrorSpec extends BaseIvySpecification {
     assert(EvictionError(report, m, overrideRules).incompatibleEvictions.isEmpty)
   }
 
+  test("it should selectively allow opt-out from the error despite assumed scheme") {
+    val deps = Vector(`scala2.12.17`, `akkaActor2.6.0`, `swagger-akka-http1.4.0`)
+    val m = module(defaultModuleId, deps, Some("2.12.17"))
+    val report = ivyUpdate(m)
+    val overrideRules = List("org.scala-lang.modules" %% "scala-java8-compat" % "always")
+    assert(
+      EvictionError(
+        report = report,
+        module = m,
+        schemes = overrideRules,
+        assumedVersionScheme = "early-semver",
+        assumedVersionSchemeJava = "always",
+        assumedEvictionErrorLevel = Level.Error,
+      ).assumedIncompatibleEvictions.isEmpty
+    )
+  }
+
   // older Akka was on pvp
   def oldAkkaPvp = List("com.typesafe.akka" % "*" % "pvp")
 
@@ -109,8 +126,14 @@ object EvictionErrorSpec extends BaseIvySpecification {
     ModuleID("com.typesafe.akka", "akka-actor", "2.3.0").withConfigurations(
       Some("compile")
     ) cross CrossVersion.binary
+  lazy val `akkaActor2.6.0` =
+    ModuleID("com.typesafe.akka", "akka-actor", "2.6.0").withConfigurations(
+      Some("compile")
+    ) cross CrossVersion.binary
   lazy val `scala2.10.4` =
     ModuleID("org.scala-lang", "scala-library", "2.10.4").withConfigurations(Some("compile"))
+  lazy val `scala2.12.17` =
+    ModuleID("org.scala-lang", "scala-library", "2.12.17").withConfigurations(Some("compile"))
   lazy val `scala2.13.3` =
     ModuleID("org.scala-lang", "scala-library", "2.13.3").withConfigurations(Some("compile"))
   lazy val `bananaSesame0.4` =
@@ -131,6 +154,9 @@ object EvictionErrorSpec extends BaseIvySpecification {
     ("org.typelevel" %% "cats-parse" % "0.1.0").withConfigurations(Some("compile"))
   lazy val `cats-parse0.2.0` =
     ("org.typelevel" %% "cats-parse" % "0.2.0").withConfigurations(Some("compile"))
+  lazy val `swagger-akka-http1.4.0` =
+    ("com.github.swagger-akka-http" %% "swagger-akka-http" % "1.4.0")
+      .withConfigurations(Some("compile"))
 
   def dummyScalaModuleInfo(v: String): ScalaModuleInfo =
     ScalaModuleInfo(

@@ -64,10 +64,10 @@ object CrossVersionUtil {
    * Compatible versions include 2.10.0-1 and 2.10.1-M1 for Some(2, 10), but not 2.10.0-RC1.
    */
   private[sbt] def scalaApiVersion(v: String): Option[(Long, Long)] = v match {
-    case ReleaseV(x, y, _, _)                     => Some((x.toLong, y.toLong))
-    case BinCompatV(x, y, _, _, _)                => Some((x.toLong, y.toLong))
-    case NonReleaseV_1(x, y, z, _) if z.toInt > 0 => Some((x.toLong, y.toLong))
-    case _                                        => None
+    case ReleaseV(x, y, _, _)                      => Some((x.toLong, y.toLong))
+    case BinCompatV(x, y, _, _, _)                 => Some((x.toLong, y.toLong))
+    case NonReleaseV_1(x, y, z, _) if z.toLong > 0 => Some((x.toLong, y.toLong))
+    case _                                         => None
   }
 
   private[sbt] def partialVersion(s: String): Option[(Long, Long)] =
@@ -85,6 +85,31 @@ object CrossVersionUtil {
     case _ => full
   }
 
+  // Uses the following rules:
+  //
+  //   - Forwards and backwards compatibility is guaranteed for Scala 2.N.x (https://docs.scala-lang.org/overviews/core/binary-compatibility-of-scala-releases.html)
+  //
+  //   - A Scala compiler in version 3.x1.y1 is able to read TASTy files produced by another compiler in version 3.x2.y2 if x1 >= x2 (https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html)
+  //
+  //   - For non-stable Scala 3 versions, compiler versions can read TASTy in an older stable format but their TASTY versions are not compatible between each other even if the compilers have the same minor version (https://docs.scala-lang.org/scala3/reference/language-versions/binary-compatibility.html)
+  //
+  private[sbt] def isScalaBinaryCompatibleWith(newVersion: String, origVersion: String): Boolean = {
+    (newVersion, origVersion) match {
+      case (NonReleaseV_n("2", _, _, _), NonReleaseV_n("2", _, _, _)) =>
+        val api1 = scalaApiVersion(newVersion)
+        val api2 = scalaApiVersion(origVersion)
+        (api1.isDefined && api1 == api2) || (newVersion == origVersion)
+      case (ReleaseV(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt >= oMin.toInt
+      case (NonReleaseV_1(nMaj, nMin, _, _), ReleaseV(oMaj, oMin, _, _))
+          if nMaj == oMaj && nMaj.toLong >= 3 =>
+        nMin.toInt > oMin.toInt
+      case _ =>
+        newVersion == origVersion
+    }
+  }
+
   def binaryScalaVersion(full: String): String = {
     if (ScalaArtifacts.isScala3(full)) binaryScala3Version(full)
     else
@@ -92,7 +117,13 @@ object CrossVersionUtil {
   }
 
   def binarySbtVersion(full: String): String =
-    binaryVersionWithApi(full, TransitionSbtVersion)(sbtApiVersion)
+    sbtApiVersion(full) match {
+      case Some((0, minor)) if minor < 12 => full
+      case Some((0, minor))               => s"0.$minor"
+      case Some((1, minor))               => s"1.$minor"
+      case Some((major, _))               => major.toString
+      case _                              => full
+    }
 
   private[this] def isNewer(major: Long, minor: Long, minMajor: Long, minMinor: Long): Boolean =
     major > minMajor || (major == minMajor && minor >= minMinor)

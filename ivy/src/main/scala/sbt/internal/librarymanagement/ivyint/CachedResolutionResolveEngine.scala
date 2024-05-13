@@ -105,7 +105,7 @@ private[sbt] class CachedResolutionResolveCache {
       s"""Include(${rule.getId},${rule.getConfigurations.mkString(",")},${rule.getMatcher})"""
     def artifactString(dad: DependencyArtifactDescriptor): String =
       s"""Artifact(${dad.getName},${dad.getType},${dad.getExt},${dad.getUrl},${dad.getConfigurations
-        .mkString(",")},${dad.getExtraAttributes})"""
+          .mkString(",")},${dad.getExtraAttributes})"""
     val mrid = dd.getDependencyRevisionId
     val confMap = (dd.getModuleConfigurations map { conf =>
       conf + "->(" + dd.getDependencyConfigurations(conf).mkString(",") + ")"
@@ -128,12 +128,12 @@ private[sbt] class CachedResolutionResolveCache {
     val os = extractOverrides(parent)
     val moduleLevel = s"""dependencyOverrides=${os.mkString(",")};moduleExclusions=$mesStr"""
     val depsString = s"""$mrid;${confMap.mkString(
-      ","
-    )};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
-      s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(
         ","
-      )};explicitArtifacts=${explicitArtifacts
-        .mkString(",")};$moduleLevel;"""
+      )};isForce=${dd.isForce};isChanging=${dd.isChanging};isTransitive=${dd.isTransitive};""" +
+      s"""exclusions=${exclusions.mkString(",")};inclusions=${inclusions.mkString(
+          ","
+        )};explicitArtifacts=${explicitArtifacts
+          .mkString(",")};$moduleLevel;"""
     val sha1 = Hash.toHex(
       Hash(s"""graphVersion=${CachedResolutionResolveCache.graphVersion};$depsString""")
     )

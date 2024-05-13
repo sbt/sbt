@@ -7,7 +7,6 @@ import java.io.File
 import java.net.URI
 import java.util.concurrent.Callable
 
-import okhttp3.OkHttpClient
 import org.apache.ivy.Ivy
 import org.apache.ivy.core.IvyPatternHelper
 import org.apache.ivy.core.cache.{ CacheMetadataOptions, DefaultRepositoryCacheManager }
@@ -51,17 +50,13 @@ import ivyint.{
   CachedResolutionResolveEngine,
   ParallelResolveEngine,
   SbtDefaultDependencyDescriptor,
-  GigahorseUrlHandler
 }
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
 
 final class IvySbt(
     val configuration: IvyConfiguration,
-    val http: OkHttpClient
 ) { self =>
-  def this(configuration: IvyConfiguration) = this(configuration, CustomHttp.defaultHttpClient)
-
   /*
    * ========== Configuration/Setup ============
    * This part configures the Ivy instance by first creating the logger interface to ivy, then IvySettings, and then the Ivy instance.
@@ -91,7 +86,6 @@ final class IvySbt(
   }
 
   private lazy val basicUrlHandler: URLHandler = new BasicURLHandler
-  private lazy val gigahorseUrlHandler: URLHandler = new GigahorseUrlHandler(http)
 
   private lazy val settings: IvySettings = {
     val dispatcher: URLHandlerDispatcher = URLHandlerRegistry.getDefault match {
@@ -107,8 +101,8 @@ final class IvySbt(
         disp
     }
 
-    val urlHandler: URLHandler =
-      if (configuration.updateOptions.gigahorse) gigahorseUrlHandler else basicUrlHandler
+    // Ignore configuration.updateOptions.gigahorse due to sbt/sbt#6912
+    val urlHandler: URLHandler = basicUrlHandler
 
     // Only set the urlHandler for the http/https protocols so we do not conflict with any other plugins
     // that might register other protocol handlers.
@@ -229,9 +223,28 @@ final class IvySbt(
     else IvySbt.cachedResolutionResolveCache.clean()
   }
 
-  final class Module(rawModuleSettings: ModuleSettings)
+  /**
+   * In the new POM format of sbt plugins, we append the sbt-cross version _2.12_1.0 to
+   * the module artifactId, and the artifactIds of its dependencies that are sbt plugins.
+   *
+   * The goal is to produce a valid Maven POM, a POM that Maven can resolve:
+   * Maven will try and succeed to resolve the POM of pattern:
+   * <org>/<artifact-name>_2.12_1.0/<version>/<artifact-name>_2.12_1.0-<version>.pom
+   */
+  final class Module(rawModuleSettings: ModuleSettings, appendSbtCrossVersion: Boolean)
       extends sbt.librarymanagement.ModuleDescriptor { self =>
-    val moduleSettings: ModuleSettings = IvySbt.substituteCross(rawModuleSettings)
+
+    def this(rawModuleSettings: ModuleSettings) =
+      this(rawModuleSettings, appendSbtCrossVersion = false)
+
+    val moduleSettings: ModuleSettings =
+      rawModuleSettings match {
+        case ic: InlineConfiguration =>
+          val icWithCross: ModuleSettings = IvySbt.substituteCross(ic)
+          if appendSbtCrossVersion then IvySbt.appendSbtCrossVersion(icWithCross)
+          else icWithCross
+        case m => m
+      }
 
     def directDependencies: Vector[ModuleID] =
       moduleSettings match {
@@ -704,12 +717,11 @@ private[sbt] object IvySbt {
     )
   }
 
-  private def substituteCross(m: ModuleSettings): ModuleSettings = {
+  private def substituteCross(m: ModuleSettings): ModuleSettings =
     m.scalaModuleInfo match {
       case None     => m
       case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion, is.platform)
     }
-  }
 
   private def substituteCross(
       m: ModuleSettings,
@@ -749,6 +761,25 @@ private[sbt] object IvySbt {
             case (Some(p), None) => addSuffix(m, p)
             case (_, Some(p))    => addSuffix(m, p)
             case _               => m
+  }
+
+  private def appendSbtCrossVersion(m: ModuleSettings): ModuleSettings =
+    m match
+      case ic: InlineConfiguration =>
+        ic.withModule(appendSbtCrossVersion(ic.module))
+          .withDependencies(ic.dependencies.map(appendSbtCrossVersion))
+          .withOverrides(ic.overrides.map(appendSbtCrossVersion))
+      case m => m
+
+  private def appendSbtCrossVersion(mid: ModuleID): ModuleID = {
+    val crossVersion = for {
+      scalaVersion <- mid.extraAttributes.get("e:scalaVersion")
+      sbtVersion <- mid.extraAttributes.get("e:sbtVersion")
+    } yield s"_${scalaVersion}_$sbtVersion"
+    crossVersion
+      .filter(!mid.name.endsWith(_))
+      .map(cv => mid.withName(mid.name + cv))
+      .getOrElse(mid)
   }
 
   private def toIvyArtifact(

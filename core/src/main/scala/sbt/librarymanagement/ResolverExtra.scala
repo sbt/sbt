@@ -5,9 +5,11 @@ package sbt.librarymanagement
 
 import java.io.{ IOException, File }
 import java.net.{ URI, URL }
+import scala.annotation.nowarn
 import scala.xml.XML
 import org.xml.sax.SAXParseException
 import sbt.util.Logger
+import java.net.URI
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
   override def toString = "Raw(" + resolver.toString + ")"
@@ -102,6 +104,7 @@ private[librarymanagement] abstract class ResolverFunctions {
   @deprecated("Renamed to SbtRepositoryRoot.", "1.0.0")
   val SbtPluginRepositoryRoot = SbtRepositoryRoot
   val SonatypeRepositoryRoot = "https://oss.sonatype.org/content/repositories"
+  val SonatypeS01RepositoryRoot = "https://s01.oss.sonatype.org/content/repositories"
   val SonatypeReleasesRepository =
     "https://oss.sonatype.org/service/local/repositories/releases/content/"
   val JavaNet2RepositoryName = "java.net Maven2 Repository"
@@ -144,28 +147,49 @@ private[librarymanagement] abstract class ResolverFunctions {
   def typesafeRepo(status: String) =
     MavenRepository("typesafe-" + status, TypesafeRepositoryRoot + "/" + status)
   def typesafeIvyRepo(status: String) =
-    url("typesafe-ivy-" + status, new URL(TypesafeRepositoryRoot + "/ivy-" + status + "/"))(
+    url("typesafe-ivy-" + status, new URI(TypesafeRepositoryRoot + "/ivy-" + status + "/").toURL)(
       ivyStylePatterns
     )
   def sbtIvyRepo(status: String) =
-    url(s"sbt-ivy-$status", new URL(s"$SbtRepositoryRoot/ivy-$status/"))(ivyStylePatterns)
+    url(s"sbt-ivy-$status", new URI(s"$SbtRepositoryRoot/ivy-$status/").toURL)(ivyStylePatterns)
   def sbtPluginRepo(status: String) =
-    url("sbt-plugin-" + status, new URL(SbtRepositoryRoot + "/sbt-plugin-" + status + "/"))(
+    url("sbt-plugin-" + status, new URI(SbtRepositoryRoot + "/sbt-plugin-" + status + "/").toURL)(
       ivyStylePatterns
     )
+  @deprecated(
+    """Use sonatypeOssRepos instead e.g. `resolvers ++= Resolver.sonatypeOssRepos("snapshots")`""",
+    "1.7.0"
+  )
   def sonatypeRepo(status: String) =
     MavenRepository(
       "sonatype-" + status,
       if (status == "releases") SonatypeReleasesRepository
       else SonatypeRepositoryRoot + "/" + status
     )
+  private def sonatypeS01Repo(status: String) =
+    MavenRepository(
+      "sonatype-s01-" + status,
+      SonatypeS01RepositoryRoot + "/" + status
+    )
+  def sonatypeOssRepos(status: String) =
+    Vector(sonatypeRepo(status): @nowarn("cat=deprecation"), sonatypeS01Repo(status))
   def bintrayRepo(owner: String, repo: String) =
     MavenRepository(s"bintray-$owner-$repo", s"https://dl.bintray.com/$owner/$repo/")
   def bintrayIvyRepo(owner: String, repo: String) =
-    url(s"bintray-$owner-$repo", new URL(s"https://dl.bintray.com/$owner/$repo/"))(
+    url(s"bintray-$owner-$repo", new URI(s"https://dl.bintray.com/$owner/$repo/").toURL)(
       Resolver.ivyStylePatterns
     )
   def jcenterRepo = JCenterRepository
+
+  val ApacheMavenSnapshotsRepo = MavenRepository(
+    "apache-snapshots",
+    "https://repository.apache.org/content/repositories/snapshots/"
+  )
+
+  val ApacheMavenStagingRepo = MavenRepository(
+    "apache-staging",
+    "https://repository.apache.org/content/groups/staging/"
+  )
 
   /** Add the local and Maven Central repositories to the user repositories. */
   def combineDefaultResolvers(userResolvers: Vector[Resolver]): Vector[Resolver] =
@@ -376,6 +400,20 @@ private[librarymanagement] abstract class ResolverFunctions {
   def defaultRetrievePattern =
     "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
+  private[librarymanagement] def expandMavenSettings(str: String): String = {
+    // Aren't regular expressions beautifully clear and concise.
+    // This means "find all ${...}" blocks, with the first group of each being the text between curly brackets.
+    val findQuoted = "\\$\\{([^\\}]*)\\}".r
+    val env = "env\\.(.*)".r
+
+    findQuoted.replaceAllIn(
+      str,
+      _.group(1) match {
+        case env(variable) => sys.env.getOrElse(variable, "")
+        case property      => sys.props.getOrElse(property, "")
+      }
+    )
+  }
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
@@ -384,7 +422,7 @@ private[librarymanagement] abstract class ResolverFunctions {
         else
           ((XML.loadFile(file) \ "localRepository").text match {
             case ""    => None
-            case e @ _ => Some(new File(e))
+            case e @ _ => Some(new File(expandMavenSettings(e)))
           })
       } catch {
         // Occurs inside File constructor when property or environment variable does not exist

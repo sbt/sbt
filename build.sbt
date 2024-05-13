@@ -3,10 +3,11 @@ import Path._
 import com.typesafe.tools.mima.core._, ProblemFilters._
 
 val _ = {
-  //https://github.com/sbt/contraband/issues/122
+  // https://github.com/sbt/contraband/issues/122
   sys.props += ("line.separator" -> "\n")
 }
-
+Global / semanticdbEnabled := !(Global / insideCI).value
+Global / semanticdbVersion := "4.7.8"
 ThisBuild / version := {
   val old = (ThisBuild / version).value
   nightlyVersion match {
@@ -36,29 +37,30 @@ ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
-
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+ThisBuild / evictionErrorLevel := Level.Info
 
 def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := scala3,
   // publishArtifact in packageDoc := false,
   resolvers += Resolver.typesafeIvyRepo("releases"),
-  resolvers += Resolver.sonatypeRepo("snapshots"),
+  resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   resolvers += Resolver.sbtPluginRepo("releases"),
   testFrameworks += new TestFramework("verify.runner.Framework"),
   // concurrentRestrictions in Global += Util.testExclusiveRestriction,
   testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),
   crossScalaVersions := Seq(scala3),
-  resolvers += Resolver.sonatypeRepo("public"),
+  resolvers ++= Resolver.sonatypeOssRepos("public"),
   scalacOptions := {
     val old = scalacOptions.value
     scalaVersion.value match {
-      case sv if sv.startsWith("2.10") =>
-        old diff List("-Xfuture", "-Ywarn-unused", "-Ywarn-unused-import")
-      case sv if sv.startsWith("2.11") => old ++ List("-Ywarn-unused", "-Ywarn-unused-import")
       case sv if sv.startsWith("2.12") =>
-        old ++ List("-Ywarn-unused", "-Ywarn-unused-import", "-YdisableFlatCpCaching")
+        old ++ List(
+          "-Ywarn-unused",
+          "-Ywarn-unused-import",
+          "-Ywarn-unused:-nowarn",
+        )
       case _ => old
     }
   },
@@ -88,11 +90,11 @@ val mimaSettings = Def settings (
     "1.3.0",
     "1.4.0",
     "1.5.0",
-  ) map (
-      version =>
-        organization.value %% moduleName.value % version
-          cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
-    ),
+    "1.6.0",
+  ) map (version =>
+    organization.value %% moduleName.value % version
+      cross (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled)
+  ),
 )
 
 lazy val lmRoot = (project in file("."))
@@ -119,8 +121,7 @@ lazy val lmCore = (project in file("core"))
       // scalaReflect.value,
       // scalaCompiler.value,
       launcherInterface,
-      gigahorseOkhttp,
-      okhttpUrlconnection,
+      gigahorseApacheHttp,
       scalaXml,
       sjsonnewScalaJson.value % Optional,
       sjsonnew.value % Optional,
@@ -262,7 +263,9 @@ lazy val lmCore = (project in file("core"))
         "sbt.librarymanagement.ResolverFunctions.validateArtifact"
       ),
       exclude[IncompatibleResultTypeProblem]("sbt.librarymanagement.*.validateProtocol"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.internal.librarymanagement.cross.CrossVersionUtil.TransitionDottyVersion"
+      ),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.dottyID"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.DottyIDPrefix"),
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.toolDependencies*"),
@@ -354,6 +357,15 @@ lazy val lmIvy = (project in file("ivy"))
         "sbt.internal.librarymanagement.CustomPomParser.versionRangeFlag"
       ),
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.FixedParser*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.ivyint.GigahorseUrlHandler*"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.JavaNetAuthenticator"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.CustomHttp*"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.http"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.librarymanagement.IvySbt.this"),
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ivy.IvyPublisher.apply"),
+      exclude[DirectMissingMethodProblem](
+        "sbt.librarymanagement.ivy.IvyDependencyResolution.apply"
+      ),
     ),
   )
 
@@ -388,17 +400,6 @@ def customCommands: Seq[Setting[_]] = Seq(
       "reload" ::
       state
   }
-)
-
-inThisBuild(
-  Seq(
-    whitesourceProduct := "Lightbend Reactive Platform",
-    whitesourceAggregateProjectName := "sbt-lm-master",
-    whitesourceAggregateProjectToken := "9bde4ccbaab7401a91f8cda337af84365d379e13abaf473b85cb16e3f5c65cb6",
-    whitesourceIgnoredScopes += "scalafmt",
-    whitesourceFailOnError := sys.env.contains("WHITESOURCE_PASSWORD"), // fail if pwd is present
-    whitesourceForceCheckAllDependencies := true,
-  )
 )
 
 def inCompileAndTest(ss: SettingsDefinition*): Seq[Setting[_]] =

@@ -41,6 +41,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       uo: UpdateOptions = UpdateOptions(),
       overrideScalaVersion: Boolean = true,
       platform: Option[String] = None,
+      appendSbtCrossVersion: Boolean = false,
   ): IvySbt#Module = {
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
@@ -59,7 +60,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
       .withConfigurations(configurations)
       .withScalaModuleInfo(scalaModuleInfo)
     val ivySbt = new IvySbt(mkIvyConfiguration(uo))
-    new ivySbt.Module(moduleSetting)
+    new ivySbt.Module(moduleSetting, appendSbtCrossVersion)
   }
 
   def resolvers: Vector[Resolver] = Vector(Resolver.mavenCentral)
@@ -70,7 +71,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
     val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val resCacheDir = currentTarget / "resolution-cache"
     InlineIvyConfiguration()
-      .withPaths(IvyPaths(currentBase, Some(currentTarget)))
+      .withPaths(IvyPaths(currentBase.toString, Some(currentTarget.toString)))
       .withResolvers(resolvers)
       .withModuleConfigurations(moduleConfs)
       .withChecksums(Vector.empty)

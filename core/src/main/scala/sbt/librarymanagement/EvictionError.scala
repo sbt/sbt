@@ -121,14 +121,48 @@ object EvictionError {
       // don't report on a transitive eviction that does not have a winner
       // https://github.com/sbt/sbt/issues/4946
       case p if p.winner.isDefined =>
-        val r = calculateCompatible(p)
-        if (!r._1) {
-          incompatibleEvictions += (p -> r._2)
-        } else if (!r._3) {
-          assumedIncompatEvictions += (p -> r._4)
+        val winner = p.winner.get
+
+        def hasIncompatibleVersionForScheme(scheme: String) = {
+          val isCompat = VersionSchemes.evalFunc(scheme)
+          p.evicteds.exists { r =>
+            !isCompat((r.module, Some(winner.module), module.scalaModuleInfo))
+          }
         }
+
+        // from libraryDependencyScheme or defined in the pom using the `info.versionScheme` attribute
+        val userDefinedSchemeOrFromPom = {
+          def fromLibraryDependencySchemes(org: String = "*", mod: String = "*") =
+            userDefinedSchemes.get((org, mod))
+          def fromWinnerPom = VersionSchemes.extractFromExtraAttributes(
+            winner.extraAttributes.toMap ++ winner.module.extraAttributes
+          )
+
+          fromLibraryDependencySchemes(p.organization, p.name) // by org and name
+            .orElse(fromLibraryDependencySchemes(p.organization)) // for whole org
+            .orElse(fromWinnerPom) // from pom
+            .orElse(fromLibraryDependencySchemes()) // global
+        }
+
+        // We want the user to be able to suppress eviction errors for a specific library,
+        // which would result in an incompatible eviction based on the assumed version scheme.
+        // So, only fall back to the assumed scheme if there is no given scheme by the user or the pom.
+        userDefinedSchemeOrFromPom match {
+          case Some(givenScheme) =>
+            if (hasIncompatibleVersionForScheme(givenScheme))
+              incompatibleEvictions += (p -> givenScheme)
+          case None =>
+            val assumedScheme =
+              if (isNameScalaSuffixed(p.name)) assumedVersionScheme
+              else assumedVersionSchemeJava
+
+            if (hasIncompatibleVersionForScheme(assumedScheme))
+              assumedIncompatEvictions += (p -> assumedScheme)
+        }
+
       case _ => ()
     }
+
     new EvictionError(
       incompatibleEvictions.toList,
       assumedIncompatEvictions.toList,

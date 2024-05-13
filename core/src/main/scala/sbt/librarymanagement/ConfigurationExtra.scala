@@ -3,7 +3,7 @@
  */
 package sbt.librarymanagement
 
-import scala.annotation.tailrec
+import scala.annotation.{ nowarn, tailrec }
 import scala.quoted.*
 
 object Configurations {
@@ -21,9 +21,11 @@ object Configurations {
 
   lazy val RuntimeInternal = optionalInternal(Runtime)
   lazy val TestInternal = fullInternal(Test)
+  @nowarn
   lazy val IntegrationTestInternal = fullInternal(IntegrationTest)
   lazy val CompileInternal = fullInternal(Compile)
 
+  @nowarn
   def internalMap(c: Configuration) = c match {
     case Compile         => CompileInternal
     case Test            => TestInternal
@@ -41,6 +43,7 @@ object Configurations {
 
   lazy val Default = Configuration.of("Default", "default")
   lazy val Compile = Configuration.of("Compile", "compile")
+  @deprecated("Create a separate subproject for testing instead", "1.9.0")
   lazy val IntegrationTest = Configuration.of("IntegrationTest", "it") extend (Runtime)
   lazy val Provided = Configuration.of("Provided", "provided")
   lazy val Runtime = Configuration.of("Runtime", "runtime") extend (Compile)
@@ -69,6 +72,7 @@ object Configurations {
     )
 
   /** Returns true if the configuration should be under the influence of scalaVersion. */
+  @nowarn
   private[sbt] def underScalaVersion(c: Configuration): Boolean =
     c match {
       case Default | Compile | IntegrationTest | Provided | Runtime | Test | Optional |
@@ -107,7 +111,7 @@ private[librarymanagement] abstract class ConfigurationExtra {
 }
 
 private[sbt] object ConfigurationMacro:
-  def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] = {
+  def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] =
     import quotes.reflect.*
     def enclosingTerm(sym: Symbol): Symbol =
       sym match
@@ -124,7 +128,6 @@ private[sbt] object ConfigurationMacro:
     if enclosingValName.head.isLower then report.error("configuration id must be capitalized")
     val id = Expr(enclosingValName)
     '{ Configuration.of($id, $name) }
-  }
 end ConfigurationMacro
 
 private[librarymanagement] abstract class ConfigRefFunctions {

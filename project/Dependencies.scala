@@ -10,8 +10,8 @@ object Dependencies {
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
-  private val ioVersion = nightlyVersion.getOrElse("1.7.0")
-  private val utilVersion = nightlyVersion.getOrElse("2.0.0-alpha5")
+  private val ioVersion = nightlyVersion.getOrElse("1.10.0")
+  private val utilVersion = nightlyVersion.getOrElse("2.0.0-alpha9")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
@@ -44,16 +44,16 @@ object Dependencies {
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
-  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-fbc4f586aeeb1591710b14eb4f41b94880dcd745"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-396a783bba347016e7fe30dacc60d355be607fe2"
 
   val sbtV = "1.0"
   val scalaV = "2.12"
 
-  val jsch = "com.jcraft" % "jsch" % "0.1.54" intransitive ()
+  val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
-  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.10"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.3.0"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
   val sjsonNewVersion = "0.14.0-M1"
@@ -63,6 +63,5 @@ object Dependencies {
   val sjsonnewScalaJson = Def.setting {
     "com.eed3si9n" %% "sjson-new-scalajson" % sjsonNewVersion
   }
-  val gigahorseOkhttp = "com.eed3si9n" %% "gigahorse-okhttp" % "0.6.0"
-  val okhttpUrlconnection = "com.squareup.okhttp3" % "okhttp-urlconnection" % "3.7.0"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.7.0"
 }
