@@ -2467,10 +2467,6 @@ object Defaults extends BuildCommon {
         val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
-            val rawJarPath = c.toPath(res._2)
-            IO.delete(dir)
-            IO.unzip(rawJarPath.toFile, dir)
-            IO.delete(dir / "META-INF" / "MANIFEST.MF")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2492,7 +2488,7 @@ object Defaults extends BuildCommon {
   )
 
   private val cachedCompileIncrementalTask = Def
-    .cachedTask {
+    .cachedTaskWithUpdate {
       val s = streams.value
       val ci = (compile / compileInputs).value
       val bspTask = (compile / bspCompileTask).value
@@ -2523,6 +2519,15 @@ object Defaults extends BuildCommon {
       s.log.debug(s"wrote $out")
       Def.declareOutput(out)
       analysisResult.hasModified() -> (out: HashedVirtualFileRef)
+    } {
+      // unzip jar file to backend output after cache reuse
+      val c = fileConverter.value
+      val outputDir = c.toPath(backendOutput.value).toFile
+      val artifact = c.toPath(artifactPath.value).toFile
+      IO.delete(outputDir)
+      IO.unzip(artifact, outputDir)
+      IO.delete(outputDir / "META-INF" / "MANIFEST.MF")
+      identity
     }
     .tag(Tags.Compile, Tags.CPU)
 
