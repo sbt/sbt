@@ -36,9 +36,7 @@ object InputWrapper:
   )
   def `wrapInit_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
-  @compileTimeOnly(
-    "`declareOutput` can only be used within a task macro, such as Def.cachedTask."
-  )
+  @compileTimeOnly("`declareOutput` can only be used within a task macro, such as Def.cachedTask.")
   def `wrapOutput_\u2603\u2603`[A](@deprecated("unused", "") in: Any): A = implDetailError
 
   @compileTimeOnly(

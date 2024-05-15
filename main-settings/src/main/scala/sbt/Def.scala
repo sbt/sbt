@@ -264,10 +264,13 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   }
 
   inline def cachedTask[A1: JsonFormat](inline a1: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = true) }
+    ${ TaskMacro.cachedTaskMacroImpl[A1]('a1) }
+
+  inline def cachedTaskWithUpdate[A1: JsonFormat](inline a1: A1)(inline onCacheReuse: (A1 => A1)): Def.Initialize[Task[A1]] =
+    ${ TaskMacro.cachedTaskWithUpdateMacroImpl('a1, 'onCacheReuse) }
 
   inline def task[A1](inline a1: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskMacroImpl[A1]('a1, cached = false) }
+    ${ TaskMacro.taskMacroImpl[A1]('a1) }
 
   inline def taskDyn[A1](inline a1: Def.Initialize[Task[A1]]): Def.Initialize[Task[A1]] =
     ${ TaskMacro.taskDynMacroImpl[A1]('a1) }
@@ -284,7 +287,7 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     ${ InputTaskMacro.inputTaskMacroImpl[A1]('a) }
 
   inline def taskIf[A1](inline a: A1): Def.Initialize[Task[A1]] =
-    ${ TaskMacro.taskIfImpl[A1]('a, cached = true) }
+    ${ TaskMacro.taskIfImpl[A1]('a) }
 
   private[sbt] def selectITask[A1, A2](
       fab: Initialize[Task[Either[A1, A2]]],

@@ -49,28 +49,31 @@ object TaskMacro:
 
   // import LinterDSL.{ Empty => EmptyLinter }
 
-  def taskMacroImpl[A1: Type](t: Expr[A1], cached: Boolean)(using
+  def cachedTaskWithUpdateMacroImpl[A1: Type](t: Expr[A1], onCacheReuse: Expr[A1 => A1])(using
       qctx: Quotes
   ): Expr[Initialize[Task[A1]]] =
+    cachedTaskMacroImpl(t, Some(onCacheReuse))
+
+  def cachedTaskMacroImpl[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
+    cachedTaskMacroImpl(t, None)
+
+  private def cachedTaskMacroImpl[A1: Type](t: Expr[A1], onCacheReuse: Option[Expr[A1 => A1]])(using
+      qctx: Quotes
+  ): Expr[Initialize[Task[A1]]] =
+    val cacheConfigExpr = '{
+      InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](Def.cacheConfiguration)
+    }
+    val convert1 = new FullConvert(qctx, 0)
+    convert1.contMapN[A1, F, Id](t, convert1.appExpr, Some(cacheConfigExpr), onCacheReuse)
+
+  def taskMacroImpl[A1: Type](t: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     t match
-      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t, cached)
+      case '{ if ($cond) then $thenp else $elsep } => taskIfImpl[A1](t)
       case _ =>
         val convert1 = new FullConvert(qctx, 0)
-        if cached then
-          convert1.contMapN[A1, F, Id](
-            t,
-            convert1.appExpr,
-            Some('{
-              InputWrapper.`wrapInitTask_\u2603\u2603`[BuildWideCacheConfiguration](
-                Def.cacheConfiguration
-              )
-            })
-          )
-        else convert1.contMapN[A1, F, Id](t, convert1.appExpr, None)
+        convert1.contMapN[A1, F, Id](t, convert1.appExpr, None, None)
 
-  def taskIfImpl[A1: Type](expr: Expr[A1], cached: Boolean)(using
-      qctx: Quotes
-  ): Expr[Initialize[Task[A1]]] =
+  def taskIfImpl[A1: Type](expr: Expr[A1])(using qctx: Quotes): Expr[Initialize[Task[A1]]] =
     import qctx.reflect.*
     val convert1 = new FullConvert(qctx, 1000)
     expr match

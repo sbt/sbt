@@ -457,7 +457,7 @@ object Scoped:
 
     /** Internal function for the task macro. */
     inline def taskMacro[A](inline a: A): Initialize[Task[A]] =
-      ${ TaskMacro.taskMacroImpl[A]('a, cached = false) }
+      ${ TaskMacro.taskMacroImpl[A]('a) }
 
     private[sbt] inline def :==(app: A1): Setting[Task[A1]] =
       set(Def.valueStrict(std.TaskExtra.constant(app)))

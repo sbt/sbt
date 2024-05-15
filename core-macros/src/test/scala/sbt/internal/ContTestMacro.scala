@@ -19,6 +19,7 @@ object ContTestMacro:
     convert1.contMapN[A, List, Id](
       tree = expr,
       applicativeExpr = convert1.summonAppExpr[List],
-      cacheConfigExpr = None,
+      None,
+      None
     )
 end ContTestMacro

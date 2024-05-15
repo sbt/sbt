@@ -29,8 +29,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
           )
         ValDef(sym, rhs = Some(rhs))
 
-  def typed[A: Type](value: Term): Term =
-    Typed(value, TypeTree.of[A])
+  def typed(value: Term, tpe: TypeRepr): Term = Typed(value, TypeTree.of(using tpe.asType))
 
   def makeTuple(inputs: List[Input]): BuilderResult =
     new BuilderResult:
@@ -42,10 +41,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
         tupleTypeRepr(inputs.filter(_.isCacheInput).map(_.tpe))
       override def cacheInputExpr(tupleTerm: Term): Expr[Tuple] =
         Expr.ofTupleFromSeq(inputs.zipWithIndex.flatMap { case (input, idx) =>
-          if input.tags.nonEmpty then
-            input.tpe.asType match
-              case '[a] =>
-                Some(applyTuple(tupleTerm, inputTupleTypeRepr, idx).asExprOf[a])
+          if input.isCacheInput then Some(applyTuple(tupleTerm, inputTupleTypeRepr, idx).asExpr)
           else None
         })
 
@@ -68,10 +64,11 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       val qual: Term,
       val term: Term,
       val name: String,
+      _isCacheInput: Boolean
   ):
     override def toString: String =
-      s"Input($tpe, $qual, $term, $name, $tags)"
-    def isCacheInput: Boolean = tags.nonEmpty
+      s"Input($tpe, $qual, $term, $name, $tags, $_isCacheInput)"
+    def isCacheInput: Boolean = _isCacheInput && tags.nonEmpty
     lazy val tags = extractTags(qual)
     private def extractTags(tree: Term): List[CacheLevelTag] =
       def getAnnotation(tree: Term) =
@@ -95,26 +92,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   /**
    * Represents an output expression via Def.declareOutput
    */
-  final class Output(
-      val tpe: TypeRepr,
-      val term: Term,
-      val name: String,
-      val parent: Symbol,
-  ):
-    override def toString: String =
-      s"Output($tpe, $term, $name)"
-    val placeholder: Symbol =
-      tpe.asType match
-        case '[a] =>
-          Symbol.newVal(
-            parent,
-            name,
-            tpe,
-            Flags.Mutable,
-            Symbol.noSymbol
-          )
-    def toVarDef: ValDef =
-      ValDef(placeholder, rhs = Some('{ null }.asTerm))
+  final case class Output(tpe: TypeRepr, term: Term, name: String, parent: Symbol):
+    override def toString: String = s"Output($tpe, $term, $name)"
+    val placeholder: Symbol = Symbol.newVal(parent, name, tpe, Flags.Mutable, Symbol.noSymbol)
+    def toVarDef: ValDef = ValDef(placeholder, rhs = Some('{ null }.asTerm))
     def toAssign: Term = Assign(toRef, term)
     def toRef: Ref = Ref(placeholder)
   end Output

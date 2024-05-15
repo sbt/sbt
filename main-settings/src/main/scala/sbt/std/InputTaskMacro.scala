@@ -77,27 +77,27 @@ object InputTaskMacro:
         InputWrapper.`wrapInit_\u2603\u2603`[A2]($expr)
       }.asTerm
 
-    def expand[A2](nme: String, tpe: Type[A2], tree: Term): Converted =
-      given Type[A2] = tpe
-      nme match
-        case InputWrapper.WrapInitTaskName  => Converted.success(wrapInitTask[A2](tree))
-        case InputWrapper.WrapPreviousName  => Converted.success(wrapInitTask[A2](tree))
-        case ParserInput.WrapInitName       => Converted.success(wrapInitParser[A2](tree))
-        case InputWrapper.WrapInitInputName => Converted.success(wrapInitInput[A2](tree))
-        case InputWrapper.WrapInputName     => Converted.success(wrapInput[A2](tree))
-        case _                              => Converted.NotApplicable()
+    def expand(nme: String, tpe: TypeRepr, tree: Term): Converted =
+      tpe.asType match
+        case '[a] =>
+          nme match
+            case InputWrapper.WrapInitTaskName  => Converted.success(wrapInitTask[a](tree))
+            case InputWrapper.WrapPreviousName  => Converted.success(wrapInitTask[a](tree))
+            case ParserInput.WrapInitName       => Converted.success(wrapInitParser[a](tree))
+            case InputWrapper.WrapInitInputName => Converted.success(wrapInitInput[a](tree))
+            case InputWrapper.WrapInputName     => Converted.success(wrapInput[a](tree))
+            case _                              => Converted.NotApplicable()
 
     def conditionInputTaskTree(t: Term): Term =
       convert1.transformWrappers(
         tree = t,
-        subWrapper = [a] =>
-          (nme: String, tpe: Type[a], tree: Term, original: Term) => expand[a](nme, tpe, tree),
+        subWrapper = (t: convert1.WrappedTerm) => expand(t.name, t.tpe, t.qual),
         owner = Symbol.spliceOwner,
       )
 
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
     val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
-    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, None, inner)
+    convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, None, None, inner)
 
   private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
       f: Expr[A1] => Expr[F1[A1]]
@@ -105,11 +105,11 @@ object InputTaskMacro:
     import qctx.reflect.*
     val convert1 = new ParserConvert(qctx, 1000)
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
-    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, None, inner)
+    convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, None, None, inner)
 
   private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
     val convert1 = new TaskConvert(qctx, 2000)
-    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr, None)
+    convert1.contMapN[A1, Task, Id](tree, convert1.appExpr, None, None)
   /*
   private[this] def inputTaskDynMacro0[A1: Type](
       expr: Expr[Def.Initialize[Task[A1]]]

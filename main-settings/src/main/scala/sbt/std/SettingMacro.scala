@@ -23,15 +23,13 @@ import sbt.internal.util.complete.Parser
 class InitializeConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C]
     with ContextUtil[C](valStart):
-  import qctx.reflect.*
-
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    nme match
-      case InputWrapper.WrapInitName => Converted.success(in)
+  override def convert(in: WrappedTerm): Converted =
+    in.name match
+      case InputWrapper.WrapInitName => Converted.success(in.qual)
       case InputWrapper.WrapTaskName | InputWrapper.WrapInitTaskName =>
-        Converted.Failure(in.pos, "A setting cannot depend on a task")
+        Converted.Failure(in.qual.pos, "A setting cannot depend on a task")
       case InputWrapper.WrapPreviousName =>
-        Converted.Failure(in.pos, "A setting cannot depend on a task's previous value.")
+        Converted.Failure(in.qual.pos, "A setting cannot depend on a task's previous value.")
       case _ => Converted.NotApplicable()
 
   def appExpr: Expr[Applicative[Initialize]] =
@@ -47,7 +45,7 @@ object SettingMacro:
 
   def settingMacroImpl[A1: Type](in: Expr[A1])(using qctx: Quotes): Expr[Initialize[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
-    convert1.contMapN[A1, F, Id](in, convert1.appExpr, None)
+    convert1.contMapN[A1, F, Id](in, convert1.appExpr, None, None)
 
   def settingDynImpl[A1: Type](in: Expr[Initialize[A1]])(using qctx: Quotes): Expr[Initialize[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
@@ -57,6 +55,6 @@ object SettingMacro:
       qctx: Quotes
   ): Expr[ParserGen[A1]] =
     val convert1 = InitializeConvert(qctx, 0)
-    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr, None)
+    val init1 = convert1.contMapN[State => Parser[A1], F, Id](in, convert1.appExpr, None, None)
     '{ ParserGen[A1]($init1) }
 end SettingMacro

@@ -17,12 +17,11 @@ import scala.quoted.*
 class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C]
     with ContextUtil[C](valStart):
-  import qctx.reflect.*
 
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    nme match
-      case InputWrapper.WrapInitName     => Converted.success(in)
-      case InputWrapper.WrapInitTaskName => Converted.Failure(in.pos, initTaskErrorMessage)
+  override def convert(in: WrappedTerm): Converted =
+    in.name match
+      case InputWrapper.WrapInitName     => Converted.success(in.qual)
+      case InputWrapper.WrapInitTaskName => Converted.Failure(in.qual.pos, initTaskErrorMessage)
       case _                             => Converted.NotApplicable()
 
   private def initTaskErrorMessage = "Internal sbt error: initialize+task wrapper not split"
@@ -35,12 +34,11 @@ end InputInitConvert
 class ParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
     extends Convert[C]
     with ContextUtil[C](valStart):
-  import qctx.reflect.*
 
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    nme match
-      case ParserInput.WrapName     => Converted.success(in)
-      case ParserInput.WrapInitName => Converted.Failure(in.pos, initParserErrorMessage)
+  override def convert(in: WrappedTerm): Converted =
+    in.name match
+      case ParserInput.WrapName     => Converted.success(in.qual)
+      case ParserInput.WrapInitName => Converted.Failure(in.qual.pos, initParserErrorMessage)
       case _                        => Converted.NotApplicable()
 
   private def initParserErrorMessage = "Internal sbt error: initialize+parser wrapper not split"
@@ -54,12 +52,11 @@ class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
     extends Convert[C]
     with ContextUtil[C](valStart):
   import qctx.reflect.*
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    if nme == InputWrapper.WrapTaskName then Converted.success(in)
+  override def convert(in: WrappedTerm): Converted =
+    if in.name == InputWrapper.WrapTaskName then Converted.success(in.qual)
     else Converted.NotApplicable()
 
-  def appExpr[Expr[Monad[Task]]] =
-    '{ Task.taskMonad }
+  def appExpr[Expr[Monad[Task]]] = '{ Task.taskMonad }
 end TaskConvert
 
 /**
@@ -71,14 +68,16 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
     with ContextUtil[C](valStart):
   import qctx.reflect.*
 
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    nme match
-      case InputWrapper.WrapInitTaskName => Converted.success(in)
-      case InputWrapper.WrapPreviousName => Converted.success(in)
-      case InputWrapper.WrapInitName     => wrapInit[A](in)
-      case InputWrapper.WrapTaskName     => wrapTask[A](in)
-      case InputWrapper.WrapOutputName   => Converted.success(in)
-      case _                             => Converted.NotApplicable()
+  override def convert(in: WrappedTerm): Converted =
+    in.tpe.asType match
+      case '[a] =>
+        in.name match
+          case InputWrapper.WrapInitTaskName => Converted.success(in.qual)
+          case InputWrapper.WrapPreviousName => Converted.success(in.qual)
+          case InputWrapper.WrapInitName     => wrapInit[a](in.qual)
+          case InputWrapper.WrapTaskName     => wrapTask[a](in.qual)
+          case InputWrapper.WrapOutputName   => Converted.success(in.qual)
+          case _                             => Converted.NotApplicable()
 
   private def wrapInit[A: Type](tree: Term): Converted =
     val expr = tree.asExprOf[Initialize[A]]
@@ -107,11 +106,13 @@ class InitParserConvert[C <: Quotes & scala.Singleton](override val qctx: C, val
     with ContextUtil[C](valStart):
   import qctx.reflect.*
 
-  override def convert[A: Type](nme: String, in: Term): Converted =
-    nme match
-      case ParserInput.WrapName     => wrap[A](in)
-      case ParserInput.WrapInitName => Converted.success(in)
-      case _                        => Converted.NotApplicable()
+  override def convert(in: WrappedTerm): Converted =
+    in.tpe.asType match
+      case '[a] =>
+        in.name match
+          case ParserInput.WrapName     => wrap[a](in.qual)
+          case ParserInput.WrapInitName => Converted.success(in.qual)
+          case _                        => Converted.NotApplicable()
 
   private def wrap[A: Type](tree: Term): Converted =
     val e = tree.asExprOf[State => Parser[A]]
