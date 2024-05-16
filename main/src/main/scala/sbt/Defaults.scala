@@ -38,7 +38,7 @@ import sbt.internal._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
-import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
+import sbt.internal.inc.{ APIs, CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
 import sbt.internal.io.{ Source, WatchState }
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
@@ -139,6 +139,7 @@ import xsbti.compile.{
   TastyFiles,
   TransactionalManagerType
 }
+import xsbti.compile.analysis.{ Stamp => XStamp }
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -466,18 +467,15 @@ object Defaults extends BuildCommon {
       val managedCache = managedFileStampCache.value
       val backing = timeWrappedStamper.value
       new xsbti.compile.analysis.ReadStamps {
-        def getAllLibraryStamps()
-            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+        def getAllLibraryStamps(): java.util.Map[xsbti.VirtualFileRef, XStamp] =
           backing.getAllLibraryStamps()
-        def getAllProductStamps()
-            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
+        def getAllProductStamps(): java.util.Map[xsbti.VirtualFileRef, XStamp] =
           backing.getAllProductStamps()
-        def getAllSourceStamps()
-            : java.util.Map[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp] =
-          new java.util.HashMap[xsbti.VirtualFileRef, xsbti.compile.analysis.Stamp]
-        def library(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.library(fr)
-        def product(fr: xsbti.VirtualFileRef): xsbti.compile.analysis.Stamp = backing.product(fr)
-        def source(fr: xsbti.VirtualFile): xsbti.compile.analysis.Stamp = {
+        def getAllSourceStamps(): java.util.Map[xsbti.VirtualFileRef, XStamp] =
+          new java.util.HashMap[xsbti.VirtualFileRef, XStamp]
+        def library(fr: xsbti.VirtualFileRef): XStamp = backing.library(fr)
+        def product(fr: xsbti.VirtualFileRef): XStamp = backing.product(fr)
+        def source(fr: xsbti.VirtualFile): XStamp = {
           val path = converter.toPath(fr)
           unmanagedCache
             .get(path)
@@ -2520,16 +2518,53 @@ object Defaults extends BuildCommon {
       Def.declareOutput(out)
       analysisResult.hasModified() -> (out: HashedVirtualFileRef)
     } {
-      // unzip jar file to backend output after cache reuse
       val c = fileConverter.value
       val outputDir = c.toPath(backendOutput.value).toFile
       val artifact = c.toPath(artifactPath.value).toFile
+      val store = analysisStore(compileAnalysisFile)
+      // After cache reuse:
+      // - Unzip jar file to backend output, to enable incremental compilation
+      // - Update timestamps of compile analysis, used by testQuick.
       IO.delete(outputDir)
       IO.unzip(artifact, outputDir)
       IO.delete(outputDir / "META-INF" / "MANIFEST.MF")
+      for
+        previousAnalysis <- previousCompile.value.analysis.asScala.collect { case a: Analysis => a }
+        currentContents = store.unsafeGet()
+        currentAnalysis <- Option(currentContents.getAnalysis).collect { case a: Analysis => a }
+      do
+        val updatedAnalysis =
+          if previousAnalysis.compilations.allCompilations == currentAnalysis.compilations.allCompilations
+          then previousAnalysis // same compilations: previousAnalysis is up-to-date
+          else updateTimestamps(previousAnalysis, currentAnalysis)
+        val updatedContents = AnalysisContents.create(updatedAnalysis, currentContents.getMiniSetup)
+        store.set(updatedContents)
       identity
     }
     .tag(Tags.Compile, Tags.CPU)
+
+  private def updateTimestamps(previous: Analysis, current: Analysis): CompileAnalysis = {
+    val newCompilationTimestamp = System.currentTimeMillis()
+
+    def isRecompiled(productFile: VirtualFileRef, stamp: XStamp): Boolean =
+      val previousStamp = previous.stamps.products.get(productFile)
+      previousStamp.forall(_.writeStamp != stamp.writeStamp)
+
+    val recompiledProducts =
+      current.stamps.products.collect { case (f, s) if isRecompiled(f, s) => f }.toSet
+    val recompiledSources = current.relations.allSources
+      .filter(sourceFile => current.relations.products(sourceFile).exists(recompiledProducts))
+    val updatedInternal = current.apis.internal
+      .map { (name, cls) =>
+        val isRecompiled = current.relations.definesClass(name).exists(recompiledSources)
+        val updatedTimestamp =
+          if isRecompiled then newCompilationTimestamp
+          else previous.apis.internal(name).compilationTimestamp
+        name -> cls.withCompilationTimestamp(updatedTimestamp)
+      }
+    val updatedAPIs = APIs(updatedInternal, current.apis.external)
+    current.copy(apis = updatedAPIs)
+  }
 
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
