@@ -13,7 +13,9 @@ import sbt.Keys._
 
 private[sbt] object InternalDependencies {
   def configurations: Def.Initialize[Seq[(ProjectRef, Set[String])]] = Def.setting {
-    val allConfigs = Classpaths.allConfigs(configuration.value).map(_.name).toSet
+    val configMap = internalConfigurationMap.value
+    val config = configMap(configuration.value)
+    val allConfigs = Classpaths.allConfigs(config).map(_.name).toSet
     val ref = thisProjectRef.value
     val projectDependencies = buildDependencies.value.classpath.get(ref).toSeq.flatten
     val applicableConfigs = allConfigs + "*"

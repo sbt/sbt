@@ -43,8 +43,12 @@ object BuildServerTest extends AbstractServerTest {
   test("workspace/buildTargets") { _ =>
     sendRequest("workspace/buildTargets")
     val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
-    val utilTarget = result.targets.find(_.displayName.contains("util")).get
+    val utilTargetIdentifier = BuildTargetIdentifier(buildTargetUri("util", "Compile"))
+    val utilTarget = result.targets.find(_.id == utilTargetIdentifier).get
     assert(utilTarget.id.uri.toString.endsWith("#util/Compile"))
+    val runAndTestTarget = result.targets.find(_.displayName.contains("runAndTest")).get
+    // runAndTest should declare the dependency to util even if optional
+    assert(runAndTestTarget.dependencies.contains(utilTargetIdentifier))
     val buildServerBuildTarget =
       result.targets.find(_.displayName.contains("buildserver-build")).get
     assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-build"))
@@ -233,14 +237,19 @@ object BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/scalacOptions, buildTarget/javacOptions") { _ =>
-    val buildTarget = buildTargetUri("util", "Compile")
-    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
+    val buildTargets = Seq(
+      buildTargetUri("util", "Compile"),
+      buildTargetUri("badBuildTarget", "Compile"),
+    )
 
-    val id1 = scalacOptions(Seq(buildTarget, badBuildTarget))
+    val id1 = scalacOptions(buildTargets)
     assertMessage(s""""id":"$id1"""", "scala-library-2.13.11.jar")()
 
-    val id2 = javacOptions(Seq(buildTarget, badBuildTarget))
+    val id2 = javacOptions(buildTargets)
     assertMessage(s""""id":"$id2"""", "scala-library-2.13.11.jar")()
+
+    val id3 = scalacOptions(Seq(buildTargetUri("runAndTest", "Compile")))
+    assertMessage(s""""id":"$id3"""", "util/target/scala-2.13/classes")()
   }
 
   test("buildTarget/cleanCache") { _ =>
