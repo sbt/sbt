@@ -64,12 +64,14 @@ object ErrorMessageAuthenticator {
       ivyOriginalField.set(ivy, newOriginal)
     }
 
-    try Option(ivyOriginalField.get(ivy).asInstanceOf[Authenticator]) match {
-      case Some(
-            _: ErrorMessageAuthenticator
-          ) => // We're already installed, no need to do the work again.
-      case originalOpt => installIntoIvyImpl(originalOpt)
-    } catch {
+    try
+      Option(ivyOriginalField.get(ivy).asInstanceOf[Authenticator]) match {
+        case Some(
+              _: ErrorMessageAuthenticator
+            ) => // We're already installed, no need to do the work again.
+        case originalOpt => installIntoIvyImpl(originalOpt)
+      }
+    catch {
       case t: Throwable =>
         Message.debug(
           "Error occurred while trying to install debug messages into Ivy Authentication" + t.getMessage
