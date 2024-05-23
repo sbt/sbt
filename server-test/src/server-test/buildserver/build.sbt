@@ -12,7 +12,7 @@ lazy val runAndTest = project.in(file("run-and-test"))
     Test / javaOptions := Vector("Xmx512M"),
     Test / envVars := Map("KEY_TEST" -> "VALUE_TEST"),
   )
-  .dependsOn(util)
+  .dependsOn(util % Optional)
 
 lazy val reportError = project.in(file("report-error"))
 
