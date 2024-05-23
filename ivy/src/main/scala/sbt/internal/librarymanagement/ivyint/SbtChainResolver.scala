@@ -37,9 +37,9 @@ private[sbt] case class SbtChainResolver(
   override def equals(o: Any): Boolean = o match {
     case o: SbtChainResolver =>
       this.name == o.name &&
-        this.resolvers == o.resolvers &&
-        this.settings == o.settings &&
-        this.updateOptions == o.updateOptions
+      this.resolvers == o.resolvers &&
+      this.settings == o.settings &&
+      this.updateOptions == o.updateOptions
     case _ => false
   }
 
@@ -234,7 +234,7 @@ private[sbt] case class SbtChainResolver(
             val (module, resolver) = h
             Message.info(
               s"Out of ${sortedRevisions.size} candidates we found for ${module.getId} in ${resolvers
-                .mkString(" and ")}, we are choosing ${resolver}."
+                  .mkString(" and ")}, we are choosing ${resolver}."
             )
           })
         } else {

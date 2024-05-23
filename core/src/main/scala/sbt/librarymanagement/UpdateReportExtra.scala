@@ -125,10 +125,11 @@ private[librarymanagement] abstract class UpdateReportExtra {
   def stats: UpdateStats
   private[sbt] def stamps: Map[File, Long]
 
+  private[sbt] def moduleKey(m: ModuleID) = (m.organization, m.name, m.revision)
+
   /** All resolved modules in all configurations. */
   def allModules: Vector[ModuleID] = {
-    val key = (m: ModuleID) => (m.organization, m.name, m.revision)
-    configurations.flatMap(_.allModules).groupBy(key).toVector map { case (_, v) =>
+    configurations.flatMap(_.allModules).groupBy(moduleKey).toVector map { case (_, v) =>
       v reduceLeft { (agg, x) =>
         agg.withConfigurations(
           (agg.configurations, x.configurations) match {
@@ -138,6 +139,21 @@ private[librarymanagement] abstract class UpdateReportExtra {
           }
         )
       }
+    }
+  }
+
+  def allModuleReports: Vector[ModuleReport] = {
+    configurations.flatMap(_.modules).groupBy(mR => moduleKey(mR.module)).toVector map {
+      case (_, v) =>
+        v reduceLeft { (agg, x) =>
+          agg.withConfigurations(
+            (agg.configurations, x.configurations) match {
+              case (v, _) if v.isEmpty  => x.configurations
+              case (ac, v) if v.isEmpty => ac
+              case (ac, xc)             => ac ++ xc
+            }
+          )
+        }
     }
   }
 

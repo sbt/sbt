@@ -96,23 +96,23 @@ class CrossVersionTest extends UnitSpec {
   "binarySbtVersion" should "for 0.11.3 return 0.11.3" in {
     binarySbtVersion("0.11.3") shouldBe "0.11.3"
   }
-  it should "for 0.12.0-M1 return 0.12.0-M1" in {
-    binarySbtVersion("0.12.0-M1") shouldBe "0.12.0-M1"
+  it should "for 2.0.0 return 2" in {
+    binarySbtVersion("2.0.0") shouldBe "2"
   }
-  it should "for 0.12.0-RC1 return 0.12" in {
-    binarySbtVersion("0.12.0-RC1") shouldBe "0.12"
+  it should "for 2.0.0-M1 return 2.0.0-M1" in {
+    binarySbtVersion("2.0.0-M1") shouldBe "2.0.0-M1"
   }
-  it should "for 0.12.0 return 0.12" in {
-    binarySbtVersion("0.12.0") shouldBe "0.12"
+  it should "for 2.0.0-RC1 return 2" in {
+    binarySbtVersion("2.0.0-RC1") shouldBe "2"
   }
-  it should "for 0.12.1-SNAPSHOT return 0.12" in {
-    binarySbtVersion("0.12.1-SNAPSHOT") shouldBe "0.12"
+  it should "for 2.1.0-M1 return 2" in {
+    binarySbtVersion("2.1.0-M1") shouldBe "2"
   }
-  it should "for 0.12.1-RC1 return 0.12" in {
-    binarySbtVersion("0.12.1-RC1") shouldBe "0.12"
+  it should "for 2.1.0 return 2" in {
+    binarySbtVersion("2.1.0") shouldBe "2"
   }
-  it should "for 0.12.1 return 0.12" in {
-    binarySbtVersion("0.12.1") shouldBe "0.12"
+  it should "for 0.13.1 return 0.13" in {
+    binarySbtVersion("0.13.1") shouldBe "0.13"
   }
   it should "for 1.0.0-M6 return 1.0.0-M6" in {
     binarySbtVersion("1.0.0-M6") shouldBe "1.0.0-M6"
@@ -143,9 +143,6 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 1.10.0 return 1.0" in {
     binarySbtVersion("1.10.0") shouldBe "1.0"
-  }
-  it should "for 2.0.0 return 2.0" in {
-    binarySbtVersion("2.0.0") shouldBe "2.0"
   }
 
   "scalaApiVersion" should "for xyz return None" in {
@@ -282,6 +279,55 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 2.11.8-X1.5-bin-extra return 2.11.8-X1.5" in {
     patchVersion("2.11.8-X1.5-bin-extra") shouldBe Some("artefact_2.11.8-X1.5")
+  }
+
+  "isScalaBinaryCompatibleWith" should "for (2.10.4, 2.10.5) return true" in {
+    isScalaBinaryCompatibleWith("2.10.4", "2.10.5") shouldBe true
+  }
+  it should "for (2.10.6, 2.10.5) return true" in {
+    isScalaBinaryCompatibleWith("2.10.6", "2.10.5") shouldBe true
+  }
+  it should "for (2.11.0, 2.10.5) return false" in {
+    isScalaBinaryCompatibleWith("2.11.0", "2.10.5") shouldBe false
+  }
+  it should "for (3.0.0, 2.10.5) return false" in {
+    isScalaBinaryCompatibleWith("3.0.0", "2.10.5") shouldBe false
+  }
+  it should "for (3.0.0, 3.1.0) return false" in {
+    isScalaBinaryCompatibleWith("3.0.0", "3.1.0") shouldBe false
+  }
+  it should "for (3.1.0, 3.0.0) return true" in {
+    isScalaBinaryCompatibleWith("3.1.0", "3.0.0") shouldBe true
+  }
+  it should "for (3.1.0, 3.1.1) return true" in {
+    isScalaBinaryCompatibleWith("3.1.0", "3.1.1") shouldBe true
+  }
+  it should "for (3.1.1, 3.1.0) return true" in {
+    isScalaBinaryCompatibleWith("3.1.1", "3.1.0") shouldBe true
+  }
+  it should "for (2.10.0-M1, 2.10.5) return false" in {
+    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.5") shouldBe false
+  }
+  it should "for (2.10.5, 2.10.0-M1) return false" in {
+    isScalaBinaryCompatibleWith("2.10.5", "2.10.0-M1") shouldBe false
+  }
+  it should "for (2.10.0-M1, 2.10.0-M2) return false" in {
+    isScalaBinaryCompatibleWith("2.10.0-M1", "2.10.0-M2") shouldBe false
+  }
+  it should "for (2.10.0-M1, 2.11.0-M1) return false" in {
+    isScalaBinaryCompatibleWith("2.10.0-M1", "2.11.0-M1") shouldBe false
+  }
+  it should "for (3.1.0-M1, 3.0.0) return true" in {
+    isScalaBinaryCompatibleWith("3.1.0-M1", "3.0.0") shouldBe true
+  }
+  it should "for (3.1.0-M1, 3.1.0) return false" in {
+    isScalaBinaryCompatibleWith("3.1.0-M1", "3.1.0") shouldBe false
+  }
+  it should "for (3.1.0-M1, 3.1.0-M2) return false" in {
+    isScalaBinaryCompatibleWith("3.1.0-M1", "3.1.0-M2") shouldBe false
+  }
+  it should "for (3.1.0-M2, 3.1.0-M1) return false" in {
+    isScalaBinaryCompatibleWith("3.1.0-M2", "3.1.0-M1") shouldBe false
   }
 
   private def constantVersion(value: String) =

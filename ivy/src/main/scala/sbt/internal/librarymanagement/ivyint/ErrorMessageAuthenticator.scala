@@ -137,16 +137,17 @@ private[sbt] final class ErrorMessageAuthenticator(original: Option[Authenticato
     // Grabs the authentication that would have been provided had we not been installed...
     def originalAuthentication: Option[PasswordAuthentication] = {
       Authenticator.setDefault(original.orNull)
-      try Option(
-        Authenticator.requestPasswordAuthentication(
-          getRequestingHost,
-          getRequestingSite,
-          getRequestingPort,
-          getRequestingProtocol,
-          getRequestingPrompt,
-          getRequestingScheme
+      try
+        Option(
+          Authenticator.requestPasswordAuthentication(
+            getRequestingHost,
+            getRequestingSite,
+            getRequestingPort,
+            getRequestingProtocol,
+            getRequestingPrompt,
+            getRequestingScheme
+          )
         )
-      )
       finally Authenticator.setDefault(this)
     }
     originalAuthentication.orNull

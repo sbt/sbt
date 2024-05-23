@@ -1,6 +1,6 @@
 package sbt.librarymanagement
 
-import java.net.URL
+import java.net.URI
 
 import sbt.internal.librarymanagement.UnitSpec
 
@@ -10,7 +10,7 @@ object ResolverTest extends UnitSpec {
     val pats = Vector("[orgPath]")
     val patsExpected = Vector("http://foo.com/test/[orgPath]")
     val patterns = Resolver
-      .url("test", new URL("http://foo.com/test"))(
+      .url("test", new URI("http://foo.com/test").toURL)(
         Patterns(
           pats,
           pats,

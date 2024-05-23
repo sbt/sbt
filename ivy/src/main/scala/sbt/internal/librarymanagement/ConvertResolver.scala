@@ -3,7 +3,7 @@
  */
 package sbt.internal.librarymanagement
 
-import java.net.URL
+import java.net.URI
 import java.util.Collections
 
 import org.apache.ivy.core.module.descriptor.DependencyDescriptor
@@ -27,10 +27,16 @@ import org.apache.ivy.plugins.resolver.{
 import org.apache.ivy.plugins.repository.url.{ URLRepository => URLRepo }
 import org.apache.ivy.plugins.repository.file.{ FileResource, FileRepository => FileRepo }
 import java.io.{ File, IOException }
+import java.util.Date
 
-import org.apache.ivy.util.{ ChecksumHelper, FileUtil, Message }
 import org.apache.ivy.core.module.descriptor.{ Artifact => IArtifact }
+import org.apache.ivy.core.module.id.ModuleRevisionId
+import org.apache.ivy.core.module.descriptor.DefaultArtifact
 import org.apache.ivy.core.report.DownloadReport
+import org.apache.ivy.plugins.resolver.util.{ ResolvedResource, ResourceMDParser }
+import org.apache.ivy.util.{ ChecksumHelper, FileUtil, Message }
+import scala.collection.JavaConverters._
+import sbt.internal.librarymanagement.mavenint.PomExtraDependencyAttributes
 import sbt.io.IO
 import sbt.util.Logger
 import sbt.librarymanagement._
@@ -172,6 +178,32 @@ private[sbt] object ConvertResolver {
             setArtifactPatterns(pattern)
             setIvyPatterns(pattern)
           }
+          override protected def findResourceUsingPattern(
+              mrid: ModuleRevisionId,
+              pattern: String,
+              artifact: IArtifact,
+              rmdparser: ResourceMDParser,
+              date: Date
+          ): ResolvedResource = {
+            val extraAttributes =
+              mrid.getExtraAttributes.asScala.toMap.asInstanceOf[Map[String, String]]
+            getSbtPluginCrossVersion(extraAttributes) match {
+              case Some(sbtCrossVersion) =>
+                // if the module is an sbt plugin
+                // we first try to resolve the artifact with the sbt cross version suffix
+                // and we fallback to the one without the suffix
+                val newArtifact = DefaultArtifact.cloneWithAnotherName(
+                  artifact,
+                  artifact.getName + sbtCrossVersion
+                )
+                val resolved =
+                  super.findResourceUsingPattern(mrid, pattern, newArtifact, rmdparser, date)
+                if (resolved != null) resolved
+                else super.findResourceUsingPattern(mrid, pattern, artifact, rmdparser, date)
+              case None =>
+                super.findResourceUsingPattern(mrid, pattern, artifact, rmdparser, date)
+            }
+          }
         }
         val resolver = new PluginCapableResolver
         if (repo.localIfFile) resolver.setRepository(new LocalIfFileRepo)
@@ -227,6 +259,13 @@ private[sbt] object ConvertResolver {
           case r: DependencyResolver => r
         }
     }
+  }
+
+  private def getSbtPluginCrossVersion(extraAttributes: Map[String, String]): Option[String] = {
+    for {
+      sbtVersion <- extraAttributes.get(PomExtraDependencyAttributes.SbtVersionKey)
+      scalaVersion <- extraAttributes.get(PomExtraDependencyAttributes.ScalaVersionKey)
+    } yield s"_${scalaVersion}_$sbtVersion"
   }
 
   private sealed trait DescriptorRequired extends BasicResolver {
@@ -355,7 +394,7 @@ private[sbt] object ConvertResolver {
     private[this] val repo = new WarnOnOverwriteFileRepo()
     private[this] val progress = new RepositoryCopyProgressListener(this);
     override def getResource(source: String) = {
-      val url = new URL(source)
+      val url = new URI(source).toURL
       if (url.getProtocol == IO.FileScheme)
         new FileResource(repo, IO.toFile(url))
       else
@@ -363,7 +402,7 @@ private[sbt] object ConvertResolver {
     }
 
     override def put(source: File, destination: String, overwrite: Boolean): Unit = {
-      val url = new URL(destination)
+      val url = new URI(destination).toURL
       try {
         if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
         else {

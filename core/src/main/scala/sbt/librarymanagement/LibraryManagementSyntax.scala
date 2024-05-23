@@ -28,6 +28,7 @@ trait LibraryManagementSyntax
   final val Compile = C.Compile
   final val Test = C.Test
   final val Runtime = C.Runtime
+  @deprecated("Create a separate subproject for testing instead", "1.9.0")
   final val IntegrationTest = C.IntegrationTest
   final val Default = C.Default
   final val Provided = C.Provided

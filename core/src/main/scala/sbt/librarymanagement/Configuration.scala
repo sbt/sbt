@@ -21,11 +21,11 @@ final class Configuration private[sbt] (
   override def equals(o: Any): Boolean = o match {
     case x: Configuration =>
       (this.id == x.id) &&
-        (this.name == x.name) &&
-        (this.description == x.description) &&
-        (this.isPublic == x.isPublic) &&
-        (this.extendsConfigs == x.extendsConfigs) &&
-        (this.transitive == x.transitive)
+      (this.name == x.name) &&
+      (this.description == x.description) &&
+      (this.isPublic == x.isPublic) &&
+      (this.extendsConfigs == x.extendsConfigs) &&
+      (this.transitive == x.transitive)
     case _ => false
   }
 
