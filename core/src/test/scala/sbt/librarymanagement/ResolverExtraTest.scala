@@ -36,7 +36,7 @@ object ResolverExtraTest extends BasicTestSuite {
   // - Helper functions ----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------------------------
   def assertExpansion(input: String, expected: String) =
-    assert(Resolver.expandMavenSettings(input) == s"$expected")
+    assert(Resolver.expandMavenSettings(input) == expected)
 
   def env(name: String) = sys.env.getOrElse(name, "")
   def prop(name: String) = sys.props.getOrElse(name, "")
