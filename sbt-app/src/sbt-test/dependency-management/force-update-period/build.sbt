@@ -1,17 +1,19 @@
 ThisBuild / useCoursier := false
 
+name := "force-update-period"
+scalaVersion := "2.12.18"
 libraryDependencies += "log4j" % "log4j" % "1.2.16" % "compile"
-
 autoScalaLibrary := false
 
-crossPaths := false
-
-TaskKey[Unit]("check-last-update-time") := (streams map { (s) =>
-  val fullUpdateOutput = s.cacheDirectory / "out"
-  val timeDiff = System.currentTimeMillis()-fullUpdateOutput.lastModified()
-  val exists = fullUpdateOutput.exists()
-  s.log.info(s"Amount of time since last full update: $timeDiff")
-  if (exists && timeDiff > 5000) {
-    sys.error("Full update not performed")
+TaskKey[Unit]("check-last-update-time") := {
+  val s = streams.value
+  val updateOutput = crossTarget.value / "update" / updateCacheName.value / "output"
+  if (!updateOutput.exists()) {
+    sys.error("Update cache does not exist")
   }
-}).value
+  val timeDiff = System.currentTimeMillis() - updateOutput.lastModified()
+  s.log.info(s"Amount of time since last full update: $timeDiff")
+  if (timeDiff > 5000) {
+    sys.error("Update not performed")
+  }
+}
