@@ -491,13 +491,15 @@ run() {
     addJava "-Djline.terminal=jline.UnixTerminal"
     addJava "-Dsbt.cygwin=true"
   fi
+  
+  local runSbt=(execRunner "$java_cmd" "${java_args[@]}" "${sbt_options[@]}" -jar "$sbt_jar")
 
   if [[ $print_sbt_version ]]; then
-    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
+    "${runSbt[@]}" -Dsbt.log.noformat=true "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
   elif [[ $print_sbt_script_version ]]; then
     echo "$init_sbt_version"
   elif [[ $print_version ]]; then
-    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
+    "${runSbt[@]}" -Dsbt.log.noformat=true "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
     echo "sbt script version: $init_sbt_version"
   elif [[ $shutdownall ]]; then
     local sbt_processes=( $(jps -v | grep sbt-launch | cut -f1 -d ' ') )
@@ -507,12 +509,7 @@ run() {
     echo "shutdown ${#sbt_processes[@]} sbt processes"
   else
     # run sbt
-    execRunner "$java_cmd" \
-      "${java_args[@]}" \
-      "${sbt_options[@]}" \
-      -jar "$sbt_jar" \
-      "${sbt_commands[@]}" \
-      "${residual_args[@]}"
+    "${runSbt[@]}" "${sbt_commands[@]}" "${residual_args[@]}"
   fi
 
   exit_code=$?
