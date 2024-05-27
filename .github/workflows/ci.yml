@@ -70,8 +70,8 @@ jobs:
     - name: Checkout sbt/librarymanagement
       uses: actions/checkout@v3
       with:
-        repository: sbt/librarymanagement
-        ref: develop
+        repository: adpi2/librarymanagement
+        ref: wip/sbt-2.x
         path: librarymanagement
     - name: Checkout sbt/zinc
       uses: actions/checkout@v3
@@ -109,6 +109,11 @@ jobs:
       run: |
         ./sbt -v lowerUtils/publishLocal
         cd zinc/
+        sbt publishLocal
+    - name: Publish local librarymanagement
+      shell: bash
+      run: |
+        cd librarymanagement
         sbt publishLocal
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
