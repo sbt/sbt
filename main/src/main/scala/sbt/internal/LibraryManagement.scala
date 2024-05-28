@@ -173,7 +173,7 @@ private[sbt] object LibraryManagement {
     handler((extraInputHash, settings, withoutClock))
   }
 
-  private[this] def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
+  private[this] def fileUptodate(file0: String, stamps: Map[File, Long], log: Logger): Boolean = {
     val file = File(file0)
     val exists = file.exists
     // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
@@ -183,7 +183,7 @@ private[sbt] object LibraryManagement {
     }
     // coursier doesn't populate stamps
     val timeStampIsSame = stamps
-      .get(file0)
+      .get(file)
       .forall(_ == IO.getModifiedTimeOrZero(file))
     exists && timeStampIsSame
   }

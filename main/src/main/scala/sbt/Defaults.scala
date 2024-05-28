@@ -2817,6 +2817,7 @@ object Defaults extends BuildCommon {
 
   lazy val testSettings: Seq[Setting[_]] = configSettings ++ testTasks
 
+  @nowarn
   lazy val itSettings: Seq[Setting[_]] = inConfig(IntegrationTest) {
     testSettings
   }
@@ -3235,8 +3236,8 @@ object Classpaths {
       s"$p/scala-$sv/$m"
     },
     ivyPaths := IvyPaths(
-      baseDirectory.value.toString,
-      bootIvyHome(appConfiguration.value).map(_.toString)
+      baseDirectory.value,
+      bootIvyHome(appConfiguration.value)
     ),
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
@@ -3249,7 +3250,7 @@ object Classpaths {
         else if (ip.ivyHome == defaultIvyCache) old
         else
           ip.ivyHome match {
-            case Some(home) => new File(home) / "coursier-cache"
+            case Some(home) => home / "coursier-cache"
             case _          => old
           }
       } else Classpaths.dummyCoursierDirectory(ac)

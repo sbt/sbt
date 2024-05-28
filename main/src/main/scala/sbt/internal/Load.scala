@@ -86,7 +86,7 @@ private[sbt] object Load {
     val ivyConfiguration =
       InlineIvyConfiguration()
         .withPaths(
-          IvyPaths(baseDirectory.toString, bootIvyHome(state.configuration).map(_.toString))
+          IvyPaths(baseDirectory, bootIvyHome(state.configuration))
         )
         .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
         .withLog(log)
