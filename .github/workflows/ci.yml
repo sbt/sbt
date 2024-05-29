@@ -73,6 +73,12 @@ jobs:
         repository: adpi2/librarymanagement
         ref: wip/sbt-2.x
         path: librarymanagement
+    - name: Checkout coursier/sbt-coursier
+      uses: actions/checkout@v3
+      with:
+        repository: adpi2/sbt-coursier
+        ref: wip/sbt-2.x
+        path: sbt-coursier
     - name: Checkout sbt/zinc
       uses: actions/checkout@v3
       with:
@@ -115,6 +121,11 @@ jobs:
       run: |
         cd librarymanagement
         sbt publishLocal
+    - name: Publish local sbt-coursier
+      shell: bash
+      run: |
+        cd sbt-coursier
+        sbt lm-coursier-shaded-publishing/publishLocal
     - name: Build and test (1)
       if: ${{ matrix.jobtype == 1 }}
       shell: bash
