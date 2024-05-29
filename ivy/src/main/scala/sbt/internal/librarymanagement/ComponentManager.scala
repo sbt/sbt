@@ -101,7 +101,7 @@ object IfMissing {
 object ComponentManager {
   lazy val (version, timestamp) = {
     val properties = new java.util.Properties
-    val propertiesStream = versionResource.openStream
+    val propertiesStream = getClass.getResourceAsStream("/xsbt.version.properties")
     try {
       properties.load(propertiesStream)
     } finally {
@@ -110,7 +110,4 @@ object ComponentManager {
     (properties.getProperty("version"), properties.getProperty("timestamp"))
   }
   lazy val stampedVersion = version + "_" + timestamp
-
-  import java.net.URL
-  private def versionResource: URL = getClass.getResource("/xsbt.version.properties")
 }
