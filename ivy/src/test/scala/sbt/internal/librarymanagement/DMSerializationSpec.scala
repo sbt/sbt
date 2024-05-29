@@ -75,7 +75,7 @@ object DMSerializationSpec extends BasicTestSuite {
       new File("./foo"),
       Vector(configurationReportExample),
       UpdateStats(0, 0, 0, false),
-      Map(new File("./foo") -> 0)
+      Map("./foo" -> 0)
     )
   lazy val configurationReportExample =
     ConfigurationReport(

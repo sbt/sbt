@@ -814,7 +814,7 @@
           "type": "sbt.librarymanagement.UpdateStats",
           "doc": [ "stats information about the update that produced this report" ]
         },
-        { "name": "stamps", "type": "Map[java.io.File, Long]" }
+        { "name": "stamps", "type": "Map[String, Long]" }
       ],
       "toString": "\"Update report:\\n\\t\" + stats + \"\\n\" + configurations.mkString"
     },
