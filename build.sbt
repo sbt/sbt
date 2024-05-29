@@ -282,6 +282,8 @@ lazy val lmIvy = (project in file("ivy"))
     contrabandSjsonNewVersion := sjsonNewVersion,
     libraryDependencies ++= Seq(
       ivy,
+      sjsonnewScalaJson.value,
+      sjsonnew.value,
       scalaTest % Test,
       scalaCheck % Test,
       scalaVerify % Test,
