@@ -141,7 +141,7 @@
         { "name": "extension",       "type": "String",                               "default": "Artifact.DefaultExtension", "since": "0.0.1" },
         { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
         { "name": "configurations",  "type": "sbt.librarymanagement.ConfigRef*",     "default": "Vector.empty",              "since": "0.0.1" },
-        { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
+        { "name": "url",             "type": "Option[java.net.URI]",                 "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
         { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" },
         { "name": "allowInsecureProtocol", "type": "Boolean",                        "default": "false",                     "since": "1.3.0" }

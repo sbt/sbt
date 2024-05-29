@@ -4,7 +4,7 @@
 package sbt.librarymanagement
 
 import java.io.File
-import java.net.URL
+import java.net.URI
 
 private[librarymanagement] abstract class ArtifactExtra {
   def extraAttributes: Map[String, String]
@@ -26,15 +26,15 @@ private[librarymanagement] abstract class ArtifactFunctions {
     Artifact(name, `type`, extension, None, Vector.empty, None)
   def apply(name: String, `type`: String, extension: String, classifier: String): Artifact =
     Artifact(name, `type`, extension, Some(classifier), Vector.empty, None)
-  def apply(name: String, url: URL): Artifact = Artifact(name, url, false)
-  def apply(name: String, url: URL, allowInsecureProtocol: Boolean): Artifact =
+  def apply(name: String, uri: URI): Artifact = Artifact(name, uri, false)
+  def apply(name: String, uri: URI, allowInsecureProtocol: Boolean): Artifact =
     Artifact(
       name,
-      extract(url, DefaultType),
-      extract(url, DefaultExtension),
+      extract(uri, DefaultType),
+      extract(uri, DefaultExtension),
       None,
       Vector.empty,
-      Some(url),
+      Some(uri),
       Map.empty,
       None,
       allowInsecureProtocol
@@ -47,8 +47,9 @@ private[librarymanagement] abstract class ArtifactFunctions {
       extension: String,
       classifier: Option[String],
       configurations: Vector[ConfigRef],
-      url: Option[URL]
-  ): Artifact = Artifact(name, `type`, extension, classifier, configurations, url, empty, None)
+      uri: Option[URI]
+  ): Artifact =
+    Artifact(name, `type`, extension, classifier, configurations, uri, empty, None)
 
   val DefaultExtension = "jar"
   val DefaultType = "jar"
@@ -78,7 +79,7 @@ private[librarymanagement] abstract class ArtifactFunctions {
   assert(DefaultDocTypes contains DocType)
   assert(DefaultSourceTypes contains SourceType)
 
-  def extract(url: URL, default: String): String = extract(url.toString, default)
+  def extract(uri: URI, default: String): String = extract(uri.toString, default)
   def extract(name: String, default: String): String = {
     val i = name.lastIndexOf('.')
     if (i >= 0)
@@ -96,7 +97,7 @@ private[librarymanagement] abstract class ArtifactFunctions {
       extract(name, DefaultExtension),
       None,
       Vector.empty,
-      Some(file.toURI.toURL)
+      Some(file.toURI)
     )
   }
   def artifactName(scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact): String = {
