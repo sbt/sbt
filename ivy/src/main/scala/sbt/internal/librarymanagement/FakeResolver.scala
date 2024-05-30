@@ -1,7 +1,7 @@
 package sbt
 
 import java.io.File
-import java.net.URL
+import java.net.URI
 
 import org.apache.ivy.core.cache.ArtifactOrigin
 import org.apache.ivy.core.cache.{ DefaultRepositoryCacheManager, RepositoryCacheManager }
@@ -69,7 +69,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
   ): ArtifactDownloadReport = {
 
     val report = new ArtifactDownloadReport(artifact.getArtifact)
-    val path = new URL(artifact.getLocation).toURI.getPath
+    val path = new URI(artifact.getLocation).toURL.toURI.getPath
     val localFile = new File(path)
 
     if (path.nonEmpty && localFile.exists) {

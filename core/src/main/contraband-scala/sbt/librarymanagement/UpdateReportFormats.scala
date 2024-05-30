@@ -14,7 +14,7 @@ implicit lazy val UpdateReportFormat: JsonFormat[sbt.librarymanagement.UpdateRep
       val cachedDescriptor = unbuilder.readField[java.io.File]("cachedDescriptor")
       val configurations = unbuilder.readField[Vector[sbt.librarymanagement.ConfigurationReport]]("configurations")
       val stats = unbuilder.readField[sbt.librarymanagement.UpdateStats]("stats")
-      val stamps = unbuilder.readField[Map[java.io.File, Long]]("stamps")
+      val stamps = unbuilder.readField[Map[String, Long]]("stamps")
       unbuilder.endObject()
       sbt.librarymanagement.UpdateReport(cachedDescriptor, configurations, stats, stamps)
       case None =>

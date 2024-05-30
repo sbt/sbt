@@ -30,7 +30,9 @@ object Util {
     val f = dir / "xsbt.version.properties"
     // TODO: replace lastModified() with sbt.io.IO.getModifiedTimeOrZero(), once the build
     // has been upgraded to a version of sbt that includes that call.
-    if (!f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)) {
+    if (
+      !f.exists || f.lastModified < lastCompilationTime(analysis) || !containsVersion(f, version)
+    ) {
       s.log.info("Writing version information to " + f + " :\n" + content)
       IO.write(f, content)
     }

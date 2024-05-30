@@ -16,7 +16,7 @@ final class UpdateReport private (
   val cachedDescriptor: java.io.File,
   val configurations: Vector[sbt.librarymanagement.ConfigurationReport],
   val stats: sbt.librarymanagement.UpdateStats,
-  val stamps: Map[java.io.File, Long]) extends sbt.librarymanagement.UpdateReportExtra with Serializable {
+  val stamps: Map[String, Long]) extends sbt.librarymanagement.UpdateReportExtra with Serializable {
   
   
   
@@ -30,7 +30,7 @@ final class UpdateReport private (
   override def toString: String = {
     "Update report:\n\t" + stats + "\n" + configurations.mkString
   }
-  private[this] def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[java.io.File, Long] = stamps): UpdateReport = {
+  private[this] def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[String, Long] = stamps): UpdateReport = {
     new UpdateReport(cachedDescriptor, configurations, stats, stamps)
   }
   def withCachedDescriptor(cachedDescriptor: java.io.File): UpdateReport = {
@@ -42,11 +42,11 @@ final class UpdateReport private (
   def withStats(stats: sbt.librarymanagement.UpdateStats): UpdateReport = {
     copy(stats = stats)
   }
-  def withStamps(stamps: Map[java.io.File, Long]): UpdateReport = {
+  def withStamps(stamps: Map[String, Long]): UpdateReport = {
     copy(stamps = stamps)
   }
 }
 object UpdateReport {
   
-  def apply(cachedDescriptor: java.io.File, configurations: Vector[sbt.librarymanagement.ConfigurationReport], stats: sbt.librarymanagement.UpdateStats, stamps: Map[java.io.File, Long]): UpdateReport = new UpdateReport(cachedDescriptor, configurations, stats, stamps)
+  def apply(cachedDescriptor: java.io.File, configurations: Vector[sbt.librarymanagement.ConfigurationReport], stats: sbt.librarymanagement.UpdateStats, stamps: Map[String, Long]): UpdateReport = new UpdateReport(cachedDescriptor, configurations, stats, stamps)
 }

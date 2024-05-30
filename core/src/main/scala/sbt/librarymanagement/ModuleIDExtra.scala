@@ -3,7 +3,7 @@
  */
 package sbt.librarymanagement
 
-import java.net.URL
+import java.net.URI
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import scala.collection.mutable.ListBuffer
@@ -133,7 +133,7 @@ private[librarymanagement] abstract class ModuleIDExtra {
    * It is not included in published metadata.
    */
   def from(url: String, allowInsecureProtocol: Boolean): ModuleID =
-    artifacts(Artifact(name, new URL(url), allowInsecureProtocol))
+    artifacts(Artifact(name, new URI(url).toURL, allowInsecureProtocol))
 
   /** Adds a dependency on the artifact for this module with classifier `c`. */
   def classifier(c: String): ModuleID = artifacts(Artifact(name, c))

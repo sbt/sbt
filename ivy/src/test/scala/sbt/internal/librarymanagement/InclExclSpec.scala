@@ -68,6 +68,10 @@ object InclExclSpec extends BaseIvySpecification {
       !report.allModules.exists(_.name.contains("lift-json")),
       "lift-json has not been excluded."
     )
+    assert(
+      !report.allModuleReports.exists(_.module.name.contains("lift-json")),
+      "lift-json has not been excluded."
+    )
   }
 
   def testScalaLibraryIsMissing(report: UpdateReport): Unit = {
@@ -75,11 +79,19 @@ object InclExclSpec extends BaseIvySpecification {
       !report.allModules.exists(_.name.contains("scala-library")),
       "scala-library has not been excluded."
     )
+    assert(
+      !report.allModuleReports.exists(_.module.name.contains("scala-library")),
+      "scala-library has not been excluded."
+    )
   }
 
   def testScalahostIsMissing(report: UpdateReport): Unit = {
     assert(
       !report.allModules.exists(_.name.contains("scalahost")),
+      "scalahost has not been excluded."
+    )
+    assert(
+      !report.allModuleReports.exists(_.module.name.contains("scalahost")),
       "scalahost has not been excluded."
     )
   }
