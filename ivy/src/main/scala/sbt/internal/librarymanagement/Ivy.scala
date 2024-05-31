@@ -53,6 +53,7 @@ import ivyint.{
 }
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
+import sbt.librarymanagement.ModuleSettings
 
 final class IvySbt(
     val configuration: IvyConfiguration,
@@ -125,10 +126,10 @@ final class IvySbt(
         IvySbt.loadURI(is, e.uri.getOrElse(sys.error("uri must be specified!")))
       case i: InlineIvyConfiguration =>
         val paths = getIvyPaths(i.paths)
-        is.setBaseDir(paths.baseDirectory)
+        is.setBaseDir(new File(paths.baseDirectory))
         is.setVariable("ivy.checksums", i.checksums mkString ",")
         is.setVariable(ConvertResolver.ManagedChecksums, i.managedChecksums.toString)
-        paths.ivyHome foreach is.setDefaultIvyUserDir
+        paths.ivyHome.foreach { (h) => is.setDefaultIvyUserDir(new File(h)) }
         IvySbt.configureCache(is, i.resolutionCacheDir)
         IvySbt.setResolvers(is, i.resolvers, i.otherResolvers, configuration.updateOptions, log)
         IvySbt.setModuleConfigurations(is, i.moduleConfigurations, log)
@@ -240,8 +241,8 @@ final class IvySbt(
     val moduleSettings: ModuleSettings =
       rawModuleSettings match {
         case ic: InlineConfiguration =>
-          val icWithCross = IvySbt.substituteCross(ic)
-          if (appendSbtCrossVersion) IvySbt.appendSbtCrossVersion(icWithCross)
+          val icWithCross: ModuleSettings = IvySbt.substituteCross(ic)
+          if appendSbtCrossVersion then IvySbt.appendSbtCrossVersion(icWithCross)
           else icWithCross
         case m => m
       }
@@ -717,31 +718,33 @@ private[sbt] object IvySbt {
     )
   }
 
-  private def substituteCross(ic: InlineConfiguration): InlineConfiguration = {
-    ic.scalaModuleInfo match {
-      case None     => ic
-      case Some(is) => substituteCross(ic, is.scalaFullVersion, is.scalaBinaryVersion, is.platform)
+  private def substituteCross(m: ModuleSettings): ModuleSettings =
+    m.scalaModuleInfo match {
+      case None     => m
+      case Some(is) => substituteCross(m, is.scalaFullVersion, is.scalaBinaryVersion, is.platform)
     }
-  }
 
   private def substituteCross(
-      ic: InlineConfiguration,
+      m: ModuleSettings,
       scalaFullVersion: String,
       scalaBinaryVersion: String,
       platform: Option[String]
-  ): InlineConfiguration = {
-    val applyPlatform: ModuleID => ModuleID = substitutePlatform(platform)
-    val applyCross = CrossVersion(scalaFullVersion, scalaBinaryVersion)
-    val transform: ModuleID => ModuleID = (m: ModuleID) => applyCross(applyPlatform(m))
-    def propagateCrossVersion(moduleID: ModuleID): ModuleID = {
-      val crossExclusions: Vector[ExclusionRule] =
-        moduleID.exclusions.map(CrossVersion.substituteCross(_, ic.scalaModuleInfo))
-      transform(moduleID)
-        .withExclusions(crossExclusions)
-    }
-    ic.withModule(transform(ic.module))
-      .withDependencies(ic.dependencies.map(propagateCrossVersion))
-      .withOverrides(ic.overrides map transform)
+  ): ModuleSettings = {
+    m match
+      case ic: InlineConfiguration =>
+        val applyPlatform: ModuleID => ModuleID = substitutePlatform(platform)
+        val applyCross = CrossVersion(scalaFullVersion, scalaBinaryVersion)
+        val transform: ModuleID => ModuleID = (m: ModuleID) => applyCross(applyPlatform(m))
+        def propagateCrossVersion(moduleID: ModuleID): ModuleID = {
+          val crossExclusions: Vector[ExclusionRule] =
+            moduleID.exclusions.map(CrossVersion.substituteCross(_, ic.scalaModuleInfo))
+          transform(moduleID)
+            .withExclusions(crossExclusions)
+        }
+        ic.withModule(transform(ic.module))
+          .withDependencies(ic.dependencies.map(propagateCrossVersion))
+          .withOverrides(ic.overrides map transform)
+      case m => m
   }
 
   private def substitutePlatform(platform: Option[String]): ModuleID => ModuleID = {
@@ -750,16 +753,22 @@ private[sbt] object IvySbt {
         case "" | Platform.jvm => m
         case _                 => m.withName(s"${m.name}_$platformName")
     (m: ModuleID) =>
-      (platform, m.platformOpt) match
-        case (Some(p), None) => addSuffix(m, p)
-        case (_, Some(p))    => addSuffix(m, p)
-        case _               => m
+      m.crossVersion match
+        case _: Disabled => m
+        case _ =>
+          (platform, m.platformOpt) match
+            case (Some(p), None) => addSuffix(m, p)
+            case (_, Some(p))    => addSuffix(m, p)
+            case _               => m
   }
 
-  private def appendSbtCrossVersion(ic: InlineConfiguration): InlineConfiguration =
-    ic.withModule(appendSbtCrossVersion(ic.module))
-      .withDependencies(ic.dependencies.map(appendSbtCrossVersion))
-      .withOverrides(ic.overrides.map(appendSbtCrossVersion))
+  private def appendSbtCrossVersion(m: ModuleSettings): ModuleSettings =
+    m match
+      case ic: InlineConfiguration =>
+        ic.withModule(appendSbtCrossVersion(ic.module))
+          .withDependencies(ic.dependencies.map(appendSbtCrossVersion))
+          .withOverrides(ic.overrides.map(appendSbtCrossVersion))
+      case m => m
 
   private def appendSbtCrossVersion(mid: ModuleID): ModuleID = {
     val crossVersion = for {

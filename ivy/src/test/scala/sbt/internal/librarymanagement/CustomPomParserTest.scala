@@ -18,7 +18,7 @@ object CustomPomParserTest extends BasicTestSuite {
     withTemporaryDirectory { cacheDir =>
       val repoUrl = getClass.getResource("/test-maven-repo")
       val local = MavenRepository("Test Repo", repoUrl.toExternalForm)
-      val paths = IvyPaths(new File("."), Some(cacheDir))
+      val paths = IvyPaths(new File(".").toString, Some(cacheDir.toString))
       val conf = InlineIvyConfiguration()
         .withPaths(paths)
         .withResolvers(Vector(local))

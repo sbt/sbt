@@ -71,7 +71,7 @@ trait BaseIvySpecification extends AbstractEngineSpec {
     val moduleConfs = Vector(ModuleConfiguration("*", chainResolver))
     val resCacheDir = currentTarget / "resolution-cache"
     InlineIvyConfiguration()
-      .withPaths(IvyPaths(currentBase, Some(currentTarget)))
+      .withPaths(IvyPaths(currentBase.toString, Some(currentTarget.toString)))
       .withResolvers(resolvers)
       .withModuleConfigurations(moduleConfs)
       .withChecksums(Vector.empty)

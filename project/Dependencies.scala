@@ -52,8 +52,8 @@ object Dependencies {
   val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
   val scalaReflect = Def.setting { "org.scala-lang" % "scala-reflect" % scalaVersion.value }
   val scalaCompiler = Def.setting { "org.scala-lang" % "scala-compiler" % scalaVersion.value }
-  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.10"
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.3.0"
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
   val sjsonNewVersion = "0.14.0-M1"

@@ -106,7 +106,7 @@ class IvyCache(val ivyHome: Option[File]) {
   /** A minimal Ivy setup with only a local resolver and the current directory as the base directory. */
   private def basicLocalIvy(lock: Option[xsbti.GlobalLock], log: Logger) = {
     val local = Resolver.defaultLocal
-    val paths = IvyPaths(new File("."), ivyHome)
+    val paths = IvyPaths(".", ivyHome.map(_.toString))
     val conf = InlineIvyConfiguration()
       .withPaths(paths)
       .withResolvers(Vector(local))

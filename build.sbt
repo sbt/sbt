@@ -37,8 +37,8 @@ ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
-
 ThisBuild / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+ThisBuild / evictionErrorLevel := Level.Info
 
 def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := scala3,

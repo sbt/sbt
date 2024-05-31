@@ -27,6 +27,20 @@ object PlatformResolutionSpec extends BaseIvySpecification {
     )
   }
 
+  test("sjs1 platform resolves % as JVM") {
+    cleanCache()
+    val m = module(
+      exampleModuleId("0.6.0"),
+      deps = Vector(junit),
+      Some(scala2_13),
+      platform = Some(sjs1),
+    )
+    assert(
+      update(m).configurations.head.modules.map(_.toString).mkString
+        contains "junit:junit:4.13.1"
+    )
+  }
+
   test("None platform can specify .platform(sjs1) depenency") {
     cleanCache()
     val m = module(
@@ -64,6 +78,7 @@ object PlatformResolutionSpec extends BaseIvySpecification {
 
   def exampleModuleId(v: String): ModuleID = ("com.example" % "foo" % v % Compile)
   def scopt = ("com.github.scopt" %% "scopt" % "4.1.0" % Compile)
+  def junit = ("junit" % "junit" % "4.13.1" % Compile)
   override val resolvers = Vector(
     Resolver.mavenCentral,
   )

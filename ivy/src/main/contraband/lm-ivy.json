@@ -137,8 +137,8 @@
       "target": "Scala",
       "type": "record",
       "fields": [
-        { "name": "baseDirectory", "type": "java.io.File"  },
-        { "name": "ivyHome",       "type": "java.io.File?" }
+        { "name": "baseDirectory", "type": "String"  },
+        { "name": "ivyHome",       "type": "String?" }
       ]
     }
   ]

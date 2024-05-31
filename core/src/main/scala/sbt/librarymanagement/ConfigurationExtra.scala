@@ -111,7 +111,7 @@ private[librarymanagement] abstract class ConfigurationExtra {
 }
 
 private[sbt] object ConfigurationMacro:
-  def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] = {
+  def configMacroImpl(name: Expr[String])(using Quotes): Expr[Configuration] =
     import quotes.reflect.*
     def enclosingTerm(sym: Symbol): Symbol =
       sym match
@@ -128,7 +128,6 @@ private[sbt] object ConfigurationMacro:
     if enclosingValName.head.isLower then report.error("configuration id must be capitalized")
     val id = Expr(enclosingValName)
     '{ Configuration.of($id, $name) }
-  }
 end ConfigurationMacro
 
 private[librarymanagement] abstract class ConfigRefFunctions {

@@ -21,7 +21,7 @@ object IvyInternalDefaults {
     opt.getOrElse(Logger.Null)
 
   def defaultIvyPaths: IvyPaths =
-    IvyPaths(defaultBaseDirectory, None)
+    IvyPaths(defaultBaseDirectory.toString, None)
 
   def getIvyPaths(opt: Option[IvyPaths]): IvyPaths =
     opt.getOrElse(defaultIvyPaths)
