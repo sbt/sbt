@@ -208,8 +208,6 @@ lazy val `lm-coursier-shaded` = project
         "org.codehaus",
         "org.iq80",
         "org.tukaani",
-        "scala.collection.compat",
-        "scala.util.control.compat",
         "com.github.plokhotnyuk.jsoniter_scala",
         "scala.cli",
         "com.github.luben.zstd",
