@@ -219,28 +219,25 @@ object BuildServerProtocol {
       state.value.respondEvent(result)
     }.evaluated,
     bspBuildTargetScalacOptions / aggregate := false,
-    bspBuildTargetJavacOptions := bspInputTask { (state, _, workspace, filter) =>
-      Def.task {
-        val items = bspBuildTargetJavacOptionsItem.result.all(filter).value
-        val appProvider = appConfiguration.value.provider()
-        val sbtJars = appProvider.mainClasspath()
-        val buildItems = workspace.builds.map { case (targetId, build) =>
-          Value(javacOptionsBuildItem(sbtJars, targetId, build))
-        }
-        val successfulItems = anyOrThrow(items ++ buildItems)
-        val result = JavacOptionsResult(successfulItems.toVector)
-        state.respondEvent(result)
+    bspBuildTargetJavacOptions := bspInputTask { (workspace, filter) =>
+      val items = bspBuildTargetJavacOptionsItem.result.all(filter).value
+      val appProvider = appConfiguration.value.provider()
+      val sbtJars = appProvider.mainClasspath()
+      val buildItems = workspace.builds.map { case (targetId, build) =>
+        Result.Value(javacOptionsBuildItem(sbtJars, targetId, build))
       }
+      val successfulItems = anyOrThrow(items ++ buildItems)
+      val result = JavacOptionsResult(successfulItems.toVector)
+      state.value.respondEvent(result)
     }.evaluated,
     bspBuildTargetJavacOptions / aggregate := false,
-    bspScalaTestClasses := bspInputTask { (state, _, workspace, filter) =>
-      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, state.log)
-      Def.task {
-        val items = bspScalaTestClassesItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items).flatten.toVector
-        val result = ScalaTestClassesResult(successfulItems.toVector, None)
-        state.respondEvent(result)
-      }
+    bspScalaTestClasses := bspInputTask { (workspace, filter) =>
+      val s = state.value
+      workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, s.log)
+      val items = bspScalaTestClassesItem.result.all(filter).value
+      val successfulItems = anyOrThrow(items).flatten.toVector
+      val result = ScalaTestClassesResult(successfulItems.toVector, None)
+      s.respondEvent(result)
     }.evaluated,
     bspBuildTargetJVMRunEnvironment / aggregate := false,
     bspBuildTargetJVMTestEnvironment := bspInputTask { (_, filter) =>
@@ -323,21 +320,17 @@ object BuildServerProtocol {
       val classpath = classpathTask.value
       JavacOptionsItem(target, javacOptions, classpath, classDirectory.toURI)
     },
-    bspBuildTargetJVMRunEnvironment := bspInputTask { (state, _, _, filter) =>
-      Def.task {
-        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items)
-        val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
-        state.respondEvent(result)
-      }
+    bspBuildTargetJVMRunEnvironment := bspInputTask { (_, filter) =>
+      val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+      val successfulItems = anyOrThrow(items)
+      val result = JvmRunEnvironmentResult(successfulItems.toVector, None)
+      state.value.respondEvent(result)
     }.evaluated,
-    bspBuildTargetJVMTestEnvironment := bspInputTask { (state, _, _, filter) =>
-      Def.task {
-        val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
-        val successfulItems = anyOrThrow(items)
-        val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
-        state.respondEvent(result)
-      }
+    bspBuildTargetJVMTestEnvironment := bspInputTask { (_, filter) =>
+      val items = bspBuildTargetJvmEnvironmentItem.result.all(filter).value
+      val successfulItems = anyOrThrow(items)
+      val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
+      state.value.respondEvent(result)
     }.evaluated,
     bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem().value,
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
@@ -743,39 +736,37 @@ object BuildServerProtocol {
   ): ScalacOptionsItem = {
     val plugins: LoadedPlugins = build.unit.plugins
     val scalacOptions = plugins.pluginData.scalacOptions.toVector
-    val pluginClassPath = plugins.classpath
-    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val converter = plugins.pluginData.converter
+    val classpath =
+      plugins.classpath.map(f => converter.toPath(f).toFile.toURI).toVector ++
+        sbtJars.map(_.toURI).toVector
+    val classDirectory = new File(build.localBase, "project/target").toURI
     val item = ScalacOptionsItem(targetId, scalacOptions, classpath, classDirectory)
     item
   }
 
   private def javacOptionsBuildItem(
-      sbtJars: Seq[File],
+      sbtJars: Array[File],
       targetId: BuildTargetIdentifier,
       build: LoadedBuildUnit
   ): JavacOptionsItem = {
     val plugins: LoadedPlugins = build.unit.plugins
     val javacOptions = plugins.pluginData.javacOptions.toVector
-    val pluginClassPath = plugins.classpath
-    val classpath = (pluginClassPath ++ sbtJars).map(_.toURI).toVector
-    val classDirectory = plugins.pluginData.classDirectory.map(_.toURI)
+    val converter = plugins.pluginData.converter
+    val classpath =
+      plugins.classpath.map(f => converter.toPath(f).toFile.toURI).toVector ++
+        sbtJars.map(_.toURI).toVector
+    val classDirectory = new File(build.localBase, "project/target").toURI
     val item = JavacOptionsItem(targetId, javacOptions, classpath, classDirectory)
     item
   }
 
-  private def bspInputTask[T](
-      taskImpl: (
-          State,
-          Seq[BuildTargetIdentifier],
-          BspFullWorkspace,
-          ScopeFilter
-      ) => Def.Initialize[Task[T]]
+  private inline def bspInputTask[T](
+      inline taskImpl: (BspFullWorkspace, ScopeFilter) => T
   ): Def.Initialize[InputTask[T]] =
     Def
       .input(_ => targetIdentifierParser)
       .flatMapTask { targets =>
-        val s = state.value
         val workspace: BspFullWorkspace = bspFullWorkspace.value.filter(targets)
         val filter = ScopeFilter.in(workspace.scopes.values.toList)
         Def.task(taskImpl(workspace, filter))
@@ -847,16 +838,16 @@ object BuildServerProtocol {
       }
 
   private lazy val classpathTask: Def.Initialize[Task[Vector[URI]]] = Def.taskDyn {
+    val converter = fileConverter.value
     val externalDependencyClasspath = Keys.externalDependencyClasspath.value
+      .map(f => converter.toPath(f.data).toFile.toURI)
     val internalDependencyClasspath = for {
       (ref, configs) <- bspInternalDependencyConfigurations.value
       config <- configs
     } yield ref / config / Keys.classDirectory
     Def.task {
-      val classpath = internalDependencyClasspath.join.value.distinct ++
-        externalDependencyClasspath.map(_.data)
-
-      classpath.map(_.toURI).toVector
+      internalDependencyClasspath.join.value.distinct.map(_.toURI).toVector ++
+        externalDependencyClasspath
     }
   }
 

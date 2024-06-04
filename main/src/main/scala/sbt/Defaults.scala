@@ -2730,7 +2730,12 @@ object Defaults extends BuildCommon {
         )
       },
       bspCompileTask :=
-        BspCompileTask.start(bspTargetIdentifier.value, thisProjectRef.value, configuration.value)
+        BspCompileTask.start(
+          bspTargetIdentifier.value,
+          thisProjectRef.value,
+          configuration.value,
+          compileInputs.value
+        )
     )
   }
 
@@ -3148,7 +3153,7 @@ object Classpaths {
 
   private lazy val publishSbtPluginMavenStyle = Def.task(sbtPlugin.value && publishMavenStyle.value)
   private lazy val packagedDefaultArtifacts = packaged(defaultArtifactTasks)
-  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, File])
+  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, HashedVirtualFileRef])
 
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
@@ -3159,7 +3164,7 @@ object Classpaths {
     publishLocal / packagedArtifacts ++= {
       if (sbtPlugin.value && !sbtPluginPublishLegacyMavenStyle.value) {
         packagedDefaultArtifacts.value
-      } else Map.empty[Artifact, File]
+      } else Map.empty[Artifact, HashedVirtualFileRef]
     }
   ) ++ RemoteCache.projectSettings
 
@@ -3168,20 +3173,24 @@ object Classpaths {
    * It adds the sbt-cross version suffix into the artifact names, and it generates a
    * valid POM file, that is a POM file that Maven can resolve.
    */
-  private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, File]]] =
+  private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, HashedVirtualFileRef]]] =
     Def.task {
       val crossVersion = sbtCrossVersion.value
       val legacyArtifact = (makePom / artifact).value
-      val pom = makeMavenPomOfSbtPlugin.value
+      val converter = fileConverter.value
+      val pom = converter.toVirtualFile(makeMavenPomOfSbtPlugin.value.toPath)
       val legacyPackages = packaged(defaultPackages).value
-
       def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
-      def copyArtifact(artifact: Artifact, file: File): (Artifact, File) = {
+      def copyArtifact(
+          artifact: Artifact,
+          fileRef: HashedVirtualFileRef
+      ): (Artifact, HashedVirtualFileRef) = {
         val nameWithSuffix = crossVersion(artifact.name)
+        val file = converter.toPath(fileRef).toFile
         val targetFile =
           new File(file.getParentFile, file.name.replace(artifact.name, nameWithSuffix))
         IO.copyFile(file, targetFile)
-        artifact.withName(nameWithSuffix) -> targetFile
+        artifact.withName(nameWithSuffix) -> converter.toVirtualFile(targetFile.toPath)
       }
       val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
       val legacyPackagedArtifacts = Def
@@ -3376,10 +3385,7 @@ object Classpaths {
       val sv = scalaVersion.value
       s"$p/scala-$sv/$m"
     },
-    ivyPaths := IvyPaths(
-      baseDirectory.value.toString,
-      bootIvyHome(appConfiguration.value).map(_.toString)
-    ),
+    ivyPaths := IvyPaths(baseDirectory.value, bootIvyHome(appConfiguration.value)),
     csrCacheDirectory := {
       val old = csrCacheDirectory.value
       val ac = appConfiguration.value
@@ -3391,7 +3397,7 @@ object Classpaths {
         else if (ip.ivyHome == defaultIvyCache) old
         else
           ip.ivyHome match {
-            case Some(home) => new File(home) / "coursier-cache"
+            case Some(home) => home / "coursier-cache"
             case _          => old
           }
       } else Classpaths.dummyCoursierDirectory(ac)

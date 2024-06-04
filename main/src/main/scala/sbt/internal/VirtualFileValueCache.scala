@@ -34,7 +34,7 @@ object VirtualFileValueCache {
   def apply[A](converter: FileConverter)(f: VirtualFile => A): VirtualFileValueCache[A] = {
     import collection.concurrent.Map
     import java.util.concurrent.ConcurrentHashMap
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new ConcurrentHashMap().asScala
     make(
       Stamper.timeWrap(

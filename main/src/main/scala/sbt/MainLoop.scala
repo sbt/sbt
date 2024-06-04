@@ -13,7 +13,13 @@ import sbt.ProjectExtra.extract
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
 import sbt.internal.protocol.JsonRpcResponseError
-import sbt.internal.util.{ ErrorHandling, GlobalLogBacking, Prompt, Terminal => ITerminal }
+import sbt.internal.util.{
+  AttributeKey,
+  ErrorHandling,
+  GlobalLogBacking,
+  Prompt,
+  Terminal => ITerminal
+}
 import sbt.internal.{ FastTrackCommands, ShutdownHooks, SysProp, TaskProgress }
 import sbt.io.{ IO, Using }
 import sbt.protocol._
@@ -254,16 +260,29 @@ object MainLoop {
          */
         val newState =
           try {
-            FastTrackCommands
+            var errorMsg: Option[String] = None
+            val res = FastTrackCommands
               .evaluate(termState, exec.commandLine)
-              .getOrElse(Command.process(exec.commandLine, termState))
+              .getOrElse(Command.process(exec.commandLine, termState, m => errorMsg = Some(m)))
+            errorMsg match {
+              case Some(msg) =>
+                currentCmdProgress.foreach(
+                  _.afterCommand(exec.commandLine, Left(new ParseException(msg, 0)))
+                )
+              case None => currentCmdProgress.foreach(_.afterCommand(exec.commandLine, Right(res)))
+            }
+            res
           } catch {
             case _: RejectedExecutionException =>
-              // No stack trace since this is just to notify the user which command they cancelled
-              object Cancelled extends Throwable(exec.commandLine, null, true, false) {
-                override def toString: String = s"Cancelled: ${exec.commandLine}"
-              }
-              throw Cancelled
+              val cancelled = new Cancelled(exec.commandLine)
+              currentCmdProgress
+                .foreach(_.afterCommand(exec.commandLine, Left(cancelled)))
+              throw cancelled
+
+            case e: Throwable =>
+              currentCmdProgress
+                .foreach(_.afterCommand(exec.commandLine, Left(e)))
+              throw e
           } finally {
             // Flush the terminal output after command evaluation to ensure that all output
             // is displayed in the thin client before we report the command status. Also

@@ -44,29 +44,24 @@ private[sbt] class BatchScriptRunner extends ScriptRunner with AutoCloseable {
 
   def processStatement(handler: StatementHandler, statement: Statement, states: States): Unit = {
     val state = states(handler).asInstanceOf[handler.State]
-    val nextStateFuture = service.submit(() =>
+    val nextState =
       try Right(handler(statement.command, statement.arguments, state))
       catch { case e: Exception => Left(e) }
-    )
-    try {
-      nextStateFuture.get(timeout.toMillis, TimeUnit.MILLISECONDS) match {
-        case Left(err) =>
-          if (statement.successExpected) {
-            err match {
-              case t: TestFailed =>
-                throw new TestException(statement, "Command failed: " + t.getMessage, null)
-              case _ => throw new TestException(statement, "Command failed", err)
-            }
-          } else
-            ()
-        case Right(s) =>
-          if (statement.successExpected)
-            states(handler) = s
-          else
-            throw new TestException(statement, "Command succeeded but failure was expected", null)
-      }
-    } catch {
-      case e: TimeoutException => throw new TestException(statement, "Command timed out", e)
+    nextState match {
+      case Left(err) =>
+        if (statement.successExpected) {
+          err match {
+            case t: TestFailed =>
+              throw new TestException(statement, "Command failed: " + t.getMessage, null)
+            case _ => throw new TestException(statement, "Command failed", err)
+          }
+        } else
+          ()
+      case Right(s) =>
+        if (statement.successExpected)
+          states(handler) = s
+        else
+          throw new TestException(statement, "Command succeeded but failure was expected", null)
     }
   }
 

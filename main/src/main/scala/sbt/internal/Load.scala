@@ -87,7 +87,7 @@ private[sbt] object Load {
     val ivyConfiguration =
       InlineIvyConfiguration()
         .withPaths(
-          IvyPaths(baseDirectory.toString, bootIvyHome(state.configuration).map(_.toString))
+          IvyPaths(baseDirectory, bootIvyHome(state.configuration))
         )
         .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
         .withLog(log)
@@ -1379,19 +1379,7 @@ private[sbt] object Load {
     loadPluginDefinition(
       dir,
       config,
-      PluginData(
-        config.globalPluginClasspath,
-        Nil,
-        None,
-        None,
-        Nil,
-        Nil,
-        Nil,
-        Nil,
-        Nil,
-        None,
-        config.converter,
-      )
+      PluginData(config.globalPluginClasspath, config.converter)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1591,6 +1579,7 @@ final case class LoadBuildConfiguration(
           data.internalClasspath,
           Some(data.resolvers),
           Some(data.updateReport),
+          Nil,
           Nil,
           Nil,
           Nil,

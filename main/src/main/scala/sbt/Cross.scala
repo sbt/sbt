@@ -21,7 +21,7 @@ import sbt.internal.util.MessageOnlyException
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.io.IO
-import sbt.librarymanagement.{ CrossVersion, SemanticSelector, VersionNumber }
+import sbt.librarymanagement.{ SemanticSelector, VersionNumber }
 
 /**
  * Cross implements the Scala cross building commands:

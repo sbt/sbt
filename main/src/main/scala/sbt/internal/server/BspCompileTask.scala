@@ -10,9 +10,6 @@ package sbt.internal.server
 
 import sbt._
 import sbt.internal.bsp._
-import sbt.internal.io.Retry
-import sbt.internal.server.BspCompileTask.compileReport
-import sbt.internal.server.BspCompileTask.exchange
 import sbt.librarymanagement.Configuration
 import sbt.util.InterfaceUtil
 import sjsonnew.support.scalajson.unsafe.Converter
@@ -20,46 +17,7 @@ import xsbti.compile.{ CompileAnalysis, Inputs }
 import xsbti.{ CompileFailed, Problem, Severity }
 
 object BspCompileTask {
-  private lazy val exchange = StandardMain.exchange
-
   def start(
-      targetId: BuildTargetIdentifier,
-      project: ProjectRef,
-      config: Configuration
-  ): BspCompileTask = {
-    val taskId = TaskId(BuildServerTasks.uniqueId, Vector())
-    val targetName = BuildTargetName.fromScope(project.project, config.name)
-    val task = BspCompileTask(targetId, targetName, taskId, System.currentTimeMillis())
-    task.notifyStart()
-    task
-  }
-
-  def compute(
-      targetId: BuildTargetIdentifier,
-      project: ProjectRef,
-      config: Configuration,
-      ci: Inputs
-  )(
-      compile: BspCompileTask => CompileResult
-  ): CompileResult = {
-    val task = BspCompileTask(targetId, project, config, ci)
-    try {
-      task.notifyStart()
-      val result = Retry(compile(task))
-      task.notifySuccess(result)
-      result
-    } catch {
-      case NonFatal(cause) =>
-        val compileFailed = cause match {
-          case failed: CompileFailed => Some(failed)
-          case _                     => None
-        }
-        task.notifyFailure(compileFailed)
-        throw cause
-    }
-  }
-
-  private def apply(
       targetId: BuildTargetIdentifier,
       project: ProjectRef,
       config: Configuration,
@@ -67,19 +25,9 @@ object BspCompileTask {
   ): BspCompileTask = {
     val taskId = TaskId(BuildServerTasks.uniqueId, Vector())
     val targetName = BuildTargetName.fromScope(project.project, config.name)
-    new BspCompileTask(targetId, targetName, taskId, inputs, System.currentTimeMillis())
-  }
-
-  private def compileReport(
-      problems: Seq[Problem],
-      targetId: BuildTargetIdentifier,
-      elapsedTimeMillis: Long,
-      isNoOp: Option[Boolean]
-  ): CompileReport = {
-    val countBySeverity = problems.groupBy(_.severity()).mapValues(_.size)
-    val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
-    val errors = countBySeverity.getOrElse(Severity.Error, 0)
-    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt), isNoOp)
+    val task = BspCompileTask(targetId, targetName, taskId, inputs, System.currentTimeMillis())
+    task.notifyStart()
+    task
   }
 }
 
@@ -105,8 +53,8 @@ case class BspCompileTask private (
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
     val sourceInfos = analysis.readSourceInfos().getAllSourceInfos.asScala
     val problems = sourceInfos.values.flatMap(_.getReportedProblems).toSeq
-    val isNoOp = InterfaceUtil.toOption(inputs.previousResult.analysis).map(_ == result.analysis)
-    val report = compileReport(problems, targetId, elapsedTimeMillis, isNoOp)
+    val isNoOp = InterfaceUtil.toOption(inputs.previousResult.analysis).map(_ == analysis)
+    val report = compileReport(problems, elapsedTimeMillis, isNoOp)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -139,7 +87,7 @@ case class BspCompileTask private (
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
     val problems = cause.map(_.problems().toSeq).getOrElse(Seq.empty[Problem])
-    val report = compileReport(problems, targetId, elapsedTimeMillis, None)
+    val report = compileReport(problems, elapsedTimeMillis, None)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -151,10 +99,14 @@ case class BspCompileTask private (
     StandardMain.exchange.notifyEvent("build/taskFinish", params)
   }
 
-  private def compileReport(problems: Seq[Problem], elapsedTimeMillis: Long): CompileReport = {
-    val countBySeverity = problems.groupBy(_.severity).view.mapValues(_.size)
+  private def compileReport(
+      problems: Seq[Problem],
+      elapsedTimeMillis: Long,
+      isNoOp: Option[Boolean]
+  ): CompileReport = {
+    val countBySeverity = problems.groupBy(_.severity()).view.mapValues(_.size).toMap
     val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
     val errors = countBySeverity.getOrElse(Severity.Error, 0)
-    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt))
+    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt), isNoOp)
   }
 }

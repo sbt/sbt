@@ -368,7 +368,7 @@ lazy val utilLogging = project
         disruptor,
         sjsonNewScalaJson.value,
       ),
-    libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
+    testDependencies,
     Compile / generateContrabands / contrabandCodecsDependencies := List(sjsonNewCore.value),
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / managedSourceDirectories +=

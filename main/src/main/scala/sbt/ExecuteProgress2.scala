@@ -45,17 +45,18 @@ class ExecuteProgressAdapter(ep: ExecuteProgress) extends ExecuteProgress2 {
   override def afterCommand(cmd: String, result: Either[Throwable, State]): Unit = {}
   override def initial(): Unit = ep.initial()
   override def afterRegistered(
-      task: Task[_],
-      allDeps: Iterable[Task[_]],
-      pendingDeps: Iterable[Task[_]]
+      task: TaskId[_],
+      allDeps: Iterable[TaskId[_]],
+      pendingDeps: Iterable[TaskId[_]]
   ): Unit = ep.afterRegistered(task, allDeps, pendingDeps)
-  override def afterReady(task: Task[_]): Unit = ep.afterReady(task)
-  override def beforeWork(task: Task[_]): Unit = ep.beforeWork(task)
-  override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
+  override def afterReady(task: TaskId[_]): Unit = ep.afterReady(task)
+  override def beforeWork(task: TaskId[_]): Unit = ep.beforeWork(task)
+  override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit =
     ep.afterWork(task, result)
-  override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
+  override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit =
     ep.afterCompleted(task, result)
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit = ep.afterAllCompleted(results)
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
+    ep.afterAllCompleted(results)
   override def stop(): Unit = ep.stop()
 }
 
@@ -67,17 +68,17 @@ object ExecuteProgress2 {
       xs.foreach(_.afterCommand(cmd, result))
     override def initial(): Unit = xs.foreach(_.initial())
     override def afterRegistered(
-        task: Task[_],
-        allDeps: Iterable[Task[_]],
-        pendingDeps: Iterable[Task[_]]
+        task: TaskId[_],
+        allDeps: Iterable[TaskId[_]],
+        pendingDeps: Iterable[TaskId[_]]
     ): Unit = xs.foreach(_.afterRegistered(task, allDeps, pendingDeps))
-    override def afterReady(task: Task[_]): Unit = xs.foreach(_.afterReady(task))
-    override def beforeWork(task: Task[_]): Unit = xs.foreach(_.beforeWork(task))
-    override def afterWork[A](task: Task[A], result: Either[Task[A], Result[A]]): Unit =
+    override def afterReady(task: TaskId[_]): Unit = xs.foreach(_.afterReady(task))
+    override def beforeWork(task: TaskId[_]): Unit = xs.foreach(_.beforeWork(task))
+    override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit =
       xs.foreach(_.afterWork(task, result))
-    override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
+    override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit =
       xs.foreach(_.afterCompleted(task, result))
-    override def afterAllCompleted(results: RMap[Task, Result]): Unit =
+    override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
       xs.foreach(_.afterAllCompleted(results))
     override def stop(): Unit = xs.foreach(_.stop())
   }

@@ -127,8 +127,7 @@ final class BuildServerReporterImpl(
     if (oldDocuments.nonEmpty || problems.nonEmpty || isFirstReport) {
       val diagsByDocuments = problems
         .flatMap(mapProblemToDiagnostic)
-        .groupBy { case (document, _) => document }
-        .mapValues(_.map { case (_, diag) => diag })
+        .groupMap((document, _) => document)((_, diag) => diag)
       updateNewDocuments(source, diagsByDocuments.keys.toVector)
 
       // send a report for the new documents, the old ones and the source file

@@ -162,7 +162,7 @@ final case class PluginData(
 
 object PluginData {
   private[sbt] def apply(dependencyClasspath: Def.Classpath, converter: FileConverter): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None, converter)
+    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, Nil, None, converter)
 }
 
 object EvaluateTask {
@@ -309,7 +309,7 @@ object EvaluateTask {
         ExecuteProgress2.aggregate(reporters match {
           case xs if xs.isEmpty   => cmdProgress
           case xs if xs.size == 1 => cmdProgress :+ new ExecuteProgressAdapter(xs.head)
-          case xs => cmdProgress :+ new ExecuteProgressAdapter(ExecuteProgress.aggregate[Task](xs))
+          case xs => cmdProgress :+ new ExecuteProgressAdapter(ExecuteProgress.aggregate(xs))
         })
       }
   }

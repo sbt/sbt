@@ -18,6 +18,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import java.io.File
 import java.net.URI
 import java.nio.file.Files
+import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration.*
 
 // starts svr using server-test/buildserver and perform custom server tests
@@ -26,6 +27,8 @@ class BuildServerTest extends AbstractServerTest {
   import sbt.internal.bsp.codec.JsonProtocol._
 
   override val testDirectory: String = "buildserver"
+  private val idGen: AtomicInteger = new AtomicInteger(0)
+  private def nextId(): Int = idGen.getAndIncrement()
 
   test("build/initialize") {
     initializeRequest()
@@ -40,7 +43,7 @@ class BuildServerTest extends AbstractServerTest {
     svr.sendJsonRpc(
       """{ "jsonrpc": "2.0", "id": "16", "method": "workspace/buildTargets", "params": {} }"""
     )
-    assert(processing("workspace/buildTargets"))
+    assertProcessing("workspace/buildTargets")
     val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
     val utilTarget = result.targets.find(_.displayName.contains("util")).get
     assert(utilTarget.id.uri.toString.endsWith("#util/Compile"))
@@ -97,7 +100,7 @@ class BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/compile - reports compilation progress") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
-    compile(buildTarget, id = 33)
+    compile(buildTarget)
     // This doesn't always come back in 10s on CI.
     assert(svr.waitForString(20.seconds) { s =>
       s.contains("build/taskStart") &&
@@ -220,7 +223,7 @@ class BuildServerTest extends AbstractServerTest {
     )
   }
 
-  test("buildTarget/compile: Java diagnostics") { _ =>
+  test("buildTarget/compile: Java diagnostics") {
     val buildTarget = buildTargetUri("javaProj", "Compile")
 
     compile(buildTarget)
@@ -242,7 +245,7 @@ class BuildServerTest extends AbstractServerTest {
     )
   }
 
-  test("buildTarget/scalacOptions, buildTarget/javacOptions") { _ =>
+  test("buildTarget/scalacOptions, buildTarget/javacOptions") {
     val buildTarget = buildTargetUri("util", "Compile")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
 
@@ -292,7 +295,7 @@ class BuildServerTest extends AbstractServerTest {
     assert(res.cleaned)
   }
 
-  test("workspace/reload") { _ =>
+  test("workspace/reload") {
     val id = nextId()
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "$id", "method": "workspace/reload"}"""
@@ -315,7 +318,7 @@ class BuildServerTest extends AbstractServerTest {
     // reload
     assertMessage(
       s""""buildTarget":{"uri":"$metaBuildTarget"}""",
-      s""""textDocument":{"uri":"${otherBuildFile.toPath.toUri}"}""",
+      s""""textDocument":{"uri":"${otherBuildFile.toUri}"}""",
       """"severity":1""",
       """"reset":true"""
     )()
@@ -338,11 +341,11 @@ class BuildServerTest extends AbstractServerTest {
     // assert received an empty diagnostic
     assertMessage(
       s""""buildTarget":{"uri":"$metaBuildTarget"}""",
-      s""""textDocument":{"uri":"${otherBuildFile.toPath.toUri}"}""",
+      s""""textDocument":{"uri":"${otherBuildFile.toUri}"}""",
       """"diagnostics":[]""",
       """"reset":true"""
     )()
-    IO.delete(otherBuildFile)
+    Files.delete(otherBuildFile)
   }
 
   test("buildTarget/scalaMainClasses") {
@@ -534,7 +537,7 @@ class BuildServerTest extends AbstractServerTest {
     assert(actualResult == expectedResult)
   }
 
-  test("buildTarget/compile: twirl diagnostics (sourcePositionMappers)") { _ =>
+  test("buildTarget/compile: twirl diagnostics (sourcePositionMappers)") {
     val buildTarget = buildTargetUri("twirlProj", "Compile")
     val testFile = new File(svr.baseDirectory, s"twirlProj/src/main/twirl/main.scala.html")
 
@@ -598,7 +601,7 @@ class BuildServerTest extends AbstractServerTest {
         if (debug) println(msg)
         parts.forall(msg.contains)
       }
-    if (message.nonEmpty) assert.apply(assertion, message) else assert(assertion)
+    if (message.nonEmpty) assert(assertion, message) else assert(assertion)
   }
 
   private def reloadWorkspace(): Int =
