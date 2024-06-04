@@ -18,7 +18,7 @@ inThisBuild(List(
   semanticdbEnabled := true,
   semanticdbVersion := "4.8.14",
   scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
-  version := "2.0.0-alpha7-SNAPSHOT",
+  version := "2.0.0-alpha8-SNAPSHOT",
   scalaVersion := scala3,
 ))
 
@@ -43,10 +43,10 @@ ThisBuild / assemblyMergeStrategy := {
     oldStrategy(x)
 }
 
-val coursierVersion0 = "2.1.0-M5"
+val coursierVersion0 = "2.1.9"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-alpha12"
+val lm3Version = "2.0.0-alpha15"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -65,10 +65,18 @@ lazy val scalafixGen = Def.taskDyn {
 Global / excludeLintKeys += scriptedBufferLog
 Global / excludeLintKeys += scriptedLaunchOpts
 
-def coursierVersion0 = "2.1.9"
 def coursierDep = ("io.get-coursier" %% "coursier" % coursierVersion0)
+  .cross(CrossVersion.for3Use2_13)
   .exclude("org.codehaus.plexus", "plexus-archiver")
   .exclude("org.codehaus.plexus", "plexus-container-default")
+
+def coursierSbtMavenRepoDep = ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0)
+  .cross(CrossVersion.for3Use2_13)
+
+def excludedDependencies = Seq(
+  ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
+  ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),
+)
 
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
@@ -125,7 +133,7 @@ lazy val `lm-coursier` = project
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
       coursierDep,
-      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
+      coursierSbtMavenRepoDep,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
 
@@ -135,8 +143,9 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       lmIvy.value,
-      ("org.scalatest" %% "scalatest" % "3.2.18" % Test).cross(CrossVersion.for3Use2_13),
+      "org.scalatest" %% "scalatest" % "3.2.18" % Test,
     ),
+    excludeDependencies ++= excludedDependencies,
     Test / exportedProducts := {
       (Test / preTest).value
       (Test / exportedProducts).value
@@ -201,7 +210,6 @@ lazy val `lm-coursier-shaded` = project
         "org.tukaani",
         "scala.collection.compat",
         "scala.util.control.compat",
-        "scala.xml",
         "com.github.plokhotnyuk.jsoniter_scala",
         "scala.cli",
         "com.github.luben.zstd",
@@ -212,12 +220,13 @@ lazy val `lm-coursier-shaded` = project
     },
     libraryDependencies ++= Seq(
       coursierDep,
-      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
+      coursierSbtMavenRepoDep,
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value % Provided,
       "org.scalatest" %% "scalatest" % "3.2.18" % Test,
     ),
+    excludeDependencies ++= excludedDependencies,
     conflictWarning := ConflictWarning.disable,
     dontPublish,
   )
@@ -317,10 +326,10 @@ lazy val `sbt-coursier-root` = project
     definitions,
     `lm-coursier`,
     `lm-coursier-shaded`,
-    `sbt-coursier`,
-    `sbt-coursier-shared`,
-    `sbt-coursier-shared-shaded`,
-    `sbt-lm-coursier`
+    // `sbt-coursier`,
+    // `sbt-coursier-shared`,
+    // `sbt-coursier-shared-shaded`,
+    // `sbt-lm-coursier`
   )
   .settings(
     shared,
