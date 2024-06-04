@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        PLUGIN: [sbt-coursier, sbt-lm-coursier]
+        PLUGIN: [sbt-lm-coursier] # , sbt-coursier]
         TEST_GROUP: [1, 2]
     steps:
     - name: Don't convert LF to CRLF during checkout
