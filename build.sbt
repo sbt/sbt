@@ -62,6 +62,14 @@ lazy val scalafixGen = Def.taskDyn {
   }
 }
 
+Global / excludeLintKeys += scriptedBufferLog
+Global / excludeLintKeys += scriptedLaunchOpts
+
+def coursierVersion0 = "2.1.9"
+def coursierDep = ("io.get-coursier" %% "coursier" % coursierVersion0)
+  .exclude("org.codehaus.plexus", "plexus-archiver")
+  .exclude("org.codehaus.plexus", "plexus-container-default")
+
 def dataclassGen(data: Reference) = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
   val from = (data / Compile / sourceDirectory).value
@@ -87,6 +95,8 @@ def lmIvy = Def.setting {
   }
 }
 
+lazy val preTest = taskKey[Unit]("prep steps before tests")
+
 lazy val definitions = project
   .in(file("modules/definitions"))
   .disablePlugins(MimaPlugin)
@@ -94,13 +104,17 @@ lazy val definitions = project
     scalaVersion := scala3,
     crossScalaVersions := Seq(scala212, scala213, scala3),
     libraryDependencies ++= Seq(
-      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
+      coursierDep,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value % Provided,
     ),
     conflictWarning := ConflictWarning.disable,
     dontPublish,
   )
+
+// FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
+// io.get-coursier::coursier depends on.
+val jniUtilsVersion = "0.3.3"
 
 lazy val `lm-coursier` = project
   .in(file("modules/lm-coursier"))
@@ -110,7 +124,9 @@ lazy val `lm-coursier` = project
     Mima.settings,
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
-      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
+      coursierDep,
+      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
 
       // We depend on librarymanagement-ivy rather than just
@@ -119,19 +135,16 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       lmIvy.value,
-      ("org.scalatest" %% "scalatest" % "3.2.13" % Test).cross(CrossVersion.for3Use2_13),
+      ("org.scalatest" %% "scalatest" % "3.2.18" % Test).cross(CrossVersion.for3Use2_13),
     ),
-    Test / test := {
-      (publishLocal in customProtocolForTest212).value
-      (publishLocal in customProtocolForTest213).value
-      (publishLocal in customProtocolJavaForTest).value
-      (Test / test).value
+    Test / exportedProducts := {
+      (Test / preTest).value
+      (Test / exportedProducts).value
     },
-    Test / testOnly := {
-      (publishLocal in customProtocolForTest212).value
-      (publishLocal in customProtocolForTest213).value
-      (publishLocal in customProtocolJavaForTest).value
-      (Test / testOnly).evaluated
+    Test / preTest := {
+      (customProtocolForTest212 / publishLocal).value
+      (customProtocolForTest213 / publishLocal).value
+      (customProtocolJavaForTest / publishLocal).value
     },
     Compile / sourceGenerators += dataclassGen(definitions).taskValue,
   )
@@ -153,7 +166,11 @@ lazy val `lm-coursier-shaded` = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (`lm-coursier` / Compile / sources).value,
-    // shadedModules += "io.get-coursier" %% "coursier",
+    // shadedModules ++= Set(
+    //   "io.get-coursier" %% "coursier",
+    //   "io.get-coursier" %% "coursier-sbt-maven-repository",
+    //   "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
+    // ),
     // validNamespaces += "lmcoursier",
     // validEntries ++= Set(
     //   // FIXME Ideally, we should just strip those from the resulting JAR…
@@ -162,13 +179,11 @@ lazy val `lm-coursier-shaded` = project
     //   "licenses/extreme.indiana.edu.license.TXT",
     //   "licenses/javolution.license.TXT",
     //   "licenses/thoughtworks.TXT",
-    //   "licenses/"
+    //   "licenses/",
     // ),
     assemblyShadeRules := {
       val toShade = Seq(
         "coursier",
-        "shapeless",
-        "argonaut",
         "org.fusesource",
         "macrocompat",
         "io.github.alexarchambault.windowsansi",
@@ -187,15 +202,21 @@ lazy val `lm-coursier-shaded` = project
         "scala.collection.compat",
         "scala.util.control.compat",
         "scala.xml",
+        "com.github.plokhotnyuk.jsoniter_scala",
+        "scala.cli",
+        "com.github.luben.zstd",
+        "javax.inject" // hope shading this is fine… It's probably pulled via plexus-archiver, that sbt shouldn't use anyway…
       )
       for (ns <- toShade)
         yield ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
     },
     libraryDependencies ++= Seq(
-      ("io.get-coursier" %% "coursier" % coursierVersion0).cross(CrossVersion.for3Use2_13),
+      coursierDep,
+      "io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion0,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value % Provided,
-      "org.scalatest" %% "scalatest" % "3.2.13" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.18" % Test,
     ),
     conflictWarning := ConflictWarning.disable,
     dontPublish,
@@ -208,7 +229,7 @@ lazy val `sbt-coursier-shared` = project
   .settings(
     plugin,
     generatePropertyFile,
-    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.0" % Test,
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.3" % Test,
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
@@ -219,7 +240,7 @@ lazy val `sbt-coursier-shared-shaded` = project
   .settings(
     plugin,
     generatePropertyFile,
-    unmanagedSourceDirectories.in(Compile) := unmanagedSourceDirectories.in(Compile).in(`sbt-coursier-shared`).value
+    Compile / unmanagedSourceDirectories := (`sbt-coursier-shared` / Compile / unmanagedSourceDirectories).value
   )
 
 lazy val `sbt-lm-coursier` = project
@@ -229,14 +250,14 @@ lazy val `sbt-lm-coursier` = project
   .dependsOn(`sbt-coursier-shared-shaded`)
   .settings(
     plugin,
-    sbtTestDirectory := sbtTestDirectory.in(`sbt-coursier`).value,
+    sbtTestDirectory := (`sbt-coursier` / sbtTestDirectory).value,
     scriptedDependencies := {
       scriptedDependencies.value
 
       // TODO Get those automatically
       // (but shouldn't scripted itself handle that…?)
-       publishLocal.in(`lm-coursier-shaded`).value
-       publishLocal.in(`sbt-coursier-shared-shaded`).value
+       (`lm-coursier-shaded` / publishLocal).value
+       (`sbt-coursier-shared-shaded` / publishLocal).value
      }
    )
 
@@ -252,8 +273,8 @@ lazy val `sbt-coursier` = project
 
       // TODO Get dependency projects automatically
       // (but shouldn't scripted itself handle that…?)
-      publishLocal.in(`lm-coursier`).value
-      publishLocal.in(`sbt-coursier-shared`).value
+      (`lm-coursier` / publishLocal).value
+      (`sbt-coursier-shared` / publishLocal).value
     }
   )
 
@@ -293,6 +314,7 @@ lazy val `sbt-coursier-root` = project
   .in(file("."))
   .disablePlugins(MimaPlugin)
   .aggregate(
+    definitions,
     `lm-coursier`,
     `lm-coursier-shaded`,
     `sbt-coursier`,
@@ -302,6 +324,7 @@ lazy val `sbt-coursier-root` = project
   )
   .settings(
     shared,
-    skip.in(publish) := true
+    (publish / skip) := true
   )
 
+Global / onChangedBuildSource := ReloadOnSourceChanges

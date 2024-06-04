@@ -50,6 +50,8 @@ object ResolutionTasks {
       else
         Def.task(coursierRecursiveResolvers.value.distinct)
 
+    val retrySettings = Def.task(coursierRetry.value)
+
     Def.task {
       val projectName = thisProjectRef.value.project
 
@@ -169,6 +171,7 @@ object ResolutionTasks {
             .withExclusions(excludeDeps),
           strictOpt = strictOpt,
           missingOk = missingOk,
+          retry = retrySettings.value.getOrElse(ResolutionParams.defaultRetry)
         ),
         verbosityLevel,
         log

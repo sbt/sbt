@@ -9,8 +9,8 @@ import com.jsuereth.sbtpgp._
 
 object Settings {
 
-  def scala212 = "2.12.16"
-  def scala213 = "2.13.8"
+  def scala212 = "2.12.17"
+  def scala213 = "2.13.10"
   def scala3 = "3.3.1"
 
   def targetSbtVersion = "1.2.8"
@@ -21,7 +21,7 @@ object Settings {
   }
 
   lazy val shared = Seq(
-    resolvers += Resolver.sonatypeRepo("releases"),
+    resolvers ++= Resolver.sonatypeOssRepos("releases"),
     crossScalaVersions := Seq(scala212),
     scalaVersion := scala3,
     scalacOptions ++= Seq(
@@ -37,13 +37,20 @@ object Settings {
     scalacOptions ++= {
       if (isAtLeastScala213.value) Seq("-Ymacro-annotations")
       else Nil
+    },
+    libraryDependencySchemes ++= {
+      val sv = scalaVersion.value
+      if (sv.startsWith("2.13."))
+        Seq("org.scala-lang.modules" %% "scala-xml" % "always")
+      else
+        Nil
     }
   ) ++ {
     val prop = sys.props.getOrElse("publish.javadoc", "").toLowerCase(Locale.ROOT)
     if (prop == "0" || prop == "false")
       Seq(
-        sources in (Compile, doc) := Seq.empty,
-        publishArtifact in (Compile, packageDoc) := false
+        Compile / doc / sources := Seq.empty,
+        Compile / packageDoc / publishArtifact := false
       )
     else
       Nil
@@ -63,14 +70,14 @@ object Settings {
       ),
       scriptedBufferLog := false,
       sbtPlugin := true,
-      sbtVersion.in(pluginCrossBuild) := targetSbtVersion
+      pluginCrossBuild / sbtVersion := targetSbtVersion
     )
 
   lazy val generatePropertyFile =
-    resourceGenerators.in(Compile) += Def.task {
+    Compile / resourceGenerators += Def.task {
       import sys.process._
 
-      val dir = classDirectory.in(Compile).value / "coursier"
+      val dir = (Compile / classDirectory).value / "coursier"
       val ver = version.value
 
       val f = dir / "sbtcoursier.properties"

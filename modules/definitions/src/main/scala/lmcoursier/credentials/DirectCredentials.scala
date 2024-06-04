@@ -10,10 +10,11 @@ import dataclass._
   realm: Option[String] = None,
   @since("1.1")
   optional: Boolean = true,
-  @since("1.1")
-  matchHost: Boolean = false,
   @since("1.2")
+  matchHost: Boolean = false,
+  @since("1.3")
   httpsOnly: Boolean = true
 ) extends Credentials {
+
   override def toString(): String = s"DirectCredentials(host=$host, username=$username)"
 }
