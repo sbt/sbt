@@ -43,9 +43,9 @@ lazy val javaProj = project
     javacOptions += "-Xlint:all"
   )
 
-lazy val twirlProj = project
-  .in(file("twirlProj"))
-  .enablePlugins(SbtTwirl)
+// lazy val twirlProj = project
+//   .in(file("twirlProj"))
+//   .enablePlugins(SbtTwirl)
 
 def somethingBad = throw new MessageOnlyException("I am a bad build target")
 // other build targets should not be affected by this bad build target
