@@ -31,9 +31,9 @@ class BuildServerTest extends AbstractServerTest {
   private def nextId(): Int = idGen.getAndIncrement()
 
   test("build/initialize") {
-    initializeRequest()
+    val id = initializeRequest()
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains """"id":"8"""") &&
+      (s contains s""""id":"$id"""") &&
       (s contains """"resourcesProvider":true""") &&
       (s contains """"outputPathsProvider":true""")
     })
@@ -258,7 +258,7 @@ class BuildServerTest extends AbstractServerTest {
 
   test("buildTarget/cleanCache") {
     def classFile = svr.baseDirectory.toPath.resolve(
-      "target/out/jvm/scala-2.13.8/runandtest/backend/main/Main.class"
+      "target/out/jvm/scala-2.13.11/runandtest/backend/main/Main.class"
     )
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     compile(buildTarget)
@@ -327,7 +327,7 @@ class BuildServerTest extends AbstractServerTest {
       s""""id":"$id"""",
       """"error"""",
       s""""code":${ErrorCodes.InternalError}""",
-      "Type error in expression"
+      "String cannot be appended to Seq[String]"
     )()
     // fix the other-build.sbt file and reload again
     Files.write(
@@ -392,7 +392,7 @@ class BuildServerTest extends AbstractServerTest {
       "jsoniter-scala-core_2.13-2.13.11.jar", // compile dependency
       "\"jvmOptions\":[\"Xmx256M\"]",
       "\"environmentVariables\":{\"KEY\":\"VALUE\"}",
-      "/buildserver/run-and-test/" // working directory
+      "/buildserver/run-and-test" // working directory
     )()
   }
 
