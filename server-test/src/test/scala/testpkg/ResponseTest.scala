@@ -16,9 +16,10 @@ class ResponseTest extends AbstractServerTest {
   test("response from a command") {
     svr.sendJsonRpc("""{ "jsonrpc": "2.0", "id": "10", "method": "foo/export", "params": {} }""")
     assert(svr.waitForString(10.seconds) { s =>
-      if (!s.contains("systemOut")) println(s)
+      if (!s.contains("systemOut"))
+        println(s)
       (s contains """"id":"10"""") &&
-      (s contains "scala-library-2.12.17.jar")
+      (s contains "scala-library-2.12.19.jar")
     })
   }
 
@@ -29,7 +30,7 @@ class ResponseTest extends AbstractServerTest {
     assert(svr.waitForString(10.seconds) { s =>
       if (!s.contains("systemOut")) println(s)
       (s contains """"id":"11"""") &&
-      (s contains "scala-library-2.12.17.jar")
+      (s contains "scala-library-2.12.19.jar")
     })
   }
 
