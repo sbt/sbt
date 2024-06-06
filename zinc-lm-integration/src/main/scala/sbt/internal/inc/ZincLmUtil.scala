@@ -28,6 +28,10 @@ import xsbti.compile.{ ClasspathOptions, ScalaInstance => XScalaInstance }
 object ZincLmUtil {
 
   final val scala2SbtBridgeStart = "2.13.12"
+  def hasScala2SbtBridge(sv: String): Boolean =
+    VersionNumber(sv).matchesSemVer(
+      SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
+    )
 
   /**
    * Instantiate a Scala compiler that is instrumented to analyze dependencies.
@@ -90,11 +94,7 @@ object ZincLmUtil {
     if (ScalaArtifacts.isScala3(scalaVersion)) {
       ModuleID(ScalaArtifacts.Organization, "scala3-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
-    } else if (
-      VersionNumber(scalaVersion).matchesSemVer(
-        SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
-      )
-    ) {
+    } else if (hasScala2SbtBridge(scalaVersion)) {
       ModuleID(ScalaArtifacts.Organization, "scala2-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
     } else {

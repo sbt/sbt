@@ -59,9 +59,7 @@ private[sbt] object ZincComponentCompiler {
     ): File = lock.synchronized {
       val raw = new RawCompiler(
         scalaInstance,
-        // TODO:
-        // ClasspathOptionsUtil.autoNoboot(scalaInstance.version),
-        ClasspathOptionsUtil.auto,
+        ClasspathOptionsUtil.autoNoboot(scalaInstance.version),
         logger
       )
       val zinc =

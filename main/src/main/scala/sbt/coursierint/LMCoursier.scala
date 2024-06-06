@@ -79,7 +79,6 @@ object LMCoursier {
       extraProjects: Seq[CProject],
       fallbackDeps: Seq[FallbackDependency],
       appConfig: AppConfiguration,
-      classifiers: Option[Seq[Classifier]],
       profiles: Set[String],
       scalaOrg: String,
       scalaVer: String,
@@ -134,8 +133,6 @@ object LMCoursier {
       .withSbtScalaJars(sbtBootJars.toVector)
       .withSbtScalaVersion(sbtScalaVersion)
       .withSbtScalaOrganization(sbtScalaOrganization)
-      .withClassifiers(classifiers.toVector.flatten.map(_.value))
-      .withHasClassifiers(classifiers.nonEmpty)
       .withMavenProfiles(profiles.toVector.sorted)
       .withScalaOrganization(scalaOrg)
       .withScalaVersion(scalaVer)
@@ -159,7 +156,6 @@ object LMCoursier {
       csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
@@ -181,10 +177,10 @@ object LMCoursier {
   }
 
   def updateClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
-    val classifiers = Some(transitiveClassifiers.value.map(Classifier(_)))
+    val classifiers = transitiveClassifiers.value.map(Classifier(_))
     coursierConfigurationTask.value
-      .withClassifiers(classifiers.toVector.flatten.map(_.value))
-      .withHasClassifiers(classifiers.nonEmpty)
+      .withClassifiers(classifiers.toVector.map(_.value))
+      .withHasClassifiers(true)
   }
 
   def updateSbtClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -195,7 +191,6 @@ object LMCoursier {
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
@@ -224,7 +219,6 @@ object LMCoursier {
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
