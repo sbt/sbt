@@ -89,7 +89,7 @@ abstract class IvyBridgeProviderSpecification
     val resolvers = resolvers0.toVector
     val chainResolver = ChainedResolver("zinc-chain", resolvers)
     InlineIvyConfiguration()
-      .withPaths(IvyPaths(baseDirectory, Some(ivyHome)))
+      .withPaths(IvyPaths(baseDirectory.toString, Some(ivyHome.toString)))
       .withResolvers(resolvers)
       .withModuleConfigurations(Vector(ModuleConfiguration("*", chainResolver)))
       .withLock(None)
