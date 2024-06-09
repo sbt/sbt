@@ -147,7 +147,8 @@ class CoursierDependencyResolution(
     val sbv = module0.scalaModuleInfo.map(_.scalaBinaryVersion).getOrElse {
       sv.split('.').take(2).mkString(".")
     }
-    val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true)
+    val projectPlatform = module0.scalaModuleInfo.flatMap(_.platform)
+    val (mod, ver) = FromSbt.moduleVersion(module0.module, sv, sbv, optionalCrossVer = true, projectPlatform = projectPlatform)
     val interProjectDependencies = {
       val needed = conf.interProjectDependencies.exists { p =>
         p.module == mod && p.version == ver
@@ -168,7 +169,7 @@ class CoursierDependencyResolution(
     val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = conf.cachePolicies.map(ToCoursier.cachePolicy)
     val checksums = conf.checksums
-    val projectName = "" // used for logging only…
+    val projectName = module0.module.name
 
     val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
 
@@ -251,9 +252,11 @@ class CoursierDependencyResolution(
         .withForceVersion(conf.forceVersions.map { case (k, v) => (ToCoursier.module(k), v) }.toMap)
         .withTypelevel(typelevel)
         .withReconciliation(ToCoursier.reconciliation(conf.reconciliation))
-        .withExclusions(excludeDependencies),
+        .withExclusions(excludeDependencies)
+        .withRules(ToCoursier.sameVersions(conf.sameVersions)),
       strictOpt = conf.strict.map(ToCoursier.strict),
       missingOk = conf.missingOk,
+      retry = conf.retry.getOrElse(ResolutionParams.defaultRetry),
     )
 
     def artifactsParams(resolutions: Map[Configuration, Resolution]): ArtifactsParams =

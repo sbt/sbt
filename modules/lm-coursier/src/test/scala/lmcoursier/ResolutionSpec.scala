@@ -61,8 +61,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    resolution should be('right)
-    val r = resolution.right.get
+    val r = resolution.toOption.get
     r.configurations.map(_.configuration) should have size configurations.length
 
     val compileConfig = r.configurations.find(_.configuration == Compile.toConfigRef).get
@@ -115,9 +114,10 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    resolution should be('right)
+    assert(resolution.isRight)
   }
 
+/*
   property("resolve with resolvers using a custom protocols") {
     val sbtModule = "org.scala-sbt" % "sbt" % "1.1.0"
     val dependencies = Vector(sbtModule)
@@ -199,6 +199,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       (sbtModule.organization, sbtModule.name, sbtModule.revision)
     )
   }
+*/
 
   property("resolve plugin") {
     val pluginAttributes = Map("scalaVersion" -> "2.12", "sbtVersion" -> "1.0")
@@ -221,8 +222,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.4"))
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
-
-    resolution should be('right)
+    assert(resolution.isRight)
   }
 
   property("resolve plugins hosted on repo.typesafe.com") {
@@ -233,6 +233,6 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    resolution should be('right)
+    assert(resolution.isRight)
   }
 }

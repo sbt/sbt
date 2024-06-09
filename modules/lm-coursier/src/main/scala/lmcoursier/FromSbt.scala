@@ -11,11 +11,16 @@ object FromSbt {
     moduleId: ModuleID,
     scalaVersion: => String,
     scalaBinaryVersion: => String,
-    optionalCrossVer: Boolean = false
+    optionalCrossVer: Boolean = false,
+    projectPlatform: Option[String],
   ): String = {
     val name0 = moduleId.name
+    val name1 =
+      moduleId.crossVersion match
+        case _: Disabled => name0
+        case _           => addPlatformSuffix(name0, moduleId.platformOpt, projectPlatform)
     val updatedName = CrossVersion(moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
-      .fold(name0)(_(name0))
+      .fold(name1)(_(name1))
     if (!optionalCrossVer || updatedName.length <= name0.length)
       updatedName
     else {
@@ -24,6 +29,19 @@ object FromSbt {
         name0
       else
         updatedName
+    }
+  }
+
+  private def addPlatformSuffix(name: String, platformOpt: Option[String], projectPlatform: Option[String]): String = {
+    def addSuffix(platformName: String): String =
+      platformName match {
+        case "" | "jvm" => name
+        case _          => s"${name}_$platformName"
+      }
+    (platformOpt, projectPlatform) match {
+      case (Some(p), None) => addSuffix(p)
+      case (_, Some(p))    => addSuffix(p)
+      case _               => name
     }
   }
 
@@ -38,10 +56,11 @@ object FromSbt {
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String,
-    optionalCrossVer: Boolean
+    optionalCrossVer: Boolean,
+    projectPlatform: Option[String],
   ): (Module, String) = {
 
-    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer)
+    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
 
     val module0 = Module(Organization(module.organization), ModuleName(fullName), attributes(module.extraDependencyAttributes))
     val version = module.revision
@@ -54,18 +73,19 @@ object FromSbt {
     scalaVersion: String,
     scalaBinaryVersion: String
   ): (Module, String) =
-    moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer = false)
+    moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer = false, projectPlatform = None)
 
   def dependencies(
     module: ModuleID,
     scalaVersion: String,
     scalaBinaryVersion: String,
-    optionalCrossVer: Boolean = false
+    optionalCrossVer: Boolean = false,
+    projectPlatform: Option[String] = None,
   ): Seq[(Configuration, Dependency)] = {
 
     // TODO Warn about unsupported properties in `module`
 
-    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer)
+    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
 
     val dep = Dependency(
       module0,
@@ -131,10 +151,11 @@ object FromSbt {
     allDependencies: Seq[ModuleID],
     ivyConfigurations: Map[Configuration, Seq[Configuration]],
     scalaVersion: String,
-    scalaBinaryVersion: String
+    scalaBinaryVersion: String,
+    projectPlatform: Option[String],
   ): Project = {
 
-    val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion))
+    val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform))
 
     val prefix = "e:" + SbtPomExtraProperties.POM_INFO_KEY_PREFIX
     val properties = projectID
@@ -147,7 +168,7 @@ object FromSbt {
     Project(
       Module(
         Organization(projectID.organization),
-        ModuleName(sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion)),
+        ModuleName(sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform)),
         attributes(projectID.extraDependencyAttributes)
       ),
       projectID.revision,
