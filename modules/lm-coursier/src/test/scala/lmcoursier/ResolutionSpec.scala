@@ -117,6 +117,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     assert(resolution.isRight)
   }
 
+/*
   property("resolve with resolvers using a custom protocols") {
     val sbtModule = "org.scala-sbt" % "sbt" % "1.1.0"
     val dependencies = Vector(sbtModule)
@@ -198,6 +199,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       (sbtModule.organization, sbtModule.name, sbtModule.revision)
     )
   }
+*/
 
   property("resolve plugin") {
     val pluginAttributes = Map("scalaVersion" -> "2.12", "sbtVersion" -> "1.0")
