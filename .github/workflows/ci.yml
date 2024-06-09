@@ -40,7 +40,7 @@ jobs:
             java: 8
             distribution: adopt
             jobtype: 7
-          - os: macos-latest
+          - os: macos-12
             java: 17
             distribution: temurin
             jobtype: 8
