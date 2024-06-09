@@ -24,11 +24,12 @@ object Mima {
       .toSet
 
   def settings: Seq[Setting[_]] = Seq(
-    MimaPlugin.autoImport.mimaPreviousArtifacts := {
-      binaryCompatibilityVersions.map { ver =>
-        (organization.value % moduleName.value % ver).cross(crossVersion.value)
-      }
-    }
+    MimaPlugin.autoImport.mimaPreviousArtifacts := Set.empty,
+    // MimaPlugin.autoImport.mimaPreviousArtifacts := {
+    //   binaryCompatibilityVersions.map { ver =>
+    //     (organization.value % moduleName.value % ver).cross(crossVersion.value)
+    //   }
+    // }
   )
 
   lazy val lmCoursierFilters = {
