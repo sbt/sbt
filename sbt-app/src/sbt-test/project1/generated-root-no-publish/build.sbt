@@ -4,11 +4,13 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 val commonSettings = Seq(
   organization := "com.example",
   version := "0.1.0",
-  ivyPaths := IvyPaths((LocalRootProject / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache"))
+  ivyPaths := IvyPaths(
+    (LocalRootProject / baseDirectory).value.toString,
+    Some(((LocalRootProject / target).value / "ivy-cache").toString)
+  )
 )
 
-lazy val app = (project in file("app")).
-  settings(commonSettings: _*)
+lazy val app = (project in file("app")).settings(commonSettings: _*)
 
 name := "generated-root-no-publish"
 commonSettings

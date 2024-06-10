@@ -11,7 +11,8 @@ lazy val root = (project in file("."))
 
 lazy val core = (project in file("core"))
   .settings(
-    crossScalaVersions := Seq(scala212, scala213))
+    crossScalaVersions := Seq(scala212, scala213),
+  )
 
 lazy val module = (project in file("module"))
   .dependsOn(core)

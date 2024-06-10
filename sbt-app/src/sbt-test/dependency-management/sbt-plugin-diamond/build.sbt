@@ -87,7 +87,10 @@ lazy val v5 = project
   )
 
 def localCache =
-  ivyPaths := IvyPaths(baseDirectory.value, Some((ThisBuild / baseDirectory).value / "ivy-cache"))
+  ivyPaths := IvyPaths(
+    baseDirectory.value.toString,
+    Some(((ThisBuild / baseDirectory).value / "ivy-cache").toString)
+  )
 
 lazy val checkUpdate = taskKey[Unit]("check the resolved artifacts")
 

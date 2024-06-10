@@ -43,5 +43,5 @@ $ absent target/out/jvm/scala-2.12.19/root/api/index.js
 > clean
 $ absent target/out/jvm/scala-2.12.19/root/api/A$.html
 > doc
-$ exists target/out/jvm/scala-2.13.3/root/api/A$.html
-$ exists target/out/jvm/scala-2.13.3/root/api/B$.html
+$ exists target/out/jvm/scala-2.13.12/root/api/A$.html
+$ exists target/out/jvm/scala-2.13.12/root/api/B$.html

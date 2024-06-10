@@ -1,4 +1,4 @@
-lazy val scala3 = "3.2.1"
+lazy val scala3 = "3.3.1"
 lazy val scala213 = "2.13.1"
 
 crossScalaVersions := Seq(scala3, scala213)
@@ -27,3 +27,5 @@ lazy val extrasProj = (project in file("extras"))
   .settings(
     name := "foo-extras",
   )
+
+lazy val externalProj = ProjectRef(file("ref"), "external")

@@ -7,12 +7,17 @@ lazy val root = (project in file("."))
   )
 
 lazy val commonSettings = Seq(
-  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+  ivyPaths := IvyPaths(
+    (baseDirectory in ThisBuild).value.toString,
+    Some(((target in LocalRootProject).value / "ivy-cache").toString)
+  ),
   publishTo := Some(Resolver.file("test-publish", (baseDirectory in ThisBuild).value / "repo/")),
   // to get sbt artifacts
   resolvers += {
-    val ivyHome = Classpaths.bootIvyHome(appConfiguration.value) getOrElse sys.error("Launcher did not provide the Ivy home directory.")
-    Resolver.file("real-local",  ivyHome / "local")(Resolver.ivyStylePatterns)
+    val ivyHome = Classpaths.bootIvyHome(appConfiguration.value) getOrElse sys.error(
+      "Launcher did not provide the Ivy home directory."
+    )
+    Resolver.file("real-local", ivyHome / "local")(Resolver.ivyStylePatterns)
   },
   resolvers += Resolver.mavenLocal,
   resolvers += ("test-repo" at ((baseDirectory in ThisBuild).value / "repo/").asURL.toString)
