@@ -1,0 +1,3 @@
+-> a/scalaInstance
+> set a/scalaVersion := "2.13.6"
+> a/scalaInstance

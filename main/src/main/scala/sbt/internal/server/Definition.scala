@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -22,7 +23,7 @@ import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
-import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
+import sbt.internal.inc.Analysis
 import sbt.internal.inc.JavaInterfaceUtil._
 import sbt.internal.parser.SbtParser
 import sbt.internal.protocol.JsonRpcResponseError
@@ -162,11 +163,19 @@ private[sbt] object Definition {
   }
 
   private[this] val AnalysesKey = "lsp.definition.analyses.key"
-  private[server] type Analyses = Set[((String, Boolean), Option[Analysis])]
+  private[server] type Analyses = Set[((String, Boolean, Boolean), Option[Analysis])]
 
-  private def storeAnalysis(cacheFile: Path, useBinary: Boolean): Option[Analysis] =
-    MixedAnalyzingCompiler
-      .staticCachedStore(cacheFile, !useBinary)
+  private def storeAnalysis(
+      cacheFile: Path,
+      useBinary: Boolean,
+      useConsistent: Boolean,
+  ): Option[Analysis] =
+    AnalysisUtil
+      .staticCachedStore(
+        analysisFile = cacheFile,
+        useTextAnalysis = !useBinary,
+        useConsistent = useConsistent,
+      )
       .get
       .toOption
       .map { _.getAnalysis }
@@ -174,13 +183,13 @@ private[sbt] object Definition {
 
   private[sbt] def updateCache(
       cache: Cache[String, Analyses]
-  )(cacheFile: String, useBinary: Boolean): Any = {
-    cache.get(AnalysesKey, k => Set(cacheFile -> useBinary -> None)) match {
+  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any = {
+    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match {
       case null => new AnyRef
       case set =>
         val newSet = set
-          .filterNot { case ((file, _), _) => file == cacheFile }
-          .+(cacheFile -> useBinary -> None)
+          .filterNot { case ((file, _, _), _) => file == cacheFile }
+          .+((cacheFile, useBinary, useConsistent) -> None)
         cache.put(AnalysesKey, newSet)
     }
   }
@@ -200,10 +209,13 @@ private[sbt] object Definition {
 
   def collectAnalysesTask = Def.task {
     val cacheFile: String = compileAnalysisFile.value.getAbsolutePath
-    val useBinary = enableBinaryCompileAnalysis.value
     val s = state.value
-    s.log.debug(s"analysis location ${cacheFile -> useBinary}")
-    updateCache(AnalysesAccess.cache)(cacheFile, useBinary)
+    s.log.debug(s"analysis location ${cacheFile}")
+    updateCache(AnalysesAccess.cache)(
+      cacheFile = cacheFile,
+      useBinary = enableBinaryCompileAnalysis.value,
+      useConsistent = enableConsistentCompileAnalysis.value,
+    )
   }
 
   private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
@@ -222,8 +234,9 @@ private[sbt] object Definition {
                 case (_, None)    => false
               }
               val addToCache = uninitialized.collect {
-                case (title @ (file, useBinary), _) if Files.exists(Paths.get(file)) =>
-                  (title, storeAnalysis(Paths.get(file), !useBinary))
+                case (title @ (file, useBinary, useConsistent), _)
+                    if Files.exists(Paths.get(file)) =>
+                  (title, storeAnalysis(Paths.get(file), !useBinary, useConsistent))
               }
               val validCaches = working ++ addToCache
               if (addToCache.nonEmpty) {

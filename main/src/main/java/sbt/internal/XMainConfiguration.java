@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -13,6 +14,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.Paths;
@@ -30,7 +32,8 @@ public class XMainConfiguration {
       throws Throwable {
     try {
       boolean isScripted = Boolean.parseBoolean(System.getProperty("sbt.scripted"));
-      // in batch scripted tests, we disable caching of JAR URL connections to avoid interference
+      // in batch scripted tests, we disable caching of JAR URL connections to avoid
+      // interference
       // between tests
       if (isScripted) disableCachingOfURLConnections();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
@@ -79,9 +82,10 @@ public class XMainConfiguration {
       URL url = baseLoader.getResource(className);
       String path = url.toString().replaceAll(className.concat("$"), "");
       URL[] urlArray = new URL[1];
-      urlArray[0] = new URL(path);
+      urlArray[0] = new URI(path).toURL();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
-      // This loader doesn't have the scala library in it so it's critical that none of the code
+      // This loader doesn't have the scala library in it so it's critical that none
+      // of the code
       // in this file use the scala library.
       ClassLoader modifiedLoader = new XMainClassLoader(urlArray, topLoader);
       Class<?> xMainConfigurationClass =
@@ -129,8 +133,9 @@ public class XMainConfiguration {
   }
 
   /*
-   * Replaces the AppProvider.loader method with a new loader that puts the sbt test interface
-   * jar ahead of the rest of the sbt classpath in the classloading hierarchy.
+   * Replaces the AppProvider.loader method with a new loader that puts the sbt
+   * test interface jar ahead of the rest of the sbt classpath in the classloading
+   * hierarchy.
    */
   public class ModifiedConfiguration implements xsbti.AppConfiguration {
     private xsbti.AppConfiguration configuration;

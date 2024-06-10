@@ -4,6 +4,7 @@ import com.typesafe.tools.mima.core.ProblemFilters._
 import com.typesafe.tools.mima.core._
 import local.Scripted
 import java.nio.file.{ Files, Path => JPath }
+import java.util.Locale
 
 import scala.util.Try
 
@@ -47,7 +48,7 @@ ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" 
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
-Global / semanticdbVersion := "4.5.13"
+Global / semanticdbVersion := "4.7.8"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += componentID
@@ -59,7 +60,8 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   headerLicense := Some(
     HeaderLicense.Custom(
       """|sbt
-       |Copyright 2011 - 2018, Lightbend, Inc.
+       |Copyright 2023, Scala center
+       |Copyright 2011 - 2022, Lightbend, Inc.
        |Copyright 2008 - 2010, Mark Harrah
        |Licensed under Apache License 2.0 (see LICENSE)
        |""".stripMargin
@@ -68,6 +70,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
   scalaVersion := baseScalaVersion,
   componentID := None,
   resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-sbt-build-ivy-releases"),
+  resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   resolvers ++= Resolver.sonatypeOssRepos("snapshots"),
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
@@ -172,6 +175,9 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[DirectMissingMethodProblem]("sbt.PluginData.apply"),
     exclude[DirectMissingMethodProblem]("sbt.PluginData.copy"),
     exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
+    exclude[IncompatibleResultTypeProblem]("sbt.EvaluateTask.executeProgress"),
+    exclude[DirectMissingMethodProblem]("sbt.Keys.currentTaskProgress"),
+    exclude[IncompatibleResultTypeProblem]("sbt.PluginData.copy$default$10")
   ),
 )
 
@@ -183,11 +189,11 @@ lazy val sbtRoot: Project = (project in file("."))
     minimalSettings,
     onLoadMessage := {
       val version = sys.props("java.specification.version")
-      """           __    __ 
+      """           __    __
         |     _____/ /_  / /_
         |    / ___/ __ \/ __/
-        |   (__  ) /_/ / /_  
-        |  /____/_.___/\__/ 
+        |   (__  ) /_/ / /_
+        |  /____/_.___/\__/
         |Welcome to the build for sbt.
         |""".stripMargin +
         (if (version != "1.8")
@@ -201,7 +207,6 @@ lazy val sbtRoot: Project = (project in file("."))
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Util.publishPomSettings,
     otherRootSettings,
-    Transform.conscriptSettings(bundledLauncherProj),
     publish := {},
     publishLocal := {},
     publish / skip := true,
@@ -363,7 +368,7 @@ lazy val utilLogging = project
         disruptor,
         sjsonNewScalaJson.value,
       ),
-    libraryDependencies ++= Seq(scalacheck % "test", scalatest % "test"),
+    testDependencies,
     Compile / generateContrabands / contrabandCodecsDependencies := List(sjsonNewCore.value),
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / managedSourceDirectories +=
@@ -374,6 +379,7 @@ lazy val utilLogging = project
       if (name == "Throwable") Nil
       else old(tpe)
     },
+    Test / fork := true,
     utilMimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[DirectMissingMethodProblem]("sbt.internal.util.SuccessEvent.copy*"),
@@ -404,6 +410,7 @@ lazy val utilLogging = project
       exclude[MissingTypesProblem]("sbt.internal.util.ConsoleAppender"),
       exclude[MissingTypesProblem]("sbt.internal.util.BufferedAppender"),
       exclude[MissingClassProblem]("sbt.internal.util.Terminal$BlockingInputStream$"),
+      exclude[IncompatibleResultTypeProblem]("sbt.util.LoggerContext#Log4JLoggerContext.loggers"),
     ),
   )
   .configure(addSbtIO)
@@ -1056,6 +1063,10 @@ lazy val serverTestProj = (project in file("server-test"))
   )
 
 val isWin = scala.util.Properties.isWin
+val isLinux = scala.util.Properties.isLinux
+val isArmArchitecture: Boolean = sys.props
+  .getOrElse("os.arch", "")
+  .toLowerCase(Locale.ROOT) == "aarch64"
 val buildThinClient =
   inputKey[JPath]("generate a java implementation of the thin client")
 // Use a TaskKey rather than SettingKey for nativeInstallDirectory so it can left unset by default
@@ -1077,6 +1088,7 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
+    nativeImageVersion := "22.2.0",
     nativeImageOutput := target.value / "bin" / "sbtn",
     nativeImageOptions ++= Seq(
       "--no-fallback",

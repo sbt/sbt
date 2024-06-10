@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,8 +11,8 @@ package sbt.util
 import sbt.internal.util._
 
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import scala.jdk.CollectionConverters.*
+import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
+// import scala.jdk.CollectionConverters.*
 
 /**
  * Provides a context for generating loggers during task evaluation. The logger context can be
@@ -35,27 +36,27 @@ object LoggerContext {
 
   private[util] class LoggerContextImpl extends LoggerContext {
     private class Log extends MiniLogger {
-      private val consoleAppenders: java.util.Vector[(Appender, Level.Value)] =
-        new java.util.Vector
+      private val consoleAppenders: AtomicReference[Vector[(Appender, Level.Value)]] =
+        new AtomicReference(Vector.empty)
       def log(level: Level.Value, message: => String): Unit = {
-        val toAppend = consoleAppenders.asScala.filter { case (a, l) => level.compare(l) >= 0 }
+        val toAppend = consoleAppenders.get.filter { case (a, l) => level.compare(l) >= 0 }
         if (toAppend.nonEmpty) {
           val m = message
           toAppend.foreach { case (a, l) => a.appendLog(level, m) }
         }
       }
       def log[T](level: Level.Value, message: ObjectEvent[T]): Unit = {
-        consoleAppenders.forEach { case (a, l) =>
+        consoleAppenders.get.foreach { case (a, l) =>
           if (level.compare(l) >= 0) a.appendObjectEvent(level, message)
         }
       }
       def addAppender(newAppender: (Appender, Level.Value)): Unit =
-        Util.ignoreResult(consoleAppenders.add(newAppender))
+        Util.ignoreResult(consoleAppenders.updateAndGet(_ :+ newAppender))
       def clearAppenders(): Unit = {
-        consoleAppenders.forEach { case (a, _) => a.close() }
-        consoleAppenders.clear()
+        consoleAppenders.get.foreach { case (a, _) => a.close() }
+        consoleAppenders.set(Vector.empty)
       }
-      def appenders: Seq[Appender] = consoleAppenders.asScala.map(_._1).toVector
+      def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
     }
     private[this] val loggers = new ConcurrentHashMap[String, Log]
     private[this] val closed = new AtomicBoolean(false)

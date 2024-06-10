@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -192,9 +193,40 @@ trait Terminal extends AutoCloseable {
     else 0
   }
   private[sbt] def flush(): Unit = printStream.flush()
+
+  private[sbt] def readArrow: Int = withRawInput {
+    val in = System.in
+    val ESC = '\u001B'
+    val EOT = '\u0004'
+    var result: Int = -1
+    def readBracket: Int =
+      in.read() match {
+        case '[' => readAnsiControl
+        case _   => 0
+      }
+    def readAnsiControl: Int =
+      in.read() match {
+        case 'A' => Terminal.VK_UP
+        case 'B' => Terminal.VK_DOWN
+        case 'C' => Terminal.VK_RIGHT
+        case 'D' => Terminal.VK_LEFT
+        case _   => 0
+      }
+    in.read() match {
+      case ESC => readBracket
+      // Ctrl+D to quit
+      case EOT => -1
+      case c   => c
+    }
+  }
 }
 
 object Terminal {
+  private[sbt] final val VK_UP = 256
+  private[sbt] final val VK_DOWN = 257
+  private[sbt] final val VK_RIGHT = 258
+  private[sbt] final val VK_LEFT = 259
+
   val NO_BOOT_CLIENTS_CONNECTED: Int = -2
   // Disable noisy jline log spam
   if (System.getProperty("sbt.jline.verbose", "false") != "true")
@@ -868,13 +900,19 @@ object Terminal {
     override lazy val isAnsiSupported: Boolean =
       !isDumbTerminal && Terminal.isAnsiSupported && !isCI
     override private[sbt] def progressState: ProgressState = consoleProgressState.get
-    override def isEchoEnabled: Boolean =
-      try system.echo()
-      catch { case _: InterruptedIOException => false }
     override def isSuccessEnabled: Boolean = true
+    private lazy val echoEnabled: AtomicBoolean = new AtomicBoolean({
+      try system.echo()
+      catch {
+        case _: InterruptedIOException => false
+      }
+    })
+    override def isEchoEnabled: Boolean = echoEnabled.get()
     override def setEchoEnabled(toggle: Boolean): Unit =
-      try Util.ignoreResult(system.echo(toggle))
-      catch { case _: InterruptedIOException => }
+      try {
+        Util.ignoreResult(system.echo(toggle))
+        echoEnabled.set(toggle)
+      } catch { case _: InterruptedIOException => }
     override def getBooleanCapability(capability: String): Boolean =
       capabilityMap.get(capability).fold(false)(system.getBooleanCapability)
     override def getNumericCapability(capability: String): Integer =

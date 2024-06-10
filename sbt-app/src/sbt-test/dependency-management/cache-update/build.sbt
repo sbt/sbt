@@ -23,7 +23,7 @@ lazy val root = (project in file("."))
       ),
       version := "0.3.1-SNAPSHOT",
       description := "An HTTP client for Scala with Async Http Client underneath.",
-      licenses := Seq("Apache 2" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt")),
+      licenses := Seq("Apache 2" -> url("http://www.apache.org/licenses/LICENSE-2.0.txt")),
     )),
     localCache,
     libraryDependencies += "com.github.nscala-time" %% "nscala-time" % "1.0.0",

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.8.0"
+declare builtin_sbt_version="1.10.0"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.7.0"
+declare sbtn_version="1.10.0"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -174,12 +174,19 @@ acquire_sbtn () {
   local target="$p/sbtn"
   local archive_target=
   local url=
+  local arch="x86_64"
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    archive_target="$p/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
-    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-pc-linux-${sbtn_v}.tar.gz"
+    arch=$(uname -m)
+    if [[ "$arch" == "aarch64" ]] || [[ "$arch" == "x86_64" ]]; then
+      archive_target="$p/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
+      url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"
+    else
+      echoerr "sbtn is not supported on $arch"
+      exit 2
+    fi
   elif [[ "$OSTYPE" == "darwin"* ]]; then
-    archive_target="$p/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
-    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-x86_64-apple-darwin-${sbtn_v}.tar.gz"
+    archive_target="$p/sbtn-universal-apple-darwin-${sbtn_v}.tar.gz"
+    url="https://github.com/sbt/sbtn-dist/releases/download/v${sbtn_v}/sbtn-universal-apple-darwin-${sbtn_v}.tar.gz"
   elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
     target="$p/sbtn.exe"
     archive_target="$p/sbtn-x86_64-pc-win32-${sbtn_v}.zip"
@@ -192,7 +199,7 @@ acquire_sbtn () {
   if [[ -f "$target" ]]; then
     sbtn_command="$target"
   else
-    echoerr "downloading sbtn ${sbtn_v}"
+    echoerr "downloading sbtn ${sbtn_v} for ${arch}"
     download_url "$url" "$archive_target"
     if [[ "$OSTYPE" == "linux-gnu"* ]] || [[ "$OSTYPE" == "darwin"* ]]; then
       tar zxf "$archive_target" --directory "$p"
@@ -316,7 +323,8 @@ addSbtScriptProperty () {
     :
   else
     sbt_script=$0
-    sbt_script=${sbt_script/ /%20}
+    # Use // to replace all spaces with %20.
+    sbt_script=${sbt_script// /%20}
     addJava "-Dsbt.script=$sbt_script"
   fi
 }
@@ -510,6 +518,7 @@ run() {
     execRunner "$java_cmd" \
       "${java_args[@]}" \
       "${sbt_options[@]}" \
+      "${java_tool_options[@]}" \
       -jar "$sbt_jar" \
       "${sbt_commands[@]}" \
       "${residual_args[@]}"
@@ -569,7 +578,6 @@ Usage: `basename "$0"` [options]
   --sbt-version  <version>   use the specified version of sbt
   --sbt-jar      <path>      use the specified jar as the sbt launcher
 
-  # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
   --java-home <path>         alternate JAVA_HOME
 
   # jvm options and output control
@@ -713,7 +721,8 @@ detectNativeClient() {
   if [[ "$sbtn_command" != "" ]]; then
     :
   elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-linux"
+    arch=$(uname -m)
+    [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then
     [[ -f "${sbt_bin_dir}/sbtn-x86_64-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-apple-darwin"
   elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
@@ -780,6 +789,7 @@ original_args=("$@")
 
 java_args=($JAVA_OPTS)
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
+java_tool_options=($JAVA_TOOL_OPTIONS)
 if [[ "$SBT_NATIVE_CLIENT" == "true" ]]; then
   use_sbtn=1
 fi

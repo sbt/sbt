@@ -15,6 +15,12 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.TextDocumentIdentifierFormats
   with sbt.internal.bsp.codec.PositionFormats
   with sbt.internal.bsp.codec.RangeFormats
+  with sbt.internal.bsp.codec.LocationFormats
+  with sbt.internal.bsp.codec.DiagnosticRelatedInformationFormats
+  with sbt.internal.bsp.codec.ScalaTextEditFormats
+  with sbt.internal.bsp.codec.ScalaWorkspaceEditFormats
+  with sbt.internal.bsp.codec.ScalaActionFormats
+  with sbt.internal.bsp.codec.ScalaDiagnosticFormats
   with sbt.internal.bsp.codec.DiagnosticFormats
   with sbt.internal.bsp.codec.BuildClientCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildParamsFormats
@@ -51,10 +57,13 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.RunParamsFormats
   with sbt.internal.bsp.codec.RunResultFormats
   with sbt.internal.bsp.codec.ScalaBuildTargetFormats
-  with sbt.internal.bsp.codec.SbtBuildTargetFormats
   with sbt.internal.bsp.codec.ScalacOptionsParamsFormats
   with sbt.internal.bsp.codec.ScalacOptionsItemFormats
   with sbt.internal.bsp.codec.ScalacOptionsResultFormats
+  with sbt.internal.bsp.codec.JavacOptionsParamsFormats
+  with sbt.internal.bsp.codec.JavacOptionsItemFormats
+  with sbt.internal.bsp.codec.JavacOptionsResultFormats
+  with sbt.internal.bsp.codec.SbtBuildTargetFormats
   with sbt.internal.bsp.codec.BspConnectionDetailsFormats
   with sbt.internal.bsp.codec.MetalsMetadataFormats
   with sbt.internal.bsp.codec.ScalaTestClassesItemFormats

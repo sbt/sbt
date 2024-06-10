@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -74,7 +75,7 @@ object ScopeFilter {
     def all(sfilter: => ScopeFilter): Initialize[Seq[A]] =
       Def.flatMap(getData) { data =>
         data.allScopes.toSeq
-          .filter(sfilter(data))
+          .withFilter(sfilter(data))
           .map(s => Project.inScope(s, i))
           .join
       }
@@ -90,7 +91,7 @@ object ScopeFilter {
       Def.flatMap(getData) { data =>
         import std.TaskExtra._
         data.allScopes.toSeq
-          .filter(sfilter(data))
+          .withFilter(sfilter(data))
           .map(s => Project.inScope(s, i))
           .join(_.join)
       }

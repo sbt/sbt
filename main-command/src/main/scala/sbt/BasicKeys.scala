@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -165,7 +166,7 @@ object BasicKeys {
   )
   private[sbt] val detachStdio = AttributeKey[Boolean](
     "detach-stdio",
-    "Toggles wheter or not to close system in, out and error when the server starts.",
+    "Toggles whether or not to close system in, out and error when the server starts.",
     1000
   )
 }

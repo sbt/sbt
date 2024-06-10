@@ -3,4 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 organization := "com.example"
 version := "0.1.0"
-ivyPaths := IvyPaths((LocalRootProject / baseDirectory).value, Some((LocalRootProject / target).value / "ivy-cache"))
+ivyPaths := IvyPaths(
+  (LocalRootProject / baseDirectory).value.toString,
+  Some(((LocalRootProject / target).value / "ivy-cache").toString)
+)

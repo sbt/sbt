@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -76,7 +77,7 @@ private[sbt] object xMain:
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == JavaClient) || (cmd == DashDashClient)
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
-      val isNew: String => Boolean = cmd => (cmd == "new")
+      val isNew: String => Boolean = cmd => (cmd == "new") || (cmd == "init")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
       lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
@@ -113,8 +114,11 @@ private[sbt] object xMain:
               .initialState(
                 rebasedConfig,
                 Seq(defaults, early),
-                runEarly(DefaultsCommand) :: runEarly(InitCommand) :: BootCommand :: Nil
+                runEarly(DefaultsCommand) :: runEarly("error") :: runEarly(
+                  InitCommand
+                ) :: BootCommand :: Nil
               )
+              .put(BasicKeys.detachStdio, detachStdio)
             StandardMain.runManaged(state)
           }
         case _ if clientModByEnv || userCommands.exists(isClient) =>
@@ -293,7 +297,7 @@ object StandardMain {
 import sbt.BasicCommandStrings._
 import sbt.BasicCommands._
 import sbt.CommandUtil._
-import sbt.TemplateCommandUtil.templateCommand
+import sbt.TemplateCommandUtil.{ templateCommandAlias, templateCommand }
 import sbt.internal.CommandStrings._
 import sbt.internal.util.complete.DefaultParsers._
 
@@ -315,6 +319,7 @@ object BuiltinCommands {
       settingsCommand,
       loadProject,
       templateCommand,
+      templateCommandAlias,
       projects,
       project,
       set,
@@ -479,7 +484,7 @@ object BuiltinCommands {
   )(s: State): Parser[(Int, Option[String])] =
     verbosityParser ~ selectedParser(s, keepKeys).?
   def selectedParser(s: State, keepKeys: AttributeKey[_] => Boolean): Parser[String] =
-    singleArgument(allTaskAndSettingKeys(s).filter(keepKeys).map(_.label).toSet)
+    singleArgument(allTaskAndSettingKeys(s).withFilter(keepKeys).map(_.label).toSet)
   def verbosityParser: Parser[Int] =
     success(1) | ((Space ~ "-") ~> (
       'v'.id.+.map(_.size + 1) |

@@ -1,7 +1,7 @@
 import xsbti.AppConfiguration
 // ThisBuild / useCoursier := false
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.13.3"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 

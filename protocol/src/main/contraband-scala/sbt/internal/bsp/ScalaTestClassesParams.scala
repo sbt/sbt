@@ -7,7 +7,7 @@ package sbt.internal.bsp
 /**
  * Scala Test Class Request
  * The build target scala test options request is sent from the client to the server
- * to query for the list of fully qualified names of test clases in a given list of targets.
+ * to query for the list of fully qualified names of test classes in a given list of targets.
  * @param originId An optional number uniquely identifying a client request.
  */
 final class ScalaTestClassesParams private (

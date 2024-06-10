@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -28,7 +29,7 @@ object Statistics {
       val directDependencies = graph.dependencyMap(moduleId).filterNot(_.isEvicted).map(_.id)
       val dependencyStats =
         directDependencies.map(statsFor).flatMap(_.transitiveStatsWithSelf).toMap
-      val selfSize = graph.module(moduleId).flatMap(_.jarFile).filter(_.exists).map(_.length)
+      val selfSize = graph.module(moduleId).flatMap(_.jarFile).withFilter(_.exists).map(_.length)
       val numDirectDependencies = directDependencies.size
       val numTransitiveDependencies = dependencyStats.size
       val transitiveSize = selfSize.getOrElse(0L) + dependencyStats
@@ -46,6 +47,9 @@ object Statistics {
     }
 
     def format(stats: ModuleStats): String = {
+      import java.util.Locale
+      val dl = Locale.getDefault
+      Locale.setDefault(Locale.US)
       import stats._
       def mb(bytes: Long): Double = bytes.toDouble / 1000000
       val selfSize =
@@ -53,7 +57,10 @@ object Statistics {
           case Some(size) => f"${mb(size)}%7.3f"
           case None       => "-------"
         }
-      f"${mb(transitiveSize)}%7.3f MB $selfSize MB $numTransitiveDependencies%4d $numDirectDependencies%4d ${id.idString}%s"
+      val r =
+        f"${mb(transitiveSize)}%7.3f MB $selfSize MB $numTransitiveDependencies%4d $numDirectDependencies%4d ${id.idString}%s"
+      Locale.setDefault(dl)
+      r
     }
 
     val allStats =

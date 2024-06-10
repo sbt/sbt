@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -148,6 +149,7 @@ final case class PluginData(
     resolvers: Option[Vector[Resolver]],
     report: Option[UpdateReport],
     scalacOptions: Seq[String],
+    javacOptions: Seq[String],
     unmanagedSourceDirectories: Seq[File],
     unmanagedSources: Seq[File],
     managedSourceDirectories: Seq[File],
@@ -160,7 +162,7 @@ final case class PluginData(
 
 object PluginData {
   private[sbt] def apply(dependencyClasspath: Def.Classpath, converter: FileConverter): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, None, converter)
+    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, Nil, None, converter)
 }
 
 object EvaluateTask {
@@ -263,12 +265,15 @@ object EvaluateTask {
       extracted: Extracted,
       structure: BuildStructure,
       state: State
-  ): ExecuteProgress = {
+  ): ExecuteProgress2 = {
     state
-      .get(currentTaskProgress)
-      .map { tp =>
-        new ExecuteProgress {
-          val progress = tp.progress
+      .get(currentCommandProgress)
+      .map { progress =>
+        new ExecuteProgress2 {
+          override def beforeCommand(cmd: String, state: State): Unit =
+            progress.beforeCommand(cmd, state)
+          override def afterCommand(cmd: String, result: Either[Throwable, State]): Unit =
+            progress.afterCommand(cmd, result)
           override def initial(): Unit = progress.initial()
           override def afterRegistered(
               task: TaskId[?],
@@ -284,7 +289,9 @@ object EvaluateTask {
             progress.afterCompleted(task, result)
           override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
             progress.afterAllCompleted(results)
-          override def stop(): Unit = {}
+          override def stop(): Unit = {
+            // TODO: this is not a typo, but a questionable decision in 6559c3a0 that is probably obsolete
+          }
         }
       }
       .getOrElse {
@@ -298,11 +305,12 @@ object EvaluateTask {
           (if (SysProp.taskTimings)
              new TaskTimings(reportOnShutdown = false, state.globalLogging.full) :: Nil
            else Nil)
-        reporters match {
-          case xs if xs.isEmpty   => ExecuteProgress.empty
-          case xs if xs.size == 1 => xs.head
-          case xs                 => ExecuteProgress.aggregate(xs)
-        }
+        val cmdProgress = getSetting(Keys.commandProgress, Seq(), extracted, structure)
+        ExecuteProgress2.aggregate(reporters match {
+          case xs if xs.isEmpty   => cmdProgress
+          case xs if xs.size == 1 => cmdProgress :+ new ExecuteProgressAdapter(xs.head)
+          case xs => cmdProgress :+ new ExecuteProgressAdapter(ExecuteProgress.aggregate(xs))
+        })
       }
   }
   // TODO - Should this pull from Global or from the project itself?

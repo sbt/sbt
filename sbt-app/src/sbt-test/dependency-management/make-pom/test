@@ -1,3 +1,5 @@
 > checkPom
 > checkExtra
 > checkVersionPlusMapping
+> checkAPIURL
+> checkReleaseNotesURL

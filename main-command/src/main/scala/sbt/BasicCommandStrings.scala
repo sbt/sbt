@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -17,6 +18,7 @@ object BasicCommandStrings {
   val Shutdown: String = "shutdown"
   val Quit: String = "quit"
   val TemplateCommand: String = "new"
+  val TemplateCommandAlias: String = "init"
   val Cancel: String = "cancel"
 
   /** The command name to terminate the program. */

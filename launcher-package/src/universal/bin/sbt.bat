@@ -112,20 +112,22 @@ if not defined _JAVACMD (
 
 if not defined _JAVACMD set _JAVACMD=java
 
-rem users can set JAVA_OPTS via .jvmopts (sbt-extras style)
-if exist .jvmopts for /F %%A in (.jvmopts) do (
-  set _jvmopts_line=%%A
-  if not "!_jvmopts_line:~0,1!" == "#" (
-    if defined _JAVA_OPTS (
-      set _JAVA_OPTS=!_JAVA_OPTS! %%A
-    ) else (
-      set _JAVA_OPTS=%%A
-    )
-  )
-)
+rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config. 
+if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS% 
 
-rem We use the value of the JAVA_OPTS environment variable if defined, rather than the config.
-if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS%
+rem users can set JAVA_OPTS via .jvmopts (sbt-extras style) 
+if exist .jvmopts for /F %%A in (.jvmopts) do ( 
+  set _jvmopts_line=%%A 
+  if not "!_jvmopts_line:~0,1!" == "#" ( 
+    if defined _JAVA_OPTS ( 
+      set _JAVA_OPTS=!_JAVA_OPTS! %%A 
+    ) else ( 
+      set _JAVA_OPTS=%%A 
+    ) 
+  ) 
+) 
+ 
+rem If nothing is defined, use the defaults. 
 if not defined _JAVA_OPTS if defined default_java_opts set _JAVA_OPTS=!default_java_opts!
 
 rem We use the value of the SBT_OPTS environment variable if defined, rather than the config.
@@ -680,6 +682,7 @@ if defined sbt_args_verbose (
   echo "!_JAVACMD!"
   if defined _JAVA_OPTS ( call :echolist !_JAVA_OPTS! )
   if defined _SBT_OPTS ( call :echolist !_SBT_OPTS! )
+  if defined JAVA_TOOL_OPTIONS ( call :echolist %JAVA_TOOL_OPTIONS% )
   echo -cp
   echo "!sbt_jar!"
   echo xsbt.boot.Boot
@@ -687,7 +690,7 @@ if defined sbt_args_verbose (
   echo.
 )
 
-"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! -cp "!sbt_jar!" xsbt.boot.Boot %*
+"!_JAVACMD!" !_JAVA_OPTS! !_SBT_OPTS! %JAVA_TOOL_OPTIONS% -cp "!sbt_jar!" xsbt.boot.Boot %*
 
 goto :eof
 
@@ -826,21 +829,21 @@ exit /B 0
 
   set _has_memory_args=
 
-  if defined _JAVA_OPTS for /F %%g in ("!_JAVA_OPTS!") do (
+  if defined _JAVA_OPTS for %%g in (%_JAVA_OPTS%) do (
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
   )
 
-  if defined JAVA_TOOL_OPTIONS for /F %%g in ("%JAVA_TOOL_OPTIONS%") do (
+  if defined JAVA_TOOL_OPTIONS for %%g in (%JAVA_TOOL_OPTIONS%) do (
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1
     if "!p:~0,4!" == "-Xss" set _has_memory_args=1
   )
 
-  if defined _SBT_OPTS for /F %%g in ("!_SBT_OPTS!") do (
+  if defined _SBT_OPTS for %%g in (%_SBT_OPTS%) do (
     set "p=%%g"
     if "!p:~0,4!" == "-Xmx" set _has_memory_args=1
     if "!p:~0,4!" == "-Xms" set _has_memory_args=1

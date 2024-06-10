@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -26,7 +27,7 @@ object Giter8TemplatePlugin extends AutoPlugin {
           ModuleID(
             "org.scala-sbt.sbt-giter8-resolver",
             "sbt-giter8-resolver",
-            "0.15.0"
+            "0.16.2"
           ) cross CrossVersion.binary,
           "sbtgiter8resolver.Giter8TemplateResolver"
         )

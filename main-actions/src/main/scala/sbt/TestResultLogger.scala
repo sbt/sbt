@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -160,7 +161,7 @@ object TestResultLogger {
         "Canceled" -> canceledCount,
         "Pending" -> pendingCount
       )
-      val extra = otherCounts.filter(_._2 > 0).map { case (label, count) => s", $label $count" }
+      val extra = otherCounts.withFilter(_._2 > 0).map { case (label, count) => s", $label $count" }
 
       val postfix = base + extra.mkString
       results.overall match {

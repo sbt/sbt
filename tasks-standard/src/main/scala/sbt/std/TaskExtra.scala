@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -259,7 +260,7 @@ trait TaskExtra extends TaskExtra0 {
     def lines: Task[List[String]] = lines0(None)
     def lines(sid: String): Task[List[String]] = lines0(Some(sid))
 
-    private def lines0[T](sid: Option[String]): Task[List[String]] =
+    private def lines0(sid: Option[String]): Task[List[String]] =
       streams map { s =>
         IO.readLines(s.readText(key(in), sid))
       }

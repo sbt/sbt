@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -46,6 +47,7 @@ object CoursierInputsTasks {
       sv: String,
       sbv: String,
       auOpt: Option[URL],
+      rnOpt: Option[URL],
       description: String,
       homepage: Option[URL],
       vsOpt: Option[String],
@@ -73,8 +75,15 @@ object CoursierInputsTasks {
         proj1.withProperties(proj1.properties :+ (SbtPomExtraProperties.VERSION_SCHEME_KEY -> vs))
       case _ => proj1
     }
-    proj2.withInfo(
-      proj2.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
+    val proj3 = rnOpt match {
+      case Some(rn) =>
+        proj2.withProperties(
+          proj2.properties :+ (SbtPomExtraProperties.POM_RELEASE_NOTES_KEY -> rn.toString)
+        )
+      case _ => proj2
+    }
+    proj3.withInfo(
+      proj3.info.withDescription(description).withHomePage(homepage.fold("")(_.toString))
     )
   }
 
@@ -87,6 +96,7 @@ object CoursierInputsTasks {
         scalaVersion.value,
         scalaBinaryVersion.value,
         apiURL.value,
+        releaseNotesURL.value,
         description.value,
         homepage.value,
         versionScheme.value,

@@ -1,0 +1,4 @@
+> check
+
+# should not fail if skipped, and publishTo is empty
+> c / publish

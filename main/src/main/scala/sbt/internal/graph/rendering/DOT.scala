@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -52,7 +53,7 @@ object DOT:
     // add extra edges from evicted to evicted-by module
     val evictedByEdges: Seq[Edge] =
       graph.nodes
-        .filter(_.isEvicted)
+        .withFilter(_.isEvicted)
         .map(m => Edge(m.id, m.id.copy(version = m.evictedByVersion.get)))
 
     // remove edges to new evicted-by module which is now replaced by a chain

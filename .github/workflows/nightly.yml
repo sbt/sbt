@@ -15,34 +15,36 @@ jobs:
         include:
           - os: ubuntu-latest
             java: 8
+            distribution: adopt
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
     steps:
     - name: Checkout sbt/sbt
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
     - name: Checkout sbt/io
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: sbt/io
         ref: develop
         path: io
     - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: sbt/librarymanagement
         ref: develop
         path: librarymanagement
     - name: Checkout sbt/zinc
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         repository: sbt/zinc
         ref: develop
         path: zinc
-    - name: Setup
-      uses: olafurpg/setup-scala@v13
+    - name: Setup JDK
+      uses: actions/setup-java@v4
       with:
-        java-version: "adopt@1.${{ matrix.java }}"
+        distribution: "${{ matrix.distribution }}"
+        java-version: "${{ matrix.java }}"
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Build and deploy

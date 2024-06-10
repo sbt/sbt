@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -104,7 +105,7 @@ private[sbt] object Clean {
           val delete = cleanDelete(scope).value
           val targetDir = (scope / target).?.value.map(_.toPath)
 
-          targetDir.filter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
+          targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
           (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
             if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
             else delete(x.toPath)

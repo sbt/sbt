@@ -1,5 +1,5 @@
-lazy val scala212 = "2.12.17"
-lazy val scala213 = "2.13.1"
+lazy val scala212 = "2.12.19"
+lazy val scala213 = "2.13.12"
 
 ThisBuild / scalaVersion := scala212
 
@@ -11,7 +11,8 @@ lazy val root = (project in file("."))
 
 lazy val core = (project in file("core"))
   .settings(
-    crossScalaVersions := Seq(scala212, scala213))
+    crossScalaVersions := Seq(scala212, scala213),
+  )
 
 lazy val module = (project in file("module"))
   .dependsOn(core)

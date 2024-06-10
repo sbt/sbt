@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -28,6 +29,11 @@ object TestFrameworks {
   val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
   val MUnit = TestFramework("munit.Framework")
   val ZIOTest = TestFramework("zio.test.sbt.ZTestFramework")
+  val WeaverTestCats = TestFramework("weaver.framework.CatsEffect")
+  val Hedgehog = TestFramework("hedgehog.sbt.Framework")
+
+  val All: Seq[TestFramework] =
+    Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, ZIOTest, WeaverTestCats, Hedgehog)
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {

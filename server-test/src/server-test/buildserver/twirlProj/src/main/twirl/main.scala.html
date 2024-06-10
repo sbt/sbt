@@ -1,0 +1,14 @@
+@(title: String, paragraphs: Seq[String])
+
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>@title</title>
+  </head>
+  <body>
+    <h1>@tilte</h1>
+    @for(paragraph <- paragraphs) {
+      <p>@paragraph</p>
+    }
+  </body>
+</html>

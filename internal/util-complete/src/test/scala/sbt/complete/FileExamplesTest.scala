@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -82,7 +83,7 @@ class FileExamplesTest extends UnitSpec {
 
     def prefixedPathsOnly: List[String] =
       allRelativizedPaths
-        .filter(_ startsWith withCompletionPrefix)
+        .withFilter(_ startsWith withCompletionPrefix)
         .map(_ substring withCompletionPrefix.length)
 
     def createSampleDirStructure(tempDir: File): Unit = {
@@ -91,8 +92,8 @@ class FileExamplesTest extends UnitSpec {
       nestedFiles = toChildFiles(childDirectories(1), List("farfile1", "barfile2"))
       nestedDirectories = toChildFiles(childDirectories(1), List("fardir1", "bardir2"))
 
-      (childDirectories ++ nestedDirectories).map(_.mkdirs())
-      (childFiles ++ nestedFiles).map(_.createNewFile())
+      (childDirectories ++ nestedDirectories).foreach(_.mkdirs())
+      (childFiles ++ nestedFiles).foreach(_.createNewFile())
 
       baseDir = tempDir
     }

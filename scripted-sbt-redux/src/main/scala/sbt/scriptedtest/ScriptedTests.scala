@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -68,8 +69,7 @@ final class ScriptedTests(
             val handlers = createScriptedHandlers(testDirectory, buffer, prop)
             val runner = new BatchScriptRunner
             val states = new mutable.HashMap[StatementHandler, StatementHandler#State]()
-            try commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
-            finally runner.close()
+            commonRunTest(label, testDirectory, prescripted, handlers, runner, states, buffer)
           }
           runOrHandleDisabled(label, testDirectory, singleTestRunner, buffer)
         }
@@ -257,10 +257,7 @@ final class ScriptedTests(
     }
 
     try runBatchTests
-    finally {
-      runner.cleanUpHandlers(seqHandlers, states)
-      runner.close()
-    }
+    finally runner.cleanUpHandlers(seqHandlers, states)
   }
 
   private def runOrHandleDisabled(
@@ -313,7 +310,6 @@ final class ScriptedTests(
           case null | _: SocketException => log.error(s" Cause of test exception: ${t.getMessage}")
           case _                         => if (!pending) t.printStackTrace()
         }
-        log.play()
       }
       if (pending) None else Some(label)
     }

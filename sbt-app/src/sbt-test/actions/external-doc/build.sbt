@@ -41,9 +41,14 @@ def expectedMappings = Def.task {
     mod.artifacts.flatMap { case (a, f) =>
       val n = a.name.stripSuffix("_" + binVersion)
       n match {
-        case "a" | "b" | "c" => (converter.toVirtualFile(f.toPath()): HashedVirtualFileRef, apiBase(n)) :: Nil
-        case "scala-library" => (converter.toVirtualFile(f.toPath()): HashedVirtualFileRef, scalaLibraryBase(stdLibVersion)) :: Nil
-        case _               => Nil
+        case "a" | "b" | "c" =>
+          (converter.toVirtualFile(f.toPath()): HashedVirtualFileRef, apiBase(n)) :: Nil
+        case "scala-library" =>
+          (
+            converter.toVirtualFile(f.toPath()): HashedVirtualFileRef,
+            scalaLibraryBase(stdLibVersion)
+          ) :: Nil
+        case _ => Nil
       }
     }
   }

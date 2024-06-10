@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -97,7 +98,7 @@ private[sbt] object PluginCross {
     VersionNumber(sv) match {
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.7"
-      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.17"
+      case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.19"
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
     }
 }

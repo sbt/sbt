@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.19"
 
 libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.2",

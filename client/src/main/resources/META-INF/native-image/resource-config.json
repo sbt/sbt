@@ -16,6 +16,7 @@
 	{"pattern":"org/jline/utils/screen.caps"},
 	{"pattern":"library.properties"},
         {"pattern":"darwin/x86_64/libsbtipcsocket.dylib"},
+        {"pattern":"linux/aarch64/libsbtipcsocket.so"},
         {"pattern":"linux/x86_64/libsbtipcsocket.so"},
         {"pattern":"win32/x86_64/sbtipcsocket.dll"}
     ]

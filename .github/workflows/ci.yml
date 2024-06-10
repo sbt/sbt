@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-20.04
             java: 17
             distribution: temurin
             jobtype: 1
@@ -41,8 +41,8 @@ jobs:
             distribution: adopt
             jobtype: 7
           - os: macos-12
-            java: 8
-            distribution: adopt
+            java: 17
+            distribution: temurin
             jobtype: 8
           - os: windows-2019
             java: 8
@@ -59,168 +59,168 @@ jobs:
       JDK11: adopt@1.11.0-9
       SPARK_LOCAL_IP: "127.0.0.1"
     steps:
-    - name: Checkout sbt/sbt
-      uses: actions/checkout@v3
-    - name: Checkout sbt/io
-      uses: actions/checkout@v3
-      with:
-        repository: sbt/io
-        ref: develop
-        path: io
-    - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v3
-      with:
-        repository: sbt/librarymanagement
-        ref: develop
-        path: librarymanagement
-    - name: Checkout sbt/zinc
-      uses: actions/checkout@v3
-      with:
-        repository: sbt/zinc
-        ref: wip/sbt-2.x
-        path: zinc
-    - name: Setup JDK
-      uses: actions/setup-java@v3
-      with:
-        distribution: "${{ matrix.distribution }}"
-        java-version: "${{ matrix.java }}"
-    - name: Set up Python 3.7
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.7
-    - name: Coursier cache
-      uses: coursier/cache-action@v6
-    # - name: Cache sbt
-    #  uses: actions/cache@v3
-    #  with:
-    #    path: ~/.sbt
-    #    key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
-    - name: Setup Windows C++ toolchain
-      uses: ilammy/msvc-dev-cmd@v1
-      if: ${{ matrix.os == 'windows-2019' }}
-    - name: Pre-test cleanup
-      shell: bash
-      run: |
-        rm -rf "$HOME/.sbt/scripted/" || true
-        rm -rf "$HOME/.ivy2/local" || true
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-    - name: Publish local Zinc
-      shell: bash
-      run: |
-        ./sbt -v lowerUtils/publishLocal
-        cd zinc/
-        sbt publishLocal
-    - name: Build and test (1)
-      if: ${{ matrix.jobtype == 1 }}
-      shell: bash
-      run: |
-        rm -rf "$HOME/.sbt/boot/" || true
-        # ./sbt -v --client mimaReportBinaryIssues
-        ./sbt -v --client javafmtCheck
-        ./sbt -v --client "Test/javafmtCheck"
-        ./sbt -v --client scalafmtCheckAll
-        ./sbt -v --client scalafmtSbtCheck
-        ./sbt -v --client serverTestProj/scalafmtCheckAll
-        # ./sbt -v --client headerCheck
-        # ./sbt -v --client "Test/headerCheck"
-        ./sbt -v --client "Test/compile"
-        ./sbt -v --client publishLocal
-        ./sbt -v --client test
-        ./sbt -v --client "serverTestProj/test"
-        # ./sbt -v --client doc
-        ./sbt -v --client "all $UTIL_TESTS"
-        ./sbt -v --client ++2.13.x
-        ./sbt -v --client "all $UTIL_TESTS"
-        ./sbt -v --client ++2.12.x
-        ./sbt -v --client "all $UTIL_TESTS"
-    - name: Build and test (2)
-      if: ${{ matrix.jobtype == 2 }}
-      shell: bash
-      run: |
-        ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* classloader-cache/* package/*"
-        # ./sbt -v "scripted watch/*"
-    - name: Build and test (3)
-      if: ${{ matrix.jobtype == 3 }}
-      shell: bash
-      run: |
-        # ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/*"
-        ./sbt -v --client "scripted dependency-management/* project-load/* java/* run/*"
-        # ./sbt -v --client "scripted plugins/*"
-        # ./sbt -v --client "scripted nio/*"
-    - name: Build and test (4)
-      if: ${{ matrix.jobtype == 4 }}
-      shell: bash
-      run: |
-        # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
-        ./sbt -v "scripted source-dependencies/*"
-        # ./sbt -v "scripted project/*"
-    - name: Build and test (5)
-      if: ${{ matrix.jobtype == 5 }}
-      shell: bash
-      run: |
-        ./sbt -v --client test
-        ./sbt -v --client "++2.13.x; all $UTIL_TESTS"
-        ./sbt -v --client "++2.12.x; all $UTIL_TESTS"
-    # - name: Build and test (6)
-    #  if: ${{ matrix.jobtype == 6 }}
-    #  shell: bash
-    #  run: |
-    #    # build from fresh IO, LM, and Zinc
-    #    BUILD_VERSION="1.5.0-SNAPSHOT"
-    #    cd io
-    #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-    #    cd ../
-    #    sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-    #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-    #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
-    - name: Build and test (7)
-      if: ${{ matrix.jobtype == 7 }}
-      shell: bash
-      run: |
-        # test building sbtn on Linux
-        sbt "-Dsbt.io.virtual=false" nativeImage
-        # test launcher script
-        echo build using JDK 8 test using JDK 8 and JDK 11
-        cd launcher-package
-        sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-        cd citest && ./test.sh
-        $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
-        java -Xmx32m -version
-        ./test.sh
-    - name: Build and test (8)
-      if: ${{ matrix.jobtype == 8 }}
-      shell: bash
-      run: |
-        # test building sbtn on macOS
-        sbt "-Dsbt.io.virtual=false" nativeImage
-        # test launcher script
-        echo build using JDK 8, test using JDK 8, on macOS
-        cd launcher-package
-        bin/coursier resolve
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-        cd citest && ./test.sh
-    - name: Build and test (9)
-      if: ${{ matrix.jobtype == 9 }}
-      shell: bash
-      run: |
-        # test building sbtn on Windows
-        sbt "-Dsbt.io.virtual=false" nativeImage
-        # test launcher script
-        echo build using JDK 8, test using JDK 8, on Windows
-        cd launcher-package
-        bin/coursier.bat resolve
-        sbt -Dsbt.build.version=$TEST_SBT_VER universal:packageBin universal:stage integrationTest/test
-        cd citest
-        ./test.bat
-        test3/test3.bat
-    - name: Cleanup
-      shell: bash
-      run: |
-        rm -rf "$HOME/.sbt/scripted/" || true
-        rm -rf "$HOME/.ivy2/local" || true
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-        find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
-        find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
-        find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
-        find $HOME/.sbt                              -name "*.lock"               -delete || true
+      - name: Checkout sbt/sbt
+        uses: actions/checkout@v4
+      - name: Checkout sbt/io
+        uses: actions/checkout@v4
+        with:
+          repository: sbt/io
+          ref: develop
+          path: io
+      - name: Checkout sbt/librarymanagement
+        uses: actions/checkout@v4
+        with:
+          repository: sbt/librarymanagement
+          ref: develop
+          path: librarymanagement
+      - name: Checkout sbt/zinc
+        uses: actions/checkout@v4
+        with:
+          repository: sbt/zinc
+          ref: wip/sbt-2.x
+          path: zinc
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: "${{ matrix.distribution }}"
+          java-version: "${{ matrix.java }}"
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+      - name: Coursier cache
+        uses: coursier/cache-action@v6
+      # - name: Cache sbt
+      #  uses: actions/cache@v3
+      #  with:
+      #    path: ~/.sbt
+      #    key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
+      - name: Setup Windows C++ toolchain
+        uses: ilammy/msvc-dev-cmd@v1
+        if: ${{ matrix.os == 'windows-2019' }}
+      - name: Pre-test cleanup
+        shell: bash
+        run: |
+          rm -rf "$HOME/.sbt/scripted/" || true
+          rm -rf "$HOME/.ivy2/local" || true
+          rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+      - name: Publish local Zinc
+        shell: bash
+        run: |
+          ./sbt -v lowerUtils/publishLocal
+          cd zinc/
+          sbt publishLocal
+      - name: Build and test (1)
+        if: ${{ matrix.jobtype == 1 }}
+        shell: bash
+        run: |
+          rm -rf "$HOME/.sbt/boot/" || true
+          # ./sbt -v --client mimaReportBinaryIssues
+          ./sbt -v --client javafmtCheck
+          ./sbt -v --client "Test/javafmtCheck"
+          ./sbt -v --client scalafmtCheckAll
+          ./sbt -v --client scalafmtSbtCheck
+          ./sbt -v --client serverTestProj/scalafmtCheckAll
+          # ./sbt -v --client headerCheck
+          # ./sbt -v --client "Test/headerCheck"
+          ./sbt -v --client "Test/compile"
+          ./sbt -v --client publishLocal
+          ./sbt -v --client test
+          ./sbt -v --client "serverTestProj/test"
+          # ./sbt -v --client doc
+          ./sbt -v --client "all $UTIL_TESTS"
+          ./sbt -v --client ++2.13.x
+          ./sbt -v --client "all $UTIL_TESTS"
+          ./sbt -v --client ++2.12.x
+          ./sbt -v --client "all $UTIL_TESTS"
+      - name: Build and test (2)
+        if: ${{ matrix.jobtype == 2 }}
+        shell: bash
+        run: |
+          ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* classloader-cache/* package/*"
+          # ./sbt -v "scripted watch/*"
+      - name: Build and test (3)
+        if: ${{ matrix.jobtype == 3 }}
+        shell: bash
+        run: |
+          # ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/*"
+          ./sbt -v --client "scripted dependency-management/* project-load/* java/* run/*"
+          # ./sbt -v --client "scripted plugins/*"
+          # ./sbt -v --client "scripted nio/*"
+      - name: Build and test (4)
+        if: ${{ matrix.jobtype == 4 }}
+        shell: bash
+        run: |
+          # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
+          ./sbt -v "scripted source-dependencies/*"
+          # ./sbt -v "scripted project/*"
+      - name: Build and test (5)
+        if: ${{ matrix.jobtype == 5 }}
+        shell: bash
+        run: |
+          ./sbt -v --client test
+          ./sbt -v --client "++2.13.x; all $UTIL_TESTS"
+          ./sbt -v --client "++2.12.x; all $UTIL_TESTS"
+      # - name: Build and test (6)
+      #  if: ${{ matrix.jobtype == 6 }}
+      #  shell: bash
+      #  run: |
+      #    # build from fresh IO, LM, and Zinc
+      #    BUILD_VERSION="1.5.0-SNAPSHOT"
+      #    cd io
+      #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
+      #    cd ../
+      #    sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+      #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+      #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+      - name: Build and test (7)
+        if: ${{ matrix.jobtype == 7 }}
+        shell: bash
+        run: |
+          # test building sbtn on Linux
+          sbt "-Dsbt.io.virtual=false" nativeImage
+          # test launcher script
+          echo build using JDK 8 test using JDK 8 and JDK 11
+          cd launcher-package
+          sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
+          sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
+          cd citest && ./test.sh
+          $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
+          java -Xmx32m -version
+          ./test.sh
+      - name: Build and test (8)
+        if: ${{ matrix.jobtype == 8 }}
+        shell: bash
+        run: |
+          # test building sbtn on macOS
+          ./sbt "-Dsbt.io.virtual=false" nativeImage
+          # test launcher script
+          cd launcher-package
+          bin/coursier resolve
+          ../sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
+          # This fails due to the JLine issue
+          # cd citest && ./test.sh
+      - name: Build and test (9)
+        if: ${{ matrix.jobtype == 9 }}
+        shell: bash
+        run: |
+          # test building sbtn on Windows
+          sbt "-Dsbt.io.virtual=false" nativeImage
+          # test launcher script
+          echo build using JDK 8, test using JDK 8, on Windows
+          cd launcher-package
+          bin/coursier.bat resolve
+          sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
+          cd citest
+          ./test.bat
+          test3/test3.bat
+      - name: Cleanup
+        shell: bash
+        run: |
+          rm -rf "$HOME/.sbt/scripted/" || true
+          rm -rf "$HOME/.ivy2/local" || true
+          rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+          find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
+          find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
+          find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
+          find $HOME/.sbt                              -name "*.lock"               -delete || true

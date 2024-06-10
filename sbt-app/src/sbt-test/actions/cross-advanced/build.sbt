@@ -1,6 +1,7 @@
 lazy val check = taskKey[Unit]("")
 lazy val compile2 = taskKey[Unit]("")
-lazy val scala212 = "2.12.17"
+lazy val scala212 = "2.12.19"
+lazy val scala213 = "2.13.12"
 
 ThisBuild / scalaVersion := scala212
 
@@ -13,7 +14,7 @@ lazy val root = (project in file("."))
 
 lazy val foo = project
   .settings(
-    crossScalaVersions := Seq(scala212, "2.13.1"),
+    crossScalaVersions := Seq(scala212, scala213),
     libraryDependencies += "org.scalatest" %% "scalatest" % "3.1.0",
     check := {
       // This tests that +check will respect bar's crossScalaVersions and not switch
@@ -44,7 +45,7 @@ lazy val bar = project
 
 lazy val baz = project
   .settings(
-    crossScalaVersions := Seq("2.13.1"),
+    crossScalaVersions := Seq(scala213),
     check := {
       // This tests that +baz/check will respect bar's crossScalaVersions and not switch
       val x = (LocalProject("bar") / scalaVersion).value
@@ -55,7 +56,7 @@ lazy val baz = project
 
 lazy val client = project
   .settings(
-    crossScalaVersions := Seq(scala212, "2.13.1"),
+    crossScalaVersions := Seq(scala212, scala213),
     check := (Compile / compile).value,
     compile2 := (Compile / compile).value,
   )

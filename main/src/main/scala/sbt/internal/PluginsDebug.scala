@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -182,7 +183,7 @@ private[sbt] object PluginsDebug {
     )
     lazy val debug = PluginsDebug(context.available)
     if (!pluginsThisBuild.contains(plugin)) {
-      val availableInBuilds: List[URI] = perBuild.toList.filter(_._2(plugin)).map(_._1)
+      val availableInBuilds: List[URI] = perBuild.toList.withFilter(_._2(plugin)).map(_._1)
       val s1 = s"Plugin ${plugin.label} is only available in builds:"
       val s2 = availableInBuilds.mkString("\n\t")
       val s3 =

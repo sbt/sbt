@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -93,7 +94,7 @@ private[sbt] object Load {
     val dependencyResolution = IvyDependencyResolution(ivyConfiguration)
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
-    val classpathOptions = ClasspathOptionsUtil.boot
+    val classpathOptions = ClasspathOptionsUtil.noboot(si.version)
     val scalac = ZincLmUtil.scalaCompiler(
       scalaInstance = si,
       classpathOptions = classpathOptions,
@@ -1137,7 +1138,7 @@ private[sbt] object Load {
         // Filter the AutoPlugin settings we included based on which ones are
         // intended in the AddSettings.AutoPlugins filter.
         def autoPluginSettings(f: AutoPlugins) =
-          projectPlugins.filter(f.include).flatMap(_.projectSettings)
+          projectPlugins.withFilter(f.include).flatMap(_.projectSettings)
         // Expand the AddSettings instance into a real Seq[Setting[_]] we'll use on the project
         def expandPluginSettings(auto: AddSettings): Seq[Setting[_]] =
           auto match
@@ -1304,6 +1305,7 @@ private[sbt] object Load {
         val prod = (Configurations.Runtime / exportedProducts).value
         val cp = (Configurations.Runtime / fullClasspath).value
         val opts = (Configurations.Compile / scalacOptions).value
+        val javaOpts = (Configurations.Compile / javacOptions).value
         val unmanagedSrcDirs = (Configurations.Compile / unmanagedSourceDirectories).value
         val unmanagedSrcs = (Configurations.Compile / unmanagedSources).value
         val managedSrcDirs = (Configurations.Compile / managedSourceDirectories).value
@@ -1316,6 +1318,7 @@ private[sbt] object Load {
           Some(fullResolvers.value.toVector),
           Some(update.value),
           opts,
+          javaOpts,
           unmanagedSrcDirs,
           unmanagedSrcs,
           managedSrcDirs,
@@ -1376,19 +1379,7 @@ private[sbt] object Load {
     loadPluginDefinition(
       dir,
       config,
-      PluginData(
-        config.globalPluginClasspath,
-        Nil,
-        None,
-        None,
-        Nil,
-        Nil,
-        Nil,
-        Nil,
-        Nil,
-        None,
-        config.converter,
-      )
+      PluginData(config.globalPluginClasspath, config.converter)
     )
 
   def buildPlugins(dir: File, s: State, config: LoadBuildConfiguration): LoadedPlugins =
@@ -1588,6 +1579,7 @@ final case class LoadBuildConfiguration(
           data.internalClasspath,
           Some(data.resolvers),
           Some(data.updateReport),
+          Nil,
           Nil,
           Nil,
           Nil,

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,7 +13,7 @@ import Def._
 import Keys.{ sbtVersion, state, terminal }
 
 import java.io.{ File, FileInputStream, FileOutputStream, InputStream, IOException }
-import java.net.URL
+import java.net.URI
 import java.nio.file.{ Files, Path }
 import java.util.zip.ZipInputStream
 import sbt.io.IO
@@ -64,7 +65,17 @@ private[sbt] object InstallSbtn {
       if (Properties.isWin) "pc-win32.exe"
       else if (Properties.isLinux) "pc-linux"
       else "apple-darwin"
-    val sbtnName = s"sbt/bin/sbtn-x86_64-$bin"
+    val isArmArchitecture: Boolean = {
+      val prop = sys.props
+        .getOrElse("os.arch", "")
+        .toLowerCase(java.util.Locale.ROOT)
+      prop == "arm64" || prop == "aarch64"
+    }
+    val arch =
+      if (Properties.isWin) "x86_64"
+      else if (Properties.isLinux && isArmArchitecture) "aarch64"
+      else "universal"
+    val sbtnName = s"sbt/bin/sbtn-$arch-$bin"
     val fis = new FileInputStream(sbtZip.toFile)
     val zipInputStream = new ZipInputStream(fis)
     var foundBinary = false
@@ -90,7 +101,7 @@ private[sbt] object InstallSbtn {
   }
   private[this] def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
     val zip = s"https://github.com/sbt/sbt/releases/download/v$version/sbt-$version.zip"
-    val url = new URL(zip)
+    val url = new URI(zip).toURL
     term.printStream.println(s"downloading $zip to $location")
     transfer(url.openStream(), location)
   }
@@ -130,7 +141,7 @@ private[sbt] object InstallSbtn {
   private[this] def downloadCompletion(completion: String, version: String, target: Path): Unit = {
     Files.createDirectories(target.getParent)
     val comp = s"https://raw.githubusercontent.com/sbt/sbt/v$version/client/completions/$completion"
-    transfer(new URL(comp).openStream, target)
+    transfer(new URI(comp).toURL.openStream, target)
   }
   private[this] def setupShell(
       shell: String,

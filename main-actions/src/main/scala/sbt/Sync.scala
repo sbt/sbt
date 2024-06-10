@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -102,7 +103,7 @@ object Sync {
 
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap
-      .filter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
+      .withFilter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
       .map { case (target, srcs) => "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t") }
     if (dups.nonEmpty)
       sys.error("Duplicate mappings:" + dups.mkString)
