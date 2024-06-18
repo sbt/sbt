@@ -42,8 +42,7 @@ class Eval(
       case Some(dir) => PlainDirectory(Directory(dir.toString))
       case None      => VirtualDirectory("output")
   private val classpathString = (backingDir.toList ++ classpath)
-    .map(_.toString)
-    .mkString(":")
+    .mkString(File.pathSeparator)
   private lazy val driver: EvalDriver = new EvalDriver
   private lazy val reporter: EvalReporter = mkReporter match
     case Some(f) => f()
