@@ -50,25 +50,28 @@ object ActionCache:
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
-      val json = Converter.toJsonUnsafe(result)
-      val uncacheableOutputs =
-        outputs.filter(f => !fileConverter.toPath(f).startsWith(outputDirectory))
-      if uncacheableOutputs.nonEmpty then
-        cacheEventLog.append(ActionCacheEvent.Error)
-        logger.error(
-          s"Cannot cache task because its output files are outside the output directory: \n" +
-            uncacheableOutputs.mkString("  - ", "\n  - ", "")
-        )
-        result
-      else
-        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+
+      try
+        val json = Converter.toJsonUnsafe(result)
+        outputs.foreach { f =>
+          assert(
+            fileConverter.toPath(f).startsWith(outputDirectory),
+            s"$f is outside the output directory"
+          )
+        }
         val valueFile = StringVirtualFile1(s"value/${input}.json", CompactPrinter(json))
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
             store.syncBlobs(cachedResult.outputFiles, config.outputDirectory)
-            result
+            cacheEventLog.append(ActionCacheEvent.OnsiteTask)
           case Left(e) => throw e
+      catch
+        case e: Throwable =>
+          logger.error(s"Cannot cache task because: $e")
+          logger.trace(e)
+          cacheEventLog.append(ActionCacheEvent.Error)
+      result
 
     def valueFromStr(str: String, origin: Option[String]): O =
       cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
