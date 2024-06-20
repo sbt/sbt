@@ -707,6 +707,9 @@ loadConfigFile() {
 }
 
 loadPropFile() {
+  # trim key and value so as to be more forgiving with spaces around the '=':
+  k=$(echo $k |sed -e 's/^\s*(.+)\s*$/\\1/g')
+  v=$(echo $v |sed -e 's/^\s*(.+)\s*$/\\1/g')
   while IFS='=' read -r k v; do
     if [[ "$k" == "sbt.version" ]]; then
       build_props_sbt_version="$v"
