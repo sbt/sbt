@@ -2531,10 +2531,6 @@ object Defaults extends BuildCommon {
         val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
-            val rawJarPath = c.toPath(res._2)
-            // IO.delete(dir)
-            // IO.unzip(rawJarPath.toFile, dir)
-            // IO.delete(dir / "META-INF" / "MANIFEST.MF")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2721,11 +2717,13 @@ object Defaults extends BuildCommon {
       compileInputs2 := {
         val cp0 = classpathTask.value
         val inputs = compileInputs.value
+        val c = fileConverter.value
         CompileInputs2(
           data(cp0).toVector,
           inputs.options.sources.toVector,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
+          c.toVirtualFile(inputs.options.classesDirectory)
         )
       },
       bspCompileTask :=
