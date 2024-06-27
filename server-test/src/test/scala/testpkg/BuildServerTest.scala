@@ -257,13 +257,13 @@ class BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/cleanCache") {
-    def classFile = svr.baseDirectory.toPath.resolve(
-      "target/out/jvm/scala-2.13.11/runandtest/backend/main/Main.class"
+    def jarFile = svr.baseDirectory.toPath.resolve(
+      "target/out/jvm/scala-2.13.11/runandtest/runandtest_2.13-0.1.0-SNAPSHOT-noresources.jar"
     )
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     compile(buildTarget)
     svr.waitFor[BspCompileResult](10.seconds)
-    assert(Files.exists(classFile))
+    assert(Files.exists(jarFile))
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": "${nextId()}", "method": "buildTarget/cleanCache", "params": {
          |  "targets": [{ "uri": "$buildTarget" }]
@@ -272,7 +272,7 @@ class BuildServerTest extends AbstractServerTest {
     assertProcessing("buildTarget/cleanCache")
     val res = svr.waitFor[CleanCacheResult](10.seconds)
     assert(res.cleaned)
-    assert(Files.notExists(classFile))
+    assert(Files.notExists(jarFile))
   }
 
   test("buildTarget/cleanCache: rebuild project") {
