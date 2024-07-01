@@ -61,7 +61,7 @@ object Previous {
 
     def setTask(newTask: ScopedKey[Task[T]]) = new Referenced(newTask, format)
     private[sbt] def read(streams: Streams): Option[T] =
-      try Option(streams(key.cacheKey).cacheStoreFactory.make(StreamName).read[T]()(stamped))
+      try Option(streams(key.cacheKey).cacheStoreFactory.make(StreamName).read[T]()(using stamped))
       catch { case NonFatal(_) => None }
   }
 
@@ -142,7 +142,7 @@ object Previous {
       ref <- map.get(key.asInstanceOf[Key[Any]])
     } {
       val out = streams(key.cacheKey).cacheStoreFactory.make(StreamName)
-      try out.write(v)(ref.stamped)
+      try out.write(v)(using ref.stamped)
       catch { case NonFatal(_) => }
     }
   }

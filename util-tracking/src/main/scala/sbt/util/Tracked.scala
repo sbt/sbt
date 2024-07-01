@@ -397,7 +397,8 @@ class Difference(
 
   private def clearCache() = store.delete()
 
-  private def cachedFilesInfo = store.read(default = FilesInfo.empty[style.F])(style.formats).files
+  private def cachedFilesInfo =
+    store.read(default = FilesInfo.empty[style.F])(using style.formats).files
   private def raw(fs: Set[style.F]): Set[File] = fs.map(_.file)
 
   def apply[T](files: Set[File])(f: ChangeReport[File] => T): T = {
@@ -432,7 +433,7 @@ class Difference(
     val result = f(report)
     val info = if (filesAreOutputs) style(abs(extractFiles(result))) else currentFilesInfo
 
-    store.write(info)(style.formats)
+    store.write(info)(using style.formats)
 
     result
   }

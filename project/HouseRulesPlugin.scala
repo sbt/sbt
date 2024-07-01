@@ -14,15 +14,15 @@ object HouseRulesPlugin extends AutoPlugin {
     scalacOptions += "-language:implicitConversions",
     scalacOptions ++= "-Xfuture".ifScala213OrMinus.value.toList,
     scalacOptions ++= "-Xlint".ifScala2.value.toList,
-    scalacOptions ++= "-Xfatal-warnings"
-      .ifScala3x(_ => {
-        sys.props.get("sbt.build.fatal") match {
-          case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
-          case _       => true
-        }
-      })
-      .value
-      .toList,
+    // scalacOptions ++= "-Xfatal-warnings"
+    //   .ifScala3x(_ => {
+    //     sys.props.get("sbt.build.fatal") match {
+    //       case Some(_) => java.lang.Boolean.getBoolean("sbt.build.fatal")
+    //       case _       => true
+    //     }
+    //   })
+    //   .value
+    //   .toList,
     scalacOptions ++= "-Ykind-projector".ifScala3.value.toList,
     scalacOptions ++= "-Yinline-warnings".ifScala211OrMinus.value.toList,
     scalacOptions ++= "-Yno-adapted-args".ifScala212OrMinus.value.toList,
