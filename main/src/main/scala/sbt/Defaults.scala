@@ -922,13 +922,11 @@ object Defaults extends BuildCommon {
     ) ++
     configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
       compileOutputs := {
-        import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
         val (_, jarFile) = compileIncremental.value
-        val classFiles = compile.value.readStamps.getAllProductStamps.keySet.asScala
-        classFiles.toSeq.map(c.toPath) :+ compileAnalysisFile.value.toPath :+ c.toPath(jarFile)
+        Seq(compileAnalysisFile.value.toPath, c.toPath(jarFile))
       },
-      compileOutputs := compileOutputs.triggeredBy(compile).value,
+      compileOutputs := compileOutputs.triggeredBy(compileIncremental).value,
       tastyFiles := Def.taskIf {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) {
           val _ = compile.value
@@ -938,10 +936,7 @@ object Defaults extends BuildCommon {
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
       }.value,
-      clean := {
-        (compileOutputs / clean).value
-        (products / clean).value
-      },
+      clean := (compileOutputs / clean).value,
       earlyOutputPing := Def.promise[Boolean],
       compileProgress := {
         val s = streams.value
