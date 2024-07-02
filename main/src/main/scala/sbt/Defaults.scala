@@ -913,9 +913,8 @@ object Defaults extends BuildCommon {
         compileOptions := {
           val opts = (compile / compileOptions).value
           val cp0 = dependencyClasspath.value
-          val cp1 = backendOutput.value +: data(cp0)
           val converter = fileConverter.value
-          val cp = cp1.map(converter.toPath).map(converter.toVirtualFile)
+          val cp = data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
         }
       )
@@ -2664,8 +2663,7 @@ object Defaults extends BuildCommon {
       compileOptions := {
         val c = fileConverter.value
         val cp0 = classpathTask.value
-        val cp1 = (compileIncremental / artifactPath).value +: data(cp0)
-        val cp = cp1.map(c.toPath).map(c.toVirtualFile)
+        val cp = data(cp0).map(c.toVirtualFile)
         val vs = sources.value.toVector map { x =>
           c.toVirtualFile(x.toPath)
         }
