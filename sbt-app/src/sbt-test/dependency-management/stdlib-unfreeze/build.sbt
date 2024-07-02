@@ -12,15 +12,15 @@ lazy val b = project.dependsOn(a).settings(
 )
 
 lazy val a3 = project.settings(
-  scalaVersion := "3.2.2", // 2.13.10 library
+  scalaVersion := "3.3.3", // 2.13.12 library
 )
 
 lazy val b3 = project.dependsOn(a3).settings(
-  scalaVersion := "3.2.0", // 2.13.8 library
+  scalaVersion := "3.3.1", // 2.13.10 library
   TaskKey[Unit]("checkScala") := {
     val i = scalaInstance.value
     i.libraryJars.filter(_.toString.contains("scala-library")).toList match {
-      case List(l) => assert(l.toString.contains("2.13.10"), i.toString)
+      case List(l) => assert(l.toString.contains("2.13.12"), i.toString)
     }
     assert(i.compilerJars.filter(_.toString.contains("scala-library")).isEmpty, i.toString)
     assert(i.otherJars.filter(_.toString.contains("scala-library")).isEmpty, i.toString)
