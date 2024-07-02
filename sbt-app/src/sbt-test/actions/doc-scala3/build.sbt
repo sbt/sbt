@@ -1,11 +1,4 @@
-lazy val m3 = (project in file("m3"))
+lazy val root = project.in(file("."))
   .settings(
-    scalaVersion := "3.0.0-M3",
-    resolvers += Resolver.JCenterRepository
+    scalaVersion := "3.3.3"
   )
-
-lazy val rc1 = (project in file("rc1"))
-  .settings(
-    scalaVersion := "3.0.0-RC1"
-  )
-

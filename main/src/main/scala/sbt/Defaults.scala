@@ -929,9 +929,9 @@ object Defaults extends BuildCommon {
       compileOutputs := compileOutputs.triggeredBy(compileIncremental).value,
       tastyFiles := Def.taskIf {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) {
-          val _ = compile.value
+          val _ = products.value
           val c = fileConverter.value
-          val dir = c.toPath(backendOutput.value).toFile
+          val dir = classDirectory.value
           val tastyFiles = dir.**("*.tasty").get()
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
