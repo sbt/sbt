@@ -4419,7 +4419,7 @@ object Classpaths {
       .allSubpaths(dir)
       .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
       .foreach(IO.delete)
-    IO.unzip(jar, dir)
+    IO2.unzip(jar, dir)
     IO.delete(dir / "META-INF" / "MANIFEST.MF")
     dir :: Nil
   }
