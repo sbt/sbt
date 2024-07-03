@@ -4,14 +4,15 @@ import java.io.File
 import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
-
 import coursier.cache.CacheUrl
 import coursier.{Attributes, Dependency, Module, Project, Resolution}
-import coursier.core.{Classifier, Configuration, Extension, Publication, Type}
+import coursier.core.{Classifier, Configuration, Extension, Info, Publication, Type}
 import coursier.maven.MavenAttributes
 import coursier.util.Artifact
 import sbt.librarymanagement.{Artifact => _, Configuration => _, _}
 import sbt.util.Logger
+
+import scala.annotation.tailrec
 
 private[internal] object SbtUpdateReport {
 
@@ -226,6 +227,26 @@ private[internal] object SbtUpdateReport {
           )
       }
 
+    /**
+     * Assemble the project info, resolving inherited fields. Only implements resolving
+     * the fields that are relevant for moduleReport
+     *
+     * @see https://maven.apache.org/pom.html#Inheritance
+     * @see https://maven.apache.org/ref/3-LATEST/maven-model-builder/index.html#Inheritance_Assembly
+     */
+    def assemble(project: Project): Project = {
+      @tailrec
+      def licenseInfo(project: Project): Seq[Info.License] = {
+        if (project.info.licenseInfo.nonEmpty || project.parent.isEmpty)
+          project.info.licenseInfo
+        else
+          licenseInfo(lookupProject(project.parent.get).get)
+      }
+      project.withInfo(
+        project.info.withLicenseInfo(licenseInfo(project))
+      )
+    }
+
     val m = Dependency(thisModule._1, "")
     val directReverseDependencies = res.rootDependencies.toSet.map(clean).map(_.withVersion(""))
       .map(
@@ -252,6 +273,7 @@ private[internal] object SbtUpdateReport {
     groupedDepArtifacts.toVector.map {
       case (dep, artifacts) =>
         val proj = lookupProject(dep.moduleVersion).get
+        val assembledProject = assemble(proj)
 
         // FIXME Likely flaky...
         val dependees = reverseDependencies
@@ -280,7 +302,7 @@ private[internal] object SbtUpdateReport {
         moduleReport((
           dep,
           dependees,
-          proj,
+          assembledProject,
           filesOpt,
           classLoaders,
         ))
