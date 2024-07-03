@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.0.0-M3"
+ThisBuild / scalaVersion := "3.3.3"
 
 lazy val check = taskKey[Unit]("")
 
