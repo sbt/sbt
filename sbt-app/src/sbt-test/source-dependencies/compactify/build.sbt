@@ -1,6 +1,6 @@
 TaskKey[Unit]("outputEmpty") := {
   val c = fileConverter.value
-  val dir = c.toPath((Compile / backendOutput).value).toFile()
+  val dir = (Compile / products).value.head
   def classes = dir.**("*.class").get()
   if (!classes.isEmpty) sys.error("Classes existed:\n\t" + classes.mkString("\n\t"))
 }
