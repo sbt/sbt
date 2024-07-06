@@ -5,7 +5,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.19"
-  val scala213 = "2.13.12"
+  val scala213 = "2.13.14"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
@@ -80,7 +80,7 @@ object Dependencies {
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.4"
 
   def sjsonNew(n: String) =
-    Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
+    Def.setting("com.eed3si9n" %% n % "0.10.1") // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
@@ -134,5 +134,5 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.7.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.2").cross(CrossVersion.full)
+  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full)
 }
