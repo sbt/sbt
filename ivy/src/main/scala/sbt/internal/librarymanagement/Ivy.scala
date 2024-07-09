@@ -1000,7 +1000,7 @@ private[sbt] object IvySbt {
         name,
         `type`,
         extension,
-        url.orNull,
+        url.map(_.toURL).orNull,
         extraMap
       )
       copyConfigurations(artifact, (ref: ConfigRef) => { ivyArtifact.addConfiguration(ref.name) })
