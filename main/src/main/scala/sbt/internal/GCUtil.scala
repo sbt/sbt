@@ -11,7 +11,6 @@ package internal
 
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration._
-import scala.util.control.NonFatal
 import sbt.util.Logger
 
 private[sbt] object GCUtil {
@@ -27,24 +26,8 @@ private[sbt] object GCUtil {
     // This throttles System.gc calls to interval
     if (now - last > minForcegcInterval.toMillis) {
       lastGcCheck.lazySet(now)
-      forceGc(log)
+      log.debug(s"Trying to force garbage collection (which is a best effort operation)...")
+      System.gc()
     }
   }
-
-  def forceGc(log: Logger): Unit =
-    try {
-      log.debug(s"Forcing garbage collection...")
-      // Force the detection of finalizers for scala.reflect weakhashsets
-      System.gc()
-      // Force finalizers to run.
-      try {
-        System.runFinalization()
-      } catch {
-        case _: NoSuchMethodError =>
-      }
-      // Force actually cleaning the weak hash maps.
-      System.gc()
-    } catch {
-      case NonFatal(_) => // gotta catch em all
-    }
 }
