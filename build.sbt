@@ -1165,7 +1165,6 @@ lazy val sbtClientProj = (project in file("client"))
   .dependsOn(commandProj)
   .settings(
     commonBaseSettings,
-    scalaVersion := "2.12.11", // The thin client does not build with 2.12.12
     publish / skip := true,
     name := "sbt-client",
     mimaPreviousArtifacts := Set.empty,
