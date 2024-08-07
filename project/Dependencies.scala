@@ -5,7 +5,7 @@ import sbt.contraband.ContrabandPlugin.autoImport._
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala212 = "2.12.19"
-  val scala213 = "2.13.12"
+  val scala213 = "2.13.14"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala212
   def nightlyVersion: Option[String] =
@@ -14,15 +14,15 @@ object Dependencies {
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.10.0")
   private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.10.0")
-  val zincVersion = nightlyVersion.getOrElse("1.10.0")
+    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("1.10.1")
+  val zincVersion = nightlyVersion.getOrElse("1.10.1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
   private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
-  val launcherVersion = "1.4.2"
+  val launcherVersion = "1.4.3"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
@@ -80,7 +80,7 @@ object Dependencies {
   val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.4"
 
   def sjsonNew(n: String) =
-    Def.setting("com.eed3si9n" %% n % "0.9.1") // contrabandSjsonNewVersion.value
+    Def.setting("com.eed3si9n" %% n % "0.10.1") // contrabandSjsonNewVersion.value
   val sjsonNewScalaJson = sjsonNew("sjson-new-scalajson")
   val sjsonNewMurmurhash = sjsonNew("sjson-new-murmurhash")
 
@@ -134,5 +134,5 @@ object Dependencies {
 
   val hedgehog = "qa.hedgehog" %% "hedgehog-sbt" % "0.7.0"
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
-  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.2").cross(CrossVersion.full)
+  val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full)
 }
