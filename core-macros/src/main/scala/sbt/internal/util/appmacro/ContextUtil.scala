@@ -101,6 +101,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
         case Apply(_, List(arg)) => extractTags(arg)
         case _                   => extractTags0(tree)
 
+  enum OutputType:
+    case File
+    case Directory
+
   /**
    * Represents an output expression via Def.declareOutput
    */
@@ -109,9 +113,10 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       val term: Term,
       val name: String,
       val parent: Symbol,
+      val outputType: OutputType,
   ):
     override def toString: String =
-      s"Output($tpe, $term, $name)"
+      s"Output($tpe, $term, $name, $outputType)"
     val placeholder: Symbol =
       tpe.asType match
         case '[a] =>
@@ -126,6 +131,7 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
       ValDef(placeholder, rhs = Some('{ null }.asTerm))
     def toAssign: Term = Assign(toRef, term)
     def toRef: Ref = Ref(placeholder)
+    def isFile: Boolean = outputType == OutputType.File
   end Output
 
   def applyTuple(tupleTerm: Term, tpe: TypeRepr, idx: Int): Term =

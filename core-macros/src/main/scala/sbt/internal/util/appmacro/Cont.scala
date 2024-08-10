@@ -15,7 +15,7 @@ import sbt.util.{
   Digest,
   Monad,
 }
-import xsbti.VirtualFile
+import xsbti.{ VirtualFile, VirtualFileRef }
 
 /**
  * Implementation of a macro that provides a direct syntax for applicative functors and monads. It
@@ -337,7 +337,7 @@ trait Cont:
             }.asExprOf[HashWriter[A2]]
           else summonHashWriter[A2]
         val tagsExpr = '{ List(${ Varargs(tags.map(Expr[CacheLevelTag](_))) }: _*) }
-        val block = letOutput(outputs)(body)
+        val block = letOutput(outputs, cacheConfigExpr)(body)
         '{
           given HashWriter[A2] = $inputHashWriter
           given JsonFormat[A1] = $aJsonFormat
@@ -353,9 +353,28 @@ trait Cont:
             })($cacheConfigExpr)
         }
 
-      // wrap body in between output var declarations and var references
+      def toVirtualFileExpr(
+          cacheConfigExpr: Expr[BuildWideCacheConfiguration]
+      )(out: Output): Expr[VirtualFile] =
+        if out.isFile then out.toRef.asExprOf[VirtualFile]
+        else
+          '{
+            ActionCache.packageDirectory(
+              dir = ${ out.toRef.asExprOf[VirtualFileRef] },
+              conv = $cacheConfigExpr.fileConverter,
+            )
+          }
+
+      // This will generate following code for Def.declareOutput(...):
+      //   var $o1: VirtualFile = null
+      //   ActionCache.ActionResult({
+      //     body...
+      //     $o1 = out // Def.declareOutput(out)
+      //     result
+      //   }, List($o1))
       def letOutput[A1: Type](
-          outputs: List[Output]
+          outputs: List[Output],
+          cacheConfigExpr: Expr[BuildWideCacheConfiguration],
       )(body: Expr[A1]): Expr[ActionCache.InternalActionResult[A1]] =
         Block(
           outputs.map(_.toVarDef),
@@ -363,29 +382,38 @@ trait Cont:
             ActionCache.InternalActionResult(
               value = $body,
               outputs = List(${
-                Varargs[VirtualFile](outputs.map(_.toRef.asExprOf[VirtualFile]))
+                Varargs[VirtualFile](outputs.map(toVirtualFileExpr(cacheConfigExpr)))
               }: _*),
             )
           }.asTerm
         ).asExprOf[ActionCache.InternalActionResult[A1]]
 
       val WrapOutputName = "wrapOutput_\u2603\u2603"
+      val WrapOutputDirectoryName = "wrapOutputDirectory_\u2603\u2603"
       // Called when transforming the tree to add an input.
       //  For `qual` of type F[A], and a `selection` qual.value.
       val record = [a] =>
         (name: String, tpe: Type[a], qual: Term, oldTree: Term) =>
           given t: Type[a] = tpe
           convert[a](name, qual) transform { (replacement: Term) =>
-            if name != WrapOutputName then
-              // todo cache opt-out attribute
-              inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
-              oldTree
-            else
-              val output = Output(TypeRepr.of[a], qual, freshName("o"), Symbol.spliceOwner)
-              outputBuf += output
-              if cacheConfigExprOpt.isDefined then output.toAssign
-              else oldTree
-            end if
+            name match
+              case WrapOutputName | WrapOutputDirectoryName =>
+                val output = Output(
+                  tpe = TypeRepr.of[a],
+                  term = qual,
+                  name = freshName("o"),
+                  parent = Symbol.spliceOwner,
+                  outputType = name match
+                    case WrapOutputName          => OutputType.File
+                    case WrapOutputDirectoryName => OutputType.Directory,
+                )
+                outputBuf += output
+                if cacheConfigExprOpt.isDefined then output.toAssign
+                else oldTree
+              case _ =>
+                // todo cache opt-out attribute
+                inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
+                oldTree
         }
       val exprWithConfig =
         cacheConfigExprOpt.map(config => '{ $config; $expr }).getOrElse(expr)

@@ -9,7 +9,6 @@
 package sbt
 
 import java.net.URI
-
 import scala.annotation.tailrec
 import scala.annotation.targetName
 import sbt.KeyRanks.{ DTask, Invisible }
@@ -20,7 +19,7 @@ import sbt.internal.util.{ Terminal => ITerminal, * }
 import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, cacheLevel , DiskActionCacheStore }
 import Util._
 import sbt.util.Show
-import xsbti.{ HashedVirtualFileRef, VirtualFile }
+import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import sjsonnew.JsonFormat
 import scala.reflect.ClassTag
 
@@ -330,6 +329,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   inline def declareOutput(inline vf: VirtualFile): Unit =
     InputWrapper.`wrapOutput_\u2603\u2603`[VirtualFile](vf)
 
+  inline def declareOutputDirectory(inline vf: VirtualFileRef): Unit =
+    InputWrapper.`wrapOutputDirectory_\u2603\u2603`[VirtualFileRef](vf)
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T

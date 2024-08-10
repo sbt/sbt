@@ -1,5 +1,7 @@
 package sbt.util
 
+import java.io.File
+import java.nio.file.Paths
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.IO
 import scala.reflect.ClassTag
@@ -7,7 +9,7 @@ import scala.annotation.{ meta, StaticAnnotation }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-import xsbti.{ FileConverter, VirtualFile }
+import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
@@ -90,6 +92,16 @@ object ActionCache:
             if paths.isEmpty then organicTask
             else valueFromStr(IO.read(paths.head.toFile()), result.origin)
       case Left(_) => organicTask
+
+  def packageDirectory(dir: VirtualFileRef, conv: FileConverter): VirtualFile =
+    import sbt.io.syntax.*
+    val dirPath = conv.toPath(dir)
+    val dirFile = dirPath.toFile()
+    val zipPath = Paths.get(dirPath.toString + ".dirzip")
+    val rebase: File => Seq[(File, String)] =
+      f => if f != dirFile then (f -> dirPath.relativize(f.toPath).toString) :: Nil else Nil
+    IO.zip(dirFile.allPaths.get().flatMap(rebase), zipPath.toFile(), None)
+    conv.toVirtualFile(zipPath)
 
   /**
    * Represents a value and output files, used internally by the macro.
