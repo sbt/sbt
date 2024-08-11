@@ -243,15 +243,25 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: r =>
       val casFile = toCasFile(Digest(r))
-      if casFile.toFile().exists then
-        val shortPath =
-          if r.id.startsWith("${OUT}/") then r.id.drop(7)
-          else r.id
-        val outPath = outputDirectory.resolve(shortPath)
-        Files.createDirectories(outPath.getParent())
-        if outPath.toFile().exists() then IO.delete(outPath.toFile())
-        Some(Files.createSymbolicLink(outPath, casFile))
+      if casFile.toFile().exists then Some(syncFile(r, casFile, outputDirectory))
       else None
+
+  def syncFile(ref: HashedVirtualFileRef, casFile: Path, outputDirectory: Path): Path =
+    val shortPath =
+      if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
+      else ref.id
+    val d = Digest(ref)
+    def symlinkAndNotify(outPath: Path): Path =
+      Files.createDirectories(outPath.getParent())
+      val result = Files.createSymbolicLink(outPath, casFile)
+      // after(result)
+      result
+    outputDirectory.resolve(shortPath) match
+      case p if !p.toFile().exists()    => symlinkAndNotify(p)
+      case p if Digest.sameDigest(p, d) => p
+      case p =>
+        IO.delete(p.toFile())
+        symlinkAndNotify(p)
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     refs.flatMap: r =>
