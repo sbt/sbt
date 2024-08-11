@@ -11,6 +11,7 @@ import xsbti.VirtualFileRef
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
+import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
   val tags = CacheLevelTag.all.toList
@@ -35,9 +36,9 @@ object ActionCacheTest extends BasicTestSuite:
   def testActionCacheBasic(cache: ActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
-    val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
+    val action: ((Int, Int)) => InternalActionResult[Int] = { case (a, b) =>
       called += 1
-      (a + b, Nil)
+      InternalActionResult(a + b, Nil)
     }
     IO.withTemporaryDirectory: (tempDir) =>
       val config = getCacheConfig(cache, tempDir)
@@ -57,10 +58,10 @@ object ActionCacheTest extends BasicTestSuite:
     import sjsonnew.BasicJsonProtocol.*
     IO.withTemporaryDirectory: (tempDir) =>
       var called = 0
-      val action: ((Int, Int)) => (Int, Seq[VirtualFile]) = { case (a, b) =>
+      val action: ((Int, Int)) => InternalActionResult[Int] = { case (a, b) =>
         called += 1
         val out = StringVirtualFile1(s"$tempDir/a.txt", (a + b).toString)
-        (a + b, Seq(out))
+        InternalActionResult(a + b, Seq(out))
       }
       val config = getCacheConfig(cache, tempDir)
       val v1 =

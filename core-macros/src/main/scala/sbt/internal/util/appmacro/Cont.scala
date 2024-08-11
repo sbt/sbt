@@ -356,16 +356,18 @@ trait Cont:
       // wrap body in between output var declarations and var references
       def letOutput[A1: Type](
           outputs: List[Output]
-      )(body: Expr[A1]): Expr[(A1, Seq[VirtualFile])] =
+      )(body: Expr[A1]): Expr[ActionCache.InternalActionResult[A1]] =
         Block(
           outputs.map(_.toVarDef),
           '{
-            (
-              $body,
-              List(${ Varargs[VirtualFile](outputs.map(_.toRef.asExprOf[VirtualFile])) }: _*)
+            ActionCache.InternalActionResult(
+              value = $body,
+              outputs = List(${
+                Varargs[VirtualFile](outputs.map(_.toRef.asExprOf[VirtualFile]))
+              }: _*),
             )
           }.asTerm
-        ).asExprOf[(A1, Seq[VirtualFile])]
+        ).asExprOf[ActionCache.InternalActionResult[A1]]
 
       val WrapOutputName = "wrapOutput_\u2603\u2603"
       // Called when transforming the tree to add an input.

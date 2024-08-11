@@ -33,7 +33,7 @@ object ActionCache:
       extraHash: Digest,
       tags: List[CacheLevelTag],
   )(
-      action: I => (O, Seq[VirtualFile])
+      action: I => InternalActionResult[O],
   )(
       config: BuildWideCacheConfiguration
   ): O =
@@ -44,8 +44,8 @@ object ActionCache:
 
     def organicTask: O =
       // run action(...) and combine the newResult with outputs
-      val (result, outputs) =
-        try action(key)
+      val InternalActionResult(result, outputs) =
+        try action(key): @unchecked
         catch
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
@@ -90,6 +90,21 @@ object ActionCache:
             if paths.isEmpty then organicTask
             else valueFromStr(IO.read(paths.head.toFile()), result.origin)
       case Left(_) => organicTask
+
+  /**
+   * Represents a value and output files, used internally by the macro.
+   */
+  class InternalActionResult[A1] private (
+      val value: A1,
+      val outputs: Seq[VirtualFile],
+  )
+  end InternalActionResult
+  object InternalActionResult:
+    def apply[A1](value: A1, outputs: Seq[VirtualFile]): InternalActionResult[A1] =
+      new InternalActionResult(value, outputs)
+    private[sbt] def unapply[A1](r: InternalActionResult[A1]): Option[(A1, Seq[VirtualFile])] =
+      Some(r.value, r.outputs)
+  end InternalActionResult
 end ActionCache
 
 class BuildWideCacheConfiguration(
