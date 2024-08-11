@@ -5,6 +5,7 @@
 
 ## test scoped task
 ## this should not force any Scala version changes to other subprojects
+> debug
 > + baz/check
 
 ## test input task

@@ -1,20 +1,25 @@
 package sbt.util
 
 import java.io.File
-import java.nio.file.Paths
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Path, Paths }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
+import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.nio.file.{ **, FileTreeView }
+import sbt.nio.file.syntax.*
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
-import java.nio.charset.StandardCharsets
-import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
+import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
 object ActionCache:
+  private[sbt] val dirZipExt = ".sbtdir.zip"
+  private[sbt] val manifestFileName = "sbtdir_manifest.json"
+
   /**
    * This is a key function that drives remote caching.
    * This is intended to be called from the cached task macro for the most part.
@@ -68,7 +73,7 @@ object ActionCache:
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            store.syncBlobs(cachedResult.outputFiles, config.outputDirectory)
+            syncBlobs(cachedResult.outputFiles)
             result
           case Left(e) => throw e
 
@@ -77,6 +82,9 @@ object ActionCache:
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
 
+    def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
+      store.syncBlobs(refs, config.outputDirectory)
+
     val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
     store.get(getRequest) match
@@ -84,24 +92,54 @@ object ActionCache:
         // some protocol can embed values into the result
         result.contents.headOption match
           case Some(head) =>
-            store.syncBlobs(result.outputFiles, config.outputDirectory)
+            syncBlobs(result.outputFiles)
             val str = String(head.array(), StandardCharsets.UTF_8)
             valueFromStr(str, result.origin)
           case _ =>
-            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            val paths = syncBlobs(result.outputFiles)
             if paths.isEmpty then organicTask
             else valueFromStr(IO.read(paths.head.toFile()), result.origin)
       case Left(_) => organicTask
+  end cache
 
-  def packageDirectory(dir: VirtualFileRef, conv: FileConverter): VirtualFile =
-    import sbt.io.syntax.*
+  def manifestFromFile(manifest: Path): Manifest =
+    import sbt.internal.util.codec.ManifestCodec.given
+    val json = Parser.parseFromFile(manifest.toFile()).get
+    Converter.fromJsonUnsafe[Manifest](json)
+
+  def packageDirectory(
+      dir: VirtualFileRef,
+      conv: FileConverter,
+      outputDirectory: Path,
+  ): VirtualFile =
+    import sbt.internal.util.codec.ManifestCodec.given
     val dirPath = conv.toPath(dir)
-    val dirFile = dirPath.toFile()
-    val zipPath = Paths.get(dirPath.toString + ".dirzip")
-    val rebase: File => Seq[(File, String)] =
-      f => if f != dirFile then (f -> dirPath.relativize(f.toPath).toString) :: Nil else Nil
-    IO.zip(dirFile.allPaths.get().flatMap(rebase), zipPath.toFile(), None)
-    conv.toVirtualFile(zipPath)
+    val allPaths = FileTreeView.default.list(dirPath.toGlob / ** / "*")
+    // create a manifest of files and their hashes here
+    def makeManifest(manifestFile: Path): Unit =
+      val vfs = (allPaths.flatMap {
+        case (p, attr) if !attr.isDirectory =>
+          Some(conv.toVirtualFile(p): HashedVirtualFileRef)
+        case _ => None
+      }).toVector
+      val manifest = Manifest(
+        version = "0.1.0",
+        outputFiles = vfs,
+      )
+      val str = CompactPrinter(Converter.toJsonUnsafe(manifest))
+      IO.write(manifestFile.toFile(), str)
+    IO.withTemporaryDirectory: tempDir =>
+      val mPath = (tempDir / manifestFileName).toPath()
+      makeManifest(mPath)
+      val zipPath = Paths.get(dirPath.toString + dirZipExt)
+      val rebase: Path => Seq[(File, String)] =
+        (p: Path) =>
+          p match
+            case p if p == dirPath => Nil
+            case p if p == mPath   => (mPath.toFile() -> manifestFileName) :: Nil
+            case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
+      IO.zip((allPaths.map(_._1) ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), None)
+      conv.toVirtualFile(zipPath)
 
   /**
    * Represents a value and output files, used internally by the macro.

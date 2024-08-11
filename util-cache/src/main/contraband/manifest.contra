@@ -1,0 +1,10 @@
+package sbt.util
+@target(Scala)
+@codecPackage("sbt.internal.util.codec")
+@fullCodec("ManifestCodec")
+
+## A manifest of cached directory etc.
+type Manifest {
+  version: String!
+  outputFiles: [xsbti.HashedVirtualFileRef] @since("0.1.0")
+}
