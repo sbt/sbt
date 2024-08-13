@@ -34,19 +34,19 @@ jobs:
             jobtype: 5
           - os: ubuntu-latest
             java: 8
-            distribution: adopt
+            distribution: zulu
             jobtype: 6
           - os: ubuntu-latest
             java: 8
-            distribution: adopt
+            distribution: zulu
             jobtype: 7
-          - os: macos-12
+          - os: macos-latest
             java: 17
             distribution: temurin
             jobtype: 8
           - os: windows-2019
             java: 8
-            distribution: adopt
+            distribution: zulu
             jobtype: 9
     runs-on: ${{ matrix.os }}
     env:
@@ -84,6 +84,8 @@ jobs:
         with:
           distribution: "${{ matrix.distribution }}"
           java-version: "${{ matrix.java }}"
+      - name: Setup sbt
+        uses: sbt/setup-sbt@v1
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
