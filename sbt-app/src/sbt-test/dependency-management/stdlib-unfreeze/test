@@ -7,8 +7,8 @@ $ delete s2.13.8.txt
 
 # don't crash when expanding the macro
 > b3/run
-$ exists s2.13.10.txt
-$ delete s2.13.10.txt
+$ exists s2.13.12.txt
+$ delete s2.13.12.txt
 
 > b3/checkScala
 

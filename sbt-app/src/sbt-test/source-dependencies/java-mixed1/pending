@@ -1,0 +1,15 @@
+# Marked pending until sbt/zinc#1376 is released
+
+$ copy-file changes/JJ1.java JJ.java
+> compile
+$ copy-file changes/JJ2.java JJ.java
+-> compile
+
+> clean
+$ copy-file changes/build.sbt build.sbt
+> reload
+
+$ copy-file changes/JJ1.java JJ.java
+> compile
+$ copy-file changes/JJ2.java JJ.java
+-> compile

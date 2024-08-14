@@ -1,8 +1,5 @@
 # Marked pending due to https://github.com/sbt/sbt/issues/1553
 
-> outputEmpty
-> compile
 -> outputEmpty
 $ delete src/main/scala/For.scala src/main/scala/Nested.scala
-> compile
 > outputEmpty

@@ -28,7 +28,7 @@ trait Convert[C <: Quotes & Singleton] extends ContextUtil[C]:
     (n: String, tpe: TypeRepr, tree: Term) =>
       tpe.asType match
         case '[a] =>
-          convert[a](n, tree)(Type.of[a]).isSuccess
+          convert[a](n, tree).isSuccess
 
   /**
    * Substitutes wrappers in tree `t` with the result of `subWrapper`. A wrapper is a Tree of the

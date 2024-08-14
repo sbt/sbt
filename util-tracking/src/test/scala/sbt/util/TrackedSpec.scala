@@ -29,7 +29,7 @@ class TrackedSpec extends AnyFlatSpec {
             in
           case (_, Some(_)) =>
             fail()
-        }(implicitly)(value)
+        }(using implicitly)(value)
       assert(res0 === value)
 
       val res1 =
@@ -40,7 +40,7 @@ class TrackedSpec extends AnyFlatSpec {
             assert(in === otherValue)
             assert(read === value)
             read
-        }(implicitly)(otherValue)
+        }(using implicitly)(otherValue)
       assert(res1 === value)
 
       val res2 =
@@ -51,7 +51,7 @@ class TrackedSpec extends AnyFlatSpec {
             assert(in === otherValue)
             assert(read === value)
             read
-        }(implicitly)(otherValue)
+        }(using implicitly)(otherValue)
       assert(res2 === value)
 
       ()
@@ -90,7 +90,7 @@ class TrackedSpec extends AnyFlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res0 === input0)
 
       val res1 =
@@ -100,7 +100,7 @@ class TrackedSpec extends AnyFlatSpec {
           case (false, in) =>
             assert(in === input0)
             in
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res1 === input0)
 
       ()
@@ -119,7 +119,7 @@ class TrackedSpec extends AnyFlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res0 === input0)
 
       val res1 =
@@ -129,7 +129,7 @@ class TrackedSpec extends AnyFlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input1)
+        }(using implicitly, implicitly)(input1)
       assert(res1 === input1)
 
       ()
@@ -180,7 +180,7 @@ class TrackedSpec extends AnyFlatSpec {
             firstExpectedResult
           case (false, _) =>
             fail()
-        }(implicitly)(p0)
+        }(using implicitly)(p0)
       assert(res0 === firstExpectedResult)
 
       val res1 =
@@ -190,7 +190,7 @@ class TrackedSpec extends AnyFlatSpec {
           case (false, in) =>
             assert(in === afterCompletion)
             secondExpectedResult
-        }(implicitly)(p0)
+        }(using implicitly)(p0)
       assert(res1 === secondExpectedResult)
 
       ()

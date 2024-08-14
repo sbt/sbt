@@ -8,11 +8,12 @@
 
 package sbt
 
-import java.io.{ File, PrintWriter }
+import java.io.{ File, FileOutputStream, PrintWriter }
 import java.net.{ URI, URL }
 import java.nio.file.{ Files, Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
+import java.util.zip.ZipOutputStream
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration => CConfiguration }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
@@ -912,35 +913,29 @@ object Defaults extends BuildCommon {
         compileOptions := {
           val opts = (compile / compileOptions).value
           val cp0 = dependencyClasspath.value
-          val cp1 = backendOutput.value +: data(cp0)
           val converter = fileConverter.value
-          val cp = cp1.map(converter.toPath).map(converter.toVirtualFile)
+          val cp = data(cp0).map(converter.toVirtualFile)
           opts.withClasspath(cp.toArray)
         }
       )
     ) ++
     configGlobal ++ defaultCompileSettings ++ compileAnalysisSettings ++ Seq(
       compileOutputs := {
-        import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
         val (_, jarFile) = compileIncremental.value
-        val classFiles = compile.value.readStamps.getAllProductStamps.keySet.asScala
-        classFiles.toSeq.map(c.toPath) :+ compileAnalysisFile.value.toPath :+ c.toPath(jarFile)
+        Seq(compileAnalysisFile.value.toPath, c.toPath(jarFile))
       },
-      compileOutputs := compileOutputs.triggeredBy(compile).value,
+      compileOutputs := compileOutputs.triggeredBy(compileIncremental).value,
       tastyFiles := Def.taskIf {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) {
-          val _ = compile.value
+          val _ = products.value
           val c = fileConverter.value
-          val dir = c.toPath(backendOutput.value).toFile
+          val dir = classDirectory.value
           val tastyFiles = dir.**("*.tasty").get()
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
       }.value,
-      clean := {
-        (compileOutputs / clean).value
-        (products / clean).value
-      },
+      clean := (compileOutputs / clean).value,
       earlyOutputPing := Def.promise[Boolean],
       compileProgress := {
         val s = streams.value
@@ -2530,10 +2525,6 @@ object Defaults extends BuildCommon {
         val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
-            val rawJarPath = c.toPath(res._2)
-            IO.delete(dir)
-            IO.unzip(rawJarPath.toFile, dir)
-            IO.delete(dir / "META-INF" / "MANIFEST.MF")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2571,19 +2562,12 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
       Def.declareOutput(analysisOut)
-      val dir = ci.options.classesDirectory.toFile()
-      val mappings = Path
-        .allSubpaths(dir)
-        .filter(_._1.isFile())
-        .map { case (p, path) =>
-          val vf = c.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
-        }
-        .toSeq
-      // inlined to avoid caching mappings
-      val pkgConfig = Pkg.Configuration(mappings, artifactPath.value, packageOptions.value)
-      val out = Pkg(pkgConfig, c, s.log, Pkg.timeFromConfiguration(pkgConfig))
-      s.log.debug(s"wrote $out")
+      val outputJar = ci.options.classesDirectory
+      // TODO remove: create output jar if missing
+      if !Files.exists(outputJar) then
+        val zip = new ZipOutputStream(new FileOutputStream(outputJar.toFile))
+        zip.close()
+      val out = c.toVirtualFile(outputJar)
       Def.declareOutput(out)
       analysisResult.hasModified() -> (out: HashedVirtualFileRef)
     }
@@ -2679,8 +2663,7 @@ object Defaults extends BuildCommon {
       compileOptions := {
         val c = fileConverter.value
         val cp0 = classpathTask.value
-        val cp1 = backendOutput.value +: data(cp0)
-        val cp = cp1.map(c.toPath).map(c.toVirtualFile)
+        val cp = data(cp0).map(c.toVirtualFile)
         val vs = sources.value.toVector map { x =>
           c.toVirtualFile(x.toPath)
         }
@@ -2691,7 +2674,7 @@ object Defaults extends BuildCommon {
         CompileOptions.of(
           cp.toArray,
           vs.toArray,
-          c.toPath(backendOutput.value),
+          c.toPath((compileIncremental / artifactPath).value),
           scalacOptions.value.toArray,
           javacOptions.value.toArray,
           maxErrors.value,
@@ -2699,7 +2682,7 @@ object Defaults extends BuildCommon {
             foldMappers(sourcePositionMappers.value, reportAbsolutePath.value, fileConverter.value)
           ),
           compileOrder.value,
-          None.toOptional: Optional[NioPath],
+          Some(c.toPath(backendOutput.value)).toOptional,
           Some(fileConverter.value).toOptional,
           Some(reusableStamper.value).toOptional,
           eoOpt.toOptional,
@@ -2727,11 +2710,13 @@ object Defaults extends BuildCommon {
       compileInputs2 := {
         val cp0 = classpathTask.value
         val inputs = compileInputs.value
+        val c = fileConverter.value
         CompileInputs2(
           data(cp0).toVector,
           inputs.options.sources.toVector,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
+          c.toVirtualFile(inputs.options.classesDirectory)
         )
       },
       bspCompileTask :=
@@ -4426,14 +4411,13 @@ object Classpaths {
     val c = fileConverter.value
     val resources = copyResources.value.map(_._2).toSet
     val dir = classDirectory.value
-    val rawJar = compileIncremental.value._2
-    val rawJarPath = c.toPath(rawJar)
+    val jar = c.toPath(compileIncremental.value._2).toFile
     // delete outdated files
     Path
       .allSubpaths(dir)
       .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
       .foreach(IO.delete)
-    IO.unzip(rawJarPath.toFile, dir)
+    IO2.unzip(jar, dir)
     IO.delete(dir / "META-INF" / "MANIFEST.MF")
     dir :: Nil
   }

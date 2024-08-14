@@ -1,17 +1,14 @@
-$ touch target/out/jvm/scala-2.12.17/compile-clean/backend/cant-touch-this
+$ touch target/out/jvm/scala-2.12.17/compile-clean/cant-touch-this
 
 > Test/compile
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/A.class
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/X.class
-$ exists target/out/jvm/scala-2.12.17/compile-clean/test-backend/B.class
+$ exists target/out/jvm/scala-2.12.17/compile-clean/compile-clean_2.12-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-2.12.17/compile-clean/compile-clean_2.12-0.1.0-SNAPSHOT-tests-noresources.jar
 
 > Test/clean
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/cant-touch-this
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/A.class
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/X.class
-$ absent target/out/jvm/scala-2.12.17/compile-clean/test-backend/B.class
+$ exists target/out/jvm/scala-2.12.17/compile-clean/cant-touch-this
+$ exists target/out/jvm/scala-2.12.17/compile-clean/compile-clean_2.12-0.1.0-SNAPSHOT-noresources.jar
+$ absent target/out/jvm/scala-2.12.17/compile-clean/compile-clean_2.12-0.1.0-SNAPSHOT-tests-noresources.jar
 
 > Compile/clean
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/cant-touch-this
-$ absent target/out/jvm/scala-2.12.17/compile-clean/backend/A.class
-$ exists target/out/jvm/scala-2.12.17/compile-clean/backend/X.class
+$ exists target/out/jvm/scala-2.12.17/compile-clean/cant-touch-this
+$ absent target/out/jvm/scala-2.12.17/compile-clean/compile-clean_2.12-0.1.0-SNAPSHOT-noresources.jar
