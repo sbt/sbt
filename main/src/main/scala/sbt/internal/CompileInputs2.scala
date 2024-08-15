@@ -10,6 +10,7 @@ case class CompileInputs2(
     sources: Vector[HashedVirtualFileRef],
     scalacOptions: Vector[String],
     javacOptions: Vector[String],
+    relativeOutputPath: String,
 )
 
 object CompileInputs2:
@@ -18,7 +19,7 @@ object CompileInputs2:
   given IsoLList.Aux[
     CompileInputs2,
     Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
-      Vector[String] :*: LNil
+      Vector[String] :*: String :*: LNil
   ] =
     LList.iso(
       { (v: CompileInputs2) =>
@@ -26,12 +27,19 @@ object CompileInputs2:
           ("sources", v.sources) :*:
           ("scalacOptions", v.scalacOptions) :*:
           ("javacOptions", v.javacOptions) :*:
+          ("relativeOutputPath", v.relativeOutputPath) :*:
           LNil
       },
       {
         (in: Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
-          Vector[String] :*: LNil) =>
-          CompileInputs2(in.head, in.tail.head, in.tail.tail.head, in.tail.tail.tail.head)
+          Vector[String] :*: String :*: LNil) =>
+          CompileInputs2(
+            in.head,
+            in.tail.head,
+            in.tail.tail.head,
+            in.tail.tail.tail.head,
+            in.tail.tail.tail.tail.head
+          )
       }
     )
 end CompileInputs2
