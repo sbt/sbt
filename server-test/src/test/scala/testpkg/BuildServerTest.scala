@@ -538,7 +538,7 @@ class BuildServerTest extends AbstractServerTest {
           target = BuildTargetIdentifier(buildTarget),
           outputPaths = Vector(
             OutputPathItem(
-              uri = new File(svr.baseDirectory, "util/custom-target").toURI,
+              uri = new File(svr.baseDirectory, "target/out/jvm/scala-2.13.11/util/").toURI,
               kind = OutputPathItemKind.Directory
             )
           )
