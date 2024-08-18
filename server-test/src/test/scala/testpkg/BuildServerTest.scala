@@ -45,8 +45,12 @@ class BuildServerTest extends AbstractServerTest {
     )
     assertProcessing("workspace/buildTargets")
     val result = svr.waitFor[WorkspaceBuildTargetsResult](10.seconds)
-    val utilTarget = result.targets.find(_.displayName.contains("util")).get
+    val utilTargetIdentifier = BuildTargetIdentifier(buildTargetUri("util", "Compile"))
+    val utilTarget = result.targets.find(_.id == utilTargetIdentifier).get
     assert(utilTarget.id.uri.toString.endsWith("#util/Compile"))
+    val runAndTestTarget = result.targets.find(_.displayName.contains("runAndTest")).get
+    // runAndTest should declare the dependency to util even if optional
+    assert(runAndTestTarget.dependencies.contains(utilTargetIdentifier))
     val buildServerBuildTarget =
       result.targets.find(_.displayName.contains("buildserver-build")).get
     assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-build"))
@@ -246,14 +250,21 @@ class BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/scalacOptions, buildTarget/javacOptions") {
-    val buildTarget = buildTargetUri("util", "Compile")
-    val badBuildTarget = buildTargetUri("badBuildTarget", "Compile")
+    val buildTargets = Seq(
+      buildTargetUri("util", "Compile"),
+      buildTargetUri("badBuildTarget", "Compile"),
+    )
 
-    val id1 = scalacOptions(Seq(buildTarget, badBuildTarget))
+    val id1 = scalacOptions(buildTargets)
     assertMessage(s""""id":"$id1"""", "scala-library-2.13.11.jar")()
 
-    val id2 = javacOptions(Seq(buildTarget, badBuildTarget))
+    val id2 = javacOptions(buildTargets)
     assertMessage(s""""id":"$id2"""", "scala-library-2.13.11.jar")()
+
+    val id3 = scalacOptions(Seq(buildTargetUri("runAndTest", "Compile")))
+    assertMessage(s""""id":"$id3"""", "target/out/jvm/scala-2.13.11/runandtest/classes")(debug =
+      true
+    )
   }
 
   test("buildTarget/cleanCache") {
@@ -593,7 +604,7 @@ class BuildServerTest extends AbstractServerTest {
   private def assertProcessing(method: String, debug: Boolean = false): Unit =
     assertMessage("build/logMessage", s""""message":"Processing $method"""")(debug = debug)
 
-  def assertMessage(
+  inline def assertMessage(
       parts: String*
   )(duration: FiniteDuration = 10.seconds, debug: Boolean = false, message: String = ""): Unit = {
     def assertion =

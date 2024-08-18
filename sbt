@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.10.0"
+declare builtin_sbt_version="1.10.1"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -89,6 +89,14 @@ cygwinpath() {
   fi
 }
 
+# Trim leading and trailing spaces from a string.
+# Echos the new trimmed string.
+trimString() {
+  local inputStr="$*"
+  local modStr="${inputStr#"${inputStr%%[![:space:]]*}"}"
+  modStr="${modStr%"${modStr##*[![:space:]]}"}"
+  echo "$modStr"
+}
 
 declare -r sbt_bin_dir="$(dirname "$(realpathish "$0")")"
 declare -r sbt_home="$(dirname "$sbt_bin_dir")"
@@ -710,6 +718,9 @@ loadConfigFile() {
 }
 
 loadPropFile() {
+  # trim key and value so as to be more forgiving with spaces around the '=':
+  k=$(trimString $k)
+  v=$(trimString $v)
   while IFS='=' read -r k v; do
     if [[ "$k" == "sbt.version" ]]; then
       build_props_sbt_version="$v"
