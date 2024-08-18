@@ -168,7 +168,7 @@ private[sbt] object LibraryManagement {
     val extraInputHash = module.extraInputHash
     val settings = module.moduleSettings
     val outStore = cacheStoreFactory.make("output")
-    val handler = if (skip && !force) skipResolve(outStore) else doResolve(outStore)
+    val handler = if (skip && !force) skipResolve(outStore)(_) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
     handler((extraInputHash, settings, withoutClock))

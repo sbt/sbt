@@ -18,6 +18,12 @@ The `develop` branch represents sbt 2.x, the next major sbt series.
 Next minor branch is where new features should be added as long as it is binary compatible with sbt 1.x.
 The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
 
+### Note on supported JDK version for the SBT build
+
+The SBT build itself currently doesn't support any JDK beyond version 17. You will run into deprecation warnings (which would become build errors due to build configuration) if you use any later JDK version to build SBT.
+
+If you're using Metals as IDE, also check the `Java Version` setting. The default at the time of writing this is `17`, but this may change in the future, or you may have set it to a later version yourself. (Be aware that Metals may download a JDK in the background if you haven't switch to a local JDK matching the version before changing this setting. Also, this setting is currently only available as a `User` setting, so you can't set it for a single workspace. Don't forget to switch back if you need to for other projects).
+
 ### Instruction to build just sbt
 
 Sbt has a number of sub-modules. If the change you are making is just contained in sbt/sbt (not one of the sub-modules),
