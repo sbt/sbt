@@ -326,11 +326,11 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
    */
   def promise[A]: PromiseWrap[A] = new PromiseWrap[A]()
 
-  inline def declareOutput(inline vf: VirtualFile): Unit =
+  inline def declareOutput(inline vf: VirtualFile): VirtualFile =
     InputWrapper.`wrapOutput_\u2603\u2603`[VirtualFile](vf)
 
-  inline def declareOutputDirectory(inline vf: VirtualFileRef): Unit =
-    InputWrapper.`wrapOutputDirectory_\u2603\u2603`[VirtualFileRef](vf)
+  inline def declareOutputDirectory(inline vf: VirtualFileRef): VirtualFile =
+    InputWrapper.`wrapOutputDirectory_\u2603\u2603`[VirtualFile](vf)
 
   // The following conversions enable the types Initialize[T], Initialize[Task[T]], and Task[T] to
   //  be used in task and setting macros as inputs with an ultimate result of type T

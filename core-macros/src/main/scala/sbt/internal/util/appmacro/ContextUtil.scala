@@ -106,7 +106,9 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
     case Directory
 
   /**
-   * Represents an output expression via Def.declareOutput
+   * Represents an output expression via:
+   * 1. Def.declareOutput(VirtualFile)
+   * 2. Def.declareOutputDirectory(VirtualFileRef)
    */
   final class Output(
       val tpe: TypeRepr,
@@ -129,7 +131,11 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
           )
     def toVarDef: ValDef =
       ValDef(placeholder, rhs = Some('{ null }.asTerm))
-    def toAssign: Term = Assign(toRef, term)
+    def toAssign(value: Term): Term =
+      Block(
+        Assign(toRef, value) :: Nil,
+        toRef
+      )
     def toRef: Ref = Ref(placeholder)
     def isFile: Boolean = outputType == OutputType.File
   end Output

@@ -353,18 +353,6 @@ trait Cont:
             })($cacheConfigExpr)
         }
 
-      def toVirtualFileExpr(
-          cacheConfigExpr: Expr[BuildWideCacheConfiguration]
-      )(out: Output): Expr[VirtualFile] =
-        if out.isFile then out.toRef.asExprOf[VirtualFile]
-        else
-          '{
-            ActionCache.packageDirectory(
-              dir = ${ out.toRef.asExprOf[VirtualFileRef] },
-              conv = $cacheConfigExpr.fileConverter,
-            )
-          }
-
       // This will generate following code for Def.declareOutput(...):
       //   var $o1: VirtualFile = null
       //   ActionCache.ActionResult({
@@ -382,7 +370,8 @@ trait Cont:
             ActionCache.InternalActionResult(
               value = $body,
               outputs = List(${
-                Varargs[VirtualFile](outputs.map(toVirtualFileExpr(cacheConfigExpr)))
+                Varargs[VirtualFile](outputs.map: out =>
+                  out.toRef.asExprOf[VirtualFile])
               }: _*),
             )
           }.asTerm
@@ -397,19 +386,38 @@ trait Cont:
           given t: Type[a] = tpe
           convert[a](name, qual) transform { (replacement: Term) =>
             name match
-              case WrapOutputName | WrapOutputDirectoryName =>
+              case WrapOutputName =>
                 val output = Output(
                   tpe = TypeRepr.of[a],
                   term = qual,
                   name = freshName("o"),
                   parent = Symbol.spliceOwner,
-                  outputType = name match
-                    case WrapOutputName          => OutputType.File
-                    case WrapOutputDirectoryName => OutputType.Directory,
+                  outputType = OutputType.File
                 )
                 outputBuf += output
-                if cacheConfigExprOpt.isDefined then output.toAssign
+                if cacheConfigExprOpt.isDefined then output.toAssign(output.term)
                 else oldTree
+              case WrapOutputDirectoryName =>
+                val output = Output(
+                  // even though the term is VirtualFileRef, we want the output to make VirtualFile,
+                  // which contains hash.
+                  tpe = TypeRepr.of[VirtualFile],
+                  term = qual,
+                  name = freshName("o"),
+                  parent = Symbol.spliceOwner,
+                  outputType = OutputType.Directory,
+                )
+                outputBuf += output
+                cacheConfigExprOpt match
+                  case Some(cacheConfigExpr) =>
+                    output.toAssign('{
+                      ActionCache.packageDirectory(
+                        dir = ${ output.term.asExprOf[VirtualFileRef] },
+                        conv = $cacheConfigExpr.fileConverter,
+                        outputDirectory = $cacheConfigExpr.outputDirectory,
+                      )
+                    }.asTerm)
+                  case None => oldTree
               case _ =>
                 // todo cache opt-out attribute
                 inputBuf += Input(TypeRepr.of[a], qual, replacement, freshName("q"))
