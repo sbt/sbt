@@ -107,6 +107,8 @@ object ActionCache:
     val json = Parser.parseFromFile(manifest.toFile()).get
     Converter.fromJsonUnsafe[Manifest](json)
 
+  private val default2010Timestamp: Long = 1262304000000L
+
   def packageDirectory(
       dir: VirtualFileRef,
       conv: FileConverter,
@@ -114,14 +116,17 @@ object ActionCache:
   ): VirtualFile =
     import sbt.internal.util.codec.ManifestCodec.given
     val dirPath = conv.toPath(dir)
-    val allPaths = FileTreeView.default.list(dirPath.toGlob / ** / "*")
+    val allPaths = FileTreeView.default
+      .list(dirPath.toGlob / ** / "*")
+      .filter(!_._2.isDirectory)
+      .map(_._1)
+      .sortBy(_.toString())
     // create a manifest of files and their hashes here
     def makeManifest(manifestFile: Path): Unit =
-      val vfs = (allPaths.flatMap {
-        case (p, attr) if !attr.isDirectory =>
-          Some(conv.toVirtualFile(p): HashedVirtualFileRef)
-        case _ => None
-      }).toVector
+      val vfs = (allPaths
+        .map: p =>
+          (conv.toVirtualFile(p): HashedVirtualFileRef))
+        .toVector
       val manifest = Manifest(
         version = "0.1.0",
         outputFiles = vfs,
@@ -138,7 +143,7 @@ object ActionCache:
             case p if p == dirPath => Nil
             case p if p == mPath   => (mPath.toFile() -> manifestFileName) :: Nil
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
-      IO.zip((allPaths.map(_._1) ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), None)
+      IO.zip((allPaths ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), Some(default2010Timestamp))
       conv.toVirtualFile(zipPath)
 
   /**
