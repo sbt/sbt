@@ -2,7 +2,7 @@ package sbt.internal
 
 import scala.reflect.ClassTag
 import sjsonnew.*
-import xsbti.HashedVirtualFileRef
+import xsbti.{ HashedVirtualFileRef, VirtualFileRef }
 
 // CompileOption has the list of sources etc
 case class CompileInputs2(
@@ -10,7 +10,7 @@ case class CompileInputs2(
     sources: Vector[HashedVirtualFileRef],
     scalacOptions: Vector[String],
     javacOptions: Vector[String],
-    relativeOutputPath: String,
+    outputPath: VirtualFileRef,
 )
 
 object CompileInputs2:
@@ -19,7 +19,7 @@ object CompileInputs2:
   given IsoLList.Aux[
     CompileInputs2,
     Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
-      Vector[String] :*: String :*: LNil
+      Vector[String] :*: VirtualFileRef :*: LNil
   ] =
     LList.iso(
       { (v: CompileInputs2) =>
@@ -27,12 +27,12 @@ object CompileInputs2:
           ("sources", v.sources) :*:
           ("scalacOptions", v.scalacOptions) :*:
           ("javacOptions", v.javacOptions) :*:
-          ("relativeOutputPath", v.relativeOutputPath) :*:
+          ("outputPath", v.outputPath) :*:
           LNil
       },
       {
         (in: Vector[HashedVirtualFileRef] :*: Vector[HashedVirtualFileRef] :*: Vector[String] :*:
-          Vector[String] :*: String :*: LNil) =>
+          Vector[String] :*: VirtualFileRef :*: LNil) =>
           CompileInputs2(
             in.head,
             in.tail.head,
