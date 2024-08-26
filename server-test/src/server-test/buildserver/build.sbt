@@ -31,7 +31,9 @@ lazy val respondError = project.in(file("respond-error"))
     }
   )
 
-lazy val util = project
+lazy val util = project.settings(
+  Compile / classDirectory := baseDirectory.value / "classes"
+)
 
 lazy val diagnostics = project
 

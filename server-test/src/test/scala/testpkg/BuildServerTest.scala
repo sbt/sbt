@@ -255,16 +255,21 @@ class BuildServerTest extends AbstractServerTest {
       buildTargetUri("badBuildTarget", "Compile"),
     )
 
+    val classDirectoryUri = new File(svr.baseDirectory, "util/classes").toURI
+    println(s""""classDirectory":"$classDirectoryUri"""")
     val id1 = scalacOptions(buildTargets)
-    assertMessage(s""""id":"$id1"""", "scala-library-2.13.11.jar")()
+    assertMessage(
+      s""""id":"$id1"""",
+      "scala-library-2.13.11.jar",
+      s""""classDirectory":"$classDirectoryUri""""
+    )()
 
     val id2 = javacOptions(buildTargets)
-    assertMessage(s""""id":"$id2"""", "scala-library-2.13.11.jar")()
-
-    val id3 = scalacOptions(Seq(buildTargetUri("runAndTest", "Compile")))
-    assertMessage(s""""id":"$id3"""", "target/out/jvm/scala-2.13.11/runandtest/classes")(debug =
-      true
-    )
+    assertMessage(
+      s""""id":"$id2"""",
+      "scala-library-2.13.11.jar",
+      s""""classDirectory":"$classDirectoryUri""""
+    )()
   }
 
   test("buildTarget/cleanCache") {
