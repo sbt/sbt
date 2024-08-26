@@ -1832,11 +1832,11 @@ object Defaults extends BuildCommon {
   def sourceMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
     Def.task {
       val converter = fileConverter.value
-      val sdirs = unmanagedSourceDirectories.value
+      val sdirs = sourceDirectories.value
       val base = baseDirectory.value
       val relative = (f: File) => relativeTo(sdirs)(f).orElse(relativeTo(base)(f)).orElse(flat(f))
       val exclude = Set(sdirs, base)
-      unmanagedSources.value
+      sources.value
         .flatMap {
           case s if !exclude(s) => relative(s).map(s -> _)
           case _                => None
@@ -1848,7 +1848,7 @@ object Defaults extends BuildCommon {
     }
 
   def resourceMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
-    relativeMappings(unmanagedResources, unmanagedResourceDirectories)
+    relativeMappings(resources, resourceDirectories)
 
   def relativeMappings(
       files: Taskable[Seq[File]],
