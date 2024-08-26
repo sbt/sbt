@@ -377,7 +377,7 @@ class BuildServerTest extends AbstractServerTest {
     assertMessage(s""""id":"$id"""", """"class":"main.Main"""")(duration = 30.seconds)
   }
 
-  ignore("buildTarget/run") {
+  test("buildTarget/run") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     val id = nextId()
     svr.sendJsonRpc(
@@ -388,7 +388,7 @@ class BuildServerTest extends AbstractServerTest {
          |} }""".stripMargin
     )
     assertProcessing("buildTarget/run")
-    assertMessage("build/logMessage", """"message":"Hello World!"""")(debug = true)
+    assertMessage("build/logMessage", """"message":"Hello World!"""")()
     assertMessage(s""""id":"$id"""", """"statusCode":1""")()
   }
 
@@ -412,7 +412,7 @@ class BuildServerTest extends AbstractServerTest {
     )()
   }
 
-  ignore("buildTarget/jvmTestEnvironment") {
+  test("buildTarget/jvmTestEnvironment") {
     val buildTarget = buildTargetUri("runAndTest", "Test")
     val id = nextId()
     svr.sendJsonRpc(
@@ -432,7 +432,7 @@ class BuildServerTest extends AbstractServerTest {
     )()
   }
 
-  ignore("buildTarget/scalaTestClasses") {
+  test("buildTarget/scalaTestClasses") {
     val buildTarget = buildTargetUri("runAndTest", "Test")
     val badBuildTarget = buildTargetUri("badBuildTarget", "Test")
     val id = nextId()
@@ -462,7 +462,7 @@ class BuildServerTest extends AbstractServerTest {
     assertMessage(s""""id":"$id"""", """"statusCode":2""")()
   }
 
-  ignore("buildTarget/test: run one test class") {
+  test("buildTarget/test: run one test class") {
     val buildTarget = buildTargetUri("runAndTest", "Test")
     val id = nextId()
     svr.sendJsonRpc(

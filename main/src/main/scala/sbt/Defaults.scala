@@ -919,9 +919,12 @@ object Defaults extends BuildCommon {
       compileOutputs := {
         import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
-        val (_, vfDir, _) = compileIncremental.value
+        val (_, vfDir, packedDir) = compileIncremental.value
         val classFiles = compile.value.readStamps.getAllProductStamps.keySet.asScala
-        classFiles.toSeq.map(c.toPath) :+ compileAnalysisFile.value.toPath :+ c.toPath(vfDir)
+        classFiles.toSeq.map(c.toPath) :+
+          compileAnalysisFile.value.toPath :+
+          c.toPath(vfDir) :+
+          c.toPath(packedDir)
       },
       compileOutputs := compileOutputs.triggeredBy(compile).value,
       tastyFiles := Def.taskIf {
