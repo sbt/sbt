@@ -1768,17 +1768,17 @@ object Defaults extends BuildCommon {
   // drop base directories, since there are no valid mappings for these
   def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val sdirs = unmanagedSourceDirectories.value ++ managedSourceDirectories.value
+      val sdirs = sourceDirectories.value
       val base = baseDirectory.value
       val relative = (f: File) => relativeTo(sdirs)(f).orElse(relativeTo(base)(f)).orElse(flat(f))
       val exclude = Set(sdirs, base)
-      (unmanagedSources.value ++ managedSources.value).flatMap {
+      sources.value.flatMap {
         case s if !exclude(s) => relative(s).map(s -> _)
         case _                => None
       }
     }
 
-  def resourceMappings = relativeMappings(unmanagedResources, unmanagedResourceDirectories)
+  def resourceMappings = relativeMappings(resources, resourceDirectories)
 
   def relativeMappings(
       files: Taskable[Seq[File]],
