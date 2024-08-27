@@ -2712,6 +2712,7 @@ object Defaults extends BuildCommon {
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
           c.toVirtualFile(inputs.options.classesDirectory),
+          c.toVirtualFile(inputs.setup.cacheFile.toPath)
         )
       },
       bspCompileTask :=
