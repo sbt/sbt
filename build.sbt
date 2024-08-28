@@ -429,7 +429,7 @@ lazy val utilCache = project
   .enablePlugins(
     ContrabandPlugin,
     // we generate JsonCodec only for actionresult.conta
-    // JsonCodecPlugin,
+    JsonCodecPlugin,
   )
   .dependsOn(utilLogging)
   .settings(

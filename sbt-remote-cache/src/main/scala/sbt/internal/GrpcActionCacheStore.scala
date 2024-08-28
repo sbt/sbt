@@ -28,7 +28,7 @@ import com.eed3si9n.remoteapis.shaded.io.grpc.{
   TlsChannelCredentials,
 }
 import java.net.URI
-import java.nio.file.{ Files, Path }
+import java.nio.file.Path
 import sbt.util.{
   AbstractActionCacheStore,
   ActionResult,
@@ -197,14 +197,7 @@ class GrpcActionCacheStore(
         val digest = Digest(r)
         val blob = lookupResponse(digest)
         val casFile = disk.putBlob(blob.getData().newInput(), digest)
-        val shortPath =
-          if r.id.startsWith("${OUT}/") then r.id.drop(7)
-          else r.id
-        val outPath = outputDirectory.resolve(shortPath)
-        Files.createDirectories(outPath.getParent())
-        if outPath.toFile().exists() then IO.delete(outPath.toFile())
-        Files.createSymbolicLink(outPath, casFile)
-        outPath
+        disk.syncFile(r, casFile, outputDirectory)
     else Nil
 
   /**

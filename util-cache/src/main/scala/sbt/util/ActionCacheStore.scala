@@ -2,15 +2,18 @@ package sbt.util
 
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
-import java.nio.file.{ Files, Path }
+import java.nio.file.{ Files, Path, Paths }
 import sjsonnew.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 import scala.collection.mutable
 import scala.util.control.NonFatal
+import sbt.internal.io.Retry
 import sbt.io.IO
 import sbt.io.syntax.*
+import sbt.nio.file.{ **, FileTreeView }
+import sbt.nio.file.syntax.*
 import sbt.internal.util.StringVirtualFile1
 import sbt.internal.util.codec.ActionResultCodec.given
 import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
@@ -215,6 +218,13 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
   def toCasFile(digest: Digest): Path =
     (casBase.toFile / digest.toString.replace("/", "-")).toPath()
 
+  def putBlob(blob: Path, digest: Digest): Path =
+    val in = Files.newInputStream(blob)
+    try
+      putBlob(in, digest)
+    finally
+      in.close()
+
   def putBlob(input: InputStream, digest: Digest): Path =
     val casFile = toCasFile(digest)
     IO.transfer(input, casFile.toFile())
@@ -243,7 +253,9 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
   override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
     refs.flatMap: r =>
       val casFile = toCasFile(Digest(r))
-      if casFile.toFile().exists then Some(syncFile(r, casFile, outputDirectory))
+      if casFile.toFile().exists then
+        // println(s"syncBlobs: $casFile exists for $r")
+        Some(syncFile(r, casFile, outputDirectory))
       else None
 
   def syncFile(ref: HashedVirtualFileRef, casFile: Path, outputDirectory: Path): Path =
@@ -253,15 +265,69 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
     val d = Digest(ref)
     def symlinkAndNotify(outPath: Path): Path =
       Files.createDirectories(outPath.getParent())
-      val result = Files.createSymbolicLink(outPath, casFile)
-      // after(result)
+      val result = Retry:
+        if Files.exists(outPath) then IO.delete(outPath.toFile())
+        Files.createSymbolicLink(outPath, casFile)
+      afterFileWrite(ref, result, outputDirectory)
       result
     outputDirectory.resolve(shortPath) match
-      case p if !p.toFile().exists()    => symlinkAndNotify(p)
-      case p if Digest.sameDigest(p, d) => p
+      case p if !Files.exists(p) =>
+        // println(s"- syncFile: $p does not exist")
+        symlinkAndNotify(p)
+      case p if Digest.sameDigest(p, d) =>
+        // println(s"- syncFile: $p has same digest")
+        p
       case p =>
+        // println(s"- syncFile: $p has different digest")
         IO.delete(p.toFile())
         symlinkAndNotify(p)
+
+  /**
+   * Emulate virtual side effects.
+   */
+  def afterFileWrite(ref: HashedVirtualFileRef, path: Path, outputDirectory: Path): Unit =
+    if path.toString().endsWith(ActionCache.dirZipExt) then unpackageDirZip(path, outputDirectory)
+    else ()
+
+  /**
+   * Given a dirzip, unzip it in a temp directory, and sync each items to the outputDirectory.
+   */
+  private def unpackageDirZip(dirzip: Path, outputDirectory: Path): Path =
+    val dirPath = Paths.get(dirzip.toString.dropRight(ActionCache.dirZipExt.size))
+    Files.createDirectories(dirPath)
+    val allPaths = mutable.Set(
+      FileTreeView.default
+        .list(dirPath.toGlob / ** / "*")
+        .filter(!_._2.isDirectory)
+        .map(_._1): _*
+    )
+    def doSync(ref: HashedVirtualFileRef, in: Path): Unit =
+      val d = Digest(ref)
+      val casFile = putBlob(in, d)
+      syncFile(ref, casFile, outputDirectory)
+    IO.withTemporaryDirectory: tempDir =>
+      IO.unzip(dirzip.toFile(), tempDir)
+      val mPath = (tempDir / ActionCache.manifestFileName).toPath()
+      if !Files.exists(mPath) then sys.error(s"manifest is missing from $dirzip")
+      // manifest contains the list of files in the dirzip, and their hashes
+      val m = ActionCache.manifestFromFile(mPath)
+      m.outputFiles.foreach: ref =>
+        val shortPath =
+          if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
+          else ref.id
+        val currentItem = outputDirectory.resolve(shortPath)
+        allPaths.remove(currentItem)
+        val d = Digest(ref)
+        currentItem match
+          case p if !Files.exists(p)        => doSync(ref, tempDir.toPath().resolve(shortPath))
+          case p if Digest.sameDigest(p, d) => ()
+          case p =>
+            IO.delete(p.toFile())
+            doSync(ref, tempDir.toPath().resolve(shortPath))
+    // sync deleted files
+    allPaths.foreach: path =>
+      IO.delete(path.toFile())
+    dirPath
 
   override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
     refs.flatMap: r =>

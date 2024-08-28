@@ -74,12 +74,13 @@ class FullConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
 
   override def convert[A: Type](nme: String, in: Term): Converted =
     nme match
-      case InputWrapper.WrapInitTaskName => Converted.success(in)
-      case InputWrapper.WrapPreviousName => Converted.success(in)
-      case InputWrapper.WrapInitName     => wrapInit[A](in)
-      case InputWrapper.WrapTaskName     => wrapTask[A](in)
-      case InputWrapper.WrapOutputName   => Converted.success(in)
-      case _                             => Converted.NotApplicable()
+      case InputWrapper.WrapInitTaskName        => Converted.success(in)
+      case InputWrapper.WrapPreviousName        => Converted.success(in)
+      case InputWrapper.WrapInitName            => wrapInit[A](in)
+      case InputWrapper.WrapTaskName            => wrapTask[A](in)
+      case InputWrapper.WrapOutputName          => Converted.success(in)
+      case InputWrapper.WrapOutputDirectoryName => Converted.success(in)
+      case _                                    => Converted.NotApplicable()
 
   private def wrapInit[A: Type](tree: Term): Converted =
     val expr = tree.asExprOf[Initialize[A]]

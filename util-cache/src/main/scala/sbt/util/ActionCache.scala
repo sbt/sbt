@@ -1,18 +1,25 @@
 package sbt.util
 
+import java.io.File
+import java.nio.charset.StandardCharsets
+import java.nio.file.{ Path, Paths }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
+import sbt.io.syntax.*
 import sbt.io.IO
+import sbt.nio.file.{ **, FileTreeView }
+import sbt.nio.file.syntax.*
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
-import xsbti.{ FileConverter, VirtualFile }
-import java.nio.charset.StandardCharsets
-import java.nio.file.Path
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
+import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
 object ActionCache:
+  private[sbt] val dirZipExt = ".sbtdir.zip"
+  private[sbt] val manifestFileName = "sbtdir_manifest.json"
+
   /**
    * This is a key function that drives remote caching.
    * This is intended to be called from the cached task macro for the most part.
@@ -33,7 +40,7 @@ object ActionCache:
       extraHash: Digest,
       tags: List[CacheLevelTag],
   )(
-      action: I => (O, Seq[VirtualFile])
+      action: I => InternalActionResult[O],
   )(
       config: BuildWideCacheConfiguration
   ): O =
@@ -44,8 +51,8 @@ object ActionCache:
 
     def organicTask: O =
       // run action(...) and combine the newResult with outputs
-      val (result, outputs) =
-        try action(key)
+      val InternalActionResult(result, outputs) =
+        try action(key): @unchecked
         catch
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
@@ -66,7 +73,7 @@ object ActionCache:
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            store.syncBlobs(cachedResult.outputFiles, config.outputDirectory)
+            syncBlobs(cachedResult.outputFiles)
             result
           case Left(e) => throw e
 
@@ -75,6 +82,9 @@ object ActionCache:
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
 
+    def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
+      store.syncBlobs(refs, config.outputDirectory)
+
     val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
     store.get(getRequest) match
@@ -82,14 +92,74 @@ object ActionCache:
         // some protocol can embed values into the result
         result.contents.headOption match
           case Some(head) =>
-            store.syncBlobs(result.outputFiles, config.outputDirectory)
+            syncBlobs(result.outputFiles)
             val str = String(head.array(), StandardCharsets.UTF_8)
             valueFromStr(str, result.origin)
           case _ =>
-            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            val paths = syncBlobs(result.outputFiles)
             if paths.isEmpty then organicTask
             else valueFromStr(IO.read(paths.head.toFile()), result.origin)
       case Left(_) => organicTask
+  end cache
+
+  def manifestFromFile(manifest: Path): Manifest =
+    import sbt.internal.util.codec.ManifestCodec.given
+    val json = Parser.parseFromFile(manifest.toFile()).get
+    Converter.fromJsonUnsafe[Manifest](json)
+
+  private val default2010Timestamp: Long = 1262304000000L
+
+  def packageDirectory(
+      dir: VirtualFileRef,
+      conv: FileConverter,
+      outputDirectory: Path,
+  ): VirtualFile =
+    import sbt.internal.util.codec.ManifestCodec.given
+    val dirPath = conv.toPath(dir)
+    val allPaths = FileTreeView.default
+      .list(dirPath.toGlob / ** / "*")
+      .filter(!_._2.isDirectory)
+      .map(_._1)
+      .sortBy(_.toString())
+    // create a manifest of files and their hashes here
+    def makeManifest(manifestFile: Path): Unit =
+      val vfs = (allPaths
+        .map: p =>
+          (conv.toVirtualFile(p): HashedVirtualFileRef))
+        .toVector
+      val manifest = Manifest(
+        version = "0.1.0",
+        outputFiles = vfs,
+      )
+      val str = CompactPrinter(Converter.toJsonUnsafe(manifest))
+      IO.write(manifestFile.toFile(), str)
+    IO.withTemporaryDirectory: tempDir =>
+      val mPath = (tempDir / manifestFileName).toPath()
+      makeManifest(mPath)
+      val zipPath = Paths.get(dirPath.toString + dirZipExt)
+      val rebase: Path => Seq[(File, String)] =
+        (p: Path) =>
+          p match
+            case p if p == dirPath => Nil
+            case p if p == mPath   => (mPath.toFile() -> manifestFileName) :: Nil
+            case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
+      IO.zip((allPaths ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), Some(default2010Timestamp))
+      conv.toVirtualFile(zipPath)
+
+  /**
+   * Represents a value and output files, used internally by the macro.
+   */
+  class InternalActionResult[A1] private (
+      val value: A1,
+      val outputs: Seq[VirtualFile],
+  )
+  end InternalActionResult
+  object InternalActionResult:
+    def apply[A1](value: A1, outputs: Seq[VirtualFile]): InternalActionResult[A1] =
+      new InternalActionResult(value, outputs)
+    private[sbt] def unapply[A1](r: InternalActionResult[A1]): Option[(A1, Seq[VirtualFile])] =
+      Some(r.value, r.outputs)
+  end InternalActionResult
 end ActionCache
 
 class BuildWideCacheConfiguration(

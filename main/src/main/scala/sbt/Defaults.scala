@@ -756,10 +756,6 @@ object Defaults extends BuildCommon {
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
-      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
-      classpathOptions :== ClasspathOptionsUtil.boot,
-      // TODO: Kept for old Dotty plugin. Remove on sbt 2.x
-      console / classpathOptions :== ClasspathOptionsUtil.repl,
       compileOrder :== CompileOrder.Mixed,
       javacOptions :== Nil,
       scalacOptions :== Nil,
@@ -923,9 +919,12 @@ object Defaults extends BuildCommon {
       compileOutputs := {
         import scala.jdk.CollectionConverters.*
         val c = fileConverter.value
-        val (_, jarFile) = compileIncremental.value
+        val (_, vfDir, packedDir) = compileIncremental.value
         val classFiles = compile.value.readStamps.getAllProductStamps.keySet.asScala
-        classFiles.toSeq.map(c.toPath) :+ compileAnalysisFile.value.toPath :+ c.toPath(jarFile)
+        classFiles.toSeq.map(c.toPath) :+
+          compileAnalysisFile.value.toPath :+
+          c.toPath(vfDir) :+
+          c.toPath(packedDir)
       },
       compileOutputs := compileOutputs.triggeredBy(compile).value,
       tastyFiles := Def.taskIf {
@@ -2530,10 +2529,6 @@ object Defaults extends BuildCommon {
         val dir = c.toPath(backendOutput.value).toFile
         result match
           case Result.Value(res) =>
-            val rawJarPath = c.toPath(res._2)
-            IO.delete(dir)
-            IO.unzip(rawJarPath.toFile, dir)
-            IO.delete(dir / "META-INF" / "MANIFEST.MF")
             val analysis = store.unsafeGet().getAnalysis()
             reporter.sendSuccessReport(analysis)
             bspTask.notifySuccess(analysis)
@@ -2544,13 +2539,6 @@ object Defaults extends BuildCommon {
             bspTask.notifyFailure(compileFailed)
             throw cause
       },
-      packagedArtifact := {
-        val (hasModified, out) = compileIncremental.value
-        artifact.value -> out
-      },
-      artifact := artifactSetting.value,
-      artifactClassifier := Some("noresources"),
-      artifactPath := artifactPathSetting(artifact).value,
     )
   )
 
@@ -2571,21 +2559,11 @@ object Defaults extends BuildCommon {
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
       Def.declareOutput(analysisOut)
-      val dir = ci.options.classesDirectory.toFile()
-      val mappings = Path
-        .allSubpaths(dir)
-        .filter(_._1.isFile())
-        .map { case (p, path) =>
-          val vf = c.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
-        }
-        .toSeq
-      // inlined to avoid caching mappings
-      val pkgConfig = Pkg.Configuration(mappings, artifactPath.value, packageOptions.value)
-      val out = Pkg(pkgConfig, c, s.log, Pkg.timeFromConfiguration(pkgConfig))
-      s.log.debug(s"wrote $out")
-      Def.declareOutput(out)
-      analysisResult.hasModified() -> (out: HashedVirtualFileRef)
+      val dir = ci.options.classesDirectory
+      val vfDir = c.toVirtualFile(dir)
+      val packedDir = Def.declareOutputDirectory(vfDir)
+      s.log.debug(s"wrote $vfDir")
+      (analysisResult.hasModified(), vfDir: VirtualFileRef, packedDir: HashedVirtualFileRef)
     }
     .tag(Tags.Compile, Tags.CPU)
 
@@ -2727,11 +2705,14 @@ object Defaults extends BuildCommon {
       compileInputs2 := {
         val cp0 = classpathTask.value
         val inputs = compileInputs.value
+        val c = fileConverter.value
         CompileInputs2(
           data(cp0).toVector,
           inputs.options.sources.toVector,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
+          c.toVirtualFile(inputs.options.classesDirectory),
+          c.toVirtualFile(inputs.setup.cacheFile.toPath)
         )
       },
       bspCompileTask :=
@@ -4425,17 +4406,19 @@ object Classpaths {
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
     val resources = copyResources.value.map(_._2).toSet
-    val dir = classDirectory.value
-    val rawJar = compileIncremental.value._2
-    val rawJarPath = c.toPath(rawJar)
+    val classDir = classDirectory.value
+    val vfBackendDir = compileIncremental.value._2
+    val backendDir = c.toPath(vfBackendDir)
     // delete outdated files
     Path
-      .allSubpaths(dir)
+      .allSubpaths(classDir)
       .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
       .foreach(IO.delete)
-    IO.unzip(rawJarPath.toFile, dir)
-    IO.delete(dir / "META-INF" / "MANIFEST.MF")
-    dir :: Nil
+    IO.copyDirectory(
+      source = backendDir.toFile(),
+      target = classDir,
+    )
+    classDir :: Nil
   }
 
   private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {
