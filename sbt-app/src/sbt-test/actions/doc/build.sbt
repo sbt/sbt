@@ -5,8 +5,8 @@ import Parsers._
 lazy val root = (project in file("."))
   .settings(
     crossPaths := false,
-    crossScalaVersions := Seq("2.12.19", "2.13.12"),
-    scalaVersion := "2.12.19",
+    crossScalaVersions := Seq("2.12.20", "2.13.12"),
+    scalaVersion := "2.12.20",
     Compile / doc / scalacOptions += "-Xfatal-warnings",
     commands += Command.command("excludeB") { s =>
       val impl = """val src = (sources in Compile).value; src.filterNot(_.getName.contains("B"))"""

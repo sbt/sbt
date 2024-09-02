@@ -1,5 +1,5 @@
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def customIvyPaths: Seq[Def.Setting[_]] = Seq(
