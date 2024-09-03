@@ -305,6 +305,7 @@ object BuildServerTest extends AbstractServerTest {
 
     IO.delete(otherBuildFile)
     reloadWorkspace()
+    ()
   }
 
   test("buildTarget/scalacOptions, buildTarget/javacOptions") { _ =>
