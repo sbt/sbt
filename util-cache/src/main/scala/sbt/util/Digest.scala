@@ -26,6 +26,10 @@ object Digest:
     def toBytes: Array[Byte] = parse(d)._4
     def sizeBytes: Long = parse(d)._3
 
+  given digestOrd(using ord: Ordering[String]): Ordering[Digest] with
+    def compare(x: Digest, y: Digest) =
+      ord.compare(x, y)
+
   def apply(s: String): Digest =
     validateString(s)
     s

@@ -392,7 +392,7 @@ object RemoteCache {
       configuration / packageCache,
       (configuration / classDirectory).value,
       (configuration / compileAnalysisFile).value,
-      Defaults.succeededFile((configuration / test / streams).value.cacheDirectory)
+      IncrementalTest.succeededFile((configuration / test / streams).value.cacheDirectory)
     )
   }
 
