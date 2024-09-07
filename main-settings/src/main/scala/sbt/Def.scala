@@ -16,7 +16,13 @@ import sbt.Scope.{ GlobalScope, ThisScope }
 import sbt.internal.util.Types.const
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.{ Terminal => ITerminal, * }
-import sbt.util.{ ActionCacheStore, AggregateActionCacheStore, BuildWideCacheConfiguration, cacheLevel , DiskActionCacheStore }
+import sbt.util.{
+  ActionCacheStore,
+  AggregateActionCacheStore,
+  BuildWideCacheConfiguration,
+  cacheLevel,
+  DiskActionCacheStore
+}
 import Util._
 import sbt.util.Show
 import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
@@ -426,9 +432,10 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
 
   private[sbt] def dummyTask[T](name: String): Task[T] = {
     import TaskExtra.toTaskInfo
-    val base: Task[T] = TaskExtra.task(
-      sys.error(s"Dummy task '$name' did not get converted to a full task.")
-    )
+    val base: Task[T] = TaskExtra
+      .task(
+        sys.error(s"Dummy task '$name' did not get converted to a full task.")
+      )
       .named(name)
     base.copy(info = base.info.set(isDummyTask, true))
   }
