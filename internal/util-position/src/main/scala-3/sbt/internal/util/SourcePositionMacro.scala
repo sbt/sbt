@@ -11,7 +11,8 @@ import scala.quoted.{ Expr, Quotes, quotes }
 
 abstract class SourcePositionImpl {
 
-  /** Creates a SourcePosition by using the enclosing position of the invocation of this method.
+  /**
+   * Creates a SourcePosition by using the enclosing position of the invocation of this method.
    *
    * @return SourcePosition
    */
@@ -26,8 +27,8 @@ object SourcePositionImpl {
 
     '{
       LinePosition(
-        path = ${Expr(x.sourceFile.name)},
-        startLine = ${Expr(x.startLine + 1)}
+        path = ${ Expr(x.sourceFile.name) },
+        startLine = ${ Expr(x.startLine + 1) }
       )
     }
   }
