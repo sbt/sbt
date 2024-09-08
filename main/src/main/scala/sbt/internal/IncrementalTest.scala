@@ -11,7 +11,7 @@ package internal
 
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import Keys.{ test, compileInputs, fileConverter, fullClasspath, streams }
+import Keys.{ test, fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
@@ -32,16 +32,29 @@ object IncrementalTest:
     Def.task {
       val cp = (Keys.test / fullClasspath).value
       val s = (Keys.test / streams).value
-      val converter = fileConverter.value
-      val stamper = ClassStamper(cp, converter)
+      val digests = (Keys.definedTestDigests).value
       val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
       def hasSucceeded(className: String): Boolean = succeeded.get(className) match
         case None     => false
-        case Some(ts) => ts == stamper.transitiveStamp(className)
+        case Some(ts) => Some(ts) == digests.get(className)
       args =>
         for filter <- selectedFilter(args)
         yield (test: String) => filter(test) && !hasSucceeded(test)
     }
+
+  // cache the test digests against the fullClasspath.
+  def definedTestDigestTask: Initialize[Task[Map[String, Digest]]] = Def.cachedTask {
+    val cp = (Keys.test / fullClasspath).value
+    val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
+    val converter = fileConverter.value
+    val stamper = ClassStamper(cp, converter)
+    // TODO: Potentially do something about JUnit 5 and others which might not use class name
+    Map((testNames.flatMap: name =>
+      stamper.transitiveStamp(name) match
+        case Some(ts) => Seq(name -> ts)
+        case None     => Nil
+    ): _*)
+  }
 
   def succeededFile(dir: File): File = dir / "succeeded_tests.txt"
 
@@ -123,9 +136,10 @@ class ClassStamper(
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
    */
-  def transitiveStamp(className: String): Digest =
+  def transitiveStamp(className: String): Option[Digest] =
     val digests = SortedSet(analyses.flatMap(internalStamp(className, _, Set.empty)): _*)
-    Digest.sha256Hash(digests.toSeq: _*)
+    if digests.nonEmpty then Some(Digest.sha256Hash(digests.toSeq: _*))
+    else None
 
   private def internalStamp(
       className: String,
@@ -144,7 +158,7 @@ class ClassStamper(
               internalStamp(otherCN, analysis, alreadySeen + className)
           val internalJarDeps = relations
             .externalDeps(className)
-            .map: libClassName =>
+            .flatMap: libClassName =>
               transitiveStamp(libClassName)
           val externalDeps = relations
             .externalDeps(className)

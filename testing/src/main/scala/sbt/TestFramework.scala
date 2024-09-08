@@ -93,6 +93,7 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
   def create(loader: ClassLoader, log: ManagedLogger): Option[Framework] =
     createFramework(loader, log, implClassNames.toList)
 }
+
 final class TestDefinition(
     val name: String,
     val fingerprint: Fingerprint,
@@ -108,7 +109,7 @@ final class TestDefinition(
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(
+private[sbt] final class TestRunner(
     delegate: Runner,
     listeners: Vector[TestReportListener],
     log: ManagedLogger
@@ -214,7 +215,7 @@ object TestFramework {
       case _                        => f.toString
     }
 
-  def testTasks(
+  private[sbt] def testTasks(
       frameworks: Map[TestFramework, Framework],
       runners: Map[TestFramework, Runner],
       testLoader: ClassLoader,

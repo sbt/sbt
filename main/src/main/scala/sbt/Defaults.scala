@@ -1329,6 +1329,9 @@ object Defaults extends BuildCommon {
         .storeAs(definedTestNames)
         .triggeredBy(compile)
         .value,
+      definedTestDigests := IncrementalTest.definedTestDigestTask
+        .triggeredBy(compile)
+        .value,
       testQuick / testFilter := IncrementalTest.filterTask.value,
       executeTests := {
         import sbt.TupleSyntax.*
@@ -1411,8 +1414,7 @@ object Defaults extends BuildCommon {
           ) +:
             TestStatusReporter(
               IncrementalTest.succeededFile((test / streams).value.cacheDirectory),
-              (Keys.test / fullClasspath).value,
-              fileConverter.value,
+              definedTestDigests.value,
             ) +:
             (TaskZero / testListeners).value
         },

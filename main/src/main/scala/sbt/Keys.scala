@@ -37,7 +37,7 @@ import sbt.librarymanagement._
 import sbt.librarymanagement.ivy.{ Credentials, IvyConfiguration, IvyPaths, UpdateOptions }
 import sbt.nio.file.Glob
 import sbt.testing.Framework
-import sbt.util.{ cacheLevel, ActionCacheStore, Level, Logger, LoggerContext }
+import sbt.util.{ cacheLevel, ActionCacheStore, Digest, Level, Logger, LoggerContext }
 import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import xsbti.compile._
 import xsbti.compile.analysis.ReadStamps
@@ -349,8 +349,10 @@ object Keys {
   // Test Keys
   val testLoader = taskKey[ClassLoader]("Provides the class loader used for testing.").withRank(DTask)
   val loadedTestFrameworks = taskKey[Map[TestFramework, Framework]]("Loads Framework definitions from the test loader.").withRank(DTask)
+  @cacheLevel(include = Array.empty)
   val definedTests = taskKey[Seq[TestDefinition]]("Provides the list of defined tests.").withRank(BMinusTask)
   val definedTestNames = taskKey[Seq[String]]("Provides the set of defined test names.").withRank(BMinusTask)
+  val definedTestDigests = taskKey[Map[String, Digest]]("Provides a unique digest of defined tests.").withRank(DTask)
   val executeTests = taskKey[Tests.Output]("Executes all tests, producing a report.").withRank(CTask)
   val test = taskKey[Unit]("Executes all tests.").withRank(APlusTask)
   val testOnly = inputKey[Unit]("Executes the tests provided as arguments or all tests if no arguments are provided.").withRank(ATask)

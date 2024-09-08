@@ -307,6 +307,7 @@ object Tests {
     in.filter(t => seen.add(f(t)))
   }
 
+  // Called by Defaults
   def apply(
       frameworks: Map[TestFramework, Framework],
       testLoader: ClassLoader,
@@ -340,7 +341,7 @@ object Tests {
     apply(frameworks, testLoader, runners, o, config, log)
   }
 
-  def testTask(
+  private[sbt] def testTask(
       loader: ClassLoader,
       frameworks: Map[TestFramework, Framework],
       runners: Map[TestFramework, Runner],
