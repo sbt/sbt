@@ -16,11 +16,10 @@ import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
 import sbt.internal.util.Types.const
-import sbt.io.syntax.*
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
 import sbt.SlashSyntax0.*
-import sbt.util.Digest
+import sbt.util.{ ActionCache, BuildWideCacheConfiguration, CacheLevelTag, Digest }
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent
 import scala.collection.mutable
@@ -33,10 +32,13 @@ object IncrementalTest:
       val cp = (Keys.test / fullClasspath).value
       val s = (Keys.test / streams).value
       val digests = (Keys.definedTestDigests).value
-      val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-      def hasSucceeded(className: String): Boolean = succeeded.get(className) match
+      val config = Def.cacheConfiguration.value
+      def hasCachedSuccess(ts: Digest): Boolean =
+        val input = cacheInput(ts)
+        ActionCache.exists(input._1, input._2, input._3, config)
+      def hasSucceeded(className: String): Boolean = digests.get(className) match
         case None     => false
-        case Some(ts) => Some(ts) == digests.get(className)
+        case Some(ts) => hasCachedSuccess(ts)
       args =>
         for filter <- selectedFilter(args)
         yield (test: String) => filter(test) && !hasSucceeded(test)
@@ -47,18 +49,24 @@ object IncrementalTest:
     val cp = (Keys.test / fullClasspath).value
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val converter = fileConverter.value
-    val inputs = Keys.compileInputs.value
-    val extra = Digest(converter.toVirtualFile(inputs.options.classesDirectory))
+    val sv = Keys.scalaVersion.value
+    val inputs = (Keys.compile / Keys.compileInputs).value
+    // by default this captures JVM version
+    val extraInc = Keys.extraIncOptions.value
+    // throw in any information useful for runtime invalidation
+    val salt = s"""$sv
+${converter.toVirtualFile(inputs.options.classesDirectory)}
+${extraInc.mkString(",")}
+"""
+    val extra = Vector(Digest.sha256Hash(salt.getBytes("UTF-8")))
     val stamper = ClassStamper(cp, converter)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name, Vector(extra)) match
+      stamper.transitiveStamp(name, extra) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     ): _*)
   }
-
-  def succeededFile(dir: File): File = dir / "succeeded_tests.txt"
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
@@ -70,20 +78,20 @@ object IncrementalTest:
       case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
       case _ =>
         includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
+
+  private[sbt] def cacheInput(value: Digest): (Unit, Digest, Digest) =
+    ((), value, Digest.zero)
 end IncrementalTest
 
-// Assumes exclusive ownership of the file.
 private[sbt] class TestStatusReporter(
-    f: File,
     digests: Map[String, Digest],
+    cacheConfiguration: BuildWideCacheConfiguration,
 ) extends TestsListener:
-  private lazy val succeeded: concurrent.Map[String, Digest] =
-    TestStatus.read(f)
+  // int value to represent success
+  private final val successfulTest = 0
 
   def doInit(): Unit = ()
-  def startGroup(name: String): Unit =
-    succeeded.remove(name)
-    ()
+  def startGroup(name: String): Unit = ()
   def testEvent(event: TestEvent): Unit = ()
   def endGroup(name: String, t: Throwable): Unit = ()
 
@@ -94,11 +102,20 @@ private[sbt] class TestStatusReporter(
   def endGroup(name: String, result: TestResult): Unit =
     if result == TestResult.Passed then
       digests.get(name) match
-        case Some(ts) => succeeded(name) = ts
-        case None     => succeeded(name) = Digest.zero
+        case Some(ts) =>
+          // treat each test suite as a successful action that returns 0
+          val input = IncrementalTest.cacheInput(ts)
+          ActionCache.cache(
+            key = input._1,
+            codeContentHash = input._2,
+            extraHash = input._3,
+            tags = CacheLevelTag.all.toList,
+            config = cacheConfiguration,
+          ): (_) =>
+            ActionCache.actionResult(successfulTest)
+        case None => ()
     else ()
-  def doComplete(finalResult: TestResult): Unit =
-    TestStatus.write(succeeded, "Successful Tests", f)
+  def doComplete(finalResult: TestResult): Unit = ()
 end TestStatusReporter
 
 private[sbt] object TestStatus:

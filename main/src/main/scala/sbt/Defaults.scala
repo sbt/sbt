@@ -1413,8 +1413,8 @@ object Defaults extends BuildCommon {
             Keys.logLevel.?.value.getOrElse(stateLogLevel),
           ) +:
             TestStatusReporter(
-              IncrementalTest.succeededFile((test / streams).value.cacheDirectory),
               definedTestDigests.value,
+              Def.cacheConfiguration.value,
             ) +:
             (TaskZero / testListeners).value
         },
