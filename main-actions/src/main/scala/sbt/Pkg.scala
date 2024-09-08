@@ -104,7 +104,21 @@ object Pkg:
       val sources: Seq[(HashedVirtualFileRef, String)],
       val jar: VirtualFileRef,
       val options: Seq[PackageOption]
-  )
+  ) {
+    import sbt.util.CacheImplicits.hashedVirtualFileRefToStr
+    private def sourcesStr: String =
+      sources
+        .map { case (k, v) =>
+          s"${hashedVirtualFileRefToStr(k)}=$v"
+        }
+        .mkString(",\n    ")
+    override def toString(): String = s"""Configuration(
+  sources = Seq(${sourcesStr}),
+  jar = ...,
+  options = ...,
+)    
+"""
+  }
 
   object Configuration:
     given IsoLList.Aux[
