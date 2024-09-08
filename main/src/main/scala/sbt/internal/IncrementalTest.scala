@@ -11,7 +11,7 @@ package internal
 
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import Keys.{ test, fileConverter, fullClasspath, streams }
+import Keys.{ test, compileInputs, fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
@@ -47,10 +47,12 @@ object IncrementalTest:
     val cp = (Keys.test / fullClasspath).value
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val converter = fileConverter.value
+    val inputs = Keys.compileInputs.value
+    val extra = Digest(converter.toVirtualFile(inputs.options.classesDirectory))
     val stamper = ClassStamper(cp, converter)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name) match
+      stamper.transitiveStamp(name, Vector(extra)) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     ): _*)
@@ -135,10 +137,12 @@ class ClassStamper(
 
   /**
    * Given a classpath and a class name, this tries to create a SHA-256 digest.
+   * @param className className to stamp
+   * @param extraHashes additional information to include into the returning digest
    */
-  def transitiveStamp(className: String): Option[Digest] =
+  private[sbt] def transitiveStamp(className: String, extaHashes: Seq[Digest]): Option[Digest] =
     val digests = SortedSet(analyses.flatMap(internalStamp(className, _, Set.empty)): _*)
-    if digests.nonEmpty then Some(Digest.sha256Hash(digests.toSeq: _*))
+    if digests.nonEmpty then Some(Digest.sha256Hash(digests.toSeq ++ extaHashes: _*))
     else None
 
   private def internalStamp(
@@ -159,7 +163,7 @@ class ClassStamper(
           val internalJarDeps = relations
             .externalDeps(className)
             .flatMap: libClassName =>
-              transitiveStamp(libClassName)
+              transitiveStamp(libClassName, Nil)
           val externalDeps = relations
             .externalDeps(className)
             .flatMap: libClassName =>
