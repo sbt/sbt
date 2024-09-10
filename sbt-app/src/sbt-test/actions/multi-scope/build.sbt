@@ -1,7 +1,7 @@
 lazy val taskX = taskKey[Set[Int]]("numbers")
 lazy val filterX = ScopeFilter( inDependencies(ThisProject, transitive=false, includeRoot=false) )
 
-lazy val filterA: ScopeFilter.ScopeFilter = ScopeFilter(
+lazy val filterA: ScopeFilter = ScopeFilter(
 	inAggregates( LocalProject(e.id) ),
 	inConfigurations(Compile,Test) || inZeroConfiguration,
 	inTasks(console) || inZeroTask
