@@ -1310,7 +1310,8 @@ object Defaults extends BuildCommon {
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
-        testOnly / testFilter :== (IncrementalTest.selectedFilter _)
+        testOnly / testFilter :== (IncrementalTest.selectedFilter _),
+        extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[_]] =
@@ -1333,6 +1334,7 @@ object Defaults extends BuildCommon {
         .triggeredBy(compile)
         .value,
       testQuick / testFilter := IncrementalTest.filterTask.value,
+      extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
       executeTests := {
         import sbt.TupleSyntax.*
         (

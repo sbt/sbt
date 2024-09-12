@@ -11,7 +11,7 @@ package internal
 
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import Keys.{ test, compileInputs, fileConverter, fullClasspath, streams }
+import Keys.{ test, fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
@@ -49,16 +49,7 @@ object IncrementalTest:
     val cp = (Keys.test / fullClasspath).value
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val converter = fileConverter.value
-    val sv = Keys.scalaVersion.value
-    val inputs = (Keys.compile / Keys.compileInputs).value
-    // by default this captures JVM version
-    val extraInc = Keys.extraIncOptions.value
-    // throw in any information useful for runtime invalidation
-    val salt = s"""$sv
-${converter.toVirtualFile(inputs.options.classesDirectory)}
-${extraInc.mkString(",")}
-"""
-    val extra = Vector(Digest.sha256Hash(salt.getBytes("UTF-8")))
+    val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
@@ -66,6 +57,15 @@ ${extraInc.mkString(",")}
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     ): _*)
+  }
+
+  def extraTestDigestsTask: Initialize[Task[Seq[Digest]]] = Def.cachedTask {
+    // by default this captures JVM version
+    val extraInc = Keys.extraIncOptions.value
+    // throw in any information useful for runtime invalidation
+    val salt = s"""${extraInc.mkString(",")}
+"""
+    Vector(Digest.sha256Hash(salt.getBytes("UTF-8")))
   }
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
