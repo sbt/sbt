@@ -101,7 +101,6 @@ import sbt.SlashSyntax0._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
-  FileAnalysisStore,
   ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
@@ -140,6 +139,7 @@ import xsbti.compile.{
   TastyFiles,
   TransactionalManagerType
 }
+import sbt.internal.IncrementalTest
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -152,18 +152,6 @@ object Defaults extends BuildCommon {
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
-
-  private[sbt] def extractAnalysis(
-      metadata: StringAttributeMap,
-      converter: FileConverter
-  ): Option[CompileAnalysis] =
-    def asBinary(file: File) = FileAnalysisStore.binary(file).get.asScala
-    def asText(file: File) = FileAnalysisStore.text(file).get.asScala
-    for
-      ref <- metadata.get(Keys.analysis)
-      file = converter.toPath(VirtualFileRef.of(ref)).toFile
-      content <- asBinary(file).orElse(asText(file))
-    yield content.getAnalysis
 
   private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Def.defaultSettings(inScope(GlobalScope)(ss))
@@ -1323,7 +1311,8 @@ object Defaults extends BuildCommon {
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
-        testOnly / testFilter :== (selectedFilter _)
+        testOnly / testFilter :== (IncrementalTest.selectedFilter _),
+        extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[_]] =
@@ -1342,7 +1331,11 @@ object Defaults extends BuildCommon {
         .storeAs(definedTestNames)
         .triggeredBy(compile)
         .value,
-      testQuick / testFilter := testQuickFilter.value,
+      definedTestDigests := IncrementalTest.definedTestDigestTask
+        .triggeredBy(compile)
+        .value,
+      testQuick / testFilter := IncrementalTest.filterTask.value,
+      extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
       executeTests := {
         import sbt.TupleSyntax.*
         (
@@ -1422,7 +1415,10 @@ object Defaults extends BuildCommon {
             ),
             Keys.logLevel.?.value.getOrElse(stateLogLevel),
           ) +:
-            new TestStatusReporter(succeededFile((test / streams).value.cacheDirectory)) +:
+            TestStatusReporter(
+              definedTestDigests.value,
+              Def.cacheConfiguration.value,
+            ) +:
             (TaskZero / testListeners).value
         },
         testOptions := Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value,
@@ -1490,46 +1486,6 @@ object Defaults extends BuildCommon {
         (task / tags).value
       )
     }
-
-  def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
-    Def.task {
-      val cp = (test / fullClasspath).value
-      val s = (test / streams).value
-      val converter = fileConverter.value
-      val analyses = cp
-        .flatMap(a => extractAnalysis(a.metadata, converter))
-        .collect { case analysis: Analysis => analysis }
-      val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-      val stamps = collection.mutable.Map.empty[String, Long]
-      def stamp(dep: String): Option[Long] =
-        analyses.flatMap(internalStamp(dep, _, Set.empty)).maxOption
-      def internalStamp(c: String, analysis: Analysis, alreadySeen: Set[String]): Option[Long] = {
-        if (alreadySeen.contains(c)) None
-        else
-          def computeAndStoreStamp: Option[Long] = {
-            import analysis.{ apis, relations }
-            val internalDeps = relations
-              .internalClassDeps(c)
-              .flatMap(internalStamp(_, analysis, alreadySeen + c))
-            val externalDeps = relations.externalDeps(c).flatMap(stamp)
-            val classStamps = relations.productClassName.reverse(c).flatMap { pc =>
-              apis.internal.get(pc).map(_.compilationTimestamp)
-            }
-            val maxStamp = (internalDeps ++ externalDeps ++ classStamps).maxOption
-            maxStamp.foreach(maxStamp => stamps(c) = maxStamp)
-            maxStamp
-          }
-          stamps.get(c).orElse(computeAndStoreStamp)
-      }
-      def noSuccessYet(test: String) = succeeded.get(test) match {
-        case None     => true
-        case Some(ts) => stamps.synchronized(stamp(test)).exists(_ > ts)
-      }
-      args =>
-        for (filter <- selectedFilter(args))
-          yield (test: String) => filter(test) && noSuccessYet(test)
-    }
-  def succeededFile(dir: File) = dir / "succeeded_tests"
 
   @nowarn
   def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
@@ -1747,21 +1703,6 @@ object Defaults extends BuildCommon {
     result
   }
 
-  def selectedFilter(args: Seq[String]): Seq[String => Boolean] = {
-    def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
-
-    val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
-
-    val includeFilters = includeArgs map GlobFilter.apply
-    val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
-
-    (includeFilters, excludeArgs) match {
-      case (Nil, Nil) => Seq(const(true))
-      case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
-      case _ =>
-        includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
-    }
-  }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] =
     Def.task {
       Tests.discover(loadedTestFrameworks.value.values.toList, compile.value, streams.value.log)._1
@@ -2625,7 +2566,7 @@ object Defaults extends BuildCommon {
     val cachedAnalysisMap: Map[VirtualFile, CompileAnalysis] = (
       for
         attributed <- cp
-        analysis <- extractAnalysis(attributed.metadata, converter)
+        analysis <- BuildDef.extractAnalysis(attributed.metadata, converter)
       yield (converter.toVirtualFile(attributed.data), analysis)
     ).toMap
     val cachedPerEntryDefinesClassLookup: VirtualFile => DefinesClass =

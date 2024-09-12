@@ -43,10 +43,10 @@ object ActionCacheTest extends BasicTestSuite:
     IO.withTemporaryDirectory: (tempDir) =>
       val config = getCacheConfig(cache, tempDir)
       val v1 =
-        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v1 == 2)
       val v2 =
-        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
@@ -65,7 +65,7 @@ object ActionCacheTest extends BasicTestSuite:
       }
       val config = getCacheConfig(cache, tempDir)
       val v1 =
-        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v1 == 2)
       // ActionResult only contains the reference to the files.
       // To retrieve them, separately call readBlobs or syncBlobs.
@@ -75,7 +75,7 @@ object ActionCacheTest extends BasicTestSuite:
       assert(content == "2")
 
       val v2 =
-        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags)(action)(config)
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
       assert(v2 == 2)
       // check that the action has been invoked only once
       assert(called == 1)
