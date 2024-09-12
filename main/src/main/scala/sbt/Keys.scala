@@ -635,6 +635,7 @@ object Keys {
   val forcegc = settingKey[Boolean]("Enables (true) or disables (false) forcing garbage collection after task run when needed.").withRank(BMinusSetting)
   val minForcegcInterval = settingKey[Duration]("Minimal interval to check for forcing garbage collection.")
   val settingsData = std.FullInstance.settingsData
+  private[sbt] val allScopes = settingKey[ScopeFilter.AllScopes]("Internal use: a view of all scopes for filtering")
   @cacheLevel(include = Array.empty)
   val streams = taskKey[TaskStreams]("Provides streams for logging and persisting data.").withRank(DTask)
   val taskDefinitionKey = Def.taskDefinitionKey

@@ -315,6 +315,7 @@ object Defaults extends BuildCommon {
       outputStrategy :== None, // TODO - This might belong elsewhere.
       buildStructure := Project.structure(state.value),
       settingsData := buildStructure.value.data,
+      allScopes := ScopeFilter.allScopes.value,
       checkBuildSources / aggregate :== false,
       checkBuildSources / changedInputFiles / aggregate := false,
       checkBuildSources / Continuous.dynamicInputs := None,
