@@ -93,7 +93,7 @@ object ActionCache:
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
-    findActionResult(key, codeContentHash, extraHash, config) {
+    findActionResult(key, codeContentHash, extraHash, config) match
       case Right(result) =>
         // some protocol can embed values into the result
         result.contents.headOption match
@@ -106,7 +106,6 @@ object ActionCache:
             if paths.isEmpty then None
             else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
       case Left(_) => None
-    }
 
   /**
    * Checks if the ActionResult exists in the cache.
@@ -117,22 +116,21 @@ object ActionCache:
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
   ): Boolean =
-    findActionResult(key, codeContentHash, extraHash, config) {
+    findActionResult(key, codeContentHash, extraHash, config) match
       case Right(_) => true
       case Left(_)  => false
-    }
 
   inline private[sbt] def findActionResult[I: HashWriter, O](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
-  )(f: Either[Throwable, ActionResult] => O) =
+  ): Either[Throwable, ActionResult] =
     val input = mkInput(key, codeContentHash, extraHash)
     val valuePath = s"value/${input}.json"
     val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
-    f(config.store.get(getRequest))
+    config.store.get(getRequest)
 
   private inline def mkInput[I: HashWriter](
       key: I,
