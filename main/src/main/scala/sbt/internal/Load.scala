@@ -839,11 +839,11 @@ private[sbt] object Load {
             defaultProjects.generatedConfigClassFiles ++ loadedProjectsRaw.generatedConfigClassFiles
           )
         }
-      // Now we clean stale class files.
-      // TODO - this may cause issues with multiple sbt clients, but that should be deprecated pending sbt-server anyway
-      timed("Load.loadUnit: cleanEvalClasses", log) {
-        cleanEvalClasses(defDir, keepClassFiles)
-      }
+      // TODO: Uncomment when we fixed https://github.com/sbt/sbt/issues/7424
+      // likely keepClassFiles isn't covering enough.
+      // timed("Load.loadUnit: cleanEvalClasses", log) {
+      //   cleanEvalClasses(defDir, keepClassFiles)
+      // }
       val defs = if (defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
       // HERE we pull out the defined vals from memoSettings and unify them all so
       // we can use them later.
