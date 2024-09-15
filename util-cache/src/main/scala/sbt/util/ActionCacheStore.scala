@@ -288,6 +288,7 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
                 scala.Console.err.println(
                   "[info] failed to a create symbolic link. consider enabling Developer Mode"
                 )
+              symlinkSupported.set(false)
               copyFile(outPath)
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
