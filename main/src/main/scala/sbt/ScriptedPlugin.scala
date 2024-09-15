@@ -67,24 +67,9 @@ object ScriptedPlugin extends AutoPlugin {
       .map(_.get().head)
       .value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match
-      case Some((0, 13)) =>
-        Seq(
-          "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf,
-          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
-        )
-      case Some((1, _)) =>
-        Seq(
-          "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
-          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
-        )
-      case Some((2, _)) =>
-        Seq(
-          "org.scala-sbt" %% "scripted-sbt-redux" % scriptedSbt.value % ScriptedConf,
-          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
-        )
-      case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
-      case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
+    libraryDependencies ++= Seq(
+      "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
+      "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
     ),
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,

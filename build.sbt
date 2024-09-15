@@ -181,7 +181,7 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
   ),
 )
 
-val scriptedSbtReduxMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
+val scriptedSbtMimaSettings = Def.settings(mimaPreviousArtifacts := Set())
 
 lazy val sbtRoot: Project = (project in file("."))
   .aggregate(allProjects.map(p => LocalProject(p.id)): _*)
@@ -618,42 +618,16 @@ val sbtProjDepsCompileScopeFilter =
     inConfigurations(Compile)
   )
 
-lazy val scriptedSbtReduxProj = (project in file("scripted-sbt-redux"))
+lazy val scriptedSbtProj = (project in file("scripted-sbt"))
   .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
-    name := "Scripted sbt Redux",
+    name := "scripted-sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
-    scriptedSbtReduxMimaSettings,
+    scriptedSbtMimaSettings,
   )
   .configure(addSbtIO, addSbtCompilerInterface, addSbtLmCore)
-
-lazy val scriptedSbtOldProj = (project in file("scripted-sbt-old"))
-  .dependsOn(scriptedSbtReduxProj)
-  .settings(
-    baseSettings,
-    name := "Scripted sbt",
-    mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // sbt.test package is renamed to sbt.scriptedtest.
-      exclude[MissingClassProblem]("sbt.test.*"),
-      exclude[DirectMissingMethodProblem]("sbt.test.*"),
-      exclude[IncompatibleMethTypeProblem]("sbt.test.*"),
-      exclude[IncompatibleSignatureProblem]("sbt.test.*"),
-    ),
-  )
-
-lazy val scriptedPluginProj = (project in file("scripted-plugin"))
-  .settings(
-    baseSettings,
-    name := "Scripted Plugin",
-    mimaSettings,
-    mimaBinaryIssueFilters ++= Seq(
-      // scripted plugin has moved into sbt mothership.
-      exclude[MissingClassProblem]("sbt.ScriptedPlugin*")
-    ),
-  )
 
 lazy val dependencyTreeProj = (project in file("dependency-tree"))
   .dependsOn(sbtProj)
@@ -947,7 +921,6 @@ lazy val mainProj = (project in file("main"))
     runProj,
     commandProj,
     collectionProj,
-    scriptedPluginProj,
     zincLmIntegrationProj,
     utilLogging,
   )
@@ -1028,7 +1001,7 @@ lazy val sbtProj = (project in file("sbt-app"))
 // addSbtCompilerBridge
 
 lazy val serverTestProj = (project in file("server-test"))
-  .dependsOn(sbtProj % "compile->test", scriptedSbtReduxProj % "compile->test")
+  .dependsOn(sbtProj % "compile->test", scriptedSbtProj % "compile->test")
   .settings(
     testedBaseSettings,
     publish / skip := true,
@@ -1261,7 +1234,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
   val _ = publishLocalBinAll.value
   val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
   Scripted.doScripted(
-    (scriptedSbtReduxProj / scalaInstance).value,
+    (scriptedSbtProj / scalaInstance).value,
     scriptedSource.value,
     scriptedBufferLog.value,
     Def.setting(Scripted.scriptedParser(scriptedSource.value)).parsed,
@@ -1269,7 +1242,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
     scriptedLaunchOpts.value ++ (if (launch) Some(launchJar) else None),
     scalaVersion.value,
     version.value,
-    (scriptedSbtReduxProj / Test / fullClasspathAsJars).value
+    (scriptedSbtProj / Test / fullClasspathAsJars).value
       .map(_.data)
       .filterNot(_.getName.contains("scala-compiler")),
     (bundledLauncherProj / Compile / packageBin).value,
@@ -1288,9 +1261,7 @@ def allProjects =
     taskProj,
     stdTaskProj,
     runProj,
-    scriptedSbtReduxProj,
-    scriptedSbtOldProj,
-    scriptedPluginProj,
+    scriptedSbtProj,
     dependencyTreeProj,
     protocolProj,
     actionsProj,
@@ -1364,9 +1335,7 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inAnyProject -- inProjects(
     sbtRoot,
     sbtProj,
-    scriptedSbtReduxProj,
-    scriptedSbtOldProj,
-    scriptedPluginProj,
+    scriptedSbtProj,
     upperModules,
     lowerUtils,
   ),
