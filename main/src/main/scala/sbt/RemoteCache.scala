@@ -142,9 +142,7 @@ object RemoteCache {
     },
     pushRemoteCacheConfiguration / publishMavenStyle := true,
     Compile / packageCache / pushRemoteCacheArtifact := true,
-    Test / packageCache / pushRemoteCacheArtifact := true,
     Compile / packageCache / artifact := Artifact(moduleName.value, cachedCompileClassifier),
-    Test / packageCache / artifact := Artifact(moduleName.value, cachedTestClassifier),
     remoteCachePom / pushRemoteCacheArtifact := true,
     remoteCachePom := {
       val s = streams.value
