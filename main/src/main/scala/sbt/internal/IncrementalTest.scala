@@ -49,11 +49,12 @@ object IncrementalTest:
     val cp = (Keys.test / fullClasspath).value
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
     val converter = fileConverter.value
+    val rds = Keys.resourceDigests.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name, extra) match
+      stamper.transitiveStamp(name, extra ++ rds) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     ): _*)

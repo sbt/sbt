@@ -13,8 +13,10 @@ import java.nio.file.{ Path, Paths }
 import java.util.concurrent.ConcurrentHashMap
 
 import sbt.internal.inc.{ EmptyStamp, Stamper, Hash => IncHash, LastModified => IncLastModified }
+import sbt.internal.inc.JavaInterfaceUtil.given
 import sbt.io.IO
 import sbt.nio.file.FileAttributes
+import sbt.util.Digest
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import xsbti.compile.analysis.{ Stamp => XStamp }
 import xsbti.VirtualFileRef
@@ -102,6 +104,15 @@ object FileStamp {
   private[sbt] sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
   private[sbt] final case class LastModified private[sbt] (time: Long) extends FileStamp
   private[sbt] final case class Error(exception: IOException) extends FileStamp
+
+  def toDigest(path: Path, stamp: FileStamp): Digest = stamp match
+    case f: FileHashImpl =>
+      f.xstamp.getHash().toOption match
+        case Some(hash) => Digest.sha256Hash(hash.getBytes("UTF-8"))
+        case None       => Digest.sha256Hash(path)
+    case FileStamp.Hash(hex)       => Digest.sha256Hash(hex.getBytes("UTF-8"))
+    case FileStamp.Error(_)        => Digest.zero
+    case FileStamp.LastModified(_) => Digest.sha256Hash(path)
 
   object Formats {
     implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] =
