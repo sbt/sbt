@@ -2,7 +2,8 @@ package sbt.util
 
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
-import java.nio.file.{ Files, Path, Paths }
+import java.nio.file.{ Files, FileSystemException, Path, Paths, StandardCopyOption }
+import java.util.concurrent.atomic.AtomicBoolean
 import sjsonnew.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
@@ -14,7 +15,7 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
-import sbt.internal.util.StringVirtualFile1
+import sbt.internal.util.{ StringVirtualFile1, Util }
 import sbt.internal.util.codec.ActionResultCodec.given
 import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
 import java.io.InputStream
@@ -182,6 +183,8 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
     dir
   }
 
+  private val symlinkSupported: AtomicBoolean = AtomicBoolean(true)
+
   override def storeName: String = "disk"
   override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
     val acFile = acBase.toFile / request.actionDigest.toString.replace("/", "-")
@@ -263,24 +266,43 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
       if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
       else ref.id
     val d = Digest(ref)
-    def symlinkAndNotify(outPath: Path): Path =
+    def copyFile(outPath: Path): Path =
+      Files.copy(
+        casFile,
+        outPath,
+        StandardCopyOption.COPY_ATTRIBUTES,
+        StandardCopyOption.REPLACE_EXISTING,
+      )
+    // See https://github.com/sbt/sbt/issues/7656
+    // On Windows, the program has be running under the Administrator privileges or the
+    // user enable Developer Mode on Windows 10+ to create symbolic links.
+    def writeFileAndNotify(outPath: Path): Path =
       Files.createDirectories(outPath.getParent())
       val result = Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
-        Files.createSymbolicLink(outPath, casFile)
+        if symlinkSupported.get() then
+          try Files.createSymbolicLink(outPath, casFile)
+          catch
+            case e: FileSystemException =>
+              if Util.isWindows then
+                scala.Console.err.println(
+                  "[info] failed to a create symbolic link. consider enabling Developer Mode"
+                )
+              copyFile(outPath)
+        else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
     outputDirectory.resolve(shortPath) match
       case p if !Files.exists(p) =>
         // println(s"- syncFile: $p does not exist")
-        symlinkAndNotify(p)
+        writeFileAndNotify(p)
       case p if Digest.sameDigest(p, d) =>
         // println(s"- syncFile: $p has same digest")
         p
       case p =>
         // println(s"- syncFile: $p has different digest")
         IO.delete(p.toFile())
-        symlinkAndNotify(p)
+        writeFileAndNotify(p)
 
   /**
    * Emulate virtual side effects.
