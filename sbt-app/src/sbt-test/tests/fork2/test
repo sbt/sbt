@@ -1,12 +1,12 @@
-> test
+> testFull
 
 $ copy-file changes/Test.scala src/test/scala/Test.scala 
 
-> test
+> testFull
 
 > 'set javaOptions += "-Xno-opt"'
--> test
+-> testFull
 
 > session clear
 > 'set envVars += ("tests.max.value" -> "0")'
--> test
+-> testFull

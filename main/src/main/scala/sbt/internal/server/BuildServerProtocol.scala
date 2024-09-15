@@ -957,7 +957,7 @@ object BuildServerProtocol {
         case None =>
           // run allTests in testParams.targets
           val filter = ScopeFilter.in(testParams.targets.map(workspace.scopes))
-          test.all(filter).result
+          test.toTask("").all(filter).result
       }
 
       Def.task {
