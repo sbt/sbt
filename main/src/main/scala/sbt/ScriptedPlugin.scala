@@ -71,13 +71,11 @@ object ScriptedPlugin extends AutoPlugin {
           "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf,
           "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
         )
-      case Some((1, _)) =>
+      case _ =>
         Seq(
           "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
           "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
         )
-      case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
-      case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
     }),
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
