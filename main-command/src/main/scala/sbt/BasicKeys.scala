@@ -93,7 +93,7 @@ object BasicKeys {
 
   val serverIdleTimeout =
     AttributeKey[Option[FiniteDuration]](
-      "serverIdleTimeOut",
+      "serverIdleTimeout",
       "If set to a defined value, sbt server will exit if it goes at least the specified duration without receiving any commands.",
       10000
     )
