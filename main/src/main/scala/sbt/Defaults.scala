@@ -2585,11 +2585,20 @@ object Defaults extends BuildCommon {
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
-    m.extra(
-        PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
-        PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
-      )
-      .withCrossVersion(Disabled())
+    partialVersion(sbtV) match {
+      case Some((0, _)) | Some((1, _)) =>
+        m.extra(
+            PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
+            PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
+          )
+          .withCrossVersion(Disabled())
+      case Some(_) =>
+        // this produces a normal suffix like _sjs1_2.13
+        val prefix = s"sbt${binarySbtVersion(sbtV)}_"
+        m.cross(CrossVersion.binaryWith(prefix, ""))
+      case None =>
+        sys.error(s"unknown sbt version $sbtV")
+    }
 
   def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] = Def.taskDyn {
     if (sbtPlugin.value) Def.task(PluginDiscovery.discoverSourceAll(compile.value))
@@ -2913,7 +2922,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
-        sbtPluginPublishLegacyMavenStyle := true,
+        sbtPluginPublishLegacyMavenStyle :== true,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
@@ -2921,8 +2930,10 @@ object Classpaths {
 
   private lazy val publishSbtPluginMavenStyle = Def.task(sbtPlugin.value && publishMavenStyle.value)
   private lazy val packagedDefaultArtifacts = packaged(defaultArtifactTasks)
-  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, File])
-
+  private lazy val sbt2Plus: Def.Initialize[Boolean] = Def.setting {
+    val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+    sbtV != "1.0" && !sbtV.startsWith("0.")
+  }
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
     packagedArtifacts := Def
@@ -2943,12 +2954,30 @@ object Classpaths {
    */
   private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, File]]] =
     Def.task {
-      val crossVersion = sbtCrossVersion.value
-      val legacyArtifact = (makePom / artifact).value
-      val pom = makeMavenPomOfSbtPlugin.value
-      val legacyPackages = packaged(defaultPackages).value
+      // This is a conditional task. The top-level must be an if expression.
+      if (sbt2Plus.value) {
+        // Both POMs and JARs are Maven-compatible in sbt 2.x, so ignore the workarounds
+        packagedDefaultArtifacts.value
+      } else {
+        val crossVersion = sbtCrossVersion.value
+        val legacyPomArtifact = (makePom / artifact).value
+        def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+        Map(addSuffix(legacyPomArtifact) -> makeMavenPomOfSbtPlugin.value) ++
+          pomConsistentArtifactsForLegacySbt.value ++
+          legacyPackagedArtifacts.value
+      }
+    }
 
-      def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+  private def legacyPackagedArtifacts: Def.Initialize[Task[Map[Artifact, File]]] = Def.task {
+    // This is a conditional task. The top-level must be an if expression.
+    if (sbtPluginPublishLegacyMavenStyle.value) packagedDefaultArtifacts.value
+    else Map.empty[Artifact, File]
+  }
+
+  private def pomConsistentArtifactsForLegacySbt: Def.Initialize[Task[Map[Artifact, File]]] =
+    Def.task {
+      val crossVersion = sbtCrossVersion.value
+      val legacyPackages = packaged(defaultPackages).value
       def copyArtifact(artifact: Artifact, file: File): (Artifact, File) = {
         val nameWithSuffix = crossVersion(artifact.name)
         val targetFile =
@@ -2956,11 +2985,9 @@ object Classpaths {
         IO.copyFile(file, targetFile)
         artifact.withName(nameWithSuffix) -> targetFile
       }
-      val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
-      val legacyPackagedArtifacts = Def
-        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packagedDefaultArtifacts)(emptyArtifacts)
-        .value
-      packages + (addSuffix(legacyArtifact) -> pom) ++ legacyPackagedArtifacts
+      legacyPackages.map {
+        case (artifact, file) => copyArtifact(artifact, file);
+      }
     }
 
   private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
