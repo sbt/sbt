@@ -1,28 +1,28 @@
 # should fail because it should run all test:tests, some of which are expected to fail (1 and 4)
--> test:test
+-> testQuick
 
 $ touch success1
-> test:test
+> testQuick
 $ delete success1
 
 $ touch failure1
--> test:test
+-> testQuick
 $ delete failure1
 
 $ touch success2
-> test:test
+> testQuick
 $ delete success2
 
 $ touch failure2
--> test:test
+-> testQuick
 $ delete failure2
 
 $ touch success3
-> test:test
+> testQuick
 $ delete success3
 
 $ touch failure3
--> test:test
+-> testQuick
 $ delete failure3
 
 > set Compile / scalacOptions += "-Xfatal-warnings"

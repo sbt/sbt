@@ -48,12 +48,13 @@ object IncrementalTest:
   def definedTestDigestTask: Initialize[Task[Map[String, Digest]]] = Def.cachedTask {
     val cp = (Keys.test / fullClasspath).value
     val testNames = Keys.definedTests.value.map(_.name).toVector.distinct
+    val opts = (Keys.test / Keys.testOptionDigests).value
     val converter = fileConverter.value
     val extra = Keys.extraTestDigests.value
     val stamper = ClassStamper(cp, converter)
     // TODO: Potentially do something about JUnit 5 and others which might not use class name
     Map((testNames.flatMap: name =>
-      stamper.transitiveStamp(name, extra) match
+      stamper.transitiveStamp(name, extra ++ opts) match
         case Some(ts) => Seq(name -> ts)
         case None     => Nil
     ): _*)
