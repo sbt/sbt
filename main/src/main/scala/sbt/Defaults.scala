@@ -1425,6 +1425,8 @@ object Defaults extends BuildCommon {
         testOptions := Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value,
         testOptionDigests := {
           (TaskZero / testOptions).value.flatMap {
+            case Tests.Setup(_, digest)   => Seq(digest)
+            case Tests.Cleanup(_, digest) => Seq(digest)
             case Tests.Argument(fm, args) =>
               Seq(
                 Digest.sha256Hash(
