@@ -1317,6 +1317,7 @@ object Defaults extends BuildCommon {
         testFrameworks :== sbt.TestFrameworks.All,
         testListeners :== Nil,
         testOptions :== Nil,
+        testOptionDigests := Nil,
         testResultLogger :== TestResultLogger.Default,
         testOnly / testFilter :== (IncrementalTest.selectedFilter _),
         extraTestDigests :== Nil,
@@ -1429,6 +1430,19 @@ object Defaults extends BuildCommon {
             (TaskZero / testListeners).value
         },
         testOptions := Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value,
+        testOptionDigests := {
+          (TaskZero / testOptions).value.flatMap {
+            case Tests.Setup(_, digest)   => Seq(digest)
+            case Tests.Cleanup(_, digest) => Seq(digest)
+            case Tests.Argument(fm, args) =>
+              Seq(
+                Digest.sha256Hash(
+                  (fm.toSeq.map(_.toString) ++ args).mkString("\n").getBytes("UTF-8")
+                )
+              )
+            case _ => Nil
+          }
+        },
         testExecution := testExecutionTask(key).value
       )
     ) ++ inScope(GlobalScope)(

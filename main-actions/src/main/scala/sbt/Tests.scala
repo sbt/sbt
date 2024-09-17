@@ -32,8 +32,9 @@ import testing.{
 
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
+import scala.quoted.*
 import sbt.internal.util.ManagedLogger
-import sbt.util.Logger
+import sbt.util.{ Digest, Logger }
 import sbt.protocol.testing.TestResult
 
 import scala.runtime.AbstractFunction3
@@ -68,26 +69,58 @@ object Tests {
    * The ClassLoader provided to `setup` is the loader containing the test classes that will be run.
    * Setup is not currently performed for forked tests.
    */
-  final case class Setup(setup: ClassLoader => Unit) extends TestOption
+  final case class Setup(setup: ClassLoader => Unit, codeDigest: Digest) extends TestOption
 
   /**
    * Defines a TestOption that will evaluate `setup` before any tests execute.
    * Setup is not currently performed for forked tests.
    */
-  def Setup(setup: () => Unit) = new Setup(_ => setup())
+  inline def Setup(inline setup: () => Unit): Setup = ${ unitSetupMacro('setup) }
+
+  private def unitSetupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Setup] =
+    val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
+    val codeDigestStr = Expr(codeDigest.toString())
+    '{
+      new Setup(_ => $fn(), Digest($codeDigestStr))
+    }
+
+  private inline def Setup(inline setup: ClassLoader => Unit): Setup = ${ clSetupMacro('setup) }
+
+  def clSetupMacro(fn: Expr[ClassLoader => Unit])(using Quotes): Expr[Setup] =
+    val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
+    val codeDigestStr = Expr(codeDigest.toString())
+    '{
+      new Setup($fn, Digest($codeDigestStr))
+    }
 
   /**
    * Defines a TestOption that will evaluate `cleanup` after all tests execute.
    * The ClassLoader provided to `cleanup` is the loader containing the test classes that ran.
    * Cleanup is not currently performed for forked tests.
    */
-  final case class Cleanup(cleanup: ClassLoader => Unit) extends TestOption
+  final case class Cleanup(cleanup: ClassLoader => Unit, codeDigest: Digest) extends TestOption
 
   /**
    * Defines a TestOption that will evaluate `cleanup` after all tests execute.
    * Cleanup is not currently performed for forked tests.
    */
-  def Cleanup(cleanup: () => Unit) = new Cleanup(_ => cleanup())
+  inline def Cleanup(inline cleanup: () => Unit) = ${ unitCleanupMacro('cleanup) }
+
+  private def unitCleanupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Cleanup] =
+    val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
+    val codeDigestStr = Expr(codeDigest.toString())
+    '{
+      new Cleanup(_ => $fn(), Digest($codeDigestStr))
+    }
+
+  inline def Cleanup(inline cleanup: ClassLoader => Unit): Cleanup = ${ clCleanupMacro('cleanup) }
+
+  private def clCleanupMacro(fn: Expr[ClassLoader => Unit])(using Quotes): Expr[Cleanup] =
+    val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
+    val codeDigestStr = Expr(codeDigest.toString())
+    '{
+      new Cleanup($fn, Digest($codeDigestStr))
+    }
 
   /** The names of tests to explicitly exclude from execution. */
   final case class Exclude(tests: Iterable[String]) extends TestOption
@@ -271,11 +304,11 @@ object Tests {
           if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.")
           else orderedFilters = includes
           ()
-        case Exclude(exclude)         => excludeTestsSet ++= exclude; ()
-        case Listeners(listeners)     => testListeners ++= listeners; ()
-        case Setup(setupFunction)     => setup += setupFunction; ()
-        case Cleanup(cleanupFunction) => cleanup += cleanupFunction; ()
-        case _: Argument              => // now handled by whatever constructs `runners`
+        case Exclude(exclude)            => excludeTestsSet ++= exclude; ()
+        case Listeners(listeners)        => testListeners ++= listeners; ()
+        case Setup(setupFunction, _)     => setup += setupFunction; ()
+        case Cleanup(cleanupFunction, _) => cleanup += cleanupFunction; ()
+        case _: Argument                 => // now handled by whatever constructs `runners`
       }
     }
 
