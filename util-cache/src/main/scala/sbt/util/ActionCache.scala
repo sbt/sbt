@@ -31,24 +31,19 @@ object ActionCache:
    *   Even if the input tasks are the same, the code part needs to be tracked.
    * - extraHash: Reserved for later, which we might use to invalidate the cache.
    * - tags: Tags to track cache level.
-   * - action: The actual action to be cached.
    * - config: The configuration that's used to store where the cache backends are.
+   * - action: The actual action to be cached.
    */
   def cache[I: HashWriter, O: JsonFormat: ClassTag](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,
       tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
   )(
       action: I => InternalActionResult[O],
-  )(
-      config: BuildWideCacheConfiguration
   ): O =
     import config.*
-    val input =
-      Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
-    val valuePath = s"value/${input}.json"
-
     def organicTask: O =
       // run action(...) and combine the newResult with outputs
       val InternalActionResult(result, outputs) =
@@ -69,38 +64,80 @@ object ActionCache:
         result
       else
         cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+        val input = mkInput(key, codeContentHash, extraHash)
         val valueFile = StringVirtualFile1(s"value/${input}.json", CompactPrinter(json))
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            syncBlobs(cachedResult.outputFiles)
+            store.syncBlobs(cachedResult.outputFiles, outputDirectory)
             result
           case Left(e) => throw e
 
+    get(key, codeContentHash, extraHash, tags, config) match
+      case Some(value) => value
+      case None        => organicTask
+  end cache
+
+  /**
+   * Retrieves the cached value.
+   */
+  def get[I: HashWriter, O: JsonFormat: ClassTag](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  ): Option[O] =
+    import config.store
     def valueFromStr(str: String, origin: Option[String]): O =
-      cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
+      config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
-
-    def syncBlobs(refs: Seq[HashedVirtualFileRef]): Seq[Path] =
-      store.syncBlobs(refs, config.outputDirectory)
-
-    val getRequest =
-      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
-    store.get(getRequest) match
+    findActionResult(key, codeContentHash, extraHash, config) match
       case Right(result) =>
         // some protocol can embed values into the result
         result.contents.headOption match
           case Some(head) =>
-            syncBlobs(result.outputFiles)
+            store.syncBlobs(result.outputFiles, config.outputDirectory)
             val str = String(head.array(), StandardCharsets.UTF_8)
-            valueFromStr(str, result.origin)
+            Some(valueFromStr(str, result.origin))
           case _ =>
-            val paths = syncBlobs(result.outputFiles)
-            if paths.isEmpty then organicTask
-            else valueFromStr(IO.read(paths.head.toFile()), result.origin)
-      case Left(_) => organicTask
-  end cache
+            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+            if paths.isEmpty then None
+            else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
+      case Left(_) => None
+
+  /**
+   * Checks if the ActionResult exists in the cache.
+   */
+  def exists[I: HashWriter](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      config: BuildWideCacheConfiguration,
+  ): Boolean =
+    findActionResult(key, codeContentHash, extraHash, config) match
+      case Right(_) => true
+      case Left(_)  => false
+
+  inline private[sbt] def findActionResult[I: HashWriter, O](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      config: BuildWideCacheConfiguration,
+  ): Either[Throwable, ActionResult] =
+    val input = mkInput(key, codeContentHash, extraHash)
+    val valuePath = s"value/${input}.json"
+    val getRequest =
+      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
+    config.store.get(getRequest)
+
+  private inline def mkInput[I: HashWriter](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest
+  ): Digest =
+    Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
 
   def manifestFromFile(manifest: Path): Manifest =
     import sbt.internal.util.codec.ManifestCodec.given
@@ -145,6 +182,9 @@ object ActionCache:
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
       IO.zip((allPaths ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), Some(default2010Timestamp))
       conv.toVirtualFile(zipPath)
+
+  inline def actionResult[A1](inline value: A1): InternalActionResult[A1] =
+    InternalActionResult(value, Nil)
 
   /**
    * Represents a value and output files, used internally by the macro.

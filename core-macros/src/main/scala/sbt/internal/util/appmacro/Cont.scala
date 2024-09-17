@@ -347,10 +347,11 @@ trait Cont:
               $input,
               codeContentHash = Digest.dummy($codeContentHash),
               extraHash = Digest.dummy($extraHash),
-              tags = $tagsExpr
+              tags = $tagsExpr,
+              config = $cacheConfigExpr,
             )({ _ =>
               $block
-            })($cacheConfigExpr)
+            })
         }
 
       // This will generate following code for Def.declareOutput(...):

@@ -142,9 +142,7 @@ object RemoteCache {
     },
     pushRemoteCacheConfiguration / publishMavenStyle := true,
     Compile / packageCache / pushRemoteCacheArtifact := true,
-    Test / packageCache / pushRemoteCacheArtifact := true,
     Compile / packageCache / artifact := Artifact(moduleName.value, cachedCompileClassifier),
-    Test / packageCache / artifact := Artifact(moduleName.value, cachedTestClassifier),
     remoteCachePom / pushRemoteCacheArtifact := true,
     remoteCachePom := {
       val s = streams.value
@@ -194,10 +192,7 @@ object RemoteCache {
           .withResolvers(rs)
       }
     )
-  ) ++ inConfig(Compile)(
-    configCacheSettings(compileArtifact(Compile, cachedCompileClassifier))
-  )
-    ++ inConfig(Test)(configCacheSettings(testArtifact(Test, cachedTestClassifier))))
+  ) ++ inConfig(Compile)(configCacheSettings(compileArtifact(Compile, cachedCompileClassifier))))
 
   def getResourceFilePaths() = Def.task {
     val syncDir = crossTarget.value / (prefix(configuration.value.name) + "sync")
@@ -380,19 +375,6 @@ object RemoteCache {
       configuration / packageCache,
       (configuration / classDirectory).value,
       (configuration / compileAnalysisFile).value
-    )
-  }
-
-  def testArtifact(
-      configuration: Configuration,
-      classifier: String
-  ): Def.Initialize[Task[TestRemoteCacheArtifact]] = Def.task {
-    TestRemoteCacheArtifact(
-      Artifact(moduleName.value, classifier),
-      configuration / packageCache,
-      (configuration / classDirectory).value,
-      (configuration / compileAnalysisFile).value,
-      Defaults.succeededFile((configuration / test / streams).value.cacheDirectory)
     )
   }
 

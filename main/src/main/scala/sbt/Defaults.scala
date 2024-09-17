@@ -101,7 +101,6 @@ import sbt.SlashSyntax0._
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
-  FileAnalysisStore,
   ManagedLoggedReporter,
   MixedAnalyzingCompiler,
   ScalaInstance
@@ -140,6 +139,7 @@ import xsbti.compile.{
   TastyFiles,
   TransactionalManagerType
 }
+import sbt.internal.IncrementalTest
 
 object Defaults extends BuildCommon {
   final val CacheDirectoryName = "cache"
@@ -152,18 +152,6 @@ object Defaults extends BuildCommon {
   def prefix(config: String) = if (config == Configurations.Compile.name) "" else config + "-"
 
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock = LibraryManagement.lock(app)
-
-  private[sbt] def extractAnalysis(
-      metadata: StringAttributeMap,
-      converter: FileConverter
-  ): Option[CompileAnalysis] =
-    def asBinary(file: File) = FileAnalysisStore.binary(file).get.asScala
-    def asText(file: File) = FileAnalysisStore.text(file).get.asScala
-    for
-      ref <- metadata.get(Keys.analysis)
-      file = converter.toPath(VirtualFileRef.of(ref)).toFile
-      content <- asBinary(file).orElse(asText(file))
-    yield content.getAnalysis
 
   private[sbt] def globalDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     Def.defaultSettings(inScope(GlobalScope)(ss))
@@ -664,7 +652,14 @@ object Defaults extends BuildCommon {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
     }).taskValue,
     managedResources := generate(resourceGenerators).value,
-    resources := Classpaths.concat(managedResources, unmanagedResources).value
+    resources := Classpaths.concat(managedResources, unmanagedResources).value,
+    resourceDigests := {
+      val uifs = (unmanagedResources / inputFileStamps).value
+      val mifs = (managedResources / inputFileStamps).value
+      (uifs ++ mifs).sortBy(_._1.toString()).map { case (p, fileStamp) =>
+        FileStamp.toDigest(p, fileStamp)
+      }
+    },
   )
   // This exists for binary compatibility and probably never should have been public.
   def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil
@@ -1323,7 +1318,8 @@ object Defaults extends BuildCommon {
         testListeners :== Nil,
         testOptions :== Nil,
         testResultLogger :== TestResultLogger.Default,
-        testOnly / testFilter :== (selectedFilter _)
+        testOnly / testFilter :== (IncrementalTest.selectedFilter _),
+        extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[_]] =
@@ -1342,7 +1338,11 @@ object Defaults extends BuildCommon {
         .storeAs(definedTestNames)
         .triggeredBy(compile)
         .value,
-      testQuick / testFilter := testQuickFilter.value,
+      definedTestDigests := IncrementalTest.definedTestDigestTask
+        .triggeredBy(compile)
+        .value,
+      testQuick / testFilter := IncrementalTest.filterTask.value,
+      extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
       executeTests := {
         import sbt.TupleSyntax.*
         (
@@ -1422,7 +1422,10 @@ object Defaults extends BuildCommon {
             ),
             Keys.logLevel.?.value.getOrElse(stateLogLevel),
           ) +:
-            new TestStatusReporter(succeededFile((test / streams).value.cacheDirectory)) +:
+            TestStatusReporter(
+              definedTestDigests.value,
+              Def.cacheConfiguration.value,
+            ) +:
             (TaskZero / testListeners).value
         },
         testOptions := Tests.Listeners(testListeners.value) +: (TaskZero / testOptions).value,
@@ -1490,46 +1493,6 @@ object Defaults extends BuildCommon {
         (task / tags).value
       )
     }
-
-  def testQuickFilter: Initialize[Task[Seq[String] => Seq[String => Boolean]]] =
-    Def.task {
-      val cp = (test / fullClasspath).value
-      val s = (test / streams).value
-      val converter = fileConverter.value
-      val analyses = cp
-        .flatMap(a => extractAnalysis(a.metadata, converter))
-        .collect { case analysis: Analysis => analysis }
-      val succeeded = TestStatus.read(succeededFile(s.cacheDirectory))
-      val stamps = collection.mutable.Map.empty[String, Long]
-      def stamp(dep: String): Option[Long] =
-        analyses.flatMap(internalStamp(dep, _, Set.empty)).maxOption
-      def internalStamp(c: String, analysis: Analysis, alreadySeen: Set[String]): Option[Long] = {
-        if (alreadySeen.contains(c)) None
-        else
-          def computeAndStoreStamp: Option[Long] = {
-            import analysis.{ apis, relations }
-            val internalDeps = relations
-              .internalClassDeps(c)
-              .flatMap(internalStamp(_, analysis, alreadySeen + c))
-            val externalDeps = relations.externalDeps(c).flatMap(stamp)
-            val classStamps = relations.productClassName.reverse(c).flatMap { pc =>
-              apis.internal.get(pc).map(_.compilationTimestamp)
-            }
-            val maxStamp = (internalDeps ++ externalDeps ++ classStamps).maxOption
-            maxStamp.foreach(maxStamp => stamps(c) = maxStamp)
-            maxStamp
-          }
-          stamps.get(c).orElse(computeAndStoreStamp)
-      }
-      def noSuccessYet(test: String) = succeeded.get(test) match {
-        case None     => true
-        case Some(ts) => stamps.synchronized(stamp(test)).exists(_ > ts)
-      }
-      args =>
-        for (filter <- selectedFilter(args))
-          yield (test: String) => filter(test) && noSuccessYet(test)
-    }
-  def succeededFile(dir: File) = dir / "succeeded_tests"
 
   @nowarn
   def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
@@ -1747,21 +1710,6 @@ object Defaults extends BuildCommon {
     result
   }
 
-  def selectedFilter(args: Seq[String]): Seq[String => Boolean] = {
-    def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
-
-    val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
-
-    val includeFilters = includeArgs map GlobFilter.apply
-    val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
-
-    (includeFilters, excludeArgs) match {
-      case (Nil, Nil) => Seq(const(true))
-      case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
-      case _ =>
-        includeFilters.map(f => (s: String) => (f.accept(s) && !matches(excludeFilters, s)))
-    }
-  }
   def detectTests: Initialize[Task[Seq[TestDefinition]]] =
     Def.task {
       Tests.discover(loadedTestFrameworks.value.values.toList, compile.value, streams.value.log)._1
@@ -2625,7 +2573,7 @@ object Defaults extends BuildCommon {
     val cachedAnalysisMap: Map[VirtualFile, CompileAnalysis] = (
       for
         attributed <- cp
-        analysis <- extractAnalysis(attributed.metadata, converter)
+        analysis <- BuildDef.extractAnalysis(attributed.metadata, converter)
       yield (converter.toVirtualFile(attributed.data), analysis)
     ).toMap
     val cachedPerEntryDefinesClassLookup: VirtualFile => DefinesClass =
@@ -2784,10 +2732,17 @@ object Defaults extends BuildCommon {
     }
 
   def sbtPluginExtra(m: ModuleID, sbtV: String, scalaV: String): ModuleID =
-    m.extra(
-      PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
-      PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
-    ).withCrossVersion(Disabled())
+    partialVersion(sbtV) match
+      case Some((0, _)) | Some((1, _)) =>
+        m.extra(
+          PomExtraDependencyAttributes.SbtVersionKey -> sbtV,
+          PomExtraDependencyAttributes.ScalaVersionKey -> scalaV
+        ).withCrossVersion(Disabled())
+      case Some(_) =>
+        // this produces a normal suffix like _sjs1_2.13
+        val prefix = s"sbt${binarySbtVersion(sbtV)}_"
+        m.cross(CrossVersion.binaryWith(prefix, ""))
+      case None => sys.error(s"unknown sbt version $sbtV")
 
   def discoverSbtPluginNames: Initialize[Task[PluginDiscovery.DiscoveredNames]] =
     (Def.task { sbtPlugin.value }).flatMapTask { case p =>
@@ -3132,7 +3087,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
-        sbtPluginPublishLegacyMavenStyle := true,
+        sbtPluginPublishLegacyMavenStyle :== true,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
@@ -3140,8 +3095,10 @@ object Classpaths {
 
   private lazy val publishSbtPluginMavenStyle = Def.task(sbtPlugin.value && publishMavenStyle.value)
   private lazy val packagedDefaultArtifacts = packaged(defaultArtifactTasks)
-  private lazy val emptyArtifacts = Def.task(Map.empty[Artifact, HashedVirtualFileRef])
-
+  private lazy val sbt2Plus: Def.Initialize[Boolean] = Def.setting {
+    val sbtV = (pluginCrossBuild / sbtBinaryVersion).value
+    sbtV != "1.0" && !sbtV.startsWith("0.")
+  }
   val jvmPublishSettings: Seq[Setting[_]] = Seq(
     artifacts := artifactDefs(defaultArtifactTasks).value,
     packagedArtifacts := Def
@@ -3162,12 +3119,38 @@ object Classpaths {
    */
   private def mavenArtifactsOfSbtPlugin: Def.Initialize[Task[Map[Artifact, HashedVirtualFileRef]]] =
     Def.task {
+      // This is a conditional task. The top-level must be an if expression.
+      if (sbt2Plus.value) {
+        // Both POMs and JARs are Maven-compatible in sbt 2.x, so ignore the workarounds
+        packagedDefaultArtifacts.value
+      } else {
+        val crossVersion = sbtCrossVersion.value
+        val legacyPomArtifact = (makePom / artifact).value
+        val converter = fileConverter.value
+        def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+        Map(
+          addSuffix(legacyPomArtifact) -> converter.toVirtualFile(
+            makeMavenPomOfSbtPlugin.value.toPath()
+          )
+        ) ++
+          pomConsistentArtifactsForLegacySbt.value ++
+          legacyPackagedArtifacts.value
+      }
+    }
+
+  private def legacyPackagedArtifacts: Def.Initialize[Task[Map[Artifact, HashedVirtualFileRef]]] =
+    Def.task {
+      // This is a conditional task. The top-level must be an if expression.
+      if (sbtPluginPublishLegacyMavenStyle.value) packagedDefaultArtifacts.value
+      else Map.empty[Artifact, HashedVirtualFileRef]
+    }
+
+  private def pomConsistentArtifactsForLegacySbt
+      : Def.Initialize[Task[Map[Artifact, HashedVirtualFileRef]]] =
+    Def.task {
       val crossVersion = sbtCrossVersion.value
-      val legacyArtifact = (makePom / artifact).value
-      val converter = fileConverter.value
-      val pom = converter.toVirtualFile(makeMavenPomOfSbtPlugin.value.toPath)
       val legacyPackages = packaged(defaultPackages).value
-      def addSuffix(a: Artifact): Artifact = a.withName(crossVersion(a.name))
+      val converter = fileConverter.value
       def copyArtifact(
           artifact: Artifact,
           fileRef: HashedVirtualFileRef
@@ -3179,11 +3162,9 @@ object Classpaths {
         IO.copyFile(file, targetFile)
         artifact.withName(nameWithSuffix) -> converter.toVirtualFile(targetFile.toPath)
       }
-      val packages = legacyPackages.map { case (artifact, file) => copyArtifact(artifact, file) }
-      val legacyPackagedArtifacts = Def
-        .ifS(sbtPluginPublishLegacyMavenStyle.toTask)(packagedDefaultArtifacts)(emptyArtifacts)
-        .value
-      packages + (addSuffix(legacyArtifact) -> pom) ++ legacyPackagedArtifacts
+      legacyPackages.map { case (artifact, file) =>
+        copyArtifact(artifact, file);
+      }
     }
 
   private def sbtCrossVersion: Def.Initialize[String => String] = Def.setting {
