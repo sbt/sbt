@@ -652,7 +652,14 @@ object Defaults extends BuildCommon {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
     }).taskValue,
     managedResources := generate(resourceGenerators).value,
-    resources := Classpaths.concat(managedResources, unmanagedResources).value
+    resources := Classpaths.concat(managedResources, unmanagedResources).value,
+    resourceDigests := {
+      val uifs = (unmanagedResources / inputFileStamps).value
+      val mifs = (managedResources / inputFileStamps).value
+      (uifs ++ mifs).sortBy(_._1.toString()).map { case (p, fileStamp) =>
+        FileStamp.toDigest(p, fileStamp)
+      }
+    },
   )
   // This exists for binary compatibility and probably never should have been public.
   def addBaseSources: Seq[Def.Setting[Task[Seq[File]]]] = Nil

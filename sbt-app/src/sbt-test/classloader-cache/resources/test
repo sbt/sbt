@@ -4,12 +4,12 @@ $ copy-file changes/updated-main.txt src/main/resources/foo.txt
 
 > run foo.txt updated-main
 
-> test
+> testQuick
 
 $ copy-file changes/updated-test.txt src/test/resources/bar.txt
 
--> test
+-> testQuick
 
 $ copy-file changes/UpdatedResourceTest.scala src/test/scala/scripted/ResourceTest.scala
 
-> test
+> testQuick
