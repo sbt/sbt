@@ -77,7 +77,7 @@ object Tests {
    */
   inline def Setup(inline setup: () => Unit): Setup = ${ unitSetupMacro('setup) }
 
-  def unitSetupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Setup] =
+  private def unitSetupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Setup] =
     val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
     val codeDigestStr = Expr(codeDigest.toString())
     '{
