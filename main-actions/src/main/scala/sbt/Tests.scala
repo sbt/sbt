@@ -106,7 +106,7 @@ object Tests {
    */
   inline def Cleanup(inline cleanup: () => Unit) = ${ unitCleanupMacro('cleanup) }
 
-  def unitCleanupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Cleanup] =
+  private def unitCleanupMacro(fn: Expr[() => Unit])(using Quotes): Expr[Cleanup] =
     val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
     val codeDigestStr = Expr(codeDigest.toString())
     '{
