@@ -1,0 +1,4 @@
+> publishLocal
+
+$ exists ivy-cache/local/com.example/app_config1.2_2.12/0.1.0-SNAPSHOT/poms/app_config1.2_2.12.pom
+$ exists ivy-cache/local/com.example/app_config1.3_2.12/0.1.0-SNAPSHOT/poms/app_config1.3_2.12.pom

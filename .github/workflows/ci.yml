@@ -146,7 +146,7 @@ jobs:
         shell: bash
         run: |
           # ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/*"
-          ./sbt -v --client "scripted dependency-management/* project-load/* java/* run/*"
+          ./sbt -v --client "scripted dependency-management/* project-load/* project-matrix/* java/* run/*"
           # ./sbt -v --client "scripted plugins/*"
           # ./sbt -v --client "scripted nio/*"
       - name: Build and test (4)

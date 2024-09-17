@@ -1,0 +1,5 @@
+> compile
+
+$ exists target/out/jvm/scala-2.12.10/domain/backend/a/DataType.class
+
+> check

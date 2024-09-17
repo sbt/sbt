@@ -18,6 +18,7 @@ package object sbt
     with sbt.std.TaskExtra
     // with sbt.internal.util.Types
     with sbt.ProjectExtra
+    with sbt.ProjectMatrixExtra
     with sbt.librarymanagement.DependencyBuilders
     with sbt.librarymanagement.DependencyFilterExtra
     with sbt.librarymanagement.LibraryManagementSyntax

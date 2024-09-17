@@ -102,6 +102,10 @@ object Keys {
 
   val onComplete = Def.onComplete //  settingKey[() => Unit]("Hook to run when task evaluation completes.  The type of this setting is subject to change, pending the resolution of SI-2915.").withRank(DSetting)
 
+  // Project Matrix
+  val virtualAxes = settingKey[Seq[VirtualAxis]]("Virtual axes for the project")
+  val projectMatrixBaseDirectory = settingKey[File]("Base directory of the current project matrix")
+
   // Command keys
   val historyPath = SettingKey(BasicKeys.historyPath)
   val shellPrompt = SettingKey(BasicKeys.shellPrompt)
