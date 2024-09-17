@@ -17,7 +17,7 @@ import sbt.nio.file.{ **, FileTreeView }
 import sbt.nio.file.syntax.*
 import sbt.internal.util.{ StringVirtualFile1, Util }
 import sbt.internal.util.codec.ActionResultCodec.given
-import xsbti.{ HashedVirtualFileRef, PathBasedFile, VirtualFile }
+import xsbti.{ FileConverter, HashedVirtualFileRef, PathBasedFile, VirtualFile }
 import java.io.InputStream
 
 /**
@@ -170,7 +170,7 @@ class InMemoryActionCacheStore extends AbstractActionCacheStore:
     underlying.toString()
 end InMemoryActionCacheStore
 
-class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
+class DiskActionCacheStore(base: Path, converter: FileConverter) extends AbstractActionCacheStore:
   lazy val casBase: Path = {
     val dir = base.resolve("cas")
     IO.createDirectory(dir.toFile)
@@ -262,9 +262,6 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
       else None
 
   def syncFile(ref: HashedVirtualFileRef, casFile: Path, outputDirectory: Path): Path =
-    val shortPath =
-      if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
-      else ref.id
     val d = Digest(ref)
     def copyFile(outPath: Path): Path =
       Files.copy(
@@ -293,7 +290,7 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
-    outputDirectory.resolve(shortPath) match
+    converter.toPath(ref) match
       case p if !Files.exists(p) =>
         // println(s"- syncFile: $p does not exist")
         writeFileAndNotify(p)
@@ -335,18 +332,17 @@ class DiskActionCacheStore(base: Path) extends AbstractActionCacheStore:
       // manifest contains the list of files in the dirzip, and their hashes
       val m = ActionCache.manifestFromFile(mPath)
       m.outputFiles.foreach: ref =>
-        val shortPath =
-          if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
-          else ref.id
-        val currentItem = outputDirectory.resolve(shortPath)
+        val currentItem = converter.toPath(ref)
+        val shortPath = outputDirectory.relativize(currentItem).toString
         allPaths.remove(currentItem)
         val d = Digest(ref)
+        def tempPath = tempDir.toPath.resolve(shortPath)
         currentItem match
-          case p if !Files.exists(p)        => doSync(ref, tempDir.toPath().resolve(shortPath))
+          case p if !Files.exists(p)        => doSync(ref, tempPath)
           case p if Digest.sameDigest(p, d) => ()
           case p =>
             IO.delete(p.toFile())
-            doSync(ref, tempDir.toPath().resolve(shortPath))
+            doSync(ref, tempPath)
     // sync deleted files
     allPaths.foreach: path =>
       IO.delete(path.toFile())

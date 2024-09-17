@@ -294,7 +294,7 @@ trait Cont:
                             ).asTerm.changeOwner(sym)
                       else
                         val tags = CacheLevelTag.all.toList
-                        callActionCache(outputBuf.toList, cacheConfigExpr, tags)(
+                        callActionCache(outputBuf.toList, modifiedCacheConfigExpr, tags)(
                           body = modifiedBody,
                           input = unitExpr,
                         ).asTerm.changeOwner(sym)

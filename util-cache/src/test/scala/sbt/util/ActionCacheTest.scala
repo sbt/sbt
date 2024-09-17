@@ -20,10 +20,10 @@ object ActionCacheTest extends BasicTestSuite:
     withDiskCache(testHoldBlob)
 
   def testHoldBlob(cache: ActionCacheStore): Unit =
-    val in = StringVirtualFile1("a.txt", "foo")
-    val hashRefs = cache.putBlobs(in :: Nil)
-    assert(hashRefs.size == 1)
     IO.withTemporaryDirectory: tempDir =>
+      val in = StringVirtualFile1(s"$tempDir/a.txt", "foo")
+      val hashRefs = cache.putBlobs(in :: Nil)
+      assert(hashRefs.size == 1)
       val actual = cache.syncBlobs(hashRefs, tempDir.toPath()).head
       assert(actual.getFileName().toString() == "a.txt")
 
@@ -88,7 +88,7 @@ object ActionCacheTest extends BasicTestSuite:
     IO.withTemporaryDirectory(
       { tempDir0 =>
         val tempDir = tempDir0.toPath
-        val cache = DiskActionCacheStore(tempDir)
+        val cache = DiskActionCacheStore(tempDir, fileConverter)
         f(cache)
       },
       keepDirectory = false
