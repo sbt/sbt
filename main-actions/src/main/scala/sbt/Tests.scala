@@ -84,7 +84,7 @@ object Tests {
       new Setup(_ => $fn(), Digest($codeDigestStr))
     }
 
-  inline def Setup(inline setup: ClassLoader => Unit): Setup = ${ clSetupMacro('setup) }
+  private inline def Setup(inline setup: ClassLoader => Unit): Setup = ${ clSetupMacro('setup) }
 
   def clSetupMacro(fn: Expr[ClassLoader => Unit])(using Quotes): Expr[Setup] =
     val codeDigest = Digest.sha256Hash(fn.show.getBytes("UTF-8"))
