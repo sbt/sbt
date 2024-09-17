@@ -1,11 +1,10 @@
-import sbt.internal.ProjectMatrix
 ThisBuild / organization := "com.example"
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / publishMavenStyle := true
 
 ThisBuild / ivyPaths := {
   val base = (ThisBuild / baseDirectory).value
-  IvyPaths(base, Some(base / "ivy-cache"))
+  IvyPaths(base.toString, s"$base/ivy-cache")
 }
 publish / skip := true
 
@@ -26,13 +25,14 @@ check := {
 lazy val app: ProjectMatrix = (projectMatrix in file("app"))
   .settings(
     name := "app",
-    ivyPaths := (ThisBuild / ivyPaths).value
+    ivyPaths := (ThisBuild / ivyPaths).value,
+    scalaVersion := scala212
   )
   .aggregate(domain)
   .dependsOn(domain)
   .customRow(
     autoScalaLibrary = false,
-    scalaVersions = Seq(scala212),
+    scalaVersions = Seq(),
     axisValues = Seq(config12, VirtualAxis.jvm),
     _.settings(
       libraryDependencies += "com.typesafe" % "config" % "1.2.1"
@@ -40,7 +40,7 @@ lazy val app: ProjectMatrix = (projectMatrix in file("app"))
   )
   .customRow(
     autoScalaLibrary = false,
-    scalaVersions = Seq(scala212),
+    scalaVersions = Seq(),
     axisValues = Seq(config13, VirtualAxis.jvm),
     _.settings(
       libraryDependencies += "com.typesafe" % "config" % "1.3.3"

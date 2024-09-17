@@ -18,8 +18,8 @@ private[sbt] trait BuildSyntax:
    * Creates a new Project.  This is a macro that expects to be assigned directly to a val.
    * The name of the val is used as the project ID and the name of the base directory of the project.
    */
-  inline def project: Project =
-    ${ std.KeyMacro.projectImpl }
+  inline def project: Project = ${ std.KeyMacro.projectImpl }
+  inline def projectMatrix: ProjectMatrix = ${ ProjectMatrix.projectMatrixImpl }
   inline def settingKey[A1](inline description: String): SettingKey[A1] =
     ${ std.KeyMacro.settingKeyImpl[A1]('description) }
   inline def taskKey[A1](inline description: String): TaskKey[A1] =

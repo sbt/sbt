@@ -4,7 +4,7 @@ ThisBuild / publishMavenStyle := true
 
 ThisBuild / ivyPaths := {
   val base = (ThisBuild / baseDirectory).value
-  IvyPaths(base, Some(base / "ivy-cache"))
+  IvyPaths(base.toString, s"$base/ivy-cache")
 }
 publish / skip := true
 

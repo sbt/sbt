@@ -13,3 +13,4 @@ lazy val ss = projectMatrix
   .jvmPlatform(scalaVersions = Seq("2.13.13"))
 
 lazy val strayJar = project
+  .settings(scalaVersion := "2.12.19")

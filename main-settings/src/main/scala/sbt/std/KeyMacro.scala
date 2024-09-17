@@ -57,7 +57,7 @@ private[sbt] object KeyMacro:
   private def errorMsg2: String =
     """project must be directly assigned to a val, such as `val x = project.in(file("core"))`."""
 
-  private def definingValName(errorMsg: String)(using qctx: Quotes): Expr[String] =
+  private[sbt] def definingValName(errorMsg: String)(using qctx: Quotes): Expr[String] =
     val term = enclosingTerm
     if term.isValDef then Expr(term.name)
     else errorAndAbort(errorMsg)
