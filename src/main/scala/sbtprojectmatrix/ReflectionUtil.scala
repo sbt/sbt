@@ -10,14 +10,19 @@ object ReflectionUtil {
       val clazz = classLoader.loadClass(className)
       val t = implicitly[ClassTag[A]].runtimeClass
       Option(clazz.getField("MODULE$").get(null)) match {
-        case None                        => throw new ClassNotFoundException(s"Unable to find $className using classloader: $classLoader")
-        case Some(c) if !t.isInstance(c) => throw new ClassCastException(s"${clazz.getName} is not a subtype of $t")
-        case Some(c: A)                  => c
+        case None =>
+          throw new ClassNotFoundException(
+            s"Unable to find $className using classloader: $classLoader"
+          )
+        case Some(c) if !t.isInstance(c) =>
+          throw new ClassCastException(s"${clazz.getName} is not a subtype of $t")
+        case Some(c: A) => c
       }
     }
-    .recover {
-      case i: InvocationTargetException if i.getTargetException != null => throw i.getTargetException
-    }
+      .recover {
+        case i: InvocationTargetException if i.getTargetException != null =>
+          throw i.getTargetException
+      }
 
   def objectExists(classLoader: ClassLoader, className: String): Boolean =
     try {

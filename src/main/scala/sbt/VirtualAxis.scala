@@ -13,6 +13,7 @@ sealed abstract class VirtualAxis {
 }
 
 object VirtualAxis {
+
   /**
    * WeakAxis allows a row to depend on another row with Zero value.
    * For example, Scala version can be Zero for Java project, and it's ok.
@@ -21,7 +22,6 @@ object VirtualAxis {
 
   /** StrongAxis requires a row to depend on another row with the same selected value. */
   abstract class StrongAxis extends VirtualAxis
-
 
   def isMatch(lhs: Seq[VirtualAxis], rhs: Seq[VirtualAxis]): Boolean =
     lhs.forall(isStronglyCompatible(_, rhs)) && rhs.forall(isStronglyCompatible(_, lhs))
@@ -41,8 +41,8 @@ object VirtualAxis {
   def isSecondaryCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
     v match {
       case v: ScalaVersionAxis =>
-        val thatSVOpt = (stack collect {
-          case x: ScalaVersionAxis => x
+        val thatSVOpt = (stack collect { case x: ScalaVersionAxis =>
+          x
         }).headOption
         thatSVOpt match {
           case Some(ScalaVersionAxis(sv, _)) =>
@@ -54,7 +54,10 @@ object VirtualAxis {
         isStronglyCompatible(v, stack)
     }
 
-  private[sbt] def isScala2Scala3Sandwich(sbv1: Option[(Long, Long)], sbv2: Option[(Long, Long)]): Boolean = {
+  private[sbt] def isScala2Scala3Sandwich(
+      sbv1: Option[(Long, Long)],
+      sbv2: Option[(Long, Long)]
+  ): Boolean = {
     def str(x: Option[(Long, Long)]): String =
       x match {
         case Some((a, b)) => s"$a.$b"
@@ -97,7 +100,8 @@ object VirtualAxis {
     }
   }
 
-  case class PlatformAxis(value: String, idSuffix: String, directorySuffix: String) extends StrongAxis {
+  case class PlatformAxis(value: String, idSuffix: String, directorySuffix: String)
+      extends StrongAxis {
     override val suffixOrder: Int = 80
   }
 
