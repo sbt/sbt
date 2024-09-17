@@ -1,5 +1,4 @@
 package sbt
-package internal
 
 /** Identifies a project matrix. */
 sealed trait ProjectMatrixReference

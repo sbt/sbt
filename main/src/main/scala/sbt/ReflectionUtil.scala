@@ -1,4 +1,4 @@
-package sbtprojectmatrix
+package sbt
 
 import java.lang.reflect.InvocationTargetException
 import scala.reflect.ClassTag

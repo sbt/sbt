@@ -1,4 +1,4 @@
-package sbtprojectmatrix
+package sbt
 
 import sbt._
 import internal._
