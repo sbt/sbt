@@ -54,7 +54,7 @@ object ActionCache:
             throw e
       val json = Converter.toJsonUnsafe(result)
       val uncacheableOutputs =
-        outputs.filter(f => !fileConverter.toPath(f).startsWith(outputDirectory))
+        outputs.filter(f => !fileConverter.toPath(f).toAbsolutePath.startsWith(outputDirectory))
       if uncacheableOutputs.nonEmpty then
         cacheEventLog.append(ActionCacheEvent.Error)
         logger.error(
@@ -64,8 +64,8 @@ object ActionCache:
         result
       else
         cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-        val input = mkInput(key, codeContentHash, extraHash)
-        val valueFile = StringVirtualFile1(s"value/${input}.json", CompactPrinter(json))
+        val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config)
+        val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
@@ -126,8 +126,7 @@ object ActionCache:
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
   ): Either[Throwable, ActionResult] =
-    val input = mkInput(key, codeContentHash, extraHash)
-    val valuePath = s"value/${input}.json"
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config)
     val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
     config.store.get(getRequest)
@@ -135,9 +134,12 @@ object ActionCache:
   private inline def mkInput[I: HashWriter](
       key: I,
       codeContentHash: Digest,
-      extraHash: Digest
-  ): Digest =
-    Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
+      extraHash: Digest,
+      config: BuildWideCacheConfiguration
+  ): (Digest, String) =
+    val input =
+      Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
+    (input, s"${config.outputDirectory}/value/$input.json")
 
   def manifestFromFile(manifest: Path): Manifest =
     import sbt.internal.util.codec.ManifestCodec.given

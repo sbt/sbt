@@ -254,18 +254,23 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
   @cacheLevel(include = Array.empty)
   val cacheConfiguration: Initialize[Task[BuildWideCacheConfiguration]] = Def.task {
     val state = stateKey.value
-    val outputDirectory = state.get(BasicKeys.rootOutputDirectory)
+    val outputDirectory = state
+      .get(BasicKeys.rootOutputDirectory)
+      .getOrElse(sys.error("outputDirectory has not been set"))
+    val fileConverter =
+      state.get(BasicKeys.fileConverter).getOrElse(sys.error("outputDirectory has not been set"))
     val cacheStore = state
       .get(BasicKeys.cacheStores)
       .collect { case xs if xs.nonEmpty => AggregateActionCacheStore(xs) }
-      .getOrElse(DiskActionCacheStore(state.baseDir.toPath.resolve("target/bootcache")))
-    val fileConverter = state.get(BasicKeys.fileConverter)
+      .getOrElse(
+        DiskActionCacheStore(state.baseDir.toPath.resolve("target/bootcache"), fileConverter)
+      )
     BuildWideCacheConfiguration(
       cacheStore,
-      outputDirectory.getOrElse(sys.error("outputDirectory has not been set")),
-      fileConverter.getOrElse(sys.error("outputDirectory has not been set")),
+      outputDirectory,
+      fileConverter,
       state.log,
-      cacheEventLog,
+      cacheEventLog
     )
   }
 

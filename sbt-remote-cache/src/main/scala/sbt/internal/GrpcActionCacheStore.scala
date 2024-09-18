@@ -241,10 +241,7 @@ class GrpcActionCacheStore(
   // per spec, Clients SHOULD NOT populate [contents] when uploading to the cache.
   private def toOutputFile(ref: HashedVirtualFileRef): OutputFile =
     val b = OutputFile.newBuilder()
-    val shortPath =
-      if ref.id.startsWith("${OUT}/") then ref.id.drop(7)
-      else ref.id
-    b.setPath(shortPath)
+    b.setPath(ref.id)
     b.setDigest(toXDigest(Digest(ref)))
     b.build()
 

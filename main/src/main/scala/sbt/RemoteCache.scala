@@ -89,8 +89,9 @@ object RemoteCache {
         .resolve("out")
     },
     cacheStores := {
+      val c = fileConverter.value
       List(
-        DiskActionCacheStore(localCacheDirectory.value.toPath())
+        DiskActionCacheStore(localCacheDirectory.value.toPath, c)
       )
     },
     remoteCache := SysProp.remoteCache,
