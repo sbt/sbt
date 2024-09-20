@@ -146,10 +146,11 @@ private[sbt] final class CommandExchange {
   }
 
   private def addConsoleChannel(): Unit =
-    if (!Terminal.startedByRemoteClient) {
+    if Terminal.startedByRemoteClient then ()
+    else
       val name = ConsoleChannel.defaultName
       subscribe(new ConsoleChannel(name, mkAskUser(name)))
-    }
+
   def run(s: State): State = run(s, s.get(autoStartServer).getOrElse(true))
   def run(s: State, autoStart: Boolean): State = {
     if (autoStartServerSysProp && autoStart) runServer(s)
@@ -376,13 +377,14 @@ private[sbt] final class CommandExchange {
 
   private[sbt] def setExec(exec: Option[Exec]): Unit = currentExecRef.set(exec.orNull)
 
-  def prompt(event: ConsolePromptEvent): Unit = {
+  def prompt(event: ConsolePromptEvent): Unit =
     currentExecRef.set(null)
     channels.foreach {
       case c if ContinuousCommands.isInWatch(lastState.get, c) =>
-      case c                                                   => c.prompt(event)
+      case c =>
+        if c.isPaused then ()
+        else c.prompt(event)
     }
-  }
   def unprompt(event: ConsoleUnpromptEvent): Unit = channels.foreach(_.unprompt(event))
 
   def logMessage(event: LogEvent): Unit = {

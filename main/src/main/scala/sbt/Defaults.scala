@@ -2145,21 +2145,28 @@ object Defaults extends BuildCommon {
       }
     }
 
-  // runMain calls bgRunMain in the background and waits for the result.
-  def foregroundRunMainTask: Initialize[InputTask[Unit]] =
-    Def.inputTask[Unit] {
+  // `runMain` calls bgRunMain in the background and pauses the current channel
+  def foregroundRunMainTask: Initialize[InputTask[RunVoid]] =
+    Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
-      service.waitForTry(handle).get
-      ()
+      val st = state.value
+      st.remainingCommands match
+        case Nil => service.waitForTry(handle).get
+        case _   => service.pauseChannelDuringJob(st, handle)
+      RunVoid
     }
 
-  // run calls bgRun in the background and waits for the result.
-  def foregroundRunTask: Initialize[InputTask[Unit]] =
+  // `run` task calls bgRun in the background and pauses the current channel
+  def foregroundRunTask: Initialize[InputTask[RunVoid]] =
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
-      service.waitForTry(handle).get
+      val st = state.value
+      st.remainingCommands match
+        case Nil => service.waitForTry(handle).get
+        case _   => service.pauseChannelDuringJob(st, handle)
+      RunVoid
     }
 
   def runMainTask(

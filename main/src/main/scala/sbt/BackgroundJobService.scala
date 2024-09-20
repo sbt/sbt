@@ -86,6 +86,8 @@ abstract class BackgroundJobService extends Closeable {
       hashContents: Boolean,
       converter: FileConverter,
   ): Classpath = copyClasspath(products, full, workingDirectory, converter)
+
+  private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit
 }
 
 object BackgroundJobService {

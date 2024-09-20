@@ -212,3 +212,14 @@ object Run:
       case str                      => str
     }).mkString(" ")
 end Run
+
+/**
+ * RunVoid is a special `Unit` type used to indicate that it's a `run` task.
+ * When a task returns RunVoid, [success] log is omitted.
+ */
+sealed trait RunVoid
+
+/**
+ * The only resident of RunVoid type.
+ */
+case object RunVoid extends RunVoid

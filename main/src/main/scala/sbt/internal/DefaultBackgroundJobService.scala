@@ -24,7 +24,7 @@ import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.util.{ Attributed, ManagedLogger }
 import sbt.io.syntax._
 import sbt.io.{ Hash, IO }
-import sbt.util.Logger
+import sbt.util.{ Level, Logger }
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -79,6 +79,9 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private val nextId = new AtomicLong(1)
   private val pool = new BackgroundThreadPool()
   private val context = LoggerContext()
+  // EC for onStop handler below
+  given ExecutionContext =
+    ExecutionContext.fromExecutor(pool.executor)
 
   private[sbt] def serviceTempDirBase: File
   private[sbt] def useLog4J: Boolean
@@ -119,10 +122,6 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       val workingDirectory: File,
       val job: BackgroundJob
   ) extends AbstractJobHandle {
-    // EC for onStop handler below
-    implicit val executionContext: ExecutionContext =
-      ExecutionContext.fromExecutor(pool.executor)
-
     def humanReadableName: String = job.humanReadableName
 
     job.onStop { () =>
@@ -306,6 +305,28 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
       converter: FileConverter,
   ): Classpath =
     copyClasspath(products, full, workingDirectory, hashFileContents = true, converter)
+
+  private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit =
+    currentChannel(state) match
+      case Some(channel) =>
+        val level = channel.logLevel
+        channel.setLevel(Level.Error)
+        channel.pause()
+        handle match
+          case t: ThreadJobHandle =>
+            t.job.onStop: () =>
+              channel.setLevel(level)
+              channel.resume()
+              channel.prompt(ConsolePromptEvent(state))
+          case _ => ()
+      case _ => ()
+
+  private[sbt] def currentChannel(state: State): Option[CommandChannel] =
+    state.currentCommand match
+      case Some(e: Exec) if e.source.isDefined =>
+        val source = e.source.get
+        StandardMain.exchange.channelForName(source.channelName)
+      case _ => None
 }
 
 private[sbt] object BackgroundThreadPool {
