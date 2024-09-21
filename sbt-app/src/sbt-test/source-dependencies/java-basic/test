@@ -36,10 +36,10 @@ $ delete src/main/java/a/A.java
 # It shouldn't run though, because it doesn't have a main method
 $ copy-file changes/B1.java src/main/java/a/b/B.java
 > compile
--> run
+-> runBlock
 
 
 # Replace B with a new B that has a main method and should therefore run
 # if the main method was properly detected
 $ copy-file changes/B3.java src/main/java/a/b/B.java
-> run
+> runBlock

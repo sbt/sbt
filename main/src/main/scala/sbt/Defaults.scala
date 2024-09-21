@@ -1054,6 +1054,12 @@ object Defaults extends BuildCommon {
       },
       runMain := foregroundRunMainTask.evaluated,
       run := foregroundRunTask.evaluated,
+      runBlock := {
+        val r = run.evaluated
+        val service = bgJobService.value
+        service.waitForTry(r.handle).get
+        r
+      },
       fgRun := runTask(fullClasspath, (run / mainClass), (run / runner)).evaluated,
       fgRunMain := runMainTask(fullClasspath, (run / runner)).evaluated,
       copyResources := copyResourcesTask.value,
@@ -2146,7 +2152,7 @@ object Defaults extends BuildCommon {
     }
 
   // `runMain` calls bgRunMain in the background and pauses the current channel
-  def foregroundRunMainTask: Initialize[InputTask[RunVoid]] =
+  def foregroundRunMainTask: Initialize[InputTask[RunInfo]] =
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
@@ -2154,11 +2160,11 @@ object Defaults extends BuildCommon {
       st.remainingCommands match
         case Nil => service.waitForTry(handle).get
         case _   => service.pauseChannelDuringJob(st, handle)
-      RunVoid
+      RunInfo(handle)
     }
 
   // `run` task calls bgRun in the background and pauses the current channel
-  def foregroundRunTask: Initialize[InputTask[RunVoid]] =
+  def foregroundRunTask: Initialize[InputTask[RunInfo]] =
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
@@ -2166,7 +2172,7 @@ object Defaults extends BuildCommon {
       st.remainingCommands match
         case Nil => service.waitForTry(handle).get
         case _   => service.pauseChannelDuringJob(st, handle)
-      RunVoid
+      RunInfo(handle)
     }
 
   def runMainTask(

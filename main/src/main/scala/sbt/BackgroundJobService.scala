@@ -110,3 +110,5 @@ abstract class JobHandle {
   def humanReadableName: String
   def spawningTask: ScopedKey[_]
 }
+
+case class RunInfo(handle: JobHandle)

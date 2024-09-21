@@ -1,12 +1,12 @@
 > a/checkLibs
 > b/checkLibs
 
-> b/run
+> b/runBlock
 $ exists s2.13.8.txt
 $ delete s2.13.8.txt
 
 # don't crash when expanding the macro
-> b3/run
+> b3/runBlock
 $ exists s2.13.10.txt
 $ delete s2.13.10.txt
 

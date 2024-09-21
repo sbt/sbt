@@ -80,13 +80,13 @@ object Aggregation {
       case Result.Value(_) => true
       case Result.Inc(_)   => false
     // run task ends earlier than the program run
-    val isRunVoid = results match
-      case Result.Value(Seq(KeyValue(_, RunVoid))) => true
-      case _                                       => false
+    val isRunInfo = results match
+      case Result.Value(Seq(KeyValue(_, RunInfo(_)))) => true
+      case _                                          => false
     results.toEither.foreach { r =>
       if show.taskValues then printSettings(r, show.print) else ()
     }
-    if show.success && !isRunVoid && !state.get(suppressShow).getOrElse(false) then
+    if show.success && !isRunInfo && !state.get(suppressShow).getOrElse(false) then
       printSuccess(start, stop, extracted, success, cacheSummary, log)
     else ()
 
