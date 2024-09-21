@@ -29,5 +29,5 @@ inConfig(Test)(Seq(
     ), Seq((if (test.name.contains("TestA")) TestATypeTag else TestBTypeTag) -> 1))
     }
   },
-  TaskKey[Unit]("test-failure") := test.failure.value
+  TaskKey[Unit]("test-failure") := testFull.failure.value
 ))

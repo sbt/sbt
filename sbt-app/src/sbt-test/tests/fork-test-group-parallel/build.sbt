@@ -23,5 +23,5 @@ inConfig(Test)(Seq(
       )
     ))}
   },
-  TaskKey[Unit]("test-failure") := test.failure.value
+  TaskKey[Unit]("test-failure") := testFull.failure.value
 ))
