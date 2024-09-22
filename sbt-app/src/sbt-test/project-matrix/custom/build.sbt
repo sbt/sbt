@@ -1,12 +1,11 @@
-ThisBuild / organization := "com.example"
-ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / publishMavenStyle := true
-
-ThisBuild / ivyPaths := {
-  val base = (ThisBuild / baseDirectory).value
-  IvyPaths(base.toString, s"$base/ivy-cache")
+organization := "com.example"
+version := "0.1.0-SNAPSHOT"
+publishMavenStyle := true
+ivyPaths := {
+  val base = baseDirectory.value
+  val thisBuildBase = (ThisBuild / baseDirectory).value
+  IvyPaths(base.toString, s"$thisBuildBase/ivy-cache")
 }
-publish / skip := true
 
 lazy val config12 = ConfigAxis("Config1_2", "config1.2")
 lazy val config13 = ConfigAxis("Config1_3", "config1.3")
@@ -21,7 +20,6 @@ lazy val app = (projectMatrix in file("app"))
   .dependsOn(core)
   .settings(
     name := "app",
-    ivyPaths := (ThisBuild / ivyPaths).value
   )
   .customRow(
     scalaVersions = Seq(scala212, scala211),
