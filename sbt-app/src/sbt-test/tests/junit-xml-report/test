@@ -1,4 +1,4 @@
--> test
+-> testFull
 > checkReport
 
 # there might be discrepancies between the 'normal' and the 'forked' mode
@@ -7,5 +7,5 @@
 > checkNoReport
 
 > set Test / fork := true
--> test
+-> testFull
 > checkReport

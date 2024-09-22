@@ -1,20 +1,20 @@
 > clean
 $ delete src/
 $ copy-file changes/ClassFailModuleSuccess.scala src/test/scala/Test.scala
--> test:test
+-> testFull
 
 > clean
 $ delete src/
 $ copy-file changes/ClassFailModuleFail.scala src/test/scala/Test.scala
--> test:test
+-> testFull
 
 > clean
 $ delete src/
 $ copy-file changes/ClassSuccessModuleFail.scala src/test/scala/Test.scala
--> test:test
+-> testFull
 
 
 > clean
 $ delete src/
 $ copy-file changes/ClassSuccessModuleSuccess.scala src/test/scala/Test.scala
-> test:test
+> testFull

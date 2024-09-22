@@ -1375,9 +1375,9 @@ object Defaults extends BuildCommon {
         }
       }.value,
       // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
-      Test / test / testResultLogger :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
-      test := {
-        val trl = (Test / test / testResultLogger).value
+      Test / testFull / testResultLogger :== TestResultLogger.SilentWhenNoTests, // https://github.com/sbt/sbt/issues/1185
+      testFull := {
+        val trl = (Test / testFull / testResultLogger).value
         val taskName = Project.showContextKey(state.value).show(resolvedScoped.value)
         try trl.run(streams.value.log, executeTests.value, taskName)
         finally close(testLoader.value)
@@ -1389,7 +1389,8 @@ object Defaults extends BuildCommon {
       testQuick := {
         try inputTests(testQuick).evaluated
         finally close(testLoader.value)
-      }
+      },
+      test := testQuick.evaluated,
     )
 
   private def close(sbtLoader: ClassLoader): Unit = sbtLoader match {
