@@ -1,0 +1,3 @@
+> publishLocal
+
+$ absent ivy/cache/local/com.example/root_3/0.1.0-SNAPSHOT/poms/root_3.pom

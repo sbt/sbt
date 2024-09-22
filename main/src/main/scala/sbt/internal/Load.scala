@@ -1061,7 +1061,7 @@ private[sbt] object Load {
                   val refs = existingIds.map(id => ProjectRef(buildUri, id))
                   if (discovered.isEmpty || java.lang.Boolean.getBoolean("sbt.root.ivyplugin"))
                     BuildDef.defaultAggregatedProject(defaultID, buildBase, refs)
-                  else BuildDef.generatedRootWithoutIvyPlugin(defaultID, buildBase, refs)
+                  else BuildDef.generatedRootSkipPublish(defaultID, buildBase, refs)
                 }
                 (root, false, Nil, otherProjects)
           val (finalRoot, projectLevelExtra) =
