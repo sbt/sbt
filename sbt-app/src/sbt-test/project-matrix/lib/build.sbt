@@ -1,4 +1,4 @@
-ThisBuild / version := "0.1.0-SNAPSHOT"
+version := "0.1.0-SNAPSHOT"
 
 lazy val util = projectMatrix
   .jvmPlatform(scalaVersions = Seq("2.12.19", "2.13.13"))

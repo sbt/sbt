@@ -701,7 +701,7 @@ object ProjectMatrix {
 
   // called by macro
   def apply(id: String, base: File): ProjectMatrix = {
-    val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("2.13.3"))
+    val defaultDefAxes = Seq(VirtualAxis.jvm, VirtualAxis.scalaABIVersion("3.3.3"))
     val matrix = unresolved(
       id,
       base,
