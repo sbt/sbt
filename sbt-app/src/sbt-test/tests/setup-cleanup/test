@@ -4,7 +4,7 @@ $ absent tested
 $ absent cleanup
 
 # without Setup configured, the setup file won't exist and the test will fail
--> testQuick
+-> testFull
 
 # check that we are starting clean
 $ absent setup
@@ -15,7 +15,7 @@ $ absent cleanup
 
 $ copy-file changes/setup.sbt setup.sbt
 > reload
-> test
+> testFull
 
 # setup should have been deleted by the test
 $ absent setup
@@ -39,7 +39,7 @@ $ absent tested
 $ absent cleanup
 
 # without Setup configured, the setup file won't exist and the test will fail
--> testQuick
+-> testFull
 
 # check that we are starting clean
 $ absent setup
@@ -50,7 +50,7 @@ $ absent cleanup
 
 $ copy-file changes/setup.sbt setup.sbt
 > reload
-> test
+> testFull
 
 # setup should have been deleted by the test
 $ absent setup
