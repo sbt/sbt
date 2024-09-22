@@ -332,9 +332,6 @@ object Defaults extends BuildCommon {
       envVars :== Map.empty,
       sbtVersion := appConfiguration.value.provider.id.version,
       sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
-      // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
-      // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
-      // directs the dependencies of the plugin to build to the specified sbt plugin version.
       pluginCrossBuild / sbtVersion := sbtVersion.value,
       onLoad := idFun[State],
       onUnload := idFun[State],
@@ -3102,7 +3099,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
-        sbtPluginPublishLegacyMavenStyle :== true,
+        sbtPluginPublishLegacyMavenStyle :== false,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
