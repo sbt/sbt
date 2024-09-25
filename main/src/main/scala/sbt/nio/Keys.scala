@@ -12,7 +12,7 @@ import java.io.InputStream
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BuildSyntax.{ settingKey, taskKey }
+import sbt.Def.{ settingKey, taskKey }
 import sbt.KeyRanks.{ BMinusSetting, DSetting, Invisible }
 import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository

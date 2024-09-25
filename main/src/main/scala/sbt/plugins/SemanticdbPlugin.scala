@@ -39,7 +39,7 @@ object SemanticdbPlugin extends AutoPlugin {
       val sdb = semanticdbEnabled.value
       val m = semanticdbCompilerPlugin.value
       val sv = scalaVersion.value
-      if (sdb && !ScalaInstance.isDotty(sv)) List(Build0.compilerPlugin(m))
+      if (sdb && !ScalaInstance.isDotty(sv)) List(BuildExtra.compilerPlugin(m))
       else Nil
     },
     semanticdbOptions += {

@@ -4779,10 +4779,17 @@ object Classpaths {
   }
 }
 
-private[sbt] object Build0 extends BuildExtra
+private[sbt] object BuildExtra extends BuildExtra
 
 trait BuildExtra extends BuildCommon with DefExtra {
   import Defaults._
+
+  /**
+   * Creates a new Project.  This is a macro that expects to be assigned directly to a val.
+   * The name of the val is used as the project ID and the name of the base directory of the project.
+   */
+  inline def project: Project = ${ std.KeyMacro.projectImpl }
+  inline def projectMatrix: ProjectMatrix = ${ ProjectMatrix.projectMatrixImpl }
 
   /**
    * Defines an alias given by `name` that expands to `value`.
@@ -5054,6 +5061,9 @@ trait BuildExtra extends BuildCommon with DefExtra {
       f: ScopedKey[_] => Boolean
   ): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
+
+  implicit def sbtStateToUpperStateOps(s: State): UpperStateOps =
+    new UpperStateOps.UpperStateOpsImpl(s)
 }
 
 trait DefExtra {
