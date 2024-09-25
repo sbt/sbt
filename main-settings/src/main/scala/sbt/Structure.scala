@@ -382,6 +382,8 @@ object Scoped:
       protected def onTask[A2](f: Task[A1] => Task[A2]): Initialize[Task[A2]] =
         init.apply(f)
 
+      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] =
         onTask(_.result flatMap (f compose successM))
       def map[A2](f: A1 => A2): Initialize[Task[A2]] =
