@@ -254,22 +254,18 @@ object Aggregation {
       else extra.aggregates.forward(ref)
     }
 
-  def aggregate[T, Proj](
-      key: ScopedKey[T],
+  def aggregate[A1, Proj](
+      key: ScopedKey[A1],
       rawMask: ScopeMask,
       extra: BuildUtil[Proj],
       reverse: Boolean = false
-  ): Seq[ScopedKey[T]] = {
+  ): Seq[ScopedKey[A1]] =
     val mask = rawMask.copy(project = true)
-    Dag.topologicalSort(key) { k =>
-      if (reverse)
-        reverseAggregatedKeys(k, extra, mask)
-      else if (aggregationEnabled(k, extra.data))
-        aggregatedKeys(k, extra, mask)
-      else
-        Nil
-    }
-  }
+    Dag.topologicalSort(key): (k) =>
+      if reverse then reverseAggregatedKeys(k, extra, mask)
+      else if aggregationEnabled(k, extra.data) then aggregatedKeys(k, extra, mask)
+      else Nil
+
   def reverseAggregatedKeys[T](
       key: ScopedKey[T],
       extra: BuildUtil[_],
