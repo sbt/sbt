@@ -2902,6 +2902,9 @@ object Classpaths {
   import Defaults._
   import Keys._
 
+  def analyzed[A](data: A, analysisFile: VirtualFile): Attributed[A] =
+    Attributed.blank(data).put(Keys.analysis, analysisFile.id)
+
   def concatDistinct[A](
       a: Taskable[Seq[A]],
       b: Taskable[Seq[A]]
