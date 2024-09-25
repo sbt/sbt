@@ -1,5 +1,4 @@
 scalaVersion := "2.12.19"
-name := "root"
 
 lazy val core = project
   .settings(
