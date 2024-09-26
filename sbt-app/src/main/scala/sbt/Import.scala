@@ -29,7 +29,10 @@ trait Import {
   val CustomOutput = sbt.OutputStrategy.CustomOutput
   val AllRequirements = sbt.PluginTrigger.AllRequirements
   val NoTrigger = sbt.PluginTrigger.NoTrigger
-
+  val ClasspathDependency = ClasspathDep.ClasspathDependency
+  type ClasspathDependency = ClasspathDep.ClasspathDependency
+  val ResolvedClasspathDependency = ClasspathDep.ResolvedClasspathDependency
+  type ResolvedClasspathDependency = ClasspathDep.ResolvedClasspathDependency
   // sbt.testing
   type TestResult = sbt.protocol.testing.TestResult
   val TestResult = sbt.protocol.testing.TestResult
@@ -197,6 +200,8 @@ trait Import {
   type SimpleReader = sbt.internal.util.SimpleReader
   type SourcePosition = sbt.internal.util.SourcePosition
   val StackTrace = sbt.internal.util.StackTrace
+  val StringAttributeKey = sbt.internal.util.StringAttributeKey
+  type StringAttributeKey = sbt.internal.util.StringAttributeKey
   type SuppressedTraceContext = sbt.internal.util.SuppressedTraceContext
   type TranslatedException = sbt.internal.util.TranslatedException
   type TranslatedIOException = sbt.internal.util.TranslatedIOException

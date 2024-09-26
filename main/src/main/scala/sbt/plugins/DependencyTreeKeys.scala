@@ -12,7 +12,7 @@ package plugins
 import java.io.File
 import java.net.URI
 import sbt.internal.graph._
-import sbt.BuildSyntax._
+import sbt.Def._
 import sbt.librarymanagement.{ ModuleID, UpdateReport }
 
 trait MiniDependencyTreeKeys {

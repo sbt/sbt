@@ -11,8 +11,8 @@ package internal
 package server
 
 import java.net.URI
+import sbt.BuildExtra.*
 import sbt.BuildPaths.{ configurationSources, projectStandard }
-import sbt.BuildSyntax._
 import sbt.Def._
 import sbt.Keys._
 import sbt.Project._
