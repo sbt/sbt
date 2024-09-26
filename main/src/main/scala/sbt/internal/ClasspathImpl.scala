@@ -43,7 +43,7 @@ private[sbt] object ClasspathImpl {
         val xs = products.map(_ -> analysis)
         for (f, analysis) <- xs
         yield APIMappings
-          .store(analyzed(f, analysisFile), apiURL.value)
+          .store(Classpaths.analyzed(f, analysisFile), apiURL.value)
           .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
           .put(Keys.configurationStr, config.name)
       else exportedProducts.value
@@ -57,7 +57,7 @@ private[sbt] object ClasspathImpl {
       val config = configuration.value
       for (f, analysis) <- trackedExportedProductsImplTask(track).value
       yield APIMappings
-        .store(analyzed(f, analysis), apiURL.value)
+        .store(Classpaths.analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
         .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
         .put(Keys.configurationStr, config.name)
@@ -71,7 +71,7 @@ private[sbt] object ClasspathImpl {
       val config = configuration.value
       for (f, analysis) <- trackedJarProductsImplTask(track).value
       yield APIMappings
-        .store(analyzed(f, analysis), apiURL.value)
+        .store(Classpaths.analyzed(f, analysis), apiURL.value)
         .put(Keys.artifactStr, RemoteCache.artifactToStr(art))
         .put(Keys.moduleIDStr, Classpaths.moduleIdJsonKeyFormat.write(module))
         .put(Keys.configurationStr, config.name)
@@ -343,9 +343,6 @@ private[sbt] object ClasspathImpl {
     }
     (tasks.toSeq.join).map(_.flatten.distinct)
   }
-
-  def analyzed[A](data: A, analysisFile: VirtualFile): Attributed[A] =
-    Attributed.blank(data).put(Keys.analysis, analysisFile.id)
 
   def interSort(
       projectRef: ProjectRef,

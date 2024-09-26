@@ -23,9 +23,8 @@ package object sbt
     with sbt.librarymanagement.DependencyFilterExtra
     with sbt.librarymanagement.LibraryManagementSyntax
     with sbt.BuildExtra
-    with sbt.TaskMacroExtra
-    with sbt.ScopeFilter.Make
     with sbt.BuildSyntax
+    with sbt.ScopeFilter.Make
     with sbt.OptionSyntax
     with sbt.SlashSyntax
     with sbt.Import:
