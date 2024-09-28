@@ -56,14 +56,13 @@ object SettingQuery {
     for {
       rawProject <- projectRef(index, currentBuild)
       proj = resolveProject(rawProject)
-      confPair <- Act.configIdent(
+      confAmb <- Act.configIdent(
         index.configs(proj),
         index.configIdents(proj),
         index.fromConfigIdent(proj)
       )
-      (confAmb, seps) = confPair
       partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
-    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask, Nil)
+    } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
   }
 
   def scopedKeySelected(
