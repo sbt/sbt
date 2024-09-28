@@ -5049,7 +5049,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   /**
    * Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
-   * This is useful for reducing test:compile time when not running test.
+   * This is useful for reducing Test/compile time when not running test.
    */
   def noTestCompletion(config: Configuration = Test): Setting[_] =
     inConfig(config)(Seq(definedTests := detectTests.value)).head

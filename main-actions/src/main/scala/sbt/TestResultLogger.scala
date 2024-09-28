@@ -27,7 +27,7 @@ trait TestResultLogger {
    *
    * @param log The target logger to write output to.
    * @param results The test results about which to log.
-   * @param taskName The task about which we are logging. Eg. "my-module-b/test:test"
+   * @param taskName The task about which we are logging. Eg. "my-module-b/Test/test"
    */
   def run(log: Logger, results: Output, taskName: String): Unit
 

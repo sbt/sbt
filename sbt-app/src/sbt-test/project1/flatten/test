@@ -3,20 +3,20 @@
 
 > compile
 > test
-> test:run
+> Test/run
 
 # This part verifies that the package-src action works properly under a flattened/merged source hierarchy
 
 > packageSrc
-> test:packageSrc
+> Test/packageSrc
 
 $ delete src
 $ delete test-src
 
--> test:run
+-> Test/run
 
 > unpackage
-> test:unpackage
+> Test/unpackage
 
-> test:test
-> test:run
+> Test/test
+> Test/run
