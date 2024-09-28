@@ -22,7 +22,7 @@ import Def.{ ScopedKey, Setting }
 import Keys._
 import Configurations.{ Compile, Runtime }
 import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import java.io.File
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
@@ -74,7 +74,7 @@ object GlobalPlugin {
   @nowarn
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) = {
     import structure.{ data, root, rootProject }
-    val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
+    val p: Scope = Scope.GlobalScope.rescope(ProjectRef(root, rootProject(root)))
 
     // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
     val updateReport = (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
@@ -113,7 +113,7 @@ object GlobalPlugin {
   }
 
   @nowarn
-  val globalPluginSettings = Project.inScope(Scope.GlobalScope in LocalRootProject)(
+  val globalPluginSettings = Project.inScope(Scope.GlobalScope.rescope(LocalRootProject))(
     Seq(
       organization := SbtArtifacts.Organization,
       onLoadMessage := Keys.baseDirectory("loading global plugins from " + _).value,

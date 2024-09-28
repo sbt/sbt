@@ -14,7 +14,7 @@ import java.net.URL
 import java.nio.file.Path
 import sbt.ClassLoaderLayeringStrategy._
 import sbt.Keys._
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.ClasspathUtil

@@ -11,7 +11,6 @@ package plugins
 
 import sbt.Def.Setting
 import sbt.Keys.*
-import sbt.SlashSyntax0.*
 
 object SbtPlugin extends AutoPlugin:
   override def requires = ScriptedPlugin

@@ -13,7 +13,6 @@ import java.io.File
 
 import sbt.Def._
 import sbt.Keys._
-import sbt.SlashSyntax0._
 import sbt.Project._
 import sbt.ProjectExtra.*
 import sbt.internal.graph._
@@ -173,7 +172,7 @@ object DependencyTreeSettings {
         val str = (key / asString).value
         s.log.info(str)
       },
-      key / toFile := {
+      (key / toFile) := {
         val (targetFile, force) = targetFileAndForceParser.parsed
         writeToFile(key.key.label, (key / asString).value, targetFile, force, streams.value)
       },

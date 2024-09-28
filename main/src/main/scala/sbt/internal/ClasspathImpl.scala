@@ -11,7 +11,6 @@ package internal
 
 import java.io.File
 import java.util.LinkedHashSet
-import sbt.SlashSyntax0._
 import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.nio.file.{ Glob, RecursiveGlob }

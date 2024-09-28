@@ -14,6 +14,7 @@ import java.text.DateFormat
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.ProjectExtra.*
+import sbt.SlashSyntax0.given
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
@@ -294,7 +295,7 @@ object Aggregation {
     }
 
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
-    Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+    (Scope.fillTaskAxis(key.scope, key.key) / Keys.aggregate).get(data).getOrElse(true)
   private[sbt] val suppressShow =
     AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
 }

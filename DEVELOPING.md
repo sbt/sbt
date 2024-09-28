@@ -186,7 +186,7 @@ You'd need alternative DSL import since you can't rely on sbt package object.
 
 ```scala
 // for slash syntax
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 
 // for IO
 import sbt.io.syntax._

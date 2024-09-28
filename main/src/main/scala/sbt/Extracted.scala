@@ -17,7 +17,7 @@ import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
 import sbt.ProjectExtra.setProject
-import scala.annotation.nowarn
+import sbt.SlashSyntax0.given
 
 final case class Extracted(
     structure: BuildStructure,
@@ -46,9 +46,9 @@ final case class Extracted(
   def getOpt[T](key: TaskKey[T]): Option[Task[T]] =
     structure.data.get(inCurrent(key.scope), key.key)
 
-  @nowarn
   private[this] def inCurrent(scope: Scope): Scope =
-    if (scope.project == This) scope in currentRef else scope
+    if scope.project == This then scope.rescope(currentRef)
+    else scope
 
   /**
    * Runs the task specified by `key` and returns the transformed State and the resulting value of the task.
@@ -114,7 +114,7 @@ final case class Extracted(
     )
 
   private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
-    key in Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope)
+    Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
 
   private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit
       display: Show[ScopedKey[_]]

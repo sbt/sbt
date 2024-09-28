@@ -14,8 +14,7 @@ import java.net.URI
 import sbt.internal.util.AttributeKey
 import sbt.io.IO
 import sbt.librarymanagement.Configuration
-import sbt.SlashSyntax.{ RichConfiguration, RichScope }
-import scala.annotation.nowarn
+import sbt.SlashSyntax.RichConfiguration
 
 // in all of these, the URI must be resolved and normalized before it is definitive
 
@@ -26,20 +25,17 @@ sealed trait Reference:
   private[sbt] def asScope: Scope =
     Scope(asScopeAxis, This, This, This)
 
-  @nowarn
-  def /(c: ConfigKey): RichConfiguration = RichConfiguration(asScope in c)
+  def /(c: ConfigKey): RichConfiguration = RichConfiguration(asScope.rescope(c))
 
-  @nowarn
-  def /(c: Configuration): RichConfiguration = RichConfiguration(asScope in c)
+  def /(c: Configuration): RichConfiguration = RichConfiguration(asScope.rescope(c))
 
   // This is for handling `Zero / Zero / name`.
   def /(configAxis: ScopeAxis[ConfigKey]): RichConfiguration =
     new RichConfiguration(asScope.copy(config = configAxis))
 
-  final def /[K](key: Scoped.ScopingSetting[K]): K = key.in(asScope)
+  final def /[K](key: Scoped.ScopingSetting[K]): K = key.rescope(asScope)
 
-  @nowarn
-  final def /(key: AttributeKey[_]): RichScope = new RichScope(asScope in key)
+  final def /(key: AttributeKey[_]): Scope = asScope.rescope(key)
 end Reference
 
 /** A fully resolved, unique identifier for a project or build. */

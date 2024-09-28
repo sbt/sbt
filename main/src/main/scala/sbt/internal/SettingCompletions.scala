@@ -16,6 +16,7 @@ import sbt.librarymanagement.Configuration
 import ProjectExtra.{ relation }
 import Def.{ ScopedKey, Setting }
 import Scope.Global
+import sbt.SlashSyntax0.given
 import complete._
 import DefaultParsers._
 
@@ -59,10 +60,8 @@ private[sbt] object SettingCompletions {
       val global = ScopedKey(Global, akey)
       val globalSetting = resolve(Def.setting(global, setting.init, setting.pos))
       globalSetting ++ allDefs.flatMap { d =>
-        if (d.key == akey)
-          Seq(SettingKey(akey) in d.scope := { global.value })
-        else
-          Nil
+        if d.key == akey then Seq((d.scope / SettingKey(akey)) := global.value)
+        else Nil
       }
     }
     val redefined = settings.flatMap(x => rescope(x))
