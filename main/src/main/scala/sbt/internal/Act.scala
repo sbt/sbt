@@ -36,7 +36,6 @@ final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask, val separaters
 end ParsedKey
 
 object Act {
-  val ZeroString = "*"
   private[sbt] val GlobalIdent = "Global"
   private[sbt] val ZeroIdent = "Zero"
   private[sbt] val ThisBuildIdent = "ThisBuild"
@@ -46,8 +45,6 @@ object Act {
     token(OptSpace ~> '/' <~ OptSpace).examples("/").map(_ => ())
 
   private[sbt] val slashSeq: Seq[String] = Seq("/")
-  private[sbt] val colonSeq: Seq[String] = Seq(":")
-  private[sbt] val colonColonSeq: Seq[String] = Seq("::")
 
   // this does not take aggregation into account
   def scopedKey(
@@ -242,26 +239,15 @@ object Act {
   def toAxis[T](opt: Option[T], ifNone: ScopeAxis[T]): ScopeAxis[T] =
     opt match { case Some(t) => Select(t); case None => ifNone }
 
-  def config(confs: Set[String]): Parser[ParsedAxis[String]] = {
-    val sep = ':' !!! "Expected ':' (if selecting a configuration)"
-    token(
-      (ZeroString ^^^ ParsedZero | value(examples(ID, confs, "configuration"))) <~ sep
-    ) ?? Omitted
-  }
-
   // New configuration parser that's able to parse configuration ident trailed by slash.
   private[sbt] def configIdent(
       confs: Set[String],
       idents: Set[String],
       fromIdent: String => String
   ): Parser[(ParsedAxis[String], Seq[String])] = {
-    val oldSep: Parser[Char] = ':'
     val sep: Parser[Unit] = spacedSlash !!! "Expected '/'"
     token(
-      ((ZeroString ^^^ (ParsedZero -> colonSeq)) <~ oldSep)
-        | ((ZeroString ^^^ (ParsedZero -> slashSeq)) <~ sep)
-        | ((ZeroIdent ^^^ (ParsedZero -> slashSeq)) <~ sep)
-        | (value(examples(ID, confs, "configuration")).map(_ -> colonSeq) <~ oldSep)
+      ((ZeroIdent ^^^ (ParsedZero -> slashSeq)) <~ sep)
         | (value(examples(CapitalizedID, idents, "configuration ident").map(fromIdent))
           .map(_ -> slashSeq) <~ sep)
     ) ?? (Omitted -> Nil)
@@ -358,16 +344,10 @@ object Act {
     val suggested = normKeys.map(_._1).toSet
     val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key").map(valid)
 
-    ((token(
+    (token(
       value(keyP).map(_ -> slashSeq)
-        | ZeroString ^^^ (ParsedZero -> slashSeq)
         | ZeroIdent ^^^ (ParsedZero -> slashSeq)
-    ) <~ spacedSlash) |
-      (token(
-        value(keyP).map(_ -> colonColonSeq)
-          | ZeroString ^^^ (ParsedZero -> colonColonSeq)
-          | ZeroIdent ^^^ (ParsedZero -> colonColonSeq)
-      ) <~ token("::".id))) ?? (Omitted -> Nil)
+    ) <~ spacedSlash) ?? (Omitted -> Nil)
   }
 
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
@@ -411,11 +391,10 @@ object Act {
   }
 
   def projectRef(index: KeyIndex, currentBuild: URI): Parser[ParsedAxis[ResolvedReference]] = {
-    val global = token(ZeroString ~ spacedSlash) ^^^ ParsedZero
     val zeroIdent = token(ZeroIdent ~ spacedSlash) ^^^ ParsedZero
     val thisBuildIdent = value(token(ThisBuildIdent ~ spacedSlash) ^^^ BuildRef(currentBuild))
     val trailing = spacedSlash !!! "Expected '/' (if selecting a project)"
-    global | zeroIdent | thisBuildIdent |
+    zeroIdent | thisBuildIdent |
       value(resolvedReferenceIdent(index, currentBuild, trailing)) |
       value(resolvedReference(index, currentBuild, trailing))
   }
@@ -491,12 +470,6 @@ object Act {
     import Aggregation.evaluatingParser
     actionParser.flatMap { action =>
       val akp = aggregatedKeyParserSep(extracted)
-      def warnOldShellSyntax(seps: Seq[String], keyStrings: String): Unit =
-        if (seps.contains(":") || seps.contains("::")) {
-          state.log.warn(
-            s"sbt 0.13 shell syntax is deprecated; use slash syntax instead: $keyStrings"
-          )
-        } else ()
       def evaluate(pairs: Seq[(ScopedKey[_], Seq[String])]): Parser[() => State] = {
         val kvs = pairs.map(_._1)
         val seps = pairs.headOption.map(_._2).getOrElse(Nil)
@@ -510,7 +483,6 @@ object Act {
           {
             val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
             state.log.debug("Evaluating tasks: " + keyStrings)
-            warnOldShellSyntax(seps, keyStrings)
             evaluate()
           }
         }

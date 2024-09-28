@@ -8,4 +8,4 @@ $ copy-file changes/scalacheck-ivy.xml ivy.xml
 
 $ copy-file changes/scala-tools-ivysettings.xml ivysettings.xml
 > check
-> test:compile
+> Test/compile
