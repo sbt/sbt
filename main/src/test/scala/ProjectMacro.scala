@@ -11,7 +11,7 @@ package sbt
 import scala.util.control.NonFatal
 import org.scalacheck._
 import Prop._
-import sbt.BuildSyntax.project
+import sbt.BuildExtra.project
 import java.io.File
 
 class ProjectDefs {

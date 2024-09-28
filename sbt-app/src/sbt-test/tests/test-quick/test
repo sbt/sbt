@@ -27,7 +27,7 @@ $ sleep 2000
 # src/test compilation group change.
 
 $ copy-file changed/Base.scala src/test/scala/Base.scala
-> test:compile
+> Test/compile
 $ sleep 2000
 -> testQuick Create
 > testQuick Delete

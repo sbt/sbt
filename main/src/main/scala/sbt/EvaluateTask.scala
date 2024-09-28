@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import sbt.Def.{ ScopedKey, Setting, dummyState }
 import sbt.Keys.{ TaskProgress => _, name => _, _ }
+import sbt.BuildExtra.*
 import sbt.ProjectExtra.*
 import sbt.Scope.Global
 import sbt.SlashSyntax0._
@@ -24,7 +25,6 @@ import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.librarymanagement.{ Resolver, UpdateReport }
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
-import sbt.BuildSyntax._
 import sbt.internal.bsp.BuildTargetIdentifier
 
 import scala.annotation.nowarn

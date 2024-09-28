@@ -6,5 +6,5 @@
 > checkNext 1 2
 
 > checkScopes 0 0
-> all x compile:y::x runtime:y::x y
+> all x Compile/y/x Runtime/y/x y
 > checkScopes 21 91

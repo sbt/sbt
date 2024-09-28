@@ -94,6 +94,7 @@ object BuildUtil {
     ("import _root_.scala.xml.{TopScope=>$scope}"
       :: "import _root_.sbt.*"
       :: "import _root_.sbt.given"
+      :: "import _root_.sbt.BareBuildSyntax.*"
       :: "import _root_.sbt.Keys.*"
       :: "import _root_.sbt.nio.Keys.*"
       :: Nil)

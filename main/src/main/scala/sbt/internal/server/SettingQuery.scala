@@ -36,7 +36,7 @@ object SettingQuery {
       index: KeyIndex,
       currentBuild: URI
   ): Parser[ParsedExplicitAxis[ResolvedReference]] = {
-    val global = token(Act.ZeroString ~ '/') ^^^ ParsedExplicitGlobal
+    val global = token(Act.GlobalIdent ~ '/') ^^^ ParsedExplicitGlobal
     val trailing = '/' !!! "Expected '/' (if selecting a project)"
     global | explicitValue(Act.resolvedReference(index, currentBuild, trailing))
   }
@@ -56,7 +56,12 @@ object SettingQuery {
     for {
       rawProject <- projectRef(index, currentBuild)
       proj = resolveProject(rawProject)
-      confAmb <- Act.config(index configs proj)
+      confPair <- Act.configIdent(
+        index.configs(proj),
+        index.configIdents(proj),
+        index.fromConfigIdent(proj)
+      )
+      (confAmb, seps) = confPair
       partialMask = ScopeMask(true, confAmb.isExplicit, false, false)
     } yield Act.taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask, Nil)
   }

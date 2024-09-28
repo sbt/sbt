@@ -29,8 +29,32 @@ import xsbti.{ HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 import sjsonnew.JsonFormat
 import scala.reflect.ClassTag
 
+trait BuildSyntax:
+  inline def settingKey[A1](inline description: String): SettingKey[A1] =
+    ${ std.KeyMacro.settingKeyImpl[A1]('description) }
+
+  inline def taskKey[A1](inline description: String): TaskKey[A1] =
+    ${ std.KeyMacro.taskKeyImpl[A1]('description) }
+
+  inline def inputKey[A1](inline description: String): InputKey[A1] =
+    ${ std.KeyMacro.inputKeyImpl[A1]('description) }
+
+  import sbt.std.ParserInput
+  extension [A1](inline in: Task[A1])
+    inline def value: A1 = std.InputWrapper.`wrapTask_\u2603\u2603`[A1](in)
+
+  // implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
+  //   ???
+
+  extension [A1](inline in: Parser[A1])
+    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](Def.toSParser(in))
+
+  extension [A1](inline in: State => Parser[A1])
+    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](in)
+end BuildSyntax
+
 /** A concrete settings system that uses `sbt.Scope` for the scope type. */
-object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
+object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
   type Classpath = Seq[Attributed[HashedVirtualFileRef]]
 
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
@@ -404,15 +428,6 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
         )
       )
 
-  inline def settingKey[A1](inline description: String): SettingKey[A1] =
-    ${ std.KeyMacro.settingKeyImpl[A1]('description) }
-
-  inline def taskKey[A1](inline description: String): TaskKey[A1] =
-    ${ std.KeyMacro.taskKeyImpl[A1]('description) }
-
-  inline def inputKey[A1](inline description: String): InputKey[A1] =
-    ${ std.KeyMacro.inputKeyImpl[A1]('description) }
-
   class InitOps[T](private val x: Initialize[T]) extends AnyVal {
     def toTaskable: Taskable[T] = x
   }
@@ -449,28 +464,9 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits:
     t.info.attributes.get(isDummyTask) getOrElse false
 end Def
 
-// these need to be mixed into the sbt package object
-// because the target doesn't involve Initialize or anything in Def
-trait TaskMacroExtra:
-  import sbt.std.ParserInput
-  extension [A1](inline in: Task[A1])
-    inline def value: A1 = std.InputWrapper.`wrapTask_\u2603\u2603`[A1](in)
-
-  // implicit def macroValueIn[T](@deprecated("unused", "") in: InputTask[T]): std.InputEvaluated[T] =
-  //   ???
-
-  extension [A1](inline in: Parser[A1])
-    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](Def.toSParser(in))
-
-  extension [A1](inline in: State => Parser[A1])
-    inline def parsed: A1 = ParserInput.`parser_\u2603\u2603`[A1](in)
-end TaskMacroExtra
-
-sealed trait InitializeImplicits0 { self: Def.type =>
+sealed trait InitializeImplicits { self: Def.type =>
   implicit def initOps[T](x: Def.Initialize[T]): Def.InitOps[T] = new Def.InitOps(x)
-}
 
-sealed trait InitializeImplicits extends InitializeImplicits0 { self: Def.type =>
   implicit def initTaskOps[T](x: Def.Initialize[Task[T]]): Def.InitTaskOps[T] =
     new Def.InitTaskOps(x)
 }

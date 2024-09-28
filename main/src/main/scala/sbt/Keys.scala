@@ -16,8 +16,7 @@ import lmcoursier.{ CoursierConfiguration, FallbackDependency }
 import org.apache.ivy.core.module.descriptor.ModuleDescriptor
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.apache.logging.log4j.core.{ Appender => XAppender }
-import sbt.BuildSyntax._
-import sbt.Def.ScopedKey
+import sbt.Def.*
 import sbt.KeyRanks._
 import sbt.internal.InMemoryCacheStore.CacheStoreFactoryFactory
 import sbt.internal._

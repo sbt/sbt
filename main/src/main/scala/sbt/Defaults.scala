@@ -332,9 +332,6 @@ object Defaults extends BuildCommon {
       envVars :== Map.empty,
       sbtVersion := appConfiguration.value.provider.id.version,
       sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
-      // `pluginCrossBuild` scoping is based on sbt-cross-building plugin.
-      // The idea here is to be able to define a `sbtVersion in pluginCrossBuild`, which
-      // directs the dependencies of the plugin to build to the specified sbt plugin version.
       pluginCrossBuild / sbtVersion := sbtVersion.value,
       onLoad := idFun[State],
       onUnload := idFun[State],
@@ -2902,6 +2899,9 @@ object Classpaths {
   import Defaults._
   import Keys._
 
+  def analyzed[A](data: A, analysisFile: VirtualFile): Attributed[A] =
+    Attributed.blank(data).put(Keys.analysis, analysisFile.id)
+
   def concatDistinct[A](
       a: Taskable[Seq[A]],
       b: Taskable[Seq[A]]
@@ -3102,7 +3102,7 @@ object Classpaths {
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
-        sbtPluginPublishLegacyMavenStyle :== true,
+        sbtPluginPublishLegacyMavenStyle :== false,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
@@ -4776,10 +4776,17 @@ object Classpaths {
   }
 }
 
-private[sbt] object Build0 extends BuildExtra
+private[sbt] object BuildExtra extends BuildExtra
 
 trait BuildExtra extends BuildCommon with DefExtra {
   import Defaults._
+
+  /**
+   * Creates a new Project.  This is a macro that expects to be assigned directly to a val.
+   * The name of the val is used as the project ID and the name of the base directory of the project.
+   */
+  inline def project: Project = ${ std.KeyMacro.projectImpl }
+  inline def projectMatrix: ProjectMatrix = ${ ProjectMatrix.projectMatrixImpl }
 
   /**
    * Defines an alias given by `name` that expands to `value`.
@@ -5042,7 +5049,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   /**
    * Disables post-compilation hook for determining tests for tab-completion (such as for 'test-only').
-   * This is useful for reducing test:compile time when not running test.
+   * This is useful for reducing Test/compile time when not running test.
    */
   def noTestCompletion(config: Configuration = Test): Setting[_] =
     inConfig(config)(Seq(definedTests := detectTests.value)).head
@@ -5051,6 +5058,9 @@ trait BuildExtra extends BuildCommon with DefExtra {
       f: ScopedKey[_] => Boolean
   ): Seq[Setting[_]] =
     ss filter (s => f(s.key) && (!transitive || s.dependencies.forall(f)))
+
+  implicit def sbtStateToUpperStateOps(s: State): UpperStateOps =
+    new UpperStateOps.UpperStateOpsImpl(s)
 }
 
 trait DefExtra {

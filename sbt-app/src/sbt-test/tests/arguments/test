@@ -1,4 +1,4 @@
-# should fail because it should run all test:tests, some of which are expected to fail (1 and 4)
+# should fail because it should run all tests, some of which are expected to fail (1 and 4)
 -> testQuick
 
 $ touch success1
