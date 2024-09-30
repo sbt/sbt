@@ -57,7 +57,7 @@ case class SettingsUsage(val settingsExample: SettingsExample) {
   // Define some settings
   val mySettings: Seq[Setting[_]] = Seq(
     setting(a3, value(3)),
-    setting(b4, map(a4)(_ * 3)),
+    setting(b4, a4(_ * 3)),
     update(a5)(_ + 1)
   )
 

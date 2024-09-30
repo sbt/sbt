@@ -104,12 +104,12 @@ trait Init[ScopeType]:
     Optional(Some(i), f)
 
   def update[A1](key: ScopedKey[A1])(f: A1 => A1): Setting[A1] =
-    setting[A1](key, map(key)(f), NoPosition)
+    setting[A1](key, key(f), NoPosition)
 
   def flatMap[A1, A2](in: Initialize[A1])(f: A1 => Initialize[A2]): Initialize[A2] = Bind(f, in)
 
-  def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
-    app[Tuple1[A1], A2](Tuple1(in)) { case Tuple1(x) => f(x) }
+  private[this] def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
+    Apply[Tuple1[A1], A2](x => f(x(0)), Tuple1(in))
 
   def app[Tup <: Tuple, A2](inputs: Tuple.Map[Tup, Initialize])(f: Tup => A2): Initialize[A2] =
     Apply[Tup, A2](f, inputs)
@@ -969,16 +969,7 @@ trait Init[ScopeType]:
 
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
       inputs.foldLeft(init)((v, i) => i.processAttributes(v)(f))
-
-  /*   private[sbt] final class Mapped[A1, A2](f: A1 => A2, input: Initialize[A1]) extends Initialize[A1]:
-    override def dependencies: Seq[ScopedKey[_]] = deps(Seq(inputs))
-    override def mapReferenced(g: MapScoped): Initialize[A2] = Mapped(f, input.mapReferenced(g))
-    override def mapConstant(g: MapConstant): Initialize[A2] = Mapped(f, input.mapConstant(g))
-    override def apply[A3](g: A2 => A3): Initialize[A3] = Mapped(g.compose(f), input)
-    override def evaluate(ss: Settings[ScopeType]): A2 = f(input.evaluate(ss))
-    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] = input.validateKeyReferenced(g)
-    private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
-      input.processAttributes(init)(f) */
+  end Uniform
 
   private[sbt] final class Apply[Tup <: Tuple, A1](
       val f: Tup => A1,

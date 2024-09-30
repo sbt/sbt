@@ -18,7 +18,7 @@ object InitializeInstance:
     type F[x] = Initialize[x]
 
     override def pure[A1](a: () => A1): Initialize[A1] = Def.pure(a)
-    override def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] = Def.map(in)(f)
+    override def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] = in(f)
     override def ap[A1, A2](ff: Initialize[A1 => A2])(fa: Initialize[A1]): Initialize[A2] =
       Def.ap[A1, A2](ff)(fa)
     override def flatMap[A1, A2](fa: Initialize[A1])(f: A1 => Initialize[A2]) =
