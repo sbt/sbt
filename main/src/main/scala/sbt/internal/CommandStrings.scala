@@ -82,7 +82,7 @@ $PrintCommand <task>
 	Displays lines from the logging of previous commands that match `pattern`.
 
 $LastGrepCommand <pattern> [key]
-	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, Test/compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
 	See also '$LastCommand'."""
@@ -94,7 +94,7 @@ $LastGrepCommand <pattern> [key]
 	Prints the logging for the previous command, typically at a more verbose level.
 
 $LastCommand <key>
-	Prints the logging associated with the provided key.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+	Prints the logging associated with the provided key.  The key typically refers to a task (for example, Test/compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	See also '$LastGrepCommand'."""
 

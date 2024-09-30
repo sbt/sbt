@@ -112,7 +112,6 @@ class ClientTest extends AbstractServerTest {
   test("compi completions") {
     val expected = Vector(
       "compile",
-      "compile:",
       "compileAnalysisFile",
       "compileAnalysisFilename",
       "compileAnalysisTargetRoot",
@@ -135,7 +134,6 @@ class ClientTest extends AbstractServerTest {
     val testOnlyExpected = Vector(
       "testOnly",
       "testOnly/",
-      "testOnly::",
       "testOnly;",
     )
     assert(complete("testOnly") == testOnlyExpected)

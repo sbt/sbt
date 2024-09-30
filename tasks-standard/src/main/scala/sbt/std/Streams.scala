@@ -22,8 +22,8 @@ import sbt.util._
 // no longer specific to Tasks, so 'TaskStreams' should be renamed
 /**
  * Represents a set of streams associated with a context. In sbt, this is a named set of streams for
- * a particular scoped key. For example, logging for test:compile is by default sent to the "out"
- * stream in the test:compile context.
+ * a particular scoped key. For example, logging for Test/compile is by default sent to the "out"
+ * stream in the Test/compile context.
  */
 sealed trait TaskStreams[Key] {
 

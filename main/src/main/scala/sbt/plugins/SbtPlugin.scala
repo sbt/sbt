@@ -10,12 +10,19 @@ package sbt
 package plugins
 
 import sbt.Def.Setting
-import sbt.Keys._
+import sbt.Keys.*
+import sbt.SlashSyntax0.*
 
-object SbtPlugin extends AutoPlugin {
+object SbtPlugin extends AutoPlugin:
   override def requires = ScriptedPlugin
 
   override lazy val projectSettings: Seq[Setting[_]] = Seq(
-    sbtPlugin := true
+    sbtPlugin := true,
+    pluginCrossBuild / sbtVersion := {
+      scalaBinaryVersion.value match
+        case "3"    => sbtVersion.value
+        case "2.12" => "1.5.8"
+        case "2.10" => "0.13.18"
+    },
   )
-}
+end SbtPlugin
