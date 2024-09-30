@@ -62,7 +62,11 @@ private[sbt] object KeyMacro:
     if term.isValDef then Expr(term.name)
     else errorAndAbort(errorMsg)
 
-  def enclosingTerm(using qctx: Quotes) =
+  private[sbt] def callerThis(using Quotes): Expr[Any] =
+    import quotes.reflect.*
+    This(enclosingClass).asExpr
+
+  private def enclosingTerm(using qctx: Quotes) =
     import qctx.reflect._
     def enclosingTerm0(sym: Symbol): Symbol =
       sym match
@@ -70,4 +74,11 @@ private[sbt] object KeyMacro:
         case sym if !sym.isTerm              => enclosingTerm0(sym.owner)
         case _                               => sym
     enclosingTerm0(Symbol.spliceOwner)
+
+  private def enclosingClass(using Quotes) =
+    import quotes.reflect.*
+    def rec(sym: Symbol): Symbol =
+      if sym.isClassDef then sym
+      else rec(sym.owner)
+    rec(Symbol.spliceOwner)
 end KeyMacro
