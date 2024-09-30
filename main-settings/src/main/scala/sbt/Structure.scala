@@ -382,8 +382,6 @@ object Scoped:
       protected def onTask[A2](f: Task[A1] => Task[A2]): Initialize[Task[A2]] =
         init.apply(f)
 
-      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
-        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] =
         onTask(_.result flatMap (f compose successM))
       def map[A2](f: A1 => A2): Initialize[Task[A2]] =
@@ -398,6 +396,8 @@ object Scoped:
       def tagw(tags: (Tag, Int)*): Initialize[Task[A1]] = onTask(_.tagw(tags: _*))
 
       // Task-specific extensions
+      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def dependsOnTask[A2](task1: Initialize[Task[A2]]): Initialize[Task[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
       def dependsOnSeq(tasks: Seq[AnyInitTask]): Initialize[Task[A1]] =
@@ -443,6 +443,11 @@ object Scoped:
       def tagw(tags: (Tag, Int)*): Initialize[InputTask[A1]] = onTask(_.tagw(tags: _*))
 
       // InputTask specific extensions
+      @targetName("dependsOnInitializeInputTask")
+      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[InputTask[A1]] =
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)((thisTask, deps) =>
+          thisTask.mapTask(_.dependsOn(deps*))
+        )
       @targetName("dependsOnTaskInitializeInputTask")
       def dependsOnTask[B1](task1: Initialize[Task[B1]]): Initialize[InputTask[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
