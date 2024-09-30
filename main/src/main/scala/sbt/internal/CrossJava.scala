@@ -18,7 +18,7 @@ import sbt.io.syntax._
 import sbt.Cross._
 import sbt.Def.{ ScopedKey, Setting }
 import sbt.ProjectExtra.extract
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.util.complete.DefaultParsers._
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.{ DefaultParsers, Parser }

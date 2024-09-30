@@ -24,7 +24,7 @@ import sbt.BasicCommandStrings._
 import sbt.Def._
 import sbt.Keys._
 import sbt.ProjectExtra.extract
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.Continuous.{ ContinuousState, FileStampRepository }
 import sbt.internal.LabeledFunctions._
 import sbt.internal.io.WatchState

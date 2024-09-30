@@ -97,7 +97,7 @@ import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
 // incremental compiler
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,
@@ -1508,7 +1508,7 @@ object Defaults extends BuildCommon {
 
   @nowarn
   def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
-    inputTests0.mapReferenced(Def.mapScope(_ in key.key))
+    inputTests0.mapReferenced(Def.mapScope((s) => s.rescope(key.key)))
 
   private[this] lazy val inputTests0: Initialize[InputTask[Unit]] = {
     val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
@@ -5006,7 +5006,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
         .flatMapTask { result =>
           initScoped(
             scoped.scopedKey,
-            ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config)),
+            ClassLoaders.runner mapReferenced Project.mapScope(_.rescope(config)),
           ).zipWith(Def.task {
             ((config / fullClasspath).value, streams.value, fileConverter.value, result)
           }) { (rTask, t) =>
@@ -5022,7 +5022,6 @@ trait BuildExtra extends BuildCommon with DefExtra {
 
   // public API
   /** Returns a vector of settings that create custom run task. */
-  @nowarn
   def fullRunTask(
       scoped: TaskKey[Unit],
       config: Configuration,
@@ -5032,7 +5031,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
     Vector(
       scoped := initScoped(
         scoped.scopedKey,
-        ClassLoaders.runner mapReferenced Project.mapScope(s => s.in(config)),
+        ClassLoaders.runner mapReferenced Project.mapScope(_.rescope(config)),
       ).zipWith(Def.task { ((config / fullClasspath).value, streams.value, fileConverter.value) }) {
         case (rTask, t) =>
           (t, rTask).mapN { case ((cp, s, converter), r) =>

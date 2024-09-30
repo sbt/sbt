@@ -21,7 +21,7 @@ import sbt.Keys._
 import sbt.Project.{ inConfig => _, * }
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.coursierint.LMCoursier
 import sbt.internal.inc.{ HashUtil, JarUtils }
 import sbt.internal.librarymanagement._
@@ -206,9 +206,9 @@ object RemoteCache {
   ): Seq[Def.Setting[_]] =
     inTask(packageCache)(
       Seq(
-        packageCache.in(Defaults.TaskZero) := {
+        (Defaults.TaskZero / packageCache) := {
           val converter = fileConverter.value
-          val original = packageBin.in(Defaults.TaskZero).value
+          val original = (Defaults.TaskZero / packageBin).value
           val originalFile = converter.toPath(original)
           val artp = artifactPath.value
           val artpFile = converter.toPath(artp)
@@ -243,7 +243,7 @@ object RemoteCache {
           ModuleDescriptorConfiguration(remoteCacheProjectId.value, projectInfo.value)
             .withScalaModuleInfo(smi)
         },
-        pushRemoteCache.in(Defaults.TaskZero) := (Def.task {
+        (Defaults.TaskZero / pushRemoteCache) := (Def.task {
           val s = streams.value
           val config = pushRemoteCacheConfiguration.value
           val is = (pushRemoteCache / ivySbt).value

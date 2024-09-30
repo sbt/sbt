@@ -16,6 +16,7 @@ import java.net.URI
 import Def.{ ScopeLocal, ScopedKey, Setting, displayFull }
 import BuildPaths.outputDirectory
 import Scope.GlobalScope
+import sbt.SlashSyntax0.given
 import BuildStreams.Streams
 import sbt.io.syntax._
 import sbt.internal.inc.MappedFileConverter
@@ -400,5 +401,5 @@ object BuildStreams {
     refTarget(GlobalScope.copy(project = Select(ref)), fallbackBase, data)
 
   def refTarget(scope: Scope, fallbackBase: File, data: Settings[Scope]): File =
-    (Keys.target in scope get data getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
+    ((scope / Keys.target).get(data) getOrElse outputDirectory(fallbackBase)) / StreamsDirectory
 }

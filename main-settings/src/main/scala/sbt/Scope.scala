@@ -20,39 +20,18 @@ final case class Scope(
     config: ScopeAxis[ConfigKey],
     task: ScopeAxis[AttributeKey[_]],
     extra: ScopeAxis[AttributeMap]
-) {
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(project: Reference, config: ConfigKey): Scope =
-    copy(project = Select(project), config = Select(config))
+):
+  def rescope(project: Reference): Scope = copy(project = Select(project))
+  def rescope(config: ConfigKey): Scope = copy(config = Select(config))
+  def rescope(task: AttributeKey[?]): Scope = copy(task = Select(task))
 
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(config: ConfigKey, task: AttributeKey[_]): Scope =
-    copy(config = Select(config), task = Select(task))
-
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(project: Reference, task: AttributeKey[_]): Scope =
-    copy(project = Select(project), task = Select(task))
-
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(project: Reference, config: ConfigKey, task: AttributeKey[_]): Scope =
-    copy(project = Select(project), config = Select(config), task = Select(task))
-
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(project: Reference): Scope = copy(project = Select(project))
-
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(config: ConfigKey): Scope = copy(config = Select(config))
-
-  @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(task: AttributeKey[_]): Scope = copy(task = Select(task))
-
-  override def toString: String = this match {
+  override def toString: String = this match
     case Scope(Zero, Zero, Zero, Zero) => "Global"
     case Scope(_, _, _, This)          => s"$project / $config / $task"
     case _                             => s"Scope($project, $config, $task, $extra)"
-  }
-}
-object Scope {
+end Scope
+
+object Scope:
   val ThisScope: Scope = Scope(This, This, This, This)
   val Global: Scope = Scope(Zero, Zero, Zero, Zero)
   val GlobalScope: Scope = Global
@@ -457,4 +436,4 @@ object Scope {
         t <- withZeroAxis(scope.task)
         e <- withZeroAxis(scope.extra)
       } yield Scope(Zero, c, t, e)
-}
+end Scope

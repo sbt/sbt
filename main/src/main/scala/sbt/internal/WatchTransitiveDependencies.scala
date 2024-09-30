@@ -13,6 +13,7 @@ import sbt.Def._
 import sbt.Keys._
 // import sbt.Project.richInitializeTask
 import sbt.ProjectExtra.*
+import sbt.SlashSyntax0.given
 import sbt.internal.io.Source
 import sbt.internal.nio.Globs
 import sbt.internal.util.AttributeMap
@@ -68,7 +69,7 @@ private[sbt] object WatchTransitiveDependencies {
         stream.open()
         stream
       }).toTaskable,
-      (internalDependencyConfigurations in scopedKey.scope).toTaskable,
+      (scopedKey.scope / internalDependencyConfigurations).toTaskable,
       state,
     ).mapN { case (log, configs, st) =>
       new Arguments(
@@ -166,7 +167,7 @@ private[sbt] object WatchTransitiveDependencies {
       DynamicInput(glob, FileStamper.LastModified, forceTrigger = true)
     scopes.flatMap {
       case Left(scope) =>
-        extracted.runTask(Keys.watchSources in scope, state)._2.map(s => toDynamicInput(s.toGlob))
+        extracted.runTask(scope / Keys.watchSources, state)._2.map(s => toDynamicInput(s.toGlob))
       case Right(globs) => globs.map(toDynamicInput)
     }
   }
@@ -209,7 +210,9 @@ private[sbt] object WatchTransitiveDependencies {
                       val zeroedTaskScope = key.scope.copy(task = Zero)
                       val transitiveKeys = arguments.dependencyConfigurations.flatMap {
                         case (p, configs) =>
-                          configs.map(c => ScopedKey(zeroedTaskScope in (p, ConfigKey(c)), task))
+                          configs.map(c =>
+                            ScopedKey(zeroedTaskScope.rescope(p).rescope(ConfigKey(c)), task)
+                          )
                       }
 
                       (d ++ transitiveKeys.filterNot(newVisited), s)
