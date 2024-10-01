@@ -13,7 +13,6 @@ import sbt.librarymanagement._
 import sbt.Keys._
 import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0._
 
 object CoursierRepositoriesTasks {
   private object CResolvers {

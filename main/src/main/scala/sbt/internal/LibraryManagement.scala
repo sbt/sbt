@@ -13,7 +13,6 @@ import java.io.File
 import java.util.concurrent.Callable
 
 import sbt.Def.ScopedKey
-import sbt.SlashSyntax0._
 import sbt.internal.librarymanagement._
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._

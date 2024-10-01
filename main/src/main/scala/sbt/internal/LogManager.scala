@@ -13,7 +13,7 @@ import sbt.Def.ScopedKey
 import sbt.Keys._
 import sbt.ProjectExtra.showContextKey
 import sbt.Scope.Global
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.util.MainAppender._
 import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.util.{ Level, Logger, LoggerContext }
@@ -68,7 +68,7 @@ object LogManager {
     (task: ScopedKey[_], to: PrintWriter) => {
       val context = state.get(Keys.loggerContext).getOrElse(LoggerContext.globalContext)
       val manager: LogManager =
-        (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
+        (task.scope / logManager).get(data) getOrElse defaultManager(state.globalLogging.console)
       manager(data, state, task, to, context)
     }
 
@@ -88,7 +88,7 @@ object LogManager {
   ): (ScopedKey[_]) => ManagedLogger =
     (task: ScopedKey[_]) => {
       val manager: LogManager =
-        (logManager in task.scope).get(data) getOrElse defaultManager(state.globalLogging.console)
+        (task.scope / logManager).get(data) getOrElse defaultManager(state.globalLogging.console)
       manager.backgroundLog(data, state, task, context)
     }
 

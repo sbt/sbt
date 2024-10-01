@@ -15,7 +15,7 @@ import sbt.Keys._
 import sbt.Project.inScope
 import sbt.ProjectExtra.{ prefixConfigs, setProject, showLoadingKey, structure }
 import sbt.Scope.GlobalScope
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.BuildStreams._
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
@@ -33,7 +33,7 @@ import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 import java.io.File
 import java.net.URI
 import java.nio.file.{ Path, Paths }
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.tailrec
 import scala.collection.mutable
 
 private[sbt] object Load {
@@ -1318,8 +1318,7 @@ private[sbt] object Load {
       case None     => Nil
 
   /** These are the settings defined when loading a project "meta" build. */
-  @nowarn
-  val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope in LocalRootProject)(
+  val autoPluginSettings: Seq[Setting[_]] = inScope(GlobalScope.rescope(LocalRootProject))(
     Seq(
       sbtPlugin :== true,
       isMetaBuild :== true,

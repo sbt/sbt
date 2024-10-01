@@ -318,8 +318,9 @@ object Keys {
   // Run Keys
   val selectMainClass = taskKey[Option[String]]("Selects the main class to run.").withRank(BMinusTask)
   val mainClass = taskKey[Option[String]]("Defines the main class for packaging or running.").withRank(BPlusTask)
-  val run = inputKey[Unit]("Runs a main class, passing along arguments provided on the command line.").withRank(APlusTask)
-  val runMain = inputKey[Unit]("Runs the main class selected by the first argument, passing the remaining arguments to the main method.").withRank(ATask)
+  val run = inputKey[EmulateForeground]("Runs a main class, passing along arguments provided on the command line.").withRank(APlusTask)
+  val runBlock = inputKey[EmulateForeground]("Runs a main class, and blocks until it's done.").withRank(DTask)
+  val runMain = inputKey[EmulateForeground]("Runs the main class selected by the first argument, passing the remaining arguments to the main method.").withRank(ATask)
   val discoveredMainClasses = taskKey[Seq[String]]("Auto-detects main classes.").withRank(BMinusTask)
   val runner = taskKey[ScalaRun]("Implementation used to run a main class.").withRank(DTask)
   val trapExit = settingKey[Boolean]("If true, enables exit trapping and thread management for 'run'-like tasks. This was removed in sbt 1.6.0 due to JDK 17 deprecating Security Manager.").withRank(CSetting)

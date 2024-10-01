@@ -72,9 +72,11 @@ sealed abstract class SettingKey[A1]
 
   final def scopedKey: ScopedKey[A1] = ScopedKey(scope, key)
 
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  final def in(scope: Scope): SettingKey[A1] =
+  private[sbt] final inline def rescope(scope: Scope): SettingKey[A1] =
     Scoped.scopedSetting(Scope.replaceThis(this.scope)(scope), this.key)
+
+  final def /[A1](subkey: Scoped.ScopingSetting[A1]): A1 =
+    subkey.rescope(scope.copy(task = Select(key)))
 
   /** Internal function for the setting macro. */
   inline def settingMacro[A](inline a: A): Initialize[A] =
@@ -151,9 +153,11 @@ sealed abstract class TaskKey[A1]
 
   def scopedKey: ScopedKey[Task[A1]] = ScopedKey(scope, key)
 
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(scope: Scope): TaskKey[A1] =
+  private[sbt] final inline def rescope(scope: Scope): TaskKey[A1] =
     Scoped.scopedTask(Scope.replaceThis(this.scope)(scope), this.key)
+
+  final def /[A1](subkey: Scoped.ScopingSetting[A1]): A1 =
+    subkey.rescope(scope.copy(task = Select(key)))
 
   inline def +=[A2](inline v: A2)(using Append.Value[A1, A2]): Setting[Task[A1]] =
     append1[A2](taskMacro(v))
@@ -232,9 +236,11 @@ sealed trait InputKey[A1]
 
   def scopedKey: ScopedKey[InputTask[A1]] = ScopedKey(scope, key)
 
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  def in(scope: Scope): InputKey[A1] =
+  private[sbt] final inline def rescope(scope: Scope): InputKey[A1] =
     Scoped.scopedInput(Scope.replaceThis(this.scope)(scope), this.key)
+
+  final def /[A1](subkey: Scoped.ScopingSetting[A1]): A1 =
+    subkey.rescope(scope.copy(task = Select(key)))
 
   private inline def inputTaskMacro[A2](inline a: A2): Def.Initialize[InputTask[A2]] =
     ${ std.InputTaskMacro.inputTaskMacroImpl('a) }
@@ -261,52 +267,11 @@ object Scoped:
     ScopedKey(s.scope, s.key)
 
   /**
-   * Mixin trait for adding convenience vocabulary associated with specifying the [[Scope]] of a setting.
-   * Allows specification of the Scope or part of the [[Scope]] of a setting being referenced.
-   * @example
-   *  {{{
-   *  name in Global := "hello Global scope"
-   *
-   *  name in (Compile, packageBin) := "hello Compile scope packageBin"
-   *
-   *  name in Compile := "hello Compile scope"
-   *
-   *  name.in(Compile).:=("hello ugly syntax")
-   *  }}}
+   * A trait that provides rescope method.
    */
   sealed trait ScopingSetting[ResultType]:
-    private[sbt] def in(s: Scope): ResultType
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(s: Scope): ResultType
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(p: Reference): ResultType = in(Select(p), This, This)
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(t: Scoped): ResultType = in(This, This, Select(t.key))
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(c: ConfigKey): ResultType = in(This, Select(c), This)
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(c: ConfigKey, t: Scoped): ResultType = in(This, Select(c), Select(t.key))
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(p: Reference, c: ConfigKey): ResultType = in(Select(p), Select(c), This)
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(p: Reference, t: Scoped): ResultType = in(Select(p), This, Select(t.key))
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(p: Reference, c: ConfigKey, t: Scoped): ResultType =
-  //   in(Select(p), Select(c), Select(t.key))
-
-  // @deprecated(Scope.inIsDeprecated, "1.5.0")
-  // def in(
-  //     p: ScopeAxis[Reference],
-  //     c: ScopeAxis[ConfigKey],
-  //     t: ScopeAxis[AttributeKey[_]]
-  // ): ResultType = in(Scope(p, c, t, This))
+    // formerly known as "in"
+    private[sbt] def rescope(s: Scope): ResultType
   end ScopingSetting
 
   def scopedSetting[T](s: Scope, k: AttributeKey[T]): SettingKey[T] =
@@ -382,8 +347,6 @@ object Scoped:
       protected def onTask[A2](f: Task[A1] => Task[A2]): Initialize[Task[A2]] =
         init.apply(f)
 
-      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
-        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] =
         onTask(_.result flatMap (f compose successM))
       def map[A2](f: A1 => A2): Initialize[Task[A2]] =
@@ -398,6 +361,8 @@ object Scoped:
       def tagw(tags: (Tag, Int)*): Initialize[Task[A1]] = onTask(_.tagw(tags: _*))
 
       // Task-specific extensions
+      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[Task[A1]] =
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)(_.dependsOn(_*))
       def dependsOnTask[A2](task1: Initialize[Task[A2]]): Initialize[Task[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))
       def dependsOnSeq(tasks: Seq[AnyInitTask]): Initialize[Task[A1]] =
@@ -443,6 +408,11 @@ object Scoped:
       def tagw(tags: (Tag, Int)*): Initialize[InputTask[A1]] = onTask(_.tagw(tags: _*))
 
       // InputTask specific extensions
+      @targetName("dependsOnInitializeInputTask")
+      def dependsOn(tasks: Initialize[? <: Task[?]]*): Initialize[InputTask[A1]] =
+        init.zipWith(tasks.asInstanceOf[Seq[Initialize[Task[?]]]].join)((thisTask, deps) =>
+          thisTask.mapTask(_.dependsOn(deps*))
+        )
       @targetName("dependsOnTaskInitializeInputTask")
       def dependsOnTask[B1](task1: Initialize[Task[B1]]): Initialize[InputTask[A1]] =
         dependsOnSeq(Seq[AnyInitTask](task1.asInstanceOf[AnyInitTask]))

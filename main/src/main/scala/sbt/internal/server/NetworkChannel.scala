@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 
 import sbt.BasicCommandStrings.{ Shutdown, TerminateAction }
 import sbt.ProjectExtra.extract
+import sbt.SlashSyntax0.given
 import sbt.internal.langserver.{ CancelRequestParams, ErrorCodes, LogMessageParams, MessageType }
 import sbt.internal.protocol.{
   JsonRpcNotificationMessage,
@@ -446,7 +447,11 @@ final class NetworkChannel(
                   keys.filter(k => k.key.label == "testOnly" || k.key.label == "testQuick")
                 val (testState, cachedTestNames) = testKeys.foldLeft((sstate, true)) {
                   case ((st, allCached), k) =>
-                    SessionVar.loadAndSet(sbt.Keys.definedTestNames in k.scope, st, true) match {
+                    SessionVar.loadAndSet(
+                      (k.scope / Keys.definedTestNames).scopedKey,
+                      st,
+                      true
+                    ) match {
                       case (nst, d) => (nst, allCached && d.isDefined)
                     }
                 }
@@ -454,7 +459,7 @@ final class NetworkChannel(
                 val (runState, cachedMainClassNames) = runKeys.foldLeft((testState, true)) {
                   case ((st, allCached), k) =>
                     SessionVar.loadAndSet(
-                      sbt.Keys.discoveredMainClasses in k.scope,
+                      (k.scope / Keys.discoveredMainClasses).scopedKey,
                       st,
                       true
                     ) match {

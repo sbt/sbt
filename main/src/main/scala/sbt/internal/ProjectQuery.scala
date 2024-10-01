@@ -24,7 +24,7 @@ private[sbt] case class ProjectQuery(
       val scalaMatches =
         params.get(Keys.scalaBinaryVersion.key) match
           case Some(expected) =>
-            val actualSbv = structure.data.get(Scope.ThisScope.in(p), scalaBinaryVersion.key)
+            val actualSbv = structure.data.get(Scope.ThisScope.rescope(p), scalaBinaryVersion.key)
             actualSbv match
               case Some(sbv) => sbv == expected
               case None      => true

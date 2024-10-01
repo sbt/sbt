@@ -16,7 +16,7 @@ import sbt.Keys.{ TaskProgress => _, name => _, _ }
 import sbt.BuildExtra.*
 import sbt.ProjectExtra.*
 import sbt.Scope.Global
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal._
@@ -512,6 +512,16 @@ object EvaluateTask {
       case Some(t: Task[?]) => transformNode(t).isEmpty
       case _                => true
     }
+    def suspendChannel[A1](
+        state: State,
+        result: Result[A1]
+    ): Unit =
+      (state.getSetting(Global / Keys.bgJobService), result) match
+        case (Some(service), Result.Value(List(KeyValue(_, EmulateForeground(handle))))) =>
+          state.remainingCommands match
+            case Nil => service.waitForTry(handle).get
+            case _   => service.pauseChannelDuringJob(state, handle)
+        case _ => ()
     def run() = {
       val x = new Execute(
         Execute.config(config.checkCycles, overwriteNode),
@@ -529,6 +539,7 @@ object EvaluateTask {
         } finally shutdown()
       val replaced = transformInc(result)
       logIncResult(replaced, state, streams)
+      suspendChannel(newState, replaced)
       (newState, replaced)
     }
     object runningEngine extends RunningTaskEngine {

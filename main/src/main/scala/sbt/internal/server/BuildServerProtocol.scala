@@ -19,7 +19,7 @@ import sbt.Project._
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.Scoped.richTaskSeq
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 import sbt.StandardMain.exchange
 import sbt.internal.bsp._
 import sbt.internal.langserver.ErrorCodes
@@ -583,7 +583,7 @@ object BuildServerProtocol {
         (ref, project) <- loadedBuild.allProjectRefs
         setting <- project.settings
         if setting.key.key.label == Keys.bspTargetIdentifier.key.label
-      } yield Scope.replaceThis(Scope.Global.in(ref))(setting.key.scope)
+      } yield Scope.replaceThis(Scope.Global.rescope(ref))(setting.key.scope)
 
       import sbt.TupleSyntax.*
       t2ToApp2(
@@ -1010,7 +1010,7 @@ object BuildServerProtocol {
           .flatMap(_.split(","))
           .map(name => ConfigKey(name.trim))
           .filter { config =>
-            val scope = Scope.Global.in(project, config)
+            val scope = Scope.Global.rescope(project).rescope(config)
             allScopes.contains(scope)
           }
         (project, configs)

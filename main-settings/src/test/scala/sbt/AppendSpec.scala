@@ -12,7 +12,7 @@ object AppendSpec {
   val onLoad = SettingKey[State => State]("onLoad")
 
   import Scope.Global
-  import SlashSyntax0._
+  import SlashSyntax0.given
 
   def doSideEffect(): Unit = ()
 

@@ -4,7 +4,7 @@
 
 # This should fail because the Main object is in package jartest and the resource is directly
 # in src/main/resources
--> run
+-> runBlock
 
 > package
 
@@ -18,7 +18,7 @@ $ copy-file src/main/resources/main_resource_test src/main/resources/jartest/mai
 $ delete src/main/resources/main_resource_test
 
 # This should succeed because sbt should put the resource on the runClasspath
-> run
+> runBlock
 
 # This is necessary because package bases whether or not to run on last modified times, which don't have
 # high enough resolution to notice the above move of main_resource_test

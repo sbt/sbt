@@ -86,6 +86,8 @@ abstract class BackgroundJobService extends Closeable {
       hashContents: Boolean,
       converter: FileConverter,
   ): Classpath = copyClasspath(products, full, workingDirectory, converter)
+
+  private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit
 }
 
 object BackgroundJobService {
@@ -108,3 +110,10 @@ abstract class JobHandle {
   def humanReadableName: String
   def spawningTask: ScopedKey[_]
 }
+
+/**
+ * This datatype is used signal the task engine or the commands
+ * that the background job is emulated to be a foreground job on
+ * the originating channel.
+ */
+case class EmulateForeground(handle: JobHandle)

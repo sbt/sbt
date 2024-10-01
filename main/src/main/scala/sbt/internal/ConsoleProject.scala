@@ -10,7 +10,6 @@ package sbt
 package internal
 
 import sbt.ProjectExtra.extract
-import sbt.SlashSyntax0._
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
 import sbt.internal.util.Terminal

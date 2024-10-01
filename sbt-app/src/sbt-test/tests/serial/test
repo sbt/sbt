@@ -3,9 +3,9 @@
 # if the tests are actually executed concurrently.  The default concurrent
 # restrictions limit the number of concurrent tasks to the number of processors,
 # so we set it to 2.
-> set concurrentRestrictions in Global := Seq(Tags.limitAll(2))
+> set Global / concurrentRestrictions := Seq(Tags.limitAll(2))
 -> test
 
 # this should prevent concurrent execution of tests
-> set concurrentRestrictions in Global += Tags.limit(Tags.Test, 1)
+> set Global / concurrentRestrictions += Tags.limit(Tags.Test, 1)
 > test

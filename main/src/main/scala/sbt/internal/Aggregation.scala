@@ -14,6 +14,7 @@ import java.text.DateFormat
 import sbt.Def.ScopedKey
 import sbt.Keys.{ showSuccess, showTiming, timingFormat }
 import sbt.ProjectExtra.*
+import sbt.SlashSyntax0.given
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
@@ -79,12 +80,24 @@ object Aggregation {
     val success = results match
       case Result.Value(_) => true
       case Result.Inc(_)   => false
+    val isPaused = currentChannel(state) match
+      case Some(channel) => channel.isPaused
+      case None          => false
     results.toEither.foreach { r =>
       if show.taskValues then printSettings(r, show.print) else ()
     }
-    if show.success && !state.get(suppressShow).getOrElse(false) then
+    if !isPaused && show.success && !state.get(suppressShow).getOrElse(false) then
       printSuccess(start, stop, extracted, success, cacheSummary, log)
     else ()
+
+  private def currentChannel(state: State): Option[CommandChannel] =
+    state.currentCommand match
+      case Some(exec) =>
+        exec.source match
+          case Some(source) =>
+            StandardMain.exchange.channels.find(_.name == source.channelName)
+          case _ => None
+      case _ => None
 
   def timedRun[A](
       s: State,
@@ -290,7 +303,7 @@ object Aggregation {
     }
 
   def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
-    Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+    (Scope.fillTaskAxis(key.scope, key.key) / Keys.aggregate).get(data).getOrElse(true)
   private[sbt] val suppressShow =
     AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
 }

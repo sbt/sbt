@@ -12,7 +12,6 @@ import java.lang.reflect.InvocationTargetException
 import java.nio.file.Path
 import java.io.File
 
-import sbt.SlashSyntax0._
 import sbt.io._, syntax._
 import sbt.util._
 import sbt.internal.util.{ ConsoleAppender, Terminal => ITerminal }
