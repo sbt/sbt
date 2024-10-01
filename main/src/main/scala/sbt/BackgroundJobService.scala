@@ -111,4 +111,9 @@ abstract class JobHandle {
   def spawningTask: ScopedKey[_]
 }
 
-case class RunInfo(handle: JobHandle)
+/**
+ * This datatype is used signal the task engine or the commands
+ * that the background job is emulated to be a foreground job on
+ * the originating channel.
+ */
+case class EmulateForeground(handle: JobHandle)

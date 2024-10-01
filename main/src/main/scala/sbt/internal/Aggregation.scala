@@ -79,16 +79,24 @@ object Aggregation {
     val success = results match
       case Result.Value(_) => true
       case Result.Inc(_)   => false
-    // run task ends earlier than the program run
-    val isRunInfo = results match
-      case Result.Value(Seq(KeyValue(_, RunInfo(_)))) => true
-      case _                                          => false
+    val isPaused = currentChannel(state) match
+      case Some(channel) => channel.isPaused
+      case None          => false
     results.toEither.foreach { r =>
       if show.taskValues then printSettings(r, show.print) else ()
     }
-    if show.success && !isRunInfo && !state.get(suppressShow).getOrElse(false) then
+    if !isPaused && show.success && !state.get(suppressShow).getOrElse(false) then
       printSuccess(start, stop, extracted, success, cacheSummary, log)
     else ()
+
+  private def currentChannel(state: State): Option[CommandChannel] =
+    state.currentCommand match
+      case Some(exec) =>
+        exec.source match
+          case Some(source) =>
+            StandardMain.exchange.channels.find(_.name == source.channelName)
+          case _ => None
+      case _ => None
 
   def timedRun[A](
       s: State,
