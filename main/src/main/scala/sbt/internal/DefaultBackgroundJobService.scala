@@ -309,11 +309,11 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit =
     currentChannel(state) match
       case Some(channel) =>
-        val level = channel.logLevel
-        channel.setLevel(Level.Error)
-        channel.pause()
         handle match
           case t: ThreadJobHandle =>
+            val level = channel.logLevel
+            channel.setLevel(Level.Error)
+            channel.pause()
             t.job.onStop: () =>
               channel.setLevel(level)
               channel.resume()
