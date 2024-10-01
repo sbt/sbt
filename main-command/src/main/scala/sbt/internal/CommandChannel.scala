@@ -101,6 +101,10 @@ abstract class CommandChannel {
   }
 
   private[sbt] def terminal: Terminal
+  private[sbt] var _active: Boolean = true
+  private[sbt] def pause(): Unit = _active = false
+  private[sbt] def isPaused: Boolean = !_active
+  private[sbt] def resume(): Unit = _active = true
 }
 
 // case class Exec(commandLine: String, source: Option[CommandSource])

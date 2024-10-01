@@ -1051,6 +1051,12 @@ object Defaults extends BuildCommon {
       },
       runMain := foregroundRunMainTask.evaluated,
       run := foregroundRunTask.evaluated,
+      runBlock := {
+        val r = run.evaluated
+        val service = bgJobService.value
+        service.waitForTry(r.handle).get
+        r
+      },
       fgRun := runTask(fullClasspath, (run / mainClass), (run / runner)).evaluated,
       fgRunMain := runMainTask(fullClasspath, (run / runner)).evaluated,
       copyResources := copyResourcesTask.value,
@@ -2143,21 +2149,18 @@ object Defaults extends BuildCommon {
       }
     }
 
-  // runMain calls bgRunMain in the background and waits for the result.
-  def foregroundRunMainTask: Initialize[InputTask[Unit]] =
-    Def.inputTask[Unit] {
+  // `runMain` calls bgRunMain in the background and pauses the current channel
+  def foregroundRunMainTask: Initialize[InputTask[EmulateForeground]] =
+    Def.inputTask {
       val handle = bgRunMain.evaluated
-      val service = bgJobService.value
-      service.waitForTry(handle).get
-      ()
+      EmulateForeground(handle)
     }
 
-  // run calls bgRun in the background and waits for the result.
-  def foregroundRunTask: Initialize[InputTask[Unit]] =
+  // `run` task calls bgRun in the background and pauses the current channel
+  def foregroundRunTask: Initialize[InputTask[EmulateForeground]] =
     Def.inputTask {
       val handle = bgRun.evaluated
-      val service = bgJobService.value
-      service.waitForTry(handle).get
+      EmulateForeground(handle)
     }
 
   def runMainTask(

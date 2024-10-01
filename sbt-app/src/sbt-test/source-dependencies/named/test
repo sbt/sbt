@@ -4,7 +4,7 @@
 > compile
 
 # result should be 1
-> run 1
+> runBlock 1
 
 # change order of arguments in A.x
 $ copy-file changes/A.scala A.scala
@@ -13,4 +13,4 @@ $ copy-file changes/A.scala A.scala
 > compile
 
 # Should still get 1 and not -1
-> run 1
+> runBlock 1

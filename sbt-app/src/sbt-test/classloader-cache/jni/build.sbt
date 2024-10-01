@@ -7,7 +7,7 @@ val dropLibraryPath = taskKey[Unit]("Drop the last path from the java.library.pa
 val wrappedRun = taskKey[Unit]("Run with modified java.library.path")
 val wrappedTest = taskKey[Unit]("Test with modified java.library.path")
 
-def wrap(task: InputKey[Unit]): Def.Initialize[Task[Unit]] =
+def wrap[A1](task: InputKey[A1]): Def.Initialize[Task[Unit]] =
   Def.sequential(appendToLibraryPath, task.toTask(""), dropLibraryPath)
 
 // ThisBuild / turbo := true
@@ -35,6 +35,6 @@ val root = (project in file(".")).settings(
     val cp = System.getProperty("java.library.path", "").split(":").dropRight(1)
     System.setProperty("java.library.path", cp.mkString(":"))
   },
-  wrappedRun := wrap(Runtime / run).value,
+  wrappedRun := wrap(Runtime / runBlock).value,
   wrappedTest := wrap(Test / testOnly).value
 )
