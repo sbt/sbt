@@ -50,6 +50,7 @@ object Task:
       }
 
     override def map[A1, A2](in: Task[A1])(f: A1 => A2): Task[A2] = in.map(f)
+    override def mapN[A1 <: Tuple, A2](t: Tuple.Map[A1, Task])(f: A1 => A2): Task[A2] = t.mapN(f)
     override def flatMap[A1, A2](in: F[A1])(f: A1 => F[A2]): F[A2] = in.flatMap(f)
     override def flatten[A1](in: Task[Task[A1]]): Task[A1] = in.flatMap(identity)
 end Task

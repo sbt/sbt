@@ -308,10 +308,11 @@ trait Cont:
               tupleMapRepr.asType match
                 case '[tupleMap] =>
                   '{
-                    given Applicative[F] = $applicativeExpr
-                    import TupleMapExtension.*
-                    ${ br.tupleExpr.asInstanceOf[Expr[Tuple.Map[inputTypeTpe & Tuple, F]]] }
-                      .mapN(${ lambda.asExprOf[inputTypeTpe & Tuple => A1] })
+                    $applicativeExpr.mapN(
+                      ${ br.tupleExpr.asInstanceOf[Expr[Tuple.Map[inputTypeTpe & Tuple, F]]] }
+                    )(
+                      ${ lambda.asExprOf[inputTypeTpe & Tuple => A1] }
+                    )
                   }
         eitherTree match
           case Left(_) =>

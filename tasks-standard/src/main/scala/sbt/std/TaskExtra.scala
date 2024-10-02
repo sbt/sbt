@@ -313,8 +313,7 @@ object TaskExtra extends TaskExtra {
     if incs.isEmpty then in.unmap(Result.tryValue)
     else throw incompleteDeps(incs)
   }
-  def failuresM[Tup <: Tuple]: Tuple.Map[Tup, Result] => Seq[Incomplete] = x =>
-    failures(x.iterator.toList)
+  def failuresM[Tup <: Tuple]: Tuple.Map[Tup, Result] => Seq[Incomplete] = x => failures(x.toList0)
 
   def all[D](in: Seq[Result[D]]): Seq[D] = {
     val incs = failures(in)

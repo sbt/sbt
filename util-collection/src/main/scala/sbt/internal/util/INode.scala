@@ -221,7 +221,7 @@ abstract class EvaluateSettings[ScopeType]:
   private[this] final class MixedNode[Tup <: Tuple, A1](in: Tuple.Map[Tup, INode], f: Tup => A1)
       extends INode[A1]:
     import TupleMapExtension.*
-    protected override def dependsOn: Seq[INode[_]] = in.iterator.toList
+    protected override def dependsOn: Seq[INode[_]] = in.toList0
     protected override def evaluate0(): Unit = setValue(f(in.unmap(getValue)))
 
   private[this] final class UniformNode[A1, A2](in: List[INode[A1]], f: List[A1] => A2)

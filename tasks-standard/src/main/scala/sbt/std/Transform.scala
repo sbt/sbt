@@ -74,7 +74,7 @@ object Transform:
   )(f: Tuple.Map[Tup, Result] => Either[Task[A1], A1]): Node[A1] =
     new Node[A1]:
       type Inputs = Tuple.Map[Tup, Result]
-      def dependencies: List[TaskId[?]] = deps.iterator.toList
+      def dependencies: List[TaskId[?]] = deps.toList0
       def computeInputs(f: [a] => TaskId[a] => Result[a]) = deps.transform(f)
       def work(inputs: Inputs) = f(inputs)
 

@@ -10,6 +10,18 @@ package sbt.util
 trait Applicative[F[_]] extends Apply[F]:
   def pure[A1](x: () => A1): F[A1]
 
+  def mapN[A1 <: Tuple, A2](t: Tuple.Map[A1, F])(f: A1 => A2): F[A2] =
+    import sbt.internal.util.TupleMapExtension.*
+    val g = (l: List[Any]) => f(Tuple.fromArray(l.toArray).asInstanceOf[A1])
+    map(
+      t.iterator.foldLeft(pure(() => g))((g, head) =>
+        ap(map(head)(h => (f: List[Any] => A2) => (tail: List[Any]) => f(h :: tail)))(g)
+      )
+    )(_.apply(Nil))
+
+  def map2(t: (F[Int], F[String]))(f: (Int, String) => Boolean): F[Boolean] =
+    ap(ap(pure(() => f.curried))(t._1))(t._2)
+
   override def map[A1, A2](fa: F[A1])(f: A1 => A2): F[A2] =
     ap(pure(() => f))(fa)
 end Applicative
@@ -25,6 +37,8 @@ object Applicative:
     override def pure[A1](x: () => A1): F1[F2[A1]] = F1.pure(() => F2.pure(x))
     override def map[A1, A2](fa: F1[F2[A1]])(f: A1 => A2): F1[F2[A2]] =
       F1.map(fa)(f2 => F2.map(f2)(f))
+    override def mapN[A1 <: Tuple, A2](t1: Tuple.Map[A1, F])(f: A1 => A2): F1[F2[A2]] =
+      F1.mapN(t1.asInstanceOf[Tuple.Map[Tuple.Map[A1, F2], F1]])(t2 => F2.mapN(t2)(f))
     override def ap[A1, A2](f1f2f: F1[F2[A1 => A2]])(f1f2a: F1[F2[A1]]): F1[F2[A2]] =
       F1.ap(F1.map(f1f2f) { (f2f: F2[A1 => A2]) => (f2a: F2[A1]) => F2.ap(f2f)(f2a) })(f1f2a)
 

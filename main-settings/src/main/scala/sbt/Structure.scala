@@ -347,14 +347,10 @@ object Scoped:
       protected def onTask[A2](f: Task[A1] => Task[A2]): Initialize[Task[A2]] =
         init.apply(f)
 
-      def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] =
-        onTask(_.result flatMap (f compose successM))
-      def map[A2](f: A1 => A2): Initialize[Task[A2]] =
-        onTask(_.result map (f compose successM))
-      def andFinally(fin: => Unit): Initialize[Task[A1]] =
-        onTask(_ andFinally fin)
-      def doFinally(t: Task[Unit]): Initialize[Task[A1]] =
-        onTask(_ doFinally t)
+      def flatMapTaskValue[T](f: A1 => Task[T]): Initialize[Task[T]] = onTask(_.flatMap(f))
+      def map[A2](f: A1 => A2): Initialize[Task[A2]] = onTask(_.map(f))
+      def andFinally(fin: => Unit): Initialize[Task[A1]] = onTask(_.andFinally(fin))
+      def doFinally(t: Task[Unit]): Initialize[Task[A1]] = onTask(_.doFinally(t))
       def ||[T >: A1](alt: Task[T]): Initialize[Task[T]] = onTask(_ || alt)
       def &&[T](alt: Task[T]): Initialize[Task[T]] = onTask(_ && alt)
       def tag(tags: Tag*): Initialize[Task[A1]] = onTask(_.tag(tags: _*))
@@ -842,4 +838,4 @@ class TupleWrap[Tup <: Tuple](value: Tuple.Map[Tup, Taskable]):
   type InitTask[A2] = Initialize[Task[A2]]
   lazy val initTasks = value.transform[InitTask]([a] => (t: Taskable[a]) => t.toTask)
   def mapN[A1](f: Tup => A1): Def.Initialize[Task[A1]] =
-    initTasks.mapN[A1](f)(using std.FullInstance.initializeTaskMonad)
+    std.FullInstance.initializeTaskMonad.mapN(initTasks)(f)

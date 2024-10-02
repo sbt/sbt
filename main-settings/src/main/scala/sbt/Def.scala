@@ -242,7 +242,7 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
     sbt.internal.util.complete.Parsers.spaceDelimited(argLabel)
 
   /** Lifts the result of a setting initialization into a Task. */
-  def toITask[A1](i: Initialize[A1]): Initialize[Task[A1]] = map(i)(std.TaskExtra.inlineTask)
+  def toITask[A1](i: Initialize[A1]): Initialize[Task[A1]] = i(std.TaskExtra.inlineTask)
 
   inline def toSParser[A1](p: Parser[A1]): State => Parser[A1] = const(p)
   def toISParser[A1](p: Initialize[Parser[A1]]): Initialize[State => Parser[A1]] =
