@@ -19,6 +19,8 @@ object InitializeInstance:
 
     override def pure[A1](a: () => A1): Initialize[A1] = Def.pure(a)
     override def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] = in(f)
+    override def mapN[A1 <: Tuple, A2](t: Tuple.Map[A1, Initialize])(f: A1 => A2): Initialize[A2] =
+      Def.app(t)(f)
     override def ap[A1, A2](ff: Initialize[A1 => A2])(fa: Initialize[A1]): Initialize[A2] =
       Def.ap[A1, A2](ff)(fa)
     override def flatMap[A1, A2](fa: Initialize[A1])(f: A1 => Initialize[A2]) =
@@ -62,6 +64,10 @@ object FullInstance:
 
     override def map[A1, A2](fa: Initialize[Task[A1]])(f: A1 => A2): Initialize[Task[A2]] =
       F1F2.map(fa)(f)
+
+    override def mapN[A1 <: Tuple, A2](t: Tuple.Map[A1, [a] =>> Initialize[Task[a]]])(
+        f: A1 => A2
+    ): Initialize[Task[A2]] = F1F2.mapN(t)(f)
 
     override def ap[A1, A2](ff: Initialize[Task[A1 => A2]])(
         fa: Initialize[Task[A1]]

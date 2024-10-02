@@ -5,10 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal
-package util
-
-import sbt.util.Applicative
+package sbt.internal.util
 
 object TupleMapExtension:
   extension [Tup <: Tuple, F1[_]](tuple: Tuple.Map[Tup, F1])
@@ -54,14 +51,4 @@ object TupleMapExtension:
             case _ => scala.runtime.TupleXXL.fromIterator(tuple.iterator.map(f(_)))
       // format: on
       res.asInstanceOf[Tuple.Map[Tup, F2]]
-
-    def traverse[F2[_]](f: [a] => F1[a] => F2[a])(using app: Applicative[F2]): F2[Tup] =
-      val fxs: F2[List[Any]] = tuple.iterator
-        .foldRight[F2[List[Any]]](app.pure(() => Nil))((x, xs) =>
-          app.map(app.product(f(x), xs))((h, t) => h :: t)
-        )
-      app.map(fxs)(xs => Tuple.fromArray(xs.toArray).asInstanceOf[Tup])
-
-    def mapN[A1](f: Tup => A1)(using app: Applicative[F1]): F1[A1] =
-      app.map(tuple.traverse[F1]([a] => (f: F1[a]) => f))(f)
 end TupleMapExtension
