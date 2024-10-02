@@ -5,19 +5,19 @@
 $ absent ran
 
 # single project, 'mark' defined
-> set Mark := mark.value
+> set mark := markTask.value
 > mark
 $ exists ran
 $ delete ran
 
 # single project, aggregate = true on Mark
-> set Mark / aggregate := true
+> set mark / aggregate := true
 > mark
 $ exists ran
 $ delete ran
 
 # single project, aggregate = false on Mark
-> set Mark / aggregate := false
+> set mark / aggregate := false
 > mark
 $ exists ran
 $ delete ran
@@ -28,14 +28,14 @@ $ copy-file changes/build.sbt build.sbt
 > reload
 
 # define in root project only
-> set Mark := mark.value
+> set mark := markTask.value
 > mark
 $ exists ran
 $ absent sub/ran
 $ delete ran
 
 # define in sub project, but shouldn't run without aggregation
-> set sub / Mark := mark(sub).value
+> set sub / mark := mark(sub).value
 > mark
 $ exists ran
 $ absent sub/ran
@@ -57,8 +57,8 @@ $ touch aggregate
 > reload
 
 # add tasks to each subproject
-> set sub / Mark := mark(sub).value
-> set sub2 / Mark := mark(sub2).value
+> set sub / mark := mark(sub).value
+> set sub2 / mark := mark(sub2).value
 
 # check that aggregation works when root project has no task
 > mark
@@ -73,17 +73,17 @@ $ absent ran
 $ delete sub/ran sub/sub/ran
 
 # add task to root project
-> set Mark := mark.value
+> set mark := markTask.value
 
 # disable aggregation for sub/mark so that sub2/mark doesn't run
-> set sub / Mark / aggregate := false
+> set sub / mark / aggregate := false
 > mark
 $ exists ran sub/ran
 $ absent sub/sub/ran
 $ delete ran sub/ran
 
 # the aggregation setting in a leaf shouldn't affect whether it can be run directly
-> set sub2 / Mark / aggregate := false
+> set sub2 / mark / aggregate := false
 > sub2/mark
 $ exists sub/sub/ran
 $ absent ran sub/ran

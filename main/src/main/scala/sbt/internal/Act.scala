@@ -18,13 +18,19 @@ import sbt.internal.util.Types.idFun
 import sbt.ProjectExtra.{ failure => _, * }
 import java.net.URI
 import sbt.internal.CommandStrings.{ MultiTaskCommand, ShowCommand, PrintCommand }
-import sbt.internal.util.{ AttributeEntry, AttributeKey, AttributeMap, IMap, Settings, Util }
+import sbt.internal.util.{
+  AttributeEntry,
+  AttributeKey,
+  AttributeMap,
+  IMap,
+  MessageOnlyException,
+  Settings,
+  Util,
+}
 import sbt.util.Show
 import scala.collection.mutable
 
-final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask, val separaters: Seq[String]):
-  def this(key: ScopedKey[_], mask: ScopeMask) = this(key, mask, Nil)
-
+final class ParsedKey(val key: ScopedKey[_], val mask: ScopeMask):
   override def equals(o: Any): Boolean =
     this.eq(o.asInstanceOf[AnyRef]) || (o match {
       case x: ParsedKey => (this.key == x.key) && (this.mask == x.mask)
@@ -46,6 +52,9 @@ object Act {
 
   private[sbt] val slashSeq: Seq[String] = Seq("/")
 
+  type KeysParser = Parser[Seq[ScopedKey[Any]]]
+  type KeysParserFilter = Parser[Seq[(ScopedKey[Any], Option[ProjectQuery])]]
+
   // this does not take aggregation into account
   def scopedKey(
       index: KeyIndex,
@@ -54,7 +63,7 @@ object Act {
       keyMap: Map[String, AttributeKey[_]],
       data: Settings[Scope]
   ): Parser[ScopedKey[Any]] =
-    scopedKeySelected(index, current, defaultConfigs, keyMap, data)
+    scopedKeySelected(index, current, defaultConfigs, keyMap, data, askProject = true)
       .map(_.key.asInstanceOf[ScopedKey[Any]])
 
   // the index should be an aggregated index for proper tab completion
@@ -69,7 +78,8 @@ object Act {
         current,
         defaultConfigs,
         structure.index.keyMap,
-        structure.data
+        structure.data,
+        askProject = true,
       )
     )
       yield Aggregation.aggregate(
@@ -78,47 +88,57 @@ object Act {
         structure.extra
       )
 
-  def scopedKeyAggregatedSep(
+  def scopedKeyAggregatedFilter(
       current: ProjectRef,
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       structure: BuildStructure
-  ): KeysParserSep =
-    for selected <- scopedKeySelected(
+  ): KeysParserFilter =
+    for
+      optQuery <- queryOption.?
+      selected <- scopedKeySelected(
         structure.index.aggregateKeyIndex,
         current,
         defaultConfigs,
         structure.index.keyMap,
-        structure.data
+        structure.data,
+        askProject = optQuery.isEmpty,
       )
     yield Aggregation
       .aggregate(selected.key, selected.mask, structure.extra)
-      .map(k => k.asInstanceOf[ScopedKey[Any]] -> selected.separaters)
+      .map(k => k.asInstanceOf[ScopedKey[Any]] -> optQuery)
+
+  private def queryOption: Parser[ProjectQuery] =
+    ProjectQuery.parser <~ spacedSlash
 
   def scopedKeySelected(
       index: KeyIndex,
       current: ProjectRef,
       defaultConfigs: Option[ResolvedReference] => Seq[String],
       keyMap: Map[String, AttributeKey[_]],
-      data: Settings[Scope]
+      data: Settings[Scope],
+      askProject: Boolean,
   ): Parser[ParsedKey] =
-    scopedKeyFull(index, current, defaultConfigs, keyMap).flatMap { choices =>
-      select(choices, data)(showRelativeKey2(current))
+    scopedKeyFull(index, current, defaultConfigs, keyMap, askProject = askProject).flatMap {
+      choices =>
+        select(choices, data)(showRelativeKey2(current))
     }
 
   def scopedKeyFull(
       index: KeyIndex,
       current: ProjectRef,
       defaultConfigs: Option[ResolvedReference] => Seq[String],
-      keyMap: Map[String, AttributeKey[_]]
+      keyMap: Map[String, AttributeKey[_]],
+      askProject: Boolean,
   ): Parser[Seq[Parser[ParsedKey]]] = {
-    val confParserCache
-        : mutable.Map[Option[sbt.ResolvedReference], Parser[(ParsedAxis[String], Seq[String])]] =
+    val confParserCache: mutable.Map[Option[sbt.ResolvedReference], Parser[ParsedAxis[String]]] =
       mutable.Map.empty
     def fullKey =
-      for {
-        rawProject <- optProjectRef(index, current)
+      for
+        rawProject <-
+          if askProject then optProjectRef(index, current)
+          else success(Omitted)
         proj = resolveProject(rawProject, current)
-        confPair <- confParserCache.getOrElseUpdate(
+        confAmb <- confParserCache.getOrElseUpdate(
           proj,
           configIdent(
             index.configs(proj),
@@ -126,9 +146,8 @@ object Act {
             index.fromConfigIdent(proj)
           )
         )
-        (confAmb, seps) = confPair
         partialMask = ScopeMask(rawProject.isExplicit, confAmb.isExplicit, false, false)
-      } yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask, seps)
+      yield taskKeyExtra(index, defaultConfigs, keyMap, proj, confAmb, partialMask)
 
     val globalIdent = token(GlobalIdent ~ spacedSlash) ^^^ ParsedGlobal
     def globalKey =
@@ -141,7 +160,6 @@ object Act {
         None,
         ParsedZero,
         ScopeMask(true, true, false, false),
-        Nil
       )
 
     globalKey | fullKey
@@ -154,20 +172,17 @@ object Act {
       proj: Option[ResolvedReference],
       confAmb: ParsedAxis[String],
       baseMask: ScopeMask,
-      baseSeps: Seq[String]
   ): Seq[Parser[ParsedKey]] =
     for {
       conf <- configs(confAmb, defaultConfigs, proj, index)
     } yield for {
-      taskPair <- taskAxis(index.tasks(proj, conf), keyMap)
-      (taskAmb, taskSeps) = taskPair
+      taskAmb <- taskAxis(index.tasks(proj, conf), keyMap)
       task = resolveTask(taskAmb)
       key <- key(index, proj, conf, task, keyMap)
       extra <- extraAxis(keyMap, IMap.empty)
     } yield {
       val mask = baseMask.copy(task = taskAmb.isExplicit, extra = true)
-      val seps = baseSeps ++ taskSeps
-      ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask, seps)
+      ParsedKey(makeScopedKey(proj, conf, task, extra, key), mask)
     }
 
   def makeScopedKey(
@@ -244,14 +259,12 @@ object Act {
       confs: Set[String],
       idents: Set[String],
       fromIdent: String => String
-  ): Parser[(ParsedAxis[String], Seq[String])] = {
+  ): Parser[ParsedAxis[String]] =
     val sep: Parser[Unit] = spacedSlash !!! "Expected '/'"
     token(
-      ((ZeroIdent ^^^ (ParsedZero -> slashSeq)) <~ sep)
-        | (value(examples(CapitalizedID, idents, "configuration ident").map(fromIdent))
-          .map(_ -> slashSeq) <~ sep)
-    ) ?? (Omitted -> Nil)
-  }
+      ((ZeroIdent ^^^ ParsedZero) <~ sep)
+        | (value(examples(CapitalizedID, idents, "configuration ident").map(fromIdent)) <~ sep)
+    ) ?? Omitted
 
   def configs(
       explicit: ParsedAxis[String],
@@ -335,7 +348,7 @@ object Act {
   def taskAxis(
       tasks: Set[AttributeKey[_]],
       allKnown: Map[String, AttributeKey[_]],
-  ): Parser[(ParsedAxis[AttributeKey[_]], Seq[String])] = {
+  ): Parser[ParsedAxis[AttributeKey[_]]] = {
     val taskSeq = tasks.toSeq
     def taskKeys(f: AttributeKey[_] => String): Seq[(String, AttributeKey[_])] =
       taskSeq.map(key => (f(key), key))
@@ -345,9 +358,8 @@ object Act {
     val keyP = filterStrings(examples(ID, suggested, "key"), valid.keySet, "key").map(valid)
 
     (token(
-      value(keyP).map(_ -> slashSeq)
-        | ZeroIdent ^^^ (ParsedZero -> slashSeq)
-    ) <~ spacedSlash) ?? (Omitted -> Nil)
+      value(keyP) | (ZeroIdent ^^^ ParsedZero)
+    ) <~ spacedSlash) ?? Omitted
   }
 
   def resolveTask(task: ParsedAxis[AttributeKey[_]]): Option[AttributeKey[_]] =
@@ -464,42 +476,59 @@ object Act {
 
   def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
 
-  private[this] def actParser0(state: State): Parser[() => State] = {
-    val extracted = Project extract state
+  private[this] def actParser0(state: State): Parser[() => State] =
+    val extracted = Project.extract(state)
     import extracted.{ showKey, structure }
-    import Aggregation.evaluatingParser
-    actionParser.flatMap { action =>
-      val akp = aggregatedKeyParserSep(extracted)
-      def evaluate(pairs: Seq[(ScopedKey[_], Seq[String])]): Parser[() => State] = {
-        val kvs = pairs.map(_._1)
-        val seps = pairs.headOption.map(_._2).getOrElse(Nil)
+    actionParser.flatMap: action =>
+      val akp = aggregatedKeyParserFilter(extracted)
+      // If the task name matches, but the query is empty, we should succeed the parser,
+      // but fail the task. Otherwise, the composed parser would think we made a typo.
+      def emptyResult: Parser[() => State] =
+        Parser.success(() => throw MessageOnlyException("query result is empty"))
+      def evaluate(kvs: Seq[ScopedKey[_]]): Parser[() => State] =
         val preparedPairs = anyKeyValues(structure, kvs)
-        val showConfig = if (action == PrintAction) {
-          Aggregation.ShowConfig(true, true, println, false)
-        } else {
-          Aggregation.defaultShow(state, showTasks = action == ShowAction)
-        }
-        evaluatingParser(state, showConfig)(preparedPairs) map { evaluate => () =>
-          {
-            val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
-            state.log.debug("Evaluating tasks: " + keyStrings)
-            evaluate()
-          }
-        }
-      }
-      action match {
-        case SingleAction => akp.flatMap(evaluate)
-        case ShowAction | PrintAction | MultiAction =>
-          rep1sep(akp, token(Space)) flatMap { pairs =>
-            val flat: mutable.ListBuffer[(ScopedKey[_], Seq[String])] = mutable.ListBuffer.empty
-            pairs foreach { xs =>
-              flat ++= xs
-            }
-            evaluate(flat.toList)
-          }
-      }
+        val showConfig = action match
+          case PrintAction =>
+            Aggregation.ShowConfig(
+              settingValues = true,
+              taskValues = true,
+              print = println,
+              success = false
+            )
+          case _ => Aggregation.defaultShow(state, showTasks = action == ShowAction)
+        Aggregation
+          .evaluatingParser(state, showConfig)(preparedPairs)
+          .map: evaluate =>
+            () =>
+              val keyStrings = preparedPairs.map(pp => showKey.show(pp.key)).mkString(", ")
+              state.log.debug("Evaluating tasks: " + keyStrings)
+              evaluate()
+      for
+        keys <-
+          action match
+            case SingleAction => akp
+            case ShowAction | PrintAction | MultiAction =>
+              for pairs <- rep1sep(akp, token(Space))
+              yield pairs.flatten
+        keys1 = applyQuery(keys, structure)
+        p <-
+          if keys.nonEmpty && keys1.isEmpty then emptyResult
+          else evaluate(keys1.map(_._1))
+      yield p
+  end actParser0
+
+  private def applyQuery(
+      pairs: Seq[(ScopedKey[_], Option[ProjectQuery])],
+      structure: BuildStructure,
+  ): Seq[(ScopedKey[_], Option[ProjectQuery])] =
+    pairs.filter {
+      case (_, None) => true
+      case (keys, Some(query)) =>
+        val f = query.buildQuery(structure)
+        keys.scope.project.toOption match
+          case Some(ref: ProjectRef) => f(ref)
+          case _                     => true
     }
-  }
 
   private[this] final class ActAction
   private[this] final val ShowAction, MultiAction, SingleAction, PrintAction = new ActAction
@@ -523,22 +552,19 @@ object Act {
       structure.data
     )
 
-  type KeysParser = Parser[Seq[ScopedKey[Any]]]
-  type KeysParserSep = Parser[Seq[(ScopedKey[Any], Seq[String])]]
-
   def aggregatedKeyParser(state: State): KeysParser = aggregatedKeyParser(Project extract state)
   def aggregatedKeyParser(extracted: Extracted): KeysParser =
     aggregatedKeyParser(extracted.structure, extracted.currentRef)
   def aggregatedKeyParser(structure: BuildStructure, currentRef: ProjectRef): KeysParser =
     scopedKeyAggregated(currentRef, structure.extra.configurationsForAxis, structure)
 
-  private[sbt] def aggregatedKeyParserSep(extracted: Extracted): KeysParserSep =
-    aggregatedKeyParserSep(extracted.structure, extracted.currentRef)
-  private[sbt] def aggregatedKeyParserSep(
+  private[sbt] def aggregatedKeyParserFilter(extracted: Extracted): KeysParserFilter =
+    aggregatedKeyParserFilter(extracted.structure, extracted.currentRef)
+  private[sbt] def aggregatedKeyParserFilter(
       structure: BuildStructure,
       currentRef: ProjectRef
-  ): KeysParserSep =
-    scopedKeyAggregatedSep(currentRef, structure.extra.configurationsForAxis, structure)
+  ): KeysParserFilter =
+    scopedKeyAggregatedFilter(currentRef, structure.extra.configurationsForAxis, structure)
 
   def keyValues[T](state: State)(keys: Seq[ScopedKey[T]]): Values[T] =
     keyValues(Project extract state)(keys)
