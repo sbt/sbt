@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.{ File, PrintWriter }
-import java.net.{ URI, URL }
+import java.net.URL
 import java.nio.file.{ Files, Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
@@ -719,8 +719,6 @@ object Defaults extends BuildCommon {
     },
     crossSbtVersions := Vector((pluginCrossBuild / sbtVersion).value),
     crossTarget := target.value,
-    cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
-    clean := clean.dependsOnTask(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
       val managed = managedScalaInstance.value
@@ -4872,79 +4870,6 @@ trait BuildExtra extends BuildCommon with DefExtra {
     val pkgd = packagedArtifacts := packagedArtifacts.value.updated(artLocal.value, taskLocal.value)
     Seq(artLocal := artifact.value, taskLocal := taskDef.value, art, pkgd)
   }
-
-  def externalIvySettings(
-      file: Initialize[File] = inBase("ivysettings.xml"),
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] =
-    externalIvySettingsURI(file(_.toURI), addMultiResolver)
-
-  def externalIvySettingsURL(
-      url: URL,
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] =
-    externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
-
-  def externalIvySettingsURI(
-      uri: Initialize[URI],
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] = {
-    val other = Def.task {
-      (
-        baseDirectory.value,
-        appConfiguration.value,
-        projectResolver.value,
-        updateOptions.value,
-        streams.value
-      )
-    }
-    ivyConfiguration := ((uri zipWith other) { case (u, otherTask) =>
-      otherTask map { case (base, app, pr, uo, s) =>
-        val extraResolvers = if (addMultiResolver) Vector(pr) else Vector.empty
-        ExternalIvyConfiguration()
-          .withLock(lock(app))
-          .withBaseDirectory(base)
-          .withLog(s.log)
-          .withUpdateOptions(uo)
-          .withUri(u)
-          .withExtraResolvers(extraResolvers)
-      }
-    }).value
-  }
-
-  private[this] def inBase(name: String): Initialize[File] = Def.setting {
-    baseDirectory.value / name
-  }
-
-  @deprecated(
-    "externalIvyFile is not supported by Coursier, and will be removed in the future",
-    since = "1.5.0"
-  )
-  def externalIvyFile(
-      file: Initialize[File] = inBase("ivy.xml"),
-      iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo
-  ): Setting[Task[ModuleSettings]] =
-    moduleSettings := IvyFileConfiguration(
-      ivyValidate.value,
-      iScala.value,
-      file.value,
-      managedScalaInstance.value
-    )
-
-  @deprecated(
-    "externalPom is not supported by Coursier, and will be removed in the future",
-    since = "1.5.0"
-  )
-  def externalPom(
-      file: Initialize[File] = inBase("pom.xml"),
-      iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo,
-  ): Setting[Task[ModuleSettings]] =
-    moduleSettings := PomConfiguration(
-      ivyValidate.value,
-      iScala.value,
-      file.value,
-      managedScalaInstance.value,
-    )
 
   def runInputTask(
       config: Configuration,
