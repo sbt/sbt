@@ -16,13 +16,7 @@ import java.nio.file.Files
 import lmcoursier.definitions.{ Configuration, Project }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import Def.Setting
-import sbt.Keys.{
-  csrProject,
-  csrPublications,
-  publishLocalConfiguration,
-  publishConfiguration,
-  useCoursier
-}
+import sbt.Keys.{ csrProject, csrPublications, publishLocalConfiguration, publishConfiguration }
 import sbt.ProjectExtra.*
 import sbt.librarymanagement.PublishConfiguration
 import scala.jdk.CollectionConverters.*
@@ -201,20 +195,18 @@ object IvyXml {
       shadedConfigOpt: Option[Configuration]
   ): Setting[Task[T]] =
     task := task.dependsOnTask {
-      Def.taskIf {
-        if useCoursier.value then
-          val currentProject = {
-            val proj = csrProject.value
-            val publications = csrPublications.value
-            proj.withPublications(publications)
-          }
-          IvyXml.writeFiles(
-            currentProject,
-            shadedConfigOpt,
-            sbt.Keys.ivySbt.value,
-            sbt.Keys.streams.value.log
-          )
-        else ()
+      Def.task {
+        val currentProject = {
+          val proj = csrProject.value
+          val publications = csrPublications.value
+          proj.withPublications(publications)
+        }
+        IvyXml.writeFiles(
+          currentProject,
+          shadedConfigOpt,
+          sbt.Keys.ivySbt.value,
+          sbt.Keys.streams.value.log
+        )
       }
     }.value
 

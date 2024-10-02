@@ -3,7 +3,6 @@ import xsbti.AppConfiguration
 ThisBuild / scalaVersion := "2.12.19"
 
 // TTL of Coursier is 24h
-ThisBuild / useCoursier := false
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def localCache =

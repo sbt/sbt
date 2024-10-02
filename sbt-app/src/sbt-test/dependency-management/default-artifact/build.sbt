@@ -1,5 +1,3 @@
-ThisBuild / useCoursier := false
-
 resolvers += Resolver.file("buggy", file("repo"))(
   Patterns(
     ivyPatterns = Vector("[organization]/[module]/[revision]/ivy.xml"),

@@ -1,7 +1,6 @@
-// ThisBuild / useCoursier := false
-ThisBuild / scalaVersion := "2.12.19"
-ThisBuild / organization := "org.example"
-ThisBuild / version := "0.1"
+scalaVersion := "2.12.19"
+organization := "org.example"
+version := "0.1"
 
 name := "blubber"
 libraryDependencies += "org.typelevel" %% "cats-effect" % "2.2.0"

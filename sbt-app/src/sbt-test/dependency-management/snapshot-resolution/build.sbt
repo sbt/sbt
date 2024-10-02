@@ -2,7 +2,6 @@ ThisBuild / organization := "com.example"
 ThisBuild / scalaVersion := "2.12.19"
 
 // TTL is 24h so we can't detect the change
-ThisBuild / useCoursier := false
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 def localCache =

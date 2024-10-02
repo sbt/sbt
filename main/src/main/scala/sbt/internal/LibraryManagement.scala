@@ -260,7 +260,6 @@ private[sbt] object LibraryManagement {
           Keys.TaskStreams,
           UpdateConfiguration,
           Option[Level.Value],
-          Boolean,
           Seq[ScopedKey[_]],
           ScopedKey[_],
           Option[FiniteDuration],
@@ -285,7 +284,6 @@ private[sbt] object LibraryManagement {
       Keys.streams,
       Keys.updateConfiguration.toTaskable,
       (Keys.update / Keys.logLevel).?.toTaskable,
-      Keys.useCoursier.toTaskable,
       Keys.executionRoots,
       Keys.resolvedScoped.toTaskable,
       Keys.forceUpdatePeriod.toTaskable,
@@ -310,7 +308,6 @@ private[sbt] object LibraryManagement {
             s,
             conf,
             maybeUpdateLevel,
-            csr,
             er,
             rs,
             fup,
@@ -332,7 +329,7 @@ private[sbt] object LibraryManagement {
         import Keys._
         val cacheDirectory = s.cacheDirectory
         val isRoot = er.contains(rs)
-        if csr then {
+        if true then {
           // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
           val shouldForce = isRoot || {
             fup match
