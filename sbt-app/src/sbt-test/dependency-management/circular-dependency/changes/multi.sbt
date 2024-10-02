@@ -1,4 +1,3 @@
-ThisBuild / useCoursier := false
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 lazy val check = taskKey[Unit]("Runs the check")

@@ -1,5 +1,4 @@
 import xsbti.AppConfiguration
-// ThisBuild / useCoursier := false
 ThisBuild / organization := "com.example"
 ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / versionScheme := Some("semver-spec")

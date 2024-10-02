@@ -260,7 +260,6 @@ private[sbt] object LibraryManagement {
           Keys.TaskStreams,
           UpdateConfiguration,
           Option[Level.Value],
-          Boolean,
           Seq[ScopedKey[_]],
           ScopedKey[_],
           Option[FiniteDuration],
@@ -285,7 +284,6 @@ private[sbt] object LibraryManagement {
       Keys.streams,
       Keys.updateConfiguration.toTaskable,
       (Keys.update / Keys.logLevel).?.toTaskable,
-      Keys.useCoursier.toTaskable,
       Keys.executionRoots,
       Keys.resolvedScoped.toTaskable,
       Keys.forceUpdatePeriod.toTaskable,
@@ -310,7 +308,6 @@ private[sbt] object LibraryManagement {
             s,
             conf,
             maybeUpdateLevel,
-            csr,
             er,
             rs,
             fup,
@@ -332,80 +329,56 @@ private[sbt] object LibraryManagement {
         import Keys._
         val cacheDirectory = s.cacheDirectory
         val isRoot = er.contains(rs)
-        if csr then {
-          // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
-          val shouldForce = isRoot || {
-            fup match
-              case None => false
-              case Some(period) =>
-                val fullUpdateOutput = cacheDirectory / "output"
-                val now = System.currentTimeMillis
-                val diff = now - fullUpdateOutput.lastModified()
-                val elapsedDuration = new FiniteDuration(
-                  diff,
-                  java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                fullUpdateOutput.exists() && elapsedDuration > period
-          }
-          val updateConf = {
-            import UpdateLogging.{ Full, DownloadOnly, Default }
-            val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match
-              case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
-              case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
-              case _                                  => conf
-            // logical clock is folded into UpdateConfiguration
-            conf1.withLogicalClock(LogicalClock(state0.hashCode))
-          }
-          cachedUpdate(
-            // LM API
-            lm = lm,
-            // Ivy-free ModuleDescriptor
-            module = im,
-            s.cacheStoreFactory.sub(ucn),
-            Reference.display(thisRef),
-            updateConf,
-            identity,
-            skip = sk,
-            force = shouldForce,
-            depsUpdated = tu.exists(!_.stats.cached),
-            uwConfig = uwConfig,
-            evictionLevel = Level.Debug,
-            versionSchemeOverrides = Nil,
-            assumedEvictionErrorLevel = Level.Debug,
-            assumedVersionScheme = VersionScheme.Always,
-            assumedVersionSchemeJava = VersionScheme.Always,
-            mavenStyle = mavenStyle,
-            compatWarning = cwo,
-            includeCallers = false,
-            includeDetails = false,
-            log = s.log
-          )
-        } else {
-          lazy val updateConfig = conf
-            .withMetadataDirectory(dcd)
-            .withArtifactFilter(
-              conf.artifactFilter.map(af => af.withInverted(!af.inverted))
-            )
-          val out = ivySbt0.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-          withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-            lm.updateClassifiers(
-              GetClassifiersConfiguration(
-                mod,
-                excludes.toVector,
-                updateConfig,
-                srcTypes.toVector,
-                docTypes.toVector
-              ),
-              uwConfig,
-              Vector.empty,
-              s.log
-            ) match
-              case Left(_)   => ???
-              case Right(ur) => ur
-          }
+        // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
+        val shouldForce = isRoot || {
+          fup match
+            case None => false
+            case Some(period) =>
+              val fullUpdateOutput = cacheDirectory / "output"
+              val now = System.currentTimeMillis
+              val diff = now - fullUpdateOutput.lastModified()
+              val elapsedDuration = new FiniteDuration(
+                diff,
+                java.util.concurrent.TimeUnit.MILLISECONDS
+              )
+              fullUpdateOutput.exists() && elapsedDuration > period
         }
+        val updateConf = {
+          import UpdateLogging.{ Full, DownloadOnly, Default }
+          val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match
+            case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
+            case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
+            case _                                  => conf
+          // logical clock is folded into UpdateConfiguration
+          conf1.withLogicalClock(LogicalClock(state0.hashCode))
+        }
+        cachedUpdate(
+          // LM API
+          lm = lm,
+          // Ivy-free ModuleDescriptor
+          module = im,
+          s.cacheStoreFactory.sub(ucn),
+          Reference.display(thisRef),
+          updateConf,
+          identity,
+          skip = sk,
+          force = shouldForce,
+          depsUpdated = tu.exists(!_.stats.cached),
+          uwConfig = uwConfig,
+          evictionLevel = Level.Debug,
+          versionSchemeOverrides = Nil,
+          assumedEvictionErrorLevel = Level.Debug,
+          assumedVersionScheme = VersionScheme.Always,
+          assumedVersionSchemeJava = VersionScheme.Always,
+          mavenStyle = mavenStyle,
+          compatWarning = cwo,
+          includeCallers = false,
+          includeDetails = false,
+          log = s.log
+        )
     }.tag(Tags.Update, Tags.Network)
 
+  // Used by Defaults.withExcludes
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
   ): UpdateReport = {

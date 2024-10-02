@@ -5,7 +5,6 @@ lazy val checkFull = taskKey[Unit]("")
 lazy val check = taskKey[Unit]("")
 lazy val checkArtifact = taskKey[Unit]("")
 
-ThisBuild / useCoursier := false
 ThisBuild / scalaVersion     := "2.12.19"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.example"

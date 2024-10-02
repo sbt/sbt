@@ -1,5 +1,3 @@
-ThisBuild / useCoursier := false
-
 lazy val root = (project in file(".")).
   settings(
     autoScalaLibrary := false,

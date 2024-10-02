@@ -1,16 +1,11 @@
 import xsbti.HashedVirtualFileRef
 
-// https://github.com/coursier/coursier/issues/1123
-ThisBuild / useCoursier := false
-
-Seq(
-  ThisBuild / autoAPIMappings := true,
-  ThisBuild / packageDoc / publishArtifact := false,
-  packageSrc / publishArtifact := false,
-  ThisBuild / organization := "org.example",
-  ThisBuild / scalaVersion := "3.2.1",
-  version := "1.0",
-)
+autoAPIMappings := true
+packageDoc / publishArtifact := false
+packageSrc / publishArtifact := false
+organization := "org.example"
+scalaVersion := "3.2.1"
+version := "1.0"
 
 val aPublishResolver = Def.setting {
   Resolver.file("a-resolver", (ThisBuild / baseDirectory).value / "a-repo")

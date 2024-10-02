@@ -1,3 +1,0 @@
--> use/compile
-$ copy-file changes/ivysettings.xml use/ivysettings.xml
-> use/compile

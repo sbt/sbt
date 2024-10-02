@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.{ File, PrintWriter }
-import java.net.{ URI, URL }
+import java.net.URL
 import java.nio.file.{ Files, Paths, Path => NioPath }
 import java.util.Optional
 import java.util.concurrent.TimeUnit
@@ -259,7 +259,6 @@ object Defaults extends BuildCommon {
       exportJars :== true,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
-      useCoursier :== SysProp.defaultUseCoursier,
       retrieveManaged :== false,
       retrieveManagedSync :== false,
       configurationsToRetrieve :== None,
@@ -303,10 +302,7 @@ object Defaults extends BuildCommon {
       csrSameVersions := Seq(
         ScalaArtifacts.Artifacts.map(a => InclExclRule(scalaOrganization.value, a)).toSet
       ),
-      csrCacheDirectory := {
-        if (useCoursier.value) LMCoursier.defaultCacheLocation
-        else Classpaths.dummyCoursierDirectory(appConfiguration.value)
-      }
+      csrCacheDirectory := LMCoursier.defaultCacheLocation,
     )
 
   /** Core non-plugin settings for sbt builds.  These *must* be on every build or the sbt engine will fail to run at all. */
@@ -723,8 +719,6 @@ object Defaults extends BuildCommon {
     },
     crossSbtVersions := Vector((pluginCrossBuild / sbtVersion).value),
     crossTarget := target.value,
-    cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
-    clean := clean.dependsOnTask(cleanIvy).value,
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
       val managed = managedScalaInstance.value
@@ -2879,9 +2873,8 @@ object Defaults extends BuildCommon {
     )
 
   def dependencyResolutionTask: Def.Initialize[Task[DependencyResolution]] =
-    Def.taskIf {
-      if (useCoursier.value) CoursierDependencyResolution(csrConfiguration.value)
-      else IvyDependencyResolution(ivyConfiguration.value)
+    Def.task {
+      CoursierDependencyResolution(csrConfiguration.value)
     }
 
   def templateRunLocalInputTask(
@@ -3380,16 +3373,14 @@ object Classpaths {
       val ac = appConfiguration.value
       val ip = ivyPaths.value
       // if ivyPaths is customized, create coursier-cache directory in it
-      if (useCoursier.value) {
-        val defaultIvyCache = bootIvyHome(ac)
-        if (old != LMCoursier.defaultCacheLocation) old
-        else if (ip.ivyHome == defaultIvyCache) old
-        else
-          ip.ivyHome match {
-            case Some(home) => new File(home) / "coursier-cache"
-            case _          => old
-          }
-      } else Classpaths.dummyCoursierDirectory(ac)
+      val defaultIvyCache = bootIvyHome(ac)
+      if (old != LMCoursier.defaultCacheLocation) old
+      else if (ip.ivyHome == defaultIvyCache) old
+      else
+        ip.ivyHome match {
+          case Some(home) => new File(home) / "coursier-cache"
+          case _          => old
+        }
     },
     dependencyCacheDirectory := {
       val st = state.value
@@ -3497,9 +3488,7 @@ object Classpaths {
             )
           )
 
-      val use = useCoursier.value
-      if (use) confs ++ extraSources.toSeq ++ extraDocs.toSeq
-      else confs
+      confs ++ extraSources.toSeq ++ extraDocs.toSeq
     },
     moduleSettings := moduleSettings0.value,
     makePomConfiguration := {
@@ -3895,18 +3884,6 @@ object Classpaths {
           csrResolvers :=
             CoursierRepositoriesTasks.coursierResolversTask(scalaCompilerBridgeResolvers).value,
           externalResolvers := scalaCompilerBridgeResolvers.value,
-          ivyConfiguration := InlineIvyConfiguration(
-            lock = Option(lock(appConfiguration.value)),
-            log = Option(streams.value.log),
-            updateOptions = UpdateOptions(),
-            paths = Option(ivyPaths.value),
-            resolvers = scalaCompilerBridgeResolvers.value.toVector,
-            otherResolvers = Vector.empty,
-            moduleConfigurations = Vector.empty,
-            checksums = checksums.value.toVector,
-            managedChecksums = false,
-            resolutionCacheDir = Some(target.value / "bridge-resolution-cache"),
-          )
         )
       ) ++ Seq(
         bootIvyConfiguration := (updateSbtClassifiers / ivyConfiguration).value,
@@ -4893,79 +4870,6 @@ trait BuildExtra extends BuildCommon with DefExtra {
     val pkgd = packagedArtifacts := packagedArtifacts.value.updated(artLocal.value, taskLocal.value)
     Seq(artLocal := artifact.value, taskLocal := taskDef.value, art, pkgd)
   }
-
-  def externalIvySettings(
-      file: Initialize[File] = inBase("ivysettings.xml"),
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] =
-    externalIvySettingsURI(file(_.toURI), addMultiResolver)
-
-  def externalIvySettingsURL(
-      url: URL,
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] =
-    externalIvySettingsURI(Def.value(url.toURI), addMultiResolver)
-
-  def externalIvySettingsURI(
-      uri: Initialize[URI],
-      addMultiResolver: Boolean = true
-  ): Setting[Task[IvyConfiguration]] = {
-    val other = Def.task {
-      (
-        baseDirectory.value,
-        appConfiguration.value,
-        projectResolver.value,
-        updateOptions.value,
-        streams.value
-      )
-    }
-    ivyConfiguration := ((uri zipWith other) { case (u, otherTask) =>
-      otherTask map { case (base, app, pr, uo, s) =>
-        val extraResolvers = if (addMultiResolver) Vector(pr) else Vector.empty
-        ExternalIvyConfiguration()
-          .withLock(lock(app))
-          .withBaseDirectory(base)
-          .withLog(s.log)
-          .withUpdateOptions(uo)
-          .withUri(u)
-          .withExtraResolvers(extraResolvers)
-      }
-    }).value
-  }
-
-  private[this] def inBase(name: String): Initialize[File] = Def.setting {
-    baseDirectory.value / name
-  }
-
-  @deprecated(
-    "externalIvyFile is not supported by Coursier, and will be removed in the future",
-    since = "1.5.0"
-  )
-  def externalIvyFile(
-      file: Initialize[File] = inBase("ivy.xml"),
-      iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo
-  ): Setting[Task[ModuleSettings]] =
-    moduleSettings := IvyFileConfiguration(
-      ivyValidate.value,
-      iScala.value,
-      file.value,
-      managedScalaInstance.value
-    )
-
-  @deprecated(
-    "externalPom is not supported by Coursier, and will be removed in the future",
-    since = "1.5.0"
-  )
-  def externalPom(
-      file: Initialize[File] = inBase("pom.xml"),
-      iScala: Initialize[Option[ScalaModuleInfo]] = scalaModuleInfo,
-  ): Setting[Task[ModuleSettings]] =
-    moduleSettings := PomConfiguration(
-      ivyValidate.value,
-      iScala.value,
-      file.value,
-      managedScalaInstance.value,
-    )
 
   def runInputTask(
       config: Configuration,

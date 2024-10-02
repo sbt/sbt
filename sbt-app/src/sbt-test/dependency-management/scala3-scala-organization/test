@@ -1,3 +1,0 @@
-# this test is pending because the IvyDependencyResolution is not yet able
-# to override the Scala 3 artifacts
-> checkDependencies
