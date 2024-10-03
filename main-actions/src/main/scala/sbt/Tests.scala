@@ -335,7 +335,7 @@ object Tests {
     )
   }
 
-  private[this] def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] = {
+  private def distinctBy[T, K](in: Seq[T])(f: T => K): Seq[T] = {
     val seen = new collection.mutable.HashSet[K]
     in.filter(t => seen.add(f(t)))
   }

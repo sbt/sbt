@@ -58,8 +58,8 @@ object LoggerContext {
       }
       def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
     }
-    private[this] val loggers = new ConcurrentHashMap[String, Log]
-    private[this] val closed = new AtomicBoolean(false)
+    private val loggers = new ConcurrentHashMap[String, Log]
+    private val closed = new AtomicBoolean(false)
     override def logger(
         name: String,
         channelName: Option[String],

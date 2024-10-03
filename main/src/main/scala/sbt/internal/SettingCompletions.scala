@@ -86,7 +86,7 @@ private[sbt] object SettingCompletions {
     setResult(newSession, r, append)
   }
 
-  private[this] def setResult(
+  private def setResult(
       session: SessionSettings,
       r: Relation[ScopedKey[_], ScopedKey[_]],
       redefined: Seq[Setting[_]],
@@ -97,7 +97,7 @@ private[sbt] object SettingCompletions {
     new SetResult(session, summary(true), summary(false))
   }
 
-  private[this] def setSummary(
+  private def setSummary(
       redefined: Set[ScopedKey[_]],
       affected: Set[ScopedKey[_]],
       verbose: Boolean,
@@ -206,7 +206,7 @@ private[sbt] object SettingCompletions {
     scope(allScopes, definedScopes, context)
   }
 
-  private[this] def scope(
+  private def scope(
       allScopes: Seq[Scope],
       definedScopes: Seq[Scope],
       context: ResolvedProject,
@@ -258,10 +258,10 @@ private[sbt] object SettingCompletions {
     token(Space) ~> token(optionallyQuoted(identifier), completions)
   }
 
-  private[this] def fixedCompletions(f: (String, Int) => Set[Completion]): TokenCompletions =
+  private def fixedCompletions(f: (String, Int) => Set[Completion]): TokenCompletions =
     TokenCompletions.fixed((s, l) => Completions(f(s, l)))
 
-  private[this] def scalaID[T](keyMap: Map[String, T], label: String): Parser[T] = {
+  private def scalaID[T](keyMap: Map[String, T], label: String): Parser[T] = {
     val identifier = Act.filterStrings(ScalaID, keyMap.keySet, label) map keyMap
     optionallyQuoted(identifier)
   }

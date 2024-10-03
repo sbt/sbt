@@ -75,7 +75,7 @@ object PluginManagement {
     ModuleID(m.organization, m.name, m.revision).withCrossVersion(m.crossVersion)
 
   final class PluginClassLoader(p: ClassLoader) extends URLClassLoader(Array(), p) {
-    private[this] val urlSet =
+    private val urlSet =
       new collection.mutable.HashSet[URI] // remember: don't use hashCode/equals on URL
     def add(urls: Seq[URL]): Unit = synchronized {
       for (url <- urls)

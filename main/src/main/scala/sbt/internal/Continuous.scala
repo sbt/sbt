@@ -140,7 +140,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       10000
     )
 
-  private[this] val continuousParser: State => Parser[(Int, Seq[String])] = {
+  private val continuousParser: State => Parser[(Int, Seq[String])] = {
     def toInt(s: String): Int = Try(s.toInt).getOrElse(0)
 
     // This allows us to re-enter the watch with the previous count.
@@ -215,7 +215,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   }
 
   // This is defined so we can assign a task key to a command to parse the WatchSettings.
-  private[this] val globalWatchSettingKey =
+  private val globalWatchSettingKey =
     taskKey[Unit]("Internal task key. Not actually used.").withRank(KeyRanks.Invisible)
   private def parseCommand(command: String, state: State): Seq[ScopedKey[_]] = {
     // Collect all of the scoped keys that are used to delegate the multi commands. These are
@@ -456,12 +456,12 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         override def debug(msg: Any): Unit = l.debug(msg.toString)
       }
 
-      private[this] val observers: Observers[Event] = new Observers
-      private[this] val repo = getRepository(state)
-      private[this] val handles = new java.util.ArrayList[AutoCloseable]
+      private val observers: Observers[Event] = new Observers
+      private val repo = getRepository(state)
+      private val handles = new java.util.ArrayList[AutoCloseable]
       handles.add(repo.addObserver(observers))
-      private[this] val eventMonitorObservers = new Observers[Event]
-      private[this] val configHandle: AutoCloseable =
+      private val eventMonitorObservers = new Observers[Event]
+      private val configHandle: AutoCloseable =
         observers.addObserver { e =>
           // We only want to create one event per actual source file event. It doesn't matter
           // which of the config inputs triggers the event because they all will be used in
@@ -486,8 +486,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         }
       }
 
-      private[this] val antiEntropyWindow = configs.map(_.watchSettings.antiEntropy).max
-      private[this] val monitor = FileEventMonitor.antiEntropy(
+      private val antiEntropyWindow = configs.map(_.watchSettings.antiEntropy).max
+      private val monitor = FileEventMonitor.antiEntropy(
         eventMonitorObservers,
         antiEntropyWindow,
         logger,
@@ -495,7 +495,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
         retentionPeriod
       )
 
-      private[this] val antiEntropyPollPeriod =
+      private val antiEntropyPollPeriod =
         configs.map(_.watchSettings.antiEntropyPollPeriod).max
       override def poll(duration: Duration, filter: Event => Boolean): Seq[Event] = {
         monitor.poll(duration, filter) match {
@@ -664,7 +664,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
     )
   }
 
-  private[this] class WatchExecutor(name: String) extends AutoCloseable {
+  private class WatchExecutor(name: String) extends AutoCloseable {
     val id = new AtomicInteger(0)
     val threads = new java.util.Vector[Thread]
     val closed = new AtomicBoolean(false)
@@ -1202,7 +1202,7 @@ private[sbt] object ContinuousCommands {
       "",
       Int.MaxValue
     )
-  private[this] val watchStates =
+  private val watchStates =
     AttributeKey[Map[String, ContinuousState]]("sbt-watch-states", Int.MaxValue)
   private[sbt] val runWatch = networkExecPrefix + "runWatch"
   private[sbt] val preWatch = networkExecPrefix + "preWatch"
@@ -1210,13 +1210,13 @@ private[sbt] object ContinuousCommands {
   private[sbt] val stopWatch = networkExecPrefix + "stopWatch"
   private[sbt] val failWatch = networkExecPrefix + "failWatch"
   private[sbt] val waitWatch = networkExecPrefix + "waitWatch"
-  private[this] def noComplete[T](p: Parser[T]): Parser[T] = p.examples()
-  private[this] val space = noComplete(Space)
-  private[this] def cmdParser(s: String): Parser[String] = noComplete(matched(s)) <~ space
-  private[this] def channelParser: Parser[String] =
+  private def noComplete[T](p: Parser[T]): Parser[T] = p.examples()
+  private val space = noComplete(Space)
+  private def cmdParser(s: String): Parser[String] = noComplete(matched(s)) <~ space
+  private def channelParser: Parser[String] =
     noComplete(matched(charClass(c => c.isLetterOrDigit || c == '-').+))
 
-  private[this] val stashedRepo = AttributeKey[FileTreeRepository[FileAttributes]](
+  private val stashedRepo = AttributeKey[FileTreeRepository[FileAttributes]](
     "stashed-file-tree-repository",
     "",
     Int.MaxValue
@@ -1301,7 +1301,7 @@ private[sbt] object ContinuousCommands {
           throw new IllegalStateException(msg)
       }
     }
-  private[this] def watchCommand(
+  private def watchCommand(
       name: String
   )(updateState: (String, State) => State): Command =
     Command.arb { state =>
@@ -1322,7 +1322,7 @@ private[sbt] object ContinuousCommands {
     state.get(watchStates).exists(_.contains(channel.name))
   private[sbt] def isPending(state: State, channel: CommandChannel): Boolean =
     state.get(watchStates).exists(_.get(channel.name).exists(_.pending))
-  private[this] class WatchUITask(
+  private class WatchUITask(
       override private[sbt] val channel: CommandChannel,
       cs: ContinuousState,
       state: State
@@ -1363,7 +1363,7 @@ private[sbt] object ContinuousCommands {
     }
   }
   @inline
-  private[this] def watchState(state: State, channel: String): ContinuousState =
+  private def watchState(state: State, channel: String): ContinuousState =
     state.get(watchStates).flatMap(_.get(channel)) match {
       case None    => throw new IllegalStateException(s"no watch state for $channel")
       case Some(s) => s
@@ -1386,7 +1386,7 @@ private[sbt] object ContinuousCommands {
     }
     cs.afterCommand(postState)
   }
-  private[this] val exitWatchShared = (error: Boolean) =>
+  private val exitWatchShared = (error: Boolean) =>
     (channel: String, state: State) =>
       state.get(watchStates).flatMap(_.get(channel)) match {
         case Some(cs) =>
@@ -1415,9 +1415,9 @@ private[sbt] object ContinuousCommands {
    * Creates a FileTreeRepository where it is safe to call close without inadvertently cancelling
    * still active watches.
    */
-  private[this] def localRepo[T](r: FileTreeRepository[T]): FileTreeRepository[T] =
+  private def localRepo[T](r: FileTreeRepository[T]): FileTreeRepository[T] =
     new FileTreeRepository[T] {
-      private[this] val closeables = ConcurrentHashMap.newKeySet[AutoCloseable]
+      private val closeables = ConcurrentHashMap.newKeySet[AutoCloseable]
       override def addObserver(observer: Observer[FileEvent[T]]): AutoCloseable = {
         val ac = r.addObserver(observer)
         val safeCloseable: AutoCloseable = () =>

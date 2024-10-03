@@ -183,7 +183,7 @@ object ScriptedPlugin extends AutoPlugin {
       )
     }
 
-  private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
+  private def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
     val converter = Keys.fileConverter.value
     PathFinder(
       Classpaths

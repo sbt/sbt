@@ -395,7 +395,7 @@ object Scope:
       .toMap
     new DelegateIndex0(pDelegates)
   }
-  private[this] def delegateIndex(ref: ProjectRef, confs: Seq[ConfigKey])(
+  private def delegateIndex(ref: ProjectRef, confs: Seq[ConfigKey])(
       projectInherit: ProjectRef => Seq[ProjectRef],
       configInherit: (ResolvedReference, ConfigKey) => Seq[ConfigKey]
   ): ProjectDelegates = {

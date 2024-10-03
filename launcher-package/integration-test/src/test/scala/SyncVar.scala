@@ -2,8 +2,8 @@ package sbt.internal
 
 // minimal copy of scala.concurrent.SyncVar since that version deprecated put and unset
 private[sbt] final class SyncVar[A] {
-  private[this] var isDefined: Boolean = false
-  private[this] var value: Option[A] = None
+  private var isDefined: Boolean = false
+  private var value: Option[A] = None
 
   /** Waits until a value is set and then gets it.  Does not clear the value */
   def get: A = synchronized {

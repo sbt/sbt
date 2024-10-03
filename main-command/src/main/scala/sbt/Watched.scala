@@ -130,7 +130,7 @@ object Watched {
   }.label("Watched.projectOnWatchMessage")
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
-  private[this] class AWatched extends Watched
+  private class AWatched extends Watched
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
   def multi(base: Watched, paths: Seq[Watched]): Watched =

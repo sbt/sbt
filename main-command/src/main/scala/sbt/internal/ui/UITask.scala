@@ -25,11 +25,11 @@ import scala.annotation.tailrec
 private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] val channel: CommandChannel
   private[sbt] def reader: UITask.Reader
-  private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
+  private final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommand(cmd)
   }
-  private[this] val isStopped = new AtomicBoolean(false)
+  private val isStopped = new AtomicBoolean(false)
   override def run(): Unit = {
     @tailrec def impl(): Unit = if (!isStopped.get) {
       val res = reader.readLine()
@@ -94,7 +94,7 @@ private[sbt] object UITask {
       override def close(): Unit = closed.set(true)
     }
   }
-  private[this] def history(s: State): Option[File] =
+  private def history(s: State): Option[File] =
     s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
     s.get(sbt.BasicKeys.shellPrompt) match {

@@ -23,21 +23,21 @@ private[sbt] object SizeParser {
   private def parseLong(s: String): Parser[Either[Double, Long]] =
     try Parser.success(Right(java.lang.Long.valueOf(s)))
     catch { case _: NumberFormatException => Parser.failure(s"Couldn't parse $s as double.") }
-  private[this] val digit = charClass(_.isDigit, "digit")
-  private[this] val numberParser: Parser[Either[Double, Long]] =
+  private val digit = charClass(_.isDigit, "digit")
+  private val numberParser: Parser[Either[Double, Long]] =
     (digit.+ ~ ('.'.examples() ~> digit.+).?).flatMap {
       case (leading, Some(decimalPart)) =>
         parseDouble(s"${leading.mkString}.${decimalPart.mkString}")
       case (leading, _) => parseLong(leading.mkString)
     }
-  private[this] val unitParser: Parser[SizeUnit] =
+  private val unitParser: Parser[SizeUnit] =
     token("b" | "B" | "g" | "G" | "k" | "K" | "m" | "M").map {
       case "b" | "B" => Bytes
       case "g" | "G" => GigaBytes
       case "k" | "K" => KiloBytes
       case "m" | "M" => MegaBytes
     }
-  private[this] def multiply(left: Either[Double, Long], right: Long): Long = left match {
+  private def multiply(left: Either[Double, Long], right: Long): Long = left match {
     case Left(d)  => (d * right).toLong
     case Right(l) => l * right
   }

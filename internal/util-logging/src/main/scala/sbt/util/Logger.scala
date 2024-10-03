@@ -80,7 +80,7 @@ object Logger {
     case _         => wrapXLogger(lg)
   }
 
-  private[this] def wrapXLogger(lg: xLogger): Logger = new Logger {
+  private def wrapXLogger(lg: xLogger): Logger = new Logger {
     import InterfaceUtil.toSupplier
     override def debug(msg: Supplier[String]): Unit = lg.debug(msg)
     override def warn(msg: Supplier[String]): Unit = lg.warn(msg)

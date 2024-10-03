@@ -22,8 +22,8 @@ class LoggerWriter(
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)
 
-  private[this] val buffer = new StringBuilder
-  private[this] val lines = new collection.mutable.ListBuffer[String]
+  private val buffer = new StringBuilder
+  private val lines = new collection.mutable.ListBuffer[String]
 
   override def close() = flush()
 
@@ -48,7 +48,7 @@ class LoggerWriter(
       process()
     }
 
-  private[this] def process(): Unit = {
+  private def process(): Unit = {
     val i = buffer.indexOf(nl)
     if (i >= 0) {
       log(buffer.substring(0, i))
@@ -57,7 +57,7 @@ class LoggerWriter(
     }
   }
 
-  private[this] def log(s: String): Unit = unbufferedLevel match {
+  private def log(s: String): Unit = unbufferedLevel match {
     case None =>
       lines += s; ()
     case Some(level) => delegate.log(level, s)

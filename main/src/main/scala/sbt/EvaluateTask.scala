@@ -133,7 +133,7 @@ object EvaluateTaskConfig {
       minForcegcInterval
     )
 
-  private[this] case class DefaultEvaluateTaskConfig(
+  private case class DefaultEvaluateTaskConfig(
       restrictions: Seq[Tags.Rule],
       checkCycles: Boolean,
       progressReporter: ExecuteProgress,
@@ -423,7 +423,7 @@ object EvaluateTask {
     }
   }
 
-  private[this] def contextDisplay(state: State, highlight: Boolean) =
+  private def contextDisplay(state: State, highlight: Boolean) =
     Project.showContextKey(state, if (highlight) Some(RED) else None)
 
   def suppressedMessage(key: ScopedKey[_])(implicit display: Show[ScopedKey[_]]): String =
@@ -563,7 +563,7 @@ object EvaluateTask {
     }
   }
 
-  private[this] def storeValuesForPrevious(
+  private def storeValuesForPrevious(
       results: RMap[TaskId, Result],
       state: State,
       streams: Streams

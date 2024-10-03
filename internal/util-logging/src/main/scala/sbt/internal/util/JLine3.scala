@@ -29,9 +29,9 @@ import java.util.concurrent.LinkedBlockingQueue
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
 
-  private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
+  private val forceWindowsJansiHolder = new AtomicBoolean(false)
   private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
-  private[this] def windowsJansi(): org.jline.terminal.Terminal = {
+  private def windowsJansi(): org.jline.terminal.Terminal = {
     val provider = new JansiTerminalProvider
     val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
     provider.winSysTerminal(
@@ -95,7 +95,7 @@ private[sbt] object JLine3 {
     }
     res
   }
-  private[this] def wrapTerminal(term: Terminal): JTerminal = {
+  private def wrapTerminal(term: Terminal): JTerminal = {
     new AbstractTerminal(
       term.name,
       "nocapabilities",
@@ -225,7 +225,7 @@ private[sbt] object JLine3 {
   }
   // We need to set the ENABLE_PROCESS_INPUT flag for ctrl+c to be treated as a signal in windows
   // https://docs.microsoft.com/en-us/windows/console/setconsolemode
-  private[this] val ENABLE_PROCESS_INPUT = 1
+  private val ENABLE_PROCESS_INPUT = 1
   private[util] def setEnableProcessInput(): Unit = if (Util.isWindows) {
     WindowsSupport.setConsoleMode(WindowsSupport.getConsoleMode | ENABLE_PROCESS_INPUT)
   }
@@ -274,15 +274,15 @@ private[sbt] object JLine3 {
     )
     result.asScala.toMap
   }
-  private[this] val iflagMap: Map[String, InputFlag] =
+  private val iflagMap: Map[String, InputFlag] =
     InputFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val oflagMap: Map[String, Attributes.OutputFlag] =
+  private val oflagMap: Map[String, Attributes.OutputFlag] =
     Attributes.OutputFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val cflagMap: Map[String, Attributes.ControlFlag] =
+  private val cflagMap: Map[String, Attributes.ControlFlag] =
     Attributes.ControlFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val lflagMap: Map[String, LocalFlag] =
+  private val lflagMap: Map[String, LocalFlag] =
     LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val charMap: Map[String, Attributes.ControlChar] =
+  private val charMap: Map[String, Attributes.ControlChar] =
     Attributes.ControlChar.values().map(f => f.name.toLowerCase -> f).toMap
   private[sbt] def setMode(term: Terminal, canonical: Boolean, echo: Boolean): Unit = {
     val prev = attributesFromMap(term.getAttributes)

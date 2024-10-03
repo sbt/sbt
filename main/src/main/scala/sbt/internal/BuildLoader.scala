@@ -62,7 +62,7 @@ final class MultiHandler[S, T](
       }
     }
 
-  private[this] def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
+  private def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
     log.warn(baseMessage)
     log.debug("Non-root build resolvers defined in:")
     log.debug(matching.map(_._1).mkString("\n\t"))
@@ -233,7 +233,7 @@ final class BuildLoader(
     val mgmt = config.pluginManagement
     copyWithNewPM(mgmt.copy(overrides = mgmt.overrides ++ overrides))
   }
-  private[this] def copyWithNewPM(newpm: PluginManagement): BuildLoader = {
+  private def copyWithNewPM(newpm: PluginManagement): BuildLoader = {
     val newConfig = config.copy(pluginManagement = newpm)
     new BuildLoader(fail, state, newConfig, resolvers, builders, transformer, full, transformAll)
   }

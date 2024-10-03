@@ -73,7 +73,7 @@ $HelpCommand <regular expression>
     Help(brief, detailed)
   }
 
-  private[this] def logLevelDetail(level: Level.Value): String =
+  private def logLevelDetail(level: Level.Value): String =
     s"""$level
 
   Sets the global logging level to $level.

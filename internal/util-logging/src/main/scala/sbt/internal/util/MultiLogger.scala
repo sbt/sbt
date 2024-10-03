@@ -16,7 +16,7 @@ import scala.annotation.nowarn
 class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   @deprecated("No longer used.", "1.0.0")
   override lazy val ansiCodesSupported = delegates exists supported
-  @nowarn private[this] def supported = (_: AbstractLogger).ansiCodesSupported
+  @nowarn private def supported = (_: AbstractLogger).ansiCodesSupported
 
   override def setLevel(newLevel: Level.Value): Unit = {
     super.setLevel(newLevel)
@@ -41,7 +41,7 @@ class MultiLogger(delegates: List[AbstractLogger]) extends BasicLogger {
   def control(event: ControlEvent.Value, message: => String): Unit =
     delegates.foreach(_.control(event, message))
 
-  private[this] def dispatch(event: LogEvent): Unit = {
+  private def dispatch(event: LogEvent): Unit = {
     for (d <- delegates) {
       d.log(event)
     }

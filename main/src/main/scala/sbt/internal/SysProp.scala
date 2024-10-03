@@ -202,8 +202,8 @@ object SysProp {
 
   def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
 
-  private[this] def file(value: String): File = new File(value)
-  private[this] def home: File = file(sys.props("user.home"))
+  private def file(value: String): File = new File(value)
+  private def home: File = file(sys.props("user.home"))
 
   /**
    * Operating system specific cache directory, similar to Coursier cache.
@@ -253,11 +253,11 @@ object SysProp {
       runtimeDirectory.resolve("ipcsocket").toString
     )
   }
-  private[this] lazy val getOrUpdateSwovalTmpDir: String => String =
+  private lazy val getOrUpdateSwovalTmpDir: String => String =
     getOrUpdateSysProp("swoval.tmpdir")(_)
-  private[this] lazy val getOrUpdateIpcSocketTmpDir: String => String =
+  private lazy val getOrUpdateIpcSocketTmpDir: String => String =
     getOrUpdateSysProp("sbt.ipcsocket.tmpdir")(_)
-  private[this] def getOrUpdateSysProp(key: String)(value: String): String = {
+  private def getOrUpdateSysProp(key: String)(value: String): String = {
     val newVal = sys.props.getOrElse(key, value)
     sys.props += (key -> newVal)
     newVal
@@ -271,7 +271,7 @@ object SysProp {
    * A deterministic hash is appended in the directory name as "/tmp/.sbt1234ABCD/"
    * to avoid collision between multiple users in a shared server environment.
    */
-  private[this] def runtimeDirectory: Path = {
+  private def runtimeDirectory: Path = {
     val hashValue =
       java.lang.Long.toHexString(HashUtil.farmHash(home.toString.getBytes("UTF-8")))
     val halfhash = hashValue.take(8)

@@ -47,21 +47,21 @@ import sbt.protocol.{
 import sbt.protocol.codec.JsonProtocol._
 
 object VirtualTerminal {
-  private[this] val pendingTerminalProperties =
+  private val pendingTerminalProperties =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalPropertiesResponse]]()
-  private[this] val pendingTerminalCapabilities =
+  private val pendingTerminalCapabilities =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalCapabilitiesResponse]]
-  private[this] val pendingTerminalAttributes =
+  private val pendingTerminalAttributes =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalAttributesResponse]]
-  private[this] val pendingTerminalSetAttributes =
+  private val pendingTerminalSetAttributes =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalSetSize =
+  private val pendingTerminalSetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalGetSize =
+  private val pendingTerminalGetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalGetSizeResponse]]
-  private[this] val pendingTerminalSetEcho =
+  private val pendingTerminalSetEcho =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalSetRawMode =
+  private val pendingTerminalSetRawMode =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[sbt] def sendTerminalPropertiesQuery(
       channelName: String,

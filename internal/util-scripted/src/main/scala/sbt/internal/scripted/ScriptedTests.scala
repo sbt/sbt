@@ -210,7 +210,7 @@ final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log:
       listTests(group).map(ScriptedTest(groupName, _))
     }
   }
-  private[this] def listTests(group: File): Seq[String] = {
+  private def listTests(group: File): Seq[String] = {
     val groupName = group.getName
     val allTests = list(group, filter).sortBy(_.getName)
     if (allTests.isEmpty) {

@@ -100,7 +100,7 @@ object FileStamp {
       case 0 => None
       case l => Some(LastModified(l))
     }
-  private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.toString)
+  private class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.toString)
   private[sbt] sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
   private[sbt] final case class LastModified private[sbt] (time: Long) extends FileStamp
   private[sbt] final case class Error(exception: IOException) extends FileStamp
@@ -253,7 +253,7 @@ object FileStamp {
   }
 
   private[sbt] class Cache {
-    private[this] val underlying = new ConcurrentHashMap[Path, Either[FileStamp, FileStamp]]
+    private val underlying = new ConcurrentHashMap[Path, Either[FileStamp, FileStamp]]
 
     /**
      * Invalidate the cache entry, but don't re-stamp the file until it's actually used

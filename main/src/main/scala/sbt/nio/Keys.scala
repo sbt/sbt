@@ -78,7 +78,7 @@ object Keys {
   val watchDeletionQuarantinePeriod = settingKey[FiniteDuration](
     "Period for which deletion events will be quarantined. This is to prevent spurious builds when a file is updated with a rename which manifests as a file deletion followed by a file creation. The higher this value is set, the longer the delay will be between a file deletion and a build trigger but the less likely it is for a spurious trigger."
   ).withRank(DSetting)
-  private[this] val forceTriggerOnAnyChangeMessage =
+  private val forceTriggerOnAnyChangeMessage =
     "Force the watch process to rerun the current task(s) if any relevant source change is " +
       "detected regardless of whether or not the underlying file has actually changed."
 
@@ -182,7 +182,7 @@ object Keys {
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
 
-  private[this] val hasCheckedMetaBuildMsg =
+  private val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +
       "user about build source changes if the build sources were changed while sbt was shutdown. " +
       " When that occurs, the previous cache reflects the state of the old build files, but by " +

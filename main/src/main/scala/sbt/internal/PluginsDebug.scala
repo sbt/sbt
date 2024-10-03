@@ -50,7 +50,7 @@ private[sbt] class PluginsDebug(
     activePrefix + debugDeactivated(notFoundKey, deactivated)
   }
 
-  private[this] def debugDeactivated(
+  private def debugDeactivated(
       notFoundKey: String,
       deactivated: Seq[EnableDeactivated]
   ): String = {
@@ -113,7 +113,7 @@ private[sbt] class PluginsDebug(
     s"$prefix$keysString$confsString\n$toActivate"
   }
 
-  private[this] def multi(strs: Seq[String]): String =
+  private def multi(strs: Seq[String]): String =
     strs.mkString(if (strs.lengthCompare(4) > 0) "\n\t" else ", ")
 }
 
@@ -163,7 +163,7 @@ private[sbt] object PluginsDebug {
       .toMap
   }
 
-  private[this] def availableAutoPlugins(build: LoadedBuildUnit): Seq[AutoPlugin] =
+  private def availableAutoPlugins(build: LoadedBuildUnit): Seq[AutoPlugin] =
     build.unit.plugins.detected.autoPlugins map { _.value }
 
   def help(plugin: AutoPlugin, s: State): String = {
@@ -293,7 +293,7 @@ private[sbt] object PluginsDebug {
     else
       enableDeactivated(context, plugin)
 
-  private[this] def enableDeactivated(context: Context, plugin: AutoPlugin): PluginEnable = {
+  private def enableDeactivated(context: Context, plugin: AutoPlugin): PluginEnable = {
     // deconstruct the context
     val initialModel = context.enabled.toSet
     val initial = flatten(context.initial)
@@ -382,20 +382,20 @@ private[sbt] object PluginsDebug {
     }
   }
 
-  private[this] def includeAll[T <: Basic](basic: Set[T]): Plugins = And(basic.toList)
-  private[this] def excludeAll(plugins: Set[AutoPlugin]): Plugins =
+  private def includeAll[T <: Basic](basic: Set[T]): Plugins = And(basic.toList)
+  private def excludeAll(plugins: Set[AutoPlugin]): Plugins =
     And(plugins.map(p => Exclude(p)).toList)
 
-  private[this] def excludes(bs: Seq[Basic]): Set[AutoPlugin] =
+  private def excludes(bs: Seq[Basic]): Set[AutoPlugin] =
     bs.collect { case Exclude(b) => b }.toSet
-  private[this] def plugins(bs: Seq[Basic]): Set[AutoPlugin] =
+  private def plugins(bs: Seq[Basic]): Set[AutoPlugin] =
     bs.collect { case n: AutoPlugin => n }.toSet
 
   // If there is a model that includes `plugin`, it includes at least what is returned by this method.
   // This is the list of plugins that must be included as well as list of plugins that must not be present.
   // It might not be valid, such as if there are contradictions or if there are cycles that are unsatisfiable.
   // The actual model might be larger, since other plugins might be enabled by the selected plugins.
-  private[this] def minimalModel(plugin: AutoPlugin): Seq[Basic] =
+  private def minimalModel(plugin: AutoPlugin): Seq[Basic] =
     Dag.topologicalSortUnchecked(plugin: Basic) {
       case _: Exclude     => Nil
       case ap: AutoPlugin => Plugins.flatten(ap.requires) :+ plugin
@@ -440,66 +440,66 @@ private[sbt] object PluginsDebug {
     available.foldLeft(empty)((r, p) => r + (p, extractDefinedKeys(allSettings(p))))
   }
 
-  private[this] def excludedError(transitive: Boolean, dependencies: List[AutoPlugin]): String =
+  private def excludedError(transitive: Boolean, dependencies: List[AutoPlugin]): String =
     str(dependencies)(excludedPluginError(transitive), excludedPluginsError(transitive))
 
-  private[this] def excludedPluginError(transitive: Boolean)(dependency: AutoPlugin) =
+  private def excludedPluginError(transitive: Boolean)(dependency: AutoPlugin) =
     s"Required ${transitiveString(transitive)}dependency ${dependency.label} was excluded."
 
-  private[this] def excludedPluginsError(transitive: Boolean)(dependencies: List[AutoPlugin]) =
+  private def excludedPluginsError(transitive: Boolean)(dependencies: List[AutoPlugin]) =
     s"Required ${transitiveString(transitive)}dependencies were excluded:\n\t${labels(dependencies)
         .mkString("\n\t")}"
 
-  private[this] def transitiveString(transitive: Boolean) =
+  private def transitiveString(transitive: Boolean) =
     if (transitive) "(transitive) " else ""
 
-  private[this] def required(plugins: List[AutoPlugin]): String =
+  private def required(plugins: List[AutoPlugin]): String =
     str(plugins)(requiredPlugin, requiredPlugins)
 
-  private[this] def requiredPlugin(plugin: AutoPlugin) =
+  private def requiredPlugin(plugin: AutoPlugin) =
     s"Required plugin ${plugin.label} not present."
 
-  private[this] def requiredPlugins(plugins: List[AutoPlugin]) =
+  private def requiredPlugins(plugins: List[AutoPlugin]) =
     s"Required plugins not present:\n\t${plugins.map(_.label).mkString("\n\t")}"
 
-  private[this] def str[A](list: List[A])(f: A => String, fs: List[A] => String): String =
+  private def str[A](list: List[A])(f: A => String, fs: List[A] => String): String =
     list match {
       case Nil           => ""
       case single :: Nil => f(single)
       case _             => fs(list)
     }
 
-  private[this] def willAdd(base: AutoPlugin, plugins: List[AutoPlugin]): String =
+  private def willAdd(base: AutoPlugin, plugins: List[AutoPlugin]): String =
     str(plugins)(willAddPlugin(base), willAddPlugins(base))
 
-  private[this] def willAddPlugin(base: AutoPlugin)(plugin: AutoPlugin) =
+  private def willAddPlugin(base: AutoPlugin)(plugin: AutoPlugin) =
     s"Enabling ${base.label} will also enable ${plugin.label}"
 
-  private[this] def willAddPlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
+  private def willAddPlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
     s"Enabling ${base.label} will also enable:\n\t${labels(plugins).mkString("\n\t")}"
 
-  private[this] def willRemove(base: AutoPlugin, plugins: List[AutoPlugin]): String =
+  private def willRemove(base: AutoPlugin, plugins: List[AutoPlugin]): String =
     str(plugins)(willRemovePlugin(base), willRemovePlugins(base))
 
-  private[this] def willRemovePlugin(base: AutoPlugin)(plugin: AutoPlugin) =
+  private def willRemovePlugin(base: AutoPlugin)(plugin: AutoPlugin) =
     s"Enabling ${base.label} will disable ${plugin.label}"
 
-  private[this] def willRemovePlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
+  private def willRemovePlugins(base: AutoPlugin)(plugins: List[AutoPlugin]) =
     s"Enabling ${base.label} will disable:\n\t${labels(plugins).mkString("\n\t")}"
 
-  private[this] def labels(plugins: List[AutoPlugin]): List[String] =
+  private def labels(plugins: List[AutoPlugin]): List[String] =
     plugins.map(_.label)
 
-  private[this] def needToDeactivate(deactivate: List[DeactivatePlugin]): String =
+  private def needToDeactivate(deactivate: List[DeactivatePlugin]): String =
     str(deactivate)(deactivate1, deactivateN)
 
-  private[this] def deactivateN(plugins: List[DeactivatePlugin]): String =
+  private def deactivateN(plugins: List[DeactivatePlugin]): String =
     plugins.map(deactivateString).mkString("These plugins need to be deactivated:\n\t", "\n\t", "")
 
-  private[this] def deactivate1(deactivate: DeactivatePlugin): String =
+  private def deactivate1(deactivate: DeactivatePlugin): String =
     s"Need to deactivate ${deactivateString(deactivate)}"
 
-  private[this] def deactivateString(d: DeactivatePlugin): String = {
+  private def deactivateString(d: DeactivatePlugin): String = {
     val removePluginsString: String =
       d.removeOneOf.toList match {
         case Nil      => ""
@@ -509,10 +509,10 @@ private[sbt] object PluginsDebug {
     s"${d.plugin.label}: directly exclude it${removePluginsString}"
   }
 
-  private[this] def pluginImpossible(plugin: AutoPlugin, contradictions: Set[AutoPlugin]): String =
+  private def pluginImpossible(plugin: AutoPlugin, contradictions: Set[AutoPlugin]): String =
     str(contradictions.toList)(pluginImpossible1(plugin), pluginImpossibleN(plugin))
 
-  private[this] def pluginImpossible1(plugin: AutoPlugin)(contradiction: AutoPlugin): String = {
+  private def pluginImpossible1(plugin: AutoPlugin)(contradiction: AutoPlugin): String = {
     val s1 = s"There is no way to enable plugin ${plugin.label}."
     val s2 =
       s"It (or its dependencies) requires plugin ${contradiction.label} to both be present and absent."
@@ -520,7 +520,7 @@ private[sbt] object PluginsDebug {
     s"$s1  $s2  $s3"
   }
 
-  private[this] def pluginImpossibleN(
+  private def pluginImpossibleN(
       plugin: AutoPlugin
   )(contradictions: List[AutoPlugin]): String = {
     val s1 = s"There is no way to enable plugin ${plugin.label}."

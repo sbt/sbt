@@ -36,7 +36,7 @@ import sbt.io.syntax._
 import xsbti.AppConfiguration
 
 object LMCoursier {
-  private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
+  private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
   def defaultCacheLocation: File = {

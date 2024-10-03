@@ -36,7 +36,7 @@ private[sbt] object APIMappings {
           extractFromID(entry.data, mid, log)
         }
 
-  private[this] def extractFromID(
+  private def extractFromID(
       entry: HashedVirtualFileRef,
       mid: ModuleID,
       log: Logger
@@ -46,7 +46,7 @@ private[sbt] object APIMappings {
       u <- parseURL(urlString, entry, log)
     yield (entry, u)
 
-  private[this] def parseURL(s: String, forEntry: HashedVirtualFileRef, log: Logger): Option[URL] =
+  private def parseURL(s: String, forEntry: HashedVirtualFileRef, log: Logger): Option[URL] =
     try
       Some(new URI(s).toURL)
     catch {

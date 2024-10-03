@@ -24,7 +24,7 @@ trait GCMonitorBase {
 
   protected val queue = new LinkedBlockingQueue[(FiniteDuration, Long)]
   protected val queueScala = queue.asScala
-  private[this] val lastWarned = new AtomicReference(Deadline(Int.MinValue.millis))
+  private val lastWarned = new AtomicReference(Deadline(Int.MinValue.millis))
 
   protected def emitWarning(total: Long, over: Option[Long]): Unit
 

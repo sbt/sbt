@@ -87,12 +87,12 @@ final class NetworkChannel(
   private var initialized = false
   private val pendingRequests: mutable.Map[String, JsonRpcRequestMessage] = mutable.Map()
 
-  private[this] val inputBuffer = new LinkedBlockingQueue[Int]()
-  private[this] val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
-  private[this] val attached = new AtomicBoolean(false)
-  private[this] val alive = new AtomicBoolean(true)
+  private val inputBuffer = new LinkedBlockingQueue[Int]()
+  private val pendingWrites = new LinkedBlockingQueue[(Array[Byte], Boolean)]()
+  private val attached = new AtomicBoolean(false)
+  private val alive = new AtomicBoolean(true)
   private[sbt] def isInteractive = interactive.get
-  private[this] val interactive = new AtomicBoolean(false)
+  private val interactive = new AtomicBoolean(false)
   private[sbt] def setInteractive(id: String, value: Boolean) = {
     terminalHolder.getAndSet(new NetworkTerminal) match {
       case null =>
@@ -111,7 +111,7 @@ final class NetworkChannel(
   }
   private[sbt] def write(byte: Byte) = inputBuffer.add(byte.toInt)
 
-  private[this] val terminalHolder = new AtomicReference[Terminal](Terminal.NullTerminal)
+  private val terminalHolder = new AtomicReference[Terminal](Terminal.NullTerminal)
   override private[sbt] def terminal: Terminal = terminalHolder.get
   override val userThread: UserThread = new UserThread(this)
 
@@ -338,7 +338,7 @@ final class NetworkChannel(
   /*
    * Do writes on a background thread because otherwise the client socket can get blocked.
    */
-  private[this] val writeThread = new Thread(
+  private val writeThread = new Thread(
     () => {
       @tailrec def impl(): Unit = {
         val (event, delimit) =
@@ -653,7 +653,7 @@ final class NetworkChannel(
     )
   }
 
-  private[this] lazy val inputStream: InputStream = new Terminal.SimpleInputStream {
+  private lazy val inputStream: InputStream = new Terminal.SimpleInputStream {
     override def read(): Int = {
       import sjsonnew.BasicJsonProtocol._
       try {
@@ -668,27 +668,27 @@ final class NetworkChannel(
     }
     override def available(): Int = inputBuffer.size
   }
-  private[this] lazy val writeableInputStream: Terminal.WriteableInputStream =
+  private lazy val writeableInputStream: Terminal.WriteableInputStream =
     new Terminal.WriteableInputStream(inputStream, name)
   import sjsonnew.BasicJsonProtocol._
 
   import scala.jdk.CollectionConverters.*
-  private[this] val outputBuffer = new LinkedBlockingQueue[Byte]
-  private[this] val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
+  private val outputBuffer = new LinkedBlockingQueue[Byte]
+  private val flushExecutor = Executors.newSingleThreadScheduledExecutor(r =>
     new Thread(r, s"$name-output-buffer-timer-thread")
   )
 
-  private[this] def forceFlush(): Unit =
+  private def forceFlush(): Unit =
     Util.ignoreResult(flushExecutor.shutdownNow())
     doFlush()
 
-  private[this] def doFlush() = {
+  private def doFlush() = {
     val list = new java.util.ArrayList[Byte]
     outputBuffer.synchronized(outputBuffer.drainTo(list))
     if (!list.isEmpty) jsonRpcNotify(Serialization.systemOut, list.asScala.toSeq)
   }
 
-  private[this] lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
+  private lazy val outputStream: OutputStream with AutoCloseable = new OutputStream
     with AutoCloseable {
     /*
      * We buffer calls to flush to the remote client so that it is called at most
@@ -701,7 +701,7 @@ final class NetworkChannel(
      * probably long enough to catch each burst but short enough to not introduce
      * noticeable latency.
      */
-    private[this] val flushFuture = new AtomicReference[java.util.concurrent.Future[_]]
+    private val flushFuture = new AtomicReference[java.util.concurrent.Future[_]]
     override def close(): Unit = {
       forceFlush()
     }
@@ -733,8 +733,8 @@ final class NetworkChannel(
       write(java.util.Arrays.copyOfRange(b, off, off + len))
     }
   }
-  private[this] lazy val errorStream: OutputStream = new OutputStream {
-    private[this] val buffer = new LinkedBlockingQueue[Byte]
+  private lazy val errorStream: OutputStream = new OutputStream {
+    private val buffer = new LinkedBlockingQueue[Byte]
     override def write(b: Int): Unit = buffer.synchronized {
       buffer.put(b.toByte)
     }
@@ -752,10 +752,10 @@ final class NetworkChannel(
   }
   private class NetworkTerminal
       extends TerminalImpl(writeableInputStream, outputStream, errorStream, name) { term =>
-    private[this] val pending = new AtomicBoolean(false)
-    private[this] val closed = new AtomicBoolean(false)
-    private[this] val properties = new AtomicReference[TerminalPropertiesResponse]
-    private[this] val lastUpdate = new AtomicReference[Deadline]
+    private val pending = new AtomicBoolean(false)
+    private val closed = new AtomicBoolean(false)
+    private val properties = new AtomicReference[TerminalPropertiesResponse]
+    private val lastUpdate = new AtomicReference[Deadline]
     private def empty = TerminalPropertiesResponse(0, 0, false, false, false, false)
     def getProperties(block: Boolean): Unit = {
       if (alive.get) {
@@ -802,7 +802,7 @@ final class NetworkChannel(
           None
         )
     }
-    private[this] def waitForPending(f: TerminalPropertiesResponse => Boolean): Boolean = {
+    private def waitForPending(f: TerminalPropertiesResponse => Boolean): Boolean = {
       if (closed.get || !isAttached) false
       else
         withThread(
@@ -813,7 +813,7 @@ final class NetworkChannel(
           false
         )
     }
-    private[this] val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
+    private val blockedThreads = ConcurrentHashMap.newKeySet[Thread]
     override private[sbt] val progressState: ProgressState = new ProgressState(
       1,
       StandardMain.exchange
@@ -917,7 +917,7 @@ final class NetworkChannel(
         try queue.take
         catch { case _: InterruptedException => }
       }
-    private[this] def setRawMode(toggle: Boolean): Unit = {
+    private def setRawMode(toggle: Boolean): Unit = {
       if (!closed.get || false) {
         val raw = TerminalSetRawModeCommand(toggle)
         val queue = VirtualTerminal.setTerminalRawMode(

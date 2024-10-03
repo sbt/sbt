@@ -739,7 +739,7 @@ object Defaults extends BuildCommon {
     console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
   // must be a val: duplication detected by object identity
-  private[this] lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
+  private lazy val compileBaseGlobal: Seq[Setting[_]] = globalDefaults(
     Seq(
       auxiliaryClassFiles :== Nil,
       incOptions := IncOptions.of(),
@@ -1059,7 +1059,7 @@ object Defaults extends BuildCommon {
       mainBgRunTaskForConfig(This)
     ) ++ inTask(run)(runnerSettings ++ newRunnerSettings) ++ compileIncrementalTaskSettings
 
-  private[this] lazy val configGlobal = globalDefaults(
+  private lazy val configGlobal = globalDefaults(
     Seq(
       initialCommands :== "",
       cleanupCommands :== "",
@@ -1173,7 +1173,7 @@ object Defaults extends BuildCommon {
       else Def.task(None)
     }
 
-  private[this] def noToolConfiguration(autoInstance: Boolean): String = {
+  private def noToolConfiguration(autoInstance: Boolean): String = {
     val pre = "Missing Scala tool configuration from the 'update' report.  "
     val post =
       if (autoInstance)
@@ -1308,7 +1308,7 @@ object Defaults extends BuildCommon {
     )
   }
 
-  private[this] def testDefaults =
+  private def testDefaults =
     Defaults.globalDefaults(
       Seq(
         testFrameworks :== sbt.TestFrameworks.All,
@@ -1449,7 +1449,7 @@ object Defaults extends BuildCommon {
       )
     )
 
-  private[this] def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(
+  private def closeableTestLogger(manager: Streams, baseKey: Scoped, buffered: Boolean)(
       tdef: TestDefinition
   ): TestLogger.PerTest = {
     val scope = baseKey.scope
@@ -1510,7 +1510,7 @@ object Defaults extends BuildCommon {
   def inputTests(key: InputKey[_]): Initialize[InputTask[Unit]] =
     inputTests0.mapReferenced(Def.mapScope((s) => s.rescope(key.key)))
 
-  private[this] lazy val inputTests0: Initialize[InputTask[Unit]] = {
+  private lazy val inputTests0: Initialize[InputTask[Unit]] = {
     val parser = loadForParser(definedTestNames)((s, i) => testOnlyParser(s, i getOrElse Nil))
     ParserGen(parser).flatMapTask { case ((selected, frameworkOptions)) =>
       val s = streams.value
@@ -2050,7 +2050,7 @@ object Defaults extends BuildCommon {
   /** Implements `cleanFiles` task. */
   private[sbt] def cleanFilesTask: Initialize[Task[Vector[File]]] = Def.task { Vector.empty[File] }
 
-  private[this] def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
+  private def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
     (f: () => Unit) =>
       () => {
         val term = ITerminal.get
@@ -2352,7 +2352,7 @@ object Defaults extends BuildCommon {
   def mainBgRunTask = mainBgRunTaskForConfig(Select(Runtime))
   def mainBgRunMainTask = mainBgRunMainTaskForConfig(Select(Runtime))
 
-  private[this] def mainBgRunTaskForConfig(c: ScopeAxis[ConfigKey]) =
+  private def mainBgRunTaskForConfig(c: ScopeAxis[ConfigKey]) =
     bgRun := bgRunTask(
       exportedProductJars,
       This / c / This / fullClasspathAsJars,
@@ -2361,7 +2361,7 @@ object Defaults extends BuildCommon {
       run / runner
     ).evaluated
 
-  private[this] def mainBgRunMainTaskForConfig(c: ScopeAxis[ConfigKey]) =
+  private def mainBgRunMainTaskForConfig(c: ScopeAxis[ConfigKey]) =
     bgRunMain := bgRunMainTask(
       exportedProductJars,
       This / c / This / fullClasspathAsJars,
@@ -2403,10 +2403,10 @@ object Defaults extends BuildCommon {
       println()
     }
 
-  private[this] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
+  private def exported(w: PrintWriter, command: String): Seq[String] => Unit =
     args => w.println((command +: args).mkString(" "))
 
-  private[this] def exported(s: TaskStreams, command: String): Seq[String] => Unit = {
+  private def exported(s: TaskStreams, command: String): Seq[String] => Unit = {
     val w = s.text(ExportStream)
     try exported(w, command)
     finally w.close() // workaround for #937
@@ -2547,7 +2547,7 @@ object Defaults extends BuildCommon {
     }
   }
 
-  private[this] def compileIncrementalTaskImpl(
+  private def compileIncrementalTaskImpl(
       task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
@@ -2817,7 +2817,7 @@ object Defaults extends BuildCommon {
   // 1. runnerSettings is added unscoped via JvmPlugin.
   // 2. In addition it's added scoped to run task.
   lazy val runnerSettings: Seq[Setting[_]] = Seq(runnerTask, forkOptions := forkOptionsTask.value)
-  private[this] lazy val newRunnerSettings: Seq[Setting[_]] =
+  private lazy val newRunnerSettings: Seq[Setting[_]] =
     Seq(runner := ClassLoaders.runner.value, forkOptions := forkOptionsTask.value)
 
   lazy val baseTasks: Seq[Setting[_]] = projectTasks ++ packageBase
@@ -2936,7 +2936,7 @@ object Classpaths {
       update.value
     )
   )
-  private[this] def classpaths: Seq[Setting[_]] =
+  private def classpaths: Seq[Setting[_]] =
     Seq(
       externalDependencyClasspath := concat(unmanagedClasspath, managedClasspath).value,
       dependencyClasspath := concat(internalDependencyClasspath, externalDependencyClasspath).value,
@@ -3025,20 +3025,20 @@ object Classpaths {
       internalDependencyPicklePath := ClasspathImpl.internalDependencyPicklePathTask.value,
       exportedPickles := ClasspathImpl.exportedPicklesTask.value,
     )
-  private[this] def exportVirtualClasspath(
+  private def exportVirtualClasspath(
       s: Setting[Task[Classpath]]
   ): Setting[Task[Classpath]] =
     s.mapInitialize(init => Def.task { exportVirtualClasspath(streams.value, init.value) })
-  private[this] def exportClasspath(
+  private def exportClasspath(
       s: Setting[Task[Seq[Attributed[File]]]]
   ): Setting[Task[Seq[Attributed[File]]]] =
     s.mapInitialize(init => Def.task { exportClasspath(streams.value, init.value) })
-  private[this] def exportVirtualClasspath(s: TaskStreams, cp: Classpath): Classpath =
+  private def exportVirtualClasspath(s: TaskStreams, cp: Classpath): Classpath =
     val w = s.text(ExportStream)
     try w.println(data(cp).toString)
     finally w.close() // workaround for #937
     cp
-  private[this] def exportClasspath(
+  private def exportClasspath(
       s: TaskStreams,
       cp: Seq[Attributed[File]]
   ): Seq[Attributed[File]] =
@@ -3094,7 +3094,7 @@ object Classpaths {
   ): Initialize[Seq[T]] =
     pkgTasks.map(pkg => (pkg.scope / pkg / key)).join
 
-  private[this] def publishGlobalDefaults =
+  private def publishGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
         publishMavenStyle :== true,
@@ -3220,7 +3220,7 @@ object Classpaths {
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value
   )
 
-  private[this] def baseGlobalDefaults =
+  private def baseGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
         conflictWarning :== ConflictWarning.default("global"),
@@ -3785,7 +3785,7 @@ object Classpaths {
       .withConflictManager(conflictManager.value)
   }
 
-  private[this] def sbtClassifiersGlobalDefaults =
+  private def sbtClassifiersGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
         (updateSbtClassifiers / transitiveClassifiers) ~= (_.filter(_ != DocClassifier))
@@ -4594,7 +4594,7 @@ object Classpaths {
     val plugins = compilerPlugins(pluginClasspath, isDotty)
     plugins.map("-Xplugin:" + _.toAbsolutePath.toString).toSeq
 
-  private[this] lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
+  private lazy val internalCompilerPluginClasspath: Initialize[Task[Classpath]] =
     (Def
       .task { (thisProjectRef.value, settingsData.value, buildDependencies.value, streams.value) })
       .flatMapTask { case (ref, data, deps, s) =>
@@ -4676,35 +4676,35 @@ object Classpaths {
     base / "target" / "coursier-temp"
   }
 
-  private[this] def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
+  private def mavenCompatible(ivyRepo: xsbti.IvyRepository): Boolean =
     try {
       ivyRepo.mavenCompatible
     } catch { case _: NoSuchMethodError => false }
 
-  private[this] def skipConsistencyCheck(ivyRepo: xsbti.IvyRepository): Boolean =
+  private def skipConsistencyCheck(ivyRepo: xsbti.IvyRepository): Boolean =
     try {
       ivyRepo.skipConsistencyCheck
     } catch { case _: NoSuchMethodError => false }
 
-  private[this] def descriptorOptional(ivyRepo: xsbti.IvyRepository): Boolean =
+  private def descriptorOptional(ivyRepo: xsbti.IvyRepository): Boolean =
     try {
       ivyRepo.descriptorOptional
     } catch { case _: NoSuchMethodError => false }
 
   // for forward-compatibility with launcher.jar prior to 1.3.11
-  private[this] def mavenRepoAllowInsecureProtocol(mavenRepo: xsbti.MavenRepository): Boolean =
+  private def mavenRepoAllowInsecureProtocol(mavenRepo: xsbti.MavenRepository): Boolean =
     try {
       mavenRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
   // for forward-compatibility with launcher.jar prior to 1.3.11
-  private[this] def allowInsecureProtocol(ivyRepo: xsbti.IvyRepository): Boolean =
+  private def allowInsecureProtocol(ivyRepo: xsbti.IvyRepository): Boolean =
     try {
       ivyRepo.allowInsecureProtocol
     } catch { case _: NoSuchMethodError => false }
 
   @nowarn
-  private[this] def bootRepository(repo: xsbti.Repository): Resolver = {
+  private def bootRepository(repo: xsbti.Repository): Resolver = {
     import xsbti.Predefined
     repo match {
       case m: xsbti.MavenRepository =>
@@ -4970,7 +4970,7 @@ trait BuildExtra extends BuildCommon with DefExtra {
 }
 
 trait DefExtra {
-  private[this] val ts: TaskSequential = new TaskSequential {}
+  private val ts: TaskSequential = new TaskSequential {}
   implicit def toTaskSequential(@deprecated("unused", "") d: Def.type): TaskSequential = ts
 }
 

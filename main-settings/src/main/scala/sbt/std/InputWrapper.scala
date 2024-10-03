@@ -68,7 +68,7 @@ object InputWrapper:
   )
   def `wrapPrevious_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
-  private[this] def implDetailError =
+  private def implDetailError =
     sys.error("This method is an implementation detail and should not be referenced.")
 
   /*

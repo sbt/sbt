@@ -123,7 +123,7 @@ sealed abstract class SettingKey[A1]
   inline def make[A2](other: Initialize[A2])(f: (A1, A2) => A1): Setting[A1] =
     set(this.zipWith(other)(f))
 
-  protected[this] inline def make[A2](other: Initialize[A2], source: SourcePosition)(
+  protected inline def make[A2](other: Initialize[A2], source: SourcePosition)(
       f: (A1, A2) => A1
   ): Setting[A1] = set0(this.zipWith(other)(f), source)
 
@@ -371,7 +371,7 @@ object Scoped:
         nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.triggeredBy)
       def runBefore[A2](tasks: Initialize[Task[A2]]*): Initialize[Task[A1]] =
         nonLocal(tasks.toSeq.asInstanceOf[Seq[AnyInitTask]], Def.runBefore)
-      private[this] def nonLocal(
+      private def nonLocal(
           tasks: Seq[AnyInitTask],
           key: AttributeKey[Seq[Task[_]]]
       ): Initialize[Task[A1]] =
@@ -504,10 +504,10 @@ object Scoped:
 
     private def convert[Ret](f: Fun[Id, Ret]): Tup => Ret = convertK(f).asInstanceOf
 
-    private[this] val inputs: Tuple.Map[Tup, App] =
+    private val inputs: Tuple.Map[Tup, App] =
       keys.transform { [A] => (fa: Taskable[A]) => fa.toTask }
 
-    private[this] def onTasks[A1](f: Tuple.Map[Tup, Task] => Task[A1]): App[A1] =
+    private def onTasks[A1](f: Tuple.Map[Tup, Task] => Task[A1]): App[A1] =
       Def.app[Tuple.Map[Tup, Task], Task[A1]](inputs.asInstanceOf)(f)
 
     def flatMapN[T](f: Fun[Id, Task[T]]): App[T] = onTasks(_.flatMapN(convert(f)))

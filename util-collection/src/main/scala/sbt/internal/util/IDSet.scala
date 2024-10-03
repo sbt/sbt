@@ -37,8 +37,8 @@ object IDSet {
   }
 
   def create[T]: IDSet[T] = new IDSet[T] {
-    private[this] val backing = new java.util.IdentityHashMap[T, AnyRef]
-    private[this] val Dummy: AnyRef = ""
+    private val backing = new java.util.IdentityHashMap[T, AnyRef]
+    private val Dummy: AnyRef = ""
 
     def apply(t: T) = contains(t)
     def contains(t: T) = backing.containsKey(t)

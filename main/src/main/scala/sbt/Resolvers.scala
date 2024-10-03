@@ -165,14 +165,14 @@ object Resolvers {
     new File(base, last)
   }
 
-  private[this] def shortName(uri: URI): Option[String] =
+  private def shortName(uri: URI): Option[String] =
     Option(uri.withoutMarkerScheme.getPath).flatMap {
       _.split("/").map(_.trim).filterNot(_.isEmpty).lastOption
     }
 
-  private[this] def normalizeDirectoryName(name: String): String =
+  private def normalizeDirectoryName(name: String): String =
     dropExtensions(name).toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
-  private[this] def dropExtensions(name: String): String = name.takeWhile(_ != '.')
+  private def dropExtensions(name: String): String = name.takeWhile(_ != '.')
 
 }

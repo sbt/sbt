@@ -184,7 +184,7 @@ class Eval(
 
   end evalDefinitions
 
-  private[this] def evalCommon[A](
+  private def evalCommon[A](
       content: Seq[String],
       imports: EvalImports,
       tpeName: Option[String],
@@ -222,10 +222,10 @@ class Eval(
     )
 
   // location of the cached type or definition information
-  private[this] def cacheFile(base: Path, moduleName: String): Path =
+  private def cacheFile(base: Path, moduleName: String): Path =
     base.resolve(moduleName + ".cache")
 
-  private[this] def compileAndLoad[A](
+  private def compileAndLoad[A](
       ev: EvalType[A],
       moduleName: String,
   ): (A, ClassLoader => ClassLoader) =
@@ -242,17 +242,17 @@ class Eval(
     val loader = (parent: ClassLoader) => AbstractFileClassLoader(outputDir, parent)
     (extra, loader)
 
-  private[this] final class EvalIntermediate[A](
+  private final class EvalIntermediate[A](
       val extra: A,
       val loader: ClassLoader => ClassLoader,
       val generated: Seq[Path],
       val enclosingModule: String,
   )
 
-  private[this] def classExists(dir: Path, name: String): Boolean =
+  private def classExists(dir: Path, name: String): Boolean =
     Files.exists(dir.resolve(s"$name.class"))
 
-  private[this] def getGeneratedFiles(moduleName: String): Seq[Path] =
+  private def getGeneratedFiles(moduleName: String): Seq[Path] =
     backingDir match
       case Some(dir) =>
         Files
@@ -264,9 +264,9 @@ class Eval(
           .toList
       case None => Nil
 
-  private[this] def makeModuleName(hash: String): String = "$Wrap" + hash.take(10)
+  private def makeModuleName(hash: String): String = "$Wrap" + hash.take(10)
 
-  private[this] def checkError(label: String)(using ctx: Context): Unit =
+  private def checkError(label: String)(using ctx: Context): Unit =
     if ctx.reporter.hasErrors then
       throw new EvalException(label + ": " + ctx.reporter.allErrors.head.toString)
     else ()
@@ -349,7 +349,7 @@ object Eval:
   end EvalType
 
   class TypeExtractor extends tpd.TreeTraverser:
-    private[this] var result = ""
+    private var result = ""
     def getType(t: tpd.Tree)(using ctx: Context): String =
       result = ""
       this((), t)
@@ -369,7 +369,7 @@ object Eval:
    * one of `types`.
    */
   class ValExtractor(tpes: Set[String]) extends tpd.TreeTraverser:
-    private[this] var vals = List[String]()
+    private var vals = List[String]()
 
     def getVals(t: tpd.Tree)(using ctx: Context): List[String] =
       vals = Nil

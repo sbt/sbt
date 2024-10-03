@@ -34,7 +34,7 @@ final class SourcePositionMacro(val c: blackbox.Context) {
     } else reify { NoPosition }
   }
 
-  private[this] def ownerSource(path: String, name: String): String = {
+  private def ownerSource(path: String, name: String): String = {
     @tailrec def inEmptyPackage(s: Symbol): Boolean =
       s != NoSymbol && (
         s.owner == c.mirror.EmptyPackage
@@ -49,5 +49,5 @@ final class SourcePositionMacro(val c: blackbox.Context) {
     }
   }
 
-  private[this] def constant[T: WeakTypeTag](t: T): Expr[T] = c.Expr[T](Literal(Constant(t)))
+  private def constant[T: WeakTypeTag](t: T): Expr[T] = c.Expr[T](Literal(Constant(t)))
 }

@@ -137,10 +137,10 @@ object InputTask:
    * The affected InputTask construction methods are all deprecated and so it is better to keep complete
    * compatibility.  Because the AttributeKey is local, it uses object equality and the manifest is not used.
    */
-  private[this] def localKey[T]: AttributeKey[T] =
+  private def localKey[T]: AttributeKey[T] =
     AttributeKey.local[Unit].asInstanceOf[AttributeKey[T]]
 
-  private[this] def subResultForDummy[I](dummyKey: AttributeKey[Task[I]], dummyTask: Task[I]) =
+  private def subResultForDummy[I](dummyKey: AttributeKey[Task[I]], dummyTask: Task[I]) =
     new (ScopedKey ~> Option) {
       def apply[T](sk: ScopedKey[T]) =
         if (sk.key eq dummyKey) {
@@ -151,7 +151,7 @@ object InputTask:
           None
     }
 
-  private[this] def dummyTask[I]: (AttributeKey[Option[I]], Task[I]) = {
+  private def dummyTask[I]: (AttributeKey[Option[I]], Task[I]) = {
     val key = localKey[Option[I]]
     val f: () => I = () =>
       sys.error(s"Internal sbt error: InputTask stub was not substituted properly.")
@@ -159,7 +159,7 @@ object InputTask:
     (key, t)
   }
 
-  private[this] def subForDummy[I, T](
+  private def subForDummy[I, T](
       marker: AttributeKey[Option[I]],
       value: I,
       task: Task[T]

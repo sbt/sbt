@@ -46,7 +46,7 @@ final case class Extracted(
   def getOpt[T](key: TaskKey[T]): Option[Task[T]] =
     structure.data.get(inCurrent(key.scope), key.key)
 
-  private[this] def inCurrent(scope: Scope): Scope =
+  private def inCurrent(scope: Scope): Scope =
     if scope.project == This then scope.rescope(currentRef)
     else scope
 
@@ -113,7 +113,7 @@ final case class Extracted(
       show = Aggregation.defaultShow(state, false),
     )
 
-  private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
+  private def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
     Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
 
   private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(implicit
@@ -144,7 +144,7 @@ final case class Extracted(
   def appendWithoutSession(settings: Seq[Setting[_]], state: State): State =
     appendImpl(settings, state, session.original)
 
-  private[this] def appendImpl(
+  private def appendImpl(
       settings: Seq[Setting[_]],
       state: State,
       sessionSettings: Seq[Setting[_]],

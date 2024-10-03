@@ -47,16 +47,16 @@ private[sbt] final class ProgressState(
     padding.set(0)
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
-  private[this] val lineBuffer = new ArrayBlockingQueue[String](300)
+  private val lineBuffer = new ArrayBlockingQueue[String](300)
   private[util] def getLines: Seq[String] = lineBuffer.asScala.toVector
-  private[this] def appendLine(line: String) = while (!lineBuffer.offer(line)) { lineBuffer.poll }
+  private def appendLine(line: String) = while (!lineBuffer.offer(line)) { lineBuffer.poll }
   private[util] def clearBytes(): Unit = {
     val pad = padding.get
     if (currentLineBytes.get.isEmpty && pad > 0) padding.decrementAndGet()
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
 
-  private[this] val lineSeparatorBytes: Array[Byte] = System.lineSeparator.getBytes("UTF-8")
+  private val lineSeparatorBytes: Array[Byte] = System.lineSeparator.getBytes("UTF-8")
   private[util] def addBytes(terminal: Terminal, bytes: Seq[Byte]): Unit = {
     val previous: ArrayBuffer[Byte] = currentLineBytes.get
     val padding = this.padding.get
@@ -86,9 +86,9 @@ private[sbt] final class ProgressState(
       prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
     } else Array.empty
   }
-  private[this] val cleanPrompt =
+  private val cleanPrompt =
     (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
-  private[this] val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
+  private val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
   private[util] def write(
       terminal: Terminal,
       bytes: Array[Byte],

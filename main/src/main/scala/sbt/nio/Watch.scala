@@ -50,10 +50,10 @@ object Watch {
      */
     def occurredAt: FiniteDuration
   }
-  private[this] val formatter = DateTimeFormatter.ofPattern("yyyy-MMM-dd HH:mm:ss.SSS")
-  private[this] val timeZone = ZoneId.systemDefault
-  private[this] val timeZoneName = timeZone.getDisplayName(TextStyle.SHORT, Locale.getDefault)
-  private[this] implicit class DurationOps(val d: Duration) extends AnyVal {
+  private val formatter = DateTimeFormatter.ofPattern("yyyy-MMM-dd HH:mm:ss.SSS")
+  private val timeZone = ZoneId.systemDefault
+  private val timeZoneName = timeZone.getDisplayName(TextStyle.SHORT, Locale.getDefault)
+  private implicit class DurationOps(val d: Duration) extends AnyVal {
     def finite: FiniteDuration = d match {
       case f: FiniteDuration => f
       case _                 => new FiniteDuration(Long.MaxValue, TimeUnit.MILLISECONDS)

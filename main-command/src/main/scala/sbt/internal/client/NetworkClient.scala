@@ -152,14 +152,14 @@ class NetworkClient(
     }
   }
 
-  private[this] val stdinBytes = new LinkedBlockingQueue[Integer]
-  private[this] val inLock = new Object
-  private[this] val inputThread = new AtomicReference[RawInputThread]
-  private[this] val exitClean = new AtomicBoolean(true)
-  private[this] val sbtProcess = new AtomicReference[Process](null)
+  private val stdinBytes = new LinkedBlockingQueue[Integer]
+  private val inLock = new Object
+  private val inputThread = new AtomicReference[RawInputThread]
+  private val exitClean = new AtomicBoolean(true)
+  private val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
-  private[this] def startInputThread(): Unit = inputThread.get match {
+  private def startInputThread(): Unit = inputThread.get match {
     case null => inputThread.set(new RawInputThread)
     case _    =>
   }
@@ -769,16 +769,16 @@ class NetworkClient(
     }
   }
 
-  private[this] val contHandler: () => Unit = () => {
+  private val contHandler: () => Unit = () => {
     if (Terminal.console.getLastLine.nonEmpty)
       printStream.print(ConsoleAppender.DeleteLine + Terminal.console.getLastLine.get)
   }
-  private[this] def withSignalHandler[R](handler: () => Unit, sig: String)(f: => R): R = {
+  private def withSignalHandler[R](handler: () => Unit, sig: String)(f: => R): R = {
     val registration = Signals.register(handler, sig)
     try f
     finally registration.remove()
   }
-  private[this] val cancelled = new AtomicBoolean(false)
+  private val cancelled = new AtomicBoolean(false)
 
   def run(): Int =
     withSignalHandler(contHandler, Signals.CONT) {
@@ -980,7 +980,7 @@ class NetworkClient(
       case t: Throwable => t.printStackTrace(); throw t
     }
 
-  private[this] class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
+  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
     setDaemon(true)
     start()
     val stopped = new AtomicBoolean(false)

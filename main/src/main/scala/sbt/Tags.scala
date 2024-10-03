@@ -41,30 +41,30 @@ object Tags {
     def &&(r: Rule): Rule = new And(this, r)
     def unary_- : Rule = new Not(this)
   }
-  private[this] final class Custom(f: TagMap => Boolean) extends Rule {
+  private final class Custom(f: TagMap => Boolean) extends Rule {
     def apply(m: TagMap) = f(m)
   }
-  private[this] final class Single(tag: Tag, max: Int) extends Rule {
+  private final class Single(tag: Tag, max: Int) extends Rule {
     checkMax(max)
     def apply(m: TagMap) = getInt(m, tag) <= max
     override def toString = "Limit " + tag.name + " to " + max
   }
-  private[this] final class Sum(tags: Seq[Tag], max: Int) extends Rule {
+  private final class Sum(tags: Seq[Tag], max: Int) extends Rule {
     checkMax(max)
     def apply(m: TagMap) = tags.foldLeft(0)((sum, t) => sum + getInt(m, t)) <= max
     override def toString = tags.mkString("Limit sum of ", ", ", " to " + max)
   }
-  private[this] final class Or(a: Rule, b: Rule) extends Rule {
+  private final class Or(a: Rule, b: Rule) extends Rule {
     def apply(m: TagMap) = a(m) || b(m)
   }
-  private[this] final class And(a: Rule, b: Rule) extends Rule {
+  private final class And(a: Rule, b: Rule) extends Rule {
     def apply(m: TagMap) = a(m) && b(m)
   }
-  private[this] final class Not(a: Rule) extends Rule {
+  private final class Not(a: Rule) extends Rule {
     def apply(m: TagMap) = !a(m)
   }
 
-  private[this] def checkMax(max: Int): Unit = assert(max >= 1, "Limit must be at least 1.")
+  private def checkMax(max: Int): Unit = assert(max >= 1, "Limit must be at least 1.")
 
   /** Converts a sequence of rules into a function that identifies whether a set of tasks are allowed to execute concurrently based on their merged tags. */
   def predicate(rules: Seq[Rule]): TagMap => Boolean = m => {

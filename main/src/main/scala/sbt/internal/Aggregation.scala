@@ -250,10 +250,9 @@ object Aggregation {
   }
 
   // this is a hack to avoid duplicating method implementations
-  private[this] def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] =>
-    (fa: F[a]) => fa.asInstanceOf[F[Any]]
+  private def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] => (fa: F[a]) => fa.asInstanceOf[F[Any]]
 
-  private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
+  private def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
     vs map { case KeyValue(k, v) => KeyValue(k, f(v)) }
 
   def projectAggregates[Proj](

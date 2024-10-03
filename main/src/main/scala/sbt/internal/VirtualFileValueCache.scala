@@ -50,13 +50,13 @@ object VirtualFileValueCache {
     new VirtualFileValueCache0[A](stamp, f)(using Equiv.universal)
 }
 
-private[this] final class VirtualFileValueCache0[A](
+private final class VirtualFileValueCache0[A](
     getStamp: VirtualFile => XStamp,
     make: VirtualFile => A
 )(implicit
     equiv: Equiv[XStamp]
 ) extends VirtualFileValueCache[A] {
-  private[this] val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]
+  private val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]
 
   def clear(): Unit = backing.clear()
   def get = file => {
@@ -65,8 +65,8 @@ private[this] final class VirtualFileValueCache0[A](
     (if (cache eq null) ifAbsent else cache).get()
   }
 
-  private[this] final class VirtualFileCache(file: VirtualFile) {
-    private[this] var stampedValue: Option[(XStamp, A)] = None
+  private final class VirtualFileCache(file: VirtualFile) {
+    private var stampedValue: Option[(XStamp, A)] = None
     def get(): A = synchronized {
       val latest = getStamp(file)
       stampedValue match {
@@ -75,7 +75,7 @@ private[this] final class VirtualFileValueCache0[A](
       }
     }
 
-    private[this] def update(stamp: XStamp): A = {
+    private def update(stamp: XStamp): A = {
       val value = make(file)
       stampedValue = Some((stamp, value))
       value

@@ -412,7 +412,7 @@ class Difference(
 
   private def abs(files: Set[File]) = files.map(_.getAbsoluteFile)
 
-  private[this] def apply[T](files: Set[File], lastFilesInfo: Set[style.F])(
+  private def apply[T](files: Set[File], lastFilesInfo: Set[style.F])(
       f: ChangeReport[File] => T
   )(extractFiles: T => Set[File]): T = {
     val lastFiles = raw(lastFilesInfo)

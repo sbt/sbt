@@ -139,7 +139,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
         sb.toString().getBytes()
     }
   }
-  private[this] val raw: InputStream = new SimpleInputStream {
+  private val raw: InputStream = new SimpleInputStream {
     val buffer = new LinkedBlockingQueue[Integer]
     @tailrec
     override def read(): Int = {
@@ -151,7 +151,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
       }
     }
   }
-  private[this] val isRaw = new AtomicBoolean(true)
+  private val isRaw = new AtomicBoolean(true)
   private[sbt] def setRawMode(toggle: Boolean): Unit = isRaw.set(toggle)
   override def read(): Int = if (isRaw.get) raw.read() else in.read()
 }

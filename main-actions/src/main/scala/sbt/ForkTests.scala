@@ -77,7 +77,7 @@ private[sbt] object ForkTests {
     apply(runners, tests, config, classpath, converter, fork, log, tag -> 1)
   }
 
-  private[this] def mainTestTask(
+  private def mainTestTask(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
       classpath: Seq[HashedVirtualFileRef],
@@ -191,7 +191,7 @@ private[sbt] object ForkTests {
       }
     }
 
-  private[this] def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
+  private def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
     f match {
       case s: SubclassFingerprint  => new ForkMain.SubclassFingerscan(s)
       case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)

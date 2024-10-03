@@ -45,12 +45,12 @@ import scala.io.AnsiColor
  * the build files if the poll interval has elapsed.
  */
 private[sbt] class CheckBuildSources extends AutoCloseable {
-  private[this] val repository = new AtomicReference[FileTreeRepository[FileAttributes]]
-  private[this] val pollingPeriod = new AtomicReference[FiniteDuration]
-  private[this] val sources = new AtomicReference[Seq[Glob]](Nil)
-  private[this] val needUpdate = new AtomicBoolean(true)
-  private[this] val lastPolled = new AtomicReference[SDeadline](SDeadline.now)
-  private[this] val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]]
+  private val repository = new AtomicReference[FileTreeRepository[FileAttributes]]
+  private val pollingPeriod = new AtomicReference[FiniteDuration]
+  private val sources = new AtomicReference[Seq[Glob]](Nil)
+  private val needUpdate = new AtomicBoolean(true)
+  private val lastPolled = new AtomicReference[SDeadline](SDeadline.now)
+  private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]]
   private[sbt] def fileTreeRepository: Option[FileTreeRepository[FileAttributes]] =
     Option(repository.get)
   private def getStamps(force: Boolean) = {

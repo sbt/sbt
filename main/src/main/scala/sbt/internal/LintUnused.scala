@@ -173,7 +173,7 @@ object LintUnused {
     }).sortBy(_._2)
   }
 
-  private[this] case class UnusedKey(
+  private case class UnusedKey(
       scoped: ScopedKey[_],
       positions: Vector[SourcePosition],
       data: Option[ScopedKeyData[_]]
