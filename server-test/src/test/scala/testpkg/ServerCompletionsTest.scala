@@ -34,6 +34,8 @@ class ServerCompletionsTest extends AbstractServerTest {
   }
 
   /*
+  // TODO: https://github.com/sbt/sbt/issues/7718
+  // Note that this test currently relies on a fake target artifact that's checked in
   test("return completions for user classes") {
     val completionStr = """{ "query": "testOnly org." }"""
     svr.sendJsonRpc(

@@ -879,7 +879,9 @@ private[sbt] object Load {
       if context.globalPluginProject then "global-plugins"
       else nthParentName(localBase, pluginDepth)
     val tryID =
-      if pluginDepth == 0 then idBase + "-root"
+      if pluginDepth == 0 then
+        if existingIDs.isEmpty then idBase
+        else idBase + "-root"
       else idBase + "-build" * pluginDepth
     if existingIDs.contains(tryID) then BuildDef.defaultID(localBase)
     else tryID
@@ -1067,7 +1069,7 @@ private[sbt] object Load {
               log.debug(s"[Loading] Found non-root projects $discoveredIdsStr")
               // Here we do something interesting... We need to create an aggregate root project
               val root = {
-                val defaultID = autoID(buildBase, context, Nil)
+                val defaultID = autoID(buildBase, context, discovered.map(_.id))
                 if discovered.isEmpty || java.lang.Boolean.getBoolean("sbt.root.ivyplugin") then
                   BuildDef.defaultProject(defaultID, buildBase)
                 else BuildDef.generatedRootSkipPublish(defaultID, buildBase)
