@@ -168,7 +168,7 @@ trait Terminal extends AutoCloseable {
   private[sbt] def withRawOutput[R](f: => R): R
   private[sbt] def restore(): Unit = {}
   private[sbt] def progressState: ProgressState
-  private[this] val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Batch)
+  private val promptHolder: AtomicReference[Prompt] = new AtomicReference(Prompt.Batch)
   private[sbt] final def prompt: Prompt = promptHolder.get
   private[sbt] final def setPrompt(newPrompt: Prompt): Unit =
     if (prompt != Prompt.NoPrompt) promptHolder.set(newPrompt)
@@ -231,14 +231,14 @@ object Terminal {
   // Disable noisy jline log spam
   if (System.getProperty("sbt.jline.verbose", "false") != "true")
     jline.internal.Log.setOutput(new PrintStream(_ => {}, false))
-  private[this] val isCI = System.getProperty("sbt.ci", "") == "true" ||
+  private val isCI = System.getProperty("sbt.ci", "") == "true" ||
     sys.env.contains("BUILD_NUMBER") || sys.env.contains("CI")
   def consoleLog(string: String): Unit = {
     try Terminal.console.printStream.println(s"[info] $string")
     catch { case _: IOException => }
   }
 
-  private[this] val writeLock = new AnyRef
+  private val writeLock = new AnyRef
   def withWriteLock[A](f: => A): A = {
     writeLock.synchronized {
       f
@@ -340,7 +340,7 @@ object Terminal {
    */
   private[sbt] def restore(): Unit = console.toJLine.restore()
 
-  private[this] val hasProgress: AtomicBoolean = new AtomicBoolean(false)
+  private val hasProgress: AtomicBoolean = new AtomicBoolean(false)
 
   private[sbt] def parseLogOption(s: String): Option[Boolean] =
     s.toLowerCase match {
@@ -358,7 +358,7 @@ object Terminal {
    *      3. -Dsbt.colour=always/auto/never/true/false 4.
    * -Dsbt.log.format=always/auto/never/true/false
    */
-  private[this] lazy val logFormatEnabled: Option[Boolean] = {
+  private lazy val logFormatEnabled: Option[Boolean] = {
     sys.props.get("sbt.log.noformat") match {
       case Some(_) => Some(!java.lang.Boolean.getBoolean("sbt.log.noformat"))
       case _       => sys.props.get("sbt.log.format").flatMap(parseLogOption)
@@ -366,10 +366,10 @@ object Terminal {
   }
   private[sbt] lazy val isAnsiSupported: Boolean = logFormatEnabled.getOrElse(useColorDefault)
 
-  private[this] val isDumb = Some("dumb") == sys.env.get("TERM")
-  private[this] def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
-  private[this] val hasConsole = Option(java.lang.System.console).isDefined
-  private[this] def useColorDefault: Boolean = {
+  private val isDumb = Some("dumb") == sys.env.get("TERM")
+  private def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
+  private val hasConsole = Option(java.lang.System.console).isDefined
+  private def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
     props
@@ -380,7 +380,7 @@ object Terminal {
           .getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || Util.isEmacs)
       )
   }
-  private[this] lazy val isColorEnabledProp: Option[Boolean] =
+  private lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
   private[sbt] lazy val isColorEnabled = useColorDefault
 
@@ -388,7 +388,7 @@ object Terminal {
     if (isColorEnabled && doRed) Console.RED + str + Console.RESET
     else str
 
-  private[this] def hasVirtualIO = System.getProperty("sbt.io.virtual", "") == "true" || !isCI
+  private def hasVirtualIO = System.getProperty("sbt.io.virtual", "") == "true" || !isCI
   private[sbt] def canPollSystemIn: Boolean = hasConsole && !isDumbTerminal && hasVirtualIO
 
   /**
@@ -442,7 +442,7 @@ object Terminal {
     } else f
   }
 
-  private[this] object ProxyTerminal extends Terminal {
+  private object ProxyTerminal extends Terminal {
     private def t: Terminal = {
       val current = activeTerminal.get
       // if the activeTerminal is yet to be initialized on use,
@@ -529,13 +529,13 @@ object Terminal {
       out.flush()
     }
   }
-  private[this] val originalOut = new LinePrintStream(System.out)
-  private[this] val originalErr = System.err
-  private[this] val originalIn = System.in
+  private val originalOut = new LinePrintStream(System.out)
+  private val originalErr = System.err
+  private val originalIn = System.in
   private[sbt] class WriteableInputStream(in: InputStream, name: String)
       extends SimpleInputStream
       with AutoCloseable {
-    private[this] val isRaw = new AtomicBoolean(false)
+    private val isRaw = new AtomicBoolean(false)
     final def write(bytes: Int*): Unit = buffer.synchronized {
       bytes.foreach(b => buffer.put(b))
     }
@@ -546,12 +546,12 @@ object Terminal {
         case _                       =>
       }
     }
-    private[this] val executor =
+    private val executor =
       Executors.newSingleThreadExecutor(r => new Thread(r, s"sbt-$name-input-reader"))
-    private[this] val buffer = new LinkedBlockingQueue[Integer]
-    private[this] val closed = new AtomicBoolean(false)
-    private[this] val readQueue = new LinkedBlockingQueue[Unit]
-    private[this] val readThread = new AtomicReference[Thread]
+    private val buffer = new LinkedBlockingQueue[Integer]
+    private val closed = new AtomicBoolean(false)
+    private val readQueue = new LinkedBlockingQueue[Unit]
+    private val readThread = new AtomicReference[Thread]
     /*
      * Starts a loop that fills a buffer with bytes from stdin. We only read from
      * the underlying stream when the buffer is empty and there is an active reader.
@@ -563,7 +563,7 @@ object Terminal {
      * by setting the terminal to raw mode, which the input stream makes it non blocking,
      * but this approach only works on posix platforms.
      */
-    private[this] val runnable: Runnable = () => {
+    private val runnable: Runnable = () => {
       @tailrec def impl(): Unit = {
         val _ = readQueue.take
         val b = in.read
@@ -610,13 +610,13 @@ object Terminal {
       ()
     }
   }
-  private[this] def nonBlockingIn(term: org.jline.terminal.Terminal): WriteableInputStream = {
+  private def nonBlockingIn(term: org.jline.terminal.Terminal): WriteableInputStream = {
     val in = if (Util.isNonCygwinWindows) new WindowsInputStream(term, originalIn) else originalIn
     new WriteableInputStream(in, "console")
   }
 
-  private[this] val inputStream = new AtomicReference[InputStream](System.in)
-  private[this] def withOut[T](f: => T): T = {
+  private val inputStream = new AtomicReference[InputStream](System.in)
+  private def withOut[T](f: => T): T = {
     try {
       System.setOut(proxyPrintStream)
       System.setErr(proxyErrorStream)
@@ -626,7 +626,7 @@ object Terminal {
       System.setErr(originalErr)
     }
   }
-  private[this] def withIn[T](f: => T): T =
+  private def withIn[T](f: => T): T =
     try {
       inputStream.set(proxyInputStream)
       System.setIn(proxyInputStream)
@@ -634,7 +634,7 @@ object Terminal {
     } finally System.setIn(originalIn)
 
   private[sbt] def withPrintStream[T](f: PrintStream => T): T = console.withPrintStream(f)
-  private[this] val attached = new AtomicBoolean(true)
+  private val attached = new AtomicBoolean(true)
 
   private[sbt] val NullTerminal = new DefaultTerminal(nullInputStream, _ => (), _ => ())
   private[sbt] val SimpleTerminal = new DefaultTerminal(originalIn, originalOut, originalErr)
@@ -645,7 +645,7 @@ object Terminal {
    * Terminal.console method returns this terminal and the ConsoleChannel delegates its terminal
    * method to it.
    */
-  private[this] val consoleTerminalHolder: AtomicReference[Terminal] =
+  private val consoleTerminalHolder: AtomicReference[Terminal] =
     new AtomicReference(SimpleTerminal)
 
   /**
@@ -654,7 +654,7 @@ object Terminal {
    * to change the terminal during task evaluation. This allows us to route System.in and System.out
    * through the terminal's input and output streams.
    */
-  private[this] val activeTerminal = new AtomicReference[Terminal](consoleTerminalHolder.get)
+  private val activeTerminal = new AtomicReference[Terminal](consoleTerminalHolder.get)
 
   /**
    * The boot input stream allows a remote client to forward input to the sbt process while it is
@@ -662,7 +662,7 @@ object Terminal {
    * bootInputStreamHolder if it is non-null as well as from the normal process console io (assuming
    * there is console io).
    */
-  private[this] val bootInputStreamHolder = new AtomicReference[InputStream]
+  private val bootInputStreamHolder = new AtomicReference[InputStream]
 
   /**
    * The boot output stream allows sbt to relay the bytes written to stdout to one or more remote
@@ -670,7 +670,7 @@ object Terminal {
    * TerminalConsole is updated to write to value of bootOutputStreamHolder when it is non-null as
    * well as the normal process console output stream.
    */
-  private[this] val bootOutputStreamHolder = new AtomicReference[OutputStream]
+  private val bootOutputStreamHolder = new AtomicReference[OutputStream]
   private[sbt] def setBootStreams(
       bootInputStream: InputStream,
       bootOutputStream: OutputStream
@@ -690,8 +690,8 @@ object Terminal {
       }
     }
   }
-  private[this] object proxyInputStream extends SimpleInputStream {
-    private[this] val isScripted = System.getProperty("sbt.scripted", "false") == "true"
+  private object proxyInputStream extends SimpleInputStream {
+    private val isScripted = System.getProperty("sbt.scripted", "false") == "true"
     /*
      * This is to handle the case when a remote client starts sbt and the build fails.
      * We need to be able to consume input bytes from the remote client, but they
@@ -755,8 +755,8 @@ object Terminal {
           case stream => stream.available() + activeTerminal.get().inputStream.available()
         }
   }
-  private[this] object proxyOutputStream extends OutputStream {
-    private[this] def os: OutputStream = activeTerminal.get().outputStream
+  private object proxyOutputStream extends OutputStream {
+    private def os: OutputStream = activeTerminal.get().outputStream
     def write(byte: Int): Unit = {
       os.write(byte)
       os.flush()
@@ -769,22 +769,22 @@ object Terminal {
     }
     override def flush(): Unit = os.flush()
   }
-  private[this] val proxyPrintStream = new LinePrintStream(proxyOutputStream) {
+  private val proxyPrintStream = new LinePrintStream(proxyOutputStream) {
     override def toString: String = s"proxyPrintStream($proxyOutputStream)"
   }
-  private[this] object proxyErrorOutputStream extends OutputStream {
-    private[this] def os: OutputStream = activeTerminal.get().errorStream
+  private object proxyErrorOutputStream extends OutputStream {
+    private def os: OutputStream = activeTerminal.get().errorStream
     def write(byte: Int): Unit = os.write(byte)
     override def write(bytes: Array[Byte]): Unit = write(bytes, 0, bytes.length)
     override def write(bytes: Array[Byte], offset: Int, len: Int): Unit =
       os.write(bytes, offset, len)
     override def flush(): Unit = os.flush()
   }
-  private[this] object proxyErrorStream extends PrintStream(proxyErrorOutputStream, true)
-  private[this] lazy val isWindows =
+  private object proxyErrorStream extends PrintStream(proxyErrorOutputStream, true)
+  private lazy val isWindows =
     System.getProperty("os.name", "").toLowerCase(Locale.ENGLISH).indexOf("windows") >= 0
-  private[this] object WrappedSystemIn extends SimpleInputStream {
-    private[this] val in = proxyInputStream
+  private object WrappedSystemIn extends SimpleInputStream {
+    private val in = proxyInputStream
     override def available(): Int = if (attached.get) in.available() else 0
     override def read(): Int = synchronized {
       if (attached.get) {
@@ -826,7 +826,7 @@ object Terminal {
   }
   private[sbt] def startedByRemoteClient = props.isDefined
 
-  private[this] def newConsoleTerminal(): Terminal = {
+  private def newConsoleTerminal(): Terminal = {
     val system = JLine3.system
     new ConsoleTerminal(nonBlockingIn(system), originalOut, system)
   }
@@ -839,7 +839,7 @@ object Terminal {
 
   // translate explicit class names to type in order to support
   //  older Scala, since it shaded classes but not the system property
-  private[this] def fixTerminalProperty(): Unit = {
+  private def fixTerminalProperty(): Unit = {
     val terminalProperty = "jline.terminal"
     val newValue =
       if (!isAnsiSupported && System.getProperty("sbt.io.virtual", "") == "false") "none"
@@ -886,7 +886,7 @@ object Terminal {
       out: OutputStream,
       private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
-    private[this] val rawMode = new AtomicBoolean(false)
+    private val rawMode = new AtomicBoolean(false)
     if (Util.isWindows && hasConsole) {
       // It is necessary to enter and exit raw mode in order to get the windows
       // console to echo input.
@@ -977,11 +977,11 @@ object Terminal {
       override private[sbt] val name: String
   ) extends Terminal { self =>
     private[sbt] def getSizeImpl: (Int, Int)
-    private[this] val sizeRefreshPeriod = 1.second
-    private[this] val size =
+    private val sizeRefreshPeriod = 1.second
+    private val size =
       new AtomicReference[((Int, Int), Deadline)](((1, 1), Deadline.now - 1.day))
-    private[this] def setSize() = size.set((Try(getSizeImpl).getOrElse((1, 1)), Deadline.now))
-    private[this] def getSize = size.get match {
+    private def setSize() = size.set((Try(getSizeImpl).getOrElse((1, 1)), Deadline.now))
+    private def getSize = size.get match {
       case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
         setSize()
         size.get._1
@@ -989,7 +989,7 @@ object Terminal {
     }
     override def getWidth: Int = getSize._1
     override def getHeight: Int = getSize._2
-    private[this] val rawMode = new AtomicBoolean(false)
+    private val rawMode = new AtomicBoolean(false)
     def throwIfClosed[R](f: => R): R = if (isStopped.get) throw new ClosedChannelException else f
     override def getLastLine: Option[String] = progressState.currentLine
     override def getLines: Seq[String] = progressState.getLines
@@ -1042,7 +1042,7 @@ object Terminal {
     override def inputStream: InputStream = in
 
     private[sbt] def write(bytes: Int*): Unit = in.write(bytes: _*)
-    private[this] val isStopped = new AtomicBoolean(false)
+    private val isStopped = new AtomicBoolean(false)
 
     override def getLineHeightAndWidth(line: String): (Int, Int) = getWidth match {
       case width if width > 0 =>
@@ -1057,7 +1057,7 @@ object Terminal {
       try f
       finally rawMode.set(false)
     }
-    private[this] val rawPrintStream: PrintStream = new LinePrintStream(combinedOutputStream)
+    private val rawPrintStream: PrintStream = new LinePrintStream(combinedOutputStream)
     override def withPrintStream[T](f: PrintStream => T): T =
       writeLock.synchronized(f(rawPrintStream))
 

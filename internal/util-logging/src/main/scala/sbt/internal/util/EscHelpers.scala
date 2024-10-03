@@ -70,7 +70,7 @@ object EscHelpers {
       sb.toString
     }
 
-  private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
+  private def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
     val escIndex = s.indexOf(ESC, start)
     if (escIndex < 0) {
       sb.append(s, start, s.length)
@@ -89,8 +89,8 @@ object EscHelpers {
       nextESC(s, next, sb)
     }
   }
-  private[this] val esc = 1
-  private[this] val csi = 2
+  private val esc = 1
+  private val csi = 2
   def cursorPosition(s: String): Int = {
     val bytes = s.getBytes
     var i = 0
@@ -248,7 +248,7 @@ object EscHelpers {
    * Skips the escape sequence starting at `i-1`. `i` should be positioned at the character after
    * the ESC that starts the sequence.
    */
-  private[this] def skipESC(s: String, i: Int): Int = {
+  private def skipESC(s: String, i: Int): Int = {
     if (i >= s.length) {
       i
     } else if (isEscapeTerminator(s.charAt(i))) {

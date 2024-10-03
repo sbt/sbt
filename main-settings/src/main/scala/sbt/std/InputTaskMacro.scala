@@ -23,7 +23,7 @@ object InputTaskMacro:
   // def inputTaskDynMacroImpl[A1: Type](t: c.Expr[Initialize[Task[A1]]])(using qctx: Quotes): c.Expr[Initialize[InputTask[A1]]] =
   //   inputTaskDynMacro0[A1](c)(t)
 
-  private[this] def inputTaskMacro0[A1: Type](tree: Expr[A1])(using
+  private def inputTaskMacro0[A1: Type](tree: Expr[A1])(using
       qctx: Quotes
   ): Expr[Def.Initialize[InputTask[A1]]] =
     // println(s"tree = ${tree.show}")
@@ -36,7 +36,7 @@ object InputTaskMacro:
       '{ InputTask.make($pt) }
     }
 
-  private[this] def iInitializeMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
+  private def iInitializeMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
       f: Expr[A1] => Expr[F1[A1]]
   )(using qctx: Quotes): Expr[Def.Initialize[F1[A1]]] =
     import qctx.reflect.*
@@ -99,7 +99,7 @@ object InputTaskMacro:
     val cond = conditionInputTaskTree(tree.asTerm).asExprOf[A1]
     convert1.contMapN[A1, Def.Initialize, F1](cond, convert1.appExpr, None, inner)
 
-  private[this] def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
+  private def iParserMacro[F1[_]: Type, A1: Type](tree: Expr[A1])(
       f: Expr[A1] => Expr[F1[A1]]
   )(using qctx: Quotes): Expr[State => Parser[F1[A1]]] =
     import qctx.reflect.*
@@ -107,11 +107,11 @@ object InputTaskMacro:
     val inner: convert1.TermTransform[F1] = (in: Term) => f(in.asExprOf[A1]).asTerm
     convert1.contMapN[A1, ParserInstance.F1, F1](tree, convert1.appExpr, None, inner)
 
-  private[this] def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
+  private def iTaskMacro[A1: Type](tree: Expr[A1])(using qctx: Quotes): Expr[Task[A1]] =
     val convert1 = new TaskConvert(qctx, 2000)
     convert1.contMapN[A1, Task, Id](tree, convert1.appExpr, None)
   /*
-  private[this] def inputTaskDynMacro0[A1: Type](
+  private def inputTaskDynMacro0[A1: Type](
       expr: Expr[Def.Initialize[Task[A1]]]
   )(using qctx: Quotes): Expr[Def.Initialize[InputTask[A1]]] = {
     import qctx.reflect.{ Apply => ApplyTree, * }

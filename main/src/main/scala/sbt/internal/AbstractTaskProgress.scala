@@ -19,10 +19,10 @@ import scala.concurrent.duration._
 private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
 
-  private[this] val showScopedKey = Def.showShortKey(None)
-  private[this] val anonOwners = new ConcurrentHashMap[TaskId[_], TaskId[_]]
-  private[this] val calledBy = new ConcurrentHashMap[TaskId[_], TaskId[_]]
-  private[this] val timings = new ConcurrentHashMap[TaskId[_], Timer]
+  private val showScopedKey = Def.showShortKey(None)
+  private val anonOwners = new ConcurrentHashMap[TaskId[_], TaskId[_]]
+  private val calledBy = new ConcurrentHashMap[TaskId[_], TaskId[_]]
+  private val timings = new ConcurrentHashMap[TaskId[_], Timer]
   private[sbt] def timingsByName: mutable.Map[String, AtomicLong] = {
     val result = new ConcurrentHashMap[String, AtomicLong]
     timings.forEach { (task, timing) =>
@@ -102,7 +102,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress 
     }
   }
 
-  private[this] val taskNameCache = new ConcurrentHashMap[TaskId[_], String]
+  private val taskNameCache = new ConcurrentHashMap[TaskId[_], String]
   protected def taskName(t: TaskId[_]): String = taskNameCache.get(t) match {
     case null =>
       val name = taskName0(t)
@@ -110,7 +110,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress 
       name
     case name => name
   }
-  private[this] def taskName0(t: TaskId[_]): String = {
+  private def taskName0(t: TaskId[_]): String = {
     def definedName(node: Task[_]): Option[String] =
       node.info.name.orElse(TaskName.transformNode(node).map(showScopedKey.show))
     def inferredName(t: Task[_]): Option[String] = nameDelegate(t) map taskName

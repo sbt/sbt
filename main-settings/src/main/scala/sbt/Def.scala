@@ -229,9 +229,9 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
     else if (s1 == GlobalScope) Some(s2) // s2 is more specific
     else super.intersect(s1, s2)
 
-  private[this] def definedSettingString(s: Setting[_]): String =
+  private def definedSettingString(s: Setting[_]): String =
     s"derived setting ${s.key.key.label}${positionString(s)}"
-  private[this] def positionString(s: Setting[_]): String =
+  private def positionString(s: Setting[_]): String =
     s.positionString match { case None => ""; case Some(pos) => s" defined at $pos" }
 
   /**

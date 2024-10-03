@@ -77,14 +77,14 @@ object BasicIO {
     try { transferFullyImpl(in, out) }
     catch { case _: InterruptedException => () }
 
-  private[this] def appendLine(buffer: Appendable): String => Unit =
+  private def appendLine(buffer: Appendable): String => Unit =
     line =>
       {
         buffer.append(line)
         buffer.append(Newline)
       }
 
-  private[this] def transferFullyImpl(in: InputStream, out: OutputStream): Unit = {
+  private def transferFullyImpl(in: InputStream, out: OutputStream): Unit = {
     val continueCount = 1 //if(in.isInstanceOf[PipedInputStream]) 1 else 0
     val buffer = new Array[Byte](BufferSize)
     def read(): Unit = {
@@ -124,7 +124,7 @@ private[sbt] abstract class AbstractProcessBuilder extends ProcessBuilder with S
   def run(log: ProcessLogger): Process = run(log, false)
   def run(log: ProcessLogger, connectInput: Boolean): Process = run(BasicIO(log, connectInput))
 
-  private[this] def getString(log: Option[ProcessLogger], withIn: Boolean): String =
+  private def getString(log: Option[ProcessLogger], withIn: Boolean): String =
     {
       val buffer = new StringBuffer
       val code = this ! BasicIO(buffer, log, withIn)
@@ -140,7 +140,7 @@ private[sbt] abstract class AbstractProcessBuilder extends ProcessBuilder with S
   def lines_! : Stream[String] = lines(false, false, None)
   def lines_!(log: ProcessLogger): Stream[String] = lines(false, false, Some(log))
 
-  private[this] def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
+  private def lines(withInput: Boolean, nonZeroException: Boolean, log: Option[ProcessLogger]): Stream[String] =
     {
       val streamed = Streamed[String](nonZeroException)
       val process = run(new ProcessIO(BasicIO.input(withInput), BasicIO.processFully(streamed.process), BasicIO.getErr(log), BasicIO.inheritInput(withInput)))
@@ -172,14 +172,14 @@ private[sbt] class FileBuilder(base: File) extends FilePartialBuilder with SinkP
 }
 
 private abstract class BasicBuilder extends AbstractProcessBuilder {
-  protected[this] def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
+  protected def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
   final def run(io: ProcessIO): Process =
     {
       val p = createProcess(io)
       p.start()
       p
     }
-  protected[this] def createProcess(io: ProcessIO): BasicProcess
+  protected def createProcess(io: ProcessIO): BasicProcess
 }
 private abstract class BasicProcess extends Process {
   def start(): Unit
@@ -204,9 +204,9 @@ private abstract class CompoundProcess extends BasicProcess {
     }
 
   /** Start and block until the exit value is available and then return it in Some.  Return None if destroyed (use 'run')*/
-  protected[this] def runAndExitValue(): Option[Int]
+  protected def runAndExitValue(): Option[Int]
 
-  protected[this] def runInterruptible[T](action: => T)(destroyImpl: => Unit): Option[T] =
+  protected def runInterruptible[T](action: => T)(destroyImpl: => Unit): Option[T] =
     {
       try { Some(action) }
       catch { case _: InterruptedException => destroyImpl; None }
@@ -232,7 +232,7 @@ private class SequenceProcessBuilder(first: ProcessBuilder, second: ProcessBuild
 }
 
 private class SequentialProcess(a: ProcessBuilder, b: ProcessBuilder, io: ProcessIO, evaluateSecondProcess: Int => Boolean) extends CompoundProcess {
-  protected[this] override def runAndExitValue() =
+  protected override def runAndExitValue() =
     {
       val first = a.run(io)
       runInterruptible(first.exitValue)(first.destroy()) flatMap
@@ -250,7 +250,7 @@ private class OrProcess(a: ProcessBuilder, b: ProcessBuilder, io: ProcessIO) ext
 private class ProcessSequence(a: ProcessBuilder, b: ProcessBuilder, io: ProcessIO) extends SequentialProcess(a, b, io, ignore => true)
 
 private class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: ProcessIO, toError: Boolean, exitCode: (Int, Int) => Int) extends CompoundProcess {
-  protected[this] override def runAndExitValue() =
+  protected override def runAndExitValue() =
     {
       val currentSource = new SyncVar[Option[InputStream]]
       val pipeOut = new PipedOutputStream
@@ -333,7 +333,7 @@ private[sbt] class DummyProcessBuilder(override val toString: String, exitValue:
  * The implementation of `exitValue` waits until these threads die before returning.
  */
 private class DummyProcess(action: => Int) extends Process {
-  private[this] val exitCode = Future(action)
+  private val exitCode = Future(action)
   override def exitValue() = exitCode()
   override def destroy(): Unit = ()
 }

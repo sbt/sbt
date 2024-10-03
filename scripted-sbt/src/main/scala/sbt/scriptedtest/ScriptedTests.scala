@@ -162,7 +162,7 @@ final class ScriptedTests(
     }
   }
 
-  private[this] val windowsExclude: (((String, String), File)) => Boolean =
+  private val windowsExclude: (((String, String), File)) => Boolean =
     if (scala.util.Properties.isWin) { case (testName, _) =>
       testName match {
         case ("classloader-cache", "jni") => true // no native lib is built for windows
@@ -561,7 +561,7 @@ class ScriptedRunner {
     )
 
   @nowarn
-  private[this] def run(
+  private def run(
       baseDir: File,
       bufferLog: Boolean,
       tests: Array[String],
@@ -700,7 +700,7 @@ private[sbt] final class ListTests(
       }
       .toSeq
 
-  private[this] def listTests(group: File): Set[String] = {
+  private def listTests(group: File): Set[String] = {
     val groupName = group.getName
     val allTests = IO.listFiles(group, filter)
     if (allTests.isEmpty) {

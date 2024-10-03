@@ -130,7 +130,7 @@ object MainLoop {
   }
 
   // /** Transfers logging and trace levels from the old global loggers to the new ones. */
-  // private[this] def transferLevels(state: State, logging: GlobalLogging): Unit = {
+  // private def transferLevels(state: State, logging: GlobalLogging): Unit = {
   //   val old = state.globalLogging
   //   Logger.transferLevels(old.backed, logging.backed)
   //   (old.full, logging.full) match { // well, this is a hack
@@ -334,14 +334,14 @@ object MainLoop {
 
   def logFullException(e: Throwable, log: Logger): Unit = State.logFullException(e, log)
 
-  private[this] type ExitCode = Option[Long]
-  private[this] object ExitCode {
+  private type ExitCode = Option[Long]
+  private object ExitCode {
     def apply(n: Long): ExitCode = Option(n)
     val Success: ExitCode = ExitCode(0)
     val Unknown: ExitCode = None
   }
 
-  private[this] def exitCode(state: State, prevState: State): ExitCode = {
+  private def exitCode(state: State, prevState: State): ExitCode = {
     exitCodeFromStateNext(state) match {
       case ExitCode.Success => exitCodeFromStateOnFailure(state, prevState)
       case x                => x
@@ -350,7 +350,7 @@ object MainLoop {
 
   // State's "next" field indicates the next action for the command processor to take
   // we'll use that to determine if the command failed
-  private[this] def exitCodeFromStateNext(state: State): ExitCode = {
+  private def exitCodeFromStateNext(state: State): ExitCode = {
     state.next match {
       case State.Continue       => ExitCode.Success
       case State.ClearGlobalLog => ExitCode.Success
@@ -371,7 +371,7 @@ object MainLoop {
   // the shell command specifies an onFailure so that if an exception is thrown
   // it's handled by executing the shell again, instead of the state failing
   // so we also use that to indicate that the execution failed
-  private[this] def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
+  private def exitCodeFromStateOnFailure(state: State, prevState: State): ExitCode =
     if (
       prevState.onFailure.isDefined && state.onFailure.isEmpty &&
       state.currentCommand.fold(true)(_.commandLine != StashOnFailure)

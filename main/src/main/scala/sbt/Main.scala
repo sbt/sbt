@@ -213,19 +213,19 @@ object StandardMain {
   // The access to the pool should be thread safe because lazy val instantiation is thread safe
   // and pool is only referenced directly in closeRunnable after the executionContext is sure
   // to have been instantiated
-  private[this] var pool: Option[ForkJoinPool] = None
+  private var pool: Option[ForkJoinPool] = None
   private[sbt] lazy val executionContext: ExecutionContext = ExecutionContext.fromExecutor({
     val p = new ForkJoinPool
     pool = Some(p)
     p
   })
 
-  private[this] val closeRunnable = () => {
+  private val closeRunnable = () => {
     exchange.shutdown()
     pool.foreach(_.shutdownNow())
   }
 
-  private[this] val isShutdown = new AtomicBoolean(false)
+  private val isShutdown = new AtomicBoolean(false)
   def runManaged(s: State): xsbti.MainResult = {
     val hook = ShutdownHooks.add(closeRunnable)
     try {
@@ -245,7 +245,7 @@ object StandardMain {
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
   ConsoleOut.setGlobalProxy(console)
 
-  private[this] def initialGlobalLogging(file: Option[File]): GlobalLogging = {
+  private def initialGlobalLogging(file: Option[File]): GlobalLogging = {
     def createTemp(attempt: Int = 0): File = Retry {
       file.foreach(f => if (!f.exists()) IO.createDirectory(f))
       File.createTempFile("sbt-global-log", ".log", file.orNull)
@@ -372,7 +372,7 @@ object BuiltinCommands {
   }
 
   def setLogLevel = Command.arb(const(logLevelParser), logLevelHelp)(LogManager.setGlobalLogLevel)
-  private[this] def logLevelParser: Parser[Level.Value] =
+  private def logLevelParser: Parser[Level.Value] =
     oneOf(Level.values.toSeq.map(v => v.toString ^^^ v))
 
   // This parser schedules the default boot commands unless overridden by an alias
@@ -437,13 +437,13 @@ object BuiltinCommands {
 			|""".stripMargin.format(name, ver, about, name, name, scalaVer)
   }
 
-  private[this] def selectScalaVersion(sv: Option[String], si: ScalaInstance): String =
+  private def selectScalaVersion(sv: Option[String], si: ScalaInstance): String =
     sv match {
       case Some(si.version) => si.version
       case _                => si.actualVersion
     }
 
-  private[this] def quiet[T](t: => T): Option[T] =
+  private def quiet[T](t: => T): Option[T] =
     try Some(t)
     catch case _: Exception => None
 
@@ -564,7 +564,7 @@ object BuiltinCommands {
 
   def continuous: Command = Continuous.continuous
 
-  private[this] def loadedEval(s: State, arg: String): Unit = {
+  private def loadedEval(s: State, arg: String): Unit = {
     val extracted = Project.extract(s)
     import extracted._
     val result =
@@ -572,7 +572,7 @@ object BuiltinCommands {
     s.log.info(s"ans: ${result.tpe} = ${result.getValue(currentLoader)}")
   }
 
-  private[this] def rawEval(s: State, arg: String): Unit = {
+  private def rawEval(s: State, arg: String): Unit = {
     val app = s.configuration.provider
     val classpath = app.mainClasspath ++ app.scalaProvider.jars
     val result = Load
@@ -735,7 +735,7 @@ object BuiltinCommands {
   def exportCommand: Command =
     Command(ExportCommand, exportBrief, exportDetailed)(exportParser)((_, f) => f())
 
-  private[this] def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
+  private def lastImpl(s: State, sks: AnyKeys, sid: Option[String]): State = {
     val (str, _, display) = extractLast(s)
     Output.last(sks, str.streams(s), printLast, sid)(using display)
     keepLastLog(s)
@@ -866,12 +866,12 @@ object BuiltinCommands {
       doLoadFailed(s, loadArg)
     }
 
-  private[this] def deprecationWarningText(oldCommand: String, newCommand: String) = {
+  private def deprecationWarningText(oldCommand: String, newCommand: String) = {
     s"The `$oldCommand` command is deprecated in favor of `$newCommand` and will be removed in a later version"
   }
 
   @tailrec
-  private[this] def doLoadFailed(s: State, loadArg: String): State = {
+  private def doLoadFailed(s: State, loadArg: String): State = {
     s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
     val result: Int =
       try
@@ -907,10 +907,10 @@ object BuiltinCommands {
       loadProjectCommands(arg) ::: s
     )
 
-  private[this] def loadProjectParser: State => Parser[String] =
+  private def loadProjectParser: State => Parser[String] =
     _ => matched(Project.loadActionParser)
 
-  private[this] def loadProjectCommand(command: String, arg: String): String =
+  private def loadProjectCommand(command: String, arg: String): String =
     s"$command $arg".trim
 
   def loadProjectImpl: Command =
@@ -1189,7 +1189,7 @@ object BuiltinCommands {
       notifyUsersAboutShell(state); state
     }
 
-  private[this] def skipWelcomeFile(state: State, version: String) = {
+  private def skipWelcomeFile(state: State, version: String) = {
     val base = BuildPaths.getGlobalBase(state).toPath
     base.resolve("preferences").resolve(version).resolve(SkipBannerFileName)
   }
@@ -1207,11 +1207,11 @@ object BuiltinCommands {
       state.put(bannerHasBeenShown, true)
     } else state
   }
-  private[this] val bannerHasBeenShown =
+  private val bannerHasBeenShown =
     AttributeKey[Boolean]("banner-has-been-shown", Int.MaxValue)
-  private[this] val SkipBannerFileName = "skip-banner"
-  private[this] val SkipBanner = "skipBanner"
-  private[this] def skipBanner: Command = Command.command(SkipBanner)(skipBanner)
+  private val SkipBannerFileName = "skip-banner"
+  private val SkipBanner = "skipBanner"
+  private def skipBanner: Command = Command.command(SkipBanner)(skipBanner)
   private def skipBanner(state: State): State = {
     val skipFile = skipWelcomeFile(state, sbtVersion(state))
     try Files.createFile(skipFile)

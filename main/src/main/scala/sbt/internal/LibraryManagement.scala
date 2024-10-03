@@ -173,7 +173,7 @@ private[sbt] object LibraryManagement {
     handler((extraInputHash, settings, withoutClock))
   }
 
-  private[this] def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
+  private def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
     val file = File(file0)
     val exists = file.exists
     // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
@@ -216,7 +216,7 @@ private[sbt] object LibraryManagement {
       .withConfigurations(if (confs) m.configurations else None)
       .branch(m.branchName)
 
-  private[this] def transformDetails(
+  private def transformDetails(
       ur: UpdateReport,
       includeCallers: Boolean,
       includeDetails: Boolean

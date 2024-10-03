@@ -82,7 +82,7 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
       case out: CustomOutput => (process #> out.output).run(connectInput = false)
     }
   }
-  private[this] def makeOptions(
+  private def makeOptions(
       jvmOptions: Seq[String],
       bootJars: Iterable[File],
       arguments: Seq[String]
@@ -105,26 +105,26 @@ object Fork {
   val scalac = new Fork(JavaCommandName, Some(ScalacMainClass))
 
   private val ClasspathEnvKey = "CLASSPATH"
-  private[this] val ClasspathOptionLong = "-classpath"
-  private[this] val ClasspathOptionShort = "-cp"
-  private[this] def isClasspathOption(s: String) =
+  private val ClasspathOptionLong = "-classpath"
+  private val ClasspathOptionShort = "-cp"
+  private def isClasspathOption(s: String) =
     s == ClasspathOptionLong || s == ClasspathOptionShort
 
   /**
    * Maximum length of classpath string before passing the classpath in an environment variable
    * instead of an option.
    */
-  private[this] val MaxConcatenatedOptionLength = 5000
+  private val MaxConcatenatedOptionLength = 5000
 
   private def fitClasspath(options: Seq[String]): (Option[String], Seq[String]) =
     if (Util.isWindows && optionsTooLong(options))
       convertClasspathToEnv(options)
     else
       (None, options)
-  private[this] def optionsTooLong(options: Seq[String]): Boolean =
+  private def optionsTooLong(options: Seq[String]): Boolean =
     options.mkString(" ").length > MaxConcatenatedOptionLength
 
-  private[this] def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) = {
+  private def convertClasspathToEnv(options: Seq[String]): (Option[String], Seq[String]) = {
     val (preCP, cpAndPost) = options.span(opt => !isClasspathOption(opt))
     val postCP = cpAndPost.drop(2)
     val classpathOption = cpAndPost.drop(1).headOption

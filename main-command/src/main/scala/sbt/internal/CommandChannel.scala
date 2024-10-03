@@ -76,10 +76,10 @@ abstract class CommandChannel {
   @deprecated("Use the variant that takes the logShutdown parameter", "1.4.0")
   def shutdown(): Unit = shutdown(true)
   def name: String
-  private[this] val level = new AtomicReference[Level.Value](Level.Info)
+  private val level = new AtomicReference[Level.Value](Level.Info)
   private[sbt] final def setLevel(l: Level.Value): Unit = level.set(l)
   private[sbt] final def logLevel: Level.Value = level.get
-  private[this] def setLevel(value: Level.Value, cmd: String): Boolean = {
+  private def setLevel(value: Level.Value, cmd: String): Boolean = {
     level.set(value)
     append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
   }

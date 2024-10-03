@@ -14,13 +14,13 @@ import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
 import scala.util.control.NonFatal
 
 private[sbt] object ShutdownHooks extends AutoCloseable {
-  private[this] val idGenerator = new AtomicInteger(0)
-  private[this] val hooks = new ConcurrentHashMap[Int, () => Unit]
-  private[this] val ranHooks = new AtomicBoolean(false)
-  private[this] val thread = new Thread("shutdown-hooks-run-all") {
+  private val idGenerator = new AtomicInteger(0)
+  private val hooks = new ConcurrentHashMap[Int, () => Unit]
+  private val ranHooks = new AtomicBoolean(false)
+  private val thread = new Thread("shutdown-hooks-run-all") {
     override def run(): Unit = runAll()
   }
-  private[this] val runtime = Runtime.getRuntime
+  private val runtime = Runtime.getRuntime
   runtime.addShutdownHook(thread)
   private[sbt] def add[R](task: () => R): AutoCloseable = {
     val id = idGenerator.getAndIncrement()

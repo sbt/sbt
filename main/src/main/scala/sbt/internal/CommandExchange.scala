@@ -57,8 +57,8 @@ private[sbt] final class CommandExchange {
   private val channelBufferLock = new AnyRef {}
   private val fastTrackChannelQueue = new LinkedBlockingQueue[FastTrackTask]
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
-  private[this] val lastState = new AtomicReference[State]
-  private[this] val currentExecRef = new AtomicReference[Exec]
+  private val lastState = new AtomicReference[State]
+  private val currentExecRef = new AtomicReference[Exec]
   private[sbt] def hasServer = server.isDefined
   addConsoleChannel()
 
@@ -174,7 +174,7 @@ private[sbt] final class CommandExchange {
     catch { case _: InterruptedException => }
   }
 
-  private[this] def mkAskUser(
+  private def mkAskUser(
       name: String,
   ): (State, CommandChannel) => UITask = { (state, channel) =>
     ContinuousCommands
@@ -455,7 +455,7 @@ private[sbt] final class CommandExchange {
     commandQueue.add(exit)
     ()
   }
-  private[this] def cancel(e: Exec): Unit = {
+  private def cancel(e: Exec): Unit = {
     if (e.commandLine.startsWith("console")) {
       val terminal = Terminal.get
       terminal.write(13, 13, 13, 4)
@@ -465,12 +465,12 @@ private[sbt] final class CommandExchange {
     }
   }
 
-  private[this] class FastTrackThread
+  private class FastTrackThread
       extends Thread("sbt-command-exchange-fastTrack")
       with AutoCloseable {
     setDaemon(true)
     start()
-    private[this] val isStopped = new AtomicBoolean(false)
+    private val isStopped = new AtomicBoolean(false)
     override def run(): Unit = {
       def exit(mt: FastTrackTask): Unit = {
         mt.channel.shutdown(false)
@@ -516,5 +516,5 @@ private[sbt] final class CommandExchange {
   }
   private[sbt] def channelForName(channelName: String): Option[CommandChannel] =
     channels.find(_.name == channelName)
-  private[this] val fastTrackThread = new FastTrackThread
+  private val fastTrackThread = new FastTrackThread
 }

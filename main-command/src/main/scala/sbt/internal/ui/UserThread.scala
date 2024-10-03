@@ -19,15 +19,15 @@ import sbt.internal.util.JoinThread._
 import sbt.internal.util.{ ConsoleAppender, ProgressEvent, ProgressState, Prompt }
 
 private[sbt] class UserThread(val channel: CommandChannel) extends AutoCloseable {
-  private[this] val uiThread = new AtomicReference[(UITask, Thread)]
+  private val uiThread = new AtomicReference[(UITask, Thread)]
   private[sbt] final def onProgressEvent(pe: ProgressEvent): Unit = {
     lastProgressEvent.set(pe)
     ProgressState.updateProgressState(pe, channel.terminal)
   }
-  private[this] val executor =
+  private val executor =
     Executors.newSingleThreadExecutor(r => new Thread(r, s"sbt-$name-ui-thread"))
-  private[this] val lastProgressEvent = new AtomicReference[ProgressEvent]
-  private[this] val isClosed = new AtomicBoolean(false)
+  private val lastProgressEvent = new AtomicReference[ProgressEvent]
+  private val isClosed = new AtomicBoolean(false)
 
   private[sbt] def reset(state: State): Unit = if (!isClosed.get) {
     uiThread.synchronized {

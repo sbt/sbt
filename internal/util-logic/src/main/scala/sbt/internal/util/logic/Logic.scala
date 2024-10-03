@@ -135,7 +135,7 @@ object Logic {
    * an atom is proved but no clauses prove it. This isn't necessarily a problem, but the main sbt
    * use cases expects a proven atom to have at least one clause satisfied.
    */
-  private[this] def checkOverlap(
+  private def checkOverlap(
       clauses: Clauses,
       initialFacts: Set[Atom]
   ): Option[InitialOverlap] = {
@@ -144,7 +144,7 @@ object Logic {
     if (initialOverlap.nonEmpty) Some(new InitialOverlap(initialOverlap)) else None
   }
 
-  private[this] def checkContradictions(
+  private def checkContradictions(
       pos: Set[Atom],
       neg: Set[Atom]
   ): Option[InitialContradictions] = {
@@ -152,7 +152,7 @@ object Logic {
     if (contradictions.nonEmpty) Some(new InitialContradictions(contradictions)) else None
   }
 
-  private[this] def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
+  private def checkAcyclic(clauses: Clauses): Option[CyclicNegation] = {
     val deps = dependencyMap(clauses)
     // println(s"deps = $deps")
     // println(s"graph(deps) = ${graph(deps)}")
@@ -160,7 +160,7 @@ object Logic {
     if (cycle.nonEmpty) Some(new CyclicNegation(cycle)) else None
   }
 
-  private[this] def graph(deps: Map[Atom, Set[Literal]]) = new Dag.DirectedSignedGraph[Atom] {
+  private def graph(deps: Map[Atom, Set[Literal]]) = new Dag.DirectedSignedGraph[Atom] {
     type Arrow = Literal
     def nodes: List[Atom] = deps.keys.toList
     def dependencies(a: Atom) = deps.getOrElse(a, Set.empty).toList
@@ -177,7 +177,7 @@ object Logic {
         .mkString("{\n", "\n", "\n}")
   }
 
-  private[this] def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
+  private def dependencyMap(clauses: Clauses): Map[Atom, Set[Literal]] =
     clauses.clauses.foldLeft(Map.empty[Atom, Set[Literal]]) { case (m, Clause(formula, heads)) =>
       val deps = literals(formula)
       heads.foldLeft(m) { (n, head) =>
@@ -220,7 +220,7 @@ object Logic {
   }
 
   /** Separates a sequence of literals into `(pos, neg)` atom sequences. */
-  private[this] def separate(lits: Seq[Literal]): (Seq[Atom], Seq[Atom]) =
+  private def separate(lits: Seq[Literal]): (Seq[Atom], Seq[Atom]) =
     Util.separate(lits) {
       case a: Atom    => Left(a)
       case Negated(n) => Right(n)
@@ -230,16 +230,16 @@ object Logic {
    * Finds clauses that have no body and thus prove their head. Returns `(<proven atoms>, <remaining
    * unproven clauses>)`.
    */
-  private[this] def findProven(c: Clauses): (Set[Atom], List[Clause]) = {
+  private def findProven(c: Clauses): (Set[Atom], List[Clause]) = {
     val (proven, unproven) = c.clauses.partition(_.body == True)
     (proven.flatMap(_.head).toSet, unproven)
   }
 
-  private[this] def keepPositive(lits: Set[Literal]): Set[Atom] =
+  private def keepPositive(lits: Set[Literal]): Set[Atom] =
     lits.collect { case a: Atom => a }.toSet
 
   // precondition: factsToProcess contains no contradictions
-  @tailrec private[this] def reduce0(
+  @tailrec private def reduce0(
       clauses: Clauses,
       factsToProcess: Set[Literal],
       state: Matched
@@ -265,7 +265,7 @@ object Logic {
    * Finds negated atoms under the negation as failure rule and returns them. This should be called
    * only after there are no more known atoms to be substituted.
    */
-  private[this] def inferFailure(clauses: Clauses): Set[Literal] = {
+  private def inferFailure(clauses: Clauses): Set[Literal] = {
     /* At this point, there is at least one clause and one of the following is the case as the
        result of the acyclic negation rule:
          i. there is at least one variable that occurs in a clause body but not in the head of a
@@ -289,7 +289,7 @@ object Logic {
     }
   }
 
-  private[this] def negated(atoms: Set[Atom]): Set[Literal] = atoms.map(a => (Negated(a): Literal))
+  private def negated(atoms: Set[Atom]): Set[Literal] = atoms.map(a => (Negated(a): Literal))
 
   /**
    * Computes the set of atoms in `clauses` that directly or transitively take a negated atom as
@@ -317,13 +317,13 @@ object Logic {
     }
 
   /** Computes the `(positive, negative)` literals in `formula`. */
-  private[this] def directDeps(formula: Formula): (Seq[Atom], Seq[Atom]) =
+  private def directDeps(formula: Formula): (Seq[Atom], Seq[Atom]) =
     Util.separate(literals(formula).toSeq) {
       case Negated(a) => Right(a)
       case a: Atom    => Left(a)
     }
 
-  private[this] def literals(formula: Formula): Set[Literal] = formula match {
+  private def literals(formula: Formula): Set[Literal] = formula match {
     case And(lits)  => lits
     case l: Literal => Set(l)
     case True       => Set.empty

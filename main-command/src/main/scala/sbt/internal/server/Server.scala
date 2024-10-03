@@ -54,9 +54,9 @@ private[sbt] object Server {
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
       val ready: Future[Unit] = p.future
-      private[this] val rand = new SecureRandom
-      private[this] var token: String = nextToken
-      private[this] val serverSocketHolder = new AtomicReference[ServerSocket]
+      private val rand = new SecureRandom
+      private var token: String = nextToken
+      private val serverSocketHolder = new AtomicReference[ServerSocket]
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -154,7 +154,7 @@ private[sbt] object Server {
       }
 
       /** Generates 128-bit non-negative integer, and represent it as decimal string. */
-      private[this] def nextToken: String = {
+      private def nextToken: String = {
         new BigInteger(128, rand).toString
       }
 
@@ -173,7 +173,7 @@ private[sbt] object Server {
         }
       }
 
-      private[this] def writeTokenfile(): Unit = {
+      private def writeTokenfile(): Unit = {
         import JsonProtocol._
 
         val uri = connection.shortName
@@ -189,7 +189,7 @@ private[sbt] object Server {
       }
 
       /** Set the permission of the file such that the only the owner can read/write it. */
-      private[this] def ownerOnly(file: File): Unit = {
+      private def ownerOnly(file: File): Unit = {
         def acl(owner: UserPrincipal) = {
           val builder = AclEntry.newBuilder
           builder.setPrincipal(owner)
@@ -208,7 +208,7 @@ private[sbt] object Server {
       }
 
       // This file exists through the lifetime of the server.
-      private[this] def writePortfile(): Unit = {
+      private def writePortfile(): Unit = {
         import JsonProtocol._
 
         val uri = connection.shortName

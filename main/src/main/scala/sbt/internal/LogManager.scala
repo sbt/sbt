@@ -300,7 +300,7 @@ object LogManager {
   // This is the default implementation for the relay appender
   val defaultRelay: Unit => ConsoleAppender = _ => defaultRelayImpl
 
-  private[this] lazy val defaultRelayImpl: ConsoleAppender = new RelayAppender("Relay0")
+  private lazy val defaultRelayImpl: ConsoleAppender = new RelayAppender("Relay0")
 
   private[sbt] def settingsLogger(state: State): Def.Setting[_] =
     // strict to avoid retaining a reference to `state`
@@ -308,10 +308,10 @@ object LogManager {
 
   // construct a Logger that delegates to the global logger, but only holds a weak reference
   //  this is an approximation to the ideal that would invalidate the delegate after loading completes
-  private[this] def globalWrapper(s: State): Logger =
+  private def globalWrapper(s: State): Logger =
     new Logger {
-      private[this] val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
-      private[this] def slog: Logger =
+      private val ref = new java.lang.ref.WeakReference(s.globalLogging.full)
+      private def slog: Logger =
         Option(ref.get) getOrElse sys.error("Settings logger used after project was loaded.")
 
       override val ansiCodesSupported = ITerminal.isAnsiSupported

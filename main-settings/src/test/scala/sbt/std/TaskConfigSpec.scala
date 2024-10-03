@@ -30,9 +30,9 @@ class TaskConfigSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFi
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
   private class CachingToolbox(implicit td: TestData) {
-    private[this] val m = scala.reflect.runtime.currentMirror
-    private[this] var _infos: List[FrontEnd#Info] = Nil
-    private[this] val frontEnd = new FrontEnd {
+    private val m = scala.reflect.runtime.currentMirror
+    private var _infos: List[FrontEnd#Info] = Nil
+    private val frontEnd = new FrontEnd {
       override def display(info: Info): Unit = _infos ::= info
       def interactive(): Unit = {}
     }

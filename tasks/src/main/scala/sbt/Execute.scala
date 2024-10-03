@@ -63,20 +63,20 @@ private[sbt] final class Execute(
 )(using view: NodeView) {
   import Execute.*
 
-  private[this] val forward = taskMap[IDSet[TaskId[?]]]
-  private[this] val reverse = taskMap[Iterable[TaskId[?]]]
-  private[this] val callers = taskPMap[[X] =>> IDSet[TaskId[X]]]
-  private[this] val state = taskMap[State]
-  private[this] val viewCache = taskPMap[Node]
-  private[this] val results = taskPMap[Result]
+  private val forward = taskMap[IDSet[TaskId[?]]]
+  private val reverse = taskMap[Iterable[TaskId[?]]]
+  private val callers = taskPMap[[X] =>> IDSet[TaskId[X]]]
+  private val state = taskMap[State]
+  private val viewCache = taskPMap[Node]
+  private val results = taskPMap[Result]
 
-  private[this] val getResult: [A] => TaskId[A] => Result[A] = [A] =>
+  private val getResult: [A] => TaskId[A] => Result[A] = [A] =>
     (a: TaskId[A]) =>
       view.inline1(a) match
         case Some(v) => Result.Value(v())
         case None    => results(a)
-  private[this] type State = State.Value
-  private[this] object State extends Enumeration {
+  private type State = State.Value
+  private object State extends Enumeration {
     val Pending, Running, Calling, Done = Value
   }
   import State.{ Pending, Running, Calling, Done }
@@ -305,7 +305,7 @@ private[sbt] final class Execute(
       }
     }
   }
-  private[this] def rewrap[A](
+  private def rewrap[A](
       rawResult: Either[Incomplete, Either[TaskId[A], A]]
   ): Either[TaskId[A], Result[A]] =
     rawResult match {

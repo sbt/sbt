@@ -84,7 +84,7 @@ sealed trait ProjectDefinition[PR <: ProjectReference] {
     s"Project(${fields.mkString(", ")})"
   }
 
-  private[this] def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] =
+  private def ifNonEmpty[T](label: String, ts: Iterable[T]): List[String] =
     if (ts.isEmpty) Nil else s"$label: $ts" :: Nil
 }
 
@@ -325,7 +325,7 @@ object Project:
   def validProjectID(id: String): Option[String] =
     DefaultParsers.parse(id, DefaultParsers.ID).left.toOption
 
-  private[this] def validProjectIDStart(id: String): Boolean =
+  private def validProjectIDStart(id: String): Boolean =
     DefaultParsers.parse(id, DefaultParsers.IDStart).isRight
 
   def fillTaskAxis(scoped: ScopedKey[_]): ScopedKey[_] =
@@ -381,7 +381,7 @@ object Project:
     validProjectID(refined).toLeft(refined)
   }
 
-  private[this] def normalizeBase(s: String) =
+  private def normalizeBase(s: String) =
     s.toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
   private[sbt] enum LoadAction:

@@ -126,7 +126,7 @@ object ConsoleAppender {
   private[sbt] final val CursorLeft1000 = cursorLeft(1000)
   private[sbt] final val CursorDown1 = cursorDown(1)
   private[sbt] final val ClearPromptLine = CursorLeft1000 + ClearScreenAfterCursor
-  private[this] val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
+  private val showProgressHolder: AtomicBoolean = new AtomicBoolean(false)
   def setShowProgress(b: Boolean): Unit = showProgressHolder.set(b)
   def showProgress: Boolean = showProgressHolder.get
   private[sbt] trait Properties {
@@ -166,7 +166,7 @@ object ConsoleAppender {
     case _           => LogOption.Auto
   }
 
-  private[this] val generateId: AtomicInteger = new AtomicInteger
+  private val generateId: AtomicInteger = new AtomicInteger
 
   /**
    * A new `ConsoleAppender` that writes to standard output.
@@ -391,7 +391,7 @@ class ConsoleAppender(
     override private[sbt] val properties: Properties,
     override private[sbt] val suppressedMessage: SuppressedTraceContext => Option[String]
 ) extends Appender {
-  private[this] val log4j = new AtomicReference[XAppender](null)
+  private val log4j = new AtomicReference[XAppender](null)
   override private[sbt] lazy val toLog4J = log4j.get match {
     case null =>
       log4j.synchronized {

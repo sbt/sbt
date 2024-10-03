@@ -274,10 +274,10 @@ object Plugins extends PluginsFunctions {
       s"Cycles in plugin requirements cannot involve excludes.  The problematic cycle is: ${literalsString(cn.cycle)}"
   }
 
-  private[this] def literalsString(lits: Seq[Literal]): String =
+  private def literalsString(lits: Seq[Literal]): String =
     lits map { case Atom(l) => l; case Negated(Atom(l)) => l } mkString (", ")
 
-  private[this] def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
+  private def duplicateProvidesError(byAtom: Seq[(Atom, AutoPlugin)]): Unit = {
     val dupsByAtom = Map(byAtom.groupBy(_._1).toSeq.map { case (k, v) =>
       k -> v.map(_._2)
     }: _*)
@@ -289,7 +289,7 @@ object Plugins extends PluginsFunctions {
     throw AutoPluginException(message)
   }
 
-  private[this] def exclusionConflictError(
+  private def exclusionConflictError(
       requested: Plugins,
       selected: Seq[AutoPlugin],
       conflicting: Seq[AutoPlugin]
@@ -390,7 +390,7 @@ ${listConflicts(conflicting)}""")
     case _: Basic   => false
     case Empty      => false
   }
-  private[this] def flattenConvert(n: Plugins): Seq[Literal] = n match {
+  private def flattenConvert(n: Plugins): Seq[Literal] = n match {
     case And(ns)  => convertAll(ns)
     case b: Basic => convertBasic(b) :: Nil
     case Empty    => Nil
@@ -401,16 +401,16 @@ ${listConflicts(conflicting)}""")
     case Empty    => Nil
   }
 
-  private[this] def convert(n: Plugins): Formula = n match {
+  private def convert(n: Plugins): Formula = n match {
     case And(ns)  => convertAll(ns).reduce[Formula](_ && _)
     case b: Basic => convertBasic(b)
     case Empty    => Formula.True
   }
-  private[this] def convertBasic(b: Basic): Literal = b match {
+  private def convertBasic(b: Basic): Literal = b match {
     case Exclude(n)    => !convertBasic(n)
     case a: AutoPlugin => Atom(a.label)
   }
-  private[this] def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
+  private def convertAll(ns: Seq[Basic]): Seq[Literal] = ns map convertBasic
 
   /** True if the trigger clause `n` is satisfied by `model`. */
   def satisfied(n: Plugins, model: Set[AutoPlugin]): Boolean =
@@ -453,7 +453,7 @@ ${listConflicts(conflicting)}""")
   }
 
   /** Debugging method to time how long it takes to run various compilation tasks. */
-  private[this] def timed[T](label: String, log: Logger)(t: => T): T = {
+  private def timed[T](label: String, log: Logger)(t: => T): T = {
     val start = System.nanoTime
     val result = t
     val elapsed = System.nanoTime - start

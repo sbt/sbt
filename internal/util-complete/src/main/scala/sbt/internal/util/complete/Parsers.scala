@@ -226,7 +226,7 @@ trait Parsers {
   /** Parses an unsigned integer. */
   lazy val NatBasic = mapOrFail(Digit.+)(_.mkString.toInt)
 
-  private[this] def toInt(neg: Option[Char], digits: Seq[Char]): Int =
+  private def toInt(neg: Option[Char], digits: Seq[Char]): Int =
     (neg.toSeq ++ digits).mkString.toInt
 
   /** Parses the lower-case values `true` and `false` into their corresponding Boolean values. */

@@ -24,8 +24,8 @@ import sjsonnew.support.scalajson.unsafe.CompactPrinter
  */
 private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
-  private[this] var start = 0L
-  private[this] val console = ConsoleOut.systemOut
+  private var start = 0L
+  private val console = ConsoleOut.systemOut
 
   override def initial(): Unit = ()
   override def afterReady(task: TaskId[?]): Unit = ()
@@ -36,13 +36,13 @@ private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with
   start = System.nanoTime
   ShutdownHooks.add(() => report())
 
-  private[this] def report() = {
+  private def report() = {
     if (anyTimings) {
       writeTraceEvent()
     }
   }
 
-  private[this] def writeTraceEvent(): Unit = {
+  private def writeTraceEvent(): Unit = {
     // import java.time.{ ZonedDateTime, ZoneOffset }
     // import java.time.format.DateTimeFormatter
     // val fileName = "build-" + ZonedDateTime

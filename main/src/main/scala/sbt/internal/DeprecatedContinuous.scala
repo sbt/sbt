@@ -29,7 +29,7 @@ private[internal] trait DeprecatedContinuous {
   protected def watchState(globs: Seq[Glob], count: Int): WS = {
     WS.empty(globs).withCount(count)
   }
-  private[this] val legacyWatchState =
+  private val legacyWatchState =
     AttributeKey[AtomicReference[WS]]("legacy-watch-state", Int.MaxValue)
   private[sbt] def addLegacyWatchSetting(state: State): State = {
     val legacyState = new AtomicReference[WS](WS.empty(Nil).withCount(1))

@@ -46,9 +46,9 @@ private[internal] final class ReverseLookupClassLoaderHolder(
     val allowZombies: Boolean,
     val logger: Logger
 ) extends URLClassLoader(Array.empty, null) {
-  private[this] val cached: AtomicReference[ReverseLookupClassLoader] = new AtomicReference
-  private[this] val closed = new AtomicBoolean(false)
-  private[this] val urls = classpath.map(_.toURI.toURL).toArray
+  private val cached: AtomicReference[ReverseLookupClassLoader] = new AtomicReference
+  private val closed = new AtomicBoolean(false)
+  private val urls = classpath.map(_.toURI.toURL).toArray
 
   /**
    * Get a classloader. If there is a loader available in the cache, it will use that loader,
@@ -109,10 +109,10 @@ private[internal] trait NativeLoader extends AutoCloseable {
   private[internal] def setTempDir(file: File): Unit = {}
 }
 private[internal] class NativeLookup extends NativeLoader {
-  private[this] val mapped = new ConcurrentHashMap[String, String]
-  private[this] val searchPaths =
+  private val mapped = new ConcurrentHashMap[String, String]
+  private val searchPaths =
     sys.props.get("java.library.path").map(IO.parseClasspath).getOrElse(Nil)
-  private[this] val tempDir = new AtomicReference(new File("/dev/null"))
+  private val tempDir = new AtomicReference(new File("/dev/null"))
 
   override def close(): Unit = setTempDir(new File("/dev/null"))
 
@@ -135,23 +135,23 @@ private[internal] class NativeLookup extends NativeLoader {
     tempDir.set(file)
   }
 
-  private[this] def deleteNativeLibs(): Unit = {
+  private def deleteNativeLibs(): Unit = {
     mapped.values().forEach(NativeLibs.delete)
     mapped.clear()
   }
 
-  private[this] def findLibrary0(name: String): String = {
+  private def findLibrary0(name: String): String = {
     val mappedName = System.mapLibraryName(name)
     val search = searchPaths.to(LazyList).flatMap(relativeLibrary(mappedName))
     search.headOption.map(copy).orNull
   }
 
-  private[this] def relativeLibrary(mappedName: String)(base: File): Seq[File] = {
+  private def relativeLibrary(mappedName: String)(base: File): Seq[File] = {
     val f = new File(base, mappedName)
     if (f.isFile) f :: Nil else Nil
   }
 
-  private[this] def copy(f: File): String = {
+  private def copy(f: File): String = {
     val target = new File(tempDir.get(), f.getName)
     IO.copyFile(f, target)
     target.getAbsolutePath
@@ -159,7 +159,7 @@ private[internal] class NativeLookup extends NativeLoader {
 }
 
 private[internal] object NativeLibs {
-  private[this] val nativeLibs = new java.util.HashSet[File].asScala
+  private val nativeLibs = new java.util.HashSet[File].asScala
   ShutdownHooks.add(() => {
     nativeLibs.foreach(IO.delete)
     IO.deleteIfEmpty(nativeLibs.map(_.getParentFile).toSet)

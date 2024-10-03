@@ -36,7 +36,7 @@ private[sbt] object Clean {
       FileTreeView.default,
       tryDelete((_: String) => {})
     )
-  private[this] def deleteContents(
+  private def deleteContents(
       path: Path,
       exclude: Path => Boolean,
       view: FileTreeView.Nio[FileAttributes],
@@ -56,7 +56,7 @@ private[sbt] object Clean {
     deleteRecursive(path)
   }
 
-  private[this] def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
+  private def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
     val excludes = (scope / cleanKeepFiles).value.map {
       // This mimics the legacy behavior of cleanFilesTask
       case f if f.isDirectory => Glob(f, AnyPath)
@@ -64,7 +64,7 @@ private[sbt] object Clean {
     } ++ (scope / cleanKeepGlobs).value
     (p: Path) => excludes.exists(_.matches(p))
   }
-  private[this] def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
+  private def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
     // Don't use a regular logger because the logger actually writes to the target directory.
     val debug = (scope / logLevel).?.value.orElse(state.value.get(logLevel.key)) match {
       case Some(Level.Debug) =>
@@ -153,7 +153,7 @@ private[sbt] object Clean {
       case _                => Nil
   end ToSeqPath
 
-  private[this] implicit class ToSeqPathOps[T](val t: T) extends AnyVal {
+  private implicit class ToSeqPathOps[T](val t: T) extends AnyVal {
     def toSeqPath(implicit toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
   }
 
@@ -179,7 +179,7 @@ private[sbt] object Clean {
       }
       .tag(Tags.Clean)
 
-  private[this] def tryDelete(debug: String => Unit): Path => Unit = path => {
+  private def tryDelete(debug: String => Unit): Path => Unit = path => {
     try {
       debug(s"clean -- deleting file $path")
       Files.deleteIfExists(path)

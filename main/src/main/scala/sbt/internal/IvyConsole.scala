@@ -86,7 +86,7 @@ object IvyConsole {
       case _                        => acc.copy(managed = parseManaged(arg, log) ++ acc.managed)
     }
 
-  private[this] def parseResolver(arg: String): MavenRepository = {
+  private def parseResolver(arg: String): MavenRepository = {
     val Array(name, url) = arg.split(" at ")
     MavenRepository(name.trim, url.trim)
   }

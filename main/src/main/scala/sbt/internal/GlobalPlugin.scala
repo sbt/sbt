@@ -45,7 +45,7 @@ object GlobalPlugin {
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
     )
-  private[this] def injectInternalClasspath(
+  private def injectInternalClasspath(
       config: Configuration,
       cp: Def.Classpath,
   ): Setting[_] =

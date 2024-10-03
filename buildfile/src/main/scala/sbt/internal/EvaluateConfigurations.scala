@@ -52,14 +52,14 @@ private[sbt] object EvaluateConfigurations {
   /**
    * This represents the parsed expressions in a build sbt, as well as where they were defined.
    */
-  private[this] final class ParsedFile(
+  private final class ParsedFile(
       val imports: Seq[(String, Int)],
       val definitions: Seq[(String, LineRange)],
       val settings: Seq[(String, LineRange)]
   )
 
   /** The keywords we look for when classifying a string as a definition. */
-  private[this] val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
+  private val DefinitionKeywords = Seq("lazy val ", "def ", "val ")
 
   /**
    * Using an evaluating instance of the scala compiler, a sequence of files and
@@ -99,7 +99,7 @@ private[sbt] object EvaluateConfigurations {
    *
    * @param builtinImports  The set of import statements to add to those parsed in the .sbt file.
    */
-  private[this] def parseConfiguration(
+  private def parseConfiguration(
       file: VirtualFileRef,
       lines: Seq[String],
       builtinImports: Seq[String],
@@ -199,7 +199,7 @@ private[sbt] object EvaluateConfigurations {
   }
 
   /** move a project to be relative to this file after we've evaluated it. */
-  private[this] def resolveBase(f: File, p: Project) =
+  private def resolveBase(f: File, p: Project) =
     p.copy(base = IO.resolve(f, p.base))
 
   def addOffset(offset: Int, lines: Seq[(String, Int)]): Seq[(String, Int)] =
@@ -300,17 +300,17 @@ private[sbt] object EvaluateConfigurations {
     // scala compiler rather than re-parsing.
     (split.imports, split.settings)
 
-  private[this] def splitSettingsDefinitions(
+  private def splitSettingsDefinitions(
       lines: Seq[(String, LineRange)]
   ): (Seq[(String, LineRange)], Seq[(String, LineRange)]) =
     lines partition { case (line, _) => isDefinition(line) }
 
-  private[this] def isDefinition(line: String): Boolean = {
+  private def isDefinition(line: String): Boolean = {
     val trimmed = line.trim
     DefinitionKeywords.exists(trimmed startsWith _)
   }
 
-  private[this] def extractedValTypes: Seq[String] =
+  private def extractedValTypes: Seq[String] =
     Seq(
       classOf[CompositeProject],
       classOf[InputKey[_]],
@@ -318,7 +318,7 @@ private[sbt] object EvaluateConfigurations {
       classOf[SettingKey[_]]
     ).map(_.getName)
 
-  private[this] def evaluateDefinitions(
+  private def evaluateDefinitions(
       eval: Eval,
       name: String,
       imports: Seq[(String, Int)],
@@ -378,7 +378,7 @@ object Index {
   def stringToKeyMap(settings: Set[AttributeKey[_]]): Map[String, AttributeKey[_]] =
     stringToKeyMap0(settings)(_.label)
 
-  private[this] def stringToKeyMap0(
+  private def stringToKeyMap0(
       settings: Set[AttributeKey[_]]
   )(label: AttributeKey[_] => String): Map[String, AttributeKey[_]] = {
     val multiMap = settings.groupBy(label)
@@ -394,7 +394,7 @@ object Index {
       sys.error(s"Some keys were defined with the same name but different types: $duplicateStr")
   }
 
-  private[this] type TriggerMap = collection.mutable.HashMap[TaskId[?], Seq[TaskId[?]]]
+  private type TriggerMap = collection.mutable.HashMap[TaskId[?], Seq[TaskId[?]]]
 
   def triggers(ss: Settings[Scope]): Triggers = {
     val runBefore = new TriggerMap

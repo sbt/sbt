@@ -108,7 +108,7 @@ trait Init[ScopeType]:
 
   def flatMap[A1, A2](in: Initialize[A1])(f: A1 => Initialize[A2]): Initialize[A2] = Bind(f, in)
 
-  private[this] def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
+  private def map[A1, A2](in: Initialize[A1])(f: A1 => A2): Initialize[A2] =
     Apply[Tuple1[A1], A2](x => f(x(0)), Tuple1(in))
 
   def app[Tup <: Tuple, A2](inputs: Tuple.Map[Tup, Initialize])(f: Tup => A2): Initialize[A2] =
@@ -160,8 +160,8 @@ trait Init[ScopeType]:
   private[sbt] def defaultSettings(ss: Seq[Setting[_]]): Seq[Setting[_]] =
     ss.map(s => defaultSetting(s))
 
-  private[this] final val nextID = new java.util.concurrent.atomic.AtomicLong
-  private[this] final def nextDefaultID(): Long = nextID.incrementAndGet()
+  private final val nextID = new java.util.concurrent.atomic.AtomicLong
+  private final def nextDefaultID(): Long = nextID.incrementAndGet()
 
   def empty(implicit delegates: ScopeType => Seq[ScopeType]): Settings[ScopeType] =
     Settings0(Map.empty, delegates)
@@ -177,7 +177,7 @@ trait Init[ScopeType]:
   def mapScope(f: ScopeType => ScopeType): MapScoped =
     [a] => (k: ScopedKey[a]) => k.copy(scope = f(k.scope))
 
-  private[this] def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
+  private def applyDefaults(ss: Seq[Setting[_]]): Seq[Setting[_]] = {
     val result = new java.util.LinkedHashSet[Setting[_]]
     val others = new java.util.ArrayList[Setting[_]]
     ss.foreach {
@@ -311,7 +311,7 @@ trait Init[ScopeType]:
     else throw Uninitialized(sMap.keys.toSeq, delegates, undefined.asScala.toList, false)
   }
 
-  private[this] def delegateForKey[A1](
+  private def delegateForKey[A1](
       sMap: ScopedMap,
       k: ScopedKey[A1],
       scopes: Seq[ScopeType],
@@ -322,7 +322,7 @@ trait Init[ScopeType]:
     val definedAt = skeys.find(sk => (selfRefOk || ref.key != sk) && (sMap contains sk))
     definedAt.toRight(Undefined(ref, k))
 
-  private[this] def applyInits(ordered: Seq[Compiled[_]])(implicit
+  private def applyInits(ordered: Seq[Compiled[_]])(implicit
       delegates: ScopeType => Seq[ScopeType]
   ): Settings[ScopeType] =
     val x =
@@ -360,7 +360,7 @@ trait Init[ScopeType]:
       u.referencedKey
     ) + " from " + refString + sourceString + derivedString + guessedString
 
-  private[this] def parenPosString(s: Setting[_]): String =
+  private def parenPosString(s: Setting[_]): String =
     s.positionString match { case None => ""; case Some(s) => " (" + s + ")" }
 
   def guessIntendedScope(
@@ -475,7 +475,7 @@ trait Init[ScopeType]:
     def exists(f: ScopeType => Boolean): Boolean
   end Delegates
 
-  private[this] def mkDelegates(delegates: ScopeType => Seq[ScopeType]): ScopeType => Delegates = {
+  private def mkDelegates(delegates: ScopeType => Seq[ScopeType]): ScopeType => Delegates = {
     val delegateMap = new java.util.concurrent.ConcurrentHashMap[ScopeType, Delegates]
     s =>
       delegateMap.get(s) match {
@@ -511,8 +511,8 @@ trait Init[ScopeType]:
     else if (delegates(s2).contains(s1)) Some(s2) // s2 is more specific
     else None
 
-  private[this] def deriveAndLocal(init: Seq[Setting[_]], delegates: ScopeType => Delegates)(
-      implicit scopeLocal: ScopeLocal
+  private def deriveAndLocal(init: Seq[Setting[_]], delegates: ScopeType => Delegates)(implicit
+      scopeLocal: ScopeLocal
   ): Seq[Setting[_]] = {
     import collection.mutable
 
@@ -659,7 +659,7 @@ trait Init[ScopeType]:
     def zipWith[A2, U](o: Initialize[A2])(f: (A1, A2) => U): Initialize[U] =
       zipTupled(o)(f.tupled)
 
-    private[this] def zipTupled[A2, U](o: Initialize[A2])(f: ((A1, A2)) => U): Initialize[U] =
+    private def zipTupled[A2, U](o: Initialize[A2])(f: ((A1, A2)) => U): Initialize[U] =
       Apply[(A1, A2), U](f, (this, o))
 
     /** A fold on the static attributes of this and nested Initializes. */
@@ -724,7 +724,7 @@ trait Init[ScopeType]:
 
     override def toString = "setting(" + key + ") at " + pos
 
-    protected[this] def make[A2](
+    protected def make[A2](
         key: ScopedKey[A2],
         init: Initialize[A2],
         pos: SourcePosition
@@ -783,25 +783,25 @@ trait Init[ScopeType]:
         val id = _id
   end DefaultSetting
 
-  private[this] def handleUndefined[A](vr: ValidatedInit[A]): Initialize[A] = vr match
+  private def handleUndefined[A](vr: ValidatedInit[A]): Initialize[A] = vr match
     case Left(undefs) => throw new RuntimeUndefined(undefs)
     case Right(x)     => x
 
-  private[this] lazy val getValidatedK = [A] => (fa: ValidatedInit[A]) => handleUndefined(fa)
+  private lazy val getValidatedK = [A] => (fa: ValidatedInit[A]) => handleUndefined(fa)
 
   // mainly for reducing generated class count
-  private[this] def validateKeyReferencedK(
+  private def validateKeyReferencedK(
       g: ValidateKeyRef
   ): [A] => Initialize[A] => ValidatedInit[A] = [A] =>
     (fa: Initialize[A]) => (fa.validateKeyReferenced(g))
 
-  private[this] def mapReferencedK(g: MapScoped): [A] => Initialize[A] => Initialize[A] = [A] =>
+  private def mapReferencedK(g: MapScoped): [A] => Initialize[A] => Initialize[A] = [A] =>
     (fa: Initialize[A]) => (fa.mapReferenced(g))
-  private[this] def mapConstantK(g: MapConstant): [A] => Initialize[A] => Initialize[A] = [A] =>
+  private def mapConstantK(g: MapConstant): [A] => Initialize[A] => Initialize[A] = [A] =>
     (fa: Initialize[A]) => (fa.mapConstant(g))
-  private[this] def evaluateK(g: Settings[ScopeType]): [A] => Initialize[A] => A = [A] =>
+  private def evaluateK(g: Settings[ScopeType]): [A] => Initialize[A] => A = [A] =>
     (fa: Initialize[A]) => (fa.evaluate(g))
-  private[this] def deps(ls: List[Initialize[_]]): Seq[ScopedKey[_]] =
+  private def deps(ls: List[Initialize[_]]): Seq[ScopedKey[_]] =
     ls.flatMap(_.dependencies)
 
   /**
@@ -834,7 +834,7 @@ trait Init[ScopeType]:
       init
   end Keyed
 
-  private[this] final class GetValue[S, A1](val scopedKey: ScopedKey[S], val transform: S => A1)
+  private final class GetValue[S, A1](val scopedKey: ScopedKey[S], val transform: S => A1)
       extends Keyed[S, A1]
 
   /**
@@ -920,7 +920,7 @@ trait Init[ScopeType]:
       f(a.flatMap { i => trapBadRef(evaluateK(ss)(i)) })
 
     // proper solution is for evaluate to be deprecated or for external use only and a new internal method returning Either be used
-    private[this] def trapBadRef[A](run: => A): Option[A] =
+    private def trapBadRef[A](run: => A): Option[A] =
       try Some(run)
       catch { case _: InvalidReference => None }
 

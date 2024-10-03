@@ -239,7 +239,7 @@ object TestFramework {
       )
   }
 
-  private[this] def order(
+  private def order(
       mapped: Map[String, TestFunction],
       inputs: Vector[TestDefinition]
   ): Vector[(String, TestFunction)] =
@@ -295,7 +295,7 @@ object TestFramework {
     val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))
     (startTask, order(testTasks, ordered), endTask)
   }
-  private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
+  private def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
     val oldLoader = Thread.currentThread.getContextClassLoader
     Thread.currentThread.setContextClassLoader(loader)
     try {

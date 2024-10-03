@@ -54,7 +54,7 @@ object KeyIndex {
     }
   }
 
-  private[this] def base(
+  private def base(
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
   ): ExtendableKeyIndex = {
@@ -273,7 +273,7 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
       case Some(BuildRef(uri))       => (Some(uri), None)
       case _                         => (None, None)
     }
-  private[this] def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] =
+  private def optConfigs(project: Option[ResolvedReference]): Seq[Option[String]] =
     None +: (configs(project).toSeq.map(some[String]))
 
   def addAggregated(scoped: ScopedKey[_], extra: BuildUtil[_]): ExtendableKeyIndex =
@@ -284,11 +284,11 @@ private[sbt] final class KeyIndex0(val data: BuildIndex) extends ExtendableKeyIn
 
   def add(scoped: ScopedKey[_]): ExtendableKeyIndex =
     if (validID(scoped.key.label)) add0(scoped) else this
-  private[this] def add0(scoped: ScopedKey[_]): ExtendableKeyIndex = {
+  private def add0(scoped: ScopedKey[_]): ExtendableKeyIndex = {
     val (build, project) = parts(scoped.scope.project.toOption)
     add1(build, project, scoped.scope.config, scoped.scope.task, scoped.key)
   }
-  private[this] def add1(
+  private def add1(
       uri: Option[URI],
       id: Option[String],
       config: ScopeAxis[ConfigKey],

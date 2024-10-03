@@ -242,12 +242,12 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
 
   // Here we normalize the name to ensure that it's a nicer filename, rather than
   // contort the user into not using spaces.
-  private[this] def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
+  private def normalizeName(s: String) = s.replaceAll("""\s+""", "-")
 
   /**
    * Format the date, without milliseconds or the timezone, per the JUnit spec.
    */
-  private[this] def formatISO8601DateTime(d: LocalDateTime): String =
+  private def formatISO8601DateTime(d: LocalDateTime): String =
     d.truncatedTo(ChronoUnit.SECONDS).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 
   private def writeSuite(): Unit = {

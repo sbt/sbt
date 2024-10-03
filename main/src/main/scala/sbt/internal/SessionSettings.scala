@@ -88,10 +88,10 @@ final case class SessionSettings(
    */
   def clearExtraSettings: SessionSettings = copy(append = Map.empty, rawAppend = Nil)
 
-  private[this] def merge(map: SessionMap): Seq[Setting[_]] =
+  private def merge(map: SessionMap): Seq[Setting[_]] =
     map.values.toSeq.flatten[SessionSetting].map(_._1)
 
-  private[this] def modify(
+  private def modify(
       map: SessionMap,
       onSeq: Seq[SessionSetting] => Seq[SessionSetting],
   ): SessionMap = {

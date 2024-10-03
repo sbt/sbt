@@ -442,7 +442,7 @@ trait ParserMain {
   /** Presents a single Char `ch` as a Parser that only parses that exact character. */
   implicit def literal(ch: Char): Parser[Char] = new ValidParser[Char] {
     def result = None
-    private[this] lazy val fail = mkFailure("Expected '" + ch + "'")
+    private lazy val fail = mkFailure("Expected '" + ch + "'")
     def resultEmpty = fail
     def derive(c: Char) = if (c == ch) success(ch) else new Invalid(fail)
     def completions(level: Int) = Completions.single(Completion.suggestion(ch.toString))
@@ -712,7 +712,7 @@ private final class TrapAndFail[A](a: Parser[A]) extends ValidParser[A] {
 
   override def toString = "trap(" + a + ")"
   override def isTokenStart = a.isTokenStart
-  private[this] def fail(e: Exception): Failure = mkFailure(e.toString)
+  private def fail(e: Exception): Failure = mkFailure(e.toString)
 }
 
 private final class OnFailure[A](a: Parser[A], message: String) extends ValidParser[A] {
@@ -950,7 +950,7 @@ private final class StringLiteral(str: String, start: Int) extends ValidParser[S
   assert(0 <= start && start < str.length)
 
   def failMsg = "Expected '" + str + "'"
-  private[this] lazy val fail = mkFailure(failMsg)
+  private lazy val fail = mkFailure(failMsg)
   def resultEmpty = mkFailure(failMsg)
   def result = None
 
@@ -963,7 +963,7 @@ private final class StringLiteral(str: String, start: Int) extends ValidParser[S
 
 private final class CharacterClass(f: Char => Boolean, label: String) extends ValidParser[Char] {
   def result = None
-  private[this] def fail: Failure = mkFailure("Expected " + label)
+  private def fail: Failure = mkFailure("Expected " + label)
   def resultEmpty = fail
   def derive(c: Char) = if (f(c)) success(c) else Invalid(fail)
   def completions(level: Int) = Completions.empty
