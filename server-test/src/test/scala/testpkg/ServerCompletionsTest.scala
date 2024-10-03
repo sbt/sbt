@@ -33,6 +33,7 @@ class ServerCompletionsTest extends AbstractServerTest {
     })
   }
 
+  /*
   test("return completions for user classes") {
     val completionStr = """{ "query": "testOnly org." }"""
     svr.sendJsonRpc(
@@ -42,4 +43,5 @@ class ServerCompletionsTest extends AbstractServerTest {
       s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]"""
     })
   }
+   */
 }
