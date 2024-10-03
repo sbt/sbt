@@ -533,7 +533,7 @@ private[sbt] class DefaultBackgroundJobService(
 }
 private[sbt] object DefaultBackgroundJobService {
 
-  private[this] val backgroundJobServices = new ConcurrentHashMap[File, DefaultBackgroundJobService]
+  private val backgroundJobServices = new ConcurrentHashMap[File, DefaultBackgroundJobService]
   private[sbt] def shutdown(): Unit = {
     backgroundJobServices.values.forEach(_.shutdown())
     backgroundJobServices.clear()

@@ -156,17 +156,17 @@ object Command {
       arbs.map(_.parser(state)).foldLeft(simpleParser(simple)(state))(_ | _)
   }
 
-  private[this] def separateCommands(
+  private def separateCommands(
       cmds: Seq[Command]
   ): (Seq[SimpleCommand], Seq[ArbitraryCommand]) =
     Util.separate(cmds) { case s: SimpleCommand => Left(s); case a: ArbitraryCommand => Right(a) }
 
-  private[this] def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
+  private def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
 
   def simpleParser(cmds: Seq[SimpleCommand]): State => Parser[() => State] =
     simpleParser(cmds.map(sc => (sc.name, argParser(sc))).toMap)
 
-  private[this] def argParser(sc: SimpleCommand): State => Parser[() => State] = {
+  private def argParser(sc: SimpleCommand): State => Parser[() => State] = {
     def usageError = s"${sc.name} usage:" + Help.message(sc.help0, None)
     s =>
       (Parser.softFailure(usageError, definitive = true): Parser[() => State]) | sc.parser(s)

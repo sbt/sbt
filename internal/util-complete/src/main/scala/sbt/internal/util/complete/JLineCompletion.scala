@@ -32,10 +32,10 @@ object JLineCompletion {
     reader.setCompletionHandler(new CustomHandler(complete))
   }
 
-  private[this] final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean)
+  private final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean)
       extends CompletionHandler {
-    private[this] var previous: Option[(String, Int)] = None
-    private[this] var level: Int = 1
+    private var previous: Option[(String, Int)] = None
+    private var level: Int = 1
 
     override def complete(
         reader: ConsoleReader,
@@ -58,7 +58,7 @@ object JLineCompletion {
   // always provides dummy completions so that the custom completion handler gets called
   //   (ConsoleReader doesn't call the handler if there aren't any completions)
   //   the custom handler will then throw away the candidates and call the custom function
-  private[this] object DummyCompletor extends Completer {
+  private object DummyCompletor extends Completer {
     override def complete(
         buffer: String,
         cursor: Int,

@@ -44,7 +44,7 @@ class ClientTest extends AbstractServerTest {
       } else -1
     }
   }
-  private[this] def background[R](f: => R): R = {
+  private def background[R](f: => R): R = {
     val result = new LinkedBlockingQueue[R]
     val thread = new Thread("client-bg-thread") {
       setDaemon(true)

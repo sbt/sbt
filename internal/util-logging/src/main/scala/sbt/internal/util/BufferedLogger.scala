@@ -43,7 +43,7 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
   override private[sbt] def properties: ConsoleAppender.Properties = delegate.properties
   override private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String] =
     delegate.suppressedMessage
-  private[this] val log4j = new AtomicReference[AbstractAppender]
+  private val log4j = new AtomicReference[AbstractAppender]
   override private[sbt] def toLog4J = log4j.get match {
     case null =>
       val a = new AbstractAppender(
@@ -67,9 +67,9 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
     case a => a
   }
 
-  private[this] val buffer =
+  private val buffer =
     new java.util.Vector[Either[XLogEvent, (Level.Value, Option[String], Option[ObjectEvent[_]])]]
-  private[this] var recording = false
+  private var recording = false
 
   override def appendLog(level: Level.Value, message: => String): Unit = {
     if (recording) Util.ignoreResult(buffer.add(Right((level, Some(message), None))))
@@ -139,8 +139,8 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
  * This class assumes that it is the only client of the delegate logger.
  */
 class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
-  private[this] val buffer = new ListBuffer[LogEvent]
-  private[this] var recording = false
+  private val buffer = new ListBuffer[LogEvent]
+  private var recording = false
 
   /** Enables buffering. */
   def record() = synchronized { recording = true }

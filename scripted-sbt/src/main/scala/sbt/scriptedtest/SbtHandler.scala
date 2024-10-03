@@ -41,7 +41,7 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
       case None                                            => onNewSbtInstance(f)
     }
 
-  private[this] def onNewSbtInstance(f: (Process, IPC.Server) => Unit): Option[SbtInstance] = {
+  private def onNewSbtInstance(f: (Process, IPC.Server) => Unit): Option[SbtInstance] = {
     val server = IPC.unmanagedServer
     val p =
       try newRemote(server)

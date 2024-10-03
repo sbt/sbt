@@ -168,7 +168,7 @@ object TaskMacro:
             report.errorAndAbort(s"Append.Value[${Type.show[A1]}, ${Type.show[A2]}] missing")
 
   /*
-  private[this] def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(
+  private def transformMacroImpl[A](using qctx: Quotes)(init: Expr[A])(
       newName: String
   ): qctx.reflect.Term = {
     import qctx.reflect.*
@@ -194,7 +194,7 @@ object TaskMacro:
     else '{ NoPosition }
 
   /*
-  private[this] def settingSource(c: blackbox.Context, path: String, name: String): String = {
+  private def settingSource(c: blackbox.Context, path: String, name: String): String = {
     @tailrec def inEmptyPackage(s: c.Symbol): Boolean = s != c.universe.NoSymbol && (
       s.owner == c.mirror.EmptyPackage || s.owner == c.mirror.EmptyPackageClass || inEmptyPackage(
         s.owner
@@ -207,7 +207,7 @@ object TaskMacro:
     }
   }
 
-  private[this] def constant[A1: c.TypeTag](c: blackbox.Context, t: T): c.Expr[A1] = {
+  private def constant[A1: c.TypeTag](c: blackbox.Context, t: T): c.Expr[A1] = {
     import c.universe._
     c.Expr[A1](Literal(Constant(t)))
   }

@@ -234,7 +234,7 @@ private[sbt] object WatchTransitiveDependencies {
       }
     case _ => accumulator.toIndexedSeq
   }
-  private[this] def isGlobKey(key: ScopedKey[_]): Boolean = key.key match {
+  private def isGlobKey(key: ScopedKey[_]): Boolean = key.key match {
     case fileInputs.key | watchTriggers.key => true
     case _                                  => false
   }

@@ -99,13 +99,13 @@ private[sbt] object InstallSbtn {
     }
     ()
   }
-  private[this] def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
+  private def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
     val zip = s"https://github.com/sbt/sbt/releases/download/v$version/sbt-$version.zip"
     val url = new URI(zip).toURL
     term.printStream.println(s"downloading $zip to $location")
     transfer(url.openStream(), location)
   }
-  private[this] def transfer(inputStream: InputStream, path: Path): Unit =
+  private def transfer(inputStream: InputStream, path: Path): Unit =
     try {
       val os = new FileOutputStream(path.toFile)
       try {
@@ -119,7 +119,7 @@ private[sbt] object InstallSbtn {
         while bytesRead > 0 do impl()
       } finally os.close()
     } finally inputStream.close()
-  private[this] def getShell(term: Terminal): String = {
+  private def getShell(term: Terminal): String = {
     term.printStream.print(s"""Setup sbtn for shell:
       | [1] bash
       | [2] fish
@@ -138,12 +138,12 @@ private[sbt] object InstallSbtn {
       case _  => "none"
     }
   }
-  private[this] def downloadCompletion(completion: String, version: String, target: Path): Unit = {
+  private def downloadCompletion(completion: String, version: String, target: Path): Unit = {
     Files.createDirectories(target.getParent)
     val comp = s"https://raw.githubusercontent.com/sbt/sbt/v$version/client/completions/$completion"
     transfer(new URI(comp).toURL.openStream, target)
   }
-  private[this] def setupShell(
+  private def setupShell(
       shell: String,
       baseDirectory: Path,
       term: Terminal,
@@ -195,7 +195,7 @@ private[sbt] object InstallSbtn {
       term.printStream.println()
     }
   }
-  private[this] def setupBash(baseDirectory: Path, term: Terminal): Unit =
+  private def setupBash(baseDirectory: Path, term: Terminal): Unit =
     setupShell(
       "bash",
       baseDirectory,
@@ -204,20 +204,20 @@ private[sbt] object InstallSbtn {
       bin => s"export PATH=$$PATH:$bin",
       completions => s"source $completions/sbtn.bash"
     )
-  private[this] def setupZsh(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupZsh(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => {
       "# The following two lines were added by the sbt installSbtn task:\n" +
         s"fpath=($$fpath $completions)\nautoload -Uz compinit; compinit"
     }
     setupShell("zsh", baseDirectory, term, userHome / ".zshrc", bin => s"path=($$path $bin)", comp)
   }
-  private[this] def setupFish(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupFish(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => s"source $completions/sbtn.fish"
     val path = (bin: Path) => s"set PATH $$PATH $bin"
     val config = userHome / ".config" / "fish" / "config.fish"
     setupShell("fish", baseDirectory, term, config, path, comp)
   }
-  private[this] def setupPowershell(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupPowershell(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => s""". "$completions\\sbtn.ps1""""
     val path = (bin: Path) => s"""$$env:Path += ";$bin""""
     import scala.sys.process._
@@ -232,7 +232,7 @@ private[sbt] object InstallSbtn {
       }
     }
   }
-  private[this] val shellCompletions = Map(
+  private val shellCompletions = Map(
     "bash" -> "sbtn.bash",
     "fish" -> "sbtn.fish",
     "powershell" -> "sbtn.ps1",

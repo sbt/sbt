@@ -26,14 +26,14 @@ object Util {
 
   def pairID[A, B] = (a: A, b: B) => (a, b)
 
-  private[this] lazy val Hyphen = """-(\p{javaLowerCase})""".r
+  private lazy val Hyphen = """-(\p{javaLowerCase})""".r
 
   def hasHyphen(s: String): Boolean = s.indexOf('-') >= 0
 
   def hyphenToCamel(s: String): String =
     if (hasHyphen(s)) Hyphen.replaceAllIn(s, _.group(1).toUpperCase(Locale.ENGLISH)) else s
 
-  private[this] lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
+  private lazy val Camel = """(\p{javaLowerCase})(\p{javaUpperCase})""".r
 
   def camelToHyphen(s: String): String =
     Camel.replaceAllIn(s, m => m.group(1) + "-" + m.group(2).toLowerCase(Locale.ENGLISH))

@@ -74,12 +74,12 @@ object BasicCommands {
 
   def early: Command = Command.arb(earlyParser, earlyHelp)((s, other) => other :: s)
 
-  private[this] def levelParser: Parser[String] =
+  private def levelParser: Parser[String] =
     Iterator(Level.Debug, Level.Info, Level.Warn, Level.Error) map (l =>
       token(l.toString)
     ) reduce (_ | _)
 
-  private[this] def addPluginSbtFileParser: Parser[File] = {
+  private def addPluginSbtFileParser: Parser[File] = {
     token(AddPluginSbtFileCommand) ~> (":" | "=" | Space.map(_.toString)) ~> (StringBasic).examples(
       "/some/extra.sbt"
     ) map {
@@ -87,7 +87,7 @@ object BasicCommands {
     }
   }
 
-  private[this] def addPluginSbtFileStringParser: Parser[String] = {
+  private def addPluginSbtFileStringParser: Parser[String] = {
     token(
       token(AddPluginSbtFileCommand) ~ (":" | "=" | Space.map(_.toString)) ~ (StringBasic)
         .examples("/some/extra.sbt") map { case s1 ~ s2 ~ s3 =>
@@ -96,14 +96,14 @@ object BasicCommands {
     )
   }
 
-  private[this] def earlyParser: State => Parser[String] = (s: State) => {
+  private def earlyParser: State => Parser[String] = (s: State) => {
     val p1 = token(EarlyCommand + "(") flatMap (_ => otherCommandParser(s) <~ token(")"))
     val p2 = (token("-") | token("--")) flatMap (_ => levelParser)
     val p3 = (token("-") | token("--")) flatMap (_ => addPluginSbtFileStringParser)
     p1 | p2 | p3
   }
 
-  private[this] def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
+  private def earlyHelp = Help(EarlyCommand, EarlyCommandBrief, EarlyCommandDetailed)
 
   /**
    * Adds additional *.sbt to the plugin build.
@@ -158,7 +158,7 @@ object BasicCommands {
   @deprecated("No longer public", "1.1.1")
   def completionsParser(state: State): Parser[String] = completionsParser
 
-  private[this] def completionsParser: Parser[String] = {
+  private def completionsParser: Parser[String] = {
     val notQuoted = (NotQuoted ~ any.*) map { case (nq, s) => nq + s }
     val quotedOrUnquotedSingleArgument = Space ~> (StringVerbatim | StringEscapable | notQuoted)
     token((quotedOrUnquotedSingleArgument ?? "").examples("", " "))
@@ -351,7 +351,7 @@ object BasicCommands {
   def callParser: Parser[(Seq[String], Seq[String])] =
     token(Space) ~> ((classpathOptionParser ?? nilSeq) ~ rep1sep(className, token(Space)))
 
-  private[this] def className: Parser[String] = {
+  private def className: Parser[String] = {
     val base = StringBasic & not('-' ~> any.*, "Class name cannot start with '-'.")
     def single(s: String) = Completions.single(Completion.displayOnly(s))
     val compl = TokenCompletions.fixed((seen, _) =>
@@ -360,10 +360,10 @@ object BasicCommands {
     token(base, compl)
   }
 
-  private[this] def classpathOptionParser: Parser[Seq[String]] =
+  private def classpathOptionParser: Parser[Seq[String]] =
     token(("-cp" | "-classpath") ~> Space) ~> classpathStrings <~ token(Space)
 
-  private[this] def classpathStrings: Parser[Seq[String]] =
+  private def classpathStrings: Parser[Seq[String]] =
     token(StringBasic.map(s => IO.pathSplit(s).toSeq), "<classpath>")
 
   def exit: Command = Command.command(TerminateAction, exitBrief, exitBrief) { s =>
@@ -507,7 +507,7 @@ object BasicCommands {
       System.err.println("Invalid alias name '" + name + "'.")
       s.fail
     }
-  private[this] def addAlias0(s: State, name: String, value: String): State =
+  private def addAlias0(s: State, name: String, value: String): State =
     s.copy(definedCommands = newAlias(name, value) +: s.definedCommands)
 
   def removeAliases(s: State): State = removeTagged(s, CommandAliasKey)

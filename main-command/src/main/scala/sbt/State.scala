@@ -373,7 +373,7 @@ object State {
       else
         applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
     }
-    private[this] def applyOnFailure(s: State, remaining: List[Exec], noHandler: => State): State =
+    private def applyOnFailure(s: State, remaining: List[Exec], noHandler: => State): State =
       s.onFailure match {
         case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
         case None    => noHandler
@@ -437,13 +437,13 @@ object State {
       s.put(BasicKeys.extendedClassLoaderCache, cache)
         .put(BasicKeys.classLoaderCache, new IncClassLoaderCache(cache))
     }
-    private[this] def newClassLoaderCache =
+    private def newClassLoaderCache =
       new ClassLoaderCache(s.configuration.provider.scalaProvider)
   }
 
   import ExceptionCategory._
 
-  private[this] def handleException(t: Throwable, s: State, log: Logger): State = {
+  private def handleException(t: Throwable, s: State, log: Logger): State = {
     ExceptionCategory(t) match {
       case AlreadyHandled => ()
       case m: MessageOnly => log.error(m.message)

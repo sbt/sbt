@@ -59,11 +59,11 @@ final class BuildStructure(
   def allProjectRefs(build: URI): Seq[ProjectRef] = eachProject(build, p => ProjectRef(build, p.id))
 
   /** Foreach project in each build apply the specified function. */
-  private[this] def eachBuild[A](f: (URI, ResolvedProject) => A): Seq[A] =
+  private def eachBuild[A](f: (URI, ResolvedProject) => A): Seq[A] =
     units.iterator.flatMap { case (build, unit) => unit.projects.map(f(build, _)) }.toIndexedSeq
 
   /** Foreach project in the specified build apply the specified function. */
-  private[this] def eachProject[A](build: URI, f: ResolvedProject => A): Seq[A] =
+  private def eachProject[A](build: URI, f: ResolvedProject => A): Seq[A] =
     units.get(build).iterator.flatMap(_.projects).map(f).toIndexedSeq
 
 }
@@ -204,7 +204,7 @@ final class DetectedPlugins(
     BuildUtil.importAll(autoImports(topLevelAutoPluginAutoImports)) ++
     BuildUtil.importNamesRoot(autoPlugins.map(_.name).filter(nonTopLevelPlugin))
 
-  private[this] lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
+  private lazy val (autoPluginAutoImports, topLevelAutoPluginAutoImports) =
     autoPlugins
       .flatMap { case DetectedAutoPlugin(name, _, hasAutoImport) =>
         if (hasAutoImport) Some(name) else None
@@ -222,9 +222,9 @@ final class DetectedPlugins(
     Plugins.deducer(detected)(ps0, log)
   }
 
-  private[this] def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
+  private def autoImports(pluginNames: Seq[String]) = pluginNames.map(_ + ".autoImport")
 
-  private[this] def nonTopLevelPlugin(name: String) = name.contains('.')
+  private def nonTopLevelPlugin(name: String) = name.contains('.')
 }
 
 /**

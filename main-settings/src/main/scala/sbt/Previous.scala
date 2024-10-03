@@ -24,14 +24,14 @@ import scala.util.control.NonFatal
  * `referenced` provides the `Format` to use for each key.
  */
 private[sbt] final class Previous(streams: Streams, referenced: IMap[Previous.Key, Referenced]) {
-  private[this] var map = IMap.empty[Previous.Key, ReferencedValue]
+  private var map = IMap.empty[Previous.Key, ReferencedValue]
   // We can't use mapValues to transform the map because mapValues is lazy and evaluates the
   // transformation function every time a value is fetched from the map, defeating the entire
   // purpose of ReferencedValue.
   for case referenced.TPair(k, v) <- referenced.toTypedSeq do
     map = map.put(k, new ReferencedValue(v))
 
-  private[this] final class ReferencedValue[T](referenced: Referenced[T]) {
+  private final class ReferencedValue[T](referenced: Referenced[T]) {
     lazy val previousValue: Option[T] = referenced.read(streams)
   }
 
@@ -100,7 +100,7 @@ object Previous {
 
   /** Records references to previous task value. This should be completely populated after settings finish loading. */
   private[sbt] final class References {
-    private[this] var map = IMap.empty[Key, Referenced]
+    private var map = IMap.empty[Key, Referenced]
 
     @deprecated("unused", "1.3.0")
     def recordReference[T](key: ScopedKey[Task[T]], format: JsonFormat[T]): Unit =

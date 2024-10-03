@@ -73,7 +73,7 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
   ): Project =
     copy2(id, base, aggregate, dependencies, settings, configurations)
 
-  private[this] def copy2(
+  private def copy2(
       id: String = id,
       base: File = base,
       aggregate: Seq[ProjectReference] = aggregate,
@@ -515,7 +515,7 @@ trait ProjectExtra extends Scoped.Syntax:
     private[sbt] def showUses(defs: Seq[ScopedKey[_]])(using display: Show[ScopedKey[_]]): String =
       showKeys(defs)
 
-    private[this] def showKeys(s: Seq[ScopedKey[_]])(using display: Show[ScopedKey[_]]): String =
+    private def showKeys(s: Seq[ScopedKey[_]])(using display: Show[ScopedKey[_]]): String =
       s.map(display.show).sorted.mkString("\n\t", "\n\t", "\n\n")
 
     private[sbt] def definitions(structure: BuildStructure, actual: Boolean, key: AttributeKey[_])(

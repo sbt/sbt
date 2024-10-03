@@ -34,7 +34,7 @@ private[sbt] class ClassLoaderCache(
     val parent: ClassLoader,
     private val miniProvider: Option[(File, ClassLoader)]
 ) extends AbstractClassLoaderCache {
-  private[this] val parentHolder = new AtomicReference(parent)
+  private val parentHolder = new AtomicReference(parent)
   def commonParent = parentHolder.get()
   def setParent(parent: ClassLoader): Unit = parentHolder.set(parent)
   def this(commonParent: ClassLoader) = this(commonParent, None)
@@ -73,11 +73,11 @@ private[sbt] class ClassLoaderCache(
     override def hashCode(): Int = (fileStamps.hashCode * 31) ^ parent.hashCode
     override def toString: String = s"Key(${fileStamps mkString ","}, $parent)"
   }
-  private[this] val delegate =
+  private val delegate =
     new java.util.concurrent.ConcurrentHashMap[Key, Reference[ClassLoader]]()
-  private[this] val referenceQueue = new ReferenceQueue[ClassLoader]
+  private val referenceQueue = new ReferenceQueue[ClassLoader]
 
-  private[this] def clearExpiredLoaders(): Unit = lock.synchronized {
+  private def clearExpiredLoaders(): Unit = lock.synchronized {
     val clear = (k: Key, ref: Reference[ClassLoader]) => {
       ref.get() match {
         case w: WrappedLoader => w.invalidate()
@@ -98,7 +98,7 @@ private[sbt] class ClassLoaderCache(
     }
     delegate.forEach((k, v) => if (isInvalidated(k.parent)) clear(k, v))
   }
-  private[this] class CleanupThread(private[this] val id: Int)
+  private class CleanupThread(private val id: Int)
       extends Thread(s"classloader-cache-cleanup-$id") {
     setDaemon(true)
     start()
@@ -149,15 +149,15 @@ private[sbt] class ClassLoaderCache(
    * fairly uncommon for sbt to run out of file descriptors.
    *
    */
-  private[this] val metaspaceIsLimited =
+  private val metaspaceIsLimited =
     ManagementFactory.getMemoryPoolMXBeans.asScala
       .exists(b => (b.getName == "Metaspace") && (b.getUsage.getMax > 0))
-  private[this] val mkReference: (Key, ClassLoader) => Reference[ClassLoader] =
+  private val mkReference: (Key, ClassLoader) => Reference[ClassLoader] =
     if (metaspaceIsLimited) { (_, cl) =>
       (new SoftReference[ClassLoader](cl, referenceQueue): Reference[ClassLoader])
     } else ClassLoaderReference.apply
-  private[this] val cleanupThread = new CleanupThread(ClassLoaderCache.threadID.getAndIncrement())
-  private[this] val lock = new Object
+  private val cleanupThread = new CleanupThread(ClassLoaderCache.threadID.getAndIncrement())
+  private val lock = new Object
 
   private def close(classLoader: ClassLoader): Unit = classLoader match {
     case a: AutoCloseable => a.close()
@@ -197,7 +197,7 @@ private[sbt] class ClassLoaderCache(
     val key = new Key(files)
     get(key, mkLoader)
   }
-  private[this] def get(key: Key, f: () => ClassLoader): ClassLoader = {
+  private def get(key: Key, f: () => ClassLoader): ClassLoader = {
     scalaProviderKey match {
       case Some(k) if k == key => k.toClassLoader
       case _ =>

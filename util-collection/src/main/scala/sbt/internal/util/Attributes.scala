@@ -119,7 +119,7 @@ object AttributeKey {
   private[sbt] def copyWithRank[A](a: AttributeKey[A], rank: Int): AttributeKey[A] =
     make(a.label, a.description, a.extend, rank)(using a.tag, a.optJsonWriter)
 
-  private[this] def make[A: KeyTag: OptJsonWriter](
+  private def make[A: KeyTag: OptJsonWriter](
       name: String,
       description0: Option[String],
       extend0: Seq[AttributeKey[_]],

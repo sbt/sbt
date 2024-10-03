@@ -215,7 +215,7 @@ object Act {
       case Seq(single) => success(single)
       case multi       => failure("Ambiguous keys: " + showAmbiguous(keys(multi)))
     }
-  private[this] def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[_]] = ss.map(_.key)
+  private def keys(ss: Seq[ParsedKey]): Seq[ScopedKey[_]] = ss.map(_.key)
   def selectByConfig(ss: Seq[ParsedKey]): Seq[ParsedKey] =
     ss match {
       case Seq() => Nil
@@ -476,7 +476,7 @@ object Act {
 
   def actParser(s: State): Parser[() => State] = requireSession(s, actParser0(s))
 
-  private[this] def actParser0(state: State): Parser[() => State] =
+  private def actParser0(state: State): Parser[() => State] =
     val extracted = Project.extract(state)
     import extracted.{ showKey, structure }
     actionParser.flatMap: action =>
@@ -530,10 +530,10 @@ object Act {
           case _                     => true
     }
 
-  private[this] final class ActAction
-  private[this] final val ShowAction, MultiAction, SingleAction, PrintAction = new ActAction
+  private final class ActAction
+  private final val ShowAction, MultiAction, SingleAction, PrintAction = new ActAction
 
-  private[this] def actionParser: Parser[ActAction] =
+  private def actionParser: Parser[ActAction] =
     token(
       ((ShowCommand ^^^ ShowAction) |
         (PrintCommand ^^^ PrintAction) |
@@ -576,7 +576,7 @@ object Act {
         KeyValue(key, value)
       }
     }
-  private[this] def anyKeyValues(
+  private def anyKeyValues(
       structure: BuildStructure,
       keys: Seq[ScopedKey[_]]
   ): Seq[KeyValue[_]] =
@@ -586,7 +586,7 @@ object Act {
       }
     }
 
-  private[this] def getValue[T](
+  private def getValue[T](
       data: Settings[Scope],
       scope: Scope,
       key: AttributeKey[T]

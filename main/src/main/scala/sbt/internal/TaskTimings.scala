@@ -36,10 +36,10 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
           ConsoleOut.systemOut.println(message)
       }
     )
-  private[this] var start = 0L
-  private[this] val threshold = SysProp.taskTimingsThreshold
-  private[this] val omitPaths = SysProp.taskTimingsOmitPaths
-  private[this] val (unit, divider) = SysProp.taskTimingsUnit
+  private var start = 0L
+  private val threshold = SysProp.taskTimingsThreshold
+  private val omitPaths = SysProp.taskTimingsOmitPaths
+  private val (unit, divider) = SysProp.taskTimingsUnit
 
   if (reportOnShutdown) {
     start = System.nanoTime
@@ -60,9 +60,9 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
 
   override def stop(): Unit = ()
 
-  private[this] val reFilePath = raw"\{[^}]+\}".r
+  private val reFilePath = raw"\{[^}]+\}".r
 
-  private[this] def report() = {
+  private def report() = {
     val total = divide(System.nanoTime - start)
     logger.info(s"Total time: $total $unit")
     val times = timingsByName.toSeq
@@ -82,7 +82,7 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     }
   }
 
-  private[this] def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
+  private def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
     a / 10L
   }
 }

@@ -162,7 +162,7 @@ private[sbt] object Definition {
     Converter.fromJson[TextDocumentPositionParams](jsonDefinition).toOption
   }
 
-  private[this] val AnalysesKey = "lsp.definition.analyses.key"
+  private val AnalysesKey = "lsp.definition.analyses.key"
   private[server] type Analyses = Set[((String, Boolean, Boolean), Option[Analysis])]
 
   private def storeAnalysis(

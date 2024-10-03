@@ -74,7 +74,7 @@ sealed trait TaskStreams[Key] {
   /** Creates a Logger that logs to stream with ID `sid`. */
   def log(sid: String): ManagedLogger
 
-  private[this] def getID(s: Option[String]) = s getOrElse default
+  private def getID(s: Option[String]) = s getOrElse default
 }
 sealed trait ManagedStreams[Key] extends TaskStreams[Key] {
   def open(): Unit
@@ -96,14 +96,14 @@ trait Streams[Key] {
 }
 trait CloseableStreams[Key] extends Streams[Key] with java.io.Closeable
 object Streams {
-  private[this] val closeQuietly = (c: Closeable) =>
+  private val closeQuietly = (c: Closeable) =>
     try {
       c.close()
     } catch { case _: IOException => () }
-  private[this] val streamLocks = new ConcurrentHashMap[File, AnyRef]()
+  private val streamLocks = new ConcurrentHashMap[File, AnyRef]()
 
   def closeable[Key](delegate: Streams[Key]): CloseableStreams[Key] = new CloseableStreams[Key] {
-    private[this] val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
+    private val streams = new collection.mutable.HashMap[Key, ManagedStreams[Key]]
 
     def apply(key: Key): ManagedStreams[Key] =
       synchronized {
@@ -156,8 +156,8 @@ object Streams {
   ): Streams[Key] = new Streams[Key] {
 
     def apply(a: Key): ManagedStreams[Key] = new ManagedStreams[Key] {
-      private[this] var opened: List[Closeable] = nil
-      private[this] var closed = false
+      private var opened: List[Closeable] = nil
+      private var closed = false
 
       def getInput(a: Key, sid: String = default): Input =
         make(a, sid)(f => new FileInput(f))

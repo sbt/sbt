@@ -35,7 +35,7 @@ object ConsoleOut {
   private[sbt] def getGlobalProxy: ConsoleOut = Proxy.proxy.get
   private object Proxy extends ConsoleOut {
     private[ConsoleOut] val proxy = new AtomicReference[ConsoleOut](systemOut)
-    private[this] def get: ConsoleOut = proxy.get
+    private def get: ConsoleOut = proxy.get
     def set(proxy: ConsoleOut): Unit = this.proxy.set(proxy)
     override val lockObject: AnyRef = proxy
     override def print(s: String): Unit = get.print(s)
@@ -49,7 +49,7 @@ object ConsoleOut {
     (cur, prev) => cur.contains(s) && prev.contains(s)
 
   /** Move to beginning of previous line and clear the line. */
-  private[this] final val OverwriteLine = "\u001B[A\r\u001B[2K"
+  private final val OverwriteLine = "\u001B[A\r\u001B[2K"
 
   /**
    * ConsoleOut instance that is backed by System.out. It overwrites the previously printed line if
@@ -60,8 +60,8 @@ object ConsoleOut {
    */
   def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = new ConsoleOut {
     val lockObject: PrintStream = System.out
-    private[this] var last: Option[String] = None
-    private[this] val current = new java.lang.StringBuffer
+    private var last: Option[String] = None
+    private val current = new java.lang.StringBuffer
     def print(s: String): Unit = synchronized { current.append(s); () }
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
@@ -113,7 +113,7 @@ object ConsoleOut {
     }
   }
 
-  private[this] val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
+  private val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
   def terminalOut(terminal: Terminal): ConsoleOut = consoleOutPerTerminal.get(terminal) match {
     case null =>
       val res = new ConsoleOut {

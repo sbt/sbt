@@ -217,7 +217,7 @@ object IvyXml {
     "makeIvyXmlConfiguration"
   )
 
-  private[this] def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
+  private def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
     try {
       val cls = sbt.Keys.getClass
       val m = cls.getMethod(method)

@@ -53,7 +53,7 @@ import java.util.concurrent.{ Executor, Executors, ExecutorCompletionService }
 import annotation.tailrec
 
 object ConcurrentRestrictions {
-  private[this] val completionServices = new java.util.WeakHashMap[CompletionService, Boolean]
+  private val completionServices = new java.util.WeakHashMap[CompletionService, Boolean]
   def cancelAll() = completionServices.keySet.asScala.toVector.foreach {
     case a: AutoCloseable => a.close()
     case _                =>
@@ -118,7 +118,7 @@ object ConcurrentRestrictions {
       def valid(g: TagMap) = validF(g)
     }
 
-  private[this] def merge(m: TagMap, a: TaskId[?])(
+  private def merge(m: TagMap, a: TaskId[?])(
       f: (Int, Int) => Int
   ): TagMap = {
     val base = merge(m, a.tags)(f)
@@ -126,7 +126,7 @@ object ConcurrentRestrictions {
     update(un, All, 1)(f)
   }
 
-  private[this] def update[A, B](m: Map[A, B], a: A, b: B)(f: (B, B) => B): Map[A, B] = {
+  private def update[A, B](m: Map[A, B], a: A, b: B)(f: (B, B) => B): Map[A, B] = {
     val newb =
       (m get a) match {
         case Some(bv) => f(bv, b)
@@ -134,10 +134,10 @@ object ConcurrentRestrictions {
       }
     m.updated(a, newb)
   }
-  private[this] def merge[A, B](m: Map[A, B], n: Map[A, B])(f: (B, B) => B): Map[A, B] =
+  private def merge[A, B](m: Map[A, B], n: Map[A, B])(f: (B, B) => B): Map[A, B] =
     n.foldLeft(m) { case (acc, (a, b)) => update(acc, a, b)(f) }
 
-  private[this] val poolID = new AtomicInteger(1)
+  private val poolID = new AtomicInteger(1)
 
   /**
    * Constructs a CompletionService suitable for backing task execution based on the provided
@@ -220,28 +220,28 @@ object ConcurrentRestrictions {
 
     new CompletionService with CancelSentiels with AutoCloseable {
       completionServices.put(this, true)
-      private[this] val closed = new AtomicBoolean(false)
+      private val closed = new AtomicBoolean(false)
       override def close(): Unit = if (closed.compareAndSet(false, true)) {
         completionServices.remove(this)
         ()
       }
 
       /** Backing service used to manage execution on threads once all constraints are satisfied. */
-      private[this] val jservice = new ExecutorCompletionService[Completed](backing)
+      private val jservice = new ExecutorCompletionService[Completed](backing)
 
       /** The description of the currently running tasks, used by `tags` to manage restrictions. */
-      private[this] var tagState = tags.empty
+      private var tagState = tags.empty
 
       /** The number of running tasks. */
-      private[this] var running = 0
+      private var running = 0
 
       /**
        * Tasks that cannot be run yet because they cannot execute concurrently with the currently
        * running tasks.
        */
-      private[this] val pending = new LinkedList[Enqueue]
+      private val pending = new LinkedList[Enqueue]
 
-      private[this] val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty
+      private val sentinels: mutable.ListBuffer[JFuture[_]] = mutable.ListBuffer.empty
 
       def cancelSentinels(): Unit = {
         sentinels.toList foreach { s =>
@@ -271,7 +271,7 @@ object ConcurrentRestrictions {
         }
         ()
       }
-      private[this] def submitValid(node: TaskId[?], work: () => Completed): Unit = {
+      private def submitValid(node: TaskId[?], work: () => Completed): Unit = {
         running += 1
         val wrappedWork = () =>
           try work()
@@ -279,7 +279,7 @@ object ConcurrentRestrictions {
         CompletionService.submitFuture(wrappedWork, jservice)
         ()
       }
-      private[this] def cleanup(node: TaskId[?]): Unit = synchronized {
+      private def cleanup(node: TaskId[?]): Unit = synchronized {
         running -= 1
         tagState = tags.remove(tagState, node)
         if (!tags.valid(tagState)) {
@@ -290,11 +290,11 @@ object ConcurrentRestrictions {
         }
         submitValid(new LinkedList)
       }
-      private[this] def errorAddingToIdle() =
+      private def errorAddingToIdle() =
         warn("Invalid restriction: adding a node to an idle system must be allowed.")
 
       /** Submits pending tasks that are now allowed to executed. */
-      @tailrec private[this] def submitValid(tried: Queue[Enqueue]): Unit =
+      @tailrec private def submitValid(tried: Queue[Enqueue]): Unit =
         if (pending.isEmpty) {
           if (!tried.isEmpty) {
             if (running == 0) errorAddingToIdle()

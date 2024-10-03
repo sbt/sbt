@@ -168,7 +168,7 @@ object PluginDiscovery:
         loadModules[A](data, names, loader)
     DetectedModules(namesAndValues)
 
-  private[this] def loadModules[A: reflect.ClassTag](
+  private def loadModules[A: reflect.ClassTag](
       data: PluginData,
       names: Seq[String],
       loader: ClassLoader
@@ -181,7 +181,7 @@ object PluginDiscovery:
       case e: LinkageError => incompatiblePlugins(data, e)
     }
 
-  private[this] def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing = {
+  private def incompatiblePlugins(data: PluginData, t: LinkageError): Nothing = {
     val evicted = data.report.toList.flatMap(_.configurations.flatMap(_.evicted))
     val evictedModules = evicted.map { id =>
       (id.organization, id.name)

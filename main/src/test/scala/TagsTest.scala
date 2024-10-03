@@ -47,6 +47,6 @@ object TagsTest extends Properties("Tags") {
     excl(etag)(tm)
   }
 
-  private[this] def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
+  private def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
 
 }

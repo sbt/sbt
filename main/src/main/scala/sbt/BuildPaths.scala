@@ -68,7 +68,7 @@ object BuildPaths {
   def getZincDirectory(state: State, globalBase: File): File =
     fileSetting(globalZincDirectory, GlobalZincProperty, defaultGlobalZinc(globalBase))(state)
 
-  private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
+  private def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
       state: State
   ): File =
     getFileSetting(stateKey, property, default)(state)
@@ -108,13 +108,13 @@ object BuildPaths {
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
   def defaultGlobalBase = Path.userHome / ConfigDirectoryName
 
-  private[this] def binarySbtVersion(state: State): String =
+  private def binarySbtVersion(state: State): String =
     sbt.internal.librarymanagement.cross.CrossVersionUtil
       .binarySbtVersion(state.configuration.provider.id.version)
-  private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
-  private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
-  private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
-  private[this] def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
+  private def defaultStaging(globalBase: File) = globalBase / "staging"
+  private def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
+  private def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
+  private def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
 
   def configurationSources(base: File): Seq[File] =
     (base * (GlobFilter("*.sbt") - ".sbt"))

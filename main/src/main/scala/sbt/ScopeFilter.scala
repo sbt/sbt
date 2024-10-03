@@ -230,7 +230,7 @@ object ScopeFilter {
   }
 
   /** Constructs a Data instance from the list of static scopes and the project relationships. */
-  private[this] val getData: Initialize[Data] =
+  private val getData: Initialize[Data] =
     Def.setting {
       val build = Keys.loadedBuild.value
       val scopes = Keys.allScopes.value
@@ -248,7 +248,7 @@ object ScopeFilter {
       new Data(build.units, resolve, scopes)
     }
 
-  private[this] def getDependencies(
+  private def getDependencies(
       structure: Map[URI, LoadedBuildUnit],
       classpath: Boolean,
       aggregate: Boolean
@@ -260,7 +260,7 @@ object ScopeFilter {
           (if (aggregate) p.aggregate else Nil)
       }
 
-  private[this] def byDeps(
+  private def byDeps(
       ref: ProjectReference,
       transitive: Boolean,
       includeRoot: Boolean,
@@ -282,14 +282,14 @@ object ScopeFilter {
   private def inProjects(projects: ProjectReference*): ProjectFilter =
     inResolvedProjects(data => projects.map(data.resolve))
 
-  private[this] def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =
+  private def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =
     selectAxis(data => projects(data).toSet)
 
-  private[this] def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T] {
+  private def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T] {
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = _ == Zero
   }
-  private[this] def selectAny[T]: AxisFilter[T] = selectAxis(const(const(true)))
-  private[this] def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T] {
+  private def selectAny[T]: AxisFilter[T] = selectAxis(const(const(true)))
+  private def selectAxis[T](f: Data => T => Boolean): AxisFilter[T] = new AxisFilter[T] {
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = {
       val g = f(data)
       _ match {

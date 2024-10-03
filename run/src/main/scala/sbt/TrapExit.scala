@@ -43,7 +43,7 @@ object TrapExit {
   @deprecated("TrapExit feature is removed; just call the function instead", "1.6.0")
   def uninstallManager(previous: Any): Unit = ()
 
-  private[this] def runUnmanaged(execute: => Unit, log: Logger): Int = {
+  private def runUnmanaged(execute: => Unit, log: Logger): Int = {
     log.warn("Managed execution not possible: security manager not installed.")
     try {
       execute; 0

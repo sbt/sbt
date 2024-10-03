@@ -33,7 +33,7 @@ private[sbt] object ClassLoaders {
   private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
     def urls: Array[URL] = files.toArray.map(_.toURI.toURL)
   }
-  private[this] val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
+  private val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader
   /*
    * Get the class loader for a test task. The configuration could be IntegrationTest or Test.
    */
@@ -139,7 +139,7 @@ private[sbt] object ClassLoaders {
       }
     }
 
-  private[this] def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
+  private def extendedClassLoaderCache: Def.Initialize[Task[ClassLoaderCache]] = Def.task {
     val errorMessage = "Tried to extract classloader cache for uninitialized state."
     state.value
       .get(BasicKeys.extendedClassLoaderCache)
@@ -252,7 +252,7 @@ private[sbt] object ClassLoaders {
   ): Def.Initialize[Task[Seq[HashedVirtualFileRef]]] =
     Def.task(data(key.value).filter(_.id.endsWith(".jar")))
 
-  private[this] def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
+  private def modifiedTimes(stamps: Seq[(Path, FileStamp)]): Seq[(File, Long)] = stamps.map {
     case (p, LastModified(lm)) => p.toFile -> lm
     case (p, _) =>
       val f = p.toFile

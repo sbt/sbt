@@ -862,7 +862,7 @@ private[sbt] object Load {
       new BuildUnit(uri, normBase, loadedDefs, plugs, converter)
     }
 
-  private[this] def autoID(
+  private def autoID(
       localBase: File,
       context: PluginManagement.Context,
       existingIDs: Seq[String]
@@ -883,15 +883,15 @@ private[sbt] object Load {
     if (existingIDs.contains(tryID)) BuildDef.defaultID(localBase) else tryID
   }
 
-  private[this] def autoIDError(base: File, reason: String): String =
+  private def autoIDError(base: File, reason: String): String =
     "Could not derive root project ID from directory " + base.getAbsolutePath + ":\n" +
       reason + "\nRename the directory or explicitly define a root project."
 
-  private[this] def projectsFromBuild(b: BuildDef, base: File): Seq[Project] =
+  private def projectsFromBuild(b: BuildDef, base: File): Seq[Project] =
     b.projectDefinitions(base).map(resolveBase(base))
 
   // Lame hackery to keep track of our state.
-  private[this] case class LoadedProjects(
+  private case class LoadedProjects(
       projects: Seq[Project],
       generatedConfigClassFiles: Seq[Path],
   )
@@ -926,7 +926,7 @@ private[sbt] object Load {
    * @param extraSbtFiles
    * @return The completely resolved/updated sequence of projects defined, with all settings expanded.
    */
-  private[this] def loadTransitive(
+  private def loadTransitive(
       newProjects: Seq[Project],
       buildBase: File,
       plugins: LoadedPlugins,
@@ -1097,7 +1097,7 @@ private[sbt] object Load {
         LoadedProjects(acc, generatedConfigClassFiles)
   end loadTransitive
 
-  private[this] def translateAutoPluginException(
+  private def translateAutoPluginException(
       e: AutoPluginException,
       project: Project
   ): AutoPluginException =
@@ -1112,7 +1112,7 @@ private[sbt] object Load {
    *  @param sbtFiles Any sbt file loaded during this discovery (used later to complete the project).
    *  @param generatedFiles Any .class file that was generated when compiling/discovering these projects.
    */
-  private[this] case class DiscoveredProjects(
+  private case class DiscoveredProjects(
       root: Option[Project],
       nonRoot: Seq[Project],
       sbtFiles: Seq[VirtualFile],
@@ -1189,7 +1189,7 @@ private[sbt] object Load {
         .prefixConfigs(autoConfigs: _*)
     }
 
-  private[this] def expandCommonSettingsPerBase(
+  private def expandCommonSettingsPerBase(
       directory: File,
       memoSettings: mutable.Map[VirtualFile, LoadedSbtFile],
       extraSbtFiles: Seq[VirtualFile],
@@ -1228,7 +1228,7 @@ private[sbt] object Load {
    * @param eval  A mechanism of executing/running scala code.
    * @param memoSettings  A recording of all files we've parsed.
    */
-  private[this] def discoverProjects(
+  private def discoverProjects(
       auto: AddSettings,
       projectBase: File,
       extraSbtFiles: Seq[VirtualFile],
@@ -1353,7 +1353,7 @@ private[sbt] object Load {
     )
   )
 
-  private[this] def removeEntries(
+  private def removeEntries(
       cp: Def.Classpath,
       remove: Def.Classpath
   ): Def.Classpath =

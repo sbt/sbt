@@ -29,14 +29,14 @@ private[sbt] class TaskProgress(
 ) extends AbstractTaskExecuteProgress
     with ExecuteProgress
     with AutoCloseable {
-  private[this] val lastTaskCount = new AtomicInteger(0)
-  private[this] val reportLoop = new AtomicReference[AutoCloseable]
-  private[this] val active = new ConcurrentHashMap[TaskId[_], AutoCloseable]
-  private[this] val nextReport = new AtomicReference(Deadline.now)
-  private[this] val scheduler =
+  private val lastTaskCount = new AtomicInteger(0)
+  private val reportLoop = new AtomicReference[AutoCloseable]
+  private val active = new ConcurrentHashMap[TaskId[_], AutoCloseable]
+  private val nextReport = new AtomicReference(Deadline.now)
+  private val scheduler =
     Executors.newSingleThreadScheduledExecutor(r => new Thread(r, "sbt-progress-report-scheduler"))
-  private[this] val pending = new java.util.Vector[java.util.concurrent.Future[_]]
-  private[this] val closed = new AtomicBoolean(false)
+  private val pending = new java.util.Vector[java.util.concurrent.Future[_]]
+  private val closed = new AtomicBoolean(false)
   private def schedule[R](duration: FiniteDuration, recurring: Boolean)(f: => R): AutoCloseable =
     if (!closed.get) {
       val cancelled = new AtomicBoolean(false)
@@ -63,7 +63,7 @@ private[sbt] class TaskProgress(
       logger.debug("tried to call schedule on closed TaskProgress")
       () => ()
     }
-  private[this] val executor =
+  private val executor =
     Executors.newSingleThreadExecutor(r => new Thread(r, "sbt-task-progress-report-thread"))
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
     Option(reportLoop.getAndSet(null)).foreach(_.close())
@@ -83,7 +83,7 @@ private[sbt] class TaskProgress(
   override protected def clearTimings: Boolean = true
   override def initial(): Unit = ()
 
-  private[this] def doReport(): Unit = {
+  private def doReport(): Unit = {
     val runnable: Runnable = () => {
       if (nextReport.get.isOverdue) {
         report()
@@ -141,7 +141,7 @@ private[sbt] class TaskProgress(
     // send an empty progress report to clear out the previous report
     appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
   }
-  private[this] val skipReportTasks =
+  private val skipReportTasks =
     Set(
       "installSbtn",
       "run",
@@ -156,13 +156,13 @@ private[sbt] class TaskProgress(
       "streams",
       "streams-manager",
     )
-  private[this] val hiddenTasks = Set(
+  private val hiddenTasks = Set(
     "compileEarly",
     "pickleProducts",
   )
-  private[this] def appendProgress(event: ProgressEvent): Unit =
+  private def appendProgress(event: ProgressEvent): Unit =
     StandardMain.exchange.updateProgress(event)
-  private[this] def report(): Unit = {
+  private def report(): Unit = {
     val (currentTasks, skip) = filter(timings(active.keySet, threshold.toMicros))
     val ltc = lastTaskCount.get
     if (currentTasks.nonEmpty || ltc != 0) {
@@ -190,7 +190,7 @@ private[sbt] class TaskProgress(
     }
   }
 
-  private[this] def getShortName(task: TaskId[_]): String = {
+  private def getShortName(task: TaskId[_]): String = {
     val name = taskName(task)
     name.lastIndexOf('/') match {
       case -1 => name
@@ -201,7 +201,7 @@ private[sbt] class TaskProgress(
     }
 
   }
-  private[this] def filter(
+  private def filter(
       tasks: Vector[(TaskId[_], Long)]
   ): (Vector[(TaskId[_], Long)], Boolean) = {
     tasks.foldLeft((Vector.empty[(TaskId[_], Long)], false)) {

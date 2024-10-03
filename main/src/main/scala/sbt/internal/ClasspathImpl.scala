@@ -76,7 +76,7 @@ private[sbt] object ClasspathImpl {
         .put(Keys.configurationStr, config.name)
     }
 
-  private[this] def trackedExportedProductsImplTask(
+  private def trackedExportedProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     Def.taskIf {
@@ -87,7 +87,7 @@ private[sbt] object ClasspathImpl {
       else trackedNonJarProductsImplTask(track).value
     }
 
-  private[this] def trackedNonJarProductsImplTask(
+  private def trackedNonJarProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     Def
@@ -118,7 +118,7 @@ private[sbt] object ClasspathImpl {
           }
       }
 
-  private[this] def trackedJarProductsImplTask(
+  private def trackedJarProductsImplTask(
       track: TrackLevel
   ): Initialize[Task[Seq[(HashedVirtualFileRef, VirtualFile)]]] =
     (Def

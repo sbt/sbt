@@ -42,7 +42,7 @@ object Escapes extends Properties("Escapes") {
       !hasEscapeSequence(removed)
   }
 
-  private[this] final val ecs = ESC.toString
+  private final val ecs = ESC.toString
   private val partialEscapeSequences =
     Gen.oneOf(Gen const ecs, Gen const ecs ++ "[", Gen.choose('@', '_').map(ecs :+ _))
 
@@ -104,7 +104,7 @@ object Escapes extends Properties("Escapes") {
       else s"ESC ($content) (${terminator.toInt})"
   }
 
-  private[this] def noEscape(s: String): String = s.replace(ESC, ' ')
+  private def noEscape(s: String): String = s.replace(ESC, ' ')
 
   lazy val genEscapeSequence: Gen[EscapeSequence] =
     oneOf(genKnownSequence, genTwoCharacterSequence, genArbitraryEscapeSequence)

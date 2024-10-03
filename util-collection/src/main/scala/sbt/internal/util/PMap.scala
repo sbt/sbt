@@ -117,8 +117,8 @@ class DelegatingPMap[K[_], V[_]](backing: mutable.Map[K[Any], V[Any]])
   def values = backing.values.asInstanceOf[Iterable[V[Any]]]
   def isEmpty = backing.isEmpty
 
-  private[this] def cast[A](v: V[Any]): V[A] = v.asInstanceOf[V[A]]
-  private[this] def cast[A](o: Option[V[Any]]): Option[V[A]] = o map cast[A]
+  private def cast[A](v: V[Any]): V[A] = v.asInstanceOf[V[A]]
+  private def cast[A](o: Option[V[Any]]): Option[V[A]] = o map cast[A]
 
   override def toString = backing.toString
 }
