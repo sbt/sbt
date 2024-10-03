@@ -16,7 +16,6 @@ import Def.Setting
 import sbt.io.Hash
 import sbt.internal.util.{ Attributed, StringAttributeMap }
 import sbt.internal.inc.{ FileAnalysisStore, ReflectUtilities }
-import sbt.SlashSyntax0.*
 import xsbti.{ FileConverter, VirtualFileRef }
 import xsbti.compile.CompileAnalysis
 
@@ -59,10 +58,9 @@ private[sbt] object BuildDef:
   private[sbt] def generatedRootSkipPublish(
       id: String,
       base: File,
-      agg: Seq[ProjectRef]
   ): Project =
     Project
-      .mkGeneratedRoot(id, base, agg)
+      .mkGeneratedRoot(id, base, Nil)
       .settings(
         defaultProjectSettings,
         publish / skip := true,

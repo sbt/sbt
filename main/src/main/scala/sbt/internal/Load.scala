@@ -866,22 +866,25 @@ private[sbt] object Load {
       localBase: File,
       context: PluginManagement.Context,
       existingIDs: Seq[String]
-  ): String = {
-    def normalizeID(f: File) = Project.normalizeProjectID(f.getName) match {
+  ): String =
+    def normalizeID(f: File) = Project.normalizeProjectID(f.getName) match
       case Right(id) => id
       case Left(msg) => sys.error(autoIDError(f, msg))
-    }
     @tailrec def nthParentName(f: File, i: Int): String =
-      if (f eq null) BuildDef.defaultID(localBase)
-      else if (i <= 0) normalizeID(f)
+      if f eq null then BuildDef.defaultID(localBase)
+      else if i <= 0 then normalizeID(f)
       else nthParentName(f.getParentFile, i - 1)
     val pluginDepth = context.pluginProjectDepth
-    val postfix = "-build" * pluginDepth
     val idBase =
-      if (context.globalPluginProject) "global-plugins" else nthParentName(localBase, pluginDepth)
-    val tryID = idBase + postfix
-    if (existingIDs.contains(tryID)) BuildDef.defaultID(localBase) else tryID
-  }
+      if context.globalPluginProject then "global-plugins"
+      else nthParentName(localBase, pluginDepth)
+    val tryID =
+      if pluginDepth == 0 then
+        if existingIDs.isEmpty then idBase
+        else idBase + "-root"
+      else idBase + "-build" * pluginDepth
+    if existingIDs.contains(tryID) then BuildDef.defaultID(localBase)
+    else tryID
 
   private def autoIDError(base: File, reason: String): String =
     "Could not derive root project ID from directory " + base.getAbsolutePath + ":\n" +
@@ -1066,10 +1069,10 @@ private[sbt] object Load {
               log.debug(s"[Loading] Found non-root projects $discoveredIdsStr")
               // Here we do something interesting... We need to create an aggregate root project
               val root = {
-                val defaultID = autoID(buildBase, context, Nil)
+                val defaultID = autoID(buildBase, context, discovered.map(_.id))
                 if discovered.isEmpty || java.lang.Boolean.getBoolean("sbt.root.ivyplugin") then
                   BuildDef.defaultProject(defaultID, buildBase)
-                else BuildDef.generatedRootSkipPublish(defaultID, buildBase, Nil)
+                else BuildDef.generatedRootSkipPublish(defaultID, buildBase)
               }
               val otherProjects =
                 loadTransitive1(

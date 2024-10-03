@@ -52,8 +52,10 @@ class BuildServerTest extends AbstractServerTest {
     // runAndTest should declare the dependency to util even if optional
     assert(runAndTestTarget.dependencies.contains(utilTargetIdentifier))
     val buildServerBuildTarget =
-      result.targets.find(_.displayName.contains("buildserver-build")).get
-    assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-build"))
+      result.targets.find(_.displayName.contains("buildserver-root-build")) match
+        case Some(t) => t
+        case None    => sys.error(s"buildserver-root-build not in ${result.targets}")
+    assert(buildServerBuildTarget.id.uri.toString.endsWith("#buildserver-root-build"))
     assert(!result.targets.exists(_.displayName.contains("badBuildTarget")))
   }
 
@@ -65,8 +67,9 @@ class BuildServerTest extends AbstractServerTest {
     val sources = s.items.head.sources.map(_.uri)
     assert(sources.contains(new File(svr.baseDirectory, "util/src/main/scala").toURI))
   }
+
   test("buildTarget/sources: base sources") {
-    val buildTarget = buildTargetUri("buildserver", "Compile")
+    val buildTarget = buildTargetUri("buildserver-root", "Compile")
     buildTargetSources(Seq(buildTarget))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources
@@ -79,7 +82,7 @@ class BuildServerTest extends AbstractServerTest {
   }
 
   test("buildTarget/sources: sbt") {
-    val x = new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-build")
+    val x = new URI(s"${svr.baseDirectory.getAbsoluteFile.toURI}#buildserver-root-build")
     buildTargetSources(Seq(x))
     val s = svr.waitFor[SourcesResult](10.seconds)
     val sources = s.items.head.sources.map(_.uri).sorted
