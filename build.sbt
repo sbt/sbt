@@ -271,7 +271,7 @@ lazy val lmCore = (project in file("core"))
       exclude[DirectMissingMethodProblem]("sbt.librarymanagement.ScalaArtifacts.toolDependencies*"),
     ),
   )
-  .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache)
+  .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache, addSbtCompilerInterface)
 
 lazy val lmIvy = (project in file("ivy"))
   // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)

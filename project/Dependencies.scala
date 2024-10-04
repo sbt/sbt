@@ -11,13 +11,16 @@ object Dependencies {
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   private val ioVersion = nightlyVersion.getOrElse("1.10.0")
-  private val utilVersion = nightlyVersion.getOrElse("2.0.0-alpha10")
+  private val utilVersion = nightlyVersion.getOrElse("2.0.0-M1")
+  private val zincVersion = nightlyVersion.getOrElse("2.0.0-M1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
   private val utilPosition = "org.scala-sbt" %% "util-position" % utilVersion
   private val utilLogging = "org.scala-sbt" %% "util-logging" % utilVersion
-  private val utilCache = "org.scala-sbt" %% "util-cache" % utilVersion
+  private val utilCache = ("org.scala-sbt" %% "util-cache" % utilVersion)
+    .exclude("org.scala-sbt", "compiler-interface")
+  private val compilerInterface = ("org.scala-sbt" % "compiler-interface" % zincVersion).force()
 
   def getSbtModulePath(key: String, name: String) = {
     val localProps = new java.util.Properties()
@@ -29,6 +32,7 @@ object Dependencies {
 
   lazy val sbtIoPath = getSbtModulePath("sbtio.path", "sbt/io")
   lazy val sbtUtilPath = getSbtModulePath("sbtutil.path", "sbt/util")
+  lazy val sbtZincPath = getSbtModulePath("sbtzinc.path", "sbt/zinc")
 
   def addSbtModule(p: Project, path: Option[String], projectName: String, m: ModuleID) =
     path match {
@@ -42,6 +46,8 @@ object Dependencies {
   def addSbtUtilLogging(p: Project): Project =
     addSbtModule(p, sbtUtilPath, "utilLogging", utilLogging)
   def addSbtUtilCache(p: Project): Project = addSbtModule(p, sbtUtilPath, "utilCache", utilCache)
+  def addSbtCompilerInterface(p: Project) =
+    addSbtModule(p, sbtZincPath, "compilerInterface", compilerInterface)
 
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % "1.0.0"
   val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-396a783bba347016e7fe30dacc60d355be607fe2"
