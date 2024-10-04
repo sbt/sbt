@@ -84,8 +84,7 @@ object IvyRepoSpec extends BaseIvySpecification {
     val report2 =
       lmEngine()
         .updateClassifiers(gcm, UnresolvedWarningConfiguration(), Vector(), log)
-        .right
-        .get
+        .fold(e => throw e.resolveException, identity)
 
     import Inside._
     inside(report2.configuration(ConfigRef("compile")).map(_.modules)) { case Some(Seq(mr)) =>

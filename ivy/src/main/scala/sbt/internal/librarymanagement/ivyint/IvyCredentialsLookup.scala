@@ -2,7 +2,7 @@ package sbt.internal.librarymanagement
 package ivyint
 
 import org.apache.ivy.util.url.CredentialsStore
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /** A key used to store credentials in the ivy credentials store. */
 private[sbt] sealed trait CredentialKey
@@ -56,11 +56,16 @@ private[sbt] object IvyCredentialsLookup {
    * A mapping of host -> realms in the ivy credentials store.
    */
   def realmsForHost: Map[String, Set[String]] =
-    (keyringKeys collect { case x: Realm =>
-      x
-    } groupBy { realm =>
-      realm.host
-    } mapValues { realms =>
-      realms map (_.realm)
-    }).toMap
+    keyringKeys
+      .collect { case x: Realm =>
+        x
+      }
+      .groupBy { realm =>
+        realm.host
+      }
+      .view
+      .mapValues { realms =>
+        realms map (_.realm)
+      }
+      .toMap
 }

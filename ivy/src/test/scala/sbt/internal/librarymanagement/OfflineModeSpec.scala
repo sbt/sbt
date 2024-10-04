@@ -34,14 +34,16 @@ object OfflineModeSpec extends BaseIvySpecification {
     val onlineResolution =
       IvyActions.updateEither(toResolve, onlineConf, warningConf, log)
     assert(onlineResolution.isRight)
-    assert(onlineResolution.right.exists(report => report.stats.resolveTime > 0))
+    assert(onlineResolution.toOption.exists(report => report.stats.resolveTime > 0))
 
-    val originalResolveTime = onlineResolution.right.get.stats.resolveTime
+    val originalResolveTime =
+      onlineResolution.fold(e => throw e.resolveException, identity).stats.resolveTime
     val offlineResolution =
       IvyActions.updateEither(toResolve, offlineConf, warningConf, log)
     assert(offlineResolution.isRight)
 
-    val resolveTime = offlineResolution.right.get.stats.resolveTime
+    val resolveTime =
+      offlineResolution.fold(e => throw e.resolveException, identity).stats.resolveTime
     assert(originalResolveTime > resolveTime)
   }
 
