@@ -394,17 +394,17 @@ private[sbt] object ConvertResolver {
     private[this] val repo = new WarnOnOverwriteFileRepo()
     private[this] val progress = new RepositoryCopyProgressListener(this);
     override def getResource(source: String) = {
-      val uri = new URI(source)
-      if (uri.getScheme == IO.FileScheme)
-        new FileResource(repo, IO.toFile(uri))
+      val url = new URI(source).toURL
+      if (url.getProtocol == IO.FileScheme)
+        new FileResource(repo, IO.toFile(url))
       else
         super.getResource(source)
     }
 
     override def put(source: File, destination: String, overwrite: Boolean): Unit = {
-      val uri = new URI(destination)
+      val url = new URI(destination).toURL
       try {
-        if (uri.getScheme != IO.FileScheme) super.put(source, destination, overwrite)
+        if (url.getProtocol != IO.FileScheme) super.put(source, destination, overwrite)
         else {
           // Here we duplicate the put method for files so we don't just bail on trying ot use Http handler
           val resource = getResource(destination)
@@ -417,7 +417,7 @@ private[sbt] object ConvertResolver {
             if (totalLength > 0) {
               progress.setTotalLength(totalLength);
             }
-            FileUtil.copy(source, new java.io.File(uri), progress, overwrite)
+            FileUtil.copy(source, new java.io.File(url.toURI), progress, overwrite)
             ()
           } catch {
             case ex: IOException =>
