@@ -141,7 +141,7 @@
         { "name": "extension",       "type": "String",                               "default": "Artifact.DefaultExtension", "since": "0.0.1" },
         { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
         { "name": "configurations",  "type": "sbt.librarymanagement.ConfigRef*",     "default": "Vector.empty",              "since": "0.0.1" },
-        { "name": "url",             "type": "Option[java.net.URI]",                 "default": "None",                      "since": "0.0.1" },
+        { "name": "url",             "type": "Option[java.net.URL]",                 "default": "None",                      "since": "0.0.1" },
         { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
         { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" },
         { "name": "allowInsecureProtocol", "type": "Boolean",                        "default": "false",                     "since": "1.3.0" }
@@ -244,7 +244,7 @@
         { "name": "id",    "type": "String"       },
         { "name": "name",  "type": "String"       },
         { "name": "email", "type": "String"       },
-        { "name": "url",   "type": "java.net.URI" }
+        { "name": "url",   "type": "java.net.URL" }
       ]
     },
     {
@@ -365,11 +365,11 @@
       "fields": [
         { "name": "nameFormal",           "type": "String"                                                                             },
         { "name": "description",          "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
-        { "name": "homepage",             "type": "Option[java.net.URI]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "homepage",             "type": "Option[java.net.URL]",                  "default": "None",         "since": "0.0.1" },
         { "name": "startYear",            "type": "Option[Int]",                           "default": "None",         "since": "0.0.1" },
-        { "name": "licenses",             "type": "scala.Tuple2[String, java.net.URI]*",   "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "licenses",             "type": "scala.Tuple2[String, java.net.URL]*",   "default": "Vector.empty", "since": "0.0.1" },
         { "name": "organizationName",     "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
-        { "name": "organizationHomepage", "type": "Option[java.net.URI]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "organizationHomepage", "type": "Option[java.net.URL]",                  "default": "None",         "since": "0.0.1" },
         { "name": "scmInfo",              "type": "Option[sbt.librarymanagement.ScmInfo]", "default": "None",         "since": "0.0.1" },
         { "name": "developers",           "type": "sbt.librarymanagement.Developer*",      "default": "Vector.empty",     "since": "0.0.1" }
       ]
@@ -728,7 +728,7 @@
       "type": "record",
       "doc": "Basic SCM information for a project module",
       "fields": [
-        { "name": "browseUrl",     "type": "java.net.URI"                                     },
+        { "name": "browseUrl",     "type": "java.net.URL"                                     },
         { "name": "connection",    "type": "String"                                           },
         { "name": "devConnection", "type": "String?",     "default": "None", "since": "0.0.1" }
       ]

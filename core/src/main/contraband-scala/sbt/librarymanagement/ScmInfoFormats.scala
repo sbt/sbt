@@ -11,7 +11,7 @@ implicit lazy val ScmInfoFormat: JsonFormat[sbt.librarymanagement.ScmInfo] = new
     __jsOpt match {
       case Some(__js) =>
       unbuilder.beginObject(__js)
-      val browseUrl = unbuilder.readField[java.net.URI]("browseUrl")
+      val browseUrl = unbuilder.readField[java.net.URL]("browseUrl")
       val connection = unbuilder.readField[String]("connection")
       val devConnection = unbuilder.readField[Option[String]]("devConnection")
       unbuilder.endObject()
