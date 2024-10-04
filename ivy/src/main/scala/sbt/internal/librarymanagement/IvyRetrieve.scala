@@ -229,7 +229,7 @@ object IvyRetrieve {
       getConfigurations.toVector map { (c: String) =>
         ConfigRef(c)
       },
-      Option(getUrl).map(_.toURI)
+      Option(getUrl)
     )
   }
 
