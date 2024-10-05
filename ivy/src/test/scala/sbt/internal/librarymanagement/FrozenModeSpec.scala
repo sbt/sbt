@@ -34,18 +34,23 @@ object FrozenModeSpec extends BaseIvySpecification {
     val toResolve = module(defaultModuleId, stoml, None, normalOptions)
     val onlineResolution = update(toResolve, onlineConf)
     assert(onlineResolution.isRight)
-    val numberResolved = onlineResolution.right.get.allModules.size
-    val numberReportsResolved = onlineResolution.right.get.allModuleReports.size
+    val numberResolved =
+      onlineResolution.fold(e => throw e.resolveException, identity).allModules.size
+    val numberReportsResolved =
+      onlineResolution.fold(e => throw e.resolveException, identity).allModuleReports.size
 
     cleanIvyCache()
     val singleFrozenResolution = update(toResolve, frozenConf)
     assert(singleFrozenResolution.isRight)
     assert(
-      singleFrozenResolution.right.get.allModules.size == 1,
+      singleFrozenResolution.fold(e => throw e.resolveException, identity).allModules.size == 1,
       s"The number of explicit modules in frozen mode should 1"
     )
     assert(
-      singleFrozenResolution.right.get.allModuleReports.size == 1,
+      singleFrozenResolution
+        .fold(e => throw e.resolveException, identity)
+        .allModuleReports
+        .size == 1,
       s"The number of explicit module reports in frozen mode should 1"
     )
 
@@ -55,11 +60,17 @@ object FrozenModeSpec extends BaseIvySpecification {
     val frozenResolution = update(toExplicitResolve, frozenConf)
     assert(frozenResolution.isRight)
     assert(
-      frozenResolution.right.get.allModules.size == numberResolved,
+      frozenResolution
+        .fold(e => throw e.resolveException, identity)
+        .allModules
+        .size == numberResolved,
       s"The number of explicit modules in frozen mode should be equal than $numberResolved"
     )
     assert(
-      frozenResolution.right.get.allModuleReports.size == numberReportsResolved,
+      frozenResolution
+        .fold(e => throw e.resolveException, identity)
+        .allModuleReports
+        .size == numberReportsResolved,
       s"The number of explicit module reports in frozen mode should be equal than $numberReportsResolved"
     )
   }

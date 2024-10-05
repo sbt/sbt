@@ -44,7 +44,7 @@ object ConflictWarning {
   /** Map from (organization, rawName) to set of multiple full names. */
   def crossVersionMismatches(report: UpdateReport): Map[(String, String), Set[String]] = {
     val mismatches = report.configurations.flatMap { confReport =>
-      groupByRawName(confReport.allModules).mapValues { modules =>
+      groupByRawName(confReport.allModules).view.mapValues { modules =>
         val differentFullNames = modules.map(_.name).toSet
         if (differentFullNames.size > 1) differentFullNames else Set.empty[String]
       }

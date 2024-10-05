@@ -561,7 +561,7 @@ private[sbt] object IvySbt {
    * Clearly, it would be better to have an explicit option in Ivy to control this.
    */
   def hasImplicitClassifier(artifact: IArtifact): Boolean = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     artifact.getQualifiedExtraAttributes.asScala.keys
       .exists(_.asInstanceOf[String] startsWith "m:")
   }
@@ -795,7 +795,7 @@ private[sbt] object IvySbt {
     artifact
   }
   def getExtraAttributes(revID: ExtendableItem): Map[String, String] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     revID.getExtraAttributes.asInstanceOf[java.util.Map[String, String]].asScala.toMap
   }
   private[sbt] def extra(
@@ -808,7 +808,7 @@ private[sbt] object IvySbt {
     javaMap(ea.extraAttributes, unqualify)
   }
   private[sbt] def javaMap(m: Map[String, String], unqualify: Boolean = false) = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val map = if (unqualify) m map { case (k, v) => (k.stripPrefix("e:"), v) }
     else m
     if (map.isEmpty) null else map.asJava
@@ -962,9 +962,9 @@ private[sbt] object IvySbt {
       deps.put(id, updated)
     }
 
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     deps.values.asScala.toSeq.flatMap { dds =>
-      val mergeable = (dds, dds.tail).zipped.forall(ivyint.MergeDescriptors.mergeable _)
+      val mergeable = dds.lazyZip(dds.tail).forall(ivyint.MergeDescriptors.mergeable _)
       if (mergeable) dds.reverse.reduceLeft(ivyint.MergeDescriptors.apply _) :: Nil else dds
     }
   }

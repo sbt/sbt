@@ -26,7 +26,8 @@ object ModuleResolversTest extends BaseIvySpecification {
     val ivyModule = module(stubModule, dependencies, None, updateOptions)
     val normalResolution = ivyUpdateEither(ivyModule)
     assert(normalResolution.isRight)
-    val normalResolutionTime = normalResolution.right.get.stats.resolveTime
+    val normalResolutionTime =
+      normalResolution.fold(e => throw e.resolveException, identity).stats.resolveTime
 
     cleanIvyCache()
     val moduleResolvers = Map(
@@ -37,7 +38,8 @@ object ModuleResolversTest extends BaseIvySpecification {
     val ivyModule2 = module(stubModule, dependencies, None, customUpdateOptions)
     val fasterResolution = ivyUpdateEither(ivyModule2)
     assert(fasterResolution.isRight)
-    val fasterResolutionTime = fasterResolution.right.get.stats.resolveTime
+    val fasterResolutionTime =
+      fasterResolution.fold(e => throw e.resolveException, identity).stats.resolveTime
 
     // THis is left on purpose so that in spurious error we see the times
     println(s"NORMAL RESOLUTION TIME $normalResolutionTime")

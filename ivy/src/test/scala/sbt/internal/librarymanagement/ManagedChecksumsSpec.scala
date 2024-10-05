@@ -51,7 +51,7 @@ object ManagedChecksumsSpec extends BaseIvySpecification {
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)
     val res = IvyActions.updateEither(toResolve, onlineConf, warningConf, log)
     assert(res.isRight, s"Resolution with managed checksums failed! $res")
-    val updateReport = res.right.get
+    val updateReport = res.fold(e => throw e.resolveException, identity)
     val allModuleReports = updateReport.configurations.flatMap(_.modules)
     val allArtifacts: Seq[File] = allModuleReports.flatMap(_.artifacts.map(_._2))
     allArtifacts.foreach(assertChecksumExists)

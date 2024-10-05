@@ -433,9 +433,9 @@ private[sbt] case class SbtChainResolver(
         case _ =>
           None
       }
-    val artifactRefs = md.getConfigurations.toIterator flatMap { conf =>
-      md.getArtifacts(conf.getName).toIterator flatMap { af =>
-        artifactRef(af, data.getDate).toIterator
+    val artifactRefs = md.getConfigurations.iterator flatMap { conf =>
+      md.getArtifacts(conf.getName).iterator flatMap { af =>
+        artifactRef(af, data.getDate).iterator
       }
     }
     if (artifactRefs.hasNext) Some(artifactRefs.next())

@@ -40,7 +40,7 @@ private[sbt] class ParallelResolveEngine(
       artifactFilter: Filter,
       options: DownloadOptions
   ): Unit = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val start = System.currentTimeMillis
     report.getArtifacts match {
       case typed: java.util.List[Artifact @unchecked] =>

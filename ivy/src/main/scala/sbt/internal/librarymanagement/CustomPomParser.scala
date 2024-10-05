@@ -171,7 +171,7 @@ object CustomPomParser {
   // The extra sbt plugin metadata in pom.xml does not need to be readable by maven, but the other information may be.
   // However, the pom.xml needs to be valid in all cases because other tools like repository managers may read the pom.xml.
   private[sbt] def getPomProperties(md: ModuleDescriptor): Map[String, String] = {
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     PomModuleDescriptorBuilder
       .extractPomProperties(md.getExtraInfo)
       .asInstanceOf[java.util.Map[String, String]]
@@ -182,13 +182,13 @@ object CustomPomParser {
     (propertyAttributes - ExtraAttributesKey) map { case (k, v) => ("e:" + k, v) }
 
   private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
-    m.filterKeys(unqualifiedKeys).toMap
+    m.view.filterKeys(unqualifiedKeys).toMap
 
   private[this] def addExtra(
       properties: Map[String, String],
       id: ModuleRevisionId
   ): ModuleRevisionId = {
-    import collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val oldExtra = qualifiedExtra(id)
     val newExtra = (oldExtra ++ properties).asJava
     // remove the sbt plugin cross version from the resolved ModuleRevisionId
@@ -211,9 +211,9 @@ object CustomPomParser {
   def qualifiedExtra(item: ExtendableItem): Map[String, String] =
     PomExtraDependencyAttributes.qualifiedExtra(item)
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
-    (qualifiedExtra(item) filterKeys { k =>
+    qualifiedExtra(item).view.filterKeys { k =>
       qualifiedIsExtra(k) == include
-    }).toMap
+    }.toMap
 
   def writeDependencyExtra(s: Seq[DependencyDescriptor]): Seq[String] =
     PomExtraDependencyAttributes.writeDependencyExtra(s)
@@ -275,7 +275,7 @@ object CustomPomParser {
       case None => dd
     }
 
-  import collection.JavaConverters._
+  import scala.jdk.CollectionConverters._
   def addExtra(
       properties: Map[String, String],
       dependencyExtra: Map[ModuleRevisionId, Map[String, String]],

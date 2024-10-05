@@ -186,8 +186,8 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
         // The artifacts that came from Ivy don't have their classifier set, let's set it according to
         // FIXME: this is only done because IDE plugins depend on `classifier` to determine type. They
         val typeClassifierMap: Map[String, String] =
-          ((sourceArtifactTypes.toIterable map (_ -> Artifact.SourceClassifier))
-            :: (docArtifactTypes.toIterable map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
+          ((sourceArtifactTypes.toSeq map (_ -> Artifact.SourceClassifier))
+            :: (docArtifactTypes.toSeq map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
         Right(r.substitute { (conf, mid, artFileSeq) =>
           artFileSeq map { case (art, f) =>
             // Deduce the classifier from the type if no classifier is present already

@@ -158,7 +158,7 @@ private[sbt] class CachedResolutionResolveCache {
     (md1, IvySbt.isChanging(dd) || internalDependency(dd, prOpt).isDefined, dd)
   }
   def extractOverrides(md0: ModuleDescriptor): Vector[IvyOverride] = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     md0.getAllDependencyDescriptorMediators.getAllRules.asScala.toSeq.toVector sortBy {
       case (k, _) =>
         k.toString
