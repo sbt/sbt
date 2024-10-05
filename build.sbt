@@ -46,7 +46,7 @@ ThisBuild / assemblyMergeStrategy := {
 val coursierVersion0 = "2.1.9"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
-val lm3Version = "2.0.0-alpha15"
+val lm3Version = "2.0.0-M1"
 
 lazy val scalafixGen = Def.taskDyn {
   val root = (ThisBuild / baseDirectory).value.toURI.toString
