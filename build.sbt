@@ -1304,52 +1304,6 @@ lazy val sbtIgnoredProblems = {
   )
 }
 
-def runNpm(command: String, base: File, log: sbt.internal.util.ManagedLogger) = {
-  import scala.sys.process._
-  try {
-    val exitCode = Process(s"npm $command", Option(base)) ! log
-    if (exitCode != 0) throw new Exception("Process returned exit code: " + exitCode)
-  } catch {
-    case e: java.io.IOException => log.warn("failed to run npm " + e.getMessage)
-  }
-}
-
-lazy val vscodePlugin = (project in file("vscode-sbt-scala"))
-  .settings(
-    bspEnabled := false,
-    crossPaths := false,
-    crossScalaVersions := Seq(baseScalaVersion),
-    publish / skip := true,
-    Compile / compile := {
-      val _ = update.value
-      runNpm("run compile", baseDirectory.value, streams.value.log)
-      sbt.internal.inc.Analysis.empty
-    },
-    update := {
-      val old = update.value
-      val t = target.value / "updated"
-      val base = baseDirectory.value
-      val log = streams.value.log
-      if (t.exists) ()
-      else {
-        runNpm("install", base, log)
-        IO.touch(t)
-      }
-      old
-    },
-    cleanFiles ++= {
-      val base = baseDirectory.value
-      Vector(
-        target.value / "updated",
-        base / "node_modules",
-        base / "client" / "node_modules",
-        base / "client" / "server",
-        base / "client" / "out",
-        base / "server" / "node_modules"
-      ) filter { _.exists }
-    }
-  )
-
 def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTask {
   val _ = publishLocalBinAll.value
   val launchJar = s"-Dsbt.launch.jar=${(bundledLauncherProj / Compile / packageBin).value}"
@@ -1463,7 +1417,7 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   inConfigurations(Compile)
 )
 lazy val javafmtOnCompile = taskKey[Unit]("Formats java sources before compile")
-lazy val scriptedProjects = ScopeFilter(inAnyProject -- inProjects(vscodePlugin))
+lazy val scriptedProjects = ScopeFilter(inAnyProject)
 
 def customCommands: Seq[Setting[_]] = Seq(
   commands += Command.command("setupBuildScala212") { state =>
