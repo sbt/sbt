@@ -36,6 +36,7 @@ import org.apache.ivy.util.extendable.ExtendableItem
 import org.apache.ivy.util.url._
 import scala.xml.NodeSeq
 import scala.collection.mutable
+import scala.collection.immutable.ArraySeq
 import scala.util.{ Success, Failure }
 import sbt.util._
 import sbt.librarymanagement.{ ModuleDescriptorConfiguration => InlineConfiguration, _ }
@@ -891,7 +892,7 @@ private[sbt] object IvySbt {
 
   def inconsistentDuplicateWarning(moduleID: DefaultModuleDescriptor): List[String] = {
     import IvyRetrieve.toModuleID
-    val dds = moduleID.getDependencies
+    val dds = ArraySeq.unsafeWrapArray(moduleID.getDependencies)
     val deps = dds flatMap { dd =>
       val module = toModuleID(dd.getDependencyRevisionId)
       dd.getModuleConfigurations map (c => module.withConfigurations(Some(c)))

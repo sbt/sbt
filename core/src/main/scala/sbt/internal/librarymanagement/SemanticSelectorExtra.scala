@@ -8,7 +8,8 @@ import java.util.Locale
 
 private[librarymanagement] abstract class SemSelAndChunkFunctions {
   protected def parse(andClauseToken: String): SemSelAndChunk = {
-    val comparatorTokens = andClauseToken.split("\\s+")
+    val comparatorTokens =
+      scala.collection.immutable.ArraySeq.unsafeWrapArray(andClauseToken.split("\\s+"))
     val hyphenIndex = comparatorTokens.indexWhere(_ == "-")
     val comparators = if (hyphenIndex == -1) {
       comparatorTokens.map(SemComparator.apply)

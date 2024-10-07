@@ -1,6 +1,7 @@
 package sbt.internal.librarymanagement
 package mavenint
 
+import scala.collection.immutable.ArraySeq
 import java.util.Properties
 import java.util.regex.Pattern
 
@@ -100,8 +101,9 @@ object PomExtraDependencyAttributes {
   }
 
   /** parses the sequence of dependencies with extra attribute information, with one dependency per line */
-  def readDependencyExtra(s: String): Seq[ModuleRevisionId] =
+  def readDependencyExtra(s: String): Seq[ModuleRevisionId] = ArraySeq.unsafeWrapArray(
     LinesP.split(s).map(_.trim).filter(!_.isEmpty).map(ModuleRevisionId.decode)
+  )
 
   private[this] val LinesP = Pattern.compile("(?m)^")
 

@@ -320,8 +320,9 @@ object IvyActions {
 
     val resolveReport = ivyInstance.resolve(moduleDescriptor, resolveOptions)
     if (resolveReport.hasError && !missingOk) {
+      import scala.jdk.CollectionConverters._
       // If strict error, collect report information and generated UnresolvedWarning
-      val messages = resolveReport.getAllProblemMessages.toArray.map(_.toString).distinct
+      val messages = resolveReport.getAllProblemMessages.asScala.toSeq.map(_.toString).distinct
       val failedPaths = resolveReport.getUnresolvedDependencies.map { node =>
         val moduleID = IvyRetrieve.toModuleID(node.getId)
         val path = IvyRetrieve

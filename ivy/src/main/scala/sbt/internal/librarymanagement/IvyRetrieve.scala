@@ -6,6 +6,7 @@ package sbt.internal.librarymanagement
 import java.io.File
 import java.{ util => ju }
 import collection.mutable
+import collection.immutable.ArraySeq
 import org.apache.ivy.core.{ module, report, resolve }
 import module.descriptor.{ Artifact => IvyArtifact, License => IvyLicense }
 import module.id.{ ModuleRevisionId, ModuleId => IvyModuleId }
@@ -187,7 +188,9 @@ object IvyRetrieve {
       case _ => Vector.empty
     }
     val callers = dep.getCallers(confReport.getConfiguration).toVector map { toCaller }
-    val (resolved, missing) = artifacts(confReport getDownloadReports revId)
+    val (resolved, missing) = artifacts(
+      ArraySeq.unsafeWrapArray(confReport.getDownloadReports(revId))
+    )
 
     ModuleReport(
       moduleId,
@@ -212,7 +215,7 @@ object IvyRetrieve {
   }
 
   def evicted(confReport: ConfigurationResolveReport): Seq[ModuleID] =
-    confReport.getEvictedNodes.map(node => toModuleID(node.getId))
+    ArraySeq.unsafeWrapArray(confReport.getEvictedNodes).map(node => toModuleID(node.getId))
 
   def toModuleID(revID: ModuleRevisionId): ModuleID =
     ModuleID(revID.getOrganisation, revID.getName, revID.getRevision)
