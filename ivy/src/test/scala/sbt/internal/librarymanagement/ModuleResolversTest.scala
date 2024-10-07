@@ -3,13 +3,13 @@ package sbt.internal.librarymanagement
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._
 import sbt.librarymanagement.ivy.UpdateOptions
-import Resolver._
 
 object ModuleResolversTest extends BaseIvySpecification {
   override final val resolvers = Vector(
-    DefaultMavenRepository,
-    JavaNet2Repository,
-    JCenterRepository,
+    MavenRepository(
+      "JFrog OSS Releases",
+      "https://releases.jfrog.io/artifactory/oss-releases/"
+    ),
     Resolver.sbtPluginRepo("releases")
   )
 
