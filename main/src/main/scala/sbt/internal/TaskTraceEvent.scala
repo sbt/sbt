@@ -61,7 +61,7 @@ private[sbt] final class TaskTraceEvent
       def durationEvent(name: String, cat: String, t: Timer): String = {
         val sb = new java.lang.StringBuilder(name.length + 2)
         CompactPrinter.print(new JString(name), sb)
-        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": ${t.threadId}}"""
+        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tname": ${t.threadName}}"""
       }
       val entryIterator = currentTimings
       while (entryIterator.hasNext) {
