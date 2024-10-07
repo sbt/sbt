@@ -937,7 +937,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 }).mkString("(", ", ", ")")
               )
           }
-        case None =>
+        case _ =>
           getSettings.getConflictManager(IvyModuleId.newInstance(organization, name)) match {
             case ncm: NoConflictManager => (conflicts, Vector(), ncm.toString)
             case _: StrictConflictManager =>
