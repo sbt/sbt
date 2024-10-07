@@ -69,7 +69,7 @@ private[sbt] class FakeResolver(private var name: String, cacheDir: File, module
   ): ArtifactDownloadReport = {
 
     val report = new ArtifactDownloadReport(artifact.getArtifact)
-    val path = new URI(artifact.getLocation).toURL.toURI.getPath
+    val path = new URI(artifact.getLocation).getPath
     val localFile = new File(path)
 
     if (path.nonEmpty && localFile.exists) {
