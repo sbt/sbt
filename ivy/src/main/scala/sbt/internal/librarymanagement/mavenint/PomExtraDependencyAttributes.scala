@@ -78,9 +78,7 @@ object PomExtraDependencyAttributes {
     item.getQualifiedExtraAttributes.asInstanceOf[java.util.Map[String, String]].asScala.toMap
   }
   def filterCustomExtra(item: ExtendableItem, include: Boolean): Map[String, String] =
-    (qualifiedExtra(item) filterKeys { k =>
-      qualifiedIsExtra(k) == include
-    }).toMap
+    qualifiedExtra(item).filterKeys { k => qualifiedIsExtra(k) == include }.toMap
 
   def qualifiedIsExtra(k: String): Boolean =
     k.endsWith(ScalaVersionKey) || k.endsWith(SbtVersionKey)
@@ -107,17 +105,27 @@ object PomExtraDependencyAttributes {
 
   /**
    * Creates the "extra" property values for DependencyDescriptors that can be written into a maven pom
-   * so  we don't loose the information.
+   * so  we don't lose the information.
    * @param s
    * @return
    */
   def writeDependencyExtra(s: Seq[DependencyDescriptor]): Seq[String] =
     s.flatMap { dd =>
       val revId = dd.getDependencyRevisionId
-      if (filterCustomExtra(revId, include = true).isEmpty)
+      val filteredExtra = filterCustomExtra(revId, include = true)
+      if (filteredExtra.isEmpty)
         Nil
-      else
-        revId.encodeToString :: Nil
+      else {
+        import scala.collection.JavaConverters._
+        val revId0 = ModuleRevisionId.newInstance(
+          revId.getOrganisation,
+          revId.getName,
+          revId.getBranch,
+          revId.getRevision,
+          filteredExtra.asJava
+        )
+        revId0.encodeToString :: Nil
+      }
     }
 
 }
