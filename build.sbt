@@ -143,7 +143,7 @@ lazy val lmCore = (project in file("core"))
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
     }),
-    Compile / unmanagedSourceDirectories +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
@@ -288,7 +288,7 @@ lazy val lmIvy = (project in file("ivy"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    Compile / unmanagedSourceDirectories +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
