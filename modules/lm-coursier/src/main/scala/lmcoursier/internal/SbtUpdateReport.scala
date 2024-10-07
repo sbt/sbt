@@ -70,7 +70,7 @@ private[internal] object SbtUpdateReport {
             .orElse(MavenAttributes.typeDefaultClassifierOpt(pub.`type`))
             .map(_.value)
         )
-        .withUrl(Some(CacheUrl.url(artifact.url, classLoaders)))
+        .withUrl(Some(CacheUrl.url(artifact.url, classLoaders).toURI))
         .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
