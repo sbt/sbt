@@ -50,16 +50,11 @@ private[sbt] object ConvertResolver {
    * checksum-friendly URL publishing shim.
    */
   private object ChecksumFriendlyURLResolver {
-    // TODO - When we dump JDK6 support we can remove this hackery
-    // import java.lang.reflect.AccessibleObject
-    type AccessibleObject = {
-      def setAccessible(value: Boolean): Unit
-    }
+    import java.lang.reflect.AccessibleObject
     private def reflectiveLookup[A <: AccessibleObject](f: Class[_] => A): Option[A] =
       try {
         val cls = classOf[RepositoryResolver]
         val thing = f(cls)
-        import scala.language.reflectiveCalls
         thing.setAccessible(true)
         Some(thing)
       } catch {
