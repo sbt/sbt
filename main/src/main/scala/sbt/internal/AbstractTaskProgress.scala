@@ -125,7 +125,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress 
 object AbstractTaskExecuteProgress {
   private[sbt] class Timer() {
     val startNanos: Long = System.nanoTime()
-    val threadId: Long = Thread.currentThread().getId
+    val threadName: String = Thread.currentThread().getName
     var endNanos: Long = 0L
     def stop(): Unit = {
       endNanos = System.nanoTime()
