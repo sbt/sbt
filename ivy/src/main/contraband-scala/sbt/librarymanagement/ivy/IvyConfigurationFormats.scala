@@ -41,5 +41,5 @@ trait IvyConfigurationFormats { self: sbt.internal.librarymanagement.formats.Glo
     with sbt.librarymanagement.SftpRepositoryFormats
     with sbt.librarymanagement.PasswordAuthenticationFormats
     with sbt.librarymanagement.KeyFileAuthenticationFormats =>
-implicit lazy val IvyConfigurationFormat: JsonFormat[sbt.librarymanagement.ivy.IvyConfiguration] = flatUnionFormat2[sbt.librarymanagement.ivy.IvyConfiguration, sbt.librarymanagement.ivy.InlineIvyConfiguration, sbt.librarymanagement.ivy.ExternalIvyConfiguration]("type")
+    implicit lazy val IvyConfigurationFormat: JsonFormat[sbt.librarymanagement.ivy.IvyConfiguration] = flatUnionFormat2[sbt.librarymanagement.ivy.IvyConfiguration, sbt.librarymanagement.ivy.InlineIvyConfiguration, sbt.librarymanagement.ivy.ExternalIvyConfiguration]("type")
 }
