@@ -43,7 +43,7 @@ object DMSerializationSpec extends BasicTestSuite {
   }
 
   test("""Artifact("foo", url("http://example.com/")) should roundtrip""") {
-    roundtrip(Artifact("foo", new URI("http://example.com/").toURL))
+    roundtrip(Artifact("foo", new URI("http://example.com/")))
   }
 
   test("""Artifact("foo").extra(("key", "value")) should roundtrip""") {
