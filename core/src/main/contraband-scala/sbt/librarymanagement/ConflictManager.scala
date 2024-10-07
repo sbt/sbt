@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class ConflictManager private (
   override def toString: String = {
     "ConflictManager(" + name + ", " + organization + ", " + module + ")"
   }
-  private[this] def copy(name: String = name, organization: String = organization, module: String = module): ConflictManager = {
+  private def copy(name: String = name, organization: String = organization, module: String = module): ConflictManager = {
     new ConflictManager(name, organization, module)
   }
   def withName(name: String): ConflictManager = {

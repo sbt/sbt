@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class GetClassifiersModule private (
   override def toString: String = {
     "GetClassifiersModule(" + id + ", " + scalaModuleInfo + ", " + dependencies + ", " + configurations + ", " + classifiers + ")"
   }
-  private[this] def copy(id: sbt.librarymanagement.ModuleID = id, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, dependencies: Vector[sbt.librarymanagement.ModuleID] = dependencies, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, classifiers: Vector[String] = classifiers): GetClassifiersModule = {
+  private def copy(id: sbt.librarymanagement.ModuleID = id, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, dependencies: Vector[sbt.librarymanagement.ModuleID] = dependencies, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, classifiers: Vector[String] = classifiers): GetClassifiersModule = {
     new GetClassifiersModule(id, scalaModuleInfo, dependencies, configurations, classifiers)
   }
   def withId(id: sbt.librarymanagement.ModuleID): GetClassifiersModule = {

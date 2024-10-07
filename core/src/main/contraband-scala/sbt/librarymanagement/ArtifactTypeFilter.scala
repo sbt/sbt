@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class ArtifactTypeFilter private (
   override def toString: String = {
     "ArtifactTypeFilter(" + types + ", " + inverted + ")"
   }
-  private[this] def copy(types: Set[String] = types, inverted: Boolean = inverted): ArtifactTypeFilter = {
+  private def copy(types: Set[String] = types, inverted: Boolean = inverted): ArtifactTypeFilter = {
     new ArtifactTypeFilter(types, inverted)
   }
   def withTypes(types: Set[String]): ArtifactTypeFilter = {

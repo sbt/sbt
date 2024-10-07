@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class ModuleConfiguration private (
   override def toString: String = {
     "ModuleConfiguration(" + organization + ", " + name + ", " + revision + ", " + resolver + ")"
   }
-  private[this] def copy(organization: String = organization, name: String = name, revision: String = revision, resolver: sbt.librarymanagement.Resolver = resolver): ModuleConfiguration = {
+  private def copy(organization: String = organization, name: String = name, revision: String = revision, resolver: sbt.librarymanagement.Resolver = resolver): ModuleConfiguration = {
     new ModuleConfiguration(organization, name, revision, resolver)
   }
   def withOrganization(organization: String): ModuleConfiguration = {

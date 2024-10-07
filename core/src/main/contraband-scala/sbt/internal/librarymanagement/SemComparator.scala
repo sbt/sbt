@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -31,7 +31,7 @@ final class SemComparator private (
   override def toString: String = {
     this.toStringImpl
   }
-  private[this] def copy(op: sbt.internal.librarymanagement.SemSelOperator = op, major: Option[Long] = major, minor: Option[Long] = minor, patch: Option[Long] = patch, tags: Seq[String] = tags): SemComparator = {
+  private def copy(op: sbt.internal.librarymanagement.SemSelOperator = op, major: Option[Long] = major, minor: Option[Long] = minor, patch: Option[Long] = patch, tags: Seq[String] = tags): SemComparator = {
     new SemComparator(op, major, minor, patch, tags)
   }
   def withOp(op: sbt.internal.librarymanagement.SemSelOperator): SemComparator = {

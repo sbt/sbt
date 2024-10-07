@@ -111,7 +111,7 @@ lazy val lmRoot = (project in file("."))
   )
 
 lazy val lmCore = (project in file("core"))
-  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     commonSettings,
     name := "librarymanagement-core",

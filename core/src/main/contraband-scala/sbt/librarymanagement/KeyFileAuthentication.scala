@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class KeyFileAuthentication private (
   override def toString: String = {
     "KeyFileAuthentication(" + user + ", " + keyfile + ", " + password + ")"
   }
-  private[this] def copy(user: String = user, keyfile: java.io.File = keyfile, password: Option[String] = password): KeyFileAuthentication = {
+  private def copy(user: String = user, keyfile: java.io.File = keyfile, password: Option[String] = password): KeyFileAuthentication = {
     new KeyFileAuthentication(user, keyfile, password)
   }
   def withUser(user: String): KeyFileAuthentication = {

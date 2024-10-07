@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class ModuleInfo private (
   override def toString: String = {
     "ModuleInfo(" + nameFormal + ", " + description + ", " + homepage + ", " + startYear + ", " + licenses + ", " + organizationName + ", " + organizationHomepage + ", " + scmInfo + ", " + developers + ")"
   }
-  private[this] def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URI] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URI]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URI] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
+  private def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URI] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URI]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URI] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
     new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
   }
   def withNameFormal(nameFormal: String): ModuleInfo = {
