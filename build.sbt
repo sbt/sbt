@@ -274,7 +274,7 @@ lazy val lmCore = (project in file("core"))
   .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache, addSbtCompilerInterface)
 
 lazy val lmIvy = (project in file("ivy"))
-  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(lmCore)
   .settings(
     commonSettings,

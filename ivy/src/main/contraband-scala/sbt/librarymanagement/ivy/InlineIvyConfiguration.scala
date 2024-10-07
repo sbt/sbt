@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class InlineIvyConfiguration private (
   override def toString: String = {
     "InlineIvyConfiguration(" + lock + ", " + log + ", " + updateOptions + ", " + paths + ", " + resolvers + ", " + otherResolvers + ", " + moduleConfigurations + ", " + checksums + ", " + managedChecksums + ", " + resolutionCacheDir + ")"
   }
-  private[this] def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, paths: Option[sbt.librarymanagement.ivy.IvyPaths] = paths, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers, otherResolvers: Vector[sbt.librarymanagement.Resolver] = otherResolvers, moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration] = moduleConfigurations, checksums: Vector[String] = checksums, managedChecksums: Boolean = managedChecksums, resolutionCacheDir: Option[java.io.File] = resolutionCacheDir): InlineIvyConfiguration = {
+  private def copy(lock: Option[xsbti.GlobalLock] = lock, log: Option[xsbti.Logger] = log, updateOptions: sbt.librarymanagement.ivy.UpdateOptions = updateOptions, paths: Option[sbt.librarymanagement.ivy.IvyPaths] = paths, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers, otherResolvers: Vector[sbt.librarymanagement.Resolver] = otherResolvers, moduleConfigurations: Vector[sbt.librarymanagement.ModuleConfiguration] = moduleConfigurations, checksums: Vector[String] = checksums, managedChecksums: Boolean = managedChecksums, resolutionCacheDir: Option[java.io.File] = resolutionCacheDir): InlineIvyConfiguration = {
     new InlineIvyConfiguration(lock, log, updateOptions, paths, resolvers, otherResolvers, moduleConfigurations, checksums, managedChecksums, resolutionCacheDir)
   }
   def withLock(lock: Option[xsbti.GlobalLock]): InlineIvyConfiguration = {
