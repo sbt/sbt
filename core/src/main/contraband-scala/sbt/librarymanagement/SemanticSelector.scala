@@ -84,7 +84,7 @@ object SemanticSelector {
   def apply(selector: String): SemanticSelector = {
     val orChunkTokens = selector.split("\\s+\\|\\|\\s+").map(_.trim)
     val orChunks = orChunkTokens.map { chunk => sbt.internal.librarymanagement.SemSelAndChunk(chunk) }
-    SemanticSelector(orChunks)
+    SemanticSelector(scala.collection.immutable.ArraySeq.unsafeWrapArray(orChunks))
   }
   def apply(selectors: Seq[sbt.internal.librarymanagement.SemSelAndChunk]): SemanticSelector = new SemanticSelector(selectors)
 }

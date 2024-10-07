@@ -13,6 +13,7 @@ import sbt.librarymanagement._
 import Resolver._
 import mavenint.PomExtraDependencyAttributes
 
+import scala.collection.immutable.ArraySeq
 // Node needs to be renamed to XNode because the task subproject contains a Node type that will shadow
 // scala.xml.Node when generating aggregated API documentation
 import scala.xml.{ Elem, Node => XNode, NodeSeq, PrettyPrinter, PrefixedAttribute }
@@ -147,7 +148,7 @@ class MakePom(val log: Logger) {
        {
       val deps = depsInConfs(module, configurations)
       makeProperties(module, deps) ++
-        makeDependencies(deps, includeTypes, module.getAllExcludeRules)
+        makeDependencies(deps, includeTypes, ArraySeq.unsafeWrapArray(module.getAllExcludeRules))
     }
        {makeRepositories(ivy.getSettings, allRepositories, filterRepositories)}
      </project>)
@@ -442,7 +443,9 @@ class MakePom(val log: Logger) {
   def exclusions(dependency: DependencyDescriptor): NodeSeq = exclusions(dependency, Nil)
 
   def exclusions(dependency: DependencyDescriptor, excludes: Seq[ExcludeRule]): NodeSeq = {
-    val excl = dependency.getExcludeRules(dependency.getModuleConfigurations) ++ excludes
+    val excl = ArraySeq.unsafeWrapArray(
+      dependency.getExcludeRules(dependency.getModuleConfigurations)
+    ) ++ excludes
     val (warns, excls) = IvyUtil.separate(excl.map(makeExclusion))
     if (warns.nonEmpty) log.warn(warns.mkString(IO.Newline))
     if (excls.nonEmpty) <exclusions>{
@@ -500,8 +503,10 @@ class MakePom(val log: Logger) {
     r match { case c: ChainResolver => flatten(castResolvers(c.getResolvers)); case _ => r :: Nil }
 
   // cast the contents of a pre-generics collection
-  private def castResolvers(s: java.util.Collection[_]): Seq[DependencyResolver] =
-    s.toArray.map(_.asInstanceOf[DependencyResolver])
+  private def castResolvers(s: java.util.Collection[_]): Seq[DependencyResolver] = {
+    import scala.jdk.CollectionConverters._
+    s.asScala.toSeq.map(_.asInstanceOf[DependencyResolver])
+  }
 
   def toID(name: String) = checkID(name.filter(isValidIDCharacter).mkString, name)
   def isValidIDCharacter(c: Char) = !"""\/:"<>|?*""".contains(c)
@@ -535,6 +540,6 @@ class MakePom(val log: Logger) {
       else // TODO: translate the dependency to contain only configurations to keep
         Some(dependency)
     }
-    module.getDependencies flatMap translate
+    ArraySeq.unsafeWrapArray(module.getDependencies) flatMap translate
   }
 }

@@ -159,9 +159,8 @@ private[sbt] class CachedResolutionResolveCache {
   }
   def extractOverrides(md0: ModuleDescriptor): Vector[IvyOverride] = {
     import scala.jdk.CollectionConverters._
-    md0.getAllDependencyDescriptorMediators.getAllRules.asScala.toSeq.toVector sortBy {
-      case (k, _) =>
-        k.toString
+    md0.getAllDependencyDescriptorMediators.getAllRules.asScala.toVector sortBy { case (k, _) =>
+      k.toString
     } collect { case (k: MapMatcher, v: OverrideDependencyDescriptorMediator) =>
       val attr: Map[Any, Any] = k.getAttributes.asScala.toMap
       val module = IvyModuleId.newInstance(
@@ -398,13 +397,14 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
             doWorkUsingIvy(md)
         }
       def doWorkUsingIvy(md: ModuleDescriptor): Either[ResolveException, UpdateReport] = {
+        import scala.jdk.CollectionConverters._
         val options1 = new ResolveOptions(options0)
         val rr = withIvy(log) { ivy =>
           ivy.resolve(md, options1)
         }
         if (!rr.hasError || missingOk) Right(IvyRetrieve.updateReport(rr, cachedDescriptor))
         else {
-          val messages = rr.getAllProblemMessages.toArray.map(_.toString).distinct
+          val messages = rr.getAllProblemMessages.asScala.toSeq.map(_.toString).distinct
           val failedPaths = ListMap(rr.getUnresolvedDependencies map { node =>
             val m = IvyRetrieve.toModuleID(node.getId)
             val path = IvyRetrieve.findPath(node, md.getModuleRevisionId) map { x =>
@@ -781,7 +781,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
     }
     val merged = (modules groupBy { m =>
       (m.module.organization, m.module.name, m.module.revision)
-    }).toSeq.toVector flatMap { case (_, xs) =>
+    }).toVector flatMap { case (_, xs) =>
       if (xs.size < 2) xs
       else Vector(mergeModuleReports(xs))
     }
@@ -937,7 +937,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
                 }).mkString("(", ", ", ")")
               )
           }
-        case None =>
+        case _ =>
           getSettings.getConflictManager(IvyModuleId.newInstance(organization, name)) match {
             case ncm: NoConflictManager => (conflicts, Vector(), ncm.toString)
             case _: StrictConflictManager =>

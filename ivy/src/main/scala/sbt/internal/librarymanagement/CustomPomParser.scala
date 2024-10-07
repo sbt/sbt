@@ -29,6 +29,7 @@ import sbt.internal.librarymanagement.mavenint.{
   SbtPomExtraProperties
 }
 import sbt.io.Hash
+import scala.collection.immutable.ArraySeq
 
 // @deprecated("We now use an Aether-based pom parser.", "0.13.8")
 final class CustomPomParser(
@@ -311,7 +312,7 @@ object CustomPomParser {
     ) dmd.addExtraAttributeNamespace(key, value)
     IvySbt.addExtraNamespace(dmd)
 
-    val withExtra = md.getDependencies map { dd =>
+    val withExtra = ArraySeq.unsafeWrapArray(md.getDependencies) map { dd =>
       addExtra(dd, dependencyExtra)
     }
     val withVersionRangeMod: Seq[DependencyDescriptor] =

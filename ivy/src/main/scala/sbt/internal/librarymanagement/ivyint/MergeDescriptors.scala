@@ -1,6 +1,7 @@
 package sbt.internal.librarymanagement
 package ivyint
 
+import scala.collection.immutable.ArraySeq
 import org.apache.ivy.core
 import core.module.descriptor.{ DependencyArtifactDescriptor, DefaultDependencyArtifactDescriptor }
 import core.module.descriptor.DependencyDescriptor
@@ -117,7 +118,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
     // See gh-1500, gh-2002
     aConfs match {
       case None | Some(Nil) | Some(List("*")) =>
-        copyWithConfigurations(art, base.getModuleConfigurations)
+        copyWithConfigurations(art, ArraySeq.unsafeWrapArray(base.getModuleConfigurations))
       case _ => art
     }
   }
@@ -132,7 +133,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
       null,
       null
     )
-    addConfigurations(dd, a.getModuleConfigurations)
+    addConfigurations(dd, ArraySeq.unsafeWrapArray(a.getModuleConfigurations))
     // If the dependency descriptor is empty, then it means that it has been created from a POM file. In this case,
     // it is correct to create a seemingly non-existent dependency artifact.
     if (a.getAllDependencyArtifacts.isEmpty) Array(dd)

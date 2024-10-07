@@ -12,5 +12,5 @@ trait LoggerFormat { self: BasicJsonProtocol =>
   implicit lazy val xsbtiLoggerIsoString: IsoString[Logger] =
     IsoString.iso(_ => "<logger>", _ => Null)
 
-  implicit lazy val LoggerFormat: JsonFormat[Logger] = implicitly
+  implicit lazy val LoggerFormat: JsonFormat[Logger] = isoStringFormat(implicitly)
 }
