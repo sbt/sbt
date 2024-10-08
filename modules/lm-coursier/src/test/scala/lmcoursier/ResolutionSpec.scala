@@ -235,4 +235,17 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
 
     assert(resolution.isRight)
   }
+
+  property("resolve licenses from parent poms") {
+    val dependencies =
+      Vector(("org.apache.commons" % "commons-compress" % "1.26.2"))
+    val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.4"))
+    val resolution =
+      lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
+
+    assert(resolution.isRight)
+    val componentConfig = resolution.right.get.configurations.find(_.configuration == Compile.toConfigRef).get
+    val compress = componentConfig.modules.find(_.module.name == "commons-compress").get
+    compress.licenses should have size 1
+  }
 }

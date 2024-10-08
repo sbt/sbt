@@ -16,7 +16,7 @@ inThisBuild(List(
     )
   ),
   semanticdbEnabled := true,
-  semanticdbVersion := "4.8.14",
+  semanticdbVersion := "4.9.8",
   scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixV,
   version := "2.0.0-alpha8-SNAPSHOT",
   scalaVersion := scala3,
@@ -43,7 +43,7 @@ ThisBuild / assemblyMergeStrategy := {
     oldStrategy(x)
 }
 
-val coursierVersion0 = "2.1.9"
+val coursierVersion0 = "2.1.13"
 val lmVersion = "1.3.4"
 val lm2_13Version = "1.5.0-M3"
 val lm3Version = "2.0.0-M1"
@@ -143,7 +143,7 @@ lazy val `lm-coursier` = project
       // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor
       // is ignored).
       lmIvy.value,
-      "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test
     ),
     excludeDependencies ++= excludedDependencies,
     Test / exportedProducts := {
@@ -222,7 +222,7 @@ lazy val `lm-coursier-shaded` = project
       "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixV % Provided,
       lmIvy.value % Provided,
-      "org.scalatest" %% "scalatest" % "3.2.18" % Test,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
     ),
     excludeDependencies ++= excludedDependencies,
     conflictWarning := ConflictWarning.disable,
@@ -236,7 +236,7 @@ lazy val `sbt-coursier-shared` = project
   .settings(
     plugin,
     generatePropertyFile,
-    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.3" % Test,
+    libraryDependencies += "com.lihaoyi" %% "utest" % "0.8.4" % Test,
     testFrameworks += new TestFramework("utest.runner.Framework")
   )
 
