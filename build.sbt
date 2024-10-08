@@ -11,10 +11,10 @@ import scala.util.Try
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-alpha12-SNAPSHOT"
+  val v = "2.0.0-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
-ThisBuild / version2_13 := "2.0.0-alpha10-SNAPSHOT"
+ThisBuild / version2_13 := "2.0.0-SNAPSHOT"
 ThisBuild / versionScheme := Some("early-semver")
 ThisBuild / scalafmtOnCompile := !(Global / insideCI).value
 ThisBuild / Test / scalafmtOnCompile := !(Global / insideCI).value
