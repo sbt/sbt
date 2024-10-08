@@ -243,7 +243,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    resolution should be('right)
+    assert(resolution.isRight)
     val componentConfig = resolution.right.get.configurations.find(_.configuration == Compile.toConfigRef).get
     val compress = componentConfig.modules.find(_.module.name == "commons-compress").get
     compress.licenses should have size 1
