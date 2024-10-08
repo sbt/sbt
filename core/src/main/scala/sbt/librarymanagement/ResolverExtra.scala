@@ -3,13 +3,15 @@
  */
 package sbt.librarymanagement
 
-import java.io.{ IOException, File }
+import java.io.{ File, IOException }
 import java.net.{ URI, URL }
 import scala.annotation.nowarn
 import scala.xml.XML
 import org.xml.sax.SAXParseException
 import sbt.util.Logger
+
 import java.net.URI
+import scala.util.matching.Regex
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
   override def toString = "Raw(" + resolver.toString + ")"
@@ -400,20 +402,29 @@ private[librarymanagement] abstract class ResolverFunctions {
   def defaultRetrievePattern =
     "[type]s/[organisation]/[module]/" + PluginPattern + "[artifact](-[revision])(-[classifier]).[ext]"
   final val PluginPattern = "(scala_[scalaVersion]/)(sbt_[sbtVersion]/)"
-  private[librarymanagement] def expandMavenSettings(str: String): String = {
+
+  private[librarymanagement] def expandMavenSettings(
+      str: String,
+      envVars: Map[String, String] = sys.env,
+      props: Map[String, String] = sys.props.toMap
+  ): String = {
     // Aren't regular expressions beautifully clear and concise.
     // This means "find all ${...}" blocks, with the first group of each being the text between curly brackets.
-    val findQuoted = "\\$\\{([^\\}]*)\\}".r
+    val findQuoted = "\\$\\{([^}]*)}".r
     val env = "env\\.(.*)".r
 
     findQuoted.replaceAllIn(
       str,
-      _.group(1) match {
-        case env(variable) => sys.env.getOrElse(variable, "")
-        case property      => sys.props.getOrElse(property, "")
-      }
+      regexMatch =>
+        Regex.quoteReplacement {
+          regexMatch.group(1) match {
+            case env(variable) => envVars.getOrElse(variable, "")
+            case property      => props.getOrElse(property, "")
+          }
+        }
     )
   }
+
   private[this] def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {

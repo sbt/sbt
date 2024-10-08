@@ -33,6 +33,13 @@ object ResolverExtraTest extends BasicTestSuite {
     )
   }
 
+  test("expandMavenSettings should preserve backslashes in environment variable values") {
+    val path = """C:\foo\bar\baz"""
+    val env = Map("SOME_PATH" -> path)
+
+    assert(Resolver.expandMavenSettings("${env.SOME_PATH}", env) == path)
+  }
+
   // - Helper functions ----------------------------------------------------------------------------
   // -----------------------------------------------------------------------------------------------
   def assertExpansion(input: String, expected: String) =
