@@ -126,12 +126,12 @@
       "extra": [
         "def matches(version: sbt.librarymanagement.VersionNumber): Boolean = this.matchesImpl(version)",
         "def expandWildcard: Seq[SemComparator] = {",
-        "  if (op == sbt.internal.librarymanagement.SemSelOperator.Eq && !allFieldsSpecified) {",
+        "  if (op == sbt.internal.librarymanagement.SemSelOperator.Eq && !allFieldsSpecified)",
         "    Seq(",
         "      this.withOp(sbt.internal.librarymanagement.SemSelOperator.Gte),",
         "      this.withOp(sbt.internal.librarymanagement.SemSelOperator.Lte)",
         "    )",
-        "  } else { Seq(this) }",
+        "  else Seq(this)",
         "}"
       ],
       "extraCompanion": [

@@ -12,15 +12,15 @@ final class SemComparator private (
   val tags: Seq[String]) extends sbt.internal.librarymanagement.SemComparatorExtra with Serializable {
   def matches(version: sbt.librarymanagement.VersionNumber): Boolean = this.matchesImpl(version)
   def expandWildcard: Seq[SemComparator] = {
-    if (op == sbt.internal.librarymanagement.SemSelOperator.Eq && !allFieldsSpecified) {
-      Seq(
-        this.withOp(sbt.internal.librarymanagement.SemSelOperator.Gte),
-        this.withOp(sbt.internal.librarymanagement.SemSelOperator.Lte)
-      )
-    } else { Seq(this) }
+    if (op == sbt.internal.librarymanagement.SemSelOperator.Eq && !allFieldsSpecified)
+    Seq(
+    this.withOp(sbt.internal.librarymanagement.SemSelOperator.Gte),
+    this.withOp(sbt.internal.librarymanagement.SemSelOperator.Lte)
+    )
+    else Seq(this)
   }
-
-
+  
+  
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: SemComparator => (this.op == x.op) && (this.major == x.major) && (this.minor == x.minor) && (this.patch == x.patch) && (this.tags == x.tags)
     case _ => false
