@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.{ AtomicLong, AtomicReference }
 import sbt.Def.{ Classpath, ScopedKey, Setting }
 import sbt.ProjectExtra.extract
 import sbt.Scope.GlobalScope
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.util.{ Attributed, ManagedLogger }
 import sbt.io.syntax._

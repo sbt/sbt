@@ -15,7 +15,7 @@ import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
 import sbt.ProjectExtra.extract
 import sbt.Scope.Global
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.CommandStrings.LoadProject
 import sbt.internal.SysProp
 import sbt.internal.util.{ AttributeKey, Terminal }

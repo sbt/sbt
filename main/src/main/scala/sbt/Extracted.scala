@@ -17,7 +17,7 @@ import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
 import sbt.ProjectExtra.setProject
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 
 final case class Extracted(
     structure: BuildStructure,

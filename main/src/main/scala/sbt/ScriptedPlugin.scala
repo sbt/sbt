@@ -15,7 +15,7 @@ import sbt.Keys._
 import sbt.nio.Keys._
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.librarymanagement.cross.CrossVersionUtil

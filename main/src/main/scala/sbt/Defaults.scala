@@ -97,7 +97,7 @@ import scala.util.control.NonFatal
 import scala.xml.NodeSeq
 
 // incremental compiler
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.inc.{
   Analysis,
   AnalyzingCompiler,

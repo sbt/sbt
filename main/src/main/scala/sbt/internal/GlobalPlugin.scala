@@ -22,7 +22,7 @@ import Def.{ ScopedKey, Setting }
 import Keys._
 import Configurations.{ Compile, Runtime }
 import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import java.io.File
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId

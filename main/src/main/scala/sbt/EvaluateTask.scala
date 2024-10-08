@@ -16,7 +16,7 @@ import sbt.Keys.{ TaskProgress => _, name => _, _ }
 import sbt.BuildExtra.*
 import sbt.ProjectExtra.*
 import sbt.Scope.Global
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.Aggregation.KeyValue
 import sbt.internal.TaskName._
 import sbt.internal._

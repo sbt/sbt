@@ -11,7 +11,7 @@ package sbt
 import sbt.Def.{ Initialize, ScopedKey }
 import sbt.Previous._
 import sbt.Scope.Global
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.util._
 import sbt.std.TaskExtra._
 import sbt.util.StampedFormat

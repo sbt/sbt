@@ -13,7 +13,7 @@ import sbt.Def.ScopedKey
 import sbt.Keys._
 import sbt.ProjectExtra.showContextKey
 import sbt.Scope.Global
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.internal.util.MainAppender._
 import sbt.internal.util.{ Terminal => ITerminal, _ }
 import sbt.util.{ Level, Logger, LoggerContext }

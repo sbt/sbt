@@ -27,7 +27,7 @@ import Def.Setting
 import Keys._
 import Scope.Global
 import sbt.ProjectExtra.{ extract, setProject }
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 
 import sbt.io.IO
 

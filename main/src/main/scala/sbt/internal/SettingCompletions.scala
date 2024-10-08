@@ -16,7 +16,7 @@ import sbt.librarymanagement.Configuration
 import ProjectExtra.{ relation }
 import Def.{ ScopedKey, Setting }
 import Scope.Global
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import complete._
 import DefaultParsers._
 

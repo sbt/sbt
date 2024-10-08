@@ -37,7 +37,7 @@ import Keys.{
 }
 import Project.LoadAction
 import Scope.{ Global, ThisScope }
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import Def.{ Flattened, Initialize, ScopedKey, Setting }
 import sbt.internal.{
   Load,

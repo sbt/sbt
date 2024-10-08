@@ -21,7 +21,7 @@ import sbt.Keys._
 import sbt.Project.{ inConfig => _, * }
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.coursierint.LMCoursier
 import sbt.internal.inc.{ HashUtil, JarUtils }
 import sbt.internal.librarymanagement._

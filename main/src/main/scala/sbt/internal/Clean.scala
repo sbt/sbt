@@ -16,7 +16,7 @@ import sbt.Def._
 import sbt.Keys._
 // import sbt.Project.richInitializeTask
 import sbt.ProjectExtra.*
-import sbt.SlashSyntax0.given
+import sbt.SlashSyntax0.*
 import sbt.io.syntax._
 import sbt.nio.Keys._
 import sbt.nio.file._
