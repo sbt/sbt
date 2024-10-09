@@ -9,7 +9,7 @@
 package sbt.test
 
 import java.io.File
-import sjsonnew._, BasicJsonProtocol._
+import sjsonnew._
 import sbt.Def.{ Setting, inputKey, settingKey, taskKey }
 import sbt.Scope.Global
 import sbt.librarymanagement.ModuleID
