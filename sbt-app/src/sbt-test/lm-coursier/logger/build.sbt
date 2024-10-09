@@ -3,16 +3,16 @@ val logFile = settingKey[File]("")
 // Arbitrary dependency with no transitive dependencies
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.25"
 // We want to control when the cache gets a hit
-coursierCache := baseDirectory.value / "cache"
+csrCacheDirectory := baseDirectory.value / "cache"
 logFile := baseDirectory.value / "log"
 
-coursierLogger := {
+csrLogger := {
   var logStream: java.io.PrintStream = null
   def log(msg: String): Unit = {
     println(msg)
     logStream.println(msg)
   }
-  val cacheFile = coursierCache.value
+  val cacheFile = csrCacheDirectory.value
 
   val logger = new lmcoursier.definitions.CacheLogger {
     override def init(sizeHint: Option[Int]): Unit = {

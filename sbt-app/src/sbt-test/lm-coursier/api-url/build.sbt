@@ -9,7 +9,7 @@ lazy val b = project
   )
 
 lazy val bResolver = Def.setting {
-  val dir = baseDirectory.in(ThisBuild).value / "b-repo"
+  val dir = (ThisBuild / baseDirectory).value / "b-repo"
   Resolver.file("b-resolver", dir)(Resolver.defaultIvyPatterns)
 }
 
@@ -17,8 +17,8 @@ lazy val check = taskKey[Unit]("")
 
 check := {
   import java.nio.file._
-  val f = baseDirectory.in(ThisBuild).value / "b-repo/b/b_2.12/0.1.0-SNAPSHOT/ivys/ivy.xml"
-  assert(f.exists())
+  val f = (ThisBuild / baseDirectory).value / "b-repo/b/b_3/0.1.0-SNAPSHOT/ivys/ivy.xml"
+  assert(f.exists(), s"missing $f")
   val content = new String(Files.readAllBytes(f.toPath), "UTF-8")
   assert(content.contains("""e:info.apiURL="http://example.org/b""""))
 }

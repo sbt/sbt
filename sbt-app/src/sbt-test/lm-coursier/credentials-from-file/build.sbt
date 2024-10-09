@@ -4,7 +4,7 @@ scalaVersion := "2.12.8"
 
 resolvers += "authenticated" at sys.env("TEST_REPOSITORY")
 
-coursierExtraCredentials += {
+csrExtraCredentials += {
   val content =
     s"""foo.host=${uri(sys.env("TEST_REPOSITORY")).getHost}
        |foo.username=user
@@ -12,9 +12,9 @@ coursierExtraCredentials += {
        |foo.auto=true
        |foo.https-only=false
      """.stripMargin
-  val dest = baseDirectory.in(ThisBuild).value / "project" / "target" / "cred"
+  val dest = (ThisBuild / baseDirectory).value / "project" / "target" / "cred"
   Files.write(dest.toPath, content.getBytes("UTF-8"))
-  lmcoursier.credentials.Credentials(dest)
+  lmcoursier.credentials.FileCredentials(dest.toString)
 }
 
 libraryDependencies += "com.abc" % "test" % "0.1"

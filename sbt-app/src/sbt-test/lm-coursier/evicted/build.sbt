@@ -31,14 +31,9 @@ lazy val c = project
 
 lazy val check = taskKey[Unit]("")
 
-check := {
-
-  val aReport = update.in(a).value
-  val bReport = update.in(b).value
-  val cReport = update.in(c).value
-
-  def doCheck(report: UpdateReport, evictionsExpected: Boolean = true): Unit = {
-
+Global / check := {
+  inline def doCheck(project: Project, evictionsExpected: Boolean = true): Unit = {
+    val report = (project / updateFull).value
     val compileReport = report
       .configurations
       .find(_.configuration.name == "compile")
@@ -49,10 +44,13 @@ check := {
     val foundEvictions = compileReport.details.exists(_.modules.exists(_.evicted))
     if (foundEvictions != evictionsExpected)
       compileReport.details.foreach(println)
-    assert(foundEvictions == evictionsExpected)
+    assert(
+      foundEvictions == evictionsExpected,
+      if evictionsExpected then s"no evictions in ${project.id}" else s"evictions in ${project.id}"
+    )
   }
 
-  doCheck(aReport)
-  doCheck(bReport)
-  doCheck(cReport, evictionsExpected = false)
+  doCheck(a)
+  doCheck(b)
+  doCheck(c, evictionsExpected = false)
 }

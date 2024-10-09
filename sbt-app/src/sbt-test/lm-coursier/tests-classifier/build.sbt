@@ -7,8 +7,10 @@ lazy val a = project
   .settings(
     organization := org,
     name := nme,
-    publishArtifact.in(Test) := true,
-    version := ver
+    Test / publishArtifact := true,
+    version := ver,
+    Compile / doc / sources := Seq.empty, // TODO fix doc task
+    Test / doc / sources := Seq.empty
   )
 
 lazy val b = project

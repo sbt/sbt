@@ -1,7 +1,7 @@
 lazy val check = taskKey[Unit]("")
 
-scalaVersion in ThisBuild := "2.12.8"
-organization in ThisBuild := "com.example"
+ThisBuild / scalaVersion := "2.12.8"
+ThisBuild / organization := "com.example"
 
 lazy val app = (project in file("app"))
   .dependsOn(util)
@@ -9,7 +9,7 @@ lazy val app = (project in file("app"))
     name := "app",
     libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.3",
     check := {
-      val ur = update.value
+      val ur = updateFull.value
       val cr = ur.configuration(Compile).get
       // configuration report must include a module report for subproject dependency
       val coreReport = cr.modules.find(m =>

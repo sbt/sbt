@@ -57,6 +57,7 @@ object Main extends App {
     .toVector
     .map(_.toString)
     .sorted
+    .distinct // TODO should not need distinct
 
   notFromCoursierCache("scala-library")
   assert(props.lengthCompare(1) == 0, s"Found several library.properties files in classpath: $props")

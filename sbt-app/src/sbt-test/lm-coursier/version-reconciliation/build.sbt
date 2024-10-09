@@ -1,3 +1,5 @@
+import lmcoursier.definitions.*
+import lmcoursier.syntax.*
 
 lazy val shared = Seq(
   scalaVersion := "2.12.8",
@@ -5,7 +7,7 @@ lazy val shared = Seq(
     "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M4",
     "com.chuusai" %% "shapeless" % "2.3.3"
   ),
-  versionReconciliation += "*" % "*" % "strict"
+  csrReconciliations += ModuleMatchers.all -> Reconciliation.Strict
 )
 
 lazy val a = project

@@ -43,8 +43,5 @@ updateSbtClassifiersCheck := {
 
   ensureHasArtifact("org.scala-lang" -> "scala-library")
   ensureHasArtifact("org.scala-lang.modules" -> s"scala-xml_${scalaBinaryVersion.value}")
-  ensureHasArtifact(
-    "io.get-coursier" -> s"lm-coursier_${scalaBinaryVersion.value}",
-    "io.get-coursier" -> s"lm-coursier-shaded_${scalaBinaryVersion.value}"
-  )
+  ensureHasArtifact("org.scala-sbt" -> s"librarymanagement-coursier_${scalaBinaryVersion.value}")
 }

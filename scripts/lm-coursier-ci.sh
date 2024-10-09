@@ -18,18 +18,8 @@ else
   SBT="sbt.bat"
 fi
 
-if [ "$TEST_GROUP" = 1 ]; then
-  SCRIPTED_EXTRA="sbt-lm-coursier/*"
-elif [ "$TEST_GROUP" = 2 ]; then
-  SCRIPTED_EXTRA="scala-211/*"
-else
-  SCRIPTED_EXTRA=""
-fi
-
 # publishing locally to ensure shading runs fine
 ./lm-coursier/metadata/scripts/with-test-repo.sh $SBT \
-  lmCoursierShaded/publishLocal \
+  lmCoursierShadedPublishing/publishLocal \
   lmCoursier/test \
-  # +lm-coursier-shaded/publishLocal \
-  # +lm-coursier/test \
-  # "sbt-lm-coursier/scripted shared-$TEST_GROUP/* $SCRIPTED_EXTRA"
+  'scripted lm-coursier/*'

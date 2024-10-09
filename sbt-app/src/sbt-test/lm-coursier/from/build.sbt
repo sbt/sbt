@@ -1,4 +1,4 @@
-scalaVersion := "2.12.8"
+scalaVersion := "2.12.20"
 
 libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
   

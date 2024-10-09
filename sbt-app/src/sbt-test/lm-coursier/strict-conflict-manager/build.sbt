@@ -1,4 +1,7 @@
 
+import lmcoursier.definitions.*
+import lmcoursier.syntax.*
+
 lazy val shared = Seq(
   scalaVersion := "2.12.8",
   libraryDependencies ++= Seq(
@@ -26,5 +29,9 @@ lazy val c = project
       "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0",
       "com.chuusai" %% "shapeless" % "2.3.2"
     ),
-    versionReconciliation += "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "strict"
+    csrReconciliations += {
+      val sv = scalaBinaryVersion.value
+      ModuleMatchers.only("com.github.alexarchambault", s"argonaut-shapeless_6.2_$sv") -> Reconciliation.Strict
+    }
   )
+

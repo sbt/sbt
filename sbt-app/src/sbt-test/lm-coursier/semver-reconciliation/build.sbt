@@ -1,3 +1,5 @@
+import lmcoursier.definitions.*
+import lmcoursier.syntax.*
 
 lazy val semver61 = project
   .settings(
@@ -6,7 +8,7 @@ lazy val semver61 = project
       "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11",
       "io.argonaut" %% "argonaut" % "6.1"
     ),
-    versionReconciliation += "*" % "*" % "semver"
+    csrReconciliations += ModuleMatchers.all -> Reconciliation.SemVer
   )
 
 lazy val semver62 = project
@@ -16,7 +18,7 @@ lazy val semver62 = project
       "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11",
       "io.argonaut" %% "argonaut" % "6.2"
     ),
-    versionReconciliation += "*" % "*" % "semver"
+    csrReconciliations += ModuleMatchers.all -> Reconciliation.SemVer
   )
 
 lazy val strict62 = project
@@ -26,6 +28,6 @@ lazy val strict62 = project
       "com.github.alexarchambault" %% "argonaut-shapeless_6.2" % "1.2.0-M11",
       "io.argonaut" %% "argonaut" % "6.2"
     ),
-    versionReconciliation += "*" % "*" % "strict"
+    csrReconciliations += ModuleMatchers.all -> Reconciliation.Strict
   )
 
