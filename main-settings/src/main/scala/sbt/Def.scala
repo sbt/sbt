@@ -94,6 +94,12 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
         }
     })
 
+  @deprecated("Use showRelativeKey", "2.0.0")
+  inline def showRelativeKey2(
+      current: ProjectRef,
+      keyNameColor: Option[String] = None,
+  ): Show[ScopedKey[_]] = showRelativeKey(current, keyNameColor)
+
   private[sbt] def showShortKey(
       keyNameColor: Option[String],
   ): Show[ScopedKey[_]] = {
@@ -128,6 +134,12 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
       )
     )
 
+  @deprecated("Use showBuildRelativeKey", "2.0.0")
+  inline def showBuildRelativeKey2(
+      currentBuild: URI,
+      keyNameColor: Option[String] = None,
+  ): Show[ScopedKey[_]] = showBuildRelativeKey(currentBuild, keyNameColor)
+
   /**
    * Returns a String expression for the given [[Reference]] (BuildRef, [[ProjectRef]], etc)
    * relative to the current project.
@@ -137,6 +149,10 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
 
   def displayRelative(current: ProjectRef, project: Reference): String =
     displayRelative(current, project, true)
+
+  @deprecated("Use displayRelative", "2.0.0")
+  inline def displayRelative2(current: ProjectRef, project: Reference): String =
+    displayRelative(current, project)
 
   /**
    * Constructs the String of a given [[Reference]] relative to current.

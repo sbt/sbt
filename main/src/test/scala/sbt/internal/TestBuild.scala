@@ -229,7 +229,7 @@ abstract class TestBuild {
   }
 
   def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure = {
-    val display = Def.showRelativeKey(current)
+    val display = Def.showRelativeKey2(current)
     if (settings.isEmpty) {
       try {
         sys.error("settings is empty")

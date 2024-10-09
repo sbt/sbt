@@ -21,7 +21,7 @@ import sjsonnew.support.scalajson.unsafe._
 object SettingQuery {
   import sbt.internal.util.{ AttributeKey, Settings }
   import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
-  import sbt.Def.{ showBuildRelativeKey, ScopedKey }
+  import sbt.Def.{ showBuildRelativeKey2, ScopedKey }
 
   // Similar to Act.ParsedAxis / Act.projectRef / Act.resolveProject except you can't omit the project reference
 
@@ -73,7 +73,7 @@ object SettingQuery {
       data: Settings[Scope]
   ): Parser[ParsedKey] =
     scopedKeyFull(index, currentBuild, defaultConfigs, keyMap) flatMap { choices =>
-      Act.select(choices, data)(showBuildRelativeKey(currentBuild))
+      Act.select(choices, data)(showBuildRelativeKey2(currentBuild))
     }
 
   def scopedKey(
