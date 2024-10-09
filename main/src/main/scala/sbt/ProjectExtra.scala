@@ -208,7 +208,8 @@ trait ProjectExtra extends Scoped.Syntax:
     ): Show[ScopedKey[_]] =
       Def.showRelativeKey(session.current, keyNameColor)
 
-    def showContextKey2(
+    @deprecated("Use showContextKey", "2.0.0")
+    inline def showContextKey2(
         session: SessionSettings,
         keyNameColor: Option[String] = None
     ): Show[ScopedKey[_]] = showContextKey(session, keyNameColor)
