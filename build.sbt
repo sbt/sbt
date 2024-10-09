@@ -1477,7 +1477,7 @@ def dataclassGen(data: Reference) = Def.taskDyn {
 
 lazy val preTest = taskKey[Unit]("prep steps before tests")
 lazy val definitions = project
-  .in(file("modules/definitions"))
+  .in(file("lm-coursier/definitions"))
   .disablePlugins(MimaPlugin)
   .settings(
     scalaVersion := scala3,
@@ -1492,7 +1492,7 @@ lazy val definitions = project
   )
 
 lazy val lmCoursier = project
-  .in(file("modules/lm-coursier"))
+  .in(file("lm-coursier"))
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213, scala3),
@@ -1525,7 +1525,7 @@ lazy val lmCoursier = project
   )
 
 lazy val lmCoursierShadedPublishing = project
-  .in(file("modules/lm-coursier/target/shaded-publishing-module"))
+  .in(file("lm-coursier/target/shaded-publishing-module"))
   .settings(
     name := "librarymanagement-coursier",
     crossScalaVersions := Seq(scala212, scala213, scala3),
@@ -1533,7 +1533,7 @@ lazy val lmCoursierShadedPublishing = project
   )
 
 lazy val lmCoursierShaded = project
-  .in(file("modules/lm-coursier/target/shaded-module"))
+  .in(file("lm-coursier/target/shaded-module"))
   .settings(
     shared,
     crossScalaVersions := Seq(scala212, scala213, scala3),
@@ -1596,9 +1596,9 @@ lazy val lmCoursierShaded = project
   )
 
 lazy val customProtocolForTest212 = project
-  .in(file("modules/custom-protocol-for-test-2-12"))
+  .in(file("lm-coursier/custom-protocol-for-test-2-12"))
   .settings(
-    sourceDirectory := file("modules/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    sourceDirectory := file("lm-coursier/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
     scalaVersion := scala212,
     organization := "org.example",
     moduleName := "customprotocol-handler",
@@ -1607,9 +1607,9 @@ lazy val customProtocolForTest212 = project
   )
 
 lazy val customProtocolForTest213 = project
-  .in(file("modules/custom-protocol-for-test-2-13"))
+  .in(file("lm-coursier/custom-protocol-for-test-2-13"))
   .settings(
-    sourceDirectory := file("modules/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    sourceDirectory := file("lm-coursier/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
     scalaVersion := scala213,
     organization := "org.example",
     moduleName := "customprotocol-handler",
@@ -1618,7 +1618,7 @@ lazy val customProtocolForTest213 = project
   )
 
 lazy val customProtocolJavaForTest = project
-  .in(file("modules/custom-protocol-java-for-test"))
+  .in(file("lm-coursier/custom-protocol-java-for-test"))
   .settings(
     crossPaths := false,
     organization := "org.example",
