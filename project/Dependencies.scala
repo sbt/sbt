@@ -68,9 +68,6 @@ object Dependencies {
   def addSbtZinc = addSbtModule(sbtZincPath, "zinc", zinc)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  // val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.0.10"
-  val lmCoursierShaded = "org.scala-sbt" %% "librarymanagement-coursier" % "2.0.0-alpha8"
-
   lazy val sjsonNewVersion = "0.14.0-M1"
   def sjsonNew(n: String) = Def.setting(
     "com.eed3si9n" %% n % sjsonNewVersion
@@ -141,8 +138,30 @@ object Dependencies {
   val zeroAllocationHashing = "net.openhft" % "zero-allocation-hashing" % "0.10.1"
   val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-396a783bba347016e7fe30dacc60d355be607fe2"
 
+  // lm dependencies
   val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
   val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
   val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.7.0"
+
+  // lm-coursier dependencies
+  val dataclassScalafixVersion = "0.1.0"
+  val coursierVersion = "2.1.13"
+
+  val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
+    .cross(CrossVersion.for3Use2_13)
+    .exclude("org.codehaus.plexus", "plexus-archiver")
+    .exclude("org.codehaus.plexus", "plexus-container-default")
+
+  val coursierSbtMavenRepo = ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
+    .cross(CrossVersion.for3Use2_13)
+
+  val coursierExcludedDependencies = Seq(
+    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
+    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),
+  )
+
+  // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
+  // io.get-coursier::coursier depends on.
+  val jniUtilsVersion = "0.3.3"
 }

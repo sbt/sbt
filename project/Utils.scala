@@ -4,7 +4,7 @@ import Keys._
 
 import sbt.internal.inc.Analysis
 
-object Util {
+object Utils {
   val version2_13 = settingKey[String]("version number")
   val ExclusiveTest: Tags.Tag = Tags.Tag("exclusive-test")
 
@@ -12,7 +12,10 @@ object Util {
   val scalaKeywords: TaskKey[Set[String]] = taskKey[Set[String]]("")
   val generateKeywords: TaskKey[File] = taskKey[File]("")
 
-  def noPublishSettings: Seq[Setting[_]] = Seq(publish := {})
+  lazy val noPublish = Seq(
+    publish := {},
+    publish / skip := true,
+  )
 
   def crossBuild: Seq[Setting[_]] =
     Seq(
