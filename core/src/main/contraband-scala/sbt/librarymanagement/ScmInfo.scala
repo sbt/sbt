@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class ScmInfo private (
   override def toString: String = {
     "ScmInfo(" + browseUrl + ", " + connection + ", " + devConnection + ")"
   }
-  private[this] def copy(browseUrl: java.net.URI = browseUrl, connection: String = connection, devConnection: Option[String] = devConnection): ScmInfo = {
+  private def copy(browseUrl: java.net.URI = browseUrl, connection: String = connection, devConnection: Option[String] = devConnection): ScmInfo = {
     new ScmInfo(browseUrl, connection, devConnection)
   }
   def withBrowseUrl(browseUrl: java.net.URI): ScmInfo = {

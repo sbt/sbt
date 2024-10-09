@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -33,7 +33,7 @@ final class OrganizationArtifactReport private (
     val details = modules map { _.detailReport }
     s"\t$organization:$name\n${details.mkString}\n"
   }
-  private[this] def copy(organization: String = organization, name: String = name, modules: Vector[sbt.librarymanagement.ModuleReport] = modules): OrganizationArtifactReport = {
+  private def copy(organization: String = organization, name: String = name, modules: Vector[sbt.librarymanagement.ModuleReport] = modules): OrganizationArtifactReport = {
     new OrganizationArtifactReport(organization, name, modules)
   }
   def withOrganization(organization: String): OrganizationArtifactReport = {

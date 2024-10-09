@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class UpdateStats private (
   override def toString: String = {
     Seq("Resolve time: " + resolveTime + " ms", "Download time: " + downloadTime + " ms", "Download size: " + downloadSize + " bytes").mkString(", ")
   }
-  private[this] def copy(resolveTime: Long = resolveTime, downloadTime: Long = downloadTime, downloadSize: Long = downloadSize, cached: Boolean = cached): UpdateStats = {
+  private def copy(resolveTime: Long = resolveTime, downloadTime: Long = downloadTime, downloadSize: Long = downloadSize, cached: Boolean = cached): UpdateStats = {
     new UpdateStats(resolveTime, downloadTime, downloadSize, cached)
   }
   def withResolveTime(resolveTime: Long): UpdateStats = {

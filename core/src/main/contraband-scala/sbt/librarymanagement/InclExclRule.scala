@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -32,7 +32,7 @@ final class InclExclRule private (
   override def toString: String = {
     "InclExclRule(" + organization + ", " + name + ", " + artifact + ", " + configurations + ", " + crossVersion + ")"
   }
-  private[this] def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
+  private def copy(organization: String = organization, name: String = name, artifact: String = artifact, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, crossVersion: sbt.librarymanagement.CrossVersion = crossVersion): InclExclRule = {
     new InclExclRule(organization, name, artifact, configurations, crossVersion)
   }
   def withOrganization(organization: String): InclExclRule = {

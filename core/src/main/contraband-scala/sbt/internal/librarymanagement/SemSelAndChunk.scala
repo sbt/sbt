@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class SemSelAndChunk private (
   override def toString: String = {
     comparators.map(_.toString).mkString(" ")
   }
-  private[this] def copy(comparators: Seq[sbt.internal.librarymanagement.SemComparator] = comparators): SemSelAndChunk = {
+  private def copy(comparators: Seq[sbt.internal.librarymanagement.SemComparator] = comparators): SemSelAndChunk = {
     new SemSelAndChunk(comparators)
   }
   def withComparators(comparators: Seq[sbt.internal.librarymanagement.SemComparator]): SemSelAndChunk = {

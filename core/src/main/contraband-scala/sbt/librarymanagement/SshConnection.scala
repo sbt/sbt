@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class SshConnection private (
   override def toString: String = {
     "SshConnection(" + authentication + ", " + hostname + ", " + port + ")"
   }
-  private[this] def copy(authentication: Option[sbt.librarymanagement.SshAuthentication] = authentication, hostname: Option[String] = hostname, port: Option[Int] = port): SshConnection = {
+  private def copy(authentication: Option[sbt.librarymanagement.SshAuthentication] = authentication, hostname: Option[String] = hostname, port: Option[Int] = port): SshConnection = {
     new SshConnection(authentication, hostname, port)
   }
   def withAuthentication(authentication: Option[sbt.librarymanagement.SshAuthentication]): SshConnection = {

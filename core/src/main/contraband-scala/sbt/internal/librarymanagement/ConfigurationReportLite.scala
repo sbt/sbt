@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class ConfigurationReportLite private (
   override def toString: String = {
     "ConfigurationReportLite(" + configuration + ", " + details + ")"
   }
-  private[this] def copy(configuration: String = configuration, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReportLite = {
+  private def copy(configuration: String = configuration, details: Vector[sbt.librarymanagement.OrganizationArtifactReport] = details): ConfigurationReportLite = {
     new ConfigurationReportLite(configuration, details)
   }
   def withConfiguration(configuration: String): ConfigurationReportLite = {

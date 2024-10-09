@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -73,7 +73,7 @@ final class SemanticSelector private (
   override def toString: String = {
     selectors.map(_.toString).mkString(" || ")
   }
-  private[this] def copy(selectors: Seq[sbt.internal.librarymanagement.SemSelAndChunk] = selectors): SemanticSelector = {
+  private def copy(selectors: Seq[sbt.internal.librarymanagement.SemSelAndChunk] = selectors): SemanticSelector = {
     new SemanticSelector(selectors)
   }
   def withSelectors(selectors: Seq[sbt.internal.librarymanagement.SemSelAndChunk]): SemanticSelector = {

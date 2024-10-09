@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class PublishConfiguration private (
   override def toString: String = {
     "PublishConfiguration(" + publishMavenStyle + ", " + deliverIvyPattern + ", " + status + ", " + configurations + ", " + resolverName + ", " + artifacts + ", " + checksums + ", " + logging + ", " + overwrite + ")"
   }
-  private[this] def copy(publishMavenStyle: Boolean = publishMavenStyle, deliverIvyPattern: Option[String] = deliverIvyPattern, status: Option[String] = status, configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurations, resolverName: Option[String] = resolverName, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, checksums: scala.Vector[String] = checksums, logging: Option[sbt.librarymanagement.UpdateLogging] = logging, overwrite: Boolean = overwrite): PublishConfiguration = {
+  private def copy(publishMavenStyle: Boolean = publishMavenStyle, deliverIvyPattern: Option[String] = deliverIvyPattern, status: Option[String] = status, configurations: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurations, resolverName: Option[String] = resolverName, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, checksums: scala.Vector[String] = checksums, logging: Option[sbt.librarymanagement.UpdateLogging] = logging, overwrite: Boolean = overwrite): PublishConfiguration = {
     new PublishConfiguration(publishMavenStyle, deliverIvyPattern, status, configurations, resolverName, artifacts, checksums, logging, overwrite)
   }
   def withPublishMavenStyle(publishMavenStyle: Boolean): PublishConfiguration = {
