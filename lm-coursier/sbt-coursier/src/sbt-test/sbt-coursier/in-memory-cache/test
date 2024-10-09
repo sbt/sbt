@@ -1,4 +1,0 @@
-$ delete coursier-artifacts
-> update
-$ exists coursier-artifacts
-> update
