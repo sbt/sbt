@@ -188,7 +188,7 @@ object FromSbt {
     )
 
     val prefix = "e:" + SbtPomExtraProperties.POM_INFO_KEY_PREFIX
-    val properties = projectID.extraAttributes
+    val properties = projectID.extraAttributes.view
       .filterKeys(_.startsWith(prefix))
       .toSeq
       .map { case (k, v) => (k.stripPrefix("e:"), v) }

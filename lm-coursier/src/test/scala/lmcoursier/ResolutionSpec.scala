@@ -85,7 +85,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    val r = resolution.right.get
+    val r = resolution.toOption.get
 
     val componentConfig = r.configurations.find(_.configuration == Component.toConfigRef).get
     componentConfig.modules should have size 2
@@ -100,7 +100,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    val r = resolution.right.get
+    val r = resolution.toOption.get
 
     val modules = r.configurations.flatMap(_.modules)
     modules.map(_.module.name) should contain("main_2.12")
@@ -155,7 +155,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
 
-    val report = resolution.right.get
+    val report = resolution.toOption.get
 
     val modules = report.configurations.flatMap(_.modules)
     modules.map(_.module).map(module => (module.organization, module.name, module.revision)) should contain(
@@ -196,7 +196,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
 
-    val report = resolution.right.get
+    val report = resolution.toOption.get
 
     val modules = report.configurations.flatMap(_.modules)
     modules.map(_.module).map(module => (module.organization, module.name, module.revision)) should contain(
@@ -213,7 +213,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     val resolution =
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
-    val r = resolution.right.get
+    val r = resolution.toOption.get
 
     val componentConfig = r.configurations.find(_.configuration == Compile.toConfigRef).get
     componentConfig.modules.map(_.module.name) should have size 5
@@ -249,7 +249,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
 
     assert(resolution.isRight)
     val componentConfig =
-      resolution.right.get.configurations.find(_.configuration == Compile.toConfigRef).get
+      resolution.toOption.get.configurations.find(_.configuration == Compile.toConfigRef).get
     val compress = componentConfig.modules.find(_.module.name == "commons-compress").get
     compress.licenses should have size 1
   }

@@ -63,7 +63,7 @@ object UpdateRun {
       )
 
       val projCache = params.res.values.foldLeft(Map.empty[ModuleVersion, Project])(
-        _ ++ _.projectCache.mapValues(_._2)
+        _ ++ _.projectCache.view.mapValues(_._2).toMap
       )
       val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
@@ -87,10 +87,6 @@ object UpdateRun {
   }
 
   private def grouped[K, V](map: Seq[(K, V)]): Map[K, Seq[V]] =
-    map
-      .groupBy(_._1)
-      .mapValues(_.map(_._2))
-      .iterator
-      .toMap
+    map.groupMap(_._1)((_, values) => values)
 
 }

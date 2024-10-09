@@ -1,6 +1,6 @@
 package coursier.cache.protocol
 
-import java.net.{URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory}
+import java.net.{ URL, URLConnection, URLStreamHandler, URLStreamHandlerFactory }
 
 class CustomprotocolHandler extends URLStreamHandlerFactory {
   def createURLStreamHandler(protocol: String): URLStreamHandler = new URLStreamHandler {

@@ -1,11 +1,11 @@
 package lmcoursier
 
 import java.io.File
-import java.net.{ URL, URLClassLoader, URLConnection, MalformedURLException }
+import java.net.{ URL, URLClassLoader }
 
-import coursier.{ Organization, Resolution, organizationString }
+import coursier.{ Organization, Resolution }
 import coursier.core.{ Classifier, Configuration }
-import coursier.cache.{ CacheDefaults, CachePolicy }
+import coursier.cache.CacheDefaults
 import coursier.util.Artifact
 import coursier.internal.Typelevel
 import lmcoursier.definitions.ToCoursier

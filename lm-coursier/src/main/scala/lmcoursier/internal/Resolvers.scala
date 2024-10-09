@@ -11,7 +11,7 @@ import org.apache.ivy.plugins.resolver.IBiblioResolver
 import sbt.librarymanagement.{ Configuration => _, MavenRepository => _, _ }
 import sbt.util.Logger
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 object Resolvers {
 

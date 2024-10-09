@@ -3,7 +3,6 @@ package lmcoursier
 import java.io.File
 import dataclass.{ data, since }
 import coursier.cache.CacheDefaults
-import coursier.params.rule.{ Rule, RuleResolution }
 import lmcoursier.credentials.Credentials
 import lmcoursier.definitions.{
   Authentication,
@@ -16,20 +15,10 @@ import lmcoursier.definitions.{
   Reconciliation,
   Strict
 }
-import sbt.librarymanagement.{
-  CrossVersion,
-  InclExclRule,
-  ModuleDescriptorConfiguration,
-  ModuleID,
-  ModuleInfo,
-  Resolver,
-  UpdateConfiguration
-}
+import sbt.librarymanagement.{ InclExclRule, ModuleID, Resolver }
 import xsbti.Logger
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
-import java.net.URL
-import java.net.URLClassLoader
 
 @data class CoursierConfiguration(
     log: Option[Logger] = None,

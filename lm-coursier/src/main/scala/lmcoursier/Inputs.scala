@@ -1,7 +1,7 @@
 package lmcoursier
 
 import coursier.ivy.IvyXml.{ mappings => initialIvyXmlMappings }
-import lmcoursier.definitions.{ Configuration, Module, ModuleName, Organization, ToCoursier }
+import lmcoursier.definitions.{ Configuration, Module, ModuleName, Organization }
 import sbt.librarymanagement.{ CrossVersion, InclExclRule, ModuleID }
 import sbt.util.Logger
 
@@ -68,9 +68,9 @@ object Inputs {
     def helper(
         done: Set[Configuration],
         toAdd: List[Configuration]
-    ): Stream[(Configuration, Seq[Configuration])] =
+    ): LazyList[(Configuration, Seq[Configuration])] =
       toAdd match {
-        case Nil => Stream.empty
+        case Nil => LazyList.empty
         case config :: rest =>
           val extends0 = map.getOrElse(config, Nil)
           val missingExtends = extends0.filterNot(done)

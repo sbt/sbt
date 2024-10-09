@@ -5,7 +5,7 @@ package lmcoursier.definitions
 object FromCoursier {
 
   def cachePolicy(r: coursier.cache.CachePolicy): CachePolicy =
-    r match {
+    (r: @unchecked) match {
       case coursier.cache.CachePolicy.LocalOnly           => CachePolicy.LocalOnly
       case coursier.cache.CachePolicy.LocalOnlyIfValid    => CachePolicy.LocalOnlyIfValid
       case coursier.cache.CachePolicy.LocalUpdateChanging => CachePolicy.LocalUpdateChanging

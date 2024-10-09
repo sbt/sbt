@@ -1,7 +1,6 @@
 package lmcoursier.internal
 
 import java.io.File
-import java.net.URL
 import java.util.GregorianCalendar
 import java.util.concurrent.ConcurrentHashMap
 import coursier.cache.CacheUrl
@@ -13,6 +12,7 @@ import sbt.librarymanagement.{ Artifact => _, Configuration => _, _ }
 import sbt.util.Logger
 
 import scala.annotation.tailrec
+import coursier.core.MinimizedExclusions
 
 private[internal] object SbtUpdateReport {
 
@@ -220,7 +220,7 @@ private[internal] object SbtUpdateReport {
     def clean(dep: Dependency): Dependency =
       dep
         .withConfiguration(Configuration.empty)
-        .withExclusions(Set.empty)
+        .withMinimizedExclusions(MinimizedExclusions.zero)
         .withOptional(false)
 
     def lookupProject(mv: coursier.core.Resolution.ModuleVersion): Option[Project] =
@@ -259,17 +259,11 @@ private[internal] object SbtUpdateReport {
 
     val reverseDependencies = {
       val transitiveReverseDependencies = res.reverseDependencies.toVector
-        .map { case (k, v) =>
-          clean(k) -> v.map(clean)
-        }
-        .groupBy(_._1)
-        .mapValues(_.flatMap(_._2))
+        .map { case (k, v) => clean(k) -> v.map(clean) }
+        .groupMapReduce(_._1)((_, deps) => deps)(_ ++ _)
 
       (transitiveReverseDependencies.toVector ++ directReverseDependencies.toVector)
-        .groupBy(_._1)
-        .mapValues(_.flatMap(_._2).toVector)
-        .toVector
-        .toMap
+        .groupMapReduce(_._1)((_, deps) => deps)(_ ++ _)
     }
 
     groupedDepArtifacts.toVector.map { case (dep, artifacts) =>

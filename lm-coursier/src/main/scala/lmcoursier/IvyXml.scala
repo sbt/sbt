@@ -71,8 +71,7 @@ object IvyXml {
     }
 
     val publications = project.publications
-      .groupBy { case (_, p) => p }
-      .mapValues { _.map { case (cfg, _) => cfg } }
+      .groupMap((_, p) => p)((cfg, _) => cfg)
 
     val publicationElems = publications.map { case (pub, configs) =>
       val n = <artifact name={pub.name} type={pub.`type`.value} ext={pub.ext.value} conf={

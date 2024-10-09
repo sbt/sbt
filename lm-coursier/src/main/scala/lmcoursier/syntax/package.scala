@@ -3,20 +3,11 @@ package lmcoursier
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials._
 import lmcoursier.definitions._
-import sbt.librarymanagement.{
-  Resolver,
-  UpdateConfiguration,
-  ModuleID,
-  CrossVersion,
-  ModuleInfo,
-  ModuleDescriptorConfiguration
-}
+import sbt.librarymanagement.{ Resolver, UpdateConfiguration }
 import xsbti.Logger
 
 import scala.concurrent.duration.{ Duration, FiniteDuration }
 import java.io.File
-import java.net.URL
-import java.net.URLClassLoader
 
 package object syntax {
   implicit class CoursierConfigurationModule(value: CoursierConfiguration.type) {

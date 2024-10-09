@@ -2,6 +2,7 @@ package sbt.librarymanagement
 
 import sbt.internal.librarymanagement.UnitSpec
 import CrossVersion._
+import scala.annotation.nowarn
 
 class CrossVersionTest extends UnitSpec {
   "sbtApiVersion" should "for xyz return None" in {
@@ -339,7 +340,7 @@ class CrossVersionTest extends UnitSpec {
 
   "Disabled" should "have structural equality" in {
     Disabled() shouldBe Disabled()
-  }
+  }: @nowarn
   "CrossVersion.full" should "have structural equality" in {
     CrossVersion.full shouldBe CrossVersion.full
   }
