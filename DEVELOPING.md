@@ -45,7 +45,7 @@ When working on a change that requires changing one or more sub modules, the sou
    ```
    $ mkdir sbt-modules
    $ cd sbt-modules
-   $ for i in sbt io librarymanagement zinc; do \
+   $ for i in sbt io zinc; do \
      git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b develop origin/develop)
    done
    $ cd sbt
