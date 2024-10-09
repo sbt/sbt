@@ -1,11 +1,11 @@
 package sbt.internal.librarymanagement
 
-import org.apache.ivy.core.module.id.ModuleRevisionId
-import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
+// import org.apache.ivy.core.module.id.ModuleRevisionId
+// import org.apache.ivy.core.module.descriptor.DefaultDependencyDescriptor
 
-import sbt.internal.librarymanagement.IvyScalaUtil.OverrideScalaMediator
-import sbt.librarymanagement._
-import sbt.librarymanagement.ScalaArtifacts._
+// import sbt.internal.librarymanagement.IvyScalaUtil.OverrideScalaMediator
+// import sbt.librarymanagement._
+// import sbt.librarymanagement.ScalaArtifacts._
 import verify.BasicTestSuite
 
 object ScalaOverrideTest extends BasicTestSuite {

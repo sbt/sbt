@@ -118,7 +118,7 @@ object PomExtraDependencyAttributes {
       if (filteredExtra.isEmpty)
         Nil
       else {
-        import scala.collection.JavaConverters._
+        import scala.jdk.CollectionConverters._
         val revId0 = ModuleRevisionId.newInstance(
           revId.getOrganisation,
           revId.getName,

@@ -161,33 +161,32 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
       artifacts: Vector[(String, ModuleID, Artifact, File)],
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
-    import config.{ updateConfiguration => c, module => mod, _ }
-    import mod.{ configurations => confs, _ }
-    val artifactFilter = getArtifactTypeFilter(c.artifactFilter)
+    import config.module._
+    val artifactFilter = getArtifactTypeFilter(config.updateConfiguration.artifactFilter)
     assert(classifiers.nonEmpty, "classifiers cannot be empty")
     assert(artifactFilter.types.nonEmpty, "UpdateConfiguration must filter on some types")
     val baseModules = dependencies map { m =>
       restrictedCopy(m, true)
     }
     // Adding list of explicit artifacts here.
-    val exls = Map(excludes map { case (k, v) => (k, v.toSet) }: _*)
+    val exls = Map(config.excludes map { case (k, v) => (k, v.toSet) }: _*)
     val deps = baseModules.distinct flatMap classifiedArtifacts(classifiers, exls, artifacts)
     val base = restrictedCopy(id, true).withName(id.name + classifiers.mkString("$", "_", ""))
     val moduleSetting = ModuleDescriptorConfiguration(base, ModuleInfo(base.name))
       .withScalaModuleInfo(scalaModuleInfo)
       .withDependencies(deps)
-      .withConfigurations(confs)
+      .withConfigurations(configurations)
     val module = moduleDescriptor(moduleSetting)
 
     // c.copy ensures c.types is preserved too
-    val upConf = c.withMissingOk(true)
+    val upConf = config.updateConfiguration.withMissingOk(true)
     update(module, upConf, uwconfig, log) match {
       case Right(r) =>
         // The artifacts that came from Ivy don't have their classifier set, let's set it according to
         // FIXME: this is only done because IDE plugins depend on `classifier` to determine type. They
         val typeClassifierMap: Map[String, String] =
-          ((sourceArtifactTypes.toSeq map (_ -> Artifact.SourceClassifier))
-            :: (docArtifactTypes.toSeq map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
+          ((config.sourceArtifactTypes.toSeq map (_ -> Artifact.SourceClassifier))
+            :: (config.docArtifactTypes.toSeq map (_ -> Artifact.DocClassifier)) :: Nil).flatten.toMap
         Right(r.substitute { (conf, mid, artFileSeq) =>
           artFileSeq map { case (art, f) =>
             // Deduce the classifier from the type if no classifier is present already

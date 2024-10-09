@@ -1,6 +1,5 @@
 package sbt.internal.librarymanagement
 
-import org.scalatest.LoneElement._
 import sbt.util.ShowLines
 import sbt.librarymanagement._
 import sbt.librarymanagement.syntax._

@@ -11,7 +11,7 @@ package internal
 package inc
 
 import sbt.internal.inc.classpath.ClasspathUtil
-import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.JsonUtil
 import sbt.internal.util.{ BufferedLogger, FullLogger }
 import sbt.io.IO
 import sbt.librarymanagement._

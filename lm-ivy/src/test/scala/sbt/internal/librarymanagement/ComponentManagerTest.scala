@@ -1,12 +1,5 @@
 package sbt.internal.librarymanagement
 
-import java.io.File
-import java.util.concurrent.Callable
-import sbt.io.IO.withTemporaryDirectory
-import sbt.io.IO
-import org.apache.ivy.util.ChecksumHelper
-import IfMissing.Fail
-import xsbti.ComponentProvider
 import verify.BasicTestSuite
 
 // TODO - We need to re-enable this test.  Right now, we dont' have a "stub" launcher for this.

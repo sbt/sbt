@@ -1,13 +1,10 @@
 package sbt.internal.librarymanagement
 
-import sbt.util.ShowLines
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
 import sbt.librarymanagement.Platform.*
 
 object PlatformResolutionSpec extends BaseIvySpecification {
-
-  import TestShowLines.*
 
   test("None platform resolves %% as JVM") {
     cleanCache()

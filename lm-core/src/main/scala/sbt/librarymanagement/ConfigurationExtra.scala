@@ -3,7 +3,7 @@
  */
 package sbt.librarymanagement
 
-import scala.annotation.{ nowarn, tailrec }
+import scala.annotation.nowarn
 import scala.quoted.*
 
 object Configurations {

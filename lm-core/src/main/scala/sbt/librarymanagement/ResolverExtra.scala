@@ -10,7 +10,6 @@ import scala.xml.XML
 import org.xml.sax.SAXParseException
 import sbt.util.Logger
 
-import java.net.URI
 import scala.util.matching.Regex
 
 final class RawRepository(val resolver: AnyRef, name: String) extends Resolver(name) {
