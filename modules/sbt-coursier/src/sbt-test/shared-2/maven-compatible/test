@@ -1,0 +1,3 @@
+$ delete output
+> run
+$ exists output

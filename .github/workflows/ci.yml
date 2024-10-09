@@ -220,3 +220,32 @@ jobs:
           find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
           find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
           find $HOME/.sbt                              -name "*.lock"               -delete || true
+  coursier-test:
+    name: ${{ matrix.os }} ${{ matrix.PLUGIN }} group ${{ matrix.TEST_GROUP }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        PLUGIN: [sbt-lm-coursier] # , sbt-coursier]
+        TEST_GROUP: [1, 2]
+    steps:
+    - name: Don't convert LF to CRLF during checkout
+      if: runner.os == 'Windows'
+      run: |
+        git config --global core.autocrlf false
+        git config --global core.eol lf
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: true
+    - uses: coursier/cache-action@v6.4
+    - uses: coursier/setup-action@v1.3
+      with:
+        jvm: 8
+        apps: sbt
+    - run: scripts/ci.sh
+      shell: bash
+      env:
+        PLUGIN: ${{ matrix.PLUGIN }}
+        TEST_GROUP: ${{ matrix.TEST_GROUP }}

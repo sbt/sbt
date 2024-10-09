@@ -1,0 +1,5 @@
+dependency-graph (configurations compile)
+└─ log4j:log4j:1.2.17
+   ├─ org.apache.zookeeper:zookeeper:3.5.0-alpha log4j:log4j:1.2.16 -> 1.2.17
+   └─ org.slf4j:slf4j-log4j12:1.7.5
+      └─ org.apache.zookeeper:zookeeper:3.5.0-alpha

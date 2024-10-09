@@ -7,8 +7,6 @@ import java.nio.file.{ Files, Path => JPath }
 import java.util.Locale
 import sbt.internal.inc.Analysis
 
-import scala.util.Try
-
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
@@ -50,11 +48,9 @@ ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
 Global / semanticdbVersion := "4.7.8"
-val excludeLint = SettingKey[Set[Def.KeyedInitialize[_]]]("excludeLintKeys")
-Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
-Global / excludeLint += componentID
-Global / excludeLint += scriptedBufferLog
-Global / excludeLint += checkPluginCross
+Global / excludeLintKeys += componentID
+Global / excludeLintKeys += scriptedBufferLog
+Global / excludeLintKeys += checkPluginCross
 ThisBuild / evictionErrorLevel := Level.Info
 
 def commonSettings: Seq[Setting[_]] = Def.settings(
@@ -208,9 +204,8 @@ lazy val sbtRoot: Project = (project in file("."))
     scalacOptions += "-Ymacro-expand:none", // for both sxr and doc
     Util.publishPomSettings,
     otherRootSettings,
-    publish := {},
+    dontPublish,
     publishLocal := {},
-    publish / skip := true,
     Global / commands += Command
       .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
@@ -935,7 +930,6 @@ lazy val mainProj = (project in file("main"))
         sjsonNewCore.value,
         launcherInterface,
         caffeine,
-        lmCoursierShaded,
       ) ++ log4jModules),
     libraryDependencies ++= (scalaVersion.value match {
       case v if v.startsWith("2.12.") => List()
@@ -952,7 +946,7 @@ lazy val mainProj = (project in file("main"))
     // mimaSettings,
     // mimaBinaryIssueFilters ++= Vector(),
   )
-  .dependsOn(lmCore, lmIvy)
+  .dependsOn(lmCore, lmIvy, lmCoursierShaded)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
@@ -993,7 +987,7 @@ lazy val serverTestProj = (project in file("server-test"))
   .dependsOn(sbtProj % "compile->test", scriptedSbtProj % "compile->test")
   .settings(
     testedBaseSettings,
-    publish / skip := true,
+    dontPublish,
     // make server tests serial
     Test / watchTriggers += baseDirectory.value.toGlob / "src" / "server-test" / **,
     Test / parallelExecution := false,
@@ -1039,7 +1033,7 @@ lazy val sbtClientProj = (project in file("client"))
   .dependsOn(commandProj)
   .settings(
     commonSettings,
-    publish / skip := true,
+    dontPublish,
     name := "sbt-client",
     mimaPreviousArtifacts := Set.empty,
     crossPaths := false,
@@ -1124,7 +1118,7 @@ lazy val sbtBig = (project in file(".big"))
 lazy val lowerUtils = (project in (file("internal") / "lower"))
   .aggregate(lowerUtilProjects.map(p => LocalProject(p.id)): _*)
   .settings(
-    publish / skip := true
+    dontPublish
   )
 
 lazy val upperModules = (project in (file("internal") / "upper"))
@@ -1133,7 +1127,7 @@ lazy val upperModules = (project in (file("internal") / "upper"))
       diff Seq(bundledLauncherProj)).map(p => LocalProject(p.id)): _*
   )
   .settings(
-    publish / skip := true
+    dontPublish
   )
 
 lazy val sbtIgnoredProblems = {
@@ -1224,6 +1218,9 @@ def allProjects =
     remoteCacheProj,
     lmCore,
     lmIvy,
+    definitions,
+    lmCoursier,
+    lmCoursierShaded,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
@@ -1430,3 +1427,207 @@ lazy val lmIvy = (project in file("lm-ivy"))
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
   )
+
+
+def sbtCoursierSettings: Seq[Setting[_]] = Def.settings(
+  developers += 
+    Developer(
+      "alexarchambault",
+      "Alexandre Archambault",
+      "",
+      url("https://github.com/alexarchambault")
+    ),
+  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixVersion,
+  assemblyMergeStrategy := {
+    case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", xs @ _*) => MergeStrategy.first
+    // case PathList("lmcoursier", "internal", "shaded", "package.class") => MergeStrategy.first
+    // case PathList("lmcoursier", "internal", "shaded", "package$.class") => MergeStrategy.first
+    case PathList("com", "github") => MergeStrategy.discard
+    case PathList("com", "jcraft") => MergeStrategy.discard
+    case PathList("com", "lmax") => MergeStrategy.discard
+    case PathList("com", "sun") => MergeStrategy.discard
+    case PathList("com", "swoval") => MergeStrategy.discard
+    case PathList("com", "typesafe") => MergeStrategy.discard
+    case PathList("gigahorse") => MergeStrategy.discard
+    case PathList("jline") => MergeStrategy.discard
+    case PathList("scala") => MergeStrategy.discard
+    case PathList("sjsonnew") => MergeStrategy.discard
+    case PathList("xsbti") => MergeStrategy.discard
+    case PathList("META-INF", "native", xs @ _*) => MergeStrategy.first
+    case x =>
+      val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+      oldStrategy(x)
+  }
+)
+
+def dataclassGen(data: Reference) = Def.taskDyn {
+  val root = (ThisBuild / baseDirectory).value.toURI.toString
+  val from = (data / Compile / sourceDirectory).value
+  val to = (Compile / sourceManaged).value
+  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
+  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
+  (data / Compile / compile).value
+  Def.task {
+    (data / Compile / scalafix)
+      .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
+      .value
+    (to ** "*.scala").get
+  }
+}
+
+lazy val preTest = taskKey[Unit]("prep steps before tests")
+lazy val definitions = project
+  .in(file("modules/definitions"))
+  .disablePlugins(MimaPlugin)
+  .settings(
+    scalaVersion := scala3,
+    crossScalaVersions := Seq(scala212, scala213, scala3),
+    libraryDependencies ++= Seq(
+      coursierDep,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+      lmIvy.value % Provided,
+    ),
+    conflictWarning := ConflictWarning.disable,
+    dontPublish,
+  )
+
+lazy val lmCoursier = project
+  .in(file("modules/lm-coursier"))
+  .settings(
+    shared,
+    crossScalaVersions := Seq(scala212, scala213, scala3),
+    Mima.settings,
+    Mima.lmCoursierFilters,
+    libraryDependencies ++= Seq(
+      coursierDep,
+      coursierSbtMavenRepoDep,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+
+      // We depend on librarymanagement-ivy rather than just
+      // librarymanagement-core to handle the ModuleDescriptor passed
+      // to DependencyResolutionInterface.update, which is an
+      // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor is ignored).
+      lmIvy.value,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test
+    ),
+    excludeDependencies ++= coursierExcludedDependencies,
+    Test / exportedProducts := {
+      (Test / preTest).value
+      (Test / exportedProducts).value
+    },
+    Test / preTest := {
+      (customProtocolForTest212 / publishLocal).value
+      (customProtocolForTest213 / publishLocal).value
+      (customProtocolJavaForTest / publishLocal).value
+    },
+    Compile / sourceGenerators += dataclassGen(definitions).taskValue,
+  )
+
+lazy val lmCoursierShadedPublishing = project
+  .in(file("modules/lm-coursier/target/shaded-publishing-module"))
+  .settings(
+    name := "librarymanagement-coursier",
+    crossScalaVersions := Seq(scala212, scala213, scala3),
+    Compile / packageBin := (lmCoursierShaded / assembly).value,
+  )
+
+lazy val lmCoursierShaded = project
+  .in(file("modules/lm-coursier/target/shaded-module"))
+  .settings(
+    shared,
+    crossScalaVersions := Seq(scala212, scala213, scala3),
+    Mima.settings,
+    Mima.lmCoursierFilters,
+    Mima.lmCoursierShadedFilters,
+    Compile / sources := (lmCoursier / Compile / sources).value,
+    // shadedModules ++= Set(
+    //   "io.get-coursier" %% "coursier",
+    //   "io.get-coursier" %% "coursier-sbt-maven-repository",
+    //   "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
+    // ),
+    // validNamespaces += "lmcoursier",
+    // validEntries ++= Set(
+    //   // FIXME Ideally, we should just strip those from the resulting JAR…
+    //   "README", // from google-collections via plexus-archiver (see below)
+    //   // from plexus-util via plexus-archiver (see below)
+    //   "licenses/extreme.indiana.edu.license.TXT",
+    //   "licenses/javolution.license.TXT",
+    //   "licenses/thoughtworks.TXT",
+    //   "licenses/",
+    // ),
+    assemblyShadeRules := {
+      val toShade = Seq(
+        "coursier",
+        "org.fusesource",
+        "macrocompat",
+        "io.github.alexarchambault.windowsansi",
+        "concurrentrefhashmap",
+        "com.github.ghik",
+        // pulled by the plexus-archiver stuff that coursier-cache
+        // depends on for now… can hopefully be removed in the future
+        "com.google.common",
+        "com.jcraft",
+        "com.lmax",
+        "org.apache.commons",
+        "org.apache.xbean",
+        "org.codehaus",
+        "org.iq80",
+        "org.tukaani",
+        "com.github.plokhotnyuk.jsoniter_scala",
+        "scala.cli",
+        "com.github.luben.zstd",
+        "javax.inject" // hope shading this is fine… It's probably pulled via plexus-archiver, that sbt shouldn't use anyway…
+      )
+      for (ns <- toShade)
+        yield ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
+    },
+    libraryDependencies ++= Seq(
+      coursierDep,
+      coursierSbtMavenRepoDep,
+      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
+      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+      lmIvy.value % Provided,
+      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+    ),
+    excludeDependencies ++= excludedDependencies,
+    conflictWarning := ConflictWarning.disable,
+    dontPublish,
+  )
+
+lazy val customProtocolForTest212 = project
+  .in(file("modules/custom-protocol-for-test-2-12"))
+  .settings(
+    sourceDirectory := file("modules/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    scalaVersion := scala212,
+    organization := "org.example",
+    moduleName := "customprotocol-handler",
+    version := "0.1.0",
+    dontPublish
+  )
+
+lazy val customProtocolForTest213 = project
+  .in(file("modules/custom-protocol-for-test-2-13"))
+  .settings(
+    sourceDirectory := file("modules/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    scalaVersion := scala213,
+    organization := "org.example",
+    moduleName := "customprotocol-handler",
+    version := "0.1.0",
+    dontPublish
+  )
+
+lazy val customProtocolJavaForTest = project
+  .in(file("modules/custom-protocol-java-for-test"))
+  .settings(
+    crossPaths := false,
+    organization := "org.example",
+    moduleName := "customprotocoljava-handler",
+    version := "0.1.0",
+    dontPublish
+  )
+
+lazy val dontPublish = Seq(
+  publish := {},
+  publish / skip := true,
+)

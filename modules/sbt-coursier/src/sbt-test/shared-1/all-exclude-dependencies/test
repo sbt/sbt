@@ -1,0 +1,3 @@
+> run
+> publishLocal
+$ exec java -jar coursier launch io.get-coursier.test:sbt-coursier-all-exclude-dependencies_2.12:0.1.0-SNAPSHOT

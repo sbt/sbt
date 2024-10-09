@@ -1,0 +1,5 @@
+$ delete output
+> stage
+> check
+$ exists output
+$ delete output

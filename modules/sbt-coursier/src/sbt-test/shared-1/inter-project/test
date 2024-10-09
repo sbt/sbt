@@ -1,0 +1,4 @@
+$ delete output
+> b/run
+$ exists output
+> c/compile

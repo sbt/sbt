@@ -1,0 +1,4 @@
+$ delete output
+> run
+$ exists output
+$ delete shapeless_2.11-2.3.0.jar
