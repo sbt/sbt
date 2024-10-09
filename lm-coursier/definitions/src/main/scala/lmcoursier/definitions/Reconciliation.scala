@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/definitions/Reconciliation.scala
+../../../../../../src/main/scala/lmcoursier/definitions/Reconciliation.scala

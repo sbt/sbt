@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/credentials/Credentials.scala
+../../../../../../src/main/scala/lmcoursier/credentials/Credentials.scala

@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/definitions/CachePolicy.scala
+../../../../../../src/main/scala/lmcoursier/definitions/CachePolicy.scala

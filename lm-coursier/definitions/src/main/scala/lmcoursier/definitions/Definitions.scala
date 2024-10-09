@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/definitions/Definitions.scala
+../../../../../../src/main/scala/lmcoursier/definitions/Definitions.scala

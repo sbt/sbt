@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/definitions/FromCoursier.scala
+../../../../../../src/main/scala/lmcoursier/definitions/FromCoursier.scala

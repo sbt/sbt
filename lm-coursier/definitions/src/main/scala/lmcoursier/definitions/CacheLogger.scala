@@ -1,1 +1,1 @@
-../../../../../../lm-coursier/src/main/scala/lmcoursier/definitions/CacheLogger.scala
+../../../../../../src/main/scala/lmcoursier/definitions/CacheLogger.scala
