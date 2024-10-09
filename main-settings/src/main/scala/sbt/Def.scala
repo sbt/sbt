@@ -178,10 +178,6 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
     else str
   }
 
-  @deprecated("Use variant without multi", "1.1.1")
-  def displayBuildRelative(currentBuild: URI, multi: Boolean, project: Reference): String =
-    displayBuildRelative(currentBuild, project)
-
   def displayBuildRelative(currentBuild: URI, project: Reference): String =
     project match {
       case BuildRef(`currentBuild`)      => "ThisBuild /"
