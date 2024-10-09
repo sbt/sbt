@@ -86,6 +86,8 @@ jobs:
       with:
         distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
+    - name: Setup SBT
+      uses: sbt/setup-sbt@v1
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
