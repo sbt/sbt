@@ -1430,4 +1430,3 @@ lazy val lmIvy = (project in file("lm-ivy"))
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
   )
-
