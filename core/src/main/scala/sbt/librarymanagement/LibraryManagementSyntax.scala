@@ -1,0 +1,40 @@
+package sbt.librarymanagement
+
+trait LibraryManagementSyntax0 {
+  // See http://www.scala-lang.org/news/2.12.0#traits-compile-to-interfaces
+  // Avoid defining fields (val or var, but a constant is ok – final val without result type)
+  // Avoid calling super
+  // Avoid initializer statements in the body
+
+  implicit def richUpdateReport(ur: UpdateReport): RichUpdateReport = new RichUpdateReport(ur)
+}
+
+trait LibraryManagementSyntax
+    extends LibraryManagementSyntax0
+    with DependencyBuilders
+    with DependencyFilterExtra {
+  // See http://www.scala-lang.org/news/2.12.0#traits-compile-to-interfaces
+  // Avoid defining fields (val or var, but a constant is ok – final val without result type)
+  // Avoid calling super
+  // Avoid initializer statements in the body
+
+  type ExclusionRule = InclExclRule
+  final val ExclusionRule = InclExclRule
+
+  type InclusionRule = InclExclRule
+  final val InclusionRule = InclExclRule
+
+  import sbt.librarymanagement.{ Configurations => C }
+  final val Compile = C.Compile
+  final val Test = C.Test
+  final val Runtime = C.Runtime
+  @deprecated("Create a separate subproject for testing instead", "1.9.0")
+  final val IntegrationTest = C.IntegrationTest
+  final val Default = C.Default
+  final val Provided = C.Provided
+  // java.lang.System is more important, so don't alias this one
+  //  final val System = C.System
+  final val Optional = C.Optional
+}
+
+object syntax extends LibraryManagementSyntax

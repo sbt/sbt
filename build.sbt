@@ -1233,6 +1233,8 @@ def allProjects =
     collectionProj,
     coreMacrosProj,
     remoteCacheProj,
+    lmCore,
+    lmIvy,
   ) ++ lowerUtilProjects
 
 // These need to be cross published to 2.12 and 2.13 for Zinc
@@ -1355,11 +1357,85 @@ def customCommands: Seq[Setting[_]] = Seq(
   },
 )
 
-ThisBuild / pomIncludeRepository := { _ =>
-  false
-}
+ThisBuild / pomIncludeRepository := (_ => false) // drop repos other than Maven Central from POM
 ThisBuild / publishTo := {
   val nexus = "https://oss.sonatype.org/"
   Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }
 ThisBuild / publishMavenStyle := true
+
+def lmTestSettings: Seq[Setting[_]] = Def.settings(
+  Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
+  Test / parallelExecution := false
+)
+
+lazy val lmCore = (project in file("core"))
+  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .settings(
+    commonSettings,
+    lmTestSettings,
+    name := "librarymanagement-core",
+    contrabandSjsonNewVersion := sjsonNewVersion,
+    libraryDependencies ++= Seq(
+      jsch,
+      // scalaReflect.value,
+      // scalaCompiler.value,
+      launcherInterface,
+      gigahorseApacheHttp,
+      scalaXml,
+      sjsonnewScalaJson.value % Optional,
+      sjsonnew.value % Optional,
+      scalaTest % Test,
+      scalaCheck % Test,
+      scalaVerify % Test,
+    ),
+    Compile / resourceGenerators += Def
+      .task(
+        Util.generateVersionFile(
+          version.value,
+          resourceManaged.value,
+          streams.value,
+          (Compile / compile).value
+        )
+      )
+      .taskValue,
+    Compile / scalacOptions ++= (scalaVersion.value match {
+      case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
+      case _                          => List()
+    }),
+    Compile / unmanagedSourceDirectories +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
+    // WORKAROUND sbt/sbt#2205 include managed sources in packageSrc
+    Compile / packageSrc / mappings ++= {
+      val srcs = (Compile / managedSources).value
+      val sdirs = (Compile / managedSourceDirectories).value
+      val base = baseDirectory.value
+      (((srcs --- sdirs --- base) pair (relativeTo(sdirs) | relativeTo(base) | flat)) toSeq)
+    },
+  )
+  .configure(addSbtIO, addSbtUtilLogging, addSbtUtilPosition, addSbtUtilCache, addSbtCompilerInterface)
+
+lazy val lmIvy = (project in file("ivy"))
+  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .dependsOn(lmCore)
+  .settings(
+    commonSettings,
+    lmTestSettings,
+    name := "librarymanagement-ivy",
+    contrabandSjsonNewVersion := sjsonNewVersion,
+    libraryDependencies ++= Seq(
+      ivy,
+      sjsonnewScalaJson.value,
+      sjsonnew.value,
+      scalaTest % Test,
+      scalaCheck % Test,
+      scalaVerify % Test,
+    ),
+    Compile / unmanagedSourceDirectories +=
+      baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
+    Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+  )

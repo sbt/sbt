@@ -67,12 +67,6 @@ jobs:
           repository: sbt/io
           ref: develop
           path: io
-      - name: Checkout sbt/librarymanagement
-        uses: actions/checkout@v4
-        with:
-          repository: sbt/librarymanagement
-          ref: develop
-          path: librarymanagement
       - name: Checkout sbt/zinc
         uses: actions/checkout@v4
         with:
@@ -172,7 +166,7 @@ jobs:
       #    cd io
       #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
       #    cd ../
-      #    sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+      #    sbt -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
       #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
       #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
       - name: Build and test (7)

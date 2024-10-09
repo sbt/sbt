@@ -14,14 +14,9 @@ object Dependencies {
 
   // sbt modules
   private val ioVersion = nightlyVersion.getOrElse("1.10.0")
-  private val lmVersion =
-    sys.props.get("sbt.build.lm.version").orElse(nightlyVersion).getOrElse("2.0.0-M2")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-M1")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
-
-  private val libraryManagementCore = "org.scala-sbt" %% "librarymanagement-core" % lmVersion
-  private val libraryManagementIvy = "org.scala-sbt" %% "librarymanagement-ivy" % lmVersion
 
   val launcherVersion = "1.4.3"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
@@ -148,4 +143,10 @@ object Dependencies {
   val disruptor = "com.lmax" % "disruptor" % "3.4.2"
   val kindProjector = ("org.typelevel" % "kind-projector" % "0.13.3").cross(CrossVersion.full)
   val zeroAllocationHashing = "net.openhft" % "zero-allocation-hashing" % "0.10.1"
+  val ivy = "org.scala-sbt.ivy" % "ivy" % "2.3.0-sbt-396a783bba347016e7fe30dacc60d355be607fe2"
+
+  val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
+  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
+  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
+  val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.7.0"
 }
