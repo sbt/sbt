@@ -1,11 +1,11 @@
 package lmcoursier.internal
 
-import java.io.{File, FileNotFoundException, IOException}
-import java.net.{HttpURLConnection, URL, URLConnection}
+import java.io.{ File, FileNotFoundException, IOException }
+import java.net.{ HttpURLConnection, URL, URLConnection }
 
-import coursier.cache.{ConnectionBuilder, FileCache}
+import coursier.cache.{ ConnectionBuilder, FileCache }
 import coursier.core._
-import coursier.util.{Artifact, EitherT, Monad}
+import coursier.util.{ Artifact, EitherT, Monad }
 
 import scala.util.Try
 
@@ -22,15 +22,15 @@ object TemporaryInMemoryRepository {
   }
 
   def exists(
-    url: URL,
-    localArtifactsShouldBeCached: Boolean
+      url: URL,
+      localArtifactsShouldBeCached: Boolean
   ): Boolean =
     exists(url, localArtifactsShouldBeCached, None)
 
   def exists(
-    url: URL,
-    localArtifactsShouldBeCached: Boolean,
-    cacheOpt: Option[FileCache[Nothing]]
+      url: URL,
+      localArtifactsShouldBeCached: Boolean,
+      cacheOpt: Option[FileCache[Nothing]]
   ): Boolean = {
 
     // Sometimes HEAD attempts fail even though standard GETs are fine.
@@ -55,8 +55,12 @@ object TemporaryInMemoryRepository {
         var conn: URLConnection = null
         try {
           conn = ConnectionBuilder(url.toURI.toASCIIString)
-            .withFollowHttpToHttpsRedirections(cacheOpt.fold(false)(_.followHttpToHttpsRedirections))
-            .withFollowHttpsToHttpRedirections(cacheOpt.fold(false)(_.followHttpsToHttpRedirections))
+            .withFollowHttpToHttpsRedirections(
+              cacheOpt.fold(false)(_.followHttpToHttpsRedirections)
+            )
+            .withFollowHttpsToHttpRedirections(
+              cacheOpt.fold(false)(_.followHttpsToHttpRedirections)
+            )
             .withSslSocketFactoryOpt(cacheOpt.flatMap(_.sslSocketFactoryOpt))
             .withHostnameVerifierOpt(cacheOpt.flatMap(_.hostnameVerifierOpt))
             .withMethod("HEAD")
@@ -66,12 +70,10 @@ object TemporaryInMemoryRepository {
           // iff this doesn't throw.
           conn.getInputStream.close()
           Some(true)
-        }
-        catch {
+        } catch {
           case _: FileNotFoundException => Some(false)
           case _: IOException           => None // error other than not found
-        }
-        finally {
+        } finally {
           if (conn != null)
             closeConn(conn)
         }
@@ -91,11 +93,9 @@ object TemporaryInMemoryRepository {
         // NOT setting request type to HEAD here.
         conn.getInputStream.close()
         true
-      }
-      catch {
+      } catch {
         case _: IOException => false
-      }
-      finally {
+      } finally {
         if (conn != null)
           closeConn(conn)
       }
@@ -106,19 +106,19 @@ object TemporaryInMemoryRepository {
   }
 
   def apply(
-    fallbacks: Map[(Module, String), (URL, Boolean)]
+      fallbacks: Map[(Module, String), (URL, Boolean)]
   ): TemporaryInMemoryRepository =
     new TemporaryInMemoryRepository(fallbacks, localArtifactsShouldBeCached = false, None)
 
   def apply(
-    fallbacks: Map[(Module, String), (URL, Boolean)],
-    localArtifactsShouldBeCached: Boolean
+      fallbacks: Map[(Module, String), (URL, Boolean)],
+      localArtifactsShouldBeCached: Boolean
   ): TemporaryInMemoryRepository =
     new TemporaryInMemoryRepository(fallbacks, localArtifactsShouldBeCached, None)
 
   def apply[F[_]](
-    fallbacks: Map[(Module, String), (URL, Boolean)],
-    cache: FileCache[F]
+      fallbacks: Map[(Module, String), (URL, Boolean)],
+      cache: FileCache[F]
   ): TemporaryInMemoryRepository =
     new TemporaryInMemoryRepository(
       fallbacks,
@@ -128,25 +128,24 @@ object TemporaryInMemoryRepository {
 
 }
 
-final class TemporaryInMemoryRepository private(
-  val fallbacks: Map[(Module, String), (URL, Boolean)],
-  val localArtifactsShouldBeCached: Boolean,
-  val cacheOpt: Option[FileCache[Nothing]]
+final class TemporaryInMemoryRepository private (
+    val fallbacks: Map[(Module, String), (URL, Boolean)],
+    val localArtifactsShouldBeCached: Boolean,
+    val cacheOpt: Option[FileCache[Nothing]]
 ) extends Repository {
 
   def find[F[_]](
-    module: Module,
-    version: String,
-    fetch: Repository.Fetch[F]
+      module: Module,
+      version: String,
+      fetch: Repository.Fetch[F]
   )(implicit
-    F: Monad[F]
+      F: Monad[F]
   ): EitherT[F, String, (ArtifactSource, Project)] = {
 
     def res = fallbacks
       .get((module, version))
       .fold[Either[String, (ArtifactSource, Project)]](Left("No fallback URL found")) {
         case (url, _) =>
-
           val urlStr = url.toExternalForm
           val idx = urlStr.lastIndexOf('/')
 
@@ -185,24 +184,23 @@ final class TemporaryInMemoryRepository private(
   }
 
   def artifacts(
-    dependency: Dependency,
-    project: Project,
-    overrideClassifiers: Option[Seq[Classifier]]
+      dependency: Dependency,
+      project: Project,
+      overrideClassifiers: Option[Seq[Classifier]]
   ): Seq[(Publication, Artifact)] = {
     fallbacks
       .get(dependency.moduleVersion)
       .toSeq
-      .map {
-        case (url, changing) =>
-          val url0 = url.toString
-          val ext = url0.substring(url0.lastIndexOf('.') + 1)
-          val pub = Publication(
-            dependency.module.name.value, // ???
-            Type(ext),
-            Extension(ext),
-            Classifier.empty
-          )
-          (pub, Artifact(url0, Map.empty, Map.empty, changing, optional = false, None))
+      .map { case (url, changing) =>
+        val url0 = url.toString
+        val ext = url0.substring(url0.lastIndexOf('.') + 1)
+        val pub = Publication(
+          dependency.module.name.value, // ???
+          Type(ext),
+          Extension(ext),
+          Classifier.empty
+        )
+        (pub, Artifact(url0, Map.empty, Map.empty, changing, optional = false, None))
       }
   }
 

@@ -1,8 +1,8 @@
 package lmcoursier
 
-import coursier.ivy.IvyXml.{mappings => initialIvyXmlMappings}
-import lmcoursier.definitions.{Configuration, Module, ModuleName, Organization, ToCoursier}
-import sbt.librarymanagement.{CrossVersion, InclExclRule, ModuleID}
+import coursier.ivy.IvyXml.{ mappings => initialIvyXmlMappings }
+import lmcoursier.definitions.{ Configuration, Module, ModuleName, Organization, ToCoursier }
+import sbt.librarymanagement.{ CrossVersion, InclExclRule, ModuleID }
 import sbt.util.Logger
 
 import scala.collection.mutable
@@ -10,26 +10,34 @@ import scala.collection.mutable
 object Inputs {
 
   def ivyXmlMappings(mapping: String): Seq[(Configuration, Configuration)] =
-    initialIvyXmlMappings(mapping).map {
-      case (from, to) =>
-        Configuration(from.value) -> Configuration(to.value)
+    initialIvyXmlMappings(mapping).map { case (from, to) =>
+      Configuration(from.value) -> Configuration(to.value)
     }
 
-  def configExtendsSeq(configurations: Seq[sbt.librarymanagement.Configuration]): Seq[(Configuration, Seq[Configuration])] =
+  def configExtendsSeq(
+      configurations: Seq[sbt.librarymanagement.Configuration]
+  ): Seq[(Configuration, Seq[Configuration])] =
     configurations
       .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
 
   @deprecated("Now unused internally, to be removed in the future", "2.0.0-RC6-5")
-  def configExtends(configurations: Seq[sbt.librarymanagement.Configuration]): Map[Configuration, Seq[Configuration]] =
+  def configExtends(
+      configurations: Seq[sbt.librarymanagement.Configuration]
+  ): Map[Configuration, Seq[Configuration]] =
     configurations
       .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
       .toMap
 
   @deprecated("Use coursierConfigurationsMap instead", "2.0.0-RC6-5")
-  def coursierConfigurations(configurations: Seq[sbt.librarymanagement.Configuration], shadedConfigOpt: Option[String] = None): Map[Configuration, Set[Configuration]] =
+  def coursierConfigurations(
+      configurations: Seq[sbt.librarymanagement.Configuration],
+      shadedConfigOpt: Option[String] = None
+  ): Map[Configuration, Set[Configuration]] =
     coursierConfigurationsMap(configurations)
 
-  def coursierConfigurationsMap(configurations: Seq[sbt.librarymanagement.Configuration]): Map[Configuration, Set[Configuration]] = {
+  def coursierConfigurationsMap(
+      configurations: Seq[sbt.librarymanagement.Configuration]
+  ): Map[Configuration, Set[Configuration]] = {
 
     val configs0 = configExtendsSeq(configurations).toMap
 
@@ -46,19 +54,21 @@ object Inputs {
       helper(Set(c))
     }
 
-    configs0.map {
-      case (config, _) =>
-        config -> allExtends(config)
+    configs0.map { case (config, _) =>
+      config -> allExtends(config)
     }
   }
 
   def orderedConfigurations(
-    configurations: Seq[(Configuration, Seq[Configuration])]
+      configurations: Seq[(Configuration, Seq[Configuration])]
   ): Seq[(Configuration, Seq[Configuration])] = {
 
     val map = configurations.toMap
 
-    def helper(done: Set[Configuration], toAdd: List[Configuration]): Stream[(Configuration, Seq[Configuration])] =
+    def helper(
+        done: Set[Configuration],
+        toAdd: List[Configuration]
+    ): Stream[(Configuration, Seq[Configuration])] =
       toAdd match {
         case Nil => Stream.empty
         case config :: rest =>
@@ -70,8 +80,7 @@ object Inputs {
             helper(done, missingExtends.toList ::: toAdd)
       }
 
-    helper(Set.empty, configurations.map(_._1).toList)
-      .toVector
+    helper(Set.empty, configurations.map(_._1).toList).toVector
   }
 
   @deprecated("Now unused internally, to be removed in the future", "2.0.0-RC6-5")
@@ -87,12 +96,11 @@ object Inputs {
     }
 
     val sets =
-      new mutable.HashMap[Configuration, Wrapper] ++= configurations.map {
-        case (k, l) =>
-          val s = new mutable.HashSet[Configuration]
-          s ++= l
-          s += k
-          k -> new Wrapper(s)
+      new mutable.HashMap[Configuration, Wrapper] ++= configurations.map { case (k, l) =>
+        val s = new mutable.HashSet[Configuration]
+        s ++= l
+        s += k
+        k -> new Wrapper(s)
       }
 
     for (k <- configurations.keys) {
@@ -116,10 +124,10 @@ object Inputs {
   }
 
   def exclusionsSeq(
-    excludeDeps: Seq[InclExclRule],
-    sv: String,
-    sbv: String,
-    log: Logger
+      excludeDeps: Seq[InclExclRule],
+      sv: String,
+      sbv: String,
+      log: Logger
   ): Seq[(Organization, ModuleName)] = {
 
     var anyNonSupportedExclusionRule = false
@@ -144,10 +152,10 @@ object Inputs {
   }
 
   def exclusions(
-    excludeDeps: Seq[InclExclRule],
-    sv: String,
-    sbv: String,
-    log: Logger
+      excludeDeps: Seq[InclExclRule],
+      sv: String,
+      sbv: String,
+      log: Logger
   ): Set[(Organization, ModuleName)] =
     exclusionsSeq(excludeDeps, sv, sbv, log).toSet
 

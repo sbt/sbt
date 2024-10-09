@@ -12,11 +12,11 @@ class SbtCoursierCache {
 
   import SbtCoursierCache._
 
-  private val resolutionsCache = new ConcurrentHashMap[ResolutionKey, Map[Configuration, Resolution]]
+  private val resolutionsCache =
+    new ConcurrentHashMap[ResolutionKey, Map[Configuration, Resolution]]
   // these may actually not need to be cached any more, now that the resolutions
   // are cached
   private val reportsCache = new ConcurrentHashMap[ReportKey, UpdateReport]
-
 
   def resolutionOpt(key: ResolutionKey): Option[Map[Configuration, Resolution]] =
     Option(resolutionsCache.get(key))
@@ -42,23 +42,22 @@ class SbtCoursierCache {
 object SbtCoursierCache {
 
   final case class ResolutionKey(
-    dependencies: Seq[(Configuration, Dependency)],
-    internalRepositories: Seq[Repository],
-    mainRepositories: Seq[Repository],
-    fallbackRepositories: Seq[Repository],
-    params: ResolutionParams,
-    cache: FileCache[Task],
-    sbtClassifiers: Boolean
+      dependencies: Seq[(Configuration, Dependency)],
+      internalRepositories: Seq[Repository],
+      mainRepositories: Seq[Repository],
+      fallbackRepositories: Seq[Repository],
+      params: ResolutionParams,
+      cache: FileCache[Task],
+      sbtClassifiers: Boolean
   )
 
   final case class ReportKey(
-    dependencies: Seq[(Configuration, Dependency)],
-    resolution: Map[Configuration, Resolution],
-    withClassifiers: Boolean,
-    sbtClassifiers: Boolean,
-    includeSignatures: Boolean
+      dependencies: Seq[(Configuration, Dependency)],
+      resolution: Map[Configuration, Resolution],
+      withClassifiers: Boolean,
+      sbtClassifiers: Boolean,
+      includeSignatures: Boolean
   )
-
 
   // private[coursier]
   val default = new SbtCoursierCache

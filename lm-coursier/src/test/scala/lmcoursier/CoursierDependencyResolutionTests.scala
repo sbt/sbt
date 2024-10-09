@@ -17,10 +17,13 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
     val depRes = CoursierDependencyResolution(CoursierConfiguration().withAutoScalaLibrary(false))
 
     val desc = ModuleDescriptorConfiguration(ModuleID("test", "foo", "1.0"), ModuleInfo("foo"))
-      .withDependencies(Vector(
-        ModuleID("io.get-coursier", "coursier_2.13", "0.1.53").withConfigurations(Some("compile")),
-        ModuleID("org.scala-lang", "scala-library", "2.12.11").withConfigurations(Some("compile"))
-      ))
+      .withDependencies(
+        Vector(
+          ModuleID("io.get-coursier", "coursier_2.13", "0.1.53")
+            .withConfigurations(Some("compile")),
+          ModuleID("org.scala-lang", "scala-library", "2.12.11").withConfigurations(Some("compile"))
+        )
+      )
       .withConfigurations(Vector(Configuration.of("Compile", "compile")))
     val module = depRes.moduleDescriptor(desc)
 
@@ -33,10 +36,17 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         System.err.println(s"trace $t")
     }
 
-    depRes.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger)
+    depRes
+      .update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), logger)
       .fold(w => (), rep => sys.error(s"Expected resolution to fail, got report $rep"))
 
-    val report = depRes.update(module, UpdateConfiguration().withMissingOk(true), UnresolvedWarningConfiguration(), logger)
+    val report = depRes
+      .update(
+        module,
+        UpdateConfiguration().withMissingOk(true),
+        UnresolvedWarningConfiguration(),
+        logger
+      )
       .fold(w => throw w.resolveException, identity)
   }
 

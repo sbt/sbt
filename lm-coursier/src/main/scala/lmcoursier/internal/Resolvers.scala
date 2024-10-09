@@ -4,11 +4,11 @@ import java.net.MalformedURLException
 import java.nio.file.Paths
 
 import coursier.cache.CacheUrl
-import coursier.core.{Authentication, Repository}
+import coursier.core.{ Authentication, Repository }
 import coursier.ivy.IvyRepository
 import coursier.maven.SbtMavenRepository
 import org.apache.ivy.plugins.resolver.IBiblioResolver
-import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
+import sbt.librarymanagement.{ Configuration => _, MavenRepository => _, _ }
 import sbt.util.Logger
 
 import scala.collection.JavaConverters._
@@ -17,8 +17,8 @@ object Resolvers {
 
   private def mavenCompatibleBaseOpt(patterns: Patterns): Option[String] =
     if (patterns.isMavenCompatible) {
-      //input  : /Users/user/custom/repo/[organisation]/[module](_[scalaVersion])(_[sbtVersion])/[revision]/[artifact]-[revision](-[classifier]).[ext]
-      //output : /Users/user/custom/repo/
+      // input  : /Users/user/custom/repo/[organisation]/[module](_[scalaVersion])(_[sbtVersion])/[revision]/[artifact]-[revision](-[classifier]).[ext]
+      // output : /Users/user/custom/repo/
       def basePattern(pattern: String): String = pattern.takeWhile(c => c != '[' && c != '(')
 
       val baseIvyPattern = basePattern(patterns.ivyPatterns.head)
@@ -32,10 +32,10 @@ object Resolvers {
       None
 
   private def mavenRepositoryOpt(
-    root: String,
-    log: Logger,
-    authentication: Option[Authentication],
-    classLoaders: Seq[ClassLoader]
+      root: String,
+      log: Logger,
+      authentication: Option[Authentication],
+      classLoaders: Seq[ClassLoader]
   ): Option[SbtMavenRepository] =
     try {
       CacheUrl.url(root, classLoaders) // ensure root is a URL whose protocol can be handled here
@@ -50,9 +50,9 @@ object Resolvers {
       case e: MalformedURLException =>
         log.warn(
           "Error parsing Maven repository base " +
-          root +
-          Option(e.getMessage).fold("")(" (" + _ + ")") +
-          ", ignoring it"
+            root +
+            Option(e.getMessage).fold("")(" (" + _ + ")") +
+            ", ignoring it"
         )
 
         None
@@ -71,25 +71,23 @@ object Resolvers {
   }
 
   def repository(
-    resolver: Resolver,
-    ivyProperties: Map[String, String],
-    log: Logger,
-    authentication: Option[Authentication],
-    classLoaders: Seq[ClassLoader]
+      resolver: Resolver,
+      ivyProperties: Map[String, String],
+      log: Logger,
+      authentication: Option[Authentication],
+      classLoaders: Seq[ClassLoader]
   ): Option[Repository] =
     resolver match {
       case r: sbt.librarymanagement.MavenRepository =>
         mavenRepositoryOpt(r.root, log, authentication, classLoaders)
 
       case r: FileRepository
-        if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
-          r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
-
+          if r.patterns.ivyPatterns.lengthCompare(1) == 0 &&
+            r.patterns.artifactPatterns.lengthCompare(1) == 0 =>
         val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(r.patterns)
 
         mavenCompatibleBaseOpt0 match {
           case None =>
-
             val repo = IvyRepository.parse(
               pathToUriString(r.patterns.artifactPatterns.head),
               metadataPatternOpt = Some(pathToUriString(r.patterns.ivyPatterns.head)),
@@ -109,13 +107,19 @@ object Resolvers {
             Some(repo)
 
           case Some(mavenCompatibleBase) =>
-            mavenRepositoryOpt(pathToUriString(mavenCompatibleBase), log, authentication, classLoaders)
+            mavenRepositoryOpt(
+              pathToUriString(mavenCompatibleBase),
+              log,
+              authentication,
+              classLoaders
+            )
         }
 
       case r: URLRepository if patternMatchGuard(r.patterns) =>
         parseMavenCompatResolver(log, ivyProperties, authentication, r.patterns, classLoaders)
 
-      case raw: RawRepository if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
+      case raw: RawRepository
+          if raw.name == "inter-project" => // sbt.RawRepository.equals just compares names anyway
         None
 
       // Pattern Match resolver-type-specific RawRepositories
@@ -130,8 +134,8 @@ object Resolvers {
   private object IBiblioRepository {
 
     private def stringVector(v: java.util.List[_]): Vector[String] =
-      Option(v).map(_.asScala.toVector).getOrElse(Vector.empty).collect {
-        case s: String => s
+      Option(v).map(_.asScala.toVector).getOrElse(Vector.empty).collect { case s: String =>
+        s
       }
 
     private def patterns(resolver: IBiblioResolver): Patterns = Patterns(
@@ -162,17 +166,16 @@ object Resolvers {
       patterns.artifactPatterns.lengthCompare(1) == 0
 
   private def parseMavenCompatResolver(
-    log: Logger,
-    ivyProperties: Map[String, String],
-    authentication: Option[Authentication],
-    patterns: Patterns,
-    classLoaders: Seq[ClassLoader],
+      log: Logger,
+      ivyProperties: Map[String, String],
+      authentication: Option[Authentication],
+      patterns: Patterns,
+      classLoaders: Seq[ClassLoader],
   ): Option[Repository] = {
     val mavenCompatibleBaseOpt0 = mavenCompatibleBaseOpt(patterns)
 
     mavenCompatibleBaseOpt0 match {
       case None =>
-
         val repo = IvyRepository.parse(
           patterns.artifactPatterns.head,
           metadataPatternOpt = Some(patterns.ivyPatterns.head),

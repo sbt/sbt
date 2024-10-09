@@ -7,7 +7,7 @@ import dataclass.data
  * @param include Use "*" in either organization or name to match any.
  */
 @data class ModuleMatchers(
-  exclude: Set[Module],
-  include: Set[Module],
-  includeByDefault: Boolean = true
+    exclude: Set[Module],
+    include: Set[Module],
+    includeByDefault: Boolean = true
 )

@@ -6,8 +6,12 @@ import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement._
 import sbt.librarymanagement.Configurations.Component
-import sbt.librarymanagement.Resolver.{DefaultMavenRepository, JCenterRepository, JavaNet2Repository}
-import sbt.librarymanagement.{Resolver, UnresolvedWarningConfiguration, UpdateConfiguration}
+import sbt.librarymanagement.Resolver.{
+  DefaultMavenRepository,
+  JCenterRepository,
+  JavaNet2Repository
+}
+import sbt.librarymanagement.{ Resolver, UnresolvedWarningConfiguration, UpdateConfiguration }
 import sbt.librarymanagement.syntax._
 
 final class ResolutionSpec extends AnyPropSpec with Matchers {
@@ -16,11 +20,11 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
 
   def configurations = Vector(Compile, Test, Runtime, Provided, Optional, Component)
   def module(
-    lmEngine: DependencyResolution,
-    moduleId: ModuleID,
-    deps: Vector[ModuleID],
-    scalaFullVersion: Option[String],
-    overrideScalaVersion: Boolean = true
+      lmEngine: DependencyResolution,
+      moduleId: ModuleID,
+      deps: Vector[ModuleID],
+      scalaFullVersion: Option[String],
+      overrideScalaVersion: Boolean = true
   ): ModuleDescriptor = {
     val scalaModuleInfo = scalaFullVersion map { fv =>
       ScalaModuleInfo(
@@ -117,7 +121,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     assert(resolution.isRight)
   }
 
-/*
+  /*
   property("resolve with resolvers using a custom protocols") {
     val sbtModule = "org.scala-sbt" % "sbt" % "1.1.0"
     val dependencies = Vector(sbtModule)
@@ -199,7 +203,7 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       (sbtModule.organization, sbtModule.name, sbtModule.revision)
     )
   }
-*/
+   */
 
   property("resolve plugin") {
     val pluginAttributes = Map("scalaVersion" -> "2.12", "sbtVersion" -> "1.0")
@@ -244,7 +248,8 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
       lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
 
     assert(resolution.isRight)
-    val componentConfig = resolution.right.get.configurations.find(_.configuration == Compile.toConfigRef).get
+    val componentConfig =
+      resolution.right.get.configurations.find(_.configuration == Compile.toConfigRef).get
     val compress = componentConfig.modules.find(_.module.name == "commons-compress").get
     compress.licenses should have size 1
   }

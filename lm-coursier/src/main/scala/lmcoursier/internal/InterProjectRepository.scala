@@ -1,7 +1,7 @@
 package lmcoursier.internal
 
 import coursier.core._
-import coursier.util.{EitherT, Monad}
+import coursier.util.{ EitherT, Monad }
 
 // private[coursier]
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
@@ -11,11 +11,11 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
     .toMap
 
   def find[F[_]](
-    module: Module,
-    version: String,
-    fetch: Repository.Fetch[F]
+      module: Module,
+      version: String,
+      fetch: Repository.Fetch[F]
   )(implicit
-    F: Monad[F]
+      F: Monad[F]
   ): EitherT[F, String, (ArtifactSource, Project)] = {
 
     val res = map
@@ -27,9 +27,9 @@ final case class InterProjectRepository(projects: Seq[Project]) extends Reposito
   }
 
   override def artifacts(
-    dependency: Dependency,
-    project: Project,
-    overrideClassifiers: Option[Seq[Classifier]]
+      dependency: Dependency,
+      project: Project,
+      overrideClassifiers: Option[Seq[Classifier]]
   ) =
     Nil
 }

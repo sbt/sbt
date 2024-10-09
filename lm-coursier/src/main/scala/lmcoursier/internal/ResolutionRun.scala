@@ -1,8 +1,8 @@
 package lmcoursier.internal
 
-import coursier.{Resolution, Resolve}
+import coursier.{ Resolution, Resolve }
 import coursier.cache.internal.ThreadUtil
-import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
+import coursier.cache.loggers.{ FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger }
 import coursier.core._
 import coursier.error.ResolutionError
 import coursier.error.ResolutionError.CantDownloadModule
@@ -19,11 +19,11 @@ import scala.collection.mutable
 object ResolutionRun {
 
   private def resolution(
-    params: ResolutionParams,
-    verbosityLevel: Int,
-    log: Logger,
-    configs: Set[Configuration],
-    startingResolutionOpt: Option[Resolution]
+      params: ResolutionParams,
+      verbosityLevel: Int,
+      log: Logger,
+      configs: Set[Configuration],
+      startingResolutionOpt: Option[Resolution]
   ): Either[coursier.error.ResolutionError, Resolution] = {
 
     val isScalaToolConfig = configs(Configuration("scala-tool"))
@@ -39,25 +39,30 @@ object ResolutionRun {
         params.mainRepositories ++
         params.fallbackDependenciesRepositories
 
-    val rules = params.params.rules ++ params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
+    val rules =
+      params.params.rules ++ params.strictOpt.map(s => Seq((s, RuleResolution.Fail))).getOrElse(Nil)
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
     def depsRepr(deps: Seq[(Configuration, Dependency)]) =
-      deps.map { case (config, dep) =>
-        s"${dep.module}:${dep.version}:${config.value}->${dep.configuration.value}"
-      }.sorted.distinct
+      deps
+        .map { case (config, dep) =>
+          s"${dep.module}:${dep.version}:${config.value}->${dep.configuration.value}"
+        }
+        .sorted
+        .distinct
 
     val initialMessage =
       Seq(
         if (verbosityLevel >= 0)
-          Seq(s"Updating ${params.projectName}" + (if (params.sbtClassifiers) " (sbt classifiers)" else ""))
+          Seq(
+            s"Updating ${params.projectName}" + (if (params.sbtClassifiers) " (sbt classifiers)"
+                                                 else "")
+          )
         else
           Nil,
         if (verbosityLevel >= 2)
-          depsRepr(params.dependencies).map(depRepr =>
-            s"  $depRepr"
-          )
+          depsRepr(params.dependencies).map(depRepr => s"  $depRepr")
         else
           Nil
       ).flatten.mkString("\n")
@@ -96,17 +101,18 @@ object ResolutionRun {
         )
         .withRepositories(repositories)
         .withResolutionParams(
-          params
-            .params
-            .addForceVersion((if (isSandboxConfig) Nil else params.interProjectDependencies.map(_.moduleVersion)): _*)
+          params.params
+            .addForceVersion(
+              (if (isSandboxConfig) Nil
+               else params.interProjectDependencies.map(_.moduleVersion)): _*
+            )
             .withForceScalaVersion(params.autoScalaLibOpt.nonEmpty)
             .withScalaVersionOpt(params.autoScalaLibOpt.map(_._2))
             .withTypelevel(params.params.typelevel)
             .withRules(rules)
         )
         .withCache(
-          params
-            .cache
+          params.cache
             .withLogger(
               params.loggerOpt.getOrElse {
                 RefreshLogger.create(
@@ -127,22 +133,23 @@ object ResolutionRun {
     val (period, maxAttempts) = params.retry
     val finalResult: Either[ResolutionError, Resolution] = {
 
-      def retry(attempt: Int, waitOnError: FiniteDuration): Task[Either[ResolutionError, Resolution]] =
-        resolveTask
-          .io
-          .attempt
+      def retry(
+          attempt: Int,
+          waitOnError: FiniteDuration
+      ): Task[Either[ResolutionError, Resolution]] =
+        resolveTask.io.attempt
           .flatMap {
             case Left(e: ResolutionError) =>
               val hasConnectionTimeouts = e.errors.exists {
-                case err: CantDownloadModule => err.perRepositoryErrors.exists(_.contains("Connection timed out"))
-                case _                       => false
+                case err: CantDownloadModule =>
+                  err.perRepositoryErrors.exists(_.contains("Connection timed out"))
+                case _ => false
               }
               if (hasConnectionTimeouts)
                 if (attempt + 1 >= maxAttempts) {
                   log.error(s"Failed, maximum iterations ($maxAttempts) reached")
                   Task.point(Left(e))
-                }
-                else {
+                } else {
                   log.warn(s"Attempt ${attempt + 1} failed: $e")
                   Task.completeAfter(retryScheduler, waitOnError).flatMap { _ =>
                     retry(attempt + 1, waitOnError * 2)
@@ -161,14 +168,14 @@ object ResolutionRun {
 
     finalResult match {
       case Left(err) if params.missingOk => Right(err.resolution)
-      case others => others
+      case others                        => others
     }
   }
 
   def resolutions(
-    params: ResolutionParams,
-    verbosityLevel: Int,
-    log: Logger
+      params: ResolutionParams,
+      verbosityLevel: Int,
+      log: Logger
   ): Either[coursier.error.ResolutionError, Map[Configuration, Resolution]] = {
 
     // TODO Warn about possible duplicated modules from source repositories?
@@ -181,23 +188,26 @@ object ResolutionRun {
 
     SbtCoursierCache.default.resolutionOpt(params.resolutionKey).map(Right(_)).getOrElse {
       val resOrError =
-        Lock.maybeSynchronized(needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode) {
+        Lock.maybeSynchronized(needsLock =
+          params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode
+        ) {
           val map = new mutable.HashMap[Configuration, Resolution]
-          val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](Right(())) {
-            case (acc, (config, extends0)) =>
-              for {
-                _ <- acc
-                initRes = {
-                  val it = extends0.iterator.flatMap(map.get(_).iterator)
-                  if (it.hasNext) Some(it.next())
-                  else None
-                }
-                allExtends = params.allConfigExtends.getOrElse(config, Set.empty)
-                res <- resolution(params, verbosityLevel, log, allExtends, initRes)
-              } yield {
-                map += config -> res
-                ()
+          val either = params.orderedConfigs.foldLeft[Either[coursier.error.ResolutionError, Unit]](
+            Right(())
+          ) { case (acc, (config, extends0)) =>
+            for {
+              _ <- acc
+              initRes = {
+                val it = extends0.iterator.flatMap(map.get(_).iterator)
+                if (it.hasNext) Some(it.next())
+                else None
               }
+              allExtends = params.allConfigExtends.getOrElse(config, Set.empty)
+              res <- resolution(params, verbosityLevel, log, allExtends, initRes)
+            } yield {
+              map += config -> res
+              ()
+            }
           }
           either.map(_ => map.toMap)
         }

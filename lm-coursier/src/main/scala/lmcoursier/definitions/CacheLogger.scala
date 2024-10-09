@@ -9,9 +9,18 @@ abstract class CacheLogger {
 
   def downloadedArtifact(url: String, success: Boolean): Unit = {}
   def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit = {}
-  def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit = {}
+  def checkingUpdatesResult(
+      url: String,
+      currentTimeOpt: Option[Long],
+      remoteTimeOpt: Option[Long]
+  ): Unit = {}
 
-  def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit = {}
+  def downloadLength(
+      url: String,
+      totalLength: Long,
+      alreadyDownloaded: Long,
+      watching: Boolean
+  ): Unit = {}
 
   def gettingLength(url: String): Unit = {}
   def gettingLengthResult(url: String, length: Option[Long]): Unit = {}

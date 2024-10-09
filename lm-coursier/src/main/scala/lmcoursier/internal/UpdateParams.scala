@@ -7,27 +7,27 @@ import coursier.util.Artifact
 
 // private[coursier]
 final case class UpdateParams(
-  thisModule: (Module, String),
-  artifacts: Map[Artifact, File],
-  fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
-  classifiers: Option[Seq[Classifier]],
-  configs: Map[Configuration, Set[Configuration]],
-  dependencies: Seq[(Configuration, Dependency)],
-  forceVersions: Map[Module, String],
-  interProjectDependencies: Seq[Project],
-  res: Map[Configuration, Resolution],
-  includeSignatures: Boolean,
-  sbtBootJarOverrides: Map[(Module, String), File],
-  classpathOrder: Boolean,
-  missingOk: Boolean,
-  classLoaders: Seq[ClassLoader]
+    thisModule: (Module, String),
+    artifacts: Map[Artifact, File],
+    fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
+    classifiers: Option[Seq[Classifier]],
+    configs: Map[Configuration, Set[Configuration]],
+    dependencies: Seq[(Configuration, Dependency)],
+    forceVersions: Map[Module, String],
+    interProjectDependencies: Seq[Project],
+    res: Map[Configuration, Resolution],
+    includeSignatures: Boolean,
+    sbtBootJarOverrides: Map[(Module, String), File],
+    classpathOrder: Boolean,
+    missingOk: Boolean,
+    classLoaders: Seq[ClassLoader]
 ) {
 
   def artifactFileOpt(
-    module: Module,
-    version: String,
-    attributes: Attributes,
-    artifact: Artifact
+      module: Module,
+      version: String,
+      attributes: Attributes,
+      artifact: Artifact
   ): Option[File] = {
 
     // Under some conditions, SBT puts the scala JARs of its own classpath

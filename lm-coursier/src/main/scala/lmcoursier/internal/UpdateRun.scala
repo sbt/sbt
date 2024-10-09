@@ -12,23 +12,21 @@ object UpdateRun {
 
   // Move back to coursier.util (in core module) after 1.0?
   private def allDependenciesByConfig(
-    res: Map[Configuration, Resolution],
-    depsByConfig: Map[Configuration, Seq[Dependency]],
-    configs: Map[Configuration, Set[Configuration]]
+      res: Map[Configuration, Resolution],
+      depsByConfig: Map[Configuration, Seq[Dependency]],
+      configs: Map[Configuration, Set[Configuration]]
   ): Map[Configuration, Set[Dependency]] = {
 
-    val allDepsByConfig = depsByConfig.map {
-      case (config, deps) =>
-        config -> res(config).subset(deps).minDependencies
+    val allDepsByConfig = depsByConfig.map { case (config, deps) =>
+      config -> res(config).subset(deps).minDependencies
     }
 
-    val filteredAllDepsByConfig = allDepsByConfig.map {
-      case (config, allDeps) =>
-        val allExtendedConfigs = configs.getOrElse(config, Set.empty) - config
-        val inherited = allExtendedConfigs
-          .flatMap(allDepsByConfig.getOrElse(_, Set.empty))
+    val filteredAllDepsByConfig = allDepsByConfig.map { case (config, allDeps) =>
+      val allExtendedConfigs = configs.getOrElse(config, Set.empty) - config
+      val inherited = allExtendedConfigs
+        .flatMap(allDepsByConfig.getOrElse(_, Set.empty))
 
-        config -> (allDeps -- inherited)
+      config -> (allDeps -- inherited)
     }
 
     filteredAllDepsByConfig
@@ -36,26 +34,24 @@ object UpdateRun {
 
   // Move back to coursier.util (in core module) after 1.0?
   private def dependenciesWithConfig(
-    res: Map[Configuration, Resolution],
-    depsByConfig: Map[Configuration, Seq[Dependency]],
-    configs: Map[Configuration, Set[Configuration]]
+      res: Map[Configuration, Resolution],
+      depsByConfig: Map[Configuration, Seq[Dependency]],
+      configs: Map[Configuration, Set[Configuration]]
   ): Set[Dependency] =
     allDependenciesByConfig(res, depsByConfig, configs)
-      .flatMap {
-        case (config, deps) =>
-          deps.map(dep => dep.withConfiguration(config --> dep.configuration))
+      .flatMap { case (config, deps) =>
+        deps.map(dep => dep.withConfiguration(config --> dep.configuration))
       }
       .groupBy(_.withConfiguration(Configuration.empty))
-      .map {
-        case (dep, l) =>
-          dep.withConfiguration(Configuration.join(l.map(_.configuration).toSeq: _*))
+      .map { case (dep, l) =>
+        dep.withConfiguration(Configuration.join(l.map(_.configuration).toSeq: _*))
       }
       .toSet
 
   def update(
-    params: UpdateParams,
-    verbosityLevel: Int,
-    log: Logger
+      params: UpdateParams,
+      verbosityLevel: Int,
+      log: Logger
   ): UpdateReport = Lock.maybeSynchronized(needsLock = !RefreshLogger.defaultFallbackMode) {
     val depsByConfig = grouped(params.dependencies)
 
@@ -66,7 +62,9 @@ object UpdateRun {
         params.configs
       )
 
-      val projCache = params.res.values.foldLeft(Map.empty[ModuleVersion, Project])(_ ++ _.projectCache.mapValues(_._2))
+      val projCache = params.res.values.foldLeft(Map.empty[ModuleVersion, Project])(
+        _ ++ _.projectCache.mapValues(_._2)
+      )
       val repr = Print.dependenciesUnknownConfigs(finalDeps.toVector, projCache)
       log.info(repr.split('\n').map("  " + _).mkString("\n"))
     }

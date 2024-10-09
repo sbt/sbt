@@ -1,6 +1,6 @@
 package lmcoursier
 
-import lmcoursier.definitions.{Configuration, Info, Module, ModuleName, Organization, Project}
+import lmcoursier.definitions.{ Configuration, Info, Module, ModuleName, Organization, Project }
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.propspec.AnyPropSpec
 
@@ -12,7 +12,9 @@ class IvyXmlTests extends AnyPropSpec with Matchers {
       "ver",
       Nil,
       Map(
-        Configuration("foo") -> (1 to 80).map(n => Configuration("bar" + n)) // long list of configurations -> no truncation any way
+        Configuration("foo") -> (1 to 80).map(n =>
+          Configuration("bar" + n)
+        ) // long list of configurations -> no truncation any way
       ),
       Nil,
       None,

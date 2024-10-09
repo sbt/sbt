@@ -4,8 +4,8 @@ import lmcoursier.CoursierConfiguration
 import sbt.librarymanagement._
 
 private[lmcoursier] final case class CoursierModuleDescriptor(
-  descriptor: ModuleDescriptorConfiguration,
-  conf: CoursierConfiguration
+    descriptor: ModuleDescriptorConfiguration,
+    conf: CoursierConfiguration
 ) extends ModuleDescriptor {
 
   def directDependencies: Vector[ModuleID] =

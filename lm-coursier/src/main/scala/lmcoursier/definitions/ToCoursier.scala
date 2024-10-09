@@ -1,6 +1,6 @@
 package lmcoursier.definitions
 
-import lmcoursier.credentials.{Credentials, DirectCredentials, FileCredentials}
+import lmcoursier.credentials.{ Credentials, DirectCredentials, FileCredentials }
 import sbt.librarymanagement.InclExclRule
 
 // TODO Make private[lmcoursier]
@@ -25,7 +25,8 @@ object ToCoursier {
     )
 
   def authentication(authentication: Authentication): coursier.core.Authentication =
-    coursier.core.Authentication(authentication.user, authentication.password)
+    coursier.core
+      .Authentication(authentication.user, authentication.password)
       .withOptional(authentication.optional)
       .withRealmOpt(authentication.realmOpt)
       .withHttpHeaders(authentication.headers)
@@ -35,7 +36,11 @@ object ToCoursier {
   def module(mod: Module): coursier.core.Module =
     module(mod.organization.value, mod.name.value, mod.attributes)
 
-  def module(organization: String, name: String, attributes: Map[String, String] = Map.empty): coursier.core.Module =
+  def module(
+      organization: String,
+      name: String,
+      attributes: Map[String, String] = Map.empty
+  ): coursier.core.Module =
     coursier.core.Module(
       coursier.core.Organization(organization),
       coursier.core.ModuleName(name),
@@ -57,18 +62,21 @@ object ToCoursier {
     r match {
       case Reconciliation.Default => coursier.core.Reconciliation.Default
       case Reconciliation.Relaxed => coursier.core.Reconciliation.Relaxed
-      case Reconciliation.Strict => coursier.core.Reconciliation.Strict
-      case Reconciliation.SemVer => coursier.core.Reconciliation.SemVer
+      case Reconciliation.Strict  => coursier.core.Reconciliation.Strict
+      case Reconciliation.SemVer  => coursier.core.Reconciliation.SemVer
     }
 
-  def reconciliation(rs: Vector[(ModuleMatchers, Reconciliation)]):
-    Vector[(coursier.util.ModuleMatchers, coursier.core.Reconciliation)] =
+  def reconciliation(
+      rs: Vector[(ModuleMatchers, Reconciliation)]
+  ): Vector[(coursier.util.ModuleMatchers, coursier.core.Reconciliation)] =
     rs map { case (m, r) => (moduleMatchers(m), reconciliation(r)) }
 
-  def sameVersions(sv: Seq[Set[InclExclRule]]):
-    Seq[(coursier.params.rule.SameVersion, coursier.params.rule.RuleResolution)] =
+  def sameVersions(
+      sv: Seq[Set[InclExclRule]]
+  ): Seq[(coursier.params.rule.SameVersion, coursier.params.rule.RuleResolution)] =
     sv.map { libs =>
-      val matchers = libs.map(rule => coursier.util.ModuleMatcher(module(rule.organization, rule.name)))
+      val matchers =
+        libs.map(rule => coursier.util.ModuleMatcher(module(rule.organization, rule.name)))
       coursier.params.rule.SameVersion(matchers) -> coursier.params.rule.RuleResolution.TryResolve
     }
 
@@ -77,9 +85,8 @@ object ToCoursier {
       module(dependency.module),
       dependency.version,
       configuration(dependency.configuration),
-      dependency.exclusions.map {
-        case (org, name) =>
-          (coursier.core.Organization(org.value), coursier.core.ModuleName(name.value))
+      dependency.exclusions.map { case (org, name) =>
+        (coursier.core.Organization(org.value), coursier.core.ModuleName(name.value))
       },
       publication(dependency.publication),
       dependency.optional,
@@ -90,13 +97,11 @@ object ToCoursier {
     coursier.core.Project(
       module(project.module),
       project.version,
-      project.dependencies.map {
-        case (conf, dep) =>
-          configuration(conf) -> dependency(dep)
+      project.dependencies.map { case (conf, dep) =>
+        configuration(conf) -> dependency(dep)
       },
-      project.configurations.map {
-        case (k, l) =>
-          configuration(k) -> l.map(configuration)
+      project.configurations.map { case (k, l) =>
+        configuration(k) -> l.map(configuration)
       },
       None,
       Nil,
@@ -107,9 +112,8 @@ object ToCoursier {
       project.packagingOpt.map(t => coursier.core.Type(t.value)),
       relocated = false,
       None,
-      project.publications.map {
-        case (conf, pub) =>
-          configuration(conf) -> publication(pub)
+      project.publications.map { case (conf, pub) =>
+        configuration(conf) -> publication(pub)
       },
       coursier.core.Info(
         project.info.description,
@@ -139,7 +143,8 @@ object ToCoursier {
   def credentials(credentials: Credentials): coursier.credentials.Credentials =
     credentials match {
       case d: DirectCredentials =>
-        coursier.credentials.DirectCredentials()
+        coursier.credentials
+          .DirectCredentials()
           .withHost(d.host)
           .withUsername(d.username)
           .withPassword(d.password)
@@ -148,7 +153,8 @@ object ToCoursier {
           .withMatchHost(d.matchHost)
           .withHttpsOnly(d.httpsOnly)
       case f: FileCredentials =>
-        coursier.credentials.FileCredentials(f.path)
+        coursier.credentials
+          .FileCredentials(f.path)
           .withOptional(f.optional)
     }
 
@@ -164,9 +170,18 @@ object ToCoursier {
         logger.downloadedArtifact(url, success)
       override def checkingUpdates(url: String, currentTimeOpt: Option[Long]): Unit =
         logger.checkingUpdates(url, currentTimeOpt)
-      override def checkingUpdatesResult(url: String, currentTimeOpt: Option[Long], remoteTimeOpt: Option[Long]): Unit =
+      override def checkingUpdatesResult(
+          url: String,
+          currentTimeOpt: Option[Long],
+          remoteTimeOpt: Option[Long]
+      ): Unit =
         logger.checkingUpdatesResult(url, currentTimeOpt, remoteTimeOpt)
-      override def downloadLength(url: String, totalLength: Long, alreadyDownloaded: Long, watching: Boolean): Unit =
+      override def downloadLength(
+          url: String,
+          totalLength: Long,
+          alreadyDownloaded: Long,
+          watching: Boolean
+      ): Unit =
         logger.downloadLength(url, totalLength, alreadyDownloaded, watching)
       override def gettingLength(url: String): Unit =
         logger.gettingLength(url)
@@ -181,14 +196,17 @@ object ToCoursier {
     }
 
   def strict(strict: Strict): coursier.params.rule.Strict =
-    coursier.params.rule.Strict()
-      .withInclude(strict.include.map {
-        case (o, n) =>
-          coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+    coursier.params.rule
+      .Strict()
+      .withInclude(strict.include.map { case (o, n) =>
+        coursier.util.ModuleMatcher(
+          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+        )
       })
-      .withExclude(strict.exclude.map {
-        case (o, n) =>
-          coursier.util.ModuleMatcher(coursier.Module(coursier.Organization(o), coursier.ModuleName(n)))
+      .withExclude(strict.exclude.map { case (o, n) =>
+        coursier.util.ModuleMatcher(
+          coursier.Module(coursier.Organization(o), coursier.ModuleName(n))
+        )
       })
       .withIncludeByDefault(strict.includeByDefault)
       .withIgnoreIfForcedVersion(strict.ignoreIfForcedVersion)
@@ -196,13 +214,13 @@ object ToCoursier {
 
   def cachePolicy(r: CachePolicy): coursier.cache.CachePolicy =
     r match {
-      case CachePolicy.LocalOnly => coursier.cache.CachePolicy.LocalOnly
-      case CachePolicy.LocalOnlyIfValid => coursier.cache.CachePolicy.LocalOnlyIfValid
+      case CachePolicy.LocalOnly           => coursier.cache.CachePolicy.LocalOnly
+      case CachePolicy.LocalOnlyIfValid    => coursier.cache.CachePolicy.LocalOnlyIfValid
       case CachePolicy.LocalUpdateChanging => coursier.cache.CachePolicy.LocalUpdateChanging
-      case CachePolicy.LocalUpdate => coursier.cache.CachePolicy.LocalUpdate
-      case CachePolicy.UpdateChanging => coursier.cache.CachePolicy.UpdateChanging
-      case CachePolicy.Update => coursier.cache.CachePolicy.Update
-      case CachePolicy.FetchMissing => coursier.cache.CachePolicy.FetchMissing
-      case CachePolicy.ForceDownload => coursier.cache.CachePolicy.ForceDownload
+      case CachePolicy.LocalUpdate         => coursier.cache.CachePolicy.LocalUpdate
+      case CachePolicy.UpdateChanging      => coursier.cache.CachePolicy.UpdateChanging
+      case CachePolicy.Update              => coursier.cache.CachePolicy.Update
+      case CachePolicy.FetchMissing        => coursier.cache.CachePolicy.FetchMissing
+      case CachePolicy.ForceDownload       => coursier.cache.CachePolicy.ForceDownload
     }
 }

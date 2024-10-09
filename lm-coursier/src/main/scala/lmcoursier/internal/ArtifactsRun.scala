@@ -2,7 +2,7 @@ package lmcoursier.internal
 
 import coursier.Artifacts
 import coursier.cache.CacheLogger
-import coursier.cache.loggers.{FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger}
+import coursier.cache.loggers.{ FallbackRefreshDisplay, ProgressBarRefreshDisplay, RefreshLogger }
 import coursier.core.Type
 import sbt.util.Logger
 
@@ -10,9 +10,9 @@ import sbt.util.Logger
 object ArtifactsRun {
 
   def apply(
-    params: ArtifactsParams,
-    verbosityLevel: Int,
-    log: Logger
+      params: ArtifactsParams,
+      verbosityLevel: Int,
+      log: Logger
   ): Either[coursier.error.FetchError, Artifacts.Result] = {
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
@@ -40,16 +40,19 @@ object ArtifactsRun {
       )
     }
 
-    Lock.maybeSynchronized(needsLock = params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode){
+    Lock.maybeSynchronized(needsLock =
+      params.loggerOpt.nonEmpty || !RefreshLogger.defaultFallbackMode
+    ) {
       result(params, coursierLogger)
     }
   }
 
   private def result(
-    params: ArtifactsParams,
-    coursierLogger: CacheLogger
+      params: ArtifactsParams,
+      coursierLogger: CacheLogger
   ): Either[coursier.error.FetchError, Artifacts.Result] =
-    coursier.Artifacts()
+    coursier
+      .Artifacts()
       .withResolutions(params.resolutions)
       .withArtifactTypes(Set(Type.all))
       .withClassifiers(params.classifiers.getOrElse(Nil).toSet)
@@ -62,9 +65,8 @@ object ArtifactsRun {
       }
       .addTransformArtifacts { artifacts =>
         if (params.missingOk)
-          artifacts.map {
-            case (dependency, publication, artifact) =>
-              (dependency, publication, artifact.withOptional(true))
+          artifacts.map { case (dependency, publication, artifact) =>
+            (dependency, publication, artifact.withOptional(true))
           }
         else
           artifacts

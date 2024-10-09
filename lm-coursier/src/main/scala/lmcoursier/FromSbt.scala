@@ -1,18 +1,30 @@
 package lmcoursier
 
-import coursier.ivy.IvyXml.{mappings => ivyXmlMappings}
-import lmcoursier.definitions.{Classifier, Configuration, Dependency, Extension, Info, Module, ModuleName, Organization, Project, Publication, Type}
+import coursier.ivy.IvyXml.{ mappings => ivyXmlMappings }
+import lmcoursier.definitions.{
+  Classifier,
+  Configuration,
+  Dependency,
+  Extension,
+  Info,
+  Module,
+  ModuleName,
+  Organization,
+  Project,
+  Publication,
+  Type
+}
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.librarymanagement.{Configuration => _, MavenRepository => _, _}
+import sbt.librarymanagement.{ Configuration => _, MavenRepository => _, _ }
 
 object FromSbt {
 
   private def sbtModuleIdName(
-    moduleId: ModuleID,
-    scalaVersion: => String,
-    scalaBinaryVersion: => String,
-    optionalCrossVer: Boolean = false,
-    projectPlatform: Option[String],
+      moduleId: ModuleID,
+      scalaVersion: => String,
+      scalaBinaryVersion: => String,
+      optionalCrossVer: Boolean = false,
+      projectPlatform: Option[String],
   ): String = {
     val name0 = moduleId.name
     val name1 =
@@ -32,7 +44,11 @@ object FromSbt {
     }
   }
 
-  private def addPlatformSuffix(name: String, platformOpt: Option[String], projectPlatform: Option[String]): String = {
+  private def addPlatformSuffix(
+      name: String,
+      platformOpt: Option[String],
+      projectPlatform: Option[String]
+  ): String = {
     def addSuffix(platformName: String): String =
       platformName match {
         case "" | "jvm" => name
@@ -46,46 +62,60 @@ object FromSbt {
   }
 
   private def attributes(attr: Map[String, String]): Map[String, String] =
-    attr.map { case (k, v) =>
-      k.stripPrefix("e:") -> v
-    }.filter { case (k, _) =>
-      !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
-    }
+    attr
+      .map { case (k, v) =>
+        k.stripPrefix("e:") -> v
+      }
+      .filter { case (k, _) =>
+        !k.startsWith(SbtPomExtraProperties.POM_INFO_KEY_PREFIX)
+      }
 
   def moduleVersion(
-    module: ModuleID,
-    scalaVersion: String,
-    scalaBinaryVersion: String,
-    optionalCrossVer: Boolean,
-    projectPlatform: Option[String],
+      module: ModuleID,
+      scalaVersion: String,
+      scalaBinaryVersion: String,
+      optionalCrossVer: Boolean,
+      projectPlatform: Option[String],
   ): (Module, String) = {
 
-    val fullName = sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
+    val fullName =
+      sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
 
-    val module0 = Module(Organization(module.organization), ModuleName(fullName), attributes(module.extraDependencyAttributes))
+    val module0 = Module(
+      Organization(module.organization),
+      ModuleName(fullName),
+      attributes(module.extraDependencyAttributes)
+    )
     val version = module.revision
 
     (module0, version)
   }
 
   def moduleVersion(
-    module: ModuleID,
-    scalaVersion: String,
-    scalaBinaryVersion: String
+      module: ModuleID,
+      scalaVersion: String,
+      scalaBinaryVersion: String
   ): (Module, String) =
-    moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer = false, projectPlatform = None)
+    moduleVersion(
+      module,
+      scalaVersion,
+      scalaBinaryVersion,
+      optionalCrossVer = false,
+      projectPlatform = None
+    )
 
   def dependencies(
-    module: ModuleID,
-    scalaVersion: String,
-    scalaBinaryVersion: String,
-    optionalCrossVer: Boolean = false,
-    projectPlatform: Option[String] = None,
+      module: ModuleID,
+      scalaVersion: String,
+      scalaBinaryVersion: String,
+      optionalCrossVer: Boolean = false,
+      projectPlatform: Option[String] = None,
   ): Seq[(Configuration, Dependency)] = {
 
     // TODO Warn about unsupported properties in `module`
 
-    val (module0, version) = moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
+    val (module0, version) =
+      moduleVersion(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
 
     val dep = Dependency(
       module0,
@@ -101,17 +131,15 @@ object FromSbt {
     )
 
     val mapping = module.configurations.getOrElse("compile")
-    val allMappings = ivyXmlMappings(mapping).map {
-      case (from, to) =>
-        (Configuration(from.value), Configuration(to.value))
+    val allMappings = ivyXmlMappings(mapping).map { case (from, to) =>
+      (Configuration(from.value), Configuration(to.value))
     }
 
     val publications =
       if (module.explicitArtifacts.isEmpty)
         Seq(Publication("", Type(""), Extension(""), Classifier("")))
       else
-        module
-          .explicitArtifacts
+        module.explicitArtifacts
           .map { a =>
             Publication(
               name = a.name,
@@ -133,9 +161,9 @@ object FromSbt {
   }
 
   def fallbackDependencies(
-    allDependencies: Seq[ModuleID],
-    scalaVersion: String,
-    scalaBinaryVersion: String
+      allDependencies: Seq[ModuleID],
+      scalaVersion: String,
+      scalaBinaryVersion: String
   ): Seq[FallbackDependency] =
     for {
       module <- allDependencies
@@ -147,19 +175,20 @@ object FromSbt {
     }
 
   def project(
-    projectID: ModuleID,
-    allDependencies: Seq[ModuleID],
-    ivyConfigurations: Map[Configuration, Seq[Configuration]],
-    scalaVersion: String,
-    scalaBinaryVersion: String,
-    projectPlatform: Option[String],
+      projectID: ModuleID,
+      allDependencies: Seq[ModuleID],
+      ivyConfigurations: Map[Configuration, Seq[Configuration]],
+      scalaVersion: String,
+      scalaBinaryVersion: String,
+      projectPlatform: Option[String],
   ): Project = {
 
-    val deps = allDependencies.flatMap(dependencies(_, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform))
+    val deps = allDependencies.flatMap(
+      dependencies(_, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform)
+    )
 
     val prefix = "e:" + SbtPomExtraProperties.POM_INFO_KEY_PREFIX
-    val properties = projectID
-      .extraAttributes
+    val properties = projectID.extraAttributes
       .filterKeys(_.startsWith(prefix))
       .toSeq
       .map { case (k, v) => (k.stripPrefix("e:"), v) }
@@ -168,7 +197,14 @@ object FromSbt {
     Project(
       Module(
         Organization(projectID.organization),
-        ModuleName(sbtModuleIdName(projectID, scalaVersion, scalaBinaryVersion, projectPlatform = projectPlatform)),
+        ModuleName(
+          sbtModuleIdName(
+            projectID,
+            scalaVersion,
+            scalaBinaryVersion,
+            projectPlatform = projectPlatform
+          )
+        ),
         attributes(projectID.extraDependencyAttributes)
       ),
       projectID.revision,

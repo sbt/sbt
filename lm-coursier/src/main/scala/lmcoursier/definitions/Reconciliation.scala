@@ -12,8 +12,8 @@ object Reconciliation {
     input match {
       case "default" => Some(Default)
       case "relaxed" => Some(Relaxed)
-      case "strict" => Some(Strict)
-      case "semver" => Some(SemVer)
-      case _ => None
+      case "strict"  => Some(Strict)
+      case "semver"  => Some(SemVer)
+      case _         => None
     }
 }

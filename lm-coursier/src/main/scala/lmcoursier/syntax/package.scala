@@ -3,40 +3,50 @@ package lmcoursier
 import coursier.cache.CacheDefaults
 import lmcoursier.credentials._
 import lmcoursier.definitions._
-import sbt.librarymanagement.{Resolver, UpdateConfiguration, ModuleID, CrossVersion, ModuleInfo, ModuleDescriptorConfiguration}
+import sbt.librarymanagement.{
+  Resolver,
+  UpdateConfiguration,
+  ModuleID,
+  CrossVersion,
+  ModuleInfo,
+  ModuleDescriptorConfiguration
+}
 import xsbti.Logger
 
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 import java.io.File
 import java.net.URL
 import java.net.URLClassLoader
 
 package object syntax {
   implicit class CoursierConfigurationModule(value: CoursierConfiguration.type) {
-    @deprecated("Legacy cache location support was dropped, this method does nothing.", "2.0.0-RC6-10")
+    @deprecated(
+      "Legacy cache location support was dropped, this method does nothing.",
+      "2.0.0-RC6-10"
+    )
     def checkLegacyCache(): Unit = ()
 
     def apply(
-      log: Logger,
-      resolvers: Vector[Resolver],
-      parallelDownloads: Int,
-      maxIterations: Int,
-      sbtScalaOrganization: String,
-      sbtScalaVersion: String,
-      sbtScalaJars: Vector[File],
-      interProjectDependencies: Vector[Project],
-      excludeDependencies: Vector[(String, String)],
-      fallbackDependencies: Vector[FallbackDependency],
-      autoScalaLibrary: Boolean,
-      hasClassifiers: Boolean,
-      classifiers: Vector[String],
-      mavenProfiles: Vector[String],
-      scalaOrganization: String,
-      scalaVersion: String,
-      authenticationByRepositoryId: Vector[(String, Authentication)],
-      credentials: Seq[Credentials],
-      logger: CacheLogger,
-      cache: File
+        log: Logger,
+        resolvers: Vector[Resolver],
+        parallelDownloads: Int,
+        maxIterations: Int,
+        sbtScalaOrganization: String,
+        sbtScalaVersion: String,
+        sbtScalaJars: Vector[File],
+        interProjectDependencies: Vector[Project],
+        excludeDependencies: Vector[(String, String)],
+        fallbackDependencies: Vector[FallbackDependency],
+        autoScalaLibrary: Boolean,
+        hasClassifiers: Boolean,
+        classifiers: Vector[String],
+        mavenProfiles: Vector[String],
+        scalaOrganization: String,
+        scalaVersion: String,
+        authenticationByRepositoryId: Vector[(String, Authentication)],
+        credentials: Seq[Credentials],
+        logger: CacheLogger,
+        cache: File
     ): CoursierConfiguration =
       CoursierConfiguration(
         Option(log),
@@ -96,7 +106,9 @@ package object syntax {
       value.withCache(Option(cache))
     def withIvyHome(ivyHome: File): CoursierConfiguration =
       value.withIvyHome(Option(ivyHome))
-    def withFollowHttpToHttpsRedirections(followHttpToHttpsRedirections: Boolean): CoursierConfiguration =
+    def withFollowHttpToHttpsRedirections(
+        followHttpToHttpsRedirections: Boolean
+    ): CoursierConfiguration =
       value.withFollowHttpToHttpsRedirections(Some(followHttpToHttpsRedirections))
     def withFollowHttpToHttpsRedirections(): CoursierConfiguration =
       value.withFollowHttpToHttpsRedirections(Some(true))
@@ -104,8 +116,13 @@ package object syntax {
       value.withStrict(Some(strict))
     def withTtl(ttl: Duration): CoursierConfiguration =
       value.withTtl(Some(ttl))
-    def addRepositoryAuthentication(repositoryId: String, authentication: Authentication): CoursierConfiguration =
-      value.withAuthenticationByRepositoryId(value.authenticationByRepositoryId :+ (repositoryId, authentication))
+    def addRepositoryAuthentication(
+        repositoryId: String,
+        authentication: Authentication
+    ): CoursierConfiguration =
+      value.withAuthenticationByRepositoryId(
+        value.authenticationByRepositoryId :+ (repositoryId, authentication)
+      )
 
     def withUpdateConfiguration(conf: UpdateConfiguration): CoursierConfiguration =
       value.withMissingOk(conf.missingOk)
@@ -119,19 +136,20 @@ package object syntax {
       Attributes(value.`type`, value.classifier)
 
     def withAttributes(attributes: Attributes): Publication =
-      value.withType(attributes.`type`)
+      value
+        .withType(attributes.`type`)
         .withClassifier(attributes.classifier)
   }
 
   implicit class DependencyModule(value: Dependency.type) {
     def apply(
-      module: Module,
-      version: String,
-      configuration: Configuration,
-      exclusions: Set[(Organization, ModuleName)],
-      attributes: Attributes,
-      optional: Boolean,
-      transitive: Boolean
+        module: Module,
+        version: String,
+        configuration: Configuration,
+        exclusions: Set[(Organization, ModuleName)],
+        attributes: Attributes,
+        optional: Boolean,
+        transitive: Boolean
     ): Dependency =
       Dependency(
         module,
@@ -159,7 +177,11 @@ package object syntax {
     def all: ModuleMatchers =
       ModuleMatchers(Set.empty, Set.empty)
     def only(organization: String, moduleName: String): ModuleMatchers =
-      ModuleMatchers(Set.empty, Set(Module(Organization(organization), ModuleName(moduleName), Map())), includeByDefault = false)
+      ModuleMatchers(
+        Set.empty,
+        Set(Module(Organization(organization), ModuleName(moduleName), Map())),
+        includeByDefault = false
+      )
     def only(mod: Module): ModuleMatchers =
       ModuleMatchers(Set.empty, Set(mod), includeByDefault = false)
   }
@@ -179,7 +201,13 @@ package object syntax {
   implicit class DirectCredentialsModule(value: DirectCredentials.type) {
     def apply(host: String, username: String, password: String, realm: String): DirectCredentials =
       DirectCredentials(host, username, password, Option(realm))
-    def apply(host: String, username: String, password: String, realm: String, optional: Boolean): DirectCredentials =
+    def apply(
+        host: String,
+        username: String,
+        password: String,
+        realm: String,
+        optional: Boolean
+    ): DirectCredentials =
       DirectCredentials(host, username, password, Option(realm))
   }
 
@@ -192,14 +220,47 @@ package object syntax {
     def apply(): DirectCredentials = DirectCredentials()
     def apply(host: String, username: String, password: String): DirectCredentials =
       DirectCredentials(host, username, password)
-    def apply(host: String, username: String, password: String, realm: Option[String]): DirectCredentials =
+    def apply(
+        host: String,
+        username: String,
+        password: String,
+        realm: Option[String]
+    ): DirectCredentials =
       DirectCredentials(host, username, password, realm)
     def apply(host: String, username: String, password: String, realm: String): DirectCredentials =
       DirectCredentials(host, username, password, Option(realm))
-    def apply(host: String, username: String, password: String, realm: Option[String], optional: Boolean): DirectCredentials =
-      DirectCredentials(host, username, password, realm, optional, matchHost = false, httpsOnly = true)
-    def apply(host: String, username: String, password: String, realm: String, optional: Boolean): DirectCredentials =
-      DirectCredentials(host, username, password, Option(realm), optional, matchHost = false, httpsOnly = true)
+    def apply(
+        host: String,
+        username: String,
+        password: String,
+        realm: Option[String],
+        optional: Boolean
+    ): DirectCredentials =
+      DirectCredentials(
+        host,
+        username,
+        password,
+        realm,
+        optional,
+        matchHost = false,
+        httpsOnly = true
+      )
+    def apply(
+        host: String,
+        username: String,
+        password: String,
+        realm: String,
+        optional: Boolean
+    ): DirectCredentials =
+      DirectCredentials(
+        host,
+        username,
+        password,
+        Option(realm),
+        optional,
+        matchHost = false,
+        httpsOnly = true
+      )
 
     def apply(f: File): FileCredentials =
       FileCredentials(f.getAbsolutePath)
