@@ -1358,7 +1358,7 @@ def lmTestSettings: Seq[Setting[_]] = Def.settings(
   Test / parallelExecution := false
 )
 
-lazy val lmCore = (project in file("core"))
+lazy val lmCore = (project in file("lm-core"))
   // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     commonSettings,
@@ -1408,7 +1408,7 @@ lazy val lmCore = (project in file("core"))
   .dependsOn(utilLogging, utilPosition, utilCache)
   .configure(addSbtIO, addSbtCompilerInterface)
 
-lazy val lmIvy = (project in file("ivy"))
+lazy val lmIvy = (project in file("lm-ivy"))
   // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(lmCore)
   .settings(
