@@ -5,7 +5,6 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-/*
 package sbt
 
 object AppendSpec {
@@ -30,4 +29,3 @@ object AppendSpec {
   Global / onLoad += (() => doSideEffect())
   Global / onLoad += (() => println("foo"))
 }
- */
