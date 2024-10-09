@@ -944,7 +944,7 @@ lazy val mainProj = (project in file("main"))
     // mimaSettings,
     // mimaBinaryIssueFilters ++= Vector(),
   )
-  .dependsOn(lmCore, lmIvy, lmCoursierShaded)
+  .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
@@ -1519,8 +1519,10 @@ lazy val lmCoursier = project
 lazy val lmCoursierShadedPublishing = project
   .in(file("lm-coursier/target/shaded-publishing-module"))
   .settings(
+    scalaVersion := scala3,
     name := "librarymanagement-coursier",
     Compile / packageBin := (lmCoursierShaded / assembly).value,
+    Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
 
 lazy val lmCoursierShaded = project
