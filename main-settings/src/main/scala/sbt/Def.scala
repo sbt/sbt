@@ -81,15 +81,7 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
   def showFullKey(keyNameColor: Option[String]): Show[ScopedKey[_]] =
     Show[ScopedKey[_]]((key: ScopedKey[_]) => displayFull(key, keyNameColor))
 
-  @deprecated("Use showRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showRelativeKey(
-      current: ProjectRef,
-      multi: Boolean,
-      keyNameColor: Option[String] = None
-  ): Show[ScopedKey[_]] =
-    showRelativeKey2(current, keyNameColor)
-
-  def showRelativeKey2(
       current: ProjectRef,
       keyNameColor: Option[String] = None,
   ): Show[ScopedKey[_]] =
@@ -98,7 +90,7 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
       key.scope.extra.toOption
         .flatMap(_.get(Scope.customShowString).map(color))
         .getOrElse {
-          Scope.display(key.scope, color(key.key.label), ref => displayRelative2(current, ref))
+          Scope.display(key.scope, color(key.key.label), ref => displayRelative(current, ref))
         }
     })
 
@@ -124,15 +116,7 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
     )
   }
 
-  @deprecated("Use showBuildRelativeKey2 which doesn't take the unused multi param", "1.1.1")
   def showBuildRelativeKey(
-      currentBuild: URI,
-      multi: Boolean,
-      keyNameColor: Option[String] = None,
-  ): Show[ScopedKey[_]] =
-    showBuildRelativeKey2(currentBuild, keyNameColor)
-
-  def showBuildRelativeKey2(
       currentBuild: URI,
       keyNameColor: Option[String] = None,
   ): Show[ScopedKey[_]] =
@@ -151,11 +135,7 @@ object Def extends BuildSyntax with Init[Scope] with InitializeImplicits:
   def displayRelativeReference(current: ProjectRef, project: Reference): String =
     displayRelative(current, project, false)
 
-  @deprecated("Use displayRelative2 which doesn't take the unused multi param", "1.1.1")
-  def displayRelative(current: ProjectRef, multi: Boolean, project: Reference): String =
-    displayRelative2(current, project)
-
-  def displayRelative2(current: ProjectRef, project: Reference): String =
+  def displayRelative(current: ProjectRef, project: Reference): String =
     displayRelative(current, project, true)
 
   /**
