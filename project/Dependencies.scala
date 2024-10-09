@@ -61,10 +61,6 @@ object Dependencies {
 
   def addSbtIO = addSbtModule(sbtIoPath, "io", sbtIO)
 
-  def addSbtLmCore = addSbtModule(sbtLmPath, "lmCore", libraryManagementCore)
-  def addSbtLmIvy = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy)
-  def addSbtLmIvyTest = addSbtModule(sbtLmPath, "lmIvy", libraryManagementIvy, Some(Test))
-
   def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface", compilerInterface)
   def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath", compilerClasspath)
   def addSbtCompilerApiInfo = addSbtModule(sbtZincPath, "zincApiInfo", compilerApiInfo)
