@@ -153,8 +153,9 @@ object Dependencies {
     .exclude("org.codehaus.plexus", "plexus-archiver")
     .exclude("org.codehaus.plexus", "plexus-container-default")
 
-  val coursierSbtMavenRepo = ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
-    .cross(CrossVersion.for3Use2_13)
+  val coursierSbtMavenRepo =
+    ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
+      .cross(CrossVersion.for3Use2_13)
 
   val coursierExcludedDependencies = Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),

@@ -1216,7 +1216,7 @@ def allProjects =
     remoteCacheProj,
     lmCore,
     lmIvy,
-    definitions,
+    lmCoursierDefinitions,
     lmCoursier,
     lmCoursierShaded,
   ) ++ lowerUtilProjects
@@ -1426,9 +1426,10 @@ lazy val lmIvy = (project in file("lm-ivy"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
   )
 
-
-def sbtCoursierSettings: Seq[Setting[_]] = Def.settings(
-  developers += 
+def lmCoursierSettings: Seq[Setting[_]] = Def.settings(
+  baseSettings,
+  headerLicense := None,
+  developers +=
     Developer(
       "alexarchambault",
       "Alexandre Archambault",
@@ -1437,20 +1438,21 @@ def sbtCoursierSettings: Seq[Setting[_]] = Def.settings(
     ),
   scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixVersion,
   assemblyMergeStrategy := {
-    case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", _*) => MergeStrategy.first
+    case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", _*) =>
+      MergeStrategy.first
     // case PathList("lmcoursier", "internal", "shaded", "package.class") => MergeStrategy.first
     // case PathList("lmcoursier", "internal", "shaded", "package$.class") => MergeStrategy.first
-    case PathList("com", "github") => MergeStrategy.discard
-    case PathList("com", "jcraft") => MergeStrategy.discard
-    case PathList("com", "lmax") => MergeStrategy.discard
-    case PathList("com", "sun") => MergeStrategy.discard
-    case PathList("com", "swoval") => MergeStrategy.discard
-    case PathList("com", "typesafe") => MergeStrategy.discard
-    case PathList("gigahorse") => MergeStrategy.discard
-    case PathList("jline") => MergeStrategy.discard
-    case PathList("scala") => MergeStrategy.discard
-    case PathList("sjsonnew") => MergeStrategy.discard
-    case PathList("xsbti") => MergeStrategy.discard
+    case PathList("com", "github")          => MergeStrategy.discard
+    case PathList("com", "jcraft")          => MergeStrategy.discard
+    case PathList("com", "lmax")            => MergeStrategy.discard
+    case PathList("com", "sun")             => MergeStrategy.discard
+    case PathList("com", "swoval")          => MergeStrategy.discard
+    case PathList("com", "typesafe")        => MergeStrategy.discard
+    case PathList("gigahorse")              => MergeStrategy.discard
+    case PathList("jline")                  => MergeStrategy.discard
+    case PathList("scala")                  => MergeStrategy.discard
+    case PathList("sjsonnew")               => MergeStrategy.discard
+    case PathList("xsbti")                  => MergeStrategy.discard
     case PathList("META-INF", "native", _*) => MergeStrategy.first
     case x =>
       val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
@@ -1473,13 +1475,11 @@ def dataclassGen(data: Reference) = Def.taskDyn {
   }
 }
 
-lazy val preTest = taskKey[Unit]("prep steps before tests")
-lazy val definitions = project
+lazy val lmCoursierDefinitions = project
   .in(file("lm-coursier/definitions"))
   .disablePlugins(MimaPlugin)
   .settings(
-    scalaVersion := scala3,
-    crossScalaVersions := Seq(scala212, scala213, scala3),
+    lmCoursierSettings,
     libraryDependencies ++= Seq(
       coursier,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
@@ -1492,7 +1492,7 @@ lazy val definitions = project
 lazy val lmCoursier = project
   .in(file("lm-coursier"))
   .settings(
-    crossScalaVersions := Seq(scala212, scala213, scala3),
+    lmCoursierSettings,
     Mima.settings,
     Mima.lmCoursierFilters,
     libraryDependencies ++= Seq(
@@ -1504,21 +1504,15 @@ lazy val lmCoursier = project
     ),
     excludeDependencies ++= coursierExcludedDependencies,
     Test / exportedProducts := {
-      (Test / preTest).value
+      (lmCustomProtocolJavaForTest / publishLocal).value
       (Test / exportedProducts).value
     },
-    Test / preTest := {
-      (customProtocolForTest212 / publishLocal).value
-      (customProtocolForTest213 / publishLocal).value
-      (customProtocolJavaForTest / publishLocal).value
-    },
-    Compile / sourceGenerators += dataclassGen(definitions).taskValue,
+    Compile / sourceGenerators += dataclassGen(lmCoursierDefinitions).taskValue,
   )
   .dependsOn(
-    // We depend on librarymanagement-ivy rather than just
-    // librarymanagement-core to handle the ModuleDescriptor passed
-    // to DependencyResolutionInterface.update, which is an
-    // IvySbt#Module (seems DependencyResolutionInterface.moduleDescriptor is ignored).
+    // We depend on lmIvy rather than just lmCore to handle the ModuleDescriptor
+    // passed to DependencyResolutionInterface.update, which is an IvySbt#Module
+    // (seems DependencyResolutionInterface.moduleDescriptor is ignored).
     lmIvy
   )
 
@@ -1526,14 +1520,13 @@ lazy val lmCoursierShadedPublishing = project
   .in(file("lm-coursier/target/shaded-publishing-module"))
   .settings(
     name := "librarymanagement-coursier",
-    crossScalaVersions := Seq(scala212, scala213, scala3),
     Compile / packageBin := (lmCoursierShaded / assembly).value,
   )
 
 lazy val lmCoursierShaded = project
   .in(file("lm-coursier/target/shaded-module"))
   .settings(
-    crossScalaVersions := Seq(scala212, scala213, scala3),
+    lmCoursierSettings,
     Mima.settings,
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
@@ -1592,10 +1585,12 @@ lazy val lmCoursierShaded = project
   )
   .dependsOn(lmIvy % "provided")
 
-lazy val customProtocolForTest212 = project
+lazy val lmCustomProtocolForTest212 = project
   .in(file("lm-coursier/custom-protocol-for-test-2-12"))
   .settings(
-    sourceDirectory := file("lm-coursier/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    sourceDirectory := file(
+      "lm-coursier/custom-protocol-for-test/src"
+    ).toPath.toAbsolutePath.toFile,
     scalaVersion := scala212,
     organization := "org.example",
     moduleName := "customprotocol-handler",
@@ -1603,10 +1598,12 @@ lazy val customProtocolForTest212 = project
     Utils.noPublish
   )
 
-lazy val customProtocolForTest213 = project
+lazy val lmCustomProtocolForTest213 = project
   .in(file("lm-coursier/custom-protocol-for-test-2-13"))
   .settings(
-    sourceDirectory := file("lm-coursier/custom-protocol-for-test/src").toPath.toAbsolutePath.toFile,
+    sourceDirectory := file(
+      "lm-coursier/custom-protocol-for-test/src"
+    ).toPath.toAbsolutePath.toFile,
     scalaVersion := scala213,
     organization := "org.example",
     moduleName := "customprotocol-handler",
@@ -1614,7 +1611,7 @@ lazy val customProtocolForTest213 = project
     Utils.noPublish
   )
 
-lazy val customProtocolJavaForTest = project
+lazy val lmCustomProtocolJavaForTest = project
   .in(file("lm-coursier/custom-protocol-java-for-test"))
   .settings(
     crossPaths := false,

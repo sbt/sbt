@@ -7,13 +7,14 @@ object Check {
 
   def onlyNamespace(ns: String, jar: File, ignoreFiles: Set[String] = Set.empty): Unit = {
     val zf = new ZipFile(jar)
-    val unrecognized = zf.entries()
+    val unrecognized = zf
+      .entries()
       .asScala
       .map(_.getName)
       .filter { n =>
         !n.startsWith("META-INF/") && !n.startsWith(ns + "/") &&
-          n != "reflect.properties" && // scala-reflect adds that
-          !ignoreFiles(n)
+        n != "reflect.properties" && // scala-reflect adds that
+        !ignoreFiles(n)
       }
       .toVector
       .sorted
