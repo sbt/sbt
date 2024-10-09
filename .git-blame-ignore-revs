@@ -1,0 +1,3 @@
+# git blame should ignore the following commits:
+# - scalafmt lm-core, lm-ivy and lm-coursier
+30248a451385540a604505911985b44b7a9f0d73
