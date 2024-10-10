@@ -1,6 +1,6 @@
 import xsbti.AppConfiguration
 
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 
 // TTL of Coursier is 24h
 ThisBuild / useCoursier := false

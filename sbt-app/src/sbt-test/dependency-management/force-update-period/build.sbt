@@ -1,7 +1,7 @@
 ThisBuild / useCoursier := false
 
 name := "force-update-period"
-scalaVersion := "2.12.18"
+scalaVersion := "2.12.20"
 libraryDependencies += "log4j" % "log4j" % "1.2.16" % "compile"
 autoScalaLibrary := false
 

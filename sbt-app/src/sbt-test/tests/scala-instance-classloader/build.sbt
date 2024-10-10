@@ -3,7 +3,7 @@ import sbt.internal.inc.ScalaInstance
 lazy val OtherScala = config("other-scala").hide
 lazy val junitinterface = "com.novocode" % "junit-interface" % "0.11"
 lazy val akkaActor = "com.typesafe.akka" %% "akka-actor" % "2.5.17"
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 
 lazy val root = (project in file("."))
   .configs(OtherScala)
