@@ -312,22 +312,30 @@ object Scoped:
      * one setting in order to define another setting.
      * @return currently bound value wrapped in `Initialize[Some[T]]`, or `Initialize[None]` if unbound.
      */
-    final def ? : Initialize[Option[A1]] = Def.optional(scopedKey)(identity)
+    def option: Initialize[Option[A1]] = Def.optional(scopedKey)(identity)
+
+    /**
+     * A symbolic alias for [[option]].
+     */
+    def ? : Initialize[Option[A1]] = option
 
     /**
      * Creates an [[Def.Initialize]] with value bound to this key, or returns `i` parameter if unbound.
      * @param i value to return if this setting doesn't have a value.
      * @return currently bound setting value, or `i` if unbound.
      */
-    final def or[T >: A1](i: Initialize[T]): Initialize[T] = ?.zipWith(i)(_.getOrElse(_))
+    infix def or[T >: A1](i: Initialize[T]): Initialize[T] = option.zipWith(i)(_.getOrElse(_))
 
     /**
-     * Like [[?]], but with a call-by-name parameter rather than an existing [[Def.Initialize]].
+     * Like [[option]], but with a call-by-name parameter rather than an existing [[Def.Initialize]].
      * Useful when you want to have a value computed when no value is bound to this key.
      * @param or by-name expression evaluated when a value is needed.
      * @return currently bound setting value, or the result of `or` if unbound.
      */
-    final def ??[T >: A1](or: => T): Initialize[T] = Def.optional(scopedKey)(_ getOrElse or)
+    final def getOrElse[A2 >: A1](or: => A2): Initialize[A2] =
+      Def.optional(scopedKey)(_ getOrElse or)
+
+    final def ??[A2 >: A1](or: => A2): Initialize[A2] = getOrElse(or)
   }
 
   private[sbt] trait Syntax:
@@ -450,27 +458,37 @@ object Scoped:
 
     inline def transform(f: A1 => A1): Setting[Task[A1]] = set(scopedKey(_ map f))
 
-    // @deprecated(
-    //   "No longer needed with new task syntax and SettingKey inheriting from Initialize.",
-    //   "0.13.2"
-    // )
-    // def task: SettingKey[Task[A1]] = scopedSetting(scope, key)
-
     def toSettingKey: SettingKey[Task[A1]] = scopedSetting(scope, key)
 
     def get(settings: Settings[Scope]): Option[Task[A1]] = settings.get(scope, key)
 
-    def ? : Initialize[Task[Option[A1]]] = Def.optional(scopedKey) {
+    /**
+     * Creates an [[Def.Initialize]] with value `scala.None` if there was no previous definition of this key,
+     * and `scala.Some(value)` if a definition exists. Useful for when you want to use the ''existence'' of
+     * one setting in order to define another setting.
+     * @return currently bound value wrapped in `Initialize[Some[T]]`, or `Initialize[None]` if unbound.
+     */
+    def option: Initialize[Task[Option[A1]]] = Def.optional(scopedKey) {
       case None    => mktask { None }
       case Some(t) => t.map(Some.apply)
     }
 
-    def ??[T >: A1](or: => T): Initialize[Task[T]] = Def.optional(scopedKey)(_ getOrElse mktask(or))
+    /**
+     * A symbolic alias for [[option]].
+     */
+    def ? : Initialize[Task[Option[A1]]] = option
 
-    // def or[A2 >: A1](i: Initialize[Task[A2]]): Initialize[Task[A2]] =
-    //   this.?.zipWith(i) { (toa1: Task[Option[A1]], ta2: Task[A2]) =>
-    //     (toa1, ta2).map { case (oa1: Option[A1], a2: A2) => oa1 getOrElse b2 }
-    //   }
+    def getOrElse[A2 >: A1](or: => A2): Initialize[Task[A2]] =
+      Def.optional(scopedKey)(_.getOrElse(mktask(or)))
+
+    def ??[A2 >: A1](or: => A2): Initialize[Task[A2]] = getOrElse(or)
+
+    infix def or[A2 >: A1](i: Initialize[Task[A2]]): Initialize[Task[A2]] =
+      this.?.zipWith(i) { (toa1: Task[Option[A1]], ta2: Task[A2]) =>
+        (toa1, ta2).mapN { case (oa1: Option[A1], a2: A2) =>
+          oa1.getOrElse(a2)
+        }
+      }
   }
 
   private def coerceToAnyTaskSeq(tasks: Seq[AnyInitTask]): Seq[Def.Initialize[Task[Any]]] =
