@@ -1111,8 +1111,8 @@ object Defaults extends BuildCommon {
       val interval = pollInterval.value
       val _antiEntropy = watchAntiEntropy.value
       val base = thisProjectRef.value
-      val msg = watchingMessage.?.value.getOrElse(Watched.defaultWatchingMessage)
-      val trigMsg = triggeredMessage.?.value.getOrElse(Watched.defaultTriggeredMessage)
+      val msg = watchingMessage.getOrElse(Watched.defaultWatchingMessage).value
+      val trigMsg = triggeredMessage.getOrElse(Watched.defaultTriggeredMessage).value
       new Watched {
         val scoped = (base / watchTransitiveSources)
         val key = scoped.scopedKey
