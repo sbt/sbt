@@ -49,11 +49,11 @@ jobs:
             distribution: zulu
             jobtype: 9
           - os: ubuntu-latest
-            java: 8
+            java: 11
             distribution: temurin
             jobtype: 10
           - os: windows-latest
-            java: 8
+            java: 11
             distribution: temurin
             jobtype: 10
     runs-on: ${{ matrix.os }}
