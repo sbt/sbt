@@ -1429,7 +1429,15 @@ lazy val lmIvy = (project in file("lm-ivy"))
 
 lazy val lmCoursierSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
-  headerLicense := None,
+  headerLicense := Some(
+    HeaderLicense.Custom(
+      """|sbt
+       |Copyright 2024, Scala Center
+       |Copyright 2015 - 2023, Alexandre Archambault
+       |Licensed under Apache License 2.0 (see LICENSE)
+       |""".stripMargin
+    )
+  ),
   developers +=
     Developer(
       "alexarchambault",
