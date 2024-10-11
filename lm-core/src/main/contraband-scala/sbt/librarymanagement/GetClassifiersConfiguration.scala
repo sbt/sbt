@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class GetClassifiersConfiguration private (
   override def toString: String = {
     "GetClassifiersConfiguration(" + module + ", " + excludes + ", " + updateConfiguration + ", " + sourceArtifactTypes + ", " + docArtifactTypes + ")"
   }
-  private[this] def copy(module: sbt.librarymanagement.GetClassifiersModule = module, excludes: Vector[scala.Tuple2[sbt.librarymanagement.ModuleID, scala.Vector[sbt.librarymanagement.ConfigRef]]] = excludes, updateConfiguration: sbt.librarymanagement.UpdateConfiguration = updateConfiguration, sourceArtifactTypes: Vector[String] = sourceArtifactTypes, docArtifactTypes: Vector[String] = docArtifactTypes): GetClassifiersConfiguration = {
+  private def copy(module: sbt.librarymanagement.GetClassifiersModule = module, excludes: Vector[scala.Tuple2[sbt.librarymanagement.ModuleID, scala.Vector[sbt.librarymanagement.ConfigRef]]] = excludes, updateConfiguration: sbt.librarymanagement.UpdateConfiguration = updateConfiguration, sourceArtifactTypes: Vector[String] = sourceArtifactTypes, docArtifactTypes: Vector[String] = docArtifactTypes): GetClassifiersConfiguration = {
     new GetClassifiersConfiguration(module, excludes, updateConfiguration, sourceArtifactTypes, docArtifactTypes)
   }
   def withModule(module: sbt.librarymanagement.GetClassifiersModule): GetClassifiersConfiguration = {

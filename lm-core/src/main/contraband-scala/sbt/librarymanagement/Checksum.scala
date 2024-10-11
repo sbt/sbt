@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class Checksum private (
   override def toString: String = {
     "Checksum(" + digest + ", " + `type` + ")"
   }
-  private[this] def copy(digest: String = digest, `type`: String = `type`): Checksum = {
+  private def copy(digest: String = digest, `type`: String = `type`): Checksum = {
     new Checksum(digest, `type`)
   }
   def withDigest(digest: String): Checksum = {

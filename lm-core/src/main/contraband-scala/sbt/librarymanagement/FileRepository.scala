@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class FileRepository private (
   override def toString: String = {
     "FileRepository(" + name + ", " + patterns + ", " + configuration + ")"
   }
-  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, configuration: sbt.librarymanagement.FileConfiguration = configuration): FileRepository = {
+  private def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, configuration: sbt.librarymanagement.FileConfiguration = configuration): FileRepository = {
     new FileRepository(name, patterns, configuration)
   }
   def withName(name: String): FileRepository = {

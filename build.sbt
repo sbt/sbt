@@ -1355,7 +1355,7 @@ def lmTestSettings: Seq[Setting[_]] = Def.settings(
 )
 
 lazy val lmCore = (project in file("lm-core"))
-  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     commonSettings,
     lmTestSettings,
@@ -1388,7 +1388,7 @@ lazy val lmCore = (project in file("lm-core"))
       case v if v.startsWith("2.12.") => List("-Ywarn-unused:-locals,-explicits,-privates")
       case _                          => List()
     }),
-    Compile / unmanagedSourceDirectories +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,
@@ -1405,7 +1405,7 @@ lazy val lmCore = (project in file("lm-core"))
   .configure(addSbtIO, addSbtCompilerInterface)
 
 lazy val lmIvy = (project in file("lm-ivy"))
-  // .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .dependsOn(lmCore)
   .settings(
     commonSettings,
@@ -1420,7 +1420,7 @@ lazy val lmIvy = (project in file("lm-ivy"))
       scalaCheck % Test,
       scalaVerify % Test,
     ),
-    Compile / unmanagedSourceDirectories +=
+    Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / sourceManaged := baseDirectory.value / "src" / "main" / "contraband-scala",
     Compile / generateContrabands / contrabandFormatsForType := DatatypeConfig.getFormats,

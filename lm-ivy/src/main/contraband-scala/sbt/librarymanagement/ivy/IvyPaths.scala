@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class IvyPaths private (
   override def toString: String = {
     "IvyPaths(" + baseDirectory + ", " + ivyHome + ")"
   }
-  private[this] def copy(baseDirectory: String = baseDirectory, ivyHome: Option[String] = ivyHome): IvyPaths = {
+  private def copy(baseDirectory: String = baseDirectory, ivyHome: Option[String] = ivyHome): IvyPaths = {
     new IvyPaths(baseDirectory, ivyHome)
   }
   def withBaseDirectory(baseDirectory: String): IvyPaths = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class ChainedResolver private (
   override def toString: String = {
     "ChainedResolver(" + name + ", " + resolvers + ")"
   }
-  private[this] def copy(name: String = name, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers): ChainedResolver = {
+  private def copy(name: String = name, resolvers: Vector[sbt.librarymanagement.Resolver] = resolvers): ChainedResolver = {
     new ChainedResolver(name, resolvers)
   }
   def withName(name: String): ChainedResolver = {

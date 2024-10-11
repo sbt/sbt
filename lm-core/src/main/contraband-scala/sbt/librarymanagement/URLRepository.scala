@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class URLRepository private (
   override def toString: String = {
     "URLRepository(" + name + ", " + patterns + ", " + allowInsecureProtocol + ")"
   }
-  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, allowInsecureProtocol: Boolean = allowInsecureProtocol): URLRepository = {
+  private def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, allowInsecureProtocol: Boolean = allowInsecureProtocol): URLRepository = {
     new URLRepository(name, patterns, allowInsecureProtocol)
   }
   def withName(name: String): URLRepository = {
