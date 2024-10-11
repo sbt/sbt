@@ -48,6 +48,14 @@ jobs:
             java: 8
             distribution: zulu
             jobtype: 9
+          - os: ubuntu-latest
+            java: 8
+            distribution: temurin
+            jobtype: 10
+          - os: windows-latest
+            java: 8
+            distribution: temurin
+            jobtype: 10
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -59,20 +67,22 @@ jobs:
       JDK11: adopt@1.11.0-9
       SPARK_LOCAL_IP: "127.0.0.1"
     steps:
+      - name: Don't convert LF to CRLF during checkout
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - name: Checkout sbt/sbt
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
       - name: Checkout sbt/io
         uses: actions/checkout@v4
         with:
           repository: sbt/io
           ref: develop
           path: io
-      - name: Checkout sbt/librarymanagement
-        uses: actions/checkout@v4
-        with:
-          repository: sbt/librarymanagement
-          ref: develop
-          path: librarymanagement
       - name: Checkout sbt/zinc
         uses: actions/checkout@v4
         with:
@@ -172,7 +182,7 @@ jobs:
       #    cd io
       #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
       #    cd ../
-      #    sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+      #    sbt -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
       #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
       #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
       - name: Build and test (7)
@@ -216,6 +226,10 @@ jobs:
           cd citest
           ./test.bat
           test3/test3.bat
+      - name: Build and test lm-coursier (10)
+        if: ${{ matrix.jobtype == 10 }}
+        shell: bash
+        run: scripts/lm-coursier-ci.sh
       - name: Cleanup
         shell: bash
         run: |

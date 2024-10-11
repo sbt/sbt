@@ -1,0 +1,7 @@
+$ delete cache
+> update
+> checkDownloaded
+> reload
+> clean
+> update
+> checkFound

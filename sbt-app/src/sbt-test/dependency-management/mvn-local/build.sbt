@@ -2,11 +2,11 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
+    ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",
     scalaVersion := "2.10.4",
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0-SNAPSHOT",
+    ThisBuild / organization := "org.example",
+    ThisBuild / version := "1.0-SNAPSHOT",
     resolvers += Resolver.file("old-local", file(sys.props("user.home") + "/.ivy2/local"))(Resolver.ivyStylePatterns)
   )
 

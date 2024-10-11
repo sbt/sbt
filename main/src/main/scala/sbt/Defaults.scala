@@ -3305,11 +3305,11 @@ object Classpaths {
     projectInfo := ModuleInfo(
       name.value,
       description.value,
-      homepage.value,
+      homepage.value.map(_.toURI),
       startYear.value,
-      licenses.value.toVector,
+      licenses.value.map((name, url) => (name, url.toURI)).toVector,
       organizationName.value,
-      organizationHomepage.value,
+      organizationHomepage.value.map(_.toURI),
       scmInfo.value,
       developers.value.toVector
     ),

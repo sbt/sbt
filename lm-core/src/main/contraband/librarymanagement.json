@@ -1,0 +1,855 @@
+{
+  "codecNamespace": "sbt.librarymanagement",
+  "fullCodec": "LibraryManagementCodec",
+  "types": [
+    {
+      "name": "UpdateConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        {
+          "name": "retrieveManaged",
+          "doc": [
+            "If set to some RetrieveConfiguration, this enables retrieving dependencies to the specified directory.",
+            "Otherwise, dependencies are used directly from the cache."
+          ],
+          "type": "sbt.librarymanagement.RetrieveConfiguration?", 
+          "default": "None", 
+          "since": "0.0.1"
+        },
+        {
+          "name": "missingOk",
+          "doc": [
+            "If set to true, it ignores when artifacts are missing.",
+            "This setting could be uses when retrieving source/javadocs jars opportunistically."
+          ],
+          "type": "boolean",
+          "default": "false",
+          "since": "0.0.1"
+        },
+        {
+          "name": "logging",
+          "doc": [
+            "Logging setting used specifially for library management."
+          ],
+          "type": "sbt.librarymanagement.UpdateLogging",
+          "default": "sbt.librarymanagement.UpdateLogging.Default",
+          "since": "0.0.1" 
+        },
+        {
+          "name": "logicalClock",
+          "doc": [
+            "The clock that may be used for caching."
+          ],
+          "type": "sbt.librarymanagement.LogicalClock",
+          "default": "sbt.librarymanagement.LogicalClock.unknown",
+          "since": "0.0.1" 
+        },
+        {
+          "name": "metadataDirectory",
+          "doc": [
+            "The base directory that may be used to store metadata."
+          ],
+          "type": "java.io.File?",
+          "default": "None",
+          "since": "0.0.1" 
+        },
+        { "name": "artifactFilter", "type": "sbt.librarymanagement.ArtifactTypeFilter?", "default": "None", "since": "0.0.1" },
+        {
+          "name": "offline",
+          "type": "boolean",
+          "default": "false",
+          "since": "0.0.1"
+        },
+        {
+          "name": "frozen",
+          "type": "boolean",
+          "default": "false",
+          "since": "0.0.1"
+        }
+      ]
+    },
+    {
+      "name": "RetrieveConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "retrieveDirectory",        "type": "java.io.File?",   "default": "None", "since": "0.0.1" },
+        { "name": "outputPattern",            "type": "String?",         "default": "None", "since": "0.0.1" },
+        { "name": "sync",                     "type": "boolean",         "default": "false", "since": "0.0.2" },
+        { "name": "configurationsToRetrieve", "type": "scala.Vector[sbt.librarymanagement.ConfigRef]?", "default": "None", "since": "0.0.2" }
+      ]
+    },
+    {
+      "name": "GetClassifiersConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "module",              "type": "sbt.librarymanagement.GetClassifiersModule" },
+        { "name": "excludes",            "type": "scala.Tuple2[sbt.librarymanagement.ModuleID, scala.Vector[sbt.librarymanagement.ConfigRef]]*" },
+        { "name": "updateConfiguration", "type": "sbt.librarymanagement.UpdateConfiguration" },
+        { "name": "sourceArtifactTypes", "type": "String*" },
+        { "name": "docArtifactTypes",    "type": "String*" }
+      ]
+    },
+    {
+      "name": "GetClassifiersModule",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "id",              "type": "sbt.librarymanagement.ModuleID" },
+        { "name": "scalaModuleInfo", "type": "sbt.librarymanagement.ScalaModuleInfo?" },
+        { "name": "dependencies",    "type": "sbt.librarymanagement.ModuleID*" },
+        { "name": "configurations",  "type": "sbt.librarymanagement.Configuration*" },
+        { "name": "classifiers",     "type": "String*" }
+      ]
+    },
+    {
+      "name": "PublishConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "publishMavenStyle", "type": "boolean",                          "default": "true", "since": "0.0.1" },
+        { "name": "deliverIvyPattern", "type": "String?",                          "default": "None", "since": "0.0.1" },
+        { "name": "status",            "type": "String?",                          "default": "None", "since": "0.0.1" },
+        { "name": "configurations",    "type": "scala.Vector[sbt.librarymanagement.ConfigRef]?", "default": "None", "since": "0.0.1" },
+        { "name": "resolverName",  "type": "String?",                              "default": "None", "since": "0.0.1" },
+        { "name": "artifacts",     "type": "scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]*", "default": "Vector()", "since": "0.0.1" },
+        { 
+          "name": "checksums", 
+          "type": "scala.Vector[String]",
+          "default": "Vector(\"sha1\", \"md5\")",
+          "since": "0.0.1" },
+        { "name": "logging",       "type": "sbt.librarymanagement.UpdateLogging?", "default": "None", "since": "0.0.1" },
+        { "name": "overwrite",     "type": "boolean",                              "default": "false", "since": "0.0.1" }
+      ]
+    },
+    {
+      "name": "Artifact",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "parents": "sbt.librarymanagement.ArtifactExtra",
+      "fields": [
+        { "name": "name",            "type": "String"                                                                                         },
+        { "name": "type",            "type": "String",                               "default": "Artifact.DefaultType",      "since": "0.0.1" },
+        { "name": "extension",       "type": "String",                               "default": "Artifact.DefaultExtension", "since": "0.0.1" },
+        { "name": "classifier",      "type": "Option[String]",                       "default": "None",                      "since": "0.0.1" },
+        { "name": "configurations",  "type": "sbt.librarymanagement.ConfigRef*",     "default": "Vector.empty",              "since": "0.0.1" },
+        { "name": "url",             "type": "Option[java.net.URI]",                 "default": "None",                      "since": "0.0.1" },
+        { "name": "extraAttributes", "type": "Map[String, String]",                  "default": "Map.empty",                 "since": "0.0.1" },
+        { "name": "checksum",        "type": "Option[sbt.librarymanagement.Checksum]", "default": "None",                    "since": "0.0.1" },
+        { "name": "allowInsecureProtocol", "type": "Boolean",                        "default": "false",                     "since": "1.3.0" }
+      ],
+      "extra": [
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateArtifact(this, logger)"
+      ],
+      "parentsCompanion": "sbt.librarymanagement.ArtifactFunctions"
+    },
+    {
+      "name": "ArtifactTypeFilter",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": "Work around the inadequacy of Ivy's ArtifactTypeFilter (that it cannot reverse a filter)",
+      "parents": "sbt.librarymanagement.ArtifactTypeFilterExtra",
+      "fields": [
+        {
+          "name": "types",
+          "doc": [
+            "Represents the artifact types that we should try to resolve for (as in the allowed values of",
+            "`artifact[type]` from a dependency `<publications>` section). One can use this to filter",
+            "source / doc artifacts."
+          ],
+          "type": "Set[String]"
+        },
+        {
+          "name": "inverted",
+          "doc": [ "Whether to invert the types filter (i.e. allow only types NOT in the set)" ],
+          "type": "boolean"
+        }
+      ],
+      "parentsCompanion": "sbt.librarymanagement.ArtifactTypeFilterFunctions"
+    },
+    {
+      "name": "Caller",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "caller",                    "type": "sbt.librarymanagement.ModuleID" },
+        { "name": "callerConfigurations",      "type": "sbt.librarymanagement.ConfigRef*" },
+        { "name": "callerExtraAttributes",     "type": "Map[String, String]"            },
+        { "name": "isForceDependency",         "type": "boolean"                        },
+        { "name": "isChangingDependency",      "type": "boolean"                        },
+        { "name": "isTransitiveDependency",    "type": "boolean"                        },
+        { "name": "isDirectlyForceDependency", "type": "boolean"                        }
+      ],
+      "toString": "s\"$caller\""
+    },
+    {
+      "name": "ConfigurationReport",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": [
+        "Provides information about resolution of a single configuration."
+      ],
+      "parents": "sbt.librarymanagement.ConfigurationReportExtra",
+      "fields": [
+        { "name": "configuration", "type": "sbt.librarymanagement.ConfigRef", "doc": [ "the configuration this report is for." ] },
+        {
+          "name": "modules",
+          "type": "sbt.librarymanagement.ModuleReport*",
+          "doc": [
+            "a sequence containing one report for each module resolved for this configuration."
+          ]
+        },
+        {
+          "name": "details",
+          "type": "sbt.librarymanagement.OrganizationArtifactReport*",
+          "doc": [ "a sequence containing one report for each org/name, which may or may not be part of the final resolution." ]
+        }
+      ],
+      "toString": [
+        "s\"\\t$configuration:\\n\" +",
+        "(if (details.isEmpty) modules.mkString + details.flatMap(_.modules).filter(_.evicted).map(\"\\t\\t(EVICTED) \" + _ + \"\\n\").mkString",
+        "else details.mkString)"
+      ]
+    },
+    {
+      "name": "ConflictManager",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": "See http://ant.apache.org/ivy/history/latest-milestone/settings/conflict-managers.html for details of the different conflict managers.",
+      "fields": [
+        { "name": "name",         "type": "String"                                       },
+        { "name": "organization", "type": "String", "default": "\"*\"", "since": "0.0.1" },
+        { "name": "module",       "type": "String", "default": "\"*\"", "since": "0.0.1" }
+      ],
+      "parentsCompanion": "sbt.librarymanagement.ConflictManagerFunctions"
+    },
+    {
+      "name": "Developer",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "id",    "type": "String"       },
+        { "name": "name",  "type": "String"       },
+        { "name": "email", "type": "String"       },
+        { "name": "url",   "type": "java.net.URI" }
+      ]
+    },
+    {
+      "name": "FileConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": "Configuration specific to an Ivy filesystem resolver.",
+      "fields": [
+        { "name": "isLocal",         "type": "boolean"  },
+        { "name": "isTransactional", "type": "boolean?" }
+      ]
+    },
+    {
+      "name": "InclExclRule",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": [
+        "Defines a rule to either:",
+        "<ul>",
+        "<li>Exclude unwanted dependencies pulled in transitively by a module, or to</li>",
+        "<li>Include and merge artifacts coming from the ModuleDescriptor if \"dependencyArtifacts\" are also provided.</li>",
+        "</ul>",
+        "The use case that is applied depends on the parameter name which it is passed to, but the",
+        "filter has the same fields in both cases."
+      ],
+      "fields": [
+        { "name": "organization",   "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
+        { "name": "name",           "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
+        { "name": "artifact",       "type": "String",  "default": "\"*\"",        "since": "0.0.1" },
+        { "name": "configurations", "type": "sbt.librarymanagement.ConfigRef*", "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "crossVersion",   "type": "sbt.librarymanagement.CrossVersion", "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1"}
+      ],
+      "parentsCompanion": "sbt.librarymanagement.InclExclRuleFunctions"
+    },
+    {
+      "name": "ScalaModuleInfo",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "scalaFullVersion",     "type": "String"                                                                                                 },
+        { "name": "scalaBinaryVersion",   "type": "String"                                                                                                 },
+        { "name": "configurations",       "type": "sbt.librarymanagement.Configuration*"                                                                   },
+        { "name": "checkExplicit",        "type": "boolean"                                                                                                },
+        { "name": "filterImplicit",       "type": "boolean"                                                                                                },
+        { "name": "overrideScalaVersion", "type": "boolean"                                                                                                },
+        { "name": "scalaOrganization",    "type": "String",               "default": "sbt.librarymanagement.ScalaArtifacts.Organization", "since": "0.0.1" },
+        { "name": "scalaArtifacts",       "type": "scala.Vector[String]", "default": "sbt.librarymanagement.ScalaArtifacts.Artifacts",    "since": "0.0.1" },
+        {
+          "name": "platform",
+          "type": "Option[String]",
+          "default": "None",
+          "since": "2.0.0"
+        }
+      ]
+    },
+    {
+      "name": "ModuleConfiguration",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "organization", "type": "String"                         },
+        { "name": "name",         "type": "String"                         },
+        { "name": "revision",     "type": "String"                         },
+        { "name": "resolver",     "type": "sbt.librarymanagement.Resolver" }
+      ],
+      "extraCompanion": [
+        "def apply(org: String, resolver: sbt.librarymanagement.Resolver): ModuleConfiguration = apply(org, \"*\", \"*\", resolver)",
+        "def apply(org: String, name: String, resolver: sbt.librarymanagement.Resolver): ModuleConfiguration = ModuleConfiguration(org, name, \"*\", resolver)"
+      ]
+    },
+    {
+      "name": "ModuleID",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "parents": "sbt.librarymanagement.ModuleIDExtra",
+      "fields": [
+        { "name": "organization",      "type": "String"                                                                                               },
+        { "name": "name",              "type": "String"                                                                                               },
+        { "name": "revision",          "type": "String"                                                                                               },
+        { "name": "configurations",    "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" },
+        { "name": "isChanging",        "type": "boolean",                                "default": "false",                            "since": "0.0.1" },
+        { "name": "isTransitive",      "type": "boolean",                                "default": "true",                             "since": "0.0.1" },
+        { "name": "isForce",           "type": "boolean",                                "default": "false",                            "since": "0.0.1" },
+        { "name": "explicitArtifacts", "type": "sbt.librarymanagement.Artifact*",        "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "inclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "exclusions",        "type": "sbt.librarymanagement.InclExclRule*",    "default": "Vector.empty",                     "since": "0.0.1" },
+        { "name": "extraAttributes",   "type": "Map[String, String]",                    "default": "Map.empty",                        "since": "0.0.1" },
+        { "name": "crossVersion",      "type": "sbt.librarymanagement.CrossVersion",     "default": "sbt.librarymanagement.Disabled()", "since": "0.0.1" },
+        { "name": "branchName",        "type": "Option[String]",                         "default": "None",                             "since": "0.0.1" },
+        { "name": "platformOpt",       "type": "Option[String]",                         "default": "None",                             "since": "2.0.0" }
+      ],
+      "toString": [
+        "this.toStringImpl"
+      ],
+      "parentsCompanion": "sbt.librarymanagement.ModuleIDFunctions"
+    },
+    {
+       "name": "Checksum",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "digest", "type": "String"                    },
+        { "name": "type",   "type": "String", "default": "sha1" }
+      ]
+    },
+    {
+      "name": "ModuleInfo",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": "Additional information about a project module",
+      "fields": [
+        { "name": "nameFormal",           "type": "String"                                                                             },
+        { "name": "description",          "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
+        { "name": "homepage",             "type": "Option[java.net.URI]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "startYear",            "type": "Option[Int]",                           "default": "None",         "since": "0.0.1" },
+        { "name": "licenses",             "type": "scala.Tuple2[String, java.net.URI]*",   "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "organizationName",     "type": "String",                                "default": "\"\"",         "since": "0.0.1" },
+        { "name": "organizationHomepage", "type": "Option[java.net.URI]",                  "default": "None",         "since": "0.0.1" },
+        { "name": "scmInfo",              "type": "Option[sbt.librarymanagement.ScmInfo]", "default": "None",         "since": "0.0.1" },
+        { "name": "developers",           "type": "sbt.librarymanagement.Developer*",      "default": "Vector.empty",     "since": "0.0.1" }
+      ]
+    },
+    {
+      "name": "ModuleReport",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": [
+        "Provides information about the resolution of a module.",
+        "This information is in the context of a specific configuration."
+      ],
+      "parents": "sbt.librarymanagement.ModuleReportExtra",
+      "fields": [
+        { "name": "module",           "type": "sbt.librarymanagement.ModuleID"                                                     },
+        { "name": "artifacts",        "type": "scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]*"                        },
+        { "name": "missingArtifacts", "type": "sbt.librarymanagement.Artifact*"                                                    },
+        { "name": "status",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "publicationDate",  "type": "Option[java.util.Calendar]",            "default": "None",         "since": "0.0.1" },
+        { "name": "resolver",         "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "artifactResolver", "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "evicted",          "type": "boolean",                               "default": "false",        "since": "0.0.1" },
+        { "name": "evictedData",      "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "evictedReason",    "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "problem",          "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "homepage",         "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "extraAttributes",  "type": "Map[String, String]",                   "default": "Map.empty",    "since": "0.0.1" },
+        { "name": "isDefault",        "type": "Option[Boolean]",                       "default": "None",         "since": "0.0.1" },
+        { "name": "branch",           "type": "Option[String]",                        "default": "None",         "since": "0.0.1" },
+        { "name": "configurations",   "type": "sbt.librarymanagement.ConfigRef*",                               "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "licenses",         "type": "scala.Tuple2[String, Option[String]]*", "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "callers",          "type": "sbt.librarymanagement.Caller*",         "default": "Vector.empty", "since": "0.0.1" }
+      ],
+      "toString": [
+        "s\"\\t\\t$module: \" +",
+        "(if (arts.size <= 1) \"\" else \"\\n\\t\\t\\t\") + arts.mkString(\"\\n\\t\\t\\t\") + \"\\n\""
+      ]
+    },
+    {
+      "name": "ModuleSettings",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "interface",
+      "fields": [
+        {
+          "name": "validate",
+          "type": "boolean",
+          "default": "false",
+          "since": "0.0.1"
+        },
+        {
+          "name": "scalaModuleInfo",
+          "type": "sbt.librarymanagement.ScalaModuleInfo?",
+          "default": "None",
+          "since": "0.0.1"
+        }
+      ],
+      "types": [
+        {
+          "name": "IvyFileConfiguration",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            { "name": "file",           "type": "java.io.File" },
+            { "name": "autoScalaTools", "type": "boolean"      }
+          ]
+        },
+        {
+          "name": "PomConfiguration",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            { "name": "file",           "type": "java.io.File" },
+            { "name": "autoScalaTools", "type": "boolean"      }
+          ]
+        },
+        {
+          "name": "ModuleDescriptorConfiguration",
+          "docs": [
+            "A module descriptor that represents a subproject, formerly known as an InlineConfiguration."
+          ],
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            {
+              "name": "module",
+              "type": "sbt.librarymanagement.ModuleID"
+            },
+            {
+              "name": "moduleInfo",
+              "type": "sbt.librarymanagement.ModuleInfo"
+            },
+            {
+              "name": "dependencies",
+              "type": "sbt.librarymanagement.ModuleID*",
+              "default": "Vector.empty",
+              "since": "0.0.1"
+            },
+            {
+              "name": "overrides",
+              "type": "sbt.librarymanagement.ModuleID*",
+              "default": "Vector.empty",
+              "since": "0.0.1"
+            },
+            { "name": "excludes",             "type": "sbt.librarymanagement.InclExclRule*",   "default": "Vector.empty",                                  "since": "0.0.1" },
+            { "name": "ivyXML",               "type": "scala.xml.NodeSeq",                     "default": "scala.xml.NodeSeq.Empty",                       "since": "0.0.1" },
+            {
+              "name": "configurations",
+              "type": "sbt.librarymanagement.Configuration*",
+              "default": "sbt.librarymanagement.Configurations.default",
+              "since": "0.0.1"
+            },
+            {
+              "name": "defaultConfiguration",
+              "type": "sbt.librarymanagement.Configuration?",
+              "default": "Option(sbt.librarymanagement.Configurations.Compile)",
+              "since": "0.0.1"
+             },
+            { "name": "conflictManager",      "type": "sbt.librarymanagement.ConflictManager", "default": "sbt.librarymanagement.ConflictManager.default", "since": "0.0.1" }
+          ],
+          "parentsCompanion": "sbt.librarymanagement.InlineConfigurationFunctions"
+        }
+      ]
+    },
+    {
+      "name": "OrganizationArtifactReport",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": [
+        "OrganizationArtifactReport represents an organization+name entry in Ivy resolution report.",
+        "In sbt's terminology, \"module\" consists of organization, name, and version.",
+        "In Ivy's, \"module\" means just organization and name, and the one including version numbers",
+        "are called revisions.",
+        "",
+        "A sequence of OrganizationArtifactReport called details is newly added to ConfigurationReport, replacing evicted.",
+        "(Note old evicted was just a seq of ModuleIDs).",
+        "OrganizationArtifactReport groups the ModuleReport of both winners and evicted reports by their organization and name,",
+        "which can be used to calculate detailed eviction warning etc."
+      ],
+      "fields": [
+        { "name": "organization", "type": "String"                              },
+        { "name": "name",         "type": "String"                              },
+        { "name": "modules",      "type": "sbt.librarymanagement.ModuleReport*" }
+      ],
+      "toString": [
+        "val details = modules map { _.detailReport }",
+        "s\"\\t$organization:$name\\n${details.mkString}\\n\""
+      ]
+    },
+    {
+      "name": "Patterns",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "ivyPatterns",          "type": "String*", "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "artifactPatterns",     "type": "String*", "default": "Vector.empty", "since": "0.0.1" },
+        { "name": "isMavenCompatible",    "type": "boolean", "default": "true",         "since": "0.0.1" },
+        { "name": "descriptorOptional",   "type": "boolean", "default": "false",        "since": "0.0.1" },
+        { "name": "skipConsistencyCheck", "type": "boolean", "default": "false",        "since": "0.0.1" }
+      ],
+      "toString": [
+        "\"Patterns(ivyPatterns=%s, artifactPatterns=%s, isMavenCompatible=%s, descriptorOptional=%s, skipConsistencyCheck=%s)\".format(",
+        "  ivyPatterns, artifactPatterns, isMavenCompatible, descriptorOptional, skipConsistencyCheck)"
+      ],
+      "parentsCompanion": "sbt.librarymanagement.PatternsFunctions"
+    },
+    {
+      "name": "Resolver",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "interface",
+      "fields": [
+        { "name": "name", "type": "String" }
+      ],
+      "extra": [
+        "/** check for HTTP */",
+        "private[sbt] def validateProtocol(logger: sbt.util.Logger): Boolean = false"
+      ],
+      "types": [
+        {
+          "name": "ChainedResolver",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            { "name": "resolvers", "type": "sbt.librarymanagement.Resolver*" }
+          ],
+          "extra": [
+            "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = !resolvers.forall(!_.validateProtocol(logger))"
+          ]
+        },
+        {
+          "name": "MavenRepository",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "interface",
+          "doc": "An instance of a remote maven repository.  Note:  This will use Aether/Maven to resolve artifacts.",
+          "fields": [
+            { "name": "root",        "type": "String"                                       },
+            { "name": "localIfFile", "type": "boolean", "default": "true", "since": "0.0.1" }
+          ],
+          "types": [
+            {
+              "name": "MavenRepo",
+              "namespace": "sbt.librarymanagement",
+              "target": "Scala",
+              "type": "record",
+              "doc": [
+                "This is the internal implementation of actual Maven Repository (as opposed to a file cache)."
+              ],
+              "fields": [
+                { "name": "_allowInsecureProtocol", "type": "Boolean", "default": "false", "since": "1.3.0" }
+              ],
+              "extra": [
+                "override def isCache: Boolean = false",
+                "override def allowInsecureProtocol: Boolean = _allowInsecureProtocol",
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateMavenRepo(this, logger)"
+              ],
+              "toString": "s\"$name: $root\""
+            },
+            {
+              "name": "MavenCache",
+              "namespace": "sbt.librarymanagement",
+              "target": "Scala",
+              "type": "record",
+              "doc": [
+                "An instance of maven CACHE directory.  You cannot treat a cache directory the same as a a remote repository because",
+                "the metadata is different (see Aether ML discussion)."
+              ],
+              "fields": [
+                { "name": "rootFile", "type": "java.io.File" }
+              ],
+              "extra": [
+                "def this(name: String, rootFile: java.io.File) = this(name, rootFile.toURI.toURL.toString, true, rootFile)",
+                "override def isCache: Boolean = true",
+                "override def allowInsecureProtocol: Boolean = false"
+              ],
+              "toString": "s\"cache:$name: ${rootFile.getAbsolutePath}\"",
+              "extraCompanion": "def apply(name: String, rootFile: java.io.File): MavenCache = new MavenCache(name, rootFile)"
+            }
+          ],
+          "extra": [
+            "def isCache: Boolean",
+            "def allowInsecureProtocol: Boolean",
+            "def withAllowInsecureProtocol(allowInsecureProtocol: Boolean): MavenRepository =",
+            "  this match {",
+            "    case x: MavenRepo  => x.with_allowInsecureProtocol(allowInsecureProtocol)",
+            "    case x: MavenCache => x",
+            "  }"
+          ],
+          "parentsCompanion": "sbt.librarymanagement.MavenRepositoryFunctions"
+        },
+        {
+          "name": "PatternsBasedRepository",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "interface",
+          "fields": [
+            { "name": "patterns", "type": "sbt.librarymanagement.Patterns" }
+          ],
+          "doc": "sbt interface to an Ivy repository based on patterns, which is most Ivy repositories.",
+          "types": [
+            {
+              "name": "FileRepository",
+              "namespace": "sbt.librarymanagement",
+              "target": "Scala",
+              "type": "record",
+              "doc": "sbt interface for an Ivy filesystem repository.  More convenient construction is done using Resolver.file.",
+              "fields": [
+                { "name": "configuration", "type": "sbt.librarymanagement.FileConfiguration" }
+              ],
+              "extra": [
+                "def this(name: String, configuration: sbt.librarymanagement.FileConfiguration, patterns: sbt.librarymanagement.Patterns) = ",
+                "  this(name, patterns, configuration)"
+              ],
+              "extraCompanion": [
+                "def apply(name: String, configuration: sbt.librarymanagement.FileConfiguration, patterns: sbt.librarymanagement.Patterns) = ",
+                "  new FileRepository(name, patterns, configuration)"
+              ]
+            },
+            {
+              "name": "URLRepository",
+              "namespace": "sbt.librarymanagement",
+              "target": "Scala",
+              "type": "record",
+              "fields": [
+                { "name": "allowInsecureProtocol", "type": "boolean", "default": "false", "since": "1.3.0" }
+              ],
+              "extra": [
+                "private[sbt] override def validateProtocol(logger: sbt.util.Logger): Boolean = Resolver.validateURLRepository(this, logger)"
+              ]
+            },
+            {
+              "name": "SshBasedRepository",
+              "namespace": "sbt.librarymanagement",
+              "target": "Scala",
+              "type": "interface",
+              "doc": "sbt interface for an Ivy ssh-based repository (ssh and sftp).  Requires the Jsch library..",
+              "parents": "sbt.librarymanagement.SshBasedRepositoryExtra",
+              "fields": [
+                { "name": "connection", "type": "sbt.librarymanagement.SshConnection" }
+              ],
+              "types": [
+                {
+                  "name": "SshRepository",
+                  "namespace": "sbt.librarymanagement",
+                  "target": "Scala",
+                  "type": "record",
+                  "doc": "sbt interface for an Ivy repository over ssh.  More convenient construction is done using Resolver.ssh.",
+                  "parents": "sbt.librarymanagement.SshRepositoryExtra",
+                  "fields": [
+                    { "name": "publishPermissions", "type": "String?" }
+                  ],
+                  "extra": [
+                    "def this(name: String, connection: sbt.librarymanagement.SshConnection, patterns: sbt.librarymanagement.Patterns, publishPermissions: Option[String]) = ",
+                    "  this(name, patterns, connection, publishPermissions)"
+                  ],
+                  "extraCompanion": [
+                    "def apply(name: String, connection: sbt.librarymanagement.SshConnection, patterns: sbt.librarymanagement.Patterns, publishPermissions: Option[String]) = ",
+                    "  new SshRepository(name, patterns, connection, publishPermissions)"
+                  ]
+                },
+                {
+                  "name": "SftpRepository",
+                  "namespace": "sbt.librarymanagement",
+                  "target": "Scala",
+                  "type": "record",
+                  "doc": "sbt interface for an Ivy repository over sftp.  More convenient construction is done using Resolver.sftp.",
+                  "parents": "sbt.librarymanagement.SftpRepositoryExtra",
+                  "extra": [
+                    "def this(name: String, connection: sbt.librarymanagement.SshConnection, patterns: sbt.librarymanagement.Patterns) = ",
+                    "  this(name, patterns, connection)"
+                  ],
+                  "extraCompanion": [
+                    "def apply(name: String, connection: sbt.librarymanagement.SshConnection, patterns: sbt.librarymanagement.Patterns) = ",
+                    "  new SftpRepository(name, patterns, connection)"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "parentsCompanion": "sbt.librarymanagement.ResolverFunctions"
+    },
+    {
+      "name": "ScmInfo",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": "Basic SCM information for a project module",
+      "fields": [
+        { "name": "browseUrl",     "type": "java.net.URI"                                     },
+        { "name": "connection",    "type": "String"                                           },
+        { "name": "devConnection", "type": "String?",     "default": "None", "since": "0.0.1" }
+      ]
+    },
+    {
+      "name": "SshAuthentication",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "interface",
+      "types": [
+        {
+          "name": "PasswordAuthentication",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            { "name": "user",     "type": "String"  },
+            { "name": "password", "type": "String?" }
+          ]
+        },
+        {
+          "name": "KeyFileAuthentication",
+          "namespace": "sbt.librarymanagement",
+          "target": "Scala",
+          "type": "record",
+          "fields": [
+            { "name": "user",     "type": "String"       },
+            { "name": "keyfile",  "type": "java.io.File" },
+            { "name": "password", "type": "String?"      }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "SshConnection",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "authentication", "type": "sbt.librarymanagement.SshAuthentication?" },
+        { "name": "hostname",       "type": "String?"                                  },
+        { "name": "port",           "type": "int?"                                     }
+      ]
+    },
+    {
+      "name": "UpdateLogging",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "enumeration",
+      "doc": [
+        "Configures logging during an 'update'.  `level` determines the amount of other information logged.",
+        "`Full` is the default and logs the most.",
+        "`DownloadOnly` only logs what is downloaded.",
+        "`Quiet` only displays errors.",
+        "`Default` uses the current log level of `update` task."
+      ],
+      "symbols": [ "Full", "DownloadOnly", "Quiet", "Default" ]
+    },
+    {
+      "name": "UpdateReport",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "doc": [
+        "Provides information about dependency resolution.",
+        "It does not include information about evicted modules, only about the modules ultimately selected by the conflict manager.",
+        "This means that for a given configuration, there should only be one revision for a given organization and module name."
+      ],
+      "parents": "sbt.librarymanagement.UpdateReportExtra",
+      "fields": [
+        {
+          "name": "cachedDescriptor",
+          "type": "java.io.File",
+          "doc": [ "the location of the resolved module descriptor in the cache" ]
+        },
+        {
+          "name": "configurations",
+          "type": "sbt.librarymanagement.ConfigurationReport*",
+          "doc": [ "a sequence containing one report for each configuration resolved." ]
+        },
+        {
+          "name": "stats",
+          "type": "sbt.librarymanagement.UpdateStats",
+          "doc": [ "stats information about the update that produced this report" ]
+        },
+        { "name": "stamps", "type": "Map[String, Long]" }
+      ],
+      "toString": "\"Update report:\\n\\t\" + stats + \"\\n\" + configurations.mkString"
+    },
+    {
+      "name": "UpdateStats",
+      "namespace": "sbt.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "resolveTime",  "type": "long"    },
+        { "name": "downloadTime", "type": "long"    },
+        { "name": "downloadSize", "type": "long"    },
+        { "name": "cached",       "type": "boolean" }
+      ],
+      "toString": "Seq(\"Resolve time: \" + resolveTime + \" ms\", \"Download time: \" + downloadTime + \" ms\", \"Download size: \" + downloadSize + \" bytes\").mkString(\", \")"
+    },
+
+    {
+      "name": "ConfigurationReportLite",
+      "namespace": "sbt.internal.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "configuration", "type": "String"                                            },
+        { "name": "details",       "type": "sbt.librarymanagement.OrganizationArtifactReport*" }
+      ]
+    },
+    {
+      "name": "UpdateReportLite",
+      "namespace": "sbt.internal.librarymanagement",
+      "target": "Scala",
+      "type": "record",
+      "fields": [
+        { "name": "configurations", "type": "sbt.internal.librarymanagement.ConfigurationReportLite*" }
+      ]
+    }
+  ]
+}
