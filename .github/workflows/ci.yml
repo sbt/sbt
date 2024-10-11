@@ -44,7 +44,7 @@ jobs:
             java: 17
             distribution: temurin
             jobtype: 8
-          - os: windows-2019
+          - os: windows-latest
             java: 8
             distribution: zulu
             jobtype: 9
