@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class FileConfiguration private (
   override def toString: String = {
     "FileConfiguration(" + isLocal + ", " + isTransactional + ")"
   }
-  private[this] def copy(isLocal: Boolean = isLocal, isTransactional: Option[Boolean] = isTransactional): FileConfiguration = {
+  private def copy(isLocal: Boolean = isLocal, isTransactional: Option[Boolean] = isTransactional): FileConfiguration = {
     new FileConfiguration(isLocal, isTransactional)
   }
   def withIsLocal(isLocal: Boolean): FileConfiguration = {

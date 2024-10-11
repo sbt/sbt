@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class IvyFileConfiguration private (
   override def toString: String = {
     "IvyFileConfiguration(" + validate + ", " + scalaModuleInfo + ", " + file + ", " + autoScalaTools + ")"
   }
-  private[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
+  private def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, file: java.io.File = file, autoScalaTools: Boolean = autoScalaTools): IvyFileConfiguration = {
     new IvyFileConfiguration(validate, scalaModuleInfo, file, autoScalaTools)
   }
   def withValidate(validate: Boolean): IvyFileConfiguration = {

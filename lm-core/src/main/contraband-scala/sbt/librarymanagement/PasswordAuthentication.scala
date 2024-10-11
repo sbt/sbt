@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class PasswordAuthentication private (
   override def toString: String = {
     "PasswordAuthentication(" + user + ", " + password + ")"
   }
-  private[this] def copy(user: String = user, password: Option[String] = password): PasswordAuthentication = {
+  private def copy(user: String = user, password: Option[String] = password): PasswordAuthentication = {
     new PasswordAuthentication(user, password)
   }
   def withUser(user: String): PasswordAuthentication = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class Developer private (
   override def toString: String = {
     "Developer(" + id + ", " + name + ", " + email + ", " + url + ")"
   }
-  private[this] def copy(id: String = id, name: String = name, email: String = email, url: java.net.URI = url): Developer = {
+  private def copy(id: String = id, name: String = name, email: String = email, url: java.net.URI = url): Developer = {
     new Developer(id, name, email, url)
   }
   def withId(id: String): Developer = {

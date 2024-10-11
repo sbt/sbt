@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -30,7 +30,7 @@ final class UpdateReport private (
   override def toString: String = {
     "Update report:\n\t" + stats + "\n" + configurations.mkString
   }
-  private[this] def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[String, Long] = stamps): UpdateReport = {
+  private def copy(cachedDescriptor: java.io.File = cachedDescriptor, configurations: Vector[sbt.librarymanagement.ConfigurationReport] = configurations, stats: sbt.librarymanagement.UpdateStats = stats, stamps: Map[String, Long] = stamps): UpdateReport = {
     new UpdateReport(cachedDescriptor, configurations, stats, stamps)
   }
   def withCachedDescriptor(cachedDescriptor: java.io.File): UpdateReport = {

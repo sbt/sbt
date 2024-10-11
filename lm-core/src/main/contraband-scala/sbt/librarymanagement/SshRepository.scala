@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class SshRepository private (
   override def toString: String = {
     "SshRepository(" + name + ", " + patterns + ", " + connection + ", " + publishPermissions + ")"
   }
-  private[this] def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, connection: sbt.librarymanagement.SshConnection = connection, publishPermissions: Option[String] = publishPermissions): SshRepository = {
+  private def copy(name: String = name, patterns: sbt.librarymanagement.Patterns = patterns, connection: sbt.librarymanagement.SshConnection = connection, publishPermissions: Option[String] = publishPermissions): SshRepository = {
     new SshRepository(name, patterns, connection, publishPermissions)
   }
   def withName(name: String): SshRepository = {

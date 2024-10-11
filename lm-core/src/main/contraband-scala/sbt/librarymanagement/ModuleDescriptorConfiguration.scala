@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -29,7 +29,7 @@ final class ModuleDescriptorConfiguration private (
   override def toString: String = {
     "ModuleDescriptorConfiguration(" + validate + ", " + scalaModuleInfo + ", " + module + ", " + moduleInfo + ", " + dependencies + ", " + overrides + ", " + excludes + ", " + ivyXML + ", " + configurations + ", " + defaultConfiguration + ", " + conflictManager + ")"
   }
-  private[this] def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, module: sbt.librarymanagement.ModuleID = module, moduleInfo: sbt.librarymanagement.ModuleInfo = moduleInfo, dependencies: Vector[sbt.librarymanagement.ModuleID] = dependencies, overrides: Vector[sbt.librarymanagement.ModuleID] = overrides, excludes: Vector[sbt.librarymanagement.InclExclRule] = excludes, ivyXML: scala.xml.NodeSeq = ivyXML, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, defaultConfiguration: Option[sbt.librarymanagement.Configuration] = defaultConfiguration, conflictManager: sbt.librarymanagement.ConflictManager = conflictManager): ModuleDescriptorConfiguration = {
+  private def copy(validate: Boolean = validate, scalaModuleInfo: Option[sbt.librarymanagement.ScalaModuleInfo] = scalaModuleInfo, module: sbt.librarymanagement.ModuleID = module, moduleInfo: sbt.librarymanagement.ModuleInfo = moduleInfo, dependencies: Vector[sbt.librarymanagement.ModuleID] = dependencies, overrides: Vector[sbt.librarymanagement.ModuleID] = overrides, excludes: Vector[sbt.librarymanagement.InclExclRule] = excludes, ivyXML: scala.xml.NodeSeq = ivyXML, configurations: Vector[sbt.librarymanagement.Configuration] = configurations, defaultConfiguration: Option[sbt.librarymanagement.Configuration] = defaultConfiguration, conflictManager: sbt.librarymanagement.ConflictManager = conflictManager): ModuleDescriptorConfiguration = {
     new ModuleDescriptorConfiguration(validate, scalaModuleInfo, module, moduleInfo, dependencies, overrides, excludes, ivyXML, configurations, defaultConfiguration, conflictManager)
   }
   def withValidate(validate: Boolean): ModuleDescriptorConfiguration = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class Artifact private (
   override def toString: String = {
     "Artifact(" + name + ", " + `type` + ", " + extension + ", " + classifier + ", " + configurations + ", " + url + ", " + extraAttributes + ", " + checksum + ", " + allowInsecureProtocol + ")"
   }
-  private[this] def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, url: Option[java.net.URI] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum, allowInsecureProtocol: Boolean = allowInsecureProtocol): Artifact = {
+  private def copy(name: String = name, `type`: String = `type`, extension: String = extension, classifier: Option[String] = classifier, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, url: Option[java.net.URI] = url, extraAttributes: Map[String, String] = extraAttributes, checksum: Option[sbt.librarymanagement.Checksum] = checksum, allowInsecureProtocol: Boolean = allowInsecureProtocol): Artifact = {
     new Artifact(name, `type`, extension, classifier, configurations, url, extraAttributes, checksum, allowInsecureProtocol)
   }
   def withName(name: String): Artifact = {

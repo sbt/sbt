@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class RetrieveConfiguration private (
   override def toString: String = {
     "RetrieveConfiguration(" + retrieveDirectory + ", " + outputPattern + ", " + sync + ", " + configurationsToRetrieve + ")"
   }
-  private[this] def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
+  private def copy(retrieveDirectory: Option[java.io.File] = retrieveDirectory, outputPattern: Option[String] = outputPattern, sync: Boolean = sync, configurationsToRetrieve: Option[scala.Vector[sbt.librarymanagement.ConfigRef]] = configurationsToRetrieve): RetrieveConfiguration = {
     new RetrieveConfiguration(retrieveDirectory, outputPattern, sync, configurationsToRetrieve)
   }
   def withRetrieveDirectory(retrieveDirectory: Option[java.io.File]): RetrieveConfiguration = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class MavenRepo private (
   override def toString: String = {
     s"$name: $root"
   }
-  private[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, _allowInsecureProtocol: Boolean = _allowInsecureProtocol): MavenRepo = {
+  private def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, _allowInsecureProtocol: Boolean = _allowInsecureProtocol): MavenRepo = {
     new MavenRepo(name, root, localIfFile, _allowInsecureProtocol)
   }
   def withName(name: String): MavenRepo = {

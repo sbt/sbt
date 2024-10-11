@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -41,7 +41,7 @@ final class ModuleReport private (
     s"\t\t$module: " +
     (if (arts.size <= 1) "" else "\n\t\t\t") + arts.mkString("\n\t\t\t") + "\n"
   }
-  private[this] def copy(module: sbt.librarymanagement.ModuleID = module, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, missingArtifacts: Vector[sbt.librarymanagement.Artifact] = missingArtifacts, status: Option[String] = status, publicationDate: Option[java.util.Calendar] = publicationDate, resolver: Option[String] = resolver, artifactResolver: Option[String] = artifactResolver, evicted: Boolean = evicted, evictedData: Option[String] = evictedData, evictedReason: Option[String] = evictedReason, problem: Option[String] = problem, homepage: Option[String] = homepage, extraAttributes: Map[String, String] = extraAttributes, isDefault: Option[Boolean] = isDefault, branch: Option[String] = branch, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, licenses: Vector[scala.Tuple2[String, Option[String]]] = licenses, callers: Vector[sbt.librarymanagement.Caller] = callers): ModuleReport = {
+  private def copy(module: sbt.librarymanagement.ModuleID = module, artifacts: Vector[scala.Tuple2[sbt.librarymanagement.Artifact, java.io.File]] = artifacts, missingArtifacts: Vector[sbt.librarymanagement.Artifact] = missingArtifacts, status: Option[String] = status, publicationDate: Option[java.util.Calendar] = publicationDate, resolver: Option[String] = resolver, artifactResolver: Option[String] = artifactResolver, evicted: Boolean = evicted, evictedData: Option[String] = evictedData, evictedReason: Option[String] = evictedReason, problem: Option[String] = problem, homepage: Option[String] = homepage, extraAttributes: Map[String, String] = extraAttributes, isDefault: Option[Boolean] = isDefault, branch: Option[String] = branch, configurations: Vector[sbt.librarymanagement.ConfigRef] = configurations, licenses: Vector[scala.Tuple2[String, Option[String]]] = licenses, callers: Vector[sbt.librarymanagement.Caller] = callers): ModuleReport = {
     new ModuleReport(module, artifacts, missingArtifacts, status, publicationDate, resolver, artifactResolver, evicted, evictedData, evictedReason, problem, homepage, extraAttributes, isDefault, branch, configurations, licenses, callers)
   }
   def withModule(module: sbt.librarymanagement.ModuleID): ModuleReport = {

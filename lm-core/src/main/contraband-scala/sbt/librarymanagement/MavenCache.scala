@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class MavenCache private (
   override def toString: String = {
     s"cache:$name: ${rootFile.getAbsolutePath}"
   }
-  private[this] def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, rootFile: java.io.File = rootFile): MavenCache = {
+  private def copy(name: String = name, root: String = root, localIfFile: Boolean = localIfFile, rootFile: java.io.File = rootFile): MavenCache = {
     new MavenCache(name, root, localIfFile, rootFile)
   }
   def withName(name: String): MavenCache = {
