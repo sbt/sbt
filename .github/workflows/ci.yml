@@ -48,6 +48,14 @@ jobs:
             java: 8
             distribution: zulu
             jobtype: 9
+          - os: ubuntu-latest
+            java: 8
+            distribution: temurin
+            jobtype: 10
+          - os: windows-latest
+            java: 8
+            distribution: temurin
+            jobtype: 10
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -59,8 +67,16 @@ jobs:
       JDK11: adopt@1.11.0-9
       SPARK_LOCAL_IP: "127.0.0.1"
     steps:
+      - name: Don't convert LF to CRLF during checkout
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - name: Checkout sbt/sbt
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
       - name: Checkout sbt/io
         uses: actions/checkout@v4
         with:
@@ -210,6 +226,10 @@ jobs:
           cd citest
           ./test.bat
           test3/test3.bat
+      - name: Build and test lm-coursier (10)
+        if: ${{ matrix.jobtype == 10 }}
+        shell: bash
+        run: scripts/lm-coursier-ci.sh
       - name: Cleanup
         shell: bash
         run: |
@@ -220,27 +240,3 @@ jobs:
           find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
           find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true
           find $HOME/.sbt                              -name "*.lock"               -delete || true
-  coursier-test:
-    name: test lm-coursier (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    steps:
-    - name: Don't convert LF to CRLF during checkout
-      if: runner.os == 'Windows'
-      run: |
-        git config --global core.autocrlf false
-        git config --global core.eol lf
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        submodules: true
-    - uses: coursier/cache-action@v6.4
-    - uses: coursier/setup-action@v1.3
-      with:
-        jvm: 8
-        apps: sbt
-    - run: scripts/lm-coursier-ci.sh
-      shell: bash
