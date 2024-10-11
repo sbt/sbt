@@ -12,14 +12,14 @@ lazy val root = (project in file("."))
       organizationName := "eed3si9n",
       organizationHomepage := Some(url("http://example.com/")),
       homepage := Some(url("https://github.com/example/example")),
-      scmInfo := Some(ScmInfo(url("https://github.com/example/example"), "git@github.com:example/example.git")),
+      scmInfo := Some(ScmInfo(uri("https://github.com/example/example"), "git@github.com:example/example.git")),
       developers := List(
-        Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
-        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
-        Developer("jsuereth", "Josh Suereth", "@jsuereth", url("https://github.com/jsuereth")),
-        Developer("dwijnand", "Dale Wijnand", "@dwijnand", url("https://github.com/dwijnand")),
-        Developer("gkossakowski", "Grzegorz Kossakowski", "@gkossakowski", url("https://github.com/gkossakowski")),
-        Developer("Duhemm", "Martin Duhem", "@Duhemm", url("https://github.com/Duhemm"))
+        Developer("harrah", "Mark Harrah", "@harrah", uri("https://github.com/harrah")),
+        Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", uri("https://github.com/eed3si9n")),
+        Developer("jsuereth", "Josh Suereth", "@jsuereth", uri("https://github.com/jsuereth")),
+        Developer("dwijnand", "Dale Wijnand", "@dwijnand", uri("https://github.com/dwijnand")),
+        Developer("gkossakowski", "Grzegorz Kossakowski", "@gkossakowski", uri("https://github.com/gkossakowski")),
+        Developer("Duhemm", "Martin Duhem", "@Duhemm", uri("https://github.com/Duhemm"))
       ),
       version := "0.3.1-SNAPSHOT",
       description := "An HTTP client for Scala with Async Http Client underneath.",
