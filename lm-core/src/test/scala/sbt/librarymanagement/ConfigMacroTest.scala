@@ -6,8 +6,8 @@ import org.scalatest.matchers.should.Matchers
 class ConfigMacroTest extends AnyFunSpec with Matchers {
   describe("Configurations.config") {
     it("should validate the ID in compile time") {
-      """val A = config("a")""" should compile
-      """val b = config("b")""" shouldNot compile
+      """val A = Configurations.config("a")""" should compile
+      """val b = Configurations.config("b")""" shouldNot compile
     }
   }
 }
