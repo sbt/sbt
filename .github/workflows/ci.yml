@@ -52,7 +52,7 @@ jobs:
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
-      SCALA_212: 2.12.19
+      SCALA_212: 2.12.20
       SCALA_3: 3.1.0
       UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
       SBT_LOCAL: false
@@ -79,13 +79,15 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: sbt/zinc
-        ref: develop
+        ref: 1.10.x
         path: zinc
     - name: Setup JDK
       uses: actions/setup-java@v4
       with:
         distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
+    - name: Setup SBT
+      uses: sbt/setup-sbt@v1
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:

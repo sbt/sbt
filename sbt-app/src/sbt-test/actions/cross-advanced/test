@@ -17,7 +17,7 @@
 ## test + with command or alias
 > clean
 ## for command cross building you do need crossScalaVerions on root
-> set root/crossScalaVersions := Seq("2.12.19", "2.13.12")
+> set root/crossScalaVersions := Seq("2.12.20", "2.13.12")
 > + build
 $ exists foo/target/scala-2.12
 $ exists foo/target/scala-2.13
