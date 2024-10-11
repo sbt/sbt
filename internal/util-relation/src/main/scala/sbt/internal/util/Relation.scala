@@ -9,7 +9,6 @@
 package sbt.internal.util
 
 import Relation._
-import scala.collection.compat.*
 
 object Relation {
 

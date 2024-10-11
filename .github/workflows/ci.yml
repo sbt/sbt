@@ -141,10 +141,6 @@ jobs:
           ./sbt -v --client "serverTestProj/test"
           # ./sbt -v --client doc
           ./sbt -v --client "all $UTIL_TESTS"
-          ./sbt -v --client ++2.13.x
-          ./sbt -v --client "all $UTIL_TESTS"
-          ./sbt -v --client ++2.12.x
-          ./sbt -v --client "all $UTIL_TESTS"
       - name: Build and test (2)
         if: ${{ matrix.jobtype == 2 }}
         shell: bash
@@ -171,8 +167,6 @@ jobs:
         shell: bash
         run: |
           ./sbt -v --client test
-          ./sbt -v --client "++2.13.x; all $UTIL_TESTS"
-          ./sbt -v --client "++2.12.x; all $UTIL_TESTS"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash

@@ -104,12 +104,7 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
 
 def utilCommonSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
-  crossScalaVersions := Seq(scala212, scala213, scala3),
-  libraryDependencies += Dependencies.scalaCollectionCompat,
-  libraryDependencies ++= {
-    if (scalaBinaryVersion.value == "3") Nil
-    else Seq(compilerPlugin(kindProjector))
-  }
+  crossScalaVersions := Seq(scala3),
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -336,11 +331,6 @@ lazy val utilCore = project
   .settings(
     utilCommonSettings,
     name := "Util Core",
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value.startsWith("2")) {
-        Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-      } else Seq.empty
-    },
     Utils.keywordsSettings,
     utilMimaSettings
   )
@@ -1337,7 +1327,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     "clean" ::
       "+lowerUtils/compile" ::
       "+lowerUtils/publishSigned" ::
-      s"++$scala212" ::
       state
   },
   commands += Command.command("release") { state =>
@@ -1481,7 +1470,6 @@ lazy val lmCoursierDependencies = Def.settings(
   ),
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
-    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
   ),
 )
 
