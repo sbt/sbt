@@ -1505,10 +1505,6 @@ lazy val lmCoursier = project
       "org.scalatest" %% "scalatest" % "3.2.19" % Test
     ),
     excludeDependencies ++= coursierExcludedDependencies,
-    Test / exportedProducts := {
-      (lmCustomProtocolJavaForTest / publishLocal).value
-      (Test / exportedProducts).value
-    },
     Compile / sourceGenerators += dataclassGen(lmCoursierDefinitions).taskValue,
   )
   .dependsOn(
@@ -1588,39 +1584,3 @@ lazy val lmCoursierShaded = project
     Utils.noPublish,
   )
   .dependsOn(lmIvy % "provided")
-
-lazy val lmCustomProtocolForTest212 = project
-  .in(file("lm-coursier/custom-protocol-for-test-2-12"))
-  .settings(
-    sourceDirectory := file(
-      "lm-coursier/custom-protocol-for-test/src"
-    ).toPath.toAbsolutePath.toFile,
-    scalaVersion := scala212,
-    organization := "org.example",
-    moduleName := "customprotocol-handler",
-    version := "0.1.0",
-    Utils.noPublish
-  )
-
-lazy val lmCustomProtocolForTest213 = project
-  .in(file("lm-coursier/custom-protocol-for-test-2-13"))
-  .settings(
-    sourceDirectory := file(
-      "lm-coursier/custom-protocol-for-test/src"
-    ).toPath.toAbsolutePath.toFile,
-    scalaVersion := scala213,
-    organization := "org.example",
-    moduleName := "customprotocol-handler",
-    version := "0.1.0",
-    Utils.noPublish
-  )
-
-lazy val lmCustomProtocolJavaForTest = project
-  .in(file("lm-coursier/custom-protocol-java-for-test"))
-  .settings(
-    crossPaths := false,
-    organization := "org.example",
-    moduleName := "customprotocoljava-handler",
-    version := "0.1.0",
-    Utils.noPublish
-  )
