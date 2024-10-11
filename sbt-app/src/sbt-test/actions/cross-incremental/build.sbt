@@ -1,5 +1,5 @@
-scalaVersion := "2.12.19"
-crossScalaVersions := List("2.12.19", "2.13.12")
+scalaVersion := "2.12.20"
+crossScalaVersions := List("2.12.20", "2.13.12")
 
 val setLastModified = taskKey[Unit]("Sets the last modified time for classfiles")
 setLastModified := {

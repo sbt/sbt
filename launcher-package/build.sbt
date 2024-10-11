@@ -26,7 +26,7 @@ lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.
       }))
 
 lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.19"
+lazy val scala212 = "2.12.20"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
@@ -34,7 +34,7 @@ lazy val jansi = {
 }
 lazy val scala212Compiler = "org.scala-lang" % "scala-compiler" % scala212
 lazy val scala212Jline = "jline" % "jline" % "2.14.6"
-// use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.19/versions.properties
+// use the scala-xml version used by the compiler not the latest: https://github.com/scala/scala/blob/v2.12.20/versions.properties
 lazy val scala212Xml = "org.scala-lang.modules" % "scala-xml_2.12" % "2.2.0"
 lazy val sbtActual = "org.scala-sbt" % "sbt" % sbtVersionToRelease
 
