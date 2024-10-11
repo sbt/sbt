@@ -1447,20 +1447,6 @@ lazy val lmCoursierSettings: Seq[Setting[_]] = Def.settings(
     ),
 )
 
-lazy val lmCoursierDependencies = Def.settings(
-  libraryDependencies ++= Seq(
-    coursier,
-    coursierSbtMavenRepo,
-    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
-    "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-  ),
-  excludeDependencies ++= Seq(
-    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
-    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
-  ),
-)
-
 lazy val lmCoursierDefinitions = project
   .in(file("lm-coursier/definitions"))
   .disablePlugins(MimaPlugin)
@@ -1477,6 +1463,20 @@ lazy val lmCoursierDefinitions = project
     Utils.noPublish,
   )
   .dependsOn(lmIvy % "provided")
+
+lazy val lmCoursierDependencies = Def.settings(
+  libraryDependencies ++= Seq(
+    coursier,
+    coursierSbtMavenRepo,
+    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
+    "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+  ),
+  excludeDependencies ++= Seq(
+    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
+    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
+  ),
+)
 
 lazy val lmCoursier = project
   .in(file("lm-coursier"))
@@ -1503,23 +1503,13 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
     lmCoursierDependencies,
+    autoScalaLibrary := false,
+    libraryDependencies ++= Seq(
+      scala3Library % Provided,
+    ),
+    assembly / assemblyOption ~= { _.withIncludeScala(false) },
     conflictWarning := ConflictWarning.disable,
     Utils.noPublish,
-    // shadedModules ++= Set(
-    //   "io.get-coursier" %% "coursier",
-    //   "io.get-coursier" %% "coursier-sbt-maven-repository",
-    //   "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
-    // ),
-    // validNamespaces += "lmcoursier",
-    // validEntries ++= Set(
-    //   // FIXME Ideally, we should just strip those from the resulting JAR…
-    //   "README", // from google-collections via plexus-archiver (see below)
-    //   // from plexus-util via plexus-archiver (see below)
-    //   "licenses/extreme.indiana.edu.license.TXT",
-    //   "licenses/javolution.license.TXT",
-    //   "licenses/thoughtworks.TXT",
-    //   "licenses/",
-    // ),
     assemblyShadeRules := {
       val namespacesToShade = Seq(
         "coursier",
