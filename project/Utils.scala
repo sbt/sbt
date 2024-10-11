@@ -1,6 +1,7 @@
 import scala.util.control.NonFatal
 import sbt._
 import Keys._
+import scalafix.sbt.ScalafixPlugin.autoImport.scalafix
 
 import sbt.internal.inc.Analysis
 
@@ -165,6 +166,21 @@ object Utils {
         sourceGenerators += Def.task(Seq(generateKeywords.value)).taskValue
       )
     )
+
+  def dataclassGen(data: Reference) = Def.taskDyn {
+    val root = (ThisBuild / baseDirectory).value.toURI.toString
+    val from = (data / Compile / sourceDirectory).value
+    val to = (Compile / sourceManaged).value
+    val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
+    val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
+    val _ = (data / Compile / compile).value
+    Def.task {
+      val _ = (data / Compile / scalafix)
+        .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
+        .value
+      (to ** "*.scala").get
+    }
+  }
 }
 
 object Licensed {

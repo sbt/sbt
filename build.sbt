@@ -1461,21 +1461,6 @@ lazy val lmCoursierDependencies = Def.settings(
   ),
 )
 
-def dataclassGen(data: Reference) = Def.taskDyn {
-  val root = (ThisBuild / baseDirectory).value.toURI.toString
-  val from = (data / Compile / sourceDirectory).value
-  val to = (Compile / sourceManaged).value
-  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
-  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
-  val _ = (data / Compile / compile).value
-  Def.task {
-    val _ = (data / Compile / scalafix)
-      .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
-      .value
-    (to ** "*.scala").get
-  }
-}
-
 lazy val lmCoursierDefinitions = project
   .in(file("lm-coursier/definitions"))
   .disablePlugins(MimaPlugin)
@@ -1500,7 +1485,7 @@ lazy val lmCoursier = project
     Mima.settings,
     Mima.lmCoursierFilters,
     lmCoursierDependencies,
-    Compile / sourceGenerators += dataclassGen(lmCoursierDefinitions).taskValue,
+    Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
   )
   .dependsOn(
     // We depend on lmIvy rather than just lmCore to handle the ModuleDescriptor
