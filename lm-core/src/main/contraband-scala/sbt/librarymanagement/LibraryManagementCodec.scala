@@ -49,6 +49,7 @@ trait LibraryManagementCodec extends sbt.librarymanagement.ConfigRefFormats
   with sbt.librarymanagement.SftpRepositoryFormats
   with sbt.librarymanagement.ResolverFormats
   with sbt.librarymanagement.ModuleConfigurationFormats
+  with sbt.librarymanagement.LicenseInfoFormats
   with sbt.librarymanagement.ScmInfoFormats
   with sbt.librarymanagement.ModuleInfoFormats
   with sbt.librarymanagement.IvyFileConfigurationFormats
