@@ -157,11 +157,6 @@ object Dependencies {
     ("io.get-coursier" %% "coursier-sbt-maven-repository" % coursierVersion)
       .cross(CrossVersion.for3Use2_13)
 
-  val coursierExcludedDependencies = Seq(
-    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
-    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13"),
-  )
-
   // FIXME Ideally, we should depend on the same version of io.get-coursier.jniutils:windows-jni-utils that
   // io.get-coursier::coursier depends on.
   val jniUtilsVersion = "0.3.3"

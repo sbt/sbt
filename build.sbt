@@ -5,6 +5,7 @@ import local.Scripted
 import java.nio.file.{ Files, Path => JPath }
 import java.util.Locale
 import sbt.internal.inc.Analysis
+import com.eed3si9n.jarjarabrams.ModuleCoordinate
 
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
@@ -1426,7 +1427,7 @@ lazy val lmIvy = (project in file("lm-ivy"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
   )
 
-def lmCoursierSettings: Seq[Setting[_]] = Def.settings(
+lazy val lmCoursierSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
   headerLicense := None,
   developers +=
@@ -1436,28 +1437,20 @@ def lmCoursierSettings: Seq[Setting[_]] = Def.settings(
       "",
       url("https://github.com/alexarchambault")
     ),
-  scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixVersion,
-  assemblyMergeStrategy := {
-    case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", _*) =>
-      MergeStrategy.first
-    // case PathList("lmcoursier", "internal", "shaded", "package.class") => MergeStrategy.first
-    // case PathList("lmcoursier", "internal", "shaded", "package$.class") => MergeStrategy.first
-    case PathList("com", "github")          => MergeStrategy.discard
-    case PathList("com", "jcraft")          => MergeStrategy.discard
-    case PathList("com", "lmax")            => MergeStrategy.discard
-    case PathList("com", "sun")             => MergeStrategy.discard
-    case PathList("com", "swoval")          => MergeStrategy.discard
-    case PathList("com", "typesafe")        => MergeStrategy.discard
-    case PathList("gigahorse")              => MergeStrategy.discard
-    case PathList("jline")                  => MergeStrategy.discard
-    case PathList("scala")                  => MergeStrategy.discard
-    case PathList("sjsonnew")               => MergeStrategy.discard
-    case PathList("xsbti")                  => MergeStrategy.discard
-    case PathList("META-INF", "native", _*) => MergeStrategy.first
-    case x =>
-      val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
-      oldStrategy(x)
-  }
+)
+
+lazy val lmCoursierDependencies = Def.settings(
+  libraryDependencies ++= Seq(
+    coursier,
+    coursierSbtMavenRepo,
+    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
+    "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+  ),
+  excludeDependencies ++= Seq(
+    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
+    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
+  ),
 )
 
 def dataclassGen(data: Reference) = Def.taskDyn {
@@ -1466,9 +1459,9 @@ def dataclassGen(data: Reference) = Def.taskDyn {
   val to = (Compile / sourceManaged).value
   val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
   val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
-  (data / Compile / compile).value
+  val _ = (data / Compile / compile).value
   Def.task {
-    (data / Compile / scalafix)
+    val _ = (data / Compile / scalafix)
       .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
       .value
     (to ** "*.scala").get
@@ -1482,6 +1475,7 @@ lazy val lmCoursierDefinitions = project
     lmCoursierSettings,
     semanticdbEnabled := true,
     semanticdbVersion := scalafixSemanticdb.revision,
+    scalafixDependencies += "net.hamnaberg" %% "dataclass-scalafix" % dataclassScalafixVersion,
     libraryDependencies ++= Seq(
       coursier,
       "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
@@ -1497,14 +1491,7 @@ lazy val lmCoursier = project
     lmCoursierSettings,
     Mima.settings,
     Mima.lmCoursierFilters,
-    libraryDependencies ++= Seq(
-      coursier,
-      coursierSbtMavenRepo,
-      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-      "org.scalatest" %% "scalatest" % "3.2.19" % Test
-    ),
-    excludeDependencies ++= coursierExcludedDependencies,
+    lmCoursierDependencies,
     Compile / sourceGenerators += dataclassGen(lmCoursierDefinitions).taskValue,
   )
   .dependsOn(
@@ -1512,15 +1499,6 @@ lazy val lmCoursier = project
     // passed to DependencyResolutionInterface.update, which is an IvySbt#Module
     // (seems DependencyResolutionInterface.moduleDescriptor is ignored).
     lmIvy
-  )
-
-lazy val lmCoursierShadedPublishing = project
-  .in(file("lm-coursier/target/shaded-publishing-module"))
-  .settings(
-    scalaVersion := scala3,
-    name := "librarymanagement-coursier",
-    Compile / packageBin := (lmCoursierShaded / assembly).value,
-    Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
 
 lazy val lmCoursierShaded = project
@@ -1531,6 +1509,9 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
+    lmCoursierDependencies,
+    conflictWarning := ConflictWarning.disable,
+    Utils.noPublish,
     // shadedModules ++= Set(
     //   "io.get-coursier" %% "coursier",
     //   "io.get-coursier" %% "coursier-sbt-maven-repository",
@@ -1547,7 +1528,7 @@ lazy val lmCoursierShaded = project
     //   "licenses/",
     // ),
     assemblyShadeRules := {
-      val toShade = Seq(
+      val namespacesToShade = Seq(
         "coursier",
         "org.fusesource",
         "macrocompat",
@@ -1569,18 +1550,41 @@ lazy val lmCoursierShaded = project
         "com.github.luben.zstd",
         "javax.inject" // hope shading this is fine… It's probably pulled via plexus-archiver, that sbt shouldn't use anyway…
       )
-      for (ns <- toShade)
-        yield ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
+      namespacesToShade.map { ns =>
+        ShadeRule.rename(ns + ".**" -> s"lmcoursier.internal.shaded.$ns.@1").inAll
+      }
     },
-    libraryDependencies ++= Seq(
-      coursier,
-      coursierSbtMavenRepo,
-      "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
-      "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-      "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-    ),
-    excludeDependencies ++= coursierExcludedDependencies,
-    conflictWarning := ConflictWarning.disable,
-    Utils.noPublish,
+    assemblyMergeStrategy := {
+      case PathList("lmcoursier", "internal", "shaded", "org", "fusesource", _*) =>
+        MergeStrategy.first
+      // case PathList("lmcoursier", "internal", "shaded", "package.class") => MergeStrategy.first
+      // case PathList("lmcoursier", "internal", "shaded", "package$.class") => MergeStrategy.first
+      case PathList("com", "github")          => MergeStrategy.discard
+      case PathList("com", "jcraft")          => MergeStrategy.discard
+      case PathList("com", "lmax")            => MergeStrategy.discard
+      case PathList("com", "sun")             => MergeStrategy.discard
+      case PathList("com", "swoval")          => MergeStrategy.discard
+      case PathList("com", "typesafe")        => MergeStrategy.discard
+      case PathList("gigahorse")              => MergeStrategy.discard
+      case PathList("jline")                  => MergeStrategy.discard
+      case PathList("scala")                  => MergeStrategy.discard
+      case PathList("sjsonnew")               => MergeStrategy.discard
+      case PathList("xsbti")                  => MergeStrategy.discard
+      case PathList("META-INF", "native", _*) => MergeStrategy.first
+      case "META-INF/services/lmcoursier.internal.shaded.coursier.jniutils.NativeApi" =>
+        MergeStrategy.first
+      case x =>
+        val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
+        oldStrategy(x)
+    }
   )
   .dependsOn(lmIvy % "provided")
+
+lazy val lmCoursierShadedPublishing = project
+  .in(file("lm-coursier/target/shaded-publishing-module"))
+  .settings(
+    scalaVersion := scala3,
+    name := "librarymanagement-coursier",
+    Compile / packageBin := (lmCoursierShaded / assembly).value,
+    Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
+  )
