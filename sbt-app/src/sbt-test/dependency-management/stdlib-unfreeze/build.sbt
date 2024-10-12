@@ -1,26 +1,26 @@
 import sbt.librarymanagement.InclExclRule
 
 lazy val a = project.settings(
-  scalaVersion := "2.13.6",
+  scalaVersion := "2.13.11",
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  TaskKey[Unit]("checkLibs") := checkLibs("2.13.6", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
+  TaskKey[Unit]("checkLibs") := checkLibs("2.13.11", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
 )
 
 lazy val b = project.dependsOn(a).settings(
-  scalaVersion := "2.13.8",
-  TaskKey[Unit]("checkLibs") := checkLibs("2.13.8", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
+  scalaVersion := "2.13.12",
+  TaskKey[Unit]("checkLibs") := checkLibs("2.13.12", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
 )
 
 lazy val a3 = project.settings(
-  scalaVersion := "3.2.2", // 2.13.10 library
+  scalaVersion := "3.3.4", // 2.13.14 library
 )
 
 lazy val b3 = project.dependsOn(a3).settings(
-  scalaVersion := "3.2.0", // 2.13.8 library
+  scalaVersion := "3.3.2", // 2.13.12 library
   TaskKey[Unit]("checkScala") := {
     val i = scalaInstance.value
     i.libraryJars.filter(_.toString.contains("scala-library")).toList match {
-      case List(l) => assert(l.toString.contains("2.13.10"), i.toString)
+      case List(l) => assert(l.toString.contains("2.13.14"), i.toString)
     }
     assert(i.compilerJars.filter(_.toString.contains("scala-library")).isEmpty, i.toString)
     assert(i.otherJars.filter(_.toString.contains("scala-library")).isEmpty, i.toString)

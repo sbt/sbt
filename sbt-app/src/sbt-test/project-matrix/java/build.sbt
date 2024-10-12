@@ -10,7 +10,7 @@ ivyPaths := {
 lazy val config12 = ConfigAxis("Config1_2", "-config1.2")
 lazy val config13 = ConfigAxis("Config1_3", "-config1.3")
 
-lazy val scala212 = "2.12.10"
+lazy val scala212 = "2.12.20"
 
 lazy val app = (projectMatrix in file("app"))
   .settings(

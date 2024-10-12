@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.20"
 
 val dependency = project.settings(exportJars := true)
 val descendant = project
