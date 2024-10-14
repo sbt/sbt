@@ -117,6 +117,7 @@ jobs:
           rm -rf "$HOME/.ivy2/local" || true
           rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
       - name: Publish local Zinc
+        if: ${{ matrix.jobtype == 6 }}
         shell: bash
         run: |
           ./sbt -v lowerUtils/publishLocal
