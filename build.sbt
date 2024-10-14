@@ -104,7 +104,6 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
 
 def utilCommonSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
-  crossScalaVersions := Seq(scala3),
 )
 
 def minimalSettings: Seq[Setting[_]] =
