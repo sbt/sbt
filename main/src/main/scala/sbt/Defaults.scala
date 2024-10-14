@@ -3373,7 +3373,7 @@ object Classpaths {
       val ac = appConfiguration.value
       val ip = ivyPaths.value
       // if ivyPaths is customized, create coursier-cache directory in it
-      val defaultIvyCache = bootIvyHome(ac)
+      val defaultIvyCache = bootIvyHome(ac).map(_.toString)
       if (old != LMCoursier.defaultCacheLocation) old
       else if (ip.ivyHome == defaultIvyCache) old
       else
