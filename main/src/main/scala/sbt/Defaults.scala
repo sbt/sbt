@@ -700,8 +700,8 @@ object Defaults extends BuildCommon {
     pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
       (pluginCrossBuild / sbtVersion).value
     ),
-    // Use (sbtVersion in pluginCrossBuild) to pick the sbt module to depend from the plugin.
-    // Because `sbtVersion in pluginCrossBuild` can be scoped to project level,
+    // Use (pluginCrossBuild / sbtVersion) to pick the sbt module to depend from the plugin.
+    // Because `pluginCrossBuild / sbtVersion` can be scoped to project level,
     // this setting needs to be set here too.
     pluginCrossBuild / sbtDependency := {
       val app = appConfiguration.value

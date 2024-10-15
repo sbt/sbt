@@ -46,7 +46,7 @@ private[sbt] object PluginCross {
       case (state, (version, command)) =>
         val x = Project.extract(state)
         import x._
-        state.log.info(s"Setting `sbtVersion in pluginCrossBuild` to $version")
+        state.log.info(s"Setting `pluginCrossBuild / sbtVersion` to $version")
         val add = List(GlobalScope / pluginCrossBuild / sbtVersion :== version) ++
           List(scalaVersion := scalaVersionSetting.value) ++
           inScope(GlobalScope.copy(project = Select(currentRef)))(

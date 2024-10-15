@@ -407,7 +407,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
   Runs <command> for each sbt version specified for cross-building.
 
   For each string in `crossSbtVersions` in the current project, this command sets the
-  `sbtVersion in pluginCrossBuild` of all projects to that version, reloads the build,
+  `pluginCrossBuild / sbtVersion` of all projects to that version, reloads the build,
   and executes <command>.  When finished, it reloads the build with the original
   Scala version.
 
@@ -418,7 +418,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
     s"""$PluginSwitchCommand <sbt-version> [<command>]
   Changes the sbt version and runs a command.
 
-  Sets the `sbtVersion in pluginCrossBuild` of all projects to <sbt-version> and
+  Sets the `pluginCrossBuild / sbtVersion` of all projects to <sbt-version> and
   reloads the build. If <command> is provided, it is then executed.
 
   See also `help $CrossCommand`
