@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TaskProgressParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
+trait TaskProgressParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sjsonnew.BasicJsonProtocol with sbt.internal.util.codec.JValueFormats =>
 implicit lazy val TaskProgressParamsFormat: JsonFormat[sbt.internal.bsp.TaskProgressParams] = new JsonFormat[sbt.internal.bsp.TaskProgressParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.TaskProgressParams = {
     __jsOpt match {
