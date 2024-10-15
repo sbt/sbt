@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ScalaTextEditFormats { self: sbt.internal.bsp.codec.RangeFormats with sjsonnew.BasicJsonProtocol =>
+trait ScalaTextEditFormats { self: sbt.internal.bsp.codec.RangeFormats with sbt.internal.bsp.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ScalaTextEditFormat: JsonFormat[sbt.internal.bsp.ScalaTextEdit] = new JsonFormat[sbt.internal.bsp.ScalaTextEdit] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.ScalaTextEdit = {
     __jsOpt match {
