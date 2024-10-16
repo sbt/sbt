@@ -13,23 +13,23 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 2
           - os: ubuntu-latest
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 3
           - os: ubuntu-latest
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 4
           - os: ubuntu-latest
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 5
           - os: ubuntu-latest
@@ -143,7 +143,7 @@ jobs:
       if: ${{ matrix.jobtype == 5 }}
       shell: bash
       run: |
-        ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test; ++$SCALA_3!; all utilControl/test utilRelation/test utilPosition/test"
+        ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test"
     - name: Build and test (6)
       if: ${{ matrix.jobtype == 6 }}
       shell: bash

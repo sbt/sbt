@@ -16,11 +16,8 @@ class ZincComponentCompilerSpec extends IvyBridgeProviderSpecification {
   val scala2106 = "2.10.6"
   val scala2118 = "2.11.8"
   val scala21111 = "2.11.11"
-  val scala2121 = "2.12.1"
-  val scala2122 = "2.12.2"
-  val scala2123 = "2.12.3"
-  val scala2130 = "2.13.0"
-  val scala2131 = "2.13.1"
+  val scala21220 = "2.12.20"
+  val scala21311 = "2.13.11"
 
   def isJava8: Boolean = sys.props("java.specification.version") == "1.8"
 
@@ -40,14 +37,11 @@ class ZincComponentCompilerSpec extends IvyBridgeProviderSpecification {
     } else ()
   }
 
-  it should "compile the bridge for Scala 2.12.2" in { implicit td =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2121) should exist)
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2122) should exist)
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2123) should exist)
+  it should "compile the bridge for Scala 2.12.20" in { implicit td =>
+    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21220) should exist)
   }
 
-  it should "compile the bridge for Scala 2.13" in { implicit td =>
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2130) should exist)
-    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala2131) should exist)
+  it should "compile the bridge for Scala 2.13.11" in { implicit td =>
+    IO.withTemporaryDirectory(t => getCompilerBridge(t, logger, scala21311) should exist)
   }
 }

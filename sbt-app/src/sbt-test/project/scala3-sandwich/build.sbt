@@ -1,6 +1,6 @@
-ThisBuild / scalaVersion := "3.0.0"
+ThisBuild / scalaVersion := "3.3.4"
 
-lazy val scala213 = "2.13.6"
+lazy val scala213 = "2.13.15"
 
 lazy val root = (project in file("."))
   .aggregate(fooApp, fooCore, barApp, barCore)

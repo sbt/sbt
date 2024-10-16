@@ -1,14 +1,14 @@
-> ++3.0.2 compile
+> ++3.3.1 compile
 
-$ exists core/target/scala-3.0.2
--$ exists core/target/scala-3.1.2
--$ exists subproj/target/scala-3.0.2
--$ exists subproj/target/scala-3.1.2
+$ exists core/target/scala-3.3.1
+-$ exists core/target/scala-3.5.1
+-$ exists subproj/target/scala-3.3.1
+-$ exists subproj/target/scala-3.5.1
 
 > clean
-> ++3.1.2 compile
+> ++3.5.1 compile
 
--$ exists core/target/scala-3.0.2
-$ exists core/target/scala-3.1.2
--$ exists subproj/target/scala-3.0.2
-$ exists subproj/target/scala-3.1.2
+-$ exists core/target/scala-3.3.1
+$ exists core/target/scala-3.5.1
+-$ exists subproj/target/scala-3.3.1
+$ exists subproj/target/scala-3.5.1
