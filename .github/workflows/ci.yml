@@ -57,6 +57,7 @@ jobs:
             distribution: temurin
             jobtype: 10
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
