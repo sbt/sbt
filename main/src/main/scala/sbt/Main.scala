@@ -589,7 +589,7 @@ object BuiltinCommands {
     // For correct behavior, we also need to re-inject a settings logger, as we'll be re-evaluating settings
     val loggerInject = LogManager.settingsLogger(s)
     val withLogger = newSession.appendRaw(loggerInject :: Nil)
-    val show = Project.showContextKey2(newSession)
+    val show = Project.showContextKey(newSession)
     val newStructure = Load.reapply(withLogger.mergeSettings, structure)(show)
     Project.setProject(newSession, newStructure, s)
   }

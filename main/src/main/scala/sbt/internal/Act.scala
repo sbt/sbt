@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import Def.{ showRelativeKey2, ScopedKey }
+import Def.{ showRelativeKey, ScopedKey }
 import Keys.sessionSettings
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import Aggregation.{ KeyValue, Values }
@@ -120,7 +120,7 @@ object Act {
   ): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap, askProject = askProject).flatMap {
       choices =>
-        select(choices, data)(showRelativeKey2(current))
+        select(choices, data)(showRelativeKey(current))
     }
 
   def scopedKeyFull(
