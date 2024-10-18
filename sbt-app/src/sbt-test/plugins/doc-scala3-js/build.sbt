@@ -1,4 +1,4 @@
-val scala3Version = "3.0.1-RC1-bin-20210525-8f3fdf5-NIGHTLY"
+val scala3Version = "3.3.4"
 
 enablePlugins(ScalaJSPlugin)
 
