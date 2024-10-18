@@ -10,13 +10,14 @@ final class ModuleInfo private (
   val description: String,
   val homepage: Option[java.net.URI],
   val startYear: Option[Int],
-  val licenses: Vector[scala.Tuple2[String, java.net.URI]],
+  val licenses: Vector[sbt.librarymanagement.LicenseInfo],
   val organizationName: String,
   val organizationHomepage: Option[java.net.URI],
   val scmInfo: Option[sbt.librarymanagement.ScmInfo],
   val developers: Vector[sbt.librarymanagement.Developer]) extends Serializable {
   
   private def this(nameFormal: String) = this(nameFormal, "", None, None, Vector.empty, "", None, None, Vector.empty)
+  private def this(nameFormal: String, description: String, homepage: Option[java.net.URI], startYear: Option[Int], organizationName: String, organizationHomepage: Option[java.net.URI], scmInfo: Option[sbt.librarymanagement.ScmInfo], developers: Vector[sbt.librarymanagement.Developer]) = this(nameFormal, description, homepage, startYear, Vector.empty, organizationName, organizationHomepage, scmInfo, developers)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: ModuleInfo => (this.nameFormal == x.nameFormal) && (this.description == x.description) && (this.homepage == x.homepage) && (this.startYear == x.startYear) && (this.licenses == x.licenses) && (this.organizationName == x.organizationName) && (this.organizationHomepage == x.organizationHomepage) && (this.scmInfo == x.scmInfo) && (this.developers == x.developers)
@@ -28,7 +29,7 @@ final class ModuleInfo private (
   override def toString: String = {
     "ModuleInfo(" + nameFormal + ", " + description + ", " + homepage + ", " + startYear + ", " + licenses + ", " + organizationName + ", " + organizationHomepage + ", " + scmInfo + ", " + developers + ")"
   }
-  private def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URI] = homepage, startYear: Option[Int] = startYear, licenses: Vector[scala.Tuple2[String, java.net.URI]] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URI] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
+  private def copy(nameFormal: String = nameFormal, description: String = description, homepage: Option[java.net.URI] = homepage, startYear: Option[Int] = startYear, licenses: Vector[sbt.librarymanagement.LicenseInfo] = licenses, organizationName: String = organizationName, organizationHomepage: Option[java.net.URI] = organizationHomepage, scmInfo: Option[sbt.librarymanagement.ScmInfo] = scmInfo, developers: Vector[sbt.librarymanagement.Developer] = developers): ModuleInfo = {
     new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
   }
   def withNameFormal(nameFormal: String): ModuleInfo = {
@@ -43,7 +44,7 @@ final class ModuleInfo private (
   def withStartYear(startYear: Option[Int]): ModuleInfo = {
     copy(startYear = startYear)
   }
-  def withLicenses(licenses: Vector[scala.Tuple2[String, java.net.URI]]): ModuleInfo = {
+  def withLicenses(licenses: Vector[sbt.librarymanagement.LicenseInfo]): ModuleInfo = {
     copy(licenses = licenses)
   }
   def withOrganizationName(organizationName: String): ModuleInfo = {
@@ -62,5 +63,6 @@ final class ModuleInfo private (
 object ModuleInfo {
   
   def apply(nameFormal: String): ModuleInfo = new ModuleInfo(nameFormal)
-  def apply(nameFormal: String, description: String, homepage: Option[java.net.URI], startYear: Option[Int], licenses: Vector[scala.Tuple2[String, java.net.URI]], organizationName: String, organizationHomepage: Option[java.net.URI], scmInfo: Option[sbt.librarymanagement.ScmInfo], developers: Vector[sbt.librarymanagement.Developer]): ModuleInfo = new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
+  def apply(nameFormal: String, description: String, homepage: Option[java.net.URI], startYear: Option[Int], organizationName: String, organizationHomepage: Option[java.net.URI], scmInfo: Option[sbt.librarymanagement.ScmInfo], developers: Vector[sbt.librarymanagement.Developer]): ModuleInfo = new ModuleInfo(nameFormal, description, homepage, startYear, organizationName, organizationHomepage, scmInfo, developers)
+  def apply(nameFormal: String, description: String, homepage: Option[java.net.URI], startYear: Option[Int], licenses: Vector[sbt.librarymanagement.LicenseInfo], organizationName: String, organizationHomepage: Option[java.net.URI], scmInfo: Option[sbt.librarymanagement.ScmInfo], developers: Vector[sbt.librarymanagement.Developer]): ModuleInfo = new ModuleInfo(nameFormal, description, homepage, startYear, licenses, organizationName, organizationHomepage, scmInfo, developers)
 }
