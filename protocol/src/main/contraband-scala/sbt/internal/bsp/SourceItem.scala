@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -30,7 +30,7 @@ final class SourceItem private (
   override def toString: String = {
     "SourceItem(" + uri + ", " + kind + ", " + generated + ")"
   }
-  private[this] def copy(uri: java.net.URI = uri, kind: Int = kind, generated: Boolean = generated): SourceItem = {
+  private def copy(uri: java.net.URI = uri, kind: Int = kind, generated: Boolean = generated): SourceItem = {
     new SourceItem(uri, kind, generated)
   }
   def withUri(uri: java.net.URI): SourceItem = {

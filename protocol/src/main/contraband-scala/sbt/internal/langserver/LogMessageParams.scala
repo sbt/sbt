@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class LogMessageParams private (
   override def toString: String = {
     "LogMessageParams(" + `type` + ", " + message + ")"
   }
-  private[this] def copy(`type`: Long = `type`, message: String = message): LogMessageParams = {
+  private def copy(`type`: Long = `type`, message: String = message): LogMessageParams = {
     new LogMessageParams(`type`, message)
   }
   def withType(`type`: Long): LogMessageParams = {

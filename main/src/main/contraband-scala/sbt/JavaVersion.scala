@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -30,7 +30,7 @@ final class JavaVersion private (
   override def toString: String = {
     vendor.map(_ + "@").getOrElse("") + numberStr + tagStr
   }
-  private[this] def copy(numbers: Vector[Long] = numbers, tags: Vector[String] = tags, vendor: Option[String] = vendor): JavaVersion = {
+  private def copy(numbers: Vector[Long] = numbers, tags: Vector[String] = tags, vendor: Option[String] = vendor): JavaVersion = {
     new JavaVersion(numbers, tags, vendor)
   }
   def withNumbers(numbers: Vector[Long]): JavaVersion = {

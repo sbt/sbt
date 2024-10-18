@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -34,7 +34,7 @@ final class ScalaBuildTarget private (
   override def toString: String = {
     "ScalaBuildTarget(" + scalaOrganization + ", " + scalaVersion + ", " + scalaBinaryVersion + ", " + platform + ", " + jars + ")"
   }
-  private[this] def copy(scalaOrganization: String = scalaOrganization, scalaVersion: String = scalaVersion, scalaBinaryVersion: String = scalaBinaryVersion, platform: Int = platform, jars: Vector[String] = jars): ScalaBuildTarget = {
+  private def copy(scalaOrganization: String = scalaOrganization, scalaVersion: String = scalaVersion, scalaBinaryVersion: String = scalaBinaryVersion, platform: Int = platform, jars: Vector[String] = jars): ScalaBuildTarget = {
     new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars)
   }
   def withScalaOrganization(scalaOrganization: String): ScalaBuildTarget = {

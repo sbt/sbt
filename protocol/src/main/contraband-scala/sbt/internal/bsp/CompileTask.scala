@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class CompileTask private (
   override def toString: String = {
     "CompileTask(" + target + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target): CompileTask = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target): CompileTask = {
     new CompileTask(target)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): CompileTask = {

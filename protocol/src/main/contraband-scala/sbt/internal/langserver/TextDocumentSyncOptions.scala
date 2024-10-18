@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class TextDocumentSyncOptions private (
   override def toString: String = {
     "TextDocumentSyncOptions(" + openClose + ", " + change + ", " + willSave + ", " + willSaveWaitUntil + ", " + save + ")"
   }
-  private[this] def copy(openClose: Option[Boolean] = openClose, change: Option[Long] = change, willSave: Option[Boolean] = willSave, willSaveWaitUntil: Option[Boolean] = willSaveWaitUntil, save: Option[sbt.internal.langserver.SaveOptions] = save): TextDocumentSyncOptions = {
+  private def copy(openClose: Option[Boolean] = openClose, change: Option[Long] = change, willSave: Option[Boolean] = willSave, willSaveWaitUntil: Option[Boolean] = willSaveWaitUntil, save: Option[sbt.internal.langserver.SaveOptions] = save): TextDocumentSyncOptions = {
     new TextDocumentSyncOptions(openClose, change, willSave, willSaveWaitUntil, save)
   }
   def withOpenClose(openClose: Option[Boolean]): TextDocumentSyncOptions = {

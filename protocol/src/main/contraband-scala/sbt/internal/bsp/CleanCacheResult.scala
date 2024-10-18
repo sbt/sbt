@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class CleanCacheResult private (
   override def toString: String = {
     "CleanCacheResult(" + message + ", " + cleaned + ")"
   }
-  private[this] def copy(message: Option[String] = message, cleaned: Boolean = cleaned): CleanCacheResult = {
+  private def copy(message: Option[String] = message, cleaned: Boolean = cleaned): CleanCacheResult = {
     new CleanCacheResult(message, cleaned)
   }
   def withMessage(message: Option[String]): CleanCacheResult = {

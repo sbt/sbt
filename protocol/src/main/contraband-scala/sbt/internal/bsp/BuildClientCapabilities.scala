@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class BuildClientCapabilities private (
   override def toString: String = {
     "BuildClientCapabilities(" + languageIds + ")"
   }
-  private[this] def copy(languageIds: Vector[String] = languageIds): BuildClientCapabilities = {
+  private def copy(languageIds: Vector[String] = languageIds): BuildClientCapabilities = {
     new BuildClientCapabilities(languageIds)
   }
   def withLanguageIds(languageIds: Vector[String]): BuildClientCapabilities = {

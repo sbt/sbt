@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class ProgressItem private (
   override def toString: String = {
     "ProgressItem(" + name + ", " + elapsedMicros + ")"
   }
-  private[this] def copy(name: String = name, elapsedMicros: Long = elapsedMicros): ProgressItem = {
+  private def copy(name: String = name, elapsedMicros: Long = elapsedMicros): ProgressItem = {
     new ProgressItem(name, elapsedMicros)
   }
   def withName(name: String): ProgressItem = {

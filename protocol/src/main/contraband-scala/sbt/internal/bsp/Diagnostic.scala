@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -43,7 +43,7 @@ final class Diagnostic private (
   override def toString: String = {
     "Diagnostic(" + range + ", " + severity + ", " + code + ", " + source + ", " + message + ", " + relatedInformation + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(range: sbt.internal.bsp.Range = range, severity: Option[Long] = severity, code: Option[String] = code, source: Option[String] = source, message: String = message, relatedInformation: Vector[sbt.internal.bsp.DiagnosticRelatedInformation] = relatedInformation, dataKind: Option[String] = dataKind, data: Option[sbt.internal.bsp.ScalaDiagnostic] = data): Diagnostic = {
+  private def copy(range: sbt.internal.bsp.Range = range, severity: Option[Long] = severity, code: Option[String] = code, source: Option[String] = source, message: String = message, relatedInformation: Vector[sbt.internal.bsp.DiagnosticRelatedInformation] = relatedInformation, dataKind: Option[String] = dataKind, data: Option[sbt.internal.bsp.ScalaDiagnostic] = data): Diagnostic = {
     new Diagnostic(range, severity, code, source, message, relatedInformation, dataKind, data)
   }
   def withRange(range: sbt.internal.bsp.Range): Diagnostic = {

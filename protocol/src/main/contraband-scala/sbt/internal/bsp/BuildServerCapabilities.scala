@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -35,7 +35,7 @@ final class BuildServerCapabilities private (
   override def toString: String = {
     "BuildServerCapabilities(" + compileProvider + ", " + testProvider + ", " + runProvider + ", " + debugProvider + ", " + dependencySourcesProvider + ", " + resourcesProvider + ", " + outputPathsProvider + ", " + canReload + ", " + jvmRunEnvironmentProvider + ", " + jvmTestEnvironmentProvider + ")"
   }
-  private[this] def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, debugProvider: Option[sbt.internal.bsp.DebugProvider] = debugProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, resourcesProvider: Option[Boolean] = resourcesProvider, outputPathsProvider: Option[Boolean] = outputPathsProvider, canReload: Option[Boolean] = canReload, jvmRunEnvironmentProvider: Option[Boolean] = jvmRunEnvironmentProvider, jvmTestEnvironmentProvider: Option[Boolean] = jvmTestEnvironmentProvider): BuildServerCapabilities = {
+  private def copy(compileProvider: Option[sbt.internal.bsp.CompileProvider] = compileProvider, testProvider: Option[sbt.internal.bsp.TestProvider] = testProvider, runProvider: Option[sbt.internal.bsp.RunProvider] = runProvider, debugProvider: Option[sbt.internal.bsp.DebugProvider] = debugProvider, dependencySourcesProvider: Option[Boolean] = dependencySourcesProvider, resourcesProvider: Option[Boolean] = resourcesProvider, outputPathsProvider: Option[Boolean] = outputPathsProvider, canReload: Option[Boolean] = canReload, jvmRunEnvironmentProvider: Option[Boolean] = jvmRunEnvironmentProvider, jvmTestEnvironmentProvider: Option[Boolean] = jvmTestEnvironmentProvider): BuildServerCapabilities = {
     new BuildServerCapabilities(compileProvider, testProvider, runProvider, debugProvider, dependencySourcesProvider, resourcesProvider, outputPathsProvider, canReload, jvmRunEnvironmentProvider, jvmTestEnvironmentProvider)
   }
   def withCompileProvider(compileProvider: Option[sbt.internal.bsp.CompileProvider]): BuildServerCapabilities = {

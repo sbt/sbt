@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class TestStringEvent private (
   override def toString: String = {
     value
   }
-  private[this] def copy(value: String = value): TestStringEvent = {
+  private def copy(value: String = value): TestStringEvent = {
     new TestStringEvent(value)
   }
   def withValue(value: String): TestStringEvent = {

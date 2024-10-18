@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class DebugSessionAddress private (
   override def toString: String = {
     "DebugSessionAddress(" + uri + ")"
   }
-  private[this] def copy(uri: java.net.URI = uri): DebugSessionAddress = {
+  private def copy(uri: java.net.URI = uri): DebugSessionAddress = {
     new DebugSessionAddress(uri)
   }
   def withUri(uri: java.net.URI): DebugSessionAddress = {

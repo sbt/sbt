@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class MetalsMetadata private (
   override def toString: String = {
     "MetalsMetadata(" + semanticdbVersion + ", " + supportedScalaVersions + ")"
   }
-  private[this] def copy(semanticdbVersion: String = semanticdbVersion, supportedScalaVersions: Vector[String] = supportedScalaVersions): MetalsMetadata = {
+  private def copy(semanticdbVersion: String = semanticdbVersion, supportedScalaVersions: Vector[String] = supportedScalaVersions): MetalsMetadata = {
     new MetalsMetadata(semanticdbVersion, supportedScalaVersions)
   }
   def withSemanticdbVersion(semanticdbVersion: String): MetalsMetadata = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -31,7 +31,7 @@ final class BspConnectionDetails private (
   override def toString: String = {
     "BspConnectionDetails(" + name + ", " + version + ", " + bspVersion + ", " + languages + ", " + argv + ")"
   }
-  private[this] def copy(name: String = name, version: String = version, bspVersion: String = bspVersion, languages: Vector[String] = languages, argv: Vector[String] = argv): BspConnectionDetails = {
+  private def copy(name: String = name, version: String = version, bspVersion: String = bspVersion, languages: Vector[String] = languages, argv: Vector[String] = argv): BspConnectionDetails = {
     new BspConnectionDetails(name, version, bspVersion, languages, argv)
   }
   def withName(name: String): BspConnectionDetails = {
