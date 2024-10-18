@@ -383,7 +383,7 @@ object Keys {
   val description = settingKey[String]("Project description.").withRank(BSetting)
   val homepage = settingKey[Option[URL]]("Project homepage.").withRank(BSetting)
   val startYear = settingKey[Option[Int]]("Year in which the project started.").withRank(BMinusSetting)
-  val licenses = settingKey[Seq[(String, URL)]]("Project licenses as (name, url) pairs.").withRank(BMinusSetting)
+  val licenses = settingKey[Seq[LicenseInfo]]("Project licenses.").withRank(BMinusSetting)
   val organization = settingKey[String]("Organization/group ID.").withRank(APlusSetting)
   val organizationName = settingKey[String]("Organization full/formal name.").withRank(BMinusSetting)
   val organizationHomepage = settingKey[Option[URL]]("Organization homepage.").withRank(BMinusSetting)
