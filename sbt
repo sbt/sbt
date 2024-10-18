@@ -749,7 +749,14 @@ isRunNativeClient() {
   [[ "$sbtV" == "" ]] && sbtV="0.0.0"
   sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
   sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
-  if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
+  # Default to true for sbt 2.x
+  if (( $sbtBinaryV_1 >= 2 )); then
+    if [[ "$use_sbtn" == "0" ]]; then
+      echo "false"
+    else
+      echo "true"
+    fi
+  elif ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
     if [[ "$use_sbtn" == "1" ]]; then
       echo "true"
     else

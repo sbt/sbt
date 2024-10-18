@@ -890,22 +890,22 @@ for /F "delims=.-_ tokens=1-2" %%v in ("!sbtV!") do (
   set sbtBinaryV_1=%%v
   set sbtBinaryV_2=%%w
 )
-set native_client_ready=
+rem default to run_native_client=1 for sbt 2.x 
 if !sbtBinaryV_1! geq 2 (
-  set native_client_ready=1
+  if !sbt_args_client! equ 0 (
+    set run_native_client=
+  ) else (
+    set run_native_client=1
+  )
 ) else (
   if !sbtBinaryV_1! geq 1 (
     if !sbtBinaryV_2! geq 4 (
-      set native_client_ready=1
+      if !sbt_args_client! equ 1 (
+        set run_native_client=1
+      )
     )
   )
 )
-if !native_client_ready! equ 1 (
-  if !sbt_args_client! equ 1 (
-    set run_native_client=1
-  )
-)
-set native_client_ready=
 
 exit /B 0
 
