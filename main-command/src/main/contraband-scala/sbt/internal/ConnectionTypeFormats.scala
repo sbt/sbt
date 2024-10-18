@@ -3,6 +3,7 @@
  */
 
 // DO NOT EDIT MANUALLY
+package sbt.internal
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ConnectionTypeFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val ConnectionTypeFormat: JsonFormat[sbt.ConnectionType] = new JsonFormat[sbt.ConnectionType] {
