@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class TestCompleteEvent private (
   override def toString: String = {
     "TestCompleteEvent(" + result + ")"
   }
-  private[this] def copy(result: sbt.protocol.testing.TestResult = result): TestCompleteEvent = {
+  private def copy(result: sbt.protocol.testing.TestResult = result): TestCompleteEvent = {
     new TestCompleteEvent(result)
   }
   def withResult(result: sbt.protocol.testing.TestResult): TestCompleteEvent = {

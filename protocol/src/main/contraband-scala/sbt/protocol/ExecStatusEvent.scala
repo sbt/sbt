@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class ExecStatusEvent private (
   override def toString: String = {
     "ExecStatusEvent(" + status + ", " + channelName + ", " + execId + ", " + commandQueue + ", " + exitCode + ", " + message + ")"
   }
-  private[this] def copy(status: String = status, channelName: Option[String] = channelName, execId: Option[String] = execId, commandQueue: Vector[String] = commandQueue, exitCode: Option[Long] = exitCode, message: Option[String] = message): ExecStatusEvent = {
+  private def copy(status: String = status, channelName: Option[String] = channelName, execId: Option[String] = execId, commandQueue: Vector[String] = commandQueue, exitCode: Option[Long] = exitCode, message: Option[String] = message): ExecStatusEvent = {
     new ExecStatusEvent(status, channelName, execId, commandQueue, exitCode, message)
   }
   def withStatus(status: String): ExecStatusEvent = {

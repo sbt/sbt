@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class ScalaMainClassesResult private (
   override def toString: String = {
     "ScalaMainClassesResult(" + items + ", " + originId + ")"
   }
-  private[this] def copy(items: Vector[sbt.internal.bsp.ScalaMainClassesItem] = items, originId: Option[String] = originId): ScalaMainClassesResult = {
+  private def copy(items: Vector[sbt.internal.bsp.ScalaMainClassesItem] = items, originId: Option[String] = originId): ScalaMainClassesResult = {
     new ScalaMainClassesResult(items, originId)
   }
   def withItems(items: Vector[sbt.internal.bsp.ScalaMainClassesItem]): ScalaMainClassesResult = {

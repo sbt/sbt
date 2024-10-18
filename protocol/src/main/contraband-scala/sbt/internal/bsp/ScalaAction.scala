@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class ScalaAction private (
   override def toString: String = {
     "ScalaAction(" + title + ", " + description + ", " + edit + ")"
   }
-  private[this] def copy(title: String = title, description: Option[String] = description, edit: Option[sbt.internal.bsp.ScalaWorkspaceEdit] = edit): ScalaAction = {
+  private def copy(title: String = title, description: Option[String] = description, edit: Option[sbt.internal.bsp.ScalaWorkspaceEdit] = edit): ScalaAction = {
     new ScalaAction(title, description, edit)
   }
   def withTitle(title: String): ScalaAction = {

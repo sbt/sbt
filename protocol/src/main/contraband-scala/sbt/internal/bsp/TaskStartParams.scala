@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -31,7 +31,7 @@ final class TaskStartParams private (
   override def toString: String = {
     "TaskStartParams(" + taskId + ", " + eventTime + ", " + message + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskStartParams = {
+  private def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskStartParams = {
     new TaskStartParams(taskId, eventTime, message, dataKind, data)
   }
   def withTaskId(taskId: sbt.internal.bsp.TaskId): TaskStartParams = {

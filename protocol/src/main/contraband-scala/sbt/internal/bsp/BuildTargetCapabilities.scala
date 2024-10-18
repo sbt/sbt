@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class BuildTargetCapabilities private (
   override def toString: String = {
     "BuildTargetCapabilities(" + canCompile + ", " + canTest + ", " + canRun + ", " + canDebug + ")"
   }
-  private[this] def copy(canCompile: Boolean = canCompile, canTest: Boolean = canTest, canRun: Boolean = canRun, canDebug: Boolean = canDebug): BuildTargetCapabilities = {
+  private def copy(canCompile: Boolean = canCompile, canTest: Boolean = canTest, canRun: Boolean = canRun, canDebug: Boolean = canDebug): BuildTargetCapabilities = {
     new BuildTargetCapabilities(canCompile, canTest, canRun, canDebug)
   }
   def withCanCompile(canCompile: Boolean): BuildTargetCapabilities = {

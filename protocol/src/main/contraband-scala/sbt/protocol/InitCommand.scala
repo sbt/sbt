@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class InitCommand private (
   override def toString: String = {
     "InitCommand(" + token + ", " + execId + ", " + skipAnalysis + ")"
   }
-  private[this] def copy(token: Option[String] = token, execId: Option[String] = execId, skipAnalysis: Option[Boolean] = skipAnalysis): InitCommand = {
+  private def copy(token: Option[String] = token, execId: Option[String] = execId, skipAnalysis: Option[Boolean] = skipAnalysis): InitCommand = {
     new InitCommand(token, execId, skipAnalysis)
   }
   def withToken(token: Option[String]): InitCommand = {

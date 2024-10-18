@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class BspCompileResult private (
   override def toString: String = {
     "BspCompileResult(" + originId + ", " + statusCode + ")"
   }
-  private[this] def copy(originId: Option[String] = originId, statusCode: Int = statusCode): BspCompileResult = {
+  private def copy(originId: Option[String] = originId, statusCode: Int = statusCode): BspCompileResult = {
     new BspCompileResult(originId, statusCode)
   }
   def withOriginId(originId: Option[String]): BspCompileResult = {

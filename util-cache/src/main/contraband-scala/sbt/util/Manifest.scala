@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class Manifest private (
   override def toString: String = {
     "Manifest(" + version + ", " + outputFiles + ")"
   }
-  private[this] def copy(version: String = version, outputFiles: Vector[xsbti.HashedVirtualFileRef] = outputFiles): Manifest = {
+  private def copy(version: String = version, outputFiles: Vector[xsbti.HashedVirtualFileRef] = outputFiles): Manifest = {
     new Manifest(version, outputFiles)
   }
   def withVersion(version: String): Manifest = {

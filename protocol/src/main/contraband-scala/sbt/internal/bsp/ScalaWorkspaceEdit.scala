@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class ScalaWorkspaceEdit private (
   override def toString: String = {
     "ScalaWorkspaceEdit(" + changes + ")"
   }
-  private[this] def copy(changes: Vector[sbt.internal.bsp.ScalaTextEdit] = changes): ScalaWorkspaceEdit = {
+  private def copy(changes: Vector[sbt.internal.bsp.ScalaTextEdit] = changes): ScalaWorkspaceEdit = {
     new ScalaWorkspaceEdit(changes)
   }
   def withChanges(changes: Vector[sbt.internal.bsp.ScalaTextEdit]): ScalaWorkspaceEdit = {

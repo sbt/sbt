@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class OutputPathItem private (
   override def toString: String = {
     "OutputPathItem(" + uri + ", " + kind + ")"
   }
-  private[this] def copy(uri: java.net.URI = uri, kind: Int = kind): OutputPathItem = {
+  private def copy(uri: java.net.URI = uri, kind: Int = kind): OutputPathItem = {
     new OutputPathItem(uri, kind)
   }
   def withUri(uri: java.net.URI): OutputPathItem = {

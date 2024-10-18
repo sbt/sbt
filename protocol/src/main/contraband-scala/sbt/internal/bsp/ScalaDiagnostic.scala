@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class ScalaDiagnostic private (
   override def toString: String = {
     "ScalaDiagnostic(" + actions + ")"
   }
-  private[this] def copy(actions: Vector[sbt.internal.bsp.ScalaAction] = actions): ScalaDiagnostic = {
+  private def copy(actions: Vector[sbt.internal.bsp.ScalaAction] = actions): ScalaDiagnostic = {
     new ScalaDiagnostic(actions)
   }
   def withActions(actions: Vector[sbt.internal.bsp.ScalaAction]): ScalaDiagnostic = {

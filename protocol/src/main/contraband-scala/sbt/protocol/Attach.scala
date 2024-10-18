@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class Attach private (
   override def toString: String = {
     "Attach(" + interactive + ")"
   }
-  private[this] def copy(interactive: Boolean = interactive): Attach = {
+  private def copy(interactive: Boolean = interactive): Attach = {
     new Attach(interactive)
   }
   def withInteractive(interactive: Boolean): Attach = {

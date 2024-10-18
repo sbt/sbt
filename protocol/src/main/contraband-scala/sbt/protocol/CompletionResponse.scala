@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class CompletionResponse private (
   override def toString: String = {
     "CompletionResponse(" + items + ", " + cachedMainClassNames + ", " + cachedTestNames + ")"
   }
-  private[this] def copy(items: Vector[String] = items, cachedMainClassNames: Option[Boolean] = cachedMainClassNames, cachedTestNames: Option[Boolean] = cachedTestNames): CompletionResponse = {
+  private def copy(items: Vector[String] = items, cachedMainClassNames: Option[Boolean] = cachedMainClassNames, cachedTestNames: Option[Boolean] = cachedTestNames): CompletionResponse = {
     new CompletionResponse(items, cachedMainClassNames, cachedTestNames)
   }
   def withItems(items: Vector[String]): CompletionResponse = {

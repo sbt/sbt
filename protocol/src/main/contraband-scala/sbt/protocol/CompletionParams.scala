@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class CompletionParams private (
   override def toString: String = {
     "CompletionParams(" + query + ", " + level + ")"
   }
-  private[this] def copy(query: String = query, level: Option[Int] = level): CompletionParams = {
+  private def copy(query: String = query, level: Option[Int] = level): CompletionParams = {
     new CompletionParams(query, level)
   }
   def withQuery(query: String): CompletionParams = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class ProgressEvent private (
   override def toString: String = {
     "ProgressEvent(" + level + ", " + items + ", " + lastTaskCount + ", " + channelName + ", " + execId + ", " + command + ", " + skipIfActive + ")"
   }
-  private[this] def copy(level: String = level, items: Vector[sbt.internal.util.ProgressItem] = items, lastTaskCount: Option[Int] = lastTaskCount, channelName: Option[String] = channelName, execId: Option[String] = execId, command: Option[String] = command, skipIfActive: Option[Boolean] = skipIfActive): ProgressEvent = {
+  private def copy(level: String = level, items: Vector[sbt.internal.util.ProgressItem] = items, lastTaskCount: Option[Int] = lastTaskCount, channelName: Option[String] = channelName, execId: Option[String] = execId, command: Option[String] = command, skipIfActive: Option[Boolean] = skipIfActive): ProgressEvent = {
     new ProgressEvent(level, items, lastTaskCount, channelName, execId, command, skipIfActive)
   }
   def withLevel(level: String): ProgressEvent = {

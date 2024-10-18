@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class UpdateActionResultRequest private (
   override def toString: String = {
     "UpdateActionResultRequest(" + actionDigest + ", " + outputFiles + ", " + exitCode + ", " + isExecutable + ")"
   }
-  private[this] def copy(actionDigest: sbt.util.Digest = actionDigest, outputFiles: Vector[xsbti.VirtualFile] = outputFiles, exitCode: Option[Int] = exitCode, isExecutable: Vector[Boolean] = isExecutable): UpdateActionResultRequest = {
+  private def copy(actionDigest: sbt.util.Digest = actionDigest, outputFiles: Vector[xsbti.VirtualFile] = outputFiles, exitCode: Option[Int] = exitCode, isExecutable: Vector[Boolean] = isExecutable): UpdateActionResultRequest = {
     new UpdateActionResultRequest(actionDigest, outputFiles, exitCode, isExecutable)
   }
   def withActionDigest(actionDigest: sbt.util.Digest): UpdateActionResultRequest = {

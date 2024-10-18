@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class ScalaMainClass private (
   override def toString: String = {
     "ScalaMainClass(" + `class` + ", " + arguments + ", " + jvmOptions + ", " + environmentVariables + ")"
   }
-  private[this] def copy(`class`: String = `class`, arguments: Vector[String] = arguments, jvmOptions: Vector[String] = jvmOptions, environmentVariables: Vector[String] = environmentVariables): ScalaMainClass = {
+  private def copy(`class`: String = `class`, arguments: Vector[String] = arguments, jvmOptions: Vector[String] = jvmOptions, environmentVariables: Vector[String] = environmentVariables): ScalaMainClass = {
     new ScalaMainClass(`class`, arguments, jvmOptions, environmentVariables)
   }
   def withClass(`class`: String): ScalaMainClass = {
