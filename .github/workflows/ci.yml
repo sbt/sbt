@@ -52,6 +52,10 @@ jobs:
             java: 11
             distribution: temurin
             jobtype: 10
+          - os: ubuntu-latest
+            java: 11
+            distribution: temurin
+            jobtype: 11
           - os: windows-latest
             java: 11
             distribution: temurin
@@ -226,6 +230,12 @@ jobs:
         if: ${{ matrix.jobtype == 10 }}
         shell: bash
         run: scripts/lm-coursier-ci.sh
+      - name: Build and test contraband
+        if: ${{ matrix.jobtype == 11 }}
+        shell: bash
+        run: |
+          sbt generateContrabands
+          git diff --exit-code
       - name: Cleanup
         shell: bash
         run: |
