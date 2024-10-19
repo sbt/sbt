@@ -3,8 +3,9 @@
  */
 
 // DO NOT EDIT MANUALLY
+package sbt.internal
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ExecFormats { self: CommandSourceFormats with sjsonnew.BasicJsonProtocol =>
+trait ExecFormats { self: sbt.internal.CommandSourceFormats with sjsonnew.BasicJsonProtocol =>
 implicit lazy val ExecFormat: JsonFormat[sbt.Exec] = new JsonFormat[sbt.Exec] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.Exec = {
     __jsOpt match {

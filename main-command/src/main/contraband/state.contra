@@ -1,5 +1,6 @@
 package sbt
 @target(Scala)
+@codecPackage("sbt.internal")
 
 type Exec {
   commandLine: String!
