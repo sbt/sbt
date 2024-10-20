@@ -1,19 +1,19 @@
-> ++3.0.2 packageBin
+> ++3.3.1 packageBin
 
-$ exists target/out/jvm/scala-3.0.2/core/core_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.1.2/core/core_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.0.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.1.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+$ exists target/out/jvm/scala-3.3.1/core/core_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.5.1/core/core_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.3.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.5.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar
 
 > clean
--$ exists target/out/jvm/scala-3.0.2/core/core_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.1.2/core/core_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.0.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.1.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.3.1/core/core_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.5.1/core/core_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.3.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.5.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar
 
-> ++3.1.2 packageBin
+> ++3.5.1 packageBin
 
--$ exists target/out/jvm/scala-3.0.2/core/core_3-0.1.0-SNAPSHOT.jar
-$ exists target/out/jvm/scala-3.1.2/core/core_3-0.1.0-SNAPSHOT.jar
--$ exists target/out/jvm/scala-3.0.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
-$ exists target/out/jvm/scala-3.1.2/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.3.1/core/core_3-0.1.0-SNAPSHOT.jar
+$ exists target/out/jvm/scala-3.5.1/core/core_3-0.1.0-SNAPSHOT.jar
+-$ exists target/out/jvm/scala-3.3.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar
+$ exists target/out/jvm/scala-3.5.1/subproj/subproj_3-0.1.0-SNAPSHOT.jar

@@ -2,17 +2,17 @@
 > b/checkLibs
 
 > b/runBlock
-$ exists s2.13.8.txt
-$ delete s2.13.8.txt
+$ exists s2.13.12.txt
+$ delete s2.13.12.txt
 
 # don't crash when expanding the macro
 > b3/runBlock
-$ exists s2.13.10.txt
-$ delete s2.13.10.txt
+$ exists s2.13.14.txt
+$ delete s2.13.14.txt
 
 > b3/checkScala
 
-# without the default `csrSameVersions`, scala-reflect in b stays at 2.13.6
+# without the default `csrSameVersions`, scala-reflect in b stays at 2.13.11
 > set b/csrSameVersions := Nil
 > b/update
 -> b/checkLibs

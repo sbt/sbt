@@ -8,7 +8,7 @@ ThisBuild / ivyPaths := {
 }
 publish / skip := true
 
-lazy val scala212 = "2.12.10"
+lazy val scala212 = "2.12.20"
 
 lazy val check = taskKey[Unit]("")
 
