@@ -526,6 +526,22 @@ lazy val testAgentProj = (project in file("testing") / "agent")
     mimaSettings,
   )
 
+lazy val workerProj = (project in file("worker"))
+  .dependsOn(protocolProj, runProj, utilLogging, exampleWorkProj % Test)
+  .settings(
+    testedBaseSettings,
+    run / fork := false,
+    Test / fork := true,
+    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
+  )
+
+lazy val exampleWorkProj = (project in file("internal") / "example-work")
+  .settings(
+    minimalSettings,
+    name := "example work",
+    publish / skip := true,
+  )
+
 // Basic task engine
 lazy val taskProj = (project in file("tasks"))
   .dependsOn(collectionProj, utilControl)

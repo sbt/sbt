@@ -109,6 +109,11 @@ object Serialization {
   }
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
+  private[sbt] def serializeResponseMessageBody(message: JsonRpcResponseMessage): String =
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
+    serializeResponseBody(message)
+
+  /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeRequestMessage(message: JsonRpcRequestMessage): Array[Byte] = {
     import sbt.internal.protocol.codec.JsonRPCProtocol._
     serializeResponse(message)
@@ -122,9 +127,18 @@ object Serialization {
     serializeResponse(message)
   }
 
-  private[sbt] def serializeResponse[A: JsonWriter](message: A): Array[Byte] = {
+  private[sbt] def serializeNotificationMessageBody(
+      message: JsonRpcNotificationMessage,
+  ): String =
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
+    serializeResponseBody(message)
+
+  private[sbt] def serializeResponseBody[A: JsonWriter](message: A): String =
     val json: JValue = Converter.toJson[A](message).get
-    val body = CompactPrinter(json)
+    CompactPrinter(json)
+
+  private[sbt] def serializeResponse[A: JsonWriter](message: A): Array[Byte] = {
+    val body = serializeResponseBody(message)
     val bodyLength = body.getBytes("UTF-8").length
 
     Iterator(
