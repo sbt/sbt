@@ -252,6 +252,78 @@ class BuildServerTest extends AbstractServerTest {
     )
   }
 
+  test("buildTarget/compile [Java diagnostics] clear stale warnings") {
+    val buildTarget = buildTargetUri("javaProj", "Compile")
+    val testFile = new File(svr.baseDirectory, s"java-proj/src/main/java/example/Hello.java")
+
+    val otherBuildFile = new File(svr.baseDirectory, "force-java-out-of-process-compiler.sbt")
+    // Setting `javaHome` will force SBT to shell out to an external Java compiler instead
+    // of using the local compilation service offered by the JVM running this SBT instance.
+    IO.write(
+      otherBuildFile,
+      """
+        |lazy val javaProj = project
+        |  .in(file("java-proj"))
+        |  .settings(
+        |    javacOptions += "-Xlint:all",
+        |    javaHome := Some(file(System.getProperty("java.home")))
+        |  )
+        |""".stripMargin
+    )
+    reloadWorkspace()
+
+    compile(buildTarget)
+
+    assertMessage(
+      "build/publishDiagnostics",
+      "Hello.java",
+      """"severity":2""",
+      """found raw type: List"""
+    )(message = "should send publishDiagnostics with severity 2 for Hello.java")
+
+    assertMessage(
+      "build/publishDiagnostics",
+      "Hello.java",
+      """"severity":1""",
+      """incompatible types: int cannot be converted to String"""
+    )(
+      message = "should send publishDiagnostics with severity 1 for Hello.java"
+    )
+    // Note the messages changed slightly in both cases. That's interesting…
+
+    IO.write(
+      testFile,
+      """|package example;
+         |
+         |import java.util.List;
+         |import java.util.ArrayList;
+         |
+         |class Hello {
+         |    public static void main(String[] args) {
+         |        List<String> list = new ArrayList<>();
+         |        String msg = "42";
+         |        System.out.println(msg);
+         |    }
+         |}
+         |""".stripMargin
+    )
+
+    compile(buildTarget)
+
+    assertMessage(
+      "build/publishDiagnostics",
+      "Hello.java",
+      "\"diagnostics\":[]",
+      "\"reset\":true"
+    )(
+      message = "should send publishDiagnostics with empty diagnostics"
+    )
+
+    IO.delete(otherBuildFile)
+    reloadWorkspace()
+    ()
+  }
+
   test("buildTarget/scalacOptions, buildTarget/javacOptions") {
     val buildTargets = Seq(
       buildTargetUri("util", "Compile"),

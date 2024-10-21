@@ -25,6 +25,7 @@ import xsbti.{
 
 import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
+import java.nio.file.Path
 
 /**
  * Provides methods for sending success and failure reports and publishing diagnostics.
@@ -88,7 +89,7 @@ final class BuildServerReporterImpl(
   import sbt.internal.inc.JavaInterfaceUtil._
 
   private lazy val exchange = StandardMain.exchange
-  private val problemsByFile = mutable.Map[VirtualFileRef, Vector[Problem]]()
+  private val problemsByFile = mutable.Map[Path, Vector[Problem]]()
 
   // sometimes the compiler returns a fake position such as <macro>
   // on Windows, this causes InvalidPathException (see #5994 and #6720)
@@ -112,9 +113,10 @@ final class BuildServerReporterImpl(
 
   override def sendFailureReport(sources: Array[VirtualFile]): Unit = {
     for (source <- sources) {
-      val problems = problemsByFile.getOrElse(source, Vector.empty)
+      val problems = problemsByFile.getOrElse(converter.toPath(source), Vector.empty)
       sendReport(source, problems)
     }
+    notifyFirstReport()
   }
 
   private def sendReport(source: VirtualFileRef, problems: Vector[Problem]): Unit = {
@@ -150,7 +152,11 @@ final class BuildServerReporterImpl(
       id <- problem.position.sourcePath.toOption
       (document, diagnostic) <- mapProblemToDiagnostic(problem)
     } {
-      val fileRef = VirtualFileRef.of(id)
+      // Note: We're putting the real path in `fileRef` because the `id` String can take
+      // two forms, either a ${something}/relativePath, or the absolute path of the source.
+      // But where we query this, we always have _only_ a ${something}/relativePath available.
+      // So here we "normalize" to the real path.
+      val fileRef = converter.toPath(VirtualFileRef.of(id))
       problemsByFile(fileRef) = problemsByFile.getOrElse(fileRef, Vector.empty) :+ problem
 
       val params = PublishDiagnosticsParams(
