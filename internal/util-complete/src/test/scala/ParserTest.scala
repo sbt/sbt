@@ -21,7 +21,7 @@ object JLineTest {
   val five = (num ~ token("+" | "-") ~ num) <~ token('=') flatMap {
     case a ~ "+" ~ b => token((a + b).toString)
     case a ~ "-" ~ b => token((a - b).toString)
-    case _ => failure("Unexpected pattern")
+    case _           => failure("Unexpected pattern")
   }
 
   val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
