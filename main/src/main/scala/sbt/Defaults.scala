@@ -3307,7 +3307,7 @@ object Classpaths {
       description.value,
       homepage.value.map(_.toURI),
       startYear.value,
-      licenses.value.map((name, url) => (name, url.toURI)).toVector,
+      licenses.value.toVector,
       organizationName.value,
       organizationHomepage.value.map(_.toURI),
       scmInfo.value,
