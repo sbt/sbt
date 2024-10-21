@@ -12,7 +12,7 @@ lazy val foo = project
 lazy val bar = project
 lazy val baz = project
   .settings(
-    scalaVersion := "2.12.19",
+    scalaVersion := "2.12.20",
   )
 
 someTask := {

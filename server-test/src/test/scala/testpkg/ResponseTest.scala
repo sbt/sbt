@@ -19,7 +19,7 @@ class ResponseTest extends AbstractServerTest {
       if (!s.contains("systemOut"))
         println(s)
       (s contains """"id":"10"""") &&
-      (s contains "scala-library-2.12.19.jar")
+      (s contains "scala-library-2.12.20.jar")
     })
   }
 
@@ -30,7 +30,7 @@ class ResponseTest extends AbstractServerTest {
     assert(svr.waitForString(10.seconds) { s =>
       if (!s.contains("systemOut")) println(s)
       (s contains """"id":"11"""") &&
-      (s contains "scala-library-2.12.19.jar")
+      (s contains "scala-library-2.12.20.jar")
     })
   }
 

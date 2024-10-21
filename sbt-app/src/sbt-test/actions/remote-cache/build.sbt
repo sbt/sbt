@@ -8,7 +8,7 @@ lazy val CustomArtifact = config("custom-artifact")
 val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterations of incremental compilation.")
 
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 ThisBuild / pushRemoteCacheTo := Some(
   MavenCache("local-cache", (ThisBuild / baseDirectory).value / "r")
 )

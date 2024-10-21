@@ -53,4 +53,4 @@ expectFailure / watchOnFileInputEvent := { (_, e) =>
 }
 
 
-crossScalaVersions := Seq("2.11.12", "2.12.19")
+crossScalaVersions := Seq("2.11.12", "2.12.20")

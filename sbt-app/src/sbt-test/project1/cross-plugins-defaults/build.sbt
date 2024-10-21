@@ -1,7 +1,7 @@
 val baseSbt = "1."
 
-val buildCrossList = List("2.10.7", "2.11.12", "2.12.19")
-(ThisBuild / scalaVersion) := "2.12.19"
+val buildCrossList = List("2.10.7", "2.11.12", "2.12.20")
+(ThisBuild / scalaVersion) := "2.12.20"
 (ThisBuild / crossScalaVersions) := buildCrossList
 
 addSbtPlugin("com.eed3si9n" % "sbt-buildinfo" % "0.7.0")

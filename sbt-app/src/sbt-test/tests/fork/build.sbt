@@ -11,7 +11,7 @@ val scalaxml = "org.scala-lang.modules" %% "scala-xml" % "1.1.1"
 def groupId(idx: Int) = "group_" + (idx + 1)
 def groupPrefix(idx: Int) = groupId(idx) + "_file_"
 
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 ThisBuild / organization := "org.example"
 
 lazy val root = (project in file("."))
