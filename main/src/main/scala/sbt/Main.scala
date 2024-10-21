@@ -16,6 +16,7 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
+import sbt.BasicCommandStrings.JavaClient
 import sbt.Project.LoadAction
 import sbt.ProjectExtra.*
 import sbt.internal.Aggregation.AnyKeys
