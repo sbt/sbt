@@ -22,7 +22,6 @@ import sjsonnew.{
   LNil,
   Unbuilder,
   deserializationError,
-  flatUnionFormat4
 }
 
 import sbt.util.Logger

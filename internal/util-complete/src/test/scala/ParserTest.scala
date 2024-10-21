@@ -18,7 +18,7 @@ object JLineTest {
   val four = token("color" ~> Space) ~> token(ID, "<color name>")
 
   val num = token(NatBasic)
-  val five = (num ~ token("+" | "-") ~ num) <~ token('=') flatMap {
+  val five = (num ~ token("+" | "-") ~ num) <~ token('=') collect {
     case a ~ "+" ~ b => token((a + b).toString)
     case a ~ "-" ~ b => token((a - b).toString)
   }
