@@ -23,9 +23,16 @@ object ErrorHandling {
     try {
       Right(f)
     } catch {
-      case ex @ (_: Exception | _: StackOverflowError)     => Left(ex)
-      case err @ (_: ThreadDeath | _: VirtualMachineError) => throw err
-      case x: Throwable                                    => Left(x)
+      case ex @ (_: Exception | _: StackOverflowError) =>
+        Left(ex)
+      case err: VirtualMachineError =>
+        throw err
+      case err if err.getClass.getName == "java.lang.ThreadDeath" =>
+        // ThreadDeath is deprecated
+        // https://bugs.openjdk.org/browse/JDK-8289610
+        throw err
+      case x: Throwable =>
+        Left(x)
     }
 
   def convert[T](f: => T): Either[Exception, T] =

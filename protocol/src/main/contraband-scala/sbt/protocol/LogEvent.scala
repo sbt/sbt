@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class LogEvent private (
   override def toString: String = {
     "LogEvent(" + level + ", " + message + ")"
   }
-  private[this] def copy(level: String = level, message: String = message): LogEvent = {
+  private def copy(level: String = level, message: String = message): LogEvent = {
     new LogEvent(level, message)
   }
   def withLevel(level: String): LogEvent = {

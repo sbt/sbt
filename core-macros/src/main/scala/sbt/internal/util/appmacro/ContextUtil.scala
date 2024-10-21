@@ -41,16 +41,40 @@ trait ContextUtil[C <: Quotes & scala.Singleton](val valStart: Int):
   def typed[A: Type](value: Term): Term =
     Typed(value, TypeTree.of[A])
 
+  /**
+   * [[https://github.com/sbt/sbt/issues/7768]]
+   * [[https://github.com/scala/scala3/issues/21779]]
+   */
+  private def exprOfTupleFromSeq(seq: Seq[Expr[Any]])(using q: Quotes): Expr[scala.Tuple] = {
+    def tupleTypeFromSeq(seq: Seq[Expr[Any]]): q.reflect.TypeRepr = {
+      import q.reflect.*
+      val consRef = Symbol.classSymbol("scala.*:").typeRef
+      seq.foldRight(TypeRepr.of[EmptyTuple]) { (expr, ts) =>
+        AppliedType(consRef, expr.asTerm.tpe :: ts :: Nil)
+      }
+    }
+
+    if (seq.sizeIs <= 22) {
+      Expr.ofTupleFromSeq(seq)
+    } else {
+      val tupleTpe = tupleTypeFromSeq(seq)
+      tupleTpe.asType match {
+        case '[tpe] =>
+          '{ Tuple.fromIArray(IArray(${ Varargs(seq) }*)).asInstanceOf[tpe & scala.Tuple] }
+      }
+    }
+  }
+
   def makeTuple(inputs: List[Input]): BuilderResult =
     new BuilderResult:
       override lazy val inputTupleTypeRepr: TypeRepr =
         tupleTypeRepr(inputs.map(_.tpe))
       override def tupleExpr: Expr[Tuple] =
-        Expr.ofTupleFromSeq(inputs.map(_.term.asExpr))
+        exprOfTupleFromSeq(inputs.map(_.term.asExpr))
       override def cacheInputTupleTypeRepr: TypeRepr =
         tupleTypeRepr(inputs.filter(_.isCacheInput).map(_.tpe))
       override def cacheInputExpr(tupleTerm: Term): Expr[Tuple] =
-        Expr.ofTupleFromSeq(inputs.zipWithIndex.flatMap { case (input, idx) =>
+        exprOfTupleFromSeq(inputs.zipWithIndex.flatMap { case (input, idx) =>
           if input.tags.nonEmpty then
             input.tpe.asType match
               case '[a] =>

@@ -104,12 +104,6 @@ def commonSettings: Seq[Setting[_]] = Def.settings(
 
 def utilCommonSettings: Seq[Setting[_]] = Def.settings(
   baseSettings,
-  crossScalaVersions := Seq(scala212, scala213, scala3),
-  libraryDependencies += Dependencies.scalaCollectionCompat,
-  libraryDependencies ++= {
-    if (scalaBinaryVersion.value == "3") Nil
-    else Seq(compilerPlugin(kindProjector))
-  }
 )
 
 def minimalSettings: Seq[Setting[_]] =
@@ -336,11 +330,6 @@ lazy val utilCore = project
   .settings(
     utilCommonSettings,
     name := "Util Core",
-    libraryDependencies ++= {
-      if (scalaBinaryVersion.value.startsWith("2")) {
-        Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
-      } else Seq.empty
-    },
     Utils.keywordsSettings,
     utilMimaSettings
   )
@@ -1043,8 +1032,15 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImageVersion := "22.2.0",
-    nativeImageOutput := target.value / "bin" / "sbtn",
+    nativeImageVersion := "23.0",
+    nativeImageJvm := "graalvm-java23",
+    nativeImageOutput := {
+      val outputDir = (target.value / "bin").toPath
+      if (!Files.exists(outputDir)) {
+        Files.createDirectories(outputDir)
+      }
+      outputDir.resolve("sbtn").toFile
+    },
     nativeImageOptions ++= Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
@@ -1330,7 +1326,6 @@ def customCommands: Seq[Setting[_]] = Seq(
     "clean" ::
       "+lowerUtils/compile" ::
       "+lowerUtils/publishSigned" ::
-      s"++$scala212" ::
       state
   },
   commands += Command.command("release") { state =>
@@ -1447,35 +1442,6 @@ lazy val lmCoursierSettings: Seq[Setting[_]] = Def.settings(
     ),
 )
 
-lazy val lmCoursierDependencies = Def.settings(
-  libraryDependencies ++= Seq(
-    coursier,
-    coursierSbtMavenRepo,
-    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
-    "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
-  ),
-  excludeDependencies ++= Seq(
-    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
-    ExclusionRule("org.scala-lang.modules", "scala-collection-compat_2.13")
-  ),
-)
-
-def dataclassGen(data: Reference) = Def.taskDyn {
-  val root = (ThisBuild / baseDirectory).value.toURI.toString
-  val from = (data / Compile / sourceDirectory).value
-  val to = (Compile / sourceManaged).value
-  val outFrom = from.toURI.toString.stripSuffix("/").stripPrefix(root)
-  val outTo = to.toURI.toString.stripSuffix("/").stripPrefix(root)
-  val _ = (data / Compile / compile).value
-  Def.task {
-    val _ = (data / Compile / scalafix)
-      .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
-      .value
-    (to ** "*.scala").get
-  }
-}
-
 lazy val lmCoursierDefinitions = project
   .in(file("lm-coursier/definitions"))
   .disablePlugins(MimaPlugin)
@@ -1493,6 +1459,19 @@ lazy val lmCoursierDefinitions = project
   )
   .dependsOn(lmIvy % "provided")
 
+lazy val lmCoursierDependencies = Def.settings(
+  libraryDependencies ++= Seq(
+    coursier,
+    coursierSbtMavenRepo,
+    "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
+    "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
+    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
+  ),
+  excludeDependencies ++= Seq(
+    ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
+  ),
+)
+
 lazy val lmCoursier = project
   .in(file("lm-coursier"))
   .settings(
@@ -1500,7 +1479,8 @@ lazy val lmCoursier = project
     Mima.settings,
     Mima.lmCoursierFilters,
     lmCoursierDependencies,
-    Compile / sourceGenerators += dataclassGen(lmCoursierDefinitions).taskValue,
+    Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
+    Compile / scalacOptions --= Seq("-Xfatal-warnings"),
   )
   .dependsOn(
     // We depend on lmIvy rather than just lmCore to handle the ModuleDescriptor
@@ -1517,24 +1497,15 @@ lazy val lmCoursierShaded = project
     Mima.lmCoursierFilters,
     Mima.lmCoursierShadedFilters,
     Compile / sources := (lmCoursier / Compile / sources).value,
+    Compile / scalacOptions --= Seq("-Xfatal-warnings"),
     lmCoursierDependencies,
+    autoScalaLibrary := false,
+    libraryDependencies ++= Seq(
+      scala3Library % Provided,
+    ),
+    assembly / assemblyOption ~= { _.withIncludeScala(false) },
     conflictWarning := ConflictWarning.disable,
     Utils.noPublish,
-    // shadedModules ++= Set(
-    //   "io.get-coursier" %% "coursier",
-    //   "io.get-coursier" %% "coursier-sbt-maven-repository",
-    //   "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier"
-    // ),
-    // validNamespaces += "lmcoursier",
-    // validEntries ++= Set(
-    //   // FIXME Ideally, we should just strip those from the resulting JAR…
-    //   "README", // from google-collections via plexus-archiver (see below)
-    //   // from plexus-util via plexus-archiver (see below)
-    //   "licenses/extreme.indiana.edu.license.TXT",
-    //   "licenses/javolution.license.TXT",
-    //   "licenses/thoughtworks.TXT",
-    //   "licenses/",
-    // ),
     assemblyShadeRules := {
       val namespacesToShade = Seq(
         "coursier",

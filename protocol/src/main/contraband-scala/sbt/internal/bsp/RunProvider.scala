@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class RunProvider private (
   override def toString: String = {
     "RunProvider(" + languageIds + ")"
   }
-  private[this] def copy(languageIds: Vector[String] = languageIds): RunProvider = {
+  private def copy(languageIds: Vector[String] = languageIds): RunProvider = {
     new RunProvider(languageIds)
   }
   def withLanguageIds(languageIds: Vector[String]): RunProvider = {

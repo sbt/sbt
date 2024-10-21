@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class ScalaTestParams private (
   override def toString: String = {
     "ScalaTestParams(" + testClasses + ")"
   }
-  private[this] def copy(testClasses: Vector[sbt.internal.bsp.ScalaTestClassesItem] = testClasses): ScalaTestParams = {
+  private def copy(testClasses: Vector[sbt.internal.bsp.ScalaTestClassesItem] = testClasses): ScalaTestParams = {
     new ScalaTestParams(testClasses)
   }
   def withTestClasses(testClasses: Vector[sbt.internal.bsp.ScalaTestClassesItem]): ScalaTestParams = {

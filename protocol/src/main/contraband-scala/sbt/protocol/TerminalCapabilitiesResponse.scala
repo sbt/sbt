@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class TerminalCapabilitiesResponse private (
   override def toString: String = {
     "TerminalCapabilitiesResponse(" + boolean + ", " + numeric + ", " + string + ")"
   }
-  private[this] def copy(boolean: Option[Boolean] = boolean, numeric: Option[Int] = numeric, string: Option[String] = string): TerminalCapabilitiesResponse = {
+  private def copy(boolean: Option[Boolean] = boolean, numeric: Option[Int] = numeric, string: Option[String] = string): TerminalCapabilitiesResponse = {
     new TerminalCapabilitiesResponse(boolean, numeric, string)
   }
   def withBoolean(boolean: Option[Boolean]): TerminalCapabilitiesResponse = {

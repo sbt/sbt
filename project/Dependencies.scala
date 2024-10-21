@@ -82,7 +82,7 @@ object Dependencies {
   // and the JLine 2 fork version, which uses the same JAnsi
   val jline =
     "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-9c3b6aca11c57e339441442bbf58e550cdfecb79"
-  val jline3Version = "3.24.1"
+  val jline3Version = "3.27.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
   val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
   val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
@@ -98,6 +98,7 @@ object Dependencies {
     "com.eed3si9n.remoteapis.shaded" % "shaded-remoteapis-java" % "2.3.0-M1-52317e00d8d4c37fa778c628485d220fb68a8d08"
 
   val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
+  val scala3Library = "org.scala-lang" %% "scala3-library" % scala3
 
   val scalaXml = Def.setting(
     if (scalaBinaryVersion.value == "3") {

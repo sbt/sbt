@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class Range private (
   override def toString: String = {
     "Range(" + start + ", " + end + ")"
   }
-  private[this] def copy(start: sbt.internal.langserver.Position = start, end: sbt.internal.langserver.Position = end): Range = {
+  private def copy(start: sbt.internal.langserver.Position = start, end: sbt.internal.langserver.Position = end): Range = {
     new Range(start, end)
   }
   def withStart(start: sbt.internal.langserver.Position): Range = {

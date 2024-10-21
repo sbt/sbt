@@ -13,23 +13,23 @@ jobs:
       matrix:
         include:
           - os: ubuntu-20.04
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: 11
+            java: 21
             distribution: temurin
             jobtype: 2
           - os: ubuntu-latest
-            java: 11
+            java: 21
             distribution: temurin
             jobtype: 3
           - os: ubuntu-latest
-            java: 11
+            java: 21
             distribution: temurin
             jobtype: 4
           - os: ubuntu-latest
-            java: 17
+            java: 21
             distribution: temurin
             jobtype: 5
           - os: ubuntu-latest
@@ -44,19 +44,24 @@ jobs:
             java: 17
             distribution: temurin
             jobtype: 8
-          - os: windows-2019
+          - os: windows-latest
             java: 8
             distribution: zulu
             jobtype: 9
           - os: ubuntu-latest
-            java: 8
+            java: 11
             distribution: temurin
             jobtype: 10
+          - os: ubuntu-latest
+            java: 11
+            distribution: temurin
+            jobtype: 11
           - os: windows-latest
-            java: 8
+            java: 11
             distribution: temurin
             jobtype: 10
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
     env:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
@@ -117,6 +122,7 @@ jobs:
           rm -rf "$HOME/.ivy2/local" || true
           rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
       - name: Publish local Zinc
+        if: ${{ matrix.jobtype == 6 }}
         shell: bash
         run: |
           ./sbt -v lowerUtils/publishLocal
@@ -140,10 +146,6 @@ jobs:
           ./sbt -v --client test
           ./sbt -v --client "serverTestProj/test"
           # ./sbt -v --client doc
-          ./sbt -v --client "all $UTIL_TESTS"
-          ./sbt -v --client ++2.13.x
-          ./sbt -v --client "all $UTIL_TESTS"
-          ./sbt -v --client ++2.12.x
           ./sbt -v --client "all $UTIL_TESTS"
       - name: Build and test (2)
         if: ${{ matrix.jobtype == 2 }}
@@ -171,8 +173,6 @@ jobs:
         shell: bash
         run: |
           ./sbt -v --client test
-          ./sbt -v --client "++2.13.x; all $UTIL_TESTS"
-          ./sbt -v --client "++2.12.x; all $UTIL_TESTS"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash
@@ -230,6 +230,12 @@ jobs:
         if: ${{ matrix.jobtype == 10 }}
         shell: bash
         run: scripts/lm-coursier-ci.sh
+      - name: Build and test contraband
+        if: ${{ matrix.jobtype == 11 }}
+        shell: bash
+        run: |
+          sbt generateContrabands
+          git diff --exit-code
       - name: Cleanup
         shell: bash
         run: |

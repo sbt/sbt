@@ -1,7 +1,7 @@
 TaskKey[Unit]("checkJavaFailures") := {
   val reporter = savedReporter.value
   val ignore = (Compile / compile).failure.value
-  val ps = reporter.problems
+  val ps = reporter.problems.filter(_.severity() != xsbti.Severity.Info)
   assert(!ps.isEmpty, "Failed to report any problems!")
   // First error should be on a specific line/file
   val first = ps(0)

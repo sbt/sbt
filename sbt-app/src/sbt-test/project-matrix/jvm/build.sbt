@@ -1,4 +1,4 @@
-lazy val scala213 = "2.13.3"
+lazy val scala213 = "2.13.15"
 lazy val scala3 = "3.4.2"
 lazy val check = taskKey[Unit]("")
 

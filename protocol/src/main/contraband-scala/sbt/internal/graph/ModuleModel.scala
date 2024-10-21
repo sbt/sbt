@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class ModuleModel private (
   override def toString: String = {
     "ModuleModel(" + text + ", " + children + ")"
   }
-  private[this] def copy(text: String = text, children: Vector[sbt.internal.graph.ModuleModel] = children): ModuleModel = {
+  private def copy(text: String = text, children: Vector[sbt.internal.graph.ModuleModel] = children): ModuleModel = {
     new ModuleModel(text, children)
   }
   def withText(text: String): ModuleModel = {

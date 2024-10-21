@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class JsonRpcResponseError private (
   override def toString: String = {
     s"""JsonRpcResponseError($code, $message, ${sbt.protocol.Serialization.compactPrintJsonOpt(data)})"""
   }
-  private[this] def copy(code: Long = code, message: String = message, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): JsonRpcResponseError = {
+  private def copy(code: Long = code, message: String = message, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): JsonRpcResponseError = {
     new JsonRpcResponseError(code, message, data)
   }
   def withCode(code: Long): JsonRpcResponseError = {

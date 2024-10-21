@@ -1,8 +1,9 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
+package sbt.internal
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait CommandSourceFormats { self: sjsonnew.BasicJsonProtocol =>
 implicit lazy val CommandSourceFormat: JsonFormat[sbt.CommandSource] = new JsonFormat[sbt.CommandSource] {

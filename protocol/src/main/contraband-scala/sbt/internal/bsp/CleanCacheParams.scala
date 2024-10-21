@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class CleanCacheParams private (
   override def toString: String = {
     "CleanCacheParams(" + targets + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets): CleanCacheParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets): CleanCacheParams = {
     new CleanCacheParams(targets)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): CleanCacheParams = {

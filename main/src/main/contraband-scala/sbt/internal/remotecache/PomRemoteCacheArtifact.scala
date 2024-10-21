@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class PomRemoteCacheArtifact private (
   override def toString: String = {
     "PomRemoteCacheArtifact(" + artifact + ", " + packaged + ")"
   }
-  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef] = packaged): PomRemoteCacheArtifact = {
+  private def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef] = packaged): PomRemoteCacheArtifact = {
     new PomRemoteCacheArtifact(artifact, packaged)
   }
   def withArtifact(artifact: sbt.librarymanagement.Artifact): PomRemoteCacheArtifact = {

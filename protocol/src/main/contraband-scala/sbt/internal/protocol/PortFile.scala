@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class PortFile private (
   override def toString: String = {
     "PortFile(" + uri + ", " + tokenfilePath + ", " + tokenfileUri + ")"
   }
-  private[this] def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri): PortFile = {
+  private def copy(uri: String = uri, tokenfilePath: Option[String] = tokenfilePath, tokenfileUri: Option[String] = tokenfileUri): PortFile = {
     new PortFile(uri, tokenfilePath, tokenfileUri)
   }
   def withUri(uri: String): PortFile = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class JvmEnvironmentItem private (
   override def toString: String = {
     "JvmEnvironmentItem(" + target + ", " + classpath + ", " + jvmOptions + ", " + workingDirectory + ", " + environmentVariables + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classpath: Vector[java.net.URI] = classpath, jvmOptions: Vector[String] = jvmOptions, workingDirectory: String = workingDirectory, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables): JvmEnvironmentItem = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classpath: Vector[java.net.URI] = classpath, jvmOptions: Vector[String] = jvmOptions, workingDirectory: String = workingDirectory, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables): JvmEnvironmentItem = {
     new JvmEnvironmentItem(target, classpath, jvmOptions, workingDirectory, environmentVariables)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): JvmEnvironmentItem = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -36,7 +36,7 @@ final class RunParams private (
   override def toString: String = {
     "RunParams(" + target + ", " + originId + ", " + arguments + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, originId: Option[String] = originId, arguments: Vector[String] = arguments, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): RunParams = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, originId: Option[String] = originId, arguments: Vector[String] = arguments, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): RunParams = {
     new RunParams(target, originId, arguments, dataKind, data)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): RunParams = {

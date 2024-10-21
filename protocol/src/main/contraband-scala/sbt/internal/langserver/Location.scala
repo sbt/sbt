@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class Location private (
   override def toString: String = {
     "Location(" + uri + ", " + range + ")"
   }
-  private[this] def copy(uri: String = uri, range: sbt.internal.langserver.Range = range): Location = {
+  private def copy(uri: String = uri, range: sbt.internal.langserver.Range = range): Location = {
     new Location(uri, range)
   }
   def withUri(uri: String): Location = {

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class PublishDiagnosticsParams private (
   override def toString: String = {
     "PublishDiagnosticsParams(" + uri + ", " + diagnostics + ")"
   }
-  private[this] def copy(uri: String = uri, diagnostics: Vector[sbt.internal.langserver.Diagnostic] = diagnostics): PublishDiagnosticsParams = {
+  private def copy(uri: String = uri, diagnostics: Vector[sbt.internal.langserver.Diagnostic] = diagnostics): PublishDiagnosticsParams = {
     new PublishDiagnosticsParams(uri, diagnostics)
   }
   def withUri(uri: String): PublishDiagnosticsParams = {

@@ -1,0 +1,3 @@
+> checkIsDefaultCache
+> 'set ivyPaths := ivyPaths.value.withIvyHome("ivy-cache")'
+> checkIsCustomCache

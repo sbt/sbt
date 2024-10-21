@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -34,7 +34,7 @@ final class ActionResult private (
   override def toString: String = {
     "ActionResult(" + outputFiles + ", " + origin + ", " + exitCode + ", " + contents + ", " + isExecutable + ")"
   }
-  private[this] def copy(outputFiles: Vector[xsbti.HashedVirtualFileRef] = outputFiles, origin: Option[String] = origin, exitCode: Option[Int] = exitCode, contents: Vector[java.nio.ByteBuffer] = contents, isExecutable: Vector[Boolean] = isExecutable): ActionResult = {
+  private def copy(outputFiles: Vector[xsbti.HashedVirtualFileRef] = outputFiles, origin: Option[String] = origin, exitCode: Option[Int] = exitCode, contents: Vector[java.nio.ByteBuffer] = contents, isExecutable: Vector[Boolean] = isExecutable): ActionResult = {
     new ActionResult(outputFiles, origin, exitCode, contents, isExecutable)
   }
   def withOutputFiles(outputFiles: Vector[xsbti.HashedVirtualFileRef]): ActionResult = {

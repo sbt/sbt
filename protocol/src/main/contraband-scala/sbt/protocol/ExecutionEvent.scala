@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class ExecutionEvent private (
   override def toString: String = {
     "ExecutionEvent(" + success + ", " + commandLine + ")"
   }
-  private[this] def copy(success: String = success, commandLine: String = commandLine): ExecutionEvent = {
+  private def copy(success: String = success, commandLine: String = commandLine): ExecutionEvent = {
     new ExecutionEvent(success, commandLine)
   }
   def withSuccess(success: String): ExecutionEvent = {

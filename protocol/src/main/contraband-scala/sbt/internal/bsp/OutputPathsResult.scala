@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class OutputPathsResult private (
   override def toString: String = {
     "OutputPathsResult(" + items + ")"
   }
-  private[this] def copy(items: Vector[sbt.internal.bsp.OutputPathsItem] = items): OutputPathsResult = {
+  private def copy(items: Vector[sbt.internal.bsp.OutputPathsItem] = items): OutputPathsResult = {
     new OutputPathsResult(items)
   }
   def withItems(items: Vector[sbt.internal.bsp.OutputPathsItem]): OutputPathsResult = {

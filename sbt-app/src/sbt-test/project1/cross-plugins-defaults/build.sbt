@@ -25,7 +25,7 @@ def mkCheck(scalaBinV: String, sbtBinVer: String, sbtVerPrefix: String) = Def.ta
     scalaBinaryVersion.value == scalaBinV,
     s"Wrong Scala binary version: ${scalaBinaryVersion.value}"
   )
-  assert(crossV startsWith sbtVerPrefix, s"Wrong `sbtVersion in pluginCrossBuild`: $crossV")
+  assert(crossV startsWith sbtVerPrefix, s"Wrong `pluginCrossBuild / sbtVersion`: $crossV")
 
   val ur = update.value
   val cr = ur.configuration(Compile).get

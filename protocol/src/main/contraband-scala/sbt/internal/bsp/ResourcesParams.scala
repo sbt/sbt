@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class ResourcesParams private (
   override def toString: String = {
     "ResourcesParams(" + targets + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets): ResourcesParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets): ResourcesParams = {
     new ResourcesParams(targets)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): ResourcesParams = {

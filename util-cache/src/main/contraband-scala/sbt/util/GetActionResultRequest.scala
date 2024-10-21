@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class GetActionResultRequest private (
   override def toString: String = {
     "GetActionResultRequest(" + actionDigest + ", " + inlineStdout + ", " + inlineStderr + ", " + inlineOutputFiles + ")"
   }
-  private[this] def copy(actionDigest: sbt.util.Digest = actionDigest, inlineStdout: Option[Boolean] = inlineStdout, inlineStderr: Option[Boolean] = inlineStderr, inlineOutputFiles: Vector[String] = inlineOutputFiles): GetActionResultRequest = {
+  private def copy(actionDigest: sbt.util.Digest = actionDigest, inlineStdout: Option[Boolean] = inlineStdout, inlineStderr: Option[Boolean] = inlineStderr, inlineOutputFiles: Vector[String] = inlineOutputFiles): GetActionResultRequest = {
     new GetActionResultRequest(actionDigest, inlineStdout, inlineStderr, inlineOutputFiles)
   }
   def withActionDigest(actionDigest: sbt.util.Digest): GetActionResultRequest = {

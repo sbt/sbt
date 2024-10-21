@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class TraceEvent private (
   override def toString: String = {
     "TraceEvent(" + level + ", " + message + ", " + channelName + ", " + execId + ")"
   }
-  private[this] def copy(level: String = level, message: Throwable = message, channelName: Option[String] = channelName, execId: Option[String] = execId): TraceEvent = {
+  private def copy(level: String = level, message: Throwable = message, channelName: Option[String] = channelName, execId: Option[String] = execId): TraceEvent = {
     new TraceEvent(level, message, channelName, execId)
   }
   def withLevel(level: String): TraceEvent = {

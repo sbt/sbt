@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.20"
 ThisBuild / turbo := true
 
 resolvers += "Local Maven" at (baseDirectory.value / "libraries" / "foo" / "ivy").toURI.toURL.toString

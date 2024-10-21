@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.17"
+ThisBuild / scalaVersion := "2.12.20"
 def configIvyScala =
   scalaModuleInfo ~= (_ map (_ withCheckExplicit false))
 

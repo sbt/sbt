@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class CustomRemoteCacheArtifact private (
   override def toString: String = {
     "CustomRemoteCacheArtifact(" + artifact + ", " + packaged + ", " + extractDirectory + ", " + preserveLastModified + ")"
   }
-  private[this] def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, preserveLastModified: Boolean = preserveLastModified): CustomRemoteCacheArtifact = {
+  private def copy(artifact: sbt.librarymanagement.Artifact = artifact, packaged: sbt.TaskKey[xsbti.HashedVirtualFileRef] = packaged, extractDirectory: java.io.File = extractDirectory, preserveLastModified: Boolean = preserveLastModified): CustomRemoteCacheArtifact = {
     new CustomRemoteCacheArtifact(artifact, packaged, extractDirectory, preserveLastModified)
   }
   def withArtifact(artifact: sbt.librarymanagement.Artifact): CustomRemoteCacheArtifact = {
