@@ -10,7 +10,7 @@ package sbt
 package internal
 
 import Keys._
-import Def.{ Setting, ScopedKey }
+import Def.{ ScopedKey }
 import sbt.internal.util.{ FilePosition, NoPosition, SourcePosition }
 import java.io.File
 import ProjectExtra.{ extract, scopedKeyData }

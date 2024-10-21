@@ -13,7 +13,6 @@ import java.io.File
 
 import sbt.Def._
 import sbt.Keys._
-import sbt.Project._
 import sbt.ProjectExtra.*
 import sbt.internal.graph._
 import sbt.internal.graph.backend.SbtUpdateReport
