@@ -100,27 +100,9 @@ object Dependencies {
   val scalaCompiler = "org.scala-lang" %% "scala3-compiler" % scala3
   val scala3Library = "org.scala-lang" %% "scala3-library" % scala3
 
-  val scalaXml = Def.setting(
-    if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
-    } else {
-      "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
-    }
-  )
-  val scalaParsers = Def.setting(
-    if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "2.1.0"
-    } else {
-      "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2"
-    }
-  )
-  val scalaReflect = Def.setting(
-    if (scalaBinaryVersion.value == "3") {
-      "org.scala-lang" % "scala-reflect" % scala213
-    } else {
-      "org.scala-lang" % "scala-reflect" % scalaVersion.value
-    }
-  )
+  val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.2.0"
+  val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "2.1.0"
+  val scalaReflect = "org.scala-lang" % "scala-reflect" % scala213
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4"
   val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.11.0"
 

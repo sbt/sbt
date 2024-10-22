@@ -321,7 +321,7 @@ lazy val utilPosition = (project in file("internal") / "util-position")
     utilCommonSettings,
     name := "Util Position",
     scalacOptions += "-language:experimental.macros",
-    libraryDependencies ++= Seq(scalaReflect.value, scalatest % "test"),
+    libraryDependencies ++= Seq(scalaReflect, scalatest % "test"),
     utilMimaSettings,
   )
 
@@ -424,7 +424,7 @@ lazy val utilCache = project
         sjsonNewCore.value,
         sjsonNewScalaJson.value,
         sjsonNewMurmurhash.value,
-        scalaReflect.value
+        scalaReflect
       ),
     Compile / managedSourceDirectories +=
       baseDirectory.value / "src" / "main" / "contraband-scala",
@@ -458,7 +458,7 @@ lazy val utilScripted = (project in file("internal") / "util-scripted")
   .settings(
     utilCommonSettings,
     name := "Util Scripted",
-    libraryDependencies += scalaParsers.value,
+    libraryDependencies += scalaParsers,
     utilMimaSettings,
   )
   .configure(addSbtIO)
@@ -472,7 +472,7 @@ lazy val testingProj = (project in file("testing"))
     baseSettings,
     name := "Testing",
     libraryDependencies ++= Seq(
-      scalaXml.value,
+      scalaXml,
       testInterface,
       launcherInterface,
       sjsonNewScalaJson.value,
@@ -913,7 +913,7 @@ lazy val mainProj = (project in file("main"))
     },
     libraryDependencies ++=
       (Seq(
-        scalaXml.value,
+        scalaXml,
         sjsonNewScalaJson.value,
         sjsonNewCore.value,
         launcherInterface,
@@ -1358,11 +1358,11 @@ lazy val lmCore = (project in file("lm-core"))
     contrabandSjsonNewVersion := sjsonNewVersion,
     libraryDependencies ++= Seq(
       jsch,
-      // scalaReflect.value,
+      // scalaReflect,
       // scalaCompiler.value,
       launcherInterface,
       gigahorseApacheHttp,
-      scalaXml.value,
+      scalaXml,
       sjsonNewScalaJson.value % Optional,
       sjsonNewCore.value % Optional,
       scalaTest % Test,
