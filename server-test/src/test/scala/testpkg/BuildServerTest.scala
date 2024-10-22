@@ -93,7 +93,7 @@ class BuildServerTest extends AbstractServerTest {
       "project/src/main/scala-3",
       s"project/src/main/scala-sbt-${TestProperties.version}",
       "project/src/main/scala/",
-      "target/out/jvm/scala-3.3.1/buildserver-build/src_managed/main"
+      "target/out/jvm/scala-3.3.4/buildserver-build/src_managed/main"
     ).map(rel => new File(svr.baseDirectory.getAbsoluteFile, rel).toURI).sorted
     assert(sources == expectedSources)
   }
