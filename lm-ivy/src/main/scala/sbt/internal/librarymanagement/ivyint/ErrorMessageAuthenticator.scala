@@ -19,7 +19,7 @@ object ErrorMessageAuthenticator {
     else getTheAuthenticator
   }
 
-  private[this] def getTheAuthenticator: Option[Authenticator] = {
+  private def getTheAuthenticator: Option[Authenticator] = {
     withJavaReflectErrorHandling {
       val field = classOf[Authenticator].getDeclaredField("theAuthenticator")
       field.setAccessible(true)
@@ -27,13 +27,13 @@ object ErrorMessageAuthenticator {
     }
   }
 
-  private[this] def getDefaultAuthenticator: Option[Authenticator] =
+  private def getDefaultAuthenticator: Option[Authenticator] =
     withJavaReflectErrorHandling {
       val method = classOf[Authenticator].getDeclaredMethod("getDefault")
       Option(method.invoke(null).asInstanceOf[Authenticator])
     }
 
-  private[this] def withJavaReflectErrorHandling[A](t: => Option[A]): Option[A] = {
+  private def withJavaReflectErrorHandling[A](t: => Option[A]): Option[A] = {
     try t
     catch {
       case e: ReflectiveOperationException => handleReflectionException(e)
@@ -46,7 +46,7 @@ object ErrorMessageAuthenticator {
     }
   }
 
-  private[this] def handleReflectionException(t: Throwable) = {
+  private def handleReflectionException(t: Throwable) = {
     Message.debug("Error occurred while getting the original authenticator: " + t.getMessage)
     None
   }

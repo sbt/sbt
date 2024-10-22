@@ -24,7 +24,7 @@ class ComponentManager(
     ivyHome: Option[File],
     val log: Logger
 ) {
-  private[this] val ivyCache = new IvyCache(ivyHome)
+  private val ivyCache = new IvyCache(ivyHome)
 
   /** Get all of the files for component 'id', throwing an exception if no files exist for the component. */
   def files(id: String)(ifMissing: IfMissing): Iterable[File] = {

@@ -142,11 +142,11 @@ object IvyActions {
       }
     }
   }
-  private[this] def withChecksums[T](resolver: DependencyResolver, checksums: Vector[String])(
+  private def withChecksums[T](resolver: DependencyResolver, checksums: Vector[String])(
       act: => T
   ): T =
     resolver match { case br: BasicResolver => withChecksums(br, checksums)(act); case _ => act }
-  private[this] def withChecksums[T](resolver: BasicResolver, checksums: Vector[String])(
+  private def withChecksums[T](resolver: BasicResolver, checksums: Vector[String])(
       act: => T
   ): T = {
     val previous = resolver.getChecksumAlgorithms
@@ -247,7 +247,7 @@ object IvyActions {
       classifiedArtifacts(id.name, classifiers filter getExcluded(id, exclude))
     }
 
-  private[this] def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
+  private def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
     exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
   def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
@@ -293,7 +293,7 @@ object IvyActions {
    * @param inputs The resolution inputs.
    * @return The result of the resolution.
    */
-  private[this] def resolveAndRetrieve(
+  private def resolveAndRetrieve(
       inputs: ResolutionInputs
   ): Either[ResolveException, UpdateReport] = {
     // Populate resolve options from the passed arguments
@@ -351,7 +351,7 @@ object IvyActions {
    * @param cache The optional cache dependency.
    * @return The result of the cached resolution.
    */
-  private[this] def cachedResolveAndRetrieve(
+  private def cachedResolveAndRetrieve(
       inputs: ResolutionInputs,
       cache: File
   ): Either[ResolveException, UpdateReport] = {
@@ -515,7 +515,7 @@ object IvyActions {
       }
     }
   }
-  private[this] def checkFilesPresent(artifacts: Seq[(IArtifact, File)]): Unit = {
+  private def checkFilesPresent(artifacts: Seq[(IArtifact, File)]): Unit = {
     val missing = artifacts filter { case (_, file) => !file.exists }
     if (missing.nonEmpty)
       sys.error(

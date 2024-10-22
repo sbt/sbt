@@ -49,7 +49,7 @@ final class RichUpdateReport(report: UpdateReport) {
   def select(artifact: ArtifactFilter): Vector[File] =
     select(configurationFilter(), moduleFilter(), artifact)
 
-  private[this] def select0(f: DependencyFilter): Vector[File] =
+  private def select0(f: DependencyFilter): Vector[File] =
     for {
       cReport <- report.configurations
       mReport <- cReport.modules

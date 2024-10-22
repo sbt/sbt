@@ -278,7 +278,7 @@ final class IvySbt(
     def defaultConfig(log: Logger): String = withModule(log)((_, _, dc) => dc)
     // these should only be referenced by withModule because lazy vals synchronize on this object
     // withIvy explicitly locks the IvySbt object, so they have to be done in the right order to avoid deadlock
-    private[this] lazy val (moduleDescriptor0: DefaultModuleDescriptor, defaultConfig0: String) = {
+    private lazy val (moduleDescriptor0: DefaultModuleDescriptor, defaultConfig0: String) = {
       val (baseModule, baseConfiguration) =
         moduleSettings match {
           case ic: InlineConfiguration   => configureInline(ic, getLog(configuration.log))
@@ -596,7 +596,7 @@ private[sbt] object IvySbt {
     configureResolutionCache(settings, resCacheDir)
     configureRepositoryCache(settings)
   }
-  private[this] def configureResolutionCache(settings: IvySettings, resCacheDir: Option[File]) = {
+  private def configureResolutionCache(settings: IvySettings, resCacheDir: Option[File]) = {
     val base = resCacheDir getOrElse settings.getDefaultResolutionCacheBasedir
     settings.setResolutionCacheManager(new ResolutionCache(base, settings))
   }
@@ -622,7 +622,7 @@ private[sbt] object IvySbt {
       )
     }
 
-  private[this] def configureRepositoryCache(settings: IvySettings): Unit = {
+  private def configureRepositoryCache(settings: IvySettings): Unit = {
     val cacheDir = settings.getDefaultRepositoryCacheBasedir()
     val manager = new DefaultRepositoryCacheManager("default-cache", settings, cacheDir) {
       override def findModuleInCache(
@@ -651,7 +651,7 @@ private[sbt] object IvySbt {
           }
         }
       }
-      private[this] def isProjectResolver(r: DependencyResolver): Boolean = r match {
+      private def isProjectResolver(r: DependencyResolver): Boolean = r match {
         case _: ProjectResolver => true
         case _                  => false
       }
@@ -831,14 +831,14 @@ private[sbt] object IvySbt {
     }
     </ivy-module>
   }
-  private[this] def defaultInfo(module: ModuleID): scala.xml.Elem = {
+  private def defaultInfo(module: ModuleID): scala.xml.Elem = {
     import module._
     val base = <info organisation={organization} module={name} revision={revision}/>
     branchName.fold(base) { br =>
       base % new scala.xml.UnprefixedAttribute("branch", br, scala.xml.Null)
     }
   }
-  private[this] def addExtraAttributes(
+  private def addExtraAttributes(
       elem: scala.xml.Elem,
       extra: Map[String, String]
   ): scala.xml.Elem =
@@ -1040,7 +1040,7 @@ private[sbt] object IvySbt {
   def copyConfigurations(artifact: Artifact, addConfiguration: ConfigRef => Unit): Unit =
     copyConfigurations(artifact, addConfiguration, Vector(ConfigRef("*")))
 
-  private[this] def copyConfigurations(
+  private def copyConfigurations(
       artifact: Artifact,
       addConfiguration: ConfigRef => Unit,
       allConfigurations: Vector[ConfigRef]

@@ -80,8 +80,8 @@ object VersionRange {
     if (version.length <= 1) false
     else startSym(version(0)) && stopSym(version(version.length - 1))
 
-  private[this] val startSym = Set(']', '[', '(')
-  private[this] val stopSym = Set(']', '[', ')')
-  private[this] val MavenVersionSetPattern =
+  private val startSym = Set(']', '[', '(')
+  private val stopSym = Set(']', '[', ')')
+  private val MavenVersionSetPattern =
     """([\]\[\(])([\w\.\-]+)?(,)?([\w\.\-]+)?([\]\[\)])(,.+)?""".r
 }

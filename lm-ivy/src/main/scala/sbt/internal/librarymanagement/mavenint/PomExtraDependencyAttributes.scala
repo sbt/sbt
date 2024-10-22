@@ -103,7 +103,7 @@ object PomExtraDependencyAttributes {
     LinesP.split(s).map(_.trim).filter(!_.isEmpty).map(ModuleRevisionId.decode)
   )
 
-  private[this] val LinesP = Pattern.compile("(?m)^")
+  private val LinesP = Pattern.compile("(?m)^")
 
   /**
    * Creates the "extra" property values for DependencyDescriptors that can be written into a maven pom

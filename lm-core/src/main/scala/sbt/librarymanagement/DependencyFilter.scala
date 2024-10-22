@@ -83,7 +83,7 @@ sealed trait SubDepFilter[Arg, Self <: SubDepFilter[Arg, Self]] extends Dependen
   final def &(o: Self): Self = combine(o, _ && _)
   final def |(o: Self): Self = combine(o, _ || _)
   final def -(o: Self): Self = combine(o, _ && !_)
-  private[this] def combine(o: Self, f: (Boolean, Boolean) => Boolean): Self =
+  private def combine(o: Self, f: (Boolean, Boolean) => Boolean): Self =
     make((m: Arg) => f(this(m), o(m)))
 }
 trait ModuleFilter extends SubDepFilter[ModuleID, ModuleFilter] {

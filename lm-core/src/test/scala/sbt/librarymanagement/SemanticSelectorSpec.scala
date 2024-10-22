@@ -372,27 +372,27 @@ class SemanticSelectorSpec extends AnyFreeSpec with Matchers {
     }
   }
 
-  private[this] final class SemanticSelectorString(val value: String)
-  private[this] def semsel(s: String)(f: SemanticSelectorString => Unit): Unit =
+  private final class SemanticSelectorString(val value: String)
+  private def semsel(s: String)(f: SemanticSelectorString => Unit): Unit =
     s"""SemanticSelector "$s"""" - {
       f(new SemanticSelectorString(s))
     }
 
-  private[this] def assertMatches(
+  private def assertMatches(
       s: SemanticSelectorString,
       v: String
   ): Unit = s"""should match "$v"""" in {
     SemanticSelector(s.value).matches(VersionNumber(v)) shouldBe true
   }
 
-  private[this] def assertNotMatches(
+  private def assertNotMatches(
       s: SemanticSelectorString,
       v: String
   ): Unit = s"""should not match "$v"""" in {
     SemanticSelector(s.value).matches(VersionNumber(v)) shouldBe false
   }
 
-  private[this] def assertParsesToError(s: SemanticSelectorString): Unit =
+  private def assertParsesToError(s: SemanticSelectorString): Unit =
     s"""should parse as an error""" in {
       an[IllegalArgumentException] should be thrownBy SemanticSelector(s.value)
     }

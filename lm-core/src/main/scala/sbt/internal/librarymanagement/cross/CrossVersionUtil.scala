@@ -125,10 +125,10 @@ object CrossVersionUtil {
       case _                              => full
     }
 
-  private[this] def isNewer(major: Long, minor: Long, minMajor: Long, minMinor: Long): Boolean =
+  private def isNewer(major: Long, minor: Long, minMajor: Long, minMinor: Long): Boolean =
     major > minMajor || (major == minMajor && minor >= minMinor)
 
-  private[this] def binaryVersionWithApi(full: String, cutoff: String)(
+  private def binaryVersionWithApi(full: String, cutoff: String)(
       apiVersion: String => Option[(Long, Long)]
   ): String = {
     (apiVersion(full), partialVersion(cutoff)) match {

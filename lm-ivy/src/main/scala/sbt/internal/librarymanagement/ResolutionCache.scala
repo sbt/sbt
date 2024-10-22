@@ -21,7 +21,7 @@ import sbt.librarymanagement._
  */
 private[sbt] final class ResolutionCache(base: File, settings: IvySettings)
     extends ResolutionCacheManager {
-  private[this] def resolvedFileInCache(m: ModuleRevisionId, name: String, ext: String): File = {
+  private def resolvedFileInCache(m: ModuleRevisionId, name: String, ext: String): File = {
     val p = ResolvedPattern
     val f = IvyPatternHelper.substitute(
       p,
@@ -39,7 +39,7 @@ private[sbt] final class ResolutionCache(base: File, settings: IvySettings)
     )
     new File(base, f)
   }
-  private[this] val reportBase: File = new File(base, ReportDirectory)
+  private val reportBase: File = new File(base, ReportDirectory)
 
   def getResolutionCacheRoot: File = base
   def clean(): Unit = IO.delete(base)

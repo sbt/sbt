@@ -47,7 +47,7 @@ object IvyScalaUtil {
       scalaVersion: String,
       scalaVersionConfigs0: Vector[String]
   ) extends DependencyDescriptorMediator {
-    private[this] val scalaVersionConfigs = scalaVersionConfigs0.toSet
+    private val scalaVersionConfigs = scalaVersionConfigs0.toSet
     private val binaryVersion = CrossVersion.binaryScalaVersion(scalaVersion)
     def mediate(dd: DependencyDescriptor): DependencyDescriptor = {
       // Mediate only for the dependencies in scalaVersion configurations. https://github.com/sbt/sbt/issues/2786

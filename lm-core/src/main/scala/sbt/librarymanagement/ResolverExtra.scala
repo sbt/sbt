@@ -424,7 +424,7 @@ private[librarymanagement] abstract class ResolverFunctions {
     )
   }
 
-  private[this] def mavenLocalDir: File = {
+  private def mavenLocalDir: File = {
     def loadHomeFromSettings(f: () => File): Option[File] =
       try {
         val file = f()
