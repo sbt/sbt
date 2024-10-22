@@ -5,10 +5,10 @@
 # hybrid project, only scaladoc run
 > doc
 > packageBin
-$ exists target/out/jvm/scala-2.12.19/root/api/index.js
-$ exists target/out/jvm/scala-2.12.19/root/api/A$.html
-$ absent target/out/jvm/scala-2.12.19/root/api/scala
-$ absent target/out/jvm/scala-2.12.19/root/api/java
+$ exists target/out/jvm/scala-2.12.20/root/api/index.js
+$ exists target/out/jvm/scala-2.12.20/root/api/A$.html
+$ absent target/out/jvm/scala-2.12.20/root/api/scala
+$ absent target/out/jvm/scala-2.12.20/root/api/java
 
 > setDocExtension scala
 
@@ -19,12 +19,12 @@ $ copy-file changes/B.scala B.scala
 > clean ; compile ; doc
 
 # pure scala project, only scaladoc at top level
-$ exists target/out/jvm/scala-2.12.19/root/api/index.js
-$ exists target/out/jvm/scala-2.12.19/root/api/A$.html
-$ exists target/out/jvm/scala-2.12.19/root/api/B$.html
-$ absent target/out/jvm/scala-2.12.19/root/api/package-list
-$ absent target/out/jvm/scala-2.12.19/root/api/scala
-$ absent target/out/jvm/scala-2.12.19/root/api/java
+$ exists target/out/jvm/scala-2.12.20/root/api/index.js
+$ exists target/out/jvm/scala-2.12.20/root/api/A$.html
+$ exists target/out/jvm/scala-2.12.20/root/api/B$.html
+$ absent target/out/jvm/scala-2.12.20/root/api/package-list
+$ absent target/out/jvm/scala-2.12.20/root/api/scala
+$ absent target/out/jvm/scala-2.12.20/root/api/java
 
 > setDocExtension java
 
@@ -34,14 +34,14 @@ $ absent target/out/jvm/scala-2.12.19/root/api/java
 > doc
 
 # pure java project, only javadoc at top level
-$ exists target/out/jvm/scala-2.12.19/root/api/index.html
-$ exists target/out/jvm/scala-2.12.19/root/api/pkg/J.html
-$ absent target/out/jvm/scala-2.12.19/root/api/index.js
+$ exists target/out/jvm/scala-2.12.20/root/api/index.html
+$ exists target/out/jvm/scala-2.12.20/root/api/pkg/J.html
+$ absent target/out/jvm/scala-2.12.20/root/api/index.js
 
 > setDocExtension scala
 > ++2.13.x
 > clean
-$ absent target/out/jvm/scala-2.12.19/root/api/A$.html
+$ absent target/out/jvm/scala-2.12.20/root/api/A$.html
 > doc
 $ exists target/out/jvm/scala-2.13.12/root/api/A$.html
 $ exists target/out/jvm/scala-2.13.12/root/api/B$.html

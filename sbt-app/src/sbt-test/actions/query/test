@@ -3,7 +3,7 @@
 $ exists target/out/jvm/scala-3.3.3/root/root.txt
 $ exists target/out/jvm/scala-3.3.3/foo/foo.txt
 $ exists target/out/jvm/scala-3.3.3/bar/bar.txt
-$ exists target/out/jvm/scala-2.12.19/baz/baz.txt
+$ exists target/out/jvm/scala-2.12.20/baz/baz.txt
 
 > clean
 
@@ -12,7 +12,7 @@ $ exists target/out/jvm/scala-2.12.19/baz/baz.txt
 $ absent target/out/jvm/scala-3.3.3/root/root.txt
 $ absent target/out/jvm/scala-3.3.3/foo/foo.txt
 $ exists target/out/jvm/scala-3.3.3/bar/bar.txt
-$ exists target/out/jvm/scala-2.12.19/baz/baz.txt
+$ exists target/out/jvm/scala-2.12.20/baz/baz.txt
 
 > clean
 
@@ -21,4 +21,4 @@ $ exists target/out/jvm/scala-2.12.19/baz/baz.txt
 $ exists target/out/jvm/scala-3.3.3/root/root.txt
 $ exists target/out/jvm/scala-3.3.3/foo/foo.txt
 $ exists target/out/jvm/scala-3.3.3/bar/bar.txt
-$ absent target/out/jvm/scala-2.12.19/baz/baz.txt
+$ absent target/out/jvm/scala-2.12.20/baz/baz.txt

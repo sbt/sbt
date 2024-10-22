@@ -6,19 +6,19 @@ val checkReport = taskKey[Unit]("Check the test reports")
 val checkNoReport = taskKey[Unit]("Check that no reports are present")
 
 val oneSecondReportFile =
-  "target/out/jvm/scala-2.12.19/root/test-reports/TEST-a.pkg.OneSecondTest.xml"
+  "target/out/jvm/scala-2.12.20/root/test-reports/TEST-a.pkg.OneSecondTest.xml"
 val failingReportFile =
-  "target/out/jvm/scala-2.12.19/root/test-reports/TEST-another.pkg.FailingTest.xml"
+  "target/out/jvm/scala-2.12.20/root/test-reports/TEST-another.pkg.FailingTest.xml"
 
 val flatSuiteReportFile =
-  "target/out/jvm/scala-2.12.19/root/test-reports/TEST-my.scalatest.MyFlatSuite.xml"
+  "target/out/jvm/scala-2.12.20/root/test-reports/TEST-my.scalatest.MyFlatSuite.xml"
 val nestedSuitesReportFile =
-  "target/out/jvm/scala-2.12.19/root/test-reports/TEST-my.scalatest.MyNestedSuites.xml"
+  "target/out/jvm/scala-2.12.20/root/test-reports/TEST-my.scalatest.MyNestedSuites.xml"
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 val junitinterface = "com.novocode" % "junit-interface" % "0.11"
 
-ThisBuild / scalaVersion := "2.12.19"
+ThisBuild / scalaVersion := "2.12.20"
 
 lazy val root = (project in file(".")).settings(
   libraryDependencies += junitinterface % Test,

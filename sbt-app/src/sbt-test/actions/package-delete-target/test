@@ -1,4 +1,4 @@
-$ mkdir target/out/jvm/scala-2.12.19/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar
-$ touch target/out/jvm/scala-2.12.19/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar/hello
+$ mkdir target/out/jvm/scala-2.12.20/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar
+$ touch target/out/jvm/scala-2.12.20/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar/hello
 -> package
-$ exists target/out/jvm/scala-2.12.19/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar/hello
+$ exists target/out/jvm/scala-2.12.20/delete-target/delete-target_2.12-0.1.0-SNAPSHOT.jar/hello

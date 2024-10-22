@@ -1,6 +1,6 @@
 lazy val check = taskKey[Unit]("")
 
-def scala212 = "2.12.19"
+def scala212 = "2.12.20"
 scalaVersion := scala212
 val o = "com.example"
 organization := o

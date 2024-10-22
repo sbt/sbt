@@ -13,7 +13,7 @@ def wrap[A1](task: InputKey[A1]): Def.Initialize[Task[Unit]] =
 // ThisBuild / turbo := true
 
 val root = (project in file(".")).settings(
-  scalaVersion := "2.12.19",
+  scalaVersion := "2.12.20",
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-h",
   sourceDirectory.value.toPath.resolve("main/native/include").toString),
   libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.6" % "test",
