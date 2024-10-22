@@ -3923,7 +3923,7 @@ object Classpaths {
       val pluginClasspath = unit.plugins.fullClasspath.toVector
       val pluginJars = pluginClasspath.filter: x =>
         !Files.isDirectory(converter.toPath(x.data))
-        // exclude directories: an approximation to whether they've been published
+      // exclude directories: an approximation to whether they've been published
       val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_.get(moduleIDStr).map: str =>
         moduleIdJsonKeyFormat.read(str))
       GetClassifiersModule(
