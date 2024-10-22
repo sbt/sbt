@@ -590,7 +590,7 @@ class ScriptedRunner {
     val scriptedRunners =
       runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
     if (parallelExecution && instances > 1) {
-      import sbt.internal.CompatParColls.Converters._
+      import scala.collection.parallel.CollectionConverters.*
       val parallelRunners = scriptedRunners.toArray.par
       parallelRunners.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(instances))
       runAll(parallelRunners)

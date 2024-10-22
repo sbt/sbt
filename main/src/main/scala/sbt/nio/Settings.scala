@@ -297,7 +297,7 @@ private[sbt] object Settings {
    *         input key.
    */
   private[sbt] def fileStamps(scopedKey: Def.ScopedKey[_]): Def.Setting[_] = {
-    import sbt.internal.CompatParColls.Converters._
+    import scala.collection.parallel.CollectionConverters.*
     val scope = scopedKey.scope
     addTaskDefinition(scope / Keys.inputFileStamps := {
       val cache = (scope / unmanagedFileStampCache).value

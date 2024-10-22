@@ -24,7 +24,7 @@ object KeyIndex {
       projects: Map[URI, Set[String]],
       configurations: Map[String, Seq[Configuration]]
   ): ExtendableKeyIndex = {
-    import sbt.internal.CompatParColls.Converters._
+    import scala.collection.parallel.CollectionConverters.*
     known.par.foldLeft(base(projects, configurations)) { _ add _ }
   }
 
@@ -42,7 +42,7 @@ object KeyIndex {
      * This was a significant serial bottleneck during project loading that we can work around by
      * computing the aggregations in parallel and then bulk adding them to the index.
      */
-    import sbt.internal.CompatParColls.Converters._
+    import scala.collection.parallel.CollectionConverters.*
     val toAggregate = known.par.map {
       case key if validID(key.key.label) =>
         Aggregation.aggregate(key, ScopeMask(), extra, reverse = true)

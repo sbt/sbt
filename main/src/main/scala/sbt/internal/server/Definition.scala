@@ -279,7 +279,7 @@ private[sbt] object Definition {
         log.debug(s"symbol $sym")
         analyses
           .map { analyses =>
-            import sbt.internal.CompatParColls.Converters._
+            import scala.collection.parallel.CollectionConverters.*
             val locations = analyses.par.flatMap { analysis =>
               val selectPotentials = textProcessor.potentialClsOrTraitOrObj(sym)
               val classes =
