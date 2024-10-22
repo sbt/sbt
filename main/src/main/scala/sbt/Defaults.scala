@@ -269,11 +269,7 @@ object Defaults extends BuildCommon {
         if (v.endsWith("-SNAPSHOT") || v.contains("-bin-")) Classpaths.sbtMavenSnapshots
         else Resolver.DefaultMavenRepository
       },
-      sbtResolvers := {
-        // TODO: Remove Classpaths.typesafeReleases for sbt 2.x
-        // We need to keep it around for sbt 1.x to cross build plugins with sbt 0.13 - https://github.com/sbt/sbt/issues/4698
-        Vector(sbtResolver.value, Classpaths.sbtPluginReleases, Classpaths.typesafeReleases)
-      },
+      sbtResolvers := Vector(sbtResolver.value),
       crossVersion :== Disabled(),
       buildDependencies := Classpaths.constructBuildDependencies.value,
       version :== "0.1.0-SNAPSHOT",
