@@ -10,14 +10,15 @@ package sbt
 package internal
 package scripted
 
-import java.io.File
-import sbt.io.{ IO, Path }
+import sbt.io.Path._
 import sbt.io.syntax._
-import Path._
+import sbt.io.{ CopyOptions, IO }
+
+import java.io.File
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
-  lazy val commands = commandMap
-  def commandMap =
+  lazy val commands: Map[String, List[String] => Unit] = commandMap
+  def commandMap: Map[String, List[String] => Unit] =
     Map(
       "touch" nonEmpty touch _,
       "delete" nonEmpty delete _,
@@ -36,7 +37,17 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       "sleep".oneArg("Time in milliseconds", time => Thread.sleep(time.toLong)),
       "exec" nonEmpty (execute _),
       "copy" copy (to => rebase(baseDirectory, to)),
-      "copy-file".twoArg("Two paths", copyFile _),
+      "copy-file".twoArg("Two paths", (from, to) => copyFile(from, to)),
+      "copy-file-with-options".fiveArg(
+        "Copy files options and file paths",
+        (
+            overwrite,
+            preserveLastModified,
+            preserveExecutable,
+            from,
+            to
+        ) => copyFileWithOptions(from, to)(overwrite, preserveLastModified, preserveExecutable)
+      ),
       "must-mirror".twoArg("Two paths", diffFiles _),
       "copy-flat" copy flat
     )
@@ -55,8 +66,22 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   def delete(paths: List[String]): Unit = IO.delete(fromStrings(paths))
   /*def sync(from: String, to: String) =
 		IO.sync(fromString(from), fromString(to), log)*/
-  def copyFile(from: String, to: String): Unit =
-    IO.copyFile(fromString(from), fromString(to))
+  def copyFile(from: String, to: String, options: CopyOptions = CopyOptions()): Unit =
+    IO.copyFile(fromString(from), fromString(to), options)
+  def copyFileWithOptions(from: String, to: String)(
+      overwrite: String,
+      preserveLastModified: String,
+      preserveExecutable: String,
+  ) =
+    copyFile(
+      from,
+      to,
+      CopyOptions(
+        overwrite = overwrite.toBoolean,
+        preserveLastModified = preserveLastModified.toBoolean,
+        preserveExecutable = preserveExecutable.toBoolean
+      )
+    )
   def makeDirectories(paths: List[String]) =
     IO.createDirectories(fromStrings(paths))
   def diffFiles(file1: String, file2: String): Unit = {
@@ -108,6 +133,14 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
           scriptError("No arguments specified for " + commandName + " command.")
         else
           action(paths)
+      }
+    def fiveArg(
+        requiredArgs: String,
+        action: (String, String, String, String, String) => Unit
+    ): NamedCommand =
+      commandName -> {
+        case List(a, b, c, d, e) => action(a, b, c, d, e)
+        case other               => wrongArguments(requiredArgs, other)
       }
     def twoArg(requiredArgs: String, action: (String, String) => Unit): NamedCommand =
       commandName -> {
