@@ -89,8 +89,8 @@ object Dependencies {
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "2.4.1"
-  val scalatest = "org.scalatest" %% "scalatest" % "3.2.10"
-  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.15.4"
+  val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
+  val scalacheck = "org.scalacheck" %% "scalacheck" % "1.18.1"
   val junit = "junit" % "junit" % "4.13.1"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"
   val templateResolverApi = "org.scala-sbt" % "template-resolver" % "0.1"
@@ -141,8 +141,6 @@ object Dependencies {
 
   // lm dependencies
   val jsch = "com.github.mwiede" % "jsch" % "0.2.17" intransitive ()
-  val scalaTest = "org.scalatest" %% "scalatest" % "3.2.18"
-  val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.15.3"
   val gigahorseApacheHttp = "com.eed3si9n" %% "gigahorse-apache-http" % "0.7.0"
 
   // lm-coursier dependencies
