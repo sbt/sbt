@@ -89,8 +89,8 @@ object Dependencies {
   val jline = "org.scala-sbt.jline" % "jline" % "2.14.7-sbt-9c3b6aca11c57e339441442bbf58e550cdfecb79"
   val jline3Version = "3.27.0"
   val jline3Terminal = "org.jline" % "jline-terminal" % jline3Version
-  val jline3Jansi = "org.jline" % "jline-terminal-jansi" % jline3Version
-  val jline3JNA = "org.jline" % "jline-terminal-jna" % jline3Version
+  val jline3JNI = "org.jline" % "jline-terminal-jni" % jline3Version
+  val jline3Native = "org.jline" % "jline-native" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
   val jansi = "org.fusesource.jansi" % "jansi" % "2.4.1"

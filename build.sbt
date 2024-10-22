@@ -378,8 +378,8 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
       Seq(
         jline,
         jline3Terminal,
-        jline3JNA,
-        jline3Jansi,
+        jline3JNI,
+        jline3Native,
         log4jApi,
         log4jCore,
         disruptor,

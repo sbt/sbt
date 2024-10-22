@@ -1237,7 +1237,6 @@ object NetworkClient {
         System.out.flush()
       })
       Runtime.getRuntime.addShutdownHook(hook)
-      if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       val parsed = parseArgs(restOfArgs)
       System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
