@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.10.1"
+declare builtin_sbt_version="1.10.3"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.10.0"
+declare sbtn_version="1.10.3"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
