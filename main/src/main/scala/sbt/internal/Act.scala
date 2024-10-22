@@ -73,15 +73,15 @@ object Act {
       structure: BuildStructure
   ): KeysParser =
     for (
-      selected <- scopedKeySelected(
-        structure.index.aggregateKeyIndex,
-        current,
-        defaultConfigs,
-        structure.index.keyMap,
-        structure.data,
-        askProject = true,
+        selected <- scopedKeySelected(
+          structure.index.aggregateKeyIndex,
+          current,
+          defaultConfigs,
+          structure.index.keyMap,
+          structure.data,
+          askProject = true,
+        )
       )
-    )
       yield Aggregation.aggregate(
         selected.key.asInstanceOf[ScopedKey[Any]],
         selected.mask,
