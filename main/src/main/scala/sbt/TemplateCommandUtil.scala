@@ -278,9 +278,9 @@ private[sbt] object TemplateCommandUtil {
         System.err.println("Local template not found for: " + arguments.mkString(" "))
     }
 
-  private final val defaultScalaV = "3.3.0"
+  private final val defaultScalaV = "3.3.4"
   private def scalaToolkitTemplate(): Unit = {
-    val defaultScalaToolkitV = "0.2.0"
+    val defaultScalaToolkitV = "0.5.0"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
     val content = s"""
@@ -298,7 +298,7 @@ libraryDependencies += (toolkitTest % Test)
   }
 
   private def typelevelToolkitTemplate(): Unit = {
-    val defaultTypelevelToolkitV = "0.1.3"
+    val defaultTypelevelToolkitV = "0.1.28"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
     val content = s"""
@@ -334,9 +334,9 @@ lazy val core = (projectMatrix in file("core"))
     IO.write(new File("build.sbt"), content)
 
     val pluginsContent = """
-addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.9.0")
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.10.1")
-addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.4.10")
+addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.10.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.17.0")
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.5")
 """
     IO.write(new File("project/plugins.sbt"), pluginsContent)
     copyResource("ScalaMain.scala.txt", new File("core/src/main/scala/example/Main.scala"))
