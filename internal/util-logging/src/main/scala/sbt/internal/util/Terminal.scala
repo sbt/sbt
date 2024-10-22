@@ -246,7 +246,7 @@ object Terminal {
   }
 
   private[sbt] def set(terminal: Terminal): Terminal = activeTerminal.getAndSet(terminal)
-  implicit class TerminalOps(private val term: Terminal) extends AnyVal {
+  extension (term: Terminal) {
     def ansi(richString: => String, string: => String): String =
       if (term.isAnsiSupported) richString else string
     /*

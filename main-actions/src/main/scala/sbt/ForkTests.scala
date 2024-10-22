@@ -18,7 +18,7 @@ import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
 import sbt.protocol.testing._
-import sbt.internal.util.Util.{ AnyOps, none }
+import sbt.internal.util.Util.*
 import sbt.internal.util.{ Terminal => UTerminal }
 import xsbti.{ FileConverter, HashedVirtualFileRef }
 

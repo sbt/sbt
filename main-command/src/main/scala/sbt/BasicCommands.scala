@@ -22,7 +22,7 @@ import sbt.internal.util.complete.{
   History => CHistory
 }
 import sbt.internal.util.Types.{ const, idFun }
-import sbt.internal.util.Util.{ AnyOps, nil, nilSeq, none }
+import sbt.internal.util.Util.*
 import sbt.internal.inc.classpath.ClasspathUtil.toLoader
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.client.NetworkClient

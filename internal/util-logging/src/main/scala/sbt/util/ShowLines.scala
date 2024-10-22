@@ -17,7 +17,7 @@ object ShowLines {
       def showLines(a: A): Seq[String] = f(a)
     }
 
-  implicit class ShowLinesOp[A: ShowLines](a: A) {
+  extension [A: ShowLines](a: A) {
     def lines: Seq[String] = implicitly[ShowLines[A]].showLines(a)
   }
 }

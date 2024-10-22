@@ -9,7 +9,7 @@
 package sbt
 
 import sbt.internal.util.ConsoleAppender.ClearScreenAfterCursor
-import sbt.internal.util.Util.{ AnyOps, none }
+import sbt.internal.util.Util.*
 import scala.annotation.tailrec
 
 object SelectMainClass {

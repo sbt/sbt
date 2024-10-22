@@ -30,7 +30,7 @@ import xsbti.ArtifactInfo
 import xsbti.HashedVirtualFileRef
 
 private[sbt] object ClassLoaders {
-  private implicit class SeqFileOps(val files: Seq[File]) extends AnyVal {
+  extension (files: Seq[File]) {
     def urls: Array[URL] = files.toArray.map(_.toURI.toURL)
   }
   private val interfaceLoader = classOf[sbt.testing.Framework].getClassLoader

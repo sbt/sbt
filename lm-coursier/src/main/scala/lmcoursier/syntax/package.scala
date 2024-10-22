@@ -10,7 +10,7 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
 import java.io.File
 
 package object syntax {
-  implicit class CoursierConfigurationModule(value: CoursierConfiguration.type) {
+  extension (value: CoursierConfiguration.type) {
     @deprecated(
       "Legacy cache location support was dropped, this method does nothing.",
       "2.0.0-RC6-10"
@@ -80,7 +80,7 @@ package object syntax {
       )
   }
 
-  implicit class CoursierConfigurationOp(value: CoursierConfiguration) {
+  extension (value: CoursierConfiguration) {
     def withLog(log: Logger): CoursierConfiguration =
       value.withLog(Option(log))
     def withSbtScalaOrganization(sbtScalaOrganization: String): CoursierConfiguration =
@@ -122,7 +122,7 @@ package object syntax {
       value.withRetry(Some((retry._1, retry._2)))
   }
 
-  implicit class PublicationOp(value: Publication) {
+  extension (value: Publication) {
     def attributes: Attributes =
       Attributes(value.`type`, value.classifier)
 
@@ -132,7 +132,7 @@ package object syntax {
         .withClassifier(attributes.classifier)
   }
 
-  implicit class DependencyModule(value: Dependency.type) {
+  extension (value: Dependency.type) {
     def apply(
         module: Module,
         version: String,
@@ -153,7 +153,7 @@ package object syntax {
       )
   }
 
-  implicit class DependencyOp(value: Dependency) {
+  extension (value: Dependency) {
     def attributes: Attributes = value.publication.attributes
 
     def withAttributes(attributes: Attributes): Dependency =
@@ -164,7 +164,7 @@ package object syntax {
       )
   }
 
-  implicit class ModuleMatchersModule(value: ModuleMatchers.type) {
+  extension (value: ModuleMatchers.type) {
     def all: ModuleMatchers =
       ModuleMatchers(Set.empty, Set.empty)
     def only(organization: String, moduleName: String): ModuleMatchers =
@@ -177,19 +177,19 @@ package object syntax {
       ModuleMatchers(Set.empty, Set(mod), includeByDefault = false)
   }
 
-  implicit class StrictOp(value: Strict) {
+  extension (value: Strict) {
     def addInclude(include: (String, String)*): Strict =
       value.withInclude(value.include ++ include)
     def addExclude(exclude: (String, String)*): Strict =
       value.withExclude(value.exclude ++ exclude)
   }
 
-  implicit class AuthenticationModule(value: Authentication.type) {
+  extension (value: Authentication.type) {
     def apply(headers: Seq[(String, String)]): Authentication =
       Authentication("", "").withHeaders(headers)
   }
 
-  implicit class DirectCredentialsModule(value: DirectCredentials.type) {
+  extension (value: DirectCredentials.type) {
     def apply(host: String, username: String, password: String, realm: String): DirectCredentials =
       DirectCredentials(host, username, password, Option(realm))
     def apply(
@@ -202,12 +202,12 @@ package object syntax {
       DirectCredentials(host, username, password, Option(realm))
   }
 
-  implicit class DirectCredentialsOp(value: DirectCredentials) {
+  extension (value: DirectCredentials) {
     def withRealm(realm: String): DirectCredentials =
       value.withRealm(Option(realm))
   }
 
-  implicit class CredentialsModule(value: Credentials.type) {
+  extension (value: Credentials.type) {
     def apply(): DirectCredentials = DirectCredentials()
     def apply(host: String, username: String, password: String): DirectCredentials =
       DirectCredentials(host, username, password)
