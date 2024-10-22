@@ -9,8 +9,9 @@
 package sbt.internal.util
 
 import java.lang.Runnable
-import java.util.concurrent.{ atomic, Executor, LinkedBlockingQueue }
+import java.util.concurrent.{ Executor, LinkedBlockingQueue, atomic }
 import atomic.{ AtomicBoolean, AtomicInteger }
+import scala.annotation.nowarn
 
 enum EvaluationState:
   case New
@@ -35,6 +36,7 @@ abstract class EvaluateSettings[ScopeType]:
   private def getStatic[A](key: ScopedKey[A]): INode[A] =
     static.get(key).getOrElse { sys.error("Illegal reference to key " + key) }
 
+  @nowarn
   private val transform: [A] => Initialize[A] => INode[A] = [A] =>
     (fa: Initialize[A]) =>
       fa match
@@ -42,8 +44,10 @@ abstract class EvaluateSettings[ScopeType]:
         case u: Uniform[s, A] => UniformNode(u.inputs.map(transform[s]), u.f)
         case a: Apply[k, A] =>
           MixedNode[k, A](TupleMapExtension.transform(a.inputs)(transform), a.f)
-        case b: Bind[s, A] => BindNode[s, A](transform(b.in), x => transform(b.f(x)))
-        case v: Value[A]   => constant(v.value)
+        case b: Bind[s, A]           => BindNode[s, A](transform(b.in), x => transform(b.f(x)))
+        case v: Value[A]             => constant(v.value)
+        case v: ValidationCapture[a] => strictConstant(v.key: A)
+        case t: TransformCapture     => strictConstant(t.f: A)
         case o: Optional[s, A] =>
           o.a match
             case None    => constant(() => o.f(None))
