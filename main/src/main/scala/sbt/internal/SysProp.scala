@@ -140,7 +140,7 @@ object SysProp {
   def turbo: Boolean = getOrFalse("sbt.turbo")
   def pipelining: Boolean = getOrFalse("sbt.pipelining")
   // opt-in or out of Zinc's consistent Analysis format.
-  def analysis2024: Boolean = getOrTrue("sbt.analysis2024")
+  def analysis2024: Boolean = getOrFalse("sbt.analysis2024")
 
   def taskTimings: Boolean = getOrFalse("sbt.task.timings")
   def taskTimingsOnShutdown: Boolean = getOrFalse("sbt.task.timings.on.shutdown")
