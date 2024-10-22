@@ -26,7 +26,7 @@ private[sbt] object LabeledFunctions {
    * @param f the function to extend
    * @tparam R the function result type
    */
-  private[sbt] implicit class Function0Ops[R](val f: () => R) extends AnyVal {
+  extension [R](f: () => R) {
 
     /**
      * Add a label to the function.
@@ -42,7 +42,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T the input parameter
    * @tparam R the function result type
    */
-  private[sbt] implicit class Function1Ops[T, R](val f: T => R) extends AnyVal {
+  extension [T, R](f: T => R) {
 
     /**
      * Add a label to the function.
@@ -59,7 +59,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T2 the second function input parameter
    * @tparam R the function result type
    */
-  private[sbt] implicit class Function2Ops[T1, T2, R](val f: (T1, T2) => R) extends AnyVal {
+  extension [T1, T2, R](f: (T1, T2) => R) {
 
     /**
      * Add a label to the function.
@@ -77,7 +77,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T3 the third function input parameter
    * @tparam R the function result type
    */
-  private[sbt] implicit class Function3Ops[T1, T2, T3, R](val f: (T1, T2, T3) => R) extends AnyVal {
+  extension [T1, T2, T3, R](f: (T1, T2, T3) => R) {
 
     /**
      * Add a label to the function.
@@ -96,8 +96,7 @@ private[sbt] object LabeledFunctions {
    * @tparam T4 the fourth function input parameter
    * @tparam R the function result type
    */
-  private[sbt] implicit class Function4Ops[T1, T2, T3, T4, R](val f: (T1, T2, T3, T4) => R)
-      extends AnyVal {
+  extension [T1, T2, T3, T4, R](f: (T1, T2, T3, T4) => R) {
 
     /**
      * Add a label to the function.

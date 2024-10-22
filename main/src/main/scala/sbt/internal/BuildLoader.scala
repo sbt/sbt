@@ -17,11 +17,11 @@ import sbt.util.Logger
 import sbt.librarymanagement.ModuleID
 
 private[internal] object Alternatives {
-  private[internal] implicit class Alternative[A, B](val f: A => Option[B]) {
+  extension [A, B](f: A => Option[B]) {
     def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
   }
 }
-import Alternatives.Alternative
+import Alternatives.*
 final class MultiHandler[S, T](
     builtIn: S => Option[T],
     root: Option[S => Option[T]],

@@ -14,7 +14,7 @@ import java.lang.ProcessBuilder.Redirect
 import scala.sys.process.Process
 import OutputStrategy._
 import sbt.internal.util.{ RunningProcesses, Util }
-import Util.{ AnyOps, none }
+import Util.*
 
 import java.lang.{ ProcessBuilder => JProcessBuilder }
 import java.util.Locale

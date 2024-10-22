@@ -12,7 +12,7 @@ import java.io.File
 import java.nio.channels.ClosedChannelException
 import sbt.internal.inc.{ AnalyzingCompiler, MappedFileConverter, PlainVirtualFile }
 import sbt.internal.util.{ DeprecatedJLine, Terminal }
-import sbt.internal.util.Terminal.TerminalOps
+import sbt.internal.util.Terminal.*
 import sbt.util.Logger
 import xsbti.compile.{ Compilers, Inputs }
 

@@ -10,7 +10,7 @@ package sbt.internal.util
 package complete
 
 import sbt.io.IO
-import Util.{ AnyOps, nil }
+import Util.*
 
 object HistoryCommands {
   val Start = "!"
