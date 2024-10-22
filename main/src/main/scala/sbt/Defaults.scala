@@ -3248,7 +3248,6 @@ object Classpaths {
         publishTo :== None,
         resolvers :== Vector.empty,
         includePluginResolvers :== false,
-        useJCenter :== false,
         retrievePattern :== Resolver.defaultRetrievePattern,
         transitiveClassifiers :== Seq(SourceClassifier, DocClassifier),
         sourceArtifactTypes :== Artifact.DefaultSourceTypes.toVector,
@@ -3314,18 +3313,17 @@ object Classpaths {
       externalResolvers.?.value,
       resolvers.value,
       appResolvers.value,
-      useJCenter.value
     ) match {
-      case (Some(delegated), Seq(), _, _) => delegated
-      case (_, rs, Some(ars), _)          => ars ++ rs
-      case (_, rs, _, uj) => Resolver.combineDefaultResolvers(rs.toVector, uj, mavenCentral = true)
+      case (Some(delegated), Seq(), _) => delegated
+      case (_, rs, Some(ars))          => ars ++ rs
+      case (_, rs, _) =>
+        Resolver.combineDefaultResolvers(rs.toVector, jcenter = false, mavenCentral = true)
     }),
     appResolvers := {
       val ac = appConfiguration.value
-      val uj = useJCenter.value
       appRepositories(ac) map { ars =>
         val useMavenCentral = ars contains Resolver.DefaultMavenRepository
-        Resolver.reorganizeAppResolvers(ars, uj, useMavenCentral)
+        Resolver.reorganizeAppResolvers(ars, jcenter = false, useMavenCentral)
       }
     },
     bootResolvers := {
