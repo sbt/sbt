@@ -562,7 +562,6 @@ final class NetworkChannel(
   override def shutdown(): Unit = {
     shutdown(true)
   }
-  import sjsonnew.BasicJsonProtocol.BooleanJsonFormat
 
   override def shutdown(logShutdown: Boolean): Unit =
     shutdown(logShutdown, remainingCommands = None)

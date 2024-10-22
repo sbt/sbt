@@ -23,7 +23,7 @@ import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings }
 import sbt.internal.server.BuildServerEvalReporter
-import sbt.io.{ GlobFilter, IO, Path }
+import sbt.io.{ GlobFilter, IO }
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
 import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
 import sbt.nio.Settings

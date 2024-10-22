@@ -15,7 +15,6 @@ import sbt.BuildExtra.*
 import sbt.BuildPaths.{ configurationSources, projectStandard }
 import sbt.Def._
 import sbt.Keys._
-import sbt.Project._
 import sbt.ProjectExtra.*
 import sbt.ScopeFilter.Make._
 import sbt.Scoped.richTaskSeq

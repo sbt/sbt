@@ -31,7 +31,7 @@ import sbt.internal.io.WatchState
 import sbt.internal.nio._
 import sbt.internal.ui.UITask
 import sbt.internal.util.JoinThread._
-import sbt.internal.util.complete.DefaultParsers.{ Space, matched }
+import sbt.internal.util.complete.DefaultParsers.Space
 import sbt.internal.util.complete.Parser._
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util._

@@ -32,7 +32,6 @@ end UseTask
 object Assign {
   import java.io.File
 
-  import sbt.std.FullInstance.given
   import Def.{
     Initialize,
     inputKey,

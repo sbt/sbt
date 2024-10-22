@@ -11,14 +11,13 @@ package internal
 
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import Keys.{ test, fileConverter, fullClasspath, streams }
+import Keys.{ fileConverter, fullClasspath, streams }
 import sbt.Def.Initialize
 import sbt.internal.inc.Analysis
 import sbt.internal.util.Attributed
 import sbt.internal.util.Types.const
 import sbt.io.{ GlobFilter, IO, NameFilter }
 import sbt.protocol.testing.TestResult
-import sbt.SlashSyntax0.*
 import sbt.util.{ ActionCache, BuildWideCacheConfiguration, CacheLevelTag, Digest }
 import sbt.util.CacheImplicits.given
 import scala.collection.concurrent

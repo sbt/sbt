@@ -16,12 +16,9 @@ import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BasicCommandStrings.{ JavaClient, Shell, Shutdown, TemplateCommand }
 import sbt.Project.LoadAction
 import sbt.ProjectExtra.*
-import sbt.internal.EvalImports
 import sbt.internal.Aggregation.AnyKeys
-import sbt.internal.CommandStrings.BootCommand
 import sbt.internal._
 import sbt.internal.client.BspClient
 import sbt.internal.inc.ScalaInstance
@@ -63,7 +60,7 @@ private[sbt] object xMain:
 
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = boundary {
     try {
-      import BasicCommandStrings.{ DashDashClient, DashDashServer, runEarly }
+      import BasicCommandStrings.{ JavaClient, DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
       import sbt.internal.CommandStrings.{ BootCommand, DefaultsCommand, InitCommand }
