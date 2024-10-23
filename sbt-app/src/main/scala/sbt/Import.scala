@@ -279,6 +279,8 @@ trait Import {
   val DefaultMavenRepository = sbt.librarymanagement.Resolver.DefaultMavenRepository
   val Developer = sbt.librarymanagement.Developer
   type Developer = sbt.librarymanagement.Developer
+  val LicenseInfo = sbt.librarymanagement.LicenseInfo
+  type LicenseInfo = sbt.librarymanagement.LicenseInfo
   val Disabled = sbt.librarymanagement.Disabled
   type Disabled = sbt.librarymanagement.Disabled
   type DirectCredentials = sbt.librarymanagement.ivy.DirectCredentials
