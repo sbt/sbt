@@ -21,7 +21,7 @@ class ScopeDisplaySpec extends AnyFlatSpec {
   val scopedKey = Def.ScopedKey(Scope.Global in project, AttributeKey[Task[String]](mangledName))
   val am = AttributeMap.empty.put(Scope.customShowString, "blah")
   val sanitizedKey = scopedKey.copy(scope = scopedKey.scope.copy(extra = Select(am)))
-  "Def.displayRelative2" should "display mangled name" in {
+  "Def.displayRelative" should "display mangled name" in {
     assert(Def.showRelativeKey2(project, None).show(scopedKey) == mangledName)
   }
   it should "display sanitized name with extra setting" in {
@@ -52,7 +52,7 @@ class ScopeDisplaySpec extends AnyFlatSpec {
     assert(string == "blah")
   }
 
-  behavior of "Def.displayRelative2"
+  behavior of "Def.displayRelative"
 
   val b1 = project.build
   val b2 = sbt.io.IO.toURI(file("other"))
@@ -61,7 +61,7 @@ class ScopeDisplaySpec extends AnyFlatSpec {
   val p2 = ProjectRef(b1, "baz")
   val p3 = ProjectRef(b2, "qux")
 
-  private def disp(r: Reference) = Def.displayRelative2(current = p1, r)
+  private def disp(r: Reference) = Def.displayRelative(current = p1, r)
 
   it should "ProjectRef curr proj" in assert(disp(p1) == "")
   it should "ProjectRef same build" in assert(disp(p2) == "baz /")
