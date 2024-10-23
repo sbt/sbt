@@ -19,9 +19,7 @@ import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
 import org.jline.terminal.Attributes.{ InputFlag, LocalFlag }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
-import org.jline.terminal.impl.jansi.JansiTerminalProvider
 import org.jline.terminal.spi.{ SystemStream, TerminalProvider }
-import org.jline.utils.OSUtils
 import scala.collection.JavaConverters._
 import scala.util.Try
 import java.util.concurrent.LinkedBlockingQueue
@@ -29,41 +27,13 @@ import java.util.concurrent.LinkedBlockingQueue
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
 
-  private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
-  private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
-  private[this] def windowsJansi(): org.jline.terminal.Terminal = {
-    val provider = new JansiTerminalProvider
-    val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
-    provider.winSysTerminal(
-      "console",
-      termType,
-      OSUtils.IS_CONEMU,
-      Charset.forName("UTF-8"),
-      false,
-      SignalHandler.SIG_DFL,
-      true,
-      SystemStream.Output
-    )
-  }
-  private val jansi = {
-    val (major, minor) =
-      (JansiTerminalProvider.getJansiMajorVersion, JansiTerminalProvider.getJansiMinorVersion)
-    (major > 1 || minor >= 18) && Util.isWindows
-  }
   private[util] def system: org.jline.terminal.Terminal = {
     val term =
-      if (forceWindowsJansiHolder.get) windowsJansi()
-      else {
-        // Only use jna on windows. Both jna and jansi use illegal reflective
-        // accesses on posix system.
-        org.jline.terminal.TerminalBuilder
-          .builder()
-          .system(System.console != null)
-          .jna(Util.isWindows && !jansi)
-          .jansi(jansi)
-          .paused(true)
-          .build()
-      }
+      org.jline.terminal.TerminalBuilder
+        .builder()
+        .system(System.console != null)
+        .paused(true)
+        .build()
     initialAttributes.get match {
       case null => initialAttributes.set(term.getAttributes)
       case _    =>
