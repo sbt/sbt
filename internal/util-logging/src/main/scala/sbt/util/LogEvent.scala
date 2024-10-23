@@ -17,6 +17,10 @@ final class SetTrace(val level: Int) extends LogEvent
 final class SetSuccess(val enabled: Boolean) extends LogEvent
 final class ControlEvent(val event: ControlEvent.Value, val msg: String) extends LogEvent
 
-object ControlEvent extends Enumeration {
-  val Start, Header, Finish = Value
+object ControlEvent {
+  enum Value {
+    case Start
+    case Header
+    case Finish
+  }
 }
