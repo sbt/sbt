@@ -200,7 +200,7 @@ lazy val sbtRoot: Project = (project in file("."))
     Utils.noPublish,
     publishLocal := {},
     Global / commands += Command
-      .single("sbtOn")((state, dir) => s"sbtProj/test:runMain sbt.RunFromSourceMain $dir" :: state),
+      .single("sbtOn")((state, dir) => s"sbtProj/Test/runMain sbt.RunFromSourceMain $dir" :: state),
     mimaSettings,
     mimaPreviousArtifacts := Set.empty,
     buildThinClient := (sbtClientProj / buildThinClient).evaluated,
