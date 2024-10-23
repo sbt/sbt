@@ -57,8 +57,5 @@ object History {
   def apply(lines: Seq[String], path: Option[File]): History =
     new History(lines.toIndexedSeq, path)
 
-  def number(s: String): Option[Int] =
-    try {
-      Some(s.toInt)
-    } catch { case _: NumberFormatException => None }
+  def number(s: String): Option[Int] = s.toIntOption
 }
