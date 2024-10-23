@@ -73,7 +73,7 @@ object CustomPomParser {
   val SbtVersionKey = PomExtraDependencyAttributes.SbtVersionKey
   val ScalaVersionKey = PomExtraDependencyAttributes.ScalaVersionKey
   val ExtraAttributesKey = PomExtraDependencyAttributes.ExtraAttributesKey
-  private[this] val unqualifiedKeys =
+  private val unqualifiedKeys =
     Set(SbtVersionKey, ScalaVersionKey, ExtraAttributesKey, ApiURLKey, VersionSchemeKey)
 
   /**
@@ -107,20 +107,20 @@ object CustomPomParser {
   val JarPackagings = Set("eclipse-plugin", "hk2-jar", "orbit", "scala-jar")
   val default = new CustomPomParser(PomModuleDescriptorParser.getInstance, defaultTransform)
 
-  private[this] val TransformedHashKey = "e:sbtTransformHash"
+  private val TransformedHashKey = "e:sbtTransformHash"
   // A hash of the parameters transformation is based on.
   // If a descriptor has a different hash, we need to retransform it.
-  private[this] def makeCoords(mrid: ModuleRevisionId): String =
+  private def makeCoords(mrid: ModuleRevisionId): String =
     s"${mrid.getOrganisation}:${mrid.getName}:${mrid.getRevision}"
 
   // We now include the ModuleID in a hash, to ensure that parent-pom transformations don't corrupt child poms.
-  private[this] def MakeTransformHash(md: ModuleDescriptor): String = {
+  private def MakeTransformHash(md: ModuleDescriptor): String = {
     val coords: String = makeCoords(md.getModuleRevisionId)
 
     hash((unqualifiedKeys ++ JarPackagings ++ Set(coords)).toSeq.sorted)
   }
 
-  private[this] def hash(ss: Seq[String]): String =
+  private def hash(ss: Seq[String]): String =
     Hash.toHex(Hash(ss.flatMap(_ getBytes "UTF-8").toArray))
 
   // Unfortunately, ModuleDescriptorParserRegistry is add-only and is a singleton instance.
@@ -130,7 +130,7 @@ object CustomPomParser {
     if (transformedByThisVersion(md)) md
     else defaultTransformImpl(parser, md)
 
-  private[this] def transformedByThisVersion(md: ModuleDescriptor): Boolean = {
+  private def transformedByThisVersion(md: ModuleDescriptor): Boolean = {
     val oldTransformedHashKey = "sbtTransformHash"
     val extraInfo = md.getExtraInfo
     val MyHash = MakeTransformHash(md)
@@ -144,7 +144,7 @@ object CustomPomParser {
     })
   }
 
-  private[this] def defaultTransformImpl(
+  private def defaultTransformImpl(
       parser: ModuleDescriptorParser,
       md: ModuleDescriptor
   ): ModuleDescriptor = {
@@ -182,10 +182,10 @@ object CustomPomParser {
   private[sbt] def toUnqualify(propertyAttributes: Map[String, String]): Map[String, String] =
     (propertyAttributes - ExtraAttributesKey) map { case (k, v) => ("e:" + k, v) }
 
-  private[this] def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
+  private def shouldBeUnqualified(m: Map[String, String]): Map[String, String] =
     m.view.filterKeys(unqualifiedKeys).toMap
 
-  private[this] def addExtra(
+  private def addExtra(
       properties: Map[String, String],
       id: ModuleRevisionId
   ): ModuleRevisionId = {
@@ -204,7 +204,7 @@ object CustomPomParser {
     )
   }
 
-  private[this] def getDependencyExtra(
+  private def getDependencyExtra(
       m: Map[String, String]
   ): Map[ModuleRevisionId, Map[String, String]] =
     PomExtraDependencyAttributes.getDependencyExtra(m)
@@ -230,7 +230,7 @@ object CustomPomParser {
   //  with the extra attributes from the <properties> section
   def simplify(id: ModuleRevisionId): ModuleRevisionId = PomExtraDependencyAttributes.simplify(id)
 
-  private[this] def addExtra(
+  private def addExtra(
       dep: DependencyDescriptor,
       extra: Map[ModuleRevisionId, Map[String, String]]
   ): DependencyDescriptor = {
@@ -240,7 +240,7 @@ object CustomPomParser {
       case Some(extraAttrs) => transform(dep, revId => addExtra(extraAttrs, revId))
     }
   }
-  private[this] def transform(
+  private def transform(
       dep: DependencyDescriptor,
       f: ModuleRevisionId => ModuleRevisionId
   ): DependencyDescriptor =
@@ -250,7 +250,7 @@ object CustomPomParser {
       false
     )
 
-  private[this] def namespaceTransformer(
+  private def namespaceTransformer(
       txId: ModuleRevisionId,
       f: ModuleRevisionId => ModuleRevisionId
   ): NamespaceTransformer =
@@ -261,7 +261,7 @@ object CustomPomParser {
     }
 
   // TODO: It would be better if we can make dd.isForce to `false` when VersionRange.isVersionRange is `true`.
-  private[this] def stripVersionRange(dd: DependencyDescriptor): DependencyDescriptor =
+  private def stripVersionRange(dd: DependencyDescriptor): DependencyDescriptor =
     VersionRange.stripMavenVersionRange(dd.getDependencyRevisionId.getRevision) match {
       case Some(newVersion) =>
         val id = dd.getDependencyRevisionId

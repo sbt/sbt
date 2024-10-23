@@ -100,7 +100,7 @@ object ScalaArtifacts {
         scala2ToolDependency(org, LibraryID, version)
       )
 
-  private[this] def scala2ToolDependency(org: String, id: String, version: String): ModuleID =
+  private def scala2ToolDependency(org: String, id: String, version: String): ModuleID =
     ModuleID(org, id, version)
       .withConfigurations(
         Some(Configurations.ScalaTool.name + "->default,optional(default)")

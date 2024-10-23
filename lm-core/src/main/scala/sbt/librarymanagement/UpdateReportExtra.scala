@@ -20,7 +20,7 @@ private[librarymanagement] abstract class ConfigurationReportExtra {
    * For a given organization and module name, there is only one revision/`ModuleID` in this sequence.
    */
   def allModules: Seq[ModuleID] = modules map addConfiguration
-  private[this] def addConfiguration(mr: ModuleReport): ModuleID = {
+  private def addConfiguration(mr: ModuleReport): ModuleID = {
     val module = mr.module
     if (module.configurations.isEmpty) {
       val conf = mr.configurations map (c => s"$configuration->$c") mkString ";"
@@ -60,7 +60,7 @@ private[librarymanagement] abstract class ModuleReportExtra {
 
   def withArtifacts(artifacts: Vector[(Artifact, File)]): ModuleReport
 
-  protected[this] def arts: Vector[String] =
+  protected def arts: Vector[String] =
     artifacts.map(_.toString) ++ missingArtifacts.map(art => "(MISSING) " + art)
 
   def detailReport: String =
@@ -110,7 +110,7 @@ private[librarymanagement] abstract class ModuleReportExtra {
       s"\t\t\t$key: $x\n"
     } getOrElse ""
 
-  private[this] def calendarToString(c: ju.Calendar): String = {
+  private def calendarToString(c: ju.Calendar): String = {
     import sjsonnew._, BasicJsonProtocol._
     implicitly[IsoString[ju.Calendar]] to c
   }

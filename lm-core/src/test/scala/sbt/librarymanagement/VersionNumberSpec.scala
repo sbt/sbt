@@ -135,14 +135,14 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
 
   // //
 
-  private[this] final class VersionString(val value: String)
+  private final class VersionString(val value: String)
 
-  private[this] def version(s: String)(f: VersionString => Unit) =
+  private def version(s: String)(f: VersionString => Unit) =
     s"""Version "$s"""" - {
       f(new VersionString(s))
     }
 
-  private[this] def assertParsesTo(
+  private def assertParsesTo(
       v: VersionString,
       ns: Seq[Long],
       ts: Seq[String],
@@ -156,14 +156,14 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
       (VersionNumber(ns, ts, es) shouldBe VersionNumber(ns, ts, es))
     }
 
-  private[this] def assertParsesToError(v: VersionString): Unit =
+  private def assertParsesToError(v: VersionString): Unit =
     "should parse as an error" in {
       v.value should not matchPattern {
         case s: String if VersionNumber.unapply(s).isDefined => // because of unapply overloading
       }
     }
 
-  private[this] def assertBreaksDownTo(
+  private def assertBreaksDownTo(
       v: VersionString,
       major: Option[Long],
       minor: Option[Long] = None,
@@ -179,28 +179,28 @@ class VersionNumberSpec extends AnyFreeSpec with Matchers with Inside {
         (v._4 shouldBe buildNumber)
     }
 
-  private[this] def assertCascadesTo(v: VersionString, ns: Seq[String]): Unit = {
+  private def assertCascadesTo(v: VersionString, ns: Seq[String]): Unit = {
     s"should cascade to $ns" in {
       val versionNumbers = ns.toVector map VersionNumber.apply
       VersionNumber(v.value).cascadingVersions shouldBe versionNumbers
     }
   }
 
-  private[this] def assertIsCompatibleWith(
+  private def assertIsCompatibleWith(
       v1: VersionString,
       v2: String,
       vnc: VersionNumberCompatibility
   ): Unit =
     checkCompat(true, vnc, v1, v2)
 
-  private[this] def assertIsNotCompatibleWith(
+  private def assertIsNotCompatibleWith(
       v1: VersionString,
       v2: String,
       vnc: VersionNumberCompatibility
   ): Unit =
     checkCompat(false, vnc, v1, v2)
 
-  private[this] def checkCompat(
+  private def checkCompat(
       expectOutcome: Boolean,
       vnc: VersionNumberCompatibility,
       v1: VersionString,

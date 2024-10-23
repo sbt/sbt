@@ -39,7 +39,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
   def getDependency(dd: DependencyDescriptor, data: ResolveData): ResolvedModuleRevision =
     getDependency(dd.getDependencyRevisionId).orNull
 
-  private[this] def getDependency(revisionId: ModuleRevisionId): Option[ResolvedModuleRevision] = {
+  private def getDependency(revisionId: ModuleRevisionId): Option[ResolvedModuleRevision] = {
     def constructResult(descriptor: ModuleDescriptor) =
       new ResolvedModuleRevision(this, this, descriptor, report(revisionId), true)
     map get revisionId map constructResult
@@ -93,7 +93,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
 
   def getNamespace = Namespace.SYSTEM_NAMESPACE
 
-  private[this] var settings: Option[ResolverSettings] = None
+  private var settings: Option[ResolverSettings] = None
 
   def dumpSettings(): Unit = ()
   def setSettings(settings: ResolverSettings): Unit = { this.settings = Some(settings) }

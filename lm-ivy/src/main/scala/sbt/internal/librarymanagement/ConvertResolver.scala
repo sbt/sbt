@@ -385,9 +385,9 @@ private[sbt] object ConvertResolver {
    * A custom Ivy URLRepository that returns FileResources for file URLs.
    * This allows using the artifacts from the Maven local repository instead of copying them to the Ivy cache.
    */
-  private[this] final class LocalIfFileRepo extends URLRepo {
-    private[this] val repo = new WarnOnOverwriteFileRepo()
-    private[this] val progress = new RepositoryCopyProgressListener(this);
+  private final class LocalIfFileRepo extends URLRepo {
+    private val repo = new WarnOnOverwriteFileRepo()
+    private val progress = new RepositoryCopyProgressListener(this);
     override def getResource(source: String) = {
       val uri = new URI(source)
       if (uri.getScheme == IO.FileScheme)
@@ -446,7 +446,7 @@ private[sbt] object ConvertResolver {
     }
   }
 
-  private[this] final class WarnOnOverwriteFileRepo extends FileRepo() {
+  private final class WarnOnOverwriteFileRepo extends FileRepo() {
     override def put(source: java.io.File, destination: String, overwrite: Boolean): Unit = {
       try super.put(source, destination, overwrite)
       catch {

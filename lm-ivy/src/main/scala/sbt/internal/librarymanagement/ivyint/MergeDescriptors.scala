@@ -89,7 +89,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
   def getIncludeRules(moduleConfigurations: Array[String]) =
     concat(a.getIncludeRules(moduleConfigurations), b.getIncludeRules(moduleConfigurations))
 
-  private[this] def concatArtifacts(
+  private def concatArtifacts(
       a: DependencyDescriptor,
       as: Array[DependencyArtifactDescriptor],
       b: DependencyDescriptor,
@@ -101,14 +101,14 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
     else if (bs.isEmpty) explicitConfigurations(a, as) ++ defaultArtifact(b)
     else concat(explicitConfigurations(a, as), explicitConfigurations(b, bs))
   }
-  private[this] def explicitConfigurations(
+  private def explicitConfigurations(
       base: DependencyDescriptor,
       arts: Array[DependencyArtifactDescriptor]
   ): Array[DependencyArtifactDescriptor] =
     arts map { art =>
       explicitConfigurations(base, art)
     }
-  private[this] def explicitConfigurations(
+  private def explicitConfigurations(
       base: DependencyDescriptor,
       art: DependencyArtifactDescriptor
   ): DependencyArtifactDescriptor = {
@@ -122,7 +122,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
       case _ => art
     }
   }
-  private[this] def defaultArtifact(
+  private def defaultArtifact(
       a: DependencyDescriptor
   ): Array[DependencyArtifactDescriptor] = {
     val dd = new DefaultDependencyArtifactDescriptor(
@@ -139,7 +139,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
     if (a.getAllDependencyArtifacts.isEmpty) Array(dd)
     else a.getAllDependencyArtifacts filter (_ == dd)
   }
-  private[this] def copyWithConfigurations(
+  private def copyWithConfigurations(
       dd: DependencyArtifactDescriptor,
       confs: Seq[String]
   ): DependencyArtifactDescriptor = {
@@ -155,13 +155,13 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
     addConfigurations(newd, confs)
     newd
   }
-  private[this] def addConfigurations(
+  private def addConfigurations(
       dd: DefaultDependencyArtifactDescriptor,
       confs: Seq[String]
   ): Unit =
     confs foreach dd.addConfiguration
 
-  private[this] def concat[T: reflect.ClassTag](a: Array[T], b: Array[T]): Array[T] =
+  private def concat[T: reflect.ClassTag](a: Array[T], b: Array[T]): Array[T] =
     (a ++ b).distinct
 
   def getAllExcludeRules = concat(a.getAllExcludeRules, b.getAllExcludeRules)

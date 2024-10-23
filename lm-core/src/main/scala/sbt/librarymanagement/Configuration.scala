@@ -35,7 +35,7 @@ final class Configuration private[sbt] (
 
   override def toString: String = name
 
-  private[this] def copy(
+  private def copy(
       id: String = id,
       name: String = name,
       description: String = description,

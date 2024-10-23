@@ -33,7 +33,7 @@ sealed class Disabled private () extends sbt.librarymanagement.CrossVersion() wi
   override def toString: String = {
     "Disabled()"
   }
-  private[this] def copy(): Disabled = {
+  private def copy(): Disabled = {
     new Disabled()
   }
 
@@ -64,7 +64,7 @@ final class Binary private (val prefix: String, val suffix: String)
   override def toString: String = {
     "Binary(" + prefix + ", " + suffix + ")"
   }
-  private[this] def copy(prefix: String = prefix, suffix: String = suffix): Binary = {
+  private def copy(prefix: String = prefix, suffix: String = suffix): Binary = {
     new Binary(prefix, suffix)
   }
   def withPrefix(prefix: String): Binary = {
@@ -97,7 +97,7 @@ final class Constant private (val value: String)
   override def toString: String = {
     "Constant(" + value + ")"
   }
-  private[this] def copy(value: String = value): Constant = {
+  private def copy(value: String = value): Constant = {
     new Constant(value)
   }
   def withValue(value: String): Constant = {
@@ -125,7 +125,7 @@ final class Patch private () extends sbt.librarymanagement.CrossVersion() with S
   override def toString: String = {
     "Patch()"
   }
-  private[this] def copy(): Patch = {
+  private def copy(): Patch = {
     new Patch()
   }
 }
@@ -156,7 +156,7 @@ final class Full private (val prefix: String, val suffix: String)
   override def toString: String = {
     "Full(" + prefix + ", " + suffix + ")"
   }
-  private[this] def copy(prefix: String = prefix, suffix: String = suffix): Full = {
+  private def copy(prefix: String = prefix, suffix: String = suffix): Full = {
     new Full(prefix, suffix)
   }
   def withPrefix(prefix: String): Full = {
@@ -194,7 +194,7 @@ final class For3Use2_13 private (val prefix: String, val suffix: String)
   override def toString: String = {
     "For3Use2_13(" + prefix + ", " + suffix + ")"
   }
-  private[this] def copy(prefix: String = prefix, suffix: String = suffix): For3Use2_13 = {
+  private def copy(prefix: String = prefix, suffix: String = suffix): For3Use2_13 = {
     new For3Use2_13(prefix, suffix)
   }
   def withPrefix(prefix: String): For3Use2_13 = {
@@ -232,7 +232,7 @@ final class For2_13Use3 private (val prefix: String, val suffix: String)
   override def toString: String = {
     "For3Use2_13(" + prefix + ", " + suffix + ")"
   }
-  private[this] def copy(prefix: String = prefix, suffix: String = suffix): For2_13Use3 = {
+  private def copy(prefix: String = prefix, suffix: String = suffix): For2_13Use3 = {
     new For2_13Use3(prefix, suffix)
   }
   def withPrefix(prefix: String): For2_13Use3 = {

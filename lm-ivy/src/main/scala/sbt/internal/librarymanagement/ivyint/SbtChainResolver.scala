@@ -368,7 +368,7 @@ private[sbt] case class SbtChainResolver(
 
   /* Ivy keeps module descriptors in memory, so we need to make sure that the
    * resolved module revision is in fact the one found in the latest resolver. */
-  private[this] def reparseModuleDescriptor(
+  private def reparseModuleDescriptor(
       dd: DependencyDescriptor,
       data: ResolveData,
       resolver: DependencyResolver,
@@ -407,7 +407,7 @@ private[sbt] case class SbtChainResolver(
   }
 
   /** Ported from BasicResolver#findFirstAirfactRef. */
-  private[this] def findFirstArtifactRef(
+  private def findFirstArtifactRef(
       md: ModuleDescriptor,
       data: ResolveData,
       resolver: DependencyResolver
@@ -443,7 +443,7 @@ private[sbt] case class SbtChainResolver(
   }
 
   /** Ported from ChainResolver#forcedRevision. */
-  private[this] def forcedRevision(rmr: ResolvedModuleRevision): ResolvedModuleRevision =
+  private def forcedRevision(rmr: ResolvedModuleRevision): ResolvedModuleRevision =
     new ResolvedModuleRevision(
       rmr.getResolver,
       rmr.getArtifactResolver,
@@ -453,7 +453,7 @@ private[sbt] case class SbtChainResolver(
     )
 
   /** Ported from ChainResolver#resolvedRevision. */
-  private[this] def resolvedRevision(rmr: ResolvedModuleRevision): ResolvedModuleRevision =
+  private def resolvedRevision(rmr: ResolvedModuleRevision): ResolvedModuleRevision =
     if (isDual)
       new ResolvedModuleRevision(
         rmr.getResolver,
@@ -465,7 +465,7 @@ private[sbt] case class SbtChainResolver(
     else rmr
 
   /** Ported from ChainResolver#setLatestIfRequired. */
-  private[this] def setLatestIfRequired(
+  private def setLatestIfRequired(
       resolver: DependencyResolver,
       latest: Option[LatestStrategy]
   ): Option[LatestStrategy] =
@@ -478,21 +478,21 @@ private[sbt] case class SbtChainResolver(
     }
 
   /** Ported from ChainResolver#getLatestStrategyName. */
-  private[this] def latestStrategyName(resolver: DependencyResolver): Option[String] =
+  private def latestStrategyName(resolver: DependencyResolver): Option[String] =
     resolver match {
       case r: HasLatestStrategy => Some(r.getLatest)
       case _                    => None
     }
 
   /** Ported from ChainResolver#getLatest. */
-  private[this] def latestStrategy(resolver: DependencyResolver): Option[LatestStrategy] =
+  private def latestStrategy(resolver: DependencyResolver): Option[LatestStrategy] =
     resolver match {
       case r: HasLatestStrategy => Some(r.getLatestStrategy)
       case _                    => None
     }
 
   /** Ported from ChainResolver#setLatest. */
-  private[this] def doSetLatestStrategy(
+  private def doSetLatestStrategy(
       resolver: DependencyResolver,
       latest: Option[LatestStrategy]
   ): Option[LatestStrategy] =

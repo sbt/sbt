@@ -32,7 +32,7 @@ final class VersionNumber private[sbt] (
   }
 
   /** A variant of mkString that returns the empty string if the sequence is empty. */
-  private[this] def mkString1[A](xs: Seq[A], start: String, sep: String, end: String): String =
+  private def mkString1[A](xs: Seq[A], start: String, sep: String, end: String): String =
     if (xs.isEmpty) "" else xs.mkString(start, sep, end)
 }
 
@@ -140,7 +140,7 @@ object VersionNumber {
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
-    private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
+    private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
       (v1, v2) match {
         case (NormalVersion(0, _, _), NormalVersion(0, _, _))   => v1 == v2 // R4
         case (NormalVersion(_, 0, 0), NormalVersion(_, 0, 0))   => v1 == v2 // R9 maybe?
@@ -186,7 +186,7 @@ object VersionNumber {
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
-    private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean = {
+    private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean = {
       (v1, v2) match {
         case (NormalVersion(_, _, 0), NormalVersion(_, _, 0))     => v1 == v2 // R9 maybe?
         case (NormalVersion(x1, y1, _), NormalVersion(x2, y2, _)) => (x1 == x2) && (y1 == y2)
@@ -249,7 +249,7 @@ object VersionNumber {
     def isCompatible(v1: VersionNumber, v2: VersionNumber): Boolean =
       doIsCompat(dropBuildMetadata(v1), dropBuildMetadata(v2))
 
-    private[this] def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
+    private def doIsCompat(v1: VersionNumber, v2: VersionNumber): Boolean =
       (v1, v2) match {
         case (NormalVersion(0, _, 0), NormalVersion(0, _, 0))   => v1 == v2
         case (NormalVersion(0, y1, _), NormalVersion(0, y2, _)) => y1 == y2

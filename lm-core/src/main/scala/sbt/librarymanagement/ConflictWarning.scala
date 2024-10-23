@@ -11,14 +11,14 @@ final case class ConflictWarning(label: String, level: Level.Value, failOnConfli
 object ConflictWarning {
   def disable: ConflictWarning = ConflictWarning("", Level.Debug, false)
 
-  private[this] def idString(org: String, name: String) = s"$org:$name"
+  private def idString(org: String, name: String) = s"$org:$name"
 
   def default(label: String): ConflictWarning = ConflictWarning(label, Level.Error, true)
 
   def apply(config: ConflictWarning, report: UpdateReport, log: Logger): Unit = {
     processCrossVersioned(config, report, log)
   }
-  private[this] def processCrossVersioned(
+  private def processCrossVersioned(
       config: ConflictWarning,
       report: UpdateReport,
       log: Logger
@@ -51,20 +51,20 @@ object ConflictWarning {
     }
     mismatches.foldLeft(Map.empty[(String, String), Set[String]])(merge)
   }
-  private[this] def merge[A, B](m: Map[A, Set[B]], b: (A, Set[B])): Map[A, Set[B]] =
+  private def merge[A, B](m: Map[A, Set[B]], b: (A, Set[B])): Map[A, Set[B]] =
     if (b._2.isEmpty) m
     else
       m.updated(b._1, m.getOrElse(b._1, Set.empty) ++ b._2)
 
-  private[this] def groupByRawName(ms: Seq[ModuleID]): Map[(String, String), Seq[ModuleID]] =
+  private def groupByRawName(ms: Seq[ModuleID]): Map[(String, String), Seq[ModuleID]] =
     ms.groupBy(m => (m.organization, dropCrossSuffix(m.name)))
 
-  private[this] val CrossSuffixPattern = """(.+)_(\d+(?:\.\d+)?(?:\.\d+)?(?:-.+)?)""".r
-  private[this] def dropCrossSuffix(s: String): String = s match {
+  private val CrossSuffixPattern = """(.+)_(\d+(?:\.\d+)?(?:\.\d+)?(?:-.+)?)""".r
+  private def dropCrossSuffix(s: String): String = s match {
     case CrossSuffixPattern(raw, _) => raw
     case _                          => s
   }
-  private[this] def getCrossSuffix(s: String): String = s match {
+  private def getCrossSuffix(s: String): String = s match {
     case CrossSuffixPattern(_, v) => "_" + v
     case _                        => "<none>"
   }

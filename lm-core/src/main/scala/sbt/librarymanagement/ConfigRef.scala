@@ -22,7 +22,7 @@ final class ConfigRef private (val name: String) extends Serializable {
     name
   }
 
-  private[this] def copy(name: String = name): ConfigRef = {
+  private def copy(name: String = name): ConfigRef = {
     ConfigRef(name)
   }
 

@@ -43,7 +43,7 @@ private[librarymanagement] abstract class SemSelAndChunkFunctions {
     SemSelAndChunk(comparators.flatMap(_.expandWildcard))
   }
 
-  private[this] def hasOperator(comparator: String): Boolean = {
+  private def hasOperator(comparator: String): Boolean = {
     comparator.startsWith("<") ||
     comparator.startsWith(">") ||
     comparator.startsWith("=")
@@ -103,7 +103,7 @@ private[librarymanagement] abstract class SemComparatorExtra {
       case _               => false
     }
   }
-  private[this] def comparePreReleaseTags(ts1: Seq[String], ts2: Seq[String]): Int = {
+  private def comparePreReleaseTags(ts1: Seq[String], ts2: Seq[String]): Int = {
     // > When major, minor, and patch are equal, a pre-release version has lower precedence than a normal version.
     if (ts1.isEmpty && ts2.isEmpty) 0
     else if (ts1.nonEmpty && ts2.isEmpty) -1 // ts1 is pre-release version
@@ -112,7 +112,7 @@ private[librarymanagement] abstract class SemComparatorExtra {
   }
 
   @tailrec
-  private[this] def compareTags(ts1: Seq[String], ts2: Seq[String]): Int = {
+  private def compareTags(ts1: Seq[String], ts2: Seq[String]): Int = {
     // > A larger set of pre-release fields has a higher precedence than a smaller set,
     // > if all of the preceding identifiers are equal.
     if (ts1.isEmpty && ts2.isEmpty) 0
@@ -143,7 +143,7 @@ private[librarymanagement] abstract class SemComparatorExtra {
 }
 
 private[librarymanagement] abstract class SemComparatorFunctions {
-  private[this] val ComparatorRegex = """(?x)^
+  private val ComparatorRegex = """(?x)^
       ([<>]=?|=)?
       (?:(\d+|[xX*])
         (?:\.(\d+|[xX*])
@@ -209,8 +209,8 @@ private[librarymanagement] abstract class SemComparatorFunctions {
       case _ => throw new IllegalArgumentException(s"Invalid comparator: $comparator")
     }
   }
-  private[this] def splitOn[A](s: String, sep: Char): Vector[String] =
+  private def splitOn[A](s: String, sep: Char): Vector[String] =
     if (s eq null) Vector()
     else s.split(sep).filterNot(_ == "").toVector
-  private[this] def splitDash(s: String) = splitOn(s, '-')
+  private def splitDash(s: String) = splitOn(s, '-')
 }
