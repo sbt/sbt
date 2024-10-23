@@ -3032,6 +3032,7 @@ object Classpaths {
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value
   )
 
+  @nowarn("cat=deprecation")
   private[this] def baseGlobalDefaults =
     Defaults.globalDefaults(
       Seq(
@@ -3102,6 +3103,7 @@ object Classpaths {
       )
     )
 
+  @nowarn("cat=deprecation")
   val ivyBaseSettings: Seq[Setting[_]] = baseGlobalDefaults ++ sbtClassifiersTasks ++ Seq(
     conflictWarning := conflictWarning.value.copy(label = Reference.display(thisProjectRef.value)),
     unmanagedBase := baseDirectory.value / "lib",
