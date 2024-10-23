@@ -1,0 +1,21 @@
+package sbt.internal.worker
+@target(Scala)
+@codecPackage("sbt.internal.worker.codec")
+@fullCodec("JsonProtocol")
+
+type HashedPath {
+  path: String!,
+  digest: String!
+}
+
+type GeneralParams {
+  main_class: String!,
+  args: [String],
+  classpath: [sbt.internal.worker.HashedPath],
+}
+
+type ConsoleNotification {
+  ref: String!
+  stdout: String,
+  stderr: String,
+}
