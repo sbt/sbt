@@ -1365,8 +1365,8 @@ lazy val lmCore = (project in file("lm-core"))
       scalaXml.value,
       sjsonNewScalaJson.value % Optional,
       sjsonNewCore.value % Optional,
-      scalaTest % Test,
-      scalaCheck % Test,
+      scalatest % Test,
+      scalacheck % Test,
       scalaVerify % Test,
     ),
     Compile / resourceGenerators += Def
@@ -1411,8 +1411,8 @@ lazy val lmIvy = (project in file("lm-ivy"))
       ivy,
       sjsonNewScalaJson.value,
       sjsonNewCore.value,
-      scalaTest % Test,
-      scalaCheck % Test,
+      scalatest % Test,
+      scalacheck % Test,
       scalaVerify % Test,
     ),
     Compile / managedSourceDirectories +=
