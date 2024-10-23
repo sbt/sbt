@@ -82,6 +82,12 @@ jobs:
         repository: sbt/zinc
         ref: 1.10.x
         path: zinc
+    - uses: graalvm/setup-graalvm@v1
+      with:
+        java-version: '23'
+        native-image-musl: 'true'
+        set-java-home: 'false'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
     - name: Setup JDK
       uses: actions/setup-java@v4
       with:
