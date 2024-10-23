@@ -18,11 +18,15 @@ private[sbt] object SizeParser {
   private case object MegaBytes extends SizeUnit
   private case object GigaBytes extends SizeUnit
   private def parseDouble(s: String): Parser[Either[Double, Long]] =
-    try Parser.success(Left(java.lang.Double.valueOf(s)))
-    catch { case _: NumberFormatException => Parser.failure(s"Couldn't parse $s as double.") }
+    s.toDoubleOption match {
+      case Some(x) => Parser.success(Left(x))
+      case _       => Parser.failure(s"Couldn't parse $s as double.")
+    }
   private def parseLong(s: String): Parser[Either[Double, Long]] =
-    try Parser.success(Right(java.lang.Long.valueOf(s)))
-    catch { case _: NumberFormatException => Parser.failure(s"Couldn't parse $s as double.") }
+    s.toLongOption match {
+      case Some(x) => Parser.success(Right(x))
+      case _       => Parser.failure(s"Couldn't parse $s as double.")
+    }
   private val digit = charClass(_.isDigit, "digit")
   private val numberParser: Parser[Either[Double, Long]] =
     (digit.+ ~ ('.'.examples() ~> digit.+).?).flatMap {
