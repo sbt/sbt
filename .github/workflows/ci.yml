@@ -142,7 +142,7 @@ jobs:
       shell: bash
       run: |
         ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test"
-    - name: Build and test (6)
+    - name: Multirepo integration test
       if: ${{ matrix.jobtype == 6 }}
       shell: bash
       run: |
