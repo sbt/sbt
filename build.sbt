@@ -1198,7 +1198,7 @@ lazy val sbtClientProj = (project in file("client"))
       s"-H:Name=${target.value / "bin" / "sbtn"}",
     ) ++ (if (isLinux && isArmArchitecture)
             Seq("-H:PageSize=65536") // Make sure binary runs on kernels with page size set to 4k, 16 and 64k
-          else Nil) ++ (if (isLinux) Seq("--static", "--libc=musl") else Nil),
+          else Nil) ++ (if (isLinux && !isArmArchitecture) Seq("--static", "--libc=musl") else Nil),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
       val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"
