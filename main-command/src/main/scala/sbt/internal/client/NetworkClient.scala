@@ -1127,7 +1127,6 @@ object NetworkClient {
         sbtArguments += s"-Dsbt.script=$sbtScript"
       }
     }
-    if (!sbtArguments.contains("--server")) sbtArguments += "--server"
     new Arguments(
       base,
       sbtArguments.toSeq,
