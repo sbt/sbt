@@ -54,10 +54,8 @@ jobs:
       JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SCALA_212: 2.12.20
-      SCALA_3: 3.1.0
       UTIL_TESTS: "utilCache/test utilControl/test utilInterface/test utilLogging/test utilPosition/test utilRelation/test utilScripted/test utilTracking/test"
-      SBT_LOCAL: false
-      TEST_SBT_VER: 1.5.0
+      TEST_SBT_VER: 1.10.3
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
       JDK11: adopt@1.11.0-9
       SPARK_LOCAL_IP: "127.0.0.1"
@@ -144,12 +142,12 @@ jobs:
       shell: bash
       run: |
         ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test"
-    - name: Build and test (6)
+    - name: Multirepo integration test
       if: ${{ matrix.jobtype == 6 }}
       shell: bash
       run: |
         # build from fresh IO, LM, and Zinc
-        BUILD_VERSION="1.5.0-SNAPSHOT"
+        BUILD_VERSION="${TEST_SBT_VER}-SNAPSHOT"
         cd io
         sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
         cd ../
