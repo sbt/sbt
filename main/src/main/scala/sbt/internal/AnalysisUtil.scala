@@ -11,7 +11,6 @@ package internal
 
 import java.nio.file.Path
 import sbt.internal.inc.MixedAnalyzingCompiler
-import scala.concurrent.ExecutionContext
 import xsbti.compile.{ AnalysisStore => XAnalysisStore }
 import xsbti.compile.analysis.ReadWriteMappers
 
@@ -34,7 +33,6 @@ private[sbt] object AnalysisUtil {
       useConsistent = false,
       mappers = ReadWriteMappers.getEmptyMappers(),
       sort = true,
-      ec = ExecutionContext.global,
       parallelism = parallelism,
     )
 }

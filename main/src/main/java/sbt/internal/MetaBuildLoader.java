@@ -14,6 +14,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Pattern;
 import xsbti.AppProvider;
 import xsbti.ScalaProvider;
@@ -65,21 +66,16 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
+    final String jlineJars =
+        "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jni))?-[0-9.]+|jline-native-[0-9.]+";
     final String testInterfaceJars = "test-interface(-.*)?";
     final String compilerInterfaceJars = "compiler-interface(-.*)?";
     final String utilInterfaceJars = "util-interface(-.*)?";
     final String jansiJars = "jansi-[0-9.]+";
-    final String jnaJars = "jna-(platform-)?[0-9.]+";
     final String fullPattern =
         String.format(
-            "^(%s|%s|%s|%s|%s|%s)\\.jar",
-            jlineJars,
-            testInterfaceJars,
-            compilerInterfaceJars,
-            utilInterfaceJars,
-            jansiJars,
-            jnaJars);
+            "^(%s|%s|%s|%s|%s)\\.jar",
+            jlineJars, testInterfaceJars, compilerInterfaceJars, utilInterfaceJars, jansiJars);
     final Pattern pattern = Pattern.compile(fullPattern);
     final File[] cp = appProvider.mainClasspath();
     final Set<File> interfaceFiles = new LinkedHashSet<>();

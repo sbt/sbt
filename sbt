@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.10.3"
+declare builtin_sbt_version="1.10.4"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -24,7 +24,7 @@ declare build_props_sbt_version=
 declare use_sbtn=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.10.3"
+declare sbtn_version="1.10.4"
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -752,7 +752,14 @@ isRunNativeClient() {
   [[ "$sbtV" == "" ]] && sbtV="0.0.0"
   sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
   sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
-  if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
+  # Default to true for sbt 2.x
+  if (( $sbtBinaryV_1 >= 2 )); then
+    if [[ "$use_sbtn" == "0" ]]; then
+      echo "false"
+    else
+      echo "true"
+    fi
+  elif ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
     if [[ "$use_sbtn" == "1" ]]; then
       echo "true"
     else

@@ -289,7 +289,7 @@ object Terminal {
    * the sbt client to detach from the server it launches.
    */
   def close(): Unit = {
-    if (System.console == null) {
+    if (!hasConsole) {
       originalOut.close()
       originalIn.close()
       originalErr.close()
@@ -368,7 +368,17 @@ object Terminal {
 
   private val isDumb = Some("dumb") == sys.env.get("TERM")
   private def isDumbTerminal = isDumb || System.getProperty("jline.terminal", "") == "none"
-  private val hasConsole = Option(java.lang.System.console).isDefined
+  private[sbt] val hasConsole = {
+    System.console != null && {
+      try {
+        val isTerminal = System.console.getClass.getMethod("isTerminal")
+        isTerminal.invoke(System.console).asInstanceOf[Boolean]
+      } catch {
+        case _: NoSuchMethodException =>
+          true
+      }
+    }
+  }
   private def useColorDefault: Boolean = {
     // This approximates that both stdin and stdio are connected,
     // so by default color will be turned off for pipes and redirects.
@@ -717,7 +727,7 @@ object Terminal {
                   inputStream.read match {
                     case -1 =>
                     case `NO_BOOT_CLIENTS_CONNECTED` =>
-                      if (System.console == null) {
+                      if (!Terminal.hasConsole) {
                         result.put(-1)
                         running.set(false)
                       }

@@ -345,8 +345,8 @@ lazy val utilLogging = project
       Seq(
         jline,
         jline3Terminal,
-        jline3JNA,
-        jline3Jansi,
+        jline3JNI,
+        jline3Native,
         log4jApi,
         log4jCore,
         disruptor,
@@ -1033,8 +1033,13 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImageVersion := "23.0",
-    nativeImageJvm := "graalvm-java23",
+    if (isArmArchitecture)
+      Seq(
+        nativeImageVersion := "23.0",
+        nativeImageJvm := "graalvm-java23",
+      )
+    else Nil,
+    nativeImageInstalled := !isArmArchitecture,
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
       if (!Files.exists(outputDir)) {
@@ -1045,12 +1050,18 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageOptions ++= Seq(
       "--no-fallback",
       s"--initialize-at-run-time=sbt.client",
+      // "The current machine does not support all of the following CPU features that are required by
+      // the image: [CX8, CMOV, FXSR, MMX, SSE, SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, POPCNT, LZCNT, AVX,
+      // AVX2, BMI1, BMI2, FMA, F16C]."
+      "-march=compatibility",
       // "--verbose",
       "-H:IncludeResourceBundles=jline.console.completer.CandidateListCompletionHandler",
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtn"}",
-    ),
+    ) ++ (if (isLinux && isArmArchitecture)
+            Seq("-H:PageSize=65536") // Make sure binary runs on kernels with page size set to 4k, 16 and 64k
+          else Nil) ++ (if (isLinux && !isArmArchitecture) Seq("--static", "--libc=musl") else Nil),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
       val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"

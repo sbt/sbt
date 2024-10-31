@@ -17,6 +17,6 @@ lazy val use = project
       val x = (dep / Compile / compile).value
       val picklePath = (Compile / internalDependencyPicklePath).value
       assert(picklePath.size == 1 &&
-        picklePath.head.data.name == "dep_2.13-0.1.0-SNAPSHOT.jar", s"picklePath = ${picklePath}")
+        picklePath.head.data.name == "early.jar", s"picklePath = ${picklePath}")
     },
   )

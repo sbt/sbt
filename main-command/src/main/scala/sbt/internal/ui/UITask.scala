@@ -17,6 +17,7 @@ import sbt.BasicKeys.{ historyPath, colorShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
+import sbt.internal.util.Terminal.hasConsole
 import sbt.internal.util._
 import sbt.internal.util.complete.{ Parser }
 
@@ -70,7 +71,7 @@ private[sbt] object UITask {
             if (thread.isInterrupted || closed.get) throw interrupted
             (try reader.readLine(clear + terminal.prompt.mkPrompt())
             finally reader.close) match {
-              case None if terminal == Terminal.console && System.console == null =>
+              case None if terminal == Terminal.console && !hasConsole =>
                 // No stdin is attached to the process so just ignore the result and
                 // block until the thread is interrupted.
                 this.synchronized(this.wait())

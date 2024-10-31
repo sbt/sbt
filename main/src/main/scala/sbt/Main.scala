@@ -25,6 +25,7 @@ import sbt.internal.inc.ScalaInstance
 import sbt.internal.io.Retry
 import sbt.internal.nio.{ CheckBuildSources, FileTreeRepository }
 import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
+import sbt.internal.util.Terminal.hasConsole
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.{ Parser, SizeParser }
 import sbt.internal.util.{ Terminal => ITerminal, _ }
@@ -155,8 +156,7 @@ private[sbt] object xMain:
 
     try Some(new BootServerSocket(configuration)) -> None
     catch {
-      case e: ServerAlreadyBootingException
-          if System.console != null && !ITerminal.startedByRemoteClient =>
+      case e: ServerAlreadyBootingException if hasConsole && !ITerminal.startedByRemoteClient =>
         printThrowable(e)
         println("Create a new server? y/n (default y)")
         val exit =

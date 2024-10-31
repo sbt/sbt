@@ -1893,17 +1893,9 @@ object Defaults extends BuildCommon {
       extraPrefix: String
   ): Initialize[VirtualFile] =
     Def.setting {
-      val f = artifactName.value
       val converter = fileConverter.value
-      val p = target.value /
-        (prefix(configuration.value.name) + extraPrefix) / f(
-          ScalaVersion(
-            (artifactName / scalaVersion).value,
-            (artifactName / scalaBinaryVersion).value
-          ),
-          projectID.value,
-          art.value
-        )
+      val p = crossTarget.value /
+        (prefix(configuration.value.name) + "early") / "early.jar"
       converter.toVirtualFile(p.toPath())
     }
 

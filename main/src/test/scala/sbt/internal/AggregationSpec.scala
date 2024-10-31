@@ -22,4 +22,8 @@ object AggregationSpec extends verify.BasicTestSuite {
     assert(timing(6003099).startsWith("elapsed time: 6003 s (01:40:03)"))
     assert(timing(96003099).startsWith("elapsed time: 96003 s (26:40:03)"))
   }
+
+  test("timing should not emit special space characters") {
+    assert(!timing(96003099).contains("\u202F"))
+  }
 }

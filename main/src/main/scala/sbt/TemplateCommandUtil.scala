@@ -22,6 +22,7 @@ import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
 import sbt.internal.inc.classpath.ClasspathUtil
 import BasicCommandStrings._, BasicKeys._
 import sbt.ProjectExtra.*
+import sbt.internal.util.Terminal.hasConsole
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command = templateCommand0(TemplateCommand)
@@ -84,7 +85,9 @@ private[sbt] object TemplateCommandUtil {
       hit
     } match {
       case Some(_) => // do nothing
-      case None    => System.err.println("Template not found for: " + arguments.mkString(" "))
+      case None =>
+        val error = "Template not found for: " + arguments.mkString(" ")
+        throw new IllegalArgumentException(error)
     }
 
   private def tryTemplate(
@@ -183,7 +186,7 @@ private[sbt] object TemplateCommandUtil {
     "disneystreaming/smithy4s.g8" -> "A Smithy4s project",
   )
   private def fortifyArgs(templates: List[(String, String)]): List[String] =
-    if (System.console eq null) Nil
+    if (!hasConsole) Nil
     else
       ITerminal.withStreams(true, false) {
         assert(templates.size <= 20, "template list cannot have more than 20 items")
@@ -275,7 +278,8 @@ private[sbt] object TemplateCommandUtil {
       case TypelevelToolkitSlug :: Nil => typelevelToolkitTemplate()
       case SbtCrossPlatformSlug :: Nil => sbtCrossPlatformTemplate()
       case _ =>
-        System.err.println("Local template not found for: " + arguments.mkString(" "))
+        val error = "Local template not found for: " + arguments.mkString(" ")
+        throw new IllegalArgumentException(error)
     }
 
   private final val defaultScalaV = "3.3.4"

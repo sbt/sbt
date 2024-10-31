@@ -11,6 +11,7 @@ package internal
 
 import Def._
 import Keys.{ sbtVersion, state, terminal }
+import sbt.internal.util.Terminal.hasConsole
 
 import java.io.{ File, FileInputStream, FileOutputStream, InputStream, IOException }
 import java.net.URI
@@ -37,7 +38,7 @@ private[sbt] object InstallSbtn {
       Files.deleteIfExists(tmp)
       ()
     }
-    val shell = if (System.console != null) getShell(term) else "none"
+    val shell = if (hasConsole) getShell(term) else "none"
     shell match {
       case "none" =>
       case s =>

@@ -18,6 +18,7 @@ import sbt.SlashSyntax0.given
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
 import sbt.internal.util._
+import sbt.internal.client.NetworkClient
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
 
@@ -164,19 +165,9 @@ object Aggregation {
     timing(format, startTime, endTime)
   }
 
-  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String =
-    val total = (endTime - startTime + 500) / 1000
-    val totalString = s"$total s" +
-      (if total <= 60 then ""
-       else {
-         val maybeHours = total / 3600 match
-           case 0 => ""
-           case h => f"$h%02d:"
-         val mins = f"${total % 3600 / 60}%02d"
-         val secs = f"${total % 60}%02d"
-         s" ($maybeHours$mins:$secs)"
-       })
-    s"elapsed time: $totalString"
+  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String = {
+    NetworkClient.timing(format, startTime, endTime)
+  }
 
   def defaultFormat: DateFormat = {
     import java.text.DateFormat
