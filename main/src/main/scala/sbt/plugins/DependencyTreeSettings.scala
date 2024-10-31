@@ -28,6 +28,7 @@ object DependencyTreeSettings {
   import sjsonnew.BasicJsonProtocol._
   import MiniDependencyTreeKeys._
   import DependencyTreeKeys._
+  import DependencyReportKeys._
 
   /**
    * Core settings needed for any graphing tasks.
@@ -89,6 +90,116 @@ object DependencyTreeSettings {
       }
     }
 
+  private val defaultDependencyDotHeader =
+    """|digraph "dependency-graph" {
+       |    graph[rankdir="LR"; splines=polyline]
+       |    edge [
+       |        arrowtail="none"
+       |    ]""".stripMargin
+
+  private val defaultDependencyDotNodeLabel =
+    (organization: String, name: String, version: String) =>
+      """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
+
+  /**
+   * Setting needed for dependency report
+   * an input task that offers most functionality of full dependency tree plugin
+   */
+  lazy val baseDependencyReportSettings: Seq[Setting[?]] = Seq(
+    dependencyReport := {
+      val defaultFormat = "text"
+
+      val args: Seq[String] = spaceDelimited().parsed
+
+      val (format, subformat) = args match {
+        case Seq()               => (defaultFormat, "")
+        case Seq(arg1)           => (arg1, "")
+        case Seq(arg1, arg2)     => (arg1, arg2)
+        case Seq(arg1, arg2, _*) => (arg1, arg2)
+      }
+
+      val graph = dependencyTreeModuleGraph0.value
+
+      val config = configuration.value.name
+
+      val targetDir =
+        if (subformat.isEmpty) target.value / config else target.value / config / subformat
+
+      def printAndPersistReport(report: String, fileExtension: String, targetDir: File): File = {
+        streams.value.log.info(report)
+        persistReport(report, fileExtension, targetDir)
+      }
+
+      val serializedReport = format match {
+        case "text" =>
+          val report = generateTextReport(graph, subformat, asciiGraphWidth.value)
+          printAndPersistReport(report, "txt", targetDir)
+        case "json" =>
+          val report = generateJsonReport(graph)
+          printAndPersistReport(report, "json", targetDir)
+        case "html"    => generateAndPersistHtmlReport(graph, subformat, targetDir)
+        case "graphml" => generateAndPersistGraphMLReport(graph, targetDir)
+        case _         => sys.error(s"Unsupported format: $format")
+      }
+
+      streams.value.log.info(s"Dependency report written to ${serializedReport.getAbsolutePath}")
+    },
+  )
+
+  private[sbt] def generateTextReport(
+      graph: ModuleGraph,
+      subformat: String,
+      graphWidth: Int
+  ): String = {
+    subformat match {
+      case "list"  => rendering.FlatList.render(_.id.idString)(graph)
+      case "stats" => rendering.Statistics.renderModuleStatsList(graph)
+      case "info"  => rendering.LicenseInfo.render(graph)
+      case _       => rendering.AsciiTree.asciiTree(graph, graphWidth)
+    }
+  }
+
+  private[sbt] def generateJsonReport(graph: ModuleGraph): String = {
+    TreeView.createJson(graph)
+  }
+
+  private[sbt] def createReportFile(targetDir: File, fileExtension: String): File = {
+    new File(targetDir, s"dependencies.$fileExtension")
+  }
+
+  private[sbt] def persistReport(report: String, fileExtension: String, targetDir: File): File = {
+    val target = createReportFile(targetDir, fileExtension)
+    IO.write(target, report, IO.utf8)
+    target
+  }
+
+  private[sbt] def generateAndPersistGraphMLReport(graph: ModuleGraph, targetDir: File): File = {
+    val target = createReportFile(targetDir, "xml")
+    rendering.GraphML.saveAsGraphML(graph, target.getAbsolutePath)
+    target
+  }
+
+  private[sbt] def generateAndPersistHtmlReport(
+      graph: ModuleGraph,
+      subformat: String,
+      targetDir: File
+  ): File = {
+    subformat match {
+      case "tree" =>
+        val renderedTree = TreeView.createJson(graph)
+        TreeView.createFile(renderedTree, targetDir)
+      case "graph" =>
+        val dotGraph = rendering.DOT.dotGraph(
+          graph,
+          defaultDependencyDotHeader,
+          defaultDependencyDotNodeLabel,
+          rendering.DOT.AngleBrackets,
+          colors = true,
+        )
+        DagreHTML.createFile(dotGraph, targetDir)
+    }
+  }
+
   /**
    * This is the maximum strength settings for DependencyTreePlugin.
    */
@@ -114,16 +225,9 @@ object DependencyTreeSettings {
         dependencyDotNodeColors.value
       ),
       dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
-      dependencyDotHeader :=
-        """|digraph "dependency-graph" {
-         |    graph[rankdir="LR"; splines=polyline]
-         |    edge [
-         |        arrowtail="none"
-         |    ]""".stripMargin,
+      dependencyDotHeader := defaultDependencyDotHeader,
       dependencyDotNodeColors := true,
-      dependencyDotNodeLabel := { (organization: String, name: String, version: String) =>
-        """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
-      },
+      dependencyDotNodeLabel := { defaultDependencyDotNodeLabel },
       // GraphML support
       dependencyGraphMLFile := {
         val config = configuration.value

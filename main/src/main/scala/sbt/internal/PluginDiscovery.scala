@@ -54,6 +54,7 @@ object PluginDiscovery {
       "sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin,
       "sbt.plugins.Giter8TemplatePlugin" -> sbt.plugins.Giter8TemplatePlugin,
       "sbt.plugins.MiniDependencyTreePlugin" -> sbt.plugins.MiniDependencyTreePlugin,
+      "sbt.plugins.DependencyReportPlugin" -> sbt.plugins.DependencyReportPlugin,
     )
     val detectedAutoPlugins = discover[AutoPlugin](AutoPlugins)
     val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPlugins.modules) map {
