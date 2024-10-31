@@ -35,6 +35,12 @@ trait MiniDependencyTreeKeys {
 
 object MiniDependencyTreeKeys extends MiniDependencyTreeKeys
 
+trait DependencyReportKeys {
+  val dependencyReport = inputKey[Unit]("Generates a report of the project dependencies")
+}
+
+object DependencyReportKeys extends DependencyReportKeys
+
 abstract class DependencyTreeKeys {
   val dependencyGraphMLFile =
     settingKey[File]("The location the graphml file should be generated at")

@@ -18,6 +18,11 @@ import sbt.io.IO
 
 object DagreHTML {
   def createLink(dotGraph: String, targetDirectory: File): URI = {
+    val graphHTML = createFile(dotGraph, targetDirectory)
+    new URI(graphHTML.toURI.toString)
+  }
+
+  def createFile(dotGraph: String, targetDirectory: File): File = {
     targetDirectory.mkdirs()
     val graphHTML = new File(targetDirectory, "graph.html")
     TreeView.saveResource("graph.html", graphHTML)
@@ -33,7 +38,6 @@ object DagreHTML {
       s"""data = "$graphString";""",
       IO.utf8
     )
-
-    new URI(graphHTML.toURI.toString)
+    graphHTML
   }
 }

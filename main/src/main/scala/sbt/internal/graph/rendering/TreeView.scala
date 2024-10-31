@@ -28,12 +28,17 @@ object TreeView {
   }
 
   def createLink(graphJson: String, targetDirectory: File): URI = {
+    val graphHTML = createFile(graphJson, targetDirectory)
+    new URI(graphHTML.toURI.toString)
+  }
+
+  def createFile(graphJson: String, targetDirectory: File): File = {
     targetDirectory.mkdirs()
     val graphHTML = new File(targetDirectory, "tree.html")
     saveResource("tree.html", graphHTML)
     IO.write(new File(targetDirectory, "tree.json"), graphJson, IO.utf8)
     IO.write(new File(targetDirectory, "tree.data.js"), s"tree_data = $graphJson;", IO.utf8)
-    new URI(graphHTML.toURI.toString)
+    graphHTML
   }
 
   private[rendering] def processSubtree(
