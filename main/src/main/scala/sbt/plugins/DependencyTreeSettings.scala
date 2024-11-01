@@ -194,7 +194,7 @@ object DependencyTreeSettings {
           graph,
           defaultDependencyDotHeader,
           defaultDependencyDotNodeLabel,
-          rendering.DOT.AngleBrackets,
+          rendering.DOT.HTMLLabelRendering.AngleBrackets,
           colors = true,
         )
         DagreHTML.createFile(dotGraph, targetDir)
