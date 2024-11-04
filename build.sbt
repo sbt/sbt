@@ -380,6 +380,7 @@ lazy val utilLogging = (project in file("internal") / "util-logging")
         jline3Terminal,
         jline3JNI,
         jline3Native,
+        jansi,
         log4jApi,
         log4jCore,
         disruptor,
