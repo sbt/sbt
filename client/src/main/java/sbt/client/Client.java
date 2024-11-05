@@ -9,7 +9,7 @@
 package sbt.client;
 
 import sbt.internal.client.NetworkClient;
-import org.fusesource.jansi.AnsiConsole;
+import org.jline.jansi.AnsiConsole;
 
 public class Client {
   public static void main(final String[] args) {

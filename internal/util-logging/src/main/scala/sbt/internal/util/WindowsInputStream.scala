@@ -11,7 +11,7 @@ package sbt.internal.util
 import java.io.InputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import org.fusesource.jansi.internal.Kernel32
+import org.jline.nativ.Kernel32
 import org.jline.utils.InfoCmp.Capability
 import scala.annotation.tailrec
 import Terminal.SimpleInputStream
