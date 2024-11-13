@@ -1,5 +1,5 @@
 lazy val check = taskKey[Unit]("")
-lazy val scala3M1 = "3.0.0-M1"
+lazy val scala3 = "3.5.2"
 lazy val scala3M2 = "3.0.0-M2"
 lazy val scala213 = "2.13.4"
 
@@ -7,8 +7,14 @@ lazy val fooApp = (projectMatrix in file("foo-app"))
   .dependsOn(fooCore)
   .settings(
     name := "foo app",
+    TaskKey[Unit]("check") := {
+      val deps = (Compile / projectDependencies).value
+      deps.foreach { dep =>
+        println(s"$dep - ${dep.crossVersion}")
+      }
+    },
   )
-  .jvmPlatform(scalaVersions = Seq(scala3M1, scala3M2))
+  .jvmPlatform(scalaVersions = Seq(scala3, scala3M2))
 
 lazy val fooCore = (projectMatrix in file("foo-core"))
   .settings(
@@ -27,7 +33,7 @@ lazy val barCore = (projectMatrix in file("bar-core"))
   .settings(
     name := "bar core",
   )
-  .jvmPlatform(scalaVersions = Seq(scala3M1))
+  .jvmPlatform(scalaVersions = Seq(scala3))
 
 // choose 2.13 when bazCore offers both 2.13 and Dotty
 lazy val bazApp = (projectMatrix in file("baz-app"))
@@ -48,4 +54,4 @@ lazy val bazCore = (projectMatrix in file("baz-core"))
     name := "baz core",
     exportJars := true,
   )
-  .jvmPlatform(scalaVersions = Seq(scala213, scala3M1, scala3M2))
+  .jvmPlatform(scalaVersions = Seq(scala213, scala3, scala3M2))
