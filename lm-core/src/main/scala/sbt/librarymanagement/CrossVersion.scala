@@ -249,7 +249,7 @@ object For2_13Use3 {
 }
 
 trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val DisabledFormat: JsonFormat[sbt.librarymanagement.Disabled] =
+  given DisabledFormat: JsonFormat[sbt.librarymanagement.Disabled] =
     new JsonFormat[sbt.librarymanagement.Disabled] {
       override def read[J](
           jsOpt: Option[J],
@@ -272,7 +272,7 @@ trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
       }
     }
 
-  implicit lazy val DisabledObjectFormat: JsonFormat[sbt.librarymanagement.Disabled.type] =
+  given DisabledObjectFormat: JsonFormat[sbt.librarymanagement.Disabled.type] =
     new JsonFormat[sbt.librarymanagement.Disabled.type] {
       override def read[J](
           jsOpt: Option[J],
@@ -297,7 +297,7 @@ trait DisabledFormats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait BinaryFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val BinaryFormat: JsonFormat[sbt.librarymanagement.Binary] =
+  given BinaryFormat: JsonFormat[sbt.librarymanagement.Binary] =
     new JsonFormat[sbt.librarymanagement.Binary] {
       override def read[J](
           jsOpt: Option[J],
@@ -324,7 +324,7 @@ trait BinaryFormats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait ConstantFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val ConstantFormat: JsonFormat[sbt.librarymanagement.Constant] =
+  given ConstantFormat: JsonFormat[sbt.librarymanagement.Constant] =
     new JsonFormat[sbt.librarymanagement.Constant] {
       override def read[J](
           jsOpt: Option[J],
@@ -349,7 +349,7 @@ trait ConstantFormats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait PatchFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val PatchFormat: JsonFormat[sbt.librarymanagement.Patch] =
+  given PatchFormat: JsonFormat[sbt.librarymanagement.Patch] =
     new JsonFormat[sbt.librarymanagement.Patch] {
       override def read[J](
           jsOpt: Option[J],
@@ -374,7 +374,7 @@ trait PatchFormats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait FullFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val FullFormat: JsonFormat[sbt.librarymanagement.Full] =
+  given FullFormat: JsonFormat[sbt.librarymanagement.Full] =
     new JsonFormat[sbt.librarymanagement.Full] {
       override def read[J](
           jsOpt: Option[J],
@@ -401,7 +401,7 @@ trait FullFormats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait For3Use2_13Formats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val For3Use2_13Format: JsonFormat[sbt.librarymanagement.For3Use2_13] =
+  given For3Use2_13Format: JsonFormat[sbt.librarymanagement.For3Use2_13] =
     new JsonFormat[sbt.librarymanagement.For3Use2_13] {
       override def read[J](
           jsOpt: Option[J],
@@ -428,7 +428,7 @@ trait For3Use2_13Formats { self: sjsonnew.BasicJsonProtocol =>
 }
 
 trait For2_13Use3Formats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val For2_13Use3Format: JsonFormat[sbt.librarymanagement.For2_13Use3] =
+  given For2_13Use3Format: JsonFormat[sbt.librarymanagement.For2_13Use3] =
     new JsonFormat[sbt.librarymanagement.For2_13Use3] {
       override def read[J](
           jsOpt: Option[J],
@@ -459,7 +459,7 @@ trait CrossVersionFormats {
     sbt.librarymanagement.BinaryFormats & sbt.librarymanagement.ConstantFormats &
     sbt.librarymanagement.PatchFormats & sbt.librarymanagement.FullFormats &
     sbt.librarymanagement.For3Use2_13Formats & sbt.librarymanagement.For2_13Use3Formats =>
-  implicit lazy val CrossVersionFormat: JsonFormat[CrossVersion] = {
+  given CrossVersionFormat: JsonFormat[CrossVersion] = {
     val format = flatUnionFormat8[
       CrossVersion,
       Disabled,

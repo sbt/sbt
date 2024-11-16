@@ -26,6 +26,6 @@ trait BasicCacheImplicits extends HashedVirtualFileRefFormats { self: BasicJsonP
   def singleton[T](t: T): SingletonCache[T] =
     SingletonCache.basicSingletonCache(using asSingleton(t))
 
-  implicit lazy val virtualFileRefIsoString: IsoString[VirtualFileRef] =
+  given virtualFileRefIsoString: IsoString[VirtualFileRef] =
     IsoString.iso(_.id, VirtualFileRef.of)
 }

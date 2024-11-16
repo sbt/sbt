@@ -49,12 +49,12 @@ package object sbt
    * of FileChangesMacro.TaskOps is ever made which is why it is ok to use `???`.
    */
   // implicit def taskToTaskOpts[T](t: TaskKey[T]): FileChangesMacro.TaskOps[T] = ???
-  implicit val fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
+  given fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
     FileStamp.Formats.seqPathFileStampJsonFormatter
-  implicit val pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
-  implicit val fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.Formats.seqFileJsonFormatter
-  implicit val singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.Formats.pathJsonFormatter
-  implicit val singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
+  given pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
+  given fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.Formats.seqFileJsonFormatter
+  given singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.Formats.pathJsonFormatter
+  given singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
   // others
 
   object CompileOrder {

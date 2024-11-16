@@ -79,15 +79,15 @@ object RootProject {
   def apply(base: File): RootProject = RootProject(IO toURI base)
 }
 object Reference {
-  implicit val resolvedReferenceOrdering: Ordering[ResolvedReference] = {
+  given resolvedReferenceOrdering: Ordering[ResolvedReference] = {
     case (ba: BuildRef, bb: BuildRef)     => buildRefOrdering.compare(ba, bb)
     case (pa: ProjectRef, pb: ProjectRef) => projectRefOrdering.compare(pa, pb)
     case (_: BuildRef, _: ProjectRef)     => -1
     case (_: ProjectRef, _: BuildRef)     => 1
   }
-  implicit val buildRefOrdering: Ordering[BuildRef] = (a, b) => a.build.compareTo(b.build)
+  given buildRefOrdering: Ordering[BuildRef] = (a, b) => a.build.compareTo(b.build)
 
-  implicit val projectRefOrdering: Ordering[ProjectRef] = (a, b) => {
+  given projectRefOrdering: Ordering[ProjectRef] = (a, b) => {
     val bc = a.build.compareTo(b.build)
     if bc == 0 then a.project.compareTo(b.project) else bc
   }

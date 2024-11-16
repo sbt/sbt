@@ -25,7 +25,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.annotation.nowarn
 
 private[sbt] object LibraryManagement {
-  implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
+  given linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
   private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
 
@@ -382,7 +382,7 @@ private[sbt] object LibraryManagement {
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
   ): UpdateReport = {
-    import sbt.librarymanagement.LibraryManagementCodec._
+    import sbt.librarymanagement.LibraryManagementCodec.given
     import sbt.util.FileBasedStore
     val exclName = "exclude_classifiers"
     val file = out / exclName
@@ -391,7 +391,7 @@ private[sbt] object LibraryManagement {
       out / (exclName + ".lock"),
       new Callable[UpdateReport] {
         def call = {
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
+          given midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
           val excludes =
             store
               .read[Map[ModuleID, Vector[ConfigRef]]](

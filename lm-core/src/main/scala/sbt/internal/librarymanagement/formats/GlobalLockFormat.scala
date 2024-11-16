@@ -12,10 +12,10 @@ import java.util.concurrent.Callable
 trait GlobalLockFormat { self: BasicJsonProtocol =>
   import GlobalLockFormats._
 
-  implicit lazy val globalLockIsoString: IsoString[GlobalLock] =
+  given globalLockIsoString: IsoString[GlobalLock] =
     IsoString.iso(_ => "<lock>", _ => NoGlobalLock)
 
-  implicit lazy val GlobalLockFormat: JsonFormat[GlobalLock] = isoStringFormat(using
+  given GlobalLockFormat: JsonFormat[GlobalLock] = isoStringFormat(using
     globalLockIsoString
   )
 }

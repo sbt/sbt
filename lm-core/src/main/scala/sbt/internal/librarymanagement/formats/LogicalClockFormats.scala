@@ -5,7 +5,7 @@ import sjsonnew._
 import sbt.librarymanagement.LogicalClock
 
 trait LogicalClockFormats { self: BasicJsonProtocol =>
-  implicit lazy val LogicalClockFormat: JsonFormat[LogicalClock] =
+  given LogicalClockFormat: JsonFormat[LogicalClock] =
     projectFormat[LogicalClock, String](
       cl => cl.toString,
       str => LogicalClock(str)

@@ -9,8 +9,8 @@ import sbt.util.Logger.Null
  * This is mostly for making IvyConfiguration serializable to JSON.
  */
 trait LoggerFormat { self: BasicJsonProtocol =>
-  implicit lazy val xsbtiLoggerIsoString: IsoString[Logger] =
+  given xsbtiLoggerIsoString: IsoString[Logger] =
     IsoString.iso(_ => "<logger>", _ => Null)
 
-  implicit lazy val LoggerFormat: JsonFormat[Logger] = isoStringFormat(using implicitly)
+  given LoggerFormat: JsonFormat[Logger] = isoStringFormat(using implicitly)
 }

@@ -17,7 +17,7 @@ import sbt.internal.inc.PlainVirtualFileConverter
 
 object NewFormatSpec extends AbstractSpec {
   val converter = PlainVirtualFileConverter.converter
-  implicit val splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
+  given splitter: SplitExpressions.SplitExpression = EvaluateConfigurations.splitExpressions
 
   test("New Format should handle lines") {
     val rootPath = getClass.getResource("/new-format").getPath

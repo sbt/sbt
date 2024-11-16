@@ -115,16 +115,16 @@ object FileStamp {
     case FileStamp.LastModified(_) => Digest.sha256Hash(path)
 
   object Formats {
-    implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] =
+    given seqPathJsonFormatter: JsonFormat[Seq[Path]] =
       asStringArray(_.toString, Paths.get(_))
-    implicit val seqFileJsonFormatter: JsonFormat[Seq[File]] =
+    given seqFileJsonFormatter: JsonFormat[Seq[File]] =
       asStringArray(_.toString, new File(_))
-    implicit val seqVirtualFileRefJsonFormatter: JsonFormat[Seq[VirtualFileRef]] =
+    given seqVirtualFileRefJsonFormatter: JsonFormat[Seq[VirtualFileRef]] =
       asStringArray(_.id, VirtualFileRef.of)
 
-    implicit val fileJsonFormatter: JsonFormat[File] = fromSeqJsonFormat[File]
-    implicit val pathJsonFormatter: JsonFormat[Path] = fromSeqJsonFormat[Path]
-    implicit val virtualFileRefJsonFormatter: JsonFormat[VirtualFileRef] =
+    given fileJsonFormatter: JsonFormat[File] = fromSeqJsonFormat[File]
+    given pathJsonFormatter: JsonFormat[Path] = fromSeqJsonFormat[Path]
+    given virtualFileRefJsonFormatter: JsonFormat[VirtualFileRef] =
       fromSeqJsonFormat[VirtualFileRef]
 
     private def asStringArray[T](toStr: T => String, fromStr: String => T): JsonFormat[Seq[T]] =
@@ -158,7 +158,7 @@ object FileStamp {
           seqJsonFormat.write(obj :: Nil, builder)
       }
 
-    implicit val seqPathFileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
+    given seqPathFileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
       new JsonFormat[Seq[(Path, FileStamp)]] {
         override def write[J](obj: Seq[(Path, FileStamp)], builder: Builder[J]): Unit = {
           val (hashes, lastModifiedTimes) = obj.partition(_._2.isInstanceOf[Hash])

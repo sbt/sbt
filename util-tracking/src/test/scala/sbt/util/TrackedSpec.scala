@@ -61,7 +61,7 @@ class TrackedSpec extends AnyFlatSpec {
   "inputChangedW" should "not require the input to have a JsonReader instance" in {
     case class Input(v: Int)
 
-    implicit val writer = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input] {
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
     }
 
@@ -139,7 +139,7 @@ class TrackedSpec extends AnyFlatSpec {
   "outputChangedW" should "not require the input to have a JsonReader instance" in {
     case class Input(v: Int)
 
-    implicit val writer = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input] {
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
     }
 

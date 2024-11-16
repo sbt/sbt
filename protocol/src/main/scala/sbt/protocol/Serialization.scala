@@ -104,13 +104,13 @@ object Serialization {
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeResponseMessage(message: JsonRpcResponseMessage): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeRequestMessage(message: JsonRpcRequestMessage): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
@@ -118,7 +118,7 @@ object Serialization {
   private[sbt] def serializeNotificationMessage(
       message: JsonRpcNotificationMessage,
   ): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
@@ -215,7 +215,7 @@ object Serialization {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json @ JObject(fields)) =>
-        import sbt.internal.protocol.codec.JsonRPCProtocol._
+        import sbt.internal.protocol.codec.JsonRPCProtocol.given
         if ((fields find { _.field == "method" }).isDefined) {
           if ((fields find { _.field == "id" }).isDefined)
             Converter.fromJson[JsonRpcRequestMessage](json) match {

@@ -6,7 +6,7 @@ package sbt.librarymanagement
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 
 trait ConfigRefFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val ConfigRefFormat: JsonFormat[sbt.librarymanagement.ConfigRef] =
+  given ConfigRefFormat: JsonFormat[sbt.librarymanagement.ConfigRef] =
     new JsonFormat[sbt.librarymanagement.ConfigRef] {
       override def read[J](
           __jsOpt: Option[J],

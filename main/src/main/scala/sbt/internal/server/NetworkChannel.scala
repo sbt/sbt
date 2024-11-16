@@ -263,7 +263,7 @@ final class NetworkChannel(
         pendingRequests -= request.id
         jsonRpcRespondError(request.id, err)
       case _ =>
-        import sbt.internal.protocol.codec.JsonRPCProtocol._
+        import sbt.internal.protocol.codec.JsonRPCProtocol.given
         val msg =
           s"unmatched json error for requestId $execId: ${CompactPrinter(Converter.toJsonUnsafe(err))}"
         log.debug(msg)

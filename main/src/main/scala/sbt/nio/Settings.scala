@@ -18,7 +18,7 @@ import sbt.internal.Clean.ToSeqPath
 import sbt.internal.Continuous.FileStampRepository
 import sbt.internal.util.KeyTag
 import sbt.internal.{ Clean, Continuous, DynamicInput, WatchTransitiveDependencies }
-import sbt.nio.FileStamp.Formats._
+import sbt.nio.FileStamp.Formats.given
 import sbt.nio.FileStamper.{ Hash, LastModified }
 import sbt.nio.Keys._
 import sbt.nio.file.{ AllPass, FileAttributes, Glob, RecursiveGlob }

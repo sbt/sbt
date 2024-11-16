@@ -25,8 +25,7 @@ abstract class CacheStore extends Input with Output {
 }
 
 object CacheStore {
-  @deprecated("Create your own IsoString[JValue]", "1.4")
-  implicit lazy val jvalueIsoString: IsoString[JValue] =
+  @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   /** Returns file-based CacheStore using standard JSON converter. */
@@ -50,8 +49,7 @@ abstract class CacheStoreFactory {
 }
 
 object CacheStoreFactory {
-  @deprecated("Create your own IsoString[JValue]", "1.4")
-  implicit lazy val jvalueIsoString: IsoString[JValue] =
+  @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   /** Returns directory-based CacheStoreFactory using standard JSON converter. */

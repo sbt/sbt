@@ -28,16 +28,16 @@ sealed trait PlainFileInfo extends FileInfo { def exists: Boolean }
 sealed trait HashModifiedFileInfo extends HashFileInfo with ModifiedFileInfo
 
 object HashFileInfo {
-  implicit val format: JsonFormat[HashFileInfo] = FileInfo.hash.format
+  given format: JsonFormat[HashFileInfo] = FileInfo.hash.format
 }
 object ModifiedFileInfo {
-  implicit val format: JsonFormat[ModifiedFileInfo] = FileInfo.lastModified.format
+  given format: JsonFormat[ModifiedFileInfo] = FileInfo.lastModified.format
 }
 object PlainFileInfo {
-  implicit val format: JsonFormat[PlainFileInfo] = FileInfo.exists.format
+  given format: JsonFormat[PlainFileInfo] = FileInfo.exists.format
 }
 object HashModifiedFileInfo {
-  implicit val format: JsonFormat[HashModifiedFileInfo] = FileInfo.full.format
+  given format: JsonFormat[HashModifiedFileInfo] = FileInfo.full.format
 }
 
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
@@ -79,7 +79,7 @@ object FileInfo {
    * Stores byte arrays as hex encoded strings, but falls back to reading an array of integers,
    * which is how it used to be stored, if that fails.
    */
-  implicit val byteArrayFormat: JsonFormat[Array[Byte]] = new JsonFormat[Array[Byte]] {
+  given byteArrayFormat: JsonFormat[Array[Byte]] = new JsonFormat[Array[Byte]] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Array[Byte] = {
       jsOpt match {
         case Some(js) =>
@@ -115,7 +115,7 @@ object FileInfo {
   object full extends Style {
     type F = HashModifiedFileInfo
 
-    implicit val format: JsonFormat[HashModifiedFileInfo] = new JsonFormat[HashModifiedFileInfo] {
+    given format: JsonFormat[HashModifiedFileInfo] = new JsonFormat[HashModifiedFileInfo] {
       def write[J](obj: HashModifiedFileInfo, builder: Builder[J]) = {
         builder.beginObject()
         builder.addField("file", obj.file.toString)
@@ -145,7 +145,7 @@ object FileInfo {
   object hash extends Style {
     type F = HashFileInfo
 
-    implicit val format: JsonFormat[HashFileInfo] = new JsonFormat[HashFileInfo] {
+    given format: JsonFormat[HashFileInfo] = new JsonFormat[HashFileInfo] {
       def write[J](obj: HashFileInfo, builder: Builder[J]) = {
         builder.beginObject()
         builder.addField("file", obj.file.toString)
@@ -177,7 +177,7 @@ object FileInfo {
   object lastModified extends Style {
     type F = ModifiedFileInfo
 
-    implicit val format: JsonFormat[ModifiedFileInfo] = new JsonFormat[ModifiedFileInfo] {
+    given format: JsonFormat[ModifiedFileInfo] = new JsonFormat[ModifiedFileInfo] {
       override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ModifiedFileInfo =
         jsOpt match {
           case Some(js) =>
@@ -229,7 +229,7 @@ object FileInfo {
   object exists extends Style {
     type F = PlainFileInfo
 
-    implicit val format: JsonFormat[PlainFileInfo] = new JsonFormat[PlainFileInfo] {
+    given format: JsonFormat[PlainFileInfo] = new JsonFormat[PlainFileInfo] {
       def write[J](obj: PlainFileInfo, builder: Builder[J]): Unit = {
         builder.beginObject()
         builder.addField("file", obj.file.toString)

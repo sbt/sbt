@@ -213,7 +213,7 @@ final class EvictionPair private[sbt] (
 }
 
 object EvictionPair {
-  implicit val evictionPairLines: ShowLines[EvictionPair] = ShowLines { (a: EvictionPair) =>
+  given evictionPairLines: ShowLines[EvictionPair] = ShowLines { (a: EvictionPair) =>
     val seen: mutable.Set[ModuleID] = mutable.Set()
     val callers: List[String] = (a.evicteds.toList ::: a.winner.toList) flatMap { r =>
       val rev = r.module.revision

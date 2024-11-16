@@ -313,7 +313,7 @@ private[sbt] object Definition {
               "Problem with processing analyses.",
               None,
             )
-            import JsonRPCProtocol._
+            import JsonRPCProtocol.given
             send(commandSource, requestId)(rsp)
           }
         ()

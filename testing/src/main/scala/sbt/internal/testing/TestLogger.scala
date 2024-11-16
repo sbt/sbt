@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 object TestLogger {
   import sbt.protocol.testing.codec.JsonProtocol._
 
-  implicit val testStringEventShowLines: ShowLines[TestStringEvent] =
+  given testStringEventShowLines: ShowLines[TestStringEvent] =
     ShowLines[TestStringEvent]({ case a: TestStringEvent =>
       List(a.value)
     })
@@ -74,11 +74,11 @@ object TestLogger {
     global.registerStringCodec[TestStringEvent]
 
     def showNoLines[A] = ShowLines[A](_ => Nil)
-    implicit val showNoLinesTestInitEvent = showNoLines[TestInitEvent]
-    implicit val showNoLinesStartTestGroupEvent = showNoLines[StartTestGroupEvent]
-    implicit val showNoLinesTestItemEvent = showNoLines[TestItemEvent]
-    implicit val showNoLinesEndTestGroupEvent = showNoLines[EndTestGroupEvent]
-    implicit val showNoLinesTestCompleteEvent = showNoLines[TestCompleteEvent]
+    given ShowLines[TestInitEvent] = showNoLines[TestInitEvent]
+    given ShowLines[StartTestGroupEvent] = showNoLines[StartTestGroupEvent]
+    given ShowLines[TestItemEvent] = showNoLines[TestItemEvent]
+    given ShowLines[EndTestGroupEvent] = showNoLines[EndTestGroupEvent]
+    given ShowLines[TestCompleteEvent] = showNoLines[TestCompleteEvent]
     global.registerStringCodec[TestInitEvent]
     global.registerStringCodec[StartTestGroupEvent]
     global.registerStringCodec[TestItemEvent]

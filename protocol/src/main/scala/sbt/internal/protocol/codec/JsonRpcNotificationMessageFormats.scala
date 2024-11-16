@@ -13,7 +13,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 trait JsonRpcNotificationMessageFormats {
   self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcNotificationMessageFormat
+  given JsonRpcNotificationMessageFormat
       : JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] {
       override def read[J](

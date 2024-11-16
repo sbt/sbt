@@ -17,6 +17,6 @@ trait ByteBufferFormats { self: BasicJsonProtocol =>
   def strToByteBuffer(s: String): ByteBuffer =
     ByteBuffer.wrap(BUtil.fromHex(s))
 
-  implicit lazy val byteBufferIsoString: IsoString[ByteBuffer] =
+  given byteBufferIsoString: IsoString[ByteBuffer] =
     IsoString.iso(byteBufferToStr, strToByteBuffer)
 }

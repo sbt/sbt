@@ -22,7 +22,7 @@ class FileStampJsonSpec extends AnyFlatSpec {
       Paths.get("foo") -> FileStamp.hash("bar"),
       Paths.get("bar") -> FileStamp.hash("buzz")
     )
-    implicit val formatter: JsonFormat[Seq[(Path, FileStamp.Hash)]] =
+    given formatter: JsonFormat[Seq[(Path, FileStamp.Hash)]] =
       Formats.seqPathHashJsonFormatter
     val json = Converter.toJsonUnsafe(hashes)
     val deserialized = Converter.fromJsonUnsafe(json)
@@ -33,7 +33,7 @@ class FileStampJsonSpec extends AnyFlatSpec {
       Paths.get("foo") -> FileStamp.LastModified(1234),
       Paths.get("bar") -> FileStamp.LastModified(5678)
     )
-    implicit val formatter: JsonFormat[Seq[(Path, FileStamp.LastModified)]] =
+    given formatter: JsonFormat[Seq[(Path, FileStamp.LastModified)]] =
       Formats.seqPathLastModifiedJsonFormatter
     val json = Converter.toJsonUnsafe(lastModifiedTimes)
     val deserialized = Converter.fromJsonUnsafe(json)

@@ -6,7 +6,7 @@ import java.io.File
 import sbt.librarymanagement._
 import sjsonnew.shaded.scalajson.ast.unsafe._
 import sjsonnew._, support.scalajson.unsafe._
-import LibraryManagementCodec._
+import LibraryManagementCodec.given
 import verify.BasicTestSuite
 
 object DMSerializationSpec extends BasicTestSuite {
@@ -105,6 +105,6 @@ object DMSerializationSpec extends BasicTestSuite {
     f(a, obj)
   }
 
-  implicit val isoString: IsoString[JValue] =
+  given isoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 }

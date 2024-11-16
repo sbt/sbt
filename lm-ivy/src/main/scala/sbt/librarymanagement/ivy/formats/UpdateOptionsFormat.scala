@@ -21,7 +21,7 @@ trait UpdateOptionsFormat {
     sbt.librarymanagement.PasswordAuthenticationFormats &
     sbt.librarymanagement.KeyFileAuthenticationFormats =>
   /* This is necessary to serialize/deserialize `directResolvers`. */
-  private implicit val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] = {
+  private given moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] = {
     new sjsonnew.JsonKeyFormat[ModuleID] {
       import sjsonnew.support.scalajson.unsafe._
       val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
@@ -32,7 +32,7 @@ trait UpdateOptionsFormat {
     }
   }
 
-  implicit lazy val UpdateOptionsFormat: JsonFormat[UpdateOptions] =
+  given UpdateOptionsFormat: JsonFormat[UpdateOptions] =
     projectFormat(
       (uo: UpdateOptions) =>
         (

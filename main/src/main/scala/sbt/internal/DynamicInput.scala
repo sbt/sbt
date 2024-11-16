@@ -21,7 +21,7 @@ private[sbt] final case class DynamicInput(
 )
 private[sbt] object DynamicInput {
   implicit object ordering extends Ordering[DynamicInput] {
-    private implicit val globOrdering: Ordering[Glob] = Glob.ordering
+    private given globOrdering: Ordering[Glob] = Glob.ordering
     private implicit object fileStamperOrdering extends Ordering[FileStamper] {
       override def compare(left: FileStamper, right: FileStamper): Int = left match {
         case FileStamper.Hash =>

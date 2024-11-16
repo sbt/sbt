@@ -55,13 +55,13 @@ class CacheIvyTest extends Properties("CacheIvy") {
     eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
   }
 
-  implicit val arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
+  given arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
     for {
       n <- Gen.alphaStr
     } yield ConfigRef(n)
   )
 
-  implicit val arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
+  given arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
     for {
       o <- Gen.alphaStr
       n <- Gen.alphaStr
@@ -71,18 +71,18 @@ class CacheIvyTest extends Properties("CacheIvy") {
     } yield InclExclRule(o, n, a, cs.toVector, v)
   )
 
-  implicit val arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
+  given arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
     // Actual functions don't matter, just Disabled vs Binary vs Full
     Gen.oneOf(Disabled(), Binary(), Full())
   }
 
-  implicit val arbArtifact: Arbitrary[Artifact] = Arbitrary {
+  given arbArtifact: Arbitrary[Artifact] = Arbitrary {
     for {
       (n, t, e, cls) <- arbitrary[(String, String, String, String)]
     } yield Artifact(n, t, e, cls) // keep it simple
   }
 
-  implicit val arbModuleID: Arbitrary[ModuleID] = Arbitrary {
+  given arbModuleID: Arbitrary[ModuleID] = Arbitrary {
     for {
       o <- Gen.identifier
       n <- Gen.identifier

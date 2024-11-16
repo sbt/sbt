@@ -11,7 +11,7 @@ import sbt.internal.bsp.*
 import sbt.internal.langserver.ErrorCodes
 import sbt.IO
 import sbt.internal.protocol.JsonRpcRequestMessage
-import sbt.internal.protocol.codec.JsonRPCProtocol.*
+import sbt.internal.protocol.codec.JsonRPCProtocol.given
 import sjsonnew.JsonWriter
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
@@ -24,7 +24,7 @@ import scala.concurrent.duration.*
 // starts svr using server-test/buildserver and perform custom server tests
 class BuildServerTest extends AbstractServerTest {
 
-  import sbt.internal.bsp.codec.JsonProtocol._
+  import sbt.internal.bsp.codec.JsonProtocol.given
 
   override val testDirectory: String = "buildserver"
   private val idGen: AtomicInteger = new AtomicInteger(0)

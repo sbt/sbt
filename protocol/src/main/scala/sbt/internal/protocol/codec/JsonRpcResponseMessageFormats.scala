@@ -20,8 +20,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe._
 trait JsonRpcResponseMessageFormats {
   self: sbt.internal.util.codec.JValueFormats &
     sbt.internal.protocol.codec.JsonRpcResponseErrorFormats & sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcResponseMessageFormat
-      : JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
+  given JsonRpcResponseMessageFormat: JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] {
       override def read[J](
           jsOpt: Option[J],

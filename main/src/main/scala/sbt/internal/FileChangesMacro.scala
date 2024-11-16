@@ -83,7 +83,7 @@ object FileChangesMacro:
       val ts: Scope = $taskScope
       val changes = rescope[Seq[(NioPath, FileStamp)] => FileChanges](ts, $changeKey).value
       val current = rescope[Seq[NioPath]](ts, $currentKey).value
-      import sbt.nio.FileStamp.Formats.*
+      import sbt.nio.FileStamp.Formats.given
       val previous =
         Previous.runtimeInEnclosingTask(rescope[Seq[(NioPath, FileStamp)]](ts, $mapKey)).value
       previous.map(changes).getOrElse(FileChanges.noPrevious(current))

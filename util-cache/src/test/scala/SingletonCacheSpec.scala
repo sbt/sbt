@@ -20,7 +20,7 @@ class SingletonCacheSpec extends AnyFlatSpec {
 
   case class ComplexType(val x: Int, y: String, z: List[Int])
   object ComplexType {
-    implicit val format: JsonFormat[ComplexType] =
+    given format: JsonFormat[ComplexType] =
       new JsonFormat[ComplexType] {
         override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ComplexType = {
           jsOpt match {

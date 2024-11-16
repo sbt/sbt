@@ -24,6 +24,6 @@ trait HashedVirtualFileRefFormats { self: BasicJsonProtocol =>
       case _ => throw new RuntimeException(s"invalid HashedVirtualFileRefIsoString $s")
     }
 
-  implicit lazy val hashedVirtualFileRefIsoString: IsoString[HashedVirtualFileRef] =
+  given hashedVirtualFileRefIsoString: IsoString[HashedVirtualFileRef] =
     IsoString.iso(hashedVirtualFileRefToStr, strToHashedVirtualFileRef)
 }

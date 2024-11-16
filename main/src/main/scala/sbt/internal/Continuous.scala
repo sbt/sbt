@@ -269,8 +269,8 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       dynamicInputs: mutable.Set[DynamicInput],
       context: LoggerContext
   ): Callbacks = {
-    implicit val extracted: Extracted = Project.extract(s)
-    implicit val logger: Logger =
+    given extracted: Extracted = Project.extract(s)
+    given logger: Logger =
       context.logger(channel.name + "-watch", None, None)
     validateCommands(s, commands)
     val configs = getAllConfigs(s, commands, dynamicInputs)

@@ -408,8 +408,7 @@ final class IvySbt(
         )
 
       // Redefine to use a subset of properties, that are serialisable
-      override implicit lazy val InlineIvyConfigurationFormat
-          : JsonFormat[InlineIvyConfiguration] = {
+      override given InlineIvyConfigurationFormat: JsonFormat[InlineIvyConfiguration] = {
         def hlToInlineIvy(i: InlineIvyHL): InlineIvyConfiguration = {
           val (
             paths,
@@ -431,8 +430,7 @@ final class IvySbt(
       }
 
       // Redefine to use a subset of properties, that are serialisable
-      override implicit lazy val ExternalIvyConfigurationFormat
-          : JsonFormat[ExternalIvyConfiguration] = {
+      override given ExternalIvyConfigurationFormat: JsonFormat[ExternalIvyConfiguration] = {
         def hlToExternalIvy(e: ExternalIvyHL): ExternalIvyConfiguration = {
           val (baseDirectory, _) = e
           ExternalIvyConfiguration(
@@ -448,7 +446,7 @@ final class IvySbt(
       }
 
       // Redefine to switch to unionFormat
-      override implicit lazy val IvyConfigurationFormat: JsonFormat[IvyConfiguration] =
+      override given IvyConfigurationFormat: JsonFormat[IvyConfiguration] =
         unionFormat2[IvyConfiguration, InlineIvyConfiguration, ExternalIvyConfiguration]
 
       object NullLogger extends sbt.internal.util.BasicLogger {
@@ -461,7 +459,7 @@ final class IvySbt(
     }
 
     def extraInputHash: Long = {
-      import AltLibraryManagementCodec._
+      import AltLibraryManagementCodec.given
       Hasher.hash(owner.configuration) match {
         case Success(keyHash) => keyHash.toLong
         case Failure(_)       => 0L

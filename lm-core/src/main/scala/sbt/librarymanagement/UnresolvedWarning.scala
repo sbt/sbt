@@ -55,7 +55,7 @@ object UnresolvedWarning {
       case Some(RangePosition(path, LineRange(start, end))) => s" ($path#L$start-$end)"
       case _                                                => ""
     }
-  implicit val unresolvedWarningLines: ShowLines[UnresolvedWarning] = ShowLines { a =>
+  given unresolvedWarningLines: ShowLines[UnresolvedWarning] = ShowLines { a =>
     val withExtra = a.resolveException.failed.filter(_.extraDependencyAttributes.nonEmpty)
     val buffer = mutable.ListBuffer[String]()
     if (withExtra.nonEmpty) {
