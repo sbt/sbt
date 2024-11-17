@@ -49,7 +49,7 @@ object Script {
       val session = Load.initialSession(structure, eval)
       val extracted = Project.extract(session, structure)
       val vf = structure.converter.toVirtualFile(script.toPath())
-      import extracted.*
+      import extracted.{ *, given }
 
       val embeddedSettings = blocks(script).flatMap { block =>
         evaluate(eval(), vf, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)

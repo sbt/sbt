@@ -47,7 +47,7 @@ object IvyConsole {
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
       val extracted = Project.extract(session, structure)
-      import extracted._
+      import extracted.{ *, given }
 
       val depSettings: Seq[Setting[?]] = Seq(
         libraryDependencies ++= managed.reverse,

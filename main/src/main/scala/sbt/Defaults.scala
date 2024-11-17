@@ -3411,7 +3411,7 @@ object Classpaths {
     inTask(updateClassifiers)(
       Seq(
         classifiersModule := {
-          implicit val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+          val key = (m: ModuleID) => (m.organization, m.name, m.revision)
           val projectDeps = projectDependencies.value.iterator.map(key).toSet
           val externalModules = update.value.allModules.filterNot(m => projectDeps contains key(m))
           GetClassifiersModule(

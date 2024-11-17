@@ -13,7 +13,7 @@ import sbt.util.ShowLines
 import sbt.internal.util.SuccessEvent
 
 trait SuccessEventShowLines {
-  implicit val sbtSuccessEventShowLines: ShowLines[SuccessEvent] =
+  given sbtSuccessEventShowLines: ShowLines[SuccessEvent] =
     ShowLines[SuccessEvent]((e: SuccessEvent) => {
       Vector(e.message)
     })

@@ -317,7 +317,7 @@ trait Tracked {
 
 }
 
-class Timestamp(val store: CacheStore, useStartTime: Boolean)(implicit format: JsonFormat[Long])
+class Timestamp(val store: CacheStore, useStartTime: Boolean)(using format: JsonFormat[Long])
     extends Tracked {
   def clean() = store.delete()
 

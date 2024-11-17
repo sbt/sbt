@@ -13,7 +13,7 @@ import xsbti.Position
 import java.util.Optional
 
 trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val PositionFormat: JsonFormat[Position] = new JsonFormat[Position] {
+  given PositionFormat: JsonFormat[Position] = new JsonFormat[Position] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Position = {
       jsOpt match {
         case Some(js) =>

@@ -46,7 +46,7 @@ import xsbti.VirtualFileRef
 import java.util.concurrent.atomic.AtomicReference
 
 object BuildServerProtocol {
-  import sbt.internal.bsp.codec.JsonProtocol._
+  import sbt.internal.bsp.codec.JsonProtocol.given
 
   private val capabilities = BuildServerCapabilities(
     CompileProvider(BuildServerConnection.languages),

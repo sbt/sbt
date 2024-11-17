@@ -110,7 +110,7 @@ object Sync {
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](using
+  given relationFormat[A, B](using
       af: JsonFormat[Map[A, Set[B]]],
       bf: JsonFormat[Map[B, Set[A]]]
   ): JsonFormat[Relation[A, B]] =
@@ -164,7 +164,7 @@ object Sync {
     }
 
     import sjsonnew.IsoString
-    implicit def virtualFileRefStringIso: IsoString[VirtualFileRef] =
+    given IsoString[VirtualFileRef] =
       IsoString.iso[VirtualFileRef](_.toString, VirtualFileRef.of(_))
     store.write(
       (
@@ -238,7 +238,7 @@ object Sync {
       store: CacheStore
   )(using infoFormat: JsonFormat[F]): RelationInfoVirtual[F] = {
     import sjsonnew.IsoString
-    implicit def virtualFileRefStringIso: IsoString[VirtualFileRef] =
+    given IsoString[VirtualFileRef] =
       IsoString.iso[VirtualFileRef](_.toString, VirtualFileRef.of(_))
     store.read(default =
       (Relation.empty[VirtualFileRef, VirtualFileRef], Map.empty[VirtualFileRef, F])

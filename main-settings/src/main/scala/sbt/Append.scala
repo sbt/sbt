@@ -31,7 +31,7 @@ object Append:
 
   trait Sequence[A1, -A2, A3] extends Value[A1, A3] with Values[A1, A2]
 
-  implicit def appendSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] =
+  given appendSeq[T, V <: T]: Sequence[Seq[T], Seq[V], V] =
     new Sequence[Seq[T], Seq[V], V] {
       def appendValues(a: Seq[T], b: Seq[V]): Seq[T] = a ++ (b: Seq[T])
       def appendValue(a: Seq[T], b: V): Seq[T] = a :+ (b: T)
@@ -42,13 +42,13 @@ object Append:
     override def appendValue(a: Seq[A1], b: V): Seq[A1] = a :+ (b: A1)
 
   @compileTimeOnly("This can be used in += only.")
-  implicit def appendTaskValueSeq[T, V <: T]: Value[Seq[Task[T]], Initialize[Task[V]]] =
+  given appendTaskValueSeq[T, V <: T]: Value[Seq[Task[T]], Initialize[Task[V]]] =
     (_, _) => ??? // SAM conversion.  This implementation is rewritten by sbt's macros too.
 
   @compileTimeOnly("This can be used in += only.")
-  implicit def appendTaskKeySeq[T, V <: T]: Value[Seq[Task[T]], TaskKey[V]] = (_, _) => ??? // SAM
+  given appendTaskKeySeq[T, V <: T]: Value[Seq[Task[T]], TaskKey[V]] = (_, _) => ??? // SAM
 
-  implicit def appendList[T, V <: T]: Sequence[List[T], List[V], V] =
+  given appendList[T, V <: T]: Sequence[List[T], List[V], V] =
     new Sequence[List[T], List[V], V] {
       def appendValues(a: List[T], b: List[V]): List[T] = a ::: (b: List[T])
       def appendValue(a: List[T], b: V): List[T] = a :+ (b: T)
@@ -64,10 +64,10 @@ object Append:
     override def appendValue(a: Vector[A1], b: V): Vector[A1] = a :+ (b: A1)
 
   // psst... these are implemented with SAM conversions
-  implicit def appendString: Value[String, String] = _ + _
-  implicit def appendInt: Value[Int, Int] = _ + _
-  implicit def appendLong: Value[Long, Long] = _ + _
-  implicit def appendDouble: Value[Double, Double] = _ + _
+  given appendString: Value[String, String] = _ + _
+  given appendInt: Value[Int, Int] = _ + _
+  given appendLong: Value[Long, Long] = _ + _
+  given appendDouble: Value[Double, Double] = _ + _
 
   given Sequence[Classpath, Seq[HashedVirtualFileRef], HashedVirtualFileRef] with
     override def appendValues(a: Classpath, b: Seq[HashedVirtualFileRef]): Classpath =
@@ -75,26 +75,26 @@ object Append:
     override def appendValue(a: Classpath, b: HashedVirtualFileRef): Classpath =
       a :+ Attributed.blank(b)
 
-  implicit def appendSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
+  given appendSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
     new Sequence[Set[T], Set[V], V] {
       def appendValues(a: Set[T], b: Set[V]): Set[T] = a ++ (b.toSeq: Seq[T]).toSet
       def appendValue(a: Set[T], b: V): Set[T] = a + (b: T)
     }
 
-  implicit def appendMap[A, B, X <: A, Y <: B]: Sequence[Map[A, B], Map[X, Y], (X, Y)] =
+  given appendMap[A, B, X <: A, Y <: B]: Sequence[Map[A, B], Map[X, Y], (X, Y)] =
     new Sequence[Map[A, B], Map[X, Y], (X, Y)] {
       def appendValues(a: Map[A, B], b: Map[X, Y]): Map[A, B] =
         (a.toSeq ++ (b.toSeq: Seq[(A, B)])).toMap
       def appendValue(a: Map[A, B], b: (X, Y)): Map[A, B] = a + (b: (A, B))
     }
 
-  implicit def appendOption[T]: Sequence[Seq[T], Option[T], Option[T]] =
+  given appendOption[T]: Sequence[Seq[T], Option[T], Option[T]] =
     new Sequence[Seq[T], Option[T], Option[T]] {
       def appendValue(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
       def appendValues(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a :+ _)
     }
 
-  implicit def appendSource: Sequence[Seq[Source], Seq[File], File] =
+  given appendSource: Sequence[Seq[Source], Seq[File], File] =
     new Sequence[Seq[Source], Seq[File], File] {
       def appendValue(a: Seq[Source], b: File): Seq[Source] = appendValues(a, Seq(b))
       def appendValues(a: Seq[Source], b: Seq[File]): Seq[Source] =
@@ -111,9 +111,9 @@ object Append:
     }
 
   // Implemented with SAM conversion short-hand
-  implicit def appendFunction[A, B]: Value[A => A, A => A] = _.andThen(_)
+  given appendFunction[A, B]: Value[A => A, A => A] = _.andThen(_)
 
-  implicit def appendSideEffectToFunc[A, B]: Value[A => B, () => Unit] = (f, sideEffect) => {
+  given appendSideEffectToFunc[A, B]: Value[A => B, () => Unit] = (f, sideEffect) => {
     f.andThen { b =>
       sideEffect()
       b

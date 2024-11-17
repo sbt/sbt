@@ -53,7 +53,7 @@ object VirtualFileValueCache {
 private final class VirtualFileValueCache0[A](
     getStamp: VirtualFile => XStamp,
     make: VirtualFile => A
-)(implicit
+)(using
     equiv: Equiv[XStamp]
 ) extends VirtualFileValueCache[A] {
   private val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]

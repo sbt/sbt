@@ -46,9 +46,9 @@ sealed abstract class LogExchange {
   }
 
   private[sbt] def initStringCodecs(): Unit = {
-    import sbt.internal.util.codec.SuccessEventShowLines._
-    import sbt.internal.util.codec.ThrowableShowLines._
-    import sbt.internal.util.codec.TraceEventShowLines._
+    import sbt.internal.util.codec.SuccessEventShowLines.given
+    import sbt.internal.util.codec.ThrowableShowLines.given
+    import sbt.internal.util.codec.TraceEventShowLines.given
 
     registerStringCodec[Throwable]
     registerStringCodec[TraceEvent]

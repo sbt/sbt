@@ -22,7 +22,7 @@ final case class Extracted(
     structure: BuildStructure,
     session: SessionSettings,
     currentRef: ProjectRef
-)(implicit val showKey: Show[ScopedKey[?]]) {
+)(using val showKey: Show[ScopedKey[?]]) {
   def rootProject = structure.rootProject
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project

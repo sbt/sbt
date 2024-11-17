@@ -118,7 +118,7 @@ object SettingQuery {
       key: Def.ScopedKey[A]
   ): Either[String, JValue] =
     getSettingValue(structure, key) flatMap (value =>
-      getJsonWriter(key.key) map { implicit jw: JsonWriter[A] =>
+      getJsonWriter(key.key) map { case given JsonWriter[A] =>
         toJson(value)
       }
     )

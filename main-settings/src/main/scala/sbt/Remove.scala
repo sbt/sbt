@@ -35,12 +35,12 @@ object Remove {
       def removeValue(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a filterNot _.==)
       def removeValues(a: Seq[T], b: Option[T]): Seq[T] = b.fold(a)(a filterNot _.==)
     }
-  implicit def removeSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
+  given removeSet[T, V <: T]: Sequence[Set[T], Set[V], V] =
     new Sequence[Set[T], Set[V], V] {
       def removeValue(a: Set[T], b: V): Set[T] = a - b
       def removeValues(a: Set[T], b: Set[V]): Set[T] = a diff (b.toSeq: Seq[T]).toSet
     }
-  implicit def removeMap[A, B, X <: A]: Sequence[Map[A, B], Seq[X], X] =
+  given removeMap[A, B, X <: A]: Sequence[Map[A, B], Seq[X], X] =
     new Sequence[Map[A, B], Seq[X], X] {
       def removeValue(a: Map[A, B], b: X): Map[A, B] = a - b
       def removeValues(a: Map[A, B], b: Seq[X]): Map[A, B] = a -- b

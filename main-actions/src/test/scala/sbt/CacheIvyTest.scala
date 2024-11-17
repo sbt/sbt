@@ -16,7 +16,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 class CacheIvyTest extends Properties("CacheIvy") {
   import sbt.util.{ CacheStore, SingletonCache }
-  import SingletonCache._
+  import SingletonCache.given
 
   import sjsonnew._
   import sjsonnew.support.scalajson.unsafe.Converter

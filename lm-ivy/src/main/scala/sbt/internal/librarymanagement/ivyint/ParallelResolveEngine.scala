@@ -47,7 +47,7 @@ private[sbt] class ParallelResolveEngine(
         new PrepareDownloadEvent(typed.asScala.toArray)
     }
     // Farm out the dependencies for parallel download
-    implicit val ec = ParallelResolveEngine.resolveExecutionContext
+    given ExecutionContext = ParallelResolveEngine.resolveExecutionContext
     val allDownloadsFuture = Future.traverse(report.getDependencies.asScala) { case dep: IvyNode =>
       Future {
         if (

@@ -41,7 +41,7 @@ object RunFromSourceMain {
         case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
         case _          => Vector()
       }) ++ fo0.runJVMOptions)
-    implicit val runner = new ForkRun(fo)
+    val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
     val context = LoggerContext()

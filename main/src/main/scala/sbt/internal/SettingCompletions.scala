@@ -40,7 +40,7 @@ private[sbt] object SettingCompletions {
    * The settings injected by this method cannot be later persisted by the `session save` command.
    */
   def setAll(extracted: Extracted, settings: Seq[Setting[?]]): SetResult = {
-    import extracted._
+    import extracted.{ *, given }
     val r = Project.relation(extracted.structure, true)
     val allDefs = Def
       .flattenLocals(
@@ -74,7 +74,7 @@ private[sbt] object SettingCompletions {
    *  appended to the current settings.
    */
   def setThis(extracted: Extracted, settings: Seq[Def.Setting[?]], arg: String): SetResult = {
-    import extracted._
+    import extracted.{ *, given }
     val append =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)
     val newSession = session.appendSettings(append map (a => (a, arg.split('\n').toList)))

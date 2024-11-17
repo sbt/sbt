@@ -94,13 +94,13 @@ object LogWriterTest extends Properties("Log Writer") {
       new ToLog(removeNewlines(c), by)
     }
 
-  implicit lazy val genNewLine: Gen[NewLine] =
+  given genNewLine: Gen[NewLine] =
     for (str <- oneOf("\n", "\r", "\r\n")) yield new NewLine(str)
 
-  implicit lazy val genLevel: Gen[Level.Value] =
+  given genLevel: Gen[Level.Value] =
     oneOf(Level.values.toSeq)
 
-  implicit lazy val genOutput: Gen[Output] =
+  given genOutput: Gen[Output] =
     for (ls <- listOf[List[ToLog]](MaxLines); lv <- genLevel) yield new Output(ls, lv)
 
   def removeNewlines(s: String) = s.replaceAll("""[\n\r]+""", "")

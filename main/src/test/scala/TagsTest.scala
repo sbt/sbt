@@ -23,10 +23,10 @@ object TagsTest extends Properties("Tags") {
   def size: Gen[Size] =
     for (i <- Arbitrary.arbitrary[Int] if i != Int.MinValue) yield Size(math.abs(i))
 
-  implicit def aTagMap: Arbitrary[Map[Tag, Int]] = Arbitrary(tagMap)
-  implicit def aTagAndFrequency: Arbitrary[(Tag, Int)] = Arbitrary(tagAndFrequency)
-  implicit def aTag: Arbitrary[Tag] = Arbitrary(tag)
-  implicit def aSize: Arbitrary[Size] = Arbitrary(size)
+  given aTagMap: Arbitrary[Map[Tag, Int]] = Arbitrary(tagMap)
+  given aTagAndFrequency: Arbitrary[(Tag, Int)] = Arbitrary(tagAndFrequency)
+  given aTag: Arbitrary[Tag] = Arbitrary(tag)
+  given aSize: Arbitrary[Size] = Arbitrary(size)
 
   property("exclusive allows all groups without the exclusive tag") = forAll {
     (tm: TagMap, tag: Tag) =>

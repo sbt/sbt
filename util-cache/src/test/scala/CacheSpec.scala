@@ -11,7 +11,7 @@ package sbt.util
 import sbt.io.IO
 import sbt.io.syntax._
 
-import CacheImplicits._
+import CacheImplicits.given
 
 import org.scalatest.flatspec.AnyFlatSpec
 

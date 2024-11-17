@@ -57,7 +57,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intShow: ShowLines[Int] =
+    given ShowLines[Int] =
       ShowLines((x: Int) => Vector(s"String representation of $x"))
     log.registerStringCodec[Int]
     log.infoEvent(1)
@@ -67,7 +67,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intArrayShow: ShowLines[Array[Int]] =
+    given ShowLines[Array[Int]] =
       ShowLines((x: Array[Int]) => Vector(s"String representation of ${x.mkString}"))
     log.registerStringCodec[Array[Int]]
     log.infoEvent(Array(1, 2, 3))
@@ -77,7 +77,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     import sjsonnew.BasicJsonProtocol._
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] =
+    given ShowLines[Vector[Vector[Int]]] =
       ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
     log.infoEvent(Vector(Vector(1, 2, 3)))

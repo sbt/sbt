@@ -85,7 +85,7 @@ object Inspect {
 
   def keyOutput(s: State, option: Mode, sk: Def.ScopedKey[?]): String = {
     val extracted = Project.extract(s)
-    import extracted._
+    import extracted.{ *, given }
     option match {
       case Details(actual) => Project.details(extracted.structure, actual, sk)
       case DependencyTreeMode =>

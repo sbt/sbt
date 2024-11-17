@@ -14,7 +14,7 @@ import xsbti.VirtualFileRef
 
 trait BasicCacheImplicits extends HashedVirtualFileRefFormats { self: BasicJsonProtocol =>
 
-  implicit def basicCache[I: JsonFormat, O: JsonFormat]: Cache[I, O] =
+  given basicCache[I: JsonFormat, O: JsonFormat]: Cache[I, O] =
     new BasicCache[I, O]()
 
   def wrapIn[I, J](using f: I => J, g: J => I, jCache: SingletonCache[J]): SingletonCache[I] =

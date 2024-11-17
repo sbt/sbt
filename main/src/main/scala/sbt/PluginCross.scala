@@ -45,7 +45,7 @@ private[sbt] object PluginCross {
     Command.arb(requireSession(switchParser), pluginSwitchHelp) {
       case (state, (version, command)) =>
         val x = Project.extract(state)
-        import x._
+        import x.{ *, given }
         state.log.info(s"Setting `pluginCrossBuild / sbtVersion` to $version")
         val add = List(GlobalScope / pluginCrossBuild / sbtVersion :== version) ++
           List(scalaVersion := scalaVersionSetting.value) ++

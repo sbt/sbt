@@ -13,7 +13,7 @@ import sbt.util.ShowLines
 import sbt.internal.util.{ StackTrace, TraceEvent }
 
 trait ThrowableShowLines {
-  implicit val sbtThrowableShowLines: ShowLines[Throwable] =
+  given sbtThrowableShowLines: ShowLines[Throwable] =
     ShowLines[Throwable]((t: Throwable) => {
       // 0 means enabled with default behavior. See StackTrace.scala.
       val traceLevel = 0
@@ -24,7 +24,7 @@ trait ThrowableShowLines {
 object ThrowableShowLines extends ThrowableShowLines
 
 trait TraceEventShowLines {
-  implicit val sbtTraceEventShowLines: ShowLines[TraceEvent] =
+  given sbtTraceEventShowLines: ShowLines[TraceEvent] =
     ShowLines[TraceEvent]((t: TraceEvent) => {
       ThrowableShowLines.sbtThrowableShowLines.showLines(t.message)
     })

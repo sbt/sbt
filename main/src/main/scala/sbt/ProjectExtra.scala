@@ -241,7 +241,7 @@ trait ProjectExtra extends Scoped.Syntax:
       Project.extract(Project.session(state), Project.structure(state))
 
     private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted =
-      Extracted(st, se, se.current)(Project.showContextKey2(se))
+      Extracted(st, se, se.current)(using Project.showContextKey2(se))
 
     def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
       ref match
