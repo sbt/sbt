@@ -90,7 +90,7 @@ private[sbt] object SettingCompletions {
       session: SessionSettings,
       r: Relation[ScopedKey[?], ScopedKey[?]],
       redefined: Seq[Setting[?]],
-  )(implicit show: Show[ScopedKey[?]]): SetResult = {
+  )(using show: Show[ScopedKey[?]]): SetResult = {
     val redefinedKeys = redefined.map(_.key).toSet
     val affectedKeys = redefinedKeys.flatMap(r.reverse)
     def summary(verbose: Boolean): String = setSummary(redefinedKeys, affectedKeys, verbose)
@@ -101,7 +101,7 @@ private[sbt] object SettingCompletions {
       redefined: Set[ScopedKey[?]],
       affected: Set[ScopedKey[?]],
       verbose: Boolean,
-  )(implicit display: Show[ScopedKey[?]]): String = {
+  )(using display: Show[ScopedKey[?]]): String = {
     val QuietLimit = 3
     def strings(in: Set[ScopedKey[?]]): Seq[String] = in.toSeq.map(sk => display.show(sk)).sorted
     def lines(in: Seq[String]): (String, Boolean) =

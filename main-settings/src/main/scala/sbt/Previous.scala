@@ -153,7 +153,7 @@ object Previous {
   )
 
   /** Public as a macro implementation detail.  Do not call directly. */
-  def runtime[T](skey: TaskKey[T])(implicit format: JsonFormat[T]): Initialize[Task[Option[T]]] = {
+  def runtime[T](skey: TaskKey[T])(using format: JsonFormat[T]): Initialize[Task[Option[T]]] = {
     type Inputs = (Task[Previous], ScopedKey[Task[T]], References)
     val inputs = (Global / cache, Def.validated(skey, selfRefOk = true), Global / references)
     Def.app[Inputs, Task[Option[T]]](inputs) { case (prevTask, resolved, refs) =>
@@ -164,7 +164,7 @@ object Previous {
   }
 
   /** Public as a macro implementation detail.  Do not call directly. */
-  def runtimeInEnclosingTask[T](skey: TaskKey[T])(implicit
+  def runtimeInEnclosingTask[T](skey: TaskKey[T])(using
       format: JsonFormat[T]
   ): Initialize[Task[Option[T]]] = {
     type Inputs = (Task[Previous], ScopedKey[Task[T]], References, ScopedKey[?])

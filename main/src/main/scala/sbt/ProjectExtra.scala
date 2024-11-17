@@ -649,7 +649,7 @@ trait ProjectExtra extends Scoped.Syntax:
               SessionVar.resolveContext(key, scoped.scope, state),
               state,
               value
-            )(f)
+            )(using f)
         )
       }
 
@@ -705,7 +705,7 @@ trait ProjectExtra extends Scoped.Syntax:
     new Constructor(p)
    */
 
-  implicit def classpathDependency[T](p: T)(implicit
+  implicit def classpathDependency[T](p: T)(using
       ev: T => ProjectReference
   ): ClasspathDependency =
     ClasspathDependency(ev(p), None)

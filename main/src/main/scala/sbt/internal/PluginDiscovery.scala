@@ -65,7 +65,7 @@ object PluginDiscovery:
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
   def discoverSourceAll(analysis: CompileAnalysis): DiscoveredNames = {
-    def discover[T](implicit classTag: reflect.ClassTag[T]): Seq[String] =
+    def discover[T](using classTag: reflect.ClassTag[T]): Seq[String] =
       sourceModuleNames(analysis, classTag.runtimeClass.getName)
     new DiscoveredNames(discover[AutoPlugin], discover[BuildDef])
   }

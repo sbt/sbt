@@ -68,7 +68,7 @@ private[sbt] object LanguageServerProtocol {
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>
-          val _ = Definition.lspDefinition(json(r), r.id, CommandSource(name), converter, log)(
+          val _ = Definition.lspDefinition(json(r), r.id, CommandSource(name), converter, log)(using
             StandardMain.executionContext
           )
 

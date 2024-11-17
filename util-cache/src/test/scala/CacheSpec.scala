@@ -66,7 +66,7 @@ class CacheSpec extends AnyFlatSpec {
     }
   }
 
-  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(implicit
+  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(using
       cache: Cache[K, V]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>

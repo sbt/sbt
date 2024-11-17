@@ -18,7 +18,7 @@ import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(
-      implicit log: Logger
+      using log: Logger
   ): Unit = {
     val extracted = Project.extract(state)
     val cpImports = new Imports(extracted, state)

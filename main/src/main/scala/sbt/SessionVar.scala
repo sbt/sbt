@@ -29,14 +29,14 @@ object SessionVar {
   }
   def emptyMap = Map(IMap.empty)
 
-  def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit
+  def persistAndSet[T](key: ScopedKey[Task[T]], state: State, value: T)(using
       f: JsonFormat[T]
   ): State = {
-    persist(key, state, value)(f)
+    persist(key, state, value)(using f)
     set(key, state, value)
   }
 
-  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(implicit f: JsonFormat[T]): Unit =
+  def persist[T](key: ScopedKey[Task[T]], state: State, value: T)(using f: JsonFormat[T]): Unit =
     Project.structure(state).streams(state).use(key)(s => s.getOutput(DefaultDataID).write(value))
 
   def clear(s: State): State = s.put(sessionVars, SessionVar.emptyMap)
@@ -65,23 +65,23 @@ object SessionVar {
       .definingKey(subScoped)
       .getOrElse(subScoped)
 
-  def read[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
+  def read[T](key: ScopedKey[Task[T]], state: State)(using f: JsonFormat[T]): Option[T] =
     Project.structure(state).streams(state).use(key) { s =>
       try {
         Some(s.getInput(key, DefaultDataID).read[T]())
       } catch { case NonFatal(_) => None }
     }
 
-  def load[T](key: ScopedKey[Task[T]], state: State)(implicit f: JsonFormat[T]): Option[T] =
-    get(key, state) orElse read(key, state)(f)
+  def load[T](key: ScopedKey[Task[T]], state: State)(using f: JsonFormat[T]): Option[T] =
+    get(key, state) orElse read(key, state)(using f)
 
-  def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(implicit
+  def loadAndSet[T](key: ScopedKey[Task[T]], state: State, setIfUnset: Boolean = true)(using
       f: JsonFormat[T]
   ): (State, Option[T]) =
     get(key, state) match {
       case s: Some[T] => (state, s)
       case None =>
-        read(key, state)(f) match {
+        read(key, state)(using f) match {
           case s @ Some(t) =>
             val newState =
               if (setIfUnset && get(key, state).isDefined) state else set(key, state, t)

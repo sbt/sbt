@@ -48,8 +48,8 @@ abstract class TestBuild {
     cs <- Gen.list(alphaNumChar, MaxIDSizeGen)
   } yield (c :: cs).mkString
 
-  def cGen = genConfigs(nonEmptyId map { _.capitalize }, MaxDepsGen, MaxConfigsGen)
-  def tGen = genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen)
+  def cGen = genConfigs(using nonEmptyId map { _.capitalize }, MaxDepsGen, MaxConfigsGen)
+  def tGen = genTasks(using kebabIdGen, MaxDepsGen, MaxTasksGen)
 
   class TestKeys(val env: Env, val scopes: Seq[Scope]) {
     override def toString = env.toString + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
@@ -312,7 +312,7 @@ abstract class TestBuild {
       }
     }
 
-  def genConfigs(implicit
+  def genConfigs(using
       genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
@@ -323,7 +323,7 @@ abstract class TestBuild {
         .withExtendsConfigs(deps.toVector)
     )
 
-  def genTasks(implicit
+  def genTasks(using
       genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]

@@ -172,7 +172,7 @@ trait Init:
   private final val nextID = new java.util.concurrent.atomic.AtomicLong
   private final def nextDefaultID(): Long = nextID.incrementAndGet()
 
-  def empty(implicit delegates: ScopeType => Seq[ScopeType]): Settings =
+  def empty(using delegates: ScopeType => Seq[ScopeType]): Settings =
     Settings0(Set.empty, Set.empty, Map.empty, delegates)
 
   def asTransform(s: Settings): [A] => ScopedKey[A] => A =
@@ -210,7 +210,7 @@ trait Init:
     val sMap: ScopedMap = grouped(derived)
     // delegate references to undefined values according to 'delegates'
     val dMap: ScopedMap =
-      if (actual) delegate(sMap)(delegates, display) else sMap
+      if (actual) delegate(sMap)(using delegates, display) else sMap
     // merge Seq[Setting[_]] into Compiled
     compile(dMap)
   }
@@ -277,10 +277,10 @@ trait Init:
     if s.definitive then Vector(s)
     else ss :+ s
 
-  def addLocal(init: Seq[Setting[?]])(implicit scopeLocal: ScopeLocal): Seq[Setting[?]] =
+  def addLocal(init: Seq[Setting[?]])(using scopeLocal: ScopeLocal): Seq[Setting[?]] =
     Par(init).map(_.dependencies flatMap scopeLocal).toVector.flatten ++ init
 
-  def delegate(sMap: ScopedMap)(implicit
+  def delegate(sMap: ScopedMap)(using
       delegates: ScopeType => Seq[ScopeType],
       display: Show[ScopedKey[?]]
   ): ScopedMap = {
@@ -329,7 +329,7 @@ trait Init:
     val definedAt = skeys.find(sk => (selfRefOk || ref.key != sk) && (sMap.contains(sk)))
     definedAt.toRight(Undefined(ref, k))
 
-  private def applyInits(ordered: Seq[Compiled[?]])(implicit
+  private def applyInits(ordered: Seq[Compiled[?]])(using
       delegates: ScopeType => Seq[ScopeType]
   ): Settings =
     val x =
@@ -345,7 +345,7 @@ trait Init:
       u: Undefined,
       validKeys: Seq[ScopedKey[?]],
       delegates: ScopeType => Seq[ScopeType]
-  )(implicit
+  )(using
       display: Show[ScopedKey[?]]
   ): String =
     val guessed = guessIntendedScope(validKeys, delegates, u.referencedKey)
@@ -396,7 +396,7 @@ trait Init:
       delegates: ScopeType => Seq[ScopeType],
       keys: Seq[Undefined],
       runtime: Boolean
-  )(implicit display: Show[ScopedKey[?]]): Uninitialized = {
+  )(using display: Show[ScopedKey[?]]): Uninitialized = {
     assert(keys.nonEmpty)
     val suffix = if (keys.length > 1) "s" else ""
     val prefix = if (runtime) "Runtime reference" else "Reference"
@@ -491,7 +491,7 @@ trait Init:
   /**
    * Intersects two scopes, returning the more specific one if they intersect, or None otherwise.
    */
-  private[sbt] def intersect(s1: ScopeType, s2: ScopeType)(implicit
+  private[sbt] def intersect(s1: ScopeType, s2: ScopeType)(using
       delegates: ScopeType => Seq[ScopeType]
   ): Option[ScopeType] = intersectDelegates(s1, s2, mkDelegates(delegates))
 
@@ -507,7 +507,7 @@ trait Init:
     else if (delegates(s2).contains(s1)) Some(s2) // s2 is more specific
     else None
 
-  private def deriveAndLocal(init: Seq[Setting[?]], delegates: ScopeType => Delegates)(implicit
+  private def deriveAndLocal(init: Seq[Setting[?]], delegates: ScopeType => Delegates)(using
       scopeLocal: ScopeLocal
   ): Seq[Setting[?]] = {
     import collection.mutable
@@ -531,7 +531,7 @@ trait Init:
       Util.separate[Setting[?], Derived, Setting[?]](init) {
         case d: DerivedSetting[_] => Left(new Derived(d)); case s => Right(s)
       }
-    val defs = addLocal(rawDefs)(scopeLocal)
+    val defs = addLocal(rawDefs)(using scopeLocal)
 
     // group derived settings by the key they define
     val derivsByDef = new mutable.HashMap[AttributeKey[?], Deriveds]
@@ -609,7 +609,7 @@ trait Init:
 
     // Take all the original defs and DerivedSettings along with locals, replace each DerivedSetting with the actual
     // settings that were derived.
-    val allDefs = addLocal(init)(scopeLocal)
+    val allDefs = addLocal(init)(using scopeLocal)
     allDefs.flatMap {
       case d: DerivedSetting[_] => (derivedToStruct get d map (_.outputs)).toSeq.flatten
       case s                    => s :: nil

@@ -54,14 +54,14 @@ private[sbt] object InMemoryCacheStore {
   private class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
       extends CacheStore {
     override def delete(): Unit = cacheStore.delete()
-    override def read[T]()(implicit reader: JsonReader[T]): T = {
+    override def read[T]()(using reader: JsonReader[T]): T = {
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
       store.get[T](path) match {
         case Some((value, `lastModified`)) => value
         case _                             => cacheStore.read[T]()
       }
     }
-    override def write[T](value: T)(implicit writer: JsonWriter[T]): Unit = {
+    override def write[T](value: T)(using writer: JsonWriter[T]): Unit = {
       /*
        * This may be inefficient if multiple threads are concurrently modifying the file.
        * There is an assumption that there will be little to no concurrency at the file level

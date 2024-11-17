@@ -48,7 +48,7 @@ object Aggregation {
       success = true
     )
 
-  def printSettings(xs: Seq[KeyValue[?]], print: String => Unit)(implicit
+  def printSettings(xs: Seq[KeyValue[?]], print: String => Unit)(using
       display: Show[ScopedKey[?]]
   ): Unit =
     xs match {
@@ -68,10 +68,10 @@ object Aggregation {
       s: State,
       ps: Values[Parser[Task[T]]],
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[?]]): Parser[() => State] =
+  )(using display: Show[ScopedKey[?]]): Parser[() => State] =
     Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
-  private def showRun[A](complete: Complete[A], show: ShowConfig)(implicit
+  private def showRun[A](complete: Complete[A], show: ShowConfig)(using
       display: Show[ScopedKey[?]]
   ): Unit =
     import complete.*
@@ -187,7 +187,7 @@ object Aggregation {
       s: State,
       inputs: Values[InputTask[I]],
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[?]]): Parser[() => State] = {
+  )(using display: Show[ScopedKey[?]]): Parser[() => State] = {
     val parsers =
       for (KeyValue(k, it) <- inputs)
         yield it.parser(s).map(v => KeyValue(k, v))
@@ -196,7 +196,7 @@ object Aggregation {
     }
   }
 
-  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[?]])(implicit
+  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[?]])(using
       display: Show[ScopedKey[?]]
   ): Parser[() => State] = {
 

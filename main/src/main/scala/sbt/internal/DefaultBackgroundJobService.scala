@@ -64,7 +64,7 @@ private[sbt] abstract class BackgroundJob {
 
   // called after stop or on spontaneous exit, closing the result
   // removes the listener
-  def onStop(listener: () => Unit)(implicit ex: ExecutionContext): Closeable
+  def onStop(listener: () => Unit)(using ex: ExecutionContext): Closeable
 
   // do we need this or is the spawning task good enough?
   // def tags: SomeType
@@ -428,7 +428,7 @@ private[sbt] class BackgroundThreadPool extends java.io.Closeable {
       }
     }
 
-    override def onStop(listener: () => Unit)(implicit ex: ExecutionContext): Closeable =
+    override def onStop(listener: () => Unit)(using ex: ExecutionContext): Closeable =
       synchronized {
         val result = new StopListener(listener, ex)
         stopListeners += result

@@ -59,7 +59,7 @@ abstract class IvyBridgeProviderSpecification
       targetDir: File,
       log: Logger,
       scalaVersion: String,
-  )(implicit td: TestData): File = {
+  )(using td: TestData): File = {
     val zincVersion = td.configMap.get("sbt.zinc.version") match {
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No zinc version specified")

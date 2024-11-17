@@ -175,7 +175,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       scopedKey: ScopedKey[?],
       compiledMap: CompiledMap,
       dynamicInputs: mutable.Set[DynamicInput],
-  )(implicit extracted: Extracted, logger: Logger): Config = {
+  )(using extracted: Extracted, logger: Logger): Config = {
 
     // Extract all of the globs that we will monitor during the continuous build.
     val inputs = {
@@ -247,7 +247,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       state: State,
       commands: Seq[String],
       dynamicInputs: mutable.Set[DynamicInput],
-  )(implicit extracted: Extracted, logger: Logger): Seq[Config] = {
+  )(using extracted: Extracted, logger: Logger): Seq[Config] = {
     val commandKeys = commands.map(parseCommand(_, state))
     val compiledMap = WatchTransitiveDependencies.compile(extracted.structure)
     commandKeys.flatMap(_.map(getConfig(state, _, compiledMap, dynamicInputs)))
@@ -317,7 +317,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       isCommand: Boolean,
       commands: Seq[String],
       fileStampCache: FileStamp.Cache
-  )(implicit
+  )(using
       extracted: Extracted
   ): Callbacks = {
     val project = extracted.currentRef
@@ -442,7 +442,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       commands: Seq[String],
       fileStampCache: FileStamp.Cache,
       channel: String,
-  )(implicit extracted: Extracted): (Int => Option[(Watch.Event, Watch.Action)], () => Unit) = {
+  )(using extracted: Extracted): (Int => Option[(Watch.Event, Watch.Action)], () => Unit) = {
     val trackMetaBuild = configs.forall(_.watchSettings.trackMetaBuild)
     val buildGlobs =
       if (trackMetaBuild) extracted.getOpt((checkBuildSources / fileInputs)).getOrElse(Nil)
@@ -751,7 +751,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
       state: State,
       terminal: Terminal,
       logger: Logger,
-  )(implicit extracted: Extracted): WatchExecutor => Option[Watch.Action] = {
+  )(using extracted: Extracted): WatchExecutor => Option[Watch.Action] = {
     /*
      * This parses the buffer until all possible actions are extracted. By draining the input
      * to a state where it does not parse an action, we can wait until we receive new input
@@ -989,7 +989,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   end Config
 
   @nowarn
-  private def getStartMessage(key: ScopedKey[?])(implicit e: Extracted): StartMessage = Some {
+  private def getStartMessage(key: ScopedKey[?])(using e: Extracted): StartMessage = Some {
     lazy val default = key.get(watchStartMessage).getOrElse(Watch.defaultStartWatch)
     key.get(deprecatedWatchingMessage).map(Left(_)).getOrElse(Right(default))
   }
@@ -997,7 +997,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
   @nowarn
   private def getTriggerMessage(
       key: ScopedKey[?]
-  )(implicit e: Extracted): TriggerMessage = {
+  )(using e: Extracted): TriggerMessage = {
     lazy val default =
       key.get(watchTriggeredMessage).getOrElse(Watch.defaultOnTriggerMessage)
     key.get(deprecatedTriggeredMessage).map(Left(_)).getOrElse(Right(default))
@@ -1049,7 +1049,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      * @return the optional value of the [[SettingKey]] if it is defined at the input
      *         [[ScopedKey]] instance's scope or task scope.
      */
-    private def get[T](settingKey: SettingKey[T])(implicit extracted: Extracted): Option[T] = {
+    private def get[T](settingKey: SettingKey[T])(using extracted: Extracted): Option[T] = {
       lazy val taskScope = Project.fillTaskAxis(scopedKey).scope
       scopedKey.scope match {
         case scope if scope.task.toOption.isDefined =>
@@ -1071,7 +1071,7 @@ private[sbt] object Continuous extends DeprecatedContinuous {
      * @return the optional value of the [[SettingKey]] if it is defined at the input
      *         [[ScopedKey]] instance's scope or task scope.
      */
-    private def get[T](taskKey: TaskKey[T])(implicit extracted: Extracted): Option[TaskKey[T]] = {
+    private def get[T](taskKey: TaskKey[T])(using extracted: Extracted): Option[TaskKey[T]] = {
       lazy val taskScope = Project.fillTaskAxis(scopedKey).scope
       scopedKey.scope match {
         case scope if scope.task.toOption.isDefined =>

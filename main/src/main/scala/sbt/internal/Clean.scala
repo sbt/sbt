@@ -152,7 +152,7 @@ private[sbt] object Clean {
   end ToSeqPath
 
   extension [T](t: T) {
-    private def toSeqPath(implicit toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
+    private def toSeqPath(using toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
   }
 
   @nowarn

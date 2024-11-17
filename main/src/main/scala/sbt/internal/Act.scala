@@ -119,7 +119,7 @@ object Act {
   ): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap, askProject = askProject).flatMap {
       choices =>
-        select(choices, data)(showRelativeKey2(current))
+        select(choices, data)(using showRelativeKey2(current))
     }
 
   def scopedKeyFull(
@@ -196,7 +196,7 @@ object Act {
       key
     )
 
-  def select(allKeys: Seq[Parser[ParsedKey]], data: Def.Settings)(implicit
+  def select(allKeys: Seq[Parser[ParsedKey]], data: Def.Settings)(using
       show: Show[ScopedKey[?]]
   ): Parser[ParsedKey] =
     seq(allKeys) flatMap { ss =>
@@ -206,7 +206,7 @@ object Act {
       selectFromValid(ss filter isValid(data), default)
     }
 
-  def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(implicit
+  def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(using
       show: Show[ScopedKey[?]]
   ): Parser[ParsedKey] =
     selectByTask(selectByConfig(ss)) match {
@@ -231,7 +231,7 @@ object Act {
 
   def noValidKeys = failure("No such key.")
 
-  def showAmbiguous(keys: Seq[ScopedKey[?]])(implicit show: Show[ScopedKey[?]]): String =
+  def showAmbiguous(keys: Seq[ScopedKey[?]])(using show: Show[ScopedKey[?]]): String =
     keys.take(3).map(x => show.show(x)).mkString("", ", ", if (keys.size > 3) ", ..." else "")
 
   def isValid(data: Def.Settings)(parsed: ParsedKey): Boolean = data.contains(parsed.key)

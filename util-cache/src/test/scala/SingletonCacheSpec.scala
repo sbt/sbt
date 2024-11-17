@@ -82,7 +82,7 @@ class SingletonCacheSpec extends AnyFlatSpec {
     }
   }
 
-  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(implicit
+  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(using
       cache: SingletonCache[T]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>

@@ -138,7 +138,7 @@ final class TemporaryInMemoryRepository private (
       module: Module,
       version: String,
       fetch: Repository.Fetch[F]
-  )(implicit
+  )(using
       F: Monad[F]
   ): EitherT[F, String, (ArtifactSource, Project)] = {
 

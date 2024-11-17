@@ -58,7 +58,7 @@ class ManagedLogger(
   final def warnEvent[A: JsonFormat: StringTypeTag](event: => A): Unit = logEvent(Level.Warn, event)
   final def errorEvent[A: JsonFormat: StringTypeTag](event: => A): Unit =
     logEvent(Level.Error, event)
-  def logEvent[A: JsonFormat](level: Level.Value, event: => A)(implicit
+  def logEvent[A: JsonFormat](level: Level.Value, event: => A)(using
       tag: StringTypeTag[A]
   ): Unit = {
     val v: A = event

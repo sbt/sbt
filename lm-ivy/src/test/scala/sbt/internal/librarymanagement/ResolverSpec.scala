@@ -7,7 +7,7 @@ import verify.BasicTestSuite
 
 class ResolverSpec extends BasicTestSuite {
   test("Resolver.url") {
-    Resolver.url("Test Repo", new URI("http://example.com/").toURL)(Resolver.ivyStylePatterns)
+    Resolver.url("Test Repo", new URI("http://example.com/").toURL)(using Resolver.ivyStylePatterns)
     ()
   }
 

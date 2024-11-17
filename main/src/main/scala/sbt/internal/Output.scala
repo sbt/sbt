@@ -58,7 +58,7 @@ object Output {
   def grep(lines: Seq[String], patternString: String): Seq[String] =
     lines.flatMap(showMatches(Pattern.compile(patternString)))
 
-  def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(implicit
+  def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(using
       display: Show[ScopedKey[?]]
   ): Seq[String] = {
     val single = outputs.size == 1

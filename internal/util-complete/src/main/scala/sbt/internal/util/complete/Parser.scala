@@ -137,7 +137,7 @@ sealed trait RichParser[A] {
     examples(exampleSource, maxNumberOfExamples = 25, removeInvalidExamples = false)
 
   /** Converts a Parser returning a Char sequence to a Parser returning a String. */
-  def string(implicit ev: A <:< Seq[Char]): Parser[String]
+  def string(using ev: A <:< Seq[Char]): Parser[String]
 
   /**
    * Produces a Parser that filters the original parser. If 'f' is not true when applied to the
@@ -372,7 +372,7 @@ trait ParserMain {
       Parser.examples(a, s, maxNumberOfExamples, removeInvalidExamples)
 
     def filter(f: A => Boolean, msg: String => String): Parser[A] = filterParser(a, f, "", msg)
-    def string(implicit ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
+    def string(using ev: A <:< Seq[Char]): Parser[String] = map(_.mkString)
     def flatMap[B](f: A => Parser[B]) = bindParser(a, f)
   }
 

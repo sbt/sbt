@@ -73,7 +73,7 @@ object SettingQuery {
       data: Def.Settings
   ): Parser[ParsedKey] =
     scopedKeyFull(index, currentBuild, defaultConfigs, keyMap) flatMap { choices =>
-      Act.select(choices, data)(showBuildRelativeKey2(currentBuild))
+      Act.select(choices, data)(using showBuildRelativeKey2(currentBuild))
     }
 
   def scopedKey(

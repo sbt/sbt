@@ -47,7 +47,7 @@ sealed trait ProjectMatrix extends CompositeProject {
   def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix
 
   /** Adds classpath dependencies on internal or external non-matrix projects. */
-  def dependsOn(deps: ClasspathDep[ProjectReference]*)(implicit
+  def dependsOn(deps: ClasspathDep[ProjectReference]*)(using
       dummyImplicit: DummyImplicit
   ): ProjectMatrix
 
@@ -60,7 +60,7 @@ sealed trait ProjectMatrix extends CompositeProject {
   /**
    * Allows non-matrix projects to be aggregated in a matrix project.
    */
-  def aggregate(refs: ProjectReference*)(implicit dummyImplicit: DummyImplicit): ProjectMatrix
+  def aggregate(refs: ProjectReference*)(using dummyImplicit: DummyImplicit): ProjectMatrix
 
   /** Appends settings to the current settings sequence for this project. */
   def settings(ss: Def.SettingsDefinition*): ProjectMatrix
@@ -401,7 +401,7 @@ object ProjectMatrix {
     override def aggregate(refs: ProjectMatrixReference*): ProjectMatrix =
       copy(aggregate = (aggregate: Seq[ProjectMatrixReference]) ++ refs)
 
-    override def aggregate(refs: ProjectReference*)(implicit
+    override def aggregate(refs: ProjectReference*)(using
         dummyImplicit: DummyImplicit
     ): ProjectMatrix =
       copy(nonMatrixAggregate = (nonMatrixAggregate: Seq[ProjectReference]) ++ refs)
@@ -409,7 +409,7 @@ object ProjectMatrix {
     override def dependsOn(deps: MatrixClasspathDep[ProjectMatrixReference]*): ProjectMatrix =
       copy(dependencies = dependencies ++ deps)
 
-    override def dependsOn(deps: ClasspathDep[ProjectReference]*)(implicit
+    override def dependsOn(deps: ClasspathDep[ProjectReference]*)(using
         dummyImplicit: DummyImplicit
     ) =
       copy(nonMatrixDependencies = nonMatrixDependencies ++ deps)

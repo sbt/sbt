@@ -223,7 +223,7 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
           s"Scope cannot be defined for dependency ${k.key.label} of ${definedSettingString(s)}"
         )
 
-  override def intersect(s1: Scope, s2: Scope)(implicit
+  override def intersect(s1: Scope, s2: Scope)(using
       delegates: Scope => Seq[Scope]
   ): Option[Scope] =
     if (s2 == GlobalScope) Some(s1) // s1 is more specific

@@ -242,7 +242,7 @@ trait TaskExtra extends TaskExtra0 {
         IO.readLines(s.readText(key(in), sid))
       }
   }
-  implicit def processToTask(p: ProcessBuilder)(implicit streams: Task[TaskStreams[?]]): Task[Int] =
+  implicit def processToTask(p: ProcessBuilder)(using streams: Task[TaskStreams[?]]): Task[Int] =
     streams map { s =>
       val pio = TaskExtra.processIO(s)
       (p run pio).exitValue()

@@ -100,7 +100,7 @@ object TaskMacro:
     Expr.summon[JsonFormat[A1]] match
       case Some(ev) =>
         '{
-          InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1]($t)($ev))
+          InputWrapper.`wrapInitTask_\u2603\u2603`[Option[A1]](Previous.runtime[A1]($t)(using $ev))
         }
       case _ => report.errorAndAbort(s"JsonFormat[${Type.show[A1]}] missing")
 

@@ -115,15 +115,15 @@ final case class Extracted(
   private def resolve[K <: Scoped.ScopingSetting[K] & Scoped](key: K): K =
     Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
 
-  private def getOrError[T](key: ScopedKey[?], value: Option[T])(implicit
+  private def getOrError[T](key: ScopedKey[?], value: Option[T])(using
       display: Show[ScopedKey[?]]
   ): T =
     value.getOrElse(sys.error(display.show(key) + " is undefined."))
 
-  private def getOrError[T](key: ScopedKey[T])(implicit
+  private def getOrError[T](key: ScopedKey[T])(using
       display: Show[ScopedKey[?]]
   ): T =
-    getOrError(key, structure.data.get(key))(display)
+    getOrError(key, structure.data.get(key))(using display)
 
   @deprecated(
     "This discards session settings. Migrate to appendWithSession or appendWithoutSession.",

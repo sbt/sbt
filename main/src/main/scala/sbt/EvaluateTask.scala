@@ -426,7 +426,7 @@ object EvaluateTask {
   private def contextDisplay(state: State, highlight: Boolean) =
     Project.showContextKey(state, if (highlight) Some(RED) else None)
 
-  def suppressedMessage(key: ScopedKey[?])(implicit display: Show[ScopedKey[?]]): String =
+  def suppressedMessage(key: ScopedKey[?])(using display: Show[ScopedKey[?]]): String =
     "Stack trace suppressed.  Run 'last %s' for the full log.".format(display.show(key))
 
   def getStreams(key: ScopedKey[?], streams: Streams): TaskStreams =

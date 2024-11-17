@@ -37,7 +37,7 @@ object Cache {
   /**
    * Materializes a cache.
    */
-  def cache[I, O](implicit c: Cache[I, O]): Cache[I, O] = c
+  def cache[I, O](using c: Cache[I, O]): Cache[I, O] = c
 
   /**
    * Returns a function that represents a cache that inserts on miss.
@@ -47,7 +47,7 @@ object Cache {
    * @param default
    *   A function that computes a default value to insert on
    */
-  def cached[I, O](cacheFile: File)(default: I => O)(implicit cache: Cache[I, O]): I => O =
+  def cached[I, O](cacheFile: File)(default: I => O)(using cache: Cache[I, O]): I => O =
     cached(CacheStore(cacheFile))(default)
 
   /**
@@ -58,7 +58,7 @@ object Cache {
    * @param default
    *   A function that computes a default value to insert on
    */
-  def cached[I, O](store: CacheStore)(default: I => O)(implicit cache: Cache[I, O]): I => O =
+  def cached[I, O](store: CacheStore)(default: I => O)(using cache: Cache[I, O]): I => O =
     key =>
       cache(store)(key) match {
         case Hit(value) =>

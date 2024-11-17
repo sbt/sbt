@@ -100,6 +100,6 @@ object IvyRepoSpec extends BaseIvySpecification {
 
   lazy val testIvy = {
     val repoUrl = getClass.getResource("/test-ivy-repo")
-    Resolver.url("Test Repo", repoUrl)(Resolver.ivyStylePatterns)
+    Resolver.url("Test Repo", repoUrl)(using Resolver.ivyStylePatterns)
   }
 }

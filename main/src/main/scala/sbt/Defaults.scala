@@ -2178,7 +2178,7 @@ object Defaults extends BuildCommon {
 
   def consoleProjectTask =
     Def.task {
-      ConsoleProject(state.value, (consoleProject / initialCommands).value)(streams.value.log)
+      ConsoleProject(state.value, (consoleProject / initialCommands).value)(using streams.value.log)
       println()
     }
 
@@ -2201,7 +2201,7 @@ object Defaults extends BuildCommon {
       val sc = (task / scalacOptions).value
       val ic = (task / initialCommands).value
       val cc = (task / cleanupCommands).value
-      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(s.log).get
+      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
       println()
     }
 
@@ -4512,10 +4512,10 @@ object Classpaths {
           case "file" =>
             // This hackery is to deal suitably with UNC paths on Windows. Once we can assume Java7, Paths should save us from this.
             val file = IO.toFile(i.url)
-            Resolver.file(i.id, file)(patterns)
+            Resolver.file(i.id, file)(using patterns)
           case _ =>
             Resolver
-              .url(i.id, i.url)(patterns)
+              .url(i.id, i.url)(using patterns)
               .withAllowInsecureProtocol(allowInsecureProtocol(i))
         }
       case p: xsbti.PredefinedRepository =>
@@ -4805,7 +4805,7 @@ trait BuildCommon {
   def getFromContext[T](task: TaskKey[T], context: ScopedKey[?], s: State): Option[T] =
     SessionVar.get(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
 
-  def loadFromContext[T](task: TaskKey[T], context: ScopedKey[?], s: State)(implicit
+  def loadFromContext[T](task: TaskKey[T], context: ScopedKey[?], s: State)(using
       f: JsonFormat[T]
   ): Option[T] =
     SessionVar.load(SessionVar.resolveContext(task.scopedKey, context.scope, s), s)
@@ -4813,13 +4813,13 @@ trait BuildCommon {
   // intended for use in constructing InputTasks
   def loadForParser[P, T](task: TaskKey[T])(
       f: (State, Option[T]) => Parser[P]
-  )(implicit format: JsonFormat[T]): Initialize[State => Parser[P]] =
-    loadForParserI(task)(Def.value(f))(format)
+  )(using format: JsonFormat[T]): Initialize[State => Parser[P]] =
+    loadForParserI(task)(Def.value(f))(using format)
   def loadForParserI[P, T](task: TaskKey[T])(
       init: Initialize[(State, Option[T]) => Parser[P]]
-  )(implicit format: JsonFormat[T]): Initialize[State => Parser[P]] =
+  )(using format: JsonFormat[T]): Initialize[State => Parser[P]] =
     Def.setting { (s: State) =>
-      init.value(s, loadFromContext(task, resolvedScoped.value, s)(format))
+      init.value(s, loadFromContext(task, resolvedScoped.value, s)(using format))
     }
 
   def getForParser[P, T](
@@ -4834,8 +4834,8 @@ trait BuildCommon {
     }
 
   // these are for use for constructing Tasks
-  def loadPrevious[T](task: TaskKey[T])(implicit f: JsonFormat[T]): Initialize[Task[Option[T]]] =
-    Def.task { loadFromContext(task, resolvedScoped.value, state.value)(f) }
+  def loadPrevious[T](task: TaskKey[T])(using f: JsonFormat[T]): Initialize[Task[Option[T]]] =
+    Def.task { loadFromContext(task, resolvedScoped.value, state.value)(using f) }
   def getPrevious[A](task: TaskKey[A]): Initialize[Task[Option[A]]] =
     Def.task { getFromContext(task, resolvedScoped.value, state.value) }
 

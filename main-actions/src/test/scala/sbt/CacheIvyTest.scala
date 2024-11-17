@@ -40,7 +40,7 @@ class CacheIvyTest extends Properties("CacheIvy") {
 
   private def testCache[T: JsonFormat, U](
       f: (SingletonCache[T], CacheStore) => U
-  )(implicit cache: SingletonCache[T]): U = {
+  )(using cache: SingletonCache[T]): U = {
     val store = new InMemoryStore(Converter)
     f(cache, store)
   }

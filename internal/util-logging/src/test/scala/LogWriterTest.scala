@@ -84,11 +84,11 @@ object LogWriterTest extends Properties("Log Writer") {
   implicit lazy val arbNewLine: Arbitrary[NewLine] = Arbitrary(genNewLine)
   implicit lazy val arbLevel: Arbitrary[Level.Value] = Arbitrary(genLevel)
 
-  implicit def genLine(implicit logG: Gen[ToLog]): Gen[List[ToLog]] =
+  implicit def genLine(using logG: Gen[ToLog]): Gen[List[ToLog]] =
     for (l <- listOf[ToLog](MaxSegments); last <- logG)
       yield (addNewline(last) :: l.filter(!_.content.isEmpty)).reverse
 
-  implicit def genLog(implicit content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] =
+  implicit def genLog(using content: Arbitrary[String], byChar: Arbitrary[Boolean]): Gen[ToLog] =
     for (c <- content.arbitrary; by <- byChar.arbitrary) yield {
       assert(c != null)
       new ToLog(removeNewlines(c), by)
@@ -110,7 +110,7 @@ object LogWriterTest extends Properties("Log Writer") {
       l.byCharacter
     ) // \n will be replaced by a random line terminator for all lines
 
-  def listOf[T](max: Int)(implicit content: Arbitrary[T]): Gen[List[T]] =
+  def listOf[T](max: Int)(using content: Arbitrary[T]): Gen[List[T]] =
     Gen.choose(0, max) flatMap (sz => listOfN(sz, content.arbitrary))
 }
 

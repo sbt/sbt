@@ -190,7 +190,7 @@ class Run(private[sbt] val newLoader: Seq[NioPath] => ClassLoader, trapExit: Boo
 
 /** This module is an interface to starting the scala interpreter or runner. */
 object Run:
-  def run(mainClass: String, classpath: Seq[NioPath], options: Seq[String], log: Logger)(implicit
+  def run(mainClass: String, classpath: Seq[NioPath], options: Seq[String], log: Logger)(using
       runner: ScalaRun
   ) =
     runner.run(mainClass, classpath, options, log)

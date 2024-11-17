@@ -406,7 +406,7 @@ class Difference(
     apply(files, lastFilesInfo)(f)(_ => files)
   }
 
-  def apply[T](f: ChangeReport[File] => T)(implicit toFiles: T => Set[File]): T = {
+  def apply[T](f: ChangeReport[File] => T)(using toFiles: T => Set[File]): T = {
     val lastFilesInfo = cachedFilesInfo
     apply(raw(lastFilesInfo), lastFilesInfo)(f)(toFiles)
   }

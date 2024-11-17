@@ -391,7 +391,7 @@ private[sbt] object Load {
   }
 
   // Reevaluates settings after modifying them.  Does not recompile or reload any build components.
-  def reapply(newSettings: Seq[Setting[?]], structure: BuildStructure)(implicit
+  def reapply(newSettings: Seq[Setting[?]], structure: BuildStructure)(using
       display: Show[ScopedKey[?]]
   ): BuildStructure = {
     val transformed = finalTransforms(newSettings)
@@ -419,7 +419,7 @@ private[sbt] object Load {
       newSettings: Seq[Setting[?]],
       structure: BuildStructure,
       log: Logger
-  )(implicit display: Show[ScopedKey[?]]): BuildStructure = {
+  )(using display: Show[ScopedKey[?]]): BuildStructure = {
     reapply(newSettings, structure)
   }
 

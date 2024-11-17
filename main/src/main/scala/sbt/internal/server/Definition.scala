@@ -257,7 +257,7 @@ private[sbt] object Definition {
       commandSource: CommandSource,
       converter: FileConverter,
       log: Logger,
-  )(implicit ec: ExecutionContext): Future[Unit] = Future {
+  )(using ec: ExecutionContext): Future[Unit] = Future {
     val LspDefinitionLogHead = "lsp-definition"
     val jsonDefinitionString = CompactPrinter(jsonDefinition)
     log.debug(s"$LspDefinitionLogHead json request: $jsonDefinitionString")
