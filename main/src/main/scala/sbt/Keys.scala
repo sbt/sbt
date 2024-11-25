@@ -208,6 +208,7 @@ object Keys {
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val enableBinaryCompileAnalysis = settingKey[Boolean]("Writes the analysis file in binary format").withRank(DSetting)
   val enableConsistentCompileAnalysis = settingKey[Boolean]("Writes the analysis file in consistent binary format").withRank(DSetting)
+  val enableReproducibleCompileAnalysis = settingKey[Boolean]("Write the analysis file in reproducible manner, if the format supports it").withRank(DSetting)
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
   val semanticdbEnabled = settingKey[Boolean]("Enables SemanticDB Scalac plugin").withRank(CSetting)
   val semanticdbCompilerPlugin = settingKey[ModuleID]("SemanticDB Scalac plugin").withRank(CSetting)

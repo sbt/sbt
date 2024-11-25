@@ -183,18 +183,20 @@ private[sbt] object Definition {
   }
 
   private[this] val AnalysesKey = "lsp.definition.analyses.key"
-  private[server] type Analyses = Set[((String, Boolean, Boolean), Option[Analysis])]
+  private[server] type Analyses = Set[((String, Boolean, Boolean, Boolean), Option[Analysis])]
 
   private def storeAnalysis(
       cacheFile: Path,
       useBinary: Boolean,
       useConsistent: Boolean,
+      reproducible: Boolean,
   ): Option[Analysis] =
     AnalysisUtil
       .staticCachedStore(
         analysisFile = cacheFile,
         useTextAnalysis = !useBinary,
         useConsistent = useConsistent,
+        reproducible = reproducible,
       )
       .get
       .toOption
@@ -203,13 +205,13 @@ private[sbt] object Definition {
 
   private[sbt] def updateCache(
       cache: Cache[String, Analyses]
-  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any = {
-    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match {
+  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean, reproducible: Boolean): Any = {
+    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent, reproducible) -> None)) match {
       case null => new AnyRef
       case set =>
         val newSet = set
-          .filterNot { case ((file, _, _), _) => file == cacheFile }
-          .+((cacheFile, useBinary, useConsistent) -> None)
+          .filterNot { case ((file, _, _, _), _) => file == cacheFile }
+          .+((cacheFile, useBinary, useConsistent, reproducible) -> None)
         cache.put(AnalysesKey, newSet)
     }
   }
@@ -235,6 +237,7 @@ private[sbt] object Definition {
       cacheFile = cacheFile,
       useBinary = enableBinaryCompileAnalysis.value,
       useConsistent = enableConsistentCompileAnalysis.value,
+      reproducible = enableReproducibleCompileAnalysis.value,
     )
   }
 
@@ -254,9 +257,9 @@ private[sbt] object Definition {
                 case (_, None)    => false
               }
               val addToCache = uninitialized.collect {
-                case (title @ (file, useBinary, useConsistent), _)
+                case (title @ (file, useBinary, useConsistent, reproducible), _)
                     if Files.exists(Paths.get(file)) =>
-                  (title, storeAnalysis(Paths.get(file), !useBinary, useConsistent))
+                  (title, storeAnalysis(Paths.get(file), !useBinary, useConsistent, reproducible))
               }
               val validCaches = working ++ addToCache
               if (addToCache.nonEmpty) {

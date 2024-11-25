@@ -26,13 +26,14 @@ private[sbt] object AnalysisUtil {
       analysisFile: Path,
       useTextAnalysis: Boolean,
       useConsistent: Boolean,
+      reproducible: Boolean,
   ): XAnalysisStore =
     MixedAnalyzingCompiler.staticCachedStore(
       analysisFile = analysisFile,
       useTextAnalysis = useTextAnalysis,
       useConsistent = useConsistent,
       mappers = ReadWriteMappers.getEmptyMappers(),
-      sort = true,
+      reproducible = reproducible,
       parallelism = parallelism,
     )
 }

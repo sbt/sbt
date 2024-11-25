@@ -877,6 +877,7 @@ object Defaults extends BuildCommon {
       Seq(
         enableBinaryCompileAnalysis :== true,
         enableConsistentCompileAnalysis :== SysProp.analysis2024,
+        enableReproducibleCompileAnalysis :== false,
       )
     )
 
@@ -2302,6 +2303,7 @@ object Defaults extends BuildCommon {
         analysisFile = setup.cacheFile.toPath,
         useTextAnalysis = !enableBinaryCompileAnalysis.value,
         useConsistent = enableConsistentCompileAnalysis.value,
+        reproducible = enableReproducibleCompileAnalysis.value,
       )
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
@@ -2326,6 +2328,7 @@ object Defaults extends BuildCommon {
         analysisFile = earlyCompileAnalysisFile.value.toPath,
         useTextAnalysis = !enableBinaryCompileAnalysis.value,
         useConsistent = enableConsistentCompileAnalysis.value,
+        reproducible = enableReproducibleCompileAnalysis.value,
       )
       store.get.toOption match {
         case Some(contents) => contents.getAnalysis
@@ -2345,6 +2348,7 @@ object Defaults extends BuildCommon {
         analysisFile = setup.cacheFile.toPath,
         useTextAnalysis = !enableBinaryCompileAnalysis.value,
         useConsistent = enableConsistentCompileAnalysis.value,
+        reproducible = enableReproducibleCompileAnalysis.value,
       )
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
@@ -2452,6 +2456,7 @@ object Defaults extends BuildCommon {
           analysisFile = eapath,
           useTextAnalysis = !enableBinaryCompileAnalysis.value,
           useConsistent = enableConsistentCompileAnalysis.value,
+          reproducible = enableReproducibleCompileAnalysis.value,
         )
         Some(store)
       } else None
@@ -2548,6 +2553,7 @@ object Defaults extends BuildCommon {
         analysisFile = setup.cacheFile.toPath,
         useTextAnalysis = !enableBinaryCompileAnalysis.value,
         useConsistent = enableConsistentCompileAnalysis.value,
+        reproducible = enableReproducibleCompileAnalysis.value,
       )
       val prev = store.get().toOption match {
         case Some(contents) =>
