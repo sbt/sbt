@@ -2040,6 +2040,13 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRunMain.evaluated
       val service = bgJobService.value
+      streams.value.log.info(
+        s"""
+           |Executing runMain in the background.
+           |To terminate the execution, run bgStop ${handle.id}.
+           |To execute runMain in the foreground, use fgRunMain instead.
+           |""".stripMargin
+      )
       service.waitForTry(handle).get
     }
 
@@ -2048,6 +2055,13 @@ object Defaults extends BuildCommon {
     Def.inputTask {
       val handle = bgRun.evaluated
       val service = bgJobService.value
+      streams.value.log.info(
+        s"""
+           |Executing run in the background.
+           |To terminate the execution, run bgStop ${handle.id}.
+           |To execute run in the foreground, use fgRun instead.
+           |""".stripMargin
+      )
       service.waitForTry(handle).get
     }
 
