@@ -11,6 +11,7 @@ package internal
 
 import java.io.File
 import java.nio.file.Files
+import scala.collection.mutable
 import sbt.internal.util.{ RMap, ConsoleOut }
 import sbt.io.IO
 import sbt.io.syntax._
@@ -56,17 +57,28 @@ private[sbt] final class TaskTraceEvent
     else ()
     val outFile = tracesDirectory / fileName
     val trace = Files.newBufferedWriter(outFile.toPath)
+    val threadNamesEmitted = mutable.Set.empty[Long]
     try {
       trace.append("""{"traceEvents": [""")
+      def threadNameEvent(tid: Long, name: String): String = {
+        s"""{"name": "thread_name", "ph": "M", "pid": 0, "tid": $tid, "args": {"name": "$name"}}"""
+      }
       def durationEvent(name: String, cat: String, t: Timer): String = {
         val sb = new java.lang.StringBuilder(name.length + 2)
         CompactPrinter.print(new JString(name), sb)
-        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tname": "${t.threadName}"}"""
+        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": ${t.threadId}}"""
       }
       val entryIterator = currentTimings
       while (entryIterator.hasNext) {
         val (key, value) = entryIterator.next()
         trace.append(durationEvent(taskName(key), "task", value))
+
+        if (!threadNamesEmitted.contains(value.threadId)) {
+          trace.append(",")
+          trace.append(threadNameEvent(value.threadId, value.threadName))
+          threadNamesEmitted += value.threadId
+        }
+
         if (entryIterator.hasNext) trace.append(",")
       }
       trace.append("]}")
