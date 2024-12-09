@@ -1579,56 +1579,45 @@ object Defaults extends BuildCommon {
       packageTaskSettings(packageDoc, packageDocMappings) ++
       Seq(Keys.`package` := packageBin.value)
 
-  def packageBinMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  def packageBinMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val converter = fileConverter.value
       val xs = products.value
       xs
         .flatMap(Path.allSubpaths)
         .filter(_._1.isFile())
-        .map { case (p, path) =>
-          val vf = converter.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
-        }
     }
 
-  def packageDocMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  def packageDocMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val converter = fileConverter.value
       val d = doc.value
       Path
         .allSubpaths(d)
         .toSeq
         .filter(_._1.isFile())
-        .map { case (p, path) =>
-          val vf = converter.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
-        }
     }
 
-  def packageSrcMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  def packageSrcMappings: Initialize[Task[Seq[(File, String)]]] =
     concatMappings(resourceMappings, sourceMappings)
 
-  private type Mappings = Initialize[Task[Seq[(HashedVirtualFileRef, String)]]]
+  private type Mappings = Initialize[Task[Seq[(File, String)]]]
   def concatMappings(as: Mappings, bs: Mappings): Mappings =
     as.zipWith(bs) {
       (
-          a: Task[Seq[(HashedVirtualFileRef, String)]],
-          b: Task[Seq[(HashedVirtualFileRef, String)]]
+          a: Task[Seq[(File, String)]],
+          b: Task[Seq[(File, String)]]
       ) =>
         (a, b).mapN {
           case (
-                seq1: Seq[(HashedVirtualFileRef, String)],
-                seq2: Seq[(HashedVirtualFileRef, String)]
+                seq1: Seq[(File, String)],
+                seq2: Seq[(File, String)]
               ) =>
             seq1 ++ seq2
         }
     }
 
   // drop base directories, since there are no valid mappings for these
-  def sourceMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  def sourceMappings: Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val converter = fileConverter.value
       val sdirs = sourceDirectories.value
       val base = baseDirectory.value
       val relative = (f: File) => relativeTo(sdirs)(f).orElse(relativeTo(base)(f)).orElse(flat(f))
@@ -1638,31 +1627,22 @@ object Defaults extends BuildCommon {
           case s if !exclude(s) => relative(s).map(s -> _)
           case _                => None
         }
-        .map { case (p, path) =>
-          val vf = converter.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
-        }
     }
 
-  def resourceMappings: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  def resourceMappings: Initialize[Task[Seq[(File, String)]]] =
     relativeMappings(resources, resourceDirectories)
 
   def relativeMappings(
       files: Taskable[Seq[File]],
       dirs: Taskable[Seq[File]]
-  ): Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  ): Initialize[Task[Seq[(File, String)]]] =
     Def.task {
-      val converter = fileConverter.value
       val rdirs = dirs.toTask.value.toSet
       val relative = (f: File) => relativeTo(rdirs)(f).orElse(flat(f))
       files.toTask.value
         .flatMap {
           case r if !rdirs(r) => relative(r).map(r -> _)
           case _              => None
-        }
-        .map { case (p, path) =>
-          val vf = converter.toVirtualFile(p.toPath())
-          (vf: HashedVirtualFileRef) -> path
         }
     }
 
@@ -1678,7 +1658,7 @@ object Defaults extends BuildCommon {
   def relativeMappings( // forward to widened variant
       files: ScopedTaskable[Seq[File]],
       dirs: ScopedTaskable[Seq[File]]
-  ): Initialize[Task[Seq[(HashedVirtualFileRef, String)]]] =
+  ): Initialize[Task[Seq[(File, String)]]] =
     relativeMappings(files: Taskable[Seq[File]], dirs)
 
   def collectFiles( // forward to widened variant
@@ -1766,7 +1746,7 @@ object Defaults extends BuildCommon {
 
   def packageTaskSettings(
       key: TaskKey[HashedVirtualFileRef],
-      mappingsTask: Initialize[Task[Seq[(HashedVirtualFileRef, String)]]]
+      mappingsTask: Initialize[Task[Seq[(File, String)]]]
   ) =
     inTask(key)(
       Seq(
@@ -1797,8 +1777,10 @@ object Defaults extends BuildCommon {
 
   lazy val packageConfigurationTask: Initialize[Task[Pkg.Configuration]] =
     Def.task {
+      val converter = fileConverter.value
+      val sources = mappings.value.map { case (f, p) => converter.toVirtualFile(f.toPath()) -> p }
       Pkg.Configuration(
-        mappings.value,
+        sources,
         artifactPath.value,
         packageOptions.value,
       )
