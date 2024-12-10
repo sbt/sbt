@@ -5,7 +5,7 @@ version := "0.2"
 
 Compile / packageBin / mappings ++= {
   val converter = fileConverter.value
-  Path.directory(file("test")).map { case (f,s) => converter.toVirtualFile(f.toPath) -> s }
+  Mapper.directory(file("test"))(using converter)
 }
 
 lazy val unzipPackage = taskKey[Unit]("extract jar file")
