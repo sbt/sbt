@@ -35,7 +35,7 @@ private[sbt] object SbtRefactorings:
       commands: Seq[SessionSetting]
   ): Seq[String] = {
     val split = SbtParser(FAKE_FILE, lines)
-    given ctx: Context = SbtParser.getGlobalForParser.compileCtx
+    given ctx: Context = SbtParser.defaultGlobalForParser.compileCtx
     val recordedCommands = recordCommands(commands, split)
     val sortedRecordedCommands = recordedCommands.sortBy(_._1)(reverseOrderingInt)
 
