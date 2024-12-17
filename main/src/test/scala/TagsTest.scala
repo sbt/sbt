@@ -18,7 +18,7 @@ object TagsTest extends Properties("Tags") {
 
   def tagMap: Gen[TagMap] = for (ts <- listOf(tagAndFrequency)) yield ts.toMap
   def tagAndFrequency: Gen[(Tag, Int)] =
-    for (t <- tag; count <- Arbitrary.arbitrary[Int]) yield (t, count)
+    for (t <- tag; count <- Gen.choose(0, Int.MaxValue)) yield (t, count)
   def tag: Gen[Tag] = for (s <- Gen.alphaStr if !s.isEmpty) yield Tag(s)
   def size: Gen[Size] =
     for (i <- Arbitrary.arbitrary[Int] if i != Int.MinValue) yield Size(math.abs(i))

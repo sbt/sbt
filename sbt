@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.10.5"
+declare builtin_sbt_version="1.10.6"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -180,7 +180,7 @@ acquire_sbtn () {
   local archive_target=
   local url=
   local arch="x86_64"
-  if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+  if [[ "$OSTYPE" == "linux"* ]]; then
     arch=$(uname -m)
     if [[ "$arch" == "aarch64" ]] || [[ "$arch" == "x86_64" ]]; then
       archive_target="$p/sbtn-${arch}-pc-linux-${sbtn_v}.tar.gz"

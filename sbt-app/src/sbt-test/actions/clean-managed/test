@@ -1,6 +1,6 @@
 > compile
-$ exists target/scala-2.12/src_managed/foo.txt target/scala-2.12/src_managed/bar.txt
+$ exists target/**/src_managed/foo.txt target/**/src_managed/bar.txt
 
 > clean
-$ absent target/scala-2.12/src_managed/foo.txt
-$ exists target/scala-2.12/src_managed/bar.txt
+$ absent target/**/src_managed/foo.txt
+$ exists target/**/src_managed/bar.txt

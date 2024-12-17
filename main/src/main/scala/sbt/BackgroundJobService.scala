@@ -100,4 +100,5 @@ abstract class JobHandle {
   def id: Long
   def humanReadableName: String
   def spawningTask: ScopedKey[_]
+  def isAutoCancel: Boolean
 }

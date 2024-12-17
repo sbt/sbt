@@ -710,7 +710,20 @@ object Defaults extends BuildCommon {
       crossPaths.value
     ),
     cleanIvy := IvyActions.cleanCachedResolutionCache(ivyModule.value, streams.value.log),
-    clean := clean.dependsOn(cleanIvy).value,
+    clean := {
+      val _ = cleanIvy.value
+      try {
+        val store = AnalysisUtil.staticCachedStore(
+          analysisFile = (Compile / compileAnalysisFile).value.toPath,
+          useTextAnalysis = !(Compile / enableBinaryCompileAnalysis).value,
+          useConsistent = (Compile / enableConsistentCompileAnalysis).value,
+        )
+        store.clearCache()
+      } catch {
+        case NonFatal(_) => ()
+      }
+      clean.value
+    },
     scalaCompilerBridgeBinaryJar := Def.settingDyn {
       val sv = scalaVersion.value
       if (ScalaArtifacts.isScala3(sv) || VersionNumber(sv)
@@ -2040,6 +2053,11 @@ object Defaults extends BuildCommon {
   def foregroundRunMainTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRunMain.evaluated
+      handle match {
+        case threadJobHandle: AbstractBackgroundJobService#ThreadJobHandle =>
+          threadJobHandle.isAutoCancel = true
+        case _ =>
+      }
       val service = bgJobService.value
       service.waitForTry(handle).get
     }
@@ -2048,6 +2066,11 @@ object Defaults extends BuildCommon {
   def foregroundRunTask: Initialize[InputTask[Unit]] =
     Def.inputTask {
       val handle = bgRun.evaluated
+      handle match {
+        case threadJobHandle: AbstractBackgroundJobService#ThreadJobHandle =>
+          threadJobHandle.isAutoCancel = true
+        case _ =>
+      }
       val service = bgJobService.value
       service.waitForTry(handle).get
     }

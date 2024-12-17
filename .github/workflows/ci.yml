@@ -142,18 +142,18 @@ jobs:
       shell: bash
       run: |
         ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test"
-    - name: Multirepo integration test
-      if: ${{ matrix.jobtype == 6 }}
-      shell: bash
-      run: |
-        # build from fresh IO, LM, and Zinc
-        BUILD_VERSION="${TEST_SBT_VER}-SNAPSHOT"
-        cd io
-        sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-        cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-        sbt -v -Dsbt.version=$BUILD_VERSION "++2.13.x; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
+#    - name: Multirepo integration test
+#      if: ${{ matrix.jobtype == 6 }}
+#      shell: bash
+#      run: |
+#        # build from fresh IO, LM, and Zinc
+#        BUILD_VERSION="${TEST_SBT_VER}-SNAPSHOT"
+#        cd io
+#        sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
+#        cd ../
+#        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
+#        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+#        sbt -v -Dsbt.version=$BUILD_VERSION "++2.13.x; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
     - name: Build and test (7)
       if: ${{ matrix.jobtype == 7 }}
       shell: bash

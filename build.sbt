@@ -1071,6 +1071,7 @@ lazy val mainProj = (project in file("main"))
       exclude[MissingClassProblem]("sbt.internal.server.BuildServerReporter$"),
       exclude[IncompatibleTemplateDefProblem]("sbt.internal.server.BuildServerReporter"),
       exclude[MissingClassProblem]("sbt.internal.CustomHttp*"),
+      exclude[ReversedMissingMethodProblem]("sbt.JobHandle.isAutoCancel"),
     )
   )
   .configure(

@@ -1054,7 +1054,7 @@ private[sbt] object Load {
         def settings(files: Seq[File]): Seq[Setting[_]] = {
           if (files.nonEmpty)
             log.info(
-              s"${files.map(_.getName).mkString(s"loading settings for project ${p.id} from ", ",", " ...")}"
+              s"${files.map(_.getName).mkString(s"loading settings for project ${p.id} from ", ", ", "...")}"
             )
           for {
             file <- files

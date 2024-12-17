@@ -11,11 +11,15 @@ package internal
 package scripted
 
 import java.io.File
+import sbt.nio.file.{ FileTreeView, Glob, PathFilter, RecursiveGlob }
 import sbt.io.{ IO, Path }
 import sbt.io.syntax._
 import Path._
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
+  final val OR = "||"
+  lazy val view = FileTreeView.Ops(FileTreeView.default)
+  val baseGlob = Glob(baseDirectory)
   lazy val commands = commandMap
   def commandMap =
     Map(
@@ -51,8 +55,38 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   def spaced[T](l: Seq[T]) = l.mkString(" ")
   def fromStrings(paths: List[String]) = paths.map(fromString)
   def fromString(path: String) = new File(baseDirectory, path)
+  def filterFromStrings(exprs: List[String]): List[PathFilter] = {
+    def orGlobs = {
+      val exprs1 = exprs
+        .mkString("")
+        .split(OR)
+        .filter(_ != OR)
+        .toList
+        .map(_.trim)
+      val combined = exprs1.map(Glob(baseDirectory, _)) match {
+        case Nil      => sys.error("unexpected Nil")
+        case g :: Nil => (g: PathFilter)
+        case g :: gs =>
+          gs.foldLeft(g: PathFilter) {
+            case (acc, g) =>
+              acc || (g: PathFilter)
+          }
+      }
+      List(combined)
+    }
+    if (exprs.contains("||")) orGlobs
+    else exprs.map(Glob(baseDirectory, _): PathFilter)
+  }
+
   def touch(paths: List[String]): Unit = IO.touch(fromStrings(paths))
-  def delete(paths: List[String]): Unit = IO.delete(fromStrings(paths))
+  def delete(paths: List[String]): Unit =
+    IO.delete(
+      (filterFromStrings(paths)
+        .flatMap { filter =>
+          view.list(baseGlob / RecursiveGlob, filter)
+        })
+        .map(_._1.toFile)
+    )
   /*def sync(from: String, to: String) =
 		IO.sync(fromString(from), fromString(to), log)*/
   def copyFile(from: String, to: String): Unit =
@@ -78,13 +112,16 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
       scriptError(s"$pathA is not newer than $pathB")
     }
   }
+  // use FileTreeView to test if a file with the given filter exists
+  def exists0(filter: PathFilter): Boolean =
+    view.list(baseGlob / RecursiveGlob, filter).nonEmpty
   def exists(paths: List[String]): Unit = {
-    val notPresent = fromStrings(paths).filter(!_.exists)
+    val notPresent = filterFromStrings(paths).filter(!exists0(_))
     if (notPresent.nonEmpty)
       scriptError("File(s) did not exist: " + notPresent.mkString("[ ", " , ", " ]"))
   }
   def absent(paths: List[String]): Unit = {
-    val present = fromStrings(paths).filter(_.exists)
+    val present = filterFromStrings(paths).filter(exists0)
     if (present.nonEmpty)
       scriptError("File(s) existed: " + present.mkString("[ ", " , ", " ]"))
   }

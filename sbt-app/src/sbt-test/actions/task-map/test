@@ -1,7 +1,7 @@
 > taskB
-$ exists target/b
-$ exists target/a
+$ exists target/**/b
+$ exists target/**/a
 
 > taskF
-$ exists target/e
-$ exists target/f
+$ exists target/**/e
+$ exists target/**/f

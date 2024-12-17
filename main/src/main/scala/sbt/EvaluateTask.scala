@@ -531,6 +531,7 @@ object EvaluateTask {
         log.warn("Canceling execution...")
         RunningProcesses.killAll()
         ConcurrentRestrictions.cancelAll()
+        DefaultBackgroundJobService.stop()
         shutdownImpl(true)
       }
     }
