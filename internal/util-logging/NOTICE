@@ -1,3 +1,5 @@
-Simple Build Tool: Logging Component
-Copyright 2008, 2009, 2010  Mark Harrah, Tony Sloane
-Licensed under BSD-style license (see LICENSE)
+sbt: Logging Component
+Copyright 2023, Scala center
+Copyright 2011 - 2022, Lightbend, Inc. dba Akka
+Copyright 2008 - 2010, Mark Harrah, Tony Sloane
+Licensed under Apache License 2.0 (see LICENSE)
