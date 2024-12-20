@@ -1,0 +1,4 @@
+> compile
+> previousCompileIsNonEmpty
+> clean
+> previousCompileIsEmpty
