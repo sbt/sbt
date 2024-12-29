@@ -1,0 +1,17 @@
+version: '{build}'
+os: Visual Studio 2019
+install:
+  - cmd: choco install zulu8 -ia "INSTALLDIR=""C:\zulu"""
+  - cmd: SET JAVA_HOME=C:\zulu
+  - cmd: choco install sbt -ia "INSTALLDIR=""C:\sbt"""
+  - cmd: SET PATH=C:\sbt\bin;%JAVA_HOME%\bin;%PATH%
+  - cmd: java -version
+  - cmd: SET SBT_OPTS=-Xms4g -Xmx4g
+build_script:
+  - sbt compile
+test_script:
+  - sbt "scripted source-dependencies/abstract-override"
+cache:
+  - C:\Users\appveyor\.sbt
+  - C:\Users\appveyor\.m2
+  - C:\Users\appveyor\.ivy2
