@@ -120,7 +120,7 @@ object ActionCache:
       case Right(_) => true
       case Left(_)  => false
 
-  inline private[sbt] def findActionResult[I: HashWriter, O](
+  inline private[sbt] def findActionResult[I: HashWriter](
       key: I,
       codeContentHash: Digest,
       extraHash: Digest,

@@ -58,7 +58,7 @@ object VersionNumber {
   def unapply(s: String): Option[(Seq[Long], Seq[String], Seq[String])] = {
 
     // null safe, empty string safe
-    def splitOn[A](s: String, sep: Char): Vector[String] =
+    def splitOn(s: String, sep: Char): Vector[String] =
       if (s eq null) Vector()
       else s.split(sep).filterNot(_ == "").toVector
 

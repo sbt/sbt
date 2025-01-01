@@ -58,7 +58,7 @@ class FileExamplesTest extends UnitSpec {
     }
   }
 
-  def withDirectoryStructure[A](withCompletionPrefix: String = "")(
+  def withDirectoryStructure(withCompletionPrefix: String = "")(
       thunk: DirectoryStructure => Assertion
   ): Assertion = {
     IO.withTemporaryDirectory { tempDir =>

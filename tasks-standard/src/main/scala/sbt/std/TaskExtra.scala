@@ -308,6 +308,6 @@ object TaskExtra extends TaskExtra {
 
   // The "taskDefinitionKey" is used, at least, by the ".previous" functionality.
   // But apparently it *cannot* survive a task map/flatMap/etc. See actions/depends-on.
-  private[sbt] def newAttributes[A](attributes: AttributeMap): AttributeMap =
+  private[sbt] def newAttributes(attributes: AttributeMap): AttributeMap =
     AttributeMap(attributes.entries.filter(_.key.label != "taskDefinitionKey"))
 }

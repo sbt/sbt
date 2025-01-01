@@ -356,7 +356,7 @@ private[sbt] object SettingCompletions {
    * Returns a string representation of the underlying type T for a `key` representing a `Setting[T]`, `Task[T]`, or `InputTask[T]`.
    * This string representation is currently a cleaned up toString of the underlying ClassTag.
    */
-  def keyTypeString[T](key: AttributeKey[?]): String =
+  def keyTypeString(key: AttributeKey[?]): String =
     complete.TypeString.cleanup(key.tag.typeArg.toString)
 
   /** True if the `key` represents a setting or task that may be appended using an assignment method such as `+=`. */

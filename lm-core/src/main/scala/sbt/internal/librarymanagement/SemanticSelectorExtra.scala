@@ -209,7 +209,7 @@ private[librarymanagement] abstract class SemComparatorFunctions {
       case _ => throw new IllegalArgumentException(s"Invalid comparator: $comparator")
     }
   }
-  private def splitOn[A](s: String, sep: Char): Vector[String] =
+  private def splitOn(s: String, sep: Char): Vector[String] =
     if (s eq null) Vector()
     else s.split(sep).filterNot(_ == "").toVector
   private def splitDash(s: String) = splitOn(s, '-')

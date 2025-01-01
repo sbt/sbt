@@ -28,7 +28,7 @@ private[sbt] object Execute {
   private[sbt] def completed(p: => Unit): Completed = new Completed {
     def process(): Unit = p
   }
-  def noTriggers[TaskId[_]] = new Triggers(Map.empty, Map.empty, identity)
+  def noTriggers = new Triggers(Map.empty, Map.empty, identity)
 
   def config(checkCycles: Boolean, overwriteNode: Incomplete => Boolean = const(false)): Config =
     new Config(checkCycles, overwriteNode)
