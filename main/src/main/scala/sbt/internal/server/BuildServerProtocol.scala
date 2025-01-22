@@ -304,7 +304,11 @@ object BuildServerProtocol {
       OutputPathsItem(id, Vector(OutputPathItem(target.value.toURI, OutputPathItemKind.Directory)))
     },
     bspBuildTargetCompileItem := bspCompileTask.value,
-    bspBuildTargetRun := bspRunTask.evaluated,
+    bspBuildTargetRun := {
+      // declared defensively to prevent References to undefined settings at runtime
+      val s = streams.value
+      bspRunTask.evaluated
+    },
     bspBuildTargetScalacOptionsItem := {
       val target = Keys.bspTargetIdentifier.value
       val scalacOptions = Keys.scalacOptions.value.toVector

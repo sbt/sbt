@@ -1,0 +1,10 @@
+/**
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
+ */
+
+// DO NOT EDIT MANUALLY
+package sbt.internal.worker.codec
+trait JsonProtocol extends sjsonnew.BasicJsonProtocol
+  with sbt.internal.worker.codec.ScalaInstanceConfigFormats
+  with sbt.internal.worker.codec.ConsoleConfigFormats
+object JsonProtocol extends JsonProtocol

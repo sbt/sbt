@@ -49,6 +49,7 @@ object LintUnused {
       shellPrompt,
       sLog,
       traceLevel,
+      scalaCompilerBridgeSource,
     ),
     includeLintKeys := Set(
       scalacOptions,

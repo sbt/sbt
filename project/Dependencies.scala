@@ -58,6 +58,7 @@ object Dependencies {
   }
 
   def addSbtIO = addSbtModule(sbtIoPath, "io", sbtIO)
+  def addSbtIOForTest = addSbtModule(sbtIoPath, "io", sbtIO, Some(Test))
 
   def addSbtCompilerInterface = addSbtModule(sbtZincPath, "compilerInterface", compilerInterface)
   def addSbtCompilerClasspath = addSbtModule(sbtZincPath, "zincClasspath", compilerClasspath)
