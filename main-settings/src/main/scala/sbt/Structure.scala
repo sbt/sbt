@@ -816,6 +816,16 @@ object SettingKey:
 
   def apply[A1: ClassTag: OptJsonWriter](
       label: String,
+      rank: Int,
+  ): SettingKey[A1] =
+    apply[A1](
+      label = label,
+      description = "",
+      rank = rank,
+    )
+
+  def apply[A1: ClassTag: OptJsonWriter](
+      label: String,
       description: String,
       rank: Int
   ): SettingKey[A1] =
