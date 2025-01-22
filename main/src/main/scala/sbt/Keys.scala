@@ -236,6 +236,7 @@ object Keys {
   val scalaCompilerBridgeBinaryJar = taskKey[Option[File]]("Optionally, the jar of the compiler bridge. When not None, this takes precedence over scalaCompilerBridgeSource").withRank(CSetting)
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge when scalaCompilerBridgeBinaryJar is None").withRank(CSetting)
   val scalaCompilerBridgeScope = taskKey[Unit]("The compiler bridge scope.").withRank(DTask)
+  val scalaCompilerBridgeJar = taskKey[File]("The compiler bridge JAR.").withRank(CSetting)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
   val semanticdbEnabled = settingKey[Boolean]("Enables SemanticDB Scalac plugin").withRank(CSetting)

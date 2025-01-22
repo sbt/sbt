@@ -65,6 +65,24 @@ object ZincLmUtil {
     )
   }
 
+  def scalaCompilerBridge(
+      scalaInstance: XScalaInstance,
+      globalLock: GlobalLock,
+      componentProvider: ComponentProvider,
+      secondaryCacheDir: Option[File],
+      dependencyResolution: DependencyResolution,
+      compilerBridgeSource: ModuleID,
+      scalaJarsTarget: File,
+      log: Logger
+  ): File =
+    val compilerBridgeProvider = ZincComponentCompiler.interfaceProvider(
+      compilerBridgeSource,
+      new ZincComponentManager(globalLock, componentProvider, secondaryCacheDir, log),
+      dependencyResolution,
+      scalaJarsTarget,
+    )
+    compilerBridgeProvider.fetchCompiledBridge(scalaInstance, log)
+
   def fetchDefaultBridgeModule(
       scalaVersion: String,
       dependencyResolution: DependencyResolution,

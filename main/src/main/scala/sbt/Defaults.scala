@@ -58,6 +58,7 @@ import sbt.internal.server.{
   VirtualTerminal
 }
 import sbt.internal.testing.TestLogger
+import sbt.internal.worker.ConsoleConfig
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.*
 import sbt.internal.util.{ Terminal as ITerminal, * }
@@ -743,6 +744,10 @@ object Defaults extends BuildCommon {
         Some(jar)
       else None
     },
+    scalaCompilerBridgeJar := {
+      if scalaCompilerBridgeBinaryJar.value.isDefined then scalaCompilerBridgeBinaryJar.value.get
+      else scalaCompilerBridgeJarTask(scalaCompilerBridgeSource).value
+    },
     scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
     auxiliaryClassFiles ++= {
       if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
@@ -752,6 +757,11 @@ object Defaults extends BuildCommon {
     consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
       appConfiguration.value.provider.scalaProvider.version
     ),
+    consoleProject / scalaCompilerBridgeJar := {
+      if (consoleProject / scalaCompilerBridgeBinaryJar).value.isDefined then
+        scalaCompilerBridgeBinaryJar.value.get
+      else scalaCompilerBridgeJarTask(consoleProject / scalaCompilerBridgeSource).value
+    },
     classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
     console / classpathOptions := ClasspathOptionsUtil.replNoboot(scalaVersion.value),
   )
@@ -768,6 +778,26 @@ object Defaults extends BuildCommon {
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value))
     )
   )
+
+  def scalaCompilerBridgeJarTask(sourceKey: Def.Initialize[ModuleID]) = Def.task {
+    val s = streams.value
+    val st = state.value
+    val g = BuildPaths.getGlobalBase(st)
+    val zincDir = BuildPaths.getZincDirectory(st, g)
+    val app = appConfiguration.value
+    val launcher = app.provider.scalaProvider.launcher
+    val dr = scalaCompilerBridgeDependencyResolution.value
+    ZincLmUtil.scalaCompilerBridge(
+      scalaInstance = scalaInstance.value,
+      globalLock = launcher.globalLock,
+      componentProvider = app.provider.components,
+      secondaryCacheDir = Option(zincDir),
+      dependencyResolution = dr,
+      compilerBridgeSource = scalaCompilerBridgeSource.value,
+      scalaJarsTarget = zincDir,
+      log = s.log
+    )
+  }
 
   def makeCrossSources(
       scalaSrcDir: File,
@@ -838,29 +868,12 @@ object Defaults extends BuildCommon {
       val app = appConfiguration.value
       val launcher = app.provider.scalaProvider.launcher
       val dr = scalaCompilerBridgeDependencyResolution.value
-      val scalac =
-        scalaCompilerBridgeBinaryJar.value match {
-          case Some(jar) =>
-            AlternativeZincUtil.scalaCompiler(
-              scalaInstance = scalaInstance.value,
-              classpathOptions = classpathOptions.value,
-              compilerBridgeJar = jar,
-              classLoaderCache = st.get(BasicKeys.classLoaderCache)
-            )
-          case _ =>
-            ZincLmUtil.scalaCompiler(
-              scalaInstance = scalaInstance.value,
-              classpathOptions = classpathOptions.value,
-              globalLock = launcher.globalLock,
-              componentProvider = app.provider.components,
-              secondaryCacheDir = Option(zincDir),
-              dependencyResolution = dr,
-              compilerBridgeSource = scalaCompilerBridgeSource.value,
-              scalaJarsTarget = zincDir,
-              classLoaderCache = st.get(BasicKeys.classLoaderCache),
-              log = streams.value.log
-            )
-        }
+      val scalac = AlternativeZincUtil.scalaCompiler(
+        scalaInstance = scalaInstance.value,
+        classpathOptions = classpathOptions.value,
+        compilerBridgeJar = scalaCompilerBridgeJar.value,
+        classLoaderCache = st.get(BasicKeys.classLoaderCache)
+      )
       val compilers = ZincUtil.compilers(
         instance = scalaInstance.value,
         classpathOptions = classpathOptions.value,
@@ -1005,7 +1018,10 @@ object Defaults extends BuildCommon {
         cache.get
       },
       compileIncSetup := compileIncSetupTask.value,
-      console := consoleTask.value,
+      console := {
+        if (console / fork).value then forkedConsoleTask.value
+        else consoleTask.value
+      },
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
       discoveredMainClasses := compile
@@ -2216,6 +2232,22 @@ object Defaults extends BuildCommon {
       val cc = (task / cleanupCommands).value
       (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
       println()
+    }
+
+  private def forkedConsoleTask: Initialize[Task[Unit]] =
+    Def.task {
+      val sic = Compiler.scalaInstanceConfigTask.value
+      val bridge = scalaCompilerBridgeJar.value
+      val conv = fileConverter.value
+      val depsJars = externalDependencyClasspath.value.toVector
+        .map(_.data)
+        .map(conv.toPath)
+      val config = ConsoleConfig(
+        scalaInstanceConfig = sic,
+        bridgeJar = bridge.toString(),
+        externalDependencyJars = depsJars.map(_.toString()),
+      )
+      ForkWorker.console(config)
     }
 
   private def exported(w: PrintWriter, command: String): Seq[String] => Unit =

@@ -1,0 +1,17 @@
+package sbt.internal.worker
+@target(Scala)
+@codecPackage("sbt.internal.worker.codec")
+@fullCodec("JsonProtocol")
+
+type ScalaInstanceConfig {
+  scalaVersion: String!
+  libraryJars: [String],
+  allCompilerJars: [String],
+  allDocJars: [String],
+}
+
+type ConsoleConfig {
+  scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
+  bridgeJar: String!
+  externalDependencyJars: [String]
+}

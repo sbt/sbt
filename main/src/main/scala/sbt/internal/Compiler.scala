@@ -3,6 +3,7 @@ package internal
 
 import java.io.File
 import sbt.internal.inc.ScalaInstance
+import sbt.internal.worker.ScalaInstanceConfig
 import sbt.librarymanagement.{
   Artifact,
   Configurations,
@@ -15,15 +16,28 @@ import xsbti.ScalaProvider
 
 object Compiler:
   def scalaInstanceTask: Def.Initialize[Task[ScalaInstance]] =
+    Def.task {
+      val config = scalaInstanceConfigTask.value
+      makeScalaInstance(
+        config.scalaVersion,
+        config.libraryJars.map(File(_)).toArray,
+        config.allCompilerJars.map(File(_)),
+        config.allDocJars.map(File(_)),
+        Keys.state.value,
+        Keys.scalaInstanceTopLoader.value,
+      )
+    }
+
+  def scalaInstanceConfigTask: Def.Initialize[Task[ScalaInstanceConfig]] =
     Def.taskDyn {
       val sh = Keys.scalaHome.value
       val app = Keys.appConfiguration.value
       val sv = Keys.scalaVersion.value
       sh match
-        case Some(h) => scalaInstanceFromHome(h)
+        case Some(h) => scalaInstanceConfigFromHome(h)
         case _ =>
           val scalaProvider = app.provider.scalaProvider
-          scalaInstanceFromUpdate
+          scalaInstanceConfigFromUpdate
     }
 
   // use the same class loader as the Scala classes used by sbt
@@ -51,23 +65,21 @@ object Compiler:
       case _ => ScalaInstance(sv, scalaProvider)
   }
 
-  def scalaInstanceFromHome(dir: File): Def.Initialize[Task[ScalaInstance]] = Def.task {
+  def scalaInstanceConfigFromHome(dir: File): Def.Initialize[Task[ScalaInstanceConfig]] = Def.task {
     val dummy = ScalaInstance(dir)(Keys.state.value.classLoaderCache.apply)
     Seq(dummy.loader, dummy.loaderLibraryOnly).foreach {
       case a: AutoCloseable => a.close()
       case _                =>
     }
-    makeScalaInstance(
+    ScalaInstanceConfig(
       dummy.version,
-      dummy.libraryJars,
-      dummy.compilerJars.toSeq,
-      dummy.allJars.toSeq,
-      Keys.state.value,
-      Keys.scalaInstanceTopLoader.value,
+      dummy.libraryJars.toVector.map(_.toString()),
+      dummy.compilerJars.toVector.map(_.toString()),
+      dummy.allJars.toVector.map(_.toString()),
     )
   }
 
-  def scalaInstanceFromUpdate: Def.Initialize[Task[ScalaInstance]] = Def.task {
+  def scalaInstanceConfigFromUpdate: Def.Initialize[Task[ScalaInstanceConfig]] = Def.task {
     val sv = Keys.scalaVersion.value
     val fullReport = Keys.update.value
 
@@ -135,13 +147,13 @@ object Compiler:
         .flatMap(_.artifacts.map(_._2))
     val libraryJars = ScalaArtifacts.libraryIds(sv).map(file)
 
-    makeScalaInstance(
+    ScalaInstanceConfig(
       sv,
-      libraryJars,
-      allCompilerJars,
-      allDocJars,
-      Keys.state.value,
-      Keys.scalaInstanceTopLoader.value,
+      libraryJars.toVector.map(_.toString),
+      allCompilerJars.toVector.map(_.toString),
+      allDocJars.toVector.map(_.toString),
+      // Keys.state.value,
+      // Keys.scalaInstanceTopLoader.value,
     )
   }
 
