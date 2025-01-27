@@ -25,7 +25,7 @@ abstract class ResolutionSpec extends AbstractEngineSpec {
     assert(report.configurations.size == 3)
   }
 
-  test("Resolving the unsolvable module should should not work") {
+  test("Resolving the unsolvable module should not work") {
     // log.setLevel(Level.Debug)
     val m = module(
       exampleModuleId("0.2.0"),

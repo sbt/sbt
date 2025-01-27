@@ -45,7 +45,7 @@ object ManagedChecksumsSpec extends BaseIvySpecification {
     assert(shaFile.exists(), s"The checksum $Checksum for $file does not exist")
   }
 
-  test("Managed checksums should should download the checksum files") {
+  test("Managed checksums should download the checksum files") {
     cleanAll()
     val updateOptions = UpdateOptions()
     val toResolve = module(defaultModuleId, dependencies, None, updateOptions)

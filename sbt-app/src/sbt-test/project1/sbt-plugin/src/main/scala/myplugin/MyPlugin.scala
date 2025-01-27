@@ -15,7 +15,7 @@ case object MyPlugin extends AutoPlugin {
       "Hello world"
     },
     Compile / compile := {
-      helloWorld.value // shoult not produce "a pure expression does nothing" warning
+      helloWorld.value // should not produce "a pure expression does nothing" warning
       (Compile / compile).value
     }
   )
