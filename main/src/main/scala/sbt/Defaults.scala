@@ -2822,7 +2822,7 @@ object Classpaths {
           val vf = converter.toVirtualFile(p)
           FileStamp(stamper.library(vf)).map(p -> _)
       },
-      // Note: invoking this task from shell would block indefinately because it will
+      // Note: invoking this task from shell would block indefinitely because it will
       // wait for the upstream compilation to start.
       dependencyPicklePath := {
         // This is a conditional task. Do not refactor.
