@@ -197,7 +197,7 @@ class ClassStamper(
                   relations
                     .products(sourceFile)
                     .map(stampVf)
-          // TODO: substitue the above with
+          // TODO: substitute the above with
           // val classDigests = relations.productClassName
           //   .reverse(className)
           //   .flatMap: prodClassName =>

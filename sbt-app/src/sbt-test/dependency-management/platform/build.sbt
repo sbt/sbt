@@ -4,7 +4,7 @@ scalaVersion := "2.13.10"
 platform := Platform.sjs1
 
 // By default platformOpt field is set to None
-// Given %% lm engines will sustitute it with the subproject's platform suffix on `update`
+// Given %% lm engines will substitute it with the subproject's platform suffix on `update`
 libraryDependencies ++= Seq(
   "com.github.scopt" %% "scopt" % "4.1.0",
   "junit" % "junit" % "4.13.1",
