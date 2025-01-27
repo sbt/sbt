@@ -243,7 +243,7 @@ private[sbt] object JLine {
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
   @deprecated("Don't use jline.Terminal directly", "1.4.0")
-  private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTeminal
+  private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTerminal
 
   /**
    * For accessing the JLine Terminal object. This ensures synchronized access as well as
