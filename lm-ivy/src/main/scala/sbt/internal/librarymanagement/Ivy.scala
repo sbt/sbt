@@ -77,7 +77,7 @@ final class IvySbt(
           Message.setDefaultLogger(originalLogger)
         }
       }
-    // Ivy is not thread-safe nor can the cache be used concurrently.
+    // Ivy is neither thread-safe nor can the cache be used concurrently.
     // If provided a GlobalLock, we can use that to ensure safe access to the cache.
     // Otherwise, we can at least synchronize within the JVM.
     //   For thread-safety in particular, Ivy uses a static DocumentBuilder, which is not thread-safe.
