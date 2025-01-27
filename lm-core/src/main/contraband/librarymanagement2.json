@@ -71,7 +71,7 @@
         "> Example: 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2 < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0.",
         "",
         "The differences from the original specification are following",
-        "- `SemanticVersionSelector` separetes the pre-release fields by hyphen instead of dot",
+        "- `SemanticVersionSelector` separates the pre-release fields by hyphen instead of dot",
         "- hyphen cannot be used in pre-release identifiers because it is used as separator for pre-release fields",
         "",
         "Therefore, in order to match pre-release versions like `1.0.0-beta`",
