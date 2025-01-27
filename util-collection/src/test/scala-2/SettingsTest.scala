@@ -50,7 +50,7 @@ object SettingsTest extends Properties("settings") {
   final def derivedSettings(nr: Int): Prop = {
     val genScopedKeys = {
       // We wan
-      // t to generate lists of keys that DO NOT inclue the "ch" key we use to check things.
+      // t to generate lists of keys that DO NOT include the "ch" key we use to check things.
       val attrKeys = mkAttrKeys[Int](nr).filter(_.forall(_.label != "ch"))
       attrKeys map (_ map (ak => ScopedKey(Scope(0), ak)))
     }.label("scopedKeys").filter(_.nonEmpty)
