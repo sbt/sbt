@@ -32,7 +32,7 @@
 - Preserves JAR order in `ScalaInstance.otherJars`. [zinc#411][zinc411] by [@dwijnand][@dwijnand]
 - Fixes used name when it contains NL. [zinc#449][zinc449] by [@jilen][@jilen]
 - Fixes handling of `ThisProject`. [#3609][3609] by [@dwijnand][@dwijnand]
-- Escapes imports from sbt files, so if user creates a backquoted definition then task evalution will not fail. [#3635][3635] by [@panaeon][@panaeon]
+- Escapes imports from sbt files, so if user creates a backquoted definition then task evaluation will not fail. [#3635][3635] by [@panaeon][@panaeon]
 - Removes reference to version 0.14.0 from a warning message. [#3693][3693] by [@saniyatech][@saniyatech]
 - Fixes screpl throwing "Not a valid key: console-quick". [#3762][3762] by [@xuwei-k][@xuwei-k]
 
