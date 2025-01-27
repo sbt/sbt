@@ -124,7 +124,7 @@ private[librarymanagement] abstract class SemComparatorExtra {
       val cmp = (ts1head.matches("\\d+"), ts2head.matches("\\d+")) match {
         // Identifiers consisting of only digits are compared numerically.
         // Numeric identifiers always have lower precedence than non-numeric identifiers.
-        // Identifiers with letters are compared case insensitive lexical order.
+        // Identifiers with letters are compared case-insensitive lexical order.
         case (true, true)  => implicitly[Ordering[Long]].compare(ts1head.toLong, ts2head.toLong)
         case (false, true) => 1
         case (true, false) => -1
