@@ -173,7 +173,7 @@ To display all eviction warnings with caller information, run `evicted` task.
 
 ### Latest SNAPSHOTs
 
-sbt 0.13.6 adds a new setting key called `updateOptions` for customizing the details of managed dependency resolution with `update` task. One of its flags is called `lastestSnapshots`, which controls the behavior of the chained resolver. Up until 0.13.6, sbt was picking the first `-SNAPSHOT` revision it found along the chain. When `latestSnapshots` is enabled (default: `true`), it will look into all resolvers on the chain, and compare them using the publish date.
+sbt 0.13.6 adds a new setting key called `updateOptions` for customizing the details of managed dependency resolution with `update` task. One of its flags is called `latestSnapshots`, which controls the behavior of the chained resolver. Up until 0.13.6, sbt was picking the first `-SNAPSHOT` revision it found along the chain. When `latestSnapshots` is enabled (default: `true`), it will look into all resolvers on the chain, and compare them using the publish date.
 
 The tradeoff is probably a longer resolution time if you have many remote repositories on the build or you live away from the servers. So here's how to disable it:
 
