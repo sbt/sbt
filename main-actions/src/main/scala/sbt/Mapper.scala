@@ -77,7 +77,7 @@ object Mapper:
    * }}}
    *
    * @param baseDirectory The directory that should be turned into a mappings sequence.
-   * @return mappings - The `basicDirectory`'s contents exlcuding `basicDirectory` itself
+   * @return mappings - The `basicDirectory`'s contents excluding `basicDirectory` itself
    */
   def contentOf(baseDirectory: File)(using conv: FileConverter): Seq[(VirtualFile, String)] =
     (PathFinder(baseDirectory).allPaths --- PathFinder(baseDirectory))
