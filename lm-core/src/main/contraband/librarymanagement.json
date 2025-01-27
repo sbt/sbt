@@ -31,7 +31,7 @@
         {
           "name": "logging",
           "doc": [
-            "Logging setting used specifially for library management."
+            "Logging setting used specifically for library management."
           ],
           "type": "sbt.librarymanagement.UpdateLogging",
           "default": "sbt.librarymanagement.UpdateLogging.Default",
