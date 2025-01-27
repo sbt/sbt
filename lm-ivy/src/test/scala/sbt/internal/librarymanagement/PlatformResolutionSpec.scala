@@ -44,7 +44,7 @@ object PlatformResolutionSpec extends BaseIvySpecification {
     )
   }
 
-  test("None platform can specify .platform(sjs1) depenency") {
+  test("None platform can specify .platform(sjs1) dependency") {
     cleanCache()
     val m = module(
       exampleModuleId("0.6.0"),
@@ -60,7 +60,7 @@ object PlatformResolutionSpec extends BaseIvySpecification {
     )
   }
 
-  test("sjs1 platform can specify .platform(jvm) depenency") {
+  test("sjs1 platform can specify .platform(jvm) dependency") {
     cleanCache()
     val m = module(
       exampleModuleId("0.6.0"),
