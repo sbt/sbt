@@ -406,7 +406,7 @@ private[sbt] case class SbtChainResolver(
     }
   }
 
-  /** Ported from BasicResolver#findFirstAirfactRef. */
+  /** Ported from BasicResolver#findFirstArtifactRef. */
   private def findFirstArtifactRef(
       md: ModuleDescriptor,
       data: ResolveData,
