@@ -240,7 +240,7 @@ and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
 
 #### Binary format for Zinc's internal storage
 
-Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Procol Buffer.
+Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Protocol Buffer.
 The new format provides us with three main advantages:
 
 1. Backwards and forwards binary compatibility at the analysis format level.
