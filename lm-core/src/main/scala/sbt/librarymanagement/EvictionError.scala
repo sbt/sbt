@@ -59,7 +59,8 @@ object EvictionError {
       )
     }
     val incompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
-    val assumedIncompatEvictions: mutable.ListBuffer[(EvictionPair, String)] = mutable.ListBuffer()
+    val assumedIncompatibleEvictions: mutable.ListBuffer[(EvictionPair, String)] =
+      mutable.ListBuffer()
     val sbvOpt = module.scalaModuleInfo.map(_.scalaBinaryVersion)
     val userDefinedSchemes: Map[(String, String), String] = Map(schemes flatMap { s =>
       val organization = s.organization
@@ -123,7 +124,7 @@ object EvictionError {
               else assumedVersionSchemeJava
 
             if (hasIncompatibleVersionForScheme(assumedScheme))
-              assumedIncompatEvictions += (p -> assumedScheme)
+              assumedIncompatibleEvictions += (p -> assumedScheme)
         }
 
       case _ => ()
@@ -131,7 +132,7 @@ object EvictionError {
 
     new EvictionError(
       incompatibleEvictions.toList,
-      assumedIncompatEvictions.toList,
+      assumedIncompatibleEvictions.toList,
     )
   }
 
