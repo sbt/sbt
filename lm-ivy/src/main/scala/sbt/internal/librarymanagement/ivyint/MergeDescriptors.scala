@@ -135,7 +135,7 @@ private[sbt] final case class MergedDescriptors(a: DependencyDescriptor, b: Depe
     )
     addConfigurations(dd, ArraySeq.unsafeWrapArray(a.getModuleConfigurations))
     // If the dependency descriptor is empty, then it means that it has been created from a POM file. In this case,
-    // it is correct to create a seemingly non-existent dependency artifact.
+    // it is correct to create a seemingly nonexistent dependency artifact.
     if (a.getAllDependencyArtifacts.isEmpty) Array(dd)
     else a.getAllDependencyArtifacts filter (_ == dd)
   }
