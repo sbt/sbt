@@ -144,7 +144,7 @@ private[sbt] object EvaluateConfigurations {
       offset: Int
   ): LazyClassLoaded[LoadedSbtFile] = {
     // TODO - Store the file on the LoadedSbtFile (or the parent dir) so we can accurately do
-    //        detection for which project project manipulations should be applied.
+    //        detection for which project manipulations should be applied.
     val name = file match
       case file: PathBasedFile => file.toPath.toString
       case file                => file.id
