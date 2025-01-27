@@ -173,10 +173,10 @@ object FileStamp {
             case Some(js) =>
               unbuilder.beginObject(js)
               val hashes = unbuilder.readField("hashes")(using seqPathHashJsonFormatter)
-              val lastModifieds =
+              val lastModifiedTimes =
                 unbuilder.readField("lastModifiedTimes")(using seqPathLastModifiedJsonFormatter)
               unbuilder.endObject()
-              hashes ++ lastModifieds
+              hashes ++ lastModifiedTimes
             case None =>
               deserializationError("Expected JsObject but found None")
           }
