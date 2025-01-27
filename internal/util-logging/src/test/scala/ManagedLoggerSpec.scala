@@ -43,7 +43,7 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
     }
     val after = System.currentTimeMillis()
 
-    log.info(s"Peformance test took: ${after - before}ms")
+    log.info(s"Performance test took: ${after - before}ms")
   }
 
   it should "support logging Throwable out of the box" in {
