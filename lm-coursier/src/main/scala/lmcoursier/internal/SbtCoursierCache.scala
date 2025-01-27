@@ -14,7 +14,7 @@ class SbtCoursierCache {
 
   private val resolutionsCache =
     new ConcurrentHashMap[ResolutionKey, Map[Configuration, Resolution]]
-  // these may actually not need to be cached any more, now that the resolutions
+  // these may actually not need to be cached anymore, now that the resolutions
   // are cached
   private val reportsCache = new ConcurrentHashMap[ReportKey, UpdateReport]
 
