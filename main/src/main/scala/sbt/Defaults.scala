@@ -3499,8 +3499,8 @@ object Classpaths {
   )
 
   def warnResolversConflict(resolverList: Seq[Resolver], log: Logger): Unit = {
-    val resset = resolverList.toSet
-    for ((name, r) <- resset groupBy (_.name) if r.size > 1) {
+    val resolverSet = resolverList.toSet
+    for ((name, r) <- resolverSet groupBy (_.name) if r.size > 1) {
       log.warn(
         "Multiple resolvers having different access mechanism configured with same name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`)."
       )
