@@ -54,7 +54,7 @@ object VersionRange {
         case "+"                  => "[0,)"
         case DotPlusPattern(base) => plusRange(base)
         // This is a heuristic.  Maven just doesn't support Ivy's notions of 1+, so
-        // we assume version ranges never go beyond 5 siginificant digits.
+        // we assume version ranges never go beyond 5 significant digits.
         case NumPlusPattern(tail) => (0 until maxDigit).map(plusRange(tail, _)).mkString(",")
         case DotNumPlusPattern(base, tail) =>
           (0 until maxDigit).map(plusRange(base + "." + tail, _)).mkString(",")
