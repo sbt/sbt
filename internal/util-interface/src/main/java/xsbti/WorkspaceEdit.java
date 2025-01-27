@@ -11,7 +11,7 @@ package xsbti;
 import java.util.List;
 
 /**
- * A minimal representatin of the `WorkspaceEdit` found in the LSP protocol.
+ * A minimal representation of the `WorkspaceEdit` found in the LSP protocol.
  *
  * <p>However it only supports the minimal `changes` to ensure the fixes will work with all clients.
  *
