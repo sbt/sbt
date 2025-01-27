@@ -44,7 +44,7 @@ trait ConcurrentRestrictions {
   def valid(g: G): Boolean
 }
 
-private[sbt] sealed trait CancelSentiels {
+private[sbt] sealed trait CancelSentinels {
   def cancelSentinels(): Unit
 }
 
@@ -60,8 +60,8 @@ object ConcurrentRestrictions {
   }
 
   private[sbt] def cancelAllSentinels() = completionServices.keySet.asScala.toVector.foreach {
-    case a: CancelSentiels => a.cancelSentinels()
-    case _                 =>
+    case a: CancelSentinels => a.cancelSentinels()
+    case _                  =>
   }
 
   /**
@@ -213,12 +213,12 @@ object ConcurrentRestrictions {
       tags: ConcurrentRestrictions,
       warn: String => Unit,
       isSentinel: TaskId[?] => Boolean,
-  ): CompletionService & CancelSentiels & AutoCloseable = {
+  ): CompletionService & CancelSentinels & AutoCloseable = {
 
     // Represents submitted work for a task.
     final class Enqueue(val node: TaskId[?], val work: () => Completed)
 
-    new CompletionService with CancelSentiels with AutoCloseable {
+    new CompletionService with CancelSentinels with AutoCloseable {
       completionServices.put(this, true)
       private val closed = new AtomicBoolean(false)
       override def close(): Unit = if (closed.compareAndSet(false, true)) {
