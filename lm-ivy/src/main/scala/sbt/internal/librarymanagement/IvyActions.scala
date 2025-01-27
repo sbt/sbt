@@ -342,7 +342,7 @@ object IvyActions {
 
   /**
    * Resolves and retrieves a module with a cache mechanism defined
-   * <a href="http://www.scala-sbt.org/0.13/docs/Cached-Resolution.html">here</a>.
+   * <a href="https://www.scala-sbt.org/1.x/docs/Cached-Resolution.html">here</a>.
    *
    * It's the cached version of [[resolveAndRetrieve]].
    *

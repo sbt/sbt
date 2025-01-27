@@ -1,6 +1,6 @@
 import complete.Parser
 
-// https://www.scala-sbt.org/0.13/docs/Input-Tasks.html
+// https://www.scala-sbt.org/1.x/docs/Input-Tasks.html
 
 val runFoo = inputKey[Unit]("Runs Foo with passed arguments")
 val check = taskKey[Unit]("")
