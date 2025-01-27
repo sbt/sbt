@@ -7,7 +7,7 @@
 // Depending on the version of sbt-plugin-example-diamond, we test different patterns
 // of dependencies:
 //  * Some dependencies were published using the deprecated Maven paths, some with the new
-//  * Wheter the dependency on sbt-plugin-example-bottom needs conflict resolution or not
+//  * Whether the dependency on sbt-plugin-example-bottom needs conflict resolution or not
 
 inThisBuild(
   Seq(
