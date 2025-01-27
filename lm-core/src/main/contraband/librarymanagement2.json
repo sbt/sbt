@@ -54,7 +54,7 @@
         "",
         "The hyphen range like `1.2.3 - 4.5.6` matches inclusive set of versions.",
         "So `1.2.3 - 4.5.6` is equivalent to `>=1.2.3 <=4.5.6`.",
-        "Both sides of comparators around - are required and they can not have any operators.",
+        "Both sides of comparators around - are required and they cannot have any operators.",
         "For example, `>=1.2.3 - 4.5.6` is invalid.",
         "",
         "The order of versions basically follows the rule specified in https://semver.org/#spec-item-11",

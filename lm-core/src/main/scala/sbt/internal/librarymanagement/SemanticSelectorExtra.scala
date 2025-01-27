@@ -18,10 +18,10 @@ private[librarymanagement] abstract class SemSelAndChunkFunctions {
       val (before, after) = comparatorTokens.splitAt(hyphenIndex)
       (before.lastOption, after.drop(1).headOption) match {
         case (Some(fromStr), Some(toStr)) =>
-          // from and to can not have an operator.
+          // from and to cannot have an operator.
           if (hasOperator(fromStr) || hasOperator(toStr)) {
             throw new IllegalArgumentException(
-              s"Invalid ' - ' range, both side of comparators can not have an operator: $fromStr - $toStr"
+              s"Invalid ' - ' range, both side of comparators cannot have an operator: $fromStr - $toStr"
             )
           }
           val from = SemComparator(fromStr)
