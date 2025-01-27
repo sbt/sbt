@@ -71,7 +71,7 @@ class DependencyResolution private[sbt] (lmEngine: DependencyResolutionInterface
    * Returns a `ModuleDescriptor` that depends on `dependencyId`.
    *
    * @param dependencyId The module to depend on.
-   * @param scalaModuleInfo The information about the Scala verson used, if any.
+   * @param scalaModuleInfo The information about the Scala version used, if any.
    * @return A `ModuleDescriptor` that depends on `dependencyId`.
    */
   def wrapDependencyInModule(
