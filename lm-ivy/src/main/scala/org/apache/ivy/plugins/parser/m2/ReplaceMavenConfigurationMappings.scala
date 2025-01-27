@@ -41,11 +41,11 @@ object ReplaceMavenConfigurationMappings {
         def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
           if (isOptional) {
             dd.addDependencyConfiguration("optional", "compile(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("optional", "master(compile)")
           } else {
             dd.addDependencyConfiguration("compile", "compile(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("compile", "master(compile)")
             dd.addDependencyConfiguration("runtime", "runtime(*)")
           }
@@ -60,13 +60,13 @@ object ReplaceMavenConfigurationMappings {
             dd.addDependencyConfiguration("optional", "compile(*)")
             dd.addDependencyConfiguration("optional", "provided(*)")
             dd.addDependencyConfiguration("optional", "runtime(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("optional", "master(compile)")
           } else {
             dd.addDependencyConfiguration("provided", "compile(*)")
             dd.addDependencyConfiguration("provided", "provided(*)")
             dd.addDependencyConfiguration("provided", "runtime(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("provided", "master(compile)")
           }
         }
@@ -80,12 +80,12 @@ object ReplaceMavenConfigurationMappings {
           if (isOptional) {
             dd.addDependencyConfiguration("optional", "compile(*)")
             dd.addDependencyConfiguration("optional", "provided(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("optional", "master(compile)")
           } else {
             dd.addDependencyConfiguration("runtime", "compile(*)")
             dd.addDependencyConfiguration("runtime", "runtime(*)")
-            // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+            // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
             dd.addDependencyConfiguration("runtime", "master(compile)")
           }
         }
@@ -97,7 +97,7 @@ object ReplaceMavenConfigurationMappings {
       new PomModuleDescriptorBuilder.ConfMapper {
         def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
           dd.addDependencyConfiguration("test", "runtime(*)")
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+          // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("test", "master(compile)")
         }
       }
@@ -107,7 +107,7 @@ object ReplaceMavenConfigurationMappings {
       "system",
       new PomModuleDescriptorBuilder.ConfMapper {
         def addMappingConfs(dd: DefaultDependencyDescriptor, isOptional: Boolean): Unit = {
-          // FIX - Here we take a mroe conservative approach of depending on the compile configuration if master isn't there.
+          // FIX - Here we take a more conservative approach of depending on the compile configuration if master isn't there.
           dd.addDependencyConfiguration("system", "master(compile)")
         }
       }
