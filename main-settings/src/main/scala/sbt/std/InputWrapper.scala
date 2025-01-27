@@ -118,7 +118,7 @@ object InputWrapper:
     //     untyped trees under typed trees, as the type checker doesn't descend if `tree.tpe == null`.
     //
     //     #1031 The previous attempt to fix this just set the type on `tree`, which worked in cases when the
-    //     call to `.value` was inside a the task macro and eliminated before the end of the typer phase.
+    //     call to `.value` was inside a task macro and eliminated before the end of the typer phase.
     //     But, if a "naked" call to `.value` left the typer, the superaccessors phase would freak out when
     //     if hit the untyped trees, before we could get to refchecks and the desired @compileTimeOnly warning.
     val typedTree = c.typecheck(tree)

@@ -5,7 +5,7 @@
 // DO NOT EDIT MANUALLY
 package sbt.librarymanagement
 /**
- * An instance of maven CACHE directory.  You cannot treat a cache directory the same as a a remote repository because
+ * An instance of maven CACHE directory.  You cannot treat a cache directory the same as a remote repository because
  * the metadata is different (see Aether ML discussion).
  */
 final class MavenCache private (
