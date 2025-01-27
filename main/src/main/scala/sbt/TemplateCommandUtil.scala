@@ -140,7 +140,8 @@ private[sbt] object TemplateCommandUtil {
   private def getInterfaceClass(name: String, loader: ClassLoader) =
     Class.forName(name, true, loader)
 
-  // Cache files under ~/.sbt/0.13/templates/org_name_version
+  // sbt_version is typically 0.13 or 1.0
+  // Cache files under ~/.sbt/sbt_version/templates/org_name_version
   private def classpathForInfo(
       info: TemplateResolverInfo,
       ivyConf: IvyConfiguration,
