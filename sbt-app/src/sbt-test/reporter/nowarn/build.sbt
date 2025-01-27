@@ -23,6 +23,6 @@ def check(expectation: Boolean) = Def.task[Unit] {
   else if (!expectation && contains)
     sys.error(s"compiler output still contains warning")
   else {
-    IO.write(lastLog, "") // clear the backing log for for 'last'.
+    IO.write(lastLog, "") // clear the backing log for 'last'.
   }
 }
