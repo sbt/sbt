@@ -17,7 +17,7 @@
 
 ## test + with command or alias
 > clean
-## for command cross building you do need crossScalaVerions on root
+## for command cross building you do need crossScalaVersions on root
 > set root/crossScalaVersions := Seq("2.12.20", "2.13.12")
 > + build
 $ exists target/out/jvm/scala-2.12.20/foo
