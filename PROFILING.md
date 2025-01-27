@@ -75,7 +75,7 @@ See https://gist.github.com/eed3si9n/82d43acc95a002876d357bd8ad5f40d5
 ### running sbt with standby
 
 One of the tricky things you come across while profiling is figuring out the process ID,
-while wnating to profile the beginning of the application.
+while wanting to profile the beginning of the application.
 
 For this purpose, we've added `sbt.launcher.standby` JVM flag.
 In the next version of sbt, you should be able to run:
