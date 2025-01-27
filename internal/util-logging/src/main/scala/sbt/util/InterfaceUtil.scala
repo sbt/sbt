@@ -149,7 +149,7 @@ object InterfaceUtil {
       sev: Severity,
       rendered: Option[String],
       diagnosticCode: Option[DiagnosticCode],
-      diagnosticRelatedInforamation: List[DiagnosticRelatedInformation]
+      diagnosticRelatedInformation: List[DiagnosticRelatedInformation]
   ): Problem =
     problem(
       cat,
@@ -158,7 +158,7 @@ object InterfaceUtil {
       sev,
       rendered,
       diagnosticCode,
-      diagnosticRelatedInforamation,
+      diagnosticRelatedInformation,
       List.empty[Action],
     )
 
