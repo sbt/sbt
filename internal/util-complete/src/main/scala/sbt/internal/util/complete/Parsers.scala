@@ -274,7 +274,7 @@ trait Parsers {
    * @param close
    *   the closing character, e.g. '}'
    * @return
-   *   a parser for the brace encloosed string.
+   *   a parser for the brace enclosed string.
    */
   private[sbt] def braces(open: Char, close: Char): Parser[String] = {
     val notDelim = charClass(c => c != open && c != close).*.string
