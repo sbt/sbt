@@ -2239,7 +2239,7 @@ object Defaults extends BuildCommon {
     val store = analysisStore(compileAnalysisFile)
     val contents = store.unsafeGet()
     if (exportP) {
-      // this stores the eary analysis (again) in case the subproject contains a macro
+      // this stores the early analysis (again) in case the subproject contains a macro
       setup.earlyAnalysisStore.toOption map { earlyStore =>
         earlyStore.set(contents)
       }
