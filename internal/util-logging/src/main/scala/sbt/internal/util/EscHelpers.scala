@@ -193,7 +193,7 @@ object EscHelpers {
    * Removes the ansi escape sequences from a string and makes a best attempt at calculating any
    * ansi moves by hand. For example, if the string contains a backspace character followed by a
    * character, the output string would replace the character preceding the backspaces with the
-   * character proceding it. This is in contrast to `strip` which just removes all ansi codes
+   * character preceding it. This is in contrast to `strip` which just removes all ansi codes
    * entirely.
    *
    * @param s
