@@ -79,7 +79,7 @@ class ParserWithExamplesTest extends UnitSpec {
   class parserWithAllExamples extends ParserExample(removeInvalidExamples = false)
 
   case class ParserExample(
-      examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
+      examples: Iterable[String] = Set("blue", "yellow", "green_", "block", "red"),
       maxNumberOfExamples: Int = 25,
       removeInvalidExamples: Boolean
   ) {
