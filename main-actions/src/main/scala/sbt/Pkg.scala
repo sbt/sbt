@@ -40,8 +40,6 @@ import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef 
 object Pkg:
   def JarManifest(m: Manifest) = PackageOption.JarManifest(m)
   def MainClass(mainClassName: String) = PackageOption.MainClass(mainClassName)
-  def MainfestAttributes(attributes: (Attributes.Name, String)*) =
-    PackageOption.ManifestAttributes(attributes*)
   def ManifestAttributes(attributes: (String, String)*) = {
     val converted = for ((name, value) <- attributes) yield (new Attributes.Name(name), value)
     PackageOption.ManifestAttributes(converted*)
