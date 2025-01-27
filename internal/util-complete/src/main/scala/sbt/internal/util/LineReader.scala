@@ -102,7 +102,7 @@ object LineReader {
       parser: Parser[?],
       terminal: Terminal,
   ): LineReader = {
-    // We may want to consider insourcing LineReader.java from jline. We don't otherwise
+    // We may want to consider in-sourcing LineReader.java from jline. We don't otherwise
     // directly need jline3 for sbt.
     new LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
