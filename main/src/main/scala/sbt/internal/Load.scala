@@ -1462,7 +1462,7 @@ private[sbt] object Load {
 
   /**
    * Creates a classloader with a hierarchical structure, where the parent
-   * class loads the dependency classpath and the return classloader class loads
+   * class loads the dependency classpath and the returned classloader class loads
    * the definition classpath.
    *
    * @param config The configuration for the whole sbt build.
