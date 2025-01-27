@@ -2,7 +2,7 @@
 
 #
 # This script will upload an sbt distribution (tar/tgz/msi and
-# checksump files) to IBM Cloud Object Storage with the correct
+# checksum files) to IBM Cloud Object Storage with the correct
 # permissions, and prepare the shortened URLs on the "piccolo.link"
 # Polr server.
 #
