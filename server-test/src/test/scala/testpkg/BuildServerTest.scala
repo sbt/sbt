@@ -641,7 +641,7 @@ class BuildServerTest extends AbstractServerTest {
       "build/publishDiagnostics",
       "main.scala.html",
       """"severity":1""",
-      "not found: value tilte"
+      "not found: value title_"
     )(message = "should report diagnostic in Twirl file")
     IO.write(
       testFile,
