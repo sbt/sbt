@@ -69,7 +69,7 @@ See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 - Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
 - Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
 - Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
-- Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
+- Revamped documentation for [Scopes](https://www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](https://www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
 - Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
 - Adds new offline mode to the Ivy-based library management. [lm#92][lm92] by [@jvican][@jvican]
 - A number of features related to dependency locking. See below.
