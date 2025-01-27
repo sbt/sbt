@@ -116,7 +116,7 @@ trait Cont:
 
     /**
      * Implementation of a macro that provides a direct syntax for applicative functors and monads.
-     * It is intended to bcke used in conjunction with another macro that conditions the inputs.
+     * It is intended to be used in conjunction with another macro that conditions the inputs.
      *
      * This method processes the Term `t` to find inputs of the form `wrap[A]( input )` This form is
      * typically constructed by another macro that pretends to be able to get a value of type `A`
