@@ -502,7 +502,7 @@ class NetworkClient(
   }
 
   /** Called on the response for a returning message. */
-  def onReturningReponse(msg: JsonRpcResponseMessage): Unit = {
+  def onReturningResponse(msg: JsonRpcResponseMessage): Unit = {
     def printResponse(): Unit = {
       msg.result match {
         case Some(result) =>
