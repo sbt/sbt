@@ -96,7 +96,7 @@ See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 
 A major improvement brought into Zinc 1.0 by Grzegorz Kossakowski (commissioned by Lightbend) is class-based name hashing, which will speed up the incremental compilation of Scala in large projects.
 
-Zinc 1.0's name hashing tracks your code dependendencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
+Zinc 1.0's name hashing tracks your code dependencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
 
 ```
 ScalaTest   AndHaveWord class:          Before 49s, After 4s (12x)
