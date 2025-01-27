@@ -132,7 +132,7 @@ download_url () {
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
     else
-      echoerr "failed to download $url: Neither curl nor wget is avaialble"
+      echoerr "failed to download $url: Neither curl nor wget is available"
       exit 2
     fi
   } && [[ -f "$jar" ]]
