@@ -195,7 +195,7 @@ object BasicCommands {
     val multiCmdParser: Parser[String] = token(';') ~> OptSpace ~> cmdParser
 
     /*
-     * We accept empty commands at the end of the the list as an implementation detail that allows
+     * We accept empty commands at the end of the list as an implementation detail that allows
      * for a trailing semi-colon without an extra parser since the cmdParser accepts an empty string
      * and the multi parser is `token(';') ~ cmdParser`. We do not want to accept empty commands
      * that occur in the middle of the sequence so if  we find one, we return a failed parser. If

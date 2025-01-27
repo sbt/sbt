@@ -56,7 +56,7 @@ object Build {
       Test / checkTriggers := {
         val testTriggers = triggers((Test / test / transitiveDynamicInputs).value).toSet
         // This validates that since the "test.txt" trigger is only added to the Test / test task,
-        // that the Test / compile does not pick it up. Both of them pick up the the triggers that
+        // that the Test / compile does not pick it up. Both of them pick up the triggers that
         // are found in the test above for the compile configuration because of the transitive
         // classpath dependency that is added in Defaults.internalDependencies.
         val compileTriggers = triggers((Test / compile / transitiveDynamicInputs).value).toSet
