@@ -57,7 +57,7 @@ object DOT:
         .map(m => Edge(m.id, m.id.copy(version = m.evictedByVersion.get)))
 
     // remove edges to new evicted-by module which is now replaced by a chain
-    // dependend -> [evicted] -> dependee
+    // dependent -> [evicted] -> dependee
     val evictionTargetEdges =
       graph.edges.collect {
         case edge @ (from, evicted) if targetWasEvicted(edge) =>

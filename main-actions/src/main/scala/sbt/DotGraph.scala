@@ -41,10 +41,10 @@ object DotGraph {
 
     val mappings =
       for {
-        (dependsOn, dependants) <- mappedGraph.toSeq
-        dependant <- dependants
-        if dependant != dependsOn && !dependsOn.isEmpty && !dependant.isEmpty
-      } yield "\"" + dependant + "\" -> \"" + dependsOn + "\""
+        (dependsOn, dependents) <- mappedGraph.toSeq
+        dependent <- dependents
+        if dependent != dependsOn && !dependsOn.isEmpty && !dependent.isEmpty
+      } yield "\"" + dependent + "\" -> \"" + dependsOn + "\""
 
     val lines =
       ("digraph " + graphName + " {") +:
