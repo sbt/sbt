@@ -51,7 +51,7 @@ object PomExtraDependencyAttributes {
    * Mutates the to collection with the extra dependency attributes from the incoming pom properties list.
    *
    * @param from The properties directly off a maven POM file
-   * @param to  The aaether properties where we can write whatever we want.
+   * @param to  The aether properties where we can write whatever we want.
    *
    * TODO - maybe we can just parse this directly here.  Note the `readFromAether` method uses
    *        whatever we set here.
