@@ -336,7 +336,7 @@ val root = (project in file(".")).
       else Seq[(File, String)](base.getParentFile / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
     },
 
-    // Misccelaneous publishing stuff...
+    // Miscellaneous publishing stuff...
     projectID in Debian := {
       val m = moduleID.value
       m.copy(revision = (version in Debian).value)
