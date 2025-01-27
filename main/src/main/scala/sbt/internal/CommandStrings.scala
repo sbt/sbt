@@ -382,7 +382,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
 
   <scala-version> may be an actual Scala version such as 3.1.3, or a Semantic Version selector
   pattern such as 2.13.x. Only subprojects that are listed to match the version pattern
-  have their Scala version switched.  If ! is supplied, then all projects projects have
+  have their Scala version switched.  If ! is supplied, then all projects have
   their Scala version switched.
 
   If -v is supplied, verbose logging of the Scala version switching is done.
