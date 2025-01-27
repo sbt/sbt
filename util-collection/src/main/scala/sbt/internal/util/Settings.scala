@@ -534,10 +534,10 @@ trait Init:
     val defs = addLocal(rawDefs)(using scopeLocal)
 
     // group derived settings by the key they define
-    val derivsByDef = new mutable.HashMap[AttributeKey[?], Deriveds]
+    val derivedsByDef = new mutable.HashMap[AttributeKey[?], Deriveds]
     for (s <- derived) {
       val key = s.setting.key.key
-      derivsByDef.getOrElseUpdate(key, new Deriveds(key, new mutable.ListBuffer)).settings += s
+      derivedsByDef.getOrElseUpdate(key, new Deriveds(key, new mutable.ListBuffer)).settings += s
     }
 
     // index derived settings by triggering key.  This maps a key to the list of settings potentially derived from it.
