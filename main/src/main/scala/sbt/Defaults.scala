@@ -3717,7 +3717,7 @@ object Classpaths {
       val pluginClasspath = unit.plugins.pluginData.dependencyClasspath.toVector
       // Exclude directories: an approximation to whether they've been published
       // Note: it might be a redundant legacy from sbt 0.13/1.x times where the classpath contained directories
-      // but it's left jsut in case
+      // but it's left just in case
       val pluginJars = pluginClasspath.filter: x =>
         !Files.isDirectory(converter.toPath(x.data))
       val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_.get(moduleIDStr).map: str =>
