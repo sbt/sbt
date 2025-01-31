@@ -3,10 +3,10 @@ import scala.collection.mutable.ListBuffer
 ThisBuild / scalaVersion := "2.9.2"
 ThisBuild / version := "0.1-SNAPSHOT"
 
-lazy val justATransiviteDependencyEndpointProject = project
+lazy val justATransitiveDependencyEndpointProject = project
 
 lazy val justATransitiveDependencyProject = project
-  .dependsOn(justATransiviteDependencyEndpointProject)
+  .dependsOn(justATransitiveDependencyEndpointProject)
 
 lazy val justADependencyProject = project
 
