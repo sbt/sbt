@@ -56,7 +56,7 @@ class ProjectResolver(name: String, map: Map[ModuleRevisionId, ModuleDescriptor]
     r
   }
 
-  // this resolver nevers locates artifacts, only resolves dependencies
+  // this resolver never locates artifacts, only resolves dependencies
   def exists(artifact: IArtifact) = false
   def locate(artifact: IArtifact) = null
   def download(artifacts: Array[IArtifact], options: DownloadOptions): DownloadReport = {
