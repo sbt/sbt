@@ -6,7 +6,7 @@ Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
 aa := A()
 
-// This tests that aa is opt'ed out from caching
+// This tests that aa is opted out from caching
 map1 := (Def.cachedTask {
   aa.value
   val output1 = StringVirtualFile1("target/out/b1.txt", "foo")
