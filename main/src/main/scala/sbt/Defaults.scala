@@ -3498,8 +3498,8 @@ object Classpaths {
     }
   )
 
-  def warnResolversConflict(ress: Seq[Resolver], log: Logger): Unit = {
-    val resset = ress.toSet
+  def warnResolversConflict(resolverList: Seq[Resolver], log: Logger): Unit = {
+    val resset = resolverList.toSet
     for ((name, r) <- resset groupBy (_.name) if r.size > 1) {
       log.warn(
         "Multiple resolvers having different access mechanism configured with same name '" + name + "'. To avoid conflict, Remove duplicate project resolvers (`resolvers`) or rename publishing resolver (`publishTo`)."
@@ -3507,8 +3507,8 @@ object Classpaths {
     }
   }
 
-  private[sbt] def errorInsecureProtocol(ress: Seq[Resolver], log: Logger): Unit = {
-    val bad = !ress.forall(!_.validateProtocol(log))
+  private[sbt] def errorInsecureProtocol(resolverList: Seq[Resolver], log: Logger): Unit = {
+    val bad = !resolverList.forall(!_.validateProtocol(log))
     if (bad) {
       sys.error("insecure protocol is unsupported")
     }
