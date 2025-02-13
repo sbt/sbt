@@ -146,6 +146,16 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     override val isAutoCancel = false
   }
 
+  private[sbt] def createWorkingDirectory: File = {
+    val id = nextId.getAndIncrement()
+    createWorkingDirectory(id)
+  }
+  private[sbt] def createWorkingDirectory(id: Long): File = {
+    val workingDir = serviceTempDir / s"job-$id"
+    IO.createDirectory(workingDir)
+    workingDir
+  }
+
   def doRunInBackground(
       spawningTask: ScopedKey[?],
       state: State,
@@ -155,8 +165,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     val extracted = Project.extract(state)
     val logger =
       LogManager.constructBackgroundLog(extracted.structure.data, state, context)(spawningTask)
-    val workingDir = serviceTempDir / s"job-$id"
-    IO.createDirectory(workingDir)
+    val workingDir = createWorkingDirectory(id)
     val job =
       try {
         new ThreadJobHandle(id, spawningTask, logger, workingDir, start(logger, workingDir))

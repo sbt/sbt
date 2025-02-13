@@ -728,7 +728,7 @@ lazy val protocolProj = (project in file("protocol"))
 // General command support and core commands not specific to a build system
 lazy val commandProj = (project in file("main-command"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(protocolProj, completeProj, utilLogging, utilCache)
+  .dependsOn(protocolProj, completeProj, utilLogging, runProj, utilCache)
   .settings(
     testedBaseSettings,
     name := "Command",

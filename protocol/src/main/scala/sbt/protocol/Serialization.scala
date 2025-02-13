@@ -27,6 +27,7 @@ object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
   val readSystemIn = "sbt/readSystemIn"
   val cancelReadSystemIn = "sbt/cancelReadSystemIn"
+  val general = "sbt/general"
   val systemIn = "sbt/systemIn"
   val systemOut = "sbt/systemOut"
   val systemErr = "sbt/systemErr"

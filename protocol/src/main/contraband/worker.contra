@@ -1,0 +1,31 @@
+package sbt.internal.worker
+@target(Scala)
+@codecPackage("sbt.internal.worker.codec")
+@fullCodec("JsonProtocol")
+
+type FilePath {
+  path: java.net.URI!
+  digest: String!
+}
+
+type RunInfo {
+  jvm: Boolean!
+  args: [String],
+  classpath: [sbt.internal.worker.FilePath],
+  mainClass: String
+  connectInput: Boolean!
+  javaHome: java.net.URI
+  outputStrategy: String
+  workingDirectory: java.net.URI
+  jvmOptions: [String]
+  environmentVariables: StringStringMap!
+  inputs: [sbt.internal.worker.FilePath] @since("0.1.0"),
+  outputs: [sbt.internal.worker.FilePath] @since("0.1.0"),
+  cmd: String @since("0.1.0"),
+}
+
+## Parameter for the sbt/general command, which is a generic command to
+## run a program.
+type GeneralParams {
+  runInfo: sbt.internal.worker.RunInfo
+}

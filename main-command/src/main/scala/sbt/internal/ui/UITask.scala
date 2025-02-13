@@ -28,7 +28,7 @@ private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] def reader: UITask.Reader
   private final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
-    case Right(cmd) => channel.onCommand(cmd)
+    case Right(cmd) => channel.onCommandLine(cmd)
   }
   private val isStopped = new AtomicBoolean(false)
   override def run(): Unit = {
@@ -56,6 +56,20 @@ private[sbt] object UITask {
   object Reader {
     // Avoid filling the stack trace since it isn't helpful here
     object interrupted extends InterruptedException
+
+    /**
+     * Return Left for fast track commands, otherwise return Right(...).
+     */
+    def splitCommand(cmd: String): Either[String, String] =
+      // We need to put the empty string on the fast track queue so that we can
+      // reprompt the user if another command is running on the server.
+      if (cmd.isEmpty()) Left("")
+      else
+        cmd match {
+          case Shutdown | TerminateAction | Cancel => Left(cmd)
+          case cmd                                 => Right(cmd)
+        }
+
     def terminalReader(parser: Parser[?])(
         terminal: Terminal,
         state: State
@@ -77,16 +91,9 @@ private[sbt] object UITask {
                 this.synchronized(this.wait())
                 Right("") // should be unreachable
               // JLine returns null on ctrl+d when there is no other input. This interprets
-              // ctrl+d with no input as an exit
-              case None => Left(TerminateAction)
-              case Some(s: String) =>
-                s.trim() match {
-                  // We need to put the empty string on the fast track queue so that we can
-                  // reprompt the user if another command is running on the server.
-                  case ""                                                => Left("")
-                  case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
-                  case cmd                                               => Right(cmd)
-                }
+              // ctrl+d with no imput as an exit
+              case None            => Left(TerminateAction)
+              case Some(s: String) => splitCommand(s.trim())
             }
           }
           terminal.setPrompt(Prompt.Pending)

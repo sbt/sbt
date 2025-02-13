@@ -23,10 +23,13 @@ import sbt.StandardMain.exchange
 import sbt.internal.bsp.*
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
+import sbt.internal.worker.{ FilePath, GeneralParams, RunInfo }
 import sbt.internal.util.{ Attributed, ErrorHandling }
 import sbt.internal.util.complete.{ Parser, Parsers }
+import sbt.io.IO
 import sbt.librarymanagement.CrossVersion.binaryScalaVersion
 import sbt.librarymanagement.{ Configuration, ScalaArtifacts }
+import sbt.protocol.Serialization
 import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
@@ -264,7 +267,9 @@ object BuildServerProtocol {
       val result = ScalaMainClassesResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
     }.evaluated,
-    bspScalaMainClasses / aggregate := false
+    bspScalaMainClasses / aggregate := false,
+    bspGeneral0 := bspGeneral0Task.evaluated,
+    bspGeneral0 / aggregate := false,
   )
 
   // This will be scoped to Compile, Test, IntegrationTest etc
@@ -357,7 +362,8 @@ object BuildServerProtocol {
       } else {
         new BuildServerForwarder(meta, logger, underlying)
       }
-    }
+    },
+    bspGeneralRunInfo := bspGeneralRunInfoTask.evaluated,
   )
   private[sbt] object Method {
     final val Initialize = "build/initialize"
@@ -875,13 +881,68 @@ object BuildServerProtocol {
   private val jsonParser: Parser[Try[JValue]] = Parsers.any.*.map(_.mkString)
     .map(JsonParser.parseFromString)
 
+  private def bspGeneral0Task: Def.Initialize[InputTask[GeneralParams]] = Def.inputTaskDyn {
+    val tokens = spaceDelimited().parsed
+    val state = Keys.state.value
+    val p = Act.aggregatedKeyParser(state)
+    if (tokens.isEmpty) {
+      sys.error("usage: bspGeneral0 run")
+    }
+    val scopedKey = Parser.parse(tokens.head, p) match {
+      case Right(x :: Nil) => x
+      case Right(xs)       => sys.error("too many keys")
+      case Left(err)       => sys.error(err)
+    }
+    bspGeneralRunInfo.rescope(scopedKey.scope).toTask(" " + tokens.tail.mkString(" "))
+  }
+
+  private def bspGeneralRunInfoTask: Def.Initialize[InputTask[GeneralParams]] = Def.inputTask {
+    val state = Keys.state.value
+    val args = spaceDelimited().parsed
+    val mainClass = (Keys.run / Keys.mainClass).value
+    val service = bgJobService.value
+    val fo = (Keys.run / Keys.forkOptions).value
+    val workingDir = service.createWorkingDirectory
+    val conv = Keys.fileConverter.value
+    val cp = service.copyClasspath(
+      exportedProductJars.value,
+      fullClasspathAsJars.value,
+      workingDir,
+      hashContents = true,
+      conv,
+    )
+    val cpPaths = cp.toVector.map: x =>
+      FilePath(conv.toPath(x.data).toUri(), x.data.contentHashStr)
+    val strategy = fo.outputStrategy.map(_.getClass().getSimpleName().filter(_ != '$'))
+    // sbtn doesn't set java.home, so we need to do the fallback here
+    val javaHome =
+      fo.javaHome.map(IO.toURI).orElse(sys.props.get("java.home").map(x => IO.toURI(new File(x))))
+    val info = RunInfo(
+      jvm = true,
+      args = args.toVector,
+      classpath = cpPaths,
+      mainClass = mainClass,
+      connectInput = fo.connectInput,
+      javaHome = javaHome,
+      outputStrategy = strategy,
+      workingDirectory = fo.workingDirectory.map(IO.toURI),
+      jvmOptions = fo.runJVMOptions,
+      environmentVariables = fo.envVars.toMap,
+    )
+    val result = GeneralParams(
+      runInfo = info
+    )
+    import sbt.internal.worker.codec.JsonProtocol.*
+    state.notifyEvent(Serialization.general, result)
+    result
+  }
+
   private def bspRunTask: Def.Initialize[InputTask[Unit]] =
     Def.inputTaskDyn {
       val json = jsonParser.parsed
       val runParams = json.flatMap(Converter.fromJson[RunParams]).get
       val defaultClass = Keys.mainClass.value
       val defaultJvmOptions = Keys.javaOptions.value
-
       val mainClass = runParams.dataKind match {
         case Some("scala-main-class") =>
           val data = runParams.data.getOrElse(JNull)

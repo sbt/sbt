@@ -27,8 +27,8 @@ import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
 import sbt.internal.remotecache.RemoteCacheArtifact
 import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BspCompileTask, BuildServerReporter, ServerHandler }
-import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
-import sbt.internal.util.StringAttributeKey
+import sbt.internal.util.{ AttributeKey, ProgressState, StringAttributeKey, SourcePosition }
+import sbt.internal.worker.GeneralParams
 import sbt.io.*
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec.*
@@ -483,6 +483,8 @@ object Keys {
 
   @cacheLevel(include = Array.empty)
   val bspReporter = taskKey[BuildServerReporter]("").withRank(DTask)
+  val bspGeneral0 = inputKey[GeneralParams]("Implementation of sbt/general command").withRank(DTask)
+  val bspGeneralRunInfo = inputKey[GeneralParams]("Implementation of general run info").withRank(DTask)
 
   val csrCacheDirectory = settingKey[File]("Coursier cache directory. Uses -Dsbt.coursier.home or Coursier's default.").withRank(CSetting)
   val csrMavenProfiles = settingKey[Set[String]]("").withRank(CSetting)

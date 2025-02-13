@@ -1,8 +1,9 @@
+scalaVersion := "3.6.3"
+
 TaskKey[Unit]("willSucceed") := println("success")
 
 TaskKey[Unit]("willFail") := { throw new Exception("failed") }
 
-scalaVersion := "2.12.20"
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+libraryDependencies += "org.scalameta" %% "munit" % "1.0.4" % Test
 
 TaskKey[Unit]("fooBar") := { () }

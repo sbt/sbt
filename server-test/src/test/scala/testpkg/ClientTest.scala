@@ -59,7 +59,7 @@ class ClientTest extends AbstractServerTest {
       case r => r
     }
   }
-  private def client(args: String*): Int = {
+  private def client(args: String*): Int =
     background(
       NetworkClient.client(
         testPath.toFile,
@@ -70,6 +70,19 @@ class ClientTest extends AbstractServerTest {
         false
       )
     )
+  private def clientWithStdoutLines(args: String*): (Int, Seq[String]) = {
+    val out = new CachingPrintStream
+    val exitCode = background(
+      NetworkClient.client(
+        testPath.toFile,
+        args.toArray,
+        NullInputStream,
+        out,
+        NullPrintStream,
+        false
+      )
+    )
+    (exitCode, out.lines)
   }
   // This ensures that the completion command will send a tab that triggers
   // sbt to call definedTestNames or discoveredMainClasses if there hasn't
@@ -108,6 +121,11 @@ class ClientTest extends AbstractServerTest {
   }
   test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
+  }
+  test("run") {
+    val (exitCode, lines) = clientWithStdoutLines("run")
+    assert(exitCode == 0)
+    assert(lines.toList.exists(_.endsWith("Hello, World!")))
   }
   test("compi completions") {
     val expected = Vector(

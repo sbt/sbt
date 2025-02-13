@@ -126,7 +126,7 @@ final class NetworkChannel(
       self.jsonRpcNotify(method, params)
 
     def appendExec(commandLine: String, execId: Option[String]): Boolean =
-      self.append(Exec(commandLine, execId, Some(CommandSource(name))))
+      self.appendExec(commandLine, execId)
 
     def appendExec(exec: Exec): Boolean = self.append(exec)
 
@@ -142,6 +142,20 @@ final class NetworkChannel(
     private[sbt] def onCancellationRequest(execId: Option[String], crp: CancelRequestParams): Unit =
       self.onCancellationRequest(execId, crp)
   }
+
+  // Take over commandline for network channel
+  private val networkCommand: PartialFunction[String, String] = {
+    case cmd if cmd.split(" ").head.split("/").last == "run" =>
+      s"bspGeneral0 $cmd"
+  }
+  override protected def appendExec(commandLine: String, execId: Option[String]): Boolean =
+    if (networkCommand.isDefinedAt(commandLine))
+      super.appendExec(networkCommand(commandLine), execId)
+    else super.appendExec(commandLine, execId)
+  override private[sbt] def onCommandLine(cmd: String): Boolean =
+    if (networkCommand.isDefinedAt(cmd))
+      appendExec(networkCommand(cmd), None)
+    else super.onCommandLine(cmd)
 
   protected def authenticate(token: String): Boolean = instance.authenticate(token)
 
@@ -373,40 +387,6 @@ final class NetworkChannel(
   def publishBytes(event: Array[Byte], delimit: Boolean): Unit =
     try pendingWrites.put(event -> delimit)
     catch { case _: InterruptedException => }
-
-  def onCommand(command: CommandMessage): Unit = command match {
-    case x: InitCommand  => onInitCommand(x)
-    case x: ExecCommand  => onExecCommand(x)
-    case x: SettingQuery => onSettingQuery(None, x)
-  }
-
-  private def onInitCommand(cmd: InitCommand): Unit = {
-    if (auth(ServerAuthentication.Token)) {
-      cmd.token match {
-        case Some(x) =>
-          authenticate(x) match {
-            case true =>
-              initialized = true
-              notifyEvent(ChannelAcceptedEvent(name))
-            case _ => sys.error("invalid token")
-          }
-        case None => sys.error("init command but without token.")
-      }
-    } else {
-      initialized = true
-    }
-  }
-
-  private def onExecCommand(cmd: ExecCommand) = {
-    if (initialized) {
-      append(
-        Exec(cmd.commandLine, cmd.execId orElse Some(Exec.newExecId), Some(CommandSource(name)))
-      )
-      ()
-    } else {
-      log.warn(s"ignoring command $cmd before initialization")
-    }
-  }
 
   protected def onSettingQuery(execId: Option[String], req: SettingQuery) = {
     if (initialized) {

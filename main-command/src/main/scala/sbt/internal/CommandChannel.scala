@@ -63,6 +63,8 @@ abstract class CommandChannel {
       }
     }
   }
+  protected def appendExec(commandLine: String, execId: Option[String]): Boolean =
+    append(Exec(commandLine, execId.orElse(Some(Exec.newExecId)), Some(CommandSource(name))))
   def poll: Option[Exec] = Option(commandQueue.poll)
 
   def prompt(e: ConsolePromptEvent): Unit = userThread.onConsolePromptEvent(e)
@@ -81,20 +83,20 @@ abstract class CommandChannel {
   private[sbt] final def logLevel: Level.Value = level.get
   private def setLevel(value: Level.Value, cmd: String): Boolean = {
     level.set(value)
-    append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+    appendExec(cmd, None)
   }
-  private[sbt] def onCommand: String => Boolean = {
-    case "error" => setLevel(Level.Error, "error")
-    case "debug" => setLevel(Level.Debug, "debug")
-    case "info"  => setLevel(Level.Info, "info")
-    case "warn"  => setLevel(Level.Warn, "warn")
-    case cmd =>
-      if (cmd.nonEmpty) append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
-      else false
-  }
-  private[sbt] def onFastTrackTask: String => Boolean = { (s: String) =>
+  private[sbt] def onCommandLine(cmd: String): Boolean =
+    cmd match
+      case "error" => setLevel(Level.Error, "error")
+      case "debug" => setLevel(Level.Debug, "debug")
+      case "info"  => setLevel(Level.Info, "info")
+      case "warn"  => setLevel(Level.Warn, "warn")
+      case cmd =>
+        if cmd.nonEmpty then appendExec(cmd, None)
+        else false
+  private[sbt] def onFastTrackTask(cmd: String): Boolean = {
     fastTrack.synchronized(fastTrack.forEach { q =>
-      q.add(new FastTrackTask(this, s))
+      q.add(new FastTrackTask(this, cmd))
       ()
     })
     true
