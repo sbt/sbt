@@ -41,8 +41,8 @@ jobs:
             distribution: adopt
             jobtype: 7
           - os: macos-latest
-            java: 17
-            distribution: temurin
+            java: 8
+            distribution: zulu
             jobtype: 8
           - os: windows-latest
             java: 8
