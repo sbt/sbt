@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -284,10 +285,11 @@ public class BootServerSocket implements AutoCloseable {
   public BootServerSocket(final AppConfiguration configuration)
       throws ServerAlreadyBootingException, IOException {
     final Path base = configuration.baseDirectory().toPath().toRealPath();
-    final Path target = base.resolve("project").resolve("target");
     if (!isWindows) {
+      final String actualSocketLocation = socketLocation(base);
+      final Path target = Paths.get(actualSocketLocation).getParent();
       if (!Files.isDirectory(target)) Files.createDirectories(target);
-      socketFile = Paths.get(socketLocation(base));
+      socketFile = Paths.get(actualSocketLocation);
     } else {
       socketFile = null;
     }
@@ -301,13 +303,20 @@ public class BootServerSocket implements AutoCloseable {
     }
   }
 
-  public static String socketLocation(final Path base) throws UnsupportedEncodingException {
+  public static String socketLocation(final Path base)
+      throws UnsupportedEncodingException, IOException {
     final Path target = base.resolve("project").resolve("target");
+    long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
     if (isWindows) {
-      long hash = LongHashFunction.farmNa().hashBytes(target.toString().getBytes("UTF-8"));
       return "sbt-load" + hash;
     } else {
-      return base.relativize(target.resolve("sbt-load.sock")).toString();
+      final String alternativeSocketLocation =
+          System.getenv().getOrDefault("XDG_RUNTIME_DIR", System.getProperty("java.io.tmpdir"));
+      final Path alternativeSocketLocationRoot =
+          Paths.get(alternativeSocketLocation).resolve(".sbt");
+      final Path locationForSocket = alternativeSocketLocationRoot.resolve("sbt-socket" + hash);
+      final Path pathForSocket = locationForSocket.resolve("sbt-load.sock");
+      return pathForSocket.toString();
     }
   }
 

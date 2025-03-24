@@ -2,9 +2,12 @@ import sbt.internal.inc.classpath.ClasspathUtilities
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 lazy val root = (project in file(".")).
   settings(
-    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    localCache,
     libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" % Test from "https://jsoup.org/packages/jsoup-1.9.1.jar",
     ivyLoggingLevel := UpdateLogging.Full,
     TaskKey[Unit]("checkInTest") := checkClasspath(Test).value,
@@ -12,9 +15,11 @@ lazy val root = (project in file(".")).
   )
 
 def checkClasspath(conf: Configuration) =
-  fullClasspath in conf map { cp =>
+  import sbt.TupleSyntax.*
+  (conf / fullClasspath, fileConverter.toTaskable) mapN { (cp, c) =>
+    given FileConverter = c
     try {
-      val loader = ClasspathUtilities.toLoader(cp.files)
+      val loader = ClasspathUtilities.toLoader(cp.files.map(_.toFile()))
       Class.forName("org.jsoup.Jsoup", false, loader)
       ()
     }

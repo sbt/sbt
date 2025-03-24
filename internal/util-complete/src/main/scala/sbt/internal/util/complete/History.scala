@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -46,7 +47,7 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
     lines.toList
       .drop(scala.math.max(0, lines.size - historySize))
       .zipWithIndex
-      .map { case (line, number) => "   " + number + "  " + line }
+      .map { (line, number) => "   " + number + "  " + line }
       .takeRight(show max 1)
 }
 
@@ -56,8 +57,5 @@ object History {
   def apply(lines: Seq[String], path: Option[File]): History =
     new History(lines.toIndexedSeq, path)
 
-  def number(s: String): Option[Int] =
-    try {
-      Some(s.toInt)
-    } catch { case _: NumberFormatException => None }
+  def number(s: String): Option[Int] = s.toIntOption
 }

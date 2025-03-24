@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,7 +10,7 @@ package sbt.internal.util
 package complete
 
 import sbt.io.IO
-import Util.{ AnyOps, nil }
+import Util.*
 
 object HistoryCommands {
   val Start = "!"
@@ -43,7 +44,7 @@ object HistoryCommands {
 
   def helpString =
     "History commands:\n   " + (descriptions
-      .map { case (c, d) => c + "    " + d })
+      .map { (c, d) => c + "    " + d })
       .mkString("\n   ")
 
   def printHelp(): Unit = println(helpString)
@@ -51,7 +52,7 @@ object HistoryCommands {
   def printHistory(history: complete.History, historySize: Int, show: Int): Unit =
     history.list(historySize, show).foreach(println)
 
-  import DefaultParsers._
+  import DefaultParsers.*
 
   val MaxLines = 500
   lazy val num = token(NatBasic, "<integer>")
@@ -61,14 +62,12 @@ object HistoryCommands {
     { printHistory(h, MaxLines, show); nil[String].some }
   }
 
-  lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map {
-    case (contains, str) =>
-      execute(h => if (contains) h !? str else h ! str)
+  lazy val execStr = flag('?') ~ token(any.+.string, "<string>") map { (contains, str) =>
+    execute(h => if (contains) h !? str else h ! str)
   }
 
-  lazy val execInt = flag('-') ~ num map {
-    case (neg, value) =>
-      execute(h => if (neg) h !- value else h ! value)
+  lazy val execInt = flag('-') ~ num map { (neg, value) =>
+    execute(h => if (neg) h !- value else h ! value)
   }
 
   lazy val help = success((h: History) => { printHelp(); nil[String].some })
@@ -78,7 +77,7 @@ object HistoryCommands {
     val lines = h.lines.toArray
     command.foreach(lines(lines.length - 1) = _)
     h.path foreach { h =>
-      IO.writeLines(h, lines)
+      IO.writeLines(h, lines.toSeq)
     }
     command.toList.some
   }

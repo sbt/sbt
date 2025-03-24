@@ -1,31 +1,32 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import org.scalacheck._
+import org.scalacheck.*
 import Gen.listOf
-import Prop._
-import Tags._
+import Prop.*
+import Tags.*
 
 object TagsTest extends Properties("Tags") {
   final case class Size(value: Int)
 
   def tagMap: Gen[TagMap] = for (ts <- listOf(tagAndFrequency)) yield ts.toMap
   def tagAndFrequency: Gen[(Tag, Int)] =
-    for (t <- tag; count <- Arbitrary.arbitrary[Int]) yield (t, count)
+    for (t <- tag; count <- Gen.choose(0, Int.MaxValue)) yield (t, count)
   def tag: Gen[Tag] = for (s <- Gen.alphaStr if !s.isEmpty) yield Tag(s)
   def size: Gen[Size] =
     for (i <- Arbitrary.arbitrary[Int] if i != Int.MinValue) yield Size(math.abs(i))
 
-  implicit def aTagMap = Arbitrary(tagMap)
-  implicit def aTagAndFrequency = Arbitrary(tagAndFrequency)
-  implicit def aTag = Arbitrary(tag)
-  implicit def aSize = Arbitrary(size)
+  given aTagMap: Arbitrary[Map[Tag, Int]] = Arbitrary(tagMap)
+  given aTagAndFrequency: Arbitrary[(Tag, Int)] = Arbitrary(tagAndFrequency)
+  given aTag: Arbitrary[Tag] = Arbitrary(tag)
+  given aSize: Arbitrary[Size] = Arbitrary(size)
 
   property("exclusive allows all groups without the exclusive tag") = forAll {
     (tm: TagMap, tag: Tag) =>
@@ -46,6 +47,6 @@ object TagsTest extends Properties("Tags") {
     excl(etag)(tm)
   }
 
-  private[this] def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
+  private def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
 
 }

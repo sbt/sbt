@@ -1,5 +1,5 @@
 import java.nio.file._
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 val copyTestResources = inputKey[Unit]("Copy the native libraries to the base directory")
 val appendToLibraryPath = taskKey[Unit]("Append the base directory to the java.library.path system property")
@@ -7,13 +7,13 @@ val dropLibraryPath = taskKey[Unit]("Drop the last path from the java.library.pa
 val wrappedRun = taskKey[Unit]("Run with modified java.library.path")
 val wrappedTest = taskKey[Unit]("Test with modified java.library.path")
 
-def wrap(task: InputKey[Unit]): Def.Initialize[Task[Unit]] =
+def wrap[A1](task: InputKey[A1]): Def.Initialize[Task[Unit]] =
   Def.sequential(appendToLibraryPath, task.toTask(""), dropLibraryPath)
 
-ThisBuild / turbo := true
+// ThisBuild / turbo := true
 
 val root = (project in file(".")).settings(
-  scalaVersion := "2.12.12",
+  scalaVersion := "2.12.20",
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-h",
   sourceDirectory.value.toPath.resolve("main/native/include").toString),
   libraryDependencies += "com.lihaoyi" %% "utest" % "0.6.6" % "test",

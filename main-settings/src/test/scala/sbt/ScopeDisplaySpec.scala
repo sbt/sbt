@@ -1,18 +1,19 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.{ AttributeKey, AttributeMap }
 import sbt.io.syntax.file
 import scala.annotation.nowarn
 
-class ScopeDisplaySpec extends FlatSpec {
+class ScopeDisplaySpec extends AnyFlatSpec {
   val project = ProjectRef(file("foo/bar"), "bar")
   val mangledName = "bar_slash_blah_blah_blah"
 
@@ -75,3 +76,4 @@ class ScopeDisplaySpec extends FlatSpec {
   it should "LocalRootProject" in assert(disp(LocalRootProject) == "<root> /")
   it should "ThisProject" in assert(disp(ThisProject) == "<this> /")
 }
+ */

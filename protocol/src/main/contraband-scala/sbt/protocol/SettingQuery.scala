@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class SettingQuery private (
   override def toString: String = {
     "SettingQuery(" + setting + ")"
   }
-  private[this] def copy(setting: String = setting): SettingQuery = {
+  private def copy(setting: String = setting): SettingQuery = {
     new SettingQuery(setting)
   }
   def withSetting(setting: String): SettingQuery = {

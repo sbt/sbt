@@ -1,11 +1,11 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ScalaBuildTargetFormats { self: sjsonnew.BasicJsonProtocol =>
+trait ScalaBuildTargetFormats { self: sbt.internal.bsp.codec.JvmBuildTargetFormats & sjsonnew.BasicJsonProtocol =>
 implicit lazy val ScalaBuildTargetFormat: JsonFormat[sbt.internal.bsp.ScalaBuildTarget] = new JsonFormat[sbt.internal.bsp.ScalaBuildTarget] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.ScalaBuildTarget = {
     __jsOpt match {
@@ -16,8 +16,9 @@ implicit lazy val ScalaBuildTargetFormat: JsonFormat[sbt.internal.bsp.ScalaBuild
       val scalaBinaryVersion = unbuilder.readField[String]("scalaBinaryVersion")
       val platform = unbuilder.readField[Int]("platform")
       val jars = unbuilder.readField[Vector[String]]("jars")
+      val jvmBuildTarget = unbuilder.readField[Option[sbt.internal.bsp.JvmBuildTarget]]("jvmBuildTarget")
       unbuilder.endObject()
-      sbt.internal.bsp.ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars)
+      sbt.internal.bsp.ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars, jvmBuildTarget)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -29,6 +30,7 @@ implicit lazy val ScalaBuildTargetFormat: JsonFormat[sbt.internal.bsp.ScalaBuild
     builder.addField("scalaBinaryVersion", obj.scalaBinaryVersion)
     builder.addField("platform", obj.platform)
     builder.addField("jars", obj.jars)
+    builder.addField("jvmBuildTarget", obj.jvmBuildTarget)
     builder.endObject()
   }
 }

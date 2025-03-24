@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,7 +10,7 @@ package sbt.internal.util
 package complete
 
 object JLineTest {
-  import DefaultParsers._
+  import DefaultParsers.*
 
   val one = "blue" | "green" | "black"
   val two = token("color" ~> Space) ~> token(one)
@@ -20,6 +21,7 @@ object JLineTest {
   val five = (num ~ token("+" | "-") ~ num) <~ token('=') flatMap {
     case a ~ "+" ~ b => token((a + b).toString)
     case a ~ "-" ~ b => token((a - b).toString)
+    case _           => failure("Unexpected pattern")
   }
 
   val parsers = Map("1" -> one, "2" -> two, "3" -> three, "4" -> four, "5" -> five)
@@ -42,11 +44,11 @@ object JLineTest {
   }
 }
 
-import Parser._
-import org.scalacheck._
+import Parser.*
+import org.scalacheck.*
 
 object ParserTest extends Properties("Completing Parser") {
-  import Parsers._
+  import Parsers.*
   import DefaultParsers.matches
 
   val nested = (token("a1") ~ token("b2")) ~ "c3"
@@ -60,10 +62,10 @@ object ParserTest extends Properties("Completing Parser") {
     (("token '" + in + "'") |: checkOne(in, nested, expect)) &&
       (("display '" + in + "'") |: checkOne(in, nestedDisplay, expectDisplay))
 
-  def checkOne(in: String, parser: Parser[_], expect: Completion): Prop =
+  def checkOne(in: String, parser: Parser[?], expect: Completion): Prop =
     completions(parser, in, 1) == Completions.single(expect)
 
-  def checkAll(in: String, parser: Parser[_], expect: Completions): Prop = {
+  def checkAll(in: String, parser: Parser[?], expect: Completions): Prop = {
     val cs = completions(parser, in, 1)
     ("completions: " + cs) |: ("Expected: " + expect) |: (cs == expect: Prop)
   }
@@ -72,7 +74,7 @@ object ParserTest extends Properties("Completing Parser") {
     (("token '" + in + "'") |: checkInv(in, nested)) &&
       (("display '" + in + "'") |: checkInv(in, nestedDisplay))
 
-  def checkInv(in: String, parser: Parser[_]): Prop = {
+  def checkInv(in: String, parser: Parser[?]): Prop = {
     val cs = completions(parser, in, 1)
     ("completions: " + cs) |: (cs == Completions.nil: Prop)
   }
@@ -101,7 +103,7 @@ object ParserTest extends Properties("Completing Parser") {
     checkOne("asdf", token(any.+.examples("asdf", "qwer")), Completion.suggestion(""))
 
   val colors = Set("blue", "green", "red")
-  val base = (seen: Seq[String]) => token(ID examples (colors -- seen))
+  val base = (seen: Seq[String]) => token(ID.examples(colors -- seen))
   val sep = token(Space)
   val repeat = repeatDep(base, sep)
   def completionStrings(ss: Set[String]) = Completions(ss map (Completion.token("", _)))
@@ -119,6 +121,8 @@ object ParserTest extends Properties("Completing Parser") {
   property("repeatDep requires at least one token") = !matches(repeat, "")
   property("repeatDep accepts one token") = matches(repeat, colors.toSeq.head)
   property("repeatDep accepts two tokens") = matches(repeat, colors.toSeq.take(2).mkString(" "))
+  property("parses string that doesn't start with quotes, but includes quotes within it") =
+    matches(StringBasic, "-Dsilicon:z3ConfigArgs=\"model=true model_validate=true\"")
 }
 object ParserExample {
   val ws = charClass(_.isWhitespace, "whitespace").+

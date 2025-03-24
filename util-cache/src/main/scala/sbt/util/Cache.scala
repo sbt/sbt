@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,8 +17,7 @@ sealed trait CacheResult[K]
 case class Hit[O](value: O) extends CacheResult[O]
 
 /**
- * A cache miss.
- * `update` associates the missing key with `O` in the cache.
+ * A cache miss. `update` associates the missing key with `O` in the cache.
  */
 case class Miss[O](update: O => Unit) extends CacheResult[O]
 
@@ -37,24 +37,28 @@ object Cache {
   /**
    * Materializes a cache.
    */
-  def cache[I, O](implicit c: Cache[I, O]): Cache[I, O] = c
+  def cache[I, O](using c: Cache[I, O]): Cache[I, O] = c
 
   /**
    * Returns a function that represents a cache that inserts on miss.
    *
-   * @param cacheFile The store that backs this cache.
-   * @param default   A function that computes a default value to insert on
+   * @param cacheFile
+   *   The store that backs this cache.
+   * @param default
+   *   A function that computes a default value to insert on
    */
-  def cached[I, O](cacheFile: File)(default: I => O)(implicit cache: Cache[I, O]): I => O =
+  def cached[I, O](cacheFile: File)(default: I => O)(using cache: Cache[I, O]): I => O =
     cached(CacheStore(cacheFile))(default)
 
   /**
    * Returns a function that represents a cache that inserts on miss.
    *
-   * @param store    The store that backs this cache.
-   * @param default  A function that computes a default value to insert on
+   * @param store
+   *   The store that backs this cache.
+   * @param default
+   *   A function that computes a default value to insert on
    */
-  def cached[I, O](store: CacheStore)(default: I => O)(implicit cache: Cache[I, O]): I => O =
+  def cached[I, O](store: CacheStore)(default: I => O)(using cache: Cache[I, O]): I => O =
     key =>
       cache(store)(key) match {
         case Hit(value) =>

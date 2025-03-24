@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -27,12 +28,12 @@ public final class ForkMain {
   // serializables
   // -----------------------------------------------------------------------------
 
-  static final class SubclassFingerscan implements SubclassFingerprint, Serializable {
+  public static final class SubclassFingerscan implements SubclassFingerprint, Serializable {
     private final boolean isModule;
     private final String superclassName;
     private final boolean requireNoArgConstructor;
 
-    SubclassFingerscan(final SubclassFingerprint print) {
+    public SubclassFingerscan(final SubclassFingerprint print) {
       isModule = print.isModule();
       superclassName = print.superclassName();
       requireNoArgConstructor = print.requireNoArgConstructor();
@@ -51,11 +52,11 @@ public final class ForkMain {
     }
   }
 
-  static final class AnnotatedFingerscan implements AnnotatedFingerprint, Serializable {
+  public static final class AnnotatedFingerscan implements AnnotatedFingerprint, Serializable {
     private final boolean isModule;
     private final String annotationName;
 
-    AnnotatedFingerscan(final AnnotatedFingerprint print) {
+    public AnnotatedFingerscan(final AnnotatedFingerprint print) {
       isModule = print.isModule();
       annotationName = print.annotationName();
     }

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class WorkspaceBuildTargetsResult private (
   override def toString: String = {
     "WorkspaceBuildTargetsResult(" + targets + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTarget] = targets): WorkspaceBuildTargetsResult = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTarget] = targets): WorkspaceBuildTargetsResult = {
     new WorkspaceBuildTargetsResult(targets)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTarget]): WorkspaceBuildTargetsResult = {

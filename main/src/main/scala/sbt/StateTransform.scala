@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -25,25 +26,28 @@ package sbt
  * Prior to a call to `setFoo`, `getFoo` will return `None`. After a call to `setFoo`, `getFoo` will
  * return `Some("foo")`.
  */
-final class StateTransform private (val transform: State => State, stateProxy: () => State) {
-  @deprecated("Exists only for binary compatibility with 1.3.x.", "1.4.0")
-  private[sbt] def state: State = stateProxy()
-  @deprecated("1.4.0", "Use the constructor that takes a transform function.")
-  private[sbt] def this(state: State) = this((_: State) => state, () => state)
+final class StateTransform private (
+    val transform: State => State,
+    stateProxy: () => State,
+) {
+  // @deprecated("Exists only for binary compatibility with 1.3.x.", "1.4.0")
+  // private[sbt] def state: State = stateProxy()
+  // @deprecated("1.4.0", "Use the constructor that takes a transform function.")
+  // private[sbt] def this(state: State) = this((_: State) => state, () => state)
 }
 
-object StateTransform {
-  @deprecated("Exists only for binary compatibility with 1.3.x", "1.4.0")
-  def apply(state: State): State = state
+object StateTransform:
+  // @deprecated("Exists only for binary compatibility with 1.3.x", "1.4.0")
+  // def apply(state: State): State = state
 
   /**
    * Create an instance of [[StateTransform]].
    * @param transform the transformation to apply after task evaluation has completed
    * @return the [[StateTransform]].
    */
-  def apply(transform: State => State) =
+  def apply(transform: State => State): StateTransform =
     new StateTransform(
       transform,
       () => throw new IllegalStateException("No state was added to the StateTransform.")
     )
-}
+end StateTransform

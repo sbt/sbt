@@ -1,4 +1,4 @@
-import sbt._
+import sbt.*
 /*
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
@@ -52,5 +52,5 @@ object Docs {
     IO.copy(toCopy)
     repo
   }
- */
+   */
 }

@@ -1,22 +1,23 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import org.scalacheck._
-import Prop._
-import TaskGen._
+import org.scalacheck.*
+import Prop.*
+import TaskGen.*
 
 object TaskRunnerCircularTest extends Properties("TaskRunner Circular") {
   property("Catches circular references") = forAll(MaxTasksGen, MaxWorkersGen) {
-    checkCircularReferences _
+    checkCircularReferences
   }
   property("Allows references to completed tasks") = forAllNoShrink(MaxTasksGen, MaxWorkersGen) {
-    allowedReference _
+    allowedReference
   }
   final def allowedReference(intermediate: Int, workers: Int) = {
     val top = task(intermediate).named("top")
@@ -50,5 +51,5 @@ object TaskRunnerCircularTest extends Properties("TaskRunner Circular") {
   def cyclic(i: Incomplete) =
     Incomplete
       .allExceptions(i)
-      .exists(_.isInstanceOf[Execute[({ type A[_] <: AnyRef })#A @unchecked]#CyclicException[_]])
+      .exists(_.isInstanceOf[Execute#CyclicException])
 }

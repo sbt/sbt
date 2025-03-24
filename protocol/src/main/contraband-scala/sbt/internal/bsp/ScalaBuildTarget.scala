@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -14,28 +14,30 @@ package sbt.internal.bsp
                              For example, 2.12 if scalaVersion is 2.12.4.
  * @param platform The target platform for this target
  * @param jars A sequence of Scala jars such as scala-library, scala-compiler and scala-reflect.
+ * @param jvmBuildTarget The jvm build target describing jdk to be used
  */
 final class ScalaBuildTarget private (
   val scalaOrganization: String,
   val scalaVersion: String,
   val scalaBinaryVersion: String,
   val platform: Int,
-  val jars: Vector[String]) extends Serializable {
+  val jars: Vector[String],
+  val jvmBuildTarget: Option[sbt.internal.bsp.JvmBuildTarget]) extends Serializable {
   
   
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: ScalaBuildTarget => (this.scalaOrganization == x.scalaOrganization) && (this.scalaVersion == x.scalaVersion) && (this.scalaBinaryVersion == x.scalaBinaryVersion) && (this.platform == x.platform) && (this.jars == x.jars)
+    case x: ScalaBuildTarget => (this.scalaOrganization == x.scalaOrganization) && (this.scalaVersion == x.scalaVersion) && (this.scalaBinaryVersion == x.scalaBinaryVersion) && (this.platform == x.platform) && (this.jars == x.jars) && (this.jvmBuildTarget == x.jvmBuildTarget)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalaBuildTarget".##) + scalaOrganization.##) + scalaVersion.##) + scalaBinaryVersion.##) + platform.##) + jars.##)
+    37 * (37 * (37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.bsp.ScalaBuildTarget".##) + scalaOrganization.##) + scalaVersion.##) + scalaBinaryVersion.##) + platform.##) + jars.##) + jvmBuildTarget.##)
   }
   override def toString: String = {
-    "ScalaBuildTarget(" + scalaOrganization + ", " + scalaVersion + ", " + scalaBinaryVersion + ", " + platform + ", " + jars + ")"
+    "ScalaBuildTarget(" + scalaOrganization + ", " + scalaVersion + ", " + scalaBinaryVersion + ", " + platform + ", " + jars + ", " + jvmBuildTarget + ")"
   }
-  private[this] def copy(scalaOrganization: String = scalaOrganization, scalaVersion: String = scalaVersion, scalaBinaryVersion: String = scalaBinaryVersion, platform: Int = platform, jars: Vector[String] = jars): ScalaBuildTarget = {
-    new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars)
+  private def copy(scalaOrganization: String = scalaOrganization, scalaVersion: String = scalaVersion, scalaBinaryVersion: String = scalaBinaryVersion, platform: Int = platform, jars: Vector[String] = jars, jvmBuildTarget: Option[sbt.internal.bsp.JvmBuildTarget] = jvmBuildTarget): ScalaBuildTarget = {
+    new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars, jvmBuildTarget)
   }
   def withScalaOrganization(scalaOrganization: String): ScalaBuildTarget = {
     copy(scalaOrganization = scalaOrganization)
@@ -52,8 +54,15 @@ final class ScalaBuildTarget private (
   def withJars(jars: Vector[String]): ScalaBuildTarget = {
     copy(jars = jars)
   }
+  def withJvmBuildTarget(jvmBuildTarget: Option[sbt.internal.bsp.JvmBuildTarget]): ScalaBuildTarget = {
+    copy(jvmBuildTarget = jvmBuildTarget)
+  }
+  def withJvmBuildTarget(jvmBuildTarget: sbt.internal.bsp.JvmBuildTarget): ScalaBuildTarget = {
+    copy(jvmBuildTarget = Option(jvmBuildTarget))
+  }
 }
 object ScalaBuildTarget {
   
-  def apply(scalaOrganization: String, scalaVersion: String, scalaBinaryVersion: String, platform: Int, jars: Vector[String]): ScalaBuildTarget = new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars)
+  def apply(scalaOrganization: String, scalaVersion: String, scalaBinaryVersion: String, platform: Int, jars: Vector[String], jvmBuildTarget: Option[sbt.internal.bsp.JvmBuildTarget]): ScalaBuildTarget = new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars, jvmBuildTarget)
+  def apply(scalaOrganization: String, scalaVersion: String, scalaBinaryVersion: String, platform: Int, jars: Vector[String], jvmBuildTarget: sbt.internal.bsp.JvmBuildTarget): ScalaBuildTarget = new ScalaBuildTarget(scalaOrganization, scalaVersion, scalaBinaryVersion, platform, jars, Option(jvmBuildTarget))
 }

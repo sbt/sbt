@@ -7,13 +7,22 @@ Create a [fork](https://docs.github.com/en/github/getting-started-with-github/fo
 
 ### Branch to work against
 
-sbt uses two branches for development:
+sbt uses two or three branches for development:
+Use the **default** branch set on GitHub for bug fixes.
 
-- Development branch: `develop` (this is also called "master")
-- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.1.x` during 1.1.x series)
+- Next minor branch: `1.$MINOR.x`, where `$MINOR` is next minor version (e.g. `1.10.x` during 1.9.x series)
+- Development branch: `develop`
+- Stable branch: `1.$MINOR.x`, where `$MINOR` is current minor version (e.g. `1.9.x` during 1.9.x series)
 
-The `develop` branch represents the next major version of sbt. Only new features are pushed to the `develop` branch. This is the branch that you will branch off of to make your changes.
+The `develop` branch represents sbt 2.x, the next major sbt series.
+Next minor branch is where new features should be added as long as it is binary compatible with sbt 1.x.
 The `stable` branch represents the current stable sbt release. Only bug fixes are back-ported to the stable branch.
+
+### Note on supported JDK version for the sbt build
+
+The sbt build itself currently doesn't support any JDK beyond version 21. You may run into deprecation warnings (which would become build errors due to build configuration) if you use any later JDK version to build sbt.
+
+If you're using Metals as IDE, also check the `Java Version` setting. The default at the time of writing this is `17`, but this may change in the future, or you may have set it to a later version yourself. (Be aware that Metals may download a JDK in the background if you haven't switch to a local JDK matching the version before changing this setting. Also, this setting is currently only available as a `User` setting, so you can't set it for a single workspace. Don't forget to switch back if you need to for other projects).
 
 ### Instruction to build just sbt
 
@@ -36,7 +45,7 @@ When working on a change that requires changing one or more sub modules, the sou
    ```
    $ mkdir sbt-modules
    $ cd sbt-modules
-   $ for i in sbt io librarymanagement zinc; do \
+   $ for i in sbt io zinc; do \
      git clone https://github.com/sbt/$i.git && (cd $i; git checkout -b develop origin/develop)
    done
    $ cd sbt
@@ -93,7 +102,7 @@ In order to see a change you've made to sbt's source code, this cache should be 
 
 By default sbt uses a snapshot version (this is a scala convention for quick local changes- it tells users that this version could change).
 One drawback of `-SNAPSHOT` version is that it's slow to resolve as it tries to hit all the resolvers.
-This is important when testing perfomance, so that the slowness of the resolution does not impact sbt.
+This is important when testing performance, so that the slowness of the resolution does not impact sbt.
 
 You can workaround that by using a version name like `1.$MINOR.$PATCH-LOCAL1`.
 A non-SNAPSHOT artifacts will now be cached under `$HOME/.ivy/cache/` directory, so you need to clear that out using [sbt-dirty-money](https://github.com/sbt/sbt-dirty-money)'s `cleanCache` task.
@@ -131,6 +140,10 @@ Listening for transport dt_socket at address: 5005
 Please note that this alternative launcher does _not_ have feature parity with sbt/launcher. (Meta)
 contributions welcome! :-D
 
+### Updating Scala version
+
+See https://github.com/sbt/sbt/pull/6522 for the list of files to change for Scala version upgrade.
+
 ### Diagnosing build failures
 
 Globally included plugins can interfere building `sbt`; if you are getting errors building sbt, try disabling all globally included plugins and try again.
@@ -147,18 +160,24 @@ suite with `sbt testOnly`
 
 #### Integration tests
 
-Scripted integration tests reside in `sbt/src/sbt-test` and are
+Scripted integration tests reside in `sbt-app/src/sbt-test` and are
 written using the same testing infrastructure sbt plugin authors can
-use to test their own plugins with sbt. You can read more about this
-style of tests [here](https://www.scala-sbt.org/1.0/docs/Testing-sbt-plugins).
+use to test their own plugins with sbt. You can read more about [Testing sbt plugins](https://www.scala-sbt.org/1.x/docs/Testing-sbt-plugins).
 
 You can run the integration tests with the `sbt scripted` sbt
 command. To run a single test, such as the test in
-`sbt/src/sbt-test/project/global-plugin`, simply run:
+`sbt-app/src/sbt-test/project/global-plugin`, simply run:
 
     sbt "scripted project/global-plugin"
 
 ### Random tidbits
+
+### Clean history
+
+Make sure you document each commit and squash them appropriately. You can use the following guides as a reference:
+
+* Scala's documentation on [Git Hygiene](https://github.com/scala/scala/tree/v2.12.0-M3#git-hygiene)
+* Play's documentation on [Working with Git](https://www.playframework.com/documentation/2.4.4/WorkingWithGit#Squashing-commits)
 
 #### Import statements
 
@@ -166,7 +185,7 @@ You'd need alternative DSL import since you can't rely on sbt package object.
 
 ```scala
 // for slash syntax
-import sbt.SlashSyntax0._
+import sbt.SlashSyntax0.given
 
 // for IO
 import sbt.io.syntax._

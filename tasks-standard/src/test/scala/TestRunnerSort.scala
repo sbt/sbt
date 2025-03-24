@@ -1,15 +1,16 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import org.scalacheck._
-import Prop._
-import TaskGen._
+import org.scalacheck.*
+import Prop.*
+import TaskGen.*
 
 object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
   property("sort") = forAll(TaskListGen, MaxWorkersGen) { (list: List[Int], workers: Int) =>
@@ -22,8 +23,7 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
     }
   }
   final def sortDirect(a: Seq[Int]): Seq[Int] = {
-    if (a.length < 2)
-      a
+    if (a.length < 2) a
     else {
       val pivot = a(0)
       val (lt, gte) = a.view.drop(1).partition(_ < pivot)
@@ -37,8 +37,8 @@ object TaskRunnerSortTest extends Properties("TaskRunnerSort") {
       task(a) flatMap { a =>
         val pivot = a(0)
         val (lt, gte) = a.view.drop(1).partition(_ < pivot)
-        sbt.Test.t2(sort(lt.toSeq), sort(gte.toSeq)) map {
-          case (l, g) => l ++ List(pivot) ++ g
+        sbt.Test.t2(sort(lt.toSeq), sort(gte.toSeq)) mapN { (l, g) =>
+          l ++ List(pivot) ++ g
         }
       }
     }

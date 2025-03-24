@@ -7,34 +7,36 @@
 
 package testpkg
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // starts svr using server-test/completions and perform sbt/completion tests
-object ServerCompletionsTest extends AbstractServerTest {
+class ServerCompletionsTest extends AbstractServerTest {
   override val testDirectory: String = "completions"
 
-  test("return basic completions on request") { _ =>
+  test("return basic completions on request") {
     val completionStr = """{ "query": "" }"""
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": 15, "method": "sbt/completion", "params": $completionStr }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      println(s)
-      s contains """"result":{"items":["""
+      s.contains(""""result":{"items":[""")
     })
   }
 
-  test("return completion for custom tasks") { _ =>
+  test("return completion for custom tasks") {
     val completionStr = """{ "query": "hell" }"""
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": 16, "method": "sbt/completion", "params": $completionStr }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      s contains """"result":{"items":["hello"]"""
+      s.contains(""""result":{"items":["hello"]""")
     })
   }
 
-  test("return completions for user classes") { _ =>
+  /*
+  // TODO: https://github.com/sbt/sbt/issues/7718
+  // Note that this test currently relies on a fake target artifact that's checked in
+  test("return completions for user classes") {
     val completionStr = """{ "query": "testOnly org." }"""
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": 17, "method": "sbt/completion", "params": $completionStr }"""
@@ -43,4 +45,5 @@ object ServerCompletionsTest extends AbstractServerTest {
       s contains """"result":{"items":["testOnly org.sbt.ExampleSpec"]"""
     })
   }
+   */
 }

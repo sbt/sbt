@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,6 +11,7 @@ package sbt
 import sjsonnew.JsonFormat
 import Def.Setting
 import sbt.internal.{ BuildStructure, LoadedBuildUnit, SessionSettings }
+import sbt.ProjectExtra.*
 
 /**
  * Extends State with setting-level knowledge.
@@ -18,12 +20,12 @@ trait UpperStateOps extends Any {
 
   /**
    * ProjectRef to the current project of the state session that can be change using
-   * `project` commmand.
+   * `project` command.
    */
   def currentRef: ProjectRef
 
   /**
-   * Current project of the state session that can be change using `project` commmand.
+   * Current project of the state session that can be change using `project` command.
    */
   def currentProject: ResolvedProject
 
@@ -96,13 +98,13 @@ trait UpperStateOps extends Any {
   def unsafeRunAggregated[A](key: TaskKey[A]): State
 
   /** Appends the given settings to all the build state settings, including session settings. */
-  def appendWithSession(settings: Seq[Setting[_]]): State
+  def appendWithSession(settings: Seq[Setting[?]]): State
 
   /**
    * Appends the given settings to the original build state settings, discarding any settings
    * appended to the session in the process.
    */
-  def appendWithoutSession(settings: Seq[Setting[_]], state: State): State
+  def appendWithoutSession(settings: Seq[Setting[?]], state: State): State
 
   def respondEvent[A: JsonFormat](event: A): Unit
   def respondError(code: Long, message: String): Unit
@@ -141,10 +143,10 @@ object UpperStateOps {
     def unsafeRunAggregated[A](key: TaskKey[A]): State =
       extract.runAggregated(key, s)
 
-    def appendWithSession(settings: Seq[Setting[_]]): State =
+    def appendWithSession(settings: Seq[Setting[?]]): State =
       extract.appendWithSession(settings, s)
 
-    def appendWithoutSession(settings: Seq[Setting[_]], state: State): State =
+    def appendWithoutSession(settings: Seq[Setting[?]], state: State): State =
       extract.appendWithoutSession(settings, s)
 
     def respondEvent[A: JsonFormat](event: A): Unit = {

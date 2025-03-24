@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class TerminalSetSizeCommand private (
   override def toString: String = {
     "TerminalSetSizeCommand(" + width + ", " + height + ")"
   }
-  private[this] def copy(width: Int = width, height: Int = height): TerminalSetSizeCommand = {
+  private def copy(width: Int = width, height: Int = height): TerminalSetSizeCommand = {
     new TerminalSetSizeCommand(width, height)
   }
   def withWidth(width: Int): TerminalSetSizeCommand = {

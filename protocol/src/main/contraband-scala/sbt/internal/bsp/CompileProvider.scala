@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class CompileProvider private (
   override def toString: String = {
     "CompileProvider(" + languageIds + ")"
   }
-  private[this] def copy(languageIds: Vector[String] = languageIds): CompileProvider = {
+  private def copy(languageIds: Vector[String] = languageIds): CompileProvider = {
     new CompileProvider(languageIds)
   }
   def withLanguageIds(languageIds: Vector[String]): CompileProvider = {

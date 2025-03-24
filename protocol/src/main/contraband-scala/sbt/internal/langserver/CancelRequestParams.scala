@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class CancelRequestParams private (
   override def toString: String = {
     "CancelRequestParams(" + id + ")"
   }
-  private[this] def copy(id: String = id): CancelRequestParams = {
+  private def copy(id: String = id): CancelRequestParams = {
     new CancelRequestParams(id)
   }
   def withId(id: String): CancelRequestParams = {

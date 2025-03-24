@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -26,6 +27,7 @@ object Serialization {
   private[sbt] val VsCode = "application/vscode-jsonrpc; charset=utf-8"
   val readSystemIn = "sbt/readSystemIn"
   val cancelReadSystemIn = "sbt/cancelReadSystemIn"
+  val clientJob = "sbt/clientJob"
   val systemIn = "sbt/systemIn"
   val systemOut = "sbt/systemOut"
   val systemErr = "sbt/systemErr"
@@ -55,26 +57,21 @@ object Serialization {
 
   @deprecated("unused", since = "1.4.0")
   def serializeCommand(command: CommandMessage): Array[Byte] = {
-    import codec.JsonProtocol._
+    import codec.JsonProtocol.*
     val json: JValue = Converter.toJson[CommandMessage](command).get
     CompactPrinter(json).getBytes("UTF-8")
   }
 
   private[sbt] def serializeCommandAsJsonMessage(command: CommandMessage): String = {
-    import sjsonnew.BasicJsonProtocol._
+    import sjsonnew.BasicJsonProtocol.*
 
     command match {
       case x: InitCommand =>
         val execId = x.execId.getOrElse(UUID.randomUUID.toString)
-        val analysis = s""""skipAnalysis" : ${x.skipAnalysis.getOrElse(false)}"""
-        val opt = x.token match {
-          case Some(t) =>
-            val json: JValue = Converter.toJson[String](t).get
-            val v = CompactPrinter(json)
-            s"""{ "token": $v, $analysis }"""
-          case None => s"{ $analysis }"
-        }
-        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "initialize", "params": { "initializationOptions": $opt } }"""
+        val opts = x.initializationOptions.getOrElse(sys.error("expected initializationOptions"))
+        import sbt.protocol.codec.JsonProtocol.*
+        val optsJson = CompactPrinter(Converter.toJson(opts).get)
+        s"""{ "jsonrpc": "2.0", "id": "$execId", "method": "initialize", "params": { "initializationOptions": $optsJson } }"""
       case x: ExecCommand =>
         val execId = x.execId.getOrElse(UUID.randomUUID.toString)
         val json: JValue = Converter.toJson[String](x.commandLine).get
@@ -96,20 +93,20 @@ object Serialization {
   }
 
   def serializeEventMessage(event: EventMessage): Array[Byte] = {
-    import codec.JsonProtocol._
+    import codec.JsonProtocol.*
     val json: JValue = Converter.toJson[EventMessage](event).get
     CompactPrinter(json).getBytes("UTF-8")
   }
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeResponseMessage(message: JsonRpcResponseMessage): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
   /** This formats the message according to JSON-RPC. https://www.jsonrpc.org/specification */
   private[sbt] def serializeRequestMessage(message: JsonRpcRequestMessage): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
@@ -117,7 +114,7 @@ object Serialization {
   private[sbt] def serializeNotificationMessage(
       message: JsonRpcNotificationMessage,
   ): Array[Byte] = {
-    import sbt.internal.protocol.codec.JsonRPCProtocol._
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
     serializeResponse(message)
   }
 
@@ -135,14 +132,15 @@ object Serialization {
   }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeCommand(bytes: Seq[Byte]): Either[String, CommandMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json) =>
-        import codec.JsonProtocol._
+        import codec.JsonProtocol.*
         Converter.fromJson[CommandMessage](json) match {
           case Success(command) => Right(command)
           case Failure(e)       => Left(e.getMessage)
@@ -153,7 +151,8 @@ object Serialization {
   }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeEvent(bytes: Seq[Byte]): Either[String, Any] = {
@@ -162,13 +161,13 @@ object Serialization {
       case Success(json) =>
         detectType(json) match {
           case Some("StringEvent") =>
-            import sbt.internal.util.codec.JsonProtocol._
+            import sbt.internal.util.codec.JsonProtocol.*
             Converter.fromJson[StringEvent](json) match {
               case Success(event) => Right(event)
               case Failure(e)     => Left(e.getMessage)
             }
           case _ =>
-            import codec.JsonProtocol._
+            import codec.JsonProtocol.*
             Converter.fromJson[EventMessage](json) match {
               case Success(event) => Right(event)
               case Failure(e)     => Left(e.getMessage)
@@ -190,14 +189,15 @@ object Serialization {
     }
 
   /**
-   * @return A command or an invalid input description
+   * @return
+   *   A command or an invalid input description
    */
   @deprecated("unused", since = "1.4.0")
   def deserializeEventMessage(bytes: Seq[Byte]): Either[String, EventMessage] = {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json) =>
-        import codec.JsonProtocol._
+        import codec.JsonProtocol.*
         Converter.fromJson[EventMessage](json) match {
           case Success(event) => Right(event)
           case Failure(e)     => Left(e.getMessage)
@@ -211,7 +211,7 @@ object Serialization {
     val buffer = ByteBuffer.wrap(bytes.toArray)
     Parser.parseFromByteBuffer(buffer) match {
       case Success(json @ JObject(fields)) =>
-        import sbt.internal.protocol.codec.JsonRPCProtocol._
+        import sbt.internal.protocol.codec.JsonRPCProtocol.given
         if ((fields find { _.field == "method" }).isDefined) {
           if ((fields find { _.field == "id" }).isDefined)
             Converter.fromJson[JsonRpcRequestMessage](json) match {

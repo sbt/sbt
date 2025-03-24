@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class SuccessEvent private (
   override def toString: String = {
     "SuccessEvent(" + message + ")"
   }
-  private[this] def copy(message: String = message): SuccessEvent = {
+  private def copy(message: String = message): SuccessEvent = {
     new SuccessEvent(message)
   }
   def withMessage(message: String): SuccessEvent = {

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -19,9 +20,9 @@ import sbt.util.{ CacheStore, CacheStoreFactory, DirectoryStoreFactory }
 import sjsonnew.{ JsonReader, JsonWriter }
 
 private[sbt] object InMemoryCacheStore {
-  private[this] class InMemoryCacheStore(maxSize: Long) extends AutoCloseable {
-    private[this] val weigher: Weigher[Path, (Any, Long, Int)] = { case (_, (_, _, size)) => size }
-    private[this] val files: Cache[Path, (Any, Long, Int)] = Caffeine
+  private class InMemoryCacheStore(maxSize: Long) extends AutoCloseable {
+    private val weigher: Weigher[Path, (Any, Long, Int)] = { case (_, (_, _, size)) => size }
+    private val files: Cache[Path, (Any, Long, Int)] = Caffeine
       .newBuilder()
       .maximumWeight(maxSize)
       .weigher(weigher)
@@ -50,17 +51,17 @@ private[sbt] object InMemoryCacheStore {
     }
   }
 
-  private[this] class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
+  private class CacheStoreImpl(path: Path, store: InMemoryCacheStore, cacheStore: CacheStore)
       extends CacheStore {
     override def delete(): Unit = cacheStore.delete()
-    override def read[T]()(implicit reader: JsonReader[T]): T = {
+    override def read[T]()(using reader: JsonReader[T]): T = {
       val lastModified = IO.getModifiedTimeOrZero(path.toFile)
       store.get[T](path) match {
         case Some((value, `lastModified`)) => value
         case _                             => cacheStore.read[T]()
       }
     }
-    override def write[T](value: T)(implicit writer: JsonWriter[T]): Unit = {
+    override def write[T](value: T)(using writer: JsonWriter[T]): Unit = {
       /*
        * This may be inefficient if multiple threads are concurrently modifying the file.
        * There is an assumption that there will be little to no concurrency at the file level
@@ -83,7 +84,7 @@ private[sbt] object InMemoryCacheStore {
       cacheStore.close()
     }
   }
-  private[this] def factory(
+  private def factory(
       store: InMemoryCacheStore,
       path: Path
   ): CacheStoreFactory = {
@@ -98,8 +99,8 @@ private[sbt] object InMemoryCacheStore {
   private[sbt] trait CacheStoreFactoryFactory extends AutoCloseable {
     def apply(path: Path): CacheStoreFactory
   }
-  private[this] class CacheStoreFactoryFactoryImpl(size: Long) extends CacheStoreFactoryFactory {
-    private[this] val storeRef = new AtomicReference[InMemoryCacheStore]
+  private class CacheStoreFactoryFactoryImpl(size: Long) extends CacheStoreFactoryFactory {
+    private val storeRef = new AtomicReference[InMemoryCacheStore]
     override def close(): Unit = Option(storeRef.get).foreach(_.close())
     def apply(
         path: Path,
@@ -120,7 +121,7 @@ private[sbt] object InMemoryCacheStore {
       factory(store, path)
     }
   }
-  private[this] object DirectoryFactory extends CacheStoreFactoryFactory {
+  private object DirectoryFactory extends CacheStoreFactoryFactory {
     override def apply(
         path: Path,
     ): CacheStoreFactory = new DirectoryStoreFactory(path.toFile)

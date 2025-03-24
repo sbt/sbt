@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -18,7 +19,7 @@ object ProcessError {
   def extractLine(s: String, i: Int): (String, Int) = {
     val notNewline = (c: Char) => c != '\n' && c != '\r'
     val left = takeRightWhile(s.substring(0, i))(notNewline)
-    val right = s substring i takeWhile notNewline
+    val right = s.substring(i).takeWhile(notNewline)
     (left + right, left.length)
   }
 

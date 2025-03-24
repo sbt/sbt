@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class ScalaMainClassesParams private (
   override def toString: String = {
     "ScalaMainClassesParams(" + targets + ", " + originId + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): ScalaMainClassesParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): ScalaMainClassesParams = {
     new ScalaMainClassesParams(targets, originId)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): ScalaMainClassesParams = {

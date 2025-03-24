@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class JsonRpcNotificationMessage private (
   override def toString: String = {
     s"""JsonRpcNotificationMessage($jsonrpc, $method, ${sbt.protocol.Serialization.compactPrintJsonOpt(params)})"""
   }
-  private[this] def copy(jsonrpc: String = jsonrpc, method: String = method, params: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = params): JsonRpcNotificationMessage = {
+  private def copy(jsonrpc: String = jsonrpc, method: String = method, params: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = params): JsonRpcNotificationMessage = {
     new JsonRpcNotificationMessage(jsonrpc, method, params)
   }
   def withJsonrpc(jsonrpc: String): JsonRpcNotificationMessage = {

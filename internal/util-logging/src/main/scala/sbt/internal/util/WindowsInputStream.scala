@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,7 +11,7 @@ package sbt.internal.util
 import java.io.InputStream
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicBoolean
-import org.fusesource.jansi.internal.Kernel32
+import org.jline.nativ.Kernel32
 import org.jline.utils.InfoCmp.Capability
 import scala.annotation.tailrec
 import Terminal.SimpleInputStream
@@ -45,9 +46,6 @@ private object WindowsSupport {
  */
 private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: InputStream)
     extends SimpleInputStream {
-  private val SHIFT_FLAG = 0x01;
-  private val ALT_FLAG = 0x02;
-  private val CTRL_FLAG = 0x04;
 
   private val RIGHT_ALT_PRESSED = 0x0001;
   private val LEFT_ALT_PRESSED = 0x0002;
@@ -56,7 +54,7 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
   private val SHIFT_PRESSED = 0x0010;
   private def getCapability(cap: Capability): String = term.getStringCapability(cap) match {
     case null => null
-    case c    => c.replaceAllLiterally("\\E", "\u001B")
+    case c    => c.replace("\\E", "\u001B")
   }
   /*
    * This function is a hybrid of jline 2 WindowsTerminal.readConsoleInput
@@ -75,8 +73,10 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
           val isShift = (controlKeyState & SHIFT_PRESSED) > 0;
           if (keyEvent.keyDown) {
             if (keyEvent.uchar > 0) {
-              if (((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
-                  && isAlt && !isCtrl) {
+              if (
+                ((keyEvent.uchar >= '@' && keyEvent.uchar <= '_') || (keyEvent.uchar >= 'a' && keyEvent.uchar <= 'z'))
+                && isAlt && !isCtrl
+              ) {
                 sb.append('\u001B') // ESC
               }
               if (isShift && keyEvent.keyCode == 9) {
@@ -108,15 +108,15 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
                 case 0x77 /* VK_F8 */           => getCapability(Capability.key_f8)
                 case 0x78 /* VK_F9 */           => getCapability(Capability.key_f9)
                 case 0x79 /* VK_F10 */          => getCapability(Capability.key_f10)
-                case 0x7A /* VK_F11 */          => getCapability(Capability.key_f11)
-                case 0x7B /* VK_F12 */          => getCapability(Capability.key_f12)
+                case 0x7a /* VK_F11 */          => getCapability(Capability.key_f11)
+                case 0x7b /* VK_F12 */          => getCapability(Capability.key_f12)
                 // VK_END, VK_INSERT and VK_DELETE are not in the ansi key bindings so we
-                // have to manually apply the the sequences here and in JLine3.wrap
+                // have to manually apply the sequences here and in JLine3.wrap
                 case 0x23 /* VK_END */ =>
                   Option(getCapability(Capability.key_end)).getOrElse("\u001B[4~")
-                case 0x2D /* VK_INSERT */ =>
+                case 0x2d /* VK_INSERT */ =>
                   Option(getCapability(Capability.key_ic)).getOrElse("\u001B[2~")
-                case 0x2E /* VK_DELETE */ =>
+                case 0x2e /* VK_DELETE */ =>
                   Option(getCapability(Capability.key_dc)).getOrElse("\u001B[3~")
                 case _ => null
               }
@@ -136,19 +136,19 @@ private[util] class WindowsInputStream(term: org.jline.terminal.Terminal, in: In
         sb.toString().getBytes()
     }
   }
-  private[this] val raw: InputStream = new SimpleInputStream {
+  private val raw: InputStream = new SimpleInputStream {
     val buffer = new LinkedBlockingQueue[Integer]
     @tailrec
     override def read(): Int = {
       buffer.poll match {
         case null =>
-          readConsoleInput().foreach(b => buffer.put(b & 0xFF))
+          readConsoleInput().foreach(b => buffer.put(b & 0xff))
           if (!Thread.interrupted) read() else throw new InterruptedException
         case b => b
       }
     }
   }
-  private[this] val isRaw = new AtomicBoolean(true)
+  private val isRaw = new AtomicBoolean(true)
   private[sbt] def setRawMode(toggle: Boolean): Unit = isRaw.set(toggle)
   override def read(): Int = if (isRaw.get) raw.read() else in.read()
 }

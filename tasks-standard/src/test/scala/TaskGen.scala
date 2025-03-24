@@ -1,13 +1,14 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import org.scalacheck._
+import org.scalacheck.*
 import Gen.choose
 
 object TaskGen extends std.TaskExtra {
@@ -22,22 +23,22 @@ object TaskGen extends std.TaskExtra {
   val TaskListGen = MaxTasksGen.flatMap(size => Gen.listOfN(size, Arbitrary.arbInt.arbitrary))
 
   def run[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): Result[T] = {
-    val (service, shutdown) = CompletionService[Task[_], Completed](maxWorkers)
+    val (service, shutdown) = CompletionService(maxWorkers)
     val dummies = std.Transform.DummyTaskMap(Nil)
-    val x = new Execute[Task](
+    val x = new Execute(
       Execute.config(checkCycles),
       Execute.noTriggers,
-      ExecuteProgress.empty[Task]
-    )(std.Transform(dummies))
+      ExecuteProgress.empty
+    )(using std.Transform(dummies))
     try {
-      x.run(root)(service)
+      x.run(root)(using service)
     } finally {
       shutdown()
     }
   }
   def tryRun[T](root: Task[T], checkCycles: Boolean, maxWorkers: Int): T =
     run(root, checkCycles, maxWorkers) match {
-      case Value(v) => v
-      case Inc(i)   => throw i
+      case Result.Value(v) => v
+      case Result.Inc(i)   => throw i
     }
 }

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,19 +17,20 @@ import sbt.BasicKeys.{ historyPath, colorShellPrompt }
 import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
-import sbt.internal.util._
+import sbt.internal.util.Terminal.hasConsole
+import sbt.internal.util.*
 import sbt.internal.util.complete.{ Parser }
 
 import scala.annotation.tailrec
 
 private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] val channel: CommandChannel
-  private[sbt] val reader: UITask.Reader
-  private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
+  private[sbt] def reader: UITask.Reader
+  private final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
-    case Right(cmd) => channel.onCommand(cmd)
+    case Right(cmd) => channel.onCommandLine(cmd)
   }
-  private[this] val isStopped = new AtomicBoolean(false)
+  private val isStopped = new AtomicBoolean(false)
   override def run(): Unit = {
     @tailrec def impl(): Unit = if (!isStopped.get) {
       val res = reader.readLine()
@@ -54,7 +56,21 @@ private[sbt] object UITask {
   object Reader {
     // Avoid filling the stack trace since it isn't helpful here
     object interrupted extends InterruptedException
-    def terminalReader(parser: Parser[_])(
+
+    /**
+     * Return Left for fast track commands, otherwise return Right(...).
+     */
+    def splitCommand(cmd: String): Either[String, String] =
+      // We need to put the empty string on the fast track queue so that we can
+      // reprompt the user if another command is running on the server.
+      if (cmd.isEmpty()) Left("")
+      else
+        cmd match {
+          case Shutdown | TerminateAction | Cancel => Left(cmd)
+          case cmd                                 => Right(cmd)
+        }
+
+    def terminalReader(parser: Parser[?])(
         terminal: Terminal,
         state: State
     ): Reader = new Reader {
@@ -69,22 +85,15 @@ private[sbt] object UITask {
             if (thread.isInterrupted || closed.get) throw interrupted
             (try reader.readLine(clear + terminal.prompt.mkPrompt())
             finally reader.close) match {
-              case None if terminal == Terminal.console && System.console == null =>
+              case None if terminal == Terminal.console && !hasConsole =>
                 // No stdin is attached to the process so just ignore the result and
                 // block until the thread is interrupted.
                 this.synchronized(this.wait())
                 Right("") // should be unreachable
               // JLine returns null on ctrl+d when there is no other input. This interprets
               // ctrl+d with no imput as an exit
-              case None => Left(TerminateAction)
-              case Some(s: String) =>
-                s.trim() match {
-                  // We need to put the empty string on the fast track queue so that we can
-                  // reprompt the user if another command is running on the server.
-                  case ""                                                => Left("")
-                  case cmd @ (`Shutdown` | `TerminateAction` | `Cancel`) => Left(cmd)
-                  case cmd                                               => Right(cmd)
-                }
+              case None            => Left(TerminateAction)
+              case Some(s: String) => splitCommand(s.trim())
             }
           }
           terminal.setPrompt(Prompt.Pending)
@@ -93,7 +102,7 @@ private[sbt] object UITask {
       override def close(): Unit = closed.set(true)
     }
   }
-  private[this] def history(s: State): Option[File] =
+  private def history(s: State): Option[File] =
     s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
     s.get(sbt.BasicKeys.shellPrompt) match {

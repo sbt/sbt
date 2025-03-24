@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,8 +12,7 @@ package internal
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicReference
 
-import sbt.{ ProjectRef, State, Watched }
-import sbt.internal.io.{ EventMonitor, Source, WatchState => WS }
+import sbt.internal.io.{ EventMonitor, Source, WatchState as WS }
 import sbt.internal.util.AttributeKey
 import sbt.nio.file.Glob
 
@@ -29,7 +29,7 @@ private[internal] trait DeprecatedContinuous {
   protected def watchState(globs: Seq[Glob], count: Int): WS = {
     WS.empty(globs).withCount(count)
   }
-  private[this] val legacyWatchState =
+  private val legacyWatchState =
     AttributeKey[AtomicReference[WS]]("legacy-watch-state", Int.MaxValue)
   private[sbt] def addLegacyWatchSetting(state: State): State = {
     val legacyState = new AtomicReference[WS](WS.empty(Nil).withCount(1))
@@ -47,10 +47,13 @@ private[internal] trait DeprecatedContinuous {
         }
       )
       .put(legacyWatchState, legacyState)
-      .put(Watched.Configuration, new Watched {
-        override def watchSources(s: State): Seq[Source] =
-          s.get(legacyWatchState).map(_.get.sources).getOrElse(Nil)
-      })
+      .put(
+        Watched.Configuration,
+        new Watched {
+          override def watchSources(s: State): Seq[Source] =
+            s.get(legacyWatchState).map(_.get.sources).getOrElse(Nil)
+        }
+      )
   }
   def updateLegacyWatchState(state: State, globs: Seq[Glob], count: Int): Unit = {
     state.get(legacyWatchState).foreach { ref =>
@@ -60,11 +63,10 @@ private[internal] trait DeprecatedContinuous {
   }
 }
 
-@nowarn
 private[sbt] object DeprecatedContinuous {
-  private[sbt] val taskDefinitions: Seq[Def.Setting[_]] = Seq(
-    sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
+  private[sbt] val taskDefinitions: Seq[Def.Setting[?]] = Seq(
+    /* sbt.Keys.watchTransitiveSources := sbt.Defaults.watchTransitiveSourcesTask.value,
     sbt.Keys.watch := sbt.Defaults.watchSetting.value,
-    sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated,
+    sbt.nio.Keys.watchTasks := Continuous.continuousTask.evaluated, */
   )
 }

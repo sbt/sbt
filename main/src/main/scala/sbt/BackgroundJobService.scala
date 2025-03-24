@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,11 +12,12 @@ import java.io.Closeable
 
 import sbt.util.Logger
 import Def.{ Classpath, ScopedKey }
-import sbt.internal.util.complete._
+import sbt.internal.util.complete.*
 import java.io.File
 
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Success, Try }
+import xsbti.FileConverter
 
 abstract class BackgroundJobService extends Closeable {
 
@@ -25,7 +27,7 @@ abstract class BackgroundJobService extends Closeable {
    *  then you should get an InterruptedException while blocking on the process, and
    *  then you could process.destroy() for example.
    */
-  def runInBackground(spawningTask: ScopedKey[_], state: State)(
+  def runInBackground(spawningTask: ScopedKey[?], state: State)(
       start: (Logger, File) => Unit
   ): JobHandle
 
@@ -38,13 +40,13 @@ abstract class BackgroundJobService extends Closeable {
    *  then you should get an InterruptedException while blocking on the process, and
    *  then you could process.destroy() for example.
    */
-  private[sbt] def runInBackgroundWithLoader(spawningTask: ScopedKey[_], state: State)(
+  private[sbt] def runInBackgroundWithLoader(spawningTask: ScopedKey[?], state: State)(
       start: (Logger, File) => (Option[ClassLoader], () => Unit)
   ): JobHandle = runInBackground(spawningTask, state) { (logger, file) =>
     start(logger, file)._2.apply()
   }
 
-  /** Same as shutown. */
+  /** Same as shutdown. */
   def close(): Unit
 
   /** Shuts down all background jobs. */
@@ -69,23 +71,33 @@ abstract class BackgroundJobService extends Closeable {
 
   def waitFor(job: JobHandle): Unit
 
+  private[sbt] def createWorkingDirectory: File
+
   /** Copies classpath to temporary directories. */
-  def copyClasspath(products: Classpath, full: Classpath, workingDirectory: File): Classpath
+  def copyClasspath(
+      products: Classpath,
+      full: Classpath,
+      workingDirectory: File,
+      converter: FileConverter
+  ): Classpath
 
   private[sbt] def copyClasspath(
       products: Classpath,
       full: Classpath,
       workingDirectory: File,
-      hashContents: Boolean
-  ): Classpath = copyClasspath(products, full, workingDirectory)
+      hashContents: Boolean,
+      converter: FileConverter,
+  ): Classpath = copyClasspath(products, full, workingDirectory, converter)
+
+  private[sbt] def pauseChannelDuringJob(state: State, handle: JobHandle): Unit
 }
 
 object BackgroundJobService {
   private[sbt] def jobIdParser: (State, Seq[JobHandle]) => Parser[Seq[JobHandle]] = {
-    import DefaultParsers._
+    import DefaultParsers.*
     (state, handles) => {
       val stringIdParser: Parser[Seq[String]] = Space ~> token(
-        NotSpace examples handles.map(_.id.toString).toSet,
+        NotSpace.examples(handles.map(_.id.toString).toSet),
         description = "<job id>"
       ).+
       stringIdParser.map { strings =>
@@ -98,5 +110,13 @@ object BackgroundJobService {
 abstract class JobHandle {
   def id: Long
   def humanReadableName: String
-  def spawningTask: ScopedKey[_]
+  def spawningTask: ScopedKey[?]
+  def isAutoCancel: Boolean
 }
+
+/**
+ * This datatype is used signal the task engine or the commands
+ * that the background job is emulated to be a foreground job on
+ * the originating channel.
+ */
+case class EmulateForeground(handle: JobHandle)

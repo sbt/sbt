@@ -1,14 +1,15 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.test
 
-import sbt._
-import sbt.Classpaths._
+import sbt.*
+import sbt.Classpaths.*
 import sbt.Def.Initialize
 
 class ClasspathsTest[T](

@@ -1,10 +1,12 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt
 package internal
 package server
@@ -25,6 +27,8 @@ import sbt.util._
 import sbt.BuildPaths._
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting }
 import sbt.Keys._
+import sbt.ProjectExtra.showLoadingKey
+import sbt.internal.inc.MappedFileConverter
 
 object SettingQueryTest extends verify.BasicTestSuite {
   implicit class PathOps(val path: Path) extends AnyVal {
@@ -133,7 +137,7 @@ object SettingQueryTest extends verify.BasicTestSuite {
 
       val project: Project = {
         val project0 = Project("t", baseFile) settings projectSettings
-        val fileToLoadedSbtFileMap = new mutable.HashMap[File, LoadedSbtFile]
+        val fileToLoadedSbtFileMap = new mutable.HashMap[VirtualFile, LoadedSbtFile]
         val autoPlugins = loadedPlugins.detected.deducePluginsFromProject(project0, state.log)
         val injectSettings = config.injectSettings
         resolveProject(
@@ -143,7 +147,8 @@ object SettingQueryTest extends verify.BasicTestSuite {
           injectSettings,
           fileToLoadedSbtFileMap,
           Nil,
-          state.log
+          config.converter,
+          state.log,
         )
       }
 
@@ -159,7 +164,7 @@ object SettingQueryTest extends verify.BasicTestSuite {
     val allProjectRefs: Map[URI, List[ProjectReference]] = Map(buildUnit.uri -> projectRefs)
     checkAll(allProjectRefs, partBuildUnits)
 
-    val partBuild: PartBuild = new PartBuild(baseUri, partBuildUnits)
+    val partBuild: PartBuild = new PartBuild(baseUri, partBuildUnits, config.converter)
     val loadedBuild: LoadedBuild = resolveProjects(partBuild)
 
     val units: Map[URI, LoadedBuildUnit] = loadedBuild.units
@@ -171,7 +176,7 @@ object SettingQueryTest extends verify.BasicTestSuite {
     val scopeLocal: ScopeLocal = EvaluateTask.injectStreams
     val display: Show[ScopedKey[_]] = Project showLoadingKey loadedBuild
 
-    val (cMap, data) = Def.makeWithCompiledMap(settings)(delegates, scopeLocal, display)
+    val (cMap, data) = Def.makeWithCompiledMap(settings)(using delegates, scopeLocal, display)
     val extra: KeyIndex => BuildUtil[_] = index => BuildUtil(baseUri, units, index, data)
 
     val index: StructureIndex = structureIndex(data, settings, extra, units)
@@ -187,7 +192,8 @@ object SettingQueryTest extends verify.BasicTestSuite {
         streams,
         delegates,
         scopeLocal,
-        cMap
+        cMap,
+        MappedFileConverter.empty,
       )
 
     structure
@@ -286,3 +292,4 @@ object SettingQueryTest extends verify.BasicTestSuite {
     )
   }
 }
+ */

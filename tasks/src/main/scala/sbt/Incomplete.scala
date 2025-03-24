@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,16 +11,23 @@ package sbt
 import scala.collection.mutable.ListBuffer
 
 import sbt.internal.util.IDSet
-import Incomplete.{ Error, Value => IValue }
+import Incomplete.{ Value as IValue }
+import scala.jdk.CollectionConverters.*
 
 /**
  * Describes why a task did not complete.
  *
- * @param node the task that did not complete that is described by this Incomplete instance
- * @param tpe whether the task was incomplete because of an error or because it was skipped.  Only Error is actually used and Skipped may be removed in the future.
- * @param message an optional error message describing this incompletion
- * @param causes a list of incompletions that prevented `node` from completing
- * @param directCause the exception that caused `node` to not complete
+ * @param node
+ *   the task that did not complete that is described by this Incomplete instance
+ * @param tpe
+ *   whether the task was incomplete because of an error or because it was skipped. Only Error is
+ *   actually used and Skipped may be removed in the future.
+ * @param message
+ *   an optional error message describing this incompletion
+ * @param causes
+ *   a list of incompletions that prevented `node` from completing
+ * @param directCause
+ *   the exception that caused `node` to not complete
  */
 final case class Incomplete(
     node: Option[AnyRef],
@@ -39,7 +47,6 @@ object Incomplete extends Enumeration {
   def transformTD(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, true)(f)
   def transformBU(i: Incomplete)(f: Incomplete => Incomplete): Incomplete = transform(i, false)(f)
   def transform(i: Incomplete, topDown: Boolean)(f: Incomplete => Incomplete): Incomplete = {
-    import collection.JavaConverters._
     val visited: collection.mutable.Map[Incomplete, Incomplete] =
       (new java.util.IdentityHashMap[Incomplete, Incomplete]).asScala
     def visit(inc: Incomplete): Incomplete =

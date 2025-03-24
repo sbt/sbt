@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -25,7 +26,7 @@ object DagreHTML {
     val graphString =
       URLEncoder
         .encode(dotGraph, "utf8")
-        .replaceAllLiterally("+", "%20")
+        .replace("+", "%20")
 
     IO.write(
       new File(targetDirectory, "dependencies.dot.js"),

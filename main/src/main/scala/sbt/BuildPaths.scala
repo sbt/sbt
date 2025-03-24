@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -41,7 +42,7 @@ object BuildPaths {
   val globalZincDirectory =
     AttributeKey[File]("global-zinc-directory", "The base directory for Zinc internals.", DSetting)
 
-  import sbt.io.syntax._
+  import sbt.io.syntax.*
 
   def getGlobalBase(state: State): File = {
     val default = defaultVersionedGlobalBase(binarySbtVersion(state))
@@ -67,7 +68,7 @@ object BuildPaths {
   def getZincDirectory(state: State, globalBase: File): File =
     fileSetting(globalZincDirectory, GlobalZincProperty, defaultGlobalZinc(globalBase))(state)
 
-  private[this] def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
+  private def fileSetting(stateKey: AttributeKey[File], property: String, default: File)(
       state: State
   ): File =
     getFileSetting(stateKey, property, default)(state)
@@ -75,7 +76,7 @@ object BuildPaths {
   def getFileSetting(stateKey: AttributeKey[File], property: String, default: => File)(
       state: State
   ): File =
-    state get stateKey orElse getFileProperty(property) getOrElse default
+    state.get(stateKey).orElse(getFileProperty(property)).getOrElse(default)
 
   def getFileProperty(name: String): Option[File] = Option(System.getProperty(name)) flatMap {
     path =>
@@ -107,16 +108,17 @@ object BuildPaths {
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
   def defaultGlobalBase = Path.userHome / ConfigDirectoryName
 
-  private[this] def binarySbtVersion(state: State): String =
+  private def binarySbtVersion(state: State): String =
     sbt.internal.librarymanagement.cross.CrossVersionUtil
       .binarySbtVersion(state.configuration.provider.id.version)
-  private[this] def defaultStaging(globalBase: File) = globalBase / "staging"
-  private[this] def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
-  private[this] def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
-  private[this] def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
+  private def defaultStaging(globalBase: File) = globalBase / "staging"
+  private def defaultGlobalPlugins(globalBase: File) = globalBase / PluginsDirectoryName
+  private def defaultDependencyBase(globalBase: File) = globalBase / "dependency"
+  private def defaultGlobalZinc(globalBase: File) = globalBase / "zinc"
 
   def configurationSources(base: File): Seq[File] =
-    (base * (GlobFilter("*.sbt") - ".sbt")).get
+    (base * (GlobFilter("*.sbt") - ".sbt"))
+      .get()
       .sortBy(_.getName.toLowerCase(Locale.ENGLISH))
   def pluginDirectory(definitionBase: File) = definitionBase / PluginsDirectoryName
 

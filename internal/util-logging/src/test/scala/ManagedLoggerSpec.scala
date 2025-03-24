@@ -1,32 +1,34 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.internal.util
 
-import org.scalatest._
-import sbt.util._
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
+import sbt.util.*
+import sbt.internal.util.appmacro.StringTypeTag
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
-import scala.annotation.nowarn
 
-class ManagedLoggerSpec extends FlatSpec with Matchers {
-  val context = LoggerContext(useLog4J = true)
-  @nowarn
-  val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
+class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
+  val context = LoggerContext()
+  // TODO create a new appender for testing purposes - 3/12/21
+  val asyncStdout = ConsoleAppender()
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
   "ManagedLogger" should "log to console" in {
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    log.info("test")
-    log.debug("test")
+    log.info("test_info")
+    log.debug("test_debug")
   }
 
   it should "support event logging" in {
-    import sjsonnew.BasicJsonProtocol._
+    import sjsonnew.BasicJsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(1)
@@ -41,41 +43,41 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     }
     val after = System.currentTimeMillis()
 
-    log.info(s"Peformance test took: ${after - before}ms")
+    log.info(s"Performance test took: ${after - before}ms")
   }
 
   it should "support logging Throwable out of the box" in {
-    import sbt.internal.util.codec.JsonProtocol._
+    import sbt.internal.util.codec.JsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(SuccessEvent("yes"))
   }
 
   it should "allow registering Show[Int]" in {
-    import sjsonnew.BasicJsonProtocol._
+    import sjsonnew.BasicJsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intShow: ShowLines[Int] =
+    given ShowLines[Int] =
       ShowLines((x: Int) => Vector(s"String representation of $x"))
     log.registerStringCodec[Int]
     log.infoEvent(1)
   }
 
   it should "allow registering Show[Array[Int]]" in {
-    import sjsonnew.BasicJsonProtocol._
+    import sjsonnew.BasicJsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intArrayShow: ShowLines[Array[Int]] =
+    given ShowLines[Array[Int]] =
       ShowLines((x: Array[Int]) => Vector(s"String representation of ${x.mkString}"))
     log.registerStringCodec[Array[Int]]
     log.infoEvent(Array(1, 2, 3))
   }
 
   it should "allow registering Show[Vector[Vector[Int]]]" in {
-    import sjsonnew.BasicJsonProtocol._
+    import sjsonnew.BasicJsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] =
+    given ShowLines[Vector[Vector[Int]]] =
       ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
     log.infoEvent(Vector(Vector(1, 2, 3)))
@@ -89,7 +91,7 @@ class ManagedLoggerSpec extends FlatSpec with Matchers {
     } {
       pool.submit(new Runnable {
         def run(): Unit = {
-          val stringTypeTag = StringTypeTag.fast[List[Int]]
+          val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
           val log = newLogger(s"foo$i")
           context.addAppender(s"foo$i", asyncStdout -> Level.Info)
           if (i % 100 == 0) {

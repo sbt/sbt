@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,15 +9,16 @@
 package sbt
 
 import java.io.File
-
-import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
+import java.nio.file.Path
+import sbt.internal.inc.classpath.{ ClassLoaderCache as IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
-import sbt.util.Level
+import sbt.util.{ ActionCacheStore, Level }
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
+import xsbti.{ FileConverter, VirtualFile }
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -25,7 +27,7 @@ object BasicKeys {
     40
   )
 
-  val extraMetaSbtFiles = AttributeKey[Seq[File]](
+  val extraMetaSbtFiles = AttributeKey[Seq[VirtualFile]](
     "extraMetaSbtFile",
     "Additional plugin.sbt files.",
     10000
@@ -92,7 +94,7 @@ object BasicKeys {
 
   val serverIdleTimeout =
     AttributeKey[Option[FiniteDuration]](
-      "serverIdleTimeOut",
+      "serverIdleTimeout",
       "If set to a defined value, sbt server will exit if it goes at least the specified duration without receiving any commands.",
       10000
     )
@@ -103,6 +105,26 @@ object BasicKeys {
       "Enable/Disable BSP for this build, project or configuration",
       10000
     )
+
+  val cacheStores =
+    AttributeKey[Seq[ActionCacheStore]](
+      "cacheStores",
+      "Cache backends",
+      10000
+    )
+
+  val rootOutputDirectory =
+    AttributeKey[Path](
+      "rootOutputDirectory",
+      "Build-wide output directory",
+      10000
+    )
+
+  val fileConverter = AttributeKey[FileConverter](
+    "fileConverter",
+    "The file converter used to convert between Path and VirtualFile",
+    10000
+  )
 
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
@@ -144,7 +166,7 @@ object BasicKeys {
   )
   private[sbt] val detachStdio = AttributeKey[Boolean](
     "detach-stdio",
-    "Toggles wheter or not to close system in, out and error when the server starts.",
+    "Toggles whether or not to close system in, out and error when the server starts.",
     1000
   )
 }

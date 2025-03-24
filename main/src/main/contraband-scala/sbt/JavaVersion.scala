@@ -1,9 +1,16 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt
+/**
+ * Indicate whether the project was created organically, synthesized by a plugin,
+ * or is a "generic root" project supplied by sbt when a project doesn't exist for `file(".")`.
+ * Type for AutoPlugin's trigger method.
+ * Determines whether an AutoPlugin will be activated for a project when the
+ * `requires` clause is satisfied.
+ */
 final class JavaVersion private (
   val numbers: Vector[Long],
   val tags: Vector[String],
@@ -23,7 +30,7 @@ final class JavaVersion private (
   override def toString: String = {
     vendor.map(_ + "@").getOrElse("") + numberStr + tagStr
   }
-  private[this] def copy(numbers: Vector[Long] = numbers, tags: Vector[String] = tags, vendor: Option[String] = vendor): JavaVersion = {
+  private def copy(numbers: Vector[Long] = numbers, tags: Vector[String] = tags, vendor: Option[String] = vendor): JavaVersion = {
     new JavaVersion(numbers, tags, vendor)
   }
   def withNumbers(numbers: Vector[Long]): JavaVersion = {

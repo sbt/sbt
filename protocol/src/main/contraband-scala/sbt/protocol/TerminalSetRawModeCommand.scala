@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class TerminalSetRawModeCommand private (
   override def toString: String = {
     "TerminalSetRawModeCommand(" + toggle + ")"
   }
-  private[this] def copy(toggle: Boolean = toggle): TerminalSetRawModeCommand = {
+  private def copy(toggle: Boolean = toggle): TerminalSetRawModeCommand = {
     new TerminalSetRawModeCommand(toggle)
   }
   def withToggle(toggle: Boolean): TerminalSetRawModeCommand = {

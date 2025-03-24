@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -14,7 +15,7 @@ import sbt.io.IO
 private[internal] object JarClassPath {
   class Snapshot private[internal] (val file: File, val lastModified: Long)
       extends Comparable[JarClassPath.Snapshot] {
-    private[this] val _hash = (file.hashCode * 31) ^ java.lang.Long.valueOf(lastModified).hashCode()
+    private val _hash = (file.hashCode * 31) ^ java.lang.Long.valueOf(lastModified).hashCode()
     def this(file: File) = this(file, IO.getModifiedTimeOrZero(file))
     override def equals(obj: Any): Boolean = obj match {
       case that: JarClassPath.Snapshot =>
@@ -28,7 +29,7 @@ private[internal] object JarClassPath {
   }
 }
 private[internal] final class JarClassPath(val jars: Seq[File]) {
-  private[this] def isSnapshot(file: File): Boolean = file.getName contains "-SNAPSHOT"
+  private def isSnapshot(file: File): Boolean = file.getName.contains("-SNAPSHOT")
   private val jarSet = jars.toSet
   val (snapshotJars, regularJars) = jars.partition(isSnapshot)
   private val snapshots = snapshotJars.map(new JarClassPath.Snapshot(_))
@@ -40,7 +41,7 @@ private[internal] final class JarClassPath(val jars: Seq[File]) {
   // The memoization is because codacy isn't smart enough to identify that
   // `override lazy val hashCode: Int = jarSet.hashCode` does actually override hashCode and it
   // complains that equals and hashCode were not implemented together.
-  private[this] lazy val _hashCode: Int = jarSet.hashCode
+  private lazy val _hashCode: Int = jarSet.hashCode
   override def hashCode: Int = _hashCode
   override def toString: String =
     s"JarClassPath(\n  jars =\n    ${regularJars.mkString(",\n    ")}" +
@@ -50,6 +51,6 @@ private[internal] final class JarClassPath(val jars: Seq[File]) {
    * This is a stricter equality requirement than equals that we can use for cache invalidation.
    */
   private[internal] def strictEquals(that: JarClassPath): Boolean = {
-    this.equals(that) && !this.snapshots.view.zip(that.snapshots).exists { case (l, r) => l != r }
+    this.equals(that) && !this.snapshots.view.zip(that.snapshots).exists { (l, r) => l != r }
   }
 }

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -13,8 +14,8 @@ import java.io.IOException
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.protocol._
-import sbt.internal.protocol._
+import sbt.protocol.*
+import sbt.internal.protocol.*
 import sbt.internal.util.ReadJsonFromInputStream
 
 abstract class ServerConnection(connection: Socket) {
@@ -79,7 +80,7 @@ abstract class ServerConnection(connection: Socket) {
       if (a.nonEmpty) {
         out.write(a)
       }
-      writeEndLine
+      writeEndLine()
     } catch {
       case e: IOException =>
         shutdown()
@@ -100,7 +101,7 @@ abstract class ServerConnection(connection: Socket) {
       out.close()
       connection.close()
     } catch { case e: IOException => e.printStackTrace() }
-    onShutdown
+    onShutdown()
   }
 
 }

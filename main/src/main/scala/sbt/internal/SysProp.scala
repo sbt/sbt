@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,14 +10,18 @@ package sbt
 package internal
 
 import java.io.File
+import java.net.URI
+import java.nio.file.{ Path, Paths }
 import java.util.Locale
 
 import scala.util.control.NonFatal
-import scala.concurrent.duration._
-import sbt.internal.util.{ Terminal => ITerminal, Util }
+import scala.concurrent.duration.*
+import sbt.internal.inc.HashUtil
+import sbt.internal.util.{ Terminal as ITerminal, Util }
 import sbt.internal.util.complete.SizeParser
-import sbt.nio.Keys._
-import sbt.io.syntax._
+import sbt.io.syntax.*
+import sbt.librarymanagement.ivy.{ Credentials, FileCredentials }
+import sbt.nio.Keys.*
 
 // See also BuildPaths.scala
 // See also LineReader.scala
@@ -95,6 +100,21 @@ object SysProp {
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
   def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
+  def remoteCache: Option[URI] = sys.props
+    .get("sbt.remote_cache")
+    .map(URI(_))
+  def remoteCacheTlsCertificate: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_certificate")
+    .map(File(_))
+  def remoteCacheTlsClientCertificate: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_client_certificate")
+    .map(File(_))
+  def remoteCacheTlsClientKey: Option[File] = sys.props
+    .get("sbt.remote_cache.tls_client_key")
+    .map(File(_))
+  def remoteCacheHeaders: List[String] = sys.props
+    .get("sbt.remote_cache.header")
+    .toList
 
   def watchMode: String =
     sys.props.get("sbt.watch.mode").getOrElse("auto")
@@ -180,10 +200,11 @@ object SysProp {
 
   def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
 
-  private[this] def file(value: String): File = new File(value)
-  private[this] def home: File = file(sys.props("user.home"))
+  private def file(value: String): File = new File(value)
+  private def home: File = file(sys.props("user.home"))
 
-  /** Operating system specific cache directory, similar to Coursier cache.
+  /**
+   * Operating system specific cache directory, similar to Coursier cache.
    */
   def globalLocalCache: File = {
     val appName = "sbt"
@@ -214,6 +235,46 @@ object SysProp {
         .orElse(windowsCacheDir)
         .orElse(macCacheDir)
         .getOrElse(linuxCache)
-    baseCache.getAbsoluteFile / "v1"
+    baseCache.getAbsoluteFile / "v2"
+  }
+
+  lazy val sbtCredentialsEnv: Option[Credentials] =
+    sys.env.get("SBT_CREDENTIALS").map(raw => new FileCredentials(new File(raw)))
+
+  private[sbt] def setSwovalTempDir(): Unit = {
+    val _ = getOrUpdateSwovalTmpDir(
+      runtimeDirectory.resolve("swoval").toString
+    )
+  }
+  private[sbt] def setIpcSocketTempDir(): Unit = {
+    val _ = getOrUpdateIpcSocketTmpDir(
+      runtimeDirectory.resolve("ipcsocket").toString
+    )
+  }
+  private lazy val getOrUpdateSwovalTmpDir: String => String =
+    getOrUpdateSysProp("swoval.tmpdir")(_)
+  private lazy val getOrUpdateIpcSocketTmpDir: String => String =
+    getOrUpdateSysProp("sbt.ipcsocket.tmpdir")(_)
+  private def getOrUpdateSysProp(key: String)(value: String): String = {
+    val newVal = sys.props.getOrElse(key, value)
+    sys.props += (key -> newVal)
+    newVal
+  }
+
+  /**
+   * This returns a temporary directory that is friendly to macOS, Linux,
+   * Windows, and Docker environment.
+   * Mostly these directories will be used as throw-away location to extract
+   * native files etc.
+   * A deterministic hash is appended in the directory name as "/tmp/.sbt1234ABCD/"
+   * to avoid collision between multiple users in a shared server environment.
+   */
+  private def runtimeDirectory: Path = {
+    val hashValue =
+      java.lang.Long.toHexString(HashUtil.farmHash(home.toString.getBytes("UTF-8")))
+    val halfhash = hashValue.take(8)
+    Paths
+      .get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
+      .resolve(s".sbt$halfhash")
   }
 }

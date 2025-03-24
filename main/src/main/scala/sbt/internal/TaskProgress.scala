@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,10 +12,10 @@ package internal
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import java.util.concurrent.{ RejectedExecutionException, TimeUnit }
 
-import sbt.internal.util._
+import sbt.internal.util.*
 
-import scala.collection.JavaConverters._
-import scala.concurrent.duration._
+import scala.jdk.CollectionConverters.*
+import scala.concurrent.duration.*
 import java.util.concurrent.{ ConcurrentHashMap, Executors, TimeoutException }
 import sbt.util.Logger
 
@@ -26,16 +27,16 @@ private[sbt] class TaskProgress(
     threshold: FiniteDuration,
     logger: Logger
 ) extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task]
+    with ExecuteProgress
     with AutoCloseable {
-  private[this] val lastTaskCount = new AtomicInteger(0)
-  private[this] val reportLoop = new AtomicReference[AutoCloseable]
-  private[this] val active = new ConcurrentHashMap[Task[_], AutoCloseable]
-  private[this] val nextReport = new AtomicReference(Deadline.now)
-  private[this] val scheduler =
+  private val lastTaskCount = new AtomicInteger(0)
+  private val reportLoop = new AtomicReference[AutoCloseable]
+  private val active = new ConcurrentHashMap[TaskId[?], AutoCloseable]
+  private val nextReport = new AtomicReference(Deadline.now)
+  private val scheduler =
     Executors.newSingleThreadScheduledExecutor(r => new Thread(r, "sbt-progress-report-scheduler"))
-  private[this] val pending = new java.util.Vector[java.util.concurrent.Future[_]]
-  private[this] val closed = new AtomicBoolean(false)
+  private val pending = new java.util.Vector[java.util.concurrent.Future[?]]
+  private val closed = new AtomicBoolean(false)
   private def schedule[R](duration: FiniteDuration, recurring: Boolean)(f: => R): AutoCloseable =
     if (!closed.get) {
       val cancelled = new AtomicBoolean(false)
@@ -62,7 +63,7 @@ private[sbt] class TaskProgress(
       logger.debug("tried to call schedule on closed TaskProgress")
       () => ()
     }
-  private[this] val executor =
+  private val executor =
     Executors.newSingleThreadExecutor(r => new Thread(r, "sbt-task-progress-report-thread"))
   override def close(): Unit = if (closed.compareAndSet(false, true)) {
     Option(reportLoop.getAndSet(null)).foreach(_.close())
@@ -70,8 +71,11 @@ private[sbt] class TaskProgress(
     pending.clear()
     scheduler.shutdownNow()
     executor.shutdownNow()
-    if (!executor.awaitTermination(1, TimeUnit.SECONDS) ||
-        !scheduler.awaitTermination(1, TimeUnit.SECONDS)) {
+    if (
+      !executor.awaitTermination(30, TimeUnit.SECONDS) ||
+      !scheduler.awaitTermination(30, TimeUnit.SECONDS)
+    ) {
+      scala.Console.err.println("timed out closing the executor of supershell")
       throw new TimeoutException
     }
   }
@@ -79,7 +83,7 @@ private[sbt] class TaskProgress(
   override protected def clearTimings: Boolean = true
   override def initial(): Unit = ()
 
-  private[this] def doReport(): Unit = {
+  private def doReport(): Unit = {
     val runnable: Runnable = () => {
       if (nextReport.get.isOverdue) {
         report()
@@ -87,7 +91,7 @@ private[sbt] class TaskProgress(
     }
     Util.ignoreResult(pending.add(executor.submit(runnable)))
   }
-  override def beforeWork(task: Task[_]): Unit =
+  override def beforeWork(task: TaskId[?]): Unit =
     if (!closed.get) {
       super.beforeWork(task)
       reportLoop.get match {
@@ -105,7 +109,7 @@ private[sbt] class TaskProgress(
       logger.debug(s"called beforeWork for ${taskName(task)} after task progress was closed")
     }
 
-  override def afterReady(task: Task[_]): Unit =
+  override def afterReady(task: TaskId[?]): Unit =
     if (!closed.get) {
       try {
         Util.ignoreResult(executor.submit((() => {
@@ -121,7 +125,7 @@ private[sbt] class TaskProgress(
     }
   override def stop(): Unit = {}
 
-  override def afterCompleted[A](task: Task[A], result: Result[A]): Unit =
+  override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit =
     active.remove(task) match {
       case null =>
       case a =>
@@ -129,7 +133,7 @@ private[sbt] class TaskProgress(
         if (exceededThreshold(task, threshold)) report()
     }
 
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit = {
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = {
     reportLoop.getAndSet(null) match {
       case null =>
       case l    => l.close()
@@ -137,7 +141,7 @@ private[sbt] class TaskProgress(
     // send an empty progress report to clear out the previous report
     appendProgress(ProgressEvent("Info", Vector(), Some(lastTaskCount.get), None, None))
   }
-  private[this] val skipReportTasks =
+  private val skipReportTasks =
     Set(
       "installSbtn",
       "run",
@@ -148,27 +152,28 @@ private[sbt] class TaskProgress(
       "console",
       "consoleProject",
       "consoleQuick",
-      "state"
+      "state",
+      "streams",
+      "streams-manager",
     )
-  private[this] val hiddenTasks = Set(
+  private val hiddenTasks = Set(
     "compileEarly",
     "pickleProducts",
   )
-  private[this] def appendProgress(event: ProgressEvent): Unit =
+  private def appendProgress(event: ProgressEvent): Unit =
     StandardMain.exchange.updateProgress(event)
-  private[this] def report(): Unit = {
+  private def report(): Unit = {
     val (currentTasks, skip) = filter(timings(active.keySet, threshold.toMicros))
     val ltc = lastTaskCount.get
     if (currentTasks.nonEmpty || ltc != 0) {
       val currentTasksCount = currentTasks.size
-      def event(tasks: Vector[(Task[_], Long)]): ProgressEvent = {
+      def event(tasks: Vector[(TaskId[?], Long)]): ProgressEvent = {
         if (tasks.nonEmpty) nextReport.set(Deadline.now + sleepDuration)
         val toWrite = tasks.sortBy(_._2)
         val distinct = new java.util.LinkedHashMap[String, ProgressItem]
-        toWrite.foreach {
-          case (task, elapsed) =>
-            val name = taskName(task)
-            distinct.put(name, ProgressItem(name, elapsed))
+        toWrite.foreach { (task, elapsed) =>
+          val name = taskName(task)
+          distinct.put(name, ProgressItem(name, elapsed))
         }
         ProgressEvent(
           "Info",
@@ -185,7 +190,7 @@ private[sbt] class TaskProgress(
     }
   }
 
-  private[this] def getShortName(task: Task[_]): String = {
+  private def getShortName(task: TaskId[?]): String = {
     val name = taskName(task)
     name.lastIndexOf('/') match {
       case -1 => name
@@ -196,10 +201,10 @@ private[sbt] class TaskProgress(
     }
 
   }
-  private[this] def filter(
-      tasks: Vector[(Task[_], Long)]
-  ): (Vector[(Task[_], Long)], Boolean) = {
-    tasks.foldLeft((Vector.empty[(Task[_], Long)], false)) {
+  private def filter(
+      tasks: Vector[(TaskId[?], Long)]
+  ): (Vector[(TaskId[?], Long)], Boolean) = {
+    tasks.foldLeft((Vector.empty[(TaskId[?], Long)], false)) {
       case ((tasks, skip), pair @ (t, _)) =>
         val shortName = getShortName(t)
         val newSkip = skip || skipReportTasks.contains(shortName)

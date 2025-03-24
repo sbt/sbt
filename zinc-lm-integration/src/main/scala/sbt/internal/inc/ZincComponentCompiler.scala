@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,17 +11,17 @@ package internal
 package inc
 
 import sbt.internal.inc.classpath.ClasspathUtil
-import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.JsonUtil
 import sbt.internal.util.{ BufferedLogger, FullLogger }
 import sbt.io.IO
-import sbt.librarymanagement._
-import sbt.librarymanagement.syntax._
-import sbt.util.InterfaceUtil.{ toSupplier => f0 }
-import xsbti.ArtifactInfo._
+import sbt.librarymanagement.*
+import sbt.librarymanagement.syntax.*
+import sbt.util.InterfaceUtil.{ toSupplier as f0 }
+import xsbti.ArtifactInfo.*
 import xsbti.compile.{
   ClasspathOptionsUtil,
   CompilerBridgeProvider,
-  ScalaInstance => XScalaInstance
+  ScalaInstance as XScalaInstance
 }
 import xsbti.{ ComponentProvider, GlobalLock, Logger }
 
@@ -56,7 +57,11 @@ private[sbt] object ZincComponentCompiler {
         scalaInstance: XScalaInstance,
         logger: Logger,
     ): File = lock.synchronized {
-      val raw = new RawCompiler(scalaInstance, ClasspathOptionsUtil.auto, logger)
+      val raw = new RawCompiler(
+        scalaInstance,
+        ClasspathOptionsUtil.autoNoboot(scalaInstance.version),
+        logger
+      )
       val zinc =
         new ZincComponentCompiler(raw, manager, dependencyResolution, bridgeSources, logger)
       logger.debug(f0(s"Getting $bridgeSources for Scala ${scalaInstance.version}"))
@@ -181,7 +186,7 @@ private[sbt] object ZincComponentCompiler {
 
   /** Defines a default component provider that manages the component in a given directory. */
   private final class DefaultComponentProvider(targetDir: File) extends ComponentProvider {
-    import sbt.io.syntax._
+    import sbt.io.syntax.*
     private val LockFile = targetDir / "lock"
     override def lockFile(): File = LockFile
     override def componentLocation(id: String): File = targetDir / id

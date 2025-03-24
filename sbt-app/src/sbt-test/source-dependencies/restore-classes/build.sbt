@@ -1,14 +1,14 @@
 import sbt.internal.inc.Analysis
 import complete.DefaultParsers._
 
-crossTarget in Compile := target.value
+(Compile / crossTarget) := target.value
 
 // Reset compiler iterations, necessary because tests run in batch mode
 val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 recordPreviousIterations := {
   val log = streams.value.log
   CompileState.previousIterations = {
-    val previousAnalysis = (previousCompile in Compile).value.analysis.asScala
+    val previousAnalysis = (Compile / previousCompile).value.analysis.asScala
     previousAnalysis match {
       case None =>
         log.info("No previous analysis detected")
@@ -23,6 +23,6 @@ val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterati
 
 checkIterations := {
   val expected: Int = (Space ~> NatBasic).parsed
-  val actual: Int = ((compile in Compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
+  val actual: Int = ((Compile / compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
   assert(expected == actual, s"Expected $expected compilations, got $actual")
 }

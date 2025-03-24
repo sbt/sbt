@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,15 +11,16 @@ package sbt
 import java.io.File
 import java.nio.file.FileSystems
 
-import sbt.internal.LabeledFunctions._
+import sbt.internal.LabeledFunctions.*
 import sbt.internal.LegacyWatched
 import sbt.internal.io.{ EventMonitor, Source, WatchState }
 import sbt.internal.util.Types.const
 import sbt.internal.util.AttributeKey
-import sbt.io._
+import sbt.io.*
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Properties
+import scala.annotation.nowarn
 
 @deprecated("Watched is no longer used to implement continuous execution", "1.3.0")
 trait Watched {
@@ -39,7 +41,7 @@ trait Watched {
    */
   def antiEntropy: FiniteDuration = Watched.AntiEntropy
 
-  /** The message to show when triggered execution waits for sources to change.*/
+  /** The message to show when triggered execution waits for sources to change. */
   private[sbt] def watchingMessage(s: WatchState): String = Watched.defaultWatchingMessage(s)
 
   /** The message to show before an action is run. */
@@ -52,6 +54,8 @@ trait Watched {
 object Watched {
 
   type WatchSource = Source
+
+  @nowarn
   def terminateWatch(key: Int): Boolean = Watched.isEnter(key)
 
   private def waitMessage(project: String): String =
@@ -82,6 +86,7 @@ object Watched {
 
   }
 
+  @nowarn
   private[sbt] val newWatchService: () => WatchService =
     (() => createWatchService()).label("Watched.newWatchService")
   def createWatchService(pollDelay: FiniteDuration): WatchService = {
@@ -125,7 +130,7 @@ object Watched {
   }.label("Watched.projectOnWatchMessage")
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
-  private[this] class AWatched extends Watched
+  private class AWatched extends Watched
 
   @deprecated("This method is not used and may be removed in a future version of sbt", "1.3.0")
   def multi(base: Watched, paths: Seq[Watched]): Watched =

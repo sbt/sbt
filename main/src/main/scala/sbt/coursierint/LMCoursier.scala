@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,30 +13,30 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import lmcoursier.definitions.{
   Classifier,
-  Configuration => CConfiguration,
+  Configuration as CConfiguration,
   CacheLogger,
-  Project => CProject,
+  Project as CProject,
   ModuleMatchers,
   Reconciliation,
-  Strict => CStrict,
+  Strict as CStrict,
 }
-import lmcoursier._
+import lmcoursier.*
+import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
-import Keys._
+import Keys.*
 import sbt.internal.util.Util
-import sbt.librarymanagement._
+import sbt.librarymanagement.*
 import sbt.librarymanagement.ivy.{
-  Credentials => IvyCredentials,
+  Credentials as IvyCredentials,
   DirectCredentials,
   FileCredentials
 }
 import sbt.util.Logger
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import xsbti.AppConfiguration
-import sbt.SlashSyntax0._
 
 object LMCoursier {
-  private[this] val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
+  private val credentialRegistry: ConcurrentHashMap[(String, String), IvyCredentials] =
     new ConcurrentHashMap
 
   def defaultCacheLocation: File = {
@@ -64,7 +65,7 @@ object LMCoursier {
       .orElse(sys.props.get("coursier.cache").map(absoluteFile)) match {
       case Some(dir) => dir
       case _ =>
-        if (Util.isWindows) windowsCacheDirectory
+        if Util.isWindows then windowsCacheDirectory
         else CoursierDependencyResolution.defaultCacheLocation
     }
   }
@@ -78,55 +79,6 @@ object LMCoursier {
       extraProjects: Seq[CProject],
       fallbackDeps: Seq[FallbackDependency],
       appConfig: AppConfiguration,
-      classifiers: Option[Seq[Classifier]],
-      profiles: Set[String],
-      scalaOrg: String,
-      scalaVer: String,
-      scalaBinaryVer: String,
-      autoScalaLib: Boolean,
-      scalaModInfo: Option[ScalaModuleInfo],
-      excludeDeps: Seq[InclExclRule],
-      credentials: Seq[Credentials],
-      createLogger: Option[CacheLogger],
-      cacheDirectory: File,
-      reconciliation: Seq[(ModuleMatchers, Reconciliation)],
-      ivyHome: Option[File],
-      strict: Option[CStrict],
-      depsOverrides: Seq[ModuleID],
-      log: Logger
-  ): CoursierConfiguration =
-    coursierConfiguration(
-      rs,
-      interProjectDependencies,
-      extraProjects,
-      fallbackDeps,
-      appConfig,
-      classifiers,
-      profiles,
-      scalaOrg,
-      scalaVer,
-      scalaBinaryVer,
-      autoScalaLib,
-      scalaModInfo,
-      excludeDeps,
-      credentials,
-      createLogger,
-      cacheDirectory,
-      reconciliation,
-      ivyHome,
-      strict,
-      depsOverrides,
-      None,
-      log
-    )
-
-  def coursierConfiguration(
-      rs: Seq[Resolver],
-      interProjectDependencies: Seq[CProject],
-      extraProjects: Seq[CProject],
-      fallbackDeps: Seq[FallbackDependency],
-      appConfig: AppConfiguration,
-      classifiers: Option[Seq[Classifier]],
       profiles: Set[String],
       scalaOrg: String,
       scalaVer: String,
@@ -142,6 +94,8 @@ object LMCoursier {
       strict: Option[CStrict],
       depsOverrides: Seq[ModuleID],
       updateConfig: Option[UpdateConfiguration],
+      sameVersions: Seq[Set[InclExclRule]],
+      enableDependencyOverrides: Option[Boolean],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -152,9 +106,8 @@ object LMCoursier {
         log
       )
       .toVector
-      .map {
-        case (o, n) =>
-          (o.value, n.value)
+      .map { (o, n) =>
+        (o.value, n.value)
       }
       .sorted
     val autoScala = autoScalaLib && scalaModInfo.forall(
@@ -181,8 +134,6 @@ object LMCoursier {
       .withSbtScalaJars(sbtBootJars.toVector)
       .withSbtScalaVersion(sbtScalaVersion)
       .withSbtScalaOrganization(sbtScalaOrganization)
-      .withClassifiers(classifiers.toVector.flatten.map(_.value))
-      .withHasClassifiers(classifiers.nonEmpty)
       .withMavenProfiles(profiles.toVector.sorted)
       .withScalaOrganization(scalaOrg)
       .withScalaVersion(scalaVer)
@@ -195,6 +146,8 @@ object LMCoursier {
       .withStrict(strict)
       .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)
+      .withSameVersions(sameVersions)
+    // .withEnableDependencyOverrides(enableDependencyOverrides)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -205,52 +158,32 @@ object LMCoursier {
       csrExtraProjects.value.toVector,
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
-      ivyPaths.value.ivyHome,
+      ivyPaths.value.ivyHome.map(new File(_)),
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
+      Some(csrMavenDependencyOverride.value),
       streams.value.log
     )
   }
 
   def updateClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
-    val sv = scalaVersion.value
-    coursierConfiguration(
-      csrRecursiveResolvers.value,
-      csrInterProjectDependencies.value.toVector,
-      csrExtraProjects.value.toVector,
-      csrFallbackDependencies.value,
-      appConfiguration.value,
-      Some(transitiveClassifiers.value.map(Classifier(_))),
-      csrMavenProfiles.value,
-      scalaOrganization.value,
-      sv,
-      scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
-      scalaModuleInfo.value,
-      allExcludeDependencies.value,
-      CoursierInputsTasks.credentialsTask.value,
-      csrLogger.value,
-      csrCacheDirectory.value,
-      csrReconciliations.value,
-      ivyPaths.value.ivyHome,
-      CoursierInputsTasks.strictTask.value,
-      dependencyOverrides.value,
-      Some(updateConfiguration.value),
-      streams.value.log
-    )
+    val classifiers = transitiveClassifiers.value.map(Classifier(_))
+    coursierConfigurationTask.value
+      .withClassifiers(classifiers.toVector.map(_.value))
+      .withHasClassifiers(true)
   }
 
   def updateSbtClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -261,22 +194,23 @@ object LMCoursier {
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
-      ivyPaths.value.ivyHome,
+      ivyPaths.value.ivyHome.map(new File(_)),
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
+      Some(csrMavenDependencyOverride.value),
       streams.value.log
     )
   }
@@ -289,22 +223,23 @@ object LMCoursier {
       Vector(),
       csrFallbackDependencies.value,
       appConfiguration.value,
-      None,
       csrMavenProfiles.value,
       scalaOrganization.value,
       sv,
       scalaBinaryVersion.value,
-      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv),
+      autoScalaLibrary.value && !ScalaArtifacts.isScala3(sv) && !Classpaths.isScala213(sv),
       scalaModuleInfo.value,
       allExcludeDependencies.value,
       CoursierInputsTasks.credentialsTask.value,
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
-      ivyPaths.value.ivyHome,
+      ivyPaths.value.ivyHome.map(new File(_)),
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
+      csrSameVersions.value,
+      Some(csrMavenDependencyOverride.value),
       streams.value.log
     )
   }
@@ -321,8 +256,8 @@ object LMCoursier {
       logger.debug(s"downloaded $url")
   }
 
-  def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[_] = {
-    csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs: _*).value
+  def publicationsSetting(packageConfigs: Seq[(Configuration, CConfiguration)]): Def.Setting[?] = {
+    csrPublications := CoursierArtifactsTasks.coursierPublicationsTask(packageConfigs*).value
   }
 
   // This emulates Ivy's credential registration which basically keeps mutating global registry
@@ -339,7 +274,7 @@ object LMCoursier {
           ()
       }
     }
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     (ThisBuild / Keys.credentials).value foreach registerCredentials
     (LocalRootProject / Keys.credentials).value foreach registerCredentials
     Keys.credentials.value foreach registerCredentials

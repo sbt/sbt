@@ -1,8 +1,12 @@
 name: Nightly
 on:
-  schedule:
-    # 08:00 UTC = 03:00 EST
-    - cron:  '0 8 * * *'
+  workflow_dispatch:
+#  schedule:
+#    # 08:00 UTC = 03:00 EST
+#    - cron:  '0 8 * * *'
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
 
 jobs:
   deploy:
@@ -11,34 +15,30 @@ jobs:
         include:
           - os: ubuntu-latest
             java: 8
+            distribution: adopt
     runs-on: ${{ matrix.os }}
     env:
       JAVA_OPTS: -Xms800M -Xmx800M -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
     steps:
     - name: Checkout sbt/sbt
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Checkout sbt/io
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: sbt/io
         ref: develop
         path: io
-    - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v2
-      with:
-        repository: sbt/librarymanagement
-        ref: develop
-        path: librarymanagement
     - name: Checkout sbt/zinc
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         repository: sbt/zinc
         ref: develop
         path: zinc
-    - name: Setup
-      uses: olafurpg/setup-scala@v10
+    - name: Setup JDK
+      uses: actions/setup-java@v4
       with:
-        java-version: "adopt@1.${{ matrix.java }}"
+        distribution: "${{ matrix.distribution }}"
+        java-version: "${{ matrix.java }}"
     - name: Coursier cache
       uses: coursier/cache-action@v6
     - name: Build and deploy
@@ -49,7 +49,7 @@ jobs:
         cd io
         sbt -v +publish
         cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {librarymanagement}/publish; {zinc}/publish; upperModules/publish; bundledLauncherProj/publish"
+        sbt -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {zinc}/publish; upperModules/publish; bundledLauncherProj/publish"
         rm -rf "$HOME/.ivy2/local" || true
         rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
         find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true

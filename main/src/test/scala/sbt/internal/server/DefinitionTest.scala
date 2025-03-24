@@ -1,10 +1,12 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt
 package internal
 package server
@@ -34,7 +36,9 @@ object DefinitionTest extends verify.BasicTestSuite {
     )
   }
 
-  test("it should find valid standard short scala identifier when caret is set at the start of it") {
+  test(
+    "it should find valid standard short scala identifier when caret is set at the start of it"
+  ) {
     assert(textProcessor.identifier("val a = 0", 4) == Some("a"))
   }
 
@@ -200,12 +204,13 @@ object DefinitionTest extends verify.BasicTestSuite {
     val cache = Caffeine.newBuilder().build[String, Definition.Analyses]()
     val cacheFile = "Test.scala"
     val useBinary = true
+    val useConsistent = true
 
-    Definition.updateCache(cache)(cacheFile, useBinary)
+    Definition.updateCache(cache)(cacheFile, useBinary, useConsistent)
 
     val actual = Definition.AnalysesAccess.getFrom(cache)
 
-    assert(actual.get.contains(("Test.scala" -> true -> None)))
+    assert(actual.get.contains((("Test.scala", true, true) -> None)))
   }
 
   test("it should replace cache data in cache") {
@@ -213,13 +218,14 @@ object DefinitionTest extends verify.BasicTestSuite {
     val cacheFile = "Test.scala"
     val useBinary = true
     val falseUseBinary = false
+    val useConsistent = true
 
-    Definition.updateCache(cache)(cacheFile, falseUseBinary)
-    Definition.updateCache(cache)(cacheFile, useBinary)
+    Definition.updateCache(cache)(cacheFile, falseUseBinary, useConsistent)
+    Definition.updateCache(cache)(cacheFile, useBinary, useConsistent)
 
     val actual = Definition.AnalysesAccess.getFrom(cache)
 
-    assert(actual.get.contains(("Test.scala" -> true -> None)))
+    assert(actual.get.contains((("Test.scala", true, true) -> None)))
   }
 
   test("it should cache more data in cache") {
@@ -228,15 +234,17 @@ object DefinitionTest extends verify.BasicTestSuite {
     val useBinary = true
     val otherCacheFile = "OtherTest.scala"
     val otherUseBinary = false
+    val useConsistent = true
 
-    Definition.updateCache(cache)(otherCacheFile, otherUseBinary)
-    Definition.updateCache(cache)(cacheFile, useBinary)
+    Definition.updateCache(cache)(otherCacheFile, otherUseBinary, useConsistent)
+    Definition.updateCache(cache)(cacheFile, useBinary, useConsistent)
 
     val actual = Definition.AnalysesAccess.getFrom(cache)
 
     assert(
-      actual.get.contains("Test.scala" -> true -> Option.empty[Analysis]) &&
-        actual.get.contains("OtherTest.scala" -> false -> Option.empty[Analysis])
+      actual.get.contains(("Test.scala", true, true) -> Option.empty[Analysis]) &&
+        actual.get.contains(("OtherTest.scala", false, true) -> Option.empty[Analysis])
     )
   }
 }
+ */

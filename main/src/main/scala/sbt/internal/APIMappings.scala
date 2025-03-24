@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,44 +9,52 @@
 package sbt
 package internal
 
-import java.io.File
-import java.net.{ MalformedURLException, URL }
+import java.net.{ MalformedURLException, URI }
 
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.librarymanagement.ModuleID
-
 import sbt.internal.util.Attributed
 import sbt.util.Logger
+import xsbti.HashedVirtualFileRef
 
 private[sbt] object APIMappings {
-  def extract(cp: Seq[Attributed[File]], log: Logger): Seq[(File, URL)] =
+  def extract(
+      cp: Seq[Attributed[HashedVirtualFileRef]],
+      log: Logger
+  ): Seq[(HashedVirtualFileRef, URI)] =
     cp.flatMap(entry => extractFromEntry(entry, log))
 
-  def extractFromEntry(entry: Attributed[File], log: Logger): Option[(File, URL)] =
-    entry.get(Keys.entryApiURL) match {
-      case Some(u) => Some((entry.data, u))
+  def extractFromEntry(
+      entry: Attributed[HashedVirtualFileRef],
+      log: Logger
+  ): Option[(HashedVirtualFileRef, URI)] =
+    entry.get(Keys.entryApiURL) match
+      case Some(u) => Some((entry.data, URI(u)))
       case None =>
-        entry.get(Keys.moduleID.key).flatMap { mid =>
+        entry.get(Keys.moduleIDStr).flatMap { str =>
+          val mid = Classpaths.moduleIdJsonKeyFormat.read(str)
           extractFromID(entry.data, mid, log)
         }
-    }
 
-  private[this] def extractFromID(entry: File, mid: ModuleID, log: Logger): Option[(File, URL)] =
-    for {
+  private def extractFromID(
+      entry: HashedVirtualFileRef,
+      mid: ModuleID,
+      log: Logger
+  ): Option[(HashedVirtualFileRef, URI)] =
+    for
       urlString <- mid.extraAttributes.get(SbtPomExtraProperties.POM_API_KEY)
-      u <- parseURL(urlString, entry, log)
-    } yield (entry, u)
+      u <- parseURI(urlString, entry, log)
+    yield (entry, u)
 
-  private[this] def parseURL(s: String, forEntry: File, log: Logger): Option[URL] =
-    try Some(new URL(s))
-    catch {
+  private def parseURI(s: String, forEntry: HashedVirtualFileRef, log: Logger): Option[URI] =
+    try Some(new URI(s))
+    catch
       case e: MalformedURLException =>
-        log.warn(s"Invalid API base URL '$s' for classpath entry '$forEntry': ${e.toString}")
+        log.warn(s"Invalid API base URI '$s' for classpath entry '$forEntry': ${e.toString}")
         None
-    }
 
-  def store[T](attr: Attributed[T], entryAPI: Option[URL]): Attributed[T] = entryAPI match {
-    case None    => attr
-    case Some(u) => attr.put(Keys.entryApiURL, u)
-  }
+  def store[A](attr: Attributed[A], entryAPI: Option[URI]): Attributed[A] =
+    entryAPI match
+      case None    => attr
+      case Some(u) => attr.put(Keys.entryApiURL, u.toString)
 }

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,6 +17,10 @@ final class SetTrace(val level: Int) extends LogEvent
 final class SetSuccess(val enabled: Boolean) extends LogEvent
 final class ControlEvent(val event: ControlEvent.Value, val msg: String) extends LogEvent
 
-object ControlEvent extends Enumeration {
-  val Start, Header, Finish = Value
+object ControlEvent {
+  enum Value {
+    case Start
+    case Header
+    case Finish
+  }
 }

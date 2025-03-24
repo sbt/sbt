@@ -1,15 +1,16 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-import sbt._
+import sbt.*
 
-import org.scalacheck._
-import Prop._
-import TaskGen._
+import org.scalacheck.*
+import Prop.*
+import TaskGen.*
 import math.abs
 
 object TaskRunnerForkTest extends Properties("TaskRunner Fork") {

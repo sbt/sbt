@@ -1,7 +1,6 @@
 import xsbti.AppConfiguration
-// ThisBuild / useCoursier := false
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.13.3"
+ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
@@ -13,22 +12,13 @@ def commonSettings: Seq[Def.Setting[_]] =
     resolvers += MavenCache("local-maven", (LocalRootProject / target).value / "local-maven"),
   )
 
-lazy val root = (project in file("."))
-  .settings(commonSettings)
-
-val `v1-0-0` = (project in file("v1.0.0"))
+val semverSpecTest = project
   .settings(commonSettings)
   .settings(
     name := "semver-spec-test",
     version := "1.0.0",
   )
 
-val `v1-1-0` = (project in file("v1.1.0"))
-  .settings(commonSettings)
-  .settings(
-    name := "semver-spec-test",
-    version := "1.1.0",
-  )
 
 val middle = project
   .settings(commonSettings)

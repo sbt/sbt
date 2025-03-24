@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,15 +10,16 @@ package sbt
 package coursierint
 
 import lmcoursier.definitions.{
-  Classifier => CClassifier,
-  Configuration => CConfiguration,
-  Extension => CExtension,
-  Publication => CPublication,
-  Type => CType
+  Classifier as CClassifier,
+  Configuration as CConfiguration,
+  Extension as CExtension,
+  Publication as CPublication,
+  Type as CType
 }
-import sbt.librarymanagement._
-import sbt.Keys._
-import sbt.SlashSyntax0._
+import sbt.librarymanagement.*
+import sbt.Keys.*
+import sbt.ProjectExtra.extract
+import sbt.SlashSyntax0.*
 
 object CoursierArtifactsTasks {
   def coursierPublicationsTask(
@@ -31,7 +33,7 @@ object CoursierArtifactsTasks {
       val sbv = sbt.Keys.scalaBinaryVersion.value
       val ivyConfs = sbt.Keys.ivyConfigurations.value
       val extracted = Project.extract(s)
-      import extracted._
+      import extracted.*
 
       val sourcesConfigOpt =
         if (ivyConfigurations.value.exists(_.name == "sources"))
@@ -106,9 +108,8 @@ object CoursierArtifactsTasks {
         )
       }
 
-      val sbtArtifactsPublication = sbtArtifacts.collect {
-        case Some((config, artifact)) =>
-          config -> artifactPublication(artifact)
+      val sbtArtifactsPublication = sbtArtifacts.collect { case Some((config, artifact)) =>
+        config -> artifactPublication(artifact)
       }
 
       val stdArtifactsSet = sbtArtifacts.flatMap(_.map { case (_, a) => a }.toSeq).toSet
@@ -125,7 +126,8 @@ object CoursierArtifactsTasks {
       // it puts it in all of them. See for example what happens to
       // the standalone JAR artifact of the coursier cli module.
       def allConfigsIfEmpty(configs: Iterable[ConfigRef]): Iterable[ConfigRef] =
-        if (configs.isEmpty) ivyConfs.filter(_.isPublic).map(c => ConfigRef(c.name)) else configs
+        if (configs.isEmpty) ivyConfs.withFilter(_.isPublic).map(c => ConfigRef(c.name))
+        else configs
 
       val extraSbtArtifactsPublication = for {
         artifact <- extraSbtArtifacts

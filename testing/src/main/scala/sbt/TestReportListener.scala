@@ -1,14 +1,15 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
-import sbt.protocol.testing._
+import testing.{ Logger as TLogger, Event as TEvent, Status as TStatus }
+import sbt.protocol.testing.*
 
 trait TestReportListener {
 
@@ -41,7 +42,9 @@ trait TestsListener extends TestReportListener {
 
 }
 
-/** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
+/**
+ * Provides the overall `result` of a group of tests (a suite) and test counts for each result type.
+ */
 final class SuiteResult(
     val result: TestResult,
     val passedCount: Int,
@@ -98,7 +101,9 @@ final class SuiteResult(
 
 object SuiteResult {
 
-  /** Computes the overall result and counts for a suite with individual test results in `events`. */
+  /**
+   * Computes the overall result and counts for a suite with individual test results in `events`.
+   */
   def apply(events: Seq[TEvent]): SuiteResult = {
     def count(status: TStatus) = events.count(_.status == status)
     new SuiteResult(

@@ -1,11 +1,11 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TextDocumentSyncOptionsFormats { self: sbt.internal.langserver.codec.SaveOptionsFormats with sjsonnew.BasicJsonProtocol =>
+trait TextDocumentSyncOptionsFormats { self: sbt.internal.langserver.codec.SaveOptionsFormats & sjsonnew.BasicJsonProtocol =>
 implicit lazy val TextDocumentSyncOptionsFormat: JsonFormat[sbt.internal.langserver.TextDocumentSyncOptions] = new JsonFormat[sbt.internal.langserver.TextDocumentSyncOptions] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentSyncOptions = {
     __jsOpt match {

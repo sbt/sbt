@@ -1,13 +1,14 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.util
 
-import xsbti.{ Logger => xLogger }
+import xsbti.{ Logger as xLogger }
 import xsbti.{ Position, Problem, Severity }
 
 import sys.process.ProcessLogger
@@ -17,8 +18,8 @@ import java.util.Optional
 import java.util.function.Supplier
 
 /**
- * This is intended to be the simplest logging interface for use by code that wants to log.
- * It does not include configuring the logger.
+ * This is intended to be the simplest logging interface for use by code that wants to log. It does
+ * not include configuring the logger.
  */
 abstract class Logger extends xLogger {
   final def verbose(message: => String): Unit = debug(message)
@@ -39,11 +40,13 @@ abstract class Logger extends xLogger {
   def success(message: => String): Unit
   def log(level: Level.Value, message: => String): Unit
 
+  def verbose(msg: Supplier[String]): Unit = debug(msg)
   def debug(msg: Supplier[String]): Unit = log(Level.Debug, msg)
   def warn(msg: Supplier[String]): Unit = log(Level.Warn, msg)
   def info(msg: Supplier[String]): Unit = log(Level.Info, msg)
   def error(msg: Supplier[String]): Unit = log(Level.Error, msg)
   def trace(msg: Supplier[Throwable]): Unit = trace(msg.get())
+  def success(msg: Supplier[String]): Unit = success(msg.get())
   def log(level: Level.Value, msg: Supplier[String]): Unit = log(level, msg.get)
 }
 
@@ -77,7 +80,7 @@ object Logger {
     case _         => wrapXLogger(lg)
   }
 
-  private[this] def wrapXLogger(lg: xLogger): Logger = new Logger {
+  private def wrapXLogger(lg: xLogger): Logger = new Logger {
     import InterfaceUtil.toSupplier
     override def debug(msg: Supplier[String]): Unit = lg.debug(msg)
     override def warn(msg: Supplier[String]): Unit = lg.warn(msg)

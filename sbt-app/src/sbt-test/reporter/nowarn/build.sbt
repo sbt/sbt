@@ -1,10 +1,18 @@
+scalaVersion := "2.12.20"
+
 lazy val sub1 = project
 
 lazy val sub2 = project
 
 val assertNoWarning = taskKey[Unit]("checks warning *is not* emitted")
-
 val assertWarning = taskKey[Unit]("checks warning *is* emitted")
+
+lazy val root = (project in file("."))
+  .aggregate(sub1, sub2)
+  .settings(
+    assertWarning := check(true).value,
+    assertNoWarning := check(false).value,
+  )
 
 def check(expectation: Boolean) = Def.task[Unit] {
   val lastLog: File = BuiltinCommands.lastLogFile(state.value).get
@@ -15,10 +23,6 @@ def check(expectation: Boolean) = Def.task[Unit] {
   else if (!expectation && contains)
     sys.error(s"compiler output still contains warning")
   else {
-    IO.write(lastLog, "") // clear the backing log for for 'last'.
+    IO.write(lastLog, "") // clear the backing log for 'last'.
   }
 }
-
-assertWarning := check(true).value
-
-assertNoWarning := check(false).value

@@ -1,7 +1,7 @@
 lazy val p1 = (project in file("p1")).
   settings(
     checkTask(expectedMongo),
-    libraryDependencies += "org.mongodb" %% "casbah" % "2.4.1" pomOnly(),
+    libraryDependencies += ("org.mongodb" %% "casbah" % "2.4.1").pomOnly(),
     inThisBuild(List(
       organization := "org.example",
       version := "1.0",
@@ -32,8 +32,9 @@ lazy val expectedInter =
   </dependency>
 
 def checkTask(expectedDep: xml.Elem) = TaskKey[Unit]("checkPom") := {
-  val file = makePom.value
-  val pom = xml.XML.loadFile(file)
+  val vf = makePom.value
+  val converter = fileConverter.value
+  val pom = xml.XML.loadFile(converter.toPath(vf).toFile)
   val actual = pom \\ "dependencies"
   val expected = <d>
     {expectedDep}

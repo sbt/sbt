@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,6 +9,7 @@
 package sbt
 
 trait Import {
+  type Settings = Def.Settings
   type Setting[T] = Def.Setting[T]
   type ScopedKey[T] = Def.ScopedKey[T]
   type SettingsDefinition = Def.SettingsDefinition
@@ -28,7 +30,13 @@ trait Import {
   val CustomOutput = sbt.OutputStrategy.CustomOutput
   val AllRequirements = sbt.PluginTrigger.AllRequirements
   val NoTrigger = sbt.PluginTrigger.NoTrigger
-
+  val ClasspathDependency = ClasspathDep.ClasspathDependency
+  type ClasspathDependency = ClasspathDep.ClasspathDependency
+  val ResolvedClasspathDependency = ClasspathDep.ResolvedClasspathDependency
+  type ResolvedClasspathDependency = ClasspathDep.ResolvedClasspathDependency
+  val Select = ScopeAxis.Select
+  val This = ScopeAxis.This
+  val Zero = ScopeAxis.Zero
   // sbt.testing
   type TestResult = sbt.protocol.testing.TestResult
   val TestResult = sbt.protocol.testing.TestResult
@@ -46,7 +54,6 @@ trait Import {
   val Hash = sbt.io.Hash
   val HiddenFileFilter = sbt.io.HiddenFileFilter
   val IO = sbt.io.IO
-  type Mapper = sbt.io.Mapper
   val NameFilter = sbt.io.NameFilter
   type NameFilter = sbt.io.NameFilter
   val NothingFilter = sbt.io.NothingFilter
@@ -121,8 +128,6 @@ trait Import {
   val Tracked = sbt.util.Tracked
 
   // sbt.internal.util
-  val AList = sbt.internal.util.AList
-  type AList[K[L[x]]] = sbt.internal.util.AList[K]
   type AbstractRMap[K[_], V[_]] = sbt.internal.util.AbstractRMap[K, V]
   type AlreadyHandledException = sbt.internal.util.AlreadyHandledException
   val AttributeEntry = sbt.internal.util.AttributeEntry
@@ -135,16 +140,16 @@ trait Import {
   type Attributed[D] = sbt.internal.util.Attributed[D]
   type BasicLogger = sbt.internal.util.BasicLogger
   type BufferedLogger = sbt.internal.util.BufferedLogger
-  val Classes = sbt.internal.util.Classes
+  // val Classes = sbt.internal.util.Classes
   val ConsoleLogger = sbt.internal.util.ConsoleLogger
   type ConsoleLogger = sbt.internal.util.ConsoleLogger
   val ConsoleOut = sbt.internal.util.ConsoleOut
   type ConsoleOut = sbt.internal.util.ConsoleOut
   val Dag = sbt.internal.util.Dag
-  type Dag[A <: Dag[A]] = sbt.internal.util.Dag[A]
+  // type Dag[A <: Dag[A]] = sbt.internal.util.Dag[A]
   type DelegatingPMap[K[_], V[_]] = sbt.internal.util.DelegatingPMap[K, V]
   val ErrorHandling = sbt.internal.util.ErrorHandling
-  type EvaluateSettings[S] = sbt.internal.util.EvaluateSettings[S]
+  // type EvaluateSettings[I <: Init] = sbt.internal.util.EvaluateSettings[I]
   val EvaluationState = sbt.internal.util.EvaluationState
   val ExitHook = sbt.internal.util.ExitHook
   type ExitHook = sbt.internal.util.ExitHook
@@ -156,23 +161,23 @@ trait Import {
   type FullLogger = sbt.internal.util.FullLogger
   val FullReader = sbt.internal.util.FullReader
   type FullReader = sbt.internal.util.FullReader
-  val HCons = sbt.internal.util.HCons
-  type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
-  val HList = sbt.internal.util.HList
-  type HList = sbt.internal.util.HList
-  val HNil = sbt.internal.util.HNil
-  type HNil = sbt.internal.util.HNil
+  // val HCons = sbt.internal.util.HCons
+  // type HCons[H, T <: HList] = sbt.internal.util.HCons[H, T]
+  // val HList = sbt.internal.util.HList
+  // type HList = sbt.internal.util.HList
+  // val HNil = sbt.internal.util.HNil
+  // type HNil = sbt.internal.util.HNil
   val IDSet = sbt.internal.util.IDSet
   type IDSet[T] = sbt.internal.util.IDSet[T]
   val IMap = sbt.internal.util.IMap
   type IMap[K[_], V[_]] = sbt.internal.util.IMap[K, V]
-  type Init[S] = sbt.internal.util.Init[S]
+  type Init = sbt.internal.util.Init
   type JLine = sbt.internal.util.JLine
-  val KCons = sbt.internal.util.KCons
-  type KCons[H, +T <: KList[M], +M[_]] = sbt.internal.util.KCons[H, T, M]
-  type KList[+M[_]] = sbt.internal.util.KList[M]
-  val KNil = sbt.internal.util.KNil
-  type KNil = sbt.internal.util.KNil
+  // val KCons = sbt.internal.util.KCons
+  // type KCons[H, +T <: KList[M], +M[_]] = sbt.internal.util.KCons[H, T, M]
+  // type KList[+M[_]] = sbt.internal.util.KList[M]
+  // val KNil = sbt.internal.util.KNil
+  // type KNil = sbt.internal.util.KNil
   val LinePosition = sbt.internal.util.LinePosition
   type LinePosition = sbt.internal.util.LinePosition
   val LineRange = sbt.internal.util.LineRange
@@ -191,24 +196,25 @@ trait Import {
   val Relation = sbt.internal.util.Relation
   type Relation[A, B] = sbt.internal.util.Relation[A, B]
   val ScalaKeywords = sbt.internal.util.ScalaKeywords
-  type Settings[S] = sbt.internal.util.Settings[S]
   type SharedAttributeKey[T] = sbt.internal.util.SharedAttributeKey[T]
   val Signals = sbt.internal.util.Signals
   val SimpleReader = sbt.internal.util.SimpleReader
   type SimpleReader = sbt.internal.util.SimpleReader
   type SourcePosition = sbt.internal.util.SourcePosition
   val StackTrace = sbt.internal.util.StackTrace
+  val StringAttributeKey = sbt.internal.util.StringAttributeKey
+  type StringAttributeKey = sbt.internal.util.StringAttributeKey
   type SuppressedTraceContext = sbt.internal.util.SuppressedTraceContext
   type TranslatedException = sbt.internal.util.TranslatedException
   type TranslatedIOException = sbt.internal.util.TranslatedIOException
-  val TypeFunctions = sbt.internal.util.TypeFunctions
+  // val TypeFunctions = sbt.internal.util.TypeFunctions
   type TypeFunctions = sbt.internal.util.TypeFunctions
   val Types = sbt.internal.util.Types
-  type Types = sbt.internal.util.Types
+  // type Types = sbt.internal.util.Types
   type UnprintableException = sbt.internal.util.UnprintableException
   val Util = sbt.internal.util.Util
-  val ~> = sbt.internal.util.~>
-  type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
+  // val ~> = sbt.internal.util.~>
+  // type ~>[-K[_], +V[_]] = sbt.internal.util.~>[K, V]
 
   // sbt.internal.util.complete
   object complete {
@@ -297,6 +303,14 @@ trait Import {
   type IvyScala = sbt.librarymanagement.ScalaModuleInfo
   val JCenterRepository = sbt.librarymanagement.Resolver.JCenterRepository
   val JavaNet2Repository = sbt.librarymanagement.Resolver.JavaNet2Repository
+  import sbt.librarymanagement.{ InclExclRule, DependencyBuilders }
+  given Conversion[String, InclExclRule] = InclExclRule.stringToExclusionRule
+  given Conversion[DependencyBuilders.OrganizationArtifactName, InclExclRule] =
+    InclExclRule.organizationArtifactNameToExclusionRule
+
+  type License = sbt.librarymanagement.License
+  val License = sbt.librarymanagement.License
+
   type LogicalClock = sbt.librarymanagement.LogicalClock
   val LogicalClock = sbt.librarymanagement.LogicalClock
   type MakePomConfiguration = sbt.librarymanagement.MakePomConfiguration
@@ -324,6 +338,7 @@ trait Import {
   val Patterns = sbt.librarymanagement.Patterns
   type Patterns = sbt.librarymanagement.Patterns
   type PatternsBasedRepository = sbt.librarymanagement.PatternsBasedRepository
+  val Platform = sbt.librarymanagement.Platform
   val PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type PublishConfiguration = sbt.librarymanagement.PublishConfiguration
   type RawRepository = sbt.librarymanagement.RawRepository
@@ -363,5 +378,7 @@ trait Import {
   type IvyPaths = sbt.librarymanagement.ivy.IvyPaths
   val IvyPaths = sbt.librarymanagement.ivy.IvyPaths
 
+  type FileConverter = xsbti.FileConverter
+  type HashedVirtualFileRef = xsbti.HashedVirtualFileRef
   type IncOptions = xsbti.compile.IncOptions
 }

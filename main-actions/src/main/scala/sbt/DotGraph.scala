@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -40,10 +41,10 @@ object DotGraph {
 
     val mappings =
       for {
-        (dependsOn, dependants) <- mappedGraph.toSeq
-        dependant <- dependants
-        if dependant != dependsOn && !dependsOn.isEmpty && !dependant.isEmpty
-      } yield "\"" + dependant + "\" -> \"" + dependsOn + "\""
+        (dependsOn, dependents) <- mappedGraph.toSeq
+        dependent <- dependents
+        if dependent != dependsOn && !dependsOn.isEmpty && !dependent.isEmpty
+      } yield "\"" + dependent + "\" -> \"" + dependsOn + "\""
 
     val lines =
       ("digraph " + graphName + " {") +:

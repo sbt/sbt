@@ -1,0 +1,5 @@
+$ copy-file changes/build.sbt src/sbt-test/group/name/build.sbt
+$ copy-file changes/test src/sbt-test/group/name/test
+
+> setJavaVersion
+> scripted

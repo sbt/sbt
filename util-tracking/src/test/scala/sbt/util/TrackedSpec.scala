@@ -1,21 +1,22 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
-import sbt.io.syntax._
-import sbt.util.CacheImplicits._
+import sbt.io.syntax.*
+import sbt.util.CacheImplicits.*
 import sjsonnew.{ Builder, JsonWriter }
 
 import scala.concurrent.Promise
 
-class TrackedSpec extends FlatSpec {
+class TrackedSpec extends AnyFlatSpec {
   "lastOutput" should "store the last output" in {
     withStore { store =>
       val value = 5
@@ -28,7 +29,7 @@ class TrackedSpec extends FlatSpec {
             in
           case (_, Some(_)) =>
             fail()
-        }(implicitly)(value)
+        }(using implicitly)(value)
       assert(res0 === value)
 
       val res1 =
@@ -39,7 +40,7 @@ class TrackedSpec extends FlatSpec {
             assert(in === otherValue)
             assert(read === value)
             read
-        }(implicitly)(otherValue)
+        }(using implicitly)(otherValue)
       assert(res1 === value)
 
       val res2 =
@@ -50,7 +51,7 @@ class TrackedSpec extends FlatSpec {
             assert(in === otherValue)
             assert(read === value)
             read
-        }(implicitly)(otherValue)
+        }(using implicitly)(otherValue)
       assert(res2 === value)
 
       ()
@@ -60,15 +61,15 @@ class TrackedSpec extends FlatSpec {
   "inputChangedW" should "not require the input to have a JsonReader instance" in {
     case class Input(v: Int)
 
-    implicit val writer = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input] {
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
     }
 
     withStore { store =>
       val input0 = Input(1)
 
-      val cachedFun = Tracked.inputChangedW[Input, Int](store) {
-        case (_, in) => in.v
+      val cachedFun = Tracked.inputChangedW[Input, Int](store) { case (_, in) =>
+        in.v
       }
 
       val res0 = cachedFun(input0)
@@ -89,7 +90,7 @@ class TrackedSpec extends FlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res0 === input0)
 
       val res1 =
@@ -99,7 +100,7 @@ class TrackedSpec extends FlatSpec {
           case (false, in) =>
             assert(in === input0)
             in
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res1 === input0)
 
       ()
@@ -118,7 +119,7 @@ class TrackedSpec extends FlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input0)
+        }(using implicitly, implicitly)(input0)
       assert(res0 === input0)
 
       val res1 =
@@ -128,7 +129,7 @@ class TrackedSpec extends FlatSpec {
             in
           case (false, _) =>
             fail()
-        }(implicitly, implicitly)(input1)
+        }(using implicitly, implicitly)(input1)
       assert(res1 === input1)
 
       ()
@@ -138,15 +139,15 @@ class TrackedSpec extends FlatSpec {
   "outputChangedW" should "not require the input to have a JsonReader instance" in {
     case class Input(v: Int)
 
-    implicit val writer = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input] {
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
     }
 
     withStore { store =>
       val input0 = Input(1)
 
-      val cachedFun = Tracked.outputChangedW[Input, Int](store) {
-        case (_, in) => in.v
+      val cachedFun = Tracked.outputChangedW[Input, Int](store) { case (_, in) =>
+        in.v
       }
 
       val res0 = cachedFun(() => input0)
@@ -160,7 +161,7 @@ class TrackedSpec extends FlatSpec {
     withStore { store =>
       val beforeCompletion: String = "before-completion"
       val afterCompletion: String = "after-completion"
-      val sideEffectCompleted = Promise[Unit]
+      val sideEffectCompleted = Promise[Unit]()
       val p0: () => String = () => {
         if (sideEffectCompleted.isCompleted) {
           afterCompletion
@@ -179,7 +180,7 @@ class TrackedSpec extends FlatSpec {
             firstExpectedResult
           case (false, _) =>
             fail()
-        }(implicitly)(p0)
+        }(using implicitly)(p0)
       assert(res0 === firstExpectedResult)
 
       val res1 =
@@ -189,7 +190,7 @@ class TrackedSpec extends FlatSpec {
           case (false, in) =>
             assert(in === afterCompletion)
             secondExpectedResult
-        }(implicitly)(p0)
+        }(using implicitly)(p0)
       assert(res1 === secondExpectedResult)
 
       ()

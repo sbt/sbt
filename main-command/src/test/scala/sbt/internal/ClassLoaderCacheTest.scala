@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,17 +11,18 @@ package sbt.internal
 import java.io.File
 import java.nio.file.Files
 
-import org.scalatest.{ FlatSpec, Matchers }
+import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.matchers.should.Matchers
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.io.IO
 
 object ClassLoaderCacheTest {
-  implicit class CacheOps(val c: ClassLoaderCache) {
+  extension (c: ClassLoaderCache) {
     def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
   }
 }
-class ClassLoaderCacheTest extends FlatSpec with Matchers {
-  import ClassLoaderCacheTest._
+class ClassLoaderCacheTest extends AnyFlatSpec with Matchers {
+  import ClassLoaderCacheTest.*
   private def withCache[R](f: ClassLoaderCache => R): R = {
     val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)
     try f(cache)

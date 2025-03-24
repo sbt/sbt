@@ -1,15 +1,16 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import org.scalacheck._
-import Prop._
-import TaskGen._
+import org.scalacheck.*
+import Prop.*
+import TaskGen.*
 
 object ExecuteSpec extends Properties("Execute") {
   val iGen = Arbitrary.arbInt.arbitrary
@@ -36,7 +37,7 @@ object ExecuteSpec extends Properties("Execute") {
   property("evaluates chained mapped task") = forAllNoShrink(iGen, MaxTasksGen, MaxWorkersGen) {
     (i: Int, times: Int, workers: Int) =>
       ("Workers: " + workers) |: ("Value: " + i) |: ("Times: " + times) |: {
-        val initial = task(0) map (identity[Int])
+        val initial = task(0).map(identity[Int])
         def t = (0 until times).foldLeft(initial)((t, ignore) => t.map(_ + i))
         checkResult(tryRun(t, false, workers), i * times)
       }

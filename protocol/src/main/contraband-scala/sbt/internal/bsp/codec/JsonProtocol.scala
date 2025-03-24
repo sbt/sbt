@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -15,12 +15,19 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.TextDocumentIdentifierFormats
   with sbt.internal.bsp.codec.PositionFormats
   with sbt.internal.bsp.codec.RangeFormats
+  with sbt.internal.bsp.codec.LocationFormats
+  with sbt.internal.bsp.codec.DiagnosticRelatedInformationFormats
+  with sbt.internal.bsp.codec.ScalaTextEditFormats
+  with sbt.internal.bsp.codec.ScalaWorkspaceEditFormats
+  with sbt.internal.bsp.codec.ScalaActionFormats
+  with sbt.internal.bsp.codec.ScalaDiagnosticFormats
   with sbt.internal.bsp.codec.DiagnosticFormats
   with sbt.internal.bsp.codec.BuildClientCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildParamsFormats
   with sbt.internal.bsp.codec.CompileProviderFormats
   with sbt.internal.bsp.codec.TestProviderFormats
   with sbt.internal.bsp.codec.RunProviderFormats
+  with sbt.internal.bsp.codec.DebugProviderFormats
   with sbt.internal.bsp.codec.BuildServerCapabilitiesFormats
   with sbt.internal.bsp.codec.InitializeBuildResultFormats
   with sbt.internal.bsp.codec.PublishDiagnosticsParamsFormats
@@ -29,24 +36,35 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.SourceItemFormats
   with sbt.internal.bsp.codec.SourcesItemFormats
   with sbt.internal.bsp.codec.SourcesResultFormats
+  with sbt.internal.bsp.codec.OutputPathsParamsFormats
+  with sbt.internal.bsp.codec.OutputPathItemFormats
+  with sbt.internal.bsp.codec.OutputPathsItemFormats
+  with sbt.internal.bsp.codec.OutputPathsResultFormats
   with sbt.internal.bsp.codec.DependencySourcesParamsFormats
   with sbt.internal.bsp.codec.DependencySourcesItemFormats
   with sbt.internal.bsp.codec.DependencySourcesResultFormats
   with sbt.internal.bsp.codec.TaskStartParamsFormats
+  with sbt.internal.bsp.codec.TaskProgressParamsFormats
   with sbt.internal.bsp.codec.TaskFinishParamsFormats
   with sbt.internal.bsp.codec.CompileParamsFormats
   with sbt.internal.bsp.codec.BspCompileResultFormats
+  with sbt.internal.bsp.codec.CleanCacheParamsFormats
+  with sbt.internal.bsp.codec.CleanCacheResultFormats
   with sbt.internal.bsp.codec.CompileTaskFormats
   with sbt.internal.bsp.codec.CompileReportFormats
   with sbt.internal.bsp.codec.TestParamsFormats
   with sbt.internal.bsp.codec.TestResultFormats
   with sbt.internal.bsp.codec.RunParamsFormats
   with sbt.internal.bsp.codec.RunResultFormats
+  with sbt.internal.bsp.codec.JvmBuildTargetFormats
   with sbt.internal.bsp.codec.ScalaBuildTargetFormats
-  with sbt.internal.bsp.codec.SbtBuildTargetFormats
   with sbt.internal.bsp.codec.ScalacOptionsParamsFormats
   with sbt.internal.bsp.codec.ScalacOptionsItemFormats
   with sbt.internal.bsp.codec.ScalacOptionsResultFormats
+  with sbt.internal.bsp.codec.JavacOptionsParamsFormats
+  with sbt.internal.bsp.codec.JavacOptionsItemFormats
+  with sbt.internal.bsp.codec.JavacOptionsResultFormats
+  with sbt.internal.bsp.codec.SbtBuildTargetFormats
   with sbt.internal.bsp.codec.BspConnectionDetailsFormats
   with sbt.internal.bsp.codec.MetalsMetadataFormats
   with sbt.internal.bsp.codec.ScalaTestClassesItemFormats
@@ -57,4 +75,12 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.bsp.codec.ScalaMainClassFormats
   with sbt.internal.bsp.codec.ScalaMainClassesItemFormats
   with sbt.internal.bsp.codec.ScalaMainClassesResultFormats
+  with sbt.internal.bsp.codec.ResourcesParamsFormats
+  with sbt.internal.bsp.codec.ResourcesItemFormats
+  with sbt.internal.bsp.codec.ResourcesResultFormats
+  with sbt.internal.bsp.codec.JvmEnvironmentItemFormats
+  with sbt.internal.bsp.codec.JvmTestEnvironmentParamsFormats
+  with sbt.internal.bsp.codec.JvmTestEnvironmentResultFormats
+  with sbt.internal.bsp.codec.JvmRunEnvironmentParamsFormats
+  with sbt.internal.bsp.codec.JvmRunEnvironmentResultFormats
 object JsonProtocol extends JsonProtocol

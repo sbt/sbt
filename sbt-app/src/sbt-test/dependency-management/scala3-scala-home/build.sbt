@@ -1,4 +1,4 @@
-scalaVersion := "3.0.0-M2"
+scalaVersion := "3.3.4"
 
 val makeHome = taskKey[Unit]("Populates the 'home/lib' directory with Scala jars from the default ScalaInstance")
 

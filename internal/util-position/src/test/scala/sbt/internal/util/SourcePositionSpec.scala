@@ -1,18 +1,19 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.internal.util
 
-import org.scalatest._
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SourcePositionSpec extends FlatSpec {
+class SourcePositionSpec extends AnyFlatSpec {
   "SourcePosition()" should "return a sane SourcePosition" in {
     val filename = "SourcePositionSpec.scala"
-    val lineNumber = 16
+    val lineNumber = 17
     SourcePosition.fromEnclosing() match {
       case LinePosition(path, startLine) => assert(path === filename && startLine === lineNumber)
       case RangePosition(path, range)    => assert(path === filename && inRange(range, lineNumber))

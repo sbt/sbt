@@ -5,6 +5,8 @@
 
 # modify D.scala so that the linearization changes
 $ copy-file changes/D.scala D.scala
+$ sleep 1000
+
 # F.x becomes 11
 > compile
 

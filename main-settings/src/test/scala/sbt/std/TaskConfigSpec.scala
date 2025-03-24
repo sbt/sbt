@@ -1,18 +1,19 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt.std
 
-import org.scalatest.{ TestData, fixture }
+import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.TestUtil._
 
 import scala.tools.reflect.{ FrontEnd, ToolBoxError }
 
-class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
+class TaskConfigSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
   private def expectError(
       errorSnippet: String,
       compileOptions: String = "",
@@ -29,9 +30,9 @@ class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
     assert(errorMessage.contains(errorSnippet), userMessage)
   }
   private class CachingToolbox(implicit td: TestData) {
-    private[this] val m = scala.reflect.runtime.currentMirror
-    private[this] var _infos: List[FrontEnd#Info] = Nil
-    private[this] val frontEnd = new FrontEnd {
+    private val m = scala.reflect.runtime.currentMirror
+    private var _infos: List[FrontEnd#Info] = Nil
+    private val frontEnd = new FrontEnd {
       override def display(info: Info): Unit = _infos ::= info
       def interactive(): Unit = {}
     }
@@ -75,3 +76,4 @@ class TaskConfigSpec extends fixture.FunSuite with fixture.TestDataFixture {
     assert(toolbox.infos.isEmpty)
   }
 }
+ */

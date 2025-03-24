@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -28,7 +28,7 @@ final class CompileParams private (
   override def toString: String = {
     "CompileParams(" + targets + ", " + originId + ", " + arguments + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId, arguments: Vector[String] = arguments): CompileParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId, arguments: Vector[String] = arguments): CompileParams = {
     new CompileParams(targets, originId, arguments)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): CompileParams = {

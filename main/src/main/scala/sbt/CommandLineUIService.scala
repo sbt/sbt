@@ -1,13 +1,14 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
 
-import sbt.internal.util.{ SimpleReader, Terminal => ITerminal }
+import sbt.internal.util.{ SimpleReader, Terminal as ITerminal }
 
 trait CommandLineUIService extends InteractionService {
   override def readLine(prompt: String, mask: Boolean): Option[String] = {

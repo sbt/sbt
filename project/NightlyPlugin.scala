@@ -1,6 +1,6 @@
-import sbt._
-import Keys._
-import Dependencies._
+import sbt.*
+import Keys.*
+import Dependencies.*
 
 object NightlyPlugin extends AutoPlugin {
   override def trigger = allRequirements
@@ -21,7 +21,7 @@ object NightlyPlugin extends AutoPlugin {
       else Seq()
     )
   }
-  import autoImport._
+  import autoImport.*
 
   override def buildSettings: Seq[Setting[_]] = Seq(
     includeTestDependencies := true

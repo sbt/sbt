@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,7 @@
 package sbt
 package internal
 
-import java.nio.file.{ WatchService => _ }
+import java.nio.file.{ WatchService as _ }
 
 import sbt.nio.FileStamper
 import sbt.nio.file.Glob
@@ -19,10 +20,10 @@ private[sbt] final case class DynamicInput(
     forceTrigger: Boolean
 )
 private[sbt] object DynamicInput {
-  implicit object ordering extends Ordering[DynamicInput] {
-    private implicit val globOrdering: Ordering[Glob] = Glob.ordering
-    private implicit object fileStamperOrdering extends Ordering[FileStamper] {
-      override def compare(left: FileStamper, right: FileStamper): Int = left match {
+  given ordering: Ordering[DynamicInput] = new Ordering[DynamicInput] {
+    private given globOrdering: Ordering[Glob] = Glob.ordering
+    val fileStamperOrdering: Ordering[FileStamper] = (left: FileStamper, right: FileStamper) =>
+      left match {
         case FileStamper.Hash =>
           right match {
             case FileStamper.Hash => 0
@@ -34,7 +35,6 @@ private[sbt] object DynamicInput {
             case _                        => 1
           }
       }
-    }
     override def compare(left: DynamicInput, right: DynamicInput): Int = {
       globOrdering.compare(left.glob, right.glob) match {
         case 0 => fileStamperOrdering.compare(left.fileStamper, right.fileStamper)

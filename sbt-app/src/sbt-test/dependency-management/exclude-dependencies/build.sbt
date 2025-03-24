@@ -24,19 +24,19 @@ lazy val b = (project in file("b")).
 lazy val root = (project in file(".")).
   settings(
     check := {
-      (update in a).value
-      (update in b).value
-      val acp = (externalDependencyClasspath in Compile in a).value.sortBy {_.data.getName}
-      val bcp = (externalDependencyClasspath in Compile in b).value.sortBy {_.data.getName}
+      (a / update).value
+      (b / update).value
+      val acp = (a / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
+      val bcp = (b / Compile / externalDependencyClasspath).value.sortBy {_.data.name}
 
-      if (acp exists { _.data.getName contains "slf4j-api-1.7.5.jar" }) {
+      if (acp exists { _.data.name contains "slf4j-api-1.7.5.jar" }) {
         sys.error("slf4j-api-1.7.5.jar found when it should NOT be included: " + acp.toString)
       }
-      if (bcp exists { _.data.getName contains "dispatch-core_2.11-0.11.1.jar" }) {
+      if (bcp exists { _.data.name contains "dispatch-core_2.11-0.11.1.jar" }) {
         sys.error("dispatch-core_2.11-0.11.1.jar found when it should NOT be included: " + bcp.toString)
       }
 
-      val bPomXml = makePomXml(streams.value.log, (makePomConfiguration in b).value, (ivyModule in b).value)
+      val bPomXml = makePomXml(streams.value.log, (b / makePomConfiguration).value, (b / ivyModule).value)
 
       val repatchTwitterXml = bPomXml \ "dependencies" \ "dependency" find { d =>
         (d \ "groupId").text == "com.eed3si9n" && (d \ "artifactId").text == "repatch-twitter-core_2.11"

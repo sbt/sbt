@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,7 +11,7 @@ package internal
 
 import Keys.Classpath
 import Def.Setting
-import PluginManagement._
+import PluginManagement.*
 import sbt.librarymanagement.ModuleID
 
 import java.net.{ URI, URL, URLClassLoader }
@@ -37,7 +38,7 @@ final case class PluginManagement(
   def addOverrides(cp: Classpath): PluginManagement =
     addOverrides(extractOverrides(cp))
 
-  def inject: Seq[Setting[_]] = Seq(
+  def inject: Seq[Setting[?]] = Seq(
     Keys.dependencyOverrides ++= overrides.toVector
   )
 
@@ -62,13 +63,20 @@ object PluginManagement {
     )
 
   def extractOverrides(classpath: Classpath): Set[ModuleID] =
-    classpath flatMap { _.metadata get Keys.moduleID.key map keepOverrideInfo } toSet;
+    (classpath
+      .flatMap: cp =>
+        cp.metadata
+          .get(Keys.moduleIDStr)
+          .map: str =>
+            keepOverrideInfo(Classpaths.moduleIdJsonKeyFormat.read(str)))
+      .toSet
 
   def keepOverrideInfo(m: ModuleID): ModuleID =
     ModuleID(m.organization, m.name, m.revision).withCrossVersion(m.crossVersion)
 
   final class PluginClassLoader(p: ClassLoader) extends URLClassLoader(Array(), p) {
-    private[this] val urlSet = new collection.mutable.HashSet[URI] // remember: don't use hashCode/equals on URL
+    private val urlSet =
+      new collection.mutable.HashSet[URI] // remember: don't use hashCode/equals on URL
     def add(urls: Seq[URL]): Unit = synchronized {
       for (url <- urls)
         if (urlSet.add(url.toURI))

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,12 +12,13 @@ import java.io.File
 import java.net.URLClassLoader
 
 import sbt.io.IO
-import sbt.io.syntax._
-import sbt.librarymanagement._
-import sbt.librarymanagement.ivy._
+import sbt.io.syntax.*
+import sbt.librarymanagement.*
+import sbt.librarymanagement.ivy.*
 import sbt.util.Logger
 import xsbti.compile.CompilerBridgeProvider
-import org.scalatest._
+import org.scalatest.*
+import org.scalatest.matchers.should.Matchers
 
 /**
  * Base class for test suites that must be able to fetch and compile the compiler bridge.
@@ -24,7 +26,7 @@ import org.scalatest._
  * This is a very good example on how to instantiate the compiler bridge provider.
  */
 abstract class IvyBridgeProviderSpecification
-    extends fixture.FlatSpec
+    extends flatspec.FixtureAnyFlatSpec
     with fixture.TestDataFixture
     with Matchers {
   def currentBase: File = new File(".")
@@ -57,7 +59,7 @@ abstract class IvyBridgeProviderSpecification
       targetDir: File,
       log: Logger,
       scalaVersion: String,
-  )(implicit td: TestData): File = {
+  )(using td: TestData): File = {
     val zincVersion = td.configMap.get("sbt.zinc.version") match {
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No zinc version specified")
@@ -87,7 +89,7 @@ abstract class IvyBridgeProviderSpecification
     val resolvers = resolvers0.toVector
     val chainResolver = ChainedResolver("zinc-chain", resolvers)
     InlineIvyConfiguration()
-      .withPaths(IvyPaths(baseDirectory, Some(ivyHome)))
+      .withPaths(IvyPaths(baseDirectory.toString, Some(ivyHome.toString)))
       .withResolvers(resolvers)
       .withModuleConfigurations(Vector(ModuleConfiguration("*", chainResolver)))
       .withLock(None)

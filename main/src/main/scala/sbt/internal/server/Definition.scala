@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,27 +11,26 @@ package internal
 package server
 
 import java.net.URI
-import java.nio.file._
+import java.nio.file.*
 
-import scala.annotation.{ nowarn, tailrec }
-import scala.collection.JavaConverters._
+import scala.annotation.tailrec
+import scala.jdk.CollectionConverters.*
 import scala.concurrent.{ ExecutionContext, Future }
 import scala.reflect.NameTransformer
-import scala.tools.reflect.{ ToolBox, ToolBoxError }
 import scala.util.matching.Regex
 
 import sjsonnew.JsonFormat
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 
-import sbt.internal.inc.{ Analysis, MixedAnalyzingCompiler }
-import sbt.internal.inc.JavaInterfaceUtil._
+import sbt.internal.inc.Analysis
+import sbt.internal.inc.JavaInterfaceUtil.*
+import sbt.internal.parser.SbtParser
 import sbt.internal.protocol.JsonRpcResponseError
 import sbt.internal.protocol.codec.JsonRPCProtocol
-import sbt.internal.langserver
 import sbt.internal.langserver.{ ErrorCodes, Location, Position, Range, TextDocumentPositionParams }
 import sbt.util.Logger
-import sbt.Keys._
+import sbt.Keys.*
 import xsbti.{ FileConverter, VirtualFileRef }
 import com.github.benmanes.caffeine.cache.Cache
 import scala.concurrent.Promise
@@ -48,21 +48,7 @@ private[sbt] object Definition {
   }
 
   object textProcessor {
-    private val isIdentifier = {
-      lazy val tb =
-        scala.reflect.runtime.universe
-          .runtimeMirror(this.getClass.getClassLoader)
-          .mkToolBox()
-      import tb._
-      lazy val check = parse _ andThen compile _
-      (identifier: String) =>
-        try {
-          check(s"val $identifier = 0; val ${identifier}${identifier} = $identifier")
-          true
-        } catch {
-          case _: ToolBoxError => false
-        }
-    }
+    private val isIdentifier: String => Boolean = SbtParser.isIdentifier
 
     private def findInBackticks(line: String, point: Int): Option[String] = {
       val (even, odd) = line.zipWithIndex
@@ -84,14 +70,13 @@ private[sbt] object Definition {
       val whiteSpaceReg = "(\\s|\\.)+".r
 
       val (zero, end) = fold(Seq.empty)(whiteSpaceReg.findAllIn(line))
-        .collect {
-          case (white, ind) => (ind, ind + white.length)
+        .collect { (white, ind) =>
+          (ind, ind + white.length)
         }
-        .fold((0, line.length)) {
-          case ((left, right), (from, to)) =>
-            val zero = if (to > left && to <= point) to else left
-            val end = if (from < right && from >= point) from else right
-            (zero, end)
+        .fold((0, line.length)) { case ((left, right), (from, to)) =>
+          val zero = if (to > left && to <= point) to else left
+          val end = if (from < right && from >= point) from else right
+          (zero, end)
         }
 
       val ranges = for {
@@ -100,18 +85,17 @@ private[sbt] object Definition {
       } yield (from -> to)
 
       ranges
-        .sortBy { case (from, to) => -(to - from) }
-        .foldLeft(List.empty[String]) {
-          case (z, (from, to)) =>
-            val fragment = line.slice(from, to).trim
-            if (isIdentifier(fragment))
-              z match {
-                case Nil if fragment.nonEmpty              => fragment :: z
-                case h :: _ if h.length < fragment.length  => fragment :: Nil
-                case h :: _ if h.length == fragment.length => fragment :: z
-                case _                                     => z
-              }
-            else z
+        .sortBy { (from, to) => -(to - from) }
+        .foldLeft(List.empty[String]) { case (z, (from, to)) =>
+          val fragment = line.slice(from, to).trim
+          if (isIdentifier(fragment))
+            z match {
+              case Nil if fragment.nonEmpty              => fragment :: z
+              case h :: _ if h.length < fragment.length  => fragment :: Nil
+              case h :: _ if h.length == fragment.length => fragment :: z
+              case _                                     => z
+            }
+          else z
         }
         .headOption
     }
@@ -150,9 +134,8 @@ private[sbt] object Definition {
         .flatMap { reg =>
           fold(Seq.empty)(reg.findAllIn(line))
         }
-        .collect {
-          case (name, pos) =>
-            (if (name.endsWith("[")) name.init.trim else name.trim) -> pos
+        .collect { (name, pos) =>
+          (if (name.endsWith("[")) name.init.trim else name.trim) -> pos
         }
     }
 
@@ -163,13 +146,11 @@ private[sbt] object Definition {
         .iterator
         .asScala
         .zipWithIndex
-        .flatMap {
-          case (line, lineNumber) =>
-            findInLine(line)
-              .collect {
-                case (sym, from) =>
-                  (file.toUri, lineNumber.toLong, from.toLong, from.toLong + sym.length)
-              }
+        .flatMap { (line, lineNumber) =>
+          findInLine(line)
+            .collect { (sym, from) =>
+              (file.toUri, lineNumber.toLong, from.toLong, from.toLong + sym.length)
+            }
         }
         .toSeq
         .distinct
@@ -177,16 +158,24 @@ private[sbt] object Definition {
   }
 
   private def getDefinition(jsonDefinition: JValue): Option[TextDocumentPositionParams] = {
-    import langserver.codec.JsonProtocol._
+    import langserver.codec.JsonProtocol.*
     Converter.fromJson[TextDocumentPositionParams](jsonDefinition).toOption
   }
 
-  private[this] val AnalysesKey = "lsp.definition.analyses.key"
-  private[server] type Analyses = Set[((String, Boolean), Option[Analysis])]
+  private val AnalysesKey = "lsp.definition.analyses.key"
+  private[server] type Analyses = Set[((String, Boolean, Boolean), Option[Analysis])]
 
-  private def storeAnalysis(cacheFile: Path, useBinary: Boolean): Option[Analysis] =
-    MixedAnalyzingCompiler
-      .staticCachedStore(cacheFile, !useBinary)
+  private def storeAnalysis(
+      cacheFile: Path,
+      useBinary: Boolean,
+      useConsistent: Boolean,
+  ): Option[Analysis] =
+    AnalysisUtil
+      .staticCachedStore(
+        analysisFile = cacheFile,
+        useTextAnalysis = !useBinary,
+        useConsistent = useConsistent,
+      )
       .get
       .toOption
       .map { _.getAnalysis }
@@ -194,13 +183,13 @@ private[sbt] object Definition {
 
   private[sbt] def updateCache(
       cache: Cache[String, Analyses]
-  )(cacheFile: String, useBinary: Boolean): Any = {
-    cache.get(AnalysesKey, k => Set(cacheFile -> useBinary -> None)) match {
+  )(cacheFile: String, useBinary: Boolean, useConsistent: Boolean): Any = {
+    cache.get(AnalysesKey, k => Set((cacheFile, useBinary, useConsistent) -> None)) match {
       case null => new AnyRef
       case set =>
         val newSet = set
-          .filterNot { case ((file, _), _) => file == cacheFile }
-          .+(cacheFile -> useBinary -> None)
+          .filterNot { case ((file, _, _), _) => file == cacheFile }
+          .+((cacheFile, useBinary, useConsistent) -> None)
         cache.put(AnalysesKey, newSet)
     }
   }
@@ -219,11 +208,14 @@ private[sbt] object Definition {
   }
 
   def collectAnalysesTask = Def.task {
-    val cacheFile: String = compileIncSetup.value.cacheFile.getAbsolutePath
-    val useBinary = enableBinaryCompileAnalysis.value
+    val cacheFile: String = compileAnalysisFile.value.getAbsolutePath
     val s = state.value
-    s.log.debug(s"analysis location ${cacheFile -> useBinary}")
-    updateCache(AnalysesAccess.cache)(cacheFile, useBinary)
+    s.log.debug(s"analysis location ${cacheFile}")
+    updateCache(AnalysesAccess.cache)(
+      cacheFile = cacheFile,
+      useBinary = true,
+      useConsistent = true,
+    )
   }
 
   private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
@@ -242,16 +234,16 @@ private[sbt] object Definition {
                 case (_, None)    => false
               }
               val addToCache = uninitialized.collect {
-                case (title @ (file, useBinary), _) if Files.exists(Paths.get(file)) =>
-                  (title, storeAnalysis(Paths.get(file), !useBinary))
+                case (title @ (file, useBinary, useConsistent), _)
+                    if Files.exists(Paths.get(file)) =>
+                  (title, storeAnalysis(Paths.get(file), !useBinary, useConsistent))
               }
               val validCaches = working ++ addToCache
               if (addToCache.nonEmpty) {
                 AnalysesAccess.cache.put(AnalysesKey, validCaches)
               }
-              result.success(validCaches.toSeq.collect {
-                case (_, Some(analysis)) =>
-                  analysis
+              result.success(validCaches.toSeq.collect { case (_, Some(analysis)) =>
+                analysis
               })
           }
         } catch { case scala.util.control.NonFatal(e) => result.failure(e) }
@@ -259,14 +251,13 @@ private[sbt] object Definition {
     result.future
   }
 
-  @nowarn
   def lspDefinition(
       jsonDefinition: JValue,
       requestId: String,
       commandSource: CommandSource,
       converter: FileConverter,
       log: Logger,
-  )(implicit ec: ExecutionContext): Future[Unit] = Future {
+  )(using ec: ExecutionContext): Future[Unit] = Future {
     val LspDefinitionLogHead = "lsp-definition"
     val jsonDefinitionString = CompactPrinter(jsonDefinition)
     log.debug(s"$LspDefinitionLogHead json request: $jsonDefinitionString")
@@ -288,7 +279,7 @@ private[sbt] object Definition {
         log.debug(s"symbol $sym")
         analyses
           .map { analyses =>
-            import sbt.internal.CompatParColls.Converters._
+            import scala.collection.parallel.CollectionConverters.*
             val locations = analyses.par.flatMap { analysis =>
               val selectPotentials = textProcessor.potentialClsOrTraitOrObj(sym)
               val classes =
@@ -301,36 +292,34 @@ private[sbt] object Definition {
                   analysis.relations.definesClass(className) ++
                     analysis.relations.libraryDefinesClass(className)
                 }
-                .flatMap { classFile: VirtualFileRef =>
+                .flatMap { (classFile: VirtualFileRef) =>
                   val x = converter.toPath(classFile)
-                  textProcessor.markPosition(x, sym).collect {
-                    case (uri, line, from, to) =>
-                      Location(
-                        uri.toString,
-                        Range(Position(line, from), Position(line, to)),
-                      )
+                  textProcessor.markPosition(x, sym).collect { (uri, line, from, to) =>
+                    Location(
+                      uri.toString,
+                      Range(Position(line, from), Position(line, to)),
+                    )
                   }
                 }
             }.seq
             log.debug(s"$LspDefinitionLogHead locations $locations")
-            import langserver.codec.JsonProtocol._
+            import langserver.codec.JsonProtocol.*
             send(commandSource, requestId)(locations.toArray)
           }
-          .recover {
-            case t =>
-              log.warn(s"Problem with processing analyses $t for $jsonDefinitionString")
-              val rsp = JsonRpcResponseError(
-                ErrorCodes.InternalError,
-                "Problem with processing analyses.",
-                None,
-              )
-              import JsonRPCProtocol._
-              send(commandSource, requestId)(rsp)
+          .recover { case t =>
+            log.warn(s"Problem with processing analyses $t for $jsonDefinitionString")
+            val rsp = JsonRpcResponseError(
+              ErrorCodes.InternalError,
+              "Problem with processing analyses.",
+              None,
+            )
+            import JsonRPCProtocol.given
+            send(commandSource, requestId)(rsp)
           }
         ()
       case None =>
         log.info(s"Symbol not found in definition request $jsonDefinitionString")
-        import langserver.codec.JsonProtocol._
+        import langserver.codec.JsonProtocol.*
         send(commandSource, requestId)(Array.empty[Location])
     }
   }

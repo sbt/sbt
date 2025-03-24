@@ -1,18 +1,19 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.util
 
-import sjsonnew.shaded.scalajson.ast.unsafe._
-import sjsonnew._, support.scalajson.unsafe._
-import org.scalatest.FlatSpec
+import sjsonnew.shaded.scalajson.ast.unsafe.*
+import sjsonnew.*, support.scalajson.unsafe.*
+import org.scalatest.flatspec.AnyFlatSpec
 import sbt.io.IO
 
-class FileInfoSpec extends FlatSpec {
+class FileInfoSpec extends AnyFlatSpec {
   val file = new java.io.File(".").getAbsoluteFile
   val fileInfo: ModifiedFileInfo = FileModified(file, IO.getModifiedTimeOrZero(file))
   val filesInfo = FilesInfo(Set(fileInfo))

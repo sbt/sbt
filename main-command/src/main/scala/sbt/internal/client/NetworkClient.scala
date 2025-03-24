@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,27 +13,35 @@ package client
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
 import java.net.{ Socket, SocketException }
-import java.nio.file.Files
+import java.nio.file.{ Files, Paths }
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
+import java.text.DateFormat
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
-import sbt.internal.client.NetworkClient.Arguments
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
-import sbt.internal.protocol._
-import sbt.internal.util.{ ConsoleAppender, ConsoleOut, Signals, Terminal, Util }
+import sbt.internal.worker.{ ClientJobParams, JvmRunInfo, NativeRunInfo, RunInfo }
+import sbt.internal.protocol.*
+import sbt.internal.util.{
+  ConsoleAppender,
+  ConsoleOut,
+  MessageOnlyException,
+  Signals,
+  Terminal,
+  Util
+}
 import sbt.io.IO
-import sbt.io.syntax._
-import sbt.protocol._
+import sbt.io.syntax.*
+import sbt.protocol.*
 import sbt.util.Level
-import sjsonnew.BasicJsonProtocol._
+import sjsonnew.BasicJsonProtocol.*
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 import scala.util.{ Failure, Properties, Success, Try }
 import Serialization.{
@@ -40,6 +49,7 @@ import Serialization.{
   attach,
   cancelReadSystemIn,
   cancelRequest,
+  clientJob,
   promptChannel,
   readSystemIn,
   systemIn,
@@ -60,6 +70,7 @@ import Serialization.{
 }
 import NetworkClient.Arguments
 import java.util.concurrent.TimeoutException
+import sbt.util.Logger
 
 trait ConsoleInterface {
   def appendLog(level: Level.Value, message: => String): Unit
@@ -67,7 +78,7 @@ trait ConsoleInterface {
 }
 
 /**
- * A NetworkClient connects to a running an sbt instance or starts a
+ * A NetworkClient connects to a running sbt instance or starts a
  * new instance if there isn't already one running. Once connected,
  * it can send commands for sbt to run, it can send completions to sbt
  * and print the completions to stdout so that a shell can consume
@@ -78,15 +89,15 @@ trait ConsoleInterface {
  *                    needs to start it. It also contains the sbt command
  *                    arguments to send to the server if any are present.
  * @param console     a logging instance. This can use a ConsoleAppender or
- *                    just simply print to a PrintSream.
+ *                    just simply print to a PrintStream.
  * @param inputStream the InputStream from which the client reads bytes. It
  *                    is not hardcoded to System.in so that a NetworkClient
  *                    can be remotely controlled by a java process, which
- *                    is useful in test.
+ *                    is useful in testing.
  * @param errorStream the sink for messages that we always want to be printed.
  *                    It is usually System.err but could be overridden in tests
  *                    or set to a null OutputStream if the NetworkClient needs
- *                    to be silent
+ *                    to be silent.
  * @param printStream the sink for standard out messages. It is typically
  *                    System.out but in the case of completions, the bytes written
  *                    to System.out are usually treated as completion results
@@ -139,7 +150,8 @@ class NetworkClient(
   private val rebooting = new AtomicBoolean(false)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
-    System.getenv("SBTC_AUTO_COMPLETE") == null
+    !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
+  private def shutdownOnly = arguments.commandArguments == Seq(Shutdown)
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
@@ -152,16 +164,21 @@ class NetworkClient(
     }
   }
 
-  private[this] val stdinBytes = new LinkedBlockingQueue[Integer]
-  private[this] val inLock = new Object
-  private[this] val inputThread = new AtomicReference[RawInputThread]
-  private[this] val exitClean = new AtomicBoolean(true)
-  private[this] val sbtProcess = new AtomicReference[Process](null)
+  private val stdinBytes = new LinkedBlockingQueue[Integer]
+  private val inLock = new Object
+  private val inputThread = new AtomicReference[RawInputThread]
+  private val exitClean = new AtomicBoolean(true)
+  private val sbtProcess = new AtomicReference[Process](null)
   private class ConnectionRefusedException(t: Throwable) extends Throwable(t)
   private class ServerFailedException extends Exception
-  private[this] def startInputThread(): Unit = inputThread.get match {
+  private def startInputThread(): Unit = inputThread.get match {
     case null => inputThread.set(new RawInputThread)
     case _    =>
+  }
+  private lazy val log: Logger = new Logger {
+    def trace(t: => Throwable): Unit = ()
+    def success(message: => String): Unit = ()
+    def log(level: Level.Value, message: => String): Unit = console.appendLog(level, message)
   }
 
   private[sbt] def connectOrStartServerAndConnect(
@@ -170,7 +187,10 @@ class NetworkClient(
   ): (Socket, Option[String]) =
     try {
       if (!portfile.exists) {
-        if (promptCompleteUsers) {
+        if (shutdownOnly) {
+          console.appendLog(Level.Info, "no sbt server is running. ciao")
+          System.exit(0)
+        } else if (promptCompleteUsers) {
           val msg = if (noTab) "" else "No sbt server is running. Press <tab> to start one..."
           errorStream.print(s"\n$msg")
           if (noStdErr) System.exit(0)
@@ -190,18 +210,19 @@ class NetworkClient(
         }
       }
       @tailrec def connect(attempt: Int): (Socket, Option[String]) = {
-        val res = try Some(mkSocket(portfile))
-        catch {
-          // This catches a pipe busy exception which can happen if two windows clients
-          // attempt to connect in rapid succession
-          case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
-            if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
-              errorStream.println(s"Access denied for portfile $portfile")
-              throw new NetworkClient.AccessDeniedException
-            }
-            None
-          case e: IOException => throw new ConnectionRefusedException(e)
-        }
+        val res =
+          try Some(mkSocket(portfile))
+          catch {
+            // This catches a pipe busy exception which can happen if two windows clients
+            // attempt to connect in rapid succession
+            case e: IOException if e.getMessage.contains("Couldn't open") && attempt < 10 =>
+              if (e.getMessage.contains("Access is denied") || e.getMessage.contains("(5)")) {
+                errorStream.println(s"Access denied for portfile $portfile")
+                throw new NetworkClient.AccessDeniedException
+              }
+              None
+            case e: IOException => throw new ConnectionRefusedException(e)
+          }
         res match {
           case Some(r) => r
           case None    =>
@@ -292,7 +313,18 @@ class NetworkClient(
     }
     // initiate handshake
     val execId = UUID.randomUUID.toString
-    val initCommand = InitCommand(tkn, Option(execId), Some(true))
+    val skipAnalysis = true
+    val opts = InitializeOption(
+      token = tkn,
+      skipAnalysis = Some(skipAnalysis),
+      canWork = Some(true),
+    )
+    val initCommand = InitCommand(
+      token = tkn, // duplicated with opts for compatibility
+      execId = Option(execId),
+      skipAnalysis = Some(skipAnalysis), // duplicated with opts for compatibility
+      initializationOptions = Some(opts),
+    )
     conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
     connectionHolder.set(conn)
     conn
@@ -330,7 +362,24 @@ class NetworkClient(
 
         val cmd = arguments.sbtLaunchJar match {
           case Some(lj) =>
-            List("java") ++ arguments.sbtArguments ++
+            if (log) {
+              val sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+              console.appendLog(Level.Warn, s"server is started using sbt-launch jar directly")
+              console.appendLog(
+                Level.Warn,
+                "this is not the recommended way: .sbtopts and .jvmopts files are not loaded and SBT_OPTS is ignored"
+              )
+              console.appendLog(
+                Level.Warn,
+                s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
+              )
+            }
+            val java = Option(Properties.javaHome)
+              .map { javaHome =>
+                s"$javaHome/bin/java"
+              }
+              .getOrElse("java")
+            List(java) ++ arguments.sbtArguments ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
             List(arguments.sbtScript) ++ arguments.sbtArguments ++
@@ -343,13 +392,18 @@ class NetworkClient(
           else Nil
 
         val processBuilder =
-          new ProcessBuilder((nohup ++ cmd): _*)
+          new ProcessBuilder((nohup ++ cmd)*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
-        val process = processBuilder.start()
-        sbtProcess.set(process)
-        Some(process)
+        Try(processBuilder.start()) match {
+          case Success(process) =>
+            sbtProcess.set(process)
+            Some(process)
+          case Failure(e) =>
+            if (log) console.appendLog(Level.Error, s"Failed to start server : $e")
+            throw new ServerFailedException
+        }
       case _ =>
         if (log) {
           console.appendLog(Level.Info, "sbt server is booting up")
@@ -358,13 +412,13 @@ class NetworkClient(
     }
     if (!startServer) {
       val deadline = 5.seconds.fromNow
-      while (socket.isEmpty && !deadline.isOverdue) {
+      while (socket.isEmpty && !deadline.isOverdue()) {
         socket = Try(ClientSocket.localSocket(bootSocketName, useJNI)).toOption
         if (socket.isEmpty) Thread.sleep(20)
       }
     }
-    val hook = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
-    Runtime.getRuntime.addShutdownHook(hook)
+    val shutdown = new Thread(() => Option(sbtProcess.get).foreach(_.destroyForcibly()))
+    Runtime.getRuntime.addShutdownHook(shutdown)
     var gotInputBack = false
     val readThreadAlive = new AtomicBoolean(true)
     /*
@@ -384,10 +438,13 @@ class NetworkClient(
             socket.foreach { s =>
               try {
                 s.getInputStream.read match {
-                  case -1 | 0            => readThreadAlive.set(false)
-                  case 2                 => gotInputBack = true
-                  case 5                 => term.enterRawMode(); startInputThread()
-                  case 3 if gotInputBack => readThreadAlive.set(false)
+                  case -1 | 0 => readThreadAlive.set(false)
+                  case 2 => // STX: start of text
+                    gotInputBack = true
+                  case 5 => // ENQ: enquiry
+                    term.enterRawMode(); startInputThread()
+                  case 3 if gotInputBack => // ETX: end of text
+                    readThreadAlive.set(false)
                   case i if gotInputBack => stdinBytes.offer(i)
                   case i                 => printStream.write(i)
                 }
@@ -406,31 +463,37 @@ class NetworkClient(
     }
     @tailrec
     def blockUntilStart(): Unit = {
-      val stop = try {
-        socket match {
-          case None =>
-            process.foreach { p =>
-              val output = p.getInputStream
-              while (output.available > 0) {
-                printStream.write(output.read())
+      val stop =
+        try {
+          socket match {
+            case None =>
+              process.foreach { p =>
+                val output = p.getInputStream
+                while (output.available > 0) {
+                  printStream.write(output.read())
+                }
               }
-            }
-          case Some(s) =>
-            while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
-              val out = s.getOutputStream
-              val b = stdinBytes.poll
-              out.write(b)
-              out.flush()
-            }
-        }
-        process.foreach { p =>
-          val error = p.getErrorStream
-          while (error.available > 0) {
-            errorStream.write(error.read())
+            case Some(s) =>
+              while (!gotInputBack && !stdinBytes.isEmpty && socket.isDefined) {
+                val out = s.getOutputStream
+                val b = stdinBytes.poll
+                if (b == -1) {
+                  // server waits for user input but stinBytes has ended
+                  shutdown.run()
+                } else {
+                  out.write(b)
+                  out.flush()
+                }
+              }
           }
-        }
-        false
-      } catch { case e: IOException => true }
+          process.foreach { p =>
+            val error = p.getErrorStream
+            while (error.available > 0) {
+              errorStream.write(error.read())
+            }
+          }
+          false
+        } catch { case e: IOException => true }
       Thread.sleep(10)
       printStream.flush()
       errorStream.flush()
@@ -459,16 +522,17 @@ class NetworkClient(
     }
 
     try blockUntilStart()
-    catch { case t: Throwable => t.printStackTrace() } finally {
+    catch { case t: Throwable => t.printStackTrace() }
+    finally {
       sbtProcess.set(null)
-      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(hook))
+      Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
     if (!portfile.exists()) throw new ServerFailedException
     if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
   }
 
   /** Called on the response for a returning message. */
-  def onReturningReponse(msg: JsonRpcResponseMessage): Unit = {
+  def onReturningResponse(msg: JsonRpcResponseMessage): Unit = {
     def printResponse(): Unit = {
       msg.result match {
         case Some(result) =>
@@ -496,68 +560,83 @@ class NetworkClient(
         .getOrElse(1)
     case _ => 1
   }
-  private def completeExec(execId: String, exitCode: => Int): Unit =
+
+  private val onAttachResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
+    case msg if attachUUID.get == msg.id =>
+      attachUUID.set(null)
+      attached.set(true)
+      Option(inputThread.get).foreach(_.drain())
+      ()
+  }
+  def completeExec(execId: String, exitCode: Int) = {
     pendingResults.remove(execId) match {
-      case null =>
+      case null => ()
       case (q, startTime, name) =>
         val now = System.currentTimeMillis
-        val message = timing(startTime, now)
-        val ec = exitCode
+        val message = NetworkClient.timing(startTime, now)
         if (batchMode.get || !attached.get) {
-          if (ec == 0) console.success(message)
+          if (exitCode == 0) console.success(message)
           else console.appendLog(Level.Error, message)
         }
-        Util.ignoreResult(q.offer(ec))
-    }
-  def onResponse(msg: JsonRpcResponseMessage): Unit = {
-    completeExec(msg.id, getExitCode(msg.result))
-    pendingCancellations.remove(msg.id) match {
-      case null =>
-      case q    => q.offer(msg.toString.contains("Task cancelled"))
-    }
-    msg.id match {
-      case execId =>
-        if (attachUUID.get == msg.id) {
-          attachUUID.set(null)
-          attached.set(true)
-          Option(inputThread.get).foreach(_.drain())
-        }
-        pendingCompletions.remove(execId) match {
-          case null =>
-          case completions =>
-            completions(msg.result match {
-              case Some(o: JObject) =>
-                o.value
-                  .foldLeft(CompletionResponse(Vector.empty[String])) {
-                    case (resp, i) =>
-                      if (i.field == "items")
-                        resp.withItems(
-                          Converter
-                            .fromJson[Vector[String]](i.value)
-                            .getOrElse(Vector.empty[String])
-                        )
-                      else if (i.field == "cachedTestNames")
-                        resp.withCachedTestNames(
-                          Converter.fromJson[Boolean](i.value).getOrElse(true)
-                        )
-                      else if (i.field == "cachedMainClassNames")
-                        resp.withCachedMainClassNames(
-                          Converter.fromJson[Boolean](i.value).getOrElse(true)
-                        )
-                      else resp
-                  }
-              case _ => CompletionResponse(Vector.empty[String])
-            })
-        }
+        Util.ignoreResult(q.offer(exitCode))
     }
   }
+  private val onExecResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
+    case msg if pendingResults.containsKey(msg.id) =>
+      completeExec(msg.id, getExitCode(msg.result))
+  }
+  private val onCancellationResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
+    case msg if pendingCancellations.containsKey(msg.id) =>
+      pendingCancellations.remove(msg.id) match {
+        case null => ()
+        case q    => Util.ignoreResult(q.offer(msg.toString.contains("Task cancelled")))
+      }
+  }
+  private val onCompletionResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
+    case msg if pendingCompletions.containsKey(msg.id) =>
+      pendingCompletions.remove(msg.id) match {
+        case null => ()
+        case completions =>
+          completions(msg.result match {
+            case Some(o: JObject) =>
+              o.value
+                .foldLeft(CompletionResponse(Vector.empty[String])) { (resp, i) =>
+                  if (i.field == "items")
+                    resp.withItems(
+                      Converter
+                        .fromJson[Vector[String]](i.value)
+                        .getOrElse(Vector.empty[String])
+                    )
+                  else if (i.field == "cachedTestNames")
+                    resp.withCachedTestNames(
+                      Converter.fromJson[Boolean](i.value).getOrElse(true)
+                    )
+                  else if (i.field == "cachedMainClassNames")
+                    resp.withCachedMainClassNames(
+                      Converter.fromJson[Boolean](i.value).getOrElse(true)
+                    )
+                  else resp
+                }
+            case _ => CompletionResponse(Vector.empty[String])
+          })
+      }
+  }
+  // cache the composed plan
+  private val responsePlan = Util.reduceIntents[JsonRpcResponseMessage, Unit](
+    onExecResponse,
+    onCancellationResponse,
+    onAttachResponse,
+    onCompletionResponse,
+    { case _ => () },
+  )
+  def onResponse(msg: JsonRpcResponseMessage): Unit = responsePlan(msg)
 
   def onNotification(msg: JsonRpcNotificationMessage): Unit = {
     def splitToMessage: Vector[(Level.Value, String)] =
       (msg.method, msg.params) match {
         case ("build/logMessage", Some(json)) =>
           if (!attached.get) {
-            import sbt.internal.langserver.codec.JsonProtocol._
+            import sbt.internal.langserver.codec.JsonProtocol.*
             Converter.fromJson[LogMessageParams](json) match {
               case Success(params) => splitLogMessage(params)
               case Failure(_)      => Vector()
@@ -587,10 +666,16 @@ class NetworkClient(
           batchMode.set(false)
           Vector.empty
         case ("textDocument/publishDiagnostics", Some(json)) =>
-          import sbt.internal.langserver.codec.JsonProtocol._
+          import sbt.internal.langserver.codec.JsonProtocol.*
           Converter.fromJson[PublishDiagnosticsParams](json) match {
             case Success(params) => splitDiagnostics(params); Vector()
             case Failure(_)      => Vector()
+          }
+        case (`clientJob`, Some(json)) =>
+          import sbt.internal.worker.codec.JsonProtocol.*
+          Converter.fromJson[ClientJobParams](json) match {
+            case Success(params) => clientSideRun(params).get; Vector.empty
+            case Failure(_)      => Vector.empty
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
@@ -602,8 +687,8 @@ class NetworkClient(
             )
           )
       }
-    splitToMessage foreach {
-      case (level, msg) => console.appendLog(level, msg)
+    splitToMessage foreach { (level, msg) =>
+      console.appendLog(level, msg)
     }
   }
 
@@ -638,8 +723,61 @@ class NetworkClient(
     }
   }
 
+  private def clientSideRun(params: ClientJobParams): Try[Unit] =
+    params.runInfo match {
+      case Some(info) => clientSideRun(info)
+      case _          => Failure(new MessageOnlyException(s"runInfo is not specified in $params"))
+    }
+
+  private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
+    def jvmRun(info: JvmRunInfo): Try[Unit] = {
+      val option = ForkOptions(
+        javaHome = info.javaHome.map(new File(_)),
+        outputStrategy = None, // TODO: Handle buffered output etc
+        bootJars = Vector.empty,
+        workingDirectory = info.workingDirectory.map(new File(_)),
+        runJVMOptions = info.jvmOptions,
+        connectInput = info.connectInput,
+        envVars = info.environmentVariables,
+      )
+      // ForkRun handles exit code handling and cancellation
+      val runner = new ForkRun(option)
+      runner
+        .run(
+          mainClass = info.mainClass,
+          classpath = info.classpath.map(_.path).map(Paths.get),
+          options = info.args,
+          log = log
+        )
+    }
+    def nativeRun(info: NativeRunInfo): Try[Unit] = {
+      import java.lang.{ ProcessBuilder as JProcessBuilder }
+      val option = ForkOptions(
+        javaHome = None,
+        outputStrategy = None, // TODO: Handle buffered output etc
+        bootJars = Vector.empty,
+        workingDirectory = info.workingDirectory.map(new File(_)),
+        runJVMOptions = Vector.empty,
+        connectInput = info.connectInput,
+        envVars = info.environmentVariables,
+      )
+      val command = info.cmd :: info.args.toList
+      val jpb = new JProcessBuilder(command*)
+      val exitCode =
+        try Fork.blockForExitCode(Fork.forkInternal(option, Nil, jpb))
+        catch {
+          case _: InterruptedException =>
+            log.warn("run canceled")
+            1
+        }
+      Run.processExitCode(exitCode, "runner")
+    }
+    if (runInfo.jvm) jvmRun(runInfo.jvmRunInfo.getOrElse(sys.error("missing jvmRunInfo")))
+    else nativeRun(runInfo.nativeRunInfo.getOrElse(sys.error("missing nativeRunInfo")))
+  }
+
   def onRequest(msg: JsonRpcRequestMessage): Unit = {
-    import sbt.protocol.codec.JsonProtocol._
+    import sbt.protocol.codec.JsonProtocol.*
     (msg.method, msg.params) match {
       case (`terminalCapabilities`, Some(json)) =>
         Converter.fromJson[TerminalCapabilitiesQuery](json) match {
@@ -737,16 +875,16 @@ class NetworkClient(
     }
   }
 
-  private[this] val contHandler: () => Unit = () => {
+  private val contHandler: () => Unit = () => {
     if (Terminal.console.getLastLine.nonEmpty)
       printStream.print(ConsoleAppender.DeleteLine + Terminal.console.getLastLine.get)
   }
-  private[this] def withSignalHandler[R](handler: () => Unit, sig: String)(f: => R): R = {
+  private def withSignalHandler[R](handler: () => Unit, sig: String)(f: => R): R = {
     val registration = Signals.register(handler, sig)
     try f
     finally registration.remove()
   }
-  private[this] val cancelled = new AtomicBoolean(false)
+  private val cancelled = new AtomicBoolean(false)
 
   def run(): Int =
     withSignalHandler(contHandler, Signals.CONT) {
@@ -772,7 +910,7 @@ class NetworkClient(
       }
       withSignalHandler(handler, Signals.INT) {
         def block(): Int = {
-          try this.synchronized(this.wait)
+          try this.synchronized(this.wait())
           catch { case _: InterruptedException => }
           if (exitClean.get) 0 else 1
         }
@@ -806,12 +944,12 @@ class NetworkClient(
         case -1 => (query, query, None, None) // shouldn't happen
         case i =>
           val rawPrefix = query.substring(0, i)
-          val prefix = rawPrefix.replaceAllLiterally("\"", "").replaceAllLiterally("\\;", ";")
-          val rawSuffix = query.substring(i).replaceAllLiterally("\\;", ";")
+          val prefix = rawPrefix.replace("\"", "").replace("\\;", ";")
+          val rawSuffix = query.substring(i).replace("\\;", ";")
           val suffix = if (rawSuffix.length > 1) rawSuffix.substring(1) else ""
           (rawPrefix, prefix, Some(rawSuffix), Some(suffix))
       }
-    } else (query, query.replaceAllLiterally("\\;", ";"), None, None)
+    } else (query, query.replace("\\;", ";"), None, None)
     val tailSpace = query.endsWith(" ") || query.endsWith("\"")
     val sanitizedQuery = suffix.foldLeft(prefix) { _ + _ }
     def getCompletions(query: String, sendCommand: Boolean): Seq[String] = {
@@ -855,7 +993,7 @@ class NetworkClient(
     }
     getCompletions(sanitizedQuery, true) collect {
       case c if inQuote                      => c
-      case c if tailSpace && c.contains(" ") => c.replaceAllLiterally(prefix, "")
+      case c if tailSpace && c.contains(" ") => c.replace(prefix, "")
       case c if !tailSpace                   => c.split(" ").last
     }
   }
@@ -948,7 +1086,7 @@ class NetworkClient(
       case t: Throwable => t.printStackTrace(); throw t
     }
 
-  private[this] class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
+  private class RawInputThread extends Thread("sbt-read-input-thread") with AutoCloseable {
     setDaemon(true)
     start()
     val stopped = new AtomicBoolean(false)
@@ -959,7 +1097,8 @@ class NetworkClient(
         if (attached.get()) drain()
       }
       try read()
-      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) } finally {
+      catch { case _: InterruptedException | NonFatal(_) => stopped.set(true) }
+      finally {
         inputThread.set(null)
       }
     }
@@ -974,26 +1113,6 @@ class NetworkClient(
     override def close(): Unit = {
       RawInputThread.this.interrupt()
     }
-  }
-
-  // copied from Aggregation
-  private def timing(startTime: Long, endTime: Long): String = {
-    import java.text.DateFormat
-    val format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
-    val nowString = format.format(new java.util.Date(endTime))
-    val total = math.max(0, (endTime - startTime + 500) / 1000)
-    val totalString = s"$total s" +
-      (if (total <= 60) ""
-       else {
-         val maybeHours = total / 3600 match {
-           case 0 => ""
-           case h => f"$h%02d:"
-         }
-         val mins = f"${total % 3600 / 60}%02d"
-         val secs = f"${total % 60}%02d"
-         s" ($maybeHours$mins:$secs)"
-       })
-    s"Total time: $totalString, completed $nowString"
   }
 }
 
@@ -1045,7 +1164,8 @@ object NetworkClient {
   private[client] val noStdErr = "--no-stderr"
   private[client] val sbtBase = "--sbt-base-directory"
   private[client] def parseArgs(args: Array[String]): Arguments = {
-    var sbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
+    var sbtScript = Properties.propOrNone("sbt.script")
     var launchJar: Option[String] = None
     var bsp = false
     val commandArgs = new mutable.ArrayBuffer[String]
@@ -1067,19 +1187,18 @@ object NetworkClient {
           sbtScript = a
             .split("--sbt-script=")
             .lastOption
-            .map(_.replaceAllLiterally("%20", " "))
-            .getOrElse(sbtScript)
+            .orElse(sbtScript)
         case "--sbt-script" if i + 1 < sanitized.length =>
           i += 1
-          sbtScript = sanitized(i).replaceAllLiterally("%20", " ")
+          sbtScript = Some(sanitized(i))
         case a if a.startsWith("--sbt-launch-jar=") =>
           launchJar = a
             .split("--sbt-launch-jar=")
             .lastOption
-            .map(_.replaceAllLiterally("%20", " "))
+            .map(_.replace("%20", " "))
         case "--sbt-launch-jar" if i + 1 < sanitized.length =>
           i += 1
-          launchJar = Option(sanitized(i).replaceAllLiterally("%20", " "))
+          launchJar = Option(sanitized(i).replace("%20", " "))
         case "-bsp" | "--bsp"        => bsp = true
         case a if !a.startsWith("-") => commandArgs += a
         case a @ SysProp(key, value) =>
@@ -1091,15 +1210,39 @@ object NetworkClient {
     }
     val base = new File("").getCanonicalFile
     if (!sbtArguments.contains("-Dsbt.io.virtual=true")) sbtArguments += "-Dsbt.io.virtual=true"
+    if (!sbtArguments.exists(_.startsWith("-Dsbt.script"))) {
+      sbtScript.foreach { sbtScript =>
+        sbtArguments += s"-Dsbt.script=$sbtScript"
+      }
+    }
     new Arguments(
       base,
       sbtArguments.toSeq,
       commandArgs.toSeq,
       completionArguments.toSeq,
-      sbtScript,
+      sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
       launchJar
     )
+  }
+
+  private[sbt] def timing(format: DateFormat, startTime: Long, endTime: Long): String =
+    val total = (endTime - startTime + 500) / 1000
+    val totalString = s"$total s" +
+      (if (total <= 60) ""
+       else {
+         val hours = total / 3600 match
+           case 0 => "0"
+           case h => f"$h%02d"
+         val mins = f"${total % 3600 / 60}%02d"
+         val secs = f"${total % 60}%02d"
+         s" ($hours:$mins:$secs.0)"
+       })
+    s"elapsed time: $totalString"
+
+  private[sbt] def timing(startTime: Long, endTime: Long): String = {
+    val format = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
+    timing(format, startTime, endTime)
   }
 
   def client(
@@ -1121,7 +1264,8 @@ object NetworkClient {
     try {
       if (client.connect(log = true, promptCompleteUsers = false)) client.run()
       else 1
-    } catch { case _: Exception => 1 } finally client.close()
+    } catch { case _: Exception => 1 }
+    finally client.close()
   }
   def client(
       baseDirectory: File,
@@ -1152,7 +1296,8 @@ object NetworkClient {
         if (client.connect(log = true, promptCompleteUsers = false)) client.run()
         else 1
       }
-    } catch { case _: Exception => 1 } finally client.close()
+    } catch { case _: Exception => 1 }
+    finally client.close()
   }
   def client(
       baseDirectory: File,
@@ -1200,12 +1345,12 @@ object NetworkClient {
         System.out.flush()
       })
       Runtime.getRuntime.addShutdownHook(hook)
-      if (Util.isNonCygwinWindows) sbt.internal.util.JLine3.forceWindowsJansi()
       val parsed = parseArgs(restOfArgs)
       System.exit(Terminal.withStreams(isServer = false, isSubProcess = false) {
         val term = Terminal.console
         try client(base, parsed, term.inputStream, System.err, term, useJNI)
-        catch { case _: AccessDeniedException => 1 } finally {
+        catch { case _: AccessDeniedException => 1 }
+        finally {
           Runtime.getRuntime.removeShutdownHook(hook)
           hook.run()
         }
@@ -1251,7 +1396,8 @@ object NetworkClient {
           else Nil
         out.println(results.sorted.distinct mkString "\n")
         0
-      } catch { case _: Exception => 1 } finally client.close()
+      } catch { case _: Exception => 1 }
+      finally client.close()
     } catch { case _: AccessDeniedException => 1 }
   }
 
@@ -1266,7 +1412,8 @@ object NetworkClient {
     val err = new PrintStream(term.errorStream)
     val out = if (redirectOutput) err else new PrintStream(term.outputStream)
     val args = parseArgs(arguments.toArray).withBaseDirectory(configuration.baseDirectory)
-    val useJNI = BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
+    val useJNI =
+      BootServerSocket.requiresJNI || System.getProperty("sbt.ipcsocket.jni", "false") == "true"
     val client = simpleClient(args, term.inputStream, out, err, useJNI = useJNI)
     clientImpl(client, args.bsp)
   }

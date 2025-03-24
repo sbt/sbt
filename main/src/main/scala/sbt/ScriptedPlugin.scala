@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,24 +9,22 @@
 package sbt
 
 import java.io.File
-import java.lang.reflect.Method
 
-import sbt.Def._
-import sbt.Keys._
-import sbt.nio.Keys._
-import sbt.Project._
-import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0._
+import sbt.Def.*
+import sbt.Keys.*
+import sbt.nio.Keys.*
+import sbt.ProjectExtra.*
+import sbt.ScopeFilter.Make.*
+import sbt.SlashSyntax0.*
 import sbt.internal.inc.ModuleUtilities
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.librarymanagement.cross.CrossVersionUtil
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
-import sbt.io._
-import sbt.io.syntax._
-import sbt.librarymanagement._
-import sbt.librarymanagement.syntax._
+import sbt.io.*
+import sbt.io.syntax.*
+import sbt.librarymanagement.*
+import sbt.librarymanagement.syntax.*
 import sbt.nio.file.{ Glob, RecursiveGlob }
-import scala.util.Try
 
 object ScriptedPlugin extends AutoPlugin {
 
@@ -33,10 +32,10 @@ object ScriptedPlugin extends AutoPlugin {
   sys.props(org.apache.logging.log4j.util.LoaderUtil.IGNORE_TCCL_PROPERTY) = "true"
 
   object autoImport {
-    val ScriptedConf = Configurations.config("scripted-sbt") hide
-    val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch") hide
+    val ScriptedConf = Configurations.config("scripted-sbt").hide
+    val ScriptedLaunchConf = Configurations.config("scripted-sbt-launch").hide
 
-    val scriptedSbt = settingKey[String]("")
+    val scriptedSbt = settingKey[String]("sbt version that is used when running scripted tests")
     val sbtLauncher = taskKey[File]("")
     val sbtTestDirectory = settingKey[File]("")
     val scriptedBufferLog = settingKey[Boolean]("")
@@ -47,45 +46,37 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedParallelInstances = settingKey[Int](
       "Configures the number of scripted instances for parallel testing, only used in batch mode."
     )
-    val scriptedRun = taskKey[Method]("")
+    val scriptedRun = taskKey[ScriptedRun]("")
     val scriptedLaunchOpts =
       settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
     val scriptedDependencies = taskKey[Unit]("")
     val scripted = inputKey[Unit]("")
   }
-  import autoImport._
+  import autoImport.*
 
-  override lazy val globalSettings: Seq[Setting[_]] = Seq(
+  override lazy val globalSettings: Seq[Setting[?]] = Seq(
     scriptedBufferLog := true,
     scriptedLaunchOpts := Seq(),
   )
 
-  override lazy val projectSettings: Seq[Setting[_]] = Seq(
+  override lazy val projectSettings: Seq[Setting[?]] = Seq(
     ivyConfigurations ++= Seq(ScriptedConf, ScriptedLaunchConf),
     scriptedSbt := (pluginCrossBuild / sbtVersion).value,
-    sbtLauncher := getJars(ScriptedLaunchConf).map(_.get.head).value,
+    sbtLauncher := getJars(ScriptedLaunchConf)
+      .map(_.get().head)
+      .value,
     sbtTestDirectory := sourceDirectory.value / "sbt-test",
-    libraryDependencies ++= (CrossVersion.partialVersion(scriptedSbt.value) match {
-      case Some((0, 13)) =>
-        Seq(
-          "org.scala-sbt" % "scripted-sbt" % scriptedSbt.value % ScriptedConf,
-          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
-        )
-      case Some((1, _)) =>
-        Seq(
-          "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
-          "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
-        )
-      case Some((x, y)) => sys error s"Unknown sbt version ${scriptedSbt.value} ($x.$y)"
-      case None         => sys error s"Unknown sbt version ${scriptedSbt.value}"
-    }),
+    libraryDependencies ++= Seq(
+      "org.scala-sbt" %% "scripted-sbt" % scriptedSbt.value % ScriptedConf,
+      "org.scala-sbt" % "sbt-launch" % scriptedSbt.value % ScriptedLaunchConf
+    ),
     scriptedClasspath := getJars(ScriptedConf).value,
     scriptedTests := scriptedTestsTask.value,
     scriptedParallelInstances := 1,
     scriptedBatchExecution := {
       val binVersion = CrossVersionUtil.binarySbtVersion(scriptedSbt.value)
       val versionParts =
-        binVersion.split("\\.").flatMap(p => Try(p.takeWhile(_.isDigit).toInt).toOption).take(2)
+        binVersion.split("\\.").flatMap(p => p.takeWhile(_.isDigit).toIntOption).take(2)
       versionParts match {
         case Array(major, minor) => major > 1 || (major == 1 && minor >= 4)
         case _                   => false
@@ -104,7 +95,7 @@ object ScriptedPlugin extends AutoPlugin {
 
   private[sbt] def scriptedTestsTask: Initialize[Task[AnyRef]] =
     Def.task {
-      val cp = scriptedClasspath.value.get.map(_.toPath)
+      val cp = scriptedClasspath.value.get().map(_.toPath)
       val loader = ClasspathUtil.toLoader(cp, scalaInstance.value.loader)
       try {
         ModuleUtilities.getObject("sbt.scriptedtest.ScriptedTests", loader)
@@ -114,36 +105,23 @@ object ScriptedPlugin extends AutoPlugin {
       }
     }
 
-  private[sbt] def scriptedRunTask: Initialize[Task[Method]] = Def.taskDyn {
-    val fCls = classOf[File]
-    val bCls = classOf[Boolean]
-    val asCls = classOf[Array[String]]
-    val lfCls = classOf[java.util.List[File]]
-    val iCls = classOf[Int]
-
-    val clazz = scriptedTests.value.getClass
-    val method =
-      if (scriptedBatchExecution.value)
-        clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
-      else
-        clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
-
-    Def.task(method)
+  private[sbt] def scriptedRunTask: Initialize[Task[ScriptedRun]] = Def.task {
+    ScriptedRun.of(scriptedTests.value, scriptedBatchExecution.value)
   }
 
   private[sbt] final case class ScriptedTestPage(page: Int, total: Int)
 
   private[sbt] def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
-    import DefaultParsers._
+    import DefaultParsers.*
 
-    val scriptedFiles
-        : NameFilter = ("test": NameFilter) | "test.script" | "pending" | "pending.script"
-    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
+    val scriptedFiles: NameFilter =
+      ("test": NameFilter) | "test.script" | "pending" | "pending.script"
+    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get() map {
       (f: File) =>
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
     }
-    val pairMap = pairs.groupBy(_._1).mapValues(_.map(_._2).toSet)
+    val pairMap = pairs.groupBy(_._1).view.mapValues(_.map(_._2).toSet)
 
     val id = charClass(c => !c.isWhitespace && c != '/', "not whitespace and not '/'").+.string
     val groupP = token(id.examples(pairMap.keySet.toSet)) <~ token('/')
@@ -178,37 +156,40 @@ object ScriptedPlugin extends AutoPlugin {
         page <- pageP
         files = pagedFilenames(group, page)
         // TODO -  Fail the parser if we don't have enough files for the given page size
-        //if !files.isEmpty
+        // if !files.isEmpty
       } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
-    val testIdAsGroup = matched(testID) map (test => Seq(test))
+    val testIdAsGroup = matched(testID).map(test => Seq(test))
 
-    //(token(Space) ~> matched(testID)).*
-    (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
+    // (token(Space) ~> matched(testID)).*
+    (token(Space) ~> (PagedIds | testIdAsGroup)).*.map(_.flatten)
   }
 
-  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] = Def.inputTask {
-    val args = scriptedParser(sbtTestDirectory.value).parsed
-    Def.unit(scriptedDependencies.value)
-    try {
-      val method = scriptedRun.value
-      val scriptedInstance = scriptedTests.value
-      val dir = sbtTestDirectory.value
-      val log = Boolean box scriptedBufferLog.value
-      val launcher = sbtLauncher.value
-      val opts = scriptedLaunchOpts.value.toArray
-      val empty = new java.util.ArrayList[File]()
-      val instances = Int box scriptedParallelInstances.value
+  private[sbt] def scriptedTask: Initialize[InputTask[Unit]] =
+    Def.inputTask {
+      val args = scriptedParser(sbtTestDirectory.value).parsed
+      Def.unit(scriptedDependencies.value)
+      scriptedRun.value.run(
+        sbtTestDirectory.value,
+        scriptedBufferLog.value,
+        args,
+        sbtLauncher.value,
+        Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
+        scriptedLaunchOpts.value,
+        new java.util.ArrayList[File](),
+        scriptedParallelInstances.value
+      )
+    }
 
-      if (scriptedBatchExecution.value)
-        method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty, instances)
-      else method.invoke(scriptedInstance, dir, log, args.toArray, launcher, opts, empty)
-      ()
-    } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
-  }
-
-  private[this] def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
-    PathFinder(Classpaths.managedJars(config, classpathTypes.value, Keys.update.value).map(_.data))
+  private def getJars(config: Configuration): Initialize[Task[PathFinder]] = Def.task {
+    val converter = Keys.fileConverter.value
+    PathFinder(
+      Classpaths
+        .managedJars(config, classpathTypes.value, Keys.update.value, converter)
+        .map(_.data)
+        .map(converter.toPath)
+        .map(_.toFile())
+    )
   }
 }

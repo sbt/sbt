@@ -1,3 +1,7 @@
+sbt text eol=lf
+*.sh text eol=lf
+launcher-package/src/windows/sbt text eol=lf
+
 # Exclude contraband generated files from diff (by default - you can see it if you want)
 **/contraband-scala/**/* -diff merge=ours
 **/contraband-scala/**/* linguist-generated=true

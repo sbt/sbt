@@ -1,15 +1,16 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.internal.util
 
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class CleanStringSpec extends FlatSpec {
+class CleanStringSpec extends AnyFlatSpec {
   "EscHelpers" should "not modify normal strings" in {
     val cleanString = s"1234"
     assert(EscHelpers.stripColorsAndMoves(cleanString) == cleanString)

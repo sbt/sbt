@@ -1,0 +1,2 @@
+> unzipPackage
+$ exists target/out/jvm/scala-3.3.1/mappings-test/extracted/test

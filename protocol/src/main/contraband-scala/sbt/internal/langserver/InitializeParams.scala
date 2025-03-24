@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class InitializeParams private (
   override def toString: String = {
     "InitializeParams(" + processId + ", " + rootPath + ", " + rootUri + ", " + initializationOptions + ", " + capabilities + ", " + trace + ")"
   }
-  private[this] def copy(processId: Option[Long] = processId, rootPath: Option[String] = rootPath, rootUri: Option[String] = rootUri, initializationOptions: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = initializationOptions, capabilities: Option[sbt.internal.langserver.ClientCapabilities] = capabilities, trace: Option[String] = trace): InitializeParams = {
+  private def copy(processId: Option[Long] = processId, rootPath: Option[String] = rootPath, rootUri: Option[String] = rootUri, initializationOptions: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = initializationOptions, capabilities: Option[sbt.internal.langserver.ClientCapabilities] = capabilities, trace: Option[String] = trace): InitializeParams = {
     new InitializeParams(processId, rootPath, rootUri, initializationOptions, capabilities, trace)
   }
   def withProcessId(processId: Option[Long]): InitializeParams = {

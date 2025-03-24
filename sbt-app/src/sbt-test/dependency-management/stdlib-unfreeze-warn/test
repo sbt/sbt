@@ -1,0 +1,11 @@
+> a/checkLibs
+> b/checkLibs
+> b/checkScala
+> c/checkLibs
+
+# macro expansion fails
+-> b/compile
+
+> c/run
+$ exists s2.13.13.txt
+$ delete s2.13.13.txt

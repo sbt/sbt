@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,12 +10,12 @@ package sbt.internal
 
 import java.util.concurrent.atomic.AtomicReference
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
-class GCMonitorTest extends FunSuite {
+class GCMonitorTest extends AnyFunSuite {
   class TestMonitor extends GCMonitorBase {
     val loggedTotals = ListBuffer.empty[Long]
     override protected val window = 10.seconds

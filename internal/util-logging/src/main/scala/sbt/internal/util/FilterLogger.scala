@@ -1,18 +1,20 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.internal.util
 
-import sbt.util._
+import sbt.util.*
 import scala.annotation.nowarn
 
 /**
- * A filter logger is used to delegate messages but not the logging level to another logger.  This means
- * that messages are logged at the higher of the two levels set by this logger and its delegate.
+ * A filter logger is used to delegate messages but not the logging level to another logger. This
+ * means that messages are logged at the higher of the two levels set by this logger and its
+ * delegate.
  */
 class FilterLogger(delegate: AbstractLogger) extends BasicLogger {
   @nowarn override lazy val ansiCodesSupported = delegate.ansiCodesSupported

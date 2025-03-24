@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -14,7 +15,7 @@ import sbt.util.{ Logger, LoggerContext, Level }
 import sbt.internal.util.{ Appender, ManagedLogger, ConsoleAppender, BufferedAppender }
 import sbt.io.IO.wrapNull
 import sbt.io.{ DirectoryFilter, HiddenFileFilter }
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import sbt.internal.io.Resources
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -25,11 +26,10 @@ object ScriptedRunnerImpl {
       tests: Array[String],
       handlersProvider: HandlersProvider
   ): Unit = {
-    val context =
-      LoggerContext(useLog4J = System.getProperty("sbt.log.uselog4j", "false") == "true")
+    val context = LoggerContext()
     val runner = new ScriptedTests(resourceBaseDirectory, bufferLog, handlersProvider)
     val logger = newLogger(context)
-    val allTests = get(tests, resourceBaseDirectory, logger) flatMap {
+    val allTests = get(tests.toSeq, resourceBaseDirectory, logger) flatMap {
       case ScriptedTest(group, name) =>
         runner.scriptedTest(group, name, logger, context)
     }
@@ -103,7 +103,7 @@ final class ScriptedTests(
       log: ManagedLogger,
       context: LoggerContext,
   ): Seq[() => Option[String]] = {
-    for (groupDir <- (resourceBaseDirectory * group).get; nme <- (groupDir * name).get) yield {
+    for (groupDir <- (resourceBaseDirectory * group).get(); nme <- (groupDir * name).get()) yield {
       val g = groupDir.getName
       val n = nme.getName
       val str = s"$g / $n"
@@ -144,7 +144,7 @@ final class ScriptedTests(
       // // val sbtHandler = new SbtHandler(testDirectory, launcher, buffered, launchOpts)
       // new TestScriptParser(Map('$' -> fileHandler, /* '>' -> sbtHandler, */ '#' -> CommentHandler))
       val scriptConfig = new ScriptConfig(label, testDirectory, log)
-      new TestScriptParser(handlersProvider getHandlers scriptConfig)
+      new TestScriptParser(handlersProvider.getHandlers(scriptConfig))
     }
     val (file, pending) = {
       val normal = new File(testDirectory, ScriptFilename)
@@ -198,9 +198,10 @@ final case class ScriptedTest(group: String, name: String) {
 }
 
 object ListTests {
-  def list(directory: File, filter: java.io.FileFilter) = wrapNull(directory.listFiles(filter))
+  def list(directory: File, filter: java.io.FileFilter): Seq[File] =
+    wrapNull(directory.listFiles(filter)).toSeq
 }
-import ListTests._
+import ListTests.*
 final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log: Logger) {
   def filter = DirectoryFilter -- HiddenFileFilter
   def listTests: Seq[ScriptedTest] = {
@@ -209,7 +210,7 @@ final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log:
       listTests(group).map(ScriptedTest(groupName, _))
     }
   }
-  private[this] def listTests(group: File): Seq[String] = {
+  private def listTests(group: File): Seq[String] = {
     val groupName = group.getName
     val allTests = list(group, filter).sortBy(_.getName)
     if (allTests.isEmpty) {
@@ -218,13 +219,12 @@ final class ListTests(baseDirectory: File, accept: ScriptedTest => Boolean, log:
     } else {
       val (included, skipped) =
         allTests.toList.partition(test => accept(ScriptedTest(groupName, test.getName)))
-      if (included.isEmpty)
-        log.warn("Test group " + groupName + " skipped.")
+      if (included.isEmpty) log.warn("Test group " + groupName + " skipped.")
       else if (skipped.nonEmpty) {
         log.warn("Tests skipped in group " + group.getName + ":")
         skipped.foreach(testName => log.warn(" " + testName.getName))
       }
-      Seq(included.map(_.getName): _*)
+      Seq(included.map(_.getName)*)
     }
   }
 }

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class DependencySourcesResult private (
   override def toString: String = {
     "DependencySourcesResult(" + items + ")"
   }
-  private[this] def copy(items: Vector[sbt.internal.bsp.DependencySourcesItem] = items): DependencySourcesResult = {
+  private def copy(items: Vector[sbt.internal.bsp.DependencySourcesItem] = items): DependencySourcesResult = {
     new DependencySourcesResult(items)
   }
   def withItems(items: Vector[sbt.internal.bsp.DependencySourcesItem]): DependencySourcesResult = {

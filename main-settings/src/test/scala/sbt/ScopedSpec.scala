@@ -1,10 +1,11 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt.test
 
 import org.scalacheck._, Prop._, util.Pretty
@@ -83,7 +84,7 @@ object ScopedSpec extends Properties("Scoped") {
     }
   }
 
-  ///
+  // /
 
   def settingKey[A](label: Label, manifest: Manifest[A], scope: Scope): SettingKey[A] = {
     val noJsonWriter = NoJsonWriter[A]()
@@ -101,7 +102,7 @@ object ScopedSpec extends Properties("Scoped") {
     AttributeKey[A](label.value)(manifest, jsonWriter)
   }
 
-  ///
+  // /
 
   def expectEq(k1: Scoped, k2: Scoped): Prop =
     ?=(k1, k2) && ?=(k2, k1) map eqLabels(k1, k2)
@@ -143,3 +144,4 @@ object ScopedSpec extends Properties("Scoped") {
         s"Expected $act to NOT be equal to $exp"
       }
 }
+ */

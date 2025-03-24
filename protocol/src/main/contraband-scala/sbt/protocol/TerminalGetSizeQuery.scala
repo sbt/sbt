@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -18,7 +18,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "TerminalGetSizeQuery()"
 }
-private[this] def copy(): TerminalGetSizeQuery = {
+private def copy(): TerminalGetSizeQuery = {
   new TerminalGetSizeQuery()
 }
 

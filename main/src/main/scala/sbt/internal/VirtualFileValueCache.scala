@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.inc.Stamper
 import xsbti.{ FileConverter, VirtualFile, VirtualFileRef }
 import xsbti.compile.DefinesClass
-import xsbti.compile.analysis.{ Stamp => XStamp }
+import xsbti.compile.analysis.{ Stamp as XStamp }
 import sbt.internal.inc.Locate
 
 /**
@@ -25,31 +26,37 @@ sealed trait VirtualFileValueCache[A] {
 
 object VirtualFileValueCache {
   def definesClassCache(converter: FileConverter): VirtualFileValueCache[DefinesClass] = {
-    apply(converter) { x: VirtualFile =>
+    apply(converter) { (x: VirtualFile) =>
       if (x.name.toString != "rt.jar") Locate.definesClass(x)
       else (_: String) => false
     }
   }
   def apply[A](converter: FileConverter)(f: VirtualFile => A): VirtualFileValueCache[A] = {
-    import collection.mutable.{ HashMap, Map }
-    val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new HashMap
+    import collection.concurrent.Map
+    import java.util.concurrent.ConcurrentHashMap
+    import scala.jdk.CollectionConverters.*
+    val stampCache: Map[VirtualFileRef, (Long, XStamp)] = new ConcurrentHashMap().asScala
     make(
-      Stamper.timeWrap(stampCache, converter, {
-        case (vf: VirtualFile) => Stamper.forContentHash(vf)
-      })
+      Stamper.timeWrap(
+        stampCache,
+        converter,
+        { case (vf: VirtualFile) =>
+          Stamper.forContentHash(vf)
+        }
+      )
     )(f)
   }
   def make[A](stamp: VirtualFile => XStamp)(f: VirtualFile => A): VirtualFileValueCache[A] =
-    new VirtualFileValueCache0[A](stamp, f)
+    new VirtualFileValueCache0[A](stamp, f)(using Equiv.universal)
 }
 
-private[this] final class VirtualFileValueCache0[A](
+private final class VirtualFileValueCache0[A](
     getStamp: VirtualFile => XStamp,
     make: VirtualFile => A
-)(
-    implicit equiv: Equiv[XStamp]
+)(using
+    equiv: Equiv[XStamp]
 ) extends VirtualFileValueCache[A] {
-  private[this] val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]
+  private val backing = new ConcurrentHashMap[VirtualFile, VirtualFileCache]
 
   def clear(): Unit = backing.clear()
   def get = file => {
@@ -58,8 +65,8 @@ private[this] final class VirtualFileValueCache0[A](
     (if (cache eq null) ifAbsent else cache).get()
   }
 
-  private[this] final class VirtualFileCache(file: VirtualFile) {
-    private[this] var stampedValue: Option[(XStamp, A)] = None
+  private final class VirtualFileCache(file: VirtualFile) {
+    private var stampedValue: Option[(XStamp, A)] = None
     def get(): A = synchronized {
       val latest = getStamp(file)
       stampedValue match {
@@ -68,7 +75,7 @@ private[this] final class VirtualFileValueCache0[A](
       }
     }
 
-    private[this] def update(stamp: XStamp): A = {
+    private def update(stamp: XStamp): A = {
       val value = make(file)
       stampedValue = Some((stamp, value))
       value

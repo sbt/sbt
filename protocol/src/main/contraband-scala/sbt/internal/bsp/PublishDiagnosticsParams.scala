@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -34,7 +34,7 @@ final class PublishDiagnosticsParams private (
   override def toString: String = {
     "PublishDiagnosticsParams(" + textDocument + ", " + buildTarget + ", " + originId + ", " + diagnostics + ", " + reset + ")"
   }
-  private[this] def copy(textDocument: sbt.internal.bsp.TextDocumentIdentifier = textDocument, buildTarget: sbt.internal.bsp.BuildTargetIdentifier = buildTarget, originId: Option[String] = originId, diagnostics: Vector[sbt.internal.bsp.Diagnostic] = diagnostics, reset: Boolean = reset): PublishDiagnosticsParams = {
+  private def copy(textDocument: sbt.internal.bsp.TextDocumentIdentifier = textDocument, buildTarget: sbt.internal.bsp.BuildTargetIdentifier = buildTarget, originId: Option[String] = originId, diagnostics: Vector[sbt.internal.bsp.Diagnostic] = diagnostics, reset: Boolean = reset): PublishDiagnosticsParams = {
     new PublishDiagnosticsParams(textDocument, buildTarget, originId, diagnostics, reset)
   }
   def withTextDocument(textDocument: sbt.internal.bsp.TextDocumentIdentifier): PublishDiagnosticsParams = {

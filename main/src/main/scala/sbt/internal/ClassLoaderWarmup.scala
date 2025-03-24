@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -27,12 +28,6 @@ private[internal] object ClassLoaderWarmup {
       submit(IvyPlugin.projectSettings)
       submit(JvmPlugin.projectSettings)
       submit(() => {
-        try {
-          val clazz = Class.forName("scala.reflect.runtime.package$")
-          clazz.getMethod("universe").invoke(clazz.getField("MODULE$").get(null))
-        } catch {
-          case _: Exception =>
-        }
         executorService.shutdown()
       })
     }

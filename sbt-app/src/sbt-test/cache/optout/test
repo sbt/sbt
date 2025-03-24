@@ -1,0 +1,4 @@
+> startServer
+> map1
+$ exists target/out/b1.txt
+$ exists target/out/b2.txt

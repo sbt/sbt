@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -26,7 +27,7 @@ trait TestResultLogger {
    *
    * @param log The target logger to write output to.
    * @param results The test results about which to log.
-   * @param taskName The task about which we are logging. Eg. "my-module-b/test:test"
+   * @param taskName The task about which we are logging. Eg. "my-module-b/Test/test"
    */
   def run(log: Logger, results: Output, taskName: String): Unit
 
@@ -70,9 +71,8 @@ object TestResultLogger {
    * @param f The `TestResultLogger` to choose if the predicate fails.
    */
   def choose(cond: (Output, String) => Boolean, t: TestResultLogger, f: TestResultLogger) =
-    TestResultLogger(
-      (log, results, taskName) =>
-        (if (cond(results, taskName)) t else f).run(log, results, taskName)
+    TestResultLogger((log, results, taskName) =>
+      (if (cond(results, taskName)) t else f).run(log, results, taskName)
     )
 
   /** Transforms the input to be completely silent when the subject module doesn't contain any tests. */
@@ -116,8 +116,7 @@ object TestResultLogger {
     val printSummary = TestResultLogger((log, results, _) => {
       val multipleFrameworks = results.summaries.size > 1
       for (Summary(name, message) <- results.summaries)
-        if (message.isEmpty)
-          log.debug("Summary for " + name + " not available.")
+        if (message.isEmpty) log.debug("Summary for " + name + " not available.")
         else {
           if (multipleFrameworks) log.info(name)
           log.info(message)
@@ -139,19 +138,18 @@ object TestResultLogger {
         canceledCount,
         pendingCount,
       ) =
-        results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) {
-          case (acc, (_, testEvent)) =>
-            val (skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc) =
-              acc
-            (
-              skippedAcc + testEvent.skippedCount,
-              errorAcc + testEvent.errorCount,
-              passedAcc + testEvent.passedCount,
-              failureAcc + testEvent.failureCount,
-              ignoredAcc + testEvent.ignoredCount,
-              canceledAcc + testEvent.canceledCount,
-              pendingAcc + testEvent.pendingCount,
-            )
+        results.events.foldLeft((0, 0, 0, 0, 0, 0, 0)) { case (acc, (_, testEvent)) =>
+          val (skippedAcc, errorAcc, passedAcc, failureAcc, ignoredAcc, canceledAcc, pendingAcc) =
+            acc
+          (
+            skippedAcc + testEvent.skippedCount,
+            errorAcc + testEvent.errorCount,
+            passedAcc + testEvent.passedCount,
+            failureAcc + testEvent.failureCount,
+            ignoredAcc + testEvent.ignoredCount,
+            canceledAcc + testEvent.canceledCount,
+            pendingAcc + testEvent.pendingCount,
+          )
         }
       val totalCount = failuresCount + errorsCount + skippedCount + passedCount
       val base =
@@ -163,7 +161,7 @@ object TestResultLogger {
         "Canceled" -> canceledCount,
         "Pending" -> pendingCount
       )
-      val extra = otherCounts.filter(_._2 > 0).map { case (label, count) => s", $label $count" }
+      val extra = otherCounts.withFilter(_._2 > 0).map { (label, count) => s", $label $count" }
 
       val postfix = base + extra.mkString
       results.overall match {
@@ -190,8 +188,7 @@ object TestResultLogger {
       show("Error during tests:", Level.Error, select(TestResult.Error))
     })
 
-    val printNoTests = TestResultLogger(
-      (log, results, taskName) => log.info("No tests to run for " + taskName)
-    )
+    val printNoTests =
+      TestResultLogger((log, results, taskName) => log.info("No tests to run for " + taskName))
   }
 }

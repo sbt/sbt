@@ -2,11 +2,9 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 autoScalaLibrary := false
 
-ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
-
 scalaModuleInfo := Some(sbt.librarymanagement.ScalaModuleInfo(
-  (scalaVersion in update).value,
-  (scalaBinaryVersion in update).value,
+  (update / scalaVersion).value,
+  (update / scalaBinaryVersion).value,
   Vector.empty,
   checkExplicit = false,
   filterImplicit = false,

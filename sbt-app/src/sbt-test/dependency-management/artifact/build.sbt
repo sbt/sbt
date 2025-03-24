@@ -5,12 +5,13 @@ lazy val checkFull = taskKey[Unit]("")
 lazy val check = taskKey[Unit]("")
 lazy val checkArtifact = taskKey[Unit]("")
 
-ThisBuild / useCoursier := false
-ThisBuild / scalaVersion     := "2.12.12"
+ThisBuild / scalaVersion     := "2.12.20"
 ThisBuild / version          := "0.1.0-SNAPSHOT"
 ThisBuild / organization     := "com.example"
 ThisBuild / organizationName := "example"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ThisBuild / licenses         += License.Apache2
+ThisBuild / licenses         += ("foo", uri("https://example.com/"))
 
 lazy val Dev = config("dev").extend(Compile)
   .describedAs("Dependencies required for development environments")
@@ -18,16 +19,20 @@ lazy val Dev = config("dev").extend(Compile)
 lazy val root = (project in file("."))
   .configs(Dev)
   .settings(
-    ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache")),
+    ivyPaths := IvyPaths(baseDirectory.value.toString, Some((target.value / "ivy-cache").toString)),
     publishTo := Some(Resolver.file("Test Publish Repo", file("test-repo"))),
     scalaCompilerBridgeResolvers += userLocalFileResolver(appConfiguration.value),
     resolvers += baseDirectory { base => "Test Repo" at (base / "test-repo").toURI.toString }.value,
     moduleName := artifactID,
-    projectID := (if (baseDirectory.value / "retrieve" exists) retrieveID else publishedID),
-    artifact in (Compile, packageBin) := mainArtifact,
-    libraryDependencies ++= (if (baseDirectory.value / "retrieve" exists) publishedID :: Nil else Nil),
+    projectID := (if (baseDirectory.value / "retrieve").exists then  retrieveID else publishedID),
+    Compile / packageBin / artifact := mainArtifact,
+    libraryDependencies ++= (if (baseDirectory.value / "retrieve").exists then publishedID :: Nil else Nil),
       // needed to add a jar with a different type to the managed classpath
-    unmanagedClasspath in Compile ++= scalaInstance.value.libraryJars.toSeq,
+    Compile / unmanagedClasspath ++= {
+      val converter = fileConverter.value
+      val xs = scalaInstance.value.libraryJars.toSeq
+      xs.map(x => converter.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     classpathTypes := Set(tpe),
 
     // custom configuration artifacts
@@ -62,13 +67,15 @@ def publishedID = org % artifactID % vers artifacts(mainArtifact)
 def retrieveID = org % "test-retrieve" % "2.0"
 
 // check that the test class is on the compile classpath, either because it was compiled or because it was properly retrieved
-def checkTask(classpath: TaskKey[Classpath]) = Def.task {
-  val deps = libraryDependencies.value
-  val cp = (classpath in Compile).value.files
-  val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
-  try { Class.forName("test.Test", false, loader); () }
-  catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }
-}
+def checkTask(classpath: TaskKey[Classpath]) =
+  Def.task {
+    val deps = libraryDependencies.value
+    given FileConverter = fileConverter.value
+    val cp = (Compile / classpath).value.files.map(_.toFile())
+    val loader = ClasspathUtilities.toLoader(cp, scalaInstance.value.loader)
+    try { Class.forName("test.Test", false, loader); () }
+    catch { case _: ClassNotFoundException | _: NoClassDefFoundError => sys.error(s"Dependency not retrieved properly: $deps, $cp") }
+  }
 
 // use the user local resolver to fetch the SNAPSHOT version of the compiler-bridge
 def userLocalFileResolver(appConfig: AppConfiguration): Resolver = {

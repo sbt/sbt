@@ -1,0 +1,5 @@
+> fastOptJS
+
+$ exists app/target/js-2.12/app-fastopt.js
+$ exists core/target/js-2.12/core-fastopt.js
+$ exists core/target/js-2.11/core-fastopt.js

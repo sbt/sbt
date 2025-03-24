@@ -1,0 +1,302 @@
+package sbt
+package internal
+
+import java.io.File
+import sbt.BuildExtra.*
+import sbt.Def.*
+import sbt.Keys.*
+import sbt.ScopeAxis.This
+import sbt.SlashSyntax0.*
+import sbt.internal.util.{ Terminal as ITerminal }
+import sbt.internal.worker.{ ClientJobParams, FilePath, JvmRunInfo, RunInfo }
+import sbt.io.IO
+import sbt.protocol.Serialization
+import sbt.util.CacheImplicits.given
+import xsbti.FileConverter
+
+object RunUtil:
+  /**
+   * Conventional server-side run implementation.
+   */
+  def serverSideRunTask(
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[Unit]] =
+    val parser = Def.spaceDelimited()
+    Def.inputTask {
+      val in = parser.parsed
+      val mainClass = getMainClass(mainClassTask.value)
+      val cp = classpath.value
+      given FileConverter = fileConverter.value
+      scalaRun.value.run(mainClass, cp.files, in, streams.value.log).get
+    }
+
+  def configTasks(c: ScopeAxis[ConfigKey]): Seq[Setting[?]] = Seq(
+    bgRunMain := bgRunMainTask(
+      exportedProductJars,
+      This / c / This / fullClasspathAsJars,
+      bgRunMain / bgCopyClasspath,
+      run / runner
+    ).evaluated,
+    // note that we use the same runner and mainClass as plain run
+    bgRun := bgRunTask(
+      exportedProductJars,
+      This / c / This / fullClasspathAsJars,
+      run / mainClass,
+      bgRun / bgCopyClasspath,
+      run / runner
+    ).evaluated,
+    runMain := defaultRunMainTask(
+      exportedProductJars,
+      This / c / This / fullClasspathAsJars,
+      run / runner,
+      runMain / clientSide
+    ).evaluated,
+    run := defaultRunTask(
+      exportedProductJars,
+      This / c / This / fullClasspathAsJars,
+      run / mainClass,
+      run / runner,
+      run / clientSide
+    ).evaluated,
+    run / connectInput := true,
+  )
+
+  private def termWrapper(canonical: Boolean, echo: Boolean): (() => Unit) => (() => Unit) =
+    (f: () => Unit) =>
+      () => {
+        val term = ITerminal.get
+        if (!canonical) {
+          term.enterRawMode()
+          if (echo) term.setEchoEnabled(echo)
+        } else if (!echo) term.setEchoEnabled(false)
+        try f()
+        finally {
+          if (!canonical) term.exitRawMode()
+          if (!echo) term.setEchoEnabled(true)
+        }
+      }
+
+  private def getMainClass(value: Option[String]): String =
+    value.getOrElse(sys.error("no main class detected"))
+
+  private def mkRunInfo(
+      args: Vector[String],
+      mainClass: String,
+      cp: Classpath,
+      fo: ForkOptions,
+      conv: FileConverter
+  ): RunInfo =
+    val strategy = fo.outputStrategy.map(_.getClass().getSimpleName().filter(_ != '$'))
+    // sbtn doesn't set java.home, so we need to do the fallback here
+    val javaHome =
+      fo.javaHome.map(IO.toURI).orElse(sys.props.get("java.home").map(x => IO.toURI(new File(x))))
+    val jvmRunInfo = JvmRunInfo(
+      args = args,
+      classpath = cp.map(x => IO.toURI(conv.toPath(x.data).toFile)).map(FilePath(_, "")).toVector,
+      mainClass = mainClass,
+      connectInput = fo.connectInput,
+      javaHome = javaHome,
+      outputStrategy = strategy,
+      workingDirectory = fo.workingDirectory.map(IO.toURI),
+      jvmOptions = fo.runJVMOptions,
+      environmentVariables = fo.envVars.toMap,
+    )
+    RunInfo(
+      jvm = true,
+      jvmRunInfo = jvmRunInfo,
+    )
+
+  def defaultRunMainTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      scalaRun: Initialize[Task[ScalaRun]],
+      clientRun: Initialize[Boolean],
+  ): Initialize[InputTask[Unit | ClientJobParams]] =
+    val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
+      Defaults.runMainParser(s, names getOrElse Nil)
+    )
+    Def.inputTask {
+      val conv = fileConverter.value
+      given FileConverter = conv
+      val service = bgJobService.value
+      val (mainClass, args) = parser.parsed
+      val hashClasspath = (bgRunMain / bgHashClasspath).value
+      val fo = (run / forkOptions).value
+      val state = Keys.state.value
+      if clientRun.value && state.isNetworkCommand then
+        val workingDir = service.createWorkingDirectory
+        val cp = service.copyClasspath(
+          products.value,
+          classpath.value,
+          workingDir,
+          conv,
+        )
+        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv)
+        val result = ClientJobParams(
+          runInfo = info
+        )
+        import sbt.internal.worker.codec.JsonProtocol.*
+        state.notifyEvent(Serialization.clientJob, result)
+        result
+      else
+        val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+        val handle = service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state):
+          (logger, workingDir) =>
+            val cp = service.copyClasspath(
+              products.value,
+              classpath.value,
+              workingDir,
+              hashClasspath,
+              conv,
+            )
+            scalaRun.value match
+              case r: Run =>
+                val loader = r.newLoader(cp.files)
+                (
+                  Some(loader),
+                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                )
+              case sr =>
+                (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+        service.waitForTry(handle).get
+        ()
+    }
+
+  def defaultRunTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      scalaRun: Initialize[Task[ScalaRun]],
+      clientRun: Initialize[Boolean]
+  ): Initialize[InputTask[Unit | ClientJobParams]] =
+    val parser = Def.spaceDelimited()
+    Def.inputTask {
+      val conv = fileConverter.value
+      given FileConverter = conv
+      val args = parser.parsed
+      val service = bgJobService.value
+      val mainClass = getMainClass(mainClassTask.value)
+      val hashClasspath = (bgRun / bgHashClasspath).value
+      val fo = (run / forkOptions).value
+      val state = Keys.state.value
+      if clientRun.value && state.isNetworkCommand then
+        val workingDir = service.createWorkingDirectory
+        val cp = service.copyClasspath(
+          products.value,
+          classpath.value,
+          workingDir,
+          conv,
+        )
+        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv)
+        val result = ClientJobParams(
+          runInfo = info
+        )
+        import sbt.internal.worker.codec.JsonProtocol.*
+        state.notifyEvent(Serialization.clientJob, result)
+        result
+      else
+        val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+        val handle = service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state):
+          (logger, workingDir) =>
+            val cp = service.copyClasspath(
+              products.value,
+              classpath.value,
+              workingDir,
+              hashClasspath,
+              conv
+            )
+            scalaRun.value match
+              case r: Run =>
+                val loader = r.newLoader(cp.files)
+                (
+                  Some(loader),
+                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                )
+              case sr =>
+                (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+        service.waitForTry(handle).get
+        ()
+    }
+
+  def bgRunMainTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] =
+    val parser = Defaults.loadForParser(discoveredMainClasses)((s, names) =>
+      Defaults.runMainParser(s, names getOrElse Nil)
+    )
+    Def.inputTask {
+      val service = bgJobService.value
+      val (mainClass, args) = parser.parsed
+      val hashClasspath = (bgRunMain / bgHashClasspath).value
+      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+      val converter = fileConverter.value
+      service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state.value) {
+        (logger, workingDir) =>
+          val cp =
+            if copyClasspath.value then
+              service.copyClasspath(
+                products.value,
+                classpath.value,
+                workingDir,
+                hashClasspath,
+                converter,
+              )
+            else classpath.value
+          given FileConverter = fileConverter.value
+          scalaRun.value match
+            case r: Run =>
+              val loader = r.newLoader(cp.files)
+              (
+                Some(loader),
+                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+              )
+            case sr =>
+              (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+      }
+    }
+
+  def bgRunTask(
+      products: Initialize[Task[Classpath]],
+      classpath: Initialize[Task[Classpath]],
+      mainClassTask: Initialize[Task[Option[String]]],
+      copyClasspath: Initialize[Boolean],
+      scalaRun: Initialize[Task[ScalaRun]]
+  ): Initialize[InputTask[JobHandle]] =
+    val parser = Def.spaceDelimited()
+    Def.inputTask {
+      val args = parser.parsed
+      val service = bgJobService.value
+      val mainClass = getMainClass(mainClassTask.value)
+      val hashClasspath = (bgRun / bgHashClasspath).value
+      val wrapper = termWrapper(canonicalInput.value, echoInput.value)
+      val converter = fileConverter.value
+      service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state.value) {
+        (logger, workingDir) =>
+          val cp =
+            if copyClasspath.value then
+              service.copyClasspath(
+                products.value,
+                classpath.value,
+                workingDir,
+                hashClasspath,
+                converter
+              )
+            else classpath.value
+          given FileConverter = converter
+          scalaRun.value match
+            case r: Run =>
+              val loader = r.newLoader(cp.files)
+              (
+                Some(loader),
+                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+              )
+            case sr =>
+              (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+      }
+    }
+end RunUtil

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,19 +10,19 @@ package sbt
 
 import sbt.internal.{ Load, BuildStructure, Act, Aggregation, SessionSettings }
 import Scope.GlobalScope
+import sbt.ScopeAxis.This
 import Def.{ ScopedKey, Setting }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.AttributeKey
 import sbt.util.Show
 import std.Transform.DummyTaskMap
 import sbt.EvaluateTask.extractedTaskConfig
-import scala.annotation.nowarn
+import sbt.ProjectExtra.setProject
 
 final case class Extracted(
     structure: BuildStructure,
     session: SessionSettings,
     currentRef: ProjectRef
-)(implicit val showKey: Show[ScopedKey[_]]) {
+)(using val showKey: Show[ScopedKey[?]]) {
   def rootProject = structure.rootProject
   lazy val currentUnit = structure units currentRef.build
   lazy val currentProject = currentUnit defined currentRef.project
@@ -32,21 +33,21 @@ final case class Extracted(
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
    * Other axes are resolved to be `Zero` if they are not specified.
    */
-  def get[T](key: SettingKey[T]): T = getOrError(inCurrent(key.scope), key.key)
-  def get[T](key: TaskKey[T]): Task[T] = getOrError(inCurrent(key.scope), key.key)
+  def get[T](key: SettingKey[T]): T = getOrError(inCurrent(key.scopedKey))
+  def get[T](key: TaskKey[T]): Task[T] = getOrError(inCurrent(key.scopedKey))
 
   /**
    * Gets the value assigned to `key` in the computed settings map wrapped in Some.  If it does not exist, None is returned.
    * If the project axis is not explicitly specified, it is resolved to be the current project according to the extracted `session`.
    * Other axes are resolved to be `Zero` if they are not specified.
    */
-  def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key.scope), key.key)
+  def getOpt[T](key: SettingKey[T]): Option[T] = structure.data.get(inCurrent(key.scopedKey))
   def getOpt[T](key: TaskKey[T]): Option[Task[T]] =
-    structure.data.get(inCurrent(key.scope), key.key)
+    structure.data.get(inCurrent(key))
 
-  @nowarn
-  private[this] def inCurrent[T](scope: Scope): Scope =
-    if (scope.project == This) scope in currentRef else scope
+  private def inCurrent[T](key: ScopedKey[T]): ScopedKey[T] =
+    if key.scope.project == This then key.copy(scope = key.scope.rescope(currentRef))
+    else key
 
   /**
    * Runs the task specified by `key` and returns the transformed State and the resulting value of the task.
@@ -61,7 +62,7 @@ final case class Extracted(
     val config = extractedTaskConfig(this, structure, state)
     val value: Option[(State, Result[T])] =
       EvaluateTask(structure, key.scopedKey, state, currentRef, config)
-    val (newS, result) = getOrError(rkey.scope, rkey.key, value)
+    val (newS, result) = getOrError(rkey.scopedKey, value)
     (newS, EvaluateTask.processResult2(result))
   }
 
@@ -89,7 +90,7 @@ final case class Extracted(
     EvaluateTask.withStreams(structure, state) { str =>
       val nv = EvaluateTask.nodeView(state, str, rkey.scopedKey :: Nil)
       val (newS, result) =
-        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(nv)
+        EvaluateTask.runTask(task, state, str, structure.index.triggers, config)(using nv)
       (newS, EvaluateTask.processResult2(result))
     }
   }
@@ -100,7 +101,7 @@ final case class Extracted(
    * The project axis is what determines where aggregation starts, so ensure this is set to what you want.
    * Other axes are resolved to `Zero` if unspecified.
    */
-  def runAggregated[T](key: TaskKey[T], state: State): State = {
+  def runAggregated[A1](key: TaskKey[A1], state: State): State =
     val rkey = resolve(key)
     val keys = Aggregation.aggregate(rkey, ScopeMask(), structure.extra)
     val tasks = Act.keyValues(structure)(keys)
@@ -109,45 +110,43 @@ final case class Extracted(
       tasks,
       DummyTaskMap(Nil),
       show = Aggregation.defaultShow(state, false),
-    )(showKey)
-  }
+    )
 
-  @nowarn
-  private[this] def resolve[K <: Scoped.ScopingSetting[K] with Scoped](key: K): K =
-    key in Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope)
+  private def resolve[K <: Scoped.ScopingSetting[K] & Scoped](key: K): K =
+    Scope.resolveScope(GlobalScope, currentRef.build, rootProject)(key.scope) / key
 
-  private def getOrError[T](scope: Scope, key: AttributeKey[_], value: Option[T])(
-      implicit display: Show[ScopedKey[_]]
+  private def getOrError[T](key: ScopedKey[?], value: Option[T])(using
+      display: Show[ScopedKey[?]]
   ): T =
-    value getOrElse sys.error(display.show(ScopedKey(scope, key)) + " is undefined.")
+    value.getOrElse(sys.error(display.show(key) + " is undefined."))
 
-  private def getOrError[T](scope: Scope, key: AttributeKey[T])(
-      implicit display: Show[ScopedKey[_]]
+  private def getOrError[T](key: ScopedKey[T])(using
+      display: Show[ScopedKey[?]]
   ): T =
-    getOrError(scope, key, structure.data.get(scope, key))(display)
+    getOrError(key, structure.data.get(key))(using display)
 
   @deprecated(
     "This discards session settings. Migrate to appendWithSession or appendWithoutSession.",
     "1.2.0"
   )
-  def append(settings: Seq[Setting[_]], state: State): State =
+  def append(settings: Seq[Setting[?]], state: State): State =
     appendWithoutSession(settings, state)
 
   /** Appends the given settings to all the build state settings, including session settings. */
-  def appendWithSession(settings: Seq[Setting[_]], state: State): State =
+  def appendWithSession(settings: Seq[Setting[?]], state: State): State =
     appendImpl(settings, state, session.mergeSettings)
 
   /**
    * Appends the given settings to the original build state settings, discarding any settings
    * appended to the session in the process.
    */
-  def appendWithoutSession(settings: Seq[Setting[_]], state: State): State =
+  def appendWithoutSession(settings: Seq[Setting[?]], state: State): State =
     appendImpl(settings, state, session.original)
 
-  private[this] def appendImpl(
-      settings: Seq[Setting[_]],
+  private def appendImpl(
+      settings: Seq[Setting[?]],
       state: State,
-      sessionSettings: Seq[Setting[_]],
+      sessionSettings: Seq[Setting[?]],
   ): State = {
     val appendSettings =
       Load.transformSettings(Load.projectScope(currentRef), currentRef.build, rootProject, settings)

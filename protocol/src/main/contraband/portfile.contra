@@ -16,7 +16,10 @@ type TokenFile {
   token: String!
 }
 
+## Passed into InitializeParams as part of "initialize" request as the user-defined option.
+## https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 type InitializeOption {
   token: String
   skipAnalysis: Boolean @since("1.4.0")
+  canWork: Boolean @since("1.10.8")
 }

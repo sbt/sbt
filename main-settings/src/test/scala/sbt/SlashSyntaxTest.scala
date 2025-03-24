@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,12 +9,14 @@
 package sbt.test
 
 import java.io.File
-import sjsonnew._, BasicJsonProtocol._
+import sjsonnew.*
 import sbt.Def.{ Setting, inputKey, settingKey, taskKey }
 import sbt.Scope.Global
+import sbt.ScopeAxis.Zero
+import sbt.SlashSyntax0.*
 import sbt.librarymanagement.ModuleID
-import sbt.librarymanagement.syntax._
-import sbt.{ LocalProject, ProjectReference, ThisBuild, Zero }
+import sbt.librarymanagement.syntax.*
+import sbt.{ LocalProject, ProjectReference, ThisBuild }
 
 object SlashSyntaxTest extends sbt.SlashSyntax {
   final case class Proj(id: String)
@@ -36,7 +39,7 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
 
   val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
-  Seq[Setting[_]](
+  Seq[Setting[?]](
     Global / cancelable := true,
     ThisBuild / scalaVersion := "2.12.3",
     console / scalacOptions += "-deprecation",

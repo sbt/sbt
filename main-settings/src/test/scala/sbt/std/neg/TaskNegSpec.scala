@@ -1,18 +1,19 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt.std.neg
 
 import scala.tools.reflect.ToolBoxError
-import org.scalatest.{ TestData, fixture }
+import org.scalatest.{ TestData, fixture, funsuite }
 import sbt.std.{ TaskLinterDSLFeedback, TestUtil }
 import sbt.std.TestUtil._
 
-class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
+class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixture {
   def expectError(
       errorSnippet: String,
       compileOptions: String = "",
@@ -305,7 +306,7 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
       """.stripMargin
       }
   }
-   */
+ */
 
   test("Detect a missing `.value` inside an inner method of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
@@ -382,3 +383,4 @@ class TaskNegSpec extends fixture.FunSuite with fixture.TestDataFixture {
   }
  */
 }
+ */

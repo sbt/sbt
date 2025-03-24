@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class TerminalSetEchoCommand private (
   override def toString: String = {
     "TerminalSetEchoCommand(" + toggle + ")"
   }
-  private[this] def copy(toggle: Boolean = toggle): TerminalSetEchoCommand = {
+  private def copy(toggle: Boolean = toggle): TerminalSetEchoCommand = {
     new TerminalSetEchoCommand(toggle)
   }
   def withToggle(toggle: Boolean): TerminalSetEchoCommand = {

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -14,19 +15,18 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 import sbt.BasicCommandStrings.{ ContinuousExecutePrefix, TerminateAction }
-import sbt.SlashSyntax0._
-import sbt._
-import sbt.internal.LabeledFunctions._
+import sbt.*
+import sbt.internal.LabeledFunctions.*
 import sbt.internal.nio.FileEvent
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.complete.Parser._
-import sbt.nio.Keys._
+import sbt.internal.util.complete.Parser.*
+import sbt.nio.Keys.*
 import sbt.nio.file.FileAttributes
 import sbt.util.{ Level, Logger }
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
 object Watch {
@@ -50,21 +50,21 @@ object Watch {
      */
     def occurredAt: FiniteDuration
   }
-  private[this] val formatter = DateTimeFormatter.ofPattern("yyyy-MMM-dd HH:mm:ss.SSS")
-  private[this] val timeZone = ZoneId.systemDefault
-  private[this] val timeZoneName = timeZone.getDisplayName(TextStyle.SHORT, Locale.getDefault)
-  private[this] implicit class DurationOps(val d: Duration) extends AnyVal {
-    def finite: FiniteDuration = d match {
+  private val formatter = DateTimeFormatter.ofPattern("yyyy-MMM-dd HH:mm:ss.SSS")
+  private val timeZone = ZoneId.systemDefault
+  private val timeZoneName = timeZone.getDisplayName(TextStyle.SHORT, Locale.getDefault)
+  extension (d: Duration) {
+    private def finite: FiniteDuration = d match {
       case f: FiniteDuration => f
       case _                 => new FiniteDuration(Long.MaxValue, TimeUnit.MILLISECONDS)
     }
-    def toEpochString: String = {
+    private def toEpochString: String = {
       val zdt = ZonedDateTime.ofInstant(Instant.ofEpochMilli(d.toMillis), timeZone)
       s"${formatter.format(zdt)} $timeZoneName"
     }
   }
-  private[sbt] implicit class EventOps(val event: Event) extends AnyVal {
-    def toEpochString: String = event.occurredAt.toEpochString
+  extension (event: Event) {
+    private[sbt] def toEpochString: String = event.occurredAt.toEpochString
   }
   private[sbt] object Event {
     trait Impl { self: Event =>
@@ -134,13 +134,11 @@ object Watch {
    * [[CancelWatch]] is higher priority than [[ContinueWatch]].
    */
   object Action {
-    implicit object ordering extends Ordering[Action] {
-      override def compare(left: Action, right: Action): Int = (left, right) match {
-        case (a: ContinueWatch, b: ContinueWatch) => ContinueWatch.ordering.compare(a, b)
-        case (_: ContinueWatch, _: CancelWatch)   => 1
-        case (a: CancelWatch, b: CancelWatch)     => CancelWatch.ordering.compare(a, b)
-        case (_: CancelWatch, _: ContinueWatch)   => -1
-      }
+    given ordering: Ordering[Action] = {
+      case (a: ContinueWatch, b: ContinueWatch) => ContinueWatch.ordering.compare(a, b)
+      case (_: ContinueWatch, _: CancelWatch)   => 1
+      case (a: CancelWatch, b: CancelWatch)     => CancelWatch.ordering.compare(a, b)
+      case (_: CancelWatch, _: ContinueWatch)   => -1
     }
   }
 
@@ -163,13 +161,12 @@ object Watch {
     /**
      * A default `Ordering` for [[ContinueWatch]]. [[Trigger]] is higher priority than [[Ignore]].
      */
-    implicit object ordering extends Ordering[ContinueWatch] {
-      override def compare(left: ContinueWatch, right: ContinueWatch): Int = left match {
+    given ordering: Ordering[ContinueWatch] = (left: ContinueWatch, right: ContinueWatch) =>
+      left match {
         case ShowOptions => if (right == ShowOptions) 0 else -1
         case Ignore      => if (right == Ignore) 0 else 1
         case Trigger     => if (right == Trigger) 0 else if (right == ShowOptions) 1 else -1
       }
-    }
   }
 
   /**
@@ -182,8 +179,8 @@ object Watch {
      * is reflected by the ordering of the case statements in the [[ordering.compare]] method,
      * e.g. [[Custom]] is higher priority than [[HandleError]].
      */
-    implicit object ordering extends Ordering[CancelWatch] {
-      override def compare(left: CancelWatch, right: CancelWatch): Int = left match {
+    given ordering: Ordering[CancelWatch] = { (left: CancelWatch, right: CancelWatch) =>
+      left match {
         // Note that a negative return value means the left CancelWatch is preferred to the right
         // CancelWatch while the inverse is true for a positive return value. This logic could
         // likely be simplified, but the pattern matching approach makes it very clear what happens
@@ -286,7 +283,7 @@ object Watch {
   // For now leave this private in case this isn't the best unapply type signature since it can't
   // be evolved in a binary compatible way.
   object Run {
-    def apply(commands: String*): Run = new Watch.Run(commands: _*)
+    def apply(commands: String*): Run = new Watch.Run(commands*)
     def unapply(r: Run): Option[List[Exec]] = Some(r.commands.toList.map(Exec(_, None)))
   }
 
@@ -333,8 +330,8 @@ object Watch {
     ): InputOption =
       new impl(chars.mkString("|"), display, description, action) {
         override private[sbt] def parser: Parser[Watch.Action] = chars match {
-          case Seq(c)            => c ^^^ action
-          case Seq(h, rest @ _*) => rest.foldLeft(h: Parser[Char])(_ | _) ^^^ action
+          case Seq(c)        => c ^^^ action
+          case Seq(h, rest*) => rest.foldLeft(h: Parser[Char])(_ | _) ^^^ action
         }
       }
     def apply(input: String, description: String, action: Action): InputOption =
@@ -434,8 +431,8 @@ object Watch {
   private[sbt] def aggregate(events: Seq[(Action, Event)]): Option[(Action, Event)] =
     if (events.isEmpty) None else Some(events.minBy(_._1))
 
-  private implicit class StringToExec(val s: String) extends AnyVal {
-    def toExec: Exec = Exec(s, None)
+  extension (s: String) {
+    private def toExec: Exec = Exec(s, None)
   }
 
   /**
@@ -488,8 +485,8 @@ object Watch {
    */
   final def defaultInputParser(options: Seq[Watch.InputOption]): Parser[Action] =
     distinctOptions(options) match {
-      case Seq()             => (('\n': Parser[Char]) | '\r' | 4.toChar) ^^^ Run("")
-      case Seq(h, rest @ _*) => rest.foldLeft(h.parser)(_ | _.parser)
+      case Seq()         => (('\n': Parser[Char]) | '\r' | 4.toChar) ^^^ Run("")
+      case Seq(h, rest*) => rest.foldLeft(h.parser)(_ | _.parser)
     }
   final val defaultInputOptions: Seq[Watch.InputOption] = Seq(
     Watch.InputOption("<enter>", "interrupt (exits sbt in batch mode)", CancelWatch, '\n', '\r'),
@@ -535,7 +532,8 @@ object Watch {
     (count: Int, project: ProjectRef, commands: Seq[String]) =>
       {
         val countStr = s"$count. "
-        Some(s"$countStr${waitMessage(project, commands).mkString(s"\n${" " * countStr.length}")}")
+        Some(s"$countStr${waitMessage(project, commands)
+            .mkString(s"\n${" " * countStr.length}")}")
       }
   }.label("Watched.defaultStartWatch")
 
@@ -580,11 +578,17 @@ object Watch {
    * a build is triggered.
    */
   final val defaultOnTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
-    ((_: Int, path: Path, commands: Seq[String]) => {
-      val msg = s"Build triggered by $path. " +
-        s"Running ${commands.mkString("'", "; ", "'")}."
-      Some(msg)
-    }).label("Watched.defaultOnTriggerMessage")
+    (
+        (
+            _: Int,
+            path: Path,
+            commands: Seq[String]
+        ) => {
+          val msg = s"Build triggered by $path. " +
+            s"Running ${commands.mkString("'", "; ", "'")}."
+          Some(msg)
+        }
+    ).label("Watched.defaultOnTriggerMessage")
 
   final val noTriggerMessage: (Int, Path, Seq[String]) => Option[String] =
     (_, _, _) => None
@@ -609,7 +613,7 @@ object Watch {
       defaultOnTriggerMessage(count, path, commands)
   }.label("Watch.clearScreenOnTrigger")
 
-  private[sbt] def defaults: Seq[Def.Setting[_]] = Seq(
+  private[sbt] def defaults: Seq[Def.Setting[?]] = Seq(
     sbt.Keys.watchAntiEntropy :== Watch.defaultAntiEntropy,
     watchAntiEntropyRetentionPeriod :== Watch.defaultAntiEntropyRetentionPeriod,
     watchLogLevel :== Level.Info,

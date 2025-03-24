@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class TextDocumentIdentifier private (
   override def toString: String = {
     "TextDocumentIdentifier(" + uri + ")"
   }
-  private[this] def copy(uri: java.net.URI = uri): TextDocumentIdentifier = {
+  private def copy(uri: java.net.URI = uri): TextDocumentIdentifier = {
     new TextDocumentIdentifier(uri)
   }
   def withUri(uri: java.net.URI): TextDocumentIdentifier = {

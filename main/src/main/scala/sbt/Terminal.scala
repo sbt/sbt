@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,14 +9,13 @@
 package sbt
 
 import java.io.{ InputStream, PrintStream }
-import sbt.internal.util.{ JLine3, Terminal => ITerminal }
+import sbt.internal.util.{ JLine3, Terminal as ITerminal }
 
 /**
  * A Terminal represents a ui connection to sbt. It may control the embedded console
  * for an sbt server or it may control a remote client connected through sbtn. The
  * Terminal is particularly useful whenever an sbt task needs to receive input from
  * the user.
- *
  */
 trait Terminal {
 
@@ -52,7 +52,7 @@ trait Terminal {
   /**
    * Sets the mode of the terminal. By default,the terminal will be in canonical mode
    * with echo enabled. This means that the terminal's inputStream will not return any
-   * bytes until a newline is received and that all of the characters inputed by the
+   * bytes until a newline is received and that all of the characters inputted by the
    * user will be echoed to the terminal's output stream.
    *
    * @param canonical toggles whether or not the terminal input stream is line buffered

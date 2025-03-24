@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class ServerCapabilities private (
   override def toString: String = {
     "ServerCapabilities(" + textDocumentSync + ", " + hoverProvider + ", " + definitionProvider + ")"
   }
-  private[this] def copy(textDocumentSync: Option[sbt.internal.langserver.TextDocumentSyncOptions] = textDocumentSync, hoverProvider: Option[Boolean] = hoverProvider, definitionProvider: Option[Boolean] = definitionProvider): ServerCapabilities = {
+  private def copy(textDocumentSync: Option[sbt.internal.langserver.TextDocumentSyncOptions] = textDocumentSync, hoverProvider: Option[Boolean] = hoverProvider, definitionProvider: Option[Boolean] = definitionProvider): ServerCapabilities = {
     new ServerCapabilities(textDocumentSync, hoverProvider, definitionProvider)
   }
   def withTextDocumentSync(textDocumentSync: Option[sbt.internal.langserver.TextDocumentSyncOptions]): ServerCapabilities = {

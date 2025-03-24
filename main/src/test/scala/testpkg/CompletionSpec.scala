@@ -1,33 +1,40 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
 package testpkg
 
 import java.net.URI
 
-import sbt.{ Result => _, _ }
-import sbt.Def._
+import sbt.{ Result as _, * }
+import sbt.ScopeAxis.{ Select, Zero }
+import sbt.Def.*
 import sbt.internal.TestBuild
-import sbt.internal.TestBuild._
+import sbt.internal.TestBuild.*
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.Configuration
-import hedgehog._
-import hedgehog.runner._
+import hedgehog.*
+import hedgehog.runner.*
 import _root_.sbt.internal.util.complete.Parser
 
 object CompletionSpec extends Properties {
   override def tests: List[Test] =
     List(
-      property("can complete any build", TestBuild.uriGen.forAll.map { uri =>
-        complete(buildURI = uri, line = "{", expected = "{" + uri.toString + "}")
-      }),
-      property("can complete any project", TestBuild.nonEmptyId.forAll.map { id =>
-        complete(projectID = id, line = id.head.toString, expected = id)
-      }),
+      property(
+        "can complete any build",
+        TestBuild.uriGen.forAll.map { uri =>
+          complete(buildURI = uri, line = "{", expected = "{" + uri.toString + "}")
+        }
+      ),
+      property(
+        "can complete any project",
+        TestBuild.nonEmptyId.forAll.map { id =>
+          complete(projectID = id, line = id.head.toString, expected = id)
+        }
+      ),
       property(
         "can complete any configuration",
         TestBuild.nonEmptyId.forAll.map { name =>

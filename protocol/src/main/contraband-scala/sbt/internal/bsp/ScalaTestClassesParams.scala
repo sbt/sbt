@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -7,7 +7,7 @@ package sbt.internal.bsp
 /**
  * Scala Test Class Request
  * The build target scala test options request is sent from the client to the server
- * to query for the list of fully qualified names of test clases in a given list of targets.
+ * to query for the list of fully qualified names of test classes in a given list of targets.
  * @param originId An optional number uniquely identifying a client request.
  */
 final class ScalaTestClassesParams private (
@@ -26,7 +26,7 @@ final class ScalaTestClassesParams private (
   override def toString: String = {
     "ScalaTestClassesParams(" + targets + ", " + originId + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): ScalaTestClassesParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): ScalaTestClassesParams = {
     new ScalaTestClassesParams(targets, originId)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): ScalaTestClassesParams = {

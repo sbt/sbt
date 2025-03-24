@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class Exec private (
   override def toString: String = {
     "Exec(" + commandLine + ", " + execId + ", " + source + ")"
   }
-  private[this] def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
+  private def copy(commandLine: String = commandLine, execId: Option[String] = execId, source: Option[sbt.CommandSource] = source): Exec = {
     new Exec(commandLine, execId, source)
   }
   def withCommandLine(commandLine: String): Exec = {

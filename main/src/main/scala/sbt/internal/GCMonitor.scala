@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,8 +12,8 @@ import javax.management.{ NotificationEmitter, NotificationListener }
 import java.lang.management.ManagementFactory
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
-import scala.collection.JavaConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import sbt.util.Logger
 
@@ -23,7 +24,7 @@ trait GCMonitorBase {
 
   protected val queue = new LinkedBlockingQueue[(FiniteDuration, Long)]
   protected val queueScala = queue.asScala
-  private[this] val lastWarned = new AtomicReference(Deadline(Int.MinValue.millis))
+  private val lastWarned = new AtomicReference(Deadline(Int.MinValue.millis))
 
   protected def emitWarning(total: Long, over: Option[Long]): Unit
 
@@ -50,7 +51,7 @@ trait GCMonitorBase {
 
 class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
   override protected def window =
-    Try(System.getProperty("sbt.gc.monitor.window", "10").toInt).getOrElse(10).seconds
+    System.getProperty("sbt.gc.monitor.window", "10").toIntOption.getOrElse(10).seconds
 
   override protected def ratio =
     Try(System.getProperty("sbt.gc.monitor.ratio", "0.5").toDouble).getOrElse(0.5)
@@ -61,7 +62,7 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
 
   override protected def emitWarning(total: Long, over: Option[Long]): Unit = {
     val totalSeconds = total / 1000.0
-    val amountMsg = over.fold(totalSeconds + " seconds") { d =>
+    val amountMsg = over.fold(s"$totalSeconds seconds") { d =>
       "In the last " + (d / 1000.0).ceil.toInt + f" seconds, $totalSeconds (${total.toDouble / d * 100}%.1f%%)"
     }
     val msg = s"$amountMsg were spent in GC. " +

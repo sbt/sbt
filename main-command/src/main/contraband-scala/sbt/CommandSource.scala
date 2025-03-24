@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class CommandSource private (
   override def toString: String = {
     "CommandSource(" + channelName + ")"
   }
-  private[this] def copy(channelName: String = channelName): CommandSource = {
+  private def copy(channelName: String = channelName): CommandSource = {
     new CommandSource(channelName)
   }
   def withChannelName(channelName: String): CommandSource = {

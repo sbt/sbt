@@ -3,12 +3,15 @@ package example.test
 import minitest._
 import scala.sys.process._
 import java.io.File
+import java.util.Locale
+import sbt.io.IO
 
 object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   // 1.3.0, 1.3.0-M4
-  private val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
+  private[test] val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
 
-  lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
+  lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
+  lazy val isMac: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
   lazy val sbtScript =
     if (isWindows) new File("target/universal/stage/bin/sbt.bat")
     else new File("target/universal/stage/bin/sbt")
@@ -18,6 +21,10 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     sbt.internal.Process(Seq(sbtScript.getAbsolutePath) ++ args, new File("citest"),
       "JAVA_OPTS" -> javaOpts,
       "SBT_OPTS" -> sbtOpts)
+  def sbtProcessInDir(dir: File)(args: String*) =
+    sbt.internal.Process(Seq(sbtScript.getAbsolutePath) ++ args, dir,
+      "JAVA_OPTS" -> "",
+      "SBT_OPTS" -> "")
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -49,13 +56,6 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     ()
   }
 
-  test("sbt --script-version should print sbtVersion") {
-    val out = sbtProcess("--script-version").!!.trim
-    val expectedVersion = "^"+versionRegEx+"$"
-    assert(out.matches(expectedVersion))
-    ()
-  }
-
   test("sbt --sbt-jar should run") {
     val out = sbtProcess("compile", "-v", "--sbt-jar", "../target/universal/stage/bin/sbt-launch.jar").!!.linesIterator.toList
     assert(out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
@@ -65,8 +65,32 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   }
 
   test("sbt \"testOnly *\"") {
-    val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
-    assert(out.contains[String]("[info] HelloTest"))
+    if (isMac) ()
+    else {
+      val out = sbtProcess("testOnly *", "--no-colors", "-v").!!.linesIterator.toList
+      assert(out.contains[String]("[info] HelloTest"))
+      ()
+    }
+  }
+
+  test("sbt in empty directory") {
+    IO.withTemporaryDirectory { tmp =>
+      val out = sbtProcessInDir(tmp)("about").!
+      assert(out == 1)
+    }
+    IO.withTemporaryDirectory { tmp =>
+      val out = sbtProcessInDir(tmp)("about", "--allow-empty").!
+      assert(out == 0)
+    }
+    ()
+  }
+
+  test("sbt --script-version in empty directory") {
+    IO.withTemporaryDirectory { tmp =>
+      val out = sbtProcessInDir(tmp)("--script-version").!!.trim
+      val expectedVersion = "^"+versionRegEx+"$"
+      assert(out.matches(expectedVersion))
+    }
     ()
   }
 

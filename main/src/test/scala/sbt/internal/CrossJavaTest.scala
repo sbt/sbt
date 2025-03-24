@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,11 +9,12 @@
 package sbt
 package internal
 
-import org.scalatest._
-import sbt.internal.CrossJava.JavaDiscoverConfig._
+import org.scalatest.diagrams.Diagrams
+import org.scalatest.funsuite.AnyFunSuite
+import sbt.internal.CrossJava.JavaDiscoverConfig.*
 import scala.collection.immutable.ListMap
 
-class CrossJavaTest extends FunSuite with DiagrammedAssertions {
+class CrossJavaTest extends AnyFunSuite with Diagrams {
   test("The Java home selector should select the most recent") {
     assert(
       List("jdk1.8.0.jdk", "jdk1.8.0_121.jdk", "jdk1.8.0_45.jdk")
@@ -59,6 +61,16 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     assert(file.getName == "jdk1.7.0")
   }
 
+  test("The Windows Java home selector should correctly pick up a JDK with vendors") {
+    val conf = new WindowsDiscoverConfig(sbt.io.syntax.file("."), Seq("xxx", "yyy")) {
+      override def candidates() = Vector("jdk1.7.0")
+    }
+    val homes = conf.javaHomes
+    assert(homes.size == 2)
+    assert(homes.map(_._1) == Vector("xxx@1.7", "yyy@1.7"))
+    assert(homes.map(_._2.getName).forall(_ == "jdk1.7.0"))
+  }
+
   test("The JAVA_HOME selector should correctly pick up a JDK") {
     val conf = new JavaHomeDiscoverConfig {
       override def home() = Some("/opt/jdk8")
@@ -90,7 +102,7 @@ class CrossJavaTest extends FunSuite with DiagrammedAssertions {
     val conf = new SdkmanDiscoverConfig {
       override def candidates() = Vector("11.0.2.hs-adpt")
     }
-    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes: _*))
+    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes*))
     assert(hs.contains("11"))
   }
 

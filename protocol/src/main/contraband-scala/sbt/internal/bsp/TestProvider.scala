@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class TestProvider private (
   override def toString: String = {
     "TestProvider(" + languageIds + ")"
   }
-  private[this] def copy(languageIds: Vector[String] = languageIds): TestProvider = {
+  private def copy(languageIds: Vector[String] = languageIds): TestProvider = {
     new TestProvider(languageIds)
   }
   def withLanguageIds(languageIds: Vector[String]): TestProvider = {

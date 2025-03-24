@@ -24,22 +24,22 @@ val p1 = project
   .configs(CustomConfigs: _*)
   .settings(
     t := {
-        (compile in Config_0).value
-        (compile in Config_1).value
-        (compile in Config_2).value
-        (compile in Config_3).value
-        (compile in Config_4).value
-        (compile in Config_5).value
-        (compile in Config_6).value
-        (compile in Config_7).value
-        (compile in Config_8).value
-        (compile in Config_9).value
-        (compile in Config_10).value
-        (compile in Config_11).value
-        (compile in Config_12).value
-        (compile in Config_13).value
-        (compile in Config_14).value
-        (compile in Config_15).value
+        (Config_0 / compile).value
+        (Config_1 / compile).value
+        (Config_2 / compile).value
+        (Config_3 / compile).value
+        (Config_4 / compile).value
+        (Config_5 / compile).value
+        (Config_6 / compile).value
+        (Config_7 / compile).value
+        (Config_8 / compile).value
+        (Config_9 / compile).value
+        (Config_10 / compile).value
+        (Config_11 / compile).value
+        (Config_12 / compile).value
+        (Config_13 / compile).value
+        (Config_14 / compile).value
+        (Config_15 / compile).value
     }
   )
   .settings(CustomConfigs.flatMap(c => inConfig(c)(Defaults.testSettings)))

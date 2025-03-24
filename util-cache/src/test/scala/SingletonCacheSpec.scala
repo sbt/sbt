@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,18 +9,18 @@
 package sbt.util
 
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
 
-import CacheImplicits._
+import CacheImplicits.*
 
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
-import org.scalatest.FlatSpec
+import org.scalatest.flatspec.AnyFlatSpec
 
-class SingletonCacheSpec extends FlatSpec {
+class SingletonCacheSpec extends AnyFlatSpec {
 
   case class ComplexType(val x: Int, y: String, z: List[Int])
   object ComplexType {
-    implicit val format: JsonFormat[ComplexType] =
+    given format: JsonFormat[ComplexType] =
       new JsonFormat[ComplexType] {
         override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ComplexType = {
           jsOpt match {
@@ -47,46 +48,42 @@ class SingletonCacheSpec extends FlatSpec {
   }
 
   "A singleton cache" should "throw an exception if read without being written previously" in {
-    testCache[Int] {
-      case (cache, store) =>
-        intercept[Exception] {
-          cache.read(store)
-        }
-        ()
+    testCache[Int] { (cache, store) =>
+      intercept[Exception] {
+        cache.read(store)
+      }
+      ()
     }
   }
 
   it should "write a very simple value" in {
-    testCache[Int] {
-      case (cache, store) =>
-        cache.write(store, 5)
+    testCache[Int] { (cache, store) =>
+      cache.write(store, 5)
     }
   }
 
   it should "return the simple value that has been previously written" in {
-    testCache[Int] {
-      case (cache, store) =>
-        val value = 5
-        cache.write(store, value)
-        val read = cache.read(store)
+    testCache[Int] { (cache, store) =>
+      val value = 5
+      cache.write(store, value)
+      val read = cache.read(store)
 
-        assert(read === value); ()
+      assert(read === value); ()
     }
   }
 
   it should "write a complex value" in {
-    testCache[ComplexType] {
-      case (cache, store) =>
-        val value = ComplexType(1, "hello, world!", (1 to 10 by 3).toList)
-        cache.write(store, value)
-        val read = cache.read(store)
+    testCache[ComplexType] { (cache, store) =>
+      val value = ComplexType(1, "hello, world!", (1 to 10 by 3).toList)
+      cache.write(store, value)
+      val read = cache.read(store)
 
-        assert(read === value); ()
+      assert(read === value); ()
     }
   }
 
-  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(
-      implicit cache: SingletonCache[T]
+  private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(using
+      cache: SingletonCache[T]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>
       val store = new FileBasedStore(tmp / "cache-store")

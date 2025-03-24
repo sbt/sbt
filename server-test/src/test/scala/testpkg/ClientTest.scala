@@ -13,20 +13,22 @@ import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 import scala.collection.mutable
 
-object ClientTest extends AbstractServerTest {
+class ClientTest extends AbstractServerTest {
   override val testDirectory: String = "client"
   object NullInputStream extends InputStream {
     override def read(): Int = {
-      try this.synchronized(this.wait)
+      try this.synchronized(this.wait())
       catch { case _: InterruptedException => }
       -1
     }
   }
   val NullPrintStream = new PrintStream(_ => {}, false)
-  class CachingPrintStream extends { val cos = new CachingOutputStream }
-  with PrintStream(cos, true) {
+
+  class CachingPrintStream(cos: CachingOutputStream = new CachingOutputStream)
+      extends PrintStream(cos, true) {
     def lines = cos.lines
   }
+
   class CachingOutputStream extends OutputStream {
     private val byteBuffer = new mutable.ArrayBuffer[Byte]
     override def write(i: Int) = Util.ignoreResult(byteBuffer += i.toByte)
@@ -42,7 +44,7 @@ object ClientTest extends AbstractServerTest {
       } else -1
     }
   }
-  private[this] def background[R](f: => R): R = {
+  private def background[R](f: => R): R = {
     val result = new LinkedBlockingQueue[R]
     val thread = new Thread("client-bg-thread") {
       setDaemon(true)
@@ -57,7 +59,7 @@ object ClientTest extends AbstractServerTest {
       case r => r
     }
   }
-  private def client(args: String*): Int = {
+  private def client(args: String*): Int =
     background(
       NetworkClient.client(
         testPath.toFile,
@@ -68,6 +70,19 @@ object ClientTest extends AbstractServerTest {
         false
       )
     )
+  def clientWithStdoutLines(args: String*): (Int, Seq[String]) = {
+    val out = new CachingPrintStream
+    val exitCode = background(
+      NetworkClient.client(
+        testPath.toFile,
+        args.toArray,
+        NullInputStream,
+        out,
+        NullPrintStream,
+        false
+      )
+    )
+    (exitCode, out.lines)
   }
   // This ensures that the completion command will send a tab that triggers
   // sbt to call definedTestNames or discoveredMainClasses if there hasn't
@@ -86,31 +101,38 @@ object ClientTest extends AbstractServerTest {
     )
     cps.lines
   }
-  test("exit success") { c =>
+  test("exit success") {
     assert(client("willSucceed") == 0)
   }
-  test("exit failure") { _ =>
+  test("exit failure") {
     assert(client("willFail") == 1)
   }
-  test("two commands") { _ =>
+  test("two commands") {
     assert(client("compile;willSucceed") == 0)
   }
-  test("two commands with failing second") { _ =>
+  test("two commands with failing second") {
     assert(client("compile;willFail") == 1)
   }
-  test("two commands with leading failure") { _ =>
+  test("two commands with leading failure") {
     assert(client("willFail;willSucceed") == 1)
   }
-  test("three commands") { _ =>
+  test("three commands") {
     assert(client("compile;clean;willSucceed") == 0)
   }
-  test("three commands with middle failure") { _ =>
+  test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
   }
-  test("compi completions") { _ =>
+  test("run") {
+    val (exitCode, lines) = clientWithStdoutLines("run")
+    assert(exitCode == 0)
+    assert(
+      lines.toList.exists(_.contains("running (fork) hello")),
+      lines.toList.mkString(",")
+    )
+  }
+  test("compi completions") {
     val expected = Vector(
       "compile",
-      "compile:",
       "compileAnalysisFile",
       "compileAnalysisFilename",
       "compileAnalysisTargetRoot",
@@ -118,20 +140,21 @@ object ClientTest extends AbstractServerTest {
       "compileIncSetup",
       "compileIncremental",
       "compileJava",
+      "compileOrder",
       "compileOutputs",
       "compileProgress",
       "compileScalaBackend",
       "compileSplit",
+      "compilerCache",
       "compilers",
     )
 
-    assert(complete("compi") == expected)
+    assert(complete("compi").toVector == expected)
   }
-  test("testOnly completions") { _ =>
+  test("testOnly completions") {
     val testOnlyExpected = Vector(
       "testOnly",
       "testOnly/",
-      "testOnly::",
       "testOnly;",
     )
     assert(complete("testOnly") == testOnlyExpected)
@@ -139,7 +162,7 @@ object ClientTest extends AbstractServerTest {
     val testOnlyOptionsExpected = Vector("--", ";", "test.pkg.FooSpec")
     assert(complete("testOnly ") == testOnlyOptionsExpected)
   }
-  test("quote with semi") { _ =>
+  test("quote with semi") {
     assert(complete("\"compile; fooB") == Vector("compile; fooBar"))
   }
 }

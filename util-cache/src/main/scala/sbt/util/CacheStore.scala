@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -24,8 +25,7 @@ abstract class CacheStore extends Input with Output {
 }
 
 object CacheStore {
-  @deprecated("Create your own IsoString[JValue]", "1.4")
-  implicit lazy val jvalueIsoString: IsoString[JValue] =
+  @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   /** Returns file-based CacheStore using standard JSON converter. */
@@ -49,8 +49,7 @@ abstract class CacheStoreFactory {
 }
 
 object CacheStoreFactory {
-  @deprecated("Create your own IsoString[JValue]", "1.4")
-  implicit lazy val jvalueIsoString: IsoString[JValue] =
+  @deprecated("Create your own IsoString[JValue]", "1.4") given jvalueIsoString: IsoString[JValue] =
     IsoString.iso(CompactPrinter.apply, Parser.parseUnsafe)
 
   /** Returns directory-based CacheStoreFactory using standard JSON converter. */
@@ -65,7 +64,7 @@ class DirectoryStoreFactory[J](base: File) extends CacheStoreFactory {
   IO.createDirectory(base)
 
   @deprecated("Use constructor without converter", "1.4")
-  def this(base: File, converter: sjsonnew.SupportConverter[J])(implicit e: sjsonnew.IsoString[J]) =
+  def this(base: File, converter: sjsonnew.SupportConverter[J])(using e: sjsonnew.IsoString[J]) =
     this(base)
 
   def make(identifier: String): CacheStore = new FileBasedStore(base / identifier)
@@ -79,7 +78,7 @@ class FileBasedStore[J](file: File) extends CacheStore {
   IO.touch(file, setModified = false)
 
   @deprecated("Use constructor without converter", "1.4")
-  def this(file: File, converter: sjsonnew.SupportConverter[J])(implicit e: sjsonnew.IsoString[J]) =
+  def this(file: File, converter: sjsonnew.SupportConverter[J])(using e: sjsonnew.IsoString[J]) =
     this(file)
 
   def read[T: JsonReader]() =

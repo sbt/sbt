@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -22,9 +23,16 @@ object ErrorHandling {
     try {
       Right(f)
     } catch {
-      case ex @ (_: Exception | _: StackOverflowError)     => Left(ex)
-      case err @ (_: ThreadDeath | _: VirtualMachineError) => throw err
-      case x: Throwable                                    => Left(x)
+      case ex @ (_: Exception | _: StackOverflowError) =>
+        Left(ex)
+      case err: VirtualMachineError =>
+        throw err
+      case err if err.getClass.getName == "java.lang.ThreadDeath" =>
+        // ThreadDeath is deprecated
+        // https://bugs.openjdk.org/browse/JDK-8289610
+        throw err
+      case x: Throwable =>
+        Left(x)
     }
 
   def convert[T](f: => T): Either[Exception, T] =
@@ -36,8 +44,7 @@ object ErrorHandling {
     if (e.getClass == classOf[RuntimeException]) {
       val msg = e.getMessage
       if (msg == null || msg.isEmpty) e.toString else msg
-    } else
-      e.toString
+    } else e.toString
 }
 
 sealed class TranslatedException private[sbt] (msg: String, cause: Throwable)

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -32,7 +33,8 @@ object Resolvers {
 
     if (from.isDirectory) Some { () =>
       if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) }
-    } else None
+    }
+    else None
   }
 
   val remote: Resolver = (info: ResolveInfo) => {
@@ -130,14 +132,14 @@ object Resolvers {
   }
 
   def run(command: String*): Unit =
-    run(None, command: _*)
+    run(None, command*)
 
   def run(cwd: Option[File], command: String*): Unit = {
     val result = Process(
       if (Util.isNonCygwinWindows) "cmd" +: "/c" +: command
       else command,
       cwd
-    ) !;
+    ).!
     if (result != 0)
       sys.error("Nonzero exit code (" + result + "): " + command.mkString(" "))
   }
@@ -163,14 +165,14 @@ object Resolvers {
     new File(base, last)
   }
 
-  private[this] def shortName(uri: URI): Option[String] =
+  private def shortName(uri: URI): Option[String] =
     Option(uri.withoutMarkerScheme.getPath).flatMap {
       _.split("/").map(_.trim).filterNot(_.isEmpty).lastOption
     }
 
-  private[this] def normalizeDirectoryName(name: String): String =
+  private def normalizeDirectoryName(name: String): String =
     dropExtensions(name).toLowerCase(Locale.ENGLISH).replaceAll("""\W+""", "-")
 
-  private[this] def dropExtensions(name: String): String = name.takeWhile(_ != '.')
+  private def dropExtensions(name: String): String = name.takeWhile(_ != '.')
 
 }

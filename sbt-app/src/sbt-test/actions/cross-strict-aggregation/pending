@@ -1,0 +1,11 @@
+-> ++2.12.0-magic
+
+> ++2.12.19
+
+> clean
+
+> ++2.13.12 compile
+
+$ exists target/out/jvm/scala-2.13.12/core/core_2.13-0.1.0-SNAPSHOT-noresources.jar
+-$ exists target/out/jvm/scala-2.13.12/module
+-$ exists target/out/jvm/scala-2.12.19/module

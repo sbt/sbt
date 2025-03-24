@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,7 +13,7 @@ import scala.util.Try
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
 
-import CacheImplicits._
+import CacheImplicits.*
 
 /**
  * A cache that stores a single value.
@@ -29,9 +30,9 @@ trait SingletonCache[A] {
 
 object SingletonCache {
 
-  implicit def basicSingletonCache[A: JsonFormat]: SingletonCache[A] =
+  given basicSingletonCache[A: JsonFormat]: SingletonCache[A] =
     new SingletonCache[A] {
-      override def read(from: Input): A = from.read[A]
+      override def read(from: Input): A = from.read[A]()
       override def write(to: Output, value: A) = to.write(value)
     }
 

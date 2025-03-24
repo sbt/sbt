@@ -1,4 +1,7 @@
 import sbt.nio.file.Glob
 
-cleanKeepGlobs in Compile +=
-  Glob((classDirectory in Compile in compile).value, "X.class")
+Global / cacheStores := Seq.empty
+name := "compile-clean"
+scalaVersion := "2.12.20"
+Compile / cleanKeepGlobs +=
+  Glob(target.value) / RecursiveGlob  / "X.class"

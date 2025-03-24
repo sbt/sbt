@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class TestItemEvent private (
   override def toString: String = {
     "TestItemEvent(" + result + ", " + detail + ")"
   }
-  private[this] def copy(result: Option[sbt.protocol.testing.TestResult] = result, detail: Vector[sbt.protocol.testing.TestItemDetail] = detail): TestItemEvent = {
+  private def copy(result: Option[sbt.protocol.testing.TestResult] = result, detail: Vector[sbt.protocol.testing.TestItemDetail] = detail): TestItemEvent = {
     new TestItemEvent(result, detail)
   }
   def withResult(result: Option[sbt.protocol.testing.TestResult]): TestItemEvent = {

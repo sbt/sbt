@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,6 +9,7 @@
 package sbt.internal.util
 
 import java.io.{ BufferedWriter, PrintStream, PrintWriter }
+import java.nio.channels.ClosedChannelException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
@@ -33,7 +35,7 @@ object ConsoleOut {
   private[sbt] def getGlobalProxy: ConsoleOut = Proxy.proxy.get
   private object Proxy extends ConsoleOut {
     private[ConsoleOut] val proxy = new AtomicReference[ConsoleOut](systemOut)
-    private[this] def get: ConsoleOut = proxy.get
+    private def get: ConsoleOut = proxy.get
     def set(proxy: ConsoleOut): Unit = this.proxy.set(proxy)
     override val lockObject: AnyRef = proxy
     override def print(s: String): Unit = get.print(s)
@@ -47,19 +49,19 @@ object ConsoleOut {
     (cur, prev) => cur.contains(s) && prev.contains(s)
 
   /** Move to beginning of previous line and clear the line. */
-  private[this] final val OverwriteLine = "\u001B[A\r\u001B[2K"
+  private final val OverwriteLine = "\u001B[A\r\u001B[2K"
 
   /**
-   * ConsoleOut instance that is backed by System.out.  It overwrites the previously printed line
-   * if the function `f(lineToWrite, previousLine)` returns true.
+   * ConsoleOut instance that is backed by System.out. It overwrites the previously printed line if
+   * the function `f(lineToWrite, previousLine)` returns true.
    *
    * The ConsoleOut returned by this method assumes that the only newlines are from println calls
    * and not in the String arguments.
    */
   def systemOutOverwrite(f: (String, String) => Boolean): ConsoleOut = new ConsoleOut {
-    val lockObject = System.out
-    private[this] var last: Option[String] = None
-    private[this] var current = new java.lang.StringBuffer
+    val lockObject: PrintStream = System.out
+    private var last: Option[String] = None
+    private val current = new java.lang.StringBuffer
     def print(s: String): Unit = synchronized { current.append(s); () }
     def println(s: String): Unit = synchronized { current.append(s); println() }
     def println(): Unit = synchronized {
@@ -90,7 +92,28 @@ object ConsoleOut {
     override def toString: String = s"TerminalOut"
   }
 
-  private[this] val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
+  /**
+   * Same as terminalOut but it catches and ignores the ClosedChannelException
+   */
+  def safeTerminalOut(terminal: Terminal): ConsoleOut = {
+    val out = terminalOut(terminal)
+    new ConsoleOut {
+      override val lockObject: AnyRef = terminal
+      override def print(s: String): Unit = catchException(out.print(s))
+      override def println(s: String): Unit = catchException(out.println(s))
+      override def println(): Unit = catchException(out.println())
+      override def flush(): Unit = catchException(out.flush())
+      override def toString: String = s"SafeTerminalOut($terminal)"
+      private def catchException(f: => Unit): Unit = {
+        try f
+        catch {
+          case _: ClosedChannelException => ()
+        }
+      }
+    }
+  }
+
+  private val consoleOutPerTerminal = new ConcurrentHashMap[Terminal, ConsoleOut]
   def terminalOut(terminal: Terminal): ConsoleOut = consoleOutPerTerminal.get(terminal) match {
     case null =>
       val res = new ConsoleOut {
@@ -106,7 +129,7 @@ object ConsoleOut {
     case c => c
   }
   def printStreamOut(out: PrintStream): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.print(s)
     def println(s: String) = out.println(s)
     def println() = out.println()
@@ -114,7 +137,7 @@ object ConsoleOut {
     override def toString: String = s"PrintStreamConsoleOut($out)"
   }
   def printWriterOut(out: PrintWriter): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.print(s)
     def println(s: String) = { out.println(s); flush() }
     def println() = { out.println(); flush() }
@@ -122,7 +145,7 @@ object ConsoleOut {
     override def toString: String = s"PrintWriterConsoleOut($out)"
   }
   def bufferedWriterOut(out: BufferedWriter): ConsoleOut = new ConsoleOut {
-    val lockObject = out
+    val lockObject: AnyRef = out
     def print(s: String) = out.write(s)
     def println(s: String) = { out.write(s); println() }
     def println() = { out.newLine(); flush() }

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -33,6 +34,7 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
       while ({ read = reader.read(buffer, 0, bufferSize); read != -1 }) {
         builder.appendAll(buffer, 0, read)
       }
+
       builder.toString()
     }
   }

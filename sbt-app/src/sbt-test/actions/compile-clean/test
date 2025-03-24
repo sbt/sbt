@@ -1,22 +1,17 @@
-$ touch target/cant-touch-this
+$ touch target/out/jvm/scala-2.12.20/compile-clean/backend/cant-touch-this
 
 > Test/compile
-$ exists target/scala-2.12/classes/A.class
-$ exists target/scala-2.12/test-classes/B.class
+$ exists target/**/compile-clean/backend/A.class
+$ exists target/**/compile-clean/backend/X.class
+$ exists target/**/compile-clean/test-backend/B.class
 
 > Test/clean
-$ exists target/cant-touch-this
-# it should clean only compile classes
-$ exists target/scala-2.12/classes/A.class
-$ exists target/scala-2.12/classes/X.class
-$ absent target/scala-2.12/test-classes/B.class
+$ exists target/**/compile-clean/backend/cant-touch-this
+$ exists target/**/compile-clean/backend/A.class
+$ exists target/**/compile-clean/backend/X.class
+$ absent target/**/compile-clean/test-backend/B.class
 
-# compiling everything again, but now cleaning only compile classes
-> Test/compile
 > Compile/clean
-$ exists target/cant-touch-this
-# it should clean only compile classes
-$ absent target/scala-2.12/classes/A.class
-$ exists target/scala-2.12/test-classes/B.class
-# and X has to be kept, because of the cleanKeepFiles override
-$ exists target/scala-2.12/classes/X.class
+$ exists target/**/compile-clean/backend/cant-touch-this
+$ absent target/**/compile-clean/backend/A.class
+$ exists target/**/compile-clean/backend/X.class

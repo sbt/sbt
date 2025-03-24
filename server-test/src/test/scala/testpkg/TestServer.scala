@@ -12,21 +12,23 @@ import java.net.Socket
 import java.nio.file.{ Files, Path }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
 import java.util.concurrent.atomic.AtomicBoolean
-
-import verify._
 import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import sbt.protocol.ClientSocket
+import sjsonnew.JsonReader
+import sjsonnew.support.scalajson.unsafe.{ Converter, Parser }
 
 import scala.annotation.tailrec
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.util.{ Success, Try }
+import scala.concurrent.*
+import scala.concurrent.duration.*
+import scala.util.{ Failure, Success, Try }
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.BeforeAndAfterAll
 
-trait AbstractServerTest extends TestSuite[Unit] {
-  private var temp: File = _
-  var svr: TestServer = _
+trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
+  private var temp: File = scala.compiletime.uninitialized
+  var svr: TestServer = scala.compiletime.uninitialized
   def testDirectory: String
   def testPath: Path = temp.toPath.resolve(testDirectory)
 
@@ -37,7 +39,7 @@ trait AbstractServerTest extends TestSuite[Unit] {
     else p1
   }
 
-  override def setupSuite(): Unit = {
+  override def beforeAll(): Unit = {
     val base = Files.createTempDirectory(
       Files.createDirectories(targetDir.toPath.resolve("test-server")),
       "server-test"
@@ -46,15 +48,13 @@ trait AbstractServerTest extends TestSuite[Unit] {
     val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
     val sbtVersion = TestProperties.version
     val scalaVersion = TestProperties.scalaVersion
-    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath, temp)
+    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath.toSeq, temp)
   }
-  override def tearDownSuite(): Unit = {
+  override protected def afterAll(): Unit = {
     svr.bye()
     svr = null
     IO.delete(temp)
   }
-  override def setup(): Unit = ()
-  override def tearDown(env: Unit): Unit = ()
 }
 
 object TestServer {
@@ -84,7 +84,7 @@ object TestServer {
       Try {
         testServer.waitForString(10.seconds) { s =>
           println(s)
-          s contains """"capabilities":{""""
+          s.contains(""""capabilities":{"""")
         }
       }
     init.get
@@ -114,17 +114,17 @@ object TestServer {
     }
     val scalaVersion = sys.props.get("sbt.server.scala.version") match {
       case Some(v: String) => v
-      case _               => throw new IllegalStateException("No server scala version was specified.")
+      case _ => throw new IllegalStateException("No server scala version was specified.")
     }
     // Each test server instance will be executed in a Thread pool separated from the tests
-    val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath)
+    val testServer = TestServer(baseDirectory, scalaVersion, sbtVersion, classpath.toSeq)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
       Try {
         testServer.waitForString(10.seconds) { s =>
           if (s.nonEmpty) println(s)
-          s contains """"capabilities":{""""
+          s.contains(""""capabilities":{"""")
         }
       }
 
@@ -163,7 +163,13 @@ case class TestServer(
   val forkOptions =
     ForkOptions()
       .withOutputStrategy(OutputStrategy.StdoutOutput)
-      .withRunJVMOptions(Vector("-Djline.terminal=none", "-Dsbt.io.virtual=false"))
+      .withRunJVMOptions(
+        Vector(
+          "-Djline.terminal=none",
+          "-Dsbt.io.virtual=false",
+          // "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=1044"
+        )
+      )
   val process =
     RunFromSourceMain.fork(forkOptions, baseDirectory, scalaVersion, sbtVersion, classpath)
 
@@ -173,9 +179,10 @@ case class TestServer(
     try IO.read(portfile).isEmpty
     catch { case _: IOException => true }
   def waitForPortfile(duration: FiniteDuration): Unit = {
+    hostLog(s"wait $duration until the server is ready to respond")
     val deadline = duration.fromNow
     var nextLog = 10.seconds.fromNow
-    while (portfileIsEmpty && !deadline.isOverdue && process.isAlive) {
+    while (portfileIsEmpty() && !deadline.isOverdue && process.isAlive) {
       if (nextLog.isOverdue) {
         hostLog("waiting for the server...")
         nextLog = 10.seconds.fromNow
@@ -185,14 +192,13 @@ case class TestServer(
     if (deadline.isOverdue) sys.error(s"Timeout. $portfile is not found.")
     if (!process.isAlive) sys.error(s"Server unexpectedly terminated.")
   }
-  private val waitDuration: FiniteDuration = 1.minute
-  hostLog(s"wait $waitDuration until the server is ready to respond")
-  waitForPortfile(waitDuration)
+  waitForPortfile(1.minute)
 
   @tailrec
   private def connect(attempt: Int): Socket = {
-    val res = try Some(ClientSocket.socket(portfile)._1)
-    catch { case _: IOException if attempt < 10 => None }
+    val res =
+      try Some(ClientSocket.socket(portfile)._1)
+      catch { case _: IOException if attempt < 10 => None }
     res match {
       case Some(s) => s
       case _ =>
@@ -207,24 +213,25 @@ case class TestServer(
   private val lines = new LinkedBlockingQueue[String]
   val running = new AtomicBoolean(true)
   val readThread =
-    new Thread(() => {
-      while (running.get) {
-        try lines.put(sbt.ReadJson(in, running))
-        catch { case _: Exception => running.set(false) }
-      }
-    }, "sbt-server-test-read-thread") {
+    new Thread(
+      () => {
+        while (running.get) {
+          try lines.put(sbt.ReadJson(in, running))
+          catch { case _: Exception => running.set(false) }
+        }
+      },
+      "sbt-server-test-read-thread"
+    ) {
       setDaemon(true)
       start()
     }
 
   // initiate handshake
   sendJsonRpc(
-    s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true } } }"""
+    s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true, "canWork": true } } }"""
   )
 
-  def test(f: TestServer => Future[Assertion]): Future[Assertion] = {
-    f(this)
-  }
+  def test(f: TestServer => Future[Unit]): Future[Unit] = f(this)
 
   def bye(): Unit =
     try {
@@ -281,7 +288,7 @@ case class TestServer(
     if (s != "") {
       out.write(s.getBytes("UTF-8"))
     }
-    writeEndLine
+    writeEndLine()
   }
 
   final def waitForString(duration: FiniteDuration)(f: String => Boolean): Boolean = {
@@ -290,6 +297,57 @@ case class TestServer(
       lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
         case null => false
         case s    => if (!f(s) && !deadline.isOverdue) impl() else !deadline.isOverdue()
+      }
+    impl()
+  }
+  final def waitFor[T: JsonReader](duration: FiniteDuration, debug: Boolean = false): T = {
+    val deadline = duration.fromNow
+    var lastEx: Throwable = null
+    @tailrec def impl(): T =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null =>
+          if (lastEx != null) throw lastEx
+          else throw new TimeoutException
+        case s =>
+          if debug then println(s)
+          Parser
+            .parseFromString(s)
+            .flatMap { jvalue =>
+              Converter.fromJson[T](
+                jvalue.toStandard
+                  .asInstanceOf[sjsonnew.shaded.scalajson.ast.JObject]
+                  .value("result")
+                  .toUnsafe
+              )
+            } match {
+            case Success(value) =>
+              value
+            case Failure(exception) =>
+              if (deadline.isOverdue) {
+                val ex = new TimeoutException()
+                ex.initCause(exception)
+                throw ex
+              } else {
+                lastEx = exception
+                impl()
+              }
+          }
+      }
+    impl()
+  }
+  final def waitForResponse(duration: FiniteDuration, id: Int): String = {
+    val deadline = duration.fromNow
+    @tailrec def impl(): String =
+      lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
+        case null =>
+          throw new TimeoutException()
+        case s =>
+          val s1 = s
+          val correctId = s1.contains("\"id\":\"" + id + "\"")
+          if (!correctId && !deadline.isOverdue) impl()
+          else if (deadline.isOverdue)
+            throw new TimeoutException()
+          else s
       }
     impl()
   }

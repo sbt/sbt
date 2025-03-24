@@ -1,10 +1,10 @@
 > run 1
-> test:test
+> test
 > clean
 
 > run 2
-> test:test
+> test
 > clean
 
 > run -1
-> test:test
+> test

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -10,10 +11,10 @@ package internal
 package server
 
 import sjsonnew.JsonFormat
-import sbt.internal.protocol._
+import sbt.internal.protocol.*
 import sbt.util.Logger
-import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
-import sbt.internal.langserver.{ CancelRequestParams => CRP }
+import sbt.protocol.{ CompletionParams as CP, SettingQuery as Q }
+import sbt.internal.langserver.{ CancelRequestParams as CRP }
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -29,10 +30,10 @@ object ServerHandler {
 
   lazy val fallback: ServerHandler = ServerHandler({ handler =>
     ServerIntent(
-      onRequest = { case x  => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
-      onResponse = { case x => handler.log.debug(s"Unhandled responce received") },
-      onNotification = {
-        case x => handler.log.debug(s"Unhandled notification received: ${x.method}: $x")
+      onRequest = { case x => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
+      onResponse = { case x => handler.log.debug(s"Unhandled response received") },
+      onNotification = { case x =>
+        handler.log.debug(s"Unhandled notification received: ${x.method}: $x")
       },
     )
   })
@@ -78,6 +79,7 @@ trait ServerCallback {
   private[sbt] def authOptions: Set[ServerAuthentication]
   private[sbt] def authenticate(token: String): Boolean
   private[sbt] def setInitialized(value: Boolean): Unit
+  private[sbt] def setInitializeOption(opts: InitializeOption): Unit
   private[sbt] def onSettingQuery(execId: Option[String], req: Q): Unit
   private[sbt] def onCompletionRequest(execId: Option[String], cp: CP): Unit
   private[sbt] def onCancellationRequest(execId: Option[String], crp: CRP): Unit

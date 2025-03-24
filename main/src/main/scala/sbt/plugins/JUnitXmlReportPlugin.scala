@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,13 +12,14 @@ package plugins
 import java.io.File
 
 import Def.{ Setting, settingKey }
-import Defaults._
-import Keys._
-import KeyRanks._
-import sbt.Project.inConfig
-import sbt.internal._
-import sbt.io.syntax._
+import Defaults.*
+import Keys.*
+import KeyRanks.*
+import sbt.ProjectExtra.inConfig
+import sbt.internal.*
+import sbt.io.syntax.*
 import sbt.librarymanagement.Configurations.{ IntegrationTest, Test }
+import scala.annotation.nowarn
 
 /**
  * An experimental plugin that adds the ability for junit-xml to be generated.
@@ -38,7 +40,7 @@ object JUnitXmlReportPlugin extends AutoPlugin {
     val testReportsDirectory =
       settingKey[File]("Directory for outputting junit test reports.").withRank(AMinusSetting)
 
-    lazy val testReportSettings: Seq[Setting[_]] = Seq(
+    lazy val testReportSettings: Seq[Setting[?]] = Seq(
       testReportsDirectory := target.value / (prefix(configuration.value.name) + "reports"),
       testListeners += new JUnitXmlTestsListener(
         testReportsDirectory.value,
@@ -48,9 +50,10 @@ object JUnitXmlReportPlugin extends AutoPlugin {
     )
   }
 
-  import autoImport._
+  import autoImport.*
 
-  override lazy val projectSettings: Seq[Setting[_]] =
+  @nowarn
+  override lazy val projectSettings: Seq[Setting[?]] =
     inConfig(Test)(testReportSettings) ++
       inConfig(IntegrationTest)(testReportSettings)
 }

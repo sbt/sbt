@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,24 +9,19 @@
 package sbt
 package plugins
 
-import Keys._
-import Def.Setting
-import sbt.SlashSyntax0._
-import sbt.librarymanagement.Configurations.Compile
-import sbt.librarymanagement.{ SemanticSelector, VersionNumber }
+import sbt.Def.Setting
+import sbt.Keys.*
 
-object SbtPlugin extends AutoPlugin {
+object SbtPlugin extends AutoPlugin:
   override def requires = ScriptedPlugin
 
-  override lazy val projectSettings: Seq[Setting[_]] = Seq(
+  override lazy val projectSettings: Seq[Setting[?]] = Seq(
     sbtPlugin := true,
-    Compile / scalacOptions ++= {
-      // silence unused @nowarns in 2.12 because of https://github.com/sbt/sbt/issues/6398
-      // the option is only available since 2.12.13
-      if (VersionNumber(scalaVersion.value).matchesSemVer(SemanticSelector("=2.12 >=2.12.13")))
-        Some("-Wconf:cat=unused-nowarn:s")
-      else
-        None
-    }
+    pluginCrossBuild / sbtVersion := {
+      scalaBinaryVersion.value match
+        case "3"    => sbtVersion.value
+        case "2.12" => "1.5.8"
+        case "2.10" => "0.13.18"
+    },
   )
-}
+end SbtPlugin

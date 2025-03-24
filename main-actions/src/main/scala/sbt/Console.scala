@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,6 +12,7 @@ import java.io.File
 import java.nio.channels.ClosedChannelException
 import sbt.internal.inc.{ AnalyzingCompiler, MappedFileConverter, PlainVirtualFile }
 import sbt.internal.util.{ DeprecatedJLine, Terminal }
+import sbt.internal.util.Terminal.*
 import sbt.util.Logger
 import xsbti.compile.{ Compilers, Inputs }
 
@@ -18,7 +20,7 @@ import scala.util.Try
 
 final class Console(compiler: AnalyzingCompiler) {
 
-  /** Starts an interactive scala interpreter session with the given classpath.*/
+  /** Starts an interactive scala interpreter session with the given classpath. */
   def apply(classpath: Seq[File], log: Logger): Try[Unit] =
     apply(classpath, Nil, "", "", log)
 
@@ -29,7 +31,7 @@ final class Console(compiler: AnalyzingCompiler) {
       cleanupCommands: String,
       log: Logger
   ): Try[Unit] =
-    apply(classpath, options, initialCommands, cleanupCommands)(None, Nil)(log)
+    apply(classpath, options, initialCommands, cleanupCommands)(None, Nil)(using log)
 
   def apply(
       classpath: Seq[File],
@@ -37,7 +39,7 @@ final class Console(compiler: AnalyzingCompiler) {
       loader: ClassLoader,
       initialCommands: String,
       cleanupCommands: String
-  )(bindings: (String, Any)*)(implicit log: Logger): Try[Unit] =
+  )(bindings: (String, Any)*)(using log: Logger): Try[Unit] =
     apply(classpath, options, initialCommands, cleanupCommands)(Some(loader), bindings)
 
   def apply(
@@ -45,7 +47,7 @@ final class Console(compiler: AnalyzingCompiler) {
       options: Seq[String],
       initialCommands: String,
       cleanupCommands: String
-  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
+  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] = {
     apply(classpath, options, initialCommands, cleanupCommands, Terminal.get)(loader, bindings)
   }
   def apply(
@@ -54,12 +56,19 @@ final class Console(compiler: AnalyzingCompiler) {
       initialCommands: String,
       cleanupCommands: String,
       terminal: Terminal
-  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(implicit log: Logger): Try[Unit] = {
+  )(loader: Option[ClassLoader], bindings: Seq[(String, Any)])(using log: Logger): Try[Unit] = {
     def console0(): Unit =
       try {
-        compiler.console(classpath map { x =>
-          PlainVirtualFile(x.toPath)
-        }, MappedFileConverter.empty, options, initialCommands, cleanupCommands, log)(
+        compiler.console(
+          classpath map { x =>
+            PlainVirtualFile(x.toPath)
+          },
+          MappedFileConverter.empty,
+          options,
+          initialCommands,
+          cleanupCommands,
+          log
+        )(
           loader,
           bindings
         )
@@ -71,7 +80,7 @@ final class Console(compiler: AnalyzingCompiler) {
       terminal.withRawOutput {
         jline.TerminalFactory.set(terminal.toJLine)
         DeprecatedJLine.setTerminalOverride(jline3term)
-        terminal.withRawInput(Run.executeTrapExit(console0, log))
+        terminal.withRawInput(Run.executeSuccess(console0()))
       }
     } finally {
       sys.props("scala.color") = previous

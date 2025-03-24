@@ -9,7 +9,7 @@
 
 # Starts sbt even if the current directory contains no sbt project.
 #
--sbt-create
+#--allow-empty
 
 # Path to global settings/plugins directory (default: ~/.sbt)
 #
@@ -31,11 +31,11 @@
 #
 #-no-share
 
-# Put SBT in offline mode.
+# Put sbt in offline mode.
 #
 #-offline
 
-# Sets the SBT version to use.
+# Sets the sbt version to use.
 #-sbt-version  0.11.3
 
 # Scala version (default: latest release)

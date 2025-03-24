@@ -1,11 +1,11 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait PublishDiagnosticsParamsFormats { self: sbt.internal.bsp.codec.TextDocumentIdentifierFormats with sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sbt.internal.bsp.codec.DiagnosticFormats with sjsonnew.BasicJsonProtocol =>
+trait PublishDiagnosticsParamsFormats { self: sbt.internal.bsp.codec.TextDocumentIdentifierFormats & sjsonnew.BasicJsonProtocol & sbt.internal.bsp.codec.BuildTargetIdentifierFormats & sbt.internal.bsp.codec.DiagnosticFormats & sbt.internal.bsp.codec.RangeFormats & sbt.internal.bsp.codec.PositionFormats & sbt.internal.bsp.codec.DiagnosticRelatedInformationFormats & sbt.internal.bsp.codec.LocationFormats & sbt.internal.bsp.codec.ScalaDiagnosticFormats & sbt.internal.bsp.codec.ScalaActionFormats & sbt.internal.bsp.codec.ScalaWorkspaceEditFormats & sbt.internal.bsp.codec.ScalaTextEditFormats =>
 implicit lazy val PublishDiagnosticsParamsFormat: JsonFormat[sbt.internal.bsp.PublishDiagnosticsParams] = new JsonFormat[sbt.internal.bsp.PublishDiagnosticsParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.PublishDiagnosticsParams = {
     __jsOpt match {

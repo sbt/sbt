@@ -2,9 +2,10 @@ package local
 
 import java.lang.reflect.InvocationTargetException
 
-import sbt._
+import sbt.*
 import sbt.internal.inc.ScalaInstance
 import sbt.internal.inc.classpath.{ ClasspathUtilities, FilteredLoader }
+import scala.annotation.nowarn
 
 object LocalScriptedPlugin extends AutoPlugin {
   override def requires = plugins.JvmPlugin
@@ -28,7 +29,7 @@ object Scripted {
 
   val RepoOverrideTest = config("repoOverrideTest") extend Compile
 
-  import sbt.complete._
+  import sbt.complete.*
 
   // Paging, 1-index based.
   final case class ScriptedTestPage(page: Int, total: Int)
@@ -36,7 +37,7 @@ object Scripted {
   // FIXME: Duplicated with ScriptedPlugin.scriptedParser, this can be
   // avoided once we upgrade build.properties to 0.13.14
   def scriptedParser(scriptedBase: File): Parser[Seq[String]] = {
-    import DefaultParsers._
+    import DefaultParsers.*
 
     val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
     val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
@@ -79,16 +80,17 @@ object Scripted {
         page <- pageP
         files = pagedFilenames(group, page)
         // TODO -  Fail the parser if we don't have enough files for the given page size
-        //if !files.isEmpty
+        // if !files.isEmpty
       } yield files map (f => s"$group/$f")
 
     val testID = (for (group <- groupP; name <- nameP(group)) yield (group, name))
     val testIdAsGroup = matched(testID) map (test => Seq(test))
 
-    //(token(Space) ~> matched(testID)).*
+    // (token(Space) ~> matched(testID)).*
     (token(Space) ~> (PagedIds | testIdAsGroup)).* map (_.flatten)
   }
 
+  @nowarn
   def doScripted(
       scriptedSbtInstance: ScalaInstance,
       sourcePath: File,
@@ -99,6 +101,7 @@ object Scripted {
       scalaVersion: String,
       sbtVersion: String,
       classpath: Seq[File],
+      launcherJar: File,
       logger: Logger
   ): Unit = {
     logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
@@ -113,16 +116,27 @@ object Scripted {
 
     // Interface to cross class loader
     type SbtScriptedRunner = {
+      // def runInParallel(
+      //     resourceBaseDirectory: File,
+      //     bufferLog: Boolean,
+      //     tests: Array[String],
+      //     launchOpts: Array[String],
+      //     prescripted: java.util.List[File],
+      //     scalaVersion: String,
+      //     sbtVersion: String,
+      //     classpath: Array[File],
+      //     instances: Int
+      // ): Unit
+
       def runInParallel(
           resourceBaseDirectory: File,
           bufferLog: Boolean,
           tests: Array[String],
+          launcherJar: File,
+          javaCommand: String,
           launchOpts: Array[String],
           prescripted: java.util.List[File],
-          scalaVersion: String,
-          sbtVersion: String,
-          classpath: Array[File],
-          instances: Int
+          instance: Int,
       ): Unit
     }
 
@@ -146,15 +160,26 @@ object Scripted {
           case _          => 1
         }
         import scala.language.reflectiveCalls
+
+        // bridge.runInParallel(
+        //   sourcePath,
+        //   bufferLog,
+        //   args.toArray,
+        //   launchOpts.toArray,
+        //   callback,
+        //   scalaVersion,
+        //   sbtVersion,
+        //   classpath.toArray,
+        //   instances
+        // )
         bridge.runInParallel(
           sourcePath,
           bufferLog,
           args.toArray,
+          launcherJar,
+          "java",
           launchOpts.toArray,
           callback,
-          scalaVersion,
-          sbtVersion,
-          classpath.toArray,
           instances
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }

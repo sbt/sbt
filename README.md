@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.com/sbt/sbt.svg?branch=develop)](https://travis-ci.com/github/sbt/sbt)
+[![CI](https://github.com/sbt/sbt/actions/workflows/ci.yml/badge.svg)](https://github.com/sbt/sbt/actions/workflows/ci.yml)
 [![Latest version](https://img.shields.io/github/tag/sbt/sbt.svg)](https://index.scala-lang.org/sbt/sbt)
-[![Gitter Chat](https://badges.gitter.im/sbt/sbt.svg)](https://gitter.im/sbt/sbt)
+[![Discord](https://img.shields.io/discord/632150470000902164?label=Discord%20%23sbt)](https://discord.com/channels/632150470000902164/922600050989875282)
 
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
@@ -11,7 +11,6 @@
   [asking]: https://stackoverflow.com/questions/ask?tags=sbt
   [LICENSE]: LICENSE
   [sbt/io]: https://github.com/sbt/io
-  [sbt/librarymanagement]: https://github.com/sbt/librarymanagement
   [sbt/zinc]: https://github.com/sbt/zinc
   [sbt/sbt]: https://github.com/sbt/sbt
 
@@ -29,7 +28,6 @@ This is the 1.x series of sbt. The source code of sbt is split across
 several GitHub repositories, including this one.
 
 - [sbt/io][sbt/io] hosts `sbt.io` module.
-- [sbt/librarymanagement][sbt/librarymanagement] hosts `sbt.librarymanagement` module that wraps Ivy.
 - [sbt/zinc][sbt/zinc] hosts Zinc, an incremental compiler for Scala.
 - [sbt/sbt][sbt/sbt], this repository hosts modules that implements the build tool.
 

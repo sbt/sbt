@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -13,6 +14,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.Stack;
 import java.util.regex.Pattern;
 import xsbti.AppProvider;
 import xsbti.ScalaProvider;
@@ -64,58 +66,39 @@ public final class MetaBuildLoader extends URLClassLoader {
    *     library.
    */
   public static MetaBuildLoader makeLoader(final AppProvider appProvider) throws IOException {
-    final String jlineJars = "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jna|jansi))?-[0-9.]+";
+    final String jlineJars =
+        "jline-?[0-9.]+-sbt-.*|jline-terminal(-(jni))?-[0-9.]+|jline-native-[0-9.]+";
     final String testInterfaceJars = "test-interface(-.*)?";
     final String compilerInterfaceJars = "compiler-interface(-.*)?";
     final String utilInterfaceJars = "util-interface(-.*)?";
     final String jansiJars = "jansi-[0-9.]+";
-    final String jnaJars = "jna-(platform-)?[0-9.]+";
     final String fullPattern =
         String.format(
-            "^(%s|%s|%s|%s|%s|%s)\\.jar",
-            jlineJars,
-            testInterfaceJars,
-            compilerInterfaceJars,
-            utilInterfaceJars,
-            jansiJars,
-            jnaJars);
+            "^(%s|%s|%s|%s|%s)\\.jar",
+            jlineJars, testInterfaceJars, compilerInterfaceJars, utilInterfaceJars, jansiJars);
     final Pattern pattern = Pattern.compile(fullPattern);
     final File[] cp = appProvider.mainClasspath();
-    final URL[] interfaceURLs = new URL[3];
-    final URL[] jlineURLs = new URL[7];
+    final Set<File> interfaceFiles = new LinkedHashSet<>();
+    final Set<File> jlineFiles = new LinkedHashSet<>();
     final File[] extra =
         appProvider.id().classpathExtra() == null ? new File[0] : appProvider.id().classpathExtra();
     final Set<File> bottomClasspath = new LinkedHashSet<>();
 
-    {
-      int interfaceIndex = 0;
-      int jlineIndex = 0;
-      for (final File file : cp) {
-        final String name = file.getName();
-        if ((name.contains("test-interface")
-                || name.contains("compiler-interface")
-                || name.contains("util-interface"))
-            && pattern.matcher(name).find()) {
-          interfaceURLs[interfaceIndex] = file.toURI().toURL();
-          interfaceIndex += 1;
-        } else if (pattern.matcher(name).find()) {
-          jlineURLs[jlineIndex] = file.toURI().toURL();
-          jlineIndex += 1;
-        } else {
-          bottomClasspath.add(file);
-        }
-      }
-      for (final File file : extra) {
+    for (final File file : cp) {
+      final String name = file.getName();
+      if ((name.contains("test-interface")
+              || name.contains("compiler-interface")
+              || name.contains("util-interface"))
+          && pattern.matcher(name).find()) {
+        interfaceFiles.add(file);
+      } else if (pattern.matcher(name).find()) {
+        jlineFiles.add(file);
+      } else {
         bottomClasspath.add(file);
       }
     }
-    final URL[] rest = new URL[bottomClasspath.size()];
-    {
-      int i = 0;
-      for (final File file : bottomClasspath) {
-        rest[i] = file.toURI().toURL();
-        i += 1;
-      }
+    for (final File file : extra) {
+      bottomClasspath.add(file);
     }
     final ScalaProvider scalaProvider = appProvider.scalaProvider();
     ClassLoader topLoader = scalaProvider.launcher().topLoader();
@@ -148,8 +131,9 @@ public final class MetaBuildLoader extends URLClassLoader {
           }
         };
 
-    final SbtInterfaceLoader interfaceLoader = new SbtInterfaceLoader(interfaceURLs, topLoader);
-    final JLineLoader jlineLoader = new JLineLoader(jlineURLs, interfaceLoader);
+    final SbtInterfaceLoader interfaceLoader =
+        new SbtInterfaceLoader(toURLArray(interfaceFiles), topLoader);
+    final JLineLoader jlineLoader = new JLineLoader(toURLArray(jlineFiles), interfaceLoader);
     final File[] siJars = scalaProvider.jars();
     final URL[] lib = new URL[1];
     int scalaRestCount = siJars.length - 1;
@@ -175,6 +159,17 @@ public final class MetaBuildLoader extends URLClassLoader {
     assert lib[0] != null : "no scala-library.jar";
     final ScalaLibraryClassLoader libraryLoader = new ScalaLibraryClassLoader(lib, jlineLoader);
     final FullScalaLoader fullScalaLoader = new FullScalaLoader(scalaRest, libraryLoader);
-    return new MetaBuildLoader(rest, fullScalaLoader, libraryLoader, interfaceLoader, jlineLoader);
+    return new MetaBuildLoader(
+        toURLArray(bottomClasspath), fullScalaLoader, libraryLoader, interfaceLoader, jlineLoader);
+  }
+
+  private static URL[] toURLArray(Set<File> files) throws java.net.MalformedURLException {
+    URL[] urls = new URL[files.size()];
+    int i = 0;
+    for (final File file : files) {
+      urls[i] = file.toURI().toURL();
+      i += 1;
+    }
+    return urls;
   }
 }

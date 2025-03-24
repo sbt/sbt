@@ -1,11 +1,14 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt
+
+import ScopeAxis.{ Select, zero }
 
 sealed trait DelegateIndex {
   def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]]
@@ -22,9 +25,9 @@ private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) exte
       case Some(pd) =>
         pd.confs.get(conf) match {
           case Some(cs) => cs
-          case None     => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
+          case None     => Select(conf) :: zero[ConfigKey] :: Nil
         }
-      case None => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
+      case None => Select(conf) :: zero[ConfigKey] :: Nil
     }
 }
 private final class ProjectDelegates(

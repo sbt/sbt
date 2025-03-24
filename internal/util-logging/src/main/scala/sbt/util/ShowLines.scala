@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,7 +17,7 @@ object ShowLines {
       def showLines(a: A): Seq[String] = f(a)
     }
 
-  implicit class ShowLinesOp[A: ShowLines](a: A) {
+  extension [A: ShowLines](a: A) {
     def lines: Seq[String] = implicitly[ShowLines[A]].showLines(a)
   }
 }

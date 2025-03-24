@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,8 +12,8 @@ import xsbti.{ Problem, Severity, Position }
 import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import java.util.Optional
 
-trait ProblemFormats { self: SeverityFormats with PositionFormats with sjsonnew.BasicJsonProtocol =>
-  implicit lazy val ProblemFormat: JsonFormat[Problem] = new JsonFormat[Problem] {
+trait ProblemFormats { self: SeverityFormats & PositionFormats & sjsonnew.BasicJsonProtocol =>
+  given ProblemFormat: JsonFormat[Problem] = new JsonFormat[Problem] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Problem = {
       jsOpt match {
         case Some(js) =>

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,14 +10,15 @@ package sbt
 package internal
 
 import Def.{ ScopedKey, Setting }
-import sbt.internal.util.{ AttributeKey, AttributeMap, Relation, Settings }
+import sbt.ScopeAxis.{ Select, Zero }
+import sbt.internal.util.{ AttributeKey, Relation }
 import sbt.internal.util.Types.{ const, some }
 import sbt.internal.util.complete.Parser
 import sbt.librarymanagement.Configuration
 
 import java.net.URI
 
-import hedgehog._
+import hedgehog.*
 import hedgehog.predef.sequence
 
 object TestBuild extends TestBuild
@@ -47,28 +49,29 @@ abstract class TestBuild {
     cs <- Gen.list(alphaNumChar, MaxIDSizeGen)
   } yield (c :: cs).mkString
 
-  def cGen = genConfigs(nonEmptyId map { _.capitalize }, MaxDepsGen, MaxConfigsGen)
-  def tGen = genTasks(kebabIdGen, MaxDepsGen, MaxTasksGen)
+  def cGen = genConfigs(using nonEmptyId map { _.capitalize }, MaxDepsGen, MaxConfigsGen)
+  def tGen = genTasks(using kebabIdGen, MaxDepsGen, MaxTasksGen)
 
   class TestKeys(val env: Env, val scopes: Seq[Scope]) {
-    override def toString = env + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
+    override def toString = env.toString + "\n" + scopes.mkString("Scopes:\n\t", "\n\t", "")
     lazy val delegated = scopes map env.delegates
   }
 
   sealed case class Structure(
       env: Env,
       current: ProjectRef,
-      data: Settings[Scope],
+      data: Def.Settings,
       keyIndex: KeyIndex,
-      keyMap: Map[String, AttributeKey[_]]
+      keyMap: Map[String, AttributeKey[?]]
   ) {
     override def toString =
       env.toString + "\n" + "current: " + current + "\nSettings:\n\t" + showData + keyMap.keys
         .mkString("All keys:\n\t", ", ", "")
-    def showKeys(map: AttributeMap): String = map.keys.mkString("\n\t   ", ",", "\n")
+    def showKeys(keys: Iterable[AttributeKey[?]]): String = keys.mkString("\n\t   ", ",", "\n")
     def showData: String = {
       val scopeStrings =
-        for ((scope, map) <- data.data) yield (Scope.display(scope, "<key>"), showKeys(map))
+        for (scope, keys) <- data.keys.groupMap(_.scope)(_.key)
+        yield (Scope.display(scope, "<key>"), showKeys(keys))
       scopeStrings.toSeq.sorted.map(t => t._1 + t._2).mkString("\n\t")
     }
     val extra: BuildUtil[Proj] = {
@@ -84,12 +87,11 @@ abstract class TestBuild {
       )
     }
 
-    lazy val allAttributeKeys: Set[AttributeKey[_]] = {
-      val x = data.data.values.flatMap(_.keys).toSet
-      if (x.isEmpty) {
+    lazy val allAttributeKeys: Set[AttributeKey[?]] = {
+      if (data.attributeKeys.isEmpty) {
         sys.error("allAttributeKeys is empty")
       }
-      x
+      data.attributeKeys
     }
     lazy val (taskAxes, zeroTaskAxis, onlyTaskAxis, multiTaskAxis) = {
       import collection.mutable
@@ -97,22 +99,20 @@ abstract class TestBuild {
 
       // task axis of Scope is set to Zero and the value of the second map is the original task axis
       val taskAxesMappings =
-        for ((scope, keys) <- data.data.toIterable; key <- keys.keys)
-          yield (ScopedKey(scope.copy(task = Zero), key), scope.task): (
-              ScopedKey[_],
-              ScopeAxis[AttributeKey[_]]
-          )
+        for
+          (scope, keys) <- data.keys.groupMap(_.scope)(_.key)
+          key <- keys
+        yield (ScopedKey(scope.copy(task = Zero), key), scope.task)
 
       val taskAxes = Relation.empty ++ taskAxesMappings
-      val zero = new HashSet[ScopedKey[_]]
-      val single = new HashSet[ScopedKey[_]]
-      val multi = new HashSet[ScopedKey[_]]
+      val zero = new HashSet[ScopedKey[?]]
+      val single = new HashSet[ScopedKey[?]]
+      val multi = new HashSet[ScopedKey[?]]
       for ((skey, tasks) <- taskAxes.forwardMap) {
-        def makeKey(task: ScopeAxis[AttributeKey[_]]) =
+        def makeKey(task: ScopeAxis[AttributeKey[?]]) =
           ScopedKey(skey.scope.copy(task = task), skey.key)
         val hasGlobal = tasks(Zero)
-        if (hasGlobal)
-          zero += skey
+        if (hasGlobal) zero += skey
         else {
           val keys = tasks map makeKey
           keys.size match {
@@ -140,7 +140,7 @@ abstract class TestBuild {
     def rootProject(uri: URI): String = buildMap(uri).root.id
     def inheritConfig(ref: ResolvedReference, config: ConfigKey) =
       projectFor(ref).confMap(config.name).extendsConfigs map toConfigKey
-    def inheritTask(task: AttributeKey[_]) = taskMap.get(task) match {
+    def inheritTask(task: AttributeKey[?]) = taskMap.get(task) match {
       case None    => Vector()
       case Some(t) => t.delegates.toVector map getKey
     }
@@ -158,12 +158,12 @@ abstract class TestBuild {
       )
     lazy val allFullScopes: Seq[Scope] =
       for {
-        (ref, p) <- (Zero, root.root) +: allProjects.map { case (ref, p) => (Select(ref), p) }
+        (ref, p) <- (Zero, root.root) +: allProjects.map { (ref, p) => (Select(ref), p) }
         t <- Zero +: tasks.map(t => Select(t.key))
         c <- Zero +: p.configurations.map(c => Select(ConfigKey(c.name)))
       } yield Scope(project = ref, config = c, task = t, extra = Zero)
   }
-  def getKey: Taskk => AttributeKey[_] = _.key
+  def getKey: Taskk => AttributeKey[?] = _.key
   def toConfigKey: Configuration => ConfigKey = c => ConfigKey(c.name)
   case class Build(uri: URI, projects: Seq[Proj]) {
     override def toString = "Build " + uri.toString + " :\n    " + projects.mkString("\n    ")
@@ -190,9 +190,7 @@ abstract class TestBuild {
   }
 
   def mapBy[K, T](s: Seq[T])(f: T => K): Map[K, T] =
-    s map { t =>
-      (f(t), t)
-    } toMap;
+    s.map(t => (f(t), t)).toMap
 
   lazy val keysGen: Gen[TestKeys] =
     for {
@@ -218,8 +216,8 @@ abstract class TestBuild {
     Gen.frequency1((1, gen map Select.apply), (1, Gen.constant(Zero)))
   def oneOrGlobal[T](gen: Seq[T]): Gen[ScopeAxis[T]] = orGlobal(oneOf(gen))
 
-  def makeParser(structure: Structure): Parser[ScopedKey[_]] = {
-    import structure._
+  def makeParser(structure: Structure): Parser[ScopedKey[?]] = {
+    import structure.*
     def confs(uri: URI) =
       env.buildMap.get(uri).toList.flatMap { _.root.configurations.map(_.name) }
     val defaultConfs: Option[ResolvedReference] => Seq[String] = {
@@ -230,7 +228,7 @@ abstract class TestBuild {
     Act.scopedKey(keyIndex, current, defaultConfs, keyMap, data)
   }
 
-  def structure(env: Env, settings: Seq[Setting[_]], current: ProjectRef): Structure = {
+  def structure(env: Env, settings: Seq[Setting[?]], current: ProjectRef): Structure = {
     val display = Def.showRelativeKey2(current)
     if (settings.isEmpty) {
       try {
@@ -241,16 +239,15 @@ abstract class TestBuild {
           throw e
       }
     }
-    val data = Def.makeWithCompiledMap(settings)(env.delegates, const(Nil), display)._2
-    val keys = data.allKeys((s, key) => ScopedKey(s, key))
-    val keyMap = keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[_]]
+    val data = Def.makeWithCompiledMap(settings)(using env.delegates, const(Nil), display)._2
+    val keyMap = data.keys.map(k => (k.key.label, k.key)).toMap[String, AttributeKey[?]]
     val projectsMap = env.builds.map(b => (b.uri, b.projects.map(_.id).toSet)).toMap
     val confs = for {
       b <- env.builds
       p <- b.projects
     } yield p.id -> p.configurations
     val confMap = confs.toMap
-    Structure(env, current, data, KeyIndex(keys, projectsMap, confMap), keyMap)
+    Structure(env, current, data, KeyIndex(data.keys, projectsMap, confMap), keyMap)
   }
 
   lazy val mkEnv: Gen[Env] = {
@@ -273,7 +270,8 @@ abstract class TestBuild {
     end <- alphaNumChar
   } yield (List(c) ++ cs ++ List(end)).mkString
 
-  val optIDGen: Gen[Option[String]] = Gen.choice1(nonEmptyId.map(some.fn), Gen.constant(None))
+  val optIDGen: Gen[Option[String]] =
+    Gen.choice1(nonEmptyId.map(some[String]), Gen.constant(None))
 
   val pathGen = for {
     c <- alphaLowerChar
@@ -305,31 +303,34 @@ abstract class TestBuild {
   ): Gen[Vector[Proj]] =
     genAcyclic(maxDeps, genID, count) { (id: String) =>
       for (cs <- confs) yield { (deps: Seq[Proj]) =>
-        new Proj(id, deps.map { dep =>
-          ProjectRef(build, dep.id)
-        }, cs)
+        new Proj(
+          id,
+          deps.map { dep =>
+            ProjectRef(build, dep.id)
+          },
+          cs
+        )
       }
     }
 
-  def genConfigs(
-      implicit genName: Gen[String],
+  def genConfigs(using
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Configuration]] =
-    genAcyclicDirect[Configuration, String](maxDeps, genName, count)(
-      (key, deps) =>
-        Configuration
-          .of(key.capitalize, key)
-          .withExtendsConfigs(deps.toVector)
+    genAcyclicDirect[Configuration, String](maxDeps, genName, count)((key, deps) =>
+      Configuration
+        .of(key.capitalize, key)
+        .withExtendsConfigs(deps.toVector)
     )
 
-  def genTasks(
-      implicit genName: Gen[String],
+  def genTasks(using
+      genName: Gen[String],
       maxDeps: Range[Int],
       count: Range[Int]
   ): Gen[Vector[Taskk]] =
-    genAcyclicDirect[Taskk, String](maxDeps, genName, count)(
-      (key, deps) => new Taskk(AttributeKey[String](key), deps)
+    genAcyclicDirect[Taskk, String](maxDeps, genName, count)((key, deps) =>
+      new Taskk(AttributeKey[String](key), deps)
     )
 
   def genAcyclicDirect[A, T](maxDeps: Range[Int], keyGen: Gen[T], max: Range[Int])(
@@ -352,7 +353,7 @@ abstract class TestBuild {
       make: T => Gen[Vector[A] => A]
   ): Gen[Vector[A]] =
     genAcyclic(maxDeps, keys, Vector()) flatMap { pairs =>
-      sequence(pairs.map { case (key, deps) => mapMake(key, deps, make) }.toList) map { inputs =>
+      sequence(pairs.map { (key, deps) => mapMake(key, deps, make) }.toList) map { inputs =>
         val made = new collection.mutable.HashMap[T, A]
         for ((key, deps, mk) <- inputs)
           made(key) = mk(deps map made)
@@ -372,7 +373,7 @@ abstract class TestBuild {
   ): Gen[Vector[(T, Vector[T])]] =
     names match {
       case Vector() => sequence(acc.toList).map(_.toVector)
-      case Vector(x, xs @ _*) =>
+      case Vector(x, xs*) =>
         val next =
           for (depCount <- Gen.int(maxDeps); d <- pick(depCount, xs))
             yield (x, d.toVector)

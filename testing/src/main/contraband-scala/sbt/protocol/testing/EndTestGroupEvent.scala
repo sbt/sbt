@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -21,7 +21,7 @@ final class EndTestGroupEvent private (
   override def toString: String = {
     "EndTestGroupEvent(" + name + ", " + result + ")"
   }
-  private[this] def copy(name: String = name, result: sbt.protocol.testing.TestResult = result): EndTestGroupEvent = {
+  private def copy(name: String = name, result: sbt.protocol.testing.TestResult = result): EndTestGroupEvent = {
     new EndTestGroupEvent(name, result)
   }
   def withName(name: String): EndTestGroupEvent = {

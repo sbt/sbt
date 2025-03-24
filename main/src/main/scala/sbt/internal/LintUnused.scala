@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,16 +9,15 @@
 package sbt
 package internal
 
-import Keys._
-import Def.{ Setting, ScopedKey }
+import Keys.*
 import sbt.internal.util.{ FilePosition, NoPosition, SourcePosition }
 import java.io.File
+import ProjectExtra.{ extract, scopedKeyData }
 import Scope.Global
-import sbt.SlashSyntax0._
-import sbt.Def._
+import sbt.Def.*
 
 object LintUnused {
-  lazy val lintSettings: Seq[Setting[_]] = Seq(
+  lazy val lintSettings: Seq[Setting[?]] = Seq(
     lintIncludeFilter := {
       val includes = includeLintKeys.value.map(_.scopedKey.key.label)
       keyName => includes(keyName)
@@ -31,16 +31,25 @@ object LintUnused {
       aggregate,
       concurrentRestrictions,
       commands,
+      configuration,
       crossScalaVersions,
+      crossSbtVersions,
+      allowUnsafeScalaLibUpgrade,
+      evictionWarningOptions,
       initialize,
       lintUnusedKeysOnLoad,
       onLoad,
       onLoadMessage,
       onUnload,
+      pollInterval,
+      pushRemoteCacheArtifact,
+      sbt.nio.Keys.outputFileStamper,
       sbt.nio.Keys.watchTriggers,
       serverConnectionType,
       serverIdleTimeout,
       shellPrompt,
+      sLog,
+      traceLevel,
     ),
     includeLintKeys := Set(
       scalacOptions,
@@ -85,7 +94,7 @@ object LintUnused {
   }
 
   def lintResultLines(
-      result: Seq[(ScopedKey[_], String, Vector[SourcePosition])]
+      result: Seq[(ScopedKey[?], String, Seq[SourcePosition])]
   ): Vector[String] = {
     import scala.collection.mutable.ListBuffer
     val buffer = ListBuffer.empty[String]
@@ -96,13 +105,12 @@ object LintUnused {
       if (size == 1) buffer.append("there's a key that's not used by any other settings/tasks:")
       else buffer.append(s"there are $size keys that are not used by any other settings/tasks:")
       buffer.append(" ")
-      result foreach {
-        case (_, str, positions) =>
-          buffer.append(s"* $str")
-          positions foreach {
-            case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
-            case _                 => ()
-          }
+      result foreach { case (_, str, positions) =>
+        buffer.append(s"* $str")
+        positions foreach {
+          case pos: FilePosition => buffer.append(s"  +- ${pos.path}:${pos.startLine}")
+          case _                 => ()
+        }
       }
       buffer.append(" ")
       buffer.append(
@@ -119,25 +127,19 @@ object LintUnused {
       state: State,
       includeKeys: String => Boolean,
       excludeKeys: String => Boolean
-  ): Seq[(ScopedKey[_], String, Vector[SourcePosition])] = {
+  ): Seq[(ScopedKey[?], String, Seq[SourcePosition])] = {
     val extracted = Project.extract(state)
     val structure = extracted.structure
     val display = Def.showShortKey(None) // extracted.showKey
     val comp = structure.compiledMap
     val cMap = Def.flattenLocals(comp)
-    val used: Set[ScopedKey[_]] = cMap.values.flatMap(_.dependencies).toSet
-    val unused: Seq[ScopedKey[_]] = cMap.keys.filter(!used.contains(_)).toSeq
-    val withDefinedAts: Seq[UnusedKey] = unused map { u =>
-      val definingScope = structure.data.definingScope(u.scope, u.key)
-      val definingScoped = definingScope match {
-        case Some(sc) => ScopedKey(sc, u.key)
-        case _        => u
-      }
-      val definedAt = comp.get(definingScoped) match {
-        case Some(c) => definedAtString(c.settings.toVector)
+    val used: Set[ScopedKey[?]] = cMap.values.flatMap(_.dependencies).toSet
+    val unused: Seq[ScopedKey[?]] = cMap.keys.filter(!used.contains(_)).toSeq
+    val withDefinedAts: Seq[UnusedKey] = unused.map { u =>
+      val data = Project.scopedKeyData(structure, u)
+      val definedAt = comp.get(data.map(_.definingKey).getOrElse(u)) match
+        case Some(c) => definedAtString(c.settings)
         case _       => Vector.empty
-      }
-      val data = Project.scopedKeyData(structure, u.scope, u.key)
       UnusedKey(u, definedAt, data)
     }
 
@@ -147,7 +149,7 @@ object LintUnused {
       case Some(data) => data.settingValue.isDefined
       case _          => false
     }
-    def isLocallyDefined(u: UnusedKey): Boolean = u.positions exists {
+    def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists {
       case pos: FilePosition => pos.path.contains(File.separator)
       case _                 => false
     }
@@ -159,18 +161,16 @@ object LintUnused {
             && isLocallyDefined(u) =>
         u
     }
-    (unusedKeys map { u =>
-      (u.scoped, display.show(u.scoped), u.positions)
-    }).sortBy(_._2)
+    unusedKeys.map(u => (u.scoped, display.show(u.scoped), u.positions)).sortBy(_._2)
   }
 
-  private[this] case class UnusedKey(
-      scoped: ScopedKey[_],
-      positions: Vector[SourcePosition],
-      data: Option[ScopedKeyData[_]]
+  private case class UnusedKey(
+      scoped: ScopedKey[?],
+      positions: Seq[SourcePosition],
+      data: Option[ScopedKeyData[?]]
   )
 
-  private def definedAtString(settings: Vector[Setting[_]]): Vector[SourcePosition] = {
+  private def definedAtString(settings: Seq[Setting[?]]): Seq[SourcePosition] = {
     settings flatMap { setting =>
       setting.pos match {
         case NoPosition => Vector.empty

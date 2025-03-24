@@ -1,6 +1,6 @@
 import java.nio.file.Files
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 val foo = taskKey[Unit]("foo")
 foo := {
@@ -53,4 +53,4 @@ expectFailure / watchOnFileInputEvent := { (_, e) =>
 }
 
 
-crossScalaVersions := Seq("2.11.12", "2.12.12")
+crossScalaVersions := Seq("2.11.12", "2.12.20")

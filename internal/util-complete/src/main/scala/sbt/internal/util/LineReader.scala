@@ -1,14 +1,15 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
 package sbt.internal.util
 
-import java.io._
-import java.util.{ List => JList }
+import java.io.*
+import java.util.{ List as JList }
 
 import jline.console.ConsoleReader
 import jline.console.history.{ FileHistory, MemoryHistory }
@@ -16,17 +17,15 @@ import org.jline.reader.{
   Candidate,
   Completer,
   EndOfFileException,
-  LineReader => JLineReader,
+  LineReader as JLineReader,
   LineReaderBuilder,
   ParsedLine,
   UserInterruptException,
 }
 import org.jline.utils.ClosedException
 import sbt.internal.util.complete.Parser
-import sbt.io.syntax._
+import sbt.io.syntax.*
 
-import scala.annotation.tailrec
-import scala.concurrent.duration._
 import scala.util.control.NonFatal
 import java.nio.channels.ClosedByInterruptException
 import java.net.MalformedURLException
@@ -43,7 +42,7 @@ object LineReader {
     !java.lang.Boolean.getBoolean("sbt.disable.cont") && Signals.supported(Signals.CONT)
   val MaxHistorySize = 500
 
-  private def completer(parser: Parser[_]): Completer = new Completer {
+  private def completer(parser: Parser[?]): Completer = new Completer {
     def complete(lr: JLineReader, pl: ParsedLine, candidates: JList[Candidate]): Unit = {
       Parser.completions(parser, pl.line(), 10).get.foreach { c =>
         /*
@@ -75,7 +74,7 @@ object LineReader {
       }
     }
   }
-  private[this] def inputrcFileUrl(): Option[URL] = {
+  private def inputrcFileUrl(): Option[URL] = {
     // keep jline2 compatibility
     // https://github.com/jline/jline2/blob/12b98d94589e3bd6a6/src/main/java/jline/console/ConsoleReader.java#L291-L306
     sys.props
@@ -96,14 +95,14 @@ object LineReader {
       }
   }
   // cache on memory.
-  private[this] lazy val inputrcFileContents: Option[Array[Byte]] =
+  private lazy val inputrcFileContents: Option[Array[Byte]] =
     inputrcFileUrl().map(in => sbt.io.IO.readBytes(in.openStream()))
   def createReader(
       historyPath: Option[File],
-      parser: Parser[_],
+      parser: Parser[?],
       terminal: Terminal,
   ): LineReader = {
-    // We may want to consider insourcing LineReader.java from jline. We don't otherwise
+    // We may want to consider in-sourcing LineReader.java from jline. We don't otherwise
     // directly need jline3 for sbt.
     new LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
@@ -125,11 +124,13 @@ object LineReader {
           case _: Terminal.ConsoleTerminal => Some(Signals.register(() => terminal.write(-1)))
           case _                           => None
         }
-        try terminal.withRawInput {
-          Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
-        } catch {
+        try
+          terminal.withRawInput {
+            Option(mask.map(reader.readLine(prompt, _)).getOrElse(reader.readLine(prompt)))
+          }
+        catch {
           case e: EndOfFileException =>
-            if (terminal == Terminal.console && System.console == null) None
+            if (terminal == Terminal.console && !Terminal.hasConsole) None
             else Some("exit")
           case _: IOError | _: ClosedException => Some("exit")
           case _: UserInterruptException | _: ClosedByInterruptException |
@@ -170,28 +171,22 @@ object LineReader {
 }
 
 abstract class JLine extends LineReader {
-  protected[this] def handleCONT: Boolean
-  protected[this] def reader: ConsoleReader
+  protected def handleCONT: Boolean
+  protected def reader: ConsoleReader
   @deprecated("For binary compatibility only", "1.4.0")
-  protected[this] def injectThreadSleep: Boolean = false
+  protected def injectThreadSleep: Boolean = false
   @deprecated("For binary compatibility only", "1.4.0")
-  protected[this] lazy val in: InputStream = Terminal.wrappedSystemIn
+  protected lazy val in: InputStream = Terminal.wrappedSystemIn
 
   override def readLine(prompt: String, mask: Option[Char] = None): Option[String] =
-    try {
-      unsynchronizedReadLine(prompt, mask)
-    } catch {
-      case _: InterruptedException =>
-        // println("readLine: InterruptedException")
-        Option("")
-    }
+    unsynchronizedReadLine(prompt, mask)
 
-  private[this] def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
+  private def unsynchronizedReadLine(prompt: String, mask: Option[Char]): Option[String] =
     readLineWithHistory(prompt, mask) map { x =>
       x.trim
     }
 
-  private[this] def readLineWithHistory(prompt: String, mask: Option[Char]): Option[String] =
+  private def readLineWithHistory(prompt: String, mask: Option[Char]): Option[String] =
     reader.getHistory match {
       case fh: FileHistory =>
         try readLineDirect(prompt, mask)
@@ -199,15 +194,15 @@ abstract class JLine extends LineReader {
       case _ => readLineDirect(prompt, mask)
     }
 
-  private[this] def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
+  private def readLineDirect(prompt: String, mask: Option[Char]): Option[String] =
     if (handleCONT)
-      Signals.withHandler(() => resume(), signal = Signals.CONT)(
-        () => readLineDirectRaw(prompt, mask)
+      Signals.withHandler(() => resume(), signal = Signals.CONT)(() =>
+        readLineDirectRaw(prompt, mask)
       )
     else
       readLineDirectRaw(prompt, mask)
 
-  private[this] def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] = {
+  private def readLineDirectRaw(prompt: String, mask: Option[Char]): Option[String] = {
     val newprompt = handleMultilinePrompt(prompt)
     mask match {
       case Some(m) => Option(reader.readLine(newprompt, m))
@@ -215,7 +210,7 @@ abstract class JLine extends LineReader {
     }
   }
 
-  private[this] def handleMultilinePrompt(prompt: String): String = {
+  private def handleMultilinePrompt(prompt: String): String = {
     val lines0 = """\r?\n""".r.split(prompt)
     lines0.length match {
       case 0 | 1 => handleProgress(prompt)
@@ -227,13 +222,13 @@ abstract class JLine extends LineReader {
     }
   }
 
-  private[this] def handleProgress(prompt: String): String = {
-    import ConsoleAppender._
+  private def handleProgress(prompt: String): String = {
+    import ConsoleAppender.*
     if (showProgress) s"$DeleteLine" + prompt
     else prompt
   }
 
-  private[this] def resume(): Unit = {
+  private def resume(): Unit = {
     Terminal.reset()
     reader.drawLine()
     reader.flush()
@@ -242,31 +237,23 @@ abstract class JLine extends LineReader {
 
 @deprecated("Use LineReader apis", "1.4.0")
 private[sbt] object JLine {
-  @deprecated("For binary compatibility only", "1.4.0")
-  protected[this] val originalIn = new FileInputStream(FileDescriptor.in)
-
   @deprecated("Handled by Terminal.fixTerminalProperty", "1.4.0")
   private[sbt] def fixTerminalProperty(): Unit = ()
-
-  @deprecated("For binary compatibility only", "1.4.0")
-  private[sbt] def makeInputStream(injectThreadSleep: Boolean): InputStream =
-    if (injectThreadSleep) new InputStreamWrapper(originalIn, 2.milliseconds)
-    else originalIn
 
   // When calling this, ensure that enableEcho has been or will be called.
   // TerminalFactory.get will initialize the terminal to disable echo.
   @deprecated("Don't use jline.Terminal directly", "1.4.0")
-  private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTeminal
+  private[sbt] def terminal: jline.Terminal = Terminal.deprecatedTerminal
 
   /**
-   * For accessing the JLine Terminal object.
-   * This ensures synchronized access as well as re-enabling echo after getting the Terminal.
+   * For accessing the JLine Terminal object. This ensures synchronized access as well as
+   * re-enabling echo after getting the Terminal.
    */
-  @deprecated(
-    "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
-    "1.4.0"
-  )
-  def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
+  // @deprecated(
+  //   "Don't use jline.Terminal directly. Use Terminal.get.withCanonicalIn instead.",
+  //   "1.4.0"
+  // )
+  // def usingTerminal[T](f: jline.Terminal => T): T = f(Terminal.get.toJLine)
 
   @deprecated("unused", "1.4.0")
   def createReader(): ConsoleReader = createReader(None, Terminal.wrappedSystemIn)
@@ -302,41 +289,16 @@ private[sbt] object JLine {
   val HandleCONT = LineReader.HandleCONT
 }
 
-@deprecated("For binary compatibility only", "1.4.0")
-private[sbt] class InputStreamWrapper(is: InputStream, val poll: Duration)
-    extends FilterInputStream(is) {
-  @tailrec final override def read(): Int =
-    if (is.available() != 0) is.read()
-    else {
-      Thread.sleep(poll.toMillis)
-      read()
-    }
-
-  @tailrec final override def read(b: Array[Byte]): Int =
-    if (is.available() != 0) is.read(b)
-    else {
-      Thread.sleep(poll.toMillis)
-      read(b)
-    }
-
-  @tailrec final override def read(b: Array[Byte], off: Int, len: Int): Int =
-    if (is.available() != 0) is.read(b, off, len)
-    else {
-      Thread.sleep(poll.toMillis)
-      read(b, off, len)
-    }
-}
-
 final class FullReader(
     historyPath: Option[File],
-    complete: Parser[_],
+    complete: Parser[?],
     val handleCONT: Boolean,
     terminal: Terminal
 ) extends JLine {
   @deprecated("Use the constructor with no injectThreadSleep parameter", "1.4.0")
   def this(
       historyPath: Option[File],
-      complete: Parser[_],
+      complete: Parser[?],
       handleCONT: Boolean = LineReader.HandleCONT,
       injectThreadSleep: Boolean = false
   ) =
@@ -346,7 +308,7 @@ final class FullReader(
       handleCONT,
       Terminal.console
     )
-  protected[this] val reader: ConsoleReader = {
+  protected val reader: ConsoleReader = {
     val cr = LineReader.createJLine2Reader(historyPath, terminal)
     sbt.internal.util.complete.JLineCompletion.installCustomCompletor(cr, complete)
     cr
@@ -360,7 +322,7 @@ class SimpleReader private[sbt] (
 ) extends JLine {
   def this(historyPath: Option[File], handleCONT: Boolean, injectThreadSleep: Boolean) =
     this(historyPath, handleCONT, Terminal.console)
-  protected[this] lazy val reader: ConsoleReader =
+  protected lazy val reader: ConsoleReader =
     LineReader.createJLine2Reader(historyPath, terminal)
 }
 

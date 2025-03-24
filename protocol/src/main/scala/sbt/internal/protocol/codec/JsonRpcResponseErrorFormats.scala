@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,9 +12,8 @@ import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 trait JsonRpcResponseErrorFormats {
-  self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcResponseErrorFormat
-      : JsonFormat[sbt.internal.protocol.JsonRpcResponseError] =
+  self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
+  given JsonRpcResponseErrorFormat: JsonFormat[sbt.internal.protocol.JsonRpcResponseError] =
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseError] {
       override def read[J](
           jsOpt: Option[J],
@@ -24,8 +24,8 @@ trait JsonRpcResponseErrorFormats {
             unbuilder.beginObject(js)
             val code = unbuilder.readField[Long]("code")
             val message = unbuilder.readField[String]("message")
-            val data = unbuilder.lookupField("data") map {
-              case x: JValue => x
+            val data = unbuilder.lookupField("data") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcResponseError(code, message, data)

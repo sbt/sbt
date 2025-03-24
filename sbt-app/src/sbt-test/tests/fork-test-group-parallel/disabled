@@ -1,3 +1,0 @@
-> testFailure
-> set concurrentRestrictions in Global += Tags.limit(Tags.ForkedTestGroup, 1)
-> test

@@ -8,5 +8,5 @@ $ touch succeed
 > test
 
 # also run with forked tests
-> set fork in Test := true
+> set Test / fork := true
 > test

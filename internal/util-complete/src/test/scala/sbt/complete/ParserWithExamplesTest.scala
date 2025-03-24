@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,63 +9,63 @@
 package sbt.internal.util
 package complete
 
-import Completion._
+import Completion.*
 
 class ParserWithExamplesTest extends UnitSpec {
 
   "listing a limited number of completions" should
     "grab only the needed number of elements from the iterable source of examples" in {
-    val _ = new ParserWithLazyExamples {
-      parserWithExamples.completions(0)
-      examples.size shouldEqual maxNumberOfExamples
+      val _ = new ParserWithLazyExamples {
+        parserWithExamples.completions(0)
+        examples.size shouldEqual maxNumberOfExamples
+      }
     }
-  }
 
   "listing only valid completions" should
     "use the delegate parser to remove invalid examples" in {
-    val _ = new ParserWithValidExamples {
-      val validCompletions = Completions(
-        Set(
-          suggestion("blue"),
-          suggestion("red")
+      val _ = new ParserWithValidExamples {
+        val validCompletions = Completions(
+          Set(
+            suggestion("blue"),
+            suggestion("red")
+          )
         )
-      )
-      parserWithExamples.completions(0) shouldEqual validCompletions
+        parserWithExamples.completions(0) shouldEqual validCompletions
+      }
     }
-  }
 
   "listing valid completions in a derived parser" should
     "produce only valid examples that start with the character of the derivation" in {
-    val _ = new ParserWithValidExamples {
-      val derivedCompletions = Completions(
-        Set(
-          suggestion("lue")
+      val _ = new ParserWithValidExamples {
+        val derivedCompletions = Completions(
+          Set(
+            suggestion("lue")
+          )
         )
-      )
-      parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+      }
     }
-  }
 
   "listing valid and invalid completions" should
     "produce the entire source of examples" in {
-    val _ = new parserWithAllExamples {
-      val completions = Completions(examples.map(suggestion(_)).toSet)
-      parserWithExamples.completions(0) shouldEqual completions
+      val _ = new parserWithAllExamples {
+        val completions = Completions(examples.map(suggestion(_)).toSet)
+        parserWithExamples.completions(0) shouldEqual completions
+      }
     }
-  }
 
   "listing valid and invalid completions in a derived parser" should
     "produce only examples that start with the character of the derivation" in {
-    val _ = new parserWithAllExamples {
-      val derivedCompletions = Completions(
-        Set(
-          suggestion("lue"),
-          suggestion("lock")
+      val _ = new parserWithAllExamples {
+        val derivedCompletions = Completions(
+          Set(
+            suggestion("lue"),
+            suggestion("lock")
+          )
         )
-      )
-      parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+        parserWithExamples.derive('b').completions(0) shouldEqual derivedCompletions
+      }
     }
-  }
 
   class ParserWithLazyExamples
       extends ParserExample(
@@ -78,12 +79,12 @@ class ParserWithExamplesTest extends UnitSpec {
   class parserWithAllExamples extends ParserExample(removeInvalidExamples = false)
 
   case class ParserExample(
-      examples: Iterable[String] = Set("blue", "yellow", "greeen", "block", "red"),
+      examples: Iterable[String] = Set("blue", "yellow", "green_", "block", "red"),
       maxNumberOfExamples: Int = 25,
       removeInvalidExamples: Boolean
   ) {
 
-    import DefaultParsers._
+    import DefaultParsers.*
 
     val colorParser = "blue" | "green" | "black" | "red"
     val parserWithExamples: Parser[String] = new ParserWithExamples[String](

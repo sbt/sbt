@@ -1,12 +1,12 @@
 autoScalaLibrary := false
-scalaVersion := "3.0.0-M2"
+scalaVersion := "3.3.4"
 libraryDependencies += "com.chuusai" % "shapeless_2.13" % "2.3.3"
 
 val checkScalaLibrary = TaskKey[Unit]("checkScalaLibrary")
 
 checkScalaLibrary := {
   val scalaLibsJars = (Compile / managedClasspath).value
-    .map(_.data.getName)
+    .map(_.data.name)
     .filter(name => name.startsWith("scala-library") || name.startsWith("scala3-library"))
     .sorted
   val expectedScalaLibsJars = Seq(

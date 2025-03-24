@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,6 @@
 package sbt
 package internal
 
-import sbt.internal.util.Attributed
 import sbt.util.{ Level, Logger }
 
 import sbt.librarymanagement.{
@@ -23,31 +23,40 @@ import sbt.librarymanagement.{
 import java.io.File
 import Configurations.Compile
 import Def.Setting
-import Keys._
+import Keys.*
 import Scope.Global
-import sbt.SlashSyntax0._
+import sbt.ProjectExtra.{ extract, setProject }
+import sbt.SlashSyntax0.*
 
 import sbt.io.IO
+import xsbti.HashedVirtualFileRef
 
 object IvyConsole {
   final val Name = "ivy-console"
   lazy val command =
     Command.command(Name) { state =>
-      val Dependencies(managed, repos, unmanaged) = parseDependencies(state.remainingCommands map {
-        _.commandLine
-      }, state.log)
+      val Dependencies(managed, repos, unmanaged) = parseDependencies(
+        state.remainingCommands map {
+          _.commandLine
+        },
+        state.log
+      )
       val base = new File(CommandUtil.bootDirectory(state), Name)
       IO.createDirectory(base)
 
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
       val extracted = Project.extract(session, structure)
-      import extracted._
+      import extracted.{ *, given }
 
-      val depSettings: Seq[Setting[_]] = Seq(
+      val depSettings: Seq[Setting[?]] = Seq(
         libraryDependencies ++= managed.reverse,
         resolvers ++= repos.reverse.toVector,
-        Compile / unmanagedJars ++= Attributed blankSeq unmanaged.reverse,
+        Compile / unmanagedJars ++= {
+          val converter = fileConverter.value
+          val u = unmanaged.reverse.map(_.toPath).map(converter.toVirtualFile)
+          u: Seq[HashedVirtualFileRef]
+        },
         Global / logLevel := Level.Warn,
         Global / showSuccess := false
       )
@@ -72,12 +81,12 @@ object IvyConsole {
     args.foldLeft(Dependencies(Nil, Nil, Nil))(parseArgument(log))
   def parseArgument(log: Logger)(acc: Dependencies, arg: String): Dependencies =
     arg match {
-      case _ if arg contains " at " => acc.copy(resolvers = parseResolver(arg) +: acc.resolvers)
-      case _ if arg endsWith ".jar" => acc.copy(unmanaged = new File(arg) +: acc.unmanaged)
-      case _                        => acc.copy(managed = parseManaged(arg, log) ++ acc.managed)
+      case _ if arg.contains(" at ") => acc.copy(resolvers = parseResolver(arg) +: acc.resolvers)
+      case _ if arg.endsWith(".jar") => acc.copy(unmanaged = new File(arg) +: acc.unmanaged)
+      case _                         => acc.copy(managed = parseManaged(arg, log) ++ acc.managed)
     }
 
-  private[this] def parseResolver(arg: String): MavenRepository = {
+  private def parseResolver(arg: String): MavenRepository = {
     val Array(name, url) = arg.split(" at ")
     MavenRepository(name.trim, url.trim)
   }

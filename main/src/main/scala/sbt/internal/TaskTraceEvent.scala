@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,7 +13,7 @@ import java.io.File
 import java.nio.file.Files
 import sbt.internal.util.{ RMap, ConsoleOut }
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import sjsonnew.shaded.scalajson.ast.unsafe.JString
 import sjsonnew.support.scalajson.unsafe.CompactPrinter
 
@@ -21,29 +22,27 @@ import sjsonnew.support.scalajson.unsafe.CompactPrinter
  * as Chrome Trace Event Format.
  * This class is activated by adding -Dsbt.traces=true to the JVM options.
  */
-private[sbt] final class TaskTraceEvent
-    extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task] {
+private[sbt] final class TaskTraceEvent extends AbstractTaskExecuteProgress with ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
-  private[this] var start = 0L
-  private[this] val console = ConsoleOut.systemOut
+  private var start = 0L
+  private val console = ConsoleOut.systemOut
 
   override def initial(): Unit = ()
-  override def afterReady(task: Task[_]): Unit = ()
-  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit = ()
+  override def afterReady(task: TaskId[?]): Unit = ()
+  override def afterCompleted[T](task: TaskId[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = ()
   override def stop(): Unit = ()
 
   start = System.nanoTime
   ShutdownHooks.add(() => report())
 
-  private[this] def report() = {
+  private def report() = {
     if (anyTimings) {
       writeTraceEvent()
     }
   }
 
-  private[this] def writeTraceEvent(): Unit = {
+  private def writeTraceEvent(): Unit = {
     // import java.time.{ ZonedDateTime, ZoneOffset }
     // import java.time.format.DateTimeFormatter
     // val fileName = "build-" + ZonedDateTime
@@ -60,7 +59,7 @@ private[sbt] final class TaskTraceEvent
       def durationEvent(name: String, cat: String, t: Timer): String = {
         val sb = new java.lang.StringBuilder(name.length + 2)
         CompactPrinter.print(new JString(name), sb)
-        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": ${t.threadId}}"""
+        s"""{"name": ${sb.toString}, "cat": "$cat", "ph": "X", "ts": ${(t.startMicros)}, "dur": ${(t.durationMicros)}, "pid": 0, "tid": "${t.threadId}"}"""
       }
       val entryIterator = currentTimings
       while (entryIterator.hasNext) {

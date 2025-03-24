@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class BuildTargetIdentifier private (
   override def toString: String = {
     "BuildTargetIdentifier(" + uri + ")"
   }
-  private[this] def copy(uri: java.net.URI = uri): BuildTargetIdentifier = {
+  private def copy(uri: java.net.URI = uri): BuildTargetIdentifier = {
     new BuildTargetIdentifier(uri)
   }
   def withUri(uri: java.net.URI): BuildTargetIdentifier = {

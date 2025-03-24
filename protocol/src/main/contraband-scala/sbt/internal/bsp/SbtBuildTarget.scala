@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -36,7 +36,7 @@ final class SbtBuildTarget private (
   override def toString: String = {
     "SbtBuildTarget(" + sbtVersion + ", " + autoImports + ", " + scalaBuildTarget + ", " + parent + ", " + children + ")"
   }
-  private[this] def copy(sbtVersion: String = sbtVersion, autoImports: Vector[String] = autoImports, scalaBuildTarget: sbt.internal.bsp.ScalaBuildTarget = scalaBuildTarget, parent: Option[sbt.internal.bsp.BuildTargetIdentifier] = parent, children: Vector[sbt.internal.bsp.BuildTargetIdentifier] = children): SbtBuildTarget = {
+  private def copy(sbtVersion: String = sbtVersion, autoImports: Vector[String] = autoImports, scalaBuildTarget: sbt.internal.bsp.ScalaBuildTarget = scalaBuildTarget, parent: Option[sbt.internal.bsp.BuildTargetIdentifier] = parent, children: Vector[sbt.internal.bsp.BuildTargetIdentifier] = children): SbtBuildTarget = {
     new SbtBuildTarget(sbtVersion, autoImports, scalaBuildTarget, parent, children)
   }
   def withSbtVersion(sbtVersion: String): SbtBuildTarget = {

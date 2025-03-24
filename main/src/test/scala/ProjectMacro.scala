@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,9 +9,9 @@
 package sbt
 
 import scala.util.control.NonFatal
-import org.scalacheck._
-import Prop._
-import Project.project
+import org.scalacheck.*
+import Prop.*
+import sbt.BuildExtra.project
 import java.io.File
 
 class ProjectDefs {
@@ -21,7 +22,7 @@ class ProjectDefs {
   // should not compile
   // def y = project
 
-  val z = project in new File("dir")
+  val z = (project in new File("dir"))
 
   val a: Project = project
 
@@ -30,7 +31,7 @@ class ProjectDefs {
 
 object ProjectMacro extends Properties("ProjectMacro") {
   lazy val pd = new ProjectDefs
-  import pd._
+  import pd.*
 
   def secure(f: => Prop): Prop =
     try {
@@ -67,6 +68,6 @@ object ProjectMacro extends Properties("ProjectMacro") {
       s"Actual id: ${p.id}" |:
       s"Actual dir: ${p.base}" |:
       (p.id == id) &&
-    (p.base.getName == dir)
+      (p.base.getName == dir)
   }
 }

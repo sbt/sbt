@@ -2,3 +2,5 @@
 -> demo-failure
 > +z
 > z
+
+$ absent /tmp/non-existent

@@ -1,6 +1,6 @@
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
 
-ThisBuild / scalaVersion := "2.12.12"
+scalaVersion := "2.12.20"
 
 val foo = settingKey[Seq[String]]("foo")
 val checkFoo = inputKey[Unit]("check contents of foo")
@@ -14,7 +14,7 @@ lazy val root = (project in file("."))
     },
     libraryDependencies += scalatest % Test,
     // testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-f", "result.txt", "-eNDXEHLO")
-    testOptions in Configurations.Test ++= {
+    Configurations.Test / testOptions ++= {
       def args(path: String, args: String*): Seq[TestOption] =
         if(file(path).exists) Tests.Argument(args : _*) :: Nil
         else Nil

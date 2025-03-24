@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,9 +9,9 @@
 package sbt
 
 /**
- * A custom SecurityException that tries not to be caught.  Closely based on a similar class in Nailgun.
- * The main goal of this exception is that once thrown, it propagates all of the way up the call stack,
- * terminating the thread's execution.
+ * A custom SecurityException that tries not to be caught. Closely based on a similar class in
+ * Nailgun. The main goal of this exception is that once thrown, it propagates all of the way up the
+ * call stack, terminating the thread's execution.
  */
 private final class TrapExitSecurityException(val exitCode: Int) extends SecurityException {
   override def printStackTrace = throw this

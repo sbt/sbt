@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,18 +9,18 @@
 package sbt
 package internal.testing
 
-import testing.{ Logger => TLogger }
+import testing.{ Logger as TLogger }
 import sbt.internal.util.{ BufferedAppender, ManagedLogger, Terminal }
 import sbt.util.{ Level, ShowLines }
-import sbt.protocol.testing._
+import sbt.protocol.testing.*
 import java.util.concurrent.atomic.AtomicInteger
 
 object TestLogger {
-  import sbt.protocol.testing.codec.JsonProtocol._
+  import sbt.protocol.testing.codec.JsonProtocol.*
 
-  implicit val testStringEventShowLines: ShowLines[TestStringEvent] =
-    ShowLines[TestStringEvent]({
-      case a: TestStringEvent => List(a.value)
+  given testStringEventShowLines: ShowLines[TestStringEvent] =
+    ShowLines[TestStringEvent]({ case a: TestStringEvent =>
+      List(a.value)
     })
 
   private def generateName: String = "test-" + generateId.incrementAndGet
@@ -73,11 +74,11 @@ object TestLogger {
     global.registerStringCodec[TestStringEvent]
 
     def showNoLines[A] = ShowLines[A](_ => Nil)
-    implicit val showNoLinesTestInitEvent = showNoLines[TestInitEvent]
-    implicit val showNoLinesStartTestGroupEvent = showNoLines[StartTestGroupEvent]
-    implicit val showNoLinesTestItemEvent = showNoLines[TestItemEvent]
-    implicit val showNoLinesEndTestGroupEvent = showNoLines[EndTestGroupEvent]
-    implicit val showNoLinesTestCompleteEvent = showNoLines[TestCompleteEvent]
+    given ShowLines[TestInitEvent] = showNoLines[TestInitEvent]
+    given ShowLines[StartTestGroupEvent] = showNoLines[StartTestGroupEvent]
+    given ShowLines[TestItemEvent] = showNoLines[TestItemEvent]
+    given ShowLines[EndTestGroupEvent] = showNoLines[EndTestGroupEvent]
+    given ShowLines[TestCompleteEvent] = showNoLines[TestCompleteEvent]
     global.registerStringCodec[TestInitEvent]
     global.registerStringCodec[StartTestGroupEvent]
     global.registerStringCodec[TestItemEvent]
@@ -121,11 +122,11 @@ final class TestLogging(
 )
 
 class TestLogger(val logging: TestLogging) extends TestsListener {
-  import TestLogger._
-  import logging.{ global => log, logTest, managed }
-  import sbt.protocol.testing.codec.JsonProtocol._
+  import TestLogger.*
+  import logging.{ global, logTest, managed }
+  import sbt.protocol.testing.codec.JsonProtocol.*
 
-  def doInit: Unit = managed.logEvent(Level.Info, TestInitEvent())
+  def doInit(): Unit = managed.logEvent(Level.Info, TestInitEvent())
 
   def startGroup(name: String): Unit = managed.logEvent(Level.Info, StartTestGroupEvent(name))
 
@@ -135,8 +136,8 @@ class TestLogger(val logging: TestLogging) extends TestsListener {
     managed.logEvent(Level.Info, EndTestGroupEvent(name, result))
 
   def endGroup(name: String, t: Throwable): Unit = {
-    log.trace(t)
-    log.error(s"Could not run test $name: $t")
+    global.trace(t)
+    global.error(s"Could not run test $name: $t")
     managed.logEvent(
       Level.Info,
       EndTestGroupErrorEvent(name, (t.getMessage + t.getStackTrace.toString).mkString("\n"))

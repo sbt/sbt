@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,7 @@
 package sbt
 package internal
 
-import sbt.SlashSyntax0._
+import sbt.ProjectExtra.extract
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
 import sbt.internal.util.Terminal
@@ -17,11 +18,12 @@ import xsbti.compile.ClasspathOptionsUtil
 
 object ConsoleProject {
   def apply(state: State, extra: String, cleanupCommands: String = "", options: Seq[String] = Nil)(
-      implicit log: Logger
+      using log: Logger
   ): Unit = {
-    val extracted = Project extract state
+    val extracted = Project.extract(state)
     val cpImports = new Imports(extracted, state)
-    val bindings = ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
+    val bindings =
+      ("currentState" -> state) :: ("extracted" -> extracted) :: ("cpHelpers" -> cpImports) :: Nil
     val unit = extracted.currentUnit
     val (state1, dependencyResolution) =
       extracted.runTask(Keys.dependencyResolution, state)
@@ -51,7 +53,8 @@ object ConsoleProject {
           componentProvider = app.provider.components,
           secondaryCacheDir = Option(zincDir),
           dependencyResolution = dependencyResolution,
-          compilerBridgeSource = extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
+          compilerBridgeSource =
+            extracted.get(Keys.consoleProject / Keys.scalaCompilerBridgeSource),
           scalaJarsTarget = zincDir,
           classLoaderCache = state1.get(BasicKeys.classLoaderCache),
           log = log
@@ -64,7 +67,7 @@ object ConsoleProject {
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     (new Console(compiler))(
-      unit.classpath,
+      unit.classpath.map(_.toFile),
       options,
       initCommands,
       cleanupCommands,
@@ -75,7 +78,7 @@ object ConsoleProject {
 
   /** Conveniences for consoleProject that shouldn't normally be used for builds. */
   final class Imports private[sbt] (extracted: Extracted, state: State) {
-    import extracted._
+    import extracted.*
     implicit def taskKeyEvaluate[T](t: TaskKey[T]): Evaluate[T] =
       new Evaluate(runTask(t, state)._2)
     implicit def settingKeyEvaluate[T](s: SettingKey[T]): Evaluate[T] = new Evaluate(get(s))

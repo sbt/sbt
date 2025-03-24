@@ -36,3 +36,4 @@ else
   # Use Jansi to intercept ANSI sequences
   "$JAVA_CMD" -Dsbt.log.format=true $JAVA_OPTS $SBT_OPTS -cp "$WDIR/sbt-launch.jar" xsbt.boot.Boot "$@"
 fi
+

@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,38 +9,43 @@
 package sbt
 
 import scala.collection.mutable
-import testing.{ Logger => _, Task => _, _ }
+import testing.{ Logger as _, Task as _, * }
 import scala.util.control.NonFatal
 import java.net.ServerSocket
-import java.io._
-import Tests.{ Output => TestOutput, _ }
+import java.io.*
+import Tests.{ Output as TestOutput, * }
 import sbt.io.IO
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
-import sbt.protocol.testing._
-import sbt.internal.util.Util.{ AnyOps, none }
-import sbt.internal.util.{ RunningProcesses, Terminal => UTerminal }
+import sbt.protocol.testing.*
+import sbt.internal.util.Util.*
+import sbt.internal.util.{ Terminal as UTerminal }
+import xsbti.{ FileConverter, HashedVirtualFileRef }
 
 private[sbt] object ForkTests {
   def apply(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
-    import std.TaskExtra._
-    val dummyLoader = this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
+    import std.TaskExtra.*
+    val dummyLoader =
+      this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
     def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
 
     val main =
-      if (opts.tests.isEmpty)
+      if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
-    main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
+        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel).tagw(
+          config.tags*
+        )
+    main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
   }
@@ -48,31 +54,34 @@ private[sbt] object ForkTests {
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
-    apply(runners, opts, config, classpath, fork, log, tags: _*)
+    apply(runners, opts, config, classpath, converter, fork, log, tags*)
   }
 
   def apply(
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       tag: Tag
   ): Task[TestOutput] = {
-    apply(runners, tests, config, classpath, fork, log, tag -> 1)
+    apply(runners, tests, config, classpath, converter, fork, log, tag -> 1)
   }
 
-  private[this] def mainTestTask(
+  private def mainTestTask(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
       parallel: Boolean
@@ -133,7 +142,7 @@ private[sbt] object ForkTests {
           } catch {
             case NonFatal(e) =>
               def throwableToString(t: Throwable) = {
-                import java.io._; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw));
+                import java.io.*; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw));
                 sw.toString
               }
               resultsAcc("Forked test harness failed: " + throwableToString(e)) = SuiteResult.Error
@@ -147,10 +156,10 @@ private[sbt] object ForkTests {
         testListeners.foreach(_.doInit())
         val acceptorThread = new Thread(Acceptor)
         acceptorThread.start()
-
-        val fullCp = classpath ++ Seq(
-          IO.classLocationPath[ForkMain].toFile,
-          IO.classLocationPath[Framework].toFile
+        val cpFiles = classpath.map(converter.toPath).map(_.toFile())
+        val fullCp = cpFiles ++ Seq(
+          IO.classLocationPath(classOf[ForkMain]).toFile,
+          IO.classLocationPath(classOf[Framework]).toFile,
         )
         val options = Seq(
           "-classpath",
@@ -158,13 +167,7 @@ private[sbt] object ForkTests {
           classOf[ForkMain].getCanonicalName,
           server.getLocalPort.toString
         )
-        val p = Fork.java.fork(fork, options)
-        RunningProcesses.add(p)
-        val ec = try p.exitValue()
-        finally {
-          if (p.isAlive) p.destroy()
-          RunningProcesses.remove(p)
-        }
+        val ec = Fork.java(fork, options)
         val result =
           if (ec != 0)
             TestOutput(
@@ -188,7 +191,7 @@ private[sbt] object ForkTests {
       }
     }
 
-  private[this] def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
+  private def forkFingerprint(f: Fingerprint): Fingerprint & Serializable =
     f match {
       case s: SubclassFingerprint  => new ForkMain.SubclassFingerscan(s)
       case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)
@@ -202,7 +205,7 @@ private final class React(
     listeners: Seq[TestReportListener],
     results: mutable.Map[String, SuiteResult]
 ) {
-  import ForkTags._
+  import ForkTags.*
   @annotation.tailrec
   def react(): Unit = is.readObject match {
     case `Done` =>
@@ -218,12 +221,13 @@ private final class React(
     case t: Throwable =>
       log.trace(t); react()
     case Array(group: String, tEvents: Array[Event]) =>
-      listeners.foreach(_ startGroup group)
-      val event = TestEvent(tEvents)
-      listeners.foreach(_ testEvent event)
-      val suiteResult = SuiteResult(tEvents)
+      val events = tEvents.toSeq
+      listeners.foreach(_.startGroup(group))
+      val event = TestEvent(events)
+      listeners.foreach(_.testEvent(event))
+      val suiteResult = SuiteResult(events)
       results += group -> suiteResult
-      listeners.foreach(_ endGroup (group, suiteResult.result))
+      listeners.foreach(_.endGroup(group, suiteResult.result))
       react()
   }
 }

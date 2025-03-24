@@ -11,6 +11,7 @@ type InitCommand implements CommandMessage {
   token: String
   execId: String
   skipAnalysis: Boolean @since("1.4.0")
+  initializationOptions: sbt.internal.protocol.InitializeOption @since("1.10.8")
 }
 
 ## Command to execute sbt command.

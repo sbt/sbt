@@ -1,0 +1,17 @@
+# .github/workflows/dependency-graph.yml
+name: Submit Dependency Graph
+on:
+  push:
+    branches: [1.10.x, develop]
+permissions: {}
+jobs:
+  submit-graph:
+    permissions:
+      contents: write # to submit the dependency graph
+
+    name: Submit Dependency Graph
+    runs-on: ubuntu-latest # or windows-latest, or macOS-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sbt/setup-sbt@v1
+      - uses: scalacenter/sbt-dependency-submission@v3

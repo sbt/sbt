@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class SettingQueryFailure private (
   override def toString: String = {
     "SettingQueryFailure(" + message + ")"
   }
-  private[this] def copy(message: String = message): SettingQueryFailure = {
+  private def copy(message: String = message): SettingQueryFailure = {
     new SettingQueryFailure(message)
   }
   def withMessage(message: String): SettingQueryFailure = {

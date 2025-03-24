@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -32,7 +32,7 @@ final class TaskFinishParams private (
   override def toString: String = {
     "TaskFinishParams(" + taskId + ", " + eventTime + ", " + message + ", " + status + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, status: Int = status, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskFinishParams = {
+  private def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, status: Int = status, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskFinishParams = {
     new TaskFinishParams(taskId, eventTime, message, status, dataKind, data)
   }
   def withTaskId(taskId: sbt.internal.bsp.TaskId): TaskFinishParams = {

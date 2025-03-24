@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class SaveOptions private (
   override def toString: String = {
     "SaveOptions(" + includeText + ")"
   }
-  private[this] def copy(includeText: Option[Boolean] = includeText): SaveOptions = {
+  private def copy(includeText: Option[Boolean] = includeText): SaveOptions = {
     new SaveOptions(includeText)
   }
   def withIncludeText(includeText: Option[Boolean]): SaveOptions = {

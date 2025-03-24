@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,10 +17,10 @@ class FileExamplesTest extends UnitSpec {
 
   "listing all files in an absolute base directory" should
     "produce the entire base directory's contents" in {
-    withDirectoryStructure() { ds =>
-      ds.fileExamples().toList should contain theSameElementsAs (ds.allRelativizedPaths)
+      withDirectoryStructure() { ds =>
+        ds.fileExamples().toList should contain theSameElementsAs (ds.allRelativizedPaths)
+      }
     }
-  }
 
   "listing files with a prefix that matches none" should "produce an empty list" in {
     withDirectoryStructure(withCompletionPrefix = "z") { ds =>
@@ -57,7 +58,7 @@ class FileExamplesTest extends UnitSpec {
     }
   }
 
-  def withDirectoryStructure[A](withCompletionPrefix: String = "")(
+  def withDirectoryStructure(withCompletionPrefix: String = "")(
       thunk: DirectoryStructure => Assertion
   ): Assertion = {
     IO.withTemporaryDirectory { tempDir =>
@@ -69,12 +70,12 @@ class FileExamplesTest extends UnitSpec {
   }
 
   final class DirectoryStructure(withCompletionPrefix: String) {
-    var fileExamples: FileExamples = _
-    var baseDir: File = _
-    var childFiles: List[File] = _
-    var childDirectories: List[File] = _
-    var nestedFiles: List[File] = _
-    var nestedDirectories: List[File] = _
+    var fileExamples: FileExamples = scala.compiletime.uninitialized
+    var baseDir: File = scala.compiletime.uninitialized
+    var childFiles: List[File] = scala.compiletime.uninitialized
+    var childDirectories: List[File] = scala.compiletime.uninitialized
+    var nestedFiles: List[File] = scala.compiletime.uninitialized
+    var nestedDirectories: List[File] = scala.compiletime.uninitialized
 
     def allRelativizedPaths: List[String] =
       (childFiles ++ childDirectories ++ nestedFiles ++ nestedDirectories)
@@ -82,8 +83,8 @@ class FileExamplesTest extends UnitSpec {
 
     def prefixedPathsOnly: List[String] =
       allRelativizedPaths
-        .filter(_ startsWith withCompletionPrefix)
-        .map(_ substring withCompletionPrefix.length)
+        .withFilter(_.startsWith(withCompletionPrefix))
+        .map(_.substring(withCompletionPrefix.length))
 
     def createSampleDirStructure(tempDir: File): Unit = {
       childFiles = toChildFiles(tempDir, List("foo", "bar", "bazaar"))
@@ -91,8 +92,8 @@ class FileExamplesTest extends UnitSpec {
       nestedFiles = toChildFiles(childDirectories(1), List("farfile1", "barfile2"))
       nestedDirectories = toChildFiles(childDirectories(1), List("fardir1", "bardir2"))
 
-      (childDirectories ++ nestedDirectories).map(_.mkdirs())
-      (childFiles ++ nestedFiles).map(_.createNewFile())
+      (childDirectories ++ nestedDirectories).foreach(_.mkdirs())
+      (childFiles ++ nestedFiles).foreach(_.createNewFile())
 
       baseDir = tempDir
     }

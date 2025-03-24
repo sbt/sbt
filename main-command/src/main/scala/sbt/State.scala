@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -12,9 +13,9 @@ import java.net.{ URL, URLClassLoader }
 import java.util.concurrent.Callable
 
 import sbt.internal.classpath.ClassLoaderCache
-import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
+import sbt.internal.inc.classpath.{ ClassLoaderCache as IncClassLoaderCache }
 import sbt.internal.util.complete.{ HistoryCommands, Parser }
-import sbt.internal.util._
+import sbt.internal.util.*
 import sbt.util.Logger
 import BasicCommandStrings.{
   CompleteExec,
@@ -60,10 +61,13 @@ final case class State(
     }
 
   def source: Option[CommandSource] =
-    currentCommand match {
+    currentCommand match
       case Some(x) => x.source
       case _       => None
-    }
+  def isNetworkCommand: Boolean =
+    source match
+      case Some(s) => s.channelName.startsWith("network")
+      case _       => false
 }
 
 /**
@@ -99,19 +103,19 @@ trait Identity {
 trait StateOps extends Any {
   def process(f: (Exec, State) => State): State
 
-  /** Schedules `commands` to be run before any remaining commands.*/
+  /** Schedules `commands` to be run before any remaining commands. */
   def :::(newCommands: List[String]): State
 
-  /** Schedules `commands` to be run before any remaining commands.*/
+  /** Schedules `commands` to be run before any remaining commands. */
   def ++:(newCommands: List[Exec]): State
 
-  /** Schedules `command` to be run before any remaining commands.*/
+  /** Schedules `command` to be run before any remaining commands. */
   def ::(command: String): State
 
-  /** Schedules `command` to be run before any remaining commands.*/
+  /** Schedules `command` to be run before any remaining commands. */
   def +:(command: Exec): State
 
-  /** Sets the next command processing action to be to continue processing the next command.*/
+  /** Sets the next command processing action to be to continue processing the next command. */
   def continue: State
 
   /**
@@ -135,7 +139,7 @@ trait StateOps extends Any {
    */
   private[sbt] def reboot(full: Boolean, currentOnly: Boolean): State
 
-  /** Sets the next command processing action to do.*/
+  /** Sets the next command processing action to do. */
   def setNext(n: State.Next): State
 
   /**
@@ -145,16 +149,16 @@ trait StateOps extends Any {
    */
   def reload: State
 
-  /** Sets the next command processing action to be to rotate the global log and continue executing commands.*/
+  /** Sets the next command processing action to be to rotate the global log and continue executing commands. */
   def clearGlobalLog: State
 
-  /** Sets the next command processing action to be to keep the previous log and continue executing commands.  */
+  /** Sets the next command processing action to be to keep the previous log and continue executing commands. */
   def keepLastLog: State
 
-  /** Sets the next command processing action to be to exit with a zero exit code if `ok` is true and a nonzero exit code if `ok` if false.*/
+  /** Sets the next command processing action to be to exit with a zero exit code if `ok` is true and a nonzero exit code if `ok` if false. */
   def exit(ok: Boolean): State
 
-  /** Marks the currently executing command as failing.  This triggers failure handling by the command processor.  See also `State.onFailure`*/
+  /** Marks the currently executing command as failing.  This triggers failure handling by the command processor.  See also `State.onFailure` */
   def fail: State
 
   /**
@@ -171,46 +175,46 @@ trait StateOps extends Any {
   /** Registers `newCommand` as an available command. */
   def +(newCommand: Command): State
 
-  /** Gets the value associated with `key` from the custom attributes map.*/
+  /** Gets the value associated with `key` from the custom attributes map. */
   def get[T](key: AttributeKey[T]): Option[T]
 
-  /** Sets the value associated with `key` in the custom attributes map.*/
+  /** Sets the value associated with `key` in the custom attributes map. */
   def put[T](key: AttributeKey[T], value: T): State
 
-  /** Removes the `key` and any associated value from the custom attributes map.*/
-  def remove(key: AttributeKey[_]): State
+  /** Removes the `key` and any associated value from the custom attributes map. */
+  def remove(key: AttributeKey[?]): State
 
-  /** Sets the value associated with `key` in the custom attributes map by transforming the current value.*/
+  /** Sets the value associated with `key` in the custom attributes map by transforming the current value. */
   def update[T](key: AttributeKey[T])(f: Option[T] => T): State
 
-  /** Returns true if `key` exists in the custom attributes map, false if it does not exist.*/
-  def has(key: AttributeKey[_]): Boolean
+  /** Returns true if `key` exists in the custom attributes map, false if it does not exist. */
+  def has(key: AttributeKey[?]): Boolean
 
-  /** The application base directory, which is not necessarily the current working directory.*/
+  /** The application base directory, which is not necessarily the current working directory. */
   def baseDir: File
 
-  /** The Logger used for general command logging.*/
+  /** The Logger used for general command logging. */
   def log: Logger
 
-  /** Evaluates the provided expression with a JVM-wide and machine-wide lock on `file`.*/
+  /** Evaluates the provided expression with a JVM-wide and machine-wide lock on `file`. */
   def locked[T](file: File)(t: => T): T
 
-  /** Runs any defined exitHooks and then clears them.*/
+  /** Runs any defined exitHooks and then clears them. */
   def runExitHooks(): State
 
-  /** Registers a new exit hook, which will run when sbt exits or restarts.*/
+  /** Registers a new exit hook, which will run when sbt exits or restarts. */
   def addExitHook(f: => Unit): State
 
-  /** An advisory flag that is `true` if this application will execute commands based on user input.*/
+  /** An advisory flag that is `true` if this application will execute commands based on user input. */
   def interactive: Boolean
 
   /** Changes the advisory `interactive` flag. */
   def setInteractive(flag: Boolean): State
 
-  /** Get the class loader cache for the application.*/
+  /** Get the class loader cache for the application. */
   def classLoaderCache: IncClassLoaderCache
 
-  /** Create and register a class loader cache.  This should be called once at the application entry-point.*/
+  /** Create and register a class loader cache.  This should be called once at the application entry-point. */
   def initializeClassLoaderCache: State
 }
 
@@ -220,23 +224,23 @@ object State {
     override def getURLs: Array[URL] = cp.map(_.toURI.toURL).toArray
   }
 
-  /** Indicates where command execution should resume after a failure.*/
+  /** Indicates where command execution should resume after a failure. */
   val FailureWall = BasicCommandStrings.FailureWall
 
-  /** Represents the next action for the command processor.*/
+  /** Represents the next action for the command processor. */
   sealed trait Next
 
-  /** Indicates that the command processor should process the next command.*/
+  /** Indicates that the command processor should process the next command. */
   object Continue extends Next
 
-  /** Indicates that the application should exit with the given result.*/
+  /** Indicates that the application should exit with the given result. */
   final class Return(val result: xsbti.MainResult) extends Next
 
-  /** Indicates that global logging should be rotated.*/
-  final object ClearGlobalLog extends Next
+  /** Indicates that global logging should be rotated. */
+  object ClearGlobalLog extends Next
 
-  /** Indicates that the previous log file should be preserved instead of discarded.*/
-  final object KeepLastLog extends Next
+  /** Indicates that the previous log file should be preserved instead of discarded. */
+  object KeepLastLog extends Next
 
   /**
    * Provides a list of recently executed commands.  The commands are stored as processed instead of as entered by the user.
@@ -246,21 +250,21 @@ object State {
    */
   final class History private[State] (val executed: Seq[Exec], val maxSize: Int) {
 
-    /** Adds `command` as the most recently executed command.*/
+    /** Adds `command` as the most recently executed command. */
     def ::(command: Exec): History = {
       val prependTo =
         if (maxSize > 0 && executed.size >= maxSize) executed.take(maxSize - 1) else executed
       new History(command +: prependTo, maxSize)
     }
 
-    /** Changes the maximum number of commands kept, adjusting the current history if necessary.*/
+    /** Changes the maximum number of commands kept, adjusting the current history if necessary. */
     def setMaxSize(size: Int): History =
       new History(if (size <= 0) executed else executed.take(size), size)
     def currentOption: Option[Exec] = executed.headOption
     def previous: Option[Exec] = executed.drop(1).headOption
   }
 
-  /** Constructs an empty command History with a default, finite command limit.*/
+  /** Constructs an empty command History with a default, finite command limit. */
   def newHistory = new History(Vector.empty, HistoryCommands.MaxLines)
 
   def defaultReload(state: State): Reboot = {
@@ -358,11 +362,11 @@ object State {
     def clearGlobalLog = setNext(ClearGlobalLog)
     def keepLastLog = setNext(KeepLastLog)
     def exit(ok: Boolean) = runExitHooks().setNext(new Return(Exit(if (ok) 0 else 1)))
-    def get[T](key: AttributeKey[T]) = s.attributes get key
+    def get[T](key: AttributeKey[T]) = s.attributes.get(key)
     def put[T](key: AttributeKey[T], value: T) = s.copy(attributes = s.attributes.put(key, value))
     def update[T](key: AttributeKey[T])(f: Option[T] => T): State = put(key, f(get(key)))
-    def has(key: AttributeKey[_]) = s.attributes contains key
-    def remove(key: AttributeKey[_]) = s.copy(attributes = s.attributes remove key)
+    infix def has(key: AttributeKey[?]) = s.attributes.contains(key)
+    def remove(key: AttributeKey[?]) = s.copy(attributes = s.attributes.remove(key))
     def log = s.globalLogging.full
     def handleError(t: Throwable): State = handleException(t, s, log)
     def fail = {
@@ -372,7 +376,7 @@ object State {
       else
         applyOnFailure(s, remaining, s.copy(remainingCommands = remaining))
     }
-    private[this] def applyOnFailure(s: State, remaining: List[Exec], noHandler: => State): State =
+    private def applyOnFailure(s: State, remaining: List[Exec], noHandler: => State): State =
       s.onFailure match {
         case Some(c) => s.copy(remainingCommands = c +: remaining, onFailure = None)
         case None    => noHandler
@@ -385,21 +389,30 @@ object State {
       s.copy(exitHooks = Set.empty)
     }
     def locked[T](file: File)(t: => T): T =
-      s.configuration.provider.scalaProvider.launcher.globalLock.apply(file, new Callable[T] {
-        def call = t
-      })
+      s.configuration.provider.scalaProvider.launcher.globalLock.apply(
+        file,
+        new Callable[T] {
+          def call = t
+        }
+      )
 
     def interactive = getBoolean(s, BasicKeys.interactive, false)
     def setInteractive(i: Boolean) = s.put(BasicKeys.interactive, i)
 
     def classLoaderCache: IncClassLoaderCache =
-      s get BasicKeys.classLoaderCache getOrElse (throw new IllegalStateException(
-        "Tried to get classloader cache for uninitialized state."
-      ))
+      s.get(BasicKeys.classLoaderCache)
+        .getOrElse(
+          throw new IllegalStateException(
+            "Tried to get classloader cache for uninitialized state."
+          )
+        )
     private[sbt] def extendedClassLoaderCache: ClassLoaderCache =
-      s get BasicKeys.extendedClassLoaderCache getOrElse (throw new IllegalStateException(
-        "Tried to get extended classloader cache for uninitialized state."
-      ))
+      s.get(BasicKeys.extendedClassLoaderCache)
+        .getOrElse(
+          throw new IllegalStateException(
+            "Tried to get extended classloader cache for uninitialized state."
+          )
+        )
     def initializeClassLoaderCache: State = {
       s.get(BasicKeys.extendedClassLoaderCache).foreach(_.close())
       val cache = newClassLoaderCache
@@ -421,7 +434,7 @@ object State {
                           .sameElements(rest.map(_.toURI.toURL)) =>
                       cache.cachedCustomClassloader(
                         jars.toList,
-                        () => new UncloseableURLLoader(jars, fullScalaLoader)
+                        () => new UncloseableURLLoader(jars.toSeq, fullScalaLoader)
                       )
                       ()
                     case _ =>
@@ -433,13 +446,13 @@ object State {
       s.put(BasicKeys.extendedClassLoaderCache, cache)
         .put(BasicKeys.classLoaderCache, new IncClassLoaderCache(cache))
     }
-    private[this] def newClassLoaderCache =
+    private def newClassLoaderCache =
       new ClassLoaderCache(s.configuration.provider.scalaProvider)
   }
 
-  import ExceptionCategory._
+  import ExceptionCategory.*
 
-  private[this] def handleException(t: Throwable, s: State, log: Logger): State = {
+  private def handleException(t: Throwable, s: State, log: Logger): State = {
     ExceptionCategory(t) match {
       case AlreadyHandled => ()
       case m: MessageOnly => log.error(m.message)
@@ -450,7 +463,7 @@ object State {
   private[sbt] def logFullException(e: Throwable, log: Logger): Unit = {
     e.printStackTrace(System.err)
     log.trace(e)
-    log.error(ErrorHandling reducedToString e)
+    log.error(ErrorHandling.reducedToString(e))
     log.error("Use 'last' for the full log.")
   }
   private[sbt] def getBoolean(s: State, key: AttributeKey[Boolean], default: Boolean): Boolean =

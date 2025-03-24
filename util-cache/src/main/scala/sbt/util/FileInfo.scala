@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,10 +12,9 @@ import java.io.File
 
 import scala.util.control.NonFatal
 import sbt.io.{ Hash, IO }
-import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
-import CacheImplicits.{ arrayFormat => _, _ }
-import sbt.nio.file._
-import sbt.nio.file.syntax._
+import sjsonnew.{ arrayFormat as _, * }
+import sbt.nio.file.*
+import sbt.nio.file.syntax.*
 
 sealed trait FileInfo { def file: File }
 sealed trait HashFileInfo extends FileInfo {
@@ -28,24 +28,22 @@ sealed trait PlainFileInfo extends FileInfo { def exists: Boolean }
 sealed trait HashModifiedFileInfo extends HashFileInfo with ModifiedFileInfo
 
 object HashFileInfo {
-  implicit val format: JsonFormat[HashFileInfo] = FileInfo.hash.format
+  given format: JsonFormat[HashFileInfo] = FileInfo.hash.format
 }
 object ModifiedFileInfo {
-  implicit val format: JsonFormat[ModifiedFileInfo] = FileInfo.lastModified.format
+  given format: JsonFormat[ModifiedFileInfo] = FileInfo.lastModified.format
 }
 object PlainFileInfo {
-  implicit val format: JsonFormat[PlainFileInfo] = FileInfo.exists.format
+  given format: JsonFormat[PlainFileInfo] = FileInfo.exists.format
 }
 object HashModifiedFileInfo {
-  implicit val format: JsonFormat[HashModifiedFileInfo] = FileInfo.full.format
+  given format: JsonFormat[HashModifiedFileInfo] = FileInfo.full.format
 }
 
 private final case class PlainFile(file: File, exists: Boolean) extends PlainFileInfo
+
 private final case class FileModified(file: File, lastModified: Long) extends ModifiedFileInfo
-@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
-private final case class FileHash(file: File, override val hash: List[Byte]) extends HashFileInfo {
-  override val hashArray: Array[Byte] = hash.toArray
-}
+
 private final case class FileHashArrayRepr(file: File, override val hashArray: Array[Byte])
     extends HashFileInfo {
   override def hashCode(): Int = (file, java.util.Arrays.hashCode(hashArray)).hashCode()
@@ -55,25 +53,18 @@ private final case class FileHashArrayRepr(file: File, override val hashArray: A
     case _ => false
   }
 }
-@deprecated("Kept for plugin compat, but will be removed in sbt 2.0", "1.3.0")
-private final case class FileHashModified(
-    file: File,
-    override val hash: List[Byte],
-    lastModified: Long
-) extends HashModifiedFileInfo {
-  override val hashArray: Array[Byte] = hash.toArray
-}
+
 private final case class FileHashModifiedArrayRepr(
     file: File,
     override val hashArray: Array[Byte],
     lastModified: Long
 ) extends HashModifiedFileInfo
 
-final case class FilesInfo[F <: FileInfo] private (files: Set[F])
+final case class FilesInfo[F <: FileInfo] private[sbt] (files: Set[F])
 object FilesInfo {
   def empty[F <: FileInfo]: FilesInfo[F] = FilesInfo(Set.empty[F])
 
-  implicit def format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
+  given format[F <: FileInfo: JsonFormat]: JsonFormat[FilesInfo[F]] =
     projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
   def full: FileInfo.Style = FileInfo.full
@@ -88,7 +79,7 @@ object FileInfo {
    * Stores byte arrays as hex encoded strings, but falls back to reading an array of integers,
    * which is how it used to be stored, if that fails.
    */
-  implicit val byteArrayFormat: JsonFormat[Array[Byte]] = new JsonFormat[Array[Byte]] {
+  given byteArrayFormat: JsonFormat[Array[Byte]] = new JsonFormat[Array[Byte]] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Array[Byte] = {
       jsOpt match {
         case Some(js) =>
@@ -110,8 +101,8 @@ object FileInfo {
   sealed trait Style {
     type F <: FileInfo
 
-    implicit def format: JsonFormat[F]
-    implicit def formats: JsonFormat[FilesInfo[F]] =
+    given format: JsonFormat[F]
+    given formats: JsonFormat[FilesInfo[F]] =
       projectFormat(_.files, (fs: Set[F]) => FilesInfo(fs))
 
     def apply(file: File): F
@@ -124,10 +115,10 @@ object FileInfo {
   object full extends Style {
     type F = HashModifiedFileInfo
 
-    implicit val format: JsonFormat[HashModifiedFileInfo] = new JsonFormat[HashModifiedFileInfo] {
+    given format: JsonFormat[HashModifiedFileInfo] = new JsonFormat[HashModifiedFileInfo] {
       def write[J](obj: HashModifiedFileInfo, builder: Builder[J]) = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("hash", obj.hashArray)
         builder.addField("lastModified", obj.lastModified)
         builder.endObject()
@@ -136,11 +127,11 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val hash = unbuilder.readField[Array[Byte]]("hash")
           val lastModified = unbuilder.readField[Long]("lastModified")
           unbuilder.endObject()
-          FileHashModifiedArrayRepr(file, hash, lastModified)
+          FileHashModifiedArrayRepr(new File(file), hash, lastModified)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
@@ -154,10 +145,10 @@ object FileInfo {
   object hash extends Style {
     type F = HashFileInfo
 
-    implicit val format: JsonFormat[HashFileInfo] = new JsonFormat[HashFileInfo] {
+    given format: JsonFormat[HashFileInfo] = new JsonFormat[HashFileInfo] {
       def write[J](obj: HashFileInfo, builder: Builder[J]) = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("hash", obj.hashArray)
         builder.endObject()
       }
@@ -165,10 +156,10 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val hash = unbuilder.readField[Array[Byte]]("hash")
           unbuilder.endObject()
-          FileHashArrayRepr(file, hash)
+          FileHashArrayRepr(new File(file), hash)
         case None => deserializationError("Expected JsObject but found None")
       }
     }
@@ -186,23 +177,23 @@ object FileInfo {
   object lastModified extends Style {
     type F = ModifiedFileInfo
 
-    implicit val format: JsonFormat[ModifiedFileInfo] = new JsonFormat[ModifiedFileInfo] {
+    given format: JsonFormat[ModifiedFileInfo] = new JsonFormat[ModifiedFileInfo] {
       override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ModifiedFileInfo =
         jsOpt match {
           case Some(js) =>
             unbuilder.beginObject(js)
-            val file = unbuilder.readField[File]("file")
-            val lastModified = unbuilder.readField[Long]("lastModified")
+            val file = unbuilder.readField[String]("file")
+            val lastModified = unbuilder.readField[String]("lastModified").toLong
             unbuilder.endObject()
-            FileModified(file, lastModified)
+            FileModified(new File(file), lastModified)
           case None =>
             deserializationError("Expected JsObject but found None")
         }
 
       override def write[J](obj: ModifiedFileInfo, builder: Builder[J]): Unit = {
         builder.beginObject()
-        builder.addField("file", obj.file)
-        builder.addField("lastModified", obj.lastModified)
+        builder.addField[String]("file", obj.file.toString)
+        builder.addField[String]("lastModified", obj.lastModified.toString)
         builder.endObject()
       }
     }
@@ -213,13 +204,15 @@ object FileInfo {
       FileModified(file.getAbsoluteFile, lastModified)
 
     /**
-     * Returns an instance of [[FileModified]] where, for any directory, the maximum last
-     * modified time taken from its contents is used rather than the last modified time of the
-     * directory itself. The specific motivation was to prevent the doc task from re-running when
-     * the modified time changed for a directory classpath but none of the classfiles had changed.
+     * Returns an instance of [[FileModified]] where, for any directory, the maximum last modified
+     * time taken from its contents is used rather than the last modified time of the directory
+     * itself. The specific motivation was to prevent the doc task from re-running when the modified
+     * time changed for a directory classpath but none of the classfiles had changed.
      *
-     * @param file the file or directory
-     * @return the [[FileModified]]
+     * @param file
+     *   the file or directory
+     * @return
+     *   the [[FileModified]]
      */
     private[sbt] def fileOrDirectoryMax(file: File): ModifiedFileInfo = {
       val maxLastModified =
@@ -236,10 +229,10 @@ object FileInfo {
   object exists extends Style {
     type F = PlainFileInfo
 
-    implicit val format: JsonFormat[PlainFileInfo] = new JsonFormat[PlainFileInfo] {
+    given format: JsonFormat[PlainFileInfo] = new JsonFormat[PlainFileInfo] {
       def write[J](obj: PlainFileInfo, builder: Builder[J]): Unit = {
         builder.beginObject()
-        builder.addField("file", obj.file)
+        builder.addField("file", obj.file.toString)
         builder.addField("exists", obj.exists)
         builder.endObject()
       }
@@ -247,10 +240,10 @@ object FileInfo {
       def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]) = jsOpt match {
         case Some(js) =>
           unbuilder.beginObject(js)
-          val file = unbuilder.readField[File]("file")
+          val file = unbuilder.readField[String]("file")
           val exists = unbuilder.readField[Boolean]("exists")
           unbuilder.endObject()
-          PlainFile(file, exists)
+          PlainFile(new File(file), exists)
         case None => deserializationError("Expected JsObject but found None")
       }
     }

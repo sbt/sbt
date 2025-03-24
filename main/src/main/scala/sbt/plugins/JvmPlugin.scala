@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -30,13 +31,13 @@ object JvmPlugin extends AutoPlugin {
   override def requires = IvyPlugin
   override def trigger = allRequirements
 
-  override lazy val globalSettings: Seq[Setting[_]] =
+  override lazy val globalSettings: Seq[Setting[?]] =
     Defaults.globalJvmCore
 
-  override lazy val buildSettings: Seq[Setting[_]] =
+  override lazy val buildSettings: Seq[Setting[?]] =
     Defaults.buildLevelJvmSettings
 
-  override lazy val projectSettings: Seq[Setting[_]] =
+  override lazy val projectSettings: Seq[Setting[?]] =
     Defaults.runnerSettings ++
       Defaults.paths ++
       Classpaths.jvmPublishSettings ++

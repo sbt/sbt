@@ -9,9 +9,9 @@ private[sbt] object InheritInput {
     case _ => false
   }
 
-  private[this] val pbClass = Class.forName("java.lang.ProcessBuilder")
-  private[this] val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
+  private val pbClass = Class.forName("java.lang.ProcessBuilder")
+  private val redirectClass = pbClass.getClasses find (_.getSimpleName == "Redirect")
 
-  private[this] val redirectInput = redirectClass map (pbClass.getMethod("redirectInput", _))
-  private[this] val inherit = redirectClass map (_ getField "INHERIT" get null)
+  private val redirectInput = redirectClass map (pbClass.getMethod("redirectInput", _))
+  private val inherit = redirectClass map (_ getField "INHERIT" get null)
 }

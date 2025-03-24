@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class StartTestGroupEvent private (
   override def toString: String = {
     "StartTestGroupEvent(" + name + ")"
   }
-  private[this] def copy(name: String = name): StartTestGroupEvent = {
+  private def copy(name: String = name): StartTestGroupEvent = {
     new StartTestGroupEvent(name)
   }
   def withName(name: String): StartTestGroupEvent = {

@@ -2,7 +2,7 @@ val newContents = "bbbbbbbbb"
 
 val rootContentFile = "root.txt"
 
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.13.12"
 
 lazy val root = (project in file("."))
   .settings(
@@ -12,6 +12,9 @@ lazy val root = (project in file("."))
     },
     TaskKey[Unit]("check") := {
       val packageHtml = (Compile / doc / target).value / "index.html"
-      assert(IO.read(packageHtml).contains(newContents), s"does not contains ${newContents} in ${packageHtml}" )
+      assert(
+        IO.read(packageHtml).contains(newContents),
+        s"does not contains ${newContents} in ${packageHtml}"
+      )
     }
   )

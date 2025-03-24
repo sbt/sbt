@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -21,12 +22,12 @@ import scala.util.{ Failure, Success, Try }
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.util.Logger
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
-import sbt.internal.protocol.codec._
+import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
-import org.scalasbt.ipcsocket._
+import org.scalasbt.ipcsocket.*
 import sbt.internal.bsp.BuildServerConnection
 import xsbti.AppConfiguration
 
@@ -49,13 +50,13 @@ private[sbt] object Server {
       log: Logger
   ): ServerInstance =
     new ServerInstance { self =>
-      import connection._
+      import connection.*
       val running = new AtomicBoolean(false)
       val p: Promise[Unit] = Promise[Unit]()
       val ready: Future[Unit] = p.future
-      private[this] val rand = new SecureRandom
-      private[this] var token: String = nextToken
-      private[this] val serverSocketHolder = new AtomicReference[ServerSocket]
+      private val rand = new SecureRandom
+      private var token: String = nextToken
+      private val serverSocketHolder = new AtomicReference[ServerSocket]
 
       val serverThread = new Thread("sbt-socket-server") {
         override def run(): Unit = {
@@ -114,7 +115,7 @@ private[sbt] object Server {
                 } catch {
                   case e: IOException if e.getMessage.contains("connect") =>
                   case _: SocketTimeoutException                          => // its ok
-                  case _: SocketException if !running.get                 => // the server is shutting down
+                  case _: SocketException if !running.get => // the server is shutting down
                 }
               }
               serverSocketHolder.get match {
@@ -153,7 +154,7 @@ private[sbt] object Server {
       }
 
       /** Generates 128-bit non-negative integer, and represent it as decimal string. */
-      private[this] def nextToken: String = {
+      private def nextToken: String = {
         new BigInteger(128, rand).toString
       }
 
@@ -172,8 +173,8 @@ private[sbt] object Server {
         }
       }
 
-      private[this] def writeTokenfile(): Unit = {
-        import JsonProtocol._
+      private def writeTokenfile(): Unit = {
+        import JsonProtocol.*
 
         val uri = connection.shortName
         val t = TokenFile(uri, token)
@@ -187,12 +188,12 @@ private[sbt] object Server {
         IO.write(tokenfile, CompactPrinter(jsonToken), IO.utf8, true)
       }
 
-      /** Set the persmission of the file such that the only the owner can read/write it. */
-      private[this] def ownerOnly(file: File): Unit = {
+      /** Set the permission of the file such that the only the owner can read/write it. */
+      private def ownerOnly(file: File): Unit = {
         def acl(owner: UserPrincipal) = {
           val builder = AclEntry.newBuilder
           builder.setPrincipal(owner)
-          builder.setPermissions(AclEntryPermission.values(): _*)
+          builder.setPermissions(AclEntryPermission.values()*)
           builder.setType(AclEntryType.ALLOW)
           builder.build
         }
@@ -207,8 +208,8 @@ private[sbt] object Server {
       }
 
       // This file exists through the lifetime of the server.
-      private[this] def writePortfile(): Unit = {
-        import JsonProtocol._
+      private def writePortfile(): Unit = {
+        import JsonProtocol.*
 
         val uri = connection.shortName
         val p =

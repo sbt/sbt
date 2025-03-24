@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class TerminalPropertiesResponse private (
   override def toString: String = {
     "TerminalPropertiesResponse(" + width + ", " + height + ", " + isAnsiSupported + ", " + isColorEnabled + ", " + isSupershellEnabled + ", " + isEchoEnabled + ")"
   }
-  private[this] def copy(width: Int = width, height: Int = height, isAnsiSupported: Boolean = isAnsiSupported, isColorEnabled: Boolean = isColorEnabled, isSupershellEnabled: Boolean = isSupershellEnabled, isEchoEnabled: Boolean = isEchoEnabled): TerminalPropertiesResponse = {
+  private def copy(width: Int = width, height: Int = height, isAnsiSupported: Boolean = isAnsiSupported, isColorEnabled: Boolean = isColorEnabled, isSupershellEnabled: Boolean = isSupershellEnabled, isEchoEnabled: Boolean = isEchoEnabled): TerminalPropertiesResponse = {
     new TerminalPropertiesResponse(width, height, isAnsiSupported, isColorEnabled, isSupershellEnabled, isEchoEnabled)
   }
   def withWidth(width: Int): TerminalPropertiesResponse = {

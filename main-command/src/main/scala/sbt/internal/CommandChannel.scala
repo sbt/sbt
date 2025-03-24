@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,7 +17,7 @@ import sbt.internal.util.Terminal
 import sbt.protocol.EventMessage
 import sbt.util.Level
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * A command channel represents an IO device such as network socket or human
@@ -62,6 +63,8 @@ abstract class CommandChannel {
       }
     }
   }
+  protected def appendExec(commandLine: String, execId: Option[String]): Boolean =
+    append(Exec(commandLine, execId.orElse(Some(Exec.newExecId)), Some(CommandSource(name))))
   def poll: Option[Exec] = Option(commandQueue.poll)
 
   def prompt(e: ConsolePromptEvent): Unit = userThread.onConsolePromptEvent(e)
@@ -75,31 +78,36 @@ abstract class CommandChannel {
   @deprecated("Use the variant that takes the logShutdown parameter", "1.4.0")
   def shutdown(): Unit = shutdown(true)
   def name: String
-  private[this] val level = new AtomicReference[Level.Value](Level.Info)
+  private val level = new AtomicReference[Level.Value](Level.Info)
   private[sbt] final def setLevel(l: Level.Value): Unit = level.set(l)
   private[sbt] final def logLevel: Level.Value = level.get
-  private[this] def setLevel(value: Level.Value, cmd: String): Boolean = {
+  private def setLevel(value: Level.Value, cmd: String): Boolean = {
     level.set(value)
-    append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
+    appendExec(cmd, None)
   }
-  private[sbt] def onCommand: String => Boolean = {
-    case "error" => setLevel(Level.Error, "error")
-    case "debug" => setLevel(Level.Debug, "debug")
-    case "info"  => setLevel(Level.Info, "info")
-    case "warn"  => setLevel(Level.Warn, "warn")
-    case cmd =>
-      if (cmd.nonEmpty) append(Exec(cmd, Some(Exec.newExecId), Some(CommandSource(name))))
-      else false
-  }
-  private[sbt] def onFastTrackTask: String => Boolean = { s: String =>
+  private[sbt] def onCommandLine(cmd: String): Boolean =
+    cmd match {
+      case "error" => setLevel(Level.Error, "error")
+      case "debug" => setLevel(Level.Debug, "debug")
+      case "info"  => setLevel(Level.Info, "info")
+      case "warn"  => setLevel(Level.Warn, "warn")
+      case cmd =>
+        if (cmd.nonEmpty) appendExec(cmd, None)
+        else false
+    }
+  private[sbt] def onFastTrackTask(cmd: String): Boolean = {
     fastTrack.synchronized(fastTrack.forEach { q =>
-      q.add(new FastTrackTask(this, s))
+      q.add(new FastTrackTask(this, cmd))
       ()
     })
     true
   }
 
   private[sbt] def terminal: Terminal
+  private[sbt] var _active: Boolean = true
+  private[sbt] def pause(): Unit = _active = false
+  private[sbt] def isPaused: Boolean = !_active
+  private[sbt] def resume(): Unit = _active = true
 }
 
 // case class Exec(commandLine: String, source: Option[CommandSource])

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,7 +19,7 @@ final class ScalacOptionsResult private (
   override def toString: String = {
     "ScalacOptionsResult(" + items + ")"
   }
-  private[this] def copy(items: Vector[sbt.internal.bsp.ScalacOptionsItem] = items): ScalacOptionsResult = {
+  private def copy(items: Vector[sbt.internal.bsp.ScalacOptionsItem] = items): ScalacOptionsResult = {
     new ScalacOptionsResult(items)
   }
   def withItems(items: Vector[sbt.internal.bsp.ScalacOptionsItem]): ScalacOptionsResult = {

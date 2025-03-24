@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,8 +12,8 @@ import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 trait JsonRpcNotificationMessageFormats {
-  self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcNotificationMessageFormat
+  self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
+  given JsonRpcNotificationMessageFormat
       : JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcNotificationMessage] {
       override def read[J](
@@ -24,8 +25,8 @@ trait JsonRpcNotificationMessageFormats {
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
             val method = unbuilder.readField[String]("method")
-            val params = unbuilder.lookupField("params") map {
-              case x: JValue => x
+            val params = unbuilder.lookupField("params") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcNotificationMessage(jsonrpc, method, params)

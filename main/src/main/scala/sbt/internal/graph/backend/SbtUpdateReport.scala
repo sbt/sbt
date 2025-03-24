@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -11,7 +12,7 @@ package graph
 package backend
 
 import scala.language.implicitConversions
-import scala.language.reflectiveCalls
+import scala.reflect.Selectable.reflectiveSelectable
 import sbt.librarymanagement.{ ModuleID, ModuleReport, ConfigurationReport }
 
 object SbtUpdateReport {

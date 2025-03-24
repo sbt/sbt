@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -23,7 +23,7 @@ final class TerminalAttributesResponse private (
   override def toString: String = {
     "TerminalAttributesResponse(" + iflag + ", " + oflag + ", " + cflag + ", " + lflag + ", " + cchars + ")"
   }
-  private[this] def copy(iflag: String = iflag, oflag: String = oflag, cflag: String = cflag, lflag: String = lflag, cchars: String = cchars): TerminalAttributesResponse = {
+  private def copy(iflag: String = iflag, oflag: String = oflag, cflag: String = cflag, lflag: String = lflag, cchars: String = cchars): TerminalAttributesResponse = {
     new TerminalAttributesResponse(iflag, oflag, cflag, lflag, cchars)
   }
   def withIflag(iflag: String): TerminalAttributesResponse = {

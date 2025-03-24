@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.20"
 
 val paradiseVersion = "2.1.1"
 val commonSettings = Seq(
@@ -6,28 +6,28 @@ val commonSettings = Seq(
   scalacOptions ++= Seq(""),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   resolvers += Resolver.sonatypeRepo("releases"),
-  addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
+  addCompilerPlugin(("org.scalamacros" % "paradise" % paradiseVersion).cross(CrossVersion.full)),
 )
 
-lazy val root = (project in file(".")).
-  aggregate(macros, core).
-  settings(
+lazy val root = (project in file("."))
+  .aggregate(macros, core)
+  .settings(
     commonSettings,
-    run := (run in Compile in core).evaluated
+    run := (core / Compile / run).evaluated,
   )
 
-lazy val macros = (project in file("macros")).
-  settings(
+lazy val macros = (project in file("macros"))
+  .settings(
     commonSettings,
     libraryDependencies += (scalaVersion)("org.scala-lang" % "scala-reflect" % _).value,
     libraryDependencies ++= (
       if (scalaVersion.value.startsWith("2.10")) List("org.scalamacros" %% "quasiquotes" % paradiseVersion)
       else Nil
-    )
+    ),
   )
 
-lazy val core = (project in file("core")).
-  dependsOn(macros).
-  settings(
-    commonSettings
+lazy val core = (project in file("core"))
+  .dependsOn(macros)
+  .settings(
+    commonSettings,
   )

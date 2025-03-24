@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -16,8 +17,8 @@ object EscHelpers {
   final val ESC = '\u001B'
 
   /**
-   * An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value 126).
-   * It is the final character in an escape sequence.
+   * An escape terminator is a character in the range `@` (decimal value 64) to `~` (decimal value
+   * 126). It is the final character in an escape sequence.
    *
    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
    */
@@ -29,10 +30,11 @@ object EscHelpers {
    *
    * see: http://en.wikipedia.org/wiki/ANSI_escape_code
    *
-   * The CSI (control sequence instruction) codes start with ESC + '['.   This is for testing the second character.
+   * The CSI (control sequence instruction) codes start with ESC + '['. This is for testing the
+   * second character.
    *
-   * There is an additional CSI (one character) that we could test for, but is not frequnetly used, and we don't
-   * check for it.
+   * There is an additional CSI (one character) that we could test for, but is not frequently used,
+   * and we don't check for it.
    *
    * cf. http://en.wikipedia.org/wiki/ANSI_escape_code#CSI_codes
    */
@@ -55,20 +57,20 @@ object EscHelpers {
     s.indexOf(ESC) >= 0
 
   /**
-   * Returns the string `s` with escape sequences removed.
-   * An escape sequence starts with the ESC character (decimal value 27) and ends with an escape terminator.
-   * @see isEscapeTerminator
+   * Returns the string `s` with escape sequences removed. An escape sequence starts with the ESC
+   * character (decimal value 27) and ends with an escape terminator.
+   * @see
+   *   isEscapeTerminator
    */
   def removeEscapeSequences(s: String): String =
-    if (s.isEmpty || !hasEscapeSequence(s))
-      s
+    if (s.isEmpty || !hasEscapeSequence(s)) s
     else {
       val sb = new java.lang.StringBuilder
       nextESC(s, 0, sb)
       sb.toString
     }
 
-  private[this] def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
+  private def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
     val escIndex = s.indexOf(ESC, start)
     if (escIndex < 0) {
       sb.append(s, start, s.length)
@@ -87,8 +89,8 @@ object EscHelpers {
       nextESC(s, next, sb)
     }
   }
-  private[this] val esc = 1
-  private[this] val csi = 2
+  private val esc = 1
+  private val csi = 2
   def cursorPosition(s: String): Int = {
     val bytes = s.getBytes
     var i = 0
@@ -130,16 +132,18 @@ object EscHelpers {
   /**
    * Strips ansi escape and color codes from an input string.
    *
-   * @param bytes the input bytes
-   * @param stripAnsi toggles whether or not to remove general ansi escape codes
-   * @param stripColor toggles whether or not to remove ansi color codes
-   * @return a string with the escape and color codes removed depending on the input
-   * parameter along with the length of the output string (which may be smaller than
-   * the returned array)
+   * @param bytes
+   *   the input bytes
+   * @param stripAnsi
+   *   toggles whether or not to remove general ansi escape codes
+   * @param stripColor
+   *   toggles whether or not to remove ansi color codes
+   * @return
+   *   a string with the escape and color codes removed depending on the input parameter along with
+   *   the length of the output string (which may be smaller than the returned array)
    */
   def strip(bytes: Array[Byte], stripAnsi: Boolean, stripColor: Boolean): (Array[Byte], Int) = {
     val res = Array.fill[Byte](bytes.length)(0)
-    var i = 0
     var index = 0
     var state = 0
     var limit = 0
@@ -186,20 +190,21 @@ object EscHelpers {
   }
 
   /**
-   * Removes the ansi escape sequences from a string and makes a best attempt at
-   * calculating any ansi moves by hand. For example, if the string contains
-   * a backspace character followed by a character, the output string would
-   * replace the character preceding the backspaces with the character proceding it.
-   * This is in contrast to `strip` which just removes all ansi codes entirely.
+   * Removes the ansi escape sequences from a string and makes a best attempt at calculating any
+   * ansi moves by hand. For example, if the string contains a backspace character followed by a
+   * character, the output string would replace the character preceding the backspaces with the
+   * character preceding it. This is in contrast to `strip` which just removes all ansi codes
+   * entirely.
    *
-   * @param s the input string
-   * @return a string containing the original characters of the input stream with
-   * the ansi escape codes removed.
+   * @param s
+   *   the input string
+   * @return
+   *   a string containing the original characters of the input stream with the ansi escape codes
+   *   removed.
    */
   def stripColorsAndMoves(s: String): String = {
     val bytes = s.getBytes
     val res = Array.fill[Byte](bytes.length)(0)
-    var i = 0
     var index = 0
     var state = 0
     var limit = 0
@@ -239,8 +244,11 @@ object EscHelpers {
     new String(res, 0, limit)
   }
 
-  /** Skips the escape sequence starting at `i-1`.  `i` should be positioned at the character after the ESC that starts the sequence. */
-  private[this] def skipESC(s: String, i: Int): Int = {
+  /**
+   * Skips the escape sequence starting at `i-1`. `i` should be positioned at the character after
+   * the ESC that starts the sequence.
+   */
+  private def skipESC(s: String, i: Int): Int = {
     if (i >= s.length) {
       i
     } else if (isEscapeTerminator(s.charAt(i))) {

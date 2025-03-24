@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -9,8 +10,8 @@ package sbt
 
 import java.io.File
 import scala.util.control.NonFatal
-import testing.{ Task => TestTask, _ }
-import org.scalatools.testing.{ Framework => OldFramework }
+import testing.{ Task as TestTask, * }
+import org.scalatools.testing.{ Framework as OldFramework }
 import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader }
 import sbt.internal.inc.ScalaInstance
 import scala.annotation.tailrec
@@ -27,6 +28,12 @@ object TestFrameworks {
     TestFramework("org.specs2.runner.Specs2Framework", "org.specs2.runner.SpecsFramework")
   val JUnit = TestFramework("com.novocode.junit.JUnitFramework")
   val MUnit = TestFramework("munit.Framework")
+  val ZIOTest = TestFramework("zio.test.sbt.ZTestFramework")
+  val WeaverTestCats = TestFramework("weaver.framework.CatsEffect")
+  val Hedgehog = TestFramework("hedgehog.sbt.Framework")
+
+  val All: Seq[TestFramework] =
+    Seq(ScalaCheck, Specs2, Specs, ScalaTest, JUnit, MUnit, ZIOTest, WeaverTestCats, Hedgehog)
 }
 
 final class TestFramework(val implClassNames: String*) extends Serializable {
@@ -49,12 +56,14 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
   ): Option[Framework] = {
     def logError(e: Throwable): Option[Framework] = {
       log.error(
-        s"Error loading test framework ($e). This usually means that you are"
-          + " using a layered class loader that cannot reach the sbt.testing.Framework class."
-          + " The most likely cause is that your project has a runtime dependency on your"
-          + " test framework, e.g. scalatest. To fix this, you can try to set\n"
-          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary\nor\n"
-          + "Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat"
+        s"""Error loading test framework ($e).
+           |This often means that you are using a layered class loader that cannot reach the sbt.testing.Framework class.
+           |The most likely cause is that your project has a runtime dependency on your
+           |test framework, e.g. ScalaTest. To fix this, you can try to set
+           |
+           |    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+           |or
+           |    Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat""".stripMargin
       )
       None
     }
@@ -66,8 +75,12 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
             case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
           })
         } catch {
-          case e: NoClassDefFoundError => logError(e)
-          case e: MatchError           => logError(e)
+          case e: NoClassDefFoundError =>
+            logError(e)
+            throw e
+          case e: MatchError =>
+            logError(e)
+            throw e
           case _: ClassNotFoundException =>
             log.debug("Framework implementation '" + head + "' not present.")
             createFramework(loader, log, tail)
@@ -80,6 +93,7 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
   def create(loader: ClassLoader, log: ManagedLogger): Option[Framework] =
     createFramework(loader, log, implClassNames.toList)
 }
+
 final class TestDefinition(
     val name: String,
     val fingerprint: Fingerprint,
@@ -95,7 +109,7 @@ final class TestDefinition(
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(
+private[sbt] final class TestRunner(
     delegate: Runner,
     listeners: Vector[TestReportListener],
     log: ManagedLogger
@@ -167,19 +181,18 @@ final class TestRunner(
 }
 
 object TestFramework {
-  def apply(implClassNames: String*): TestFramework = new TestFramework(implClassNames: _*)
+  def apply(implClassNames: String*): TestFramework = new TestFramework(implClassNames*)
 
   def getFingerprints(framework: Framework): Seq[Fingerprint] =
     framework.getClass.getMethod("fingerprints").invoke(framework) match {
       case fingerprints: Array[Fingerprint] => fingerprints.toList
-      case _                                => sys.error("Could not call 'fingerprints' on framework " + framework)
+      case _ => sys.error("Could not call 'fingerprints' on framework " + framework)
     }
 
   private[sbt] def safeForeach[T](it: Iterable[T], log: ManagedLogger)(f: T => Unit): Unit =
-    it.foreach(
-      i =>
-        try f(i)
-        catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
+    it.foreach(i =>
+      try f(i)
+      catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
     )
 
   private[sbt] def hashCode(f: Fingerprint): Int = f match {
@@ -202,7 +215,7 @@ object TestFramework {
       case _                        => f.toString
     }
 
-  def testTasks(
+  private[sbt] def testTasks(
       frameworks: Map[TestFramework, Framework],
       runners: Map[TestFramework, Runner],
       testLoader: ClassLoader,
@@ -214,33 +227,45 @@ object TestFramework {
     if (mappedTests.isEmpty)
       (() => (), Vector(), _ => () => ())
     else
-      createTestTasks(testLoader, runners.map {
-        case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))
-      }, mappedTests, tests, log, listeners)
+      createTestTasks(
+        testLoader,
+        runners.map { (tf, r) =>
+          (frameworks(tf), new TestRunner(r, listeners, log))
+        },
+        mappedTests,
+        tests,
+        log,
+        listeners
+      )
   }
 
-  private[this] def order(
+  private def order(
       mapped: Map[String, TestFunction],
       inputs: Vector[TestDefinition]
   ): Vector[(String, TestFunction)] =
     for (d <- inputs; act <- mapped.get(d.name)) yield (d.name, act)
 
-  private[this] def testMap(
+  def testMap(
       frameworks: Seq[Framework],
       tests: Seq[TestDefinition]
   ): Map[Framework, Set[TestDefinition]] = {
     import scala.collection.mutable.{ HashMap, HashSet, Set }
     val map = new HashMap[Framework, Set[TestDefinition]]
+
     def assignTest(test: TestDefinition): Unit = {
       def isTestForFramework(framework: Framework) = getFingerprints(framework).exists { t =>
         matches(t, test.fingerprint)
       }
-      for (framework <- frameworks.find(isTestForFramework))
+
+      frameworks.find(isTestForFramework).foreach { framework =>
         map.getOrElseUpdate(framework, new HashSet[TestDefinition]) += test
+      }
     }
+
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
-    map.toMap.mapValues(_.toSet).toMap
+
+    map.view.mapValues(_.toSet).toMap
   }
 
   private def createTestTasks(
@@ -256,22 +281,21 @@ object TestFramework {
     def foreachListenerSafe(f: TestsListener => Unit): () => Unit =
       () => safeForeach(testsListeners, log)(f)
 
-    val startTask = foreachListenerSafe(_.doInit)
+    val startTask = foreachListenerSafe(_.doInit())
     val testTasks =
-      Map(tests.toSeq.flatMap {
-        case (framework, testDefinitions) =>
-          val runner = runners(framework)
-          val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
-          for (testTask <- testTasks) yield {
-            val taskDef = testTask.taskDef
-            (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
-          }
-      }: _*)
+      Map(tests.toSeq.flatMap { (framework, testDefinitions) =>
+        val runner = runners(framework)
+        val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
+        for (testTask <- testTasks) yield {
+          val taskDef = testTask.taskDef
+          (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
+        }
+      }*)
 
     val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))
     (startTask, order(testTasks, ordered), endTask)
   }
-  private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
+  private def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
     val oldLoader = Thread.currentThread.getContextClassLoader
     Thread.currentThread.setContextClassLoader(loader)
     try {
@@ -317,7 +341,7 @@ object TestFramework {
       runner,
       (r: TestRunner) => withContextLoader(loader) { r.run(taskDef, testTask) }
     ) {
-      def tags = testTask.tags
+      def tags = testTask.tags.toSeq
     }
 }
 

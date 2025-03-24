@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -14,58 +15,24 @@ import java.util.{ Arrays, EnumSet }
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import org.jline.utils.InfoCmp.Capability
 import org.jline.utils.{ ClosedException, NonBlockingReader }
-import org.jline.terminal.{ Attributes, Size, Terminal => JTerminal }
+import org.jline.terminal.{ Attributes, Size, Terminal as JTerminal }
 import org.jline.terminal.Attributes.{ InputFlag, LocalFlag }
 import org.jline.terminal.Terminal.SignalHandler
 import org.jline.terminal.impl.{ AbstractTerminal, DumbTerminal }
-import org.jline.terminal.impl.jansi.JansiSupportImpl
-import org.jline.terminal.impl.jansi.win.JansiWinSysTerminal
-import org.jline.utils.OSUtils
-import scala.collection.JavaConverters._
-import scala.util.Try
+import org.jline.terminal.spi.{ SystemStream, TerminalProvider }
+import sbt.internal.util.Terminal.hasConsole
+import scala.jdk.CollectionConverters.*
 import java.util.concurrent.LinkedBlockingQueue
 
 private[sbt] object JLine3 {
   private[util] val initialAttributes = new AtomicReference[Attributes]
-
-  private[this] val forceWindowsJansiHolder = new AtomicBoolean(false)
-  private[sbt] def forceWindowsJansi(): Unit = forceWindowsJansiHolder.set(true)
-  private[this] def windowsJansi(): org.jline.terminal.Terminal = {
-    val support = new JansiSupportImpl
-    val winConsole = support.isWindowsConsole();
-    val termType = sys.props.get("org.jline.terminal.type").orElse(sys.env.get("TERM")).orNull
-    val term = JansiWinSysTerminal.createTerminal(
-      "console",
-      termType,
-      OSUtils.IS_CONEMU,
-      Charset.forName("UTF-8"),
-      -1,
-      false,
-      SignalHandler.SIG_DFL,
-      true
-    )
-    term.disableScrolling()
-    term
-  }
-  private val jansi = {
-    val (major, minor) =
-      (JansiSupportImpl.getJansiMajorVersion, JansiSupportImpl.getJansiMinorVersion)
-    (major > 1 || minor >= 18) && Util.isWindows
-  }
   private[util] def system: org.jline.terminal.Terminal = {
     val term =
-      if (forceWindowsJansiHolder.get) windowsJansi()
-      else {
-        // Only use jna on windows. Both jna and jansi use illegal reflective
-        // accesses on posix system.
-        org.jline.terminal.TerminalBuilder
-          .builder()
-          .system(System.console != null)
-          .jna(Util.isWindows && !jansi)
-          .jansi(jansi)
-          .paused(true)
-          .build()
-      }
+      org.jline.terminal.TerminalBuilder
+        .builder()
+        .system(hasConsole)
+        .paused(true)
+        .build()
     initialAttributes.get match {
       case null => initialAttributes.set(term.getAttributes)
       case _    =>
@@ -81,7 +48,7 @@ private[sbt] object JLine3 {
     val bytes = new Array[Byte](4)
     var i = 0
     var res = -2
-    do {
+    while (i < 4 && res == -2) {
       inputStream.read() match {
         case -1 => res = -1
         case byte =>
@@ -94,11 +61,10 @@ private[sbt] object JLine3 {
             if (it.hasNext) res = it.next
           } catch { case _: CharacterCodingException => }
       }
-
-    } while (i < 4 && res == -2)
+    }
     res
   }
-  private[this] def wrapTerminal(term: Terminal): JTerminal = {
+  private def wrapTerminal(term: Terminal): JTerminal = {
     new AbstractTerminal(
       term.name,
       "nocapabilities",
@@ -118,6 +84,11 @@ private[sbt] object JLine3 {
           }
         }
       }
+
+      // returns 'null' if the terminal was created with no provider
+      override def getProvider(): TerminalProvider = null
+      // returns 'null' if the terminal is not bound to a system stream.
+      override def getSystemStream(): SystemStream = null
       override val input: InputStream = new InputStream {
         override def read: Int = {
           val res = term.inputStream match {
@@ -179,7 +150,7 @@ private[sbt] object JLine3 {
           case null => -1
           case i    => i.toInt
         }
-        override def readBuffered(buf: Array[Char]): Int = {
+        override def readBuffered(buf: Array[Char], off: Int, len: Int, timeout: Long): Int = {
           if (buffer.isEmpty) fillBuffer()
           buffer.take match {
             case i if i == -1 => -1
@@ -210,7 +181,9 @@ private[sbt] object JLine3 {
         term.getBooleanCapability(cap.toString)
       def getAttributes(): Attributes = attributesFromMap(term.getAttributes)
       def getSize(): Size = new Size(term.getWidth, term.getHeight)
-      def setAttributes(a: Attributes): Unit = {} // don't allow the jline line reader to change attributes
+      def setAttributes(
+          a: Attributes
+      ): Unit = {} // don't allow the jline line reader to change attributes
       def setSize(size: Size): Unit = term.setSize(size.getColumns, size.getRows)
 
       override def enterRawMode(): Attributes = {
@@ -219,17 +192,9 @@ private[sbt] object JLine3 {
       }
     }
   }
-  private def enterRawModeImpl(term: JTerminal): Attributes = {
-    val prvAttr = term.getAttributes()
-    val newAttr = new Attributes(prvAttr)
-    newAttr.setLocalFlags(EnumSet.of(LocalFlag.ICANON, LocalFlag.ECHO, LocalFlag.IEXTEN), false)
-    newAttr.setInputFlags(EnumSet.of(InputFlag.IXON, InputFlag.ICRNL, InputFlag.INLCR), false)
-    term.setAttributes(newAttr)
-    prvAttr
-  }
   // We need to set the ENABLE_PROCESS_INPUT flag for ctrl+c to be treated as a signal in windows
   // https://docs.microsoft.com/en-us/windows/console/setconsolemode
-  private[this] val ENABLE_PROCESS_INPUT = 1
+  private val ENABLE_PROCESS_INPUT = 1
   private[util] def setEnableProcessInput(): Unit = if (Util.isWindows) {
     WindowsSupport.setConsoleMode(WindowsSupport.getConsoleMode | ENABLE_PROCESS_INPUT)
   }
@@ -278,15 +243,15 @@ private[sbt] object JLine3 {
     )
     result.asScala.toMap
   }
-  private[this] val iflagMap: Map[String, InputFlag] =
+  private val iflagMap: Map[String, InputFlag] =
     InputFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val oflagMap: Map[String, Attributes.OutputFlag] =
+  private val oflagMap: Map[String, Attributes.OutputFlag] =
     Attributes.OutputFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val cflagMap: Map[String, Attributes.ControlFlag] =
+  private val cflagMap: Map[String, Attributes.ControlFlag] =
     Attributes.ControlFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val lflagMap: Map[String, LocalFlag] =
+  private val lflagMap: Map[String, LocalFlag] =
     LocalFlag.values.map(f => f.name.toLowerCase -> f).toMap
-  private[this] val charMap: Map[String, Attributes.ControlChar] =
+  private val charMap: Map[String, Attributes.ControlChar] =
     Attributes.ControlChar.values().map(f => f.name.toLowerCase -> f).toMap
   private[sbt] def setMode(term: Terminal, canonical: Boolean, echo: Boolean): Unit = {
     val prev = attributesFromMap(term.getAttributes)
@@ -313,7 +278,7 @@ private[sbt] object JLine3 {
       chars.split(" ").foreach { keyValue =>
         keyValue.split(",") match {
           case Array(k, v) =>
-            Try(v.toInt).foreach(i => charMap.get(k).foreach(c => attributes.setControlChar(c, i)))
+            v.toIntOption.foreach(i => charMap.get(k).foreach(c => attributes.setControlChar(c, i)))
           case _ =>
         }
       }

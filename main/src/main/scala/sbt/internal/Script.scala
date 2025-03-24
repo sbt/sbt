@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -13,11 +14,12 @@ import sbt.librarymanagement.Configurations
 import sbt.util.Level
 
 import java.io.File
-import Keys._
-import EvaluateConfigurations.{ evaluateConfiguration => evaluate }
+import Keys.*
+import EvaluateConfigurations.{ evaluateConfiguration as evaluate }
 import Configurations.Compile
 import Scope.Global
-import sbt.SlashSyntax0._
+import sbt.ProjectExtra.{ extract, setProject }
+import sbt.SlashSyntax0.*
 
 import sbt.io.{ Hash, IO }
 
@@ -46,10 +48,11 @@ object Script {
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
       val extracted = Project.extract(session, structure)
-      import extracted._
+      val vf = structure.converter.toVirtualFile(script.toPath())
+      import extracted.{ *, given }
 
       val embeddedSettings = blocks(script).flatMap { block =>
-        evaluate(eval(), script, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
+        evaluate(eval(), vf, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
       }
       val scriptAsSource = (Compile / sources) := script :: Nil
       val asScript = scalacOptions ++= Seq("-Xscript", script.getName.stripSuffix(".scala"))
@@ -76,8 +79,7 @@ object Script {
   def blocks(file: File): Seq[Block] = {
     val lines = IO.readLines(file).toIndexedSeq
     def blocks(b: Block, acc: List[Block]): List[Block] =
-      if (b.lines.isEmpty)
-        acc.reverse
+      if (b.lines.isEmpty) acc.reverse
       else {
         val (dropped, blockToEnd) = b.lines.span { line =>
           !line.startsWith(BlockStart)

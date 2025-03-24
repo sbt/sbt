@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,7 @@
 package sbt
 package internal
 
-import Def._
+import Def.*
 
 /**
  * This trait injected to `Def` object to provide `sequential` functions for tasks.
@@ -770,8 +771,7 @@ trait TaskSequential {
     tasks.toList match {
       case Nil => Def.task { last.value }
       case x :: xs =>
-        Def.taskDyn {
-          Def.unit(x.value)
+        Def.task { Def.unit(x.value) }.flatMapTask { case _ =>
           sequential(xs, last)
         }
     }

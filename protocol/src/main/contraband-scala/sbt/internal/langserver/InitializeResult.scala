@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class InitializeResult private (
   override def toString: String = {
     "InitializeResult(" + capabilities + ")"
   }
-  private[this] def copy(capabilities: sbt.internal.langserver.ServerCapabilities = capabilities): InitializeResult = {
+  private def copy(capabilities: sbt.internal.langserver.ServerCapabilities = capabilities): InitializeResult = {
     new InitializeResult(capabilities)
   }
   def withCapabilities(capabilities: sbt.internal.langserver.ServerCapabilities): InitializeResult = {

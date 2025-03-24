@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,80 +9,76 @@
 package sbt
 package std
 
-import scala.annotation.tailrec
-import scala.reflect.macros._
+import java.io.File
+import scala.quoted.*
+import scala.reflect.ClassTag
 
-import sbt.util.OptJsonWriter
+import sbt.util.{ NoJsonWriter, OptJsonWriter }
+import sbt.internal.util.{ AttributeKey, KeyTag }
 
-private[sbt] object KeyMacro {
-  def settingKeyImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(description: c.Expr[String]): c.Expr[SettingKey[T]] =
-    keyImpl2[T, SettingKey[T]](c) { (name, mf, ojw) =>
-      c.universe.reify { SettingKey[T](name.splice, description.splice)(mf.splice, ojw.splice) }
-    }
-  def taskKeyImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(description: c.Expr[String]): c.Expr[TaskKey[T]] =
-    keyImpl[T, TaskKey[T]](c) { (name, mf) =>
-      c.universe.reify { TaskKey[T](name.splice, description.splice)(mf.splice) }
-    }
-  def inputKeyImpl[T: c.WeakTypeTag](
-      c: blackbox.Context
-  )(description: c.Expr[String]): c.Expr[InputKey[T]] =
-    keyImpl[T, InputKey[T]](c) { (name, mf) =>
-      c.universe.reify { InputKey[T](name.splice, description.splice)(mf.splice) }
-    }
+private[sbt] object KeyMacro:
+  def settingKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[SettingKey[A1]] =
+    val name = definingValName(errorMsg("settingKey"))
+    val tag = '{ KeyTag.Setting[A1](${ summonRuntimeClass[A1] }) }
+    val ojw = Expr
+      .summon[OptJsonWriter[A1]]
+      .getOrElse(errorAndAbort(s"OptJsonWriter[A] not found for ${Type.show[A1]}"))
+    '{ SettingKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, $ojw)) }
 
-  def keyImpl[T: c.WeakTypeTag, S: c.WeakTypeTag](c: blackbox.Context)(
-      f: (c.Expr[String], c.Expr[Manifest[T]]) => c.Expr[S]
-  ): c.Expr[S] =
-    f(getName(c), getImplicit[Manifest[T]](c))
+  def taskKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[TaskKey[A1]] =
+    val name = definingValName(errorMsg("taskKey"))
+    val tag: Expr[KeyTag[Task[A1]]] = Type.of[A1] match
+      case '[Seq[a]] =>
+        '{ KeyTag.SeqTask(${ summonRuntimeClass[a] }) }
+      case _ => '{ KeyTag.Task(${ summonRuntimeClass[A1] }) }
+    '{ TaskKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, NoJsonWriter())) }
 
-  private def keyImpl2[T: c.WeakTypeTag, S: c.WeakTypeTag](c: blackbox.Context)(
-      f: (c.Expr[String], c.Expr[Manifest[T]], c.Expr[OptJsonWriter[T]]) => c.Expr[S]
-  ): c.Expr[S] =
-    f(getName(c), getImplicit[Manifest[T]](c), getImplicit[OptJsonWriter[T]](c))
+  def inputKeyImpl[A1: Type](description: Expr[String])(using Quotes): Expr[InputKey[A1]] =
+    val name = definingValName(errorMsg("inputTaskKey"))
+    val tag: Expr[KeyTag[InputTask[A1]]] = '{ KeyTag.InputTask(${ summonRuntimeClass[A1] }) }
+    '{ InputKey(AttributeKey($name, $description, Int.MaxValue)(using $tag, NoJsonWriter())) }
 
-  private def getName[S: c.WeakTypeTag, T: c.WeakTypeTag](c: blackbox.Context): c.Expr[String] = {
-    import c.universe._
-    val enclosingValName = definingValName(
-      c,
-      methodName =>
-        s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`."""
-    )
-    c.Expr[String](Literal(Constant(enclosingValName)))
-  }
+  def projectImpl(using Quotes): Expr[Project] =
+    val name = definingValName(errorMsg2)
+    '{ Project($name, new File($name)) }
 
-  private def getImplicit[T: c.WeakTypeTag](c: blackbox.Context): c.Expr[T] = {
-    import c.universe._
-    c.Expr[T](c.inferImplicitValue(weakTypeOf[T]))
-  }
+  private def summonRuntimeClass[A: Type](using Quotes): Expr[Class[?]] =
+    val classTag = Expr
+      .summon[ClassTag[A]]
+      .getOrElse(errorAndAbort(s"ClassTag[${Type.show[A]}] not found"))
+    '{ $classTag.runtimeClass }
 
-  def definingValName(c: blackbox.Context, invalidEnclosingTree: String => String): String = {
-    import c.universe.{ Apply => ApplyTree, _ }
-    val methodName = c.macroApplication.symbol.name
-    def processName(n: Name): String =
-      n.decodedName.toString.trim // trim is not strictly correct, but macros don't expose the API necessary
-    @tailrec def enclosingVal(trees: List[c.Tree]): String = {
-      trees match {
-        case ValDef(_, name, _, _) :: _                      => processName(name)
-        case (_: ApplyTree | _: Select | _: TypeApply) :: xs => enclosingVal(xs)
-        // lazy val x: X = <methodName> has this form for some reason (only when the explicit type is present, though)
-        case Block(_, _) :: DefDef(mods, name, _, _, _, _) :: _ if mods.hasFlag(Flag.LAZY) =>
-          processName(name)
-        case _ =>
-          c.error(c.enclosingPosition, invalidEnclosingTree(methodName.decodedName.toString))
-          "<error>"
-      }
-    }
-    enclosingVal(enclosingTrees(c).toList)
-  }
+  private def errorAndAbort(msg: String)(using q: Quotes): Nothing =
+    q.reflect.report.errorAndAbort(msg)
 
-  def enclosingTrees(c: blackbox.Context): Seq[c.Tree] =
-    c.asInstanceOf[reflect.macros.runtime.Context]
-      .callsiteTyper
-      .context
-      .enclosingContextChain
-      .map(_.tree.asInstanceOf[c.Tree])
-}
+  private def errorMsg(methodName: String): String =
+    s"""$methodName must be directly assigned to a val, such as `val x = $methodName[Int]("description")`."""
+
+  private def errorMsg2: String =
+    """project must be directly assigned to a val, such as `val x = project.in(file("core"))`."""
+
+  private[sbt] def definingValName(errorMsg: String)(using Quotes): Expr[String] =
+    val term = enclosingTerm
+    if term.isValDef then Expr(term.name)
+    else errorAndAbort(errorMsg)
+
+  private[sbt] def callerThis(using Quotes): Expr[Any] =
+    import quotes.reflect.*
+    This(enclosingClass).asExpr
+
+  private def enclosingTerm(using qctx: Quotes) =
+    import qctx.reflect.*
+    def enclosingTerm0(sym: Symbol): Symbol =
+      sym match
+        case sym if sym.flags.is(Flags.Macro) => enclosingTerm0(sym.owner)
+        case sym if !sym.isTerm               => enclosingTerm0(sym.owner)
+        case _                                => sym
+    enclosingTerm0(Symbol.spliceOwner)
+
+  private def enclosingClass(using Quotes) =
+    import quotes.reflect.*
+    def rec(sym: Symbol): Symbol =
+      if sym.isClassDef then sym
+      else rec(sym.owner)
+    rec(Symbol.spliceOwner)
+end KeyMacro

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -13,8 +13,9 @@ implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.Initi
       unbuilder.beginObject(__js)
       val token = unbuilder.readField[Option[String]]("token")
       val skipAnalysis = unbuilder.readField[Option[Boolean]]("skipAnalysis")
+      val canWork = unbuilder.readField[Option[Boolean]]("canWork")
       unbuilder.endObject()
-      sbt.internal.protocol.InitializeOption(token, skipAnalysis)
+      sbt.internal.protocol.InitializeOption(token, skipAnalysis, canWork)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -23,6 +24,7 @@ implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.Initi
     builder.beginObject()
     builder.addField("token", obj.token)
     builder.addField("skipAnalysis", obj.skipAnalysis)
+    builder.addField("canWork", obj.canWork)
     builder.endObject()
   }
 }

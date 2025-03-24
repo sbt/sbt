@@ -1,6 +1,7 @@
 /*
  * sbt
- * Copyright 2011 - 2018, Lightbend, Inc.
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
@@ -8,7 +9,7 @@
 package sbt.internal.util
 
 import java.util.concurrent.LinkedBlockingQueue
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 private[sbt] sealed trait Prompt {
   def mkPrompt: () => String
@@ -18,7 +19,7 @@ private[sbt] sealed trait Prompt {
 
 private[sbt] object Prompt {
   private[sbt] case class AskUser(override val mkPrompt: () => String) extends Prompt {
-    private[this] val bytes = new LinkedBlockingQueue[Byte]
+    private val bytes = new LinkedBlockingQueue[Byte]
     def write(b: Array[Byte]): Unit = b.foreach(bytes.put)
     override def render(): String = {
       val res = new String(bytes.asScala.toArray, "UTF-8")

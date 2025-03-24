@@ -1,11 +1,19 @@
 import scala.xml._
 
 lazy val root = (project in file(".")) settings (
-  readPom := (makePom map XML.loadFile).value,
+  readPom := {
+    val vf = makePom.value
+    val converter = fileConverter.value
+    XML.loadFile(converter.toPath(vf).toFile)
+  },
   TaskKey[Unit]("checkPom") := checkPom.value,
   TaskKey[Unit]("checkExtra") := checkExtra.value,
   TaskKey[Unit]("checkVersionPlusMapping") := checkVersionPlusMapping.value,
+  TaskKey[Unit]("checkAPIURL") := checkAPIURL.value,
+  TaskKey[Unit]("checkReleaseNotesURL") := checkReleaseNotesURL.value,
   resolvers += Resolver.sonatypeRepo("snapshots"),
+  apiURL := Some(url("https://www.scala-sbt.org/1.x/api/")),
+  releaseNotesURL := Some(url("https://github.com/sbt/sbt/releases")),
   makePomConfiguration := {
     val p = makePomConfiguration.value
     p.withExtra(<extra-tag/>)
@@ -31,7 +39,7 @@ def withRepositories[T](pomXML: Elem)(f: NodeSeq => T) = {
 
 lazy val checkExtra = readPom map { pomXML =>
   checkProject(pomXML)
-  val extra =  pomXML \ extraTagName
+  val extra = pomXML \ extraTagName
   if (extra.isEmpty) sys.error("'" + extraTagName + "' not found in generated pom.xml.") else ()
 }
 
@@ -46,18 +54,33 @@ lazy val checkVersionPlusMapping = (readPom) map { (pomXml) =>
   ()
 }
 
+lazy val checkAPIURL = (readPom) map { (pomXml) =>
+  val notes = pomXml \ "properties" \ "info.apiURL"
+  if (notes.isEmpty) sys.error("'apiURL' not found in generated pom.xml.") else ()
+}
+
+lazy val checkReleaseNotesURL = (readPom) map { (pomXml) =>
+  val notes = pomXml \ "properties" \ "info.releaseNotesUrl"
+  if (notes.isEmpty) sys.error("'releaseNotesUrl' not found in generated pom.xml.") else ()
+}
+
 lazy val checkPom = Def task {
   val pomXML = readPom.value
   checkProject(pomXML)
   val ivyRepositories = fullResolvers.value
   withRepositories(pomXML) { repositoriesElement =>
-    val repositories =  repositoriesElement \ "repository"
+    val repositories = repositoriesElement \ "repository"
     val writtenRepositories = repositories.map(read).distinct
-    val mavenStyleRepositories = ivyRepositories.collect {
-      case x: MavenRepository if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") => normalize(x)
-    } distinct;
+    val mavenStyleRepositories = (ivyRepositories.collect {
+      case x: MavenRepository
+          if (x.name != "public") && (x.name != "jcenter") && !(x.root startsWith "file:") =>
+        normalize(x)
+    }).distinct
 
-    lazy val explain = (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString("\n\t")
+    lazy val explain =
+      (("Written:" +: writtenRepositories) ++ ("Declared:" +: mavenStyleRepositories)).mkString(
+        "\n\t"
+      )
 
     if (writtenRepositories != mavenStyleRepositories)
       sys.error("Written repositories did not match declared repositories.\n\t" + explain)
@@ -74,4 +97,5 @@ def normalize(url: String): String = {
   if (base.endsWith("/")) base else s"$base/"
 }
 
-def normalize(repo: MavenRepository): MavenRepository = MavenRepository(repo.name, normalize(repo.root))
+def normalize(repo: MavenRepository): MavenRepository =
+  MavenRepository(repo.name, normalize(repo.root))

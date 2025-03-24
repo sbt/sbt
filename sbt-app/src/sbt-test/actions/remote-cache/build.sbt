@@ -8,7 +8,7 @@ lazy val CustomArtifact = config("custom-artifact")
 val recordPreviousIterations = taskKey[Unit]("Record previous iterations.")
 val checkIterations = inputKey[Unit]("Verifies the accumulated number of iterations of incremental compilation.")
 
-ThisBuild / scalaVersion := "2.12.12"
+ThisBuild / scalaVersion := "2.12.20"
 ThisBuild / pushRemoteCacheTo := Some(
   MavenCache("local-cache", (ThisBuild / baseDirectory).value / "r")
 )
@@ -42,7 +42,7 @@ lazy val root = (project in file("."))
     recordPreviousIterations := {
       val log = streams.value.log
       CompileState.previousIterations = {
-        val previousAnalysis = (previousCompile in Compile).value.analysis.asScala
+        val previousAnalysis = (Compile / previousCompile).value.analysis.asScala
         previousAnalysis match {
           case None =>
             log.info("No previous analysis detected")
@@ -53,7 +53,7 @@ lazy val root = (project in file("."))
     },
     checkIterations := {
       val expected: Int = (Space ~> NatBasic).parsed
-      val actual: Int = ((compile in Compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
+      val actual: Int = ((Compile / compile).value match { case a: Analysis => a.compilations.allCompilations.size }) - CompileState.previousIterations
       assert(expected == actual, s"Expected $expected compilations, got $actual")
     }
   )
