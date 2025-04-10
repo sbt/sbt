@@ -10,6 +10,7 @@ package sbt
 package internal
 
 import sbt.BuildPaths._
+import sbt.Def
 import sbt.Def.{ ScopeLocal, ScopedKey, Setting, isDummy }
 import sbt.Keys._
 import sbt.Project.inScope
@@ -31,6 +32,7 @@ import sbt.util.{ Logger, Show }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
 
 import java.io.File
+import java.io.FileWriter
 import java.net.URI
 import scala.annotation.{ nowarn, tailrec }
 import scala.collection.mutable
@@ -254,6 +256,14 @@ private[sbt] object Load {
     val (cMap, data) = timed("Load.apply: Def.make(settings)...", log) {
       // When settings.size is 100000, Def.make takes around 10s.
       if (settings.size > 10000) {
+
+        val fileWriter = new FileWriter(new File("/tmp/settings-2.txt"))
+        settings.foreach(setting => {
+          fileWriter.write(setting.toString + "\n")
+        })
+
+        fileWriter.close()
+
         log.info(s"resolving key references (${settings.size} settings) ...")
       }
       Def.makeWithCompiledMap(settings)(
