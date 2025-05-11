@@ -1,0 +1,21 @@
+on:
+  pull_request:
+
+jobs:
+  update-title:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    if: ${{ !startsWith(github.event.pull_request.title, '[2.x]') && (github.base_ref == 'develop') }}
+    permissions:
+      pull-requests: write
+    steps:
+    - uses: actions/github-script@v7
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          await github.rest.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.payload.pull_request.number,
+            title: `[2.x] ${context.payload.pull_request.title}`
+          });
