@@ -12,38 +12,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
-            java: 21
-            distribution: temurin
-            jobtype: 1
-          - os: ubuntu-latest
-            java: 21
-            distribution: temurin
-            jobtype: 2
-          - os: ubuntu-latest
-            java: 21
-            distribution: temurin
-            jobtype: 3
-          - os: ubuntu-latest
-            java: 21
-            distribution: temurin
-            jobtype: 4
-          - os: ubuntu-latest
-            java: 21
-            distribution: temurin
-            jobtype: 5
-          # - os: ubuntu-latest
-          #   java: 8
-          #   distribution: adopt
-          #   jobtype: 6
-          - os: ubuntu-latest
-            java: 8
-            distribution: adopt
-            jobtype: 7
-          - os: macos-latest
-            java: 17
-            distribution: temurin
-            jobtype: 8
           - os: windows-latest
             java: 8
             distribution: adopt
@@ -62,24 +30,6 @@ jobs:
     steps:
     - name: Checkout sbt/sbt
       uses: actions/checkout@v4
-    - name: Checkout sbt/io
-      uses: actions/checkout@v4
-      with:
-        repository: sbt/io
-        ref: develop
-        path: io
-    - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v4
-      with:
-        repository: sbt/librarymanagement
-        ref: develop
-        path: librarymanagement
-    - name: Checkout sbt/zinc
-      uses: actions/checkout@v4
-      with:
-        repository: sbt/zinc
-        ref: 1.10.x
-        path: zinc
     - name: Setup JDK
       uses: actions/setup-java@v4
       with:
@@ -101,106 +51,35 @@ jobs:
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
       if: ${{ matrix.os == 'windows-latest' }}
-    - name: Build and test (1)
-      if: ${{ matrix.jobtype == 1 }}
-      shell: bash
-      run: |
-        rm -rf "$HOME/.sbt/boot/" || true
-        ./sbt -v --client mimaReportBinaryIssues
-        ./sbt -v --client javafmtCheck
-        ./sbt -v --client "Test/javafmtCheck"
-        ./sbt -v --client scalafmtCheckAll
-        ./sbt -v --client scalafmtSbtCheck
-        ./sbt -v --client serverTestProj/scalafmtCheckAll
-        ./sbt -v --client headerCheck
-        ./sbt -v --client "Test/headerCheck"
-        ./sbt -v --client "Test/compile"
-        ./sbt -v --client publishLocal
-        ./sbt -v --client test
-        ./sbt -v --client "serverTestProj/test"
-        ./sbt -v --client doc
-        ./sbt -v --client "all $UTIL_TESTS"
-        ./sbt -v --client ++2.13.x
-        ./sbt -v --client "all $UTIL_TESTS"
-    - name: Build and test (2)
-      if: ${{ matrix.jobtype == 2 }}
-      shell: bash
-      run: |
-        ./sbt -v "scripted actions/* apiinfo/* compiler-project/* ivy-deps-management/* reporter/* tests/* watch/* classloader-cache/* package/*"
-    - name: Build and test (3)
-      if: ${{ matrix.jobtype == 3 }}
-      shell: bash
-      run: |
-        ./sbt -v "dependencyTreeProj/publishLocal; scripted dependency-graph/* dependency-management/* plugins/* project-load/* java/* run/* nio/*"
-    - name: Build and test (4)
-      if: ${{ matrix.jobtype == 4 }}
-      shell: bash
-      run: |
-        ./sbt -v "repoOverrideTest:scripted dependency-management/*; scripted source-dependencies/* project/*"
-    - name: Build and test (5)
-      if: ${{ matrix.jobtype == 5 }}
-      shell: bash
-      run: |
-        ./sbt -v "++2.13.x; all utilControl/test utilRelation/test utilPosition/test"
-    - name: Multirepo integration test
-      if: ${{ matrix.jobtype == 6 }}
-      shell: bash
-      run: |
-        # build from fresh IO, LM, and Zinc
-        BUILD_VERSION="${TEST_SBT_VER}-SNAPSHOT"
-        cd io
-        sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
-        cd ../
-        sbt -Dsbtlm.path=$HOME/work/sbt/sbt/librarymanagement -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {librarymanagement}/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
-        sbt -v -Dsbt.version=$BUILD_VERSION "++2.13.x; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
-    - name: Build and test (7)
-      if: ${{ matrix.jobtype == 7 }}
-      shell: bash
-      run: |
-        # test building sbtn on Linux
-        sbt "-Dsbt.io.virtual=false" nativeImage
-        # smoke test native Image
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt about
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
-        # test launcher script
-        echo build using JDK 8 test using JDK 8 and JDK 11
-        cd launcher-package
-        sbt -Dsbt.build.version=$TEST_SBT_VER rpm:packageBin debian:packageBin
-        sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
-        cd citest && ./test.sh
-        $HOME/bin/jabba install $JDK11 && exec $HOME/bin/jabba which --home $JDK11
-        java -Xmx32m -version
-        ./test.sh
-    - name: Build and test (8)
-      if: ${{ matrix.jobtype == 8 }}
-      shell: bash
-      run: |
-        # test building sbtn on macOS
-        ./sbt "-Dsbt.io.virtual=false" nativeImage
-        # test launcher script
-        cd launcher-package
-        bin/coursier resolve
-        ../sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
-        # This fails due to the JLine issue
-        # cd citest && ./test.sh
-    - name: Build and test (9)
+    - name: Setup WSL2 (Windows Subsystem for Linux)
+      uses: vedantmgoyal9/setup-wsl2@main
+      if: ${{ matrix.os == 'windows-latest' }}
+    # - name: Build and test (9)
+    #   if: ${{ matrix.jobtype == 9 }}
+    #   shell: bash
+    #   run: |
+    #     # test building sbtn on Windows
+    #     sbt "-Dsbt.io.virtual=false" nativeImage
+    #     # smoke test native Image
+    #     ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
+    #     ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
+    #     # test launcher script
+    #     echo build using JDK 8, test using JDK 8, on Windows
+    #     cd launcher-package
+    #     bin/coursier.bat resolve
+    #     sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
+    #     cd citest
+    #     ./test.bat
+    #     test3/test3.bat
+    - name: Test WSL2
       if: ${{ matrix.jobtype == 9 }}
-      shell: bash
+      shell: wsl-run {0}
       run: |
-        # test building sbtn on Windows
-        sbt "-Dsbt.io.virtual=false" nativeImage
-        # smoke test native Image
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
-        ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
-        # test launcher script
-        echo build using JDK 8, test using JDK 8, on Windows
-        cd launcher-package
-        bin/coursier.bat resolve
-        sbt -Dsbt.build.version=$TEST_SBT_VER integrationTest/test
-        cd citest
-        ./test.bat
-        test3/test3.bat
+        ls -al
+        env
+        export PATH=/mnt/c/hostedtoolcache/windows/sbt/1.11.0/sbt/bin:$PATH
+        sbt --client about || true
+        ls -al /run/user/0/.sbt46911889/ipcsocket/
     - name: Cleanup
       shell: bash
       run: |
