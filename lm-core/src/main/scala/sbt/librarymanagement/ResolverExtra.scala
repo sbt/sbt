@@ -204,7 +204,6 @@ private[librarymanagement] abstract class ResolverFunctions {
 
   /**
    * Reorganize the built-in resolvers that is configured for this application by the sbt launcher.
-   * If `jcenter` is true, add the JCenter.
    * If `mavenCentral` is true, add the Maven Central repository.
    */
   private[sbt] def reorganizeAppResolvers(
