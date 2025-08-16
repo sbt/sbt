@@ -26,6 +26,8 @@ object Def extends Init[Scope] with TaskMacroExtra with InitializeImplicits {
   type Classpath = Seq[Attributed[File]]
   type VirtualClasspath = Seq[Attributed[VirtualFile]]
 
+  def uncached[A1](a: A1): A1 = a
+
   def settings(ss: SettingsDefinition*): Seq[Setting[_]] = ss.flatMap(_.settings)
 
   val triggeredBy = AttributeKey[Seq[Task[_]]]("triggered-by")
