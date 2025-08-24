@@ -1184,8 +1184,8 @@ lazy val sbtClientProj = (project in file("client"))
     nativeImageReady := { () =>
       ()
     },
-    nativeImageVersion := "23.0",
-    nativeImageJvm := "graalvm-java23",
+    nativeImageVersion := "24.0",
+    nativeImageJvm := "graalvm-java24",
     nativeImageOutput := {
       val outputDir = (target.value / "bin").toPath
       if (!Files.exists(outputDir)) {
@@ -1205,7 +1205,8 @@ lazy val sbtClientProj = (project in file("client"))
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtn"}",
-    ) ++ (if (isLinux && isArmArchitecture)
+    ) ++ (if (isLinux) List("--libc=musl") else Nil) ++
+       (if (isLinux && isArmArchitecture)
             Seq("-H:PageSize=65536") // Make sure binary runs on kernels with page size set to 4k, 16 and 64k
           else Nil),
     buildThinClient := {
