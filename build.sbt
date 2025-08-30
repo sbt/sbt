@@ -43,7 +43,6 @@ ThisBuild / scmInfo := Some(
   ScmInfo(url("https://github.com/sbt/sbt"), "git@github.com:sbt/sbt.git")
 )
 ThisBuild / resolvers += Resolver.mavenLocal
-ThisBuild / libraryDependencySchemes += "org.scala-lang.modules" %% "scala-xml" % VersionScheme.Always
 ThisBuild / mimaFailOnNoPrevious := false
 
 Global / semanticdbEnabled := !(Global / insideCI).value
