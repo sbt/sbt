@@ -735,6 +735,9 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      ProblemFilters.exclude[MissingClassProblem]("sbt.internal.LocalProjectMatrix"),
+      ProblemFilters.exclude[MissingClassProblem]("sbt.internal.LocalProjectMatrix$"),
+      ProblemFilters.exclude[MissingClassProblem]("sbt.internal.ProjectMatrixReference"),
       ProblemFilters.exclude[MissingClassProblem]("sbt.internal.ConfigData"),
       ProblemFilters.exclude[MissingClassProblem]("sbt.internal.ConfigData$"),
       ProblemFilters.exclude[MissingClassProblem]("sbt.internal.graph.backend.IvyReport"),
