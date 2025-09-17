@@ -21,23 +21,23 @@ jobs:
             distribution: zulu
             jobtype: 2
           - os: ubuntu-latest
-            java: 21
-            distribution: temurin
+            java: 25
+            distribution: zulu
             jobtype: 3
           - os: ubuntu-latest
-            java: 21
-            distribution: temurin
+            java: 25
+            distribution: zulu
             jobtype: 4
           - os: ubuntu-latest
-            java: 21
-            distribution: temurin
+            java: 25
+            distribution: zulu
             jobtype: 5
           # - os: ubuntu-latest
           #   java: 8
           #   distribution: zulu
           #   jobtype: 6
           - os: ubuntu-latest
-            java: 21
+            java: 25
             distribution: zulu
             jobtype: 7
           - os: ubuntu-latest
