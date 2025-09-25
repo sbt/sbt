@@ -361,6 +361,8 @@ class NetworkClient(
             term.isSupershellEnabled
           ).mkString(",")
 
+        // note, java home is generally not expected to be empty, but could be in some unexpected misconfigured cases
+        val javaHomeOpt = Option(Properties.javaHome).filter(_.nonEmpty)
         val cmd = arguments.sbtLaunchJar match {
           case Some(lj) =>
             if (log) {
@@ -375,7 +377,7 @@ class NetworkClient(
                 s"either upgrade $sbtScript to its latest version or make sure it is accessible from $$PATH, and run 'sbt bspConfig'"
               )
             }
-            val java = Option(Properties.javaHome)
+            val java = javaHomeOpt
               .map { javaHome =>
                 s"$javaHome/bin/java"
               }
@@ -383,7 +385,12 @@ class NetworkClient(
             List(java) ++ arguments.sbtArguments ++
               List("-jar", lj, DashDashDetachStdio, DashDashServer)
           case _ =>
-            List(arguments.sbtScript) ++ arguments.sbtArguments ++
+            // From sbt/sbt.sh/sbt.bat:
+            //    --java-home <path>         alternate JAVA_HOME
+            val javaHomeArgs = javaHomeOpt.toSeq.flatMap(javaHome => Seq("--java-home", javaHome))
+            List(arguments.sbtScript) ++
+              javaHomeArgs ++
+              arguments.sbtArguments ++
               List(DashDashDetachStdio, DashDashServer)
         }
 
