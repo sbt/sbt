@@ -14,13 +14,20 @@ import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.ProtocolFamily;
 import java.net.Socket;
 import java.net.ServerSocket;
+import java.net.SocketAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.StandardProtocolFamily;
+import java.nio.ByteBuffer;
+import java.nio.channels.ServerSocketChannel;
+import java.nio.channels.SocketChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -73,7 +80,7 @@ import xsbti.AppConfiguration;
  * <p>BootServerSocket is implemented in java so that it can be classloaded as quickly as possible.
  */
 public class BootServerSocket implements AutoCloseable {
-  private ServerSocket serverSocket = null;
+  private ServerSocketWrapper serverSocket = null;
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private final AtomicBoolean running = new AtomicBoolean(false);
   private final AtomicInteger threadId = new AtomicInteger(1);
@@ -88,14 +95,14 @@ public class BootServerSocket implements AutoCloseable {
   private final AtomicBoolean needInput = new AtomicBoolean(false);
 
   private class ClientSocket implements AutoCloseable {
-    final Socket socket;
+    final SocketWrapper socket;
     final AtomicBoolean alive = new AtomicBoolean(true);
     final Future<?> future;
     private final LinkedBlockingQueue<Integer> bytes = new LinkedBlockingQueue<Integer>();
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     @SuppressWarnings("deprecation")
-    ClientSocket(final Socket socket) {
+    ClientSocket(final SocketWrapper socket) {
       this.socket = socket;
       clientSockets.add(this);
       Future<?> f = null;
@@ -114,15 +121,14 @@ public class BootServerSocket implements AutoCloseable {
                               }
                               return 0;
                             });
-                    final InputStream inputStream = socket.getInputStream();
                     while (alive.get()) {
                       try {
                         synchronized (needInput) {
                           while (!needInput.get() && alive.get()) needInput.wait();
                         }
                         if (alive.get()) {
-                          socket.getOutputStream().write(5);
-                          int b = inputStream.read();
+                          socket.write(5);
+                          int b = socket.read();
                           if (b != -1) {
                             bytes.put(b);
                             clientSocketReads.put(ClientSocket.this);
@@ -146,7 +152,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final int i) {
       try {
-        if (alive.get()) socket.getOutputStream().write(i);
+        if (alive.get()) socket.write(i);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -155,7 +161,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final byte[] b) {
       try {
-        if (alive.get()) socket.getOutputStream().write(b);
+        if (alive.get()) socket.write(b);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -164,7 +170,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void write(final byte[] b, final int offset, final int len) {
       try {
-        if (alive.get()) socket.getOutputStream().write(b, offset, len);
+        if (alive.get()) socket.write(b, offset, len);
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -173,7 +179,7 @@ public class BootServerSocket implements AutoCloseable {
 
     private void flush() {
       try {
-        socket.getOutputStream().flush();
+        socket.flush();
       } catch (final IOException e) {
         alive.set(false);
         close();
@@ -194,8 +200,7 @@ public class BootServerSocket implements AutoCloseable {
         alive.set(false);
         if (future != null) future.cancel(true);
         try {
-          socket.getOutputStream().close();
-          socket.getInputStream().close();
+          socket.close();
           // Windows is very slow to close the socket for whatever reason
           // We close the server socket anyway, so this should die then.
           if (!System.getProperty("os.name", "").toLowerCase().startsWith("win")) socket.close();
@@ -342,20 +347,63 @@ public class BootServerSocket implements AutoCloseable {
   static final boolean isWindows =
       System.getProperty("os.name", "").toLowerCase().startsWith("win");
 
-  static ServerSocket newSocket(final String sock) throws ServerAlreadyBootingException {
-    ServerSocket socket = null;
+  static ServerSocketWrapper newSocket(final String sock) throws ServerAlreadyBootingException {
+    ServerSocketWrapper socket = null;
     String name = socketName(sock);
     boolean jni = requiresJNI() || System.getProperty("sbt.ipcsocket.jni", "false").equals("true");
+    boolean jdk = System.getProperty("sbt.ipcsocket.jdk", "true").equals("true");
     try {
       if (!isWindows) Files.deleteIfExists(Paths.get(sock));
       socket =
           isWindows
-              ? new Win32NamedPipeServerSocket(name, jni, Win32SecurityLevel.OWNER_DACL)
-              : new UnixDomainServerSocket(name, jni);
+              ? ServerSocketWrapper.fromServerSocket(
+                  new Win32NamedPipeServerSocket(name, jni, Win32SecurityLevel.OWNER_DACL))
+              : newUnixDomainSocket(name, jni, jdk);
       return socket;
     } catch (final IOException e) {
       throw new ServerAlreadyBootingException(e);
     }
+  }
+
+  static SocketAddress unixDomainSocketAddress(final String pathName)
+      throws ReflectiveOperationException {
+    final Class<?> clazz = Class.forName("java.net.UnixDomainSocketAddress");
+    final Method method = clazz.getMethod("of", String.class);
+    return (SocketAddress) method.invoke(null, pathName);
+  }
+
+  static ProtocolFamily unixProtocolFamily() {
+    return Arrays.stream(StandardProtocolFamily.class.getEnumConstants())
+        .filter(a -> "UNIX".equals(a.name()))
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("not found UNIX value in StandardProtocolFamily"));
+  }
+
+  static ServerSocketWrapper newJdkUnixDomainSocket(final String pathName)
+      throws ReflectiveOperationException, IOException {
+    final SocketAddress address = unixDomainSocketAddress(pathName);
+    final ProtocolFamily protocolFamily = unixProtocolFamily();
+    final Method openMethod =
+        ServerSocketChannel.class.getMethod("open", java.net.ProtocolFamily.class);
+    final ServerSocketChannel serverSocketChannel =
+        (ServerSocketChannel) openMethod.invoke(null, protocolFamily);
+    serverSocketChannel.bind(address);
+    return ServerSocketWrapper.fromServerSocketChannel(serverSocketChannel);
+  }
+
+  private static ServerSocketWrapper newUnixDomainSocket(
+      final String pathName, final boolean jni, final boolean jdk) throws IOException {
+    ServerSocketWrapper result;
+    if (jdk) {
+      try {
+        result = newJdkUnixDomainSocket(pathName);
+      } catch (ReflectiveOperationException e) {
+        result = ServerSocketWrapper.fromServerSocket(new UnixDomainServerSocket(pathName, jni));
+      }
+    } else {
+      result = ServerSocketWrapper.fromServerSocket(new UnixDomainServerSocket(pathName, jni));
+    }
+    return result;
   }
 
   public static Boolean requiresJNI() {
