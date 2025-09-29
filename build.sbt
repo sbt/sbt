@@ -117,7 +117,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC4",
+    "2.0.0-RC6",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings (
@@ -305,7 +305,6 @@ lazy val utilCore = project
     Utils.keywordsSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.util.Util.majorJavaVersion"),
     ),
   )
 
@@ -369,7 +368,6 @@ lazy val utilCache = project
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[MissingClassProblem]("sbt.internal.util.ActionCacheError*"),
     ),
     Test / fork := true,
   )
@@ -713,8 +711,6 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[MissingClassProblem]("sbt.internal.*"),
-      exclude[MissingFieldProblem]("sbt.internal.server.NetworkChannel.*"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
