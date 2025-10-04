@@ -8,11 +8,13 @@
 
 package sbt.internal.util
 
+import java.lang.invoke.MethodHandle
+import java.lang.invoke.MethodHandles
+import java.lang.invoke.MethodType
 import java.nio.file.{ Path, Paths }
 import java.util.Locale
 
 import scala.collection.concurrent.TrieMap
-import scala.reflect.Selectable.reflectiveSelectable
 import scala.util.Properties
 
 object Util:
@@ -98,11 +100,18 @@ object Util:
 
   lazy val isJava19Plus: Boolean = Properties.isJavaAtLeast("19")
 
-  private type GetId = {
-    def getId: Long
-  }
-  private type ThreadId = {
-    def threadId: Long
+  private val threadIdMethodHandle: MethodHandle = {
+    val methodName =
+      if !isJava19Plus then "getId"
+      else "threadId"
+
+    MethodHandles
+      .lookup()
+      .findVirtual(
+        classOf[Thread],
+        methodName,
+        MethodType.methodType(java.lang.Long.TYPE)
+      )
   }
 
   /**
@@ -110,11 +119,6 @@ object Util:
    * Thread.threadId was added in JDK 19, and deprecated Thread#getId
    * https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Thread.html#threadId()
    */
-  def threadId: Long =
-    if !isJava19Plus then
-      (Thread.currentThread(): AnyRef) match
-        case g: GetId @unchecked => g.getId
-    else
-      (Thread.currentThread(): AnyRef) match
-        case g: ThreadId @unchecked => g.threadId
+  def threadId: Long = threadIdMethodHandle.invoke(Thread.currentThread())
+
 end Util
