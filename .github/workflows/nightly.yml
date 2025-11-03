@@ -46,7 +46,7 @@ jobs:
         distribution: "${{ matrix.distribution }}"
         java-version: "${{ matrix.java }}"
     - name: Coursier cache
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Build and deploy
       run: |
         # build from fresh IO, LM, and Zinc
