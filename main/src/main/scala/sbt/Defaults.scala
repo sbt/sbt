@@ -4064,20 +4064,23 @@ object Classpaths {
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
-    val resources = copyResources.value.map(_._2).toSet
-    val classDir = classDirectory.value
+    val syncDir = target.value / (prefix(configuration.value.name) + "sync")
+    val factory = CacheStoreFactory(syncDir)
+    val cacheStore = factory.make("make-product")
+    val t = classDirectory.value
     val vfBackendDir = compileIncremental.value._2
     val backendDir = c.toPath(vfBackendDir)
-    // delete outdated files
-    Path
-      .allSubpaths(classDir)
-      .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
-      .foreach(IO.delete)
-    IO.copyDirectory(
-      source = backendDir.toFile(),
-      target = classDir,
-    )
-    classDir :: Nil
+    val flt: File => Option[File] = flat(t)
+    val transform: File => Option[File] =
+      (f: File) => rebase(backendDir.toFile(), t)(f).orElse(flt(f))
+    val resources = copyResources.value.map(_._2).toSet
+    val view = fileTreeView.value
+    val classes = view.list((Glob(backendDir, RecursiveGlob / "*")))
+    val mappings: Seq[(File, File)] = classes.flatMap:
+      case (r, attr) if r != backendDir => transform(r.toFile()).map(r.toFile() -> _)
+      case _                            => None
+    Sync.sync(cacheStore, fileConverter = c)(mappings)
+    t :: Nil
   }
 
   private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {
