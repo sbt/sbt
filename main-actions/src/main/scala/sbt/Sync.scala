@@ -9,14 +9,16 @@
 package sbt
 
 import java.io.{ File, IOException }
+import java.nio.file.Path
 import java.util.zip.ZipException
 
 import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.Relation
 import sbt.internal.io.TranslatedException
-import sbt.util.CacheImplicits.*
+import sbt.util.CacheImplicits.given
 import sbt.util.{ CacheStore, FileInfo }
 import sbt.io.IO
+import sbt.io.Path.{ flat, rebase }
 import sjsonnew.{
   Builder,
   IsoString,
@@ -27,6 +29,7 @@ import sjsonnew.{
   deserializationError,
 }
 import xsbti.{ FileConverter, VirtualFileRef }
+import xsbti.compile.CompileAnalysis
 
 /**
  * Maintains a set of mappings so that they are uptodate.
@@ -92,6 +95,59 @@ object Sync {
 
       writeInfoVirtual(store, relation, currentInfo, fileConverter)(using inStyle.format)
       relation
+    }
+
+  private[sbt] def syncClasses(
+      store: CacheStore,
+      fileConverter: FileConverter
+  ): (Option[CompileAnalysis], Path, Path) => Unit =
+    (analysisOpt, backendDir, classesDir) => {
+      val currentStamps = analysisOpt match
+        case Some(a) =>
+          import scala.jdk.CollectionConverters.*
+          a.readStamps
+            .getAllProductStamps()
+            .asScala
+            .map: (k, v) =>
+              (k, v.toString())
+            .toMap
+        case None => Map.empty
+      val currentStampsSeq = currentStamps.toVector.sortBy(_._1.id())
+      val previousStampsSeq = store.read[Vector[(VirtualFileRef, String)]](Vector.empty)
+      val previousStamps = Map(previousStampsSeq*)
+      if currentStampsSeq == previousStampsSeq then ()
+      else
+        val t = classesDir.toFile()
+        val productsVf = currentStamps.map(_._1)
+        val flt: File => Option[File] = flat(t)
+        val transform: VirtualFileRef => Option[File] =
+          (vf: VirtualFileRef) =>
+            val f = fileConverter.toPath(vf).toFile()
+            rebase(backendDir.toFile(), t)(f).orElse(flt(f))
+        val mappings = productsVf.flatMap: x =>
+          transform(x).map(x -> _)
+        val relation = Relation.empty ++ mappings
+        def outofdate(source: VirtualFileRef, target: File): Boolean =
+          !previousStamps.contains(source) ||
+            previousStamps.get(source) != currentStamps.get(source) ||
+            !target.exists
+        val updates = relation.filter(outofdate)
+        val removeTargets = (previousStampsSeq.map(_._1) diff currentStampsSeq.map(_._1)).flatMap:
+          x => transform(x).map(x -> _)
+        val (cleanDirs, cleanFiles) =
+          (updates._2s ++ removeTargets.map(_._2)).partition(_.isDirectory)
+        IO.delete(cleanFiles)
+        IO.deleteIfEmpty(cleanDirs)
+        updates.all.foreach: (k, v) =>
+          val classFile = fileConverter.toPath(k).toFile()
+          copy(classFile, v)
+          if !classFile.getName().contains("$") then
+            val (name, ext) = IO.split(classFile.getName)
+            val tasty = File(classFile.getParentFile(), name + ".tasty")
+            if tasty.exists() then
+              val tastyTarget = File(v.getParentFile(), name + ".tasty")
+              copy(tasty, tastyTarget)
+        store.write(currentStampsSeq)
     }
 
   def copy(source: File, target: File): Unit =

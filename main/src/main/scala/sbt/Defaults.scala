@@ -4069,17 +4069,12 @@ object Classpaths {
     val cacheStore = factory.make("make-product")
     val t = classDirectory.value
     val vfBackendDir = compileIncremental.value._2
+    val setup: Setup = compileIncSetup.value
+    val analysisOut = c.toVirtualFile(setup.cachePath())
+    val analysisOpt = BuildDef.extractAnalysis(analysisOut, c)
     val backendDir = c.toPath(vfBackendDir)
-    val flt: File => Option[File] = flat(t)
-    val transform: File => Option[File] =
-      (f: File) => rebase(backendDir.toFile(), t)(f).orElse(flt(f))
     val resources = copyResources.value.map(_._2).toSet
-    val view = fileTreeView.value
-    val classes = view.list((Glob(backendDir, RecursiveGlob / "*")))
-    val mappings: Seq[(File, File)] = classes.flatMap:
-      case (r, attr) if r != backendDir => transform(r.toFile()).map(r.toFile() -> _)
-      case _                            => None
-    Sync.sync(cacheStore, fileConverter = c)(mappings)
+    Sync.syncClasses(cacheStore, fileConverter = c)(analysisOpt, backendDir, t.toPath())
     t :: Nil
   }
 
