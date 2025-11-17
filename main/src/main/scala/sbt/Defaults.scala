@@ -4068,20 +4068,18 @@ object Classpaths {
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
-    val resources = copyResources.value.map(_._2).toSet
-    val classDir = classDirectory.value
+    val syncDir = target.value / (prefix(configuration.value.name) + "sync")
+    val factory = CacheStoreFactory(syncDir)
+    val cacheStore = factory.make("make-product")
+    val t = classDirectory.value
     val vfBackendDir = compileIncremental.value._2
+    val setup: Setup = compileIncSetup.value
+    val analysisOut = c.toVirtualFile(setup.cachePath())
+    val analysisOpt = BuildDef.extractAnalysis(analysisOut, c)
     val backendDir = c.toPath(vfBackendDir)
-    // delete outdated files
-    Path
-      .allSubpaths(classDir)
-      .collect { case (f, _) if f.isFile() && !resources.contains(f) => f }
-      .foreach(IO.delete)
-    IO.copyDirectory(
-      source = backendDir.toFile(),
-      target = classDir,
-    )
-    classDir :: Nil
+    val resources = copyResources.value.map(_._2).toSet
+    Sync.syncClasses(cacheStore, fileConverter = c)(analysisOpt, backendDir, t.toPath())
+    t :: Nil
   }
 
   private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {

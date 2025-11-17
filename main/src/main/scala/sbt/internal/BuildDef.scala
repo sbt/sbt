@@ -114,6 +114,15 @@ private[sbt] object BuildDef:
       metadata: StringAttributeMap,
       converter: FileConverter
   ): Option[CompileAnalysis] =
+    for
+      ref <- metadata.get(Keys.analysis)
+      analysis <- extractAnalysis(VirtualFileRef.of(ref), converter)
+    yield analysis
+
+  private[sbt] def extractAnalysis(
+      ref: VirtualFileRef,
+      converter: FileConverter
+  ): Option[CompileAnalysis] =
     import sbt.OptionSyntax.*
     def asBinary(file: File) = FileAnalysisStore.binary(file).get.asScala
     def asText(file: File) = FileAnalysisStore.text(file).get.asScala
@@ -129,9 +138,6 @@ private[sbt] object BuildDef:
           val sizeBytes = attrs.size()
           getOrElseUpdate(ref, lastModified, sizeBytes)(fallback(file))
       catch case _: NoSuchFileException => fallback(file)
-    for
-      ref <- metadata.get(Keys.analysis)
-      content <- getContents(VirtualFileRef.of(ref))
-    yield content.getAnalysis
+    getContents(ref).map(_.getAnalysis)
 
 end BuildDef
