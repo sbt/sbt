@@ -53,6 +53,7 @@ lazy val root = (project in file("."))
         "org.jline:jline-terminal-jni",
         "org.reactivestreams:reactive-streams",
         "org.scala-lang.modules:scala-asm",
+        "org.scala-lang.modules:scala-collection-compat_3",
         "org.scala-lang.modules:scala-parallel-collections_3",
         "org.scala-lang.modules:scala-parser-combinators_3",
         "org.scala-lang.modules:scala-xml_3",

@@ -7,6 +7,7 @@ import coursier.cache.{ ConnectionBuilder, FileCache }
 import coursier.core.*
 import coursier.util.{ Artifact, EitherT, Monad }
 
+import scala.annotation.nowarn
 import scala.util.Try
 
 object TemporaryInMemoryRepository {
@@ -134,6 +135,7 @@ final class TemporaryInMemoryRepository private (
     val cacheOpt: Option[FileCache[Nothing]]
 ) extends Repository {
 
+  @nowarn
   def find[F[_]](
       module: Module,
       version: String,
@@ -183,6 +185,7 @@ final class TemporaryInMemoryRepository private (
     EitherT(F.map(F.point(()))(_ => res))
   }
 
+  @nowarn
   def artifacts(
       dependency: Dependency,
       project: Project,

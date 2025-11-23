@@ -735,6 +735,7 @@ lazy val mainProj = (project in file("main"))
         launcherInterface,
         caffeine,
         scala3Library,
+        scalaCollectionCompat,
       ),
     libraryDependencies ++= List(scalaPar),
     contrabandSettings,
@@ -1329,6 +1330,7 @@ lazy val lmCoursierShaded = project
         "coursier",
         "org.fusesource",
         "macrocompat",
+        "io.github.alexarchambault.isterminal",
         "io.github.alexarchambault.windowsansi",
         "concurrentrefhashmap",
         "com.github.ghik",
@@ -1338,6 +1340,7 @@ lazy val lmCoursierShaded = project
         "com.jcraft",
         "com.lmax",
         "org.apache.commons",
+        "org.apache.tika",
         "org.apache.xbean",
         "org.codehaus",
         "org.iq80",
@@ -1364,7 +1367,7 @@ lazy val lmCoursierShaded = project
       case PathList("com", "typesafe")        => MergeStrategy.discard
       case PathList("gigahorse")              => MergeStrategy.discard
       case PathList("jline")                  => MergeStrategy.discard
-      case PathList("scala")                  => MergeStrategy.discard
+      case PathList("scala", _*)              => MergeStrategy.discard
       case PathList("sjsonnew")               => MergeStrategy.discard
       case PathList("xsbti")                  => MergeStrategy.discard
       case PathList("META-INF", "native", _*) => MergeStrategy.first

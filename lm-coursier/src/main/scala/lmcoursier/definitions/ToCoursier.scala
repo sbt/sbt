@@ -1,7 +1,10 @@
 package lmcoursier.definitions
 
+import coursier.core.Overrides
+import coursier.version.{ ConstraintReconciliation, VersionConstraint, Version }
 import lmcoursier.credentials.{ Credentials, DirectCredentials, FileCredentials }
 import sbt.librarymanagement.InclExclRule
+import scala.annotation.nowarn
 
 // TODO Make private[lmcoursier]
 // private[coursier]
@@ -9,6 +12,12 @@ object ToCoursier {
 
   def configuration(configuration: Configuration): coursier.core.Configuration =
     coursier.core.Configuration(configuration.value)
+
+  def configurationBased(c: Configuration): coursier.core.VariantSelector =
+    coursier.core.VariantSelector.ConfigurationBased(configuration(c))
+
+  def variantConfiguration(c: Configuration): coursier.core.Variant =
+    coursier.core.Variant.Configuration(configuration(c))
 
   def publication(publication: Publication): coursier.core.Publication =
     coursier.core.Publication(
@@ -52,6 +61,7 @@ object ToCoursier {
       includeByDefault = matcher.includeByDefault
     )
 
+  @nowarn
   def reconciliation(r: Reconciliation): coursier.core.Reconciliation =
     r match {
       case Reconciliation.Default => coursier.core.Reconciliation.Default
@@ -60,10 +70,21 @@ object ToCoursier {
       case Reconciliation.SemVer  => coursier.core.Reconciliation.SemVer
     }
 
+  @nowarn
   def reconciliation(
       rs: Vector[(ModuleMatchers, Reconciliation)]
   ): Vector[(coursier.util.ModuleMatchers, coursier.core.Reconciliation)] =
     rs map { (m, r) => (moduleMatchers(m), reconciliation(r)) }
+
+  def constraintReconciliation(r: Reconciliation): coursier.version.ConstraintReconciliation =
+    r match
+      case Reconciliation.Default => ConstraintReconciliation.Default
+      case Reconciliation.Relaxed => ConstraintReconciliation.Relaxed
+      case Reconciliation.Strict  => ConstraintReconciliation.Strict
+      case Reconciliation.SemVer  => ConstraintReconciliation.SemVer
+
+  def versionConstraint(v: String): VersionConstraint =
+    VersionConstraint(v)
 
   def sameVersions(
       sv: Seq[Set[InclExclRule]]
@@ -74,11 +95,14 @@ object ToCoursier {
       coursier.params.rule.SameVersion(matchers) -> coursier.params.rule.RuleResolution.TryResolve
     }
 
+  def version(v: String): Version =
+    Version(v)
+
   def dependency(dependency: Dependency): coursier.core.Dependency =
     coursier.core.Dependency(
       module(dependency.module),
-      dependency.version,
-      configuration(dependency.configuration),
+      versionConstraint(dependency.version),
+      configurationBased(dependency.configuration),
       dependency.exclusions.map { (org, name) =>
         (coursier.core.Organization(org.value), coursier.core.ModuleName(name.value))
       },
@@ -89,27 +113,27 @@ object ToCoursier {
 
   def project(project: Project): coursier.core.Project =
     coursier.core.Project(
-      module(project.module),
-      project.version,
-      project.dependencies.map { (conf, dep) =>
-        configuration(conf) -> dependency(dep)
+      module = module(project.module),
+      version0 = version(project.version),
+      dependencies0 = project.dependencies.map { (conf, dep) =>
+        variantConfiguration(conf) -> dependency(dep)
       },
-      project.configurations.map { (k, l) =>
+      configurations = project.configurations.map { (k, l) =>
         configuration(k) -> l.map(configuration)
       },
-      None,
-      Nil,
-      project.properties,
-      Nil,
-      None,
-      None,
-      project.packagingOpt.map(t => coursier.core.Type(t.value)),
+      parent0 = None,
+      dependencyManagement0 = Nil,
+      properties = project.properties,
+      profiles = Nil,
+      versions = None,
+      snapshotVersioning = None,
+      packagingOpt = project.packagingOpt.map(t => coursier.core.Type(t.value)),
       relocated = false,
-      None,
-      project.publications.map { (conf, pub) =>
-        configuration(conf) -> publication(pub)
+      actualVersionOpt0 = None,
+      publications0 = project.publications.map { (conf, pub) =>
+        variantConfiguration(conf) -> publication(pub)
       },
-      coursier.core.Info(
+      info = coursier.core.Info(
         project.info.description,
         project.info.homePage,
         project.info.licenses,
@@ -130,8 +154,11 @@ object ToCoursier {
             dt.second
           )
         },
-        None // TODO Add scm field in lmcoursier.definitions.Info?
-      )
+        None, // TODO Add scm field in lmcoursier.definitions.Info?
+      ),
+      overrides = Overrides.empty,
+      variants = Map.empty,
+      variantPublications = Map.empty,
     )
 
   def credentials(credentials: Credentials): coursier.credentials.Credentials =

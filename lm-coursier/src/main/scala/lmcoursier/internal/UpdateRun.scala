@@ -6,11 +6,13 @@ import coursier.core.*
 import coursier.util.Print
 import sbt.librarymanagement.UpdateReport
 import sbt.util.Logger
+import scala.annotation.nowarn
 
 // private[coursier]
 object UpdateRun {
 
   // Move back to coursier.util (in core module) after 1.0?
+  @nowarn
   private def allDependenciesByConfig(
       res: Map[Configuration, Resolution],
       depsByConfig: Map[Configuration, Seq[Dependency]],
@@ -33,6 +35,7 @@ object UpdateRun {
   }
 
   // Move back to coursier.util (in core module) after 1.0?
+  @nowarn
   private def dependenciesWithConfig(
       res: Map[Configuration, Resolution],
       depsByConfig: Map[Configuration, Seq[Dependency]],
@@ -48,6 +51,7 @@ object UpdateRun {
       }
       .toSet
 
+  @nowarn
   def update(
       params: UpdateParams,
       verbosityLevel: Int,

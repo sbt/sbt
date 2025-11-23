@@ -7,7 +7,11 @@ import coursier.util.{ EitherT, Monad }
 final case class InterProjectRepository(projects: Seq[Project]) extends Repository {
 
   private val map = projects
-    .map(proj => proj.moduleVersion -> proj)
+    .map(proj =>
+      (proj.moduleVersion0 match
+        case (m, v) => (m, v.asString)
+      ) -> proj
+    )
     .toMap
 
   def find[F[_]](

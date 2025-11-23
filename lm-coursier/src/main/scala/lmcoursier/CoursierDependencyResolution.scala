@@ -4,7 +4,7 @@ import java.io.File
 import java.net.{ URI, URLClassLoader }
 
 import coursier.{ Organization, Resolution }
-import coursier.core.{ Classifier, Configuration }
+import coursier.core.{ Classifier, Configuration, Dependency, VariantPublication, Publication }
 import coursier.cache.CacheDefaults
 import coursier.util.Artifact
 import coursier.internal.Typelevel
@@ -27,9 +27,9 @@ import lmcoursier.internal.{
 import lmcoursier.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
-import coursier.core.{ BomDependency, Dependency, Publication }
+import coursier.core.{ BomDependency, Dependency, Publication, VariantPublication }
+import scala.annotation.nowarn
 import scala.util.control.NonFatal
-
 import scala.util.{ Try, Failure }
 
 class CoursierDependencyResolution(
@@ -226,7 +226,9 @@ class CoursierDependencyResolution(
           optionalCrossVer = true,
           projectPlatform = projectPlatform
         )
-      BomDependency(ToCoursier.module(mod), ver, Configuration.empty)
+      (BomDependency(ToCoursier.module(mod), ver, Configuration.empty): @nowarn(
+        "msg=BomDependency is deprecated"
+      ))
     }
     // Coursier fills version from BOM only when versionConstraint is empty (Resolution.processedRootDependencies).
     // So for deps with "*" or "" and BOMs present, pass empty version so BOM can supply it (sbt#4531).
@@ -291,9 +293,15 @@ class CoursierDependencyResolution(
         .ResolutionParams()
         .withMaxIterations(conf.maxIterations)
         .withProfiles(conf.mavenProfiles.toSet)
-        .withForceVersion(conf.forceVersions.map { (k, v) => (ToCoursier.module(k), v) }.toMap)
+        .withForceVersion0(
+          conf.forceVersions
+            .map: (k, v) =>
+              (ToCoursier.module(k), ToCoursier.versionConstraint(v))
+            .toMap
+        )
         .withTypelevel(typelevel)
-        .withReconciliation(ToCoursier.reconciliation(conf.reconciliation))
+        .withReconciliation0(conf.reconciliation.map: (k, v) =>
+          ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v))
         .withExclusions(excludeDependencies)
         .withRules(ToCoursier.sameVersions(conf.sameVersions)),
       strictOpt = conf.strict.map(ToCoursier.strict),
@@ -328,7 +336,9 @@ class CoursierDependencyResolution(
 
     def updateParams(
         resolutions: Map[Configuration, Resolution],
-        artifacts: Seq[(Dependency, Publication, Artifact, Option[File])]
+        artifacts: Seq[
+          (Dependency, Either[VariantPublication, Publication], Artifact, Option[File])
+        ]
     ) =
       UpdateParams(
         thisModule = (ToCoursier.module(mod), ver),
@@ -364,11 +374,11 @@ class CoursierDependencyResolution(
                 log.warn(s"Failed to fetch from lock file: $err, falling back to normal fetch")
               }
               ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
-                .map(_.fullDetailedArtifacts)
+                .map(_.fullDetailedArtifacts0)
           }
         case None =>
           ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
-            .map(_.fullDetailedArtifacts)
+            .map(_.fullDetailedArtifacts0)
       }
     } yield {
       val updateParams0 = updateParams(resolutions, artifactResult)
@@ -378,7 +388,7 @@ class CoursierDependencyResolution(
           val artifactMap = artifactResult
             .groupBy(_._1)
             .view
-            .mapValues(_.map { case (_, pub, art, _) =>
+            .mapValues(_.map { case (_, Right(pub), art, _) =>
               val originalUrl =
                 lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(art.url, cache)
               (originalUrl, pub.classifier.value, pub.ext.value)
@@ -533,7 +543,12 @@ class CoursierDependencyResolution(
       val r = new ResolveException(
         downloadErrors.map(_.getMessage),
         downloadErrors.map { err =>
-          toModuleId(err.module, err.version)
+          ModuleID(
+            err.module.organization.value,
+            err.module.name.value,
+            err.versionConstraint.asString,
+          )
+            .withExtraAttributes(err.module.attributes)
         },
         resolvedPaths
       )

@@ -9,7 +9,9 @@ import coursier.util.Artifact
 final case class UpdateParams(
     thisModule: (Module, String),
     artifacts: Map[Artifact, File],
-    fullArtifacts: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
+    fullArtifacts: Option[
+      Map[(Dependency, Either[VariantPublication, Publication], Artifact), Option[File]]
+    ],
     classifiers: Option[Seq[Classifier]],
     configs: Map[Configuration, Set[Configuration]],
     dependencies: Seq[(Configuration, Dependency)],

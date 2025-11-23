@@ -12,6 +12,7 @@ import coursier.params.rule.RuleResolution
 import coursier.util.Task
 import sbt.util.Logger
 
+import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.collection.mutable
 
@@ -44,6 +45,7 @@ object ResolutionRun {
 
     val printOptionalMessage = verbosityLevel >= 0 && verbosityLevel <= 1
 
+    @nowarn
     def depsRepr(deps: Seq[(Configuration, Dependency)]) =
       deps
         .map { (config, dep) =>
@@ -89,6 +91,7 @@ object ResolutionRun {
     if (verbosityLevel >= 2)
       log.info(initialMessage)
 
+    @nowarn
     val resolveTask: Resolve[Task] = {
       Resolve()
         // re-using various caches from a resolution of a configuration we extend
@@ -173,6 +176,7 @@ object ResolutionRun {
     }
   }
 
+  @nowarn
   def resolutions(
       params: ResolutionParams,
       verbosityLevel: Int,

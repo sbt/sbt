@@ -98,6 +98,7 @@ object Dependencies {
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.4.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0"
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
+  val scalaCollectionCompat = "org.scala-lang.modules" %% "scala-collection-compat" % "2.14.0"
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
@@ -111,7 +112,7 @@ object Dependencies {
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.23"
+  val coursierVersion = "2.1.25-M19"
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
     .cross(CrossVersion.for3Use2_13)

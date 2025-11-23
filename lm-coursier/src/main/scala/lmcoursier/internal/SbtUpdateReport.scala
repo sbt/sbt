@@ -4,14 +4,23 @@ import java.io.File
 import java.util.{ Collections, GregorianCalendar, WeakHashMap }
 import coursier.cache.CacheUrl
 import coursier.{ Attributes, Dependency, Module, Project, Resolution }
-import coursier.core.{ Classifier, Configuration, Extension, Info, Publication, Type }
+import coursier.core.{
+  Classifier,
+  Configuration,
+  Extension,
+  Info,
+  MinimizedExclusions,
+  Publication,
+  Type,
+  VariantPublication
+}
 import coursier.maven.MavenAttributes
 import coursier.util.Artifact
 import sbt.librarymanagement.{ Artifact as _, Configuration as _, * }
 import sbt.util.Logger
+import scala.annotation.nowarn
 
 import scala.annotation.tailrec
-import coursier.core.MinimizedExclusions
 
 private[internal] object SbtUpdateReport {
 
@@ -32,6 +41,7 @@ private[internal] object SbtUpdateReport {
   private def infoProperties(project: Project): Seq[(String, String)] =
     project.properties.filter(_._1.startsWith("info."))
 
+  @nowarn
   private val moduleId = caching[(Dependency, String, Map[String, String]), ModuleID] {
     (dependency, version, extraProperties) =>
       val mod = sbt.librarymanagement.ModuleID(
@@ -75,6 +85,7 @@ private[internal] object SbtUpdateReport {
       .withExtraAttributes(module.attributes ++ extraProperties)
   }
 
+  @nowarn
   private val moduleReport = caching[
     (
         Dependency,
@@ -155,13 +166,16 @@ private[internal] object SbtUpdateReport {
       .withCallers(callers.toVector)
   }
 
+  @nowarn
   private def moduleReports(
       thisModule: (Module, String),
       res: Resolution,
       interProjectDependencies: Seq[Project],
       classifiersOpt: Option[Seq[Classifier]],
       artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
-      fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
+      fullArtifactsOpt: Option[
+        Map[(Dependency, Either[VariantPublication, Publication], Artifact), Option[File]]
+      ],
       log: Logger,
       includeSignatures: Boolean,
       classpathOrder: Boolean,
@@ -181,7 +195,7 @@ private[internal] object SbtUpdateReport {
         deps.map { (d, p, a) =>
           val d0 = d.withAttributes(d.attributes.withClassifier(p.classifier))
           val a0 = if (missingOk) a.withOptional(true) else a
-          val f = map.get((d0, p, a0)).flatten
+          val f = map.get((d0, Right(p), a0)).flatten
           (d, p, a0, f) // not d0
         }
       case None =>
@@ -328,6 +342,7 @@ private[internal] object SbtUpdateReport {
     }
   }
 
+  @nowarn
   def apply(
       thisModule: (Module, String),
       configDependencies: Map[Configuration, Seq[Dependency]],
@@ -335,7 +350,9 @@ private[internal] object SbtUpdateReport {
       interProjectDependencies: Vector[Project],
       classifiersOpt: Option[Seq[Classifier]],
       artifactFileOpt: (Module, String, Attributes, Artifact) => Option[File],
-      fullArtifactsOpt: Option[Map[(Dependency, Publication, Artifact), Option[File]]],
+      fullArtifactsOpt: Option[
+        Map[(Dependency, Either[VariantPublication, Publication], Artifact), Option[File]]
+      ],
       log: Logger,
       includeSignatures: Boolean,
       classpathOrder: Boolean,
@@ -378,8 +395,11 @@ private[internal] object SbtUpdateReport {
         OrganizationArtifactReport(rep.module.organization, rep.module.name, Vector(rep))
       }
 
+      def conflicts: Seq[coursier.graph.Conflict] =
+        try coursier.graph.Conflict(subRes)
+        catch case e: Throwable if missingOk => Nil
       val evicted = for {
-        c <- coursier.graph.Conflict(subRes)
+        c <- conflicts
         // ideally, forceVersions should be taken into account by coursier.core.Resolution itself, when
         // it computes transitive dependencies. It only handles forced versions at a global level for now,
         // rather than handing them for each dependency (where each dependency could have its own forced
