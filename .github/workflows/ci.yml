@@ -48,21 +48,21 @@ jobs:
       SPARK_LOCAL_IP: "127.0.0.1"
     steps:
     - name: Checkout sbt/sbt
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
     - name: Checkout sbt/io
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: sbt/io
         ref: develop
         path: io
     - name: Checkout sbt/librarymanagement
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: sbt/librarymanagement
         ref: 1.12.x
         path: librarymanagement
     - name: Checkout sbt/zinc
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         repository: sbt/zinc
         ref: 1.12.x

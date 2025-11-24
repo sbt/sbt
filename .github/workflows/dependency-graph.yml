@@ -12,6 +12,6 @@ jobs:
     name: Submit Dependency Graph
     runs-on: ubuntu-latest # or windows-latest, or macOS-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - uses: sbt/setup-sbt@v1
       - uses: scalacenter/sbt-dependency-submission@v3

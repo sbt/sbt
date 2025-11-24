@@ -14,7 +14,7 @@ jobs:
       JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
       SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Setup JDK
       uses: actions/setup-java@v5
       with:
