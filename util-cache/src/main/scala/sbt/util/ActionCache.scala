@@ -2,7 +2,7 @@ package sbt.util
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ Files, Path, Paths }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -94,19 +94,24 @@ object ActionCache:
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
-    findActionResult(key, codeContentHash, extraHash, config) match
-      case Right(result) =>
-        // some protocol can embed values into the result
-        result.contents.headOption match
-          case Some(head) =>
-            store.syncBlobs(result.outputFiles, config.outputDirectory)
-            val str = String(head.array(), StandardCharsets.UTF_8)
-            Some(valueFromStr(str, result.origin))
-          case _ =>
-            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-            if paths.isEmpty then None
-            else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
-      case Left(_) => None
+    CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
+    val (input, valueVF) = mkInput(key, codeContentHash, extraHash)
+    val valuePath = config.fileConverter.toPath(VirtualFileRef.of(valueVF))
+    if Files.exists(valuePath) then Some(valueFromStr(IO.read(valuePath.toFile()), Some("disk")))
+    else
+      findActionResult(input, valueVF, config) match
+        case Right(result) =>
+          // some protocol can embed values into the result
+          result.contents.headOption match
+            case Some(head) =>
+              store.syncBlobs(result.outputFiles, config.outputDirectory)
+              val str = String(head.array(), StandardCharsets.UTF_8)
+              Some(valueFromStr(str, result.origin))
+            case _ =>
+              val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+              if paths.isEmpty then None
+              else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
+        case Left(_) => None
 
   /**
    * Checks if the ActionResult exists in the cache.
@@ -117,21 +122,23 @@ object ActionCache:
       extraHash: Digest,
       config: BuildWideCacheConfiguration,
   ): Boolean =
-    findActionResult(key, codeContentHash, extraHash, config) match
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+    findActionResult(input, valuePath, config) match
       case Right(_) => true
       case Left(_)  => false
 
-  inline private[sbt] def findActionResult[I: HashWriter](
-      key: I,
-      codeContentHash: Digest,
-      extraHash: Digest,
+  inline private[sbt] def findActionResult(
+      input: Digest,
+      valuePath: String,
       config: BuildWideCacheConfiguration,
   ): Either[Throwable, ActionResult] =
-    // val logger = config.logger
-    CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
     val getRequest =
-      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
+      GetActionResultRequest(
+        actionDigest = input,
+        inlineStdout = false,
+        inlineStderr = false,
+        inlineOutputFiles = Vector(valuePath),
+      )
     config.store.get(getRequest)
 
   private inline def mkInput[I: HashWriter](
