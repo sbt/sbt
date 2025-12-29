@@ -70,7 +70,12 @@ object ActionCache:
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            store.syncBlobs(cachedResult.outputFiles, outputDirectory)
+            val (valueFiles, outputFiles) = cachedResult.outputFiles.partition: ref =>
+              ref.id().startsWith(s"$${OUT}/value/")
+            val isValueOnly = outputFiles.isEmpty
+            // sync only if the task is value-only, without side effects
+            if isValueOnly then store.syncBlobs(valueFiles, outputDirectory)
+            else store.syncBlobs(outputFiles, outputDirectory)
             result
           case Left(e) => throw e
 
@@ -101,16 +106,27 @@ object ActionCache:
     else
       findActionResult(input, valueVF, config) match
         case Right(result) =>
+          println(result.toString)
+          val (valueFiles, outputFiles) = result.outputFiles.partition: ref =>
+            ref.id().startsWith(s"$${OUT}/value/")
+          val isValueOnly = outputFiles.isEmpty
           // some protocol can embed values into the result
           result.contents.headOption match
             case Some(head) =>
               store.syncBlobs(result.outputFiles, config.outputDirectory)
               val str = String(head.array(), StandardCharsets.UTF_8)
               Some(valueFromStr(str, result.origin))
-            case _ =>
+            case _ if isValueOnly =>
               val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
               if paths.isEmpty then None
               else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
+            case _ =>
+              // in case the task has effects, sync the value file to target/out/b/value
+              val secondary = config.outputDirectory.resolve("b")
+              val valueCasFiles = store.syncBlobs(valueFiles, secondary)
+              store.syncBlobs(outputFiles, config.outputDirectory)
+              if valueCasFiles.isEmpty then None
+              else Some(valueFromStr(IO.read(valueCasFiles.head.toFile()), result.origin))
         case Left(_) => None
 
   /**
