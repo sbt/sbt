@@ -100,6 +100,7 @@ object SysProp {
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
   def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
+  def serverAutoStart: Boolean = getOrTrue("sbt.server.autostart")
   def remoteCache: Option[URI] = sys.props
     .get("sbt.remote_cache")
     .map(URI(_))

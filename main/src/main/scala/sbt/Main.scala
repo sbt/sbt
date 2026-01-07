@@ -77,14 +77,9 @@ private[sbt] object xMain:
       val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
       val isNew: String => Boolean = cmd => (cmd == "new") || (cmd == "init")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
-      // Check if server autostart is disabled via sbt.server.autostart property
-      // This prevents creating boot server socket when --no-server is used
-      lazy val serverAutostart = sys.props.get("sbt.server.autostart") match {
-        case Some(value) => value.toLowerCase == "true"
-        case None        => true // Default to true if not set
-      }
       // keep this lazy to prevent project directory created prematurely
-      lazy val bootServerSocket = if (isServer && serverAutostart) getSocketOrExit(configuration) match {
+      // Only create boot server socket if server mode is enabled and server autostart is enabled
+      lazy val bootServerSocket = if (isServer && SysProp.serverAutoStart) getSocketOrExit(configuration) match {
         case (_, Some(e)) => boundary.break(e)
         case (s, _)       => s
       }
