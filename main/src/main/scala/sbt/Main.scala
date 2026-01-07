@@ -79,11 +79,12 @@ private[sbt] object xMain:
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
       // Only create boot server socket if server mode is enabled and server autostart is enabled
-      lazy val bootServerSocket = if (isServer && SysProp.serverAutoStart) getSocketOrExit(configuration) match {
-        case (_, Some(e)) => boundary.break(e)
-        case (s, _)       => s
-      }
-      else None
+      lazy val bootServerSocket =
+        if (isServer && SysProp.serverAutoStart) getSocketOrExit(configuration) match {
+          case (_, Some(e)) => boundary.break(e)
+          case (s, _)       => s
+        }
+        else None
       lazy val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
       def withStreams[A](f: => A): A =
         try {
