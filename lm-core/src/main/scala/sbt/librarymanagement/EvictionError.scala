@@ -179,7 +179,7 @@ final class EvictionError private[sbt] (
   def toAssumedLines: List[String] = toLines(assumedIncompatibleEvictions, true)
 
   private def configurationLabel: String =
-    if (configuration == Configurations.Compile) "library dependencies"
+    if (configuration.name == Configurations.Compile.name) "library dependencies"
     else s"${configuration.name.capitalize} dependencies"
 
   def toLines(evictions: Seq[(EvictionPair, String)], assumed: Boolean): List[String] = {

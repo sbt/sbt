@@ -101,13 +101,15 @@ private[sbt] object LibraryManagement {
              || assumedEvictionErrorLevel != Level.Error
            ) Nil
            else evictionError.toAssumedLines)
-      val errorLines: Seq[String] = errorLinesFor(evictionErrorCompile) ++ errorLinesFor(evictionErrorTest)
+      val errorLines: Seq[String] =
+        errorLinesFor(evictionErrorCompile) ++ errorLinesFor(evictionErrorTest)
       if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(System.lineSeparator))
       else {
         if (evictionErrorCompile.incompatibleEvictions.isEmpty) ()
         else evictionErrorCompile.lines.foreach(log.log(evictionLevel, _: String))
         if (evictionErrorCompile.assumedIncompatibleEvictions.isEmpty) ()
-        else evictionErrorCompile.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+        else
+          evictionErrorCompile.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
 
         if (evictionErrorTest.incompatibleEvictions.isEmpty) ()
         else evictionErrorTest.lines.foreach(log.log(evictionLevel, _: String))
