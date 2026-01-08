@@ -68,19 +68,29 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val evictionError = EvictionError(
+      val evictionErrorCompile = EvictionError(
         report1,
         module,
         versionSchemeOverrides,
         assumedVersionScheme,
         assumedVersionSchemeJava,
-        assumedEvictionErrorLevel
+        assumedEvictionErrorLevel,
+        Configurations.Compile,
+      )
+      val evictionErrorTest = EvictionError(
+        report1,
+        module,
+        versionSchemeOverrides,
+        assumedVersionScheme,
+        assumedVersionSchemeJava,
+        assumedEvictionErrorLevel,
+        Configurations.Test,
       )
       def extraLines = List(
         "",
         "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
       )
-      val errorLines: Seq[String] =
+      def errorLinesFor(evictionError: EvictionError): Seq[String] =
         (if (
            evictionError.incompatibleEvictions.isEmpty
            || evictionLevel != Level.Error
@@ -91,13 +101,18 @@ private[sbt] object LibraryManagement {
              || assumedEvictionErrorLevel != Level.Error
            ) Nil
            else evictionError.toAssumedLines)
+      val errorLines: Seq[String] = errorLinesFor(evictionErrorCompile) ++ errorLinesFor(evictionErrorTest)
       if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(System.lineSeparator))
       else {
-        if (evictionError.incompatibleEvictions.isEmpty) ()
-        else evictionError.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorCompile.incompatibleEvictions.isEmpty) ()
+        else evictionErrorCompile.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorCompile.assumedIncompatibleEvictions.isEmpty) ()
+        else evictionErrorCompile.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
 
-        if (evictionError.assumedIncompatibleEvictions.isEmpty) ()
-        else evictionError.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+        if (evictionErrorTest.incompatibleEvictions.isEmpty) ()
+        else evictionErrorTest.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorTest.assumedIncompatibleEvictions.isEmpty) ()
+        else evictionErrorTest.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
       }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
