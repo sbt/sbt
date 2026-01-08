@@ -1143,6 +1143,7 @@ lazy val lmCore = (project in file("lm-core"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.EvictionError.processEvictions"),
     ),
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
