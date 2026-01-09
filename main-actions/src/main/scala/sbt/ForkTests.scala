@@ -45,6 +45,7 @@ private[sbt] object ForkTests:
       converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     import std.TaskExtra.*
@@ -56,7 +57,7 @@ private[sbt] object ForkTests:
       if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel).tagw(
+        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel, parallelism).tagw(
           config.tags*
         )
     main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
@@ -72,10 +73,11 @@ private[sbt] object ForkTests:
       converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
-    apply(runners, opts, config, classpath, converter, fork, log, tags*)
+    apply(runners, opts, config, classpath, converter, fork, log, parallelism, tags*)
   }
 
   def apply(
@@ -86,9 +88,10 @@ private[sbt] object ForkTests:
       converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tag: Tag
   ): Task[TestOutput] = {
-    apply(runners, tests, config, classpath, converter, fork, log, tag -> 1)
+    apply(runners, tests, config, classpath, converter, fork, log, parallelism, tag -> 1)
   }
 
   private def mainTestTask(
@@ -98,7 +101,8 @@ private[sbt] object ForkTests:
       converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
-      parallel: Boolean
+      parallel: Boolean,
+      parallelism: Option[Int]
   ): Task[TestOutput] =
     std.TaskExtra.task {
       val testListeners = opts.testListeners.flatMap:
@@ -148,6 +152,7 @@ private[sbt] object ForkTests:
         null,
         UTerminal.isAnsiSupported,
         parallel,
+        parallelism.map(Integer.valueOf).orNull,
         ArrayList(taskdefs.asJava),
         ArrayList(testRunners.asJava),
       )

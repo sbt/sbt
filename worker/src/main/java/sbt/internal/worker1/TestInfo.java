@@ -33,6 +33,7 @@ public class TestInfo implements Serializable {
   public final RunInfo.NativeRunInfo nativeRunInfo;
   public final boolean ansiCodesSupported;
   public final boolean parallel;
+  public final Integer parallelism;
   public final ArrayList<TaskDef> taskDefs;
   public final ArrayList<TestRunner> testRunners;
 
@@ -42,6 +43,7 @@ public class TestInfo implements Serializable {
       RunInfo.NativeRunInfo nativeRunInfo,
       boolean ansiCodesSupported,
       boolean parallel,
+      Integer parallelism,
       ArrayList<TaskDef> taskDefs,
       ArrayList<TestRunner> testRunners) {
     this.jvm = jvm;
@@ -49,6 +51,7 @@ public class TestInfo implements Serializable {
     this.nativeRunInfo = nativeRunInfo;
     this.ansiCodesSupported = ansiCodesSupported;
     this.parallel = parallel;
+    this.parallelism = parallelism;
     this.taskDefs = taskDefs;
     this.testRunners = testRunners;
   }

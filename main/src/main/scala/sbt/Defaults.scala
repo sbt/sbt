@@ -201,6 +201,7 @@ object Defaults extends BuildCommon {
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
+      testForkedParallelism :== None,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -1133,11 +1134,12 @@ object Defaults extends BuildCommon {
         (test / testExecution),
         (test / fullClasspath),
         testForkedParallel,
+        testForkedParallelism,
         (test / javaOptions),
         (classLoaderLayeringStrategy),
         thisProject,
         fileConverter,
-      ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
+      ).flatMapN { (s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, thisProj, c) =>
         allTestGroupsTask(
           s,
           lt,
@@ -1146,6 +1148,7 @@ object Defaults extends BuildCommon {
           ex,
           cp,
           fp,
+          fpm,
           jo,
           clls,
           projectId = s"${thisProj.id} / ",
@@ -1318,6 +1321,7 @@ object Defaults extends BuildCommon {
         newConfig,
         fullClasspath.value,
         testForkedParallel.value,
+        testForkedParallelism.value,
         javaOptions.value,
         classLoaderLayeringStrategy.value,
         projectId = s"${thisProject.value.id} / ",
@@ -1367,6 +1371,7 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution = false,
+      forkedParallelism = None,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
@@ -1392,6 +1397,7 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution,
+      forkedParallelism = None,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
@@ -1407,6 +1413,7 @@ object Defaults extends BuildCommon {
       config: Tests.Execution,
       cp: Classpath,
       forkedParallelExecution: Boolean,
+      forkedParallelism: Option[Int],
       javaOptions: Seq[String],
       strategy: ClassLoaderLayeringStrategy,
       projectId: String,
@@ -1435,7 +1442,7 @@ object Defaults extends BuildCommon {
         case Tests.SubProcess(opts) =>
           s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
           val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
-          s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
+          s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}")
           ForkTests(
             runners,
             processedOptions(group),
@@ -1444,6 +1451,7 @@ object Defaults extends BuildCommon {
             converter,
             opts,
             s.log,
+            forkedParallelism,
             (Tags.ForkedTestGroup, 1) +: group.tags*
           )
         case Tests.InProcess =>
