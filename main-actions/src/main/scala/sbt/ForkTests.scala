@@ -57,9 +57,10 @@ private[sbt] object ForkTests:
       if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel, parallelism).tagw(
-          config.tags*
-        )
+        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel, parallelism)
+          .tagw(
+            config.tags*
+          )
     main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }

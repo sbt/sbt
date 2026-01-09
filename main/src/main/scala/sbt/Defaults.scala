@@ -1124,8 +1124,9 @@ object Defaults extends BuildCommon {
       .value,
     testQuick / testFilter := Def.uncached(IncrementalTest.filterTask.value),
     extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
-    executeTests := Def.uncached({
+    executeTests := Def.uncached(Def.taskDyn {
       import sbt.TupleSyntax.*
+      val fpm = testForkedParallelism.value
       (
         test / streams,
         loadedTestFrameworks,
@@ -1139,10 +1140,7 @@ object Defaults extends BuildCommon {
         thisProject,
         fileConverter,
       ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
-        Def.task {
-          val fpm = testForkedParallelism.value
-          allTestGroupsTask(s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, s"${thisProj.id} / ", c).value
-        }
+        allTestGroupsTask(s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, s"${thisProj.id} / ", c)
       }
     }.value),
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
@@ -1394,6 +1392,36 @@ object Defaults extends BuildCommon {
     )
   }
 
+  // Binary compatibility overload for sbt 2.0.0-RC7
+  private[sbt] def allTestGroupsTask(
+      s: TaskStreams,
+      frameworks: Map[TestFramework, Framework],
+      loader: ClassLoader,
+      groups: Seq[Tests.Group],
+      config: Tests.Execution,
+      cp: Classpath,
+      forkedParallelExecution: Boolean,
+      javaOptions: Seq[String],
+      strategy: ClassLoaderLayeringStrategy,
+      projectId: String,
+      converter: FileConverter,
+  ): Task[Tests.Output] = {
+    allTestGroupsTask(
+      s,
+      frameworks,
+      loader,
+      groups,
+      config,
+      cp,
+      forkedParallelExecution,
+      forkedParallelism = None,
+      javaOptions,
+      strategy,
+      projectId,
+      converter,
+    )
+  }
+
   private[sbt] def allTestGroupsTask(
       s: TaskStreams,
       frameworks: Map[TestFramework, Framework],
@@ -1431,7 +1459,9 @@ object Defaults extends BuildCommon {
         case Tests.SubProcess(opts) =>
           s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
           val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
-          s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}")
+          s.log.debug(
+            s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}"
+          )
           ForkTests(
             runners,
             processedOptions(group),

@@ -313,9 +313,10 @@ public class ForkTestMain {
 
     private ExecutorService executorService(final boolean parallel, final Integer parallelism) {
       if (parallel) {
-        final int nbThreads = (parallelism != null && parallelism > 0)
-            ? parallelism
-            : Runtime.getRuntime().availableProcessors();
+        final int nbThreads =
+            (parallelism != null && parallelism > 0)
+                ? parallelism
+                : Runtime.getRuntime().availableProcessors();
         logDebug("Create a test executor with a thread pool of " + nbThreads + " threads.");
         return Executors.newFixedThreadPool(nbThreads);
       } else {
