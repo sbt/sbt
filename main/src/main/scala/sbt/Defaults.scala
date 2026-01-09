@@ -1139,21 +1139,9 @@ object Defaults extends BuildCommon {
         thisProject,
         fileConverter,
       ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
-        testForkedParallelism.toTask.flatMap { fpm =>
-          allTestGroupsTask(
-            s,
-            lt,
-            tl,
-            gp,
-            ex,
-            cp,
-            fp,
-            fpm,
-            jo,
-            clls,
-            projectId = s"${thisProj.id} / ",
-            c,
-          )
+        Def.task {
+          val fpm = testForkedParallelism.value
+          allTestGroupsTask(s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, s"${thisProj.id} / ", c).value
         }
       }
     }.value),
