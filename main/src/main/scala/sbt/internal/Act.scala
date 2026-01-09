@@ -489,7 +489,7 @@ object Act {
             Aggregation.ShowConfig(
               settingValues = true,
               taskValues = true,
-              print = println,
+              print = scala.Console.out.println,
               success = false
             )
           case _ => Aggregation.defaultShow(state, showTasks = action == ShowAction)
