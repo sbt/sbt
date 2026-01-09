@@ -1126,6 +1126,8 @@ object Defaults extends BuildCommon {
     extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
     executeTests := Def.uncached({
       import sbt.TupleSyntax.*
+      val fp = testForkedParallel.value
+      val fpm = testForkedParallelism.value
       (
         test / streams,
         loadedTestFrameworks,
@@ -1133,13 +1135,11 @@ object Defaults extends BuildCommon {
         (test / testGrouping),
         (test / testExecution),
         (test / fullClasspath),
-        testForkedParallel,
-        testForkedParallelism,
         (test / javaOptions),
         (classLoaderLayeringStrategy),
         thisProject,
         fileConverter,
-      ).flatMapN { (s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, thisProj, c) =>
+      ).flatMapN { (s, lt, tl, gp, ex, cp, jo, clls, thisProj, c) =>
         allTestGroupsTask(
           s,
           lt,
