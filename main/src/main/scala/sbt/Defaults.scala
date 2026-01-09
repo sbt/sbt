@@ -1133,13 +1133,13 @@ object Defaults extends BuildCommon {
         (test / testGrouping),
         (test / testExecution),
         (test / fullClasspath),
-        testForkedParallel.toTaskable,
-        testForkedParallelism.toTaskable,
+        Def.task { (testForkedParallel.value, testForkedParallelism.value) },
         (test / javaOptions),
         (classLoaderLayeringStrategy),
         thisProject,
         fileConverter,
-      ).flatMapN { (s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, thisProj, c) =>
+      ).flatMapN { (s, lt, tl, gp, ex, cp, forkedOpts, jo, clls, thisProj, c) =>
+        val (fp, fpm) = forkedOpts
         allTestGroupsTask(
           s,
           lt,
