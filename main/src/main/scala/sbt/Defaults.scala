@@ -1133,27 +1133,28 @@ object Defaults extends BuildCommon {
         (test / testGrouping),
         (test / testExecution),
         (test / fullClasspath),
-        Def.task { (testForkedParallel.value, testForkedParallelism.value) },
+        testForkedParallel.toTaskable,
         (test / javaOptions),
         (classLoaderLayeringStrategy),
         thisProject,
         fileConverter,
-      ).flatMapN { (s, lt, tl, gp, ex, cp, forkedOpts, jo, clls, thisProj, c) =>
-        val (fp, fpm) = forkedOpts
-        allTestGroupsTask(
-          s,
-          lt,
-          tl,
-          gp,
-          ex,
-          cp,
-          fp,
-          fpm,
-          jo,
-          clls,
-          projectId = s"${thisProj.id} / ",
-          c,
-        )
+      ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
+        testForkedParallelism.toTask.flatMap { fpm =>
+          allTestGroupsTask(
+            s,
+            lt,
+            tl,
+            gp,
+            ex,
+            cp,
+            fp,
+            fpm,
+            jo,
+            clls,
+            projectId = s"${thisProj.id} / ",
+            c,
+          )
+        }
       }
     }.value),
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
