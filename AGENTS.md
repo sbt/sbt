@@ -15,7 +15,7 @@ sbt compile
 Pull reuqest guideline
 ----------------------
 
-- Follow the PR guidance in <contributing-docs/01_pull_request.md>.
+- Follow the PR guidance in [contributing-docs/01_pull_request.md](contributing-docs/01_pull_request.md).
 - In the commit message, include "Generated-by" tag for Gen-AI tools.
 
 Coding style
@@ -34,9 +34,9 @@ Tests
 Always add tests. For changes with small scopes prefer HedgeHog for Scala.
 For changes that require coordination with file changes and tasks, use scripted test.
 
-- <contributing-docs/04_unit_tests.md>
-- <contributing-docs/05_scripted_tests.md>
-- <contributing-docs/06_manual_tests.md>
+- [contributing-docs/04_unit_tests.md](contributing-docs/04_unit_tests.md)
+- [contributing-docs/05_scripted_tests.md](contributing-docs/05_scripted_tests.md)
+- [contributing-docs/06_manual_tests.md](contributing-docs/06_manual_tests.md)
 
 Binary compatibility
 --------------------

@@ -28,6 +28,10 @@ Ideas and proposals
 
 If you have an enhancement idea, or a general discussion, please follow the [sbt 2.0 RFC process](https://eed3si9n.com/sbt-2.0-rfc-process) or start a [Discussion][Discussions].
 
+Patching the core (send pull requests)
+--------------------------------------
+
+See a more detailed documentation [Sending pull request](contributing-docs/01_pull_request.md).
 
 Reporting Issues
 ----------------
@@ -98,26 +102,7 @@ On StackOverflow, it's:
 Here's a simple sample case: [#327][327].
 Finally, thank you for taking the time to report a problem.
 
-Pull Requests
--------------
-
-See below for the branch to work against.
-
-See [DEVELOPING](./DEVELOPING.md)
-
 Profiling sbt
 -------------
 
 See [PROFILING](./PROFILING.md)
-
-Other notes
------------
-
-## Signing the CLA
-
-Contributing to sbt requires you or your employer to sign the
-[Scala Contributor License Agreement](https://contribute.akka.io/contribute/cla/scala).
-
-To make it easier to respect our license agreements, we have added an sbt task
-that takes care of adding the LICENSE headers to new files. Run `headerCreate`
-and sbt will put a copyright notice into it.
