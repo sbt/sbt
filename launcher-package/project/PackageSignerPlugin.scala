@@ -21,13 +21,13 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
     inConfig(Rpm)(packageSignerSettings)
 
   def subExtension(art: Artifact, ext: String): Artifact =
-    art.copy(extension = ext)
+    art.withExtension(ext)
 
   def packageSignerSettings: Seq[Setting[_]] = Seq(
     signedArtifacts := {
       val artifacts = packagedArtifacts.value
       val r = pgpSigner.value
-      val skipZ = (skip in pgpSigner).value
+      val skipZ = (pgpSigner / skip).value
       val s = streams.value
       if (!skipZ) {
         artifacts flatMap { case (art, f) =>
@@ -39,19 +39,25 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       else artifacts
     },
     publishSignedConfiguration := Classpaths.publishConfig(
-      signedArtifacts.value,
-      None,
+      publishMavenStyle = publishMavenStyle.value,
+      deliverIvyPattern = (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
+      status = status.value,
+      configurations = Vector.empty,
+      artifacts = signedArtifacts.value.toVector,
+      checksums = (publish / checksums).value.toVector,
       resolverName = Classpaths.getPublishTo(publishTo.value).name,
-      checksums    = (checksums in publish).value,
-      logging      = ivyLoggingLevel.value,
-      overwrite    = isSnapshot.value),
+      logging = ivyLoggingLevel.value,
+      overwrite = isSnapshot.value),
     publishLocalSignedConfiguration := Classpaths.publishConfig(
-      signedArtifacts.value,
-      None,
+      publishMavenStyle = publishMavenStyle.value,
+      deliverIvyPattern = (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
+      status = status.value,
+      configurations = Vector.empty,
+      artifacts = signedArtifacts.value.toVector,
+      checksums = (publish / checksums).value.toVector,
       resolverName = "local",
-      checksums    = (checksums in publish).value,
-      logging      = ivyLoggingLevel.value,
-      overwrite    = isSnapshot.value),
+      logging = ivyLoggingLevel.value,
+      overwrite = isSnapshot.value),
     publishSigned      := Classpaths.publishTask(publishSignedConfiguration, deliver).value,
     publishLocalSigned := Classpaths.publishTask(publishLocalSignedConfiguration, deliver).value
   )
