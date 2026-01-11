@@ -115,7 +115,7 @@ val root = (project in file(".")).
       if(!file.exists) {
          // oddly, some places require us to create the file before writing...
          IO.touch(file)
-         val url = new java.net.URL(uri)
+         val url = new URI(uri).toURL
          val connection = url.openConnection()
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
@@ -151,7 +151,7 @@ val root = (project in file(".")).
       val windowsZip = t / windowsImageZip
       if(!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(macosUniversalTar)
-         val url = new java.net.URL(s"$baseUrl/v$v/$macosUniversalImageTar")
+         val url = new URI(s"$baseUrl/v$v/$macosUniversalImageTar").toURL
          val connection = url.openConnection()
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
@@ -173,7 +173,7 @@ val root = (project in file(".")).
       }
       if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxX86Tar)
-         val url = new java.net.URL(s"$baseUrl/v$v/$linuxX86ImageTar")
+         val url = new URI(s"$baseUrl/v$v/$linuxX86ImageTar").toURL
          val connection = url.openConnection()
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
@@ -195,7 +195,7 @@ val root = (project in file(".")).
       }
       if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxAarch64Tar)
-         val url = new java.net.URL(s"$baseUrl/v$v/$linuxAarch64ImageTar")
+         val url = new URI(s"$baseUrl/v$v/$linuxAarch64ImageTar").toURL
          val connection = url.openConnection()
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
@@ -217,7 +217,7 @@ val root = (project in file(".")).
       }
       if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
-         val url = new java.net.URL(s"$baseUrl/v$v/$windowsImageZip")
+         val url = new URI(s"$baseUrl/v$v/$windowsImageZip").toURL
          val connection = url.openConnection()
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
@@ -469,7 +469,7 @@ def makePublishToForConfig(config: Configuration) = {
     },
     publishTo := {
       val (id, url, pattern) = bintrayTripple.value
-      val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
+      val resolver = Resolver.url(id, new URI(url).toURL)(Patterns(pattern))
       Some(resolver)
     }
   ))
@@ -482,7 +482,7 @@ def downloadUrl(uri: URI, out: File): Unit =
   {
     if(!out.exists) {
        IO.touch(out)
-       val url = new java.net.URL(uri.toString)
+       val url = new URI(uri.toString).toURL
        val connection = url.openConnection()
        val input = connection.getInputStream
        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
