@@ -58,8 +58,8 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       resolverName = "local",
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value),
-    publishSigned      := Classpaths.publishTask(publishSignedConfiguration, deliver).value,
-    publishLocalSigned := Classpaths.publishTask(publishLocalSignedConfiguration, deliver).value
+    publishSigned      := Classpaths.publishTask(publishSignedConfiguration).value,
+    publishLocalSigned := Classpaths.publishTask(publishLocalSignedConfiguration).value
   )
 
 }

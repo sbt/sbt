@@ -1,4 +1,5 @@
 import scala.util.control.Exception.catching
+import scala.sys.process._
 import NativePackagerHelper._
 import com.typesafe.sbt.packager.SettingsHelper._
 import DebianConstants._
@@ -467,7 +468,7 @@ def makePublishToForConfig(config: Configuration) = {
       Some(resolver)
     }
   )) ++ Seq(
-     resolvers ++= ((publishTo in config) apply (_.toSeq)).value
+     resolvers ++= (config / publishTo).value.toSeq
   )
 }
 
@@ -551,7 +552,7 @@ lazy val dist = (project in file("dist"))
       outDirectory
     },
     conflictWarning := ConflictWarning.disable,
-    publish := (),
-    publishLocal := (),
+    publish := {},
+    publishLocal := {},
     resolvers += Resolver.typesafeIvyRepo("releases")
   )
