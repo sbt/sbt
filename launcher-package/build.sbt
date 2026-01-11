@@ -82,8 +82,8 @@ val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
 val aarch64LinuxImageName = s"sbtn-$aarch64LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
-organization in ThisBuild := "org.scala-sbt"
-version in ThisBuild := "0.1.0"
+ThisBuild / organization := "org.scala-sbt"
+ThisBuild / version := "0.1.0"
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
 val root = (project in file(".")).
@@ -94,7 +94,7 @@ val root = (project in file(".")).
     packageName := "sbt",
     crossTarget := target.value,
     clean := {
-      val _ = (clean in dist).value
+      val _ = (dist / clean).value
       clean.value
     },
     credentials ++= {
@@ -261,30 +261,30 @@ val root = (project in file(".")).
 
     // DEBIAN SPECIFIC
     debianBuildId := sys.props.getOrElse("sbt.build.patch", sys.env.getOrElse("DIST_PATCHVER", "0")).toInt,
-    version in Debian := {
+    Debian / version := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
     },
     // Used to have "openjdk-8-jdk" but that doesn't work on Ubuntu 14.04 https://github.com/sbt/sbt/issues/3105
     // before that we had java6-runtime-headless" and that was pulling in JDK9 on Ubuntu 16.04 https://github.com/sbt/sbt/issues/2931
-    debianPackageDependencies in Debian ++= Seq("bash (>= 3.2)", "curl | wget"),
-    debianPackageRecommends in Debian += "git",
-    linuxPackageMappings in Debian += {
+    Debian / debianPackageDependencies ++= Seq("bash (>= 3.2)", "curl | wget"),
+    Debian / debianPackageRecommends += "git",
+    Debian / linuxPackageMappings += {
       val bd = sourceDirectory.value
       (packageMapping(
         (bd / "debian" / "changelog") -> "/usr/share/doc/sbt/changelog.gz"
       ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
     },
-    debianChangelog in Debian := { Some(sourceDirectory.value / "debian" / "changelog") },
-    addPackage(Debian, packageBin in Debian, "deb"),
-    debianNativeBuildOptions in Debian := Seq("-Zgzip", "-z3"),
+    Debian / debianChangelog := { Some(sourceDirectory.value / "debian" / "changelog") },
+    addPackage(Debian, (Debian / packageBin), "deb"),
+    Debian / debianNativeBuildOptions := Seq("-Zgzip", "-z3"),
 
     // use the following instead of DebianDeployPlugin to skip changelog
-    makeDeploymentSettings(Debian, packageBin in Debian, "deb"),
+    makeDeploymentSettings(Debian, (Debian / packageBin), "deb"),
 
     // RPM SPECIFIC
     rpmRelease := debianBuildId.value.toString,
-    version in Rpm := {
+    Rpm / version := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
       val stable = if (rpmRelease.value == "0") stable0
                    else stable0 + "." + rpmRelease.value
@@ -294,8 +294,8 @@ val root = (project in file(".")).
       else stable
     },
     // remove sbtn from RPM because it complains about it being noarch
-    linuxPackageMappings in Rpm := {
-      val orig = (linuxPackageMappings in Rpm).value
+    Rpm / linuxPackageMappings := {
+      val orig = ((Rpm / linuxPackageMappings)).value
       val nativeMappings = sbtnJarsMappings.value
       orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
         case (x, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
@@ -313,7 +313,7 @@ val root = (project in file(".")).
 
     // WINDOWS SPECIFIC
     windowsBuildId := 0,
-    version in Windows := {
+    Windows / version := {
       val bid = windowsBuildId.value
       val sv = sbtVersionToRelease
       (sv split "[^\\d]" filterNot (_.isEmpty)) match {
@@ -323,26 +323,26 @@ val root = (project in file(".")).
         case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."
       }
     },
-    maintainer in Windows := "Scala Center",
-    packageSummary in Windows := "sbt " + (version in Windows).value,
-    packageDescription in Windows := "The interactive build tool.",
+    Windows / maintainer := "Scala Center",
+    Windows / packageSummary := "sbt " + (Windows / version).value,
+    Windows / packageDescription := "The interactive build tool.",
     wixProductId := "ce07be71-510d-414a-92d4-dff47631848a",
-    wixProductUpgradeId := Hash.toHex(Hash((version in Windows).value)).take(32),
+    wixProductUpgradeId := Hash.toHex(Hash((Windows / version).value)).take(32),
     javacOptions := Seq("-source", "1.8", "-target", "1.8"),
 
     // Universal ZIP download install.
-    packageName in Universal := packageName.value, // needs to be set explicitly due to a bug in native-packager
-    name in Windows := packageName.value,
-    packageName in Windows := packageName.value,
-    version in Universal := sbtVersionToRelease,
+    Universal / packageName := packageName.value, // needs to be set explicitly due to a bug in native-packager
+    Windows / name := packageName.value,
+    Windows / packageName := packageName.value,
+    Universal / version := sbtVersionToRelease,
 
-    mappings in Universal += {
+    Universal / mappings += {
       (baseDirectory.value.getParentFile / "sbt") -> ("bin" + java.io.File.separator + "sbt")
     },
 
-    mappings in Universal := {
-      val t = (target in Universal).value
-      val prev = (mappings in Universal).value
+    Universal / mappings := {
+      val t = (Universal / target).value
+      val prev = (Universal / mappings).value
       val BinSbt = "bin" + java.io.File.separator + "sbt"
       val BinBat = BinSbt + ".bat"
       prev.toList map {
@@ -368,7 +368,7 @@ val root = (project in file(".")).
         case (k, v) => (k, v)
       }
     },
-    mappings in Universal ++= (Def.taskDyn {
+    Universal / mappings ++= (Def.taskDyn {
       if (sbtIncludeSbtLaunch)
         Def.task {
           Seq(
@@ -377,40 +377,40 @@ val root = (project in file(".")).
         }
       else Def.task { Seq[(File, String)]() }
     }).value,
-    mappings in Universal ++= sbtnJarsMappings.value,
-    mappings in Universal ++= (Def.taskDyn {
+    Universal / mappings ++= sbtnJarsMappings.value,
+    Universal / mappings ++= (Def.taskDyn {
       if (sbtOfflineInstall && sbtVersionToRelease.startsWith("1."))
         Def.task {
-          val _ = (exportRepoUsingCoursier in dist).value
-          directory((target in dist).value / "lib")
+          val _ = ((dist / exportRepoUsingCoursier)).value
+          directory(((dist / target)).value / "lib")
         }
       else if (sbtOfflineInstall)
         Def.task {
-          val _ = (exportRepo in dist).value
-          directory((target in dist).value / "lib")
+          val _ = ((dist / exportRepo)).value
+          directory(((dist / target)).value / "lib")
         }
       else Def.task { Seq[(File, String)]() }
     }).value,
-    mappings in Universal ++= {
+    Universal / mappings ++= {
       val base = baseDirectory.value
       if (sbtVersionToRelease startsWith "0.13.") Nil
       else Seq[(File, String)](base.getParentFile / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
     },
 
     // Miscellaneous publishing stuff...
-    (Debian / projectID) := {
+    Debian / projectID := {
       val m = moduleID.value
       m.withRevision((Debian / version).value)
     },
-    (Windows / projectID) := {
+    Windows / projectID := {
       val m = moduleID.value
       m.withRevision((Windows / version).value)
     },
-    (Rpm / projectID) := {
+    Rpm / projectID := {
       val m = moduleID.value
       m.withRevision((Rpm / version).value)
     },
-    (Universal / projectID) := {
+    Universal / projectID := {
       val m = moduleID.value
       m.withRevision((Universal / version).value)
     }
@@ -426,16 +426,21 @@ lazy val integrationTest = (project in file("integration-test"))
       "org.scala-sbt" %% "io" % "1.10.5" % Test
     ),
     testFrameworks += new TestFramework("minitest.runner.Framework"),
-    test in Test := {
-      (test in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).value
+    Test / test := {
+      (Test / test)
+        .dependsOn(LocalRootProject / Universal / packageBin)
+        .dependsOn(LocalRootProject / Universal / stage).value
     },
-    testOnly in Test := {
-      (testOnly in Test).dependsOn(((packageBin in Universal) in LocalRootProject).dependsOn(((stage in (Universal) in LocalRootProject)))).evaluated
+    Test / testOnly := {
+      (Test / testOnly)
+        .dependsOn(LocalRootProject / Universal / packageBin)
+        .dependsOn(LocalRootProject / Universal / stage)
+        .evaluated
     },
-    parallelExecution in Test := false
+    Test / parallelExecution := false
   )
 
-def downloadUrlForVersion(v: String) = (v split "[^\\d]" flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
+def downloadUrlForVersion(v: String) = (v.split("[^\\d]") flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
   case Array(0, 11, 3, _*)           => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
   case Array(0, 11, x, _*) if x >= 3 => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
   case Array(0, y, _*) if y >= 12    => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
@@ -525,8 +530,8 @@ lazy val dist = (project in file("dist"))
     exportRepoUsingCoursier := {
       val outDirectory = exportRepoCsrDirectory.value
       val csr =
-        if (isWindows) (baseDirectory in LocalRootProject).value / "bin" / "coursier.bat"
-        else (baseDirectory in LocalRootProject).value / "bin" / "coursier"
+        if (isWindows) (LocalRootProject / baseDirectory).value / "bin" / "coursier.bat"
+        else (LocalRootProject / baseDirectory).value / "bin" / "coursier"
       val cache = target.value / "coursier"
       IO.delete(cache)
       val v = sbtVersionToRelease
