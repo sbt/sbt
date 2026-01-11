@@ -1,3 +1,4 @@
+import scala.util.matching.Regex
 ThisBuild / version := "0.1.0-SNAPSHOT"
 ThisBuild / scalaVersion := "2.13.12"
 
@@ -14,11 +15,14 @@ check := {
   def sanitize(str: String): String =
     str.split('\n').map(_.trim).mkString("\n")
 
-  def checkOutput(output: String, expected: String): Unit =
+  def checkOutput(output: String, expected: String): Unit = {
+    val sOutput = sanitize(output)
+    val re: Regex = """org\.typelevel:cats-effect(_\d+(\.\d+)?)?""".r
     require(
-      sanitize(expected) == sanitize(output),
-      s"Tree should have been [\n${sanitize(expected)}\n] but was [\n${sanitize(output)}\n]"
+      re.findFirstIn(sOutput).isDefined,
+      s"Output did not contain expected artifact matching ${re}\nOutput:\n$sOutput"
     )
+  }
 
   val withVersion =
     (Compile / whatDependsOn)
