@@ -41,7 +41,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
     publishSignedConfiguration := Classpaths.publishConfig(
       publishMavenStyle = publishMavenStyle.value,
       deliverIvyPattern = (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
-      status = status.value,
+      status = if (isSnapshot.value) "integration" else "release",
       configurations = Vector.empty,
       artifacts = signedArtifacts.value.toVector,
       checksums = (publish / checksums).value.toVector,
@@ -51,7 +51,7 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
     publishLocalSignedConfiguration := Classpaths.publishConfig(
       publishMavenStyle = publishMavenStyle.value,
       deliverIvyPattern = (Compile / packageBin / artifactPath).value.getParent + "/[artifact]-[revision](-[classifier]).[ext]",
-      status = status.value,
+      status = if (isSnapshot.value) "integration" else "release",
       configurations = Vector.empty,
       artifacts = signedArtifacts.value.toVector,
       checksums = (publish / checksums).value.toVector,
