@@ -109,13 +109,24 @@ val root = (project in file(".")).
     sbtLaunchJar := {
       val uri = sbtLaunchJarUrl.value
       val file = sbtLaunchJarLocation.value
-      import dispatch.classic._
       if(!file.exists) {
          // oddly, some places require us to create the file before writing...
          IO.touch(file)
+         val url = new java.net.URL(uri)
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
-         try Http(url(uri) >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
       }
       // TODO - GPG Trust validation.
       file
@@ -135,12 +146,23 @@ val root = (project in file(".")).
       val linuxX86Tar = t / linuxX86ImageTar
       val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
-      import dispatch.classic._
       if(!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(macosUniversalTar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$macosUniversalImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
-         try Http(url(s"$baseUrl/v$v/$macosUniversalImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / universalMacPlatform
          IO.createDirectory(platformDir)
          s"tar zxvf $macosUniversalTar --directory $platformDir".!
@@ -148,9 +170,21 @@ val root = (project in file(".")).
       }
       if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxX86Tar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$linuxX86ImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
-         try Http(url(s"$baseUrl/v$v/$linuxX86ImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / x86LinuxPlatform
          IO.createDirectory(platformDir)
          s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
@@ -158,9 +192,21 @@ val root = (project in file(".")).
       }
       if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxAarch64Tar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$linuxAarch64ImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
-         try Http(url(s"$baseUrl/v$v/$linuxAarch64ImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / aarch64LinuxPlatform
          IO.createDirectory(platformDir)
          s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
@@ -168,9 +214,21 @@ val root = (project in file(".")).
       }
       if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
+         val url = new java.net.URL(s"$baseUrl/v$v/$windowsImageZip")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
-         try Http(url(s"$baseUrl/v$v/$windowsImageZip") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / x86WindowsPlatform
          IO.unzip(windowsZip, platformDir)
          IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
@@ -416,12 +474,23 @@ def publishToSettings =
 
 def downloadUrl(uri: URI, out: File): Unit =
   {
-    import dispatch.classic._
     if(!out.exists) {
        IO.touch(out)
+       val url = new java.net.URL(uri.toString)
+       val connection = url.openConnection()
+       val input = connection.getInputStream
        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
-       try Http(url(uri.toString) >>> writer)
-       finally writer.close()
+       try {
+         val buffer = new Array[Byte](8192)
+         var bytesRead = input.read(buffer)
+         while (bytesRead != -1) {
+           writer.write(buffer, 0, bytesRead)
+           bytesRead = input.read(buffer)
+         }
+       } finally {
+         input.close()
+         writer.close()
+       }
     }
   }
 
