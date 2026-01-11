@@ -1,5 +1,6 @@
 import sbt._
 import Keys._
+import sbt.internal.librarymanagement.IvyActions
 import com.jsuereth.sbtpgp.SbtPgp
 import com.typesafe.sbt.packager.universal.{ UniversalPlugin, UniversalDeployPlugin }
 import com.typesafe.sbt.packager.debian.{ DebianPlugin, DebianDeployPlugin }
@@ -58,8 +59,20 @@ object PackageSignerPlugin extends sbt.AutoPlugin {
       resolverName = "local",
       logging = ivyLoggingLevel.value,
       overwrite = isSnapshot.value),
-    publishSigned      := Classpaths.publishTask(publishSignedConfiguration).value,
-    publishLocalSigned := Classpaths.publishTask(publishLocalSignedConfiguration).value
+    publishSigned := Def.taskDyn {
+      val config = publishSignedConfiguration.value
+      val s = streams.value
+      Def.task {
+        IvyActions.publish(ivyModule.value, config, s.log)
+      }
+    }.value,
+    publishLocalSigned := Def.taskDyn {
+      val config = publishLocalSignedConfiguration.value
+      val s = streams.value
+      Def.task {
+        IvyActions.publish(ivyModule.value, config, s.log)
+      }
+    }.value
   )
 
 }

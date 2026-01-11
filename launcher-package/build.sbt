@@ -467,9 +467,7 @@ def makePublishToForConfig(config: Configuration) = {
       val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
       Some(resolver)
     }
-  )) ++ Seq(
-     resolvers ++= (config / publishTo).value.toSeq
-  )
+  ))
 }
 
 def publishToSettings =
