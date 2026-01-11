@@ -1,3 +1,11 @@
+/*
+ * sbt
+ * Copyright 2023, Scala center
+ * Copyright 2011 - 2022, Lightbend, Inc.
+ * Copyright 2008 - 2010, Mark Harrah
+ * Licensed under Apache License 2.0 (see LICENSE)
+ */
+
 package sbt.util
 
 import java.io.File
@@ -11,6 +19,7 @@ import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
+import scala.util.control.Exception
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
@@ -94,19 +103,42 @@ object ActionCache:
       config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[O](json)
-    findActionResult(key, codeContentHash, extraHash, config) match
-      case Right(result) =>
-        // some protocol can embed values into the result
-        result.contents.headOption match
-          case Some(head) =>
-            store.syncBlobs(result.outputFiles, config.outputDirectory)
-            val str = String(head.array(), StandardCharsets.UTF_8)
-            Some(valueFromStr(str, result.origin))
-          case _ =>
-            val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-            if paths.isEmpty then None
-            else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
-      case Left(_) => None
+
+    // Optimization: Check if we can read directly from symlinked value file
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+    val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
+
+    def readFromSymlink(): Option[O] =
+      if java.nio.file.Files.isSymbolicLink(resolvedValuePath) && java.nio.file.Files
+          .exists(resolvedValuePath)
+      then
+        Exception.nonFatalCatch
+          .opt(IO.read(resolvedValuePath.toFile(), StandardCharsets.UTF_8))
+          .map: str =>
+            // We still need to sync output files for side effects
+            findActionResult(key, codeContentHash, extraHash, config) match
+              case Right(result) =>
+                store.syncBlobs(result.outputFiles, config.outputDirectory)
+              case Left(_) => // Ignore if we can't find ActionResult
+            valueFromStr(str, Some("symlink"))
+      else None
+
+    readFromSymlink() match
+      case Some(value) => Some(value)
+      case None =>
+        findActionResult(key, codeContentHash, extraHash, config) match
+          case Right(result) =>
+            // some protocol can embed values into the result
+            result.contents.headOption match
+              case Some(head) =>
+                store.syncBlobs(result.outputFiles, config.outputDirectory)
+                val str = String(head.array(), StandardCharsets.UTF_8)
+                Some(valueFromStr(str, result.origin))
+              case _ =>
+                val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+                if paths.isEmpty then None
+                else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
+          case Left(_) => None
 
   /**
    * Checks if the ActionResult exists in the cache.

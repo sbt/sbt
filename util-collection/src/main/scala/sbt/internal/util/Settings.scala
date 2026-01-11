@@ -241,7 +241,7 @@ trait Init:
         m.backing.par
           .map { (k, ss) =>
             val deps = ss.iterator.flatMap(_.dependencies).toSet
-            k -> Compiled(k.asInstanceOf[ScopedKey[Any]], deps, ss.asInstanceOf[SettingSeq[Any]])
+            k -> Compiled(k, deps, ss)
           }
           .to(Map)
 

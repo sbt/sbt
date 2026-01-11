@@ -1,6 +1,8 @@
 package sbt.internal.librarymanagement
 package cross
 
+import scala.annotation.tailrec
+
 object CrossVersionUtil {
   val trueString = "true"
   val falseString = "false"
@@ -75,6 +77,7 @@ object CrossVersionUtil {
       case _                            => None
     }
 
+  @tailrec
   private[sbt] def binaryScala3Version(full: String): String = full match {
     case ReleaseV(maj, _, _, _)                                                  => maj
     case NonReleaseV_n(maj, min, patch, _) if min.toLong > 0 || patch.toLong > 0 => maj

@@ -8,6 +8,7 @@
 
 package sbt.internal.util
 
+import scala.annotation.tailrec
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
@@ -70,6 +71,7 @@ object EscHelpers {
       sb.toString
     }
 
+  @tailrec
   private def nextESC(s: String, start: Int, sb: java.lang.StringBuilder): Unit = {
     val escIndex = s.indexOf(ESC, start)
     if (escIndex < 0) {
@@ -243,6 +245,7 @@ object EscHelpers {
    * Skips the escape sequence starting at `i-1`. `i` should be positioned at the character after
    * the ESC that starts the sequence.
    */
+  @tailrec
   private def skipESC(s: String, i: Int): Int = {
     if (i >= s.length) {
       i

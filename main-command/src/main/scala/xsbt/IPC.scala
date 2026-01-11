@@ -34,6 +34,7 @@ object IPC {
     val random = new java.util.Random
     def nextPort = random.nextInt(portMax - portMin + 1) + portMin
 
+    @tailrec
     def createServer(attempts: Int): ServerSocket =
       if (attempts > 0) {
         try new ServerSocket(nextPort, socketBacklog, loopback)

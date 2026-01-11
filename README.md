@@ -4,7 +4,7 @@
 
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
-  [DEVELOPING]: DEVELOPING.md
+  [contributing-docs]: contributing-docs/README.md
   [Setup]: https://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [FAQ]: https://www.scala-sbt.org/release/docs/Faq.html
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
@@ -41,7 +41,7 @@ several GitHub repositories, including this one.
 Issues and Pull Requests
 ------------------------
 
-Please read [CONTRIBUTING] carefully before opening a GitHub Issue, and [DEVELOPING] before opening a pull request.
+Please read [CONTRIBUTING] carefully before opening a GitHub Issue, and [Contributor's guide][contributing-docs] before opening a pull request.
 
 If you're looking for an idea for a contribution, issues labeled with
 [good first issue](https://github.com/sbt/sbt/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or

@@ -10,6 +10,8 @@ package sbt.internal.util
 
 import sbt.util.*
 
+import scala.annotation.tailrec
+
 /**
  * Provides a `java.io.Writer` interface to a `Logger`. Content is line-buffered and logged at
  * `level`. A line is delimited by `nl`, which is by default the platform line separator.
@@ -48,6 +50,7 @@ class LoggerWriter(
       process()
     }
 
+  @tailrec
   private def process(): Unit = {
     val i = buffer.indexOf(nl)
     if (i >= 0) {

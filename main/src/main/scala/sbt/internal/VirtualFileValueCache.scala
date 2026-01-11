@@ -27,7 +27,7 @@ sealed trait VirtualFileValueCache[A] {
 object VirtualFileValueCache {
   def definesClassCache(converter: FileConverter): VirtualFileValueCache[DefinesClass] = {
     apply(converter) { (x: VirtualFile) =>
-      if (x.name.toString != "rt.jar") Locate.definesClass(x)
+      if (x.name != "rt.jar") Locate.definesClass(x)
       else (_: String) => false
     }
   }
