@@ -293,15 +293,21 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
       IO.createDirectory(outPath.getParent().toFile())
       val result = Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
-        if symlinkSupported.get() then
+        if symlinkSupported.get() && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
           catch
             case e: FileSystemException =>
-              if Util.isWindows then
-                scala.Console.err.println(
-                  "[info] failed to a create symbolic link. consider enabling Developer Mode"
-                )
-              symlinkSupported.set(false)
+              val msg = Option(e.getMessage).getOrElse("")
+              val isSymlinkNotSupported =
+                msg.contains("privilege") ||
+                  msg.contains("Operation not permitted") ||
+                  msg.contains("A required privilege is not held")
+              if isSymlinkNotSupported then
+                if Util.isWindows then
+                  scala.Console.err.println(
+                    "[info] failed to a create symbolic link. consider enabling Developer Mode"
+                  )
+                symlinkSupported.set(false)
               copyFile(outPath)
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
