@@ -92,9 +92,11 @@ final class BuildServerReporterImpl(
   private val problemsByFile = mutable.Map[Path, Vector[Problem]]()
 
   // sometimes the compiler returns a fake position such as <macro>
-  // on Windows, this causes InvalidPathException (see #5994 and #6720)
+  // or a JAR file path like jar:file:///C:/...
+  // on Windows, this causes InvalidPathException (see #5994, #6720, and #7665)
   private def toDocument(ref: VirtualFileRef): Option[TextDocumentIdentifier] =
-    if (ref.id().contains("<")) None
+    val id = ref.id()
+    if id.contains("<") || id.startsWith("jar:") then None
     else Some(TextDocumentIdentifier(converter.toPath(ref).toUri))
 
   /**
