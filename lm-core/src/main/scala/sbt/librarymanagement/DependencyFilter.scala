@@ -16,10 +16,8 @@ trait DependencyFilterExtra {
       name: NameFilter = AllPassFilter,
       revision: NameFilter = AllPassFilter
   ): ModuleFilter =
-    new ModuleFilter {
-      def apply(m: ModuleID): Boolean =
-        organization.accept(m.organization) && name.accept(m.name) && revision.accept(m.revision)
-    }
+    (m: ModuleID) =>
+      organization.accept(m.organization) && name.accept(m.name) && revision.accept(m.revision)
 
   def artifactFilter(
       name: NameFilter = AllPassFilter,
@@ -27,18 +25,14 @@ trait DependencyFilterExtra {
       extension: NameFilter = AllPassFilter,
       classifier: NameFilter = AllPassFilter
   ): ArtifactFilter =
-    new ArtifactFilter {
-      def apply(a: Artifact): Boolean =
-        name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(
-          a.extension
-        ) && classifier
-          .accept(a.classifier getOrElse "")
-    }
+    (a: Artifact) =>
+      name.accept(a.name) && `type`.accept(a.`type`) && extension.accept(
+        a.extension
+      ) && classifier
+        .accept(a.classifier getOrElse "")
 
   def configurationFilter(name: NameFilter = AllPassFilter): ConfigurationFilter =
-    new ConfigurationFilter {
-      def apply(c: ConfigRef): Boolean = name.accept(c.name)
-    }
+    (c: ConfigRef) => name.accept(c.name)
 }
 
 object DependencyFilter extends DependencyFilterExtra {
@@ -47,27 +41,20 @@ object DependencyFilter extends DependencyFilterExtra {
       module: ModuleFilter = moduleFilter(),
       artifact: ArtifactFilter = artifactFilter()
   ): DependencyFilter =
-    new DependencyFilter {
-      def apply(c: ConfigRef, m: ModuleID, a: Artifact): Boolean =
-        configuration(c) && module(m) && artifact(a)
-    }
+    (c: ConfigRef, m: ModuleID, a: Artifact) => configuration(c) && module(m) && artifact(a)
   def apply(
       x: DependencyFilter,
       y: DependencyFilter,
       combine: (Boolean, Boolean) => Boolean
   ): DependencyFilter =
-    new DependencyFilter {
-      def apply(c: ConfigRef, m: ModuleID, a: Artifact): Boolean = combine(x(c, m, a), y(c, m, a))
-    }
+    (c: ConfigRef, m: ModuleID, a: Artifact) => combine(x(c, m, a), y(c, m, a))
   def allPass: DependencyFilter = configurationFilter()
-  implicit def fnToModuleFilter(f: ModuleID => Boolean): ModuleFilter = new ModuleFilter {
-    def apply(m: ModuleID) = f(m)
-  }
-  implicit def fnToArtifactFilter(f: Artifact => Boolean): ArtifactFilter = new ArtifactFilter {
-    def apply(m: Artifact) = f(m)
-  }
+  implicit def fnToModuleFilter(f: ModuleID => Boolean): ModuleFilter =
+    (m: ModuleID) => f(m)
+  implicit def fnToArtifactFilter(f: Artifact => Boolean): ArtifactFilter =
+    (m: Artifact) => f(m)
   implicit def fnToConfigurationFilter(f: ConfigRef => Boolean): ConfigurationFilter =
-    new ConfigurationFilter { def apply(c: ConfigRef) = f(c) }
+    (c: ConfigRef) => f(c)
   implicit def subDepFilterToFn[Arg](f: SubDepFilter[Arg, ?]): Arg => Boolean = f.apply(_)
 }
 trait DependencyFilter {
@@ -87,23 +74,20 @@ sealed trait SubDepFilter[Arg, Self <: SubDepFilter[Arg, Self]] extends Dependen
     make((m: Arg) => f(this(m), o(m)))
 }
 trait ModuleFilter extends SubDepFilter[ModuleID, ModuleFilter] {
-  protected final def make(f: ModuleID => Boolean) = new ModuleFilter {
-    def apply(m: ModuleID) = f(m)
-  }
+  protected final def make(f: ModuleID => Boolean) =
+    (m: ModuleID) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(module)
 }
 trait ArtifactFilter extends SubDepFilter[Artifact, ArtifactFilter] {
-  protected final def make(f: Artifact => Boolean) = new ArtifactFilter {
-    def apply(m: Artifact) = f(m)
-  }
+  protected final def make(f: Artifact => Boolean) =
+    (m: Artifact) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(artifact)
 }
 trait ConfigurationFilter extends SubDepFilter[ConfigRef, ConfigurationFilter] {
-  protected final def make(f: ConfigRef => Boolean) = new ConfigurationFilter {
-    def apply(m: ConfigRef) = f(m)
-  }
+  protected final def make(f: ConfigRef => Boolean) =
+    (m: ConfigRef) => f(m)
   final def apply(configuration: ConfigRef, module: ModuleID, artifact: Artifact): Boolean =
     apply(configuration)
 }

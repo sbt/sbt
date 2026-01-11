@@ -33,9 +33,8 @@ object InterfaceUtil {
   }
 
   import java.util.function.{ Function as JavaFunction }
-  def toJavaFunction[A1, R](f: A1 => R): JavaFunction[A1, R] = new JavaFunction[A1, R] {
-    override def apply(t: A1): R = f(t)
-  }
+  def toJavaFunction[A1, R](f: A1 => R): JavaFunction[A1, R] =
+    (t: A1) => f(t)
 
   def t2[A1, A2](x: (A1, A2)): T2[A1, A2] = new ConcreteT2(x._1, x._2)
 
