@@ -1,8 +1,9 @@
 import scala.util.control.Exception.catching
-import scala.sys.process._
-import NativePackagerHelper._
-import com.typesafe.sbt.packager.SettingsHelper._
-import DebianConstants._
+import scala.sys.process.*
+import NativePackagerHelper.*
+import com.typesafe.sbt.packager.SettingsHelper.*
+import DebianConstants.*
+import Dependencies.*
 
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
@@ -22,12 +23,10 @@ lazy val sbtIncludeSbtLaunch =
     case "false" | "0" => false
     case _             => false
   }
-lazy val sbtVersionToRelease = sys.props.getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", {
-        sys.error("-Dsbt.build.version must be set")
-      }))
+lazy val sbtVersionToRelease = sys.props
+  .getOrElse("sbt.build.version", sys.env.getOrElse("sbt.build.version", "1.12.0"))
 
 lazy val scala210 = "2.10.7"
-lazy val scala212 = "2.12.21"
 lazy val scala210Jline = "org.scala-lang" % "jline" % scala210
 lazy val jansi = {
   if (sbtVersionToRelease startsWith "1.") "org.fusesource.jansi" % "jansi" % "1.12"
@@ -82,11 +81,10 @@ val x86LinuxImageName = s"sbtn-$x86LinuxPlatform"
 val aarch64LinuxImageName = s"sbtn-$aarch64LinuxPlatform"
 val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 
-ThisBuild / organization := "org.scala-sbt"
-ThisBuild / version := "0.1.0"
+Global / excludeLintKeys += bintrayGenericPackagesUrl
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
-val root = (project in file(".")).
+val launcherPackage = (project in file(".")).
   enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin,
     UniversalDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
@@ -289,16 +287,16 @@ val root = (project in file(".")).
       val stable = if (rpmRelease.value == "0") stable0
                    else stable0 + "." + rpmRelease.value
       if (isExperimental) ((sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty)).toList match {
-        case List(a, b, c, d) => List(0, 99, c, d).mkString(".")
+        case List(_, _, c, d) => List(0, 99, c, d).mkString(".")
       })
       else stable
     },
     // remove sbtn from RPM because it complains about it being noarch
     Rpm / linuxPackageMappings := {
       val orig = ((Rpm / linuxPackageMappings)).value
-      val nativeMappings = sbtnJarsMappings.value
+      val _ = sbtnJarsMappings.value
       orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
-        case (x, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
+        case (_, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
       }))
     },
     rpmVendor := "scalacenter",
@@ -416,30 +414,6 @@ val root = (project in file(".")).
     }
   )
 
-lazy val integrationTest = (project in file("integration-test"))
-  .settings(
-    name := "integration-test",
-    scalaVersion := scala212,
-    libraryDependencies ++= Seq(
-      "io.monix" %% "minitest" % "2.3.2" % Test,
-      "com.eed3si9n.expecty" %% "expecty" % "0.11.0" % Test,
-      "org.scala-sbt" %% "io" % "1.10.5" % Test
-    ),
-    testFrameworks += new TestFramework("minitest.runner.Framework"),
-    Test / test := {
-      (Test / test)
-        .dependsOn(LocalRootProject / Universal / packageBin)
-        .dependsOn(LocalRootProject / Universal / stage).value
-    },
-    Test / testOnly := {
-      (Test / testOnly)
-        .dependsOn(LocalRootProject / Universal / packageBin)
-        .dependsOn(LocalRootProject / Universal / stage)
-        .evaluated
-    },
-    Test / parallelExecution := false
-  )
-
 def downloadUrlForVersion(v: String) = (v.split("[^\\d]") flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
   case Array(0, 11, 3, _*)           => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
   case Array(0, 11, x, _*) if x >= 3 => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
@@ -449,8 +423,6 @@ def downloadUrlForVersion(v: String) = (v.split("[^\\d]") flatMap (i => catching
 }
 
 def makePublishToForConfig(config: Configuration) = {
-  val v = sbtVersionToRelease
-
   // Add the publish to and ensure global resolvers has the resolver we just configured.
   inConfig(config)(Seq(
     name := "sbt",
