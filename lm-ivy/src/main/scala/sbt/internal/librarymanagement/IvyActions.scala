@@ -96,8 +96,83 @@ object IvyActions {
       val options = DeliverOptions.newInstance(ivy.getSettings).setStatus(status)
       options.setConfs(getConfigurations(md, configuration.configurations))
       ivy.deliver(revID, revID.getRevision, deliverIvyPattern, options)
-      deliveredFile(ivy, deliverIvyPattern, md)
+      val file = deliveredFile(ivy, deliverIvyPattern, md)
+
+      // Apply dependency overrides to the delivered Ivy XML
+      applyOverridesToDeliveredIvy(file, module.moduleSettings, log)
+
+      file
     }
+  }
+
+  /**
+   * Post-processes the delivered Ivy XML file to apply dependency overrides.
+   * This is necessary because Ivy's deliver() method doesn't automatically apply
+   * DependencyDescriptorMediators when writing the XML.
+   */
+  private def applyOverridesToDeliveredIvy(
+      ivyFile: File,
+      moduleSettings: ModuleSettings,
+      log: Logger
+  ): Unit = {
+    moduleSettings match {
+      case ic: InlineConfiguration if ic.overrides.nonEmpty =>
+        val overrideMap = ic.overrides.map(m => (m.organization, m.name) -> m.revision).toMap
+        if (ivyFile.exists()) {
+          val xml = scala.xml.XML.loadFile(ivyFile)
+          val updated = applyDependencyOverrides(xml, overrideMap)
+          scala.xml.XML.save(ivyFile.getAbsolutePath, updated, "UTF-8", xmlDecl = true, null)
+          log.debug(s"Applied ${overrideMap.size} dependency override(s) to ${ivyFile.getName}")
+        }
+      case _ => // No overrides to apply
+    }
+  }
+
+  /**
+   * Applies dependency overrides to an Ivy XML node by updating the rev attribute
+   * of dependency elements that match entries in the override map.
+   *
+   * @param xml The Ivy XML root node to transform
+   * @param overrideMap Map from (organization, name) to the overridden revision
+   * @return The transformed XML node with updated dependency revisions
+   */
+  def applyDependencyOverrides(
+      xml: scala.xml.Node,
+      overrideMap: Map[(String, String), String]
+  ): scala.xml.Node = {
+    new scala.xml.transform.RuleTransformer(new scala.xml.transform.RewriteRule {
+      override def transform(n: scala.xml.Node): Seq[scala.xml.Node] = n match {
+        case e @ scala.xml.Elem(prefix, "dependency", attrs, scope, children*) =>
+          val org = attrs.get("org").map(_.text).getOrElse("")
+          val name = attrs.get("name").map(_.text).getOrElse("")
+          overrideMap.get((org, name)) match {
+            case Some(overrideRev) =>
+              def updateAttrs(metadata: scala.xml.MetaData): scala.xml.MetaData = {
+                metadata match {
+                  case scala.xml.Null => scala.xml.Null
+                  case attr if attr.key == "rev" =>
+                    new scala.xml.UnprefixedAttribute(
+                      "rev",
+                      overrideRev,
+                      updateAttrs(attr.next)
+                    )
+                  case attr =>
+                    attr.copy(next = updateAttrs(attr.next))
+                }
+              }
+              scala.xml.Elem(
+                prefix,
+                "dependency",
+                updateAttrs(attrs),
+                scope,
+                minimizeEmpty = true,
+                children*
+              )
+            case None => e
+          }
+        case other => other
+      }
+    }).transform(xml).head
   }
 
   def getConfigurations(

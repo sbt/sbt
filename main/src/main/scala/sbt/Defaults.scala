@@ -774,6 +774,27 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+      consoleProject := ConsoleProject.consoleProjectTask.value,
+      consoleProject / scalaInstance := {
+        val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
+        val scalaProvider = appConfiguration.value.provider.scalaProvider
+        val allJars = scalaProvider.jars
+        val libraryJars = allJars.filter { jar =>
+          jar.getName == "scala-library.jar" || jar.getName.startsWith("scala3-library_3")
+        }
+        val compilerJar = allJars.filter { jar =>
+          jar.getName == "scala-compiler.jar" || jar.getName.startsWith("scala3-compiler_3")
+        }
+        ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+        Compiler.makeScalaInstance(
+          scalaProvider.version,
+          libraryJars,
+          allJars.toSeq,
+          Seq.empty,
+          state.value,
+          topLoader,
+        )
+      },
       derive(crossScalaVersions := Seq(scalaVersion.value)),
       derive(compilersSetting),
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value)),
@@ -1067,7 +1088,6 @@ object Defaults extends BuildCommon {
     cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     // clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     clean := Clean.scopedTask.value,
-    consoleProject := consoleProjectTask.value,
     transitiveDynamicInputs := Def.uncached(WatchTransitiveDependencies.task.value),
   )
 
@@ -2053,12 +2073,7 @@ object Defaults extends BuildCommon {
       analysis.infos.allInfos.values.map(_.getMainClasses).flatten.toSeq.sorted
   }
 
-  def consoleProjectTask =
-    Def.task {
-      ConsoleProject(state.value, (consoleProject / initialCommands).value)(using streams.value.log)
-      println()
-    }
-
+  def consoleProjectTask = ConsoleProject.consoleProjectTask
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[?]): Initialize[Task[Unit]] =
