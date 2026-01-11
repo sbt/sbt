@@ -69,6 +69,8 @@ val debianBuildId = settingKey[Int]("build id for Debian")
 
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
+val exportRepo = taskKey[File]("export Ivy style repository")
+val exportRepoDirectory = settingKey[File]("directory for exported repository")
 
 val universalMacPlatform = "universal-apple-darwin"
 val x86LinuxPlatform = "x86_64-pc-linux"
@@ -497,7 +499,6 @@ def downloadUrl(uri: URI, out: File): Unit =
 def colonName(m: ModuleID): String = s"${m.organization}:${m.name}:${m.revision}"
 
 lazy val dist = (project in file("dist"))
-  .enablePlugins(ExportRepoPlugin)
   .settings(
     name := "dist",
     scalaVersion := {
@@ -506,19 +507,19 @@ lazy val dist = (project in file("dist"))
     },
     libraryDependencies ++= Seq(sbtActual, jansi, scala212Compiler, scala212Jline, scala212Xml) ++ sbt013ExtraDeps,
     exportRepo := {
-      val old = exportRepo.value
+      val outDir = exportRepoDirectory.value
       sbtVersionToRelease match {
         case v if v.startsWith("1.") =>
           sys.error("sbt 1.x should use coursier")
         case v if v.startsWith("0.13.") =>
-          val outbase = exportRepoDirectory.value / "org.scala-sbt" / "compiler-interface" / v
+          val outbase = outDir / "org.scala-sbt" / "compiler-interface" / v
           val uribase = s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
           downloadUrl(uri(uribase + "ivys/ivy.xml"), outbase / "ivys" / "ivy.xml")
           downloadUrl(uri(uribase + "jars/compiler-interface.jar"), outbase / "jars" / "compiler-interface.jar")
           downloadUrl(uri(uribase + "srcs/compiler-interface-sources.jar"), outbase / "srcs" / "compiler-interface-sources.jar")
         case _ =>
       }
-      old
+      outDir
     },
     exportRepoDirectory := target.value / "lib" / "local-preloaded",
     exportRepoCsrDirectory := exportRepoDirectory.value,
