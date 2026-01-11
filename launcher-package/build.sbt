@@ -397,21 +397,21 @@ val root = (project in file(".")).
     },
 
     // Miscellaneous publishing stuff...
-    projectID in Debian := {
+    (Debian / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Debian).value)
+      m.withRevision((Debian / version).value)
     },
-    projectID in Windows := {
+    (Windows / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Windows).value)
+      m.withRevision((Windows / version).value)
     },
-    projectID in Rpm := {
+    (Rpm / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Rpm).value)
+      m.withRevision((Rpm / version).value)
     },
-    projectID in Universal := {
+    (Universal / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Universal).value)
+      m.withRevision((Universal / version).value)
     }
   )
 
