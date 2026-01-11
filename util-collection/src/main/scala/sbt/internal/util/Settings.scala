@@ -796,7 +796,7 @@ trait Init:
   /**
    * An `Initialize[T]` associated with a `ScopedKey[S]`.
    * @tparam S the type of the associated `ScopedKey`
-   * @tparam T the type of the value this `Initialize` defines.
+   * @tparam A1 the type of the value this `Initialize` defines.
    */
   sealed trait Keyed[S, A1] extends Initialize[A1]:
     def scopedKey: ScopedKey[S]
