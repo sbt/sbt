@@ -135,7 +135,7 @@ class BuildServerTest extends AbstractServerTest {
     })
 
     assert(svr.waitForString(20.seconds) { s =>
-      s.contains("build/publishDiagnostics")
+      s.contains("build/publishDiagnostics") &&
       s.contains(""""diagnostics":[]""")
     })
 
