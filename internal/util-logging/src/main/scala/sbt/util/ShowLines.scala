@@ -13,9 +13,7 @@ trait ShowLines[A] {
 }
 object ShowLines {
   def apply[A](f: A => Seq[String]): ShowLines[A] =
-    new ShowLines[A] {
-      def showLines(a: A): Seq[String] = f(a)
-    }
+    (a: A) => f(a)
 
   extension [A: ShowLines](a: A) {
     def lines: Seq[String] = implicitly[ShowLines[A]].showLines(a)

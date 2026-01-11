@@ -9,6 +9,8 @@
 package sbt.internal.util
 package complete
 
+import scala.annotation.tailrec
+
 object JLineTest {
   import DefaultParsers.*
 
@@ -33,6 +35,7 @@ object JLineTest {
 
     val parser = parsers(args(0))
     JLineCompletion.installCustomCompletor(reader, parser)
+    @tailrec
     def loop(): Unit = {
       val line = reader.readLine("> ")
       if (line ne null) {

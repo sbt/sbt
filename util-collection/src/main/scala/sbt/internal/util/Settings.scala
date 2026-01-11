@@ -241,7 +241,7 @@ trait Init:
         m.backing.par
           .map { (k, ss) =>
             val deps = ss.iterator.flatMap(_.dependencies).toSet
-            k -> Compiled(k.asInstanceOf[ScopedKey[Any]], deps, ss.asInstanceOf[SettingSeq[Any]])
+            k -> Compiled(k, deps, ss)
           }
           .to(Map)
 
@@ -796,7 +796,7 @@ trait Init:
   /**
    * An `Initialize[T]` associated with a `ScopedKey[S]`.
    * @tparam S the type of the associated `ScopedKey`
-   * @tparam T the type of the value this `Initialize` defines.
+   * @tparam A1 the type of the value this `Initialize` defines.
    */
   sealed trait Keyed[S, A1] extends Initialize[A1]:
     def scopedKey: ScopedKey[S]

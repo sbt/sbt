@@ -88,7 +88,7 @@ object Previous {
         }
         Def.ScopedKey(enclosing.scope.copy(extra = Select(am)), enclosing.key)
       }
-    }.asInstanceOf[AnyTaskKey]
+    }
   }
   private[sbt] object Key {
     def apply[T, U](key: ScopedKey[Task[T]], enclosing: ScopedKey[Task[U]]): Key[T] =
@@ -133,7 +133,7 @@ object Previous {
       (k, v) <- successfulTaskResults
       keys <- reverse.get(k)
       key <- keys if successfulTaskResults.contains(key.enclosing)
-      ref <- map.get(key.asInstanceOf[Key[Any]])
+      ref <- map.get(key)
     } {
       val out = streams(key.cacheKey).cacheStoreFactory.make(StreamName)
       try out.write(v)(using ref.stamped)

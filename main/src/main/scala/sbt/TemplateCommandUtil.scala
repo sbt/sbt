@@ -24,6 +24,8 @@ import BasicCommandStrings.*, BasicKeys.*
 import sbt.internal.util.Terminal.hasConsole
 import sbt.ProjectExtra.*
 
+import scala.annotation.tailrec
+
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command = templateCommand0(TemplateCommand)
   def templateCommandAlias: Command = templateCommand0("init")
@@ -206,6 +208,7 @@ private[sbt] object TemplateCommandUtil {
   private def toLetter(idx: Int): String =
     nonMoveLetters(idx).toString
 
+  @tailrec
   private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String = {
     val msg = "Select a template"
     displayMappings(mappingList, focus)

@@ -40,7 +40,6 @@ import scala.collection.mutable
 
 import scala.util.control.NonFatal
 import scala.util.{ Try, Failure, Success }
-import scala.annotation.nowarn
 import sbt.testing.Framework
 import scala.collection.immutable.ListSet
 import xsbti.VirtualFileRef
@@ -581,7 +580,6 @@ object BuildServerProtocol {
       )
     )
 
-  @nowarn
   private def bspFullWorkspaceSetting: Def.Initialize[BspFullWorkspace] =
     Def.settingDyn {
       val loadedBuild = Keys.loadedBuild.value
@@ -604,10 +602,10 @@ object BuildServerProtocol {
           mutable.HashMap[BuildTargetIdentifier, mutable.ListBuffer[BuildTargetIdentifier]]()
 
         val scopeMap = for {
-          (targetId, scope, bspEnabled) <- (targetIds, scopes, bspEnabled).zipped
+          (targetId, scope, bspEnabled) <- targetIds.lazyZip(scopes).lazyZip(bspEnabled)
           if bspEnabled
         } yield {
-          scope.project.toOption match {
+          (scope.project.toOption: @unchecked) match {
             case Some(ProjectRef(buildUri, _)) =>
               val loadedBuildUnit = loadedBuild.units(buildUri)
               buildsMap.getOrElseUpdate(
@@ -625,7 +623,7 @@ object BuildServerProtocol {
         } else {
           Nil
         }
-        BspFullWorkspace(scopeMap.toMap, buildMap.toMap, buildsMap.mapValues(_.result()).toMap)
+        BspFullWorkspace(scopeMap.toMap, buildMap.toMap, buildsMap.view.mapValues(_.result()).toMap)
       }
     }
 
@@ -1014,7 +1012,6 @@ object BuildServerProtocol {
     state.respondEvent(RunResult(originId, statusCode))
   }
 
-  @nowarn
   private def internalDependencyConfigurationsSetting = Def.settingDyn {
     val allScopes = bspFullWorkspace.value.scopes.map { case (_, scope) => scope }.toSet
     val directDependencies = Keys.internalDependencyConfigurations.value
@@ -1042,6 +1039,7 @@ object BuildServerProtocol {
         transitiveDependencies.join.value.flatten
       allDependencies
         .groupBy(_._1)
+        .view
         .mapValues { deps =>
           // We use a list set to maintain the order of configs
           ListSet(deps.flatMap { case (_, configs) => configs }*)

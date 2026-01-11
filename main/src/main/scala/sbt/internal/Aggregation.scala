@@ -19,6 +19,7 @@ import sbt.internal.util.*
 import sbt.internal.client.NetworkClient
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
+import scala.annotation.tailrec
 
 sealed trait Aggregation
 object Aggregation {
@@ -249,6 +250,7 @@ object Aggregation {
       extra: BuildUtil[Proj],
   ): Iterable[ScopedKey[?]] =
     val mask = ScopeMask()
+    @tailrec
     def recur(keys: Set[ScopedKey[?]], acc: Set[ScopedKey[?]]): Set[ScopedKey[?]] =
       if keys.isEmpty then acc
       else

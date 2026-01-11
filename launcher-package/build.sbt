@@ -1,4 +1,5 @@
 import scala.util.control.Exception.catching
+import scala.sys.process._
 import NativePackagerHelper._
 import com.typesafe.sbt.packager.SettingsHelper._
 import DebianConstants._
@@ -69,6 +70,8 @@ val debianBuildId = settingKey[Int]("build id for Debian")
 
 val exportRepoUsingCoursier = taskKey[File]("export Maven style repository")
 val exportRepoCsrDirectory = settingKey[File]("")
+val exportRepo = taskKey[File]("export Ivy style repository")
+val exportRepoDirectory = settingKey[File]("directory for exported repository")
 
 val universalMacPlatform = "universal-apple-darwin"
 val x86LinuxPlatform = "x86_64-pc-linux"
@@ -109,13 +112,24 @@ val root = (project in file(".")).
     sbtLaunchJar := {
       val uri = sbtLaunchJarUrl.value
       val file = sbtLaunchJarLocation.value
-      import dispatch.classic._
       if(!file.exists) {
          // oddly, some places require us to create the file before writing...
          IO.touch(file)
+         val url = new java.net.URL(uri)
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
-         try Http(url(uri) >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
       }
       // TODO - GPG Trust validation.
       file
@@ -135,12 +149,23 @@ val root = (project in file(".")).
       val linuxX86Tar = t / linuxX86ImageTar
       val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
-      import dispatch.classic._
       if(!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(macosUniversalTar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$macosUniversalImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
-         try Http(url(s"$baseUrl/v$v/$macosUniversalImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / universalMacPlatform
          IO.createDirectory(platformDir)
          s"tar zxvf $macosUniversalTar --directory $platformDir".!
@@ -148,9 +173,21 @@ val root = (project in file(".")).
       }
       if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxX86Tar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$linuxX86ImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
-         try Http(url(s"$baseUrl/v$v/$linuxX86ImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / x86LinuxPlatform
          IO.createDirectory(platformDir)
          s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
@@ -158,9 +195,21 @@ val root = (project in file(".")).
       }
       if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
          IO.touch(linuxAarch64Tar)
+         val url = new java.net.URL(s"$baseUrl/v$v/$linuxAarch64ImageTar")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
-         try Http(url(s"$baseUrl/v$v/$linuxAarch64ImageTar") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / aarch64LinuxPlatform
          IO.createDirectory(platformDir)
          s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
@@ -168,9 +217,21 @@ val root = (project in file(".")).
       }
       if(!windowsZip.exists && sbtIncludeSbtn) {
          IO.touch(windowsZip)
+         val url = new java.net.URL(s"$baseUrl/v$v/$windowsImageZip")
+         val connection = url.openConnection()
+         val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
-         try Http(url(s"$baseUrl/v$v/$windowsImageZip") >>> writer)
-         finally writer.close()
+         try {
+           val buffer = new Array[Byte](8192)
+           var bytesRead = input.read(buffer)
+           while (bytesRead != -1) {
+             writer.write(buffer, 0, bytesRead)
+             bytesRead = input.read(buffer)
+           }
+         } finally {
+           input.close()
+           writer.close()
+         }
          val platformDir = t / x86WindowsPlatform
          IO.unzip(windowsZip, platformDir)
          IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
@@ -337,21 +398,21 @@ val root = (project in file(".")).
     },
 
     // Miscellaneous publishing stuff...
-    projectID in Debian := {
+    (Debian / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Debian).value)
+      m.withRevision((Debian / version).value)
     },
-    projectID in Windows := {
+    (Windows / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Windows).value)
+      m.withRevision((Windows / version).value)
     },
-    projectID in Rpm := {
+    (Rpm / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Rpm).value)
+      m.withRevision((Rpm / version).value)
     },
-    projectID in Universal := {
+    (Universal / projectID) := {
       val m = moduleID.value
-      m.copy(revision = (version in Universal).value)
+      m.withRevision((Universal / version).value)
     }
   )
 
@@ -406,9 +467,7 @@ def makePublishToForConfig(config: Configuration) = {
       val resolver = Resolver.url(id, new URL(url))(Patterns(pattern))
       Some(resolver)
     }
-  )) ++ Seq(
-     resolvers ++= ((publishTo in config) apply (_.toSeq)).value
-  )
+  ))
 }
 
 def publishToSettings =
@@ -416,19 +475,29 @@ def publishToSettings =
 
 def downloadUrl(uri: URI, out: File): Unit =
   {
-    import dispatch.classic._
     if(!out.exists) {
        IO.touch(out)
+       val url = new java.net.URL(uri.toString)
+       val connection = url.openConnection()
+       val input = connection.getInputStream
        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
-       try Http(url(uri.toString) >>> writer)
-       finally writer.close()
+       try {
+         val buffer = new Array[Byte](8192)
+         var bytesRead = input.read(buffer)
+         while (bytesRead != -1) {
+           writer.write(buffer, 0, bytesRead)
+           bytesRead = input.read(buffer)
+         }
+       } finally {
+         input.close()
+         writer.close()
+       }
     }
   }
 
 def colonName(m: ModuleID): String = s"${m.organization}:${m.name}:${m.revision}"
 
 lazy val dist = (project in file("dist"))
-  .enablePlugins(ExportRepoPlugin)
   .settings(
     name := "dist",
     scalaVersion := {
@@ -437,19 +506,19 @@ lazy val dist = (project in file("dist"))
     },
     libraryDependencies ++= Seq(sbtActual, jansi, scala212Compiler, scala212Jline, scala212Xml) ++ sbt013ExtraDeps,
     exportRepo := {
-      val old = exportRepo.value
+      val outDir = exportRepoDirectory.value
       sbtVersionToRelease match {
         case v if v.startsWith("1.") =>
           sys.error("sbt 1.x should use coursier")
         case v if v.startsWith("0.13.") =>
-          val outbase = exportRepoDirectory.value / "org.scala-sbt" / "compiler-interface" / v
+          val outbase = outDir / "org.scala-sbt" / "compiler-interface" / v
           val uribase = s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
           downloadUrl(uri(uribase + "ivys/ivy.xml"), outbase / "ivys" / "ivy.xml")
           downloadUrl(uri(uribase + "jars/compiler-interface.jar"), outbase / "jars" / "compiler-interface.jar")
           downloadUrl(uri(uribase + "srcs/compiler-interface-sources.jar"), outbase / "srcs" / "compiler-interface-sources.jar")
         case _ =>
       }
-      old
+      outDir
     },
     exportRepoDirectory := target.value / "lib" / "local-preloaded",
     exportRepoCsrDirectory := exportRepoDirectory.value,
@@ -481,7 +550,7 @@ lazy val dist = (project in file("dist"))
       outDirectory
     },
     conflictWarning := ConflictWarning.disable,
-    publish := (),
-    publishLocal := (),
+    publish := {},
+    publishLocal := {},
     resolvers += Resolver.typesafeIvyRepo("releases")
   )
