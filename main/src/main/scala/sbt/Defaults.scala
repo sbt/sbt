@@ -3921,7 +3921,7 @@ object Classpaths {
           substituteScalaFiles(so, _)(providedScalaJars),
           skip = sk,
           force = shouldForce,
-          depsUpdated = tu.exists(!_.stats.cached),
+          transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = eel,
           versionSchemeOverrides = lds,

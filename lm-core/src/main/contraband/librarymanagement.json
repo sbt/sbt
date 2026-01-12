@@ -841,7 +841,8 @@
         { "name": "resolveTime",  "type": "long"    },
         { "name": "downloadTime", "type": "long"    },
         { "name": "downloadSize", "type": "long"    },
-        { "name": "cached",       "type": "boolean" }
+        { "name": "cached",       "type": "boolean" },
+        { "name": "resolvedAt",   "type": "long", "default": "0L", "since": "2.0.0", "doc": ["Timestamp (millis since epoch) when this update was resolved. Used for cross-command cache invalidation."] }
       ],
       "toString": "Seq(\"Resolve time: \" + resolveTime + \" ms\", \"Download time: \" + downloadTime + \" ms\", \"Download size: \" + downloadSize + \" bytes\").mkString(\", \")"
     },

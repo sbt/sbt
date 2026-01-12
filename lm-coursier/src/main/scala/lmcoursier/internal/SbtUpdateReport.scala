@@ -412,7 +412,7 @@ private[internal] object SbtUpdateReport {
     UpdateReport(
       new File("."), // dummy value
       configReports.toVector,
-      UpdateStats(-1L, -1L, -1L, cached = false),
+      UpdateStats(-1L, -1L, -1L, cached = false, resolvedAt = System.currentTimeMillis()),
       Map.empty
     )
   }

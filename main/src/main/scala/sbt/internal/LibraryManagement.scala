@@ -37,7 +37,7 @@ private[sbt] object LibraryManagement {
       transform: UpdateReport => UpdateReport,
       skip: Boolean,
       force: Boolean,
-      depsUpdated: Boolean,
+      transitiveUpdates: Seq[UpdateReport],
       uwConfig: UnresolvedWarningConfiguration,
       evictionLevel: Level.Value,
       versionSchemeOverrides: Seq[ModuleID],
@@ -123,6 +123,17 @@ private[sbt] object LibraryManagement {
 
     /* Check if a update report is still up to date or we must resolve again. */
     def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
+      // Check if any transitive dependency was updated more recently than our cached report.
+      // This works across command invocations by comparing timestamps.
+      // The `!stats.cached` check handles within-command invalidation (for backwards compat with resolvedAt=0).
+      val depsUpdated = transitiveUpdates.exists { dep =>
+        val depResolvedAt = dep.stats.resolvedAt
+        val ourResolvedAt = out.stats.resolvedAt
+        // If dependency was freshly resolved in this command
+        !dep.stats.cached ||
+        // Or if dependency was resolved more recently than us (across commands)
+        (depResolvedAt > 0 && depResolvedAt > ourResolvedAt)
+      }
       !force &&
       !depsUpdated &&
       !inChanged &&
@@ -382,7 +393,7 @@ private[sbt] object LibraryManagement {
           identity,
           skip = sk,
           force = shouldForce,
-          depsUpdated = tu.exists(!_.stats.cached),
+          transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = Level.Debug,
           versionSchemeOverrides = Nil,
