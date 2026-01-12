@@ -10,7 +10,7 @@ package sbt.util
 
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import sbt.internal.util.codec.{ ProblemFormats, SeverityFormats, PositionFormats }
-import xsbti.{ CompileFailed, Problem }
+import xsbti.{ CompileFailed, Problem, Severity }
 
 /**
  * A wrapper around GenericFailure for CompileFailed exceptions.
@@ -24,6 +24,15 @@ final case class CachedCompileFailure(underlying: GenericFailure):
     override def arguments(): Array[String] = Array.empty
     override def problems(): Array[Problem] = underlying.problems.toArray
     override def getMessage(): String = underlying.message.getOrElse("")
+
+  /** Replay problems to the logger so users see the cached errors/warnings. */
+  def replay(logger: Logger): Unit =
+    underlying.problems.foreach: problem =>
+      val msg = CachedCompileFailure.formatProblem(problem)
+      problem.severity match
+        case Severity.Error => logger.error(msg)
+        case Severity.Warn  => logger.warn(msg)
+        case Severity.Info  => logger.info(msg)
 end CachedCompileFailure
 
 object CachedCompileFailure
@@ -33,6 +42,33 @@ object CachedCompileFailure
     with sjsonnew.BasicJsonProtocol:
 
   private val CompileFailedKind = "CompileFailed"
+
+  /**
+   * Format a problem for display. Uses the `rendered` field if available (Scala 3),
+   * otherwise constructs a message from position and message (Scala 2.13).
+   */
+  private[util] def formatProblem(problem: Problem): String =
+    import sbt.util.InterfaceUtil.toOption
+    toOption(problem.rendered).getOrElse:
+      val pos = problem.position
+      val file = toOption(pos.sourcePath).getOrElse("unknown")
+      val line = toOption(pos.line).map(l => s":$l").getOrElse("")
+      val pointer = toOption(pos.pointer).map(p => s":$p").getOrElse("")
+      val lineContent = Option(pos.lineContent).filter(_.nonEmpty).map(c => s"\n$c").getOrElse("")
+      val pointerLine = toOption(pos.pointerSpace).map(s => s"\n$s^").getOrElse("")
+      s"$file$line$pointer: ${problem.message}$lineContent$pointerLine"
+
+  /**
+   * Check if the problems contain enough information to be useful when replayed.
+   * For Scala 2.13, the `rendered` field is empty, so we check if position info exists.
+   */
+  def hasSufficientInfo(e: CompileFailed): Boolean =
+    import sbt.util.InterfaceUtil.toOption
+    e.problems()
+      .forall: problem =>
+        // Either has rendered text (Scala 3) or has position info (Scala 2.13)
+        toOption(problem.rendered).isDefined ||
+          (toOption(problem.position.sourcePath).isDefined && problem.message.nonEmpty)
 
   def fromException(e: CompileFailed): CachedCompileFailure =
     CachedCompileFailure(

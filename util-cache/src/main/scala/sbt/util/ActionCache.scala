@@ -109,6 +109,8 @@ object ActionCache:
       case Right(value) => value
       case Left(Some(failure)) =>
         config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
+        // Replay problems to the logger so users see the cached errors/warnings
+        failure.replay(config.logger)
         throw failure.toException
       case Left(None) => organicTask
   end cache
