@@ -3554,12 +3554,8 @@ object Classpaths {
           // to fix https://github.com/sbt/sbt/issues/8026
           scalaVersion := {
             val isPlugin = sbtPlugin.value
-            if (isPlugin) {
-              val sv = (pluginCrossBuild / sbtBinaryVersion).value
-              PluginCross.scalaVersionFromSbtBinaryVersion(sv)
-            } else {
-              appConfiguration.value.provider.scalaProvider.version
-            }
+            if (isPlugin) (pluginCrossBuild / scalaVersion).value
+            else appConfiguration.value.provider.scalaProvider.version
           },
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
           scalaEarlyVersion := CrossVersion.earlyScalaVersion(scalaVersion.value),
