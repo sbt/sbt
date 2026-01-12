@@ -72,9 +72,10 @@ private[sbt] object KeyMacro:
     @tailrec
     def enclosingTerm0(sym: Symbol): Symbol =
       sym match
-        case sym if sym.flags.is(Flags.Macro) => enclosingTerm0(sym.owner)
-        case sym if !sym.isTerm               => enclosingTerm0(sym.owner)
-        case _                                => sym
+        case sym if sym.flags.is(Flags.Macro)     => enclosingTerm0(sym.owner)
+        case sym if sym.flags.is(Flags.Synthetic) => enclosingTerm0(sym.owner)
+        case sym if !sym.isTerm                   => enclosingTerm0(sym.owner)
+        case _                                    => sym
     enclosingTerm0(Symbol.spliceOwner)
 
   private def enclosingClass(using Quotes) =
