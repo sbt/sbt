@@ -13,20 +13,17 @@ import sbt.internal.util.codec.{ ProblemFormats, SeverityFormats, PositionFormat
 import xsbti.{ CompileFailed, Problem }
 
 /**
- * A serializable representation of a CompileFailed exception.
+ * A wrapper around GenericFailure for CompileFailed exceptions.
  * This allows caching compilation failures so that repeated builds
  * don't re-run failed compilations unnecessarily.
  *
  * Fixes https://github.com/sbt/sbt/issues/7662
  */
-final case class CachedCompileFailure(
-    problems: Vector[Problem],
-    message: String
-):
+final case class CachedCompileFailure(underlying: GenericFailure):
   def toException: CompileFailed = new CompileFailed:
     override def arguments(): Array[String] = Array.empty
-    override def problems(): Array[Problem] = CachedCompileFailure.this.problems.toArray
-    override def getMessage(): String = CachedCompileFailure.this.message
+    override def problems(): Array[Problem] = underlying.problems.toArray
+    override def getMessage(): String = underlying.message.getOrElse("")
 end CachedCompileFailure
 
 object CachedCompileFailure
@@ -35,27 +32,42 @@ object CachedCompileFailure
     with PositionFormats
     with sjsonnew.BasicJsonProtocol:
 
+  private val CompileFailedKind = "CompileFailed"
+
   def fromException(e: CompileFailed): CachedCompileFailure =
     CachedCompileFailure(
-      problems = e.problems().toVector,
-      message = Option(e.getMessage).getOrElse("")
+      GenericFailure(
+        kind = CompileFailedKind,
+        message = Option(e.getMessage).getOrElse(""),
+        problems = e.problems().toVector
+      )
     )
 
-  given JsonFormat[CachedCompileFailure] = new JsonFormat[CachedCompileFailure]:
-    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): CachedCompileFailure =
+  // Custom JsonFormat for GenericFailure since we disabled automatic codec generation
+  given JsonFormat[GenericFailure] = new JsonFormat[GenericFailure]:
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): GenericFailure =
       jsOpt match
         case Some(js) =>
           unbuilder.beginObject(js)
+          val kind = unbuilder.readField[Option[String]]("kind")
+          val message = unbuilder.readField[Option[String]]("message")
           val problems = unbuilder.readField[Vector[Problem]]("problems")
-          val message = unbuilder.readField[String]("message")
           unbuilder.endObject()
-          CachedCompileFailure(problems, message)
+          GenericFailure(kind, message, problems)
         case None =>
           deserializationError("Expected JsObject but found None")
 
-    override def write[J](obj: CachedCompileFailure, builder: Builder[J]): Unit =
+    override def write[J](obj: GenericFailure, builder: Builder[J]): Unit =
       builder.beginObject()
-      builder.addField("problems", obj.problems)
+      builder.addField("kind", obj.kind)
       builder.addField("message", obj.message)
+      builder.addField("problems", obj.problems)
       builder.endObject()
+
+  given JsonFormat[CachedCompileFailure] = new JsonFormat[CachedCompileFailure]:
+    private val gf = summon[JsonFormat[GenericFailure]]
+    override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): CachedCompileFailure =
+      CachedCompileFailure(gf.read(jsOpt, unbuilder))
+    override def write[J](obj: CachedCompileFailure, builder: Builder[J]): Unit =
+      gf.write(obj.underlying, builder)
 end CachedCompileFailure
