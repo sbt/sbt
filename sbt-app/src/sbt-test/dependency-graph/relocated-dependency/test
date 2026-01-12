@@ -1,0 +1,2 @@
+> dependencyTree --out target/tree.txt
+> check

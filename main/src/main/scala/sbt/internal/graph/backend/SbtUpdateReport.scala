@@ -50,7 +50,22 @@ object SbtUpdateReport {
 
     val (nodes, edges) = report.details.flatMap(moduleEdges).unzip
     val root = Module(rootInfo)
+    val allNodes = root +: nodes
+    val flatEdges = edges.flatten
+    val existingNodeIds = allNodes.map(_.id).toSet
 
-    ModuleGraph(root +: nodes, edges.flatten)
+    // Handle relocated dependencies where the caller node doesn't exist (#8400)
+    val fixedEdges = flatEdges.flatMap { case edge @ (from, to) =>
+      if (existingNodeIds.contains(from)) Seq(edge)
+      else {
+        val callersOfMissing = flatEdges.collect {
+          case (caller, target) if target == from => caller
+        }
+        if (callersOfMissing.isEmpty) Seq(Edge(root.id, to))
+        else callersOfMissing.map(caller => Edge(caller, to))
+      }
+    }
+
+    ModuleGraph(allNodes, fixedEdges.distinct)
   }
 }
