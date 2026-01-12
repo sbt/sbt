@@ -1,0 +1,8 @@
+# Test for issue #8026: updateSbtClassifiers should use correct Scala version for sbt plugins
+# when scalaVersion is explicitly set
+
+# First, verify the Scala version is correct in updateSbtClassifiers scope
+> checkScalaVersion
+
+# Then verify updateSbtClassifiers runs successfully
+> updateSbtClassifiers
