@@ -68,9 +68,7 @@ object ActionCache:
       val failureFile = StringVirtualFile1(valuePath, CompactPrinter(json))
       store.put(
         UpdateActionResultRequest(input, Vector(failureFile), exitCode = failureExitCode)
-      ) match
-        case Right(_) => ()
-        case Left(_)  => () // Ignore cache storage errors for failures
+      )
       throw e
 
     def organicTask: O =
