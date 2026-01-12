@@ -514,8 +514,11 @@ if "%g:~0,2%" == "-D" (
         shift
         goto args_loop
       ) else (
-        echo %g% is missing a value
-        goto error
+        rem Allow -Dfoo without value to match Unix behavior
+        rem This sets the property to empty string or marks it as present
+        call :dlog [args_loop] -D argument %~0
+        set "SBT_ARGS=!SBT_ARGS! %~0"
+        goto args_loop
       )
     ) else (
       call :dlog [args_loop] -D argument %~0
