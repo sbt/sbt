@@ -734,7 +734,13 @@ class NetworkClient(
       case _          => Failure(new MessageOnlyException(s"runInfo is not specified in $params"))
     }
 
+  private def setWindowTitle(title: String): Unit =
+    if System.console() != null && System.getenv("TERM") != null then
+      print(s"\u001b]0;$title\u0007")
+      System.out.flush()
+
   private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
+    runInfo.windowTitle.foreach(setWindowTitle)
     def jvmRun(info: JvmRunInfo): Try[Unit] = {
       val option = ForkOptions(
         javaHome = info.javaHome.map(new File(_)),
