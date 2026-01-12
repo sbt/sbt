@@ -494,6 +494,8 @@ object Keys {
   val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
   val csrSameVersions = settingKey[Seq[Set[InclExclRule]]]("Modules to keep at the same version.")
   val csrMavenDependencyOverride = settingKey[Boolean]("Enables Maven dependency override (bill of materials) support")
+  val csrLocalArtifactsShouldBeCached =
+    settingKey[Boolean]("When true, local file:// artifacts are copied to the cache directory.")
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)

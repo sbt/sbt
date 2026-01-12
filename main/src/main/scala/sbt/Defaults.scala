@@ -287,6 +287,7 @@ object Defaults extends BuildCommon {
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
       csrMavenDependencyOverride :== false,
+      csrLocalArtifactsShouldBeCached :== false,
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,
       stagingDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-staging",

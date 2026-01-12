@@ -240,6 +240,7 @@ class CoursierDependencyResolution(
       .withChecksums(checksums)
       .withCredentials(conf.credentials.map(ToCoursier.credentials))
       .withFollowHttpToHttpsRedirections(conf.followHttpToHttpsRedirections.getOrElse(true))
+      .withLocalArtifactsShouldBeCached(conf.localArtifactsShouldBeCached)
 
     val excludeDependencies = conf.excludeDependencies.map { (strOrg, strName) =>
       (coursier.Organization(strOrg), coursier.ModuleName(strName))
