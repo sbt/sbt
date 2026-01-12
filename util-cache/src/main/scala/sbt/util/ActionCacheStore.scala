@@ -217,7 +217,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     try
       val acFile = acBase.toFile / request.actionDigest.toString.replace("/", "-")
       val refs = putBlobsIfNeeded(request.outputFiles).toVector
-      val v = ActionResult(refs, storeName)
+      val v = ActionResult(refs, Some(storeName), request.exitCode)
       val json = Converter.toJsonUnsafe(v)
       IO.write(acFile, CompactPrinter(json))
       Right(v)

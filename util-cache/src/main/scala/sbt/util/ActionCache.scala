@@ -24,11 +24,13 @@ import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
-import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import xsbti.{ CompileFailed, FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
 object ActionCache:
   private[sbt] val dirZipExt = ".sbtdir.zip"
   private[sbt] val manifestFileName = "sbtdir_manifest.json"
+  private[sbt] val failureFileName = "failure.json"
+  private[sbt] val failureExitCode = 1
 
   /**
    * This is a key function that drives remote caching.
@@ -54,11 +56,29 @@ object ActionCache:
       action: I => InternalActionResult[O],
   ): O =
     import config.*
+
+    def cacheFailure(e: CompileFailed): Nothing =
+      // Cache the failure so subsequent builds don't re-run failed compilation
+      // This fixes https://github.com/sbt/sbt/issues/7662
+      cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+      val (input, failurePath) = mkFailureInput(key, codeContentHash, extraHash)
+      val cachedFailure = CachedCompileFailure.fromException(e)
+      val json = Converter.toJsonUnsafe(cachedFailure)
+      val failureFile = StringVirtualFile1(failurePath, CompactPrinter(json))
+      store.put(
+        UpdateActionResultRequest(input, Vector(failureFile), exitCode = failureExitCode)
+      ) match
+        case Right(_) => ()
+        case Left(_)  => () // Ignore cache storage errors for failures
+      throw e
+
     def organicTask: O =
       // run action(...) and combine the newResult with outputs
       val InternalActionResult(result, outputs) =
         try action(key): @unchecked
         catch
+          case e: CompileFailed =>
+            cacheFailure(e)
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
@@ -83,9 +103,15 @@ object ActionCache:
             result
           case Left(e) => throw e
 
-    get(key, codeContentHash, extraHash, tags, config) match
-      case Some(value) => value
-      case None        => organicTask
+    // Check for cached failure first
+    getCachedFailure(key, codeContentHash, extraHash, config) match
+      case Some(failure) =>
+        config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
+        throw failure.toException
+      case None =>
+        get(key, codeContentHash, extraHash, tags, config) match
+          case Some(value) => value
+          case None        => organicTask
   end cache
 
   /**
@@ -174,6 +200,44 @@ object ActionCache:
     val input =
       Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
     (input, s"$${OUT}/value/$input.json")
+
+  private inline def mkFailureInput[I: HashWriter](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest
+  ): (Digest, String) =
+    val input =
+      Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
+    // Use a different path for failures to avoid conflicts with success cache
+    (Digest.sha256Hash(input, Digest.dummy(failureExitCode)), s"$${OUT}/failure/$input.json")
+
+  /**
+   * Retrieves a cached compilation failure, if any.
+   */
+  private def getCachedFailure[I: HashWriter](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      config: BuildWideCacheConfiguration,
+  ): Option[CachedCompileFailure] =
+    val (input, failurePath) = mkFailureInput(key, codeContentHash, extraHash)
+    val getRequest =
+      GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(failurePath))
+    config.store.get(getRequest) match
+      case Right(result) if result.exitCode.contains(failureExitCode) =>
+        result.contents.headOption match
+          case Some(head) =>
+            val str = String(head.array(), StandardCharsets.UTF_8)
+            val json = Parser.parseUnsafe(str)
+            Some(Converter.fromJsonUnsafe[CachedCompileFailure](json))
+          case None =>
+            val paths = config.store.syncBlobs(result.outputFiles, config.outputDirectory)
+            if paths.isEmpty then None
+            else
+              val str = IO.read(paths.head.toFile())
+              val json = Parser.parseUnsafe(str)
+              Some(Converter.fromJsonUnsafe[CachedCompileFailure](json))
+      case _ => None
 
   def manifestFromFile(manifest: Path): Manifest =
     import sbt.internal.util.codec.ManifestCodec.given
