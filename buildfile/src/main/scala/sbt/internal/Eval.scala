@@ -59,8 +59,7 @@ class Eval(
       snapshotJars.sorted.foreach { path =>
         val file = path.toFile
         digester.update(bytes(path.toString))
-        if file.exists then
-          digester.update(bytes(file.lastModified.toString))
+        if file.exists then digester.update(bytes(file.lastModified.toString))
       }
       Hash.toHex(digester.digest())
 
