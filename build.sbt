@@ -1060,7 +1060,8 @@ def customCommands: Seq[Setting[?]] = Seq(
       }).toList :::
       (zincOpt map { case ProjectRef(build, _) =>
         val zincSv = get((ProjectRef(build, "zinc") / scalaVersion))
-        val csv = getOpt((ProjectRef(build, "compilerBridge") / crossScalaVersions)).getOrElse(Nil).toList
+        val csv =
+          getOpt((ProjectRef(build, "compilerBridge") / crossScalaVersions)).getOrElse(Nil).toList
         (csv flatMap { bridgeSv =>
           s"++$bridgeSv" :: ("{" + build.toString + "}compilerBridge/publishLocal") :: Nil
         }) :::
