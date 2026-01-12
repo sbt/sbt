@@ -15,6 +15,19 @@ import sbt.util.CacheImplicits.given
 import xsbti.FileConverter
 
 object RunUtil:
+  private def setWindowTitle(title: String): Unit =
+    if System.console() != null && System.getenv("TERM") != null then
+      scala.Console.print(s"\u001b]0;$title\u0007")
+      scala.Console.flush()
+
+  private[sbt] def mkWindowTitle(
+      command: String,
+      org: String,
+      name: String,
+      version: String
+  ): String =
+    s"sbt $command: $org % $name % $version"
+
   /**
    * Conventional server-side run implementation.
    */
@@ -86,10 +99,10 @@ object RunUtil:
       mainClass: String,
       cp: Classpath,
       fo: ForkOptions,
-      conv: FileConverter
+      conv: FileConverter,
+      windowTitle: Option[String] = None
   ): RunInfo =
     val strategy = fo.outputStrategy.map(_.getClass().getSimpleName().filter(_ != '$'))
-    // sbtn doesn't set java.home, so we need to do the fallback here
     val javaHome =
       fo.javaHome.map(IO.toURI).orElse(sys.props.get("java.home").map(x => IO.toURI(new File(x))))
     val jvmRunInfo = JvmRunInfo(
@@ -105,7 +118,9 @@ object RunUtil:
     )
     RunInfo(
       jvm = true,
-      jvmRunInfo = jvmRunInfo,
+      jvmRunInfo = Some(jvmRunInfo),
+      nativeRunInfo = None,
+      windowTitle = windowTitle,
     )
 
   def defaultRunMainTask(
@@ -125,6 +140,7 @@ object RunUtil:
       val hashClasspath = (bgRunMain / bgHashClasspath).value
       val fo = (run / forkOptions).value
       val state = Keys.state.value
+      val windowTitle = mkWindowTitle("runMain", organization.value, name.value, version.value)
       if clientRun.value && state.isNetworkCommand then
         val workingDir = service.createWorkingDirectory
         val cp = service.copyClasspath(
@@ -133,7 +149,7 @@ object RunUtil:
           workingDir,
           conv,
         )
-        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv)
+        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv, Some(windowTitle))
         val result = ClientJobParams(
           runInfo = info
         )
@@ -141,6 +157,7 @@ object RunUtil:
         state.notifyEvent(Serialization.clientJob, result)
         result
       else
+        setWindowTitle(windowTitle)
         val wrapper = termWrapper(canonicalInput.value, echoInput.value)
         val handle = service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state):
           (logger, workingDir) =>
@@ -181,6 +198,7 @@ object RunUtil:
       val hashClasspath = (bgRun / bgHashClasspath).value
       val fo = (run / forkOptions).value
       val state = Keys.state.value
+      val windowTitle = mkWindowTitle("run", organization.value, name.value, version.value)
       if clientRun.value && state.isNetworkCommand then
         val workingDir = service.createWorkingDirectory
         val cp = service.copyClasspath(
@@ -189,7 +207,7 @@ object RunUtil:
           workingDir,
           conv,
         )
-        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv)
+        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv, Some(windowTitle))
         val result = ClientJobParams(
           runInfo = info
         )
@@ -197,6 +215,7 @@ object RunUtil:
         state.notifyEvent(Serialization.clientJob, result)
         result
       else
+        setWindowTitle(windowTitle)
         val wrapper = termWrapper(canonicalInput.value, echoInput.value)
         val handle = service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state):
           (logger, workingDir) =>
@@ -235,6 +254,7 @@ object RunUtil:
       val hashClasspath = (bgRunMain / bgHashClasspath).value
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
+      setWindowTitle(mkWindowTitle("bgRunMain", organization.value, name.value, version.value))
       service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state.value) {
         (logger, workingDir) =>
           val cp =
@@ -275,6 +295,7 @@ object RunUtil:
       val hashClasspath = (bgRun / bgHashClasspath).value
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
+      setWindowTitle(mkWindowTitle("bgRun", organization.value, name.value, version.value))
       service.runInBackgroundWithLoader(Keys.resolvedScoped.value, state.value) {
         (logger, workingDir) =>
           val cp =
