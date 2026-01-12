@@ -1,30 +1,36 @@
 package example.test
 
-import minitest._
-import scala.sys.process._
+import scala.sys.process.*
 import java.io.File
 import java.util.Locale
 import sbt.io.IO
+import verify.BasicTestSuite
 
-object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
+object ExtendedRunnerTest extends BasicTestSuite:
   // 1.3.0, 1.3.0-M4
   private[test] val versionRegEx = "\\d(\\.\\d+){2}(-\\w+)?"
 
   lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
   lazy val isMac: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
   lazy val sbtScript =
-    if (isWindows) new File("target/universal/stage/bin/sbt.bat")
-    else new File("target/universal/stage/bin/sbt")
+    if (isWindows) new File("launcher-package/target/universal/stage/bin/sbt.bat")
+    else new File("launcher-package/target/universal/stage/bin/sbt")
 
-  def sbtProcess(args: String*) = sbtProcessWithOpts(args: _*)("", "")
+  def sbtProcess(args: String*) = sbtProcessWithOpts(args*)("", "")
   def sbtProcessWithOpts(args: String*)(javaOpts: String, sbtOpts: String) =
-    sbt.internal.Process(Seq(sbtScript.getAbsolutePath) ++ args, new File("citest"),
+    Process(
+      Seq(sbtScript.getAbsolutePath) ++ args,
+      new File("launcher-package/citest"),
       "JAVA_OPTS" -> javaOpts,
-      "SBT_OPTS" -> sbtOpts)
+      "SBT_OPTS" -> sbtOpts
+    )
   def sbtProcessInDir(dir: File)(args: String*) =
-    sbt.internal.Process(Seq(sbtScript.getAbsolutePath) ++ args, dir,
+    Process(
+      Seq(sbtScript.getAbsolutePath) ++ args,
+      dir,
       "JAVA_OPTS" -> "",
-      "SBT_OPTS" -> "")
+      "SBT_OPTS" -> ""
+    )
 
   test("sbt runs") {
     assert(sbtScript.exists)
@@ -52,12 +58,12 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     val out3 = sbtProcess("-V").!!.trim
     testVersion(out3.linesIterator.toList)
   }
-  */
+   */
 
   test("sbt -V in empty directory") {
     IO.withTemporaryDirectory { tmp =>
       val out = sbtProcessInDir(tmp)("-V").!!.trim
-      val expectedVersion = "^"+versionRegEx+"$"
+      val expectedVersion = "^" + versionRegEx + "$"
       val targetDir = new File(tmp, "target")
       assert(!targetDir.exists, "expected target directory to not exist, but existed")
     }
@@ -71,12 +77,18 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     assert(out.matches(expectedVersion))
     ()
   }
-  */
+   */
 
   test("sbt --sbt-jar should run") {
-    val out = sbtProcess("compile", "-v", "--sbt-jar", "../target/universal/stage/bin/sbt-launch.jar").!!.linesIterator.toList
-    assert(out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
-      out.contains[String]("\"../target/universal/stage/bin/sbt-launch.jar\"")
+    val out = sbtProcess(
+      "compile",
+      "-v",
+      "--sbt-jar",
+      "../target/universal/stage/bin/sbt-launch.jar"
+    ).!!.linesIterator.toList
+    assert(
+      out.contains[String]("../target/universal/stage/bin/sbt-launch.jar") ||
+        out.contains[String]("\"../target/universal/stage/bin/sbt-launch.jar\"")
     )
     ()
   }
@@ -105,7 +117,7 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
   test("sbt --script-version in empty directory") {
     IO.withTemporaryDirectory { tmp =>
       val out = sbtProcessInDir(tmp)("--script-version").!!.trim
-      val expectedVersion = "^"+versionRegEx+"$"
+      val expectedVersion = "^" + versionRegEx + "$"
       assert(out.matches(expectedVersion))
     }
     ()
@@ -126,4 +138,4 @@ object SbtRunnerTest extends SimpleTestSuite with PowerAssertions {
     }
     ()
   }
-}
+end ExtendedRunnerTest

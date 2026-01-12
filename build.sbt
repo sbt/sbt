@@ -53,6 +53,8 @@ Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += Utils.componentID
 Global / excludeLint += scriptedBufferLog
 Global / excludeLint += checkPluginCross
+Global / excludeLint += nativeImageJvm
+Global / excludeLint += nativeImageVersion
 
 def commonSettings: Seq[Setting[?]] = Def.settings(
   headerLicense := Some(
@@ -117,7 +119,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC7",
+    "2.0.0-RC8",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings (
@@ -293,7 +295,6 @@ lazy val utilPosition = (project in file("internal") / "util-position")
     libraryDependencies ++= Seq(hedgehog % Test),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[ReversedMissingMethodProblem]("sbt.internal.util.FilePosition.sourceCode"),
     ),
   )
 
@@ -437,8 +438,6 @@ lazy val workerProj = (project in file("worker"))
     Test / fork := true,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[MissingClassProblem]("com.google.gson.typeadapters.RuntimeTypeAdapterFactory"),
-      exclude[IncompatibleResultTypeProblem]("sbt.internal.worker1.WorkerMain.mkGson"),
       exclude[DirectMissingMethodProblem]("sbt.internal.worker1.TestInfo.this"),
     ),
   )
@@ -547,8 +546,6 @@ lazy val actionsProj = (project in file("main-actions"))
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerExchange.*"),
-      exclude[DirectMissingMethodProblem]("sbt.internal.WorkerProxy.*"),
     ),
   )
   .dependsOn(lmCore)
@@ -571,6 +568,8 @@ lazy val protocolProj = (project in file("protocol"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.worker.RunInfo.apply"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.worker.RunInfo.apply"),
     )
   )
 
@@ -716,7 +715,6 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[ReversedMissingMethodProblem]("sbt.ProjectMatrix.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
     ),
   )
@@ -1314,3 +1312,32 @@ lazy val lmCoursierShadedPublishing = project
     Compile / packageBin := (lmCoursierShaded / assembly).value,
     Compile / exportedProducts := Seq(Attributed.blank((Compile / packageBin).value))
   )
+
+lazy val launcherPackage = (project in file("launcher-package"))
+lazy val launcherPackageIntegrationTest =
+  (project in (file("launcher-package") / "integration-test"))
+    .settings(
+      name := "integration-test",
+      scalaVersion := scala3,
+      libraryDependencies ++= Seq(
+        scalaVerify % Test,
+        hedgehog % Test,
+        // This needs to be hardcoded here, and not use addSbtIO
+        "org.scala-sbt" %% "io" % "1.10.5" % Test,
+      ),
+      testFrameworks += TestFramework("hedgehog.sbt.Framework"),
+      testFrameworks += TestFramework("verify.runner.Framework"),
+      Test / test := {
+        (Test / test)
+          .dependsOn(launcherPackage / Universal / packageBin)
+          .dependsOn(launcherPackage / Universal / stage)
+          .value
+      },
+      Test / testOnly := {
+        (Test / testOnly)
+          .dependsOn(launcherPackage / Universal / packageBin)
+          .dependsOn(launcherPackage / Universal / stage)
+          .evaluated
+      },
+      Test / parallelExecution := false
+    )

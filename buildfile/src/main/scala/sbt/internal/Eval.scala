@@ -45,6 +45,24 @@ class Eval(
     .map(_.toString)
     .mkString(java.io.File.pathSeparator)
 
+  // Compute a hash of SNAPSHOT jars to invalidate cache when sbt SNAPSHOT version changes.
+  // Include modification time to detect republished snapshots with the same version string.
+  // This fixes #7713: build.sbt not recompiled when SNAPSHOT sbt breaks binary compatibility.
+  private val snapshotClasspathHash: String =
+    val snapshotJars = classpath.filter { path =>
+      val name = path.getFileName.toString
+      name.contains("SNAPSHOT") || name.contains("-bin-")
+    }
+    if snapshotJars.isEmpty then ""
+    else
+      val digester = MessageDigest.getInstance("SHA")
+      snapshotJars.sorted.foreach { path =>
+        val file = path.toFile
+        digester.update(bytes(path.toString))
+        if file.exists then digester.update(bytes(file.lastModified.toString))
+      }
+      Hash.toHex(digester.digest())
+
   final class EvalDriver(reporter: EvalReporter) extends Driver:
     val compileCtx0 = initCtx.fresh
     val options = nonCpOptions ++ Seq("-classpath", classpathString, "dummy.scala")
@@ -196,6 +214,8 @@ class Eval(
       digester.update(bytes(tpe))
     }
     digester.update(bytes(ev.extraHash))
+    // Include SNAPSHOT classpath hash to invalidate cache when sbt version changes (fixes #7713)
+    digester.update(bytes(snapshotClasspathHash))
     val d = digester.digest()
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)

@@ -10,7 +10,7 @@ final class RunInfo private (
   val nativeRunInfo: Option[sbt.internal.worker.NativeRunInfo],
   val windowTitle: Option[String]) extends Serializable {
   
-  private def this(jvm: Boolean, jvmRunInfo: Option[sbt.internal.worker.JvmRunInfo]) = this(jvm, jvmRunInfo, None, None)
+  private def this(jvm: Boolean, jvmRunInfo: Option[sbt.internal.worker.JvmRunInfo], windowTitle: Option[String]) = this(jvm, jvmRunInfo, None, windowTitle)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
     case x: RunInfo => (this.jvm == x.jvm) && (this.jvmRunInfo == x.jvmRunInfo) && (this.nativeRunInfo == x.nativeRunInfo) && (this.windowTitle == x.windowTitle)
@@ -49,8 +49,8 @@ final class RunInfo private (
 }
 object RunInfo {
   
-  def apply(jvm: Boolean, jvmRunInfo: Option[sbt.internal.worker.JvmRunInfo]): RunInfo = new RunInfo(jvm, jvmRunInfo)
-  def apply(jvm: Boolean, jvmRunInfo: sbt.internal.worker.JvmRunInfo): RunInfo = new RunInfo(jvm, Option(jvmRunInfo))
+  def apply(jvm: Boolean, jvmRunInfo: Option[sbt.internal.worker.JvmRunInfo], windowTitle: Option[String]): RunInfo = new RunInfo(jvm, jvmRunInfo, windowTitle)
+  def apply(jvm: Boolean, jvmRunInfo: sbt.internal.worker.JvmRunInfo, windowTitle: String): RunInfo = new RunInfo(jvm, Option(jvmRunInfo), Option(windowTitle))
   def apply(jvm: Boolean, jvmRunInfo: Option[sbt.internal.worker.JvmRunInfo], nativeRunInfo: Option[sbt.internal.worker.NativeRunInfo], windowTitle: Option[String]): RunInfo = new RunInfo(jvm, jvmRunInfo, nativeRunInfo, windowTitle)
   def apply(jvm: Boolean, jvmRunInfo: sbt.internal.worker.JvmRunInfo, nativeRunInfo: sbt.internal.worker.NativeRunInfo, windowTitle: String): RunInfo = new RunInfo(jvm, Option(jvmRunInfo), Option(nativeRunInfo), Option(windowTitle))
 }

@@ -5,13 +5,14 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala213 = "2.13.16"
   val scala3 = "3.7.4"
+  val scala212 = "2.12.21"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.10.5")
+  val ioVersion = nightlyVersion.getOrElse("1.10.5")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-M11")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion

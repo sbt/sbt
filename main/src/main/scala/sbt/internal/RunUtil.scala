@@ -17,8 +17,8 @@ import xsbti.FileConverter
 object RunUtil:
   private def setWindowTitle(title: String): Unit =
     if System.console() != null && System.getenv("TERM") != null then
-      print(s"\u001b]0;$title\u0007")
-      System.out.flush()
+      scala.Console.print(s"\u001b]0;$title\u0007")
+      scala.Console.flush()
 
   private[sbt] def mkWindowTitle(
       command: String,

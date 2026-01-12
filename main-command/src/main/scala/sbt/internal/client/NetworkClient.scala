@@ -736,8 +736,8 @@ class NetworkClient(
 
   private def setWindowTitle(title: String): Unit =
     if System.console() != null && System.getenv("TERM") != null then
-      print(s"\u001b]0;$title\u0007")
-      System.out.flush()
+      Console.print(s"\u001b]0;$title\u0007")
+      Console.flush()
 
   private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
     runInfo.windowTitle.foreach(setWindowTitle)
