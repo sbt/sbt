@@ -11,7 +11,6 @@ TaskKey[Unit]("check") := {
   val report = updateFull.value
   val graph = (Test / dependencyTree).toTask(" --quiet").value
 
-  // Relaxed check: just verify required artifacts are in the output
   val requiredArtifacts = Seq(
     "ch.qos.logback:logback-classic:1.0.7",
     "ch.qos.logback:logback-core:1.0.7",
