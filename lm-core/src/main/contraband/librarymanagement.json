@@ -842,7 +842,7 @@
         { "name": "downloadTime", "type": "long"    },
         { "name": "downloadSize", "type": "long"    },
         { "name": "cached",       "type": "boolean" },
-        { "name": "stamp",        "type": "String", "default": "\"\"", "since": "2.0.0", "doc": ["Stamp for cache invalidation across commands. Currently a timestamp, but may transition to content hash."] }
+        { "name": "stamp",        "type": "Option[String]", "default": "None", "since": "2.0.0", "doc": ["Stamp for cache invalidation across commands. Currently a timestamp, but may transition to content hash."] }
       ],
       "toString": "Seq(\"Resolve time: \" + resolveTime + \" ms\", \"Download time: \" + downloadTime + \" ms\", \"Download size: \" + downloadSize + \" bytes\").mkString(\", \")"
     },

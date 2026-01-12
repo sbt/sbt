@@ -15,9 +15,7 @@ given UpdateStatsFormat: JsonFormat[sbt.librarymanagement.UpdateStats] = new Jso
       val downloadTime = unbuilder.readField[Long]("downloadTime")
       val downloadSize = unbuilder.readField[Long]("downloadSize")
       val cached = unbuilder.readField[Boolean]("cached")
-      // Backwards compatibility: old cache files don't have stamp field
-      val stamp = try { unbuilder.readField[String]("stamp") }
-        catch { case _: Throwable => "" }
+      val stamp = unbuilder.readField[Option[String]]("stamp")
       unbuilder.endObject()
       sbt.librarymanagement.UpdateStats(resolveTime, downloadTime, downloadSize, cached, stamp)
       case None =>

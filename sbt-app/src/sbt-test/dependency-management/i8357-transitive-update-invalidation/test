@@ -1,37 +1,21 @@
 # Test for https://github.com/sbt/sbt/issues/8357
 # Verifies that transitiveUpdate correctly invalidates across command invocations
-# when a dependency's dependencies change.
 
-# Step 1: Run itTests/update to establish baseline with toolkit 0.5.0
+# Step 1: Run itTests/update to establish baseline with cats 2.8.0
 > itTests/update
 
-# Step 2: Change a's dependency version (toolkit 0.5.0 -> 0.6.0)
+# Step 2: Change a's dependency version (cats 2.8.0 -> 2.9.0)
 $ copy-file changes/build.sbt build.sbt
 
 # Step 3: Reload to pick up the new settings
 > reload
 
 # Step 4: Run a/update in a SEPARATE command
-# This simulates the bug scenario where a's dependencies change and a is compiled alone
-# a's update will re-resolve because libraryDependencies changed (inChanged = true)
 > a/update
 
-# Step 5: Now run itTests/update
-# With the fix, itTests/update should be invalidated because:
-# - a's stamp is newer than itTests's cached stamp
-# - The upToDate check compares: depStamp > ourStamp
-#
-# Before the fix, itTests would incorrectly use cached classpath because:
-# - a's report has cached=true (served from a's cache)
-# - The old check only looked at !cached, which was false
-#
-# After the fix, itTests re-resolves and gets the new toolkit 0.6.0
-
-# The ourStamp should be >= maxDepStamp if itTests was correctly invalidated
+# Step 5: Now run itTests/update - should re-resolve with new dependencies
 > show itTests/ourStamp
 > show itTests/maxDepStamp
 
-# If the fix works, itTests/update ran after a/update, so ourStamp >= maxDepStamp
-# We can't easily assert in scripted, but the test passes if no errors occur
-# and the tasks complete successfully (meaning update ran without cache issues)
+# Compile to verify all dependencies are available
 > itTests/compile
