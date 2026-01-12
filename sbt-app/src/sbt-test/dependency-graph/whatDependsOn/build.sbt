@@ -31,7 +31,6 @@ check := {
       |    +-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
       |    | +-org.typelevel:cats-effect_2.13:3.1.0 [S]
       |    |   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
-      |    |   
       |    +-org.typelevel:cats-effect_2.13:3.1.0 [S]
       |      +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
 
@@ -48,7 +47,6 @@ check := {
       |+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
       || +-org.typelevel:cats-effect_2.13:3.1.0 [S]
       ||   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
-      ||   
       |+-org.typelevel:cats-effect_2.13:3.1.0 [S]
       |+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
 
