@@ -18,8 +18,8 @@ $ copy-file changes/build.sbt build.sbt
 
 # Step 5: Now run itTests/update
 # With the fix, itTests/update should be invalidated because:
-# - a's resolvedAt timestamp is newer than itTests's cached resolvedAt
-# - The upToDate check compares: depResolvedAt > ourResolvedAt
+# - a's stamp is newer than itTests's cached stamp
+# - The upToDate check compares: depStamp > ourStamp
 #
 # Before the fix, itTests would incorrectly use cached classpath because:
 # - a's report has cached=true (served from a's cache)
@@ -27,11 +27,11 @@ $ copy-file changes/build.sbt build.sbt
 #
 # After the fix, itTests re-resolves and gets the new toolkit 0.6.0
 
-# The ourResolvedAt should be >= maxDepResolvedAt if itTests was correctly invalidated
-> show itTests/ourResolvedAt
-> show itTests/maxDepResolvedAt
+# The ourStamp should be >= maxDepStamp if itTests was correctly invalidated
+> show itTests/ourStamp
+> show itTests/maxDepStamp
 
-# If the fix works, itTests/update ran after a/update, so ourResolvedAt >= maxDepResolvedAt
+# If the fix works, itTests/update ran after a/update, so ourStamp >= maxDepStamp
 # We can't easily assert in scripted, but the test passes if no errors occur
 # and the tasks complete successfully (meaning update ran without cache issues)
 > itTests/compile

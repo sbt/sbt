@@ -7,10 +7,10 @@ ThisBuild / scalaVersion := "2.12.21"
 // Use a setting to control library version - this can be changed via reload
 lazy val toolkitVersion = settingKey[String]("Toolkit version")
 
-// Track the resolvedAt timestamp from our own update to verify invalidation
-lazy val ourResolvedAt = taskKey[Long]("Our update's resolvedAt timestamp")
-// Track the max resolvedAt from transitive dependencies
-lazy val maxDepResolvedAt = taskKey[Long]("Max resolvedAt from transitive deps")
+// Track the stamp from our own update to verify invalidation
+lazy val ourStamp = taskKey[String]("Our update's stamp")
+// Track the max stamp from transitive dependencies
+lazy val maxDepStamp = taskKey[String]("Max stamp from transitive deps")
 
 lazy val a = project.in(file("a"))
   .settings(
@@ -21,9 +21,9 @@ lazy val a = project.in(file("a"))
 lazy val itTests = project.in(file("itTests"))
   .dependsOn(a % "test->test")
   .settings(
-    // Get our update's resolvedAt timestamp
-    ourResolvedAt := update.value.stats.resolvedAt,
+    // Get our update's stamp
+    ourStamp := update.value.stats.stamp,
 
-    // Get the max resolvedAt from transitive dependencies
-    maxDepResolvedAt := transitiveUpdate.value.map(_.stats.resolvedAt).maxOption.getOrElse(0L),
+    // Get the max stamp from transitive dependencies
+    maxDepStamp := transitiveUpdate.value.map(_.stats.stamp).maxOption.getOrElse(""),
   )

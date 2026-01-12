@@ -243,7 +243,7 @@ object IvyRetrieve {
       report.getDownloadTime,
       report.getDownloadSize,
       false,
-      System.currentTimeMillis()
+      System.currentTimeMillis().toString
     )
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
     ConfigurationReport(

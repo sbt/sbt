@@ -15,14 +15,11 @@ given UpdateStatsFormat: JsonFormat[sbt.librarymanagement.UpdateStats] = new Jso
       val downloadTime = unbuilder.readField[Long]("downloadTime")
       val downloadSize = unbuilder.readField[Long]("downloadSize")
       val cached = unbuilder.readField[Boolean]("cached")
-      // Backwards compatibility: old cache files don't have resolvedAt field
-      val resolvedAt = try {
-        unbuilder.readField[Long]("resolvedAt")
-      } catch {
-        case _: Throwable => 0L
-      }
+      // Backwards compatibility: old cache files don't have stamp field
+      val stamp = try { unbuilder.readField[String]("stamp") }
+        catch { case _: Throwable => "" }
       unbuilder.endObject()
-      sbt.librarymanagement.UpdateStats(resolveTime, downloadTime, downloadSize, cached, resolvedAt)
+      sbt.librarymanagement.UpdateStats(resolveTime, downloadTime, downloadSize, cached, stamp)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -33,7 +30,7 @@ given UpdateStatsFormat: JsonFormat[sbt.librarymanagement.UpdateStats] = new Jso
     builder.addField("downloadTime", obj.downloadTime)
     builder.addField("downloadSize", obj.downloadSize)
     builder.addField("cached", obj.cached)
-    builder.addField("resolvedAt", obj.resolvedAt)
+    builder.addField("stamp", obj.stamp)
     builder.endObject()
   }
 }

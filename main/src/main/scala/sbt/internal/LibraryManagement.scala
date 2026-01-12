@@ -124,15 +124,16 @@ private[sbt] object LibraryManagement {
     /* Check if a update report is still up to date or we must resolve again. */
     def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
       // Check if any transitive dependency was updated more recently than our cached report.
-      // This works across command invocations by comparing timestamps.
-      // The `!stats.cached` check handles within-command invalidation (for backwards compat with resolvedAt=0).
+      // This works across command invocations by comparing stamps.
+      // The `!stats.cached` check handles within-command invalidation (for backwards compat with empty stamp).
       val depsUpdated = transitiveUpdates.exists { dep =>
-        val depResolvedAt = dep.stats.resolvedAt
-        val ourResolvedAt = out.stats.resolvedAt
+        val depStamp = dep.stats.stamp
+        val ourStamp = out.stats.stamp
         // If dependency was freshly resolved in this command
         !dep.stats.cached ||
-        // Or if dependency was resolved more recently than us (across commands)
-        (depResolvedAt > 0 && depResolvedAt > ourResolvedAt)
+        // Or if dependency has a newer stamp than us (across commands)
+        // Stamps are currently timestamps, so lexicographic comparison works
+        (depStamp.nonEmpty && depStamp > ourStamp)
       }
       !force &&
       !depsUpdated &&
