@@ -390,10 +390,17 @@ class NetworkClient(
           if (Util.isEmacs && !Util.isWindows) List("nohup")
           else Nil
 
+        // https://github.com/sbt/sbt/issues/8442
+        // On Linux, if stdout/stderr are inherited and the buffer fills up (~64KB),
+        // the server process will block on writes. Discard output since the server
+        // communicates via the boot socket, not stdout/stderr.
+        val nullFile = new File(if (Util.isWindows) "NUL" else "/dev/null")
         val processBuilder =
           new ProcessBuilder((nohup ++ cmd)*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
+            .redirectOutput(nullFile)
+            .redirectError(nullFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
         Try(processBuilder.start()) match {
           case Success(process) =>
