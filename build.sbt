@@ -485,6 +485,7 @@ lazy val runProj = (project in file("run"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[MissingClassProblem]("sbt.TrapExitSecurityException"),
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath)
