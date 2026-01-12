@@ -508,19 +508,14 @@ if "%g:~0,2%" == "-D" (
   for /F "tokens=1 delims==" %%a in ("%g%") do (
     rem make sure it doesn't have the '=' already
     if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        call :dlog [args_loop] -D argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        rem Allow -Dfoo without value to match Unix behavior
-        rem This sets the property to empty string or marks it as present
-        call :dlog [args_loop] -D argument %~0
-        set "SBT_ARGS=!SBT_ARGS! %~0"
-        goto args_loop
-      )
+      rem -Dfoo without '=' - pass through as-is to match Unix behavior
+      rem This allows -Dfoo without value, setting property to empty string
+      rem We don't consume the next argument to avoid treating commands as values
+      call :dlog [args_loop] -D argument %~0
+      set "SBT_ARGS=!SBT_ARGS! %~0"
+      goto args_loop
     ) else (
+      rem -Dfoo=bar format - already has '=', pass through as-is
       call :dlog [args_loop] -D argument %~0
       set "SBT_ARGS=!SBT_ARGS! %~0"
       goto args_loop
