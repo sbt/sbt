@@ -216,6 +216,10 @@ class Eval(
     digester.update(bytes(ev.extraHash))
     // Include SNAPSHOT classpath hash to invalidate cache when sbt version changes (fixes #7713)
     digester.update(bytes(snapshotClasspathHash))
+    // Include imports in hash to invalidate cache when definition module names change (fixes #7424)
+    imports.strings.foreach { imp =>
+      digester.update(bytes(imp))
+    }
     val d = digester.digest()
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
