@@ -43,6 +43,8 @@ trait ShellScriptUtil extends BasicTestSuite {
 
       var sbtHome: Option[File] = None
       var configHome: Option[File] = None
+      var tempSbtHome: Option[File] = None
+      var testSbtScript: File = sbtScript
       try
         val sbtOptsFile = new File(workingDirectory, ".sbtopts")
         sbtOptsFile.createNewFile()
@@ -57,17 +59,23 @@ trait ShellScriptUtil extends BasicTestSuite {
 
         // Set up dist sbtopts if provided
         // Note: sbt script derives sbt_home from script location, not SBT_HOME env var
-        // So we need to create the dist sbtopts in the actual sbt_home location
+        // Copy the sbt staging directory to a temp location to avoid modifying the staging directory
         if (distSbtoptsContents.nonEmpty) {
-          // sbt_home is the parent of the bin directory containing the script
-          val sbtHomeDir = sbtScript.getParentFile.getParentFile
-          val distSbtoptsDir = new File(sbtHomeDir, "conf")
+          val originalSbtHome = sbtScript.getParentFile.getParentFile
+          val tempSbtHomeDir = Files.createTempDirectory("sbt-home-test").toFile
+          tempSbtHome = Some(tempSbtHomeDir)
+          // Copy the entire sbt home directory structure
+          retry(() => IO.copyDirectory(originalSbtHome, tempSbtHomeDir))
+          // Get the script from the copied directory
+          val binDir = new File(tempSbtHomeDir, "bin")
+          testSbtScript = new File(binDir, sbtScript.getName)
+          // Create dist sbtopts in the copied directory
+          val distSbtoptsDir = new File(tempSbtHomeDir, "conf")
           distSbtoptsDir.mkdirs()
           val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
-          // Ensure the file is created with proper content
           IO.write(distSbtoptsFile, distSbtoptsContents)
           // Store reference for cleanup
-          sbtHome = Some(sbtHomeDir)
+          sbtHome = Some(tempSbtHomeDir)
         }
 
         // Ensure no machine sbtopts exists when testing dist-only (unless explicitly provided)
@@ -104,7 +112,7 @@ trait ShellScriptUtil extends BasicTestSuite {
 
         val out = scala.sys.process
           .Process(
-            Seq(sbtScript.getAbsolutePath) ++ args,
+            Seq(testSbtScript.getAbsolutePath) ++ args,
             workingDirectory,
             envVars.toSeq*
           )
@@ -115,14 +123,8 @@ trait ShellScriptUtil extends BasicTestSuite {
         ()
       finally
         IO.delete(workingDirectory)
-        // Restore original dist sbtopts if we modified it
-        sbtHome.foreach { home =>
-          val distSbtoptsFile = new File(new File(home, "conf"), "sbtopts")
-          if (distSbtoptsFile.exists() && distSbtoptsContents.nonEmpty) {
-            // We created this file for testing, so delete it
-            distSbtoptsFile.delete()
-          }
-        }
+        // Clean up temporary sbt home directory if we created one
+        tempSbtHome.foreach(IO.delete)
         configHome.foreach(IO.delete)
     }
 }
