@@ -10,9 +10,9 @@ trait ShellScriptUtil extends BasicTestSuite {
   val isWindows: Boolean =
     sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
 
-  private val javaBinDir = new File("launcher-package/integration-test/bin").getAbsolutePath
+  protected val javaBinDir = new File("launcher-package/integration-test/bin").getAbsolutePath
 
-  private def retry[A1](f: () => A1, maxAttempt: Int = 10): A1 =
+  protected def retry[A1](f: () => A1, maxAttempt: Int = 10): A1 =
     try {
       f()
     } catch {
