@@ -84,6 +84,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
     ExecutionContext.fromExecutor(pool.executor)
 
   private[sbt] def serviceTempDirBase: File
+  @deprecated("will be removed", "2.0.0")
   private[sbt] def useLog4J: Boolean
   private val serviceTempDirRef = new AtomicReference[File]
   private def serviceTempDir: File = serviceTempDirRef.synchronized {
@@ -542,6 +543,8 @@ private[sbt] class DefaultBackgroundJobService(
     private[sbt] val serviceTempDirBase: File,
     override private[sbt] val useLog4J: Boolean
 ) extends AbstractBackgroundJobService {
+  def this(serviceTempDirBase: File) = this(serviceTempDirBase, false)
+
   @deprecated("Use the constructor that specifies the background job temporary directory", "1.4.0")
   def this() = this(IO.createTemporaryDirectory, false)
 }
@@ -564,8 +567,7 @@ private[sbt] object DefaultBackgroundJobService {
   private[sbt] lazy val backgroundJobServiceSetting: Setting[?] =
     (GlobalScope / Keys.bgJobService) := {
       val path = (GlobalScope / sbt.Keys.bgJobServiceDirectory).value
-      val useLog4J = (GlobalScope / Keys.useLog4J).value
-      val newService = new DefaultBackgroundJobService(path, useLog4J)
+      val newService = new DefaultBackgroundJobService(path)
       backgroundJobServices.putIfAbsent(path, newService) match {
         case null => newService
         case s =>
