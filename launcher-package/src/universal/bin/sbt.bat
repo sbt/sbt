@@ -547,6 +547,21 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
   )
 )
 
+if defined sbt_new if "%g:~0,2%" == "--" (
+  rem special handling for -- template arguments since '=' gets parsed away on Windows
+  for /F "tokens=1 delims==" %%a in ("%g%") do (
+    rem make sure it doesn't have the '=' already
+    if "%g%" == "%%a" (
+      if not "%~1" == "" (
+        call :dlog [args_loop] -- argument %~0=%~1
+        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        shift
+        goto args_loop
+      )
+    )
+  )
+)
+
 rem the %0 (instead of %~0) preserves original argument quoting
 set SBT_ARGS=!SBT_ARGS! %0
 
@@ -782,6 +797,18 @@ if not "%p:~0,5%" == "-XX:+" if not "%p:~0,5%" == "-XX:-" if "%p:~0,3%" == "-XX"
   )
 )
 
+if defined sbt_new if "%p:~0,2%" == "--" (
+  rem special handling for -- template arguments since '=' gets parsed away on Windows
+  for /F "tokens=1 delims==" %%a in ("%p%") do (
+    rem make sure it doesn't have the '=' already
+    if "%p%" == "%%a" if not "%~1" == "" (
+      echo %0=%1
+      shift
+      goto echolist
+    )
+  )
+)
+
 if "%p:~0,14%" == "-agentlib:jdwp" (
   rem special handling for --jvm-debug since '=' and ',' gets parsed away
   for /F "tokens=1 delims==" %%a in ("%p%") do (
@@ -926,6 +953,11 @@ for /f "delims=.-_ tokens=1-2" %%v in ("!JAVA_VERSION!") do (
 
 rem parse the first two segments of sbt.version and set run_native_client to
 rem 1 if the user has also indicated they want to use native client.
+rem sbt new/init should not use native client as it needs to run outside a project
+if defined sbt_new (
+  set run_native_client=
+  exit /B 0
+)
 set sbtV=!build_props_sbt_version!
 set sbtBinaryV_1=
 set sbtBinaryV_2=
