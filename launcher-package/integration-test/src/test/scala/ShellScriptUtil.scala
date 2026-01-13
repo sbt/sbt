@@ -41,6 +41,8 @@ trait ShellScriptUtil extends BasicTestSuite {
       val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
       retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
 
+      var sbtHome: Option[File] = None
+      var configHome: Option[File] = None
       try
         val sbtOptsFile = new File(workingDirectory, ".sbtopts")
         sbtOptsFile.createNewFile()
@@ -51,8 +53,6 @@ trait ShellScriptUtil extends BasicTestSuite {
           writer.close()
         }
 
-        var sbtHome: Option[File] = None
-        var configHome: Option[File] = None
         val envVars = scala.collection.mutable.Map[String, String]()
 
         // Set up dist sbtopts if provided
@@ -90,7 +90,7 @@ trait ShellScriptUtil extends BasicTestSuite {
           .Process(
             Seq(sbtScript.getAbsolutePath) ++ args,
             workingDirectory,
-            envVars.toSeq: _*
+            envVars.toSeq*
           )
           .!!
           .linesIterator
