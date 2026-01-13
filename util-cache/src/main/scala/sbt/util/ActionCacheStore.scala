@@ -217,7 +217,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     try
       val acFile = acBase.toFile / request.actionDigest.toString.replace("/", "-")
       val refs = putBlobsIfNeeded(request.outputFiles).toVector
-      val v = ActionResult(refs, storeName)
+      val v = ActionResult(refs, Some(storeName), request.exitCode)
       val json = Converter.toJsonUnsafe(v)
       IO.write(acFile, CompactPrinter(json))
       Right(v)
@@ -318,7 +318,9 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
         writeFileAndNotify(p)
       case p =>
         try
-          if Digest.sameDigest(p, d) then p
+          // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
+          // in #writeFileAndNotify on machines that don't support symlinks.
+          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then p
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())

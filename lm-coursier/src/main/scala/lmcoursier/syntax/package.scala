@@ -77,6 +77,7 @@ package object syntax {
         protocolHandlerDependencies = Vector.empty,
         retry = None,
         sameVersions = Nil,
+        localArtifactsShouldBeCached = false,
       )
   }
 

@@ -10,6 +10,7 @@ package sbt.internal.util
 
 import sbt.io.IO
 import scala.collection.mutable.ListBuffer
+import java.util.{ IdentityHashMap, Collections }
 
 object StackTrace {
   def isSbtClass(name: String) = name.startsWith("sbt.") || name.startsWith("xsbt.")
@@ -30,6 +31,8 @@ object StackTrace {
   def trimmedLines(t: Throwable, d: Int): List[String] = {
     require(d >= 0)
     val b = new ListBuffer[String]()
+    val seen: java.util.Set[Throwable] =
+      Collections.newSetFromMap(new IdentityHashMap[Throwable, java.lang.Boolean]())
 
     def appendStackTrace(t: Throwable, first: Boolean): Unit = {
 
@@ -58,10 +61,15 @@ object StackTrace {
     }
 
     appendStackTrace(t, true)
+    seen.add(t)
     var c = t
-    while (c.getCause() != null) {
+    while (c.getCause() != null && !seen.contains(c.getCause())) {
       c = c.getCause()
+      seen.add(c)
       appendStackTrace(c, false)
+    }
+    if (c.getCause() != null && seen.contains(c.getCause())) {
+      b.append("[CIRCULAR REFERENCE: " + c.getCause().toString + "]")
     }
     b.toList
   }

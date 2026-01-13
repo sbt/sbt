@@ -485,6 +485,7 @@ lazy val runProj = (project in file("run"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[MissingClassProblem]("sbt.TrapExitSecurityException"),
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath)
@@ -716,6 +717,7 @@ lazy val mainProj = (project in file("main"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
+      exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)

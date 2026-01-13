@@ -805,6 +805,11 @@ detectNativeClient() {
 
 # Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
 isRunNativeClient() {
+  # sbt new/init should not use native client as it needs to run outside a project
+  if [[ "$sbt_new" == "true" ]]; then
+    echo "false"
+    return
+  fi
   sbtV="$build_props_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="0.0.0"
