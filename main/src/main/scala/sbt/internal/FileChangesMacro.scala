@@ -98,8 +98,5 @@ object FileChangesMacro:
     '{ rescope[Seq[NioPath]]($ts, allOutputFiles).value }
 
   private def getTaskScope[A: Type](in: Expr[TaskKey[A]])(using Quotes): Expr[sbt.Scope] =
-    '{
-      if $in.scope.task.toOption.isDefined then $in.scope
-      else $in.scope.copy(task = Select($in.key))
-    }
+    '{ $in.scope.copy(task = Select($in.key)) }
 end FileChangesMacro
