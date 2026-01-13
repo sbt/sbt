@@ -182,18 +182,36 @@ public final class UnixDomainSocketFactory {
 
   public static class ChannelServerSocket extends ServerSocket {
     private final ServerSocketChannel channel;
+    private int soTimeout = 0;
 
     public ChannelServerSocket(ServerSocketChannel channel) throws IOException {
       this.channel = channel;
+      channel.configureBlocking(true);
     }
 
     @Override
     public Socket accept() throws IOException {
-      SocketChannel clientChannel = channel.accept();
-      if (clientChannel != null) {
+      if (soTimeout > 0) {
+        channel.configureBlocking(false);
+        long deadline = System.currentTimeMillis() + soTimeout;
+        while (System.currentTimeMillis() < deadline) {
+          SocketChannel clientChannel = channel.accept();
+          if (clientChannel != null) {
+            return new ChannelSocket(clientChannel);
+          }
+          try {
+            Thread.sleep(50);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new java.net.SocketTimeoutException("Accept interrupted");
+          }
+        }
+        throw new java.net.SocketTimeoutException("Accept timed out");
+      } else {
+        channel.configureBlocking(true);
+        SocketChannel clientChannel = channel.accept();
         return new ChannelSocket(clientChannel);
       }
-      return null;
     }
 
     @Override
@@ -213,11 +231,12 @@ public final class UnixDomainSocketFactory {
 
     @Override
     public void setSoTimeout(int timeout) throws java.net.SocketException {
-      try {
-        channel.configureBlocking(timeout == 0);
-      } catch (IOException e) {
-        throw new java.net.SocketException(e.getMessage());
-      }
+      this.soTimeout = timeout;
+    }
+
+    @Override
+    public int getSoTimeout() throws java.net.SocketException {
+      return soTimeout;
     }
   }
 }
