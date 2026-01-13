@@ -271,9 +271,9 @@ OPTIONS
             .headOption
           val outFileOpt = outFileNameOpt.map(new File(_))
           val format = (formatOpt, outFileNameOpt) match
-            case (None, Some(out)) if out.endsWith(".json")            => Fmt.Json
-            case (Some(fmt), _)                                        => fmt
-            case _                                                     => Fmt.Tree
+            case (None, Some(out)) if out.endsWith(".json") => Fmt.Json
+            case (Some(fmt), _)                             => fmt
+            case _                                          => Fmt.Tree
           Def.task {
             val graph = dependencyTreeModuleGraph0.value
             val output = format match

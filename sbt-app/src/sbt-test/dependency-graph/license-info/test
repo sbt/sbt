@@ -1,0 +1,8 @@
+# Test dependencyLicenseInfo text output
+> dependencyLicenseInfo --out target/licenses.txt
+$ exists target/licenses.txt
+# Test dependencyLicenseInfo JSON output
+> dependencyLicenseInfo json --out target/licenses.json
+$ exists target/licenses.json
+> check
+

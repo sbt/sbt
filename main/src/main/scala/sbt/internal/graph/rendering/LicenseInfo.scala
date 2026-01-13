@@ -12,9 +12,6 @@ package graph
 package rendering
 
 import sbt.internal.graph.*
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
-import sjsonnew.*
-import sjsonnew.BasicJsonProtocol.*
 
 object LicenseInfo {
   def render(graph: ModuleGraph): String =
@@ -23,41 +20,31 @@ object LicenseInfo {
       .groupBy(_.license)
       .toSeq
       .sortBy(_._1)
-      .map {
-        case (license, modules) =>
-          license.getOrElse("No license specified") + "\n" +
-            modules.map(m => s"\t ${m.id.idString}").mkString("\n")
+      .map { case (license, modules) =>
+        license.getOrElse("No license specified") + "\n" +
+          modules.map(m => s"\t ${m.id.idString}").mkString("\n")
       }
       .mkString("\n\n")
 
   def renderJson(graph: ModuleGraph): String = {
-    case class LicenseGroup(license: String, modules: Vector[String])
-    
-    // Use IsoLList pattern for JSON serialization (consistent with codebase style)
-    given JsonFormat[LicenseGroup] = LList.iso[LicenseGroup, String :*: Vector[String] :*: LNil](
-      { (g: LicenseGroup) =>
-        ("license", g.license) :*: ("modules", g.modules) :*: LNil
-      },
-      { case (_, license) :*: (_, modules) :*: LNil =>
-        LicenseGroup(license, modules)
-      }
-    )
+    // Create JSON array manually: [{license: "...", modules: [...]}, ...]
+    def escapeJson(str: String): String =
+      str.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
+
+    def formatModuleList(modules: Vector[String]): String =
+      modules.map(m => s""""${escapeJson(m)}"""").mkString("[", ",", "]")
 
     val groups = graph.nodes
       .filter(_.isUsed)
       .groupBy(_.license)
       .toSeq
       .sortBy(_._1)
-      .map {
-        case (license, modules) =>
-          LicenseGroup(
-            license.getOrElse("No license specified"),
-            modules.map(_.id.idString).toVector.sorted
-          )
+      .map { case (license, modules) =>
+        val licenseStr = license.getOrElse("No license specified")
+        val moduleList = formatModuleList(modules.map(_.id.idString).toVector.sorted)
+        s"""{"license":"${escapeJson(licenseStr)}","modules":$moduleList}"""
       }
 
-    val js = groups.map(Converter.toJsonUnsafe(_))
-    js.map(CompactPrinter).mkString("[", ",", "]")
+    groups.mkString("[", ",", "]")
   }
 }
-
