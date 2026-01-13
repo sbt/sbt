@@ -28,11 +28,11 @@ default:sbt_8ae1da13_2.12:0.1.0-SNAPSHOT [S]
 
   val expectedGraph =
     """foo:foo_2.12:0.1.0-SNAPSHOT [S]
-      |+-ch.qos.logback:logback-classic:1.0.7
-      | | +-org.slf4j:slf4j-api:1.6.6 (evicted by: 1.7.2)
-      | |
-      |+-org.slf4j:slf4j-api:1.7.2
-      |""".stripMargin
+      | +-ch.qos.logback:logback-classic:1.0.7
+      |  | +-org.slf4j:slf4j-api:1.6.6 (evicted by: 1.7.2)
+      |  |
+      | +-org.slf4j:slf4j-api:1.7.2
+      | """.stripMargin
 
 
   IO.writeLines(file("/tmp/blib"), sanitize(graph).split("\n"))
