@@ -1,0 +1,11 @@
+# Test that inputFileChanges works with nested task scopes (fixes #7489)
+
+> checkChanges
+
+$ touch src/test.txt
+
+> checkModified
+
+$ touch src/new.txt
+
+> checkCreated
