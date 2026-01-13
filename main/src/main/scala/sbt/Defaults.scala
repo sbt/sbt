@@ -1016,15 +1016,17 @@ object Defaults extends BuildCommon {
       },
       scalacOptions := {
         val old = scalacOptions.value
-        if (exportPipelining.value)
-          Def.uncached(
-            Vector(
-              "-Ypickle-java",
-              "-Ypickle-write",
-              earlyOutput.value.toString
-            ) ++ old
+        if (exportPipelining.value) {
+          val sv = scalaVersion.value
+          val shouldApplyFlags = !ScalaArtifacts.isScala3(sv) || VersionNumber(sv).matchesSemVer(
+            SemanticSelector(">=3.5.0")
           )
-        else Def.uncached(old)
+          if (shouldApplyFlags)
+            Def.uncached(
+              Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.toString) ++ old
+            )
+          else Def.uncached(old)
+        } else Def.uncached(old)
       },
       scalacOptions := {
         val old = scalacOptions.value

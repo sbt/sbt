@@ -1,0 +1,6 @@
+> name
+
+$ copy-file changes/p.sbt project/p.sbt
+$ copy-file changes/build.sbt build.sbt
+
+-> reload
