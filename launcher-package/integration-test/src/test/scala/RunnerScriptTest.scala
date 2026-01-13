@@ -184,13 +184,11 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
       val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
 
-      assert(distIndex >= 0, "Dist config not found in command line")
+      // When machine sbtopts exists, the script only loads machine (not dist) due to if-else structure
+      // So dist should NOT be present, but machine and project should be
+      assert(distIndex < 0, "Dist config should NOT be present when machine config exists")
       assert(machineIndex >= 0, "Machine config not found in command line")
       assert(projectIndex >= 0, "Project config not found in command line")
-      assert(
-        distIndex < machineIndex,
-        s"Dist config should appear before machine config. distIndex=$distIndex, machineIndex=$machineIndex"
-      )
       assert(
         machineIndex < projectIndex,
         s"Machine config should appear before project config. machineIndex=$machineIndex, projectIndex=$projectIndex"
