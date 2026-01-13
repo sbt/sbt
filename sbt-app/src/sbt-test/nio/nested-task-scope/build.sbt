@@ -9,14 +9,14 @@ otherTask / testTask / fileInputs := Seq(
 )
 
 val checkChanges = taskKey[Unit]("check that file changes are detected")
-checkChanges := {
+checkChanges := Def.uncached {
   val changes = (otherTask / testTask).inputFileChanges
   val files = (otherTask / testTask).inputFiles
   assert(files.nonEmpty, "inputFiles should not be empty")
 }
 
 val checkModified = taskKey[Unit]("check that modified files are detected")
-checkModified := {
+checkModified := Def.uncached {
   val changes = (otherTask / testTask).inputFileChanges
   if (changes.modified.nonEmpty) {
     assert(changes.modified.exists(_.getFileName.toString == "test.txt"))
@@ -24,7 +24,7 @@ checkModified := {
 }
 
 val checkCreated = taskKey[Unit]("check that created files are detected")
-checkCreated := {
+checkCreated := Def.uncached {
   val changes = (otherTask / testTask).inputFileChanges
   if (changes.created.nonEmpty && changes.unmodified.nonEmpty) {
     assert(changes.created.exists(_.getFileName.toString == "new.txt"))
