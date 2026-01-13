@@ -225,7 +225,8 @@ class Eval(
     val (extra, loader) =
       try
         backingDir match
-          case Some(backing) if classExists(backing, moduleName) =>
+          case Some(backing)
+              if classExists(backing, moduleName) && cacheExists(backing, moduleName) =>
             val loader = (parent: ClassLoader) =>
               (new URLClassLoader(Array(backing.toUri.toURL), parent): ClassLoader)
             val extra = ev.read(cacheFile(backing, moduleName))
@@ -272,6 +273,9 @@ class Eval(
 
   private def classExists(dir: Path, name: String): Boolean =
     Files.exists(dir.resolve(s"$name.class"))
+
+  private def cacheExists(dir: Path, name: String): Boolean =
+    Files.exists(cacheFile(dir, name))
 
   private def getGeneratedFiles(moduleName: String): Seq[Path] =
     backingDir match
