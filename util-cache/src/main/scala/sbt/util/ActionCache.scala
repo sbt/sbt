@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -268,7 +268,15 @@ object ActionCache:
             case p if p == dirPath => Nil
             case p if p == mPath   => (mPath.toFile() -> manifestFileName) :: Nil
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
-      IO.zip((allPaths ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), Some(default2010Timestamp))
+      // Create the zip in a temp directory to avoid overwriting the cache if `zipPath` is a symlink to the CAS
+      val tempZipPath = (tempDir / (dirPath.getFileName.toString + dirZipExt)).toPath()
+      IO.zip(
+        (allPaths ++ Seq(mPath)).flatMap(rebase),
+        tempZipPath.toFile(),
+        Some(default2010Timestamp)
+      )
+      Files.copy(tempZipPath, zipPath, StandardCopyOption.REPLACE_EXISTING)
+
       conv.toVirtualFile(zipPath)
 
   inline def actionResult[A1](inline value: A1): InternalActionResult[A1] =

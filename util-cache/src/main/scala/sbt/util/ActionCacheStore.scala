@@ -318,7 +318,9 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
         writeFileAndNotify(p)
       case p =>
         try
-          if Digest.sameDigest(p, d) then p
+          // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
+          // in #writeFileAndNotify on machines that don't support symlinks.
+          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then p
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())
