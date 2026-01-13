@@ -1140,18 +1140,25 @@ object NetworkClient {
       override def success(msg: String): Unit = appender.success(msg)
     }
   }
-  private def simpleConsoleInterface(doPrintln: String => Unit): ConsoleInterface =
+  private def simpleConsoleInterface(
+      doPrintln: String => Unit,
+      useColor: Boolean = Terminal.isColorEnabled
+  ): ConsoleInterface =
     new ConsoleInterface {
       import scala.Console.{ GREEN, RED, RESET, YELLOW }
       override def appendLog(level: Level.Value, message: => String): Unit = synchronized {
-        val prefix = level match {
-          case Level.Error => s"[$RED$level$RESET]"
-          case Level.Warn  => s"[$YELLOW$level$RESET]"
-          case _           => s"[$RESET$level$RESET]"
-        }
+        val prefix =
+          if (useColor) level match {
+            case Level.Error => s"[$RED$level$RESET]"
+            case Level.Warn  => s"[$YELLOW$level$RESET]"
+            case _           => s"[$RESET$level$RESET]"
+          }
+          else s"[$level]"
         message.linesIterator.foreach(line => doPrintln(s"$prefix $line"))
       }
-      override def success(msg: String): Unit = doPrintln(s"[${GREEN}success$RESET] $msg")
+      override def success(msg: String): Unit =
+        if (useColor) doPrintln(s"[${GREEN}success$RESET] $msg")
+        else doPrintln(s"[success] $msg")
     }
   private[client] class Arguments(
       val baseDirectory: File,
@@ -1331,7 +1338,7 @@ object NetworkClient {
       if (terminal.getLastLine.isDefined) terminal.printStream.println()
       terminal.printStream.println(line)
     }
-    val interface = NetworkClient.simpleConsoleInterface(doPrint)
+    val interface = NetworkClient.simpleConsoleInterface(doPrint, terminal.isColorEnabled)
     val printStream = terminal.printStream
     new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
   }
@@ -1342,7 +1349,8 @@ object NetworkClient {
       errorStream: PrintStream,
       useJNI: Boolean,
   ): NetworkClient = {
-    val interface = NetworkClient.simpleConsoleInterface(printStream.println)
+    val interface =
+      NetworkClient.simpleConsoleInterface(printStream.println, Terminal.isColorEnabled)
     new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
   }
   def main(args: Array[String]): Unit = {

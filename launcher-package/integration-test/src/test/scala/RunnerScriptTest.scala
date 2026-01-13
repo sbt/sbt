@@ -122,4 +122,76 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.global.localcache=./cachePath"))
 
+  // Test for issue #7179: sbtopts files priority
+  testOutput(
+    "project .sbtopts overrides dist sbtopts",
+    distSbtoptsContents = "-Dsbt.test.config=dist-default",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
+
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
+
+      assert(distIndex >= 0, "Dist config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        projectIndex > distIndex,
+        s"Project config should appear after dist config. distIndex=$distIndex, projectIndex=$projectIndex"
+      )
+
+  testOutput(
+    "project .sbtopts overrides machine sbtopts",
+    machineSbtoptsContents = "-Dsbt.test.config=machine-config",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
+
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
+
+      assert(machineIndex >= 0, "Machine config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        projectIndex > machineIndex,
+        s"Project config should appear after machine config. machineIndex=$machineIndex, projectIndex=$projectIndex"
+      )
+
+  testOutput(
+    "project .sbtopts overrides both dist and machine sbtopts",
+    distSbtoptsContents = "-Dsbt.test.config=dist-default",
+    machineSbtoptsContents = "-Dsbt.test.config=machine-config",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
+
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
+      val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
+
+      // When machine sbtopts exists, the script only loads machine (not dist) due to if-else structure
+      // So dist should NOT be present, but machine and project should be
+      assert(distIndex < 0, "Dist config should NOT be present when machine config exists")
+      assert(machineIndex >= 0, "Machine config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        machineIndex < projectIndex,
+        s"Machine config should appear before project config. machineIndex=$machineIndex, projectIndex=$projectIndex"
+      )
+
 end RunnerScriptTest
