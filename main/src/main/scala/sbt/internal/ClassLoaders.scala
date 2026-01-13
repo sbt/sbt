@@ -182,8 +182,9 @@ private[sbt] object ClassLoaders {
               cpFiles
                 .filter(f => {
                   val name = f.getName
-                  name.contains(ArtifactInfo.ScalaLibraryID) || si.libraryJars
-                    .exists(_.getName == name)
+                  name == s"${ArtifactInfo.ScalaLibraryID}.jar" ||
+                  name.startsWith(s"${ArtifactInfo.ScalaLibraryID}-") ||
+                  si.libraryJars.exists(_.getName == name)
                 })
                 .toArray
             else si.libraryJars
