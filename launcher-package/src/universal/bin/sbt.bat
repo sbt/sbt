@@ -505,6 +505,9 @@ if "%~0" == "init" (
 
 if "%g:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
+  rem Note: We pass -Dfoo through as-is without consuming the next argument to avoid
+  rem treating commands (like 'compile') as values. If '=' gets parsed away in certain
+  rem contexts (e.g., SBT_OPTS), the argument should be passed with '=' already included.
   for /F "tokens=1 delims==" %%a in ("%g%") do (
     rem make sure it doesn't have the '=' already
     if "%g%" == "%%a" (
