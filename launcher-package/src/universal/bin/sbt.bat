@@ -547,6 +547,21 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
   )
 )
 
+if defined sbt_new if "%g:~0,2%" == "--" (
+  rem special handling for -- template arguments since '=' gets parsed away on Windows
+  for /F "tokens=1 delims==" %%a in ("%g%") do (
+    rem make sure it doesn't have the '=' already
+    if "%g%" == "%%a" (
+      if not "%~1" == "" (
+        call :dlog [args_loop] -- argument %~0=%~1
+        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+        shift
+        goto args_loop
+      )
+    )
+  )
+)
+
 rem the %0 (instead of %~0) preserves original argument quoting
 set SBT_ARGS=!SBT_ARGS! %0
 
@@ -772,6 +787,18 @@ if "%p:~0,2%" == "-D" (
 
 if not "%p:~0,5%" == "-XX:+" if not "%p:~0,5%" == "-XX:-" if "%p:~0,3%" == "-XX" (
   rem special handling for -XX since '=' gets parsed away
+  for /F "tokens=1 delims==" %%a in ("%p%") do (
+    rem make sure it doesn't have the '=' already
+    if "%p%" == "%%a" if not "%~1" == "" (
+      echo %0=%1
+      shift
+      goto echolist
+    )
+  )
+)
+
+if defined sbt_new if "%p:~0,2%" == "--" (
+  rem special handling for -- template arguments since '=' gets parsed away on Windows
   for /F "tokens=1 delims==" %%a in ("%p%") do (
     rem make sure it doesn't have the '=' already
     if "%p%" == "%%a" if not "%~1" == "" (
