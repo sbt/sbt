@@ -262,6 +262,8 @@ object LogManager {
     val s1 = s.put(BasicKeys.explicitGlobalLogLevels, true).put(Keys.logLevel.key, level)
     val gl = s1.globalLogging
     LoggerContext.globalContext.clearAppenders(gl.full.name)
+    val consoleAppender = MainAppender.defaultScreen(gl.console)
+    LoggerContext.globalContext.addAppender(gl.full.name, consoleAppender -> level)
     LoggerContext.globalContext.addAppender(gl.full.name, gl.backed -> level)
     s1
   }
