@@ -926,6 +926,11 @@ for /f "delims=.-_ tokens=1-2" %%v in ("!JAVA_VERSION!") do (
 
 rem parse the first two segments of sbt.version and set run_native_client to
 rem 1 if the user has also indicated they want to use native client.
+rem sbt new/init should not use native client as it needs to run outside a project
+if defined sbt_new (
+  set run_native_client=
+  exit /B 0
+)
 set sbtV=!build_props_sbt_version!
 set sbtBinaryV_1=
 set sbtBinaryV_2=
