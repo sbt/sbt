@@ -1034,11 +1034,11 @@ object Terminal {
     private def doWrite(rawBytes: Array[Byte]): Unit = withPrintStream { ps =>
       val (toWrite, len) =
         if (rawBytes.contains(27.toByte)) {
-          if (!Terminal.isAnsiSupported || !Terminal.isColorEnabled)
+          if (!self.isAnsiSupported || !self.isColorEnabled)
             EscHelpers.strip(
               rawBytes,
-              stripAnsi = !Terminal.isAnsiSupported,
-              stripColor = !Terminal.isColorEnabled
+              stripAnsi = !self.isAnsiSupported,
+              stripColor = !self.isColorEnabled
             )
           else (rawBytes, rawBytes.length)
         } else (rawBytes, rawBytes.length)
