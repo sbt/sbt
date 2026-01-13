@@ -56,14 +56,30 @@ trait ShellScriptUtil extends BasicTestSuite {
         val envVars = scala.collection.mutable.Map[String, String]()
 
         // Set up dist sbtopts if provided
+        // Note: sbt script derives sbt_home from script location, not SBT_HOME env var
+        // So we need to create the dist sbtopts in the actual sbt_home location
         if (distSbtoptsContents.nonEmpty) {
-          val sbtHomeDir = Files.createTempDirectory("sbt-home").toFile
-          sbtHome = Some(sbtHomeDir)
+          // sbt_home is the parent of the bin directory containing the script
+          val sbtHomeDir = sbtScript.getParentFile.getParentFile
           val distSbtoptsDir = new File(sbtHomeDir, "conf")
           distSbtoptsDir.mkdirs()
           val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
+          // Ensure the file is created with proper content
           IO.write(distSbtoptsFile, distSbtoptsContents)
-          envVars("SBT_HOME") = sbtHomeDir.getAbsolutePath
+          // Store reference for cleanup
+          sbtHome = Some(sbtHomeDir)
+        }
+
+        // Ensure no machine sbtopts exists when testing dist-only (unless explicitly provided)
+        // The script only loads dist if machine doesn't exist
+        if (distSbtoptsContents.nonEmpty && machineSbtoptsContents.isEmpty && configHome.isEmpty) {
+          // Set XDG_CONFIG_HOME to a temp directory without sbtopts to prevent default machine sbtopts from being found
+          val emptyConfigHome = Files.createTempDirectory("empty-config-home").toFile
+          envVars("XDG_CONFIG_HOME") = emptyConfigHome.getAbsolutePath
+          // Also unset SBT_ETC_FILE if it exists
+          sys.env.get("SBT_ETC_FILE").foreach(_ => envVars("SBT_ETC_FILE") = "")
+          // Store for cleanup
+          configHome = Some(emptyConfigHome)
         }
 
         // Set up machine sbtopts if provided
@@ -99,7 +115,14 @@ trait ShellScriptUtil extends BasicTestSuite {
         ()
       finally
         IO.delete(workingDirectory)
-        sbtHome.foreach(IO.delete)
+        // Restore original dist sbtopts if we modified it
+        sbtHome.foreach { home =>
+          val distSbtoptsFile = new File(new File(home, "conf"), "sbtopts")
+          if (distSbtoptsFile.exists() && distSbtoptsContents.nonEmpty) {
+            // We created this file for testing, so delete it
+            distSbtoptsFile.delete()
+          }
+        }
         configHome.foreach(IO.delete)
     }
 }
