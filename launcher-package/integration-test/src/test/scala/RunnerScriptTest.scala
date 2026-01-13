@@ -1,9 +1,5 @@
 package example.test
 
-import java.io.File
-import java.nio.file.Files
-import sbt.io.IO
-
 /**
  * RunnerScriptTest is used to test the sbt shell script, for both macOS/Linux and Windows.
  */
@@ -127,178 +123,77 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assert(out.contains[String]("-Dsbt.global.localcache=./cachePath"))
 
   // Test for issue #7179: sbtopts files priority
-  test("project .sbtopts overrides dist sbtopts") {
+  testOutput(
+    "project .sbtopts overrides dist sbtopts",
+    distSbtoptsContents = "-Dsbt.test.config=dist-default",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
     if (isWindows) cancel("Test not supported on windows")
     else
-      val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-      retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
 
-      try
-        // Create dist sbtopts
-        val sbtHome = Files.createTempDirectory("sbt-home").toFile
-        val distSbtoptsDir = new File(sbtHome, "conf")
-        distSbtoptsDir.mkdirs()
-        val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
-        IO.write(distSbtoptsFile, "-Dsbt.test.config=dist-default")
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
 
-        // Create project .sbtopts
-        val projectSbtoptsFile = new File(workingDirectory, ".sbtopts")
-        IO.write(projectSbtoptsFile, "-Dsbt.test.config=project-local")
+      assert(distIndex >= 0, "Dist config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        projectIndex > distIndex,
+        s"Project config should appear after dist config. distIndex=$distIndex, projectIndex=$projectIndex"
+      )
 
-        val path = sys.env.getOrElse("PATH", sys.env("Path"))
-        val out = scala.sys.process
-          .Process(
-            Seq(sbtScript.getAbsolutePath, "-d", "-v"),
-            workingDirectory,
-            "SBT_HOME" -> sbtHome.getAbsolutePath,
-            if (isWindows)
-              "JAVACMD" -> new File(javaBinDir, "java").getAbsolutePath()
-            else
-              "PATH" -> (javaBinDir + File.pathSeparator + path)
-          )
-          .!!
-          .linesIterator
-          .toList
-
-        // Find the command line section
-        val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
-        assert(cmdLineStart >= 0, "Command line section not found")
-
-        val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
-        val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
-        val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
-
-        assert(distIndex >= 0, "Dist config not found in command line")
-        assert(projectIndex >= 0, "Project config not found in command line")
-        assert(
-          projectIndex > distIndex,
-          s"Project config should appear after dist config. distIndex=$distIndex, projectIndex=$projectIndex"
-        )
-        ()
-      finally
-        IO.delete(workingDirectory)
-        IO.delete(sbtHome)
-  }
-
-  test("project .sbtopts overrides machine sbtopts") {
+  testOutput(
+    "project .sbtopts overrides machine sbtopts",
+    machineSbtoptsContents = "-Dsbt.test.config=machine-config",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
     if (isWindows) cancel("Test not supported on windows")
     else
-      val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-      retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
 
-      try
-        // Create machine sbtopts
-        val configHome = Files.createTempDirectory("config-home").toFile
-        val machineSbtoptsDir = new File(configHome, "sbt")
-        machineSbtoptsDir.mkdirs()
-        val machineSbtoptsFile = new File(machineSbtoptsDir, "sbtopts")
-        IO.write(machineSbtoptsFile, "-Dsbt.test.config=machine-config")
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
 
-        // Create project .sbtopts
-        val projectSbtoptsFile = new File(workingDirectory, ".sbtopts")
-        IO.write(projectSbtoptsFile, "-Dsbt.test.config=project-local")
+      assert(machineIndex >= 0, "Machine config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        projectIndex > machineIndex,
+        s"Project config should appear after machine config. machineIndex=$machineIndex, projectIndex=$projectIndex"
+      )
 
-        val path = sys.env.getOrElse("PATH", sys.env("Path"))
-        val out = scala.sys.process
-          .Process(
-            Seq(sbtScript.getAbsolutePath, "-d", "-v"),
-            workingDirectory,
-            "XDG_CONFIG_HOME" -> configHome.getAbsolutePath,
-            if (isWindows)
-              "JAVACMD" -> new File(javaBinDir, "java").getAbsolutePath()
-            else
-              "PATH" -> (javaBinDir + File.pathSeparator + path)
-          )
-          .!!
-          .linesIterator
-          .toList
-
-        // Find the command line section
-        val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
-        assert(cmdLineStart >= 0, "Command line section not found")
-
-        val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
-        val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
-        val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
-
-        assert(machineIndex >= 0, "Machine config not found in command line")
-        assert(projectIndex >= 0, "Project config not found in command line")
-        assert(
-          projectIndex > machineIndex,
-          s"Project config should appear after machine config. machineIndex=$machineIndex, projectIndex=$projectIndex"
-        )
-        ()
-      finally
-        IO.delete(workingDirectory)
-        IO.delete(configHome)
-  }
-
-  test("project .sbtopts overrides both dist and machine sbtopts") {
+  testOutput(
+    "project .sbtopts overrides both dist and machine sbtopts",
+    distSbtoptsContents = "-Dsbt.test.config=dist-default",
+    machineSbtoptsContents = "-Dsbt.test.config=machine-config",
+    sbtOptsFileContents = "-Dsbt.test.config=project-local"
+  )("-d", "-v"): (out: List[String]) =>
     if (isWindows) cancel("Test not supported on windows")
     else
-      val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-      retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+      // Find the command line section
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
 
-      try
-        // Create dist sbtopts
-        val sbtHome = Files.createTempDirectory("sbt-home").toFile
-        val distSbtoptsDir = new File(sbtHome, "conf")
-        distSbtoptsDir.mkdirs()
-        val distSbtoptsFile = new File(distSbtoptsDir, "sbtopts")
-        IO.write(distSbtoptsFile, "-Dsbt.test.config=dist-default")
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
+      val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
+      val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
 
-        // Create machine sbtopts
-        val configHome = Files.createTempDirectory("config-home").toFile
-        val machineSbtoptsDir = new File(configHome, "sbt")
-        machineSbtoptsDir.mkdirs()
-        val machineSbtoptsFile = new File(machineSbtoptsDir, "sbtopts")
-        IO.write(machineSbtoptsFile, "-Dsbt.test.config=machine-config")
-
-        // Create project .sbtopts
-        val projectSbtoptsFile = new File(workingDirectory, ".sbtopts")
-        IO.write(projectSbtoptsFile, "-Dsbt.test.config=project-local")
-
-        val path = sys.env.getOrElse("PATH", sys.env("Path"))
-        val out = scala.sys.process
-          .Process(
-            Seq(sbtScript.getAbsolutePath, "-d", "-v"),
-            workingDirectory,
-            "SBT_HOME" -> sbtHome.getAbsolutePath,
-            "XDG_CONFIG_HOME" -> configHome.getAbsolutePath,
-            if (isWindows)
-              "JAVACMD" -> new File(javaBinDir, "java").getAbsolutePath()
-            else
-              "PATH" -> (javaBinDir + File.pathSeparator + path)
-          )
-          .!!
-          .linesIterator
-          .toList
-
-        // Find the command line section
-        val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
-        assert(cmdLineStart >= 0, "Command line section not found")
-
-        val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
-        val distIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=dist-default"))
-        val machineIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=machine-config"))
-        val projectIndex = cmdLine.indexWhere(_.contains("Dsbt.test.config=project-local"))
-
-        assert(distIndex >= 0, "Dist config not found in command line")
-        assert(machineIndex >= 0, "Machine config not found in command line")
-        assert(projectIndex >= 0, "Project config not found in command line")
-        assert(
-          distIndex < machineIndex,
-          s"Dist config should appear before machine config. distIndex=$distIndex, machineIndex=$machineIndex"
-        )
-        assert(
-          machineIndex < projectIndex,
-          s"Machine config should appear before project config. machineIndex=$machineIndex, projectIndex=$projectIndex"
-        )
-        ()
-      finally
-        IO.delete(workingDirectory)
-        IO.delete(sbtHome)
-        IO.delete(configHome)
-  }
+      assert(distIndex >= 0, "Dist config not found in command line")
+      assert(machineIndex >= 0, "Machine config not found in command line")
+      assert(projectIndex >= 0, "Project config not found in command line")
+      assert(
+        distIndex < machineIndex,
+        s"Dist config should appear before machine config. distIndex=$distIndex, machineIndex=$machineIndex"
+      )
+      assert(
+        machineIndex < projectIndex,
+        s"Machine config should appear before project config. machineIndex=$machineIndex, projectIndex=$projectIndex"
+      )
 
 end RunnerScriptTest
