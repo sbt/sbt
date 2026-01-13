@@ -238,7 +238,13 @@ object IvyRetrieve {
       Map.empty
     ).recomputeStamps()
   def updateStats(report: ResolveReport): UpdateStats =
-    UpdateStats(report.getResolveTime, report.getDownloadTime, report.getDownloadSize, false)
+    UpdateStats(
+      report.getResolveTime,
+      report.getDownloadTime,
+      report.getDownloadSize,
+      false,
+      Some(System.currentTimeMillis().toString)
+    )
   def configurationReport(confReport: ConfigurationResolveReport): ConfigurationReport =
     ConfigurationReport(
       ConfigRef(confReport.getConfiguration),

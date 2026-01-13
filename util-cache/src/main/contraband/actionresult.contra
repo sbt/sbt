@@ -15,3 +15,14 @@ type ActionResult {
   contents: [java.nio.ByteBuffer] @since("0.4.0")
   isExecutable: [Boolean] @since("0.5.0")
 }
+
+## A GenericFailure represents a cached task failure.
+## This allows caching failures so that repeated builds don't re-run failed tasks.
+## The kind field indicates the type of failure (e.g., "CompileFailed").
+##
+## Fixes https://github.com/sbt/sbt/issues/7662
+type GenericFailure @generateCodec(false) {
+  kind: String @since("0.1.0")
+  message: String @since("0.1.0")
+  problems: [xsbti.Problem] @since("0.1.0")
+}

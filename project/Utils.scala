@@ -69,7 +69,7 @@ object Utils {
     val args = "xsbti.api" :: out.getAbsolutePath :: defs.map(_.getAbsolutePath).toList
     val mainClass = main getOrElse "No main class defined for datatype generator"
     run.run(mainClass, cp.files, args, s.log).failed foreach (e => sys error e.getMessage)
-    (out ** "*.java").get
+    (out ** "*.java").get()
   }
   def lastCompilationTime(analysis: Analysis): Long = {
     val lastCompilation = analysis.compilations.allCompilations.lastOption
@@ -177,7 +177,7 @@ object Utils {
       val _ = (data / Compile / scalafix)
         .toTask(s" --rules GenerateDataClass --out-from=$outFrom --out-to=$outTo")
         .value
-      (to ** "*.scala").get
+      (to ** "*.scala").get()
     }
   }
 }

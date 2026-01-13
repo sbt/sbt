@@ -526,7 +526,8 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       resolveTime,
       (cachedReports map { _.stats.downloadTime }).sum,
       (cachedReports map { _.stats.downloadSize }).sum,
-      false
+      false,
+      Some(System.currentTimeMillis().toString)
     )
     val configReports = rootModuleConfigs map { conf =>
       log.debug("::: -----------")

@@ -26,7 +26,8 @@ import scala.concurrent.duration.FiniteDuration
 private[sbt] object LibraryManagement {
   given linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
-  private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
+  // The fourth element is transitive dependency stamps for cross-command cache invalidation
+  private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration, Vector[String])
 
   def cachedUpdate(
       lm: DependencyResolution,
@@ -37,7 +38,7 @@ private[sbt] object LibraryManagement {
       transform: UpdateReport => UpdateReport,
       skip: Boolean,
       force: Boolean,
-      depsUpdated: Boolean,
+      transitiveUpdates: Seq[UpdateReport],
       uwConfig: UnresolvedWarningConfiguration,
       evictionLevel: Level.Value,
       versionSchemeOverrides: Seq[ModuleID],
@@ -123,8 +124,9 @@ private[sbt] object LibraryManagement {
 
     /* Check if a update report is still up to date or we must resolve again. */
     def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
+      // Transitive dependency stamps are now part of UpdateInputs, so inChanged
+      // will be true if any transitive stamp changed (cross-command invalidation).
       !force &&
-      !depsUpdated &&
       !inChanged &&
       out.allFiles.forall(f => fileUptodate(f.toString, out.stamps, log)) &&
       fileUptodate(out.cachedDescriptor.toString, out.stamps, log)
@@ -186,7 +188,9 @@ private[sbt] object LibraryManagement {
     val handler = if (skip && !force) skipResolve(outStore)(_) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
-    handler((extraInputHash, settings, withoutClock))
+    // Collect transitive stamps for cross-command cache invalidation
+    val transitiveStamps = transitiveUpdates.flatMap(_.stats.stamp).toVector
+    handler((extraInputHash, settings, withoutClock, transitiveStamps))
   }
 
   private def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
@@ -382,7 +386,7 @@ private[sbt] object LibraryManagement {
           identity,
           skip = sk,
           force = shouldForce,
-          depsUpdated = tu.exists(!_.stats.cached),
+          transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = Level.Debug,
           versionSchemeOverrides = Nil,

@@ -7,7 +7,7 @@ object Transform {
     resourceGenerators += Def.task {
       val rdirs = Seq(sourceDirectory.value / "input_resources")
       val rm = resourceManaged.value
-      val paths = (rdirs ** (-DirectoryFilter)).get --- rdirs
+      val paths = (rdirs ** (-DirectoryFilter)).get() --- rdirs
       val rs = paths.pair(Path.rebase(rdirs, rm) | Path.flat(rm))
       val props = Map(
         "org" -> organization.value,

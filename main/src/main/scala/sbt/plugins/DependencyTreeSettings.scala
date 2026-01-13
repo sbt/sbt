@@ -254,7 +254,51 @@ OPTIONS
         }
         output
       },
+      dependencyLicenseInfo := (Def.inputTaskDyn {
+        val s = streams.value
+        val args = ArgsParser.parsed.toList
+        val isHelp = args.contains(Arg.Help)
+        val isQuiet = args.contains(Arg.Quiet)
+        if isHelp then Def.task { s.log.info(licenseInfoUsageText); "" }
+        else
+          val formatOpt = (args
+            .collect { case Arg.Format(fmt) => fmt })
+            .reverse
+            .headOption
+          val outFileNameOpt = (args
+            .collect { case Arg.Out(out) => out })
+            .reverse
+            .headOption
+          val outFileOpt = outFileNameOpt.map(new File(_))
+          val format = (formatOpt, outFileNameOpt) match
+            case (None, Some(out)) if out.endsWith(".json") => Fmt.Json
+            case (Some(fmt), _)                             => fmt
+            case _                                          => Fmt.Tree
+          Def.task {
+            val graph = dependencyTreeModuleGraph0.value
+            val output = format match
+              case Fmt.Json => rendering.LicenseInfo.renderJson(graph)
+              case _        => rendering.LicenseInfo.render(graph)
+            handleOutput(output, outFileOpt, isQuiet, s.log)
+          }
+      }).evaluated,
     )
+
+  def licenseInfoUsageText: String =
+    s"""dependencyLicenseInfo task displays license information for dependencies.
+
+USAGE
+  dependencyLicenseInfo [subcommand] [options]
+
+SUBCOMMAND
+  json         Prints JSON (default is text)
+  help         Prints this help
+
+OPTIONS
+  --quiet      Returns the output as task value
+  --out <file> Writes the output to the specified file;
+               The file extension will influence the default subcommand
+"""
 
   private def handleOutput(
       content: String,
