@@ -805,6 +805,11 @@ detectNativeClient() {
 
 # Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
 isRunNativeClient() {
+  # sbt new/init should not use native client as it needs to run outside a project
+  if [[ "$sbt_new" == "true" ]]; then
+    echo "false"
+    return
+  fi
   sbtV="$build_props_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="0.0.0"
@@ -853,14 +858,15 @@ original_args=("$@")
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  set -- $(loadConfigFile "$machine_sbt_opts_file") "$@"
+  set -- "$@" $(loadConfigFile "$machine_sbt_opts_file")
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && set -- $(loadConfigFile "$dist_sbt_opts_file") "$@"
+  [[ -f "$dist_sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$dist_sbt_opts_file")
 fi
 
-# Pull in the project-level config file, if it exists.
-[[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
+# Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
+# Append so it appears last in command line and wins for duplicate properties.
+[[ -f "$sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$sbt_opts_file")
 
 # Pull in the project-level java config, if it exists.
 [[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"

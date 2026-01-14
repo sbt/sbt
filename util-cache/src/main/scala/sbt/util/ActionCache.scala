@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Path, Paths }
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -24,11 +24,13 @@ import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import scala.quoted.{ Expr, FromExpr, ToExpr, Quotes }
-import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
+import xsbti.{ CompileFailed, FileConverter, HashedVirtualFileRef, VirtualFile, VirtualFileRef }
 
 object ActionCache:
   private[sbt] val dirZipExt = ".sbtdir.zip"
   private[sbt] val manifestFileName = "sbtdir_manifest.json"
+  private[sbt] val failureFileName = "failure.json"
+  private[sbt] val failureExitCode = 1
 
   /**
    * This is a key function that drives remote caching.
@@ -54,11 +56,28 @@ object ActionCache:
       action: I => InternalActionResult[O],
   ): O =
     import config.*
+
+    def cacheFailure(e: CompileFailed): Nothing =
+      // Cache the failure so subsequent builds don't re-run failed compilation
+      // This fixes https://github.com/sbt/sbt/issues/7662
+      // Use the same input digest as success, distinguished by exitCode
+      cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+      val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+      val cachedFailure = CachedCompileFailure.fromException(e)
+      val json = Converter.toJsonUnsafe(cachedFailure)
+      val failureFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+      store.put(
+        UpdateActionResultRequest(input, Vector(failureFile), exitCode = failureExitCode)
+      )
+      throw e
+
     def organicTask: O =
       // run action(...) and combine the newResult with outputs
       val InternalActionResult(result, outputs) =
         try action(key): @unchecked
         catch
+          case e: CompileFailed =>
+            cacheFailure(e)
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
@@ -83,10 +102,81 @@ object ActionCache:
             result
           case Left(e) => throw e
 
-    get(key, codeContentHash, extraHash, tags, config) match
-      case Some(value) => value
-      case None        => organicTask
+    // Single cache lookup - use exitCode to distinguish success from failure
+    getWithFailure(key, codeContentHash, extraHash, tags, config) match
+      case Right(value) => value
+      case Left(Some(failure)) =>
+        config.cacheEventLog.append(ActionCacheEvent.Found("cached-failure"))
+        // Replay problems to the logger so users see the cached errors/warnings
+        failure.replay(config.logger)
+        throw failure.toException
+      case Left(None) => organicTask
   end cache
+
+  /**
+   * Retrieves the cached value or failure with a single cache lookup.
+   * Returns Right(value) for cached success, Left(Some(failure)) for cached failure,
+   * or Left(None) for cache miss.
+   */
+  private def getWithFailure[I: HashWriter, O: JsonFormat](
+      key: I,
+      codeContentHash: Digest,
+      extraHash: Digest,
+      tags: List[CacheLevelTag],
+      config: BuildWideCacheConfiguration,
+  ): Either[Option[CachedCompileFailure], O] =
+    import config.store
+    def valueFromStr(str: String, origin: Option[String]): O =
+      config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
+      val json = Parser.parseUnsafe(str)
+      Converter.fromJsonUnsafe[O](json)
+
+    def failureFromStr(str: String): CachedCompileFailure =
+      val json = Parser.parseUnsafe(str)
+      Converter.fromJsonUnsafe[CachedCompileFailure](json)
+
+    // Optimization: Check if we can read directly from symlinked value file
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+    val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
+
+    def readFromSymlink(): Option[Either[Option[CachedCompileFailure], O]] =
+      if java.nio.file.Files.isSymbolicLink(resolvedValuePath) && java.nio.file.Files
+          .exists(resolvedValuePath)
+      then
+        Exception.nonFatalCatch
+          .opt(IO.read(resolvedValuePath.toFile(), StandardCharsets.UTF_8))
+          .flatMap: str =>
+            // We still need to sync output files for side effects and check exitCode
+            findActionResult(key, codeContentHash, extraHash, config) match
+              case Right(result) =>
+                store.syncBlobs(result.outputFiles, config.outputDirectory)
+                if result.exitCode.contains(failureExitCode) then
+                  Some(Left(Some(failureFromStr(str))))
+                else Some(Right(valueFromStr(str, Some("symlink"))))
+              case Left(_) => None
+      else None
+
+    readFromSymlink() match
+      case Some(result) => result
+      case None =>
+        findActionResult(key, codeContentHash, extraHash, config) match
+          case Right(result) =>
+            // Check exitCode to determine if this is a cached failure
+            val isFailure = result.exitCode.contains(failureExitCode)
+            result.contents.headOption match
+              case Some(head) =>
+                store.syncBlobs(result.outputFiles, config.outputDirectory)
+                val str = String(head.array(), StandardCharsets.UTF_8)
+                if isFailure then Left(Some(failureFromStr(str)))
+                else Right(valueFromStr(str, result.origin))
+              case _ =>
+                val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+                if paths.isEmpty then Left(None)
+                else
+                  val str = IO.read(paths.head.toFile())
+                  if isFailure then Left(Some(failureFromStr(str)))
+                  else Right(valueFromStr(str, result.origin))
+          case Left(_) => Left(None)
 
   /**
    * Retrieves the cached value.
@@ -98,47 +188,9 @@ object ActionCache:
       tags: List[CacheLevelTag],
       config: BuildWideCacheConfiguration,
   ): Option[O] =
-    import config.store
-    def valueFromStr(str: String, origin: Option[String]): O =
-      config.cacheEventLog.append(ActionCacheEvent.Found(origin.getOrElse("unknown")))
-      val json = Parser.parseUnsafe(str)
-      Converter.fromJsonUnsafe[O](json)
-
-    // Optimization: Check if we can read directly from symlinked value file
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
-    val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
-
-    def readFromSymlink(): Option[O] =
-      if java.nio.file.Files.isSymbolicLink(resolvedValuePath) && java.nio.file.Files
-          .exists(resolvedValuePath)
-      then
-        Exception.nonFatalCatch
-          .opt(IO.read(resolvedValuePath.toFile(), StandardCharsets.UTF_8))
-          .map: str =>
-            // We still need to sync output files for side effects
-            findActionResult(key, codeContentHash, extraHash, config) match
-              case Right(result) =>
-                store.syncBlobs(result.outputFiles, config.outputDirectory)
-              case Left(_) => // Ignore if we can't find ActionResult
-            valueFromStr(str, Some("symlink"))
-      else None
-
-    readFromSymlink() match
-      case Some(value) => Some(value)
-      case None =>
-        findActionResult(key, codeContentHash, extraHash, config) match
-          case Right(result) =>
-            // some protocol can embed values into the result
-            result.contents.headOption match
-              case Some(head) =>
-                store.syncBlobs(result.outputFiles, config.outputDirectory)
-                val str = String(head.array(), StandardCharsets.UTF_8)
-                Some(valueFromStr(str, result.origin))
-              case _ =>
-                val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-                if paths.isEmpty then None
-                else Some(valueFromStr(IO.read(paths.head.toFile()), result.origin))
-          case Left(_) => None
+    getWithFailure(key, codeContentHash, extraHash, tags, config) match
+      case Right(value) => Some(value)
+      case Left(_)      => None
 
   /**
    * Checks if the ActionResult exists in the cache.
@@ -216,7 +268,15 @@ object ActionCache:
             case p if p == dirPath => Nil
             case p if p == mPath   => (mPath.toFile() -> manifestFileName) :: Nil
             case f                 => (f.toFile() -> outputDirectory.relativize(f).toString) :: Nil
-      IO.zip((allPaths ++ Seq(mPath)).flatMap(rebase), zipPath.toFile(), Some(default2010Timestamp))
+      // Create the zip in a temp directory to avoid overwriting the cache if `zipPath` is a symlink to the CAS
+      val tempZipPath = (tempDir / (dirPath.getFileName.toString + dirZipExt)).toPath()
+      IO.zip(
+        (allPaths ++ Seq(mPath)).flatMap(rebase),
+        tempZipPath.toFile(),
+        Some(default2010Timestamp)
+      )
+      Files.copy(tempZipPath, zipPath, StandardCopyOption.REPLACE_EXISTING)
+
       conv.toVirtualFile(zipPath)
 
   inline def actionResult[A1](inline value: A1): InternalActionResult[A1] =

@@ -58,7 +58,11 @@ object Cross {
       }
       val spacedVersion = if (spacePresent) version else version & spacedFirst(SwitchCommand)
       val verboseOpt = Parser.opt(token(Space ~> "-v"))
-      val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
+      // Accept valid commands, or project/command patterns that may reference projects
+      // not yet available after version switch (fixes #7574)
+      val slashCommand = (NotSpace ~ ('/' ~> any.+)).map { case p ~ c => p + "/" + c.mkString }
+      val commandParser = state.combinedParser | slashCommand
+      val optionalCommand = Parser.opt(token(Space ~> matched(commandParser)))
       val switch1 = (token(Space ~> "-v") ~> (Space ~> version) ~ optionalCommand) map {
         case v ~ command =>
           Switch(v, true, command)

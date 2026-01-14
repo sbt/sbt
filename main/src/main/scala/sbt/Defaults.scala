@@ -287,6 +287,7 @@ object Defaults extends BuildCommon {
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
       csrMavenDependencyOverride :== false,
+      csrLocalArtifactsShouldBeCached :== false,
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,
       stagingDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-staging",
@@ -336,7 +337,6 @@ object Defaults extends BuildCommon {
         new AppenderSupplier:
           def apply(s: ScopedKey[?]): Seq[Appender] = Nil
       },
-      useLog4J :== false,
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := {
@@ -1015,15 +1015,17 @@ object Defaults extends BuildCommon {
       },
       scalacOptions := {
         val old = scalacOptions.value
-        if (exportPipelining.value)
-          Def.uncached(
-            Vector(
-              "-Ypickle-java",
-              "-Ypickle-write",
-              earlyOutput.value.toString
-            ) ++ old
+        if (exportPipelining.value) {
+          val sv = scalaVersion.value
+          val shouldApplyFlags = !ScalaArtifacts.isScala3(sv) || VersionNumber(sv).matchesSemVer(
+            SemanticSelector(">=3.5.0")
           )
-        else Def.uncached(old)
+          if (shouldApplyFlags)
+            Def.uncached(
+              Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.toString) ++ old
+            )
+          else Def.uncached(old)
+        } else Def.uncached(old)
       },
       scalacOptions := {
         val old = scalacOptions.value
@@ -3550,7 +3552,13 @@ object Classpaths {
           classifiersModule := Def.uncached(classifiersModuleTask.value),
           // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
           // to fix https://github.com/sbt/sbt/issues/2686
-          scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+          // For sbt plugins, use the Scala version corresponding to the sbt binary version being targeted.
+          // to fix https://github.com/sbt/sbt/issues/8026
+          scalaVersion := {
+            val isPlugin = sbtPlugin.value
+            if (isPlugin) (pluginCrossBuild / scalaVersion).value
+            else appConfiguration.value.provider.scalaProvider.version
+          },
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
           scalaEarlyVersion := CrossVersion.earlyScalaVersion(scalaVersion.value),
           scalaOrganization := ScalaArtifacts.Organization,
@@ -3921,7 +3929,7 @@ object Classpaths {
           substituteScalaFiles(so, _)(providedScalaJars),
           skip = sk,
           force = shouldForce,
-          depsUpdated = tu.exists(!_.stats.cached),
+          transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = eel,
           versionSchemeOverrides = lds,

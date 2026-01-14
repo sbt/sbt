@@ -216,6 +216,10 @@ class Eval(
     digester.update(bytes(ev.extraHash))
     // Include SNAPSHOT classpath hash to invalidate cache when sbt version changes (fixes #7713)
     digester.update(bytes(snapshotClasspathHash))
+    // Include imports in hash to invalidate cache when definition module names change (fixes #7424)
+    imports.strings.foreach { imp =>
+      digester.update(bytes(imp))
+    }
     val d = digester.digest()
     val hash = Hash.toHex(d)
     val moduleName = makeModuleName(hash)
@@ -225,7 +229,8 @@ class Eval(
     val (extra, loader) =
       try
         backingDir match
-          case Some(backing) if classExists(backing, moduleName) =>
+          case Some(backing)
+              if classExists(backing, moduleName) && cacheExists(backing, moduleName) =>
             val loader = (parent: ClassLoader) =>
               (new URLClassLoader(Array(backing.toUri.toURL), parent): ClassLoader)
             val extra = ev.read(cacheFile(backing, moduleName))
@@ -272,6 +277,9 @@ class Eval(
 
   private def classExists(dir: Path, name: String): Boolean =
     Files.exists(dir.resolve(s"$name.class"))
+
+  private def cacheExists(dir: Path, name: String): Boolean =
+    Files.exists(cacheFile(dir, name))
 
   private def getGeneratedFiles(moduleName: String): Seq[Path] =
     backingDir match

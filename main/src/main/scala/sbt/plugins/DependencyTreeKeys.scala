@@ -34,6 +34,8 @@ abstract class DependencyTreeKeys:
   private[sbt] val dependencyTreeModuleGraphStore =
     taskKey[ModuleGraph]("The stored module-graph from the last run")
   val whatDependsOn = inputKey[String]("Shows information about what depends on the given module")
+  val dependencyLicenseInfo =
+    inputKey[String]("Displays license information for dependencies in text or JSON format")
   private[sbt] val dependencyTreeCrossProjectId = settingKey[ModuleID]("")
 
   // 0 was added to avoid conflict with sbt-dependency-tree

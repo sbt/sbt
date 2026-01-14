@@ -5,12 +5,19 @@ import sbt.internal.util.StringVirtualFile1
 import sbt.io.IO
 import sbt.io.syntax.*
 import verify.BasicTestSuite
-import xsbti.VirtualFile
-import xsbti.FileConverter
-import xsbti.VirtualFileRef
+import xsbti.{
+  CompileFailed,
+  Problem,
+  Position,
+  Severity,
+  VirtualFile,
+  FileConverter,
+  VirtualFileRef
+}
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.Files
+import java.util.Optional
 import ActionCache.InternalActionResult
 
 object ActionCacheTest extends BasicTestSuite:
@@ -83,6 +90,9 @@ object ActionCacheTest extends BasicTestSuite:
   test("Disk cache can recover gracefully from invalid JSON"):
     withDiskCache(testActionCacheInvalidJson)
 
+  test("Disk cache caches CompileFailed exceptions"):
+    withDiskCache(testCachedCompileFailure)
+
   def testActionCacheInvalidJson(cache: DiskActionCacheStore): Unit =
     import sjsonnew.BasicJsonProtocol.*
     var called = 0
@@ -104,6 +114,59 @@ object ActionCacheTest extends BasicTestSuite:
       assert(v2 == 2)
       // check that the action has been invoked twice
       assert(called == 2)
+
+  def testCachedCompileFailure(cache: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val testProblem = new Problem:
+      override def category(): String = "Test"
+      override def severity(): Severity = Severity.Error
+      override def message(): String = "Test error message"
+      override def position(): Position = new Position:
+        override def line(): Optional[Integer] = Optional.of(42)
+        override def lineContent(): String = "val x = 1"
+        override def offset(): Optional[Integer] = Optional.empty()
+        override def pointer(): Optional[Integer] = Optional.empty()
+        override def pointerSpace(): Optional[String] = Optional.empty()
+        override def sourcePath(): Optional[String] = Optional.of("/test/file.scala")
+        override def sourceFile(): Optional[java.io.File] = Optional.empty()
+
+    val testException = new CompileFailed:
+      override def arguments(): Array[String] = Array.empty
+      override def problems(): Array[Problem] = Array(testProblem)
+      override def getMessage(): String = "Compilation failed"
+
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      called += 1
+      throw testException
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(cache, tempDir)
+
+      // First call should throw and cache the failure
+      var caught1: CompileFailed = null
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case e: CompileFailed => caught1 = e
+
+      assert(caught1 != null)
+      assert(called == 1)
+
+      // Second call should throw cached failure without calling action again
+      var caught2: CompileFailed = null
+      try
+        ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+        assert(false, "Expected CompileFailed to be thrown")
+      catch case e: CompileFailed => caught2 = e
+
+      assert(caught2 != null)
+      // Action should NOT have been called again - failure was cached
+      assert(called == 1)
+      // Verify the cached exception has the same data
+      assert(caught2.problems().length == 1)
+      assert(caught2.problems()(0).message() == "Test error message")
+      assert(caught2.getMessage() == "Compilation failed")
 
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()

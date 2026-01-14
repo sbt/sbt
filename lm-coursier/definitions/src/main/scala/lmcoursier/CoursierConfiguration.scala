@@ -69,4 +69,6 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
     protocolHandlerDependencies: Seq[ModuleID] = Vector.empty,
     retry: Option[(FiniteDuration, Int)] = None,
     sameVersions: Seq[Set[InclExclRule]] = Nil,
+    @since
+    localArtifactsShouldBeCached: Boolean = false,
 )
