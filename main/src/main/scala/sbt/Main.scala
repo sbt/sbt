@@ -933,7 +933,7 @@ object BuiltinCommands {
     val sbtVersionBuildOpt = if (buildProps.exists) {
       val buildProperties = new Properties()
       IO.load(buildProperties, buildProps)
-      Option(buildProperties.getProperty(sbtVersionProperty))
+      Option(buildProperties.getProperty(sbtVersionProperty)).map(_.trim)
     } else None
 
     val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)

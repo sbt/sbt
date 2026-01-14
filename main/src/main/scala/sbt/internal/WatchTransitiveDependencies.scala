@@ -135,7 +135,14 @@ private[sbt] object WatchTransitiveDependencies {
           triggers.flatMap(getDynamicInputs(_, trigger = true))
         )
     }
-    (inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)).distinct.sorted
+    // If watchTriggers is explicitly set (non-empty), use only watchTriggers instead of combining with fileInputs
+    // This allows users to control what triggers the watch by setting watchTriggers
+    val result = if (triggerGlobs.nonEmpty) {
+      triggerGlobs ++ legacy(keys :+ scopedKey, args)
+    } else {
+      inputGlobs ++ triggerGlobs ++ legacy(keys :+ scopedKey, args)
+    }
+    result.distinct.sorted
   }
 
   private def legacy(keys: Seq[ScopedKey[?]], args: Arguments): Seq[DynamicInput] = {

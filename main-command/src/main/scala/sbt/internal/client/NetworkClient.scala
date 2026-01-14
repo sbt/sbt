@@ -32,6 +32,7 @@ import sbt.internal.util.{
 }
 import sbt.io.IO
 import sbt.io.syntax.*
+import sbt.internal.UnixDomainSocketFactory
 import sbt.protocol.*
 import sbt.util.Level
 import sjsonnew.BasicJsonProtocol.*
@@ -1355,7 +1356,7 @@ object NetworkClient {
   }
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
-    val useJNI = jnaArg.isEmpty
+    val useJNI = jnaArg.isEmpty && (Util.isWindows || !UnixDomainSocketFactory.isJdk17Available)
     val base = new File("").getCanonicalFile
     if (restOfArgs.exists(_.startsWith(NetworkClient.completions)))
       System.exit(complete(base, restOfArgs, useJNI, System.in, System.out))
