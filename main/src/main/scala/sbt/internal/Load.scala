@@ -866,11 +866,9 @@ private[sbt] object Load {
           )
         }
       val loadedProjects = processAutoAggregate(loadedProjects0, uri)
-      // TODO: Uncomment when we fixed https://github.com/sbt/sbt/issues/7424
-      // likely keepClassFiles isn't covering enough.
-      // timed("Load.loadUnit: cleanEvalClasses", log) {
-      //   cleanEvalClasses(defDir, keepClassFiles)
-      // }
+      timed("Load.loadUnit: cleanEvalClasses", log) {
+        cleanEvalClasses(defDir, keepClassFiles)
+      }
       val defs = if (defsScala.isEmpty) defaultBuildIfNone :: Nil else defsScala
       // HERE we pull out the defined vals from memoSettings and unify them all so
       // we can use them later.
