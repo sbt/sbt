@@ -1,4 +1,5 @@
 import sbt.nio.Keys._
+import sbt.internal.FileChangesMacro._
 
 val testTask = taskKey[Unit]("test task")
 val otherTask = taskKey[Unit]("dummy task")
