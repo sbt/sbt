@@ -29,7 +29,7 @@ import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Terminal.hasConsole
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ Terminal as ITerminal, * }
+import sbt.internal.util.{ RunningProcesses, Terminal as ITerminal, * }
 import sbt.io.*
 import sbt.io.syntax.*
 import sbt.util.{ Level, Logger, Show }
@@ -221,6 +221,7 @@ object StandardMain {
   })
 
   private val closeRunnable = () => {
+    RunningProcesses.killAll()
     exchange.shutdown()
     pool.foreach(_.shutdownNow())
   }
