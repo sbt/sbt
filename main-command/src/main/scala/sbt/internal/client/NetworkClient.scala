@@ -1356,7 +1356,7 @@ object NetworkClient {
   }
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
-    val useJNI = jnaArg.isEmpty && !UnixDomainSocketFactory.isJdk17Available
+    val useJNI = jnaArg.isEmpty && (Util.isWindows || !UnixDomainSocketFactory.isJdk17Available)
     val base = new File("").getCanonicalFile
     if (restOfArgs.exists(_.startsWith(NetworkClient.completions)))
       System.exit(complete(base, restOfArgs, useJNI, System.in, System.out))
