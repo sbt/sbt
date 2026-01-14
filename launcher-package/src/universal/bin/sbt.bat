@@ -508,22 +508,12 @@ if "%g:~0,2%" == "-D" (
   rem Note: We pass -Dfoo through as-is without consuming the next argument to avoid
   rem treating commands (like 'compile') as values. If '=' gets parsed away in certain
   rem contexts (e.g., SBT_OPTS), the argument should be passed with '=' already included.
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      rem -Dfoo without '=' - pass through as-is to match Unix behavior
-      rem This allows -Dfoo without value, setting property to empty string
-      rem We don't consume the next argument to avoid treating commands as values
-      call :dlog [args_loop] -D argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
-      goto args_loop
-    ) else (
-      rem -Dfoo=bar format - already has '=', pass through as-is
-      call :dlog [args_loop] -D argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
-      goto args_loop
-    )
-  )
+  rem Pass through -D argument as-is (handles both -Dfoo and -Dfoo=bar formats)
+  rem This matches Unix behavior and allows -Dfoo without value, setting property to empty string
+  rem We don't consume the next argument to avoid treating commands as values
+  call :dlog [args_loop] -D argument %~0
+  set "SBT_ARGS=!SBT_ARGS! %~0"
+  goto args_loop
 )
 
 if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX" (
