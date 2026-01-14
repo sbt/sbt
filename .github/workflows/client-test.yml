@@ -52,7 +52,7 @@ jobs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y musl-tools
+        sudo apt-get install -y musl-tools musl-dev zlib1g-dev
     - name: Client test (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
