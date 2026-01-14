@@ -324,6 +324,41 @@ OPTIONS
 
   case class ArtifactPattern(organization: String, name: String, version: Option[String])
 
+  private[plugins] def createArtifactPatternParser(
+      graph: ModuleGraph
+  ): Parser[ArtifactPattern] =
+    graph.nodes
+      .map(_.id)
+      .groupBy(m => (m.organization, m.name))
+      .map { case ((org, name), modules) =>
+        // Empty versions cause parser token creation to fail
+        val versionParsers: Seq[Parser[Option[String]]] =
+          modules
+            .filter(_.version.nonEmpty)
+            .map { id =>
+              token(Space ~> id.version).?
+            }
+
+        // Handle modules with only empty versions
+        val effectiveVersionParser =
+          if versionParsers.isEmpty then success(None)
+          else oneOf(versionParsers)
+
+        (Space ~> token(org) ~ token(Space ~> name) ~ effectiveVersionParser).map {
+          case ((org, name), version) => ArtifactPattern(org, name, version)
+        }
+      }
+      .reduceOption(_ | _)
+      .getOrElse {
+        // If the dependencyTreeModuleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
+        ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
+          StringBasic,
+          "<module>"
+        )) ~ (Space ~> token(StringBasic, "<version?>")).?).map { case ((org, mod), version) =>
+          ArtifactPattern(org, mod, version)
+        }
+      }
+
   val artifactPatternParser: Def.Initialize[State => Parser[ArtifactPattern]] =
     Keys.resolvedScoped { ctx => (state: State) =>
       val graph =
@@ -331,31 +366,9 @@ OPTIONS
           Nil,
           Nil
         )
-
-      graph.nodes
-        .map(_.id)
-        .groupBy(m => (m.organization, m.name))
-        .map { case ((org, name), modules) =>
-          val versionParsers: Seq[Parser[Option[String]]] =
-            modules.map { id =>
-              token(Space ~> id.version).?
-            }
-
-          (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
-            case ((org, name), version) => ArtifactPattern(org, name, version)
-          }
-        }
-        .reduceOption(_ | _)
-        .getOrElse {
-          // If the dependencyTreeModuleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
-          ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
-            StringBasic,
-            "<module>"
-          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map { case ((org, mod), version) =>
-            ArtifactPattern(org, mod, version)
-          }
-        }
+      createArtifactPatternParser(graph)
     }
+
   val shouldForceParser: Parser[Boolean] =
     (Space ~> (Parser.literal("-f") | "--force")).?.map(_.isDefined)
 

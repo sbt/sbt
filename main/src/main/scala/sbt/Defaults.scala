@@ -337,7 +337,6 @@ object Defaults extends BuildCommon {
         new AppenderSupplier:
           def apply(s: ScopedKey[?]): Seq[Appender] = Nil
       },
-      useLog4J :== false,
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := {
