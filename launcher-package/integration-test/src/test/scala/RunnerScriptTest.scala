@@ -34,7 +34,7 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
   testOutput("sbt -D arguments")("-Dsbt.supershell=false", "compile", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.supershell=false"))
 
-  testOutput("sbt -D argument without value")("-Dfoo", "compile", "-v"): (out: List[String]) =>
+  testOutput("sbt -D argument without value")("-Dfoo", "about", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dfoo"))
 
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
