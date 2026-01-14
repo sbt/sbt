@@ -8,29 +8,33 @@
 
 package sbt.internal.util
 
-import org.scalatest.flatspec.AnyFlatSpec
+import verify.BasicTestSuite
 
-class CleanStringSpec extends AnyFlatSpec {
-  "EscHelpers" should "not modify normal strings" in {
+object CleanStringSpec extends BasicTestSuite {
+  test("EscHelpers should not modify normal strings") {
     val cleanString = s"1234"
     assert(EscHelpers.stripColorsAndMoves(cleanString) == cleanString)
   }
-  it should "remove delete lines" in {
+
+  test("EscHelpers should remove delete lines") {
     val clean = "1234"
     val string = s"${ConsoleAppender.DeleteLine}$clean"
     assert(EscHelpers.stripColorsAndMoves(string) == clean)
   }
-  it should "remove cursor left" in {
+
+  test("EscHelpers should remove cursor left") {
     val clean = "1234"
     val backspaced = s"1235${ConsoleAppender.cursorLeft(1)}${ConsoleAppender.clearLine(0)}4"
     assert(EscHelpers.stripColorsAndMoves(backspaced) == clean)
   }
-  it should "remove colors" in {
+
+  test("EscHelpers should remove colors") {
     val clean = "1234"
     val colored = s"${scala.Console.RED}$clean${scala.Console.RESET}"
     assert(EscHelpers.stripColorsAndMoves(colored) == clean)
   }
-  it should "remove backspaces" in {
+
+  test("EscHelpers should remove backspaces") {
     // Taken from an actual failure case. In the scala client, type 'clean', then type backspace
     // five times to clear 'clean' and then retype 'clean'.
     val bytes = Array[Byte](27, 91, 50, 75, 27, 91, 48, 74, 27, 91, 50, 75, 27, 91, 49, 48, 48, 48,
@@ -39,25 +43,29 @@ class CleanStringSpec extends AnyFlatSpec {
     val str = new String(bytes)
     assert(EscHelpers.stripColorsAndMoves(str) == "sbt:scala-compile> clean")
   }
-  it should "handle cursor left overwrite" in {
+
+  test("EscHelpers should handle cursor left overwrite") {
     val clean = "1234"
     val backspaced = s"1235${8.toChar}4${8.toChar}"
     assert(EscHelpers.stripColorsAndMoves(backspaced) == clean)
   }
-  it should "remove moves in string with only moves" in {
+
+  test("EscHelpers should remove moves in string with only moves") {
     val original =
       Array[Byte](27, 91, 50, 75, 27, 91, 51, 65, 27, 91, 49, 48, 48, 48, 68)
     val (bytes, len) = EscHelpers.strip(original, stripAnsi = true, stripColor = true)
     assert(len == 0)
   }
-  it should "remove moves in string with moves and letters" in {
+
+  test("EscHelpers should remove moves in string with moves and letters") {
     val original =
       Array[Byte](27, 91, 50, 75, 27, 91, 51, 65) ++ "foo".getBytes ++ Array[Byte](27, 91, 49, 48,
         48, 48, 68)
     val (bytes, len) = EscHelpers.strip(original, stripAnsi = true, stripColor = true)
     assert(new String(bytes, 0, len) == "foo")
   }
-  it should "preserve colors" in {
+
+  test("EscHelpers should preserve colors") {
     val original =
       Array[Byte](27, 91, 49, 48, 48, 48, 68, 27, 91, 48, 74, 102, 111, 111, 27, 91, 51, 54, 109,
         62, 32, 27, 91, 48, 109)
@@ -66,14 +74,16 @@ class CleanStringSpec extends AnyFlatSpec {
     val (bytes, len) = EscHelpers.strip(original, stripAnsi = true, stripColor = false)
     assert(new String(bytes, 0, len) == "foo" + colorArrow + " " + scala.Console.RESET)
   }
-  it should "remove unusual escape characters" in {
+
+  test("EscHelpers should remove unusual escape characters") {
     val original = new String(
       Array[Byte](27, 91, 63, 49, 108, 27, 62, 27, 91, 63, 49, 48, 48, 48, 108, 27, 91, 63, 50, 48,
         48, 52, 108)
     )
     assert(EscHelpers.stripColorsAndMoves(original).isEmpty)
   }
-  it should "remove bracketed paste csi" in {
+
+  test("EscHelpers should remove bracketed paste csi") {
     // taken from a test project prompt
     val original =
       Array[Byte](27, 91, 63, 50, 48, 48, 52, 104, 115, 98, 116, 58, 114, 101, 112, 114, 111, 62,
@@ -81,7 +91,8 @@ class CleanStringSpec extends AnyFlatSpec {
     val (bytes, len) = EscHelpers.strip(original, stripAnsi = true, stripColor = false)
     assert(new String(bytes, 0, len) == "sbt:repro> ")
   }
-  it should "strip colors" in {
+
+  test("EscHelpers should strip colors") {
     // taken from utest output
     val original =
       Array[Byte](91, 105, 110, 102, 111, 93, 32, 27, 91, 51, 50, 109, 43, 27, 91, 51, 57, 109, 32,
