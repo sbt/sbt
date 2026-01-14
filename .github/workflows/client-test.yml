@@ -52,7 +52,13 @@ jobs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev zlib1g-dev
+        sudo apt-get install -y musl-tools musl-dev
+        curl -sL https://zlib.net/zlib-1.3.1.tar.gz | tar xz
+        cd zlib-1.3.1
+        CC=musl-gcc ./configure --static --prefix=/usr/local/musl
+        make
+        sudo make install
+        sudo ln -sf /usr/local/musl/lib/libz.a /usr/lib/x86_64-linux-musl/libz.a
     - name: Client test (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
