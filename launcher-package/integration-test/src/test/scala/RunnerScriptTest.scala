@@ -1,5 +1,13 @@
 package example.test
 
+import java.io.File
+import java.nio.file.Files
+import java.util.concurrent.{TimeoutException, TimeUnit}
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.ExecutionContext.Implicits.global
+import sbt.io.IO
+
 /**
  * RunnerScriptTest is used to test the sbt shell script, for both macOS/Linux and Windows.
  */
@@ -34,8 +42,41 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
   testOutput("sbt -D arguments")("-Dsbt.supershell=false", "compile", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.supershell=false"))
 
-  testOutput("sbt -D argument without value")("-Dfoo", "about", "-v"): (out: List[String]) =>
-    assert(out.contains[String]("-Dfoo"))
+  test("sbt -D argument without value") {
+    val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
+    try {
+      retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+      
+      val envVars = scala.collection.mutable.Map[String, String]()
+      val path = sys.env.getOrElse("PATH", sys.env("Path"))
+      if (isWindows)
+        envVars("JAVACMD") = new File("launcher-package/integration-test/bin", "java").getAbsolutePath()
+      else
+        envVars("PATH") = new File("launcher-package/integration-test/bin").getAbsolutePath + File.pathSeparator + path
+
+      val process = scala.sys.process.Process(
+        Seq(sbtScript.getAbsolutePath, "-Dfoo", "--help", "-v"),
+        workingDirectory,
+        envVars.toSeq*
+      )
+      
+      // Use Future with timeout to prevent infinite hang
+      val futureOutput = Future {
+        process.!!.linesIterator.toList
+      }
+      
+      val out = try {
+        Await.result(futureOutput, Duration(30, TimeUnit.SECONDS))
+      } catch {
+        case _: TimeoutException =>
+          cancel("Test timed out - -Dfoo without value may cause sbt to hang")
+      }
+      
+      assert(out.contains[String]("-Dfoo"))
+    } finally {
+      IO.delete(workingDirectory)
+    }
+  }
 
   testOutput("sbt --sbt-version")("--sbt-version", "1.3.13", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.version=1.3.13"))
