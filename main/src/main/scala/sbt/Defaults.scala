@@ -1992,19 +1992,14 @@ object Defaults extends BuildCommon {
           else Map.empty[HashedVirtualFileRef, URI]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        scalacOptions := {
-          val compileOptions = scalacOptions.value
+        scalacOptions ++= {
           val sv = scalaVersion.value
           val config = configuration.value
           val projectName = name.value
           if (ScalaArtifacts.isScala3(sv)) {
             val project = if (config == Compile) projectName else s"$projectName-$config"
-            if (scalaVersion.value.startsWith("3.0.0")) {
-              Seq("-project", project)
-            } else {
-              compileOptions ++ Seq("-project", project)
-            }
-          } else compileOptions
+            Seq("-project", project)
+          } else Seq.empty
         },
         (TaskZero / key) := Def.uncached {
           val s = streams.value
