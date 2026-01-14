@@ -676,7 +676,7 @@ class ScriptedRunner {
 
     IO.load(buildProperties, buildPropertiesFile)
 
-    Option(buildProperties.getProperty("sbt.version")) match {
+    Option(buildProperties.getProperty("sbt.version")).map(_.trim) match {
       case Some(version) => binarySbtVersion(version) == binarySbtVersion(sbtVersion)
       case None          => true
     }
