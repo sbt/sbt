@@ -25,14 +25,18 @@ object StackTraceSpec extends BasicTestSuite:
     assert(lines.exists(_.contains("Caused by:")))
     assert(lines.exists(_.contains("cause exception")))
 
-  test("StackTrace.trimmedLines should handle self-referencing exceptions without StackOverflowError"):
+  test(
+    "StackTrace.trimmedLines should handle self-referencing exceptions without StackOverflowError"
+  ):
     val exception = new SelfReferencingException("self-referencing exception")
     val lines = StackTrace.trimmedLines(exception, 3)
     assert(lines.nonEmpty)
     assert(lines.head.contains("self-referencing exception"))
     assert(lines.exists(_.contains("[CIRCULAR REFERENCE:")))
 
-  test("StackTrace.trimmedLines should handle circular exception chains without StackOverflowError"):
+  test(
+    "StackTrace.trimmedLines should handle circular exception chains without StackOverflowError"
+  ):
     val exception1 = new ChainableException("exception 1")
     val exception2 = new ChainableException("exception 2")
     exception1.setCauseException(exception2)
