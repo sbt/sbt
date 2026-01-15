@@ -68,6 +68,12 @@ jobs:
         repository: sbt/io
         ref: develop
         path: io
+    - name: Checkout sbt/librarymanagement
+      uses: actions/checkout@v4
+      with:
+        repository: sbt/librarymanagement
+        ref: develop
+        path: librarymanagement
     - name: Checkout sbt/zinc
       uses: actions/checkout@v4
       with:
