@@ -25,7 +25,7 @@ object SbtScriptTest extends SimpleTestSuite with PowerAssertions {
   )(args: String*)(f: List[String] => Any) = {
     test(name) {
       val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-      IO.copyDirectory(new File("citest"), workingDirectory, excludeFilter = "target/**")
+      IO.copyDirectory(new File("citest"), workingDirectory)
 
       try {
         val sbtOptsFile = new File(workingDirectory, ".sbtopts")
