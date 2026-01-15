@@ -44,7 +44,8 @@ object SizeParserSpec extends BasicTestSuite:
     assert(Parser.parse(str = "1.25 g", SizeParser.value) == Right(5L * 1024 * 1024 * 1024 / 4))
     assert(Parser.parse(str = "1.25 G", SizeParser.value) == Right(5L * 1024 * 1024 * 1024 / 4))
 
-  private val expectedCompletions: Set[String] = Set("", "b", "B", "g", "G", "k", "K", "m", "M", " ")
+  private val expectedCompletions: Set[String] =
+    Set("", "b", "B", "g", "G", "k", "K", "m", "M", " ")
 
   test("SizeParser should have completions for long"):
     val completions = Parser.completions(SizeParser.value, "123", level = 0).get.map(_.display)

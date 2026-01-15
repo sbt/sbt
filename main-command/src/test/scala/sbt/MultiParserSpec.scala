@@ -91,7 +91,8 @@ object MultiParserSpec extends BasicTestSuite:
   val twoBrace: String = "set foo := { val x = { val y = 2; y + 2 }; x + 1 }"
   val threeBrace: String = "set foo := { val x = { val y = 2; { val z = 3; y + 2 } }; x + 1 }"
   val doubleBrace: String = "set foo := { val x = { val y = 2; y + 2 }; { x + 1 } }"
-  val tripleBrace: String = "set foo := { val x = { val y = 2; y + 2 }; val y = { x + 1 }; { z + y } }"
+  val tripleBrace: String =
+    "set foo := { val x = { val y = 2; y + 2 }; val y = { x + 1 }; { z + y } }"
   val emptyBraces: String = "{{{{}}}}"
 
   test("parsing should parse commands with braces"):
