@@ -23,12 +23,20 @@ object Build {
       }
     },
     watchOnFileInputEvent := { (count: Int, event: Watch.Event) =>
-      if (event.path.getFileName.toString == "trigger.txt") Watch.Reload else Watch.Ignore
+      if (event.path.getFileName.toString == "trigger.txt") {
+        val flagFile = baseDirectory.value / "triggered.txt"
+        if (!flagFile.exists) {
+          IO.write(flagFile, "true")
+          Watch.Reload
+        } else {
+          Watch.CancelWatch
+        }
+      } else Watch.Ignore
     },
     watchSources += baseDirectory.value / "trigger.txt",
     Compile / compile := {
       val trigger = baseDirectory.value / "trigger.txt"
-      IO.write(trigger, "modified")
+      IO.write(trigger, System.currentTimeMillis.toString)
       (Compile / compile).value
     }
   )
