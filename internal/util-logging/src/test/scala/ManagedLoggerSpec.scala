@@ -32,7 +32,9 @@ object ManagedLoggerSpec extends BasicTestSuite:
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(1)
 
-  test("ManagedLogger should validate performance improvement of disabling location calculation for async loggers"):
+  test(
+    "ManagedLogger should validate performance improvement of disabling location calculation for async loggers"
+  ):
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     val before = System.currentTimeMillis()
@@ -79,14 +81,14 @@ object ManagedLoggerSpec extends BasicTestSuite:
     import java.util.concurrent.{ Executors, TimeUnit }
     val pool = Executors.newFixedThreadPool(100)
     for i <- 1 to 10000 do
-      pool.submit(new Runnable:
-        def run(): Unit =
-          val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
-          val log = newLogger(s"foo$i")
-          context.addAppender(s"foo$i", asyncStdout -> Level.Info)
-          if i % 100 == 0 then
-            log.info(s"foo$i test $stringTypeTag")
-          Thread.sleep(1)
+      pool.submit(
+        new Runnable:
+          def run(): Unit =
+            val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
+            val log = newLogger(s"foo$i")
+            context.addAppender(s"foo$i", asyncStdout -> Level.Info)
+            if i % 100 == 0 then log.info(s"foo$i test $stringTypeTag")
+            Thread.sleep(1)
       )
     pool.shutdown
     pool.awaitTermination(30, TimeUnit.SECONDS)
