@@ -27,7 +27,6 @@ object FileInfoSpec extends BasicTestSuite:
     val y: A = Converter.fromJson[A](jValue).get
     assert(x == y)
 
-  def assertJsonString[A: JsonWriter](x: A, s: String): Unit = assert(toJsonString(x) == s)
 
   def toJsonString[A: JsonWriter](x: A): String = CompactPrinter(Converter.toJson(x).get)
 
