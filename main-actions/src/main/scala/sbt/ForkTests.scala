@@ -211,7 +211,11 @@ private class React(
       case NonFatal(_)            => ()
 
   override def notifyExit(p: Process): Unit =
-    if !process.isAlive then promise.success(process.exitValue())
+    if !process.isAlive && !promise.isCompleted then
+      val exitCode = process.exitValue()
+      if exitCode != 0 then
+        promise.failure(new RuntimeException(s"Forked test process exited with code $exitCode"))
+      else promise.success(exitCode)
 
   def processNotification(o: JsonObject): Unit =
     val method = o.getAsJsonPrimitive("method").getAsString()
