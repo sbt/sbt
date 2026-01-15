@@ -765,7 +765,6 @@ process_args () {
                         -J*) addJava "${args[i]:2}" && ((i++)) ; continue ;;
                           *) addResidual "${args[i]}" && ((i++)) ; continue ;;
     esac
-    ((i++))
   done
 
   is_function_defined process_my_args && {
