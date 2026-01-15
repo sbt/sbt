@@ -113,7 +113,7 @@ private[sbt] object Server {
                   val socket = serverSocket.accept()
                   onIncomingSocket(socket, self)
                 } catch {
-                  case e: IOException if e.getMessage.contains("connect") =>
+                  case e: IOException if Option(e.getMessage).exists(_.contains("connect")) =>
                   case _: SocketTimeoutException                          => // its ok
                   case _: SocketException if !running.get => // the server is shutting down
                 }
