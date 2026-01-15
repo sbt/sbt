@@ -147,8 +147,7 @@ object TrackedSpec extends BasicTestSuite:
       val afterCompletion: String = "after-completion"
       val sideEffectCompleted = Promise[Unit]()
       val p0: () => String = () =>
-        if sideEffectCompleted.isCompleted then
-          afterCompletion
+        if sideEffectCompleted.isCompleted then afterCompletion
         else
           sideEffectCompleted.success(())
           beforeCompletion
