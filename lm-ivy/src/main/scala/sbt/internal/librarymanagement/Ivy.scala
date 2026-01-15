@@ -85,7 +85,7 @@ final class IvySbt(
     }
   }
 
-  private lazy val basicUrlHandler: URLHandler = new BasicURLHandler
+  private lazy val basicUrlHandler: URLHandler = new ErrorLoggingURLHandler
 
   private lazy val settings: IvySettings = {
     val dispatcher: URLHandlerDispatcher = URLHandlerRegistry.getDefault match {

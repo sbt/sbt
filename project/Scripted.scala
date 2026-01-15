@@ -25,7 +25,7 @@ trait ScriptedKeys {
 
 object Scripted {
   // This is to workaround https://github.com/sbt/io/issues/110
-  sys.props.put("jna.nosys", "true")
+  if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
 
   val RepoOverrideTest = config("repoOverrideTest") extend Compile
 
@@ -40,7 +40,7 @@ object Scripted {
     import DefaultParsers.*
 
     val scriptedFiles: NameFilter = ("test": NameFilter) | "pending"
-    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get map {
+    val pairs = (scriptedBase * AllPassFilter * AllPassFilter * scriptedFiles).get() map {
       (f: File) =>
         val p = f.getParentFile
         (p.getParentFile.getName, p.getName)
@@ -104,7 +104,7 @@ object Scripted {
       launcherJar: File,
       logger: Logger
   ): Unit = {
-    logger.info(s"About to run tests: ${args.mkString("\n * ", "\n * ", "\n")}")
+    logger.info(s"Tests selected: ${args.mkString("\n * ", "\n * ", "\n")}")
     logger.info("")
 
     // Force Log4J to not use a thread context classloader otherwise it throws a CCE

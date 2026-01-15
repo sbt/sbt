@@ -12,6 +12,8 @@ import org.scalacheck.*
 import Prop.*
 import TaskGen.*
 
+import scala.annotation.tailrec
+
 object TaskRunnerCallTest extends Properties("TaskRunner Call") {
   property("calculates fibonacci") = forAll(MaxTasksGen, MaxWorkersGen) { (i: Int, workers: Int) =>
     (i > 0) ==> {
@@ -36,6 +38,7 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call") {
   }
   final def fibDirect(i: Int): Int = {
     require(i > 0)
+    @tailrec
     def build(index: Int, x1: Int, x2: Int): Int =
       if (index == i)
         x2

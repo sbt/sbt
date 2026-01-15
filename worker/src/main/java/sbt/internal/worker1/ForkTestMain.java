@@ -311,12 +311,13 @@ public class ForkTestMain {
       this.originalOut.flush();
     }
 
-    private ExecutorService executorService(final boolean parallel) {
+    private ExecutorService executorService(final boolean parallel, final Integer parallelism) {
       if (parallel) {
-        final int nbThreads = Runtime.getRuntime().availableProcessors();
+        final int nbThreads =
+            (parallelism != null && parallelism > 0)
+                ? parallelism
+                : Runtime.getRuntime().availableProcessors();
         logDebug("Create a test executor with a thread pool of " + nbThreads + " threads.");
-        // more options later...
-        // TODO we might want to configure the blocking queue with size #proc
         return Executors.newFixedThreadPool(nbThreads);
       } else {
         logDebug("Create a single-thread test executor");
@@ -326,7 +327,7 @@ public class ForkTestMain {
 
     private void runTests(TestInfo info, ClassLoader classLoader) throws Exception {
       Thread.currentThread().setContextClassLoader(classLoader);
-      final ExecutorService executor = executorService(info.parallel);
+      final ExecutorService executor = executorService(info.parallel, info.parallelism);
       final TaskDef[] tests = info.taskDefs.toArray(new TaskDef[] {});
       final int nFrameworks = info.testRunners.size();
       final Logger[] loggers = {remoteLogger(info.ansiCodesSupported)};

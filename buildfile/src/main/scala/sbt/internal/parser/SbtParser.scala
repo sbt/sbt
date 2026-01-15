@@ -217,7 +217,7 @@ end ParsedSbtFileExpressions
  *   val settings = parser.settings
  * }}}
  *
- * @param file  The file we're parsing (may be a dummy file)
+ * @param path  The path we're parsing (may be a dummy file)
  * @param lines The parsed "lines" of the file, where each string is a line.
  */
 private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])

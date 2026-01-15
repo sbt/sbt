@@ -1,10 +1,13 @@
-object Main extends App {
+object Main {
   class Foo
-  new Thread {
-    override def run(): Unit = {
-      Thread.sleep(500)
-      try new Foo
-      catch { case t: Throwable => sys.exit(1) }
-    }
-  }.start()
+
+  def main(args: Array[String]): Unit = {
+    new Thread {
+      override def run(): Unit = {
+        Thread.sleep(500)
+        try new Foo
+        catch { case t: Throwable => sys.exit(1) }
+      }
+    }.start()
+  }
 }

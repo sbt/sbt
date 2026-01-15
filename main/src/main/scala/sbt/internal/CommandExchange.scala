@@ -153,7 +153,8 @@ private[sbt] final class CommandExchange {
 
   def run(s: State): State = run(s, s.get(autoStartServer).getOrElse(true))
   def run(s: State, autoStart: Boolean): State = {
-    if (autoStartServerSysProp && autoStart) runServer(s)
+    val startedByRemote = Terminal.startedByRemoteClient
+    if (autoStartServerSysProp && (autoStart || startedByRemote)) runServer(s)
     else s
   }
   private[sbt] def setState(s: State): Unit = lastState.set(s)

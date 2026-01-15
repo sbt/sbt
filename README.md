@@ -4,6 +4,7 @@
 
   [sbt/sbt-zero-seven]: https://github.com/sbt/sbt-zero-seven
   [CONTRIBUTING]: CONTRIBUTING.md
+  [contributing-docs]: contributing-docs/README.md
   [Setup]: https://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [FAQ]: https://www.scala-sbt.org/release/docs/Faq.html
   [sbt-dev]: https://groups.google.com/d/forum/sbt-dev
@@ -29,7 +30,7 @@ several GitHub repositories, including this one.
 
 - [sbt/io][sbt/io] hosts `sbt.io` module.
 - [sbt/zinc][sbt/zinc] hosts Zinc, an incremental compiler for Scala.
-- [sbt/sbt][sbt/sbt], this repository hosts modules that implements the build tool.
+- [sbt/sbt][sbt/sbt], this repository hosts modules that implement the build tool.
 
 ### Other links
 
@@ -40,9 +41,14 @@ several GitHub repositories, including this one.
 Issues and Pull Requests
 ------------------------
 
-Please read [CONTRIBUTING] carefully before opening a GitHub Issue.
+Please read [CONTRIBUTING] carefully before opening a GitHub Issue, and [Contributor's guide][contributing-docs] before opening a pull request.
 
-The short version: try [searching] or [asking] on StackOverflow.
+If you're looking for an idea for a contribution, issues labeled with
+[good first issue](https://github.com/sbt/sbt/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or
+[help wanted](https://github.com/sbt/sbt/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) might be good starting points.
+
+If you would like to ask questions about sbt, there's [sbt channel on Scala Discord](https://discord.com/invite/scala),
+but it would be good to gather questions on [Stackoverflow](https://stackoverflow.com/questions/tagged/sbt).
 
 license
 -------

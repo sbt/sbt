@@ -92,6 +92,7 @@ object LMCoursier {
       updateConfig: Option[UpdateConfiguration],
       sameVersions: Seq[Set[InclExclRule]],
       enableDependencyOverrides: Option[Boolean],
+      localArtifactsShouldBeCached: Boolean,
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -143,7 +144,7 @@ object LMCoursier {
       .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)
       .withSameVersions(sameVersions)
-    // .withEnableDependencyOverrides(enableDependencyOverrides)
+      .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
@@ -171,6 +172,7 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      csrLocalArtifactsShouldBeCached.value,
       streams.value.log
     )
   }
@@ -207,6 +209,7 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      csrLocalArtifactsShouldBeCached.value,
       streams.value.log
     )
   }
@@ -236,6 +239,7 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      csrLocalArtifactsShouldBeCached.value,
       streams.value.log
     )
   }

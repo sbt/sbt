@@ -35,19 +35,13 @@ object PublishBinPlugin extends AutoPlugin {
     publishLocalBinConfig := publishLocalBinConfig
       .dependsOn(
         // Copied from sbt.internal.
-        Def.taskDyn {
-          val doGen = useCoursier.value
-          if (doGen)
-            Def.task {
-              val currentProject = {
-                val proj = csrProject.value
-                val publications = csrPublications.value
-                proj.withPublications(publications)
-              }
-              IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
-            }
-          else
-            Def.task(())
+        Def.task {
+          val currentProject = {
+            val proj = csrProject.value
+            val publications = csrPublications.value
+            proj.withPublications(publications)
+          }
+          IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
         }
       )
       .value,

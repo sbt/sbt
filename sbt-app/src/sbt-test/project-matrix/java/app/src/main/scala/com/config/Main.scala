@@ -1,5 +1,7 @@
 package com.config
 
-object Main extends App {
+object Main {
+  def main(args: Array[String]): Unit = {
     println(s"Version: ${MyClass.configValue()}")
+  }
 }

@@ -86,6 +86,14 @@ jobs:
           repository: sbt/zinc
           ref: develop
           path: zinc
+      - name: Cleanup SBT server and named pipes (Windows only)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Kill sbt processes if any are running
+          Get-Process sbt -ErrorAction SilentlyContinue | Stop-Process -Force
+          # Remove all SBT named pipes, suppress errors if none exist
+          Remove-Item "\\.\pipe\sbt-*" -ErrorAction SilentlyContinue
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:

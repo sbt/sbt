@@ -179,7 +179,7 @@ private[librarymanagement] abstract class SemComparatorFunctions {
           parse(
             numbers
               .collect { case Some(v) =>
-                v.toString
+                v
               }
               .mkString(".")
           )

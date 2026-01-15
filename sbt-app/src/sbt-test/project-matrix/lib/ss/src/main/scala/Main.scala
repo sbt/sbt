@@ -1,3 +1,5 @@
-object Main extends App {
-  println(com.example.Lib.getMessage)
+object Main {
+  def main(args: Array[String]): Unit = {
+    println(com.example.Lib.getMessage)
+  }
 }

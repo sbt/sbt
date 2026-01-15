@@ -1,5 +1,7 @@
 package a
 
-object Main extends App {
-  val core = Core
+object Main {
+  def main(args: Array[String]): Unit = {
+    val core = Core
+  }
 }

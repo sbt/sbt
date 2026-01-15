@@ -104,8 +104,6 @@ object ConcurrentRestrictions {
 
   /**
    * Implements concurrency restrictions on tasks based on Tags.
-   * @param get
-   *   extracts tags from a task
    * @param validF
    *   defines whether a set of tasks are allowed to execute concurrently based on their merged tags
    */
@@ -144,10 +142,6 @@ object ConcurrentRestrictions {
    * restrictions on concurrent task execution.
    * @return
    *   a pair, with _1 being the CompletionService and _2 a function to shutdown the service.
-   * @tparam A
-   *   the task type
-   * @tparam R
-   *   the type of data that will be computed by the CompletionService.
    */
   def completionService(
       tags: ConcurrentRestrictions,

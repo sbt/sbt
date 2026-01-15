@@ -31,9 +31,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.openhft.hashing.LongHashFunction;
-import org.scalasbt.ipcsocket.UnixDomainServerSocket;
 import org.scalasbt.ipcsocket.Win32NamedPipeServerSocket;
-import org.scalasbt.ipcsocket.Win32NamedPipeSocket;
 import org.scalasbt.ipcsocket.Win32SecurityLevel;
 import sbt.internal.util.Terminal;
 import xsbti.AppConfiguration;
@@ -351,7 +349,7 @@ public class BootServerSocket implements AutoCloseable {
       socket =
           isWindows
               ? new Win32NamedPipeServerSocket(name, jni, Win32SecurityLevel.OWNER_DACL)
-              : new UnixDomainServerSocket(name, jni);
+              : UnixDomainSocketFactory.newServerSocket(name, jni);
       return socket;
     } catch (final IOException e) {
       throw new ServerAlreadyBootingException(e);

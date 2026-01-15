@@ -32,6 +32,7 @@ import sbt.internal.util.{
 }
 import sbt.io.IO
 import sbt.io.syntax.*
+import sbt.internal.UnixDomainSocketFactory
 import sbt.protocol.*
 import sbt.util.Level
 import sjsonnew.BasicJsonProtocol.*
@@ -390,10 +391,17 @@ class NetworkClient(
           if (Util.isEmacs && !Util.isWindows) List("nohup")
           else Nil
 
+        // https://github.com/sbt/sbt/issues/8442
+        // On Linux, if stdout/stderr are inherited and the buffer fills up (~64KB),
+        // the server process will block on writes. Discard output since the server
+        // communicates via the boot socket, not stdout/stderr.
+        val nullFile = new File(if (Util.isWindows) "NUL" else "/dev/null")
         val processBuilder =
           new ProcessBuilder((nohup ++ cmd)*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
+            .redirectOutput(nullFile)
+            .redirectError(nullFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
         Try(processBuilder.start()) match {
           case Success(process) =>
@@ -734,7 +742,13 @@ class NetworkClient(
       case _          => Failure(new MessageOnlyException(s"runInfo is not specified in $params"))
     }
 
+  private def setWindowTitle(title: String): Unit =
+    if System.console() != null && System.getenv("TERM") != null then
+      Console.print(s"\u001b]0;$title\u0007")
+      Console.flush()
+
   private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
+    runInfo.windowTitle.foreach(setWindowTitle)
     def jvmRun(info: JvmRunInfo): Try[Unit] = {
       val option = ForkOptions(
         javaHome = info.javaHome.map(new File(_)),
@@ -1127,18 +1141,25 @@ object NetworkClient {
       override def success(msg: String): Unit = appender.success(msg)
     }
   }
-  private def simpleConsoleInterface(doPrintln: String => Unit): ConsoleInterface =
+  private def simpleConsoleInterface(
+      doPrintln: String => Unit,
+      useColor: Boolean = Terminal.isColorEnabled
+  ): ConsoleInterface =
     new ConsoleInterface {
       import scala.Console.{ GREEN, RED, RESET, YELLOW }
       override def appendLog(level: Level.Value, message: => String): Unit = synchronized {
-        val prefix = level match {
-          case Level.Error => s"[$RED$level$RESET]"
-          case Level.Warn  => s"[$YELLOW$level$RESET]"
-          case _           => s"[$RESET$level$RESET]"
-        }
+        val prefix =
+          if (useColor) level match {
+            case Level.Error => s"[$RED$level$RESET]"
+            case Level.Warn  => s"[$YELLOW$level$RESET]"
+            case _           => s"[$RESET$level$RESET]"
+          }
+          else s"[$level]"
         message.linesIterator.foreach(line => doPrintln(s"$prefix $line"))
       }
-      override def success(msg: String): Unit = doPrintln(s"[${GREEN}success$RESET] $msg")
+      override def success(msg: String): Unit =
+        if (useColor) doPrintln(s"[${GREEN}success$RESET] $msg")
+        else doPrintln(s"[success] $msg")
     }
   private[client] class Arguments(
       val baseDirectory: File,
@@ -1318,7 +1339,7 @@ object NetworkClient {
       if (terminal.getLastLine.isDefined) terminal.printStream.println()
       terminal.printStream.println(line)
     }
-    val interface = NetworkClient.simpleConsoleInterface(doPrint)
+    val interface = NetworkClient.simpleConsoleInterface(doPrint, terminal.isColorEnabled)
     val printStream = terminal.printStream
     new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
   }
@@ -1329,12 +1350,13 @@ object NetworkClient {
       errorStream: PrintStream,
       useJNI: Boolean,
   ): NetworkClient = {
-    val interface = NetworkClient.simpleConsoleInterface(printStream.println)
+    val interface =
+      NetworkClient.simpleConsoleInterface(printStream.println, Terminal.isColorEnabled)
     new NetworkClient(arguments, interface, inputStream, errorStream, printStream, useJNI)
   }
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
-    val useJNI = jnaArg.isEmpty
+    val useJNI = jnaArg.isEmpty && (Util.isWindows || !UnixDomainSocketFactory.isJdk17Available)
     val base = new File("").getCanonicalFile
     if (restOfArgs.exists(_.startsWith(NetworkClient.completions)))
       System.exit(complete(base, restOfArgs, useJNI, System.in, System.out))

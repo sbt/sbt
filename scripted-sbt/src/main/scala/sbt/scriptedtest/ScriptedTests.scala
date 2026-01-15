@@ -589,6 +589,10 @@ class ScriptedRunner {
     val groupCount = if (parallelExecution) instances else Int.MaxValue
     val scriptedRunners =
       runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
+    // Fail if user provided test patterns but none matched any existing test directories
+    if (tests.nonEmpty && scriptedRunners.isEmpty) {
+      sys.error(s"No tests found matching: ${tests.mkString(", ")}")
+    }
     if (parallelExecution && instances > 1) {
       import scala.collection.parallel.CollectionConverters.*
       val parallelRunners = scriptedRunners.toArray.par
@@ -672,7 +676,7 @@ class ScriptedRunner {
 
     IO.load(buildProperties, buildPropertiesFile)
 
-    Option(buildProperties.getProperty("sbt.version")) match {
+    Option(buildProperties.getProperty("sbt.version")).map(_.trim) match {
       case Some(version) => binarySbtVersion(version) == binarySbtVersion(sbtVersion)
       case None          => true
     }

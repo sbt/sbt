@@ -37,6 +37,7 @@ type RunInfo {
   jvm: Boolean!
   jvmRunInfo: sbt.internal.worker.JvmRunInfo,
   nativeRunInfo: sbt.internal.worker.NativeRunInfo @since("0.1.0"),
+  windowTitle: String,
 }
 
 ## Client-side job support.

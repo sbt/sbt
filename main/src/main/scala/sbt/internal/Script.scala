@@ -22,6 +22,7 @@ import sbt.ProjectExtra.{ extract, setProject }
 import sbt.SlashSyntax0.*
 
 import sbt.io.{ Hash, IO }
+import scala.annotation.tailrec
 
 object Script {
   final val Name = "script"
@@ -79,6 +80,7 @@ object Script {
   final case class Block(offset: Int, lines: Seq[String])
   def blocks(file: File): Seq[Block] = {
     val lines = IO.readLines(file).toIndexedSeq
+    @tailrec
     def blocks(b: Block, acc: List[Block]): List[Block] =
       if (b.lines.isEmpty) acc.reverse
       else {

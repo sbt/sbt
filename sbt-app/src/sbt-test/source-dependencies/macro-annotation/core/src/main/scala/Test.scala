@@ -1,6 +1,8 @@
 @hello
 case class Test(x: Int)
 
-object Main extends App {
-  Test(3).hello
+object Main {
+  def main(args: Array[String]): Unit = {
+    Test(3).hello
+  }
 }

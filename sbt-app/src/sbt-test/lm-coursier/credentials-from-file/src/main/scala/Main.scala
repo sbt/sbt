@@ -1,1 +1,3 @@
-object Main extends App
+object Main {
+  def main(args: Array[String]): Unit = ()
+}

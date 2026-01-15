@@ -201,6 +201,7 @@ object Defaults extends BuildCommon {
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
       testForkedParallel :== true,
+      testForkedParallelism :== None,
       javaOptions :== Nil,
       sbtPlugin :== false,
       isMetaBuild :== false,
@@ -286,6 +287,7 @@ object Defaults extends BuildCommon {
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
       csrMavenDependencyOverride :== false,
+      csrLocalArtifactsShouldBeCached :== false,
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,
       stagingDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-staging",
@@ -335,7 +337,6 @@ object Defaults extends BuildCommon {
         new AppenderSupplier:
           def apply(s: ScopedKey[?]): Seq[Appender] = Nil
       },
-      useLog4J :== false,
       watchSources :== Nil, // Although this is deprecated, it can't be removed or it breaks += for legacy builds.
       skip :== false,
       taskTemporaryDirectory := {
@@ -773,6 +774,27 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+      consoleProject := ConsoleProject.consoleProjectTask.value,
+      consoleProject / scalaInstance := {
+        val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
+        val scalaProvider = appConfiguration.value.provider.scalaProvider
+        val allJars = scalaProvider.jars
+        val libraryJars = allJars.filter { jar =>
+          jar.getName == "scala-library.jar" || jar.getName.startsWith("scala3-library_3")
+        }
+        val compilerJar = allJars.filter { jar =>
+          jar.getName == "scala-compiler.jar" || jar.getName.startsWith("scala3-compiler_3")
+        }
+        ScalaInstance(scalaProvider.version, scalaProvider.launcher)
+        Compiler.makeScalaInstance(
+          scalaProvider.version,
+          libraryJars,
+          allJars.toSeq,
+          Seq.empty,
+          state.value,
+          topLoader,
+        )
+      },
       derive(crossScalaVersions := Seq(scalaVersion.value)),
       derive(compilersSetting),
       derive(scalaBinaryVersion := binaryScalaVersion(scalaVersion.value)),
@@ -993,15 +1015,17 @@ object Defaults extends BuildCommon {
       },
       scalacOptions := {
         val old = scalacOptions.value
-        if (exportPipelining.value)
-          Def.uncached(
-            Vector(
-              "-Ypickle-java",
-              "-Ypickle-write",
-              earlyOutput.value.toString
-            ) ++ old
+        if (exportPipelining.value) {
+          val sv = scalaVersion.value
+          val shouldApplyFlags = !ScalaArtifacts.isScala3(sv) || VersionNumber(sv).matchesSemVer(
+            SemanticSelector(">=3.5.0")
           )
-        else Def.uncached(old)
+          if (shouldApplyFlags)
+            Def.uncached(
+              Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.toString) ++ old
+            )
+          else Def.uncached(old)
+        } else Def.uncached(old)
       },
       scalacOptions := {
         val old = scalacOptions.value
@@ -1066,7 +1090,6 @@ object Defaults extends BuildCommon {
     cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     // clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
     clean := Clean.scopedTask.value,
-    consoleProject := consoleProjectTask.value,
     transitiveDynamicInputs := Def.uncached(WatchTransitiveDependencies.task.value),
   )
 
@@ -1123,8 +1146,9 @@ object Defaults extends BuildCommon {
       .value,
     testQuick / testFilter := Def.uncached(IncrementalTest.filterTask.value),
     extraTestDigests ++= IncrementalTest.extraTestDigestsTask.value,
-    executeTests := Def.uncached({
+    executeTests := Def.uncached(Def.taskDyn {
       import sbt.TupleSyntax.*
+      val fpm = testForkedParallelism.value
       (
         test / streams,
         loadedTestFrameworks,
@@ -1132,25 +1156,13 @@ object Defaults extends BuildCommon {
         (test / testGrouping),
         (test / testExecution),
         (test / fullClasspath),
-        testForkedParallel,
+        testForkedParallel.toTaskable,
         (test / javaOptions),
         (classLoaderLayeringStrategy),
         thisProject,
         fileConverter,
       ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
-        allTestGroupsTask(
-          s,
-          lt,
-          tl,
-          gp,
-          ex,
-          cp,
-          fp,
-          jo,
-          clls,
-          projectId = s"${thisProj.id} / ",
-          c,
-        )
+        allTestGroupsTask(s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, s"${thisProj.id} / ", c)
       }
     }.value),
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
@@ -1318,6 +1330,7 @@ object Defaults extends BuildCommon {
         newConfig,
         fullClasspath.value,
         testForkedParallel.value,
+        testForkedParallelism.value,
         javaOptions.value,
         classLoaderLayeringStrategy.value,
         projectId = s"${thisProject.value.id} / ",
@@ -1367,6 +1380,7 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution = false,
+      forkedParallelism = None,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
@@ -1392,10 +1406,41 @@ object Defaults extends BuildCommon {
       config,
       cp,
       forkedParallelExecution,
+      forkedParallelism = None,
       javaOptions = Nil,
       strategy = ClassLoaderLayeringStrategy.ScalaLibrary,
       projectId = "",
       converter = converter,
+    )
+  }
+
+  // Binary compatibility overload for sbt 2.0.0-RC7
+  private[sbt] def allTestGroupsTask(
+      s: TaskStreams,
+      frameworks: Map[TestFramework, Framework],
+      loader: ClassLoader,
+      groups: Seq[Tests.Group],
+      config: Tests.Execution,
+      cp: Classpath,
+      forkedParallelExecution: Boolean,
+      javaOptions: Seq[String],
+      strategy: ClassLoaderLayeringStrategy,
+      projectId: String,
+      converter: FileConverter,
+  ): Task[Tests.Output] = {
+    allTestGroupsTask(
+      s,
+      frameworks,
+      loader,
+      groups,
+      config,
+      cp,
+      forkedParallelExecution,
+      forkedParallelism = None,
+      javaOptions,
+      strategy,
+      projectId,
+      converter,
     )
   }
 
@@ -1407,6 +1452,7 @@ object Defaults extends BuildCommon {
       config: Tests.Execution,
       cp: Classpath,
       forkedParallelExecution: Boolean,
+      forkedParallelism: Option[Int],
       javaOptions: Seq[String],
       strategy: ClassLoaderLayeringStrategy,
       projectId: String,
@@ -1435,7 +1481,9 @@ object Defaults extends BuildCommon {
         case Tests.SubProcess(opts) =>
           s.log.debug(s"javaOptions: ${opts.runJVMOptions}")
           val forkedConfig = config.copy(parallel = config.parallel && forkedParallelExecution)
-          s.log.debug(s"Forking tests - parallelism = ${forkedConfig.parallel}")
+          s.log.debug(
+            s"Forking tests - parallelism = ${forkedConfig.parallel}, threads = ${forkedParallelism.getOrElse("auto")}"
+          )
           ForkTests(
             runners,
             processedOptions(group),
@@ -1444,6 +1492,7 @@ object Defaults extends BuildCommon {
             converter,
             opts,
             s.log,
+            forkedParallelism,
             (Tags.ForkedTestGroup, 1) +: group.tags*
           )
         case Tests.InProcess =>
@@ -1943,19 +1992,14 @@ object Defaults extends BuildCommon {
           else Map.empty[HashedVirtualFileRef, URI]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        scalacOptions := {
-          val compileOptions = scalacOptions.value
+        scalacOptions ++= {
           val sv = scalaVersion.value
           val config = configuration.value
           val projectName = name.value
           if (ScalaArtifacts.isScala3(sv)) {
             val project = if (config == Compile) projectName else s"$projectName-$config"
-            if (scalaVersion.value.startsWith("3.0.0")) {
-              Seq("-project", project)
-            } else {
-              compileOptions ++ Seq("-project", project)
-            }
-          } else compileOptions
+            Seq("-project", project)
+          } else Seq.empty
         },
         (TaskZero / key) := Def.uncached {
           val s = streams.value
@@ -2026,12 +2070,7 @@ object Defaults extends BuildCommon {
       analysis.infos.allInfos.values.map(_.getMainClasses).flatten.toSeq.sorted
   }
 
-  def consoleProjectTask =
-    Def.task {
-      ConsoleProject(state.value, (consoleProject / initialCommands).value)(using streams.value.log)
-      println()
-    }
-
+  def consoleProjectTask = ConsoleProject.consoleProjectTask
   def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[?]): Initialize[Task[Unit]] =
@@ -3508,7 +3547,13 @@ object Classpaths {
           classifiersModule := Def.uncached(classifiersModuleTask.value),
           // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
           // to fix https://github.com/sbt/sbt/issues/2686
-          scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+          // For sbt plugins, use the Scala version corresponding to the sbt binary version being targeted.
+          // to fix https://github.com/sbt/sbt/issues/8026
+          scalaVersion := {
+            val isPlugin = sbtPlugin.value
+            if (isPlugin) (pluginCrossBuild / scalaVersion).value
+            else appConfiguration.value.provider.scalaProvider.version
+          },
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
           scalaEarlyVersion := CrossVersion.earlyScalaVersion(scalaVersion.value),
           scalaOrganization := ScalaArtifacts.Organization,
@@ -3879,7 +3924,7 @@ object Classpaths {
           substituteScalaFiles(so, _)(providedScalaJars),
           skip = sk,
           force = shouldForce,
-          depsUpdated = tu.exists(!_.stats.cached),
+          transitiveUpdates = tu,
           uwConfig = uwConfig,
           evictionLevel = eel,
           versionSchemeOverrides = lds,

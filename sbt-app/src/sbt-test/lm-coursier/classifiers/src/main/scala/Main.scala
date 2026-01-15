@@ -3,7 +3,7 @@ import java.nio.file.Files
 
 import scala.util.Try
 
-object Main extends App {
+object Main {
 
   def classFound(clsName: String) = Try(
     Thread.currentThread()
@@ -12,7 +12,10 @@ object Main extends App {
   ).toOption.nonEmpty
 
   val name = "org.jclouds.openstack.nova.functions.ParseServerFromJsonResponseTest"
-  val classifierTest = classFound(name)
 
-  assert(classifierTest, s"Couldn't find $name")
+  def main(args: Array[String]): Unit = {
+    val classifierTest = classFound(name)
+
+    assert(classifierTest, s"Couldn't find $name")
+  }
 }

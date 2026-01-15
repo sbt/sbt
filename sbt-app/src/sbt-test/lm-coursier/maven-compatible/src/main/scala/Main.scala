@@ -1,9 +1,11 @@
 import java.io.File
 import java.nio.file.Files
 
-object Main extends App {
+object Main {
 
   // TODO Use some jvm-repr stuff
 
-  Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+  def main(args: Array[String]): Unit = {
+    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+  }
 }

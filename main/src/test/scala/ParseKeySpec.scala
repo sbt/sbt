@@ -74,7 +74,11 @@ object ParseKeySpec extends Properties {
 
   def noProject(skm: StructureKeyMask) = {
     import skm.{ structure, key }
-    val mask = skm.mask.copy(project = false)
+    // When task is shown and task name matches a project name, we need to show config
+    // to disambiguate (otherwise 'taskName / keyName' could be parsed as 'projectName / keyName')
+    val taskMatchesProject = hasAmbiguousTaskLabel(key, structure)
+    val needShowConfig = taskMatchesProject && skm.mask.task && !skm.mask.config
+    val mask = skm.mask.copy(project = false, config = skm.mask.config || needShowConfig)
     // skip when config axis is set to Zero
     val hasZeroConfig = key.scope.config ==== Zero
     val showZeroConfig = hasAmbiguousLowercaseAxes(key, structure)
@@ -187,12 +191,27 @@ object ParseKeySpec extends Properties {
   // then a scoped key like `foo/<conf>/foo/name` would render as `foo/name`
   // which would be interpreted as `foo/Zero/Zero/name`
   // so we mitigate this by explicitly displaying the configuration axis set to Zero
+  //
+  // similarly, if a task and a project share the same name (e.g. "zv")
+  // then a scoped key like `<proj>/<conf>/zv/name` would render as `zv/name`
+  // which would be interpreted as `zv/Zero/Zero/name` (project zv)
+  // so we also check if the task label matches a project name
   def hasAmbiguousLowercaseAxes(key: ScopedKey[?], structure: Structure): Boolean = {
     val label = key.key.label
-    val allProjects = for {
+    val allProjects = allProjectNames(structure)
+    allProjects(label) || hasAmbiguousTaskLabel(key, structure)
+  }
+
+  // checks if the task label matches a project name
+  def hasAmbiguousTaskLabel(key: ScopedKey[?], structure: Structure): Boolean = {
+    val taskLabel = key.scope.task.toOption.map(_.label)
+    val allProjects = allProjectNames(structure)
+    taskLabel.exists(allProjects)
+  }
+
+  private def allProjectNames(structure: Structure): Set[String] =
+    for {
       uri <- structure.keyIndex.buildURIs
       project <- structure.keyIndex.projects(uri)
     } yield project
-    allProjects(label)
-  }
 }

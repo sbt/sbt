@@ -15,8 +15,9 @@ given UpdateStatsFormat: JsonFormat[sbt.librarymanagement.UpdateStats] = new Jso
       val downloadTime = unbuilder.readField[Long]("downloadTime")
       val downloadSize = unbuilder.readField[Long]("downloadSize")
       val cached = unbuilder.readField[Boolean]("cached")
+      val stamp = unbuilder.readField[Option[String]]("stamp")
       unbuilder.endObject()
-      sbt.librarymanagement.UpdateStats(resolveTime, downloadTime, downloadSize, cached)
+      sbt.librarymanagement.UpdateStats(resolveTime, downloadTime, downloadSize, cached, stamp)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -27,6 +28,7 @@ given UpdateStatsFormat: JsonFormat[sbt.librarymanagement.UpdateStats] = new Jso
     builder.addField("downloadTime", obj.downloadTime)
     builder.addField("downloadSize", obj.downloadSize)
     builder.addField("cached", obj.cached)
+    builder.addField("stamp", obj.stamp)
     builder.endObject()
   }
 }

@@ -69,6 +69,6 @@ object IvyCredentials {
   private def read(from: File): Map[String, String] = {
     val properties = new java.util.Properties
     IO.load(properties, from)
-    properties.asScala.map { (k, v) => (k.toString, v.toString.trim) }.toMap
+    properties.asScala.map { (k, v) => (k, v.trim) }.toMap
   }
 }

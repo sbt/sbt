@@ -29,7 +29,7 @@ import sbt.internal.server.{ BuildServerProtocol, NetworkChannel }
 import sbt.internal.util.Terminal.hasConsole
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.{ Terminal as ITerminal, * }
+import sbt.internal.util.{ RunningProcesses, Terminal as ITerminal, * }
 import sbt.io.*
 import sbt.io.syntax.*
 import sbt.util.{ Level, Logger, Show }
@@ -61,6 +61,7 @@ private[sbt] object xMain:
 
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = boundary {
     try {
+      if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
       import BasicCommandStrings.{ JavaClient, DashDashClient, DashDashServer, runEarly }
       import BasicCommands.early
       import BuiltinCommands.defaults
@@ -78,11 +79,13 @@ private[sbt] object xMain:
       val isNew: String => Boolean = cmd => (cmd == "new") || (cmd == "init")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely
-      lazy val bootServerSocket = if (isServer) getSocketOrExit(configuration) match {
-        case (_, Some(e)) => boundary.break(e)
-        case (s, _)       => s
-      }
-      else None
+      // Only create boot server socket if server mode is enabled and server autostart is enabled
+      lazy val bootServerSocket =
+        if (isServer && SysProp.serverAutoStart) getSocketOrExit(configuration) match {
+          case (_, Some(e)) => boundary.break(e)
+          case (s, _)       => s
+        }
+        else None
       lazy val detachStdio = userCommands.exists(_ == BasicCommandStrings.DashDashDetachStdio)
       def withStreams[A](f: => A): A =
         try {
@@ -218,6 +221,7 @@ object StandardMain {
   })
 
   private val closeRunnable = () => {
+    RunningProcesses.killAll()
     exchange.shutdown()
     pool.foreach(_.shutdownNow())
   }
@@ -263,7 +267,7 @@ object StandardMain {
       preCommands: Seq[String]
   ): State = {
     // This is to workaround https://github.com/sbt/io/issues/110
-    sys.props.put("jna.nosys", "true")
+    if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
 
     import BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, isEarlyCommand }
     val userCommands =
@@ -867,25 +871,30 @@ object BuiltinCommands {
 
   @tailrec
   private def doLoadFailed(s: State, loadArg: String): State = {
-    s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
-    val result: Int =
-      try
-        ITerminal.get.withRawInput(System.in.read) match {
-          case -1 => 'q'.toInt
-          case b  => b
-        }
-      catch { case _: ClosedChannelException => 'q' }
-    def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
-    def ignoreMsg: String =
-      if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
+    // In batch mode, exit with failure to avoid infinite retry loops on persistent errors
+    if (ITerminal.console.prompt == Prompt.Batch) {
+      s.exit(ok = false)
+    } else {
+      s.log.warn("Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? (default: r)")
+      val result: Int =
+        try
+          ITerminal.get.withRawInput(System.in.read) match {
+            case -1 => 'q'.toInt
+            case b  => b
+          }
+        catch { case _: ClosedChannelException => 'q' }
+      def retry: State = loadProjectCommand(LoadProject, loadArg) :: s.clearGlobalLog
+      def ignoreMsg: String =
+        if (Project.isProjectLoaded(s)) "using previously loaded project" else "no project loaded"
 
-    result.toChar match {
-      case '\n' | '\r' => retry
-      case 'r' | 'R'   => retry
-      case 'q' | 'Q'   => s.exit(ok = false)
-      case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
-      case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
-      case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
+      result.toChar match {
+        case '\n' | '\r' => retry
+        case 'r' | 'R'   => retry
+        case 'q' | 'Q'   => s.exit(ok = false)
+        case 'i' | 'I'   => s.log.warn(s"Ignoring load failure: $ignoreMsg."); s
+        case 'l' | 'L'   => LastCommand :: loadProjectCommand(LoadFailed, loadArg) :: s
+        case c           => println(s"Invalid response: '$c'"); doLoadFailed(s, loadArg)
+      }
     }
   }
 
@@ -925,7 +934,7 @@ object BuiltinCommands {
     val sbtVersionBuildOpt = if (buildProps.exists) {
       val buildProperties = new Properties()
       IO.load(buildProperties, buildProps)
-      Option(buildProperties.getProperty(sbtVersionProperty))
+      Option(buildProperties.getProperty(sbtVersionProperty)).map(_.trim)
     } else None
 
     val sbtVersionOpt = sbtVersionSystemOpt.orElse(sbtVersionBuildOpt)
@@ -972,10 +981,9 @@ object BuiltinCommands {
       s2,
       st => setupGlobalFileTreeRepository(Clean.addCacheStoreFactoryFactory(st))
     )
-    val s4 = s3.put(Keys.useLog4J.key, Project.extract(s3).get(Keys.useLog4J))
     addSuperShellParams(
       CheckBuildSources.init(
-        LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s4))
+        LintUnused.lintScalaVersion(LintUnused.lintUnusedFunc(s3))
       )
     )
   }

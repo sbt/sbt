@@ -27,7 +27,8 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
-import org.scalasbt.ipcsocket.*
+import sbt.internal.UnixDomainSocketFactory
+import org.scalasbt.ipcsocket.{ UnixDomainSocketLibraryProvider, Win32NamedPipeServerSocket }
 import sbt.internal.bsp.BuildServerConnection
 import xsbti.AppConfiguration
 
@@ -82,9 +83,9 @@ private[sbt] object Server {
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
                       s"Current path: ${path}"
                   )
-                tryClient(new UnixDomainSocket(path, connection.useJni))
+                tryClient(UnixDomainSocketFactory.newSocket(path, connection.useJni))
                 prepareSocketfile()
-                addServerError(new UnixDomainServerSocket(path, connection.useJni))
+                addServerError(UnixDomainSocketFactory.newServerSocket(path, connection.useJni))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))

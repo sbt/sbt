@@ -217,7 +217,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     try
       val acFile = acBase.toFile / request.actionDigest.toString.replace("/", "-")
       val refs = putBlobsIfNeeded(request.outputFiles).toVector
-      val v = ActionResult(refs, storeName)
+      val v = ActionResult(refs, Some(storeName), request.exitCode)
       val json = Converter.toJsonUnsafe(v)
       IO.write(acFile, CompactPrinter(json))
       Right(v)
@@ -293,15 +293,21 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
       IO.createDirectory(outPath.getParent().toFile())
       val result = Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
-        if symlinkSupported.get() then
+        if symlinkSupported.get() && Files.exists(casFile) then
           try Files.createSymbolicLink(outPath, casFile)
           catch
             case e: FileSystemException =>
-              if Util.isWindows then
-                scala.Console.err.println(
-                  "[info] failed to a create symbolic link. consider enabling Developer Mode"
-                )
-              symlinkSupported.set(false)
+              val msg = Option(e.getMessage).getOrElse("")
+              val isSymlinkNotSupported =
+                msg.contains("privilege") ||
+                  msg.contains("Operation not permitted") ||
+                  msg.contains("A required privilege is not held")
+              if isSymlinkNotSupported then
+                if Util.isWindows then
+                  scala.Console.err.println(
+                    "[info] failed to a create symbolic link. consider enabling Developer Mode"
+                  )
+                symlinkSupported.set(false)
               copyFile(outPath)
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
@@ -312,7 +318,9 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
         writeFileAndNotify(p)
       case p =>
         try
-          if Digest.sameDigest(p, d) then p
+          // `!symlinkSupported` prevents unnecessary deletion of files and then copying them again
+          // in #writeFileAndNotify on machines that don't support symlinks.
+          if Digest.sameDigest(p, d) && (!symlinkSupported.get() || Files.isSymbolicLink(p)) then p
           else
             // println(s"- syncFile: $p has different digest")
             IO.delete(p.toFile())

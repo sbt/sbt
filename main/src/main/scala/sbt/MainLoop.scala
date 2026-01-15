@@ -99,7 +99,7 @@ private[sbt] object MainLoop:
     val sbtVersionOpt = if (buildProps.exists) {
       val buildProperties = new Properties()
       IO.load(buildProperties, buildProps)
-      Option(buildProperties.getProperty("sbt.version"))
+      Option(buildProperties.getProperty("sbt.version")).map(_.trim)
     } else None
     val sbtVersion = sbtVersionOpt.getOrElse(appId.version)
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion

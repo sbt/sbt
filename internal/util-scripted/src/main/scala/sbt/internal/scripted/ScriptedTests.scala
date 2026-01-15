@@ -33,6 +33,9 @@ object ScriptedRunnerImpl {
       case ScriptedTest(group, name) =>
         runner.scriptedTest(group, name, logger, context)
     }
+    if (tests.nonEmpty && allTests.isEmpty) {
+      sys.error(s"No tests found matching: ${tests.mkString(", ")}")
+    }
     runAll(allTests)
   }
   def runAll(tests: Seq[() => Option[String]]): Unit = {

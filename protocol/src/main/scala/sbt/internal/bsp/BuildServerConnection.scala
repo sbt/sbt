@@ -33,11 +33,8 @@ object BuildServerConnection {
       .orElse(sbtScriptInPath)
       .map(script => s"-Dsbt.script=$script")
 
-    // IntelliJ can start sbt even if the sbt script is not accessible from $PATH.
-    // To do so it uses its own bundled sbt-launch.jar.
-    // In that case, we must pass the path of the sbt-launch.jar to the BSP connection
-    // so that the server can be started.
-    // A known problem in that situation is that the .sbtopts and .jvmopts are not loaded.
+    val sbtOptsArgs = parseSbtOpts(sys.env.get("SBT_OPTS"))
+
     val sbtLaunchJar = classPath
       .split(File.pathSeparator)
       .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
@@ -49,9 +46,12 @@ object BuildServerConnection {
         s"$javaHome/bin/java",
         "-Xms100m",
         "-Xmx100m",
-        "-classpath",
-        classPath,
       ) ++
+        sbtOptsArgs ++
+        Vector(
+          "-classpath",
+          classPath,
+        ) ++
         sbtScript ++
         Vector("xsbt.boot.Boot", "-bsp") ++
         (if (sbtScript.isEmpty) sbtLaunchJar else None)
@@ -62,8 +62,6 @@ object BuildServerConnection {
   }
 
   private def sbtScriptInPath: Option[String] = {
-    // For those who use an old sbt script, the -Dsbt.script is not set
-    // As a fallback we try to find the sbt script in $PATH
     val fileName = if (Properties.isWin) "sbt.bat" else "sbt"
     val envPath = sys.env.collectFirst {
       case (k, v) if k.toUpperCase() == "PATH" => v
@@ -76,4 +74,14 @@ object BuildServerConnection {
       .find(file => Files.exists(file) && Files.isExecutable(file))
       .map(_.toString.replace(" ", "%20"))
   }
+
+  private[sbt] def parseSbtOpts(sbtOpts: Option[String]): Vector[String] =
+    sbtOpts match
+      case Some(opts) if opts.nonEmpty =>
+        opts
+          .split("\\s+")
+          .filter(arg => arg.startsWith("-D") || arg.startsWith("-X") || arg.startsWith("-J"))
+          .map(arg => if (arg.startsWith("-J")) arg.stripPrefix("-J") else arg)
+          .toVector
+      case _ => Vector.empty
 }

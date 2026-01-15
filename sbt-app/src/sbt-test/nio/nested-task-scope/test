@@ -1,0 +1,3 @@
+# Test that inputFileChanges works with nested task scopes (fixes #7489)
+
+> checkChanges

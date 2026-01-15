@@ -62,8 +62,10 @@ class GCMonitor(logger: Logger) extends GCMonitorBase with AutoCloseable {
 
   override protected def emitWarning(total: Long, over: Option[Long]): Unit = {
     val totalSeconds = total / 1000.0
-    val amountMsg = over.fold(s"$totalSeconds seconds") { d =>
-      "In the last " + (d / 1000.0).ceil.toInt + f" seconds, $totalSeconds (${total.toDouble / d * 100}%.1f%%)"
+    val amountMsg = over.fold(f"$totalSeconds%.3f CPU seconds") { d =>
+      val dSeconds = (d / 1000.0).ceil.toInt
+      val percentage = total.toDouble / d * 100
+      f"In the last $dSeconds seconds, $totalSeconds%.3f CPU seconds ($percentage%.1f%%) of GC pause"
     }
     val msg = s"$amountMsg were spent in GC. " +
       s"[Heap: ${gbString(runtime.freeMemory())} free " +

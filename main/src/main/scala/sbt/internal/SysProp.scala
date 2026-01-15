@@ -100,6 +100,7 @@ object SysProp {
   def legacyTestReport: Boolean = getOrFalse("sbt.testing.legacyreport")
   def semanticdb: Boolean = getOrFalse("sbt.semanticdb")
   def forceServerStart: Boolean = getOrFalse("sbt.server.forcestart")
+  def serverAutoStart: Boolean = getOrTrue("sbt.server.autostart")
   def remoteCache: Option[URI] = sys.props
     .get("sbt.remote_cache")
     .map(URI(_))
@@ -152,7 +153,8 @@ object SysProp {
 
   def banner: Boolean = getOrTrue("sbt.banner")
 
-  def useLog4J: Boolean = getOrFalse("sbt.log.uselog4j")
+  @deprecated("will be removed", "2.0.0")
+  def useLog4J: Boolean = false
   def turbo: Boolean = getOrFalse("sbt.turbo")
   def pipelining: Boolean = getOrFalse("sbt.pipelining")
 

@@ -10,6 +10,7 @@ package sbt
 package std
 
 import java.io.File
+import scala.annotation.tailrec
 import scala.quoted.*
 import scala.reflect.ClassTag
 
@@ -68,15 +69,18 @@ private[sbt] object KeyMacro:
 
   private def enclosingTerm(using qctx: Quotes) =
     import qctx.reflect.*
+    @tailrec
     def enclosingTerm0(sym: Symbol): Symbol =
       sym match
-        case sym if sym.flags.is(Flags.Macro) => enclosingTerm0(sym.owner)
-        case sym if !sym.isTerm               => enclosingTerm0(sym.owner)
-        case _                                => sym
+        case sym if sym.flags.is(Flags.Macro)     => enclosingTerm0(sym.owner)
+        case sym if sym.flags.is(Flags.Synthetic) => enclosingTerm0(sym.owner)
+        case sym if !sym.isTerm                   => enclosingTerm0(sym.owner)
+        case _                                    => sym
     enclosingTerm0(Symbol.spliceOwner)
 
   private def enclosingClass(using Quotes) =
     import quotes.reflect.*
+    @tailrec
     def rec(sym: Symbol): Symbol =
       if sym.isClassDef then sym
       else rec(sym.owner)

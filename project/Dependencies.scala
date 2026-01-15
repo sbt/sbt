@@ -5,13 +5,14 @@ object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala213 = "2.13.16"
   val scala3 = "3.7.4"
+  val scala212 = "2.12.21"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")
 
   // sbt modules
-  private val ioVersion = nightlyVersion.getOrElse("1.10.5")
+  val ioVersion = nightlyVersion.getOrElse("1.10.5")
   val zincVersion = nightlyVersion.getOrElse("2.0.0-M11")
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
@@ -98,13 +99,6 @@ object Dependencies {
   val scalaXml = "org.scala-lang.modules" %% "scala-xml" % "2.4.0"
   val scalaParsers = "org.scala-lang.modules" %% "scala-parser-combinators" % "2.4.0"
   val scalaPar = "org.scala-lang.modules" %% "scala-parallel-collections" % "1.2.0"
-
-  // specify all of log4j modules to prevent misalignment
-  def log4jModule = (n: String) => "org.apache.logging.log4j" % n % "2.17.1"
-  val log4jApi = log4jModule("log4j-api")
-  val log4jCore = log4jModule("log4j-core")
-  val log4jSlf4jImpl = log4jModule("log4j-slf4j-impl")
-  val log4jModules = Vector(log4jApi, log4jCore, log4jSlf4jImpl)
 
   val caffeine = "com.github.ben-manes.caffeine" % "caffeine" % "2.8.5"
 
