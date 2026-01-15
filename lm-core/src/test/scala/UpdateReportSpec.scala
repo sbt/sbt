@@ -6,7 +6,7 @@ import verify.BasicTestSuite
 
 object UpdateReportSpec extends BasicTestSuite:
   test("UpdateReport.toString should have a nice toString"):
-    assert(updateReport.toString == s"""
+    Predef.assert(updateReport.toString == s"""
       |Update report:
       |	Resolve time: 0 ms, Download time: 0 ms, Download size: 0 bytes
       |	compile:
