@@ -678,15 +678,17 @@ EOM
 }
 
 process_my_args () {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-             -batch|--batch) exec </dev/null && shift ;; #>
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    case "${args[i]}" in
+             -batch|--batch) exec </dev/null && ((i++)) ; continue ;;
 
-   -allow-empty|--allow-empty|-sbt-create|--sbt-create) allow_empty=true && shift ;;
+   -allow-empty|--allow-empty|-sbt-create|--sbt-create) allow_empty=true && ((i++)) ; continue ;;
 
-                   new|init) sbt_new=true && addResidual "$1" && shift ;;
+                   new|init) sbt_new=true && addResidual "${args[i]}" && ((i++)) ; continue ;;
 
-                          *) addResidual "$1" && shift ;;
+                          *) addResidual "${args[i]}" && ((i++)) ; continue ;;
     esac
   done
 
@@ -698,24 +700,26 @@ process_my_args () {
 map_args () {
   local options=()
   local commands=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-     -no-colors|--no-colors) options=( "${options[@]}" "-Dsbt.log.noformat=true" ) && shift ;;
-         -timings|--timings) options=( "${options[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && shift ;;
-           -traces|--traces) options=( "${options[@]}" "-Dsbt.traces=true" ) && shift ;;
-             --supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
-              -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
-     -no-server|--no-server) options=( "${options[@]}" "-Dsbt.io.virtual=false" "-Dsbt.server.autostart=false" ) && shift ;;
-                  --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
-                   -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
-       -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
-     -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
-                 -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;
-       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
-         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
-             -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
-     -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
-                          *) options=( "${options[@]}" "$1" ) && shift ;;
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    case "${args[i]}" in
+     -no-colors|--no-colors) options=( "${options[@]}" "-Dsbt.log.noformat=true" ) && ((i++)) ; continue ;;
+         -timings|--timings) options=( "${options[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && ((i++)) ; continue ;;
+           -traces|--traces) options=( "${options[@]}" "-Dsbt.traces=true" ) && ((i++)) ; continue ;;
+             --supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${args[i]:13}" ) && ((i++)) ; continue ;;
+              -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${args[i]:12}" ) && ((i++)) ; continue ;;
+     -no-server|--no-server) options=( "${options[@]}" "-Dsbt.io.virtual=false" "-Dsbt.server.autostart=false" ) && ((i++)) ; continue ;;
+                  --color=*) options=( "${options[@]}" "-Dsbt.color=${args[i]:8}" ) && ((i++)) ; continue ;;
+                   -color=*) options=( "${options[@]}" "-Dsbt.color=${args[i]:7}" ) && ((i++)) ; continue ;;
+       -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && ((i++)) ; continue ;;
+     -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && ((i++)) ; continue ;;
+                 -ivy|--ivy) require_arg path "${args[i]}" "${args[i+1]}" && options=( "${options[@]}" "-Dsbt.ivy.home=${args[i+1]}" ) && ((i+=2)) ; continue ;;
+       -sbt-boot|--sbt-boot) require_arg path "${args[i]}" "${args[i+1]}" && options=( "${options[@]}" "-Dsbt.boot.directory=${args[i+1]}" ) && ((i+=2)) ; continue ;;
+         -sbt-dir|--sbt-dir) require_arg path "${args[i]}" "${args[i+1]}" && options=( "${options[@]}" "-Dsbt.global.base=${args[i+1]}" ) && ((i+=2)) ; continue ;;
+             -debug|--debug) commands=( "${commands[@]}" "-debug" ) && ((i++)) ; continue ;;
+     -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && ((i++)) ; continue ;;
+                          *) options=( "${options[@]}" "${args[i]}" ) && ((i++)) ; continue ;;
     esac
   done
   declare -p options
@@ -723,42 +727,45 @@ map_args () {
 }
 
 process_args () {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    case "${args[i]}" in
             -h|-help|--help) usage; exit 1 ;;
-      -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
-      -V|-version|--version) print_version=1 && shift ;;
-          --numeric-version) print_sbt_version=1 && shift ;;
-           --script-version) print_sbt_script_version=1 && shift ;;
-                shutdownall) shutdownall=1 && shift ;;
-          -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
-           -client|--client) use_sbtn=1 && shift ;;
-                   --server) use_sbtn=0 && shift ;;
-               --jvm-client) use_sbtn=0 && use_jvm_client=1 && addSbt "--client" && shift ;;
-     --no-hide-jdk-warnings) hide_jdk_warnings=0 && shift ;;
+      -v|-verbose|--verbose) sbt_verbose=1 && ((i++)) ; continue ;;
+      -V|-version|--version) print_version=1 && ((i++)) ; continue ;;
+          --numeric-version) print_sbt_version=1 && ((i++)) ; continue ;;
+           --script-version) print_sbt_script_version=1 && ((i++)) ; continue ;;
+                shutdownall) shutdownall=1 && ((i++)) ; continue ;;
+          -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && ((i++)) ; continue ;;
+           -client|--client) use_sbtn=1 && ((i++)) ; continue ;;
+                   --server) use_sbtn=0 && ((i++)) ; continue ;;
+               --jvm-client) use_sbtn=0 && use_jvm_client=1 && addSbt "--client" && ((i++)) ; continue ;;
+     --no-hide-jdk-warnings) hide_jdk_warnings=0 && ((i++)) ; continue ;;
 
-                 -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
-     -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
-             -batch|--batch) exec </dev/null && shift ;;
+                 -mem|--mem) require_arg integer "${args[i]}" "${args[i+1]}" && addMemory "${args[i+1]}" && ((i+=2)) ; continue ;;
+     -jvm-debug|--jvm-debug) require_arg port "${args[i]}" "${args[i+1]}" && addDebugger "${args[i+1]}" && ((i+=2)) ; continue ;;
+             -batch|--batch) exec </dev/null && ((i++)) ; continue ;;
 
-         -sbt-jar|--sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
-     -sbt-cache|--sbt-cache) require_arg path "$1" "$2" &&
-                             sbt_cache="$2" &&
-                             addJava "-Dsbt.global.localcache=$2" &&
-                             shift 2 ;;
- -sbt-version|--sbt-version) require_arg version "$1" "$2" && addJava "-Dsbt.version=$2" && shift 2 ;;
-     -java-home|--java-home) require_arg path "$1" "$2" &&
-                             java_cmd="$2/bin/java" &&
-                             export JAVA_HOME="$2" &&
-                             export JDK_HOME="$2" &&
-                             export PATH="$2/bin:$PATH" &&
-                             shift 2 ;;
+         -sbt-jar|--sbt-jar) require_arg path "${args[i]}" "${args[i+1]}" && sbt_jar="${args[i+1]}" && ((i+=2)) ; continue ;;
+     -sbt-cache|--sbt-cache) require_arg path "${args[i]}" "${args[i+1]}" &&
+                             sbt_cache="${args[i+1]}" &&
+                             addJava "-Dsbt.global.localcache=${args[i+1]}" &&
+                             ((i+=2)) ; continue ;;
+ -sbt-version|--sbt-version) require_arg version "${args[i]}" "${args[i+1]}" && addJava "-Dsbt.version=${args[i+1]}" && ((i+=2)) ; continue ;;
+     -java-home|--java-home) require_arg path "${args[i]}" "${args[i+1]}" &&
+                             java_cmd="${args[i+1]}/bin/java" &&
+                             export JAVA_HOME="${args[i+1]}" &&
+                             export JDK_HOME="${args[i+1]}" &&
+                             export PATH="${args[i+1]}/bin:$PATH" &&
+                             ((i+=2)) ; continue ;;
 
- -Dsbt.color=never|-Dsbt.log.noformat=true) addJava "$1" && use_colors=0 && shift ;;
-                  "-D*"|-D*) addJava "$1" && shift ;;
-                        -J*) addJava "${1:2}" && shift ;;
-                          *) addResidual "$1" && shift ;;
+ -Dsbt.color=never|-Dsbt.log.noformat=true) addJava "${args[i]}" && use_colors=0 && ((i++)) ; continue ;;
+                  "-D*"|-D*) addJava "${args[i]}" && ((i++)) ; continue ;;
+                        -J*) addJava "${args[i]:2}" && ((i++)) ; continue ;;
+                          *) addResidual "${args[i]}" && ((i++)) ; continue ;;
     esac
+    ((i++))
   done
 
   is_function_defined process_my_args && {

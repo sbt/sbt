@@ -65,11 +65,12 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         process.!!.linesIterator.toList
       }
       
-      val out = try {
+      val out: List[String] = try {
         Await.result(futureOutput, Duration(30, TimeUnit.SECONDS))
       } catch {
         case _: TimeoutException =>
           cancel("Test timed out - -Dfoo without value may cause sbt to hang")
+          List.empty[String] // This line is unreachable, but helps type inference
       }
       
       assert(out.contains[String]("-Dfoo"))
