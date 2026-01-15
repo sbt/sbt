@@ -119,11 +119,13 @@ private[sbt] object ConvertResolver {
       repository.put(artifact, src, dest, overwrite);
       // Fix for sbt#1156 - Artifactory will auto-generate MD5/sha1 files, so
       // we need to overwrite what it has.
-      for (checksum <- checksums) {
-        putChecksumMethod match {
-          case Some(method) =>
-            method.invoke(this, artifact, src, dest, true: java.lang.Boolean, checksum)
-          case None => // TODO - issue warning?
+      if (!artifact.getName.endsWith(".asc")) {
+        for (checksum <- checksums) {
+          putChecksumMethod match {
+            case Some(method) =>
+              method.invoke(this, artifact, src, dest, true: java.lang.Boolean, checksum)
+            case None => // TODO - issue warning?
+          }
         }
       }
       if (signerName != null) {
