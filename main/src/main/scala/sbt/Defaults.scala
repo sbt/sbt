@@ -3335,8 +3335,11 @@ object Classpaths {
       val log = streams.value.log
       val ew =
         EvictionWarning(ivyModule.value, (evicted / evictionWarningOptions).value, report)
-      ew.lines foreach { log.warn(_) }
-      ew.infoAllTheThings foreach { log.info(_) }
+      // Log all lines at once to prevent interleaving (fixes #6084)
+      val warnLines = ew.lines
+      if (warnLines.nonEmpty) log.warn(warnLines.mkString("\n"))
+      val infoLines = ew.infoAllTheThings
+      if (infoLines.nonEmpty) log.info(infoLines.mkString("\n"))
       ew
     },
   ) ++
