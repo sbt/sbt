@@ -131,10 +131,15 @@ final class NetworkChannel(
     def jsonRpcNotify[A: JsonFormat](method: String, params: A): Unit =
       self.jsonRpcNotify(method, params)
 
-    def appendExec(commandLine: String, execId: Option[String]): Boolean =
+    def appendExec(commandLine: String, execId: Option[String]): Boolean = {
+      self.notifyIfQueued(execId)
       self.appendExec(commandLine, execId)
+    }
 
-    def appendExec(exec: Exec): Boolean = self.append(exec)
+    def appendExec(exec: Exec): Boolean = {
+      self.notifyIfQueued(exec.execId)
+      self.append(exec)
+    }
 
     def log: Logger = self.log
     def name: String = self.name
@@ -165,6 +170,24 @@ final class NetworkChannel(
   protected def setInitialized(value: Boolean): Unit = initialized = value
 
   protected def authOptions: Set[ServerAuthentication] = auth
+
+  private def notifyIfQueued(execId: Option[String]): Unit =
+    StandardMain.exchange.currentExec match {
+      case Some(currentExec) =>
+        val event = ExecStatusEvent(
+          "Queued",
+          Some(name),
+          execId,
+          Vector.empty,
+          None,
+          currentExec.commandLine match {
+            case cmd if cmd.length > 50 => Some(s"waiting for: ${cmd.take(50)}...")
+            case cmd                    => Some(s"waiting for: $cmd")
+          }
+        )
+        jsonRpcNotify("sbt/exec", event)
+      case None =>
+    }
 
   override def mkUIThread: (State, CommandChannel) => UITask = (state, command) => {
     if (interactive.get || ContinuousCommands.isInWatch(state, this)) mkUIThreadImpl(state, command)
