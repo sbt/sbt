@@ -47,24 +47,11 @@ jobs:
     - name: Setup Windows C++ toolchain
       uses: ilammy/msvc-dev-cmd@v1
       if: ${{ matrix.os == 'windows-latest' }}
-    - name: Setup musl toolchain (Linux)
-      if: ${{ matrix.os == 'ubuntu-latest' }}
-      shell: bash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y musl-tools musl-dev
-        curl -fsSL -o zlib.tar.gz https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz
-        tar xzf zlib.tar.gz
-        cd zlib-1.3.1
-        CC=musl-gcc ./configure --static --prefix=/usr/local/musl
-        make
-        sudo make install
-        sudo ln -sf /usr/local/musl/lib/libz.a /usr/lib/x86_64-linux-musl/libz.a
     - name: Client test (Linux)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        # test building sbtn on Linux with musl static linking
+        # test building sbtn on Linux
         sbt "-Dsbt.io.virtual=false" nativeImage
         # smoke test native Image
         ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt about
