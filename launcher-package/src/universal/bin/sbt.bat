@@ -508,14 +508,26 @@ if "%g:~0,2%" == "-D" (
   for /F "tokens=1 delims==" %%a in ("%g%") do (
     rem make sure it doesn't have the '=' already
     if "%g%" == "%%a" (
+      rem Check if next argument looks like a value (not starting with -)
+      rem or if we should treat this as a property without value
       if not "%~1" == "" (
-        call :dlog [args_loop] -D argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
+        set "_next_arg=%~1"
+        if "!_next_arg:~0,1!" == "-" (
+          rem Next arg is another option, treat current as property without value
+          call :dlog [args_loop] -D argument %~0 ^(no value^)
+          set "SBT_ARGS=!SBT_ARGS! %~0"
+          goto args_loop
+        ) else (
+          call :dlog [args_loop] -D argument %~0=%~1
+          set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
+          shift
+          goto args_loop
+        )
       ) else (
-        echo %g% is missing a value
-        goto error
+        rem No more arguments, treat as property without value (like -Dfoo)
+        call :dlog [args_loop] -D argument %~0 ^(no value^)
+        set "SBT_ARGS=!SBT_ARGS! %~0"
+        goto args_loop
       )
     ) else (
       call :dlog [args_loop] -D argument %~0
@@ -777,10 +789,23 @@ if "%p:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
   for /F "tokens=1 delims==" %%a in ("%p%") do (
     rem make sure it doesn't have the '=' already
-    if "%p%" == "%%a" if not "%~1" == "" (
-      echo %0=%1
-      shift
-      goto echolist
+    if "%p%" == "%%a" (
+      if not "%~1" == "" (
+        set "_next_echo=%~1"
+        if "!_next_echo:~0,1!" == "-" (
+          rem Next arg is another option, current is property without value
+          echo %0
+          goto echolist
+        ) else (
+          echo %0=%1
+          shift
+          goto echolist
+        )
+      ) else (
+        rem No more args, property without value
+        echo %0
+        goto echolist
+      )
     )
   )
 )
