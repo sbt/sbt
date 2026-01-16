@@ -74,4 +74,13 @@ object RunnerMemoryScriptTest extends verify.BasicTestSuite with ShellScriptUtil
     assert(out.contains[String]("-Xms111m"))
     assert(out.contains[String]("-Xss12m"))
 
+  // Test for issue #5742: -X options passed directly on command line
+  testOutput("sbt -Xmx1G directly on command line")("-Xmx1G", "-v"): (out: List[String]) =>
+    assert(out.contains[String]("-Xmx1G"))
+
+  testOutput("sbt -Xms512M -Xmx1G directly on command line")("-Xms512M", "-Xmx1G", "-v"):
+    (out: List[String]) =>
+      assert(out.contains[String]("-Xms512M"))
+      assert(out.contains[String]("-Xmx1G"))
+
 end RunnerMemoryScriptTest
