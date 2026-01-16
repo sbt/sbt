@@ -384,7 +384,11 @@ lazy val utilTracking = (project in file("util-tracking"))
   .settings(
     utilCommonSettings,
     name := "Util Tracking",
-    libraryDependencies ++= Seq(scalatest % "test"),
+    libraryDependencies ++= Seq(
+      scalacheck % Test,
+      scalaVerify % Test,
+      hedgehog % Test,
+    ),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
     )
