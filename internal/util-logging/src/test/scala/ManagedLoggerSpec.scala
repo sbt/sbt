@@ -17,7 +17,7 @@ import sbt.io.Using
 object ManagedLoggerSpec extends BasicTestSuite:
   val context: LoggerContext = LoggerContext()
   // TODO create a new appender for testing purposes - 3/12/21
-  val asyncStdout: ConsoleAppender = ConsoleAppender()
+  val asyncStdout: Appender = ConsoleAppender()
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
 
   test("ManagedLogger should log to console"):
@@ -81,17 +81,16 @@ object ManagedLoggerSpec extends BasicTestSuite:
     import java.util.concurrent.{ Executors, TimeUnit }
     val pool = Executors.newFixedThreadPool(100)
     for i <- 1 to 10000 do
-      pool.submit(
-        new Runnable:
-          def run(): Unit =
-            val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
-            val log = newLogger(s"foo$i")
-            context.addAppender(s"foo$i", asyncStdout -> Level.Info)
-            if i % 100 == 0 then log.info(s"foo$i test $stringTypeTag")
-            Thread.sleep(1)
-      )
+      pool.submit((() =>
+        val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
+        val log = newLogger(s"foo$i")
+        context.addAppender(s"foo$i", asyncStdout -> Level.Info)
+        if i % 100 == 0 then log.info(s"foo$i test $stringTypeTag")
+        Thread.sleep(1)
+      ): Runnable)
     pool.shutdown
     pool.awaitTermination(30, TimeUnit.SECONDS)
+    ()
 
   test("global logging should log immediately after initialization"):
     // this is passed into State normally
