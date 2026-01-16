@@ -14,16 +14,18 @@ import sbt.io.syntax.*
 import CacheImplicits.*
 
 import sjsonnew.{ Builder, deserializationError, JsonFormat, Unbuilder }
-import org.scalatest.flatspec.AnyFlatSpec
+import verify.BasicTestSuite
 
-class SingletonCacheSpec extends AnyFlatSpec {
+import scala.util.Try
+
+object SingletonCacheSpec extends BasicTestSuite:
 
   case class ComplexType(x: Int, y: String, z: List[Int])
-  object ComplexType {
+  object ComplexType:
     given format: JsonFormat[ComplexType] =
-      new JsonFormat[ComplexType] {
-        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ComplexType = {
-          jsOpt match {
+      new JsonFormat[ComplexType]:
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ComplexType =
+          jsOpt match
             case Some(js) =>
               unbuilder.beginObject(js)
               val x = unbuilder.readField[Int]("x")
@@ -34,53 +36,41 @@ class SingletonCacheSpec extends AnyFlatSpec {
 
             case None =>
               deserializationError("Exception JObject but found None")
-          }
-        }
 
-        override def write[J](obj: ComplexType, builder: Builder[J]): Unit = {
+        override def write[J](obj: ComplexType, builder: Builder[J]): Unit =
           builder.beginObject()
           builder.addField("x", obj.x)
           builder.addField("y", obj.y)
           builder.addField("z", obj.z)
           builder.endObject()
-        }
-      }
-  }
+  end ComplexType
 
-  "A singleton cache" should "throw an exception if read without being written previously" in {
+  test("A singleton cache should throw an exception if read without being written previously"):
     testCache[Int] { (cache, store) =>
-      intercept[Exception] {
-        cache.read(store)
-      }
-      ()
+      val result = Try(cache.read(store))
+      assert(result.isFailure, "Expected exception but read succeeded")
     }
-  }
 
-  it should "write a very simple value" in {
+  test("A singleton cache should write a very simple value"):
     testCache[Int] { (cache, store) =>
       cache.write(store, 5)
     }
-  }
 
-  it should "return the simple value that has been previously written" in {
+  test("A singleton cache should return the simple value that has been previously written"):
     testCache[Int] { (cache, store) =>
       val value = 5
       cache.write(store, value)
       val read = cache.read(store)
-
-      assert(read === value); ()
+      assert(read == value)
     }
-  }
 
-  it should "write a complex value" in {
+  test("A singleton cache should write a complex value"):
     testCache[ComplexType] { (cache, store) =>
       val value = ComplexType(1, "hello, world!", (1 to 10 by 3).toList)
       cache.write(store, value)
       val read = cache.read(store)
-
-      assert(read === value); ()
+      assert(read == value)
     }
-  }
 
   private def testCache[T](f: (SingletonCache[T], CacheStore) => Unit)(using
       cache: SingletonCache[T]
@@ -90,4 +80,4 @@ class SingletonCacheSpec extends AnyFlatSpec {
       f(cache, store)
     }
 
-}
+end SingletonCacheSpec

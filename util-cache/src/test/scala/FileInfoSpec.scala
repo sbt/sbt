@@ -10,24 +10,23 @@ package sbt.util
 
 import sjsonnew.shaded.scalajson.ast.unsafe.*
 import sjsonnew.*, support.scalajson.unsafe.*
-import org.scalatest.flatspec.AnyFlatSpec
+import verify.BasicTestSuite
 import sbt.io.IO
 
-class FileInfoSpec extends AnyFlatSpec {
+object FileInfoSpec extends BasicTestSuite:
   val file = new java.io.File(".").getAbsoluteFile
   val fileInfo: ModifiedFileInfo = FileModified(file, IO.getModifiedTimeOrZero(file))
   val filesInfo = FilesInfo(Set(fileInfo))
 
-  it should "round trip" in assertRoundTrip(filesInfo)
+  test("round trip"):
+    assertRoundTrip(filesInfo)
 
-  def assertRoundTrip[A: JsonWriter: JsonReader](x: A) = {
+  def assertRoundTrip[A: JsonWriter: JsonReader](x: A): Unit =
     val jsonString: String = toJsonString(x)
     val jValue: JValue = Parser.parseUnsafe(jsonString)
     val y: A = Converter.fromJson[A](jValue).get
-    assert(x === y)
-  }
-
-  def assertJsonString[A: JsonWriter](x: A, s: String) = assert(toJsonString(x) === s)
+    assert(x == y)
 
   def toJsonString[A: JsonWriter](x: A): String = CompactPrinter(Converter.toJson(x).get)
-}
+
+end FileInfoSpec

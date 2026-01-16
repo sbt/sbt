@@ -384,7 +384,11 @@ lazy val utilTracking = (project in file("util-tracking"))
   .settings(
     utilCommonSettings,
     name := "Util Tracking",
-    libraryDependencies ++= Seq(scalatest % "test"),
+    libraryDependencies ++= Seq(
+      scalacheck % Test,
+      scalaVerify % Test,
+      hedgehog % Test,
+    ),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
     )
@@ -845,7 +849,7 @@ lazy val sbtClientProj = (project in file("client"))
       "-H:+ReportExceptionStackTraces",
       "-H:-ParseRuntimeOptions",
       s"-H:Name=${target.value / "bin" / "sbtn"}",
-    ) ++ (if (isLinux) Seq("--static", "--libc=musl") else Nil),
+    ),
     buildThinClient := {
       val isFish = Def.spaceDelimited("").parsed.headOption.fold(false)(_ == "--fish")
       val ext = if (isWin) ".bat" else if (isFish) ".fish" else ".sh"

@@ -10,34 +10,30 @@ package sbt.internal.util
 
 import java.io.{ File, PrintStream }
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.BeforeAndAfterAll
+import verify.BasicTestSuite
 import sbt.internal.util.Terminal.SimpleTerminal
 
 import scala.io.Source
+import scala.util.Using
 
-class ProgressStateSpec extends AnyFlatSpec with BeforeAndAfterAll {
+object ProgressStateSpec extends BasicTestSuite:
 
-  private lazy val fileIn = new File("/tmp/tmp.txt")
-  private lazy val fileOut = Source.fromFile("/tmp/tmp.txt")
+  test("test should not clear after carriage return (\\r)"):
+    val fileIn = new File("/tmp/tmp.txt")
+    try
+      val ps = new ProgressState(1, 8)
+      val in = "Hello\r\nWorld".getBytes()
 
-  override def afterAll(): Unit = {
-    fileIn.delete()
-    fileOut.close()
-    super.afterAll()
-  }
+      ps.write(SimpleTerminal, in, new PrintStream(fileIn), hasProgress = true)
 
-  "test" should "not clear after carriage return (\\r) " in {
-    val ps = new ProgressState(1, 8)
-    val in = "Hello\r\nWorld".getBytes()
-
-    ps.write(SimpleTerminal, in, new PrintStream(fileIn), hasProgress = true)
-
-    val clearScreenBytes = ConsoleAppender.ClearScreenAfterCursor.getBytes("UTF-8")
-    val check = fileOut.getLines().toList.map { line =>
-      line.getBytes("UTF-8").endsWith(clearScreenBytes)
-    }
-
-    assert(check === List(false, true))
-  }
-}
+      Using.resource(Source.fromFile("/tmp/tmp.txt")) { fileOut =>
+        val clearScreenBytes = ConsoleAppender.ClearScreenAfterCursor.getBytes("UTF-8")
+        val check = fileOut.getLines().toList.map { line =>
+          line.getBytes("UTF-8").endsWith(clearScreenBytes)
+        }
+        assert(check == List(false, true))
+      }
+    finally
+      fileIn.delete()
+      ()
+end ProgressStateSpec
