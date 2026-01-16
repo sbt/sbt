@@ -1015,11 +1015,31 @@ class NetworkClient(
   private def sendAndWait(cmd: String, limit: Option[Deadline]): Int = {
     val queue = sendExecCommand(cmd)
     var result: Integer = null
+    var waitMessagePrinted = false
+    val initialWaitMs = 2000L // Wait 2 seconds before showing the "waiting" message
+    val pollIntervalMs = 500L // Poll interval after initial wait
     while (running.get && result == null && limit.fold(true)(!_.isOverdue())) {
       try {
         result = limit match {
           case Some(l) => queue.poll((l - Deadline.now).toMillis, TimeUnit.MILLISECONDS)
-          case _       => queue.take
+          case _ =>
+            // First, try a short poll to see if result is immediately available
+            val initialResult = queue.poll(initialWaitMs, TimeUnit.MILLISECONDS)
+            if (initialResult != null) initialResult
+            else {
+              // Result not immediately available - server might be busy with another command
+              if (!waitMessagePrinted) {
+                errorStream.println("[info] waiting for server to become available...")
+                errorStream.println("[info] (hint: another command may be running, e.g., console or shell)")
+                waitMessagePrinted = true
+              }
+              // Continue polling until result arrives
+              var polledResult: Integer = null
+              while (running.get && polledResult == null) {
+                polledResult = queue.poll(pollIntervalMs, TimeUnit.MILLISECONDS)
+              }
+              polledResult
+            }
         }
       } catch {
         case _: InterruptedException if cmd == Shutdown => result = 0
