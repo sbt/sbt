@@ -241,6 +241,14 @@ object SysProp {
   lazy val sbtCredentialsEnv: Option[Credentials] =
     sys.env.get("SBT_CREDENTIALS").map(raw => new Credentials.FileCredentials(new File(raw)))
 
+  /**
+   * Load credentials file from the `sbt.credentials` system property.
+   * This can be set via `-Dsbt.credentials=/path/to/credentials` when launching sbt.
+   * @see https://github.com/sbt/sbt/issues/576
+   */
+  lazy val sbtCredentialsProp: Option[Credentials] =
+    sys.props.get("sbt.credentials").map(raw => new Credentials.FileCredentials(new File(raw)))
+
   def sonatypeCredentalsEnv: Option[Credentials] =
     for {
       username <- sys.env.get("SONATYPE_USERNAME")

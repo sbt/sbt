@@ -246,7 +246,7 @@ object Defaults extends BuildCommon {
   private[sbt] lazy val globalIvyCore: Seq[Setting[?]] =
     Seq(
       internalConfigurationMap :== Configurations.internalMap,
-      credentials :== SysProp.sbtCredentialsEnv.toList,
+      credentials :== (SysProp.sbtCredentialsProp.toList ++ SysProp.sbtCredentialsEnv.toList),
       exportJars :== true,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
