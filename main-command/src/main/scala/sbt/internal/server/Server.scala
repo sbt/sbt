@@ -27,8 +27,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import sbt.internal.protocol.codec.*
 import sbt.internal.util.ErrorHandling
 import sbt.internal.util.Util.isWindows
-import sbt.internal.UnixDomainSocketFactory
-import org.scalasbt.ipcsocket.{ UnixDomainSocketLibraryProvider, Win32NamedPipeServerSocket }
+import org.scalasbt.ipcsocket.*
 import sbt.internal.bsp.BuildServerConnection
 import xsbti.AppConfiguration
 
@@ -83,9 +82,9 @@ private[sbt] object Server {
                       "or define a short \"SBT_GLOBAL_SERVER_DIR\" value. " +
                       s"Current path: ${path}"
                   )
-                tryClient(UnixDomainSocketFactory.newSocket(path, connection.useJni))
+                tryClient(new UnixDomainSocket(path, connection.useJni))
                 prepareSocketfile()
-                addServerError(UnixDomainSocketFactory.newServerSocket(path, connection.useJni))
+                addServerError(new UnixDomainServerSocket(path, connection.useJni))
               case ConnectionType.Tcp =>
                 tryClient(new Socket(InetAddress.getByName(host), port))
                 addServerError(new ServerSocket(port, 50, InetAddress.getByName(host)))
@@ -114,8 +113,8 @@ private[sbt] object Server {
                   val socket = serverSocket.accept()
                   onIncomingSocket(socket, self)
                 } catch {
-                  case e: IOException if e.getMessage.contains("connect") =>
-                  case _: SocketTimeoutException                          => // its ok
+                  case e: IOException if Option(e.getMessage).exists(_.contains("connect")) =>
+                  case _: SocketTimeoutException          => // its ok
                   case _: SocketException if !running.get => // the server is shutting down
                 }
               }

@@ -10,14 +10,14 @@ package sbt.internal
 
 import java.nio.file.{ Path, Paths }
 
-import org.scalatest.flatspec.AnyFlatSpec
+import verify.BasicTestSuite
 import sbt.nio.FileStamp
 import sbt.nio.FileStamp.Formats
 import sjsonnew.JsonFormat
 import sjsonnew.support.scalajson.unsafe.Converter
 
-class FileStampJsonSpec extends AnyFlatSpec {
-  "file hashes" should "be serializable" in {
+object FileStampJsonSpec extends BasicTestSuite:
+  test("file hashes should be serializable"):
     val hashes = Seq(
       Paths.get("foo") -> FileStamp.hash("bar"),
       Paths.get("bar") -> FileStamp.hash("buzz")
@@ -27,8 +27,8 @@ class FileStampJsonSpec extends AnyFlatSpec {
     val json = Converter.toJsonUnsafe(hashes)
     val deserialized = Converter.fromJsonUnsafe(json)
     assert(hashes == deserialized)
-  }
-  "file last modified times" should "be serializable" in {
+
+  test("file last modified times should be serializable"):
     val lastModifiedTimes = Seq(
       Paths.get("foo") -> FileStamp.LastModified(1234),
       Paths.get("bar") -> FileStamp.LastModified(5678)
@@ -38,8 +38,8 @@ class FileStampJsonSpec extends AnyFlatSpec {
     val json = Converter.toJsonUnsafe(lastModifiedTimes)
     val deserialized = Converter.fromJsonUnsafe(json)
     assert(lastModifiedTimes == deserialized)
-  }
-  "both" should "be serializable" in {
+
+  test("both should be serializable"):
     val hashes = Seq(
       Paths.get("foo") -> FileStamp.hash("bar"),
       Paths.get("bar") -> FileStamp.hash("buzz")
@@ -53,5 +53,4 @@ class FileStampJsonSpec extends AnyFlatSpec {
     val json = Converter.toJsonUnsafe(both)
     val deserialized = Converter.fromJsonUnsafe(json)
     assert(both == deserialized)
-  }
-}
+end FileStampJsonSpec

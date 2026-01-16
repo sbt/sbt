@@ -17,8 +17,7 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.internal.protocol.codec.{ PortFileFormats, TokenFileFormats }
 import sbt.internal.util.Util.isWindows
-import sbt.internal.UnixDomainSocketFactory
-import org.scalasbt.ipcsocket.Win32NamedPipeSocket
+import org.scalasbt.ipcsocket.*
 
 object ClientSocket {
   private lazy val fileFormats = new BasicJsonProtocol with PortFileFormats with TokenFileFormats {}
@@ -45,5 +44,5 @@ object ClientSocket {
   }
   def localSocket(name: String, useJNI: Boolean): Socket =
     if (isWindows) new Win32NamedPipeSocket(s"\\\\.\\pipe\\$name", useJNI)
-    else UnixDomainSocketFactory.newSocket(name, useJNI)
+    else new UnixDomainSocket(name, useJNI)
 }

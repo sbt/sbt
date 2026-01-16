@@ -8,10 +8,10 @@
 
 package sbt.internal.util
 
-import org.scalatest.flatspec.AnyFlatSpec
 import java.io.{ ByteArrayOutputStream, InputStream }
+import verify.BasicTestSuite
 
-class TerminalColorSpec extends AnyFlatSpec {
+object TerminalColorSpec extends BasicTestSuite:
   private def createTerminal(
       colorEnabled: Boolean,
       ansiSupported: Boolean,
@@ -22,7 +22,7 @@ class TerminalColorSpec extends AnyFlatSpec {
       out,
       new ByteArrayOutputStream(),
       "test"
-    ) {
+    ):
       private[sbt] def getSizeImpl: (Int, Int) = (80, 24)
       override def isColorEnabled: Boolean = colorEnabled
       override def isAnsiSupported: Boolean = ansiSupported
@@ -39,12 +39,11 @@ class TerminalColorSpec extends AnyFlatSpec {
       override private[sbt] def setSize(width: Int, height: Int): Unit = ()
       override private[sbt] def enterRawMode(): Unit = ()
       override private[sbt] def exitRawMode(): Unit = ()
-    }
 
-  private val ESC = "\u001b"
-  private val coloredText = s"$ESC[31mred text$ESC[0m"
+  private val ESC: String = "\u001b"
+  private val coloredText: String = s"$ESC[31mred text$ESC[0m"
 
-  "Terminal with colors disabled" should "strip color codes from output" in {
+  test("Terminal with colors disabled should strip color codes from output"):
     val out = new ByteArrayOutputStream()
     val term = createTerminal(colorEnabled = false, ansiSupported = true, out)
     term.outputStream.write(coloredText.getBytes("UTF-8"))
@@ -52,9 +51,8 @@ class TerminalColorSpec extends AnyFlatSpec {
     val output = out.toString("UTF-8")
     assert(!output.contains(ESC))
     assert(output.contains("red text"))
-  }
 
-  "Terminal with colors enabled" should "preserve color codes in output" in {
+  test("Terminal with colors enabled should preserve color codes in output"):
     val out = new ByteArrayOutputStream()
     val term = createTerminal(colorEnabled = true, ansiSupported = true, out)
     term.outputStream.write(coloredText.getBytes("UTF-8"))
@@ -62,5 +60,4 @@ class TerminalColorSpec extends AnyFlatSpec {
     val output = out.toString("UTF-8")
     assert(output.contains(ESC))
     assert(output.contains("red text"))
-  }
-}
+end TerminalColorSpec

@@ -8,7 +8,7 @@
 
 package sbt.util
 
-import org.scalatest.flatspec.AnyFlatSpec
+import verify.BasicTestSuite
 import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.util.CacheImplicits.*
@@ -16,8 +16,9 @@ import sjsonnew.{ Builder, JsonWriter }
 
 import scala.concurrent.Promise
 
-class TrackedSpec extends AnyFlatSpec {
-  "lastOutput" should "store the last output" in {
+object TrackedSpec extends BasicTestSuite:
+
+  test("lastOutput should store the last output"):
     withStore { store =>
       val value = 5
       val otherValue = 10
@@ -25,45 +26,41 @@ class TrackedSpec extends AnyFlatSpec {
       val res0 =
         Tracked.lastOutput[Int, Int](store) {
           case (in, None) =>
-            assert(in === value)
+            assert(in == value)
             in
           case (_, Some(_)) =>
-            fail()
+            throw new AssertionError("Expected None but got Some")
         }(using implicitly)(value)
-      assert(res0 === value)
+      assert(res0 == value)
 
       val res1 =
         Tracked.lastOutput[Int, Int](store) {
           case (_, None) =>
-            fail()
+            throw new AssertionError("Expected Some but got None")
           case (in, Some(read)) =>
-            assert(in === otherValue)
-            assert(read === value)
+            assert(in == otherValue)
+            assert(read == value)
             read
         }(using implicitly)(otherValue)
-      assert(res1 === value)
+      assert(res1 == value)
 
       val res2 =
         Tracked.lastOutput[Int, Int](store) {
           case (_, None) =>
-            fail()
+            throw new AssertionError("Expected Some but got None")
           case (in, Some(read)) =>
-            assert(in === otherValue)
-            assert(read === value)
+            assert(in == otherValue)
+            assert(read == value)
             read
         }(using implicitly)(otherValue)
-      assert(res2 === value)
-
-      ()
+      assert(res2 == value)
     }
-  }
 
-  "inputChangedW" should "not require the input to have a JsonReader instance" in {
+  test("inputChangedW should not require the input to have a JsonReader instance"):
     case class Input(v: Int)
 
-    given JsonWriter[Input] = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input]:
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
-    }
 
     withStore { store =>
       val input0 = Input(1)
@@ -73,41 +70,35 @@ class TrackedSpec extends AnyFlatSpec {
       }
 
       val res0 = cachedFun(input0)
-      assert(res0 === input0.v)
-      ()
+      assert(res0 == input0.v)
     }
 
-  }
-
-  "inputChanged" should "detect that the input has not changed" in {
+  test("inputChanged should detect that the input has not changed"):
     withStore { store =>
       val input0 = "foo"
 
       val res0 =
         Tracked.inputChanged[String, String](store) {
           case (true, in) =>
-            assert(in === input0)
+            assert(in == input0)
             in
           case (false, _) =>
-            fail()
+            throw new AssertionError("Expected changed=true but got false")
         }(using implicitly, implicitly)(input0)
-      assert(res0 === input0)
+      assert(res0 == input0)
 
       val res1 =
         Tracked.inputChanged[String, String](store) {
           case (true, _) =>
-            fail()
+            throw new AssertionError("Expected changed=false but got true")
           case (false, in) =>
-            assert(in === input0)
+            assert(in == input0)
             in
         }(using implicitly, implicitly)(input0)
-      assert(res1 === input0)
-
-      ()
+      assert(res1 == input0)
     }
-  }
 
-  it should "detect that the input has changed" in {
+  test("inputChanged should detect that the input has changed"):
     withStore { store =>
       val input0 = 0
       val input1 = 1
@@ -115,33 +106,29 @@ class TrackedSpec extends AnyFlatSpec {
       val res0 =
         Tracked.inputChanged[Int, Int](store) {
           case (true, in) =>
-            assert(in === input0)
+            assert(in == input0)
             in
           case (false, _) =>
-            fail()
+            throw new AssertionError("Expected changed=true but got false")
         }(using implicitly, implicitly)(input0)
-      assert(res0 === input0)
+      assert(res0 == input0)
 
       val res1 =
         Tracked.inputChanged[Int, Int](store) {
           case (true, in) =>
-            assert(in === input1)
+            assert(in == input1)
             in
           case (false, _) =>
-            fail()
+            throw new AssertionError("Expected changed=true but got false")
         }(using implicitly, implicitly)(input1)
-      assert(res1 === input1)
-
-      ()
+      assert(res1 == input1)
     }
-  }
 
-  "outputChangedW" should "not require the input to have a JsonReader instance" in {
+  test("outputChangedW should not require the input to have a JsonReader instance"):
     case class Input(v: Int)
 
-    given JsonWriter[Input] = new JsonWriter[Input] {
+    given JsonWriter[Input] = new JsonWriter[Input]:
       override def write[J](obj: Input, builder: Builder[J]): Unit = builder.writeInt(obj.v)
-    }
 
     withStore { store =>
       val input0 = Input(1)
@@ -151,76 +138,62 @@ class TrackedSpec extends AnyFlatSpec {
       }
 
       val res0 = cachedFun(() => input0)
-      assert(res0 === input0.v)
-      ()
+      assert(res0 == input0.v)
     }
 
-  }
-
-  "outputChanged" should "detect that the output has not changed" in {
+  test("outputChanged should detect that the output has not changed"):
     withStore { store =>
       val beforeCompletion: String = "before-completion"
       val afterCompletion: String = "after-completion"
       val sideEffectCompleted = Promise[Unit]()
-      val p0: () => String = () => {
-        if (sideEffectCompleted.isCompleted) {
-          afterCompletion
-        } else {
+      val p0: () => String = () =>
+        if sideEffectCompleted.isCompleted then afterCompletion
+        else
           sideEffectCompleted.success(())
           beforeCompletion
-        }
-      }
+
       val firstExpectedResult = "first-result"
       val secondExpectedResult = "second-result"
 
       val res0 =
         Tracked.outputChanged[String, String](store) {
           case (true, in) =>
-            assert(in === beforeCompletion)
+            assert(in == beforeCompletion)
             firstExpectedResult
           case (false, _) =>
-            fail()
+            throw new AssertionError("Expected changed=true but got false")
         }(using implicitly)(p0)
-      assert(res0 === firstExpectedResult)
+      assert(res0 == firstExpectedResult)
 
       val res1 =
         Tracked.outputChanged[String, String](store) {
           case (true, _) =>
-            fail()
+            throw new AssertionError("Expected changed=false but got true")
           case (false, in) =>
-            assert(in === afterCompletion)
+            assert(in == afterCompletion)
             secondExpectedResult
         }(using implicitly)(p0)
-      assert(res1 === secondExpectedResult)
-
-      ()
+      assert(res1 == secondExpectedResult)
     }
-  }
 
-  "tstamp tracker" should "have a timestamp of 0 on first invocation" in {
+  test("tstamp tracker should have a timestamp of 0 on first invocation"):
     withStore { store =>
       Tracked.tstamp(store) { last =>
-        assert(last === 0)
+        assert(last == 0)
       }
-
-      ()
     }
-  }
 
-  it should "provide the last time a function has been evaluated" in {
+  test("tstamp tracker should provide the last time a function has been evaluated"):
     withStore { store =>
       Tracked.tstamp(store) { last =>
-        assert(last === 0)
+        assert(last == 0)
       }
 
       Tracked.tstamp(store) { last =>
         val difference = System.currentTimeMillis - last
         assert(difference < 1000)
       }
-
-      ()
     }
-  }
 
   private def withStore(f: CacheStore => Unit): Unit =
     IO.withTemporaryDirectory { tmp =>
@@ -228,4 +201,4 @@ class TrackedSpec extends AnyFlatSpec {
       f(store)
     }
 
-}
+end TrackedSpec
