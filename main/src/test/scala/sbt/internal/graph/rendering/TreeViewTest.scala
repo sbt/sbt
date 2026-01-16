@@ -8,17 +8,16 @@
 
 package sbt.internal.graph.rendering
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import verify.BasicTestSuite
 import sbt.internal.graph.rendering.TreeView.createJson
 import sbt.internal.graph.{ GraphModuleId, Module, ModuleGraph, ModuleModel }
 
-class TreeViewTest extends AnyFlatSpec with Matchers {
-  val modA = GraphModuleId("orgA", "nameA", "1.0")
-  val modB = GraphModuleId("orgB", "nameB", "2.0")
-  val modC = GraphModuleId("orgC", "nameC", "3.0")
+object TreeViewTest extends BasicTestSuite:
+  val modA: GraphModuleId = GraphModuleId("orgA", "nameA", "1.0")
+  val modB: GraphModuleId = GraphModuleId("orgB", "nameB", "2.0")
+  val modC: GraphModuleId = GraphModuleId("orgC", "nameC", "3.0")
 
-  val graph = ModuleGraph(
+  val graph: ModuleGraph = ModuleGraph(
     nodes = Seq(Module(modA), Module(modB), Module(modC)),
     edges = Seq(
       modA -> modA,
@@ -27,16 +26,15 @@ class TreeViewTest extends AnyFlatSpec with Matchers {
     )
   )
 
-  "createJson" should "convert ModuleGraph into JSON correctly" in {
+  test("createJson should convert ModuleGraph into JSON correctly"):
     val expected =
       "[{\"text\":\"orgC:nameC:3.0\",\"children\":[{\"text\":\"orgA:nameA:1.0\",\"children\":[{\"text\":\"orgA:nameA:1.0 (cycle)\",\"children\":[]},{\"text\":\"orgB:nameB:2.0\",\"children\":[]}]}]}]"
     Predef.assert(
       createJson(graph) == expected,
       s"Expected $expected, but got ${createJson(graph)}"
     )
-  }
 
-  "processSubtree" should "detect cycles and truncate" in {
+  test("processSubtree should detect cycles and truncate"):
     val expected = ModuleModel(
       "orgC:nameC:3.0",
       Vector(
@@ -50,5 +48,4 @@ class TreeViewTest extends AnyFlatSpec with Matchers {
       )
     )
     assert(TreeView.processSubtree(graph, Module(modC), Set()) == expected)
-  }
-}
+end TreeViewTest

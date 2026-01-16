@@ -8,12 +8,11 @@
 
 package sbt.internal.graph.backend
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import verify.BasicTestSuite
 import sbt.internal.graph.GraphModuleId
 import sbt.librarymanagement.*
 
-class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
+object SbtUpdateReportTest extends BasicTestSuite:
 
   def caller(org: String, name: String, version: String): Caller =
     Caller(
@@ -39,7 +38,7 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
     ).withCallers(callers)
 
   // #8400
-  "fromConfigurationReport" should "handle relocated direct dependencies" in {
+  test("fromConfigurationReport should handle relocated direct dependencies"):
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val relocatedReport = moduleReport(
       "at.yawk.lz4",
@@ -57,14 +56,13 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 2
+    assert(graph.nodes.size == 2)
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val relocatedId = GraphModuleId("at.yawk.lz4", "lz4-java", "1.8.1")
-    graph.edges should contain((rootId, relocatedId))
-    graph.dependencyMap(rootId).map(_.id) should contain(relocatedId)
-  }
+    assert(graph.edges.contains((rootId, relocatedId)))
+    assert(graph.dependencyMap(rootId).map(_.id).contains(relocatedId))
 
-  it should "handle normal dependencies without relocation" in {
+  test("fromConfigurationReport should handle normal dependencies without relocation"):
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val normalReport = moduleReport(
       "org.example",
@@ -82,13 +80,12 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 2
+    assert(graph.nodes.size == 2)
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depId = GraphModuleId("org.example", "example-lib", "1.0.0")
-    graph.edges should contain((rootId, depId))
-  }
+    assert(graph.edges.contains((rootId, depId)))
 
-  it should "handle transitive relocated dependencies" in {
+  test("fromConfigurationReport should handle transitive relocated dependencies"):
     val root = ModuleID("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depA = moduleReport(
       "org.example",
@@ -112,11 +109,10 @@ class SbtUpdateReportTest extends AnyFlatSpec with Matchers {
 
     val graph = SbtUpdateReport.fromConfigurationReport(configReport, root)
 
-    graph.nodes.size shouldBe 3
+    assert(graph.nodes.size == 3)
     val rootId = GraphModuleId("test", "test-project_2.12", "0.1.0-SNAPSHOT")
     val depAId = GraphModuleId("org.example", "dep-a", "1.0.0")
     val relocatedBId = GraphModuleId("new.group", "dep-b", "2.0.0")
-    graph.edges should contain((rootId, depAId))
-    graph.edges should contain((rootId, relocatedBId))
-  }
-}
+    assert(graph.edges.contains((rootId, depAId)))
+    assert(graph.edges.contains((rootId, relocatedBId)))
+end SbtUpdateReportTest
