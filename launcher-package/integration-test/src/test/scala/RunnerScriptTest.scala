@@ -194,4 +194,26 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         s"Machine config should appear before project config. machineIndex=$machineIndex, projectIndex=$projectIndex"
       )
 
+  // Test for issue #7333: sbtopts should handle JVM parameters with spaces
+  testOutput(
+    "sbtopts handles JVM parameters with spaces",
+    sbtOptsFileContents = """-J-Dtest.property="value with spaces""""
+  )("-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      // The property should be passed to Java with the full value including spaces
+      val found = out.exists(_.contains("-Dtest.property=value with spaces"))
+      assert(found, s"Expected to find '-Dtest.property=value with spaces' in output:\n${out.mkString("\n")}")
+
+  testOutput(
+    "sbtopts handles multiple JVM parameters on same line",
+    sbtOptsFileContents = """-J--enable-preview -J--add-modules jdk.incubator.concurrent"""
+  )("-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      val hasEnablePreview = out.exists(_.contains("--enable-preview"))
+      val hasAddModules = out.exists(_.contains("--add-modules"))
+      assert(hasEnablePreview, s"Expected to find '--enable-preview' in output:\n${out.mkString("\n")}")
+      assert(hasAddModules, s"Expected to find '--add-modules' in output:\n${out.mkString("\n")}")
+
 end RunnerScriptTest

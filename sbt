@@ -775,6 +775,22 @@ loadConfigFile() {
   done
 }
 
+# Load config file into an array, properly handling quoted arguments with spaces
+# Usage: loadConfigFileArray arrayname filename
+loadConfigFileArray() {
+  local -n arr=$1
+  local file=$2
+  arr=()
+  # Read file line by line, skipping comments and empty lines
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Skip empty lines
+    [[ -z "$line" ]] && continue
+    # Use eval to properly parse the line respecting quotes
+    # This handles cases like: -J-Dkey="value with spaces"
+    eval "arr+=( $line )"
+  done < <(cat "$file" | sed $'/^\#/d;s/\r$//')
+}
+
 loadPropFile() {
   # trim key and value so as to be more forgiving with spaces around the '=':
   k=$(trimString $k)
@@ -857,19 +873,39 @@ runNativeClient() {
 original_args=("$@")
 
 # Pull in the machine-wide settings configuration.
+# Using loadConfigFileArray to properly handle arguments with spaces
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  set -- "$@" $(loadConfigFile "$machine_sbt_opts_file")
+  declare -a machine_opts
+  loadConfigFileArray machine_opts "$machine_sbt_opts_file"
+  set -- "$@" "${machine_opts[@]}"
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$dist_sbt_opts_file")
+  if [[ -f "$dist_sbt_opts_file" ]]; then
+    declare -a dist_opts
+    loadConfigFileArray dist_opts "$dist_sbt_opts_file"
+    set -- "$@" "${dist_opts[@]}"
+  fi
 fi
 
 # Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
 # Append so it appears last in command line and wins for duplicate properties.
-[[ -f "$sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$sbt_opts_file")
+if [[ -f "$sbt_opts_file" ]]; then
+  declare -a sbt_opts
+  loadConfigFileArray sbt_opts "$sbt_opts_file"
+  set -- "$@" "${sbt_opts[@]}"
+fi
 
 # Pull in the project-level java config, if it exists.
-[[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
+if [[ -f ".jvmopts" ]]; then
+  declare -a jvm_opts
+  loadConfigFileArray jvm_opts ".jvmopts"
+  # Properly quote and join array elements for JAVA_OPTS
+  for opt in "${jvm_opts[@]}"; do
+    # Use printf %q to properly escape the option for shell expansion
+    JAVA_OPTS="$JAVA_OPTS $(printf '%q' "$opt")"
+  done
+  export JAVA_OPTS
+fi
 
 # Pull in default JAVA_OPTS
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
