@@ -39,14 +39,7 @@ lazy val app = project
     ),
   )
 
-TaskKey[Unit]("checkEvictionError") := {
-  // Verify that eviction errors would normally occur with default settings
-  // This confirms our test setup correctly creates an eviction conflict
-  val evicted = (app / evictionWarningOptions).value
-  streams.value.log.info(s"Eviction warning options: $evicted")
-}
-
-TaskKey[Unit]("checkDependencyTree") := {
+TaskKey[Unit]("checkDependencyTree") := Def.uncached {
   // This task would fail before the fix because eviction errors blocked dependencyTree
   // Now it should succeed and display the tree even with eviction errors
   val tree = (app / Compile / dependencyTree).toTask(" --quiet").value
