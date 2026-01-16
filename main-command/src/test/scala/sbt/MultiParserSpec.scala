@@ -96,25 +96,27 @@ object MultiParserSpec extends BasicTestSuite:
   val emptyBraces: String = "{{{{}}}}"
 
   test("parsing should parse commands with braces"):
-    assert(s"$consecutive;".parse == consecutive :: Nil)
-    assert(s"$oneBrace;".parse == oneBrace :: Nil)
-    assert(s"$twoBrace;".parse == twoBrace :: Nil)
-    assert(s"$threeBrace;".parse == threeBrace :: Nil)
-    assert(s"$doubleBrace;".parse == doubleBrace :: Nil)
-    assert(s"$tripleBrace;".parse == tripleBrace :: Nil)
-    assert(s"$emptyBraces;".parse == emptyBraces :: Nil)
+    Predef.assert(s"$consecutive;".parse == consecutive :: Nil)
+    Predef.assert(s"$oneBrace;".parse == oneBrace :: Nil)
+    Predef.assert(s"$twoBrace;".parse == twoBrace :: Nil)
+    Predef.assert(s"$threeBrace;".parse == threeBrace :: Nil)
+    Predef.assert(s"$doubleBrace;".parse == doubleBrace :: Nil)
+    Predef.assert(s"$tripleBrace;".parse == tripleBrace :: Nil)
+    Predef.assert(s"$emptyBraces;".parse == emptyBraces :: Nil)
 
   test("parsing should parse multiple commands with braces"):
-    assert(s"compile; $consecutive".parse == "compile" :: consecutive :: Nil)
-    assert(s"compile; $consecutive ; test".parse == "compile" :: consecutive :: "test" :: Nil)
+    Predef.assert(s"compile; $consecutive".parse == "compile" :: consecutive :: Nil)
+    Predef.assert(
+      s"compile; $consecutive ; test".parse == "compile" :: consecutive :: "test" :: Nil
+    )
 
   test("parsing should not parse unclosed braces"):
     val extraRight = "{ { val x = 1}}{ val x = 2 } }"
-    assert(s"compile; $extraRight".parseEither.isLeft)
+    Predef.assert(s"compile; $extraRight".parseEither.isLeft)
     val extraLeft = "{{{ val x = 1}{ val x = 2 } }"
-    assert(s"compile; $extraLeft".parseEither.isLeft)
+    Predef.assert(s"compile; $extraLeft".parseEither.isLeft)
     val unmatchedEmptyBraces = "{{{{}}}"
-    assert(s"compile; $unmatchedEmptyBraces".parseEither.isLeft)
+    Predef.assert(s"compile; $unmatchedEmptyBraces".parseEither.isLeft)
 
   test("parsing should handle cosmetic whitespace"):
     val commands = (1 to 100).map(_ => "compile")
@@ -128,15 +130,15 @@ object MultiParserSpec extends BasicTestSuite:
 
   test("parsing should exclude alias"):
     val alias = """alias scalacFoo = ; set scalacOptions ++= Seq("-foo")"""
-    assert(alias.parseEither.isLeft)
-    assert(s"   $alias".parseEither.isLeft)
-    assert(s"   $alias;".parseEither.isLeft)
-    assert(s";$alias".parseEither.isLeft)
-    assert(s";   $alias".parseEither.isLeft)
-    assert(s";$alias;".parseEither.isLeft)
-    assert(s";   $alias;".parseEither.isLeft)
-    assert(s"foo; $alias".parseEither.isLeft)
-    assert(s"; foo;$alias".parseEither.isLeft)
-    assert(s"; foo;$alias; ".parseEither.isLeft)
-    assert(s"; foo;   $alias; ".parseEither.isLeft)
+    Predef.assert(alias.parseEither.isLeft)
+    Predef.assert(s"   $alias".parseEither.isLeft)
+    Predef.assert(s"   $alias;".parseEither.isLeft)
+    Predef.assert(s";$alias".parseEither.isLeft)
+    Predef.assert(s";   $alias".parseEither.isLeft)
+    Predef.assert(s";$alias;".parseEither.isLeft)
+    Predef.assert(s";   $alias;".parseEither.isLeft)
+    Predef.assert(s"foo; $alias".parseEither.isLeft)
+    Predef.assert(s"; foo;$alias".parseEither.isLeft)
+    Predef.assert(s"; foo;$alias; ".parseEither.isLeft)
+    Predef.assert(s"; foo;   $alias; ".parseEither.isLeft)
 end MultiParserSpec
