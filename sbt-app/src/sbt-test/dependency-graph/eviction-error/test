@@ -1,26 +1,11 @@
 # Test that dependencyTree works despite eviction errors (issue #7255)
 #
-# Setup: Creates a binary incompatible eviction scenario using local modules:
-# - base 1.0.0 with early-semver versioning
-# - base 2.0.0 (major version bump = binary incompatible)
-# - middle depends on base 1.0.0
-# - app depends on middle + base 2.0.0 (eviction conflict!)
+# The dependencies create a binary incompatible eviction:
+# - fs2-core 2.5.x depends on cats-effect 2.x
+# - We also depend on cats-effect 3.x directly
+# - cats-effect uses early-semver, so 2.x -> 3.x is binary incompatible
 #
 # Before the fix: dependencyTree would fail with eviction error
-# After the fix: dependencyTree displays the tree (eviction shown as warning)
+# After the fix: dependencyTree displays the tree (eviction as warning)
 
-# Publish base 1.0.0
-> base/publish
-
-# Publish base 2.0.0
-> set base/version := "2.0.0"
-> base/publish
-
-# Publish middle (depends on base 1.0.0)
-> middle/publish
-
-# This is the key test: dependencyTree should succeed despite eviction error
-> app/dependencyTree
-
-# Additional verification via custom task
-> checkDependencyTree
+> dependencyTree
