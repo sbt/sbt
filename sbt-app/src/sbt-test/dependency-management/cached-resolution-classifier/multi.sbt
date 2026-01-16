@@ -52,7 +52,6 @@ lazy val b = project.
       "net.databinder" %% "unfiltered-uploads" % "0.8.0",
       "commons-io" % "commons-io" % "1.4" classifier "sources",
       "com.typesafe" % "config" % "0.4.9-SNAPSHOT"
-      
     ) 
   )
 
