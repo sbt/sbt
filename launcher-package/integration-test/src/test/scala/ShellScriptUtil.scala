@@ -35,7 +35,8 @@ trait ShellScriptUtil extends BasicTestSuite {
       sbtOptsFileContents: String = "",
       javaToolOptions: String = "",
       distSbtoptsContents: String = "",
-      machineSbtoptsContents: String = ""
+      machineSbtoptsContents: String = "",
+      jvmoptsFileContents: String = ""
   )(args: String*)(f: List[String] => Any) =
     test(name) {
       val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
@@ -53,6 +54,18 @@ trait ShellScriptUtil extends BasicTestSuite {
           writer.write(sbtOptsFileContents)
         } finally {
           writer.close()
+        }
+
+        // Create .jvmopts file if contents provided
+        if (jvmoptsFileContents.nonEmpty) {
+          val jvmoptsFile = new File(workingDirectory, ".jvmopts")
+          jvmoptsFile.createNewFile()
+          val jvmoptsWriter = new PrintWriter(jvmoptsFile)
+          try {
+            jvmoptsWriter.write(jvmoptsFileContents)
+          } finally {
+            jvmoptsWriter.close()
+          }
         }
 
         val envVars = scala.collection.mutable.Map[String, String]()
