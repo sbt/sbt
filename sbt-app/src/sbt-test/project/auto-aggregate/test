@@ -1,0 +1,5 @@
+> bar/compile
+$ exists target/**/bar1/classes/B1.class
+
+> compile
+$ exists target/**/foo/classes/A.class

@@ -18,19 +18,19 @@ import sbt.State
 import sbt.internal.CommandChannel
 import sbt.internal.util.ConsoleAppender.{ ClearPromptLine, ClearScreenAfterCursor, DeleteLine }
 import sbt.internal.util.Terminal.hasConsole
-import sbt.internal.util._
+import sbt.internal.util.*
 import sbt.internal.util.complete.{ Parser }
 
 import scala.annotation.tailrec
 
 private[sbt] trait UITask extends Runnable with AutoCloseable {
   private[sbt] val channel: CommandChannel
-  private[sbt] val reader: UITask.Reader
-  private[this] final def handleInput(s: Either[String, String]): Boolean = s match {
+  private[sbt] def reader: UITask.Reader
+  private final def handleInput(s: Either[String, String]): Boolean = s match {
     case Left(m)    => channel.onFastTrackTask(m)
     case Right(cmd) => channel.onCommandLine(cmd)
   }
-  private[this] val isStopped = new AtomicBoolean(false)
+  private val isStopped = new AtomicBoolean(false)
   override def run(): Unit = {
     @tailrec def impl(): Unit = if (!isStopped.get) {
       val res = reader.readLine()
@@ -70,7 +70,7 @@ private[sbt] object UITask {
           case cmd                                 => Right(cmd)
         }
 
-    def terminalReader(parser: Parser[_])(
+    def terminalReader(parser: Parser[?])(
         terminal: Terminal,
         state: State
     ): Reader = new Reader {
@@ -102,7 +102,7 @@ private[sbt] object UITask {
       override def close(): Unit = closed.set(true)
     }
   }
-  private[this] def history(s: State): Option[File] =
+  private def history(s: State): Option[File] =
     s.get(historyPath).getOrElse(Some(new File(s.baseDir, ".history")))
   private[sbt] def shellPrompt(terminal: Terminal, s: State): String =
     s.get(sbt.BasicKeys.shellPrompt) match {

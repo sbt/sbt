@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -9,6 +9,7 @@ sealed abstract class TestResult extends Serializable
 object TestResult {
   
   
+  case object Empty extends TestResult
   case object Passed extends TestResult
   case object Failed extends TestResult
   case object Error extends TestResult

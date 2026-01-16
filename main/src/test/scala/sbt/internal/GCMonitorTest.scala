@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.scalatest.funsuite.AnyFunSuite
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class GCMonitorTest extends AnyFunSuite {
   class TestMonitor extends GCMonitorBase {

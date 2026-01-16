@@ -9,7 +9,7 @@
 package sbt.internal.server
 
 import sbt.StandardMain
-import sbt.internal.bsp._
+import sbt.internal.bsp.*
 import sbt.internal.util.ManagedLogger
 import sbt.internal.server.BuildServerProtocol.BspCompileState
 import xsbti.compile.CompileAnalysis
@@ -20,15 +20,15 @@ import xsbti.{
   Severity,
   VirtualFile,
   VirtualFileRef,
-  Position => XPosition
+  Position as XPosition
 }
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 import java.nio.file.Path
 
 /**
-Provides methods for sending success and failure reports and publishing diagnostics.
+ * Provides methods for sending success and failure reports and publishing diagnostics.
  */
 sealed trait BuildServerReporter extends Reporter {
   private final val sigFilesWritten = "[sig files written]"
@@ -42,9 +42,7 @@ sealed trait BuildServerReporter extends Reporter {
 
   protected def publishDiagnostic(problem: Problem): Unit
 
-  def sendSuccessReport(
-      analysis: CompileAnalysis,
-  ): Unit
+  def sendSuccessReport(analysis: CompileAnalysis): Unit
 
   def sendFailureReport(sources: Array[VirtualFile]): Unit
 
@@ -87,16 +85,18 @@ final class BuildServerReporterImpl(
     protected override val logger: ManagedLogger,
     protected override val underlying: Reporter
 ) extends BuildServerReporter {
-  import sbt.internal.bsp.codec.JsonProtocol._
-  import sbt.internal.inc.JavaInterfaceUtil._
+  import sbt.internal.bsp.codec.JsonProtocol.given
+  import sbt.internal.inc.JavaInterfaceUtil.*
 
   private lazy val exchange = StandardMain.exchange
   private val problemsByFile = mutable.Map[Path, Vector[Problem]]()
 
   // sometimes the compiler returns a fake position such as <macro>
-  // on Windows, this causes InvalidPathException (see #5994 and #6720)
+  // or a JAR file path like jar:file:///C:/...
+  // on Windows, this causes InvalidPathException (see #5994, #6720, and #7665)
   private def toDocument(ref: VirtualFileRef): Option[TextDocumentIdentifier] =
-    if (ref.id().contains("<")) None
+    val id = ref.id()
+    if id.contains("<") || id.startsWith("jar:") then None
     else Some(TextDocumentIdentifier(converter.toPath(ref).toUri))
 
   /**
@@ -131,8 +131,7 @@ final class BuildServerReporterImpl(
     if (oldDocuments.nonEmpty || problems.nonEmpty || isFirstReport) {
       val diagsByDocuments = problems
         .flatMap(mapProblemToDiagnostic)
-        .groupBy { case (document, _) => document }
-        .mapValues(_.map { case (_, diag) => diag })
+        .groupMap((document, _) => document)((_, diag) => diag)
       updateNewDocuments(source, diagsByDocuments.keys.toVector)
 
       // send a report for the new documents, the old ones and the source file

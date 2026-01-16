@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -29,7 +29,7 @@ final class JvmRunInfo private (
   override def toString: String = {
     "JvmRunInfo(" + args + ", " + classpath + ", " + mainClass + ", " + connectInput + ", " + javaHome + ", " + outputStrategy + ", " + workingDirectory + ", " + jvmOptions + ", " + environmentVariables + ", " + inputs + ", " + outputs + ")"
   }
-  private[this] def copy(args: Vector[String] = args, classpath: Vector[sbt.internal.worker.FilePath] = classpath, mainClass: String = mainClass, connectInput: Boolean = connectInput, javaHome: Option[java.net.URI] = javaHome, outputStrategy: Option[String] = outputStrategy, workingDirectory: Option[java.net.URI] = workingDirectory, jvmOptions: Vector[String] = jvmOptions, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables, inputs: Vector[sbt.internal.worker.FilePath] = inputs, outputs: Vector[sbt.internal.worker.FilePath] = outputs): JvmRunInfo = {
+  private def copy(args: Vector[String] = args, classpath: Vector[sbt.internal.worker.FilePath] = classpath, mainClass: String = mainClass, connectInput: Boolean = connectInput, javaHome: Option[java.net.URI] = javaHome, outputStrategy: Option[String] = outputStrategy, workingDirectory: Option[java.net.URI] = workingDirectory, jvmOptions: Vector[String] = jvmOptions, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables, inputs: Vector[sbt.internal.worker.FilePath] = inputs, outputs: Vector[sbt.internal.worker.FilePath] = outputs): JvmRunInfo = {
     new JvmRunInfo(args, classpath, mainClass, connectInput, javaHome, outputStrategy, workingDirectory, jvmOptions, environmentVariables, inputs, outputs)
   }
   def withArgs(args: Vector[String]): JvmRunInfo = {

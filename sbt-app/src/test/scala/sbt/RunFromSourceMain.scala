@@ -15,7 +15,6 @@ import sbt.util.LoggerContext
 
 import scala.annotation.tailrec
 import scala.sys.process.Process
-import sbt.internal.SysProp
 
 object RunFromSourceMain {
   def fork(
@@ -42,12 +41,12 @@ object RunFromSourceMain {
         case Some(home) => Vector(s"-Dsbt.ivy.home=$home")
         case _          => Vector()
       }) ++ fo0.runJVMOptions)
-    implicit val runner = new ForkRun(fo)
+    val runner = new ForkRun(fo)
     val options =
       Vector(workingDirectory.toString, scalaVersion, sbtVersion, cp.mkString(pathSeparator))
-    val context = LoggerContext(useLog4J = SysProp.useLog4J)
+    val context = LoggerContext()
     val log = context.logger("RunFromSourceMain.fork", None, None)
-    try runner.fork("sbt.RunFromSourceMain", cp, options, log)
+    try runner.fork("sbt.RunFromSourceMain", cp.map(_.toPath()), options, log)
     finally context.close()
   }
 
@@ -56,10 +55,10 @@ object RunFromSourceMain {
       sys.error(
         s"Must specify working directory, scala version and sbt version and classpath as the first three arguments"
       )
-    case Array(wd, scalaVersion, sbtVersion, classpath, args @ _*) =>
-      System.setProperty("jna.nosys", "true")
+    case Array(wd, scalaVersion, sbtVersion, classpath, args*) =>
+      if (System.getProperty("jna.nosys") == null) System.setProperty("jna.nosys", "true")
       if (args.exists(_.startsWith("<"))) System.setProperty("sbt.io.virtual", "false")
-      val context = LoggerContext(useLog4J = SysProp.useLog4J)
+      val context = LoggerContext()
       try run(file(wd), scalaVersion, sbtVersion, classpath, args, context)
       finally context.close()
   }
@@ -87,9 +86,18 @@ object RunFromSourceMain {
       args: Seq[String],
       context: LoggerContext,
   ): Option[(File, Seq[String])] = {
-    try launch(defaultBootDirectory, baseDir, scalaVersion, sbtVersion, classpath, args, context) map exit
+    try
+      launch(
+        defaultBootDirectory,
+        baseDir,
+        scalaVersion,
+        sbtVersion,
+        classpath,
+        args,
+        context
+      ) map exit
     catch {
-      case r: xsbti.FullReload => Some((baseDir, r.arguments()))
+      case r: xsbti.FullReload => Some((baseDir, r.arguments.toSeq))
       case scala.util.control.NonFatal(e) =>
         e.printStackTrace(); errorAndExit(e.toString)
     }
@@ -138,7 +146,10 @@ object RunFromSourceMain {
         log.info(s"""creating $scalaHome1 by downloading scala-compiler $scalaVersion""")
         IO.createDirectories(List(scalaHome1Lib, scalaHome1Temp))
         val lm = {
-          import sbt.librarymanagement.ivy.IvyDependencyResolution
+          import sbt.internal.librarymanagement.ivy.{
+            InlineIvyConfiguration,
+            IvyDependencyResolution
+          }
           val ivyConfig = InlineIvyConfiguration().withLog(log)
           IvyDependencyResolution(
             ivyConfig.withResolvers(
@@ -151,11 +162,11 @@ object RunFromSourceMain {
         }
         val Name = """(.*)(?:\-[\d.]+)\.jar""".r
         val BinPre = """(.*)(?:\-[\d.]+)-(?:bin|pre)-.*\.jar""".r
-        val module = "org.scala-lang" % "scala-compiler" % scalaVersion
+        val module = "org.scala-lang" % "scala3-compiler_3" % scalaVersion
         lm.retrieve(module, scalaModuleInfo = None, scalaHome1Temp, log) match {
           case Left(w) => throw w.resolveException
           case Right(_) =>
-            val jars = (scalaHome1Temp ** "*.jar").get
+            val jars = (scalaHome1Temp ** "*.jar").get()
             assert(jars.nonEmpty, s"no jars for scala $scalaVersion")
             jars.foreach { f =>
               val name = f.getName match {

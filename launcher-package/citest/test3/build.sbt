@@ -27,19 +27,19 @@ lazy val root = (project in file("."))
       assert(ys.size == 1, s"ys has more than one item: $ys")
       assert(ys(0) startsWith "Java HotSpot(TM) 64-Bit Server VM warning")
     },
-    checkNumericVersion = {
+    checkNumericVersion := {
       val xs = IO.readLines(file("numericVersion.txt")).toVector
       val expectedVersion = "^"+versionRegEx+"$"
 
       assert(xs(0).matches(expectedVersion))
     },
-    checkScriptVersion = {
+    checkScriptVersion := {
       val xs = IO.readLines(file("scriptVersion.txt")).toVector
       val expectedVersion = "^"+versionRegEx+"$"
 
       assert(xs(0).matches(expectedVersion))
     },
-    checkVersion = {
+    checkVersion := {
       val out = IO.readLines(file("version.txt")).toVector.mkString("\n")
 
       val expectedVersion =

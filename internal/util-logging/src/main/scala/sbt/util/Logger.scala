@@ -8,18 +8,16 @@
 
 package sbt.util
 
-import xsbti.{ Logger => xLogger }
-import xsbti.{ Position, Problem, Severity }
+import xsbti.{ Logger as xLogger }
 
 import sys.process.ProcessLogger
 import sbt.internal.util.{ BufferedLogger, FullLogger }
-import java.io.File
 import java.util.Optional
 import java.util.function.Supplier
 
 /**
- * This is intended to be the simplest logging interface for use by code that wants to log.
- * It does not include configuring the logger.
+ * This is intended to be the simplest logging interface for use by code that wants to log. It does
+ * not include configuring the logger.
  */
 abstract class Logger extends xLogger {
   final def verbose(message: => String): Unit = debug(message)
@@ -32,9 +30,6 @@ abstract class Logger extends xLogger {
   final def err(message: => String): Unit = log(Level.Error, message)
   // sys.process.ProcessLogger
   final def out(message: => String): Unit = log(Level.Info, message)
-
-  @deprecated("No longer used.", "1.0.0")
-  def ansiCodesSupported: Boolean = false
 
   def trace(t: => Throwable): Unit
   def success(message: => String): Unit
@@ -80,7 +75,7 @@ object Logger {
     case _         => wrapXLogger(lg)
   }
 
-  private[this] def wrapXLogger(lg: xLogger): Logger = new Logger {
+  private def wrapXLogger(lg: xLogger): Logger = new Logger {
     import InterfaceUtil.toSupplier
     override def debug(msg: Supplier[String]): Unit = lg.debug(msg)
     override def warn(msg: Supplier[String]): Unit = lg.warn(msg)
@@ -103,28 +98,4 @@ object Logger {
 
   def jo2o[A](o: Optional[A]): Option[A] = InterfaceUtil.jo2o(o)
   def o2jo[A](o: Option[A]): Optional[A] = InterfaceUtil.o2jo(o)
-
-  @deprecated("Use InterfaceUtil.position", "1.2.2")
-  def position(
-      line0: Option[Integer],
-      content: String,
-      offset0: Option[Integer],
-      pointer0: Option[Integer],
-      pointerSpace0: Option[String],
-      sourcePath0: Option[String],
-      sourceFile0: Option[File]
-  ): Position =
-    InterfaceUtil.position(
-      line0,
-      content,
-      offset0,
-      pointer0,
-      pointerSpace0,
-      sourcePath0,
-      sourceFile0
-    )
-
-  @deprecated("Use InterfaceUtil.problem", "1.2.2")
-  def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
-    InterfaceUtil.problem(cat, pos, msg, sev)
 }

@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.testing.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TestCompleteEventFormats { self: sbt.protocol.testing.codec.TestResultFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val TestCompleteEventFormat: JsonFormat[sbt.protocol.testing.TestCompleteEvent] = new JsonFormat[sbt.protocol.testing.TestCompleteEvent] {
+trait TestCompleteEventFormats { self: sbt.protocol.testing.codec.TestResultFormats & sjsonnew.BasicJsonProtocol =>
+given TestCompleteEventFormat: JsonFormat[sbt.protocol.testing.TestCompleteEvent] = new JsonFormat[sbt.protocol.testing.TestCompleteEvent] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.testing.TestCompleteEvent = {
     __jsOpt match {
       case Some(__js) =>

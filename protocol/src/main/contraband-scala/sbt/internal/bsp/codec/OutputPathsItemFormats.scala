@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait OutputPathsItemFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sjsonnew.BasicJsonProtocol with sbt.internal.bsp.codec.OutputPathItemFormats =>
-implicit lazy val OutputPathsItemFormat: JsonFormat[sbt.internal.bsp.OutputPathsItem] = new JsonFormat[sbt.internal.bsp.OutputPathsItem] {
+trait OutputPathsItemFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats & sjsonnew.BasicJsonProtocol & sbt.internal.bsp.codec.OutputPathItemFormats =>
+given OutputPathsItemFormat: JsonFormat[sbt.internal.bsp.OutputPathsItem] = new JsonFormat[sbt.internal.bsp.OutputPathsItem] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.OutputPathsItem = {
     __jsOpt match {
       case Some(__js) =>

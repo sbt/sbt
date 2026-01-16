@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class Position private (
   override def toString: String = {
     "Position(" + line + ", " + character + ")"
   }
-  private[this] def copy(line: Long = line, character: Long = character): Position = {
+  private def copy(line: Long = line, character: Long = character): Position = {
     new Position(line, character)
   }
   def withLine(line: Long): Position = {

@@ -8,14 +8,10 @@
 
 package sbt.internal.util
 
-import sbt.util._
-import com.github.ghik.silencer.silent
+import sbt.util.*
 
 /** Promotes the simple Logger interface to the full AbstractLogger interface. */
 class FullLogger(delegate: Logger) extends BasicLogger {
-  @deprecated("No longer used.", "1.0.0")
-  @silent override val ansiCodesSupported: Boolean = delegate.ansiCodesSupported
-
   def trace(t: => Throwable): Unit = {
     if (traceEnabled)
       delegate.trace(t)

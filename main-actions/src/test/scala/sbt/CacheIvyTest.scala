@@ -8,21 +8,21 @@
 
 package sbt
 
-import org.scalacheck._
-import org.scalacheck.Arbitrary._
-import Prop._
-import sbt.librarymanagement._
+import org.scalacheck.*
+import org.scalacheck.Arbitrary.*
+import Prop.*
+import sbt.librarymanagement.*
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 
 class CacheIvyTest extends Properties("CacheIvy") {
   import sbt.util.{ CacheStore, SingletonCache }
-  import SingletonCache._
+  import SingletonCache.given
 
-  import sjsonnew._
+  import sjsonnew.*
   import sjsonnew.support.scalajson.unsafe.Converter
 
   private class InMemoryStore(converter: SupportConverter[JValue]) extends CacheStore {
-    private var content: JValue = _
+    private var content: JValue = scala.compiletime.uninitialized
     override def delete(): Unit = ()
     override def close(): Unit = ()
 
@@ -38,9 +38,9 @@ class CacheIvyTest extends Properties("CacheIvy") {
       content = converter.toJsonUnsafe(value)
   }
 
-  private def testCache[T: JsonFormat, U](
+  private def testCache[T, U](
       f: (SingletonCache[T], CacheStore) => U
-  )(implicit cache: SingletonCache[T]): U = {
+  )(using cache: SingletonCache[T]): U = {
     val store = new InMemoryStore(Converter)
     f(cache, store)
   }
@@ -55,13 +55,13 @@ class CacheIvyTest extends Properties("CacheIvy") {
     eq(out, m) :| s"Expected: ${str(m)}" :| s"Got: ${str(out)}"
   }
 
-  implicit val arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
+  given arbConfigRef: Arbitrary[ConfigRef] = Arbitrary(
     for {
       n <- Gen.alphaStr
     } yield ConfigRef(n)
   )
 
-  implicit val arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
+  given arbExclusionRule: Arbitrary[InclExclRule] = Arbitrary(
     for {
       o <- Gen.alphaStr
       n <- Gen.alphaStr
@@ -71,18 +71,18 @@ class CacheIvyTest extends Properties("CacheIvy") {
     } yield InclExclRule(o, n, a, cs.toVector, v)
   )
 
-  implicit val arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
+  given arbCrossVersion: Arbitrary[CrossVersion] = Arbitrary {
     // Actual functions don't matter, just Disabled vs Binary vs Full
     Gen.oneOf(Disabled(), Binary(), Full())
   }
 
-  implicit val arbArtifact: Arbitrary[Artifact] = Arbitrary {
+  given arbArtifact: Arbitrary[Artifact] = Arbitrary {
     for {
       (n, t, e, cls) <- arbitrary[(String, String, String, String)]
     } yield Artifact(n, t, e, cls) // keep it simple
   }
 
-  implicit val arbModuleID: Arbitrary[ModuleID] = Arbitrary {
+  given arbModuleID: Arbitrary[ModuleID] = Arbitrary {
     for {
       o <- Gen.identifier
       n <- Gen.identifier
@@ -116,7 +116,7 @@ class CacheIvyTest extends Properties("CacheIvy") {
 
   property("moduleIDFormat") = forAll { (m: ModuleID) =>
     def str(m: ModuleID) = {
-      import m._
+      import m.*
       s"ModuleID($organization, ${m.name}, $revision, $configurations, $isChanging, $isTransitive, $isForce, $explicitArtifacts, $exclusions, " +
         s"$inclusions, $extraAttributes, $crossVersion, $branchName)"
     }
@@ -130,7 +130,7 @@ class CacheIvyTest extends Properties("CacheIvy") {
       }
 
     }
-    import sbt.librarymanagement.LibraryManagementCodec._
-    cachePreservesEquality(m, eq _, str)
+    import sbt.librarymanagement.LibraryManagementCodec.given
+    cachePreservesEquality(m, eq, str)
   }
 }

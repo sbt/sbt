@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class ScalaMainClassesItem private (
   override def toString: String = {
     "ScalaMainClassesItem(" + target + ", " + classes + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classes: Vector[sbt.internal.bsp.ScalaMainClass] = classes): ScalaMainClassesItem = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classes: Vector[sbt.internal.bsp.ScalaMainClass] = classes): ScalaMainClassesItem = {
     new ScalaMainClassesItem(target, classes)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): ScalaMainClassesItem = {

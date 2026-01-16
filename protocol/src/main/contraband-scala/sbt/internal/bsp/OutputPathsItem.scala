@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class OutputPathsItem private (
   override def toString: String = {
     "OutputPathsItem(" + target + ", " + outputPaths + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, outputPaths: Vector[sbt.internal.bsp.OutputPathItem] = outputPaths): OutputPathsItem = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, outputPaths: Vector[sbt.internal.bsp.OutputPathItem] = outputPaths): OutputPathsItem = {
     new OutputPathsItem(target, outputPaths)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): OutputPathsItem = {

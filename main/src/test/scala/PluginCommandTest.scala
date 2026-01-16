@@ -5,33 +5,31 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
 package sbt
 
-import java.io._
+import java.io.*
 
-import sbt.internal._
+import sbt.internal.*
+import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.{
   AttributeEntry,
   AttributeMap,
   ConsoleOut,
   GlobalLogging,
   MainAppender,
-  Settings,
-  Terminal => ITerminal,
+  Terminal,
 }
+import sbt.internal.inc.PlainVirtualFileConverter
 
 object PluginCommandTestPlugin0 extends AutoPlugin { override def requires = empty }
 
 package subpackage {
-
   object PluginCommandTestPlugin1 extends AutoPlugin { override def requires = empty }
-
 }
 
 object PluginCommandTest extends verify.BasicTestSuite {
-  import subpackage._
-  import FakeState._
+  import subpackage.*
+  import FakeState.*
 
   test("`plugin` command should work for plugins within nested in one package") {
     val output = processCommand(
@@ -72,8 +70,8 @@ object FakeState {
     val outBuffer = new ByteArrayOutputStream
     val logFile = File.createTempFile("sbt", ".log")
     try {
-      val state = FakeState(logFile, enabledPlugins: _*)
-      ITerminal.withOut(new PrintStream(outBuffer, true)) {
+      val state = FakeState(logFile, enabledPlugins*)
+      Terminal.withOut(new PrintStream(outBuffer, true)) {
         MainLoop.processCommand(Exec(input, None), state)
       }
       new String(outBuffer.toByteArray)
@@ -88,19 +86,19 @@ object FakeState {
     val base = new File("").getAbsoluteFile
     val testProject = Project("test-project", base).setAutoPlugins(plugins)
 
-    val settings: Seq[Def.Setting[_]] = Nil
+    val settings: Seq[Def.Setting[?]] = Nil
 
     val currentProject = Map(testProject.base.toURI -> testProject.id)
-    val currentEval: () => sbt.compiler.Eval = () => Load.mkEval(Nil, base, Nil)
+    val currentEval: () => Eval = () => Load.mkEval(Nil, base, Nil)
     val sessionSettings =
       SessionSettings(base.toURI, currentProject, Nil, Map.empty, Nil, currentEval)
 
     val delegates: (Scope) => Seq[Scope] = _ => Nil
     val scopeLocal: Def.ScopeLocal = _ => Nil
 
-    val (cMap, data: Settings[Scope]) =
-      Def.makeWithCompiledMap(settings)(delegates, scopeLocal, Def.showFullKey)
-    val extra: KeyIndex => BuildUtil[_] = (keyIndex) =>
+    val (cMap, data: Def.Settings) =
+      Def.makeWithCompiledMap(settings)(using delegates, scopeLocal, Def.showFullKey)
+    val extra: KeyIndex => BuildUtil[?] = (keyIndex) =>
       BuildUtil(base.toURI, Map.empty, keyIndex, data)
     val structureIndex: StructureIndex =
       Load.structureIndex(data, settings, extra, Map.empty)
@@ -115,7 +113,8 @@ object FakeState {
       Nil
     )
 
-    val pluginData = PluginData(Nil, Nil, None, None, Nil, Nil, Nil, Nil, Nil, Nil, None, None)
+    val converter = PlainVirtualFileConverter.converter
+    val pluginData = PluginData(Nil, converter)
     val builds: DetectedModules[BuildDef] = new DetectedModules[BuildDef](Nil)
 
     val detectedAutoPlugins: Seq[DetectedAutoPlugin] =
@@ -123,7 +122,7 @@ object FakeState {
     val detectedPlugins = new DetectedPlugins(detectedAutoPlugins, builds)
     val loadedPlugins =
       new LoadedPlugins(base, pluginData, ClassLoader.getSystemClassLoader, detectedPlugins)
-    val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins)
+    val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins, converter)
 
     val (partBuildUnit: PartBuildUnit, _) = Load.loaded(buildUnit)
     val loadedBuildUnit = Load.resolveProjects(base.toURI, partBuildUnit, _ => testProject.id)
@@ -139,6 +138,7 @@ object FakeState {
       delegates,
       scopeLocal,
       cMap,
+      MappedFileConverter.empty,
     )
 
     val attributes = AttributeMap.empty ++ AttributeMap(

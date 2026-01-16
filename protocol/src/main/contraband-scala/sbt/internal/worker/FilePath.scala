@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class FilePath private (
   override def toString: String = {
     "FilePath(" + path + ", " + digest + ")"
   }
-  private[this] def copy(path: java.net.URI = path, digest: String = digest): FilePath = {
+  private def copy(path: java.net.URI = path, digest: String = digest): FilePath = {
     new FilePath(path, digest)
   }
   def withPath(path: java.net.URI): FilePath = {

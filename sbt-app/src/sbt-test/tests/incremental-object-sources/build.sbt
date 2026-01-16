@@ -1,7 +1,7 @@
-// Global / cacheStores := Seq.empty
+Global / cacheStores := Seq.empty
 
 val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
-scalaVersion := "2.12.20"
+scalaVersion := "2.12.21"
 
 lazy val root = (project in file("."))
   .settings(

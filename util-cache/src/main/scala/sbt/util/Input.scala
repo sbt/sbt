@@ -34,6 +34,7 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
       while ({ read = reader.read(buffer, 0, bufferSize); read != -1 }) {
         builder.appendAll(buffer, 0, read)
       }
+
       builder.toString()
     }
   }

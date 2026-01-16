@@ -8,21 +8,20 @@
 
 package sbt
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import org.scalatest.flatspec.AnyFlatSpec
 import sbt.internal.util.complete.Parser
 
 object MultiParserSpec {
   val parser: Parser[Seq[String]] = BasicCommands.multiParserImpl(None)
-  implicit class StringOps(val s: String) {
+  extension (s: String)
     def parse: Seq[String] = Parser.parse(s, parser) match {
       case Right(x) => x
       case Left(x)  => sys.error(s)
     }
     def parseEither: Either[String, Seq[String]] = Parser.parse(s, parser)
-  }
 }
-import sbt.MultiParserSpec._
+import sbt.MultiParserSpec.*
 class MultiParserSpec extends AnyFlatSpec {
   "parsing" should "parse single commands" in {
     assert(";foo".parse == Seq("foo"))

@@ -69,7 +69,7 @@ See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 - Add logging of the name of the different `build.sbt` (matching `*.sbt`) files used. [#1911][1911] by [@valydia][@valydia]
 - Add the ability to call `aggregate` for the current project inside a build sbt file. By [@xuwei-k][@xuwei-k]
 - Add new global setting `asciiGraphWidth` that controls the maximum width of the ASCII graphs printed by commands like `inspect tree`. Default value corresponds to the previously hardcoded value of 40 characters. By [@RomanIakovlev][@RomanIakovlev].
-- Revamped documentation for [Scopes](www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
+- Revamped documentation for [Scopes](https://www.scala-sbt.org/0.13/docs/Scopes.html), and added [Scope Delegation](https://www.scala-sbt.org/0.13/docs/Scope-Delegation.html). [@eed3si9n][@eed3si9n]
 - Adds support for cross-versioned exclusions. [#1518][1518]/[lm#88][lm88] by [@jvican][@jvican]
 - Adds new offline mode to the Ivy-based library management. [lm#92][lm92] by [@jvican][@jvican]
 - A number of features related to dependency locking. See below.
@@ -96,7 +96,7 @@ See [Migrating from sbt 0.13.x][Migrating-from-sbt-013x] also.
 
 A major improvement brought into Zinc 1.0 by Grzegorz Kossakowski (commissioned by Lightbend) is class-based name hashing, which will speed up the incremental compilation of Scala in large projects.
 
-Zinc 1.0's name hashing tracks your code dependendencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
+Zinc 1.0's name hashing tracks your code dependencies at the class level, instead of at the source file level. The GitHub issue [sbt/sbt#1104](https://github.com/sbt/sbt/issues/1104) lists some comparisons of adding a method to an existing class in some projects:
 
 ```
 ScalaTest   AndHaveWord class:          Before 49s, After 4s (12x)
@@ -153,7 +153,7 @@ The static validation also catches if you forget to call `.value` in a body of a
 
 #### Eviction warning presentation
 
-sbt 1.0 improves the eviction warning presetation.
+sbt 1.0 improves the eviction warning presentation.
 
 Before:
 
@@ -240,7 +240,7 @@ and [lm#104][lm104] by [@eed3si9n][@eed3si9n].
 
 #### Binary format for Zinc's internal storage
 
-Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Procol Buffer.
+Jorge ([@jvican][@jvican]) from Scala Center contributed a binary format for Zinc's internal storage using Google Protocol Buffer.
 The new format provides us with three main advantages:
 
 1. Backwards and forwards binary compatibility at the analysis format level.

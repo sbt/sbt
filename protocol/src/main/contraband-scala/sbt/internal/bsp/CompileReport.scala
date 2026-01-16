@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -32,7 +32,7 @@ final class CompileReport private (
   override def toString: String = {
     "CompileReport(" + target + ", " + originId + ", " + errors + ", " + warnings + ", " + time + ", " + noOp + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, originId: Option[String] = originId, errors: Int = errors, warnings: Int = warnings, time: Option[Int] = time, noOp: Option[Boolean] = noOp): CompileReport = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, originId: Option[String] = originId, errors: Int = errors, warnings: Int = warnings, time: Option[Int] = time, noOp: Option[Boolean] = noOp): CompileReport = {
     new CompileReport(target, originId, errors, warnings, time, noOp)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): CompileReport = {

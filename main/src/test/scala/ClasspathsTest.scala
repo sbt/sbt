@@ -8,8 +8,8 @@
 
 package sbt.test
 
-import sbt._
-import sbt.Classpaths._
+import sbt.*
+import sbt.Classpaths.*
 import sbt.Def.Initialize
 
 class ClasspathsTest[T](

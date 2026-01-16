@@ -30,5 +30,5 @@ trait BasicStatementHandler extends StatementHandler {
 
 /** Use when a stack trace is not useful */
 final class TestFailed(msg: String) extends RuntimeException(msg) {
-  override def fillInStackTrace = this
+  override def fillInStackTrace: Throwable = this
 }

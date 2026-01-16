@@ -1,0 +1,2 @@
+# Test that dependencyTree works despite eviction errors (issue #7255)
+> dependencyTree

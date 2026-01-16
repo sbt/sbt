@@ -8,7 +8,7 @@
 
 package sbt.internal.util
 
-import sbt.util._
+import sbt.util.*
 import java.io.PrintWriter
 
 object MainAppender {
@@ -22,7 +22,7 @@ object MainAppender {
       config: MainAppenderConfig,
       context: LoggerContext
   ): ManagedLogger = {
-    import config._
+    import config.*
     // TODO
     // backed setTrace backingTrace
     // multi: Logger

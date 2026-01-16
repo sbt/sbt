@@ -12,7 +12,7 @@ import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import xsbti.Severity;
 
 trait SeverityFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val SeverityFormat: JsonFormat[Severity] = new JsonFormat[Severity] {
+  given SeverityFormat: JsonFormat[Severity] = new JsonFormat[Severity] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Severity = {
       jsOpt match {
         case Some(js) =>

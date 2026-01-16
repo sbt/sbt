@@ -44,25 +44,24 @@ import sbt.protocol.{
   TerminalSetSizeCommand,
   TerminalSetRawModeCommand,
 }
-import sbt.protocol.codec.JsonProtocol._
-import sbt.protocol.TerminalGetSizeResponse
+import sbt.protocol.codec.JsonProtocol.given
 
 object VirtualTerminal {
-  private[this] val pendingTerminalProperties =
+  private val pendingTerminalProperties =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalPropertiesResponse]]()
-  private[this] val pendingTerminalCapabilities =
+  private val pendingTerminalCapabilities =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalCapabilitiesResponse]]
-  private[this] val pendingTerminalAttributes =
+  private val pendingTerminalAttributes =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalAttributesResponse]]
-  private[this] val pendingTerminalSetAttributes =
+  private val pendingTerminalSetAttributes =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalSetSize =
+  private val pendingTerminalSetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalGetSize =
+  private val pendingTerminalGetSize =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[TerminalGetSizeResponse]]
-  private[this] val pendingTerminalSetEcho =
+  private val pendingTerminalSetEcho =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
-  private[this] val pendingTerminalSetRawMode =
+  private val pendingTerminalSetRawMode =
     new ConcurrentHashMap[(String, String), ArrayBlockingQueue[Unit]]
   private[sbt] def sendTerminalPropertiesQuery(
       channelName: String,
@@ -86,7 +85,7 @@ object VirtualTerminal {
     queue
   }
   private[sbt] def cancelRequests(name: String): Unit = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters.*
     pendingTerminalCapabilities.asScala.foreach {
       case (k @ (`name`, _), q) =>
         pendingTerminalCapabilities.remove(k)
@@ -243,7 +242,7 @@ object VirtualTerminal {
   private val notificationHandler: Handler[JsonRpcNotificationMessage] =
     callback => {
       case n if n.method == systemIn =>
-        import sjsonnew.BasicJsonProtocol._
+        import sjsonnew.BasicJsonProtocol.*
         n.params.flatMap(Converter.fromJson[Byte](_).toOption).foreach { byte =>
           StandardMain.exchange.channelForName(callback.name) match {
             case Some(nc: NetworkChannel) => nc.write(byte)

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class TokenFile private (
   override def toString: String = {
     "TokenFile(" + uri + ", " + token + ")"
   }
-  private[this] def copy(uri: String = uri, token: String = token): TokenFile = {
+  private def copy(uri: String = uri, token: String = token): TokenFile = {
     new TokenFile(uri, token)
   }
   def withUri(uri: String): TokenFile = {

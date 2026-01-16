@@ -8,45 +8,67 @@
 
 package sbt
 
-import sbt.internal.util.Util._
+import sbt.internal.util.Util.*
+import sbt.librarymanagement.Configuration
 
-sealed trait ScopeAxis[+S] {
-  def foldStrict[T](f: S => T, ifZero: T, ifThis: T): T = fold(f, ifZero, ifThis)
-  def fold[T](f: S => T, ifZero: => T, ifThis: => T): T = this match {
+enum ScopeAxis[+A1]:
+  import Scope.RefThenConfig
+
+  /**
+   * Select is a type constructor that is used to wrap type `S`
+   * to make a scope component, equivalent of Some in Option.
+   */
+  case Select(axis: A1) extends ScopeAxis[A1]
+
+  /**
+   * This is a scope component that represents not being
+   * scoped by the user, which later could be further scoped automatically
+   * by sbt.
+   */
+  case This extends ScopeAxis[Nothing]
+
+  /**
+   * Zero is a scope component that represents not scoping.
+   * It is a universal fallback component that is strictly weaker
+   * than any other values on a scope axis.
+   */
+  case Zero extends ScopeAxis[Nothing]
+
+  def isSelect: Boolean = this match
+    case Select(_) => true
+    case _         => false
+
+  def foldStrict[A2](f: A1 => A2, ifZero: A2, ifThis: A2): A2 = fold(f, ifZero, ifThis)
+
+  def fold[A2](f: A1 => A2, ifZero: => A2, ifThis: => A2): A2 = this match
     case This      => ifThis
     case Zero      => ifZero
     case Select(s) => f(s)
-  }
-  def toOption: Option[S] = foldStrict(Option(_), none, none)
-  def map[T](f: S => T): ScopeAxis[T] =
-    foldStrict(s => Select(f(s)): ScopeAxis[T], Zero: ScopeAxis[T], This: ScopeAxis[T])
-  def isSelect: Boolean = false
-}
 
-/**
- * This is a scope component that represents not being
- * scoped by the user, which later could be further scoped automatically
- * by sbt.
- */
-case object This extends ScopeAxis[Nothing]
+  def toOption: Option[A1] = foldStrict(Option(_), none, none)
 
-/**
- * Zero is a scope component that represents not scoping.
- * It is a universal fallback component that is strictly weaker
- * than any other values on a scope axis.
- */
-case object Zero extends ScopeAxis[Nothing]
+  def map[A2](f: A1 => A2): ScopeAxis[A2] =
+    foldStrict(s => Select(f(s)): ScopeAxis[A2], Zero: ScopeAxis[A2], This: ScopeAxis[A2])
 
-/**
- * Select is a type constructor that is used to wrap type `S`
- * to make a scope component, equivalent of Some in Option.
- */
-final case class Select[S](s: S) extends ScopeAxis[S] {
-  override def isSelect = true
-}
-object ScopeAxis {
-  def fromOption[T](o: Option[T]): ScopeAxis[T] = o match {
-    case Some(v) => Select(v)
-    case None    => Zero
-  }
-}
+  def asScope(using A1 <:< Reference): Scope =
+    Scope(this.asInstanceOf[ScopeAxis[Reference]], This, This, This)
+
+  inline def /[K](key: Scoped.ScopingSetting[K])(using A1 <:< Reference): K = key.rescope(asScope)
+
+  inline def /(c: ConfigKey)(using A1 <:< Reference): RefThenConfig =
+    RefThenConfig(this.asInstanceOf, c)
+  inline def /(c: Configuration)(using A1 <:< Reference): RefThenConfig =
+    RefThenConfig(this.asInstanceOf, c: ConfigKey)
+  // This is for handling `Zero / Zero / name`.
+  inline def /(configAxis: ScopeAxis[ConfigKey])(using A1 <:< Reference): RefThenConfig =
+    RefThenConfig(this.asInstanceOf, configAxis)
+end ScopeAxis
+
+object ScopeAxis:
+  def `this`[A1]: ScopeAxis[A1] = ScopeAxis.This
+  def zero[A1]: ScopeAxis[A1] = ScopeAxis.Zero
+
+  def fromOption[A1](o: Option[A1]): ScopeAxis[A1] = o match
+    case Some(v) => ScopeAxis.Select(v)
+    case None    => ScopeAxis.Zero
+end ScopeAxis

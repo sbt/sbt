@@ -11,7 +11,7 @@ package sbt.util
 import java.io.File
 import java.util.Optional
 import java.util.function.Supplier
-import java.{ util => ju }
+import java.{ util as ju }
 
 import xsbti.{
   Action,
@@ -32,10 +32,9 @@ object InterfaceUtil {
     override def get: A = a
   }
 
-  import java.util.function.{ Function => JavaFunction }
-  def toJavaFunction[A1, R](f: A1 => R): JavaFunction[A1, R] = new JavaFunction[A1, R] {
-    override def apply(t: A1): R = f(t)
-  }
+  import java.util.function.{ Function as JavaFunction }
+  def toJavaFunction[A1, R](f: A1 => R): JavaFunction[A1, R] =
+    (t: A1) => f(t)
 
   def t2[A1, A2](x: (A1, A2)): T2[A1, A2] = new ConcreteT2(x._1, x._2)
 
@@ -70,32 +69,6 @@ object InterfaceUtil {
     l.toList
   }
 
-  @deprecated("Use the overload of this method with more arguments", "1.2.2")
-  def position(
-      line0: Option[Integer],
-      content: String,
-      offset0: Option[Integer],
-      pointer0: Option[Integer],
-      pointerSpace0: Option[String],
-      sourcePath0: Option[String],
-      sourceFile0: Option[File]
-  ): Position =
-    position(
-      line0,
-      content,
-      offset0,
-      pointer0,
-      pointerSpace0,
-      sourcePath0,
-      sourceFile0,
-      None,
-      None,
-      None,
-      None,
-      None,
-      None
-    )
-
   def position(
       line0: Option[Integer],
       content: String,
@@ -125,41 +98,6 @@ object InterfaceUtil {
       startColumn0,
       endLine0,
       endColumn0
-    )
-
-  @deprecated("Use the overload of this method with more arguments", "1.2.2")
-  def problem(cat: String, pos: Position, msg: String, sev: Severity): Problem =
-    problem(cat, pos, msg, sev, None)
-
-  @deprecated("Use the overload of this method with more arguments", "1.7.2")
-  def problem(
-      cat: String,
-      pos: Position,
-      msg: String,
-      sev: Severity,
-      rendered: Option[String]
-  ): Problem =
-    problem(cat, pos, msg, sev, rendered, None, List.empty[DiagnosticRelatedInformation])
-
-  @deprecated("Use the overload of this method with more arguments", "1.9.0")
-  def problem(
-      cat: String,
-      pos: Position,
-      msg: String,
-      sev: Severity,
-      rendered: Option[String],
-      diagnosticCode: Option[DiagnosticCode],
-      diagnosticRelatedInforamation: List[DiagnosticRelatedInformation]
-  ): Problem =
-    problem(
-      cat,
-      pos,
-      msg,
-      sev,
-      rendered,
-      diagnosticCode,
-      diagnosticRelatedInforamation,
-      List.empty[Action],
     )
 
   def problem(
@@ -210,9 +148,9 @@ object InterfaceUtil {
     val get2: A2 = a2
     override def toString: String = s"ConcreteT2($a1, $a2)"
     override def equals(o: Any): Boolean = o match {
-      case o: ConcreteT2[A1, A2] =>
+      case o: ConcreteT2[?, ?] =>
         this.get1 == o.get1 &&
-          this.get2 == o.get2
+        this.get2 == o.get2
       case _ => false
     }
     override def hashCode: Int = {

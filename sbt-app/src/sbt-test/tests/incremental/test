@@ -7,7 +7,6 @@
 # Non-API change
 $ copy-file changed/A.scala src/main/scala/A.scala
 > compile
-$ sleep 2000
 # Create is run. Delete is not since it doesn't have src/main dependency.
 -> testQuick
 > testOnly Delete
@@ -19,7 +18,6 @@ $ sleep 2000
 
 $ copy-file changed/B.scala src/main/scala/B.scala
 > compile
-$ sleep 2000
 -> testQuick Create
 > testOnly Delete
 # Previous run of Create failed, re-run.
@@ -28,7 +26,6 @@ $ sleep 2000
 
 $ copy-file changed/Base.scala src/test/scala/Base.scala
 > Test/compile
-$ sleep 2000
 -> testQuick Create
 > testQuick Delete
 > testQuick Create

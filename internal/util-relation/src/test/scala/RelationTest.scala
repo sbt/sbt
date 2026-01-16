@@ -8,8 +8,8 @@
 
 package sbt.internal.util
 
-import org.scalacheck._
-import Prop._
+import org.scalacheck.*
+import Prop.*
 
 object RelationTest extends Properties("Relation") {
   property("Added entry check") = forAll { (pairs: List[(Int, Double)]) =>
@@ -22,17 +22,16 @@ object RelationTest extends Properties("Relation") {
 
     r._1s == _1s && r.forwardMap.keySet == _1s &&
     r._2s == _2s && r.reverseMap.keySet == _2s &&
-    pairs.forall {
-      case (a, b) =>
-        (r.forward(a) contains b) &&
-          (r.reverse(b) contains a) &&
-          (r.forwardMap(a) contains b) &&
-          (r.reverseMap(b) contains a)
+    pairs.forall { (a, b) =>
+      (r.forward(a) contains b) &&
+      (r.reverse(b) contains a) &&
+      (r.forwardMap(a) contains b) &&
+      (r.reverseMap(b) contains a)
     }
   }
 
   property("Does not contain removed entries") = forAll { (pairs: List[(Int, Double, Boolean)]) =>
-    val add = pairs.map { case (a, b, c) => (a, b) }
+    val add = pairs.map { (a, b, c) => (a, b) }
     val added = Relation.empty[Int, Double] ++ add
 
     val removeFine = pairs.collect { case (a, b, true) => (a, b) }
@@ -47,21 +46,20 @@ object RelationTest extends Properties("Relation") {
       ("Forward map does not contain removed" |: !r.forwardMap.contains(rem)) &&
       ("Removed is not a value in reverse map" |: !r.reverseMap.values.toSet.contains(rem))
     } &&
-    all(removeFine) {
-      case (a, b) =>
-        ("Forward does not contain removed" |: (!r.forward(a).contains(b))) &&
-          ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
-          ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
-          ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
+    all(removeFine) { (a, b) =>
+      ("Forward does not contain removed" |: (!r.forward(a).contains(b))) &&
+      ("Reverse does not contain removed" |: (!r.reverse(b).contains(a))) &&
+      ("Forward map does not contain removed" |: (notIn(r.forwardMap, a, b))) &&
+      ("Reverse map does not contain removed" |: (notIn(r.reverseMap, b, a)))
     }
   }
 
   property("Groups correctly") = forAll { (entries: List[(Int, Double)], randomInt: Int) =>
     val splitInto = math.abs(randomInt) % 10 + 1 // Split into 1-10 groups.
     val rel = Relation.empty[Int, Double] ++ entries
-    val grouped = rel groupBy (_._1 % splitInto)
-    all(grouped.toSeq) {
-      case (k, rel_k) => rel_k._1s forall { _ % splitInto == k }
+    val grouped = rel.groupBy(_._1 % splitInto)
+    all(grouped.toSeq) { (k, rel_k) =>
+      rel_k._1s forall { _ % splitInto == k }
     }
   }
 

@@ -9,73 +9,58 @@
 package sbt.util
 
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
+import verify.BasicTestSuite
 
-import CacheImplicits._
+import CacheImplicits.given
 
-import org.scalatest.flatspec.AnyFlatSpec
+object CacheSpec extends BasicTestSuite:
 
-class CacheSpec extends AnyFlatSpec {
-
-  "A cache" should "NOT throw an exception if read without being written previously" in {
-    testCache[String, Int] {
-      case (cache, store) =>
-        cache(store)("missing") match {
-          case Hit(_)  => fail()
-          case Miss(_) => ()
-        }
+  test("A cache should NOT throw an exception if read without being written previously"):
+    testCache[String, Int] { (cache, store) =>
+      cache(store)("missing") match
+        case Hit(_)  => assert(false, "Expected Miss but got Hit")
+        case Miss(_) => ()
     }
-  }
 
-  it should "write a very simple value" in {
-    testCache[String, Int] {
-      case (cache, store) =>
-        cache(store)("missing") match {
-          case Hit(_)       => fail()
-          case Miss(update) => update(5)
-        }
+  test("A cache should write a very simple value"):
+    testCache[String, Int] { (cache, store) =>
+      cache(store)("missing") match
+        case Hit(_)       => assert(false, "Expected Miss but got Hit")
+        case Miss(update) => update(5)
     }
-  }
 
-  it should "be updatable" in {
-    testCache[String, Int] {
-      case (cache, store) =>
-        val value = 5
-        cache(store)("someKey") match {
-          case Hit(_)       => fail()
-          case Miss(update) => update(value)
-        }
+  test("A cache should be updatable"):
+    testCache[String, Int] { (cache, store) =>
+      val value = 5
+      cache(store)("someKey") match
+        case Hit(_)       => assert(false, "Expected Miss but got Hit")
+        case Miss(update) => update(value)
 
-        cache(store)("someKey") match {
-          case Hit(read) => assert(read === value); ()
-          case Miss(_)   => fail()
-        }
+      cache(store)("someKey") match
+        case Hit(read) => assert(read == value)
+        case Miss(_)   => assert(false, "Expected Hit but got Miss")
     }
-  }
 
-  it should "return the value that has been previously written" in {
-    testCache[String, Int] {
-      case (cache, store) =>
-        val key = "someKey"
-        val value = 5
-        cache(store)(key) match {
-          case Hit(_)       => fail()
-          case Miss(update) => update(value)
-        }
+  test("A cache should return the value that has been previously written"):
+    testCache[String, Int] { (cache, store) =>
+      val key = "someKey"
+      val value = 5
+      cache(store)(key) match
+        case Hit(_)       => assert(false, "Expected Miss but got Hit")
+        case Miss(update) => update(value)
 
-        cache(store)(key) match {
-          case Hit(read) => assert(read === value); ()
-          case Miss(_)   => fail()
-        }
+      cache(store)(key) match
+        case Hit(read) => assert(read == value)
+        case Miss(_)   => assert(false, "Expected Hit but got Miss")
     }
-  }
 
-  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(
-      implicit cache: Cache[K, V]
+  private def testCache[K, V](f: (Cache[K, V], CacheStore) => Unit)(using
+      cache: Cache[K, V]
   ): Unit =
     IO.withTemporaryDirectory { tmp =>
       val store = new FileBasedStore(tmp / "cache-store")
       f(cache, store)
     }
 
-}
+end CacheSpec

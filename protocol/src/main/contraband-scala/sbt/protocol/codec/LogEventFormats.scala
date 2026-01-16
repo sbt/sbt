@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait LogEventFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val LogEventFormat: JsonFormat[sbt.protocol.LogEvent] = new JsonFormat[sbt.protocol.LogEvent] {
+given LogEventFormat: JsonFormat[sbt.protocol.LogEvent] = new JsonFormat[sbt.protocol.LogEvent] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.LogEvent = {
     __jsOpt match {
       case Some(__js) =>

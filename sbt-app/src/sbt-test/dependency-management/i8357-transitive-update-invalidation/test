@@ -1,0 +1,21 @@
+# Test for https://github.com/sbt/sbt/issues/8357
+# Verifies that transitiveUpdate correctly invalidates across command invocations
+
+# Step 1: Run itTests/update to establish baseline with cats 2.8.0
+> itTests/update
+
+# Step 2: Change a's dependency version (cats 2.8.0 -> 2.9.0)
+$ copy-file changes/build.sbt build.sbt
+
+# Step 3: Reload to pick up the new settings
+> reload
+
+# Step 4: Run a/update in a SEPARATE command
+> a/update
+
+# Step 5: Now run itTests/update - should re-resolve with new dependencies
+> show itTests/ourStamp
+> show itTests/maxDepStamp
+
+# Compile to verify all dependencies are available
+> itTests/compile

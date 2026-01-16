@@ -13,7 +13,7 @@ class TaskPosSpec {
   // if branches since tasks with single if-expressions are automatically
   // converted into a conditional task.
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val bar = taskKey[String]("")
     val condition = true
@@ -25,7 +25,7 @@ class TaskPosSpec {
 
   // Dynamic tasks can have task invocations inside if branches
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val bar = taskKey[String]("")
     val condition = true
@@ -37,7 +37,7 @@ class TaskPosSpec {
 
   // Dynamic settings can have setting invocations inside if branches
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = settingKey[String]("")
     val bar = settingKey[String]("")
     val condition = true
@@ -48,7 +48,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val condition = true
     Def.task[String] {
@@ -59,7 +59,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val condition = true
     Def.task[String] {
@@ -70,7 +70,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val bar = taskKey[String]("")
     val condition = true
@@ -82,7 +82,7 @@ class TaskPosSpec {
 
   locally {
     // This is fix 1 for appearance of tasks inside anons
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val condition = true
     Def.task[String] {
@@ -95,7 +95,7 @@ class TaskPosSpec {
 
   locally {
     // This is fix 2 for appearance of tasks inside anons
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val condition = true
     Def.taskDyn[String] {
@@ -108,7 +108,7 @@ class TaskPosSpec {
 
   locally {
     // missing .value error should not happen inside task dyn
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     Def.taskDyn[String] {
       foo
@@ -116,7 +116,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     val avoidDCE = ""
     Def.task[String] {
@@ -126,10 +126,10 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     Def.task[String] {
-      def inner(s: KeyedInitialize[_]) = println(s)
+      def inner(s: KeyedInitialize[?]) = println(s)
       inner(foo)
       ""
     }
@@ -137,7 +137,7 @@ class TaskPosSpec {
 
   locally {
     // In theory, this should be reported, but missing .value analysis is dumb at the cost of speed
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     def avoidDCE = { println(""); "" }
     Def.task[String] {
@@ -149,7 +149,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = taskKey[String]("")
     def avoidDCE(x: TaskKey[String]) = x.toString
     Def.task[String] {
@@ -161,7 +161,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     def withKey(foo: => SettingKey[String]): Def.Initialize[Task[Unit]] = {
       Def.task {
         if (true) {
@@ -174,7 +174,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = settingKey[String]("")
     val condition = true
     Def.task[String] {
@@ -185,7 +185,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     val foo = settingKey[String]("")
     Def.task[Seq[String]] {
       (1 to 10).map(_ => foo.value)
@@ -193,7 +193,7 @@ class TaskPosSpec {
   }
 
   locally {
-    import sbt._, Def._
+    import sbt.*, Def.*
     def withKey(bar: => SettingKey[Int]) = {
       Def.task {
         List(42).map { _ =>

@@ -35,10 +35,10 @@ lazy val root = (project in file("."))
     zeroAction := { IO.write(output.value, s"zero\n", append = true) },
     posAction := { IO.write(output.value, s"pos\n", append = true) },
 
-    TaskKey[Unit]("checkTrue") := checkLines("true"),
-    TaskKey[Unit]("checkFalse") := checkLines("false"),
-    TaskKey[Unit]("checkNeg") := checkLines("neg"),
-    TaskKey[Unit]("checkZero") := checkLines("zero"),
+    TaskKey[Unit]("checkTrue") := checkLines("true").value,
+    TaskKey[Unit]("checkFalse") := checkLines("false").value,
+    TaskKey[Unit]("checkNeg") := checkLines("neg").value,
+    TaskKey[Unit]("checkZero") := checkLines("zero").value,
 
     // https://github.com/sbt/sbt/issues/5625
     javacOptions ++= (
@@ -49,6 +49,6 @@ lazy val root = (project in file("."))
 
 def checkLines(content: String) = Def.task {
   val lines = IO.read(output.value).linesIterator.toList
-  assert(lines == List("true"), s"$content was expected but found: $lines")
+  assert(lines == List(content), s"$content was expected but found: $lines")
   ()
 }

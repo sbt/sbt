@@ -6,6 +6,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
+/*
 package sbt
 
 import sbt.util.Logger
@@ -107,3 +108,4 @@ object AI {
     override def requires = A && !Q
   }
 }
+ */

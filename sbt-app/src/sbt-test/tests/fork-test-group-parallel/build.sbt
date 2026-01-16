@@ -1,10 +1,10 @@
 val specs = "org.specs2" %% "specs2-core" % "4.3.4"
-ThisBuild / scalaVersion := "2.12.20"
+ThisBuild / scalaVersion := "2.12.21"
 
 Global / concurrentRestrictions := Seq(Tags.limitAll(4))
 libraryDependencies += specs % Test
 inConfig(Test)(Seq(
-  testGrouping := {
+  testGrouping := Def.uncached {
     val home = javaHome.value
     val strategy = outputStrategy.value
     val baseDir = baseDirectory.value
@@ -23,5 +23,8 @@ inConfig(Test)(Seq(
       )
     ))}
   },
-  TaskKey[Unit]("test-failure") := test.failure.value
+  TaskKey[Unit]("test-failure") := Def.uncached {
+    testFull.failure.value
+    ()
+  }
 ))

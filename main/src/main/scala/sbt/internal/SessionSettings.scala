@@ -9,17 +9,14 @@
 package sbt
 package internal
 
-import sbt.internal.util.{ complete, LineRange, RangePosition, Types }
+import sbt.internal.util.{ complete, LineRange, RangePosition }
 
 import java.io.File
 import java.net.URI
 import Def.{ ScopedKey, Setting }
-import Types.Endo
-import compiler.Eval
-
-import SessionSettings._
+import SessionSettings.*
+import sbt.ProjectExtra.{ extract, getProject, session, structure }
 import sbt.internal.parser.SbtRefactorings
-
 import sbt.io.IO
 
 /**
@@ -35,9 +32,9 @@ import sbt.io.IO
 final case class SessionSettings(
     currentBuild: URI,
     currentProject: Map[URI, String],
-    original: Seq[Setting[_]],
+    original: Seq[Setting[?]],
     append: SessionMap,
-    rawAppend: Seq[Setting[_]],
+    rawAppend: Seq[Setting[?]],
     currentEval: () => Eval
 ) {
 
@@ -79,34 +76,37 @@ final case class SessionSettings(
    * @param ss  The raw settings to include
    * @return A new SessionSettings with the appended settings.
    */
-  def appendRaw(ss: Seq[Setting[_]]): SessionSettings = copy(rawAppend = rawAppend ++ ss)
+  def appendRaw(ss: Seq[Setting[?]]): SessionSettings = copy(rawAppend = rawAppend ++ ss)
 
   /**
    * @return  A combined list of all Setting[_] objects for the current session, in priority order.
    */
-  def mergeSettings: Seq[Setting[_]] = original ++ merge(append) ++ rawAppend
+  def mergeSettings: Seq[Setting[?]] = original ++ merge(append) ++ rawAppend
 
   /**
    * @return  A new SessionSettings object where additional transient settings are removed.
    */
   def clearExtraSettings: SessionSettings = copy(append = Map.empty, rawAppend = Nil)
 
-  private[this] def merge(map: SessionMap): Seq[Setting[_]] =
+  private def merge(map: SessionMap): Seq[Setting[?]] =
     map.values.toSeq.flatten[SessionSetting].map(_._1)
 
-  private[this] def modify(map: SessionMap, onSeq: Endo[Seq[SessionSetting]]): SessionMap = {
+  private def modify(
+      map: SessionMap,
+      onSeq: Seq[SessionSetting] => Seq[SessionSetting],
+  ): SessionMap = {
     val cur = current
     map.updated(cur, onSeq(map.getOrElse(cur, Nil)))
   }
 }
 
-object SessionSettings {
+object SessionSettings:
 
   /** A session setting is simply a tuple of a Setting[_] and the strings which define it. */
-  type SessionSetting = (Setting[_], Seq[String])
+  type SessionSetting = sbt.internal.parser.SbtRefactorings.SessionSetting
+  // (Setting[_], Seq[String])
 
   type SessionMap = Map[ProjectRef, Seq[SessionSetting]]
-  type SbtConfigFile = (File, Seq[String])
 
   /**
    * This will re-evaluate all Setting[_]'s on this session against the current build state and
@@ -134,31 +134,31 @@ object SessionSettings {
    * @param f  A function which takes the current SessionSettings and returns the new build state.
    * @return The new build state
    */
-  def withSettings(s: State)(f: SessionSettings => State): State = {
-    val extracted = Project extract s
-    import extracted._
-    if (session.append.isEmpty) {
+  def withSettings(s: State)(f: SessionSettings => State): State =
+    val extracted = Project.extract(s)
+    if (extracted.session.append.isEmpty) {
       s.log.info("No session settings defined.")
       s
-    } else
-      f(session)
-  }
+    } else f(extracted.session)
 
   /** Adds `s` to a strings when needed.    Maybe one day we'll care about non-english languages. */
   def pluralize(size: Int, of: String) = size.toString + (if (size == 1) of else (of + "s"))
 
   /** Checks to see if any session settings are being discarded and issues a warning. */
   def checkSession(newSession: SessionSettings, oldState: State): Unit = {
-    val oldSettings = (oldState get Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
+    val oldSettings = oldState.get(Keys.sessionSettings).toList.flatMap(_.append).flatMap(_._2)
     if (newSession.append.isEmpty && oldSettings.nonEmpty)
       oldState.log.warn(
-        "Discarding " + pluralize(oldSettings.size, " session setting") + ".  Use 'session save' to persist session settings."
+        "Discarding " + pluralize(
+          oldSettings.size,
+          " session setting"
+        ) + ".  Use 'session save' to persist session settings."
       )
   }
 
   def removeRanges[T](in: Seq[T], ranges: Seq[(Int, Int)]): Seq[T] = {
     val asSet = ranges.foldLeft(Set.empty[Int]) { case (s, (hi, lo)) => s ++ (hi to lo) }
-    in.zipWithIndex.flatMap { case (t, index) => if (asSet(index + 1)) Nil else t :: Nil }
+    in.zipWithIndex.flatMap { (t, index) => if (asSet(index + 1)) Nil else t :: Nil }
   }
 
   /**
@@ -206,9 +206,9 @@ object SessionSettings {
   def writeSettings(
       pref: ProjectRef,
       settings: List[SessionSetting],
-      original: Seq[Setting[_]],
+      original: Seq[Setting[?]],
       structure: BuildStructure
-  ): (Seq[SessionSetting], Seq[Setting[_]]) = {
+  ): (Seq[SessionSetting], Seq[Setting[?]]) = {
     val project =
       Project.getProject(pref, structure).getOrElse(sys.error("Invalid project reference " + pref))
     val writeTo: File = BuildPaths
@@ -219,7 +219,7 @@ object SessionSettings {
 
     val path = writeTo.getAbsolutePath
     val (inFile, other, _) =
-      original.reverse.foldLeft((List[Setting[_]](), List[Setting[_]](), Set.empty[ScopedKey[_]])) {
+      original.reverse.foldLeft((List[Setting[?]](), List[Setting[?]](), Set.empty[ScopedKey[?]])) {
         case ((in, oth, keys), s) =>
           s.pos match {
             case RangePosition(`path`, _) if !keys.contains(s.key) => (s :: in, oth, keys + s.key)
@@ -227,31 +227,33 @@ object SessionSettings {
           }
       }
 
-    val (_, oldShifted, replace) = inFile.foldLeft((0, List[Setting[_]](), Seq[SessionSetting]())) {
+    val (_, oldShifted, replace) = inFile.foldLeft((0, List[Setting[?]](), Seq[SessionSetting]())) {
       case ((offs, olds, repl), s) =>
-        val RangePosition(_, r @ LineRange(start, end)) = s.pos
-        settings find (_._1.key == s.key) match {
+        val RangePosition(_, r @ LineRange(start, end)) = s.pos: @unchecked
+        settings.find(_._1.key == s.key) match {
           case Some(ss @ (ns, newLines)) if !ns.init.dependencies.contains(ns.key) =>
-            val shifted = ns withPos RangePosition(
-              path,
-              LineRange(start - offs, start - offs + newLines.size)
+            val shifted = ns.withPos(
+              RangePosition(
+                path,
+                LineRange(start - offs, start - offs + newLines.size)
+              )
             )
             (offs + end - start - newLines.size, shifted :: olds, ss +: repl)
           case _ =>
-            val shifted = s withPos RangePosition(path, r shift -offs)
+            val shifted = s.withPos(RangePosition(path, r.shift(-offs)))
             (offs, shifted :: olds, repl)
         }
     }
     val newSettings = settings diff replace
     val oldContent = IO.readLines(writeTo)
-    val (_, exist) = SbtRefactorings.applySessionSettings((writeTo, oldContent), replace)
+    val exist = SbtRefactorings.applySessionSettings(oldContent, replace)
     val adjusted = if (newSettings.nonEmpty && needsTrailingBlank(exist)) exist :+ "" else exist
     val lines = adjusted ++ newSettings.flatMap(x => x._2 :+ "")
     IO.writeLines(writeTo, lines)
     val (newWithPos, _) = newSettings.foldLeft((List[SessionSetting](), adjusted.size + 1)) {
       case ((acc, line), (s, newLines)) =>
         val endLine = line + newLines.size
-        ((s withPos RangePosition(path, LineRange(line, endLine)), newLines) :: acc, endLine + 1)
+        ((s.withPos(RangePosition(path, LineRange(line, endLine))), newLines) :: acc, endLine + 1)
     }
     (newWithPos.reverse, other ++ oldShifted)
   }
@@ -326,8 +328,8 @@ save, save-all
 
   final class Remove(val ranges: Seq[(Int, Int)]) extends SessionCommand
 
-  import complete._
-  import DefaultParsers._
+  import complete.*
+  import DefaultParsers.*
 
   /** Parser for the session command. */
   lazy val parser =
@@ -336,16 +338,16 @@ save, save-all
         "clear" ^^^ new Clear(false)
       ) |
         token("save-all" ^^^ new Save(true)) | token("save" ^^^ new Save(false)) | token(
-        "clear-all" ^^^ new Clear(true)
-      ) |
+          "clear-all" ^^^ new Clear(true)
+        ) |
         remove)
 
   lazy val remove = token("remove") ~> token(Space) ~> natSelect.map(ranges => new Remove(ranges))
 
   def natSelect = rep1sep(token(range, "<range>"), ',')
 
-  def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map {
-    case lo ~ hi => (lo, hi getOrElse lo)
+  def range: Parser[(Int, Int)] = (NatBasic ~ ('-' ~> NatBasic).?).map { case lo ~ hi =>
+    (lo, hi getOrElse lo)
   }
 
   /** The raw implementation of the session command. */
@@ -355,4 +357,4 @@ save, save-all
     case c: Clear  => if (c.all) clearAllSettings(s) else clearSettings(s)
     case r: Remove => removeSettings(s, r.ranges)
   }
-}
+end SessionSettings

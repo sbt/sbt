@@ -12,33 +12,30 @@ import java.io.{ File, IOException }
 import java.nio.file.{ Path, Paths }
 import java.util.concurrent.ConcurrentHashMap
 
-import sbt.internal.inc.{ EmptyStamp, Stamper, Hash => IncHash, LastModified => IncLastModified }
+import sbt.internal.inc.{ EmptyStamp, Stamper, Hash as IncHash, LastModified as IncLastModified }
+import sbt.internal.inc.JavaInterfaceUtil.given
 import sbt.io.IO
 import sbt.nio.file.FileAttributes
+import sbt.util.Digest
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
-import xsbti.compile.analysis.{ Stamp => XStamp }
+import xsbti.compile.analysis.{ Stamp as XStamp }
+import xsbti.VirtualFileRef
 
 /**
  * A trait that indicates what file stamping implementation should be used to track the state of
  * a given file. The two choices are [[FileStamper.Hash]] and [[FileStamper.LastModified]].
  */
-sealed trait FileStamper
-
-/**
- * Provides implementations of [[FileStamper]].
- *
- */
-object FileStamper {
+enum FileStamper {
 
   /**
    * Track files using a hash.
    */
-  case object Hash extends FileStamper
+  case Hash
 
   /**
    * Track files using the last modified time.
    */
-  case object LastModified extends FileStamper
+  case LastModified
 }
 
 /**
@@ -51,15 +48,14 @@ sealed trait FileStamp
  * Provides json formatters for [[FileStamp]].
  */
 object FileStamp {
-  private[sbt] type Id[T] = T
+  private[sbt] type Id[A] = A
 
-  private[sbt] implicit class Ops(val fileStamp: FileStamp) {
-    private[sbt] def stamp: XStamp = fileStamp match {
-      case f: FileHashImpl    => f.xstamp
-      case LastModified(time) => new IncLastModified(time)
-      case _                  => EmptyStamp
-    }
-  }
+  extension (fileStamp: FileStamp)
+    private[sbt] def stamp: XStamp =
+      fileStamp match
+        case f: FileHashImpl    => f.xstamp
+        case LastModified(time) => new IncLastModified(time)
+        case _                  => EmptyStamp
 
   private[sbt] def apply(path: Path, fileStamper: FileStamper): Option[FileStamp] =
     fileStamper match {
@@ -99,83 +95,76 @@ object FileStamp {
       case 0 => None
       case l => Some(LastModified(l))
     }
-  private[this] class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.toString)
+  private class FileHashImpl(val xstamp: XStamp) extends Hash(xstamp.toString)
   private[sbt] sealed abstract case class Hash private[sbt] (hex: String) extends FileStamp
   private[sbt] final case class LastModified private[sbt] (time: Long) extends FileStamp
   private[sbt] final case class Error(exception: IOException) extends FileStamp
 
+  def toDigest(path: Path, stamp: FileStamp): Digest = stamp match
+    case f: FileHashImpl =>
+      f.xstamp.getHash().toOption match
+        case Some(hash) => Digest.sha256Hash(hash.getBytes("UTF-8"))
+        case None       => Digest.sha256Hash(path)
+    case FileStamp.Hash(hex)       => Digest.sha256Hash(hex.getBytes("UTF-8"))
+    case FileStamp.Error(_)        => Digest.zero
+    case FileStamp.LastModified(_) => Digest.sha256Hash(path)
+
   object Formats {
-    implicit val seqPathJsonFormatter: JsonFormat[Seq[Path]] = new JsonFormat[Seq[Path]] {
-      override def write[J](obj: Seq[Path], builder: Builder[J]): Unit = {
-        builder.beginArray()
-        obj.foreach { path =>
-          builder.writeString(path.toString)
+    given seqPathJsonFormatter: JsonFormat[Seq[Path]] =
+      asStringArray(_.toString, Paths.get(_))
+    given seqFileJsonFormatter: JsonFormat[Seq[File]] =
+      asStringArray(_.toString, new File(_))
+    given seqVirtualFileRefJsonFormatter: JsonFormat[Seq[VirtualFileRef]] =
+      asStringArray(_.id, VirtualFileRef.of)
+
+    given fileJsonFormatter: JsonFormat[File] = fromSeqJsonFormat[File]
+    given pathJsonFormatter: JsonFormat[Path] = fromSeqJsonFormat[Path]
+    given virtualFileRefJsonFormatter: JsonFormat[VirtualFileRef] =
+      fromSeqJsonFormat[VirtualFileRef]
+
+    private def asStringArray[T](toStr: T => String, fromStr: String => T): JsonFormat[Seq[T]] =
+      new JsonFormat[Seq[T]] {
+        override def write[J](obj: Seq[T], builder: Builder[J]): Unit = {
+          builder.beginArray()
+          obj.foreach { x => builder.writeString(toStr(x)) }
+          builder.endArray()
         }
-        builder.endArray()
+
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[T] =
+          jsOpt match {
+            case Some(js) =>
+              val size = unbuilder.beginArray(js)
+              val res = (1 to size) map { _ =>
+                fromStr(unbuilder.readString(unbuilder.nextElement))
+              }
+              unbuilder.endArray()
+              res
+            case None =>
+              deserializationError("Expected JsArray but found None")
+          }
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[Path] =
-        jsOpt match {
-          case Some(js) =>
-            val size = unbuilder.beginArray(js)
-            val res = (1 to size) map { _ =>
-              Paths.get(unbuilder.readString(unbuilder.nextElement))
-            }
-            unbuilder.endArray()
-            res
-          case None =>
-            deserializationError("Expected JsArray but found None")
-        }
-    }
+    private def fromSeqJsonFormat[T](using seqJsonFormat: JsonFormat[Seq[T]]): JsonFormat[T] =
+      new JsonFormat[T] {
+        override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
+          seqJsonFormat.read(jsOpt, unbuilder).head
 
-    implicit val seqFileJsonFormatter: JsonFormat[Seq[File]] = new JsonFormat[Seq[File]] {
-      override def write[J](obj: Seq[File], builder: Builder[J]): Unit = {
-        builder.beginArray()
-        obj.foreach { file =>
-          builder.writeString(file.toString)
-        }
-        builder.endArray()
+        override def write[J](obj: T, builder: Builder[J]): Unit =
+          seqJsonFormat.write(obj :: Nil, builder)
       }
 
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Seq[File] =
-        jsOpt match {
-          case Some(js) =>
-            val size = unbuilder.beginArray(js)
-            val res = (1 to size) map { _ =>
-              new File(unbuilder.readString(unbuilder.nextElement))
-            }
-            unbuilder.endArray()
-            res
-          case None =>
-            deserializationError("Expected JsArray but found None")
-        }
-    }
-    implicit val fileJsonFormatter: JsonFormat[File] = new JsonFormat[File] {
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): File =
-        seqFileJsonFormatter.read(jsOpt, unbuilder).head
-
-      override def write[J](obj: File, builder: Builder[J]): Unit =
-        seqFileJsonFormatter.write(obj :: Nil, builder)
-    }
-    implicit val pathJsonFormatter: JsonFormat[Path] = new JsonFormat[Path] {
-      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Path =
-        seqPathJsonFormatter.read(jsOpt, unbuilder).head
-
-      override def write[J](obj: Path, builder: Builder[J]): Unit =
-        seqPathJsonFormatter.write(obj :: Nil, builder)
-    }
-    implicit val seqPathFileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
+    given seqPathFileStampJsonFormatter: JsonFormat[Seq[(Path, FileStamp)]] =
       new JsonFormat[Seq[(Path, FileStamp)]] {
         override def write[J](obj: Seq[(Path, FileStamp)], builder: Builder[J]): Unit = {
           val (hashes, lastModifiedTimes) = obj.partition(_._2.isInstanceOf[Hash])
           builder.beginObject()
-          builder.addField("hashes", hashes.asInstanceOf[Seq[(Path, Hash)]])(
+          builder.addField("hashes", hashes.asInstanceOf[Seq[(Path, Hash)]])(using
             seqPathHashJsonFormatter
           )
           builder.addField(
             "lastModifiedTimes",
             lastModifiedTimes.asInstanceOf[Seq[(Path, LastModified)]]
-          )(seqPathLastModifiedJsonFormatter)
+          )(using seqPathLastModifiedJsonFormatter)
           builder.endObject()
         }
 
@@ -183,11 +172,11 @@ object FileStamp {
           jsOpt match {
             case Some(js) =>
               unbuilder.beginObject(js)
-              val hashes = unbuilder.readField("hashes")(seqPathHashJsonFormatter)
-              val lastModifieds =
-                unbuilder.readField("lastModifiedTimes")(seqPathLastModifiedJsonFormatter)
+              val hashes = unbuilder.readField("hashes")(using seqPathHashJsonFormatter)
+              val lastModifiedTimes =
+                unbuilder.readField("lastModifiedTimes")(using seqPathLastModifiedJsonFormatter)
               unbuilder.endObject()
-              hashes ++ lastModifieds
+              hashes ++ lastModifiedTimes
             case None =>
               deserializationError("Expected JsObject but found None")
           }
@@ -196,12 +185,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, Hash)]] {
         override def write[J](obj: Seq[(Path, Hash)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, h) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeString(h.hex)
-              builder.endArray()
+          obj.foreach { (p, h) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeString(h.hex)
+            builder.endArray()
           }
           builder.endArray()
         }
@@ -227,12 +215,11 @@ object FileStamp {
       new JsonFormat[Seq[(Path, LastModified)]] {
         override def write[J](obj: Seq[(Path, LastModified)], builder: Builder[J]): Unit = {
           builder.beginArray()
-          obj.foreach {
-            case (p, lm) =>
-              builder.beginArray()
-              builder.writeString(p.toString)
-              builder.writeLong(lm.time)
-              builder.endArray()
+          obj.foreach { (p, lm) =>
+            builder.beginArray()
+            builder.writeString(p.toString)
+            builder.writeLong(lm.time)
+            builder.endArray()
           }
           builder.endArray()
         }
@@ -256,12 +243,12 @@ object FileStamp {
       }
   }
 
-  private implicit class EitherOps(val e: Either[FileStamp, FileStamp]) extends AnyVal {
-    def value: Option[FileStamp] = if (e == null) None else Some(e.fold(identity, identity))
+  extension (e: Either[FileStamp, FileStamp]) {
+    private def value: Option[FileStamp] = if (e == null) None else Some(e.fold(identity, identity))
   }
 
   private[sbt] class Cache {
-    private[this] val underlying = new ConcurrentHashMap[Path, Either[FileStamp, FileStamp]]
+    private val underlying = new ConcurrentHashMap[Path, Either[FileStamp, FileStamp]]
 
     /**
      * Invalidate the cache entry, but don't re-stamp the file until it's actually used

@@ -11,7 +11,7 @@ package internal
 
 import org.scalatest.diagrams.Diagrams
 import org.scalatest.funsuite.AnyFunSuite
-import sbt.internal.CrossJava.JavaDiscoverConfig._
+import sbt.internal.CrossJava.JavaDiscoverConfig.*
 import scala.collection.immutable.ListMap
 
 class CrossJavaTest extends AnyFunSuite with Diagrams {
@@ -102,7 +102,7 @@ class CrossJavaTest extends AnyFunSuite with Diagrams {
     val conf = new SdkmanDiscoverConfig {
       override def candidates() = Vector("11.0.2.hs-adpt")
     }
-    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes: _*))
+    val hs = CrossJava.expandJavaHomes(ListMap(conf.javaHomes*))
     assert(hs.contains("11"))
   }
 

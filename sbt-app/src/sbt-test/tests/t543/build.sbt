@@ -4,14 +4,13 @@ import java.io.{ CharArrayWriter, PrintWriter }
 
 val marker = new File("marker")
 val check = TaskKey[Unit]("check", "Check correct error has been returned.")
-val scalatest = "org.scalatest" %% "scalatest" % "3.0.5"
-val scalaxml = "org.scala-lang.modules" %% "scala-xml" % "1.1.1"
+val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
 
-ThisBuild / scalaVersion := "2.12.20"
+ThisBuild / scalaVersion := "3.7.3"
 
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies ++= List(scalaxml, scalatest),
+    libraryDependencies ++= List(scalatest),
     fork := true,
     testListeners += new TestReportListener {
       def testEvent(event: TestEvent): Unit = {

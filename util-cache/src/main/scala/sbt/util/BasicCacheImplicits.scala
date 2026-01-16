@@ -8,19 +8,24 @@
 
 package sbt.util
 
-import sjsonnew.{ BasicJsonProtocol, JsonFormat }
+import sbt.internal.util.codec.HashedVirtualFileRefFormats
+import sjsonnew.{ BasicJsonProtocol, IsoString, JsonFormat }
+import xsbti.VirtualFileRef
 
-trait BasicCacheImplicits { self: BasicJsonProtocol =>
+trait BasicCacheImplicits extends HashedVirtualFileRefFormats { self: BasicJsonProtocol =>
 
-  implicit def basicCache[I: JsonFormat, O: JsonFormat]: Cache[I, O] =
+  given basicCache[I: JsonFormat, O: JsonFormat]: Cache[I, O] =
     new BasicCache[I, O]()
 
-  def wrapIn[I, J](implicit f: I => J, g: J => I, jCache: SingletonCache[J]): SingletonCache[I] =
+  def wrapIn[I, J](using f: I => J, g: J => I, jCache: SingletonCache[J]): SingletonCache[I] =
     new SingletonCache[I] {
       override def read(from: Input): I = g(jCache.read(from))
       override def write(to: Output, value: I) = jCache.write(to, f(value))
     }
 
   def singleton[T](t: T): SingletonCache[T] =
-    SingletonCache.basicSingletonCache(asSingleton(t))
+    SingletonCache.basicSingletonCache(using asSingleton(t))
+
+  given virtualFileRefIsoString: IsoString[VirtualFileRef] =
+    IsoString.iso(_.id, VirtualFileRef.of)
 }

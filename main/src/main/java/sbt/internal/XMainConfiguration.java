@@ -9,11 +9,15 @@
 package sbt.internal;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.URLConnection;
+import java.nio.file.Paths;
 import xsbti.*;
 
 /**
@@ -27,6 +31,11 @@ public class XMainConfiguration {
   public xsbti.MainResult run(String moduleName, xsbti.AppConfiguration configuration)
       throws Throwable {
     try {
+      boolean isScripted = Boolean.parseBoolean(System.getProperty("sbt.scripted"));
+      // in batch scripted tests, we disable caching of JAR URL connections to avoid
+      // interference
+      // between tests
+      if (isScripted) disableCachingOfURLConnections();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
       xsbti.AppConfiguration updatedConfiguration = null;
       try {
@@ -58,7 +67,7 @@ public class XMainConfiguration {
         clw.getMethod("warmup").invoke(clw.getField("MODULE$").get(null));
         return (xsbti.MainResult) runMethod.invoke(instance, updatedConfiguration);
       } catch (InvocationTargetException e) {
-        // This propogates xsbti.FullReload to the launcher
+        // This propagates xsbti.FullReload to the launcher
         throw e.getCause();
       }
     } catch (ReflectiveOperationException e) {
@@ -75,7 +84,8 @@ public class XMainConfiguration {
       URL[] urlArray = new URL[1];
       urlArray[0] = new URI(path).toURL();
       ClassLoader topLoader = configuration.provider().scalaProvider().launcher().topLoader();
-      // This loader doesn't have the scala library in it so it's critical that none of the code
+      // This loader doesn't have the scala library in it so it's critical that none
+      // of the code
       // in this file use the scala library.
       ClassLoader modifiedLoader = new XMainClassLoader(urlArray, topLoader);
       Class<?> xMainConfigurationClass =
@@ -106,9 +116,26 @@ public class XMainConfiguration {
     }
   }
 
+  private class FakeURLConnection extends URLConnection {
+    public FakeURLConnection(URL url) {
+      super(url);
+    }
+
+    public void connect() throws IOException {}
+  }
+
+  private void disableCachingOfURLConnections() {
+    try {
+      URLConnection conn = new FakeURLConnection(Paths.get(".").toUri().toURL());
+      conn.setDefaultUseCaches(false);
+    } catch (MalformedURLException e) {
+    }
+  }
+
   /*
-   * Replaces the AppProvider.loader method with a new loader that puts the sbt test interface
-   * jar ahead of the rest of the sbt classpath in the classloading hierarchy.
+   * Replaces the AppProvider.loader method with a new loader that puts the sbt
+   * test interface jar ahead of the rest of the sbt classpath in the classloading
+   * hierarchy.
    */
   public class ModifiedConfiguration implements xsbti.AppConfiguration {
     private xsbti.AppConfiguration configuration;

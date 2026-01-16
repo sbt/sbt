@@ -1,1 +1,1 @@
-libraryDependencies += "com.novocode" % "junit-interface" % "0.8" % "test"
+libraryDependencies += "com.github.sbt" % "junit-interface" % "0.13.2" % Test

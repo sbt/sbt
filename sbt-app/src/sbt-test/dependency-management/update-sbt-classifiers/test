@@ -1,1 +1,4 @@
 > updateSbtClassifiers
+
+# see assertion definition in build.sbt
+> checkModuleIdsInUpdateSbtClassifiers

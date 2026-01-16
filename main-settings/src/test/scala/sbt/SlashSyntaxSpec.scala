@@ -6,108 +6,420 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.test
+package sbt
+package test
 
-import org.scalacheck.{ Test => _, _ }, Prop._
+import hedgehog.*
+import hedgehog.runner.*
+import Scope.{ Global, ThisScope }
+import ScopeAxis.{ Select, This, Zero }
+import SlashSyntax0.*
+import BuildSettingsInstances.given
+import _root_.sbt.internal.util.AttributeKey
 
-import sbt.SlashSyntax
-import sbt.{ Scope, ScopeAxis, Scoped }, Scope.{ Global, ThisScope }
-import sbt.Reference
-import sbt.ConfigKey
-import sbt.internal.util.AttributeKey
+object SlashSyntaxSpec extends Properties:
+  override def tests: List[Test] = List(
+    property("Global / key", propGlobalKey),
+    example("Zero / compile", zeroCompile),
+    property("Reference / key", propReferenceKey),
+    property("Reference / Config / key", propReferenceConfigKey),
+    example("Zero / Zero / compile", zeroZeroCompile),
+    property("Reference / task.key / key", propReferenceAttrKeyKey),
+    property("Reference / task / key", propReferenceTaskKey),
+    property("Reference / inputtask / key", propReferenceInputTaskKey),
+    property("Reference / Config / task.key / key", propReferenceConfigAttrKeyKey),
+    property("Reference / Config / task / key", propReferenceConfigTaskKey),
+    property("Reference / Config / inputtask / key", propReferenceConfigInputTaskKey),
+    property("Config / key", propConfigKey),
+    property("Config / task.key / key", propConfigAttrKeyKey),
+    property("Config / task / key", propConfigTaskKey),
+    property("Config / inputtask / key", propConfigInputTaskKey),
+    property("task.key / key", propAttrKeyKey),
+    property("task / key", propTaskKey),
+    property("inputtask / key", propInputTaskKey),
+    property("Scope / key", propScopeKey),
+    property("Reference / Config? / key", propReferenceConfigAxisKey),
+    property("Reference? / key", propReferenceAxisKey),
+    property("Reference? / Config? / key", propReferenceAxisConfigAxisKey),
+    // property("Reference? / task.key? / key", propReferenceAxisAttrKeyAxisKey),
+    property("Reference? / Config? / task.key? / key", propReferenceAxisConfigAxisAttrKeyAxisKey),
+  )
 
-import BuildSettingsInstances._
-import scala.annotation.nowarn
+  def gen[A1: Gen]: Gen[A1] = summon[Gen[A1]]
+  lazy val compile: TaskKey[Unit] = TaskKey[Unit]("compile", "compile")
 
-@nowarn
-object SlashSyntaxSpec extends Properties("SlashSyntax") with SlashSyntax {
-  property("Global / key == key in Global") = {
-    forAll((k: Key) => expectValue(k in Global)(Global / k))
-  }
-
-  property("Reference / key == key in Reference") = {
-    forAll((r: Reference, k: Key) => expectValue(k in r)(r / k))
-  }
-
-  property("Reference / Config / key == key in Reference in Config") = {
-    forAll((r: Reference, c: ConfigKey, k: Key) => expectValue(k in r in c)(r / c / k))
-  }
-
-  property("Reference / task.key / key == key in Reference in task") = {
-    forAll((r: Reference, t: Scoped, k: Key) => expectValue(k in (r, t))(r / t.key / k))
-  }
-
-  property("Reference / task / key ~= key in Reference in task") = {
-    import WithoutScope._
-    forAll((r: Reference, t: Key, k: Key) => expectValue(k in (r, t))(r / t / k))
-  }
-
-  property("Reference / Config / task.key / key == key in Reference in Config in task") = {
-    forAll { (r: Reference, c: ConfigKey, t: Scoped, k: Key) =>
-      expectValue(k in (r, c, t))(r / c / t.key / k)
-    }
-  }
-
-  property("Reference / Config / task / key ~= key in Reference in Config in task") = {
-    import WithoutScope._
-    forAll { (r: Reference, c: ConfigKey, t: Key, k: Key) =>
-      expectValue(k in (r, c, t))(r / c / t / k)
-    }
-  }
-
-  property("Config / key == key in Config") = {
-    forAll((c: ConfigKey, k: Key) => expectValue(k in c)(c / k))
-  }
-
-  property("Config / task.key / key == key in Config in task") = {
-    forAll((c: ConfigKey, t: Scoped, k: Key) => expectValue(k in c in t)(c / t.key / k))
-  }
-
-  property("Config / task / key ~= key in Config in task") = {
-    import WithoutScope._
-    forAll((c: ConfigKey, t: Key, k: Key) => expectValue(k in c in t)(c / t / k))
-  }
-
-  property("task.key / key == key in task") = {
-    forAll((t: Scoped, k: Key) => expectValue(k in t)(t.key / k))
-  }
-
-  property("task / key ~= key in task") = {
-    import WithoutScope._
-    forAll((t: Key, k: Key) => expectValue(k in t)(t / k))
-  }
-
-  property("Scope / key == key in Scope") = {
-    forAll((s: Scope, k: Key) => expectValue(k in s)(s / k))
-  }
-
-  property("Reference? / key == key in ThisScope.copy(..)") = {
-    forAll { (r: ScopeAxis[Reference], k: Key) =>
-      expectValue(k in ThisScope.copy(project = r))(r / k)
-    }
-  }
-
-  property("Reference? / ConfigKey? / key == key in ThisScope.copy(..)") = {
-    forAll(
-      (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], k: Key) =>
-        expectValue(k in ThisScope.copy(project = r, config = c))(r / c / k)
+  def propGlobalKey: Property =
+    for
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => Global / k
+        case k: TaskKey[?]    => Global / k
+        case k: SettingKey[?] => Global / k
+    yield Result.assert(
+      actual.key == k.key &&
+        // Only if the incoming scope is This/This/This,
+        // Global scoping is effective.
+        (if k.scope == ThisScope then actual.scope == Global
+         else true)
     )
-  }
 
-//  property("Reference? / AttributeKey? / key == key in ThisScope.copy(..)") = {
-//    forAll((r: ScopeAxis[Reference], t: ScopeAxis[AttributeKey[_]], k: AnyKey) =>
-//      expectValue(k in ThisScope.copy(project = r, task = t))(r / t / k))
-//  }
+  def zeroCompile: Result =
+    val actual = Zero / compile
+    Result.assert(actual.scope.project == Zero && actual.key == compile.key)
 
-  property("Reference? / ConfigKey? / AttributeKey? / key == key in ThisScope.copy(..)") = {
-    forAll {
-      (r: ScopeAxis[Reference], c: ScopeAxis[ConfigKey], t: ScopeAxis[AttributeKey[_]], k: Key) =>
-        expectValue(k in ThisScope.copy(project = r, config = c, task = t))(r / c / t / k)
-    }
-  }
+  def zeroZeroCompile: Result =
+    val actual = Zero / Zero / compile
+    Result.assert(actual.scope.project == Zero && actual.key == compile.key)
 
-  def expectValue(expected: Scoped)(x: Scoped) = {
-    val equals = x.scope == expected.scope && x.key == expected.key
-    if (equals) proved else falsified :| s"Expected $expected but got $x"
-  }
-}
+  def propReferenceKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / k
+        case k: TaskKey[?]    => ref / k
+        case k: SettingKey[?] => ref / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true)
+    )
+
+  def propReferenceConfigKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      config <- gen[ConfigKey].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / k
+        case k: TaskKey[?]    => ref / config / k
+        case k: SettingKey[?] => ref / config / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true)
+    )
+
+  def propReferenceAttrKeyKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      scoped <- genKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / scoped.key / k
+        case k: TaskKey[?]    => ref / scoped.key / k
+        case k: SettingKey[?] => ref / scoped.key / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(scoped.key)
+         else true)
+    )
+
+  def propReferenceTaskKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      t <- genTaskKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / t / k
+        case k: TaskKey[?]    => ref / t / k
+        case k: SettingKey[?] => ref / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propReferenceInputTaskKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      t <- genInputKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / t / k
+        case k: TaskKey[?]    => ref / t / k
+        case k: SettingKey[?] => ref / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propReferenceConfigAttrKeyKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      config <- gen[ConfigKey].forAll
+      scoped <- genKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / scoped.key / k
+        case k: TaskKey[?]    => ref / config / scoped.key / k
+        case k: SettingKey[?] => ref / config / scoped.key / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(scoped.key)
+         else true)
+    )
+
+  def propReferenceConfigTaskKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      config <- gen[ConfigKey].forAll
+      t <- genTaskKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / t / k
+        case k: TaskKey[?]    => ref / config / t / k
+        case k: SettingKey[?] => ref / config / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propReferenceConfigInputTaskKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      config <- gen[ConfigKey].forAll
+      t <- genInputKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / t / k
+        case k: TaskKey[?]    => ref / config / t / k
+        case k: SettingKey[?] => ref / config / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propConfigKey: Property =
+    for
+      config <- gen[ConfigKey].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => config / k
+        case k: TaskKey[?]    => config / k
+        case k: SettingKey[?] => config / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true)
+    )
+
+  def propConfigAttrKeyKey: Property =
+    for
+      config <- gen[ConfigKey].forAll
+      scoped <- genKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => config / scoped.key / k
+        case k: TaskKey[?]    => config / scoped.key / k
+        case k: SettingKey[?] => config / scoped.key / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(scoped.key)
+         else true)
+    )
+
+  def propConfigTaskKey: Property =
+    for
+      config <- gen[ConfigKey].forAll
+      t <- genTaskKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => config / t / k
+        case k: TaskKey[?]    => config / t / k
+        case k: SettingKey[?] => config / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propConfigInputTaskKey: Property =
+    for
+      config <- gen[ConfigKey].forAll
+      t <- genInputKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => config / t / k
+        case k: TaskKey[?]    => config / t / k
+        case k: SettingKey[?] => config / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.config == This then actual.scope.config == Select(config)
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propAttrKeyKey: Property =
+    for
+      scoped <- genKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => scoped.key / k
+        case k: TaskKey[?]    => scoped.key / k
+        case k: SettingKey[?] => scoped.key / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.task == This then actual.scope.task == Select(scoped.key)
+         else true)
+    )
+
+  def propTaskKey: Property =
+    for
+      t <- genTaskKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => t / k
+        case k: TaskKey[?]    => t / k
+        case k: SettingKey[?] => t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propInputTaskKey: Property =
+    for
+      t <- genInputKey[Unit].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => t / k
+        case k: TaskKey[?]    => t / k
+        case k: SettingKey[?] => t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.task == This then actual.scope.task == Select(t.key)
+         else true)
+    )
+
+  def propScopeKey: Property =
+    for
+      scope <- gen[Scope].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => scope / k
+        case k: TaskKey[?]    => scope / k
+        case k: SettingKey[?] => scope / k
+    yield Result.assert(
+      actual.key == k.key &&
+        // Only if the incoming scope is This/This/This,
+        // Global scoping is effective.
+        (if k.scope == ThisScope then actual.scope == scope
+         else true)
+    )
+
+  def propReferenceConfigAxisKey: Property =
+    for
+      ref <- gen[Reference].forAll
+      config <- gen[ScopeAxis[ConfigKey]].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / k
+        case k: TaskKey[?]    => ref / config / k
+        case k: SettingKey[?] => ref / config / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == Select(ref)
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == config
+         else true)
+    )
+
+  def propReferenceAxisKey: Property =
+    for
+      ref <- gen[ScopeAxis[Reference]].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / k
+        case k: TaskKey[?]    => ref / k
+        case k: SettingKey[?] => ref / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == ref
+         else true)
+    )
+
+  def propReferenceAxisConfigAxisKey: Property =
+    for
+      ref <- gen[ScopeAxis[Reference]].forAll
+      config <- gen[ScopeAxis[ConfigKey]].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / k
+        case k: TaskKey[?]    => ref / config / k
+        case k: SettingKey[?] => ref / config / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == ref
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == config
+         else true)
+    )
+
+  /*
+  def propReferenceAxisAttrKeyAxisKey: Property =
+    for
+      ref <- gen[ScopeAxis[Reference]].forAll
+      t <- gen[ScopeAxis[AttributeKey[?]]].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / t / k
+        case k: TaskKey[?]    => ref / t / k
+        case k: SettingKey[?] => ref / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == ref
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == t
+         else true)
+    )
+   */
+
+  def propReferenceAxisConfigAxisAttrKeyAxisKey: Property =
+    for
+      ref <- gen[ScopeAxis[Reference]].forAll
+      config <- gen[ScopeAxis[ConfigKey]].forAll
+      t <- gen[ScopeAxis[AttributeKey[?]]].forAll
+      k <- genKey[Unit].forAll
+      actual = k match
+        case k: InputKey[?]   => ref / config / t / k
+        case k: TaskKey[?]    => ref / config / t / k
+        case k: SettingKey[?] => ref / config / t / k
+    yield Result.assert(
+      actual.key == k.key &&
+        (if k.scope.project == This then actual.scope.project == ref
+         else true) &&
+        (if k.scope.config == This then actual.scope.config == config
+         else true) &&
+        (if k.scope.task == This then actual.scope.task == t
+         else true)
+    )
+end SlashSyntaxSpec

@@ -6,133 +6,133 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.test
-
-import org.scalacheck.{ Test => _, _ }, Arbitrary.arbitrary, Gen._
+package sbt
+package test
 
 import java.io.File
-import sbt.io.IO
-import sbt.{ Scope, ScopeAxis, Scoped, Select, This, Zero }
-import sbt.{
-  BuildRef,
-  LocalProject,
-  LocalRootProject,
-  ProjectRef,
-  Reference,
-  RootProject,
-  ThisBuild,
-  ThisProject
-}
-import sbt.ConfigKey
-import sbt.librarymanagement.syntax._
-import sbt.{ InputKey, SettingKey, TaskKey }
-import sbt.internal.util.{ AttributeKey, AttributeMap }
-import scala.annotation.nowarn
+import hedgehog.*
+import scala.reflect.ClassTag
+import _root_.sbt.io.IO
+import _root_.sbt.ScopeAxis.{ Select, This, Zero }
+import _root_.sbt.Scoped.ScopingSetting
+import _root_.sbt.librarymanagement.syntax.*
+import _root_.sbt.internal.util.{ AttributeKey, AttributeMap }
 
-object BuildSettingsInstances {
-  val genFile: Gen[File] = Gen.oneOf(new File("."), new File("/tmp")) // for now..
+object BuildSettingsInstances:
+  type Key[A1] = ScopingSetting[?] & Scoped
 
-  implicit val arbBuildRef: Arbitrary[BuildRef] = Arbitrary(genFile map (f => BuildRef(IO toURI f)))
-
-  implicit val arbProjectRef: Arbitrary[ProjectRef] =
-    Arbitrary(for (f <- genFile; id <- Gen.identifier) yield ProjectRef(f, id))
-
-  implicit val arbLocalProject: Arbitrary[LocalProject] =
-    Arbitrary(arbitrary[String] map LocalProject)
-
-  implicit val arbRootProject: Arbitrary[RootProject] = Arbitrary(genFile map (RootProject(_)))
-
-  implicit val arbReference: Arbitrary[Reference] = Arbitrary {
-    Gen.frequency(
-      96 -> arbitrary[BuildRef],
-      10271 -> ThisBuild,
-      325 -> LocalRootProject,
-      2283 -> arbitrary[ProjectRef],
-      299 -> ThisProject,
-      436 -> arbitrary[LocalProject],
-      1133 -> arbitrary[RootProject],
+  given Gen[Reference] =
+    val genFile: Gen[File] =
+      Gen.choice1(Gen.constant(new File(".")), Gen.constant(new File("/tmp")))
+    given genBuildRef: Gen[BuildRef] = genFile.map: f =>
+      BuildRef(IO.toURI(f))
+    given genProjectRef: Gen[ProjectRef] =
+      for
+        f <- genFile
+        id <- identifier
+      yield ProjectRef(f, id)
+    given genLocalProject: Gen[LocalProject] =
+      identifier.map(LocalProject.apply)
+    given genRootProject: Gen[RootProject] =
+      genFile.map(RootProject.apply)
+    Gen.frequency1(
+      96 -> genBuildRef.map(x => x: Reference),
+      10271 -> Gen.constant(ThisBuild),
+      325 -> Gen.constant(LocalRootProject),
+      2283 -> genProjectRef.map(x => x: Reference),
+      299 -> Gen.constant(ThisProject),
+      436 -> genLocalProject.map(x => x: Reference),
+      1133 -> genRootProject.map(x => x: Reference),
     )
-  }
 
-  @nowarn
-  implicit def arbConfigKey: Arbitrary[ConfigKey] = Arbitrary {
-    Gen.frequency(
-      2 -> const[ConfigKey](Compile),
-      2 -> const[ConfigKey](Test),
-      1 -> const[ConfigKey](Runtime),
-      1 -> const[ConfigKey](IntegrationTest),
-      1 -> const[ConfigKey](Provided),
-    )
-  }
-
-  implicit def arbAttrKey[A: Manifest]: Arbitrary[AttributeKey[_]] =
-    Arbitrary(Gen.identifier map (AttributeKey[A](_)))
-
-  implicit val arbAttributeMap: Arbitrary[AttributeMap] = Arbitrary {
-    Gen.frequency(
-      20 -> AttributeMap.empty,
-      1 -> {
-        for (name <- Gen.identifier; isModule <- arbitrary[Boolean])
-          yield AttributeMap.empty
-            .put(AttributeKey[String]("name"), name)
-            .put(AttributeKey[Boolean]("isModule"), isModule)
-      }
-    )
-  }
-
-  implicit def arbScopeAxis[A: Arbitrary]: Arbitrary[ScopeAxis[A]] =
-    Arbitrary(Gen.oneOf[ScopeAxis[A]](This, Zero, arbitrary[A] map (Select(_))))
-
-  implicit def arbScope: Arbitrary[Scope] = Arbitrary(
-    for {
-      r <- arbitrary[ScopeAxis[Reference]]
-      c <- arbitrary[ScopeAxis[ConfigKey]]
-      t <- arbitrary[ScopeAxis[AttributeKey[_]]]
-      e <- arbitrary[ScopeAxis[AttributeMap]]
-    } yield Scope(r, c, t, e)
+  given Gen[ConfigKey] = Gen.frequency1(
+    2 -> Gen.constant[ConfigKey](Compile),
+    2 -> Gen.constant[ConfigKey](Test),
+    1 -> Gen.constant[ConfigKey](Runtime),
+    1 -> Gen.constant[ConfigKey](Provided),
   )
 
-  type Key = K forSome { type K <: Scoped.ScopingSetting[K] with Scoped }
+  given genSettingKey[A1: ClassTag]: Gen[SettingKey[A1]] =
+    withScope(WithoutScope.genSettingKey)
+  given genTaskKey[A1: ClassTag]: Gen[TaskKey[A1]] =
+    withScope(WithoutScope.genTaskKey)
+  given genInputKey[A1: ClassTag]: Gen[InputKey[A1]] =
+    withScope(WithoutScope.genInputKey)
+  given genScopeAxis[A1: Gen]: Gen[ScopeAxis[A1]] =
+    Gen.choice1[ScopeAxis[A1]](
+      Gen.constant(This),
+      Gen.constant(Zero),
+      summon[Gen[A1]].map(Select(_))
+    )
 
-  final case class Label(value: String)
-  val genLabel: Gen[Label] = Gen.identifier map Label
-  implicit def arbLabel: Arbitrary[Label] = Arbitrary(genLabel)
+  given genKey[A1: ClassTag]: Gen[Key[A1]] =
+    def convert[A2](g: Gen[A2]) = g.asInstanceOf[Gen[Key[A1]]]
+    Gen.frequency1(
+      15431 -> convert(genInputKey),
+      19645 -> convert(genSettingKey),
+      22867 -> convert(genTaskKey),
+    )
 
-  def genInputKey[A: Manifest]: Gen[InputKey[A]] = genLabel map (x => InputKey[A](x.value))
-  def genSettingKey[A: Manifest]: Gen[SettingKey[A]] = genLabel map (x => SettingKey[A](x.value))
-  def genTaskKey[A: Manifest]: Gen[TaskKey[A]] = genLabel map (x => TaskKey[A](x.value))
+  given genAttrKey: Gen[AttributeKey[?]] =
+    identifier.map(AttributeKey[Unit](_))
 
-  @nowarn
-  def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Arbitrary[K] = Arbitrary {
-    Gen.frequency(
+  given genAttributeMap: Gen[AttributeMap] = Gen.frequency1(
+    20 -> Gen.constant(AttributeMap.empty),
+    1 ->
+      (for
+        name <- identifier
+        isModule <- Gen.boolean
+      yield AttributeMap.empty
+        .put(AttributeKey[String]("name"), name)
+        .put(AttributeKey[Boolean]("isModule"), isModule))
+  )
+
+  given Gen[Scope] =
+    for
+      r <- summon[Gen[ScopeAxis[Reference]]]
+      c <- summon[Gen[ScopeAxis[ConfigKey]]]
+      t <- summon[Gen[ScopeAxis[AttributeKey[?]]]]
+      e <- summon[Gen[ScopeAxis[AttributeMap]]]
+    yield Scope(r, c, t, e)
+
+  def withScope[K <: Scoped.ScopingSetting[K]](keyGen: Gen[K]): Gen[K] =
+    Gen.frequency1(
       5 -> keyGen,
-      1 -> (for (key <- keyGen; scope <- arbitrary[Scope]) yield key in scope)
+      1 -> (for
+        key <- keyGen
+        scope <- summon[Gen[Scope]]
+      yield key.rescope(scope)),
     )
-  }
 
-  implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = withScope(genInputKey[A])
-  implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = withScope(genSettingKey[A])
-  implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = withScope(genTaskKey[A])
+  case class Label(value: String)
+  object Label:
+    given genLabel: Gen[Label] = identifier.map(Label.apply)
+  end Label
 
-  implicit def arbKey[A: Manifest](
-      implicit
-      arbInputKey: Arbitrary[InputKey[A]],
-      arbSettingKey: Arbitrary[SettingKey[A]],
-      arbTaskKey: Arbitrary[TaskKey[A]],
-  ): Arbitrary[Key] = Arbitrary {
-    def convert[T](g: Gen[T]) = g.asInstanceOf[Gen[Key]]
-    Gen.frequency(
-      15431 -> convert(arbitrary[InputKey[A]]),
-      19645 -> convert(arbitrary[SettingKey[A]]),
-      22867 -> convert(arbitrary[TaskKey[A]]),
+  object WithoutScope:
+    def genSettingKey[A1: ClassTag]: Gen[SettingKey[A1]] =
+      Label.genLabel.map: label =>
+        SettingKey[A1](label.value)
+    def genTaskKey[A1: ClassTag]: Gen[TaskKey[A1]] =
+      Label.genLabel.map: label =>
+        TaskKey[A1](label.value)
+    def genInputKey[A1: ClassTag]: Gen[InputKey[A1]] =
+      Label.genLabel.map: label =>
+        InputKey[A1](label.value)
+  end WithoutScope
+
+  def identifier: Gen[String] = for
+    first <- Gen.char('a', 'z')
+    length <- Gen.int(Range.linear(0, 20))
+    rest <- Gen.list(
+      Gen.frequency1(
+        8 -> Gen.char('a', 'z'),
+        8 -> Gen.char('A', 'Z'),
+        5 -> Gen.char('0', '9'),
+        1 -> Gen.constant('_')
+      ),
+      Range.singleton(length)
     )
-  }
+  yield (first :: rest).mkString
 
-  object WithoutScope {
-    implicit def arbInputKey[A: Manifest]: Arbitrary[InputKey[A]] = Arbitrary(genInputKey[A])
-    implicit def arbSettingKey[A: Manifest]: Arbitrary[SettingKey[A]] = Arbitrary(genSettingKey[A])
-    implicit def arbTaskKey[A: Manifest]: Arbitrary[TaskKey[A]] = Arbitrary(genTaskKey[A])
-  }
-
-  implicit def arbScoped[A: Manifest]: Arbitrary[Scoped] = Arbitrary(arbitrary[Key])
-}
+end BuildSettingsInstances

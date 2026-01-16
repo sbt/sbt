@@ -4,7 +4,7 @@ version := {
   version.value
 }
 
-TaskKey[Unit]("evil-clear-logger") := {
+TaskKey[Unit]("evil-clear-logger") := Def.uncached {
   val logger = sLog.value
   val cls = logger.getClass
   val field = cls.getDeclaredField("ref")

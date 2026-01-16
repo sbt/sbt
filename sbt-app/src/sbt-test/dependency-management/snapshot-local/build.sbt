@@ -1,10 +1,9 @@
 ThisBuild / organization := "com.example"
-ThisBuild / scalaVersion := "2.12.20"
+ThisBuild / scalaVersion := "2.12.21"
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
-def customIvyPaths: Seq[Def.Setting[_]] = Seq(
-  ivyPaths := IvyPaths((baseDirectory in ThisBuild).value, Some((baseDirectory in ThisBuild).value / "ivy-cache"))
-)
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
 
 lazy val sharedResolver: Resolver = {
   val r = Resolver.defaultShared
@@ -14,7 +13,7 @@ lazy val sharedResolver: Resolver = {
 }
 
 lazy val common = project
-  .settings(customIvyPaths)
+  .settings(localCache)
   .settings(
     organization := "com.badexample",
     name := "badexample",
@@ -30,10 +29,10 @@ lazy val common = project
   )
 
 lazy val dependent = project
-  .settings(customIvyPaths)
+  .settings(localCache)
   .settings(
     // Ignore the inter-project resolver, so we force to look remotely.
     resolvers += sharedResolver,
-    fullResolvers := fullResolvers.value.filterNot(_==projectResolver.value),
+    fullResolvers := Def.uncached(fullResolvers.value.filterNot(_==projectResolver.value)),
     libraryDependencies += "com.badexample" % "badexample" % "1.0-SNAPSHOT"
   )

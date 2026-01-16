@@ -9,12 +9,15 @@
 package sbt.test
 
 import java.io.File
-import sjsonnew._, BasicJsonProtocol._
+import sjsonnew.*
+import sbt.Def
 import sbt.Def.{ Setting, inputKey, settingKey, taskKey }
 import sbt.Scope.Global
+import sbt.ScopeAxis.Zero
+import sbt.SlashSyntax0.*
 import sbt.librarymanagement.ModuleID
-import sbt.librarymanagement.syntax._
-import sbt.{ LocalProject, ProjectReference, ThisBuild, Zero }
+import sbt.librarymanagement.syntax.*
+import sbt.{ LocalProject, ProjectReference, ThisBuild }
 
 object SlashSyntaxTest extends sbt.SlashSyntax {
   final case class Proj(id: String)
@@ -37,7 +40,7 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
 
   val uTest = "com.lihaoyi" %% "utest" % "0.5.3"
 
-  Seq[Setting[_]](
+  Seq[Setting[?]](
     Global / cancelable := true,
     ThisBuild / scalaVersion := "2.12.3",
     console / scalacOptions += "-deprecation",
@@ -54,7 +57,7 @@ object SlashSyntaxTest extends sbt.SlashSyntax {
     Compile / bar := {
       (Compile / foo).previous.getOrElse(2)
     },
-    Test / buildInfo := Nil,
+    Test / buildInfo := Def.uncached(Nil),
     baz := {
       val _ = (Test / buildInfo).taskValue
       (Compile / run).evaluated

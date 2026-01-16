@@ -6,11 +6,13 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-import sbt._
+import sbt.*
 
-import org.scalacheck._
-import Prop._
-import TaskGen._
+import org.scalacheck.*
+import Prop.*
+import TaskGen.*
+
+import scala.annotation.tailrec
 
 object TaskRunnerCallTest extends Properties("TaskRunner Call") {
   property("calculates fibonacci") = forAll(MaxTasksGen, MaxWorkersGen) { (i: Int, workers: Int) =>
@@ -31,11 +33,12 @@ object TaskRunnerCallTest extends Properties("TaskRunner Call") {
         else
           iterate((index + 1, x2, x1 + x2))
       }
-    def iterate(iteration: (Int, Int, Int)) = task(iteration) flatMap next.tupled
+    def iterate(iteration: (Int, Int, Int)) = task(iteration).flatMap(next.tupled)
     iterate((1, 0, 1))
   }
   final def fibDirect(i: Int): Int = {
     require(i > 0)
+    @tailrec
     def build(index: Int, x1: Int, x2: Int): Int =
       if (index == i)
         x2

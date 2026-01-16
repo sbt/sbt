@@ -9,8 +9,8 @@
 package sbt
 package internal
 
-import sbt.internal.util._
-import sbt.util._
+import sbt.internal.util.*
+import sbt.util.*
 
 object TestLogger {
   def apply[T](f: Logger => T): T = {

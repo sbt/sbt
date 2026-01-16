@@ -1,0 +1,4 @@
+> packageBin
+$ exists target/**/app_3.3.5-0.1.0-SNAPSHOT.jar
+$ exists target/**/app_3.7.4-0.1.0-SNAPSHOT.jar
+> core3_7_4/check

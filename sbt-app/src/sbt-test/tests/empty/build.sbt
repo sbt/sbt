@@ -1,5 +1,5 @@
-testGrouping := {
-  val tests = (definedTests in Test).value
+testGrouping := Def.uncached {
+  val tests = (Test / definedTests).value
   tests map { test =>
     new Tests.Group(
       name = test.name,

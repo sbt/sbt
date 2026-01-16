@@ -8,39 +8,60 @@
 
 package sbt
 
-import scala.collection.mutable
-import testing.{ Logger => _, Task => _, _ }
-import scala.util.control.NonFatal
-import java.net.ServerSocket
-import java.io._
-import Tests.{ Output => TestOutput, _ }
-import sbt.io.IO
+import org.scalasbt.shadedgson.com.google.gson.{ JsonObject, JsonParser, JsonSyntaxException }
+import testing.{ Logger as _, Task as _, * }
+import java.io.*
+import java.util.ArrayList
+import Tests.{ Output as TestOutput, * }
 import sbt.util.Logger
 import sbt.ConcurrentRestrictions.Tag
-import sbt.protocol.testing._
-import sbt.internal.util.Util.{ AnyOps, none }
-import sbt.internal.util.{ Terminal => UTerminal }
+import sbt.protocol.testing.*
+import sbt.internal.{ WorkerExchange, WorkerResponseListener }
+import sbt.internal.util.Util.*
+import sbt.internal.util.{ MessageOnlyException, Terminal as UTerminal }
+import sbt.internal.worker1.*
+import xsbti.{ FileConverter, HashedVirtualFileRef }
+import scala.collection.mutable
+import scala.concurrent.{ Await, Promise }
+import scala.concurrent.duration.Duration
+import scala.util.Random
+import scala.util.control.NonFatal
+import scala.jdk.CollectionConverters.*
+import scala.sys.process.Process
+import sbt.internal.WorkerConnection
 
-private[sbt] object ForkTests {
+/**
+ * This implements forked testing, in cooperation with the worker CLI,
+ * which was previously called test-agent.jar.
+ */
+private[sbt] object ForkTests:
+  val r = Random()
+
   def apply(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
-    import std.TaskExtra._
-    val dummyLoader = this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
+    import std.TaskExtra.*
+    val dummyLoader =
+      this.getClass.getClassLoader // can't provide the loader for test classes, which is in another jvm
     def all(work: Seq[ClassLoader => Unit]) = work.fork(f => f(dummyLoader))
 
     val main =
-      if (opts.tests.isEmpty)
+      if opts.tests.isEmpty then
         constant(TestOutput(TestResult.Passed, Map.empty[String, SuiteResult], Iterable.empty))
       else
-        mainTestTask(runners, opts, classpath, fork, log, config.parallel).tagw(config.tags: _*)
-    main.tagw(tags: _*).dependsOn(all(opts.setup): _*) flatMap { results =>
+        mainTestTask(runners, opts, classpath, converter, fork, log, config.parallel, parallelism)
+          .tagw(
+            config.tags*
+          )
+    main.tagw(tags*).dependsOn(all(opts.setup)*) flatMap { results =>
       all(opts.cleanup).join.map(_ => results)
     }
   }
@@ -49,176 +70,190 @@ private[sbt] object ForkTests {
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tags: (Tag, Int)*
   ): Task[TestOutput] = {
     val opts = processOptions(config, tests, log)
-    apply(runners, opts, config, classpath, fork, log, tags: _*)
+    apply(runners, opts, config, classpath, converter, fork, log, parallelism, tags*)
   }
 
   def apply(
       runners: Map[TestFramework, Runner],
       tests: Vector[TestDefinition],
       config: Execution,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
+      parallelism: Option[Int],
       tag: Tag
   ): Task[TestOutput] = {
-    apply(runners, tests, config, classpath, fork, log, tag -> 1)
+    apply(runners, tests, config, classpath, converter, fork, log, parallelism, tag -> 1)
   }
 
-  private[this] def mainTestTask(
+  private def mainTestTask(
       runners: Map[TestFramework, Runner],
       opts: ProcessedOptions,
-      classpath: Seq[File],
+      classpath: Seq[HashedVirtualFileRef],
+      converter: FileConverter,
       fork: ForkOptions,
       log: Logger,
-      parallel: Boolean
+      parallel: Boolean,
+      parallelism: Option[Int]
   ): Task[TestOutput] =
     std.TaskExtra.task {
-      val server = new ServerSocket(0)
-      val testListeners = opts.testListeners flatMap {
+      val testListeners = opts.testListeners.flatMap:
         case tl: TestsListener => tl.some
         case _                 => none[TestsListener]
-      }
-
-      object Acceptor extends Runnable {
-        val resultsAcc = mutable.Map.empty[String, SuiteResult]
-        lazy val result =
-          TestOutput(overall(resultsAcc.values.map(_.result)), resultsAcc.toMap, Iterable.empty)
-
-        def run(): Unit = {
-          val socket =
-            try {
-              server.accept()
-            } catch {
-              case e: java.net.SocketException =>
-                log.error(
-                  "Could not accept connection from test agent: " + e.getClass + ": " + e.getMessage
-                )
-                log.trace(e)
-                server.close()
-                return
-            }
-          val os = new ObjectOutputStream(socket.getOutputStream)
-          // Must flush the header that the constructor writes, otherwise the ObjectInputStream on the other end may block indefinitely
-          os.flush()
-          val is = new ObjectInputStream(socket.getInputStream)
-
-          try {
-            val config = new ForkConfiguration(UTerminal.isAnsiSupported, parallel)
-            os.writeObject(config)
-
-            val taskdefs = opts.tests.map { t =>
-              new TaskDef(
-                t.name,
-                forkFingerprint(t.fingerprint),
-                t.explicitlySpecified,
-                t.selectors
-              )
-            }
-            os.writeObject(taskdefs.toArray)
-
-            os.writeInt(runners.size)
-            for ((testFramework, mainRunner) <- runners) {
-              os.writeObject(testFramework.implClassNames.toArray)
-              os.writeObject(mainRunner.args)
-              os.writeObject(mainRunner.remoteArgs)
-            }
-            os.flush()
-
-            new React(is, os, log, opts.testListeners, resultsAcc).react()
-          } catch {
-            case NonFatal(e) =>
-              def throwableToString(t: Throwable) = {
-                import java.io._; val sw = new StringWriter; t.printStackTrace(new PrintWriter(sw));
-                sw.toString
-              }
-              resultsAcc("Forked test harness failed: " + throwableToString(e)) = SuiteResult.Error
-          } finally {
-            is.close(); os.close(); socket.close()
-          }
-        }
-      }
-
-      try {
-        testListeners.foreach(_.doInit())
-        val acceptorThread = new Thread(Acceptor)
-        acceptorThread.start()
-
-        val fullCp = classpath ++ Seq(
-          IO.classLocationPath[ForkMain].toFile,
-          IO.classLocationPath[Framework].toFile
+      val resultsAcc = mutable.Map.empty[String, SuiteResult]
+      val randomId = r.nextLong()
+      def testOutputResult =
+        TestOutput(
+          overall(resultsAcc.values.map(_.result)),
+          resultsAcc.toMap,
+          Iterable.empty
         )
-        val options = Seq(
-          "-classpath",
-          fullCp mkString File.pathSeparator,
-          classOf[ForkMain].getCanonicalName,
-          server.getLocalPort.toString
+      val taskdefs = opts.tests.map: t =>
+        new TaskDef(
+          t.name,
+          forkFingerprint(t.fingerprint),
+          t.explicitlySpecified,
+          t.selectors
         )
-        val ec = Fork.java(fork, options)
-        val result =
-          if (ec != 0)
-            TestOutput(
-              TestResult.Error,
-              Map(
-                "Running java with options " + options
-                  .mkString(" ") + " failed with exit code " + ec -> SuiteResult.Error
-              ),
-              Iterable.empty
-            )
-          else {
-            // Need to wait acceptor thread to finish its business
-            acceptorThread.join()
-            Acceptor.result
-          }
+      val testRunners = runners.toSeq.map: (testFramework, mainRunner) =>
+        TestInfo.TestRunner(
+          ArrayList(testFramework.implClassNames.asJava),
+          ArrayList(mainRunner.args().toList.asJava),
+          ArrayList(mainRunner.remoteArgs().toList.asJava)
+        )
+      val g = WorkerMain.mkGson()
+      // virtualize classloading by using ClassLoader
+      val useClassLoader = true
+      val cpList = ArrayList[FilePath](
+        (classpath
+          .map: vf =>
+            FilePath(converter.toPath(vf).toUri(), vf.contentHashStr()))
+          .asJava
+      )
+      val cpFiles =
+        classpath.map: vf =>
+          converter.toPath(vf).toFile()
+      val param = TestInfo(
+        true, /* jvm */
+        RunInfo.JvmRunInfo(
+          ArrayList(),
+          if useClassLoader then cpList else ArrayList(),
+          "",
+          false /*connectInput*/,
+        ),
+        null,
+        UTerminal.isAnsiSupported,
+        parallel,
+        parallelism.map(Integer.valueOf).orNull,
+        ArrayList(taskdefs.asJava),
+        ArrayList(testRunners.asJava),
+      )
+      testListeners.foreach(_.doInit())
+      val result =
+        val ct = WorkerConnection.Tcp
+        val w = WorkerExchange.startWorker(fork, if useClassLoader then Nil else cpFiles, ct)
+        val wl = React(randomId, log, opts.testListeners, resultsAcc, w.process)
+        try
+          WorkerExchange.registerListener(wl)
+          val paramJson = g.toJson(param, param.getClass)
+          val json = jsonRpcRequest(randomId, "test", paramJson)
+          w.println(json)
+          if wl.blockForResponse() != 0 then
+            throw MessageOnlyException("Forked test harness failed")
+          testOutputResult
+        finally WorkerExchange.unregisterListener(wl)
+      testListeners.foreach(_.doComplete(result.overall))
+      result
+    } // end task
 
-        testListeners.foreach(_.doComplete(result.overall))
-        result
-      } finally {
-        server.close()
-      }
-    }
+  private def jsonRpcRequest(id: Long, method: String, params: String): String =
+    s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params, "id": $id }"""
 
-  private[this] def forkFingerprint(f: Fingerprint): Fingerprint with Serializable =
-    f match {
-      case s: SubclassFingerprint  => new ForkMain.SubclassFingerscan(s)
-      case a: AnnotatedFingerprint => new ForkMain.AnnotatedFingerscan(a)
+  private def forkFingerprint(f: Fingerprint): Fingerprint & Serializable =
+    f match
+      case s: SubclassFingerprint  => ForkTestMain.SubclassFingerscan(s)
+      case a: AnnotatedFingerprint => ForkTestMain.AnnotatedFingerscan(a)
       case _                       => sys.error("Unknown fingerprint type: " + f.getClass)
-    }
-}
-private final class React(
-    is: ObjectInputStream,
-    os: ObjectOutputStream,
+end ForkTests
+
+private class React(
+    id: Long,
     log: Logger,
     listeners: Seq[TestReportListener],
-    results: mutable.Map[String, SuiteResult]
-) {
-  import ForkTags._
-  @annotation.tailrec
-  def react(): Unit = is.readObject match {
-    case `Done` =>
-      os.writeObject(Done); os.flush()
-    case Array(`Error`, s: String) =>
-      log.error(s); react()
-    case Array(`Warn`, s: String) =>
-      log.warn(s); react()
-    case Array(`Info`, s: String) =>
-      log.info(s); react()
-    case Array(`Debug`, s: String) =>
-      log.debug(s); react()
-    case t: Throwable =>
-      log.trace(t); react()
-    case Array(group: String, tEvents: Array[Event]) =>
-      listeners.foreach(_ startGroup group)
-      val event = TestEvent(tEvents)
-      listeners.foreach(_ testEvent event)
-      val suiteResult = SuiteResult(tEvents)
-      results += group -> suiteResult
-      listeners.foreach(_.endGroup(group, suiteResult.result))
-      react()
-  }
-}
+    results: mutable.Map[String, SuiteResult],
+    process: Process
+) extends WorkerResponseListener:
+  val g = WorkerMain.mkGson()
+  val promise: Promise[Int] = Promise()
+  override def apply(line: String): Unit =
+    try
+      val o = JsonParser.parseString(line).getAsJsonObject()
+      if o.has("id") then
+        val resId = o.getAsJsonPrimitive("id").getAsLong()
+        if resId == id then
+          if promise.isCompleted then ()
+          else if o.has("error") then promise.failure(new RuntimeException(line))
+          else promise.success(0)
+        else ()
+      else if o.has("method") then processNotification(o)
+      else ()
+    catch
+      case _: JsonSyntaxException => log.info(line)
+      case NonFatal(_)            => ()
+
+  override def notifyExit(p: Process): Unit =
+    if !process.isAlive && !promise.isCompleted then
+      val exitCode = process.exitValue()
+      if exitCode != 0 then
+        promise.failure(new RuntimeException(s"Forked test process exited with code $exitCode"))
+      else promise.success(exitCode)
+
+  def processNotification(o: JsonObject): Unit =
+    val method = o.getAsJsonPrimitive("method").getAsString()
+    method match
+      case "testLog" =>
+        val params = o.getAsJsonObject("params")
+        val info = g.fromJson[TestLogInfo](params, classOf[TestLogInfo])
+        if info.id == id then
+          info.tag match
+            case ForkTags.Error => log.error(info.message)
+            case ForkTags.Warn  => log.warn(info.message)
+            case ForkTags.Info  => log.info(info.message)
+            case ForkTags.Debug => log.debug(info.message)
+            case _              => ()
+        else ()
+      case "testEvents" =>
+        val params = o.getAsJsonObject("params")
+        val info =
+          g.fromJson[ForkTestMain.ForkEventsInfo](params, classOf[ForkTestMain.ForkEventsInfo])
+        if info.id == id then
+          val events = info.events.asScala.toSeq
+          listeners.foreach(_.startGroup(info.group))
+          val event = TestEvent(events)
+          listeners.foreach(_.testEvent(event))
+          val suiteResult = SuiteResult(events)
+          results += info.group -> suiteResult
+          listeners.foreach(_.endGroup(info.group, suiteResult.result))
+        else ()
+      case "forkError" =>
+        val params = o.getAsJsonObject("params")
+        val info =
+          g.fromJson[ForkTestMain.ForkErrorInfo](params, classOf[ForkTestMain.ForkErrorInfo])
+        if info.id == id then
+          log.trace(info.error)
+          promise.failure(info.error)
+        else ()
+      case _ => ()
+
+  def blockForResponse(): Int =
+    Await.result(promise.future, Duration.Inf)
+end React

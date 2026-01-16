@@ -8,7 +8,7 @@
 
 package sbt.internal.util
 
-/** Defines a function to call as sbt exits.*/
+/** Defines a function to call as sbt exits. */
 trait ExitHook {
 
   /** Subclasses should implement this method, which is called when this hook is executed. */
@@ -22,7 +22,10 @@ object ExitHook {
 
 object ExitHooks {
 
-  /** Calls each registered exit hook, trapping any exceptions so that each hook is given a chance to run. */
+  /**
+   * Calls each registered exit hook, trapping any exceptions so that each hook is given a chance to
+   * run.
+   */
   def runExitHooks(exitHooks: Seq[ExitHook]): Seq[Throwable] =
     exitHooks.flatMap(hook => ErrorHandling.wideConvert(hook.runBeforeExiting()).left.toOption)
 

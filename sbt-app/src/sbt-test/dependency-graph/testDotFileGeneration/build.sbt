@@ -3,10 +3,10 @@ import scala.collection.mutable.ListBuffer
 ThisBuild / scalaVersion := "2.9.2"
 ThisBuild / version := "0.1-SNAPSHOT"
 
-lazy val justATransiviteDependencyEndpointProject = project
+lazy val justATransitiveDependencyEndpointProject = project
 
 lazy val justATransitiveDependencyProject = project
-  .dependsOn(justATransiviteDependencyEndpointProject)
+  .dependsOn(justATransitiveDependencyEndpointProject)
 
 lazy val justADependencyProject = project
 
@@ -14,7 +14,7 @@ lazy val test_project = project
   .dependsOn(justADependencyProject, justATransitiveDependencyProject)
   .settings(
     TaskKey[Unit]("check") := {
-      val dotFile = (dependencyDot in Compile).value
+      val graph = (Compile / dependencyTree).toTask(" dot --quiet").value
       val expectedGraph =
         """digraph "dependency-graph" {
             |    graph[rankdir="LR"; splines=polyline]
@@ -23,16 +23,15 @@ lazy val test_project = project
             |    ]
             |    "justadependencyproject:justadependencyproject_2.9.2:0.1-SNAPSHOT"[shape=box label=<justadependencyproject<BR/><B>justadependencyproject_2.9.2</B><BR/>0.1-SNAPSHOT> style="" penwidth="5" color="#B6E316"]
             |    "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT"[shape=box label=<justatransitivedependencyproject<BR/><B>justatransitivedependencyproject_2.9.2</B><BR/>0.1-SNAPSHOT> style="" penwidth="5" color="#0E92BE"]
-            |    "justatransivitedependencyendpointproject:justatransivitedependencyendpointproject_2.9.2:0.1-SNAPSHOT"[shape=box label=<justatransivitedependencyendpointproject<BR/><B>justatransivitedependencyendpointproject_2.9.2</B><BR/>0.1-SNAPSHOT> style="" penwidth="5" color="#9EAD1B"]
+            |    "justatransitivedependencyendpointproject:justatransitivedependencyendpointproject_2.9.2:0.1-SNAPSHOT"[shape=box label=<justatransitivedependencyendpointproject<BR/><B>justatransitivedependencyendpointproject_2.9.2</B><BR/>0.1-SNAPSHOT> style="" penwidth="5" color="#A1168F"]
             |    "test_project:test_project_2.9.2:0.1-SNAPSHOT"[shape=box label=<test_project<BR/><B>test_project_2.9.2</B><BR/>0.1-SNAPSHOT> style="" penwidth="5" color="#C37661"]
-            |    "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT" -> "justatransivitedependencyendpointproject:justatransivitedependencyendpointproject_2.9.2:0.1-SNAPSHOT"
+            |    "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT" -> "justatransitivedependencyendpointproject:justatransitivedependencyendpointproject_2.9.2:0.1-SNAPSHOT"
             |    "test_project:test_project_2.9.2:0.1-SNAPSHOT" -> "justadependencyproject:justadependencyproject_2.9.2:0.1-SNAPSHOT"
             |    "test_project:test_project_2.9.2:0.1-SNAPSHOT" -> "justatransitivedependencyproject:justatransitivedependencyproject_2.9.2:0.1-SNAPSHOT"
             |}
           """.stripMargin
 
-      val graph: String = scala.io.Source.fromFile(dotFile.getAbsolutePath).mkString
-      val errors = compareByLine(graph, expectedGraph)
+      val errors = compareByLine(graph.trim, expectedGraph.trim)
       require(errors.isEmpty, errors.mkString("\n"))
       ()
     }
@@ -40,7 +39,7 @@ lazy val test_project = project
 
 def compareByLine(got: String, expected: String): Seq[String] = {
   val errors = ListBuffer[String]()
-  got.split("\n").zip(expected.split("\n").toSeq).zipWithIndex.foreach {
+  got.linesIterator.toList.sorted.zip(expected.linesIterator.toList.sorted).zipWithIndex.foreach {
     case ((got_line: String, expected_line: String), i: Int) =>
       if (got_line != expected_line) {
         errors.append("""not matching lines at line %s
@@ -49,5 +48,5 @@ def compareByLine(got: String, expected: String): Seq[String] = {
           |""".stripMargin.format(i, expected_line, got_line))
       }
   }
-  errors
+  errors.toList
 }

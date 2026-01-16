@@ -50,7 +50,7 @@ goto endInit
 
 :Win9xArg
 @REM Slurp the command line arguments.  This loop allows for an unlimited number
-@REM of agruments (up to the command line limit, anyway).
+@REM of arguments (up to the command line limit, anyway).
 set CMD_LINE_ARGS=
 :Win9xApp
 if %1a==a goto endInit

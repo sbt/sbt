@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class DiagnosticRelatedInformation private (
   override def toString: String = {
     "DiagnosticRelatedInformation(" + location + ", " + message + ")"
   }
-  private[this] def copy(location: sbt.internal.bsp.Location = location, message: String = message): DiagnosticRelatedInformation = {
+  private def copy(location: sbt.internal.bsp.Location = location, message: String = message): DiagnosticRelatedInformation = {
     new DiagnosticRelatedInformation(location, message)
   }
   def withLocation(location: sbt.internal.bsp.Location): DiagnosticRelatedInformation = {

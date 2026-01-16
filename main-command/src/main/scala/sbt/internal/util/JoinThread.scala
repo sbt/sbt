@@ -9,11 +9,11 @@
 package sbt.internal.util
 
 import scala.annotation.tailrec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.concurrent.TimeoutException
 
 object JoinThread {
-  implicit class ThreadOps(val t: Thread) extends AnyVal {
+  extension (t: Thread) {
     def joinFor(duration: FiniteDuration): Unit = {
       val deadline = duration.fromNow
       @tailrec def impl(): Unit = {

@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.testing.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait EndTestGroupErrorEventFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val EndTestGroupErrorEventFormat: JsonFormat[sbt.protocol.testing.EndTestGroupErrorEvent] = new JsonFormat[sbt.protocol.testing.EndTestGroupErrorEvent] {
+given EndTestGroupErrorEventFormat: JsonFormat[sbt.protocol.testing.EndTestGroupErrorEvent] = new JsonFormat[sbt.protocol.testing.EndTestGroupErrorEvent] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.testing.EndTestGroupErrorEvent = {
     __jsOpt match {
       case Some(__js) =>

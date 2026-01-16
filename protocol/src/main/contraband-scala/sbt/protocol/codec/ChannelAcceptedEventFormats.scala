@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ChannelAcceptedEventFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val ChannelAcceptedEventFormat: JsonFormat[sbt.protocol.ChannelAcceptedEvent] = new JsonFormat[sbt.protocol.ChannelAcceptedEvent] {
+given ChannelAcceptedEventFormat: JsonFormat[sbt.protocol.ChannelAcceptedEvent] = new JsonFormat[sbt.protocol.ChannelAcceptedEvent] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.ChannelAcceptedEvent = {
     __jsOpt match {
       case Some(__js) =>

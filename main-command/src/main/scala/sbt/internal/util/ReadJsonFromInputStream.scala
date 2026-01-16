@@ -11,7 +11,6 @@ package sbt.internal.util
 import java.io.InputStream
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
-import scala.util.Try
 
 private[sbt] object ReadJsonFromInputStream {
   def apply(
@@ -34,7 +33,7 @@ private[sbt] object ReadJsonFromInputStream {
     var headerBuffer = new Array[Byte](128)
     def expandHeaderBuffer(): Unit = {
       val newHeaderBuffer = new Array[Byte](headerBuffer.length * 2)
-      headerBuffer.view.zipWithIndex.foreach { case (b, i) => newHeaderBuffer(i) = b }
+      headerBuffer.view.zipWithIndex.foreach { (b, i) => newHeaderBuffer(i) = b }
       headerBuffer = newHeaderBuffer
     }
     def getLine(): String = {
@@ -46,7 +45,8 @@ private[sbt] object ReadJsonFromInputStream {
     var content: Seq[Byte] = Seq.empty[Byte]
     var consecutiveLineEndings = 0
     var onCarriageReturn = false
-    do {
+
+    def run(): Unit =
       val byte = inputStream.read
       byte match {
         case `newline` =>
@@ -54,34 +54,35 @@ private[sbt] object ReadJsonFromInputStream {
           if (onCarriageReturn) consecutiveLineEndings += 1
           onCarriageReturn = false
           if (line.startsWith(contentLength)) {
-            Try(line.drop(contentLength.length).toInt) foreach { len =>
+            line.drop(contentLength.length).toIntOption foreach { len =>
+              def doDrainHeaders(): Unit =
+                inputStream.read match
+                  case `newline` if onCarriageReturn =>
+                    getLine()
+                    onCarriageReturn = false
+                    consecutiveLineEndings += 1
+                  case `carriageReturn` => onCarriageReturn = true
+                  case -1               => running.set(false)
+                  case c =>
+                    if (c == newline) getLine()
+                    else {
+                      if (index >= headerBuffer.length) expandHeaderBuffer()
+                      headerBuffer(index) = c.toByte
+                      index += 1
+                    }
+                    onCarriageReturn = false
+                    consecutiveLineEndings = 0
+
               def drainHeaders(): Unit =
-                do {
-                  inputStream.read match {
-                    case `newline` if onCarriageReturn =>
-                      getLine()
-                      onCarriageReturn = false
-                      consecutiveLineEndings += 1
-                    case `carriageReturn` => onCarriageReturn = true
-                    case -1               => running.set(false)
-                    case c =>
-                      if (c == newline) getLine()
-                      else {
-                        if (index >= headerBuffer.length) expandHeaderBuffer()
-                        headerBuffer(index) = c.toByte
-                        index += 1
-                      }
-                      onCarriageReturn = false
-                      consecutiveLineEndings = 0
-                  }
-                } while (consecutiveLineEndings < 2 && running.get)
+                doDrainHeaders()
+                while consecutiveLineEndings < 2 && running.get do doDrainHeaders()
               drainHeaders()
               if (running.get) {
                 val buf = new Array[Byte](len)
                 var offset = 0
-                do {
-                  offset += inputStream.read(buf, offset, len - offset)
-                } while (offset < len && running.get)
+                def run1(): Unit = offset += inputStream.read(buf, offset, len - offset)
+                run1()
+                while offset < len && running.get do run1()
                 if (running.get) content = buf.toSeq
               }
             }
@@ -100,7 +101,9 @@ private[sbt] object ReadJsonFromInputStream {
           index += 1
 
       }
-    } while (content.isEmpty && running.get)
+
+    run()
+    while content.isEmpty && running.get do run()
     content
   }
 

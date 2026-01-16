@@ -12,17 +12,19 @@ import java.lang.reflect.InvocationTargetException
 import java.nio.file.Path
 import java.io.File
 
-import sbt.SlashSyntax0._
-import sbt.io._, syntax._
-import sbt.util._
-import sbt.internal.util.{ ConsoleAppender, Terminal => ITerminal }
-import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers._
+import sbt.io.*, syntax.*
+import sbt.util.*
+import sbt.internal.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
+import sbt.internal.util.{ ConsoleAppender, Terminal as ITerminal }
+import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers.*
 import xsbti.AppConfiguration
-import sbt.librarymanagement._
-import sbt.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
+import sbt.librarymanagement.*
 import sbt.internal.inc.classpath.ClasspathUtil
-import BasicCommandStrings._, BasicKeys._
+import BasicCommandStrings.*, BasicKeys.*
 import sbt.internal.util.Terminal.hasConsole
+import sbt.ProjectExtra.*
+
+import scala.annotation.tailrec
 
 private[sbt] object TemplateCommandUtil {
   def templateCommand: Command = templateCommand0(TemplateCommand)
@@ -33,14 +35,14 @@ private[sbt] object TemplateCommandUtil {
     )
 
   private def templateCommandParser: Parser[Seq[String]] =
-    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF) map (_ => Nil))
+    (token(Space) ~> repsep(StringBasic, token(Space))) | (token(EOF).map(_ => Nil))
 
   private def runTemplate(s0: State, inputArg: Seq[String]): State = {
-    import BuildPaths._
+    import BuildPaths.*
     val globalBase = getGlobalBase(s0)
-    val infos = (s0 get templateResolverInfos getOrElse Nil).toList
+    val infos = s0.get(templateResolverInfos).getOrElse(Nil).toList
     val log = s0.globalLogging.full
-    val extracted = (Project extract s0)
+    val extracted = Project.extract(s0)
     val (s1, ivyConf) = extracted.runTask(Keys.ivyConfiguration, s0)
     val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
     val templateDescriptions = extracted.get(Keys.templateDescriptions)
@@ -126,12 +128,12 @@ private[sbt] object TemplateCommandUtil {
       interfaceClassName: String,
       methodName: String,
       loader: ClassLoader
-  )(argTypes: Class[_]*)(args: AnyRef*): AnyRef = {
+  )(argTypes: Class[?]*)(args: AnyRef*): AnyRef = {
     val interfaceClass = getInterfaceClass(interfaceClassName, loader)
     val interface = interfaceClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
-    val method = interfaceClass.getMethod(methodName, argTypes: _*)
+    val method = interfaceClass.getMethod(methodName, argTypes*)
     try {
-      method.invoke(interface, args: _*)
+      method.invoke(interface, args*)
     } catch {
       case e: InvocationTargetException => throw e.getCause
     }
@@ -140,7 +142,8 @@ private[sbt] object TemplateCommandUtil {
   private def getInterfaceClass(name: String, loader: ClassLoader) =
     Class.forName(name, true, loader)
 
-  // Cache files under ~/.sbt/0.13/templates/org_name_version
+  // sbt_version is typically 0.13 or 1.0
+  // Cache files under ~/.sbt/sbt_version/templates/org_name_version
   private def classpathForInfo(
       info: TemplateResolverInfo,
       ivyConf: IvyConfiguration,
@@ -152,8 +155,8 @@ private[sbt] object TemplateCommandUtil {
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
-    def jars = (templateDirectory ** -DirectoryFilter).get
-    if (!(info.module.revision endsWith "-SNAPSHOT") && jars.nonEmpty) jars.toList.map(_.toPath)
+    def jars = (templateDirectory ** -DirectoryFilter).get()
+    if !info.module.revision.endsWith("-SNAPSHOT") && jars.nonEmpty then jars.toList.map(_.toPath)
     else {
       IO.createDirectory(templateDirectory)
       val m = lm.wrapDependencyInModule(info.module, scalaModuleInfo)
@@ -190,21 +193,22 @@ private[sbt] object TemplateCommandUtil {
     else
       ITerminal.withStreams(true, false) {
         assert(templates.size <= 20, "template list cannot have more than 20 items")
-        val mappingList = templates.zipWithIndex.map {
-          case (v, idx) => toLetter(idx) -> v
+        val mappingList = templates.zipWithIndex.map { (v, idx) =>
+          toLetter(idx) -> v
         }
         val out = term.printStream
         out.println("")
         out.println("Welcome to sbt new!")
         out.println("Here are some templates to get started:")
         val ans = askTemplate(mappingList, 0)
-        val mappings = Map(mappingList: _*)
+        val mappings = Map(mappingList*)
         mappings.get(ans).map(_._1).toList
       }
 
   private def toLetter(idx: Int): String =
     nonMoveLetters(idx).toString
 
+  @tailrec
   private def askTemplate(mappingList: List[(String, (String, String))], focus: Int): String = {
     val msg = "Select a template"
     displayMappings(mappingList, focus)
@@ -246,16 +250,15 @@ private[sbt] object TemplateCommandUtil {
   private def displayMappings(mappingList: List[(String, (String, String))], focus: Int): Unit = {
     import scala.Console.{ RESET, REVERSED }
     val out = term.printStream
-    mappingList.zipWithIndex.foreach {
-      case ((k, (slug, desc)), idx) =>
-        if (idx == focus && isAnsiSupported) {
-          out.print(REVERSED)
-        }
-        out.print(s" $k) ${slug.padTo(33, ' ')} - $desc")
-        if (idx == focus && isAnsiSupported) {
-          out.print(RESET)
-        }
-        out.println()
+    mappingList.zipWithIndex.foreach { case ((k, (slug, desc)), idx) =>
+      if (idx == focus && isAnsiSupported) {
+        out.print(REVERSED)
+      }
+      out.print(s" $k) ${slug.padTo(33, ' ')} - $desc")
+      if (idx == focus && isAnsiSupported) {
+        out.print(RESET)
+      }
+      out.println()
     }
     out.println(" q) quit")
     out.flush()
@@ -339,7 +342,6 @@ lazy val core = (projectMatrix in file("core"))
     IO.write(new File("build.sbt"), content)
 
     val pluginsContent = """
-addSbtPlugin("com.eed3si9n" % "sbt-projectmatrix" % "0.10.0")
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.17.0")
 addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.5")
 """

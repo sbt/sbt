@@ -7,25 +7,25 @@
 
 package testpkg
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import java.util.concurrent.atomic.AtomicInteger
 
 // starts svr using server-test/events and perform event related tests
-object EventsTest extends AbstractServerTest {
+class EventsTest extends AbstractServerTest {
   override val testDirectory: String = "events"
   val currentID = new AtomicInteger(1000)
 
-  test("report task failures in case of exceptions") { _ =>
+  test("report task failures in case of exceptions") {
     val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id": $id, "method": "sbt/exec", "params": { "commandLine": "hello" } }"""
     )
     assert(svr.waitForString(10.seconds) { s =>
-      (s contains s""""id":$id""") && (s contains """"error":""")
+      s.contains(s""""id":$id""") && s.contains(""""error":""")
     })
   }
 
-  test("return error if cancelling non-matched task id") { _ =>
+  test("return error if cancelling non-matched task id") {
     val id = currentID.getAndIncrement()
     svr.sendJsonRpc(
       s"""{ "jsonrpc": "2.0", "id":$id, "method": "sbt/exec", "params": { "commandLine": "run" } }"""
@@ -37,7 +37,7 @@ object EventsTest extends AbstractServerTest {
       s"""{ "jsonrpc": "2.0", "id":$cancelID, "method": "sbt/cancelRequest", "params": { "id": "$invalidID" } }"""
     )
     assert(svr.waitForString(20.seconds) { s =>
-      (s contains """"error":{"code":-32800""")
+      s.contains(""""error":{"code":-32800""")
     })
   }
 
@@ -83,5 +83,5 @@ object EventsTest extends AbstractServerTest {
       s contains """"result":{"status":"Task cancelled""""
     })
   }
- */
+   */
 }

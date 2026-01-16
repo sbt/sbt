@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -33,7 +33,7 @@ final class InitializeBuildParams private (
   override def toString: String = {
     "InitializeBuildParams(" + displayName + ", " + version + ", " + bspVersion + ", " + rootUri + ", " + capabilities + ", " + data + ")"
   }
-  private[this] def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, rootUri: java.net.URI = rootUri, capabilities: sbt.internal.bsp.BuildClientCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildParams = {
+  private def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, rootUri: java.net.URI = rootUri, capabilities: sbt.internal.bsp.BuildClientCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildParams = {
     new InitializeBuildParams(displayName, version, bspVersion, rootUri, capabilities, data)
   }
   def withDisplayName(displayName: String): InitializeBuildParams = {

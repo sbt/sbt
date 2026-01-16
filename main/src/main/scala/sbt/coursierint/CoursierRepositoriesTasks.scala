@@ -9,10 +9,10 @@
 package sbt
 package coursierint
 
-import sbt.librarymanagement._
-import sbt.Keys._
-import sbt.ScopeFilter.Make._
-import sbt.SlashSyntax0._
+import sbt.librarymanagement.*
+import sbt.Keys.*
+import sbt.ProjectExtra.transitiveInterDependencies
+import sbt.ScopeFilter.Make.*
 
 object CoursierRepositoriesTasks {
   private object CResolvers {
@@ -49,16 +49,17 @@ object CoursierRepositoriesTasks {
       if (resolvers.exists(fastRepo) && resolvers.exists(slowRepo)) {
         val (slow, other) = resolvers.partition(slowRepo)
         other ++ slow
-      } else
-        resolvers
+      } else resolvers
   }
 
   // local-preloaded-ivy contains dangling ivy.xml without JAR files
   // https://github.com/sbt/sbt/issues/4661
   private final val keepPreloaded = false // coursierKeepPreloaded.value
 
-  def coursierResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
-    val result0 = fullResolvers.value.filterNot(_ == projectResolver.value)
+  def coursierResolversTask(
+      resolversKey: TaskKey[Seq[Resolver]]
+  ): Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
+    val result0 = resolversKey.value.filterNot(_ == projectResolver.value)
     val reorderResolvers = true // coursierReorderResolvers.value
 
     val paths = ivyPaths.value
@@ -68,7 +69,7 @@ object CoursierRepositoriesTasks {
     val result2 =
       paths.ivyHome match {
         case Some(ivyHome) =>
-          val ivyHomeUri = ivyHome.getPath
+          val ivyHomeUri = ivyHome
           result1 map {
             case r: FileRepository =>
               val ivyPatterns = r.patterns.ivyPatterns map {
@@ -93,7 +94,8 @@ object CoursierRepositoriesTasks {
       }
   }
 
-  private val pluginIvySnapshotsBase = Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
+  private val pluginIvySnapshotsBase =
+    Resolver.SbtRepositoryRoot.stripSuffix("/") + "/ivy-snapshots"
 
   def coursierSbtResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] = Def.task {
     val resolvers =
@@ -124,14 +126,17 @@ object CoursierRepositoriesTasks {
   }
 
   def coursierRecursiveResolversTask: Def.Initialize[sbt.Task[Seq[Resolver]]] =
-    Def.taskDyn {
-      val s = state.value
-      val projectRef = thisProjectRef.value
-      val dependencyRefs = Project.transitiveInterDependencies(s, projectRef)
-      Def.task {
-        val resolvers = csrResolvers.all(ScopeFilter(inProjects(projectRef))).value ++
-          csrResolvers.all(ScopeFilter(inProjects(dependencyRefs: _*))).value
-        resolvers.flatten
+    (Def
+      .task {
+        val s = state.value
+        val projectRef = thisProjectRef.value
+        val dependencyRefs = Project.transitiveInterDependencies(s, projectRef)
+        (ScopeFilter(inProjects(projectRef)), ScopeFilter(inProjects(dependencyRefs*)))
+      })
+      .flatMapTask { (filter1, filter2) =>
+        Def.task {
+          val resolvers = csrResolvers.all(filter1).value ++ csrResolvers.all(filter2).value
+          resolvers.flatten
+        }
       }
-    }
 }

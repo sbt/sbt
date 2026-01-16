@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ScalaDiagnosticFormats { self: sbt.internal.bsp.codec.ScalaActionFormats with sbt.internal.bsp.codec.ScalaWorkspaceEditFormats with sbt.internal.bsp.codec.ScalaTextEditFormats with sbt.internal.bsp.codec.RangeFormats with sbt.internal.bsp.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val ScalaDiagnosticFormat: JsonFormat[sbt.internal.bsp.ScalaDiagnostic] = new JsonFormat[sbt.internal.bsp.ScalaDiagnostic] {
+trait ScalaDiagnosticFormats { self: sbt.internal.bsp.codec.ScalaActionFormats & sbt.internal.bsp.codec.ScalaWorkspaceEditFormats & sbt.internal.bsp.codec.ScalaTextEditFormats & sbt.internal.bsp.codec.RangeFormats & sbt.internal.bsp.codec.PositionFormats & sjsonnew.BasicJsonProtocol =>
+given ScalaDiagnosticFormat: JsonFormat[sbt.internal.bsp.ScalaDiagnostic] = new JsonFormat[sbt.internal.bsp.ScalaDiagnostic] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.ScalaDiagnostic = {
     __jsOpt match {
       case Some(__js) =>

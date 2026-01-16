@@ -11,7 +11,7 @@ package xsbti;
 import java.util.Optional;
 
 /**
- * An Action is very miminal representation of a `CodeAction` in the LSP protocol.
+ * An Action is very minimal representation of a `CodeAction` in the LSP protocol.
  *
  * <p>However it only focuses on the actual title, description, and edit, leaving it up to the
  * language server to communicate with the client and put together a proper codeAction in accordance

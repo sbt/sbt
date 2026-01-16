@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ScalaTestClassesParamsFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val ScalaTestClassesParamsFormat: JsonFormat[sbt.internal.bsp.ScalaTestClassesParams] = new JsonFormat[sbt.internal.bsp.ScalaTestClassesParams] {
+trait ScalaTestClassesParamsFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats & sjsonnew.BasicJsonProtocol =>
+given ScalaTestClassesParamsFormat: JsonFormat[sbt.internal.bsp.ScalaTestClassesParams] = new JsonFormat[sbt.internal.bsp.ScalaTestClassesParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.ScalaTestClassesParams = {
     __jsOpt match {
       case Some(__js) =>

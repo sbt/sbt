@@ -1,6 +1,8 @@
 package foo
 
-object Foo extends App {
-  println("yay")
+object Foo {
+  def main(args: Array[String]): Unit = {
+    println("yay")
+  }
 }
 

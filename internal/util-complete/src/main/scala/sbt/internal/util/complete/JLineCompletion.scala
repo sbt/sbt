@@ -12,10 +12,10 @@ package complete
 import jline.console.ConsoleReader
 import jline.console.completer.{ Completer, CompletionHandler }
 import scala.annotation.tailrec
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 object JLineCompletion {
-  def installCustomCompletor(reader: ConsoleReader, parser: Parser[_]): Unit =
+  def installCustomCompletor(reader: ConsoleReader, parser: Parser[?]): Unit =
     installCustomCompletor(reader)(parserAsCompletor(parser))
 
   def installCustomCompletor(reader: ConsoleReader)(
@@ -32,10 +32,10 @@ object JLineCompletion {
     reader.setCompletionHandler(new CustomHandler(complete))
   }
 
-  private[this] final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean)
+  private final class CustomHandler(completeImpl: (ConsoleReader, Int) => Boolean)
       extends CompletionHandler {
-    private[this] var previous: Option[(String, Int)] = None
-    private[this] var level: Int = 1
+    private var previous: Option[(String, Int)] = None
+    private var level: Int = 1
 
     override def complete(
         reader: ConsoleReader,
@@ -58,18 +58,18 @@ object JLineCompletion {
   // always provides dummy completions so that the custom completion handler gets called
   //   (ConsoleReader doesn't call the handler if there aren't any completions)
   //   the custom handler will then throw away the candidates and call the custom function
-  private[this] final object DummyCompletor extends Completer {
+  private object DummyCompletor extends Completer {
     override def complete(
         buffer: String,
         cursor: Int,
         candidates: java.util.List[CharSequence]
     ): Int = {
-      candidates.asInstanceOf[java.util.List[String]] add "dummy"
+      candidates.add("dummy")
       0
     }
   }
 
-  def parserAsCompletor(p: Parser[_]): (String, Int) => (Seq[String], Seq[String]) =
+  def parserAsCompletor(p: Parser[?]): (String, Int) => (Seq[String], Seq[String]) =
     (str, level) => convertCompletions(Parser.completions(p, str, level))
 
   def convertCompletions(c: Completions): (Seq[String], Seq[String]) = {
@@ -82,10 +82,9 @@ object JLineCompletion {
 
   def convertCompletions(cs: Set[Completion]): (Seq[String], Seq[String]) = {
     val (insert, display) =
-      cs.foldLeft((Set.empty[String], Set.empty[String])) {
-        case (t @ (insert, display), comp) =>
-          if (comp.isEmpty) t
-          else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
+      cs.foldLeft((Set.empty[String], Set.empty[String])) { case (t @ (insert, display), comp) =>
+        if (comp.isEmpty) t
+        else (appendNonEmpty(insert, comp.append), appendNonEmpty(display, comp.display))
       }
     (insert.toSeq, display.toSeq.sorted)
   }
@@ -136,8 +135,8 @@ object JLineCompletion {
   }
 
   /**
-   * `display` is assumed to be the exact strings requested to be displayed.
-   * In particular, duplicates should have been removed already.
+   * `display` is assumed to be the exact strings requested to be displayed. In particular,
+   * duplicates should have been removed already.
    */
   def showCompletions(display: Seq[String], reader: ConsoleReader): Unit = {
     printCompletions(display, reader)

@@ -41,7 +41,7 @@ private[sbt] final class SimpleCommand(
     val tags: AttributeMap
 ) extends Command {
 
-  assert(Command validID name, s"'$name' is not a valid command name.")
+  assert(Command.validID(name), s"'$name' is not a valid command name.")
 
   def help = const(help0)
 
@@ -63,10 +63,8 @@ private[sbt] final class ArbitraryCommand(
     new ArbitraryCommand(parser, help, tags.put(key, value))
 }
 
-// format: off
-
 object Command {
-  import DefaultParsers._
+  import DefaultParsers.*
 
   // Lowest-level command construction
 
@@ -104,7 +102,7 @@ object Command {
 
   /** Construct a single-argument command with the given name and effect. */
   def single(name: String, help: Help = Help.empty)(f: (State, String) => State): Command =
-    make(name, help)(state => token(trimmed(spacedAny(name)) map apply1(f, state)))
+    make(name, help)(state => token(trimmed(spacedAny(name)).map(apply1(f, state))))
 
   def single(name: String, briefHelp: (String, String), detail: String)(
       f: (State, String) => State
@@ -117,7 +115,7 @@ object Command {
   def args(name: String, display: String, help: Help = Help.empty)(
       f: (State, Seq[String]) => State
   ): Command =
-    make(name, help)(state => spaceDelimited(display) map apply1(f, state))
+    make(name, help)(state => spaceDelimited(display).map(apply1(f, state)))
 
   def args(name: String, briefHelp: (String, String), detail: String, display: String)(
       f: (State, Seq[String]) => State
@@ -143,7 +141,7 @@ object Command {
 
   def validID(name: String): Boolean = DefaultParsers.matches(OpOrID, name)
 
-  def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] = p map (t => () => f(t))
+  def applyEffect[T](p: Parser[T])(f: T => State): Parser[() => State] = p.map(t => () => f(t))
 
   def applyEffect[T](
       parser: State => Parser[T]
@@ -152,37 +150,33 @@ object Command {
 
   def combine(cmds: Seq[Command]): State => Parser[() => State] = {
     val (simple, arbs) = separateCommands(cmds)
-    state =>
-      arbs.map(_ parser state).foldLeft(simpleParser(simple)(state))(_ | _)
+    state => arbs.map(_.parser(state)).foldLeft(simpleParser(simple)(state))(_ | _)
   }
 
-  private[this] def separateCommands(
+  private def separateCommands(
       cmds: Seq[Command]
   ): (Seq[SimpleCommand], Seq[ArbitraryCommand]) =
     Util.separate(cmds) { case s: SimpleCommand => Left(s); case a: ArbitraryCommand => Right(a) }
 
-  private[this] def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
+  private def apply1[A, B, C](f: (A, B) => C, a: A): B => () => C = b => () => f(a, b)
 
   def simpleParser(cmds: Seq[SimpleCommand]): State => Parser[() => State] =
     simpleParser(cmds.map(sc => (sc.name, argParser(sc))).toMap)
 
-  private[this] def argParser(sc: SimpleCommand): State => Parser[() => State] = {
+  private def argParser(sc: SimpleCommand): State => Parser[() => State] = {
     def usageError = s"${sc.name} usage:" + Help.message(sc.help0, None)
-    s =>
-      (Parser.softFailure(usageError, definitive = true): Parser[() => State]) | sc.parser(s)
+    s => (Parser.softFailure(usageError, definitive = true): Parser[() => State]) | sc.parser(s)
   }
 
   def simpleParser(
       commandMap: Map[String, State => Parser[() => State]]
   ): State => Parser[() => State] =
     state =>
-      token(OpOrID examples commandMap.keys.toSet) flatMap (
-          id =>
-            (commandMap get id) match {
-              case None    => failure(invalidValue("command", commandMap.keys)(id))
-              case Some(c) => c(state)
-            }
-    )
+      token(OpOrID.examples(commandMap.keys.toSet)).flatMap: id =>
+        (commandMap get id) match {
+          case None    => failure(invalidValue("command", commandMap.keys)(id))
+          case Some(c) => c(state)
+        }
 
   // overload instead of default parameter to keep binary compatibility
   @deprecated("Use overload that takes the onParseError callback", since = "1.9.4")
@@ -190,10 +184,10 @@ object Command {
 
   def process(command: String, state: State, onParseError: String => Unit): State = {
     (if (command.contains(";")) parse(command, state.combinedParser)
-    else parse(command, state.nonMultiParser)) match {
+     else parse(command, state.nonMultiParser)) match {
       case Right(s) => s() // apply command.  command side effects happen here
       case Left(errMsg) =>
-        state.log error errMsg
+        state.log.error(errMsg)
         onParseError(errMsg)
         state.fail
     }
@@ -213,7 +207,9 @@ object Command {
       maxDistance: Int = 3,
       maxSuggestions: Int = 3
   ): Seq[String] =
-    bs map (b => (b, distance(a, b))) filter (_._2 <= maxDistance) sortBy (_._2) take (maxSuggestions) map (_._1)
+    bs map (b =>
+      (b, distance(a, b))
+    ) filter (_._2 <= maxDistance) sortBy (_._2) take (maxSuggestions) map (_._1)
 
   def distance(a: String, b: String): Int =
     EditDistance.levenshtein(
@@ -230,10 +226,8 @@ object Command {
   def spacedAny(name: String): Parser[String] = spacedC(name, any)
 
   def spacedC(name: String, c: Parser[Char]): Parser[String] =
-    ((c & opOrIDSpaced(name)) ~ c.+) map { case (f, rem) => (f +: rem).mkString }
+    ((c & opOrIDSpaced(name)) ~ c.+) map { (f, rem) => (f +: rem).mkString }
 }
-
-// format: on
 
 trait Help {
   def detail: Map[String, String]
@@ -250,7 +244,7 @@ private final class Help0(
   def ++(h: Help): Help =
     new Help0(
       Help0.this.brief ++ h.brief,
-      Map(Help0.this.detail.toSeq ++ h.detail.toSeq: _*),
+      Map(Help0.this.detail.toSeq ++ h.detail.toSeq*),
       more ++ h.more
     )
 }
@@ -280,7 +274,7 @@ object Help {
   def briefOnly(help: Seq[(String, String)]): Help = apply(help, Map.empty[String, String])
   def detailOnly(help: Seq[(String, String)]): Help = apply(Nil, help.toMap)
 
-  import CommandUtil._
+  import CommandUtil.*
 
   def message(h: Help, arg: Option[String]): String =
     arg match {
@@ -299,6 +293,6 @@ object Help {
 }
 
 trait CommandDefinitions extends (State => State) {
-  def commands: Seq[Command] = ReflectUtilities.allVals[Command](this).values.toSeq
+  def commands: Seq[Command] = ReflectUtilities.allValsC(this, classOf[Command]).values.toSeq
   def apply(s: State): State = s ++ commands
 }

@@ -1,6 +1,5 @@
 import java.io.File
 import java.nio.file.Files
 
-object Main extends App {
+@main def hello() =
   Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
-}

@@ -1,6 +1,7 @@
 > compile
-$ exists target/**/src_managed/foo.txt target/**/src_managed/bar.txt
+$ exists target/**/clean-managed/src_managed/foo.txt target/**/clean-managed/src_managed/bar.txt
 
 > clean
-$ absent target/**/src_managed/foo.txt
-$ exists target/**/src_managed/bar.txt
+$ absent target/**/clean-managed/src_managed/foo.txt
+$ exists target/**/clean-managed/src_managed/bar.txt
+$ exists target/**/clean-managed/src_managed/bar.txt || target/**/clean-managed/src_managed/x.txt

@@ -7,7 +7,7 @@
 // Depending on the version of sbt-plugin-example-diamond, we test different patterns
 // of dependencies:
 //  * Some dependencies were published using the deprecated Maven paths, some with the new
-//  * Wheter the dependency on sbt-plugin-example-bottom needs conflict resolution or not
+//  * Whether the dependency on sbt-plugin-example-bottom needs conflict resolution or not
 
 inThisBuild(
   Seq(
@@ -87,7 +87,10 @@ lazy val v5 = project
   )
 
 def localCache =
-  ivyPaths := IvyPaths(baseDirectory.value, Some((ThisBuild / baseDirectory).value / "ivy-cache"))
+  ivyPaths := IvyPaths(
+    baseDirectory.value.toString,
+    Some(((ThisBuild / baseDirectory).value / "ivy-cache").toString)
+  )
 
 lazy val checkUpdate = taskKey[Unit]("check the resolved artifacts")
 

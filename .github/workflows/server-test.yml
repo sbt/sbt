@@ -1,0 +1,27 @@
+name: Server Test
+on:
+  pull_request:
+  push:
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      JAVA_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
+      JVM_OPTS: -Xms800M -Xmx2G -Xss6M -XX:ReservedCodeCacheSize=128M -server -Dsbt.io.virtual=false -Dfile.encoding=UTF-8
+      SBT_ETC_FILE: $HOME/etc/sbt/sbtopts
+    steps:
+    - uses: actions/checkout@v6
+    - name: Setup JDK
+      uses: actions/setup-java@v5
+      with:
+        distribution: "zulu"
+        java-version: "8"
+        cache: sbt
+    - uses: sbt/setup-sbt@v1
+    - name: Server test
+      shell: bash
+      run: sbt -v --client "serverTestProj/test"

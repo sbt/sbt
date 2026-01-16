@@ -1,0 +1,7 @@
+ThisBuild / scalaVersion := "3.3.4"
+
+def foo(): Unit = {
+  List("") match { case List(path@_*) => () }
+  List("") match { case List(path *) => () }
+  List("") match { case List(path*) => () }
+}

@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import sbt.internal.util._
+import sbt.internal.util.*
 import sbt.protocol.LogEvent
 import sbt.util.Level
 

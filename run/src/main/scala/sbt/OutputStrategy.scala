@@ -8,24 +8,25 @@
 
 package sbt
 
+import scala.sys.process.ProcessIO
 import sbt.util.Logger
 import java.io.OutputStream
 
-/** Configures where the standard output and error streams from a forked process go.*/
+/** Configures where the standard output and error streams from a forked process go. */
 sealed abstract class OutputStrategy
 
 object OutputStrategy {
 
   /**
-   * Configures the forked standard output to go to standard output of this process and
-   * for the forked standard error to go to the standard error of this process.
+   * Configures the forked standard output to go to standard output of this process and for the
+   * forked standard error to go to the standard error of this process.
    */
   case object StdoutOutput extends OutputStrategy
 
   /**
-   * Logs the forked standard output at the `info` level and the forked standard error at
-   * the `error` level. The output is buffered until the process completes, at which point
-   * the logger flushes it (to the screen, for example).
+   * Logs the forked standard output at the `info` level and the forked standard error at the
+   * `error` level. The output is buffered until the process completes, at which point the logger
+   * flushes it (to the screen, for example).
    */
   final class BufferedOutput private (val logger: Logger) extends OutputStrategy with Serializable {
     override def equals(o: Any): Boolean = o match {
@@ -38,7 +39,7 @@ object OutputStrategy {
     override def toString: String = {
       "BufferedOutput(" + logger + ")"
     }
-    private[this] def copy(logger: Logger = logger): BufferedOutput = {
+    private def copy(logger: Logger = logger): BufferedOutput = {
       new BufferedOutput(logger)
     }
     def withLogger(logger: Logger): BufferedOutput = {
@@ -50,8 +51,8 @@ object OutputStrategy {
   }
 
   /**
-   * Logs the forked standard output at the `info` level and the forked standard error at
-   * the `error` level.
+   * Logs the forked standard output at the `info` level and the forked standard error at the
+   * `error` level.
    */
   final class LoggedOutput private (val logger: Logger) extends OutputStrategy with Serializable {
     override def equals(o: Any): Boolean = o match {
@@ -64,7 +65,7 @@ object OutputStrategy {
     override def toString: String = {
       "LoggedOutput(" + logger + ")"
     }
-    private[this] def copy(logger: Logger = logger): LoggedOutput = {
+    private def copy(logger: Logger = logger): LoggedOutput = {
       new LoggedOutput(logger)
     }
     def withLogger(logger: Logger): LoggedOutput = {
@@ -76,8 +77,8 @@ object OutputStrategy {
   }
 
   /**
-   * Configures the forked standard output to be sent to `output` and the forked standard error
-   * to be sent to the standard error of this process.
+   * Configures the forked standard output to be sent to `output` and the forked standard error to
+   * be sent to the standard error of this process.
    */
   final class CustomOutput private (val output: OutputStream)
       extends OutputStrategy
@@ -92,7 +93,7 @@ object OutputStrategy {
     override def toString: String = {
       "CustomOutput(" + output + ")"
     }
-    private[this] def copy(output: OutputStream = output): CustomOutput = {
+    private def copy(output: OutputStream = output): CustomOutput = {
       new CustomOutput(output)
     }
     def withOutput(output: OutputStream): CustomOutput = {
@@ -102,4 +103,28 @@ object OutputStrategy {
   object CustomOutput {
     def apply(output: OutputStream): CustomOutput = new CustomOutput(output)
   }
+
+  /**
+   * Configures the forked IO.
+   */
+  final class CustomInputOutput private (val processIO: ProcessIO)
+      extends OutputStrategy
+      with Serializable:
+    override def equals(o: Any): Boolean = o match
+      case x: CustomInputOutput => (this.processIO == x.processIO)
+      case _                    => false
+    override def hashCode: Int =
+      37 * (17 + processIO.##) + "CustomInputOutput".##
+    override def toString: String =
+      "CustomInputOutput(...)"
+    private def copy(processIO: ProcessIO = processIO): CustomInputOutput =
+      new CustomInputOutput(processIO)
+
+    def withProcessIO(processIO: ProcessIO): CustomInputOutput =
+      copy(processIO = processIO)
+  end CustomInputOutput
+
+  object CustomInputOutput:
+    def apply(processIO: ProcessIO): CustomInputOutput = new CustomInputOutput(processIO)
+  end CustomInputOutput
 }

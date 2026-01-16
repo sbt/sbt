@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class NativeRunInfo private (
   override def toString: String = {
     "NativeRunInfo(" + cmd + ", " + args + ", " + connectInput + ", " + outputStrategy + ", " + workingDirectory + ", " + environmentVariables + ", " + inputs + ", " + outputs + ")"
   }
-  private[this] def copy(cmd: String = cmd, args: Vector[String] = args, connectInput: Boolean = connectInput, outputStrategy: Option[String] = outputStrategy, workingDirectory: Option[java.net.URI] = workingDirectory, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables, inputs: Vector[sbt.internal.worker.FilePath] = inputs, outputs: Vector[sbt.internal.worker.FilePath] = outputs): NativeRunInfo = {
+  private def copy(cmd: String = cmd, args: Vector[String] = args, connectInput: Boolean = connectInput, outputStrategy: Option[String] = outputStrategy, workingDirectory: Option[java.net.URI] = workingDirectory, environmentVariables: scala.collection.immutable.Map[String, String] = environmentVariables, inputs: Vector[sbt.internal.worker.FilePath] = inputs, outputs: Vector[sbt.internal.worker.FilePath] = outputs): NativeRunInfo = {
     new NativeRunInfo(cmd, args, connectInput, outputStrategy, workingDirectory, environmentVariables, inputs, outputs)
   }
   def withCmd(cmd: String): NativeRunInfo = {

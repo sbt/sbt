@@ -14,13 +14,15 @@ import sbt.librarymanagement.Configurations
 import sbt.util.Level
 
 import java.io.File
-import Keys._
-import EvaluateConfigurations.{ evaluateConfiguration => evaluate }
+import Keys.*
+import EvaluateConfigurations.{ evaluateConfiguration as evaluate }
 import Configurations.Compile
 import Scope.Global
-import sbt.SlashSyntax0._
+import sbt.ProjectExtra.{ extract, setProject }
+import sbt.SlashSyntax0.*
 
 import sbt.io.{ Hash, IO }
+import scala.annotation.tailrec
 
 object Script {
   final val Name = "script"
@@ -47,13 +49,15 @@ object Script {
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
       val extracted = Project.extract(session, structure)
-      import extracted._
+      val vf = structure.converter.toVirtualFile(script.toPath())
+      import extracted.{ *, given }
 
       val embeddedSettings = blocks(script).flatMap { block =>
-        evaluate(eval(), script, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
+        evaluate(eval(), vf, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
       }
-      val scriptAsSource = (Compile / sources) := script :: Nil
-      val asScript = scalacOptions ++= Seq("-Xscript", script.getName.stripSuffix(".scala"))
+      val scriptAsSource = (Compile / sources) := Def.uncached(script :: Nil)
+      val asScript =
+        scalacOptions ++= Def.uncached(Seq("-Xscript", script.getName.stripSuffix(".scala")))
       val scriptSettings = Seq(
         asScript,
         scriptAsSource,
@@ -76,9 +80,9 @@ object Script {
   final case class Block(offset: Int, lines: Seq[String])
   def blocks(file: File): Seq[Block] = {
     val lines = IO.readLines(file).toIndexedSeq
+    @tailrec
     def blocks(b: Block, acc: List[Block]): List[Block] =
-      if (b.lines.isEmpty)
-        acc.reverse
+      if (b.lines.isEmpty) acc.reverse
       else {
         val (dropped, blockToEnd) = b.lines.span { line =>
           !line.startsWith(BlockStart)

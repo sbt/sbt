@@ -21,8 +21,8 @@ object CorePlugin extends AutoPlugin {
   override def trigger = allRequirements
   override def requires = empty
 
-  override lazy val projectSettings: Seq[Setting[_]] =
+  override lazy val projectSettings: Seq[Setting[?]] =
     Defaults.coreDefaultSettings
-  override lazy val globalSettings: Seq[Setting[_]] =
+  override lazy val globalSettings: Seq[Setting[?]] =
     Defaults.globalSbtCore
 }

@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait JavacOptionsParamsFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val JavacOptionsParamsFormat: JsonFormat[sbt.internal.bsp.JavacOptionsParams] = new JsonFormat[sbt.internal.bsp.JavacOptionsParams] {
+trait JavacOptionsParamsFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats & sjsonnew.BasicJsonProtocol =>
+given JavacOptionsParamsFormat: JsonFormat[sbt.internal.bsp.JavacOptionsParams] = new JsonFormat[sbt.internal.bsp.JavacOptionsParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.JavacOptionsParams = {
     __jsOpt match {
       case Some(__js) =>

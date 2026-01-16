@@ -50,7 +50,7 @@ object Statistics {
       import java.util.Locale
       val dl = Locale.getDefault
       Locale.setDefault(Locale.US)
-      import stats._
+      import stats.*
       def mb(bytes: Long): Double = bytes.toDouble / 1000000
       val selfSize =
         stats.selfSize match {

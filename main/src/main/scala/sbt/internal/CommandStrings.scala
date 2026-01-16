@@ -13,7 +13,7 @@ import sbt.io.Path
 
 object CommandStrings {
 
-  /** The prefix used to identify a request to execute the remaining input on source changes.*/
+  /** The prefix used to identify a request to execute the remaining input on source changes. */
   val AboutCommand = "about"
   val TasksCommand = "tasks"
   val SettingsCommand = "settings"
@@ -71,22 +71,9 @@ $PrintCommand <task>
   def pluginsDetailed = pluginsBrief // TODO: expand
 
   val LastCommand = "last"
-  val OldLastGrepCommand = "last-grep"
   val LastGrepCommand = "lastGrep"
   val ExportCommand = "export"
   val ExportStream = "export"
-
-  val oldLastGrepBrief =
-    (OldLastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
-  val oldLastGrepDetailed =
-    s"""$OldLastGrepCommand <pattern>
-	Displays lines from the logging of previous commands that match `pattern`.
-
-$OldLastGrepCommand <pattern> [key]
-	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
-
-	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
-	See also '$LastCommand'."""
 
   val lastGrepBrief =
     (LastGrepCommand, "Shows lines from the last output for 'key' that match 'pattern'.")
@@ -95,7 +82,7 @@ $OldLastGrepCommand <pattern> [key]
 	Displays lines from the logging of previous commands that match `pattern`.
 
 $LastGrepCommand <pattern> [key]
-	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+	Displays lines from logging associated with `key` that match `pattern`.  The key typically refers to a task (for example, Test/compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	<pattern> is a regular expression interpreted by java.util.Pattern.  Matching text is highlighted (when highlighting is supported and enabled).
 	See also '$LastCommand'."""
@@ -107,7 +94,7 @@ $LastGrepCommand <pattern> [key]
 	Prints the logging for the previous command, typically at a more verbose level.
 
 $LastCommand <key>
-	Prints the logging associated with the provided key.  The key typically refers to a task (for example, test:compile).  The logging that is displayed is restricted to the logging for that particular task.
+	Prints the logging associated with the provided key.  The key typically refers to a task (for example, Test/compile).  The logging that is displayed is restricted to the logging for that particular task.
 
 	See also '$LastGrepCommand'."""
 
@@ -336,7 +323,7 @@ defaults
 """
 
   import java.io.File
-  import sbt.io.syntax._
+  import sbt.io.syntax.*
 
   def sbtRCs(s: State): Seq[File] =
     (Path.userHome / sbtrc) ::
@@ -395,7 +382,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
 
   <scala-version> may be an actual Scala version such as 3.1.3, or a Semantic Version selector
   pattern such as 2.13.x. Only subprojects that are listed to match the version pattern
-  have their Scala version switched.  If ! is supplied, then all projects projects have
+  have their Scala version switched.  If ! is supplied, then all projects have
   their Scala version switched.
 
   If -v is supplied, verbose logging of the Scala version switching is done.
@@ -420,7 +407,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
   Runs <command> for each sbt version specified for cross-building.
 
   For each string in `crossSbtVersions` in the current project, this command sets the
-  `sbtVersion in pluginCrossBuild` of all projects to that version, reloads the build,
+  `pluginCrossBuild / sbtVersion` of all projects to that version, reloads the build,
   and executes <command>.  When finished, it reloads the build with the original
   Scala version.
 
@@ -431,7 +418,7 @@ $SwitchCommand [<scala-version>=]<scala-home>[!] [-v] [<command>]
     s"""$PluginSwitchCommand <sbt-version> [<command>]
   Changes the sbt version and runs a command.
 
-  Sets the `sbtVersion in pluginCrossBuild` of all projects to <sbt-version> and
+  Sets the `pluginCrossBuild / sbtVersion` of all projects to <sbt-version> and
   reloads the build. If <command> is provided, it is then executed.
 
   See also `help $CrossCommand`

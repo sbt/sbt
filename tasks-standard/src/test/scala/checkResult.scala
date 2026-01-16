@@ -10,7 +10,7 @@ package sbt
 
 import scala.util.control.NonFatal
 
-import org.scalacheck.Prop._
+import org.scalacheck.Prop.*
 
 object checkResult {
   def apply[T](run: => T, expected: T) = {

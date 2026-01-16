@@ -12,13 +12,14 @@ package graph
 package backend
 
 import scala.language.implicitConversions
-import scala.language.reflectiveCalls
-import sbt.librarymanagement.{ ModuleID, ModuleReport, ConfigurationReport }
+import sbt.librarymanagement.{
+  ModuleID,
+  ModuleReport,
+  ConfigurationReport,
+  OrganizationArtifactReport
+}
 
 object SbtUpdateReport {
-  type OrganizationArtifactReport = {
-    def modules: Seq[ModuleReport]
-  }
 
   def fromConfigurationReport(report: ConfigurationReport, rootInfo: ModuleID): ModuleGraph = {
     implicit def id(sbtId: ModuleID): GraphModuleId =
@@ -49,7 +50,22 @@ object SbtUpdateReport {
 
     val (nodes, edges) = report.details.flatMap(moduleEdges).unzip
     val root = Module(rootInfo)
+    val allNodes = root +: nodes
+    val flatEdges = edges.flatten
+    val existingNodeIds = allNodes.map(_.id).toSet
 
-    ModuleGraph(root +: nodes, edges.flatten)
+    // Handle relocated dependencies where the caller node doesn't exist (#8400)
+    val fixedEdges = flatEdges.flatMap { case edge @ (from, to) =>
+      if (existingNodeIds.contains(from)) Seq(edge)
+      else {
+        val callersOfMissing = flatEdges.collect {
+          case (caller, target) if target == from => caller
+        }
+        if (callersOfMissing.isEmpty) Seq(Edge(root.id, to))
+        else callersOfMissing.map(caller => Edge(caller, to))
+      }
+    }
+
+    ModuleGraph(allNodes, fixedEdges.distinct)
   }
 }

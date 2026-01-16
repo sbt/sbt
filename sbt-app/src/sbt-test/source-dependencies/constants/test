@@ -1,4 +1,4 @@
-> ++2.12.20!
+> ++2.12.21!
 
 $ copy-file changes/B.scala B.scala
 

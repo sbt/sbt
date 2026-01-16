@@ -1,5 +1,5 @@
-import sbt._
-import sbt.Keys._
+import sbt.*
+import sbt.Keys.*
 
 object Transform {
 
@@ -7,7 +7,7 @@ object Transform {
     resourceGenerators += Def.task {
       val rdirs = Seq(sourceDirectory.value / "input_resources")
       val rm = resourceManaged.value
-      val paths = (rdirs ** (-DirectoryFilter)).get --- rdirs
+      val paths = (rdirs ** (-DirectoryFilter)).get() --- rdirs
       val rs = paths.pair(Path.rebase(rdirs, rm) | Path.flat(rm))
       val props = Map(
         "org" -> organization.value,
@@ -17,12 +17,11 @@ object Transform {
       def get(key: String) = props.getOrElse(key, sys.error(s"No value defined for key '$key'"))
       val Property = """\$\{\{([\w.-]+)\}\}""".r
       val catcher = scala.util.control.Exception.catching(classOf[java.io.IOException])
-      rs.map {
-        case (in, out) =>
-          val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
-          if (Some(newString) != catcher.opt(IO.read(out)))
-            IO.write(out, newString)
-          out
+      rs.map { case (in, out) =>
+        val newString = Property.replaceAllIn(IO.read(in), mtch => get(mtch.group(1)))
+        if (Some(newString) != catcher.opt(IO.read(out)))
+          IO.write(out, newString)
+        out
       }
     }.taskValue,
   )

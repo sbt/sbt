@@ -5,6 +5,7 @@
 
 ## test scoped task
 ## this should not force any Scala version changes to other subprojects
+> debug
 > + baz/check
 
 ## test input task
@@ -16,12 +17,12 @@
 
 ## test + with command or alias
 > clean
-## for command cross building you do need crossScalaVerions on root
-> set root/crossScalaVersions := Seq("2.12.20", "2.13.12")
+## for command cross building you do need crossScalaVersions on root
+> set root/crossScalaVersions := Seq("2.12.21", "2.13.12")
 > + build
-$ exists foo/target/scala-2.12
-$ exists foo/target/scala-2.13
-$ exists bar/target/scala-2.12
-$ exists bar/target/scala-2.13
-$ exists client/target/scala-2.12
-$ exists client/target/scala-2.13
+$ exists target/out/jvm/scala-2.12.21/foo
+$ exists target/out/jvm/scala-2.13.12/foo
+$ exists target/out/jvm/scala-2.12.21/bar
+$ exists target/out/jvm/scala-2.13.12/bar
+$ exists target/out/jvm/scala-2.12.21/client
+$ exists target/out/jvm/scala-2.13.12/client

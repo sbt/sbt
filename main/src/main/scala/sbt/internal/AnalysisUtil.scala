@@ -11,7 +11,7 @@ package internal
 
 import java.nio.file.Path
 import sbt.internal.inc.MixedAnalyzingCompiler
-import xsbti.compile.{ AnalysisStore => XAnalysisStore }
+import xsbti.compile.{ AnalysisStore as XAnalysisStore }
 import xsbti.compile.analysis.ReadWriteMappers
 
 private[sbt] object AnalysisUtil {
@@ -32,8 +32,7 @@ private[sbt] object AnalysisUtil {
       useTextAnalysis = useTextAnalysis,
       useConsistent = useConsistent,
       mappers = ReadWriteMappers.getEmptyMappers(),
-      // reproducisble = true will wipe out the timestamp, which we need for sbt 1.x
-      reproducible = false,
+      reproducible = true,
       parallelism = parallelism,
     )
 }

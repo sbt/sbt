@@ -1,3 +1,4 @@
+-> set notExistsKey := 42
 > helloWorldTest
 > buildSbtTest
 > evilClearLogger

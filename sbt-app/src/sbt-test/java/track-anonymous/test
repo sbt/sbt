@@ -1,6 +1,4 @@
 $ copy-file changes/Anon.java src/main/java/Anon.java
-> compile
 > checkOutput exists
 $ delete src/main/java/Anon.java
-> compile
 > checkOutput absent

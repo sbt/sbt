@@ -8,15 +8,11 @@
 
 package sbt
 
-import java.io.File
 import scala.util.control.NonFatal
-import testing.{ Task => TestTask, _ }
-import org.scalatools.testing.{ Framework => OldFramework }
-import sbt.internal.inc.classpath.{ ClasspathUtilities, DualLoader }
-import sbt.internal.inc.ScalaInstance
+import testing.{ Task as TestTask, * }
+import org.scalatools.testing.{ Framework as OldFramework }
 import scala.annotation.tailrec
 import sbt.internal.util.ManagedLogger
-import sbt.io.IO
 import sbt.protocol.testing.TestResult
 
 object TestFrameworks {
@@ -71,8 +67,9 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
       case head :: tail =>
         try {
           Some(Class.forName(head, true, loader).getDeclaredConstructor().newInstance() match {
-            case newFramework: Framework    => newFramework
-            case oldFramework: OldFramework => new FrameworkWrapper(oldFramework)
+            case newFramework: Framework => newFramework
+            case oldFramework: OldFramework =>
+              new sbt.internal.worker1.FrameworkWrapper(oldFramework)
           })
         } catch {
           case e: NoClassDefFoundError =>
@@ -93,6 +90,7 @@ final class TestFramework(val implClassNames: String*) extends Serializable {
   def create(loader: ClassLoader, log: ManagedLogger): Option[Framework] =
     createFramework(loader, log, implClassNames.toList)
 }
+
 final class TestDefinition(
     val name: String,
     val fingerprint: Fingerprint,
@@ -108,7 +106,7 @@ final class TestDefinition(
   override def hashCode: Int = (name.hashCode, TestFramework.hashCode(fingerprint)).hashCode
 }
 
-final class TestRunner(
+private[sbt] final class TestRunner(
     delegate: Runner,
     listeners: Vector[TestReportListener],
     log: ManagedLogger
@@ -180,19 +178,18 @@ final class TestRunner(
 }
 
 object TestFramework {
-  def apply(implClassNames: String*): TestFramework = new TestFramework(implClassNames: _*)
+  def apply(implClassNames: String*): TestFramework = new TestFramework(implClassNames*)
 
   def getFingerprints(framework: Framework): Seq[Fingerprint] =
     framework.getClass.getMethod("fingerprints").invoke(framework) match {
       case fingerprints: Array[Fingerprint] => fingerprints.toList
-      case _                                => sys.error("Could not call 'fingerprints' on framework " + framework)
+      case _ => sys.error("Could not call 'fingerprints' on framework " + framework)
     }
 
   private[sbt] def safeForeach[T](it: Iterable[T], log: ManagedLogger)(f: T => Unit): Unit =
-    it.foreach(
-      i =>
-        try f(i)
-        catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
+    it.foreach(i =>
+      try f(i)
+      catch { case NonFatal(e) => log.trace(e); log.error(e.toString) }
     )
 
   private[sbt] def hashCode(f: Fingerprint): Int = f match {
@@ -215,7 +212,7 @@ object TestFramework {
       case _                        => f.toString
     }
 
-  def testTasks(
+  private[sbt] def testTasks(
       frameworks: Map[TestFramework, Framework],
       runners: Map[TestFramework, Runner],
       testLoader: ClassLoader,
@@ -227,12 +224,19 @@ object TestFramework {
     if (mappedTests.isEmpty)
       (() => (), Vector(), _ => () => ())
     else
-      createTestTasks(testLoader, runners.map {
-        case (tf, r) => (frameworks(tf), new TestRunner(r, listeners, log))
-      }, mappedTests, tests, log, listeners)
+      createTestTasks(
+        testLoader,
+        runners.map { (tf, r) =>
+          (frameworks(tf), new TestRunner(r, listeners, log))
+        },
+        mappedTests,
+        tests,
+        log,
+        listeners
+      )
   }
 
-  private[this] def order(
+  private def order(
       mapped: Map[String, TestFunction],
       inputs: Vector[TestDefinition]
   ): Vector[(String, TestFunction)] =
@@ -258,7 +262,7 @@ object TestFramework {
     if (frameworks.nonEmpty)
       for (test <- tests) assignTest(test)
 
-    map.toMap.mapValues(_.toSet).toMap
+    map.view.mapValues(_.toSet).toMap
   }
 
   private def createTestTasks(
@@ -276,20 +280,19 @@ object TestFramework {
 
     val startTask = foreachListenerSafe(_.doInit())
     val testTasks =
-      Map(tests.toSeq.flatMap {
-        case (framework, testDefinitions) =>
-          val runner = runners(framework)
-          val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
-          for (testTask <- testTasks) yield {
-            val taskDef = testTask.taskDef
-            (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
-          }
-      }: _*)
+      Map(tests.toSeq.flatMap { (framework, testDefinitions) =>
+        val runner = runners(framework)
+        val testTasks = withContextLoader(loader) { runner.tasks(testDefinitions) }
+        for (testTask <- testTasks) yield {
+          val taskDef = testTask.taskDef
+          (taskDef.fullyQualifiedName, createTestFunction(loader, taskDef, runner, testTask))
+        }
+      }*)
 
     val endTask = (result: TestResult) => foreachListenerSafe(_.doComplete(result))
     (startTask, order(testTasks, ordered), endTask)
   }
-  private[this] def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
+  private def withContextLoader[T](loader: ClassLoader)(eval: => T): T = {
     val oldLoader = Thread.currentThread.getContextClassLoader
     Thread.currentThread.setContextClassLoader(loader)
     try {
@@ -297,32 +300,6 @@ object TestFramework {
     } finally {
       Thread.currentThread.setContextClassLoader(oldLoader)
     }
-  }
-  @deprecated("1.3.0", "This has been replaced by the ClassLoaders.test task.")
-  def createTestLoader(
-      classpath: Seq[File],
-      scalaInstance: ScalaInstance,
-      tempDir: File
-  ): ClassLoader = {
-    val interfaceJar = IO.classLocationPath(classOf[testing.Framework]).toFile
-    val interfaceFilter = (name: String) =>
-      name.startsWith("org.scalatools.testing.") || name.startsWith("sbt.testing.")
-    val notInterfaceFilter = (name: String) => !interfaceFilter(name)
-    val dual = new DualLoader(
-      scalaInstance.loader,
-      notInterfaceFilter,
-      x => true,
-      getClass.getClassLoader,
-      interfaceFilter,
-      x => false
-    )
-    val main = ClasspathUtilities.makeLoader(classpath, dual, scalaInstance, tempDir)
-    // TODO - There's actually an issue with the classpath facility such that unmanagedScalaInstances are not added
-    // to the classpath correctly.  We have a temporary workaround here.
-    val cp: Seq[File] =
-      if (scalaInstance.isManagedVersion) interfaceJar +: classpath
-      else scalaInstance.allJars ++ (interfaceJar +: classpath)
-    ClasspathUtilities.filterByClasspath(cp, main)
   }
   def createTestFunction(
       loader: ClassLoader,
@@ -335,7 +312,7 @@ object TestFramework {
       runner,
       (r: TestRunner) => withContextLoader(loader) { r.run(taskDef, testTask) }
     ) {
-      def tags = testTask.tags
+      def tags = testTask.tags.toSeq
     }
 }
 

@@ -9,6 +9,8 @@
 package sbt.internal.util
 package complete
 
+import scala.annotation.tailrec
+
 object ProcessError {
   def apply(command: String, msgs: Seq[String], index: Int): String = {
     val (line, modIndex) = extractLine(command, index)
@@ -19,11 +21,12 @@ object ProcessError {
   def extractLine(s: String, i: Int): (String, Int) = {
     val notNewline = (c: Char) => c != '\n' && c != '\r'
     val left = takeRightWhile(s.substring(0, i))(notNewline)
-    val right = s substring i takeWhile notNewline
+    val right = s.substring(i).takeWhile(notNewline)
     (left + right, left.length)
   }
 
   def takeRightWhile(s: String)(pred: Char => Boolean): String = {
+    @tailrec
     def loop(i: Int): String =
       if (i < 0)
         s

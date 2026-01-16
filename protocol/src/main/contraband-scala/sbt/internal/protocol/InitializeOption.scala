@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class InitializeOption private (
   override def toString: String = {
     "InitializeOption(" + token + ", " + skipAnalysis + ", " + canWork + ")"
   }
-  private[this] def copy(token: Option[String] = token, skipAnalysis: Option[Boolean] = skipAnalysis, canWork: Option[Boolean] = canWork): InitializeOption = {
+  private def copy(token: Option[String] = token, skipAnalysis: Option[Boolean] = skipAnalysis, canWork: Option[Boolean] = canWork): InitializeOption = {
     new InitializeOption(token, skipAnalysis, canWork)
   }
   def withToken(token: Option[String]): InitializeOption = {

@@ -14,11 +14,18 @@ import java.util.zip.ZipException
 import sbt.internal.inc.MappedFileConverter
 import sbt.internal.util.Relation
 import sbt.internal.io.TranslatedException
-import sbt.util.CacheImplicits._
+import sbt.util.CacheImplicits.*
 import sbt.util.{ CacheStore, FileInfo }
 import sbt.io.IO
-import sbt.librarymanagement.LibraryManagementCodec
-import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
+import sjsonnew.{
+  Builder,
+  IsoString,
+  IsoStringLong,
+  JsonFormat,
+  PathOnlyFormats,
+  Unbuilder,
+  deserializationError,
+}
 import xsbti.{ FileConverter, VirtualFileRef }
 
 /**
@@ -39,19 +46,19 @@ object Sync {
       store: CacheStore,
       inStyle: FileInfo.Style = FileInfo.lastModified,
       outStyle: FileInfo.Style = FileInfo.exists
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle)
 
   def sync(
       store: CacheStore,
       fileConverter: FileConverter
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, FileInfo.lastModified, fileConverter)
 
   def sync(
       store: CacheStore,
       inStyle: FileInfo.Style = FileInfo.lastModified,
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     sync(store, inStyle, MappedFileConverter.empty)
 
   /** this function ensures that the latest files in /src are also in /target, so that they are synchronised */
@@ -59,13 +66,14 @@ object Sync {
       store: CacheStore,
       inStyle: FileInfo.Style,
       fileConverter: FileConverter
-  ): Traversable[(File, File)] => Relation[File, File] =
+  ): Iterable[(File, File)] => Relation[File, File] =
     mappings => {
       val relation = Relation.empty ++ mappings
       noDuplicateTargets(relation)
       val currentInfo = relation._1s.map(s => (s, inStyle(s))).toMap
 
-      val (previousRelation, previousInfo) = readInfoWrapped(store, fileConverter)(inStyle.format)
+      val (previousRelation, previousInfo) =
+        readInfoWrapped(store, fileConverter)(using inStyle.format)
       val removeTargets = previousRelation._2s -- relation._2s
 
       def outofdate(source: File, target: File): Boolean =
@@ -74,21 +82,20 @@ object Sync {
           !target.exists ||
           target.isDirectory != source.isDirectory
 
-      val updates = relation filter outofdate
+      val updates = relation.filter(outofdate)
 
       val (cleanDirs, cleanFiles) = (updates._2s ++ removeTargets).partition(_.isDirectory)
 
       IO.delete(cleanFiles)
       IO.deleteIfEmpty(cleanDirs)
-      updates.all.foreach((copy _).tupled)
+      updates.all.foreach((copy).tupled)
 
-      writeInfoVirtual(store, relation, currentInfo, fileConverter)(inStyle.format)
+      writeInfoVirtual(store, relation, currentInfo, fileConverter)(using inStyle.format)
       relation
     }
 
   def copy(source: File, target: File): Unit =
-    if (source.isFile)
-      IO.copyFile(source, target, true)
+    if (source.isFile) IO.copyFile(source, target, true)
     else if (!target.exists) { // we don't want to update the last modified time of an existing directory
       IO.createDirectory(target)
       IO.copyLastModified(source, target)
@@ -98,13 +105,13 @@ object Sync {
   def noDuplicateTargets(relation: Relation[File, File]): Unit = {
     val dups = relation.reverseMap
       .withFilter { case (_, srcs) => srcs.size >= 2 && srcs.exists(!_.isDirectory) }
-      .map { case (target, srcs) => "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t") }
+      .map { (target, srcs) => "\n\t" + target + "\nfrom\n\t" + srcs.mkString("\n\t\t") }
     if (dups.nonEmpty)
       sys.error("Duplicate mappings:" + dups.mkString)
   }
 
-  implicit def relationFormat[A, B](
-      implicit af: JsonFormat[Map[A, Set[B]]],
+  given relationFormat[A, B](using
+      af: JsonFormat[Map[A, Set[B]]],
       bf: JsonFormat[Map[B, Set[A]]]
   ): JsonFormat[Relation[A, B]] =
     new JsonFormat[Relation[A, B]] {
@@ -128,11 +135,20 @@ object Sync {
       }
     }
 
+  private lazy val fileIsoString: IsoString[File] =
+    val iso = summon[IsoStringLong[File]]
+    IsoString.iso(
+      (file: File) => iso.to(file)._1,
+      (s: String) => iso.from((s, 0)),
+    )
+
   def writeInfo[F <: FileInfo](
       store: CacheStore,
       relation: Relation[File, File],
       info: Map[File, F]
-  )(implicit infoFormat: JsonFormat[F]): Unit =
+  )(using infoFormat: JsonFormat[F]): Unit =
+    given IsoString[File] = fileIsoString
+    import PathOnlyFormats.given
     store.write((relation, info))
 
   def writeInfoVirtual[F <: FileInfo](
@@ -140,17 +156,15 @@ object Sync {
       relation: Relation[File, File],
       info: Map[File, F],
       fileConverter: FileConverter
-  )(implicit infoFormat: JsonFormat[F]): Unit = {
+  )(using infoFormat: JsonFormat[F]): Unit = {
     val virtualRelation: Relation[VirtualFileRef, VirtualFileRef] =
       Relation.switch(relation, (f: File) => fileConverter.toVirtualFile(f.toPath))
-    val virtualInfo: Map[VirtualFileRef, F] = info.map {
-      case (file, fileInfo) =>
-        fileConverter.toVirtualFile(file.toPath) -> fileInfo
+    val virtualInfo: Map[VirtualFileRef, F] = info.map { (file, fileInfo) =>
+      fileConverter.toVirtualFile(file.toPath) -> fileInfo
     }
 
-    import LibraryManagementCodec._
     import sjsonnew.IsoString
-    implicit def virtualFileRefStringIso: IsoString[VirtualFileRef] =
+    given IsoString[VirtualFileRef] =
       IsoString.iso[VirtualFileRef](_.toString, VirtualFileRef.of(_))
     store.write(
       (
@@ -163,10 +177,10 @@ object Sync {
   type RelationInfo[F] = (Relation[File, File], Map[File, F])
   type RelationInfoVirtual[F] = (Relation[VirtualFileRef, VirtualFileRef], Map[VirtualFileRef, F])
 
-  def readInfoWrapped[F <: FileInfo](store: CacheStore, fileConverter: FileConverter)(
-      implicit infoFormat: JsonFormat[F]
+  def readInfoWrapped[F <: FileInfo](store: CacheStore, fileConverter: FileConverter)(using
+      infoFormat: JsonFormat[F]
   ): RelationInfo[F] = {
-    convertFromVirtual(readInfoVirtual(store)(infoFormat), fileConverter)
+    convertFromVirtual(readInfoVirtual(store)(using infoFormat), fileConverter)
   }
 
   def convertFromVirtual[F <: FileInfo](
@@ -174,18 +188,17 @@ object Sync {
       fileConverter: FileConverter
   ): RelationInfo[F] = {
     val firstPart = Relation.switch(info._1, (r: VirtualFileRef) => fileConverter.toPath(r).toFile)
-    val secondPart = info._2.map {
-      case (file, fileInfo) =>
-        fileConverter.toPath(file).toFile -> fileInfo
+    val secondPart = info._2.map { (file, fileInfo) =>
+      fileConverter.toPath(file).toFile -> fileInfo
     }
     firstPart -> secondPart
   }
 
   def readInfo[F <: FileInfo](
       store: CacheStore
-  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  )(using infoFormat: JsonFormat[F]): RelationInfo[F] =
     try {
-      readUncaught[F](store)(infoFormat)
+      readUncaught[F](store)(using infoFormat)
     } catch {
       case _: IOException  => (Relation.empty[File, File], Map.empty[File, F])
       case _: ZipException => (Relation.empty[File, File], Map.empty[File, F])
@@ -198,9 +211,9 @@ object Sync {
 
   def readInfoVirtual[F <: FileInfo](
       store: CacheStore
-  )(implicit infoFormat: JsonFormat[F]): RelationInfoVirtual[F] =
+  )(using infoFormat: JsonFormat[F]): RelationInfoVirtual[F] =
     try {
-      readUncaughtVirtual[F](store)(infoFormat)
+      readUncaughtVirtual[F](store)(using infoFormat)
     } catch {
       case _: IOException =>
         (Relation.empty[VirtualFileRef, VirtualFileRef], Map.empty[VirtualFileRef, F])
@@ -216,14 +229,16 @@ object Sync {
 
   private def readUncaught[F <: FileInfo](
       store: CacheStore
-  )(implicit infoFormat: JsonFormat[F]): RelationInfo[F] =
+  )(using JsonFormat[F]): RelationInfo[F] =
+    given IsoString[File] = fileIsoString
+    import PathOnlyFormats.given
     store.read(default = (Relation.empty[File, File], Map.empty[File, F]))
 
   private def readUncaughtVirtual[F <: FileInfo](
       store: CacheStore
-  )(implicit infoFormat: JsonFormat[F]): RelationInfoVirtual[F] = {
+  )(using JsonFormat[F]): RelationInfoVirtual[F] = {
     import sjsonnew.IsoString
-    implicit def virtualFileRefStringIso: IsoString[VirtualFileRef] =
+    given IsoString[VirtualFileRef] =
       IsoString.iso[VirtualFileRef](_.toString, VirtualFileRef.of(_))
     store.read(default =
       (Relation.empty[VirtualFileRef, VirtualFileRef], Map.empty[VirtualFileRef, F])

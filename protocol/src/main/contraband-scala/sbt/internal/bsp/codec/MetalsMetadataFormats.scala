@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait MetalsMetadataFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val MetalsMetadataFormat: JsonFormat[sbt.internal.bsp.MetalsMetadata] = new JsonFormat[sbt.internal.bsp.MetalsMetadata] {
+given MetalsMetadataFormat: JsonFormat[sbt.internal.bsp.MetalsMetadata] = new JsonFormat[sbt.internal.bsp.MetalsMetadata] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.MetalsMetadata = {
     __jsOpt match {
       case Some(__js) =>

@@ -9,15 +9,15 @@
 package sbt
 
 import java.io.File
-
-import sbt.internal.inc.classpath.{ ClassLoaderCache => IncClassLoaderCache }
+import java.nio.file.Path
+import sbt.internal.inc.classpath.{ ClassLoaderCache as IncClassLoaderCache }
 import sbt.internal.classpath.ClassLoaderCache
 import sbt.internal.server.ServerHandler
 import sbt.internal.util.AttributeKey
 import sbt.librarymanagement.ModuleID
-import sbt.util.Level
-import scala.annotation.nowarn
+import sbt.util.{ ActionCacheStore, Level }
 import scala.concurrent.duration.FiniteDuration
+import xsbti.{ FileConverter, VirtualFile }
 
 object BasicKeys {
   val historyPath = AttributeKey[Option[File]](
@@ -26,7 +26,7 @@ object BasicKeys {
     40
   )
 
-  val extraMetaSbtFiles = AttributeKey[Seq[File]](
+  val extraMetaSbtFiles = AttributeKey[Seq[VirtualFile]](
     "extraMetaSbtFile",
     "Additional plugin.sbt files.",
     10000
@@ -42,8 +42,6 @@ object BasicKeys {
     "The function that constructs the command prompt from the current build state for a given terminal.",
     10000
   )
-  @nowarn val watch =
-    AttributeKey[Watched]("watched", "Continuous execution configuration.", 1000)
   val serverPort =
     AttributeKey[Int]("server-port", "The port number used by server command.", 10000)
 
@@ -104,6 +102,32 @@ object BasicKeys {
       "Enable/Disable BSP for this build, project or configuration",
       10000
     )
+
+  val cacheStores =
+    AttributeKey[Seq[ActionCacheStore]](
+      "cacheStores",
+      "Cache backends",
+      10000
+    )
+
+  val rootOutputDirectory =
+    AttributeKey[Path](
+      "rootOutputDirectory",
+      "Build-wide output directory",
+      10000
+    )
+
+  val fileConverter = AttributeKey[FileConverter](
+    "fileConverter",
+    "The file converter used to convert between Path and VirtualFile",
+    10000
+  )
+
+  val localDigestCacheByteSize = AttributeKey[Long](
+    "localDigestCacheByteSize",
+    "The maximum total size in the in-memory digest cache in bytes.",
+    10000
+  )
 
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.

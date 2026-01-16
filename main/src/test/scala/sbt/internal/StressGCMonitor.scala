@@ -10,7 +10,7 @@ package sbt.internal
 
 import sbt.internal.util.ConsoleLogger
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Random
 
 object StressGCMonitor {

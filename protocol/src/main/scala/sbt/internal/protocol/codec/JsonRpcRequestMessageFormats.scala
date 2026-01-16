@@ -12,9 +12,8 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.{ Builder, DeserializationException, JsonFormat, Unbuilder, deserializationError }
 
 trait JsonRpcRequestMessageFormats {
-  self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcRequestMessageFormat
-      : JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
+  self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
+  given JsonRpcRequestMessageFormat: JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcRequestMessage] {
       override def read[J](
           jsOpt: Option[J],
@@ -24,17 +23,18 @@ trait JsonRpcRequestMessageFormats {
           case Some(js) =>
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
-            val id = try {
-              unbuilder.readField[String]("id")
-            } catch {
-              case _: DeserializationException => {
-                val prefix = "\u2668" // Append prefix to show the original type was Number
-                prefix + unbuilder.readField[Long]("id").toString
+            val id =
+              try {
+                unbuilder.readField[String]("id")
+              } catch {
+                case _: DeserializationException => {
+                  val prefix = "\u2668" // Append prefix to show the original type was Number
+                  prefix + unbuilder.readField[Long]("id").toString
+                }
               }
-            }
             val method = unbuilder.readField[String]("method")
-            val params = unbuilder.lookupField("params") map {
-              case x: JValue => x
+            val params = unbuilder.lookupField("params") map { case x: JValue =>
+              x
             }
             unbuilder.endObject()
             sbt.internal.protocol.JsonRpcRequestMessage(jsonrpc, id, method, params)

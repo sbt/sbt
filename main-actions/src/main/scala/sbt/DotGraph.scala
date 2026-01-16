@@ -9,24 +9,11 @@
 package sbt
 
 import java.io.File
-import sbt.internal.inc.Relations
 import sbt.internal.util.Relation
 
 import sbt.io.IO
 
 object DotGraph {
-  @deprecated("not used", "1.4.0")
-  def sources(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = ???
-  @deprecated("not used", "1.4.0")
-  def packages(relations: Relations, outputDirectory: File, sourceRoots: Iterable[File]): Unit = ???
-  @deprecated("not used", "1.4.0")
-  def apply(
-      relations: Relations,
-      outputDir: File,
-      sourceToString: File => String,
-      externalToString: File => String
-  ): Unit = ???
-
   def generateGraph[K, V](
       file: File,
       graphName: String,
@@ -41,10 +28,10 @@ object DotGraph {
 
     val mappings =
       for {
-        (dependsOn, dependants) <- mappedGraph.toSeq
-        dependant <- dependants
-        if dependant != dependsOn && !dependsOn.isEmpty && !dependant.isEmpty
-      } yield "\"" + dependant + "\" -> \"" + dependsOn + "\""
+        (dependsOn, dependents) <- mappedGraph.toSeq
+        dependent <- dependents
+        if dependent != dependsOn && !dependsOn.isEmpty && !dependent.isEmpty
+      } yield "\"" + dependent + "\" -> \"" + dependsOn + "\""
 
     val lines =
       ("digraph " + graphName + " {") +:

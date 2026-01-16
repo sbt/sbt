@@ -17,22 +17,22 @@ import sbt.librarymanagement.{
   SbtArtifacts,
   UpdateReport
 }
-import sbt.internal.util.Attributed
 import Def.{ ScopedKey, Setting }
-import Keys._
+import Keys.*
 import Configurations.{ Compile, Runtime }
-import sbt.SlashSyntax0._
+import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
+import sbt.SlashSyntax0.*
+import sbt.librarymanagement.LibraryManagementCodec.given
 import java.io.File
 import org.apache.ivy.core.module.{ descriptor, id }
 import descriptor.ModuleDescriptor, id.ModuleRevisionId
-import scala.annotation.nowarn
 
 object GlobalPlugin {
   // constructs a sequence of settings that may be appended to a project's settings to
   //  statically add the global plugin as a classpath dependency.
   //  static here meaning that the relevant tasks for the global plugin have already been evaluated
-  def inject(gp: GlobalPluginData): Seq[Setting[_]] =
-    Seq[Setting[_]](
+  def inject(gp: GlobalPluginData): Seq[Setting[?]] =
+    Seq[Setting[?]](
       projectDescriptors ~= { _ ++ gp.descriptors },
       projectDependencies ++= gp.projectID +: gp.dependencies,
       resolvers := {
@@ -44,10 +44,10 @@ object GlobalPlugin {
       injectInternalClasspath(Runtime, gp.internalClasspath),
       injectInternalClasspath(Compile, gp.internalClasspath)
     )
-  private[this] def injectInternalClasspath(
+  private def injectInternalClasspath(
       config: Configuration,
-      cp: Seq[Attributed[File]]
-  ): Setting[_] =
+      cp: Def.Classpath,
+  ): Setting[?] =
     (config / internalDependencyClasspath) ~= { prev =>
       (prev ++ cp).distinct
     }
@@ -70,17 +70,16 @@ object GlobalPlugin {
     GlobalPlugin(data, structure, inject(data), base)
   }
 
-  @nowarn
   def extract(state: State, structure: BuildStructure): (State, GlobalPluginData) = {
     import structure.{ data, root, rootProject }
-    val p: Scope = Scope.GlobalScope in ProjectRef(root, rootProject(root))
+    val p: Scope = Scope.GlobalScope.rescope(ProjectRef(root, rootProject(root)))
 
+    // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
+    val updateReport = (Def.task { () }).flatMapTask { case _ => Def.task { update.value } }
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
       val depMap = projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
-      // If we reference it directly (if it's an executionRoot) then it forces an update, which is not what we want.
-      val updateReport = Def.taskDyn { Def.task { update.value } }.value
 
       GlobalPluginData(
         projectID.value,
@@ -89,10 +88,10 @@ object GlobalPlugin {
         resolvers.value.toVector,
         (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct
-      )(updateReport)
+      )(updateReport.value)
     }
-    val resolvedTaskInit = taskInit mapReferenced Project.mapScope(Scope replaceThis p)
-    val task = resolvedTaskInit evaluate data
+    val resolvedTaskInit = taskInit.mapReferenced(Project.replaceThis(p))
+    val task = resolvedTaskInit.evaluate(data)
     val roots = resolvedTaskInit.dependencies
     evaluate(state, structure, task, roots)
   }
@@ -100,19 +99,18 @@ object GlobalPlugin {
       state: State,
       structure: BuildStructure,
       t: Task[T],
-      roots: Seq[ScopedKey[_]]
+      roots: Seq[ScopedKey[?]]
   ): (State, T) = {
-    import EvaluateTask._
+    import EvaluateTask.*
     withStreams(structure, state) { str =>
       val nv = nodeView(state, str, roots)
       val config = EvaluateTask.extractedTaskConfig(Project.extract(state), structure, state)
-      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(nv)
+      val (newS, result) = runTask(t, state, str, structure.index.triggers, config)(using nv)
       (newS, processResult2(result))
     }
   }
 
-  @nowarn
-  val globalPluginSettings = Project.inScope(Scope.GlobalScope in LocalRootProject)(
+  val globalPluginSettings = Project.inScope(Scope.GlobalScope.rescope(LocalRootProject))(
     Seq(
       organization := SbtArtifacts.Organization,
       onLoadMessage := Keys.baseDirectory("loading global plugins from " + _).value,
@@ -133,6 +131,6 @@ final case class GlobalPluginData(
 final case class GlobalPlugin(
     data: GlobalPluginData,
     structure: BuildStructure,
-    inject: Seq[Setting[_]],
+    inject: Seq[Setting[?]],
     base: File
 )

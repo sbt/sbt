@@ -6,4 +6,7 @@ val updateReports = Def.taskDyn { updateClassifiers.all(ScopeFilter(configuratio
 
 val newTask = taskKey[Unit]("")
 
-newTask := updateReports.value
+newTask := {
+  updateReports.value
+  ()
+}

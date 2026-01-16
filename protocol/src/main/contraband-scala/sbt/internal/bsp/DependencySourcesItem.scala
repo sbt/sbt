@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -22,7 +22,7 @@ final class DependencySourcesItem private (
   override def toString: String = {
     "DependencySourcesItem(" + target + ", " + sources + ")"
   }
-  private[this] def copy(target: Option[sbt.internal.bsp.BuildTargetIdentifier] = target, sources: Vector[java.net.URI] = sources): DependencySourcesItem = {
+  private def copy(target: Option[sbt.internal.bsp.BuildTargetIdentifier] = target, sources: Vector[java.net.URI] = sources): DependencySourcesItem = {
     new DependencySourcesItem(target, sources)
   }
   def withTarget(target: Option[sbt.internal.bsp.BuildTargetIdentifier]): DependencySourcesItem = {

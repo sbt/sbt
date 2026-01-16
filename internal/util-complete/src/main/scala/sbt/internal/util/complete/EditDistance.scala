@@ -9,15 +9,14 @@
 package sbt.internal.util
 package complete
 
-import java.lang.Character.{ toLowerCase => lower }
+import java.lang.Character.{ toLowerCase as lower }
 
 /** @author Paul Phillips */
 object EditDistance {
 
   /**
-   * Translated from the java version at
-   *    http://www.merriampark.com/ld.htm
-   *  which is declared to be public domain.
+   * Translated from the java version at http://www.merriampark.com/ld.htm which is declared to be
+   * public domain.
    */
   def levenshtein(
       s: String,

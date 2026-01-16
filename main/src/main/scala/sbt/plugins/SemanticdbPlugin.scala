@@ -11,26 +11,28 @@ package plugins
 
 import java.io.File
 
-import Keys._
+import Keys.*
 import sbt.internal.SysProp
-import sbt.librarymanagement.syntax._
+import sbt.librarymanagement.syntax.*
 import sbt.librarymanagement.{ Configuration, CrossVersion }
-import Project.inConfig
+import sbt.librarymanagement.LibraryManagementCodec.given
+import ProjectExtra.inConfig
 import sbt.internal.inc.ScalaInstance
-import sbt.ScopeFilter.Make._
+import sbt.ScopeFilter.Make.*
+import sbt.util.CacheImplicits.given
 
 object SemanticdbPlugin extends AutoPlugin {
   override def requires = JvmPlugin
   override def trigger = allRequirements
 
-  override lazy val globalSettings: Seq[Def.Setting[_]] = Seq(
+  override lazy val globalSettings: Seq[Def.Setting[?]] = Seq(
     semanticdbEnabled := SysProp.semanticdb,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List(),
-    semanticdbVersion := "4.9.9"
+    semanticdbVersion := "4.14.2"
   )
 
-  override lazy val projectSettings: Seq[Def.Setting[_]] = Seq(
+  override lazy val projectSettings: Seq[Def.Setting[?]] = Seq(
     semanticdbCompilerPlugin := {
       val v = semanticdbVersion.value
       ("org.scalameta" % "semanticdb-scalac" % v).cross(CrossVersion.full)
@@ -39,7 +41,7 @@ object SemanticdbPlugin extends AutoPlugin {
       val sdb = semanticdbEnabled.value
       val m = semanticdbCompilerPlugin.value
       val sv = scalaVersion.value
-      if (sdb && !ScalaInstance.isDotty(sv)) List(Build0.compilerPlugin(m))
+      if (sdb && !ScalaInstance.isDotty(sv)) List(BuildExtra.compilerPlugin(m))
       else Nil
     },
     semanticdbOptions += {
@@ -53,10 +55,15 @@ object SemanticdbPlugin extends AutoPlugin {
     inConfig(Compile)(configurationSettings) ++
     inConfig(Test)(configurationSettings)
 
-  lazy val configurationSettings: Seq[Def.Setting[_]] = List(
+  lazy val configurationSettings: Seq[Def.Setting[?]] = List(
+    compileIncremental := Def.taskIf {
+      if (semanticdbIncludeInJar.value || !semanticdbEnabled.value) compileIncremental.value
+      else compileIncAndCacheSemanticdbTargetRootTask.value
+    }.value,
     semanticdbTargetRoot := {
+      val converter = fileConverter.value
       val in = semanticdbIncludeInJar.value
-      if (in) classDirectory.value
+      if in then converter.toPath(backendOutput.value).toFile()
       else semanticdbTargetRoot.value
     },
     semanticdbOptions --= Def.settingDyn {
@@ -69,23 +76,20 @@ object SemanticdbPlugin extends AutoPlugin {
     }.value,
     semanticdbOptions ++=
       targetRootOptions(scalaVersion.value, semanticdbTargetRoot.value),
-    scalacOptions --= Def.settingDyn {
+    scalacOptions := (Def.taskDyn {
+      val orig = scalacOptions.value
       val config = configuration.value
-      val enabled = semanticdbEnabled.value
-      if (enabled)
-        Def.setting {
-          semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten
-        } else Def.setting { Nil }
-    }.value,
-    scalacOptions ++= {
-      if (semanticdbEnabled.value)
-        semanticdbOptions.value
-      else Seq.empty
-    }
+      if semanticdbEnabled.value then
+        Def.task {
+          (orig diff semanticdbOptions.?.all(ancestorConfigs(config)).value.flatten.flatten) ++
+            semanticdbOptions.value
+        }
+      else
+        Def.task {
+          orig
+        }
+    }).value,
   )
-
-  @deprecated("use configurationSettings only", "1.5.0")
-  lazy val testSettings: Seq[Def.Setting[_]] = List()
 
   def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] = {
     if (ScalaInstance.isDotty(scalaVersion)) {
@@ -95,10 +99,20 @@ object SemanticdbPlugin extends AutoPlugin {
     }
   }
 
+  private val compileIncAndCacheSemanticdbTargetRootTask = Def.cachedTask {
+    val prev = compileIncremental.value
+    val converter = fileConverter.value
+    val targetRoot = semanticdbTargetRoot.value
+
+    val vfTargetRoot = converter.toVirtualFile(targetRoot.toPath)
+    Def.declareOutputDirectory(vfTargetRoot)
+    prev
+  }
+
   private def ancestorConfigs(config: Configuration) = {
     def ancestors(configs: Vector[Configuration]): Vector[Configuration] =
       configs ++ configs.flatMap(conf => ancestors(conf.extendsConfigs))
 
-    ScopeFilter(configurations = inConfigurations(ancestors(config.extendsConfigs): _*))
+    ScopeFilter(configurations = inConfigurations(ancestors(config.extendsConfigs)*))
   }
 }

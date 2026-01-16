@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -19,9 +19,7 @@ override def hashCode: Int = {
 override def toString: String = {
   "TestInitEvent()"
 }
-private[this] def copy(): TestInitEvent = {
-  new TestInitEvent()
-}
+
 
 }
 object TestInitEvent {

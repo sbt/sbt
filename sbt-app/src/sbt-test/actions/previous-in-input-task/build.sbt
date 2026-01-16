@@ -1,7 +1,7 @@
 import sjsonnew.BasicJsonProtocol._
 
 val cacheTask = taskKey[Int]("task")
-cacheTask := 1
+cacheTask := Def.uncached(1)
 
 val checkTask = inputKey[Unit]("validate that the correct value is set by cacheTask")
 checkTask := {

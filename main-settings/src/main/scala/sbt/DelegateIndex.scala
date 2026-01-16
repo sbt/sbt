@@ -8,6 +8,8 @@
 
 package sbt
 
+import ScopeAxis.{ Select, zero }
+
 sealed trait DelegateIndex {
   def project(ref: ProjectRef): Seq[ScopeAxis[ResolvedReference]]
   def config(ref: ProjectRef, conf: ConfigKey): Seq[ScopeAxis[ConfigKey]]
@@ -23,9 +25,9 @@ private final class DelegateIndex0(refs: Map[ProjectRef, ProjectDelegates]) exte
       case Some(pd) =>
         pd.confs.get(conf) match {
           case Some(cs) => cs
-          case None     => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
+          case None     => Select(conf) :: zero[ConfigKey] :: Nil
         }
-      case None => (Select(conf): ScopeAxis[ConfigKey]) :: (Zero: ScopeAxis[ConfigKey]) :: Nil
+      case None => Select(conf) :: zero[ConfigKey] :: Nil
     }
 }
 private final class ProjectDelegates(

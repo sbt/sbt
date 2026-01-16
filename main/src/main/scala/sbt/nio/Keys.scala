@@ -12,14 +12,14 @@ import java.io.InputStream
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.BuildSyntax.{ settingKey, taskKey }
+import sbt.Def.{ settingKey, taskKey }
 import sbt.KeyRanks.{ BMinusSetting, DSetting, Invisible }
 import sbt.internal.DynamicInput
 import sbt.internal.nio.FileTreeRepository
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
 import sbt.nio.file.{ FileAttributes, FileTreeView, Glob, PathFilter }
-import sbt._
+import sbt.*
 
 import scala.concurrent.duration.FiniteDuration
 
@@ -39,6 +39,8 @@ object Keys {
     settingKey[PathFilter]("A filter to apply to the input sources of a task.")
   val fileInputExcludeFilter =
     settingKey[PathFilter]("An exclusion filter to apply to the input sources of a task.")
+
+  @transient
   val inputFileStamper = settingKey[FileStamper](
     "Toggles the file stamping implementation used to determine whether or not a file has been modified."
   )
@@ -78,7 +80,7 @@ object Keys {
   val watchDeletionQuarantinePeriod = settingKey[FiniteDuration](
     "Period for which deletion events will be quarantined. This is to prevent spurious builds when a file is updated with a rename which manifests as a file deletion followed by a file creation. The higher this value is set, the longer the delay will be between a file deletion and a build trigger but the less likely it is for a spurious trigger."
   ).withRank(DSetting)
-  private[this] val forceTriggerOnAnyChangeMessage =
+  private val forceTriggerOnAnyChangeMessage =
     "Force the watch process to rerun the current task(s) if any relevant source change is " +
       "detected regardless of whether or not the underlying file has actually changed."
 
@@ -134,7 +136,6 @@ object Keys {
    *   watchTriggeredMessage := Watch.clearScreenOnTrigger
    * }}}
    * to the build.
-   *
    */
   val watchTriggeredMessage = settingKey[(Int, Path, Seq[String]) => Option[String]](
     "The message to show before triggered execution executes an action after sources change. The parameters are the current watch iteration count, the path that triggered the build and the names of the commands to run."
@@ -170,9 +171,13 @@ object Keys {
   private[sbt] val allInputPathsAndAttributes =
     taskKey[Seq[(Path, FileAttributes)]]("Get all of the file inputs for a task")
       .withRank(Invisible)
+
+  @transient
   private[sbt] val unmanagedFileStampCache = taskKey[FileStamp.Cache](
     "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
+
+  @transient
   private[sbt] val managedFileStampCache = taskKey[FileStamp.Cache](
     "Map of managed file stamps that may be cleared between task evaluation runs."
   ).withRank(Invisible)
@@ -183,7 +188,7 @@ object Keys {
     taskKey[Seq[Path]]("The dependency classpath for a task.").withRank(Invisible)
   private[sbt] val compileOutputs = taskKey[Seq[Path]]("Compilation outputs").withRank(Invisible)
 
-  private[this] val hasCheckedMetaBuildMsg =
+  private val hasCheckedMetaBuildMsg =
     "Indicates whether or not we have called the checkBuildSources task. This is to avoid warning " +
       "user about build source changes if the build sources were changed while sbt was shutdown. " +
       " When that occurs, the previous cache reflects the state of the old build files, but by " +

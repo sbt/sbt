@@ -17,14 +17,14 @@ import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sbt.internal.protocol.{ PortFile, TokenFile }
 import sbt.internal.protocol.codec.{ PortFileFormats, TokenFileFormats }
 import sbt.internal.util.Util.isWindows
-import org.scalasbt.ipcsocket._
+import org.scalasbt.ipcsocket.*
 
 object ClientSocket {
   private lazy val fileFormats = new BasicJsonProtocol with PortFileFormats with TokenFileFormats {}
 
   def socket(portfile: File): (Socket, Option[String]) = socket(portfile, false)
   def socket(portfile: File, useJNI: Boolean): (Socket, Option[String]) = {
-    import fileFormats._
+    import fileFormats.given
     val json: JValue = Parser.parseFromString(sbt.io.IO.read(portfile)).get
     val p = Converter.fromJson[PortFile](json).get
     val uri = new URI(p.uri)

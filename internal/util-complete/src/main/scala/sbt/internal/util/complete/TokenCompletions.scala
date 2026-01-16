@@ -9,7 +9,7 @@
 package sbt.internal.util
 package complete
 
-import Completion.{ token => ctoken, tokenDisplay }
+import Completion.{ token as ctoken, tokenDisplay }
 
 sealed trait TokenCompletions {
   def hideWhen(f: Int => Boolean): TokenCompletions

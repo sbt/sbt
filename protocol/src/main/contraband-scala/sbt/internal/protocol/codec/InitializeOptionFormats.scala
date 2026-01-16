@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait InitializeOptionFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val InitializeOptionFormat: JsonFormat[sbt.internal.protocol.InitializeOption] = new JsonFormat[sbt.internal.protocol.InitializeOption] {
+given InitializeOptionFormat: JsonFormat[sbt.internal.protocol.InitializeOption] = new JsonFormat[sbt.internal.protocol.InitializeOption] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.protocol.InitializeOption = {
     __jsOpt match {
       case Some(__js) =>

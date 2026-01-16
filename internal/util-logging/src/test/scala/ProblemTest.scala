@@ -9,11 +9,11 @@
 package sbt
 
 import java.net.URI
-import hedgehog._
-import hedgehog.runner._
+import hedgehog.*
+import hedgehog.runner.*
 import _root_.sbt.util.InterfaceUtil
 import InterfaceUtil.{ jl2l, jo2o, l2jl }
-import xsbti._
+import xsbti.*
 
 object ProblemTest extends Properties {
   override def tests: List[Test] = List(
@@ -192,10 +192,7 @@ object ProblemTest extends Properties {
     }
 
   private def copy(edit: WorkspaceEdit): WorkspaceEdit =
-    new WorkspaceEdit {
-      override def changes() =
-        l2jl(jl2l(edit.changes).map(copy))
-    }
+    () => l2jl(jl2l(edit.changes).map(copy))
 
   private def copy(edit: TextEdit): TextEdit =
     new TextEdit {

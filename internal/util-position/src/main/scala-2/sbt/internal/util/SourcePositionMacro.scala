@@ -8,21 +8,21 @@
 
 package sbt.internal.util
 
-import scala.language.experimental.macros
 import scala.annotation.tailrec
 import scala.reflect.macros.blackbox
 import scala.reflect.internal.util.UndefinedPosition
 
 abstract class SourcePositionImpl {
 
-  /** Creates a SourcePosition by using the enclosing position of the invocation of this method.
+  /**
+   * Creates a SourcePosition by using the enclosing position of the invocation of this method.
    * @return SourcePosition
    */
   def fromEnclosing(): SourcePosition = macro SourcePositionMacro.fromEnclosingImpl
 }
 
 final class SourcePositionMacro(val c: blackbox.Context) {
-  import c.universe.{ NoPosition => _, _ }
+  import c.universe.{ NoPosition as _, * }
 
   def fromEnclosingImpl(): Expr[SourcePosition] = {
     val pos = c.enclosingPosition
@@ -31,11 +31,10 @@ final class SourcePositionMacro(val c: blackbox.Context) {
       val name = constant[String](ownerSource(f.path, f.name))
       val line = constant[Int](pos.line)
       reify { LinePosition(name.splice, line.splice) }
-    } else
-      reify { NoPosition }
+    } else reify { NoPosition }
   }
 
-  private[this] def ownerSource(path: String, name: String): String = {
+  private def ownerSource(path: String, name: String): String = {
     @tailrec def inEmptyPackage(s: Symbol): Boolean =
       s != NoSymbol && (
         s.owner == c.mirror.EmptyPackage
@@ -50,5 +49,5 @@ final class SourcePositionMacro(val c: blackbox.Context) {
     }
   }
 
-  private[this] def constant[T: WeakTypeTag](t: T): Expr[T] = c.Expr[T](Literal(Constant(t)))
+  private def constant[T: WeakTypeTag](t: T): Expr[T] = c.Expr[T](Literal(Constant(t)))
 }

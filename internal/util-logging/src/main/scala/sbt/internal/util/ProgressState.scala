@@ -21,7 +21,7 @@ import sbt.internal.util.ConsoleAppender.{
 }
 
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters.*
 
 private[sbt] final class ProgressState(
     val progressLines: AtomicReference[Seq[String]],
@@ -47,16 +47,16 @@ private[sbt] final class ProgressState(
     padding.set(0)
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
-  private[this] val lineBuffer = new ArrayBlockingQueue[String](300)
+  private val lineBuffer = new ArrayBlockingQueue[String](300)
   private[util] def getLines: Seq[String] = lineBuffer.asScala.toVector
-  private[this] def appendLine(line: String) = while (!lineBuffer.offer(line)) { lineBuffer.poll }
+  private def appendLine(line: String) = while (!lineBuffer.offer(line)) { lineBuffer.poll }
   private[util] def clearBytes(): Unit = {
     val pad = padding.get
     if (currentLineBytes.get.isEmpty && pad > 0) padding.decrementAndGet()
     currentLineBytes.set(new ArrayBuffer[Byte])
   }
 
-  private[this] val lineSeparatorBytes: Array[Byte] = System.lineSeparator.getBytes("UTF-8")
+  private val lineSeparatorBytes: Array[Byte] = System.lineSeparator.getBytes("UTF-8")
   private[util] def addBytes(terminal: Terminal, bytes: Seq[Byte]): Unit = {
     val previous: ArrayBuffer[Byte] = currentLineBytes.get
     val padding = this.padding.get
@@ -86,9 +86,9 @@ private[sbt] final class ProgressState(
       prefix.getBytes ++ terminal.prompt.render().getBytes("UTF-8")
     } else Array.empty
   }
-  private[this] val cleanPrompt =
+  private val cleanPrompt =
     (DeleteLine + ClearScreenAfterCursor + CursorLeft1000).getBytes("UTF-8")
-  private[this] val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
+  private val clearScreenBytes = ClearScreenAfterCursor.getBytes("UTF-8")
   private[util] def write(
       terminal: Terminal,
       bytes: Array[Byte],
@@ -97,7 +97,7 @@ private[sbt] final class ProgressState(
   ): Unit = {
     if (hasProgress) {
       val canClearPrompt = currentLineBytes.get.isEmpty
-      addBytes(terminal, bytes)
+      addBytes(terminal, bytes.toSeq)
       val toWrite = new ArrayBuffer[Byte]
       terminal.prompt match {
         case a: Prompt.AskUser if a.render().nonEmpty && canClearPrompt => toWrite ++= cleanPrompt
@@ -108,7 +108,7 @@ private[sbt] final class ProgressState(
         val parts = new String(bytes, "UTF-8").split(System.lineSeparator)
         def appendLine(l: String, appendNewline: Boolean): Unit = {
           toWrite ++= l.getBytes("UTF-8")
-          if (!l.getBytes("UTF-8").endsWith("\r")) toWrite ++= clearScreenBytes
+          if (!l.getBytes("UTF-8").endsWith("\r".getBytes)) toWrite ++= clearScreenBytes
           if (appendNewline) toWrite ++= lineSeparatorBytes
         }
         parts.dropRight(1).foreach(appendLine(_, true))
@@ -160,11 +160,10 @@ private[sbt] object ProgressState {
   private val SERVER_IS_RUNNING_LENGTH = SERVER_IS_RUNNING.length + 3
 
   /**
-   * Receives a new task report and replaces the old one. In the event that the new
-   * report has fewer lines than the previous report, padding lines are added on top
-   * so that the console log lines remain contiguous. When a console line is printed
-   * at the info or greater level, we can decrement the padding because the console
-   * line will have filled in the blank line.
+   * Receives a new task report and replaces the old one. In the event that the new report has fewer
+   * lines than the previous report, padding lines are added on top so that the console log lines
+   * remain contiguous. When a console line is printed at the info or greater level, we can
+   * decrement the padding because the console line will have filled in the blank line.
    */
   private[sbt] def updateProgressState(
       pe: ProgressEvent,

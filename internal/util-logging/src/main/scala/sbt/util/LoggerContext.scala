@@ -8,23 +8,18 @@
 
 package sbt.util
 
+import sbt.internal.util.*
+
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import org.apache.logging.log4j.{ Level => XLevel }
-import org.apache.logging.log4j.core.{ Appender => XAppender, LoggerContext => XLoggerContext }
-import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
-import sbt.internal.util._
-import scala.collection.JavaConverters._
-import org.apache.logging.log4j.core.config.AbstractConfiguration
-import org.apache.logging.log4j.message.ObjectMessage
+import java.util.concurrent.atomic.{ AtomicReference, AtomicBoolean }
+// import scala.jdk.CollectionConverters.*
 
 /**
- * Provides a context for generating loggers during task evaluation. The logger context
- * can be initialized for a single command evaluation run and all of the resources
- * created (such as cached logger appenders) can be cleaned up after task evaluation.
- * This trait evolved out of LogExchange when it became clear that it was very difficult
- * to manage the loggers and appenders without introducing memory leaks.
+ * Provides a context for generating loggers during task evaluation. The logger context can be
+ * initialized for a single command evaluation run and all of the resources created (such as cached
+ * logger appenders) can be cleaned up after task evaluation. This trait evolved out of LogExchange
+ * when it became clear that it was very difficult to manage the loggers and appenders without
+ * introducing memory leaks.
  */
 sealed trait LoggerContext extends AutoCloseable {
   def logger(name: String, channelName: Option[String], execId: Option[String]): ManagedLogger
@@ -37,98 +32,22 @@ sealed trait LoggerContext extends AutoCloseable {
   def remove(name: String): Unit
 }
 object LoggerContext {
-  private[this] val useLog4J = System.getProperty("sbt.log.uselog4j", "false") == "true"
-  private[this] lazy val global = new LoggerContext.LoggerContextImpl
-  private[this] lazy val globalLog4J = new LoggerContext.Log4JLoggerContext(LogExchange.context)
-  private[sbt] lazy val globalContext = if (useLog4J) globalLog4J else global
-  private[util] class Log4JLoggerContext(val xlc: XLoggerContext) extends LoggerContext {
-    private val config = xlc.getConfiguration match {
-      case a: AbstractConfiguration => a
-      case _                        => throw new IllegalStateException("")
-    }
-    val loggers = new java.util.HashSet[String]
-    private[this] val closed = new AtomicBoolean(false)
-    override def logger(
-        name: String,
-        channelName: Option[String],
-        execId: Option[String]
-    ): ManagedLogger = {
-      if (closed.get) {
-        throw new IllegalStateException("Tried to create logger for closed LoggerContext")
-      }
-      val loggerConfig = LoggerConfig.createLogger(
-        false,
-        XLevel.DEBUG,
-        name,
-        // disable the calculation of caller location as it is very expensive
-        // https://issues.apache.org/jira/browse/LOG4J2-153
-        "false",
-        Array[AppenderRef](),
-        null,
-        config,
-        null
-      )
-      config.addLogger(name, loggerConfig)
-      val logger = xlc.getLogger(name)
-      LogExchange.addConfig(name, loggerConfig)
-      loggers.add(name)
-      val xlogger = new MiniLogger {
-        def log(level: Level.Value, message: => String): Unit =
-          logger.log(
-            ConsoleAppender.toXLevel(level),
-            new ObjectMessage(StringEvent(level.toString, message, channelName, execId))
-          )
-        def log[T](level: Level.Value, message: ObjectEvent[T]): Unit =
-          logger.log(ConsoleAppender.toXLevel(level), new ObjectMessage(message))
-      }
-      new ManagedLogger(name, channelName, execId, xlogger, Some(Terminal.get), this)
-    }
-    override def clearAppenders(loggerName: String): Unit = {
-      val lc = config.getLoggerConfig(loggerName)
-      lc.getAppenders.asScala foreach {
-        case (name, a) =>
-          a.stop()
-          lc.removeAppender(name)
-      }
-    }
-    override def addAppender(
-        loggerName: String,
-        appender: (Appender, Level.Value)
-    ): Unit = {
-      val lc = config.getLoggerConfig(loggerName)
-      appender match {
-        case (x: XAppender, lv) => lc.addAppender(x, ConsoleAppender.toXLevel(lv), null)
-        case (x, lv)            => lc.addAppender(x.toLog4J, ConsoleAppender.toXLevel(lv), null)
-      }
-    }
-    override def appenders(loggerName: String): Seq[Appender] = {
-      val lc = config.getLoggerConfig(loggerName)
-      lc.getAppenders.asScala.collect { case (name, ca: ConsoleAppender) => ca }.toVector
-    }
-    override def remove(name: String): Unit = {
-      val lc = config.getLoggerConfig(name)
-      config.removeLogger(name)
-    }
-    def close(): Unit = if (closed.compareAndSet(false, true)) {
-      loggers.forEach(l => remove(l))
-      loggers.clear()
-    }
-  }
+  private[sbt] lazy val globalContext: LoggerContext = new LoggerContext.LoggerContextImpl
+
   private[util] class LoggerContextImpl extends LoggerContext {
     private class Log extends MiniLogger {
       private val consoleAppenders: AtomicReference[Vector[(Appender, Level.Value)]] =
         new AtomicReference(Vector.empty)
       def log(level: Level.Value, message: => String): Unit = {
-        val toAppend = consoleAppenders.get.filter { case (a, l) => level.compare(l) >= 0 }
+        val toAppend = consoleAppenders.get.filter { (a, l) => level.compare(l) >= 0 }
         if (toAppend.nonEmpty) {
           val m = message
-          toAppend.foreach { case (a, l) => a.appendLog(level, m) }
+          toAppend.foreach { (a, l) => a.appendLog(level, m) }
         }
       }
       def log[T](level: Level.Value, message: ObjectEvent[T]): Unit = {
-        consoleAppenders.get.foreach {
-          case (a, l) =>
-            if (level.compare(l) >= 0) a.appendObjectEvent(level, message)
+        consoleAppenders.get.foreach { (a, l) =>
+          if (level.compare(l) >= 0) a.appendObjectEvent(level, message)
         }
       }
       def addAppender(newAppender: (Appender, Level.Value)): Unit =
@@ -139,8 +58,8 @@ object LoggerContext {
       }
       def appenders: Seq[Appender] = consoleAppenders.get.map(_._1)
     }
-    private[this] val loggers = new ConcurrentHashMap[String, Log]
-    private[this] val closed = new AtomicBoolean(false)
+    private val loggers = new ConcurrentHashMap[String, Log]
+    private val closed = new AtomicBoolean(false)
     override def logger(
         name: String,
         channelName: Option[String],
@@ -189,6 +108,5 @@ object LoggerContext {
       loggers.clear()
     }
   }
-  private[sbt] def apply(useLog4J: Boolean) =
-    if (useLog4J) new Log4JLoggerContext(LogExchange.context) else new LoggerContextImpl
+  private[sbt] def apply() = new LoggerContextImpl
 }

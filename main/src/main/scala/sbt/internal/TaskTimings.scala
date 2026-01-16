@@ -24,19 +24,22 @@ import sbt.util.{ Level, Logger }
  */
 private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
     extends AbstractTaskExecuteProgress
-    with ExecuteProgress[Task] {
+    with ExecuteProgress {
   @deprecated("Use the constructor that takes an sbt.util.Logger parameter.", "1.3.3")
   def this(reportOnShutdown: Boolean) =
-    this(reportOnShutdown, new Logger {
-      override def trace(t: => Throwable): Unit = {}
-      override def success(message: => String): Unit = {}
-      override def log(level: Level.Value, message: => String): Unit =
-        ConsoleOut.systemOut.println(message)
-    })
-  private[this] var start = 0L
-  private[this] val threshold = SysProp.taskTimingsThreshold
-  private[this] val omitPaths = SysProp.taskTimingsOmitPaths
-  private[this] val (unit, divider) = SysProp.taskTimingsUnit
+    this(
+      reportOnShutdown,
+      new Logger {
+        override def trace(t: => Throwable): Unit = {}
+        override def success(message: => String): Unit = {}
+        override def log(level: Level.Value, message: => String): Unit =
+          ConsoleOut.systemOut.println(message)
+      }
+    )
+  private var start = 0L
+  private val threshold = SysProp.taskTimingsThreshold
+  private val omitPaths = SysProp.taskTimingsOmitPaths
+  private val (unit, divider) = SysProp.taskTimingsUnit
 
   if (reportOnShutdown) {
     start = System.nanoTime
@@ -48,40 +51,38 @@ private[sbt] final class TaskTimings(reportOnShutdown: Boolean, logger: Logger)
       start = System.nanoTime
   }
 
-  override def afterReady(task: Task[_]): Unit = ()
-  override def afterCompleted[T](task: Task[T], result: Result[T]): Unit = ()
-  override def afterAllCompleted(results: RMap[Task, Result]): Unit =
+  override def afterReady(task: TaskId[?]): Unit = ()
+  override def afterCompleted[T](task: TaskId[T], result: Result[T]): Unit = ()
+  override def afterAllCompleted(results: RMap[TaskId, Result]): Unit =
     if (!reportOnShutdown) {
       report()
     }
 
   override def stop(): Unit = ()
 
-  private[this] val reFilePath = raw"\{[^}]+\}".r
+  private val reFilePath = raw"\{[^}]+\}".r
 
-  private[this] def report() = {
+  private def report() = {
     val total = divide(System.nanoTime - start)
     logger.info(s"Total time: $total $unit")
     val times = timingsByName.toSeq
       .sortBy(_._2.get)
       .reverse
-      .map {
-        case (name, time) =>
-          (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
+      .map { (name, time) =>
+        (if (omitPaths) reFilePath.replaceFirstIn(name, "") else name, divide(time.get))
       }
       .filter { _._2 > threshold }
     if (times.size > 0) {
       val maxTaskNameLength = times.map { _._1.length }.max
       val maxTime = times.map { _._2 }.max.toString.length
-      times.foreach {
-        case (taskName, time) =>
-          logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
+      times.foreach { (taskName, time) =>
+        logger.info(s"  ${taskName.padTo(maxTaskNameLength, ' ')}: ${""
             .padTo(maxTime - time.toString.length, ' ')}$time $unit")
       }
     }
   }
 
-  private[this] def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
+  private def divide(time: Long) = (1L to divider.toLong).fold(time) { (a, b) =>
     a / 10L
   }
 }

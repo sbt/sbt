@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class TaskId private (
   override def toString: String = {
     "TaskId(" + id + ", " + parents + ")"
   }
-  private[this] def copy(id: String = id, parents: Vector[String] = parents): TaskId = {
+  private def copy(id: String = id, parents: Vector[String] = parents): TaskId = {
     new TaskId(id, parents)
   }
   def withId(id: String): TaskId = {

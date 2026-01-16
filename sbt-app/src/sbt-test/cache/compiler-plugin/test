@@ -1,0 +1,4 @@
+> foo/compile
+> clean
+> foo/compile
+> check

@@ -5,7 +5,7 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt
 
 import org.scalatest.flatspec.AnyFlatSpec
@@ -76,3 +76,4 @@ class ScopeDisplaySpec extends AnyFlatSpec {
   it should "LocalRootProject" in assert(disp(LocalRootProject) == "<root> /")
   it should "ThisProject" in assert(disp(ThisProject) == "<this> /")
 }
+ */

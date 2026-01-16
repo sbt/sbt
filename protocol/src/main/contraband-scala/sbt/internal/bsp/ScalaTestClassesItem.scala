@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -26,7 +26,7 @@ final class ScalaTestClassesItem private (
   override def toString: String = {
     "ScalaTestClassesItem(" + target + ", " + classes + ", " + framework + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classes: Vector[String] = classes, framework: Option[String] = framework): ScalaTestClassesItem = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, classes: Vector[String] = classes, framework: Option[String] = framework): ScalaTestClassesItem = {
     new ScalaTestClassesItem(target, classes, framework)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): ScalaTestClassesItem = {

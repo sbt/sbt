@@ -1,8 +1,9 @@
-ThisBuild / scalaVersion := "3.0.0-M3"
+ThisBuild / scalaVersion := "3.3.4"
 
 lazy val check = taskKey[Unit]("")
 
-check := {
-  val bridge = scalaCompilerBridgeBinaryJar.value
-  bridge.getOrElse(sys.error(s"bridge JAR is missing"))
+check := Def.uncached {
+  val bridge = scalaCompilerBridgeBin.value
+  if bridge.isEmpty then sys.error(s"bridge JAR is missing")
+  else ()
 }

@@ -1,6 +1,6 @@
 object warney {
-	def foo = {
+  def foo = {
     0
-  	0
-	}
+    0
+  }
 }

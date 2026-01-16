@@ -1,3 +1,3 @@
 > unzipPackage
-$ exists target/extracted/test2
-$ exists target/extracted/test1
+$ exists target/out/jvm/scala-3.3.1/mappings-test/extracted/test2
+$ exists target/out/jvm/scala-3.3.1/mappings-test/extracted/test1

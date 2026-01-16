@@ -1,9 +1,10 @@
   [StackOverflow]: https://stackoverflow.com/tags/sbt
   [Setup]: https://www.scala-sbt.org/release/docs/Getting-Started/Setup
   [Issues]: https://github.com/sbt/sbt/issues
-  [sbt-contrib]: https://gitter.im/sbt/sbt-contrib
+  [Discussions]: https://github.com/sbt/sbt/discussions
   [327]: https://github.com/sbt/sbt/issues/327
   [documentation]: https://github.com/sbt/website
+  [Discord]: https://discord.com/invite/scala
 
 Contributing
 ============
@@ -13,25 +14,33 @@ Contributing
 There are lots of ways to contribute to sbt ecosystem depending on your interests and skill level.
 
 - Help someone at work or online fix their build problem.
-- Answer StackOverflow questions.
-- Ask StackOverflow questions.
+- Answer/ask StackOverflow questions or on [Scala Discord][Discord].
 - Create plugins that extend sbt's features.
+- Migrate builds to sbt 2.x.
 - Maintain and update [documentation].
 - Garden the issue tracker.
 - Report issues.
 - Patch the core (send pull requests to code).
-- On-ramp other contributors.
+- Review pull requests.
 
-Issues and Pull Requests
-------------------------
+Ideas and proposals
+-------------------
+
+If you have an enhancement idea, or a general discussion, please follow the [sbt 2.0 RFC process](https://eed3si9n.com/sbt-2.0-rfc-process) or start a [Discussion][Discussions].
+
+Patching the core (send pull requests)
+--------------------------------------
+
+See a more detailed documentation [Sending pull request](contributing-docs/01_pull_request.md).
+
+Reporting Issues
+----------------
 
 When you find a bug in sbt we want to hear about it. Your bug reports play an important part in making sbt more reliable and usable.
 
 Effective bug reports are more likely to be fixed. These guidelines explain how to write such reports and pull requests.
 
 Please open a GitHub issue when you are 90% sure it's an actual bug.
-
-If you have an enhancement idea, or a general discussion, bring it up to [sbt-contrib].
 
 ### Notes about Documentation
 
@@ -93,26 +102,7 @@ On StackOverflow, it's:
 Here's a simple sample case: [#327][327].
 Finally, thank you for taking the time to report a problem.
 
-Pull Requests
--------------
-
-See below for the branch to work against.
-
-See [DEVELOPING](./DEVELOPING.md)
-
 Profiling sbt
 -------------
 
 See [PROFILING](./PROFILING.md)
-
-Other notes
------------
-
-## Signing the CLA
-
-Contributing to sbt requires you or your employer to sign the
-[Scala Contributor License Agreement](https://www.lightbend.com/contribute/cla/scala).
-
-To make it easier to respect our license agreements, we have added an sbt task
-that takes care of adding the LICENSE headers to new files. Run `headerCreate`
-and sbt will put a copyright notice into it.

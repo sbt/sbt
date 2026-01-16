@@ -9,12 +9,12 @@
 package sbt.internal.util
 package logic
 
-import org.scalacheck._
+import org.scalacheck.*
 import Prop.secure
 import Logic.{ LogicException, Matched }
 
 object LogicTest extends Properties("Logic") {
-  import TestClauses._
+  import TestClauses.*
 
   property("Handles trivial resolution.") = secure(expect(trivial, Set(A)))
   property("Handles less trivial resolution.") = secure(expect(lessTrivial, Set(B, A, D)))

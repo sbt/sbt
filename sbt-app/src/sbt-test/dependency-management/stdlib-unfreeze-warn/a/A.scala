@@ -9,8 +9,10 @@ package scala.collection.immutable {
 }
 
 
-object A extends App {
-  println(scala.util.Properties.versionString)
+object A {
+  def main(args: Array[String]): Unit = {
+    println(scala.util.Properties.versionString)
+  }
 }
 
 object AMacro {

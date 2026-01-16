@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class JvmRunEnvironmentResult private (
   override def toString: String = {
     "JvmRunEnvironmentResult(" + items + ", " + originId + ")"
   }
-  private[this] def copy(items: Vector[sbt.internal.bsp.JvmEnvironmentItem] = items, originId: Option[String] = originId): JvmRunEnvironmentResult = {
+  private def copy(items: Vector[sbt.internal.bsp.JvmEnvironmentItem] = items, originId: Option[String] = originId): JvmRunEnvironmentResult = {
     new JvmRunEnvironmentResult(items, originId)
   }
   def withItems(items: Vector[sbt.internal.bsp.JvmEnvironmentItem]): JvmRunEnvironmentResult = {

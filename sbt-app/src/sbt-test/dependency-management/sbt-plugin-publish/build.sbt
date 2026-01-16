@@ -10,8 +10,8 @@ lazy val sbtPlugin1 = project.in(file("sbt-plugin-1"))
     name := "sbt-plugin-1",
     addSbtPlugin("ch.epfl.scala" % "sbt-plugin-example-diamond" % "0.5.0"),
     publishTo := Some(resolver),
-    checkPackagedArtifacts := checkPackagedArtifactsDef("sbt-plugin-1", true).value,
-    checkPublish := checkPublishDef("sbt-plugin-1", true).value
+    checkPackagedArtifacts := checkPackagedArtifactsDef("sbt-plugin-1", false).value,
+    checkPublish := checkPublishDef("sbt-plugin-1", false).value
   )
 
 lazy val testMaven1 = project.in(file("test-maven-1"))

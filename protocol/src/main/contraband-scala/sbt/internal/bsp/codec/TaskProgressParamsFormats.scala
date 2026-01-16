@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TaskProgressParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sjsonnew.BasicJsonProtocol with sbt.internal.util.codec.JValueFormats =>
-implicit lazy val TaskProgressParamsFormat: JsonFormat[sbt.internal.bsp.TaskProgressParams] = new JsonFormat[sbt.internal.bsp.TaskProgressParams] {
+trait TaskProgressParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats & sjsonnew.BasicJsonProtocol & sbt.internal.util.codec.JValueFormats =>
+given TaskProgressParamsFormat: JsonFormat[sbt.internal.bsp.TaskProgressParams] = new JsonFormat[sbt.internal.bsp.TaskProgressParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.TaskProgressParams = {
     __jsOpt match {
       case Some(__js) =>

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -24,7 +24,7 @@ final class TextDocumentPositionParams private (
   override def toString: String = {
     "TextDocumentPositionParams(" + textDocument + ", " + position + ")"
   }
-  private[this] def copy(textDocument: sbt.internal.langserver.TextDocumentIdentifier = textDocument, position: sbt.internal.langserver.Position = position): TextDocumentPositionParams = {
+  private def copy(textDocument: sbt.internal.langserver.TextDocumentIdentifier = textDocument, position: sbt.internal.langserver.Position = position): TextDocumentPositionParams = {
     new TextDocumentPositionParams(textDocument, position)
   }
   def withTextDocument(textDocument: sbt.internal.langserver.TextDocumentIdentifier): TextDocumentPositionParams = {

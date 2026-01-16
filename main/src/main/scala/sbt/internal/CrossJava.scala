@@ -14,11 +14,12 @@ import scala.collection.immutable.ListMap
 import scala.annotation.tailrec
 import scala.util.{ Try, Success, Failure }
 import sbt.io.{ IO, Path }
-import sbt.io.syntax._
-import sbt.Cross._
+import sbt.io.syntax.*
+import sbt.Cross.*
 import sbt.Def.{ ScopedKey, Setting }
-import sbt.SlashSyntax0._
-import sbt.internal.util.complete.DefaultParsers._
+import sbt.ProjectExtra.extract
+import sbt.ScopeAxis.{ Select, Zero }
+import sbt.internal.util.complete.DefaultParsers.*
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.{ DefaultParsers, Parser }
 import sbt.internal.CommandStrings.{
@@ -35,8 +36,8 @@ private[sbt] object CrossJava {
     def splitDot(s: String): Vector[Long] =
       Option(s) match {
         case Some(x) =>
-          x.split('.').toVector collect {
-            case Num(n) => n.toLong
+          x.split('.').toVector collect { case Num(n) =>
+            n.toLong
           }
         case _ => Vector()
       }
@@ -104,7 +105,7 @@ private[sbt] object CrossJava {
   }
 
   def lookupJavaHome(jv: String, mappings: Map[String, File]): File = {
-    val ms = mappings map { case (k, v) => (JavaVersion(k), v) }
+    val ms = mappings map { (k, v) => (JavaVersion(k), v) }
     lookupJavaHome(JavaVersion(jv), ms)
   }
 
@@ -114,8 +115,8 @@ private[sbt] object CrossJava {
 
       // when looking for "10" it should match "openjdk@10"
       case None if jv.vendor.isEmpty =>
-        val noVendors: Map[JavaVersion, File] = mappings map {
-          case (k, v) => k.withVendor(None) -> v
+        val noVendors: Map[JavaVersion, File] = mappings map { (k, v) =>
+          k.withVendor(None) -> v
         }
         noVendors.get(jv).getOrElse(javaHomeNotFound(jv, mappings))
       case _ => javaHomeNotFound(jv, mappings)
@@ -132,16 +133,16 @@ private[sbt] object CrossJava {
   private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
 
   private def switchParser(state: State): Parser[SwitchJavaHome] = {
-    import DefaultParsers._
+    import DefaultParsers.*
     def versionAndCommand(spacePresent: Boolean) = {
       val x = Project.extract(state)
-      import x._
+      import x.*
       val javaHomes = getJavaHomesTyped(x, currentRef)
       val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
       val version: Parser[SwitchTarget] =
         (token(
           (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions: _*) ~ "!".?
+            .examples(knownVersions*) ~ "!".?
         ) || token(StringBasic))
           .map {
             case Left(((vendor, (v1, vs)), bang)) =>
@@ -156,9 +157,8 @@ private[sbt] object CrossJava {
         else version & spacedFirst(JavaSwitchCommand)
       val verbose = Parser.opt(token(Space ~> "-v"))
       val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
-      (spacedVersion ~ verbose ~ optionalCommand).map {
-        case v ~ verbose ~ command =>
-          SwitchJavaHome(v, verbose.isDefined, command)
+      (spacedVersion ~ verbose ~ optionalCommand).map { case v ~ verbose ~ command =>
+        SwitchJavaHome(v, verbose.isDefined, command)
       }
     }
     token(JavaSwitchCommand ~> OptSpace) flatMap { sp =>
@@ -170,31 +170,31 @@ private[sbt] object CrossJava {
       extracted: Extracted,
       proj: ResolvedReference
   ): Map[String, File] = {
-    import extracted._
-    ((proj / Keys.fullJavaHomes) get structure.data).get
+    import extracted.*
+    (proj / Keys.fullJavaHomes).get(structure.data).get
   }
 
   private def getJavaHomesTyped(
       extracted: Extracted,
       proj: ResolvedReference
   ): Map[JavaVersion, File] = {
-    getJavaHomes(extracted, proj) map { case (k, v) => (JavaVersion(k), v) }
+    getJavaHomes(extracted, proj) map { (k, v) => (JavaVersion(k), v) }
   }
 
   private def getCrossJavaVersions(
       extracted: Extracted,
       proj: ResolvedReference
   ): Seq[String] = {
-    import extracted._
-    import Keys._
-    ((proj / crossJavaVersions) get structure.data).getOrElse(Nil)
+    import extracted.*
+    import Keys.*
+    (proj / crossJavaVersions).get(structure.data).getOrElse(Nil)
   }
 
   private def getCrossJavaHomes(extracted: Extracted, proj: ResolvedReference): Seq[File] = {
-    import extracted._
-    import Keys._
-    val fjh = ((proj / fullJavaHomes) get structure.data).get
-    ((proj / crossJavaVersions) get structure.data) map { jvs =>
+    import extracted.*
+    import Keys.*
+    val fjh = (proj / fullJavaHomes).get(structure.data).get
+    (proj / crossJavaVersions).get(structure.data) map { jvs =>
       jvs map { jv =>
         lookupJavaHome(jv, fjh)
       }
@@ -203,7 +203,7 @@ private[sbt] object CrossJava {
 
   private def switchCommandImpl(state: State, switch: SwitchJavaHome): State = {
     val extracted = Project.extract(state)
-    import extracted._
+    import extracted.*
     import Keys.javaHome
 
     // filter out subprojects based on switch target e.g. "10" vs what's in crossJavaVersions
@@ -217,31 +217,29 @@ private[sbt] object CrossJava {
         switch.target.version match {
           case None => projectJavaVersions
           case Some(v) =>
-            projectJavaVersions flatMap {
-              case (proj, versions) =>
-                if (versions.isEmpty || versions.contains[String](v.toString))
-                  Vector(proj -> versions)
-                else Vector()
+            projectJavaVersions flatMap { (proj, versions) =>
+              if (versions.isEmpty || versions.contains[String](v.toString))
+                Vector(proj -> versions)
+              else Vector()
             }
         }
     }
 
     def setJavaHomeForProjects: State = {
-      val newSettings = projects.flatMap {
-        case (proj, javaVersions) =>
-          val fjh = getJavaHomesTyped(extracted, proj)
-          val home = switch.target match {
-            case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
-            case SwitchTarget(_, Some(h), _) => h
-            case _                           => sys.error(s"unexpected ${switch.target}")
-          }
-          val scope = Scope(Select(proj), Zero, Zero, Zero)
-          Seq(
-            (scope / javaHome) := Some(home)
-          )
+      val newSettings = projects.flatMap { (proj, javaVersions) =>
+        val fjh = getJavaHomesTyped(extracted, proj)
+        val home = switch.target match {
+          case SwitchTarget(Some(v), _, _) => lookupJavaHome(v, fjh)
+          case SwitchTarget(_, Some(h), _) => h
+          case _                           => sys.error(s"unexpected ${switch.target}")
+        }
+        val scope = Scope(Select(proj), Zero, Zero, Zero)
+        Seq(
+          (scope / javaHome) := Some(home)
+        )
       }
 
-      val filterKeys: Set[AttributeKey[_]] = Set(javaHome).map(_.key)
+      val filterKeys: Set[AttributeKey[?]] = Set(javaHome).map(_.key)
 
       val projectsContains: Reference => Boolean = projects.map(_._1).toSet[Reference].contains(_)
 
@@ -275,21 +273,21 @@ private[sbt] object CrossJava {
   private def crossParser(state: State): Parser[CrossArgs] =
     token(JavaCrossCommand <~ OptSpace) flatMap { _ =>
       (token(Parser.opt("-v" <~ Space)) ~ token(matched(state.combinedParser))).map {
-        case (verbose, command) => CrossArgs(command, verbose.isDefined)
+        (verbose, command) => CrossArgs(command, verbose.isDefined)
       } & spacedFirst(JavaCrossCommand)
     }
 
   private def crossJavaHomeCommandImpl(state: State, args: CrossArgs): State = {
     val x = Project.extract(state)
-    import x._
+    import x.*
     val (aggs, aggCommand) = Cross.parseSlashCommand(x)(args.command)
     val projCrossVersions = aggs map { proj =>
       proj -> getCrossJavaHomes(x, proj)
     }
     // if we support javaHome, projVersions should be cached somewhere since
     // running ++2.11.1 is at the root level is going to mess with the scalaVersion for the aggregated subproj
-    val projVersions = (projCrossVersions flatMap {
-      case (proj, versions) => versions map { proj.project -> _ }
+    val projVersions = (projCrossVersions flatMap { (proj, versions) =>
+      versions map { proj.project -> _ }
     }).toList
 
     val verbose = ""
@@ -315,8 +313,8 @@ private[sbt] object CrossJava {
                 "that are configured."
             )
             state.log.debug("Java versions configuration is:")
-            projCrossVersions.foreach {
-              case (project, versions) => state.log.debug(s"$project: $versions")
+            projCrossVersions.foreach { (project, versions) =>
+              state.log.debug(s"$project: $versions")
             }
           }
 
@@ -330,7 +328,7 @@ private[sbt] object CrossJava {
           // We have a key, we're likely to be able to cross build this using the per project behaviour.
 
           // Group all the projects by scala version
-          projVersions.groupBy(_._2).mapValues(_.map(_._1)).toSeq.flatMap {
+          projVersions.groupBy(_._2).view.mapValues(_.map(_._1)).toSeq.flatMap {
             case (version, Seq(project)) =>
               // If only one project for a version, issue it directly
               Seq(s"$JavaSwitchCommand $verbose $version", s"$project/$aggCommand")
@@ -352,21 +350,21 @@ private[sbt] object CrossJava {
     }
   }
 
-  private val JavaCapturedSession = AttributeKey[Seq[Setting[_]]]("javaCrossCapturedSession")
+  private val JavaCapturedSession = AttributeKey[Seq[Setting[?]]]("javaCrossCapturedSession")
 
   private def captureCurrentSession(state: State, extracted: Extracted): State = {
     state.put(JavaCapturedSession, extracted.session.rawAppend)
   }
 
   def discoverJavaHomes: ListMap[String, File] = {
-    ListMap(JavaDiscoverConfig.configs flatMap { _.javaHomes } sortWith (versionOrder): _*)
+    ListMap(JavaDiscoverConfig.configs flatMap { _.javaHomes } sortWith (versionOrder)*)
   }
 
   sealed trait JavaDiscoverConf {
     def javaHomes: Vector[(String, File)]
   }
 
-  def versionOrder(left: (_, File), right: (_, File)): Boolean =
+  def versionOrder(left: (?, File), right: (?, File)): Boolean =
     versionOrder(left._2.getName, right._2.getName)
 
   // Sort version strings, considering 1.8.0 < 1.8.0_45 < 1.8.0_212
@@ -404,9 +402,8 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         candidates()
-          .collect {
-            case dir @ JavaHomeDir(version) =>
-              version -> (base / dir)
+          .collect { case dir @ JavaHomeDir(version) =>
+            version -> (base / dir)
           }
     }
 
@@ -420,9 +417,8 @@ private[sbt] object CrossJava {
           findAllHomes(baseInUserHome)
 
       private def findAllHomes(root: File): Vector[(String, File)] = {
-        wrapNull(root.list()).collect {
-          case dir @ JavaHomeDir(version) =>
-            version -> (root / dir / "Contents" / "Home")
+        wrapNull(root.list()).collect { case dir @ JavaHomeDir(version) =>
+          version -> (root / dir / "Contents" / "Home")
         }
       }
     }
@@ -433,11 +429,10 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         wrapNull(base.list())
-          .collect {
-            case dir @ JabbaJavaHomeDir(vendor, m, n) =>
-              val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
-              if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
-              else v -> (base / dir)
+          .collect { case dir @ JabbaJavaHomeDir(vendor, m, n) =>
+            val v = JavaVersion(nullBlank(m) + n).withVendor(vendor).toString
+            if ((base / dir / "Contents" / "Home").exists) v -> (base / dir / "Contents" / "Home")
+            else v -> (base / dir)
           }
     }
 
@@ -445,7 +440,7 @@ private[sbt] object CrossJava {
       val base: File = Path.userHome / ".sdkman" / "candidates" / "java"
       def candidates(): Vector[String] = wrapNull(base.list())
       def javaHomes: Vector[(String, File)] =
-        candidates.collect {
+        candidates().collect {
           case dir if dir.contains("-") =>
             CrossJava.parseSdkmanString(dir) match {
               case Success(v) => Some(v.toString -> (base / dir))
@@ -461,8 +456,8 @@ private[sbt] object CrossJava {
 
       def javaHomes: Vector[(String, File)] =
         candidates()
-          .collect {
-            case dir @ JavaHomeDir(version) => version -> base / dir
+          .collect { case dir @ JavaHomeDir(version) =>
+            version -> base / dir
           }
           .flatMap {
             case x if vendors.isEmpty => Vector(x)
@@ -520,30 +515,28 @@ private[sbt] object CrossJava {
     else s
 
   def expandJavaHomes(hs: Map[String, File]): Map[String, File] = {
-    val parsed = hs map {
-      case (k, v) => JavaVersion(k) -> v
+    val parsed = hs map { (k, v) =>
+      JavaVersion(k) -> v
     }
     // first ignore vnd
-    val withAndWithoutVnd = parsed flatMap {
-      case (k, v) =>
-        if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
-        else Vector(k -> v)
+    val withAndWithoutVnd = parsed flatMap { (k, v) =>
+      if (k.vendor.isDefined) Vector(k -> v, k.withVendor(None) -> v)
+      else Vector(k -> v)
     }
-    val normalizeNumbers = withAndWithoutVnd flatMap {
-      case (k, v) =>
-        k.numbers match {
-          case Vector(1L, minor, _*) =>
-            Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
-          case Vector(major) if major > 1 =>
-            Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
-          case Vector(major, minor, _*) if major > 1 =>
-            Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
-          case _ =>
-            Vector(k -> v)
-        }
+    val normalizeNumbers = withAndWithoutVnd flatMap { (k, v) =>
+      k.numbers match {
+        case Vector(1L, minor, _*) =>
+          Vector(k -> v, k.withNumbers(Vector(minor)) -> v)
+        case Vector(major) if major > 1 =>
+          Vector(k -> v, k.withNumbers(Vector(1L, major)) -> v)
+        case Vector(major, minor, _*) if major > 1 =>
+          Vector(k -> v, k.withNumbers(Vector(major)) -> v, k.withNumbers(Vector(1L, major)) -> v)
+        case _ =>
+          Vector(k -> v)
+      }
     }
-    val result: Map[String, File] = normalizeNumbers map {
-      case (k, v) => (k.toString -> v)
+    val result: Map[String, File] = normalizeNumbers map { (k, v) =>
+      (k.toString -> v)
     }
     result
   }

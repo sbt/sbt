@@ -8,8 +8,8 @@
 
 package sbt
 
-import testing.{ Logger => TLogger, Event => TEvent, Status => TStatus }
-import sbt.protocol.testing._
+import testing.{ Logger as TLogger, Event as TEvent, Status as TStatus }
+import sbt.protocol.testing.*
 
 trait TestReportListener {
 
@@ -42,8 +42,10 @@ trait TestsListener extends TestReportListener {
 
 }
 
-/** Provides the overall `result` of a group of tests (a suite) and test counts for each result type. */
-final class SuiteResult(
+/**
+ * Provides the overall `result` of a group of tests (a suite) and test counts for each result type.
+ */
+private[sbt] final class SuiteResult(
     val result: TestResult,
     val passedCount: Int,
     val failureCount: Int,
@@ -97,9 +99,11 @@ final class SuiteResult(
   }
 }
 
-object SuiteResult {
+private[sbt] object SuiteResult {
 
-  /** Computes the overall result and counts for a suite with individual test results in `events`. */
+  /**
+   * Computes the overall result and counts for a suite with individual test results in `events`.
+   */
   def apply(events: Seq[TEvent]): SuiteResult = {
     def count(status: TStatus) = events.count(_.status == status)
     new SuiteResult(

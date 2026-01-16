@@ -26,7 +26,7 @@ class InstallSbtnSpec extends AnyFlatSpec {
       ()
     }
   }
-  private[this] val term = new Terminal {
+  private val term = new Terminal {
     def getHeight: Int = 0
     def getWidth: Int = 0
     def inputStream: InputStream = () => -1

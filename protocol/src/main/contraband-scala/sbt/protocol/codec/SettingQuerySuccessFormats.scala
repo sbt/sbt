@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait SettingQuerySuccessFormats { self: sbt.internal.util.codec.JValueFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val SettingQuerySuccessFormat: JsonFormat[sbt.protocol.SettingQuerySuccess] = new JsonFormat[sbt.protocol.SettingQuerySuccess] {
+trait SettingQuerySuccessFormats { self: sbt.internal.util.codec.JValueFormats & sjsonnew.BasicJsonProtocol =>
+given SettingQuerySuccessFormat: JsonFormat[sbt.protocol.SettingQuerySuccess] = new JsonFormat[sbt.protocol.SettingQuerySuccess] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.SettingQuerySuccess = {
     __jsOpt match {
       case Some(__js) =>

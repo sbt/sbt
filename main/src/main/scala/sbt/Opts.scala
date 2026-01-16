@@ -8,14 +8,13 @@
 
 package sbt
 
-import sbt.librarymanagement.{ MavenRepository, Resolver }
-import sbt.librarymanagement.ivy.Credentials
+import sbt.librarymanagement.{ Credentials, Resolver }
 
 import java.io.File
-import java.net.URL
+import java.net.URI
 
 import sbt.io.Path
-import Path._
+import Path.*
 
 /** Options for well-known tasks. */
 object Opts {
@@ -33,66 +32,52 @@ object Opts {
     def sourceUrl(u: String): Seq[String] = Seq("-doc-source-url", u)
     def title(t: String): Seq[String] = Seq("-doc-title", t)
     def version(v: String): Seq[String] = Seq("-doc-version", v)
-    def externalAPI(mappings: Iterable[(File, URL)]): Seq[String] =
+    def externalAPI(mappings: Iterable[(File, URI)]): Seq[String] =
       if (mappings.isEmpty) Nil
       else
         mappings
-          .map { case (f, u) => s"${f.getAbsolutePath}#${u.toExternalForm}" }
+          .map { (f, u) => s"${f.getAbsolutePath}#${u.toURL().toExternalForm}" }
           .mkString("-doc-external-doc:", ",", "") :: Nil
   }
   object resolver {
-    import sbt.io.syntax._
-    @deprecated("Use sonatypeOssReleases instead", "1.7.0")
-    val sonatypeReleases = Resolver.sonatypeRepo("releases")
-    val sonatypeOssReleases = Resolver.sonatypeOssRepos("releases")
+    import sbt.io.syntax.*
 
-    @deprecated("Use sonatypeOssSnapshots instead", "1.7.0")
-    val sonatypeSnapshots = Resolver.sonatypeRepo("snapshots")
-    val sonatypeOssSnapshots = Resolver.sonatypeOssRepos("snapshots")
-
-    val sonatypeStaging = MavenRepository(
-      "sonatype-staging",
-      "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-    )
-    val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository")(
+    val mavenLocalFile = Resolver.file("Local Repository", userHome / ".m2" / "repository")(using
       Resolver.defaultPatterns
     )
-    val sbtSnapshots = Resolver.bintrayRepo("sbt", "maven-snapshots")
-    val sbtIvySnapshots = Resolver.bintrayIvyRepo("sbt", "ivy-snapshots")
   }
 }
 
 object DefaultOptions {
-  import Opts._
-  import sbt.io.syntax._
+  import Opts.*
+  import sbt.io.syntax.*
   import BuildPaths.{ getGlobalBase, getGlobalSettingsDirectory }
-  import Project.extract
+  import sbt.ProjectExtra.extract
   import Def.Setting
 
   def javac: Seq[String] = compile.encoding("UTF-8")
   def scalac: Seq[String] = compile.encoding("UTF-8")
   def javadoc(name: String, version: String): Seq[String] =
-    Seq("-doctitle", "%s %s API".format(name, version))
+    Seq("-doctitle", s"${name} ${version} API")
   def scaladoc(name: String, version: String): Seq[String] =
     doc.title(name) ++ doc.version(version)
 
   def resolvers(snapshot: Boolean): Vector[Resolver] = {
-    if (snapshot) Vector(resolver.sbtSnapshots) else Vector.empty
+    Vector.empty
   }
   def pluginResolvers(plugin: Boolean, snapshot: Boolean): Vector[Resolver] = {
-    if (plugin && snapshot) Vector(resolver.sbtSnapshots, resolver.sbtIvySnapshots)
+    if (plugin && snapshot) Vector.empty
     else Vector.empty
   }
-  def addResolvers: Setting[_] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
-  def addPluginResolvers: Setting[_] =
+  def addResolvers: Setting[?] = Keys.resolvers ++= { resolvers(Keys.isSnapshot.value) }
+  def addPluginResolvers: Setting[?] =
     Keys.resolvers ++= pluginResolvers(Keys.sbtPlugin.value, Keys.isSnapshot.value)
 
   def credentials(state: State): Credentials =
     Credentials(getGlobalSettingsDirectory(state, getGlobalBase(state)) / ".credentials")
-  def addCredentials: Setting[_] = Keys.credentials += { credentials(Keys.state.value) }
+  def addCredentials: Setting[?] = Keys.credentials += credentials(Keys.state.value)
 
   def shellPrompt(version: String): State => String =
-    s =>
-      "%s:%s:%s> ".format(s.configuration.provider.id.name, extract(s).currentProject.id, version)
-  def setupShellPrompt: Setting[_] = Keys.shellPrompt := { shellPrompt(Keys.version.value) }
+    s => s"${s.configuration.provider.id.name}:${Project.extract(s).currentProject.id}:${version}> "
+  def setupShellPrompt: Setting[?] = Keys.shellPrompt := { shellPrompt(Keys.version.value) }
 }

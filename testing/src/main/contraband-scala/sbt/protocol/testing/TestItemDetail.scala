@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -29,7 +29,7 @@ final class TestItemDetail private (
   override def toString: String = {
     "TestItemDetail(" + fullyQualifiedName + ", " + status + ", " + duration + ")"
   }
-  private[this] def copy(fullyQualifiedName: String = fullyQualifiedName, status: sbt.testing.Status = status, duration: Option[Long] = duration): TestItemDetail = {
+  private def copy(fullyQualifiedName: String = fullyQualifiedName, status: sbt.testing.Status = status, duration: Option[Long] = duration): TestItemDetail = {
     new TestItemDetail(fullyQualifiedName, status, duration)
   }
   def withFullyQualifiedName(fullyQualifiedName: String): TestItemDetail = {

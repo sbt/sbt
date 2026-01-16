@@ -8,18 +8,18 @@
 
 package sbt.util
 
-import scala.reflect.Manifest
+import scala.reflect.ClassTag
 
 import sjsonnew.{ BasicJsonProtocol, Builder, deserializationError, JsonFormat, Unbuilder }
 
 object StampedFormat extends BasicJsonProtocol {
 
-  def apply[T](format: JsonFormat[T])(implicit mf: Manifest[JsonFormat[T]]): JsonFormat[T] = {
+  def apply[T](format: JsonFormat[T])(using mf: ClassTag[JsonFormat[T]]): JsonFormat[T] = {
     withStamp(stamp(format))(format)
   }
 
-  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(
-      implicit formatStamp: JsonFormat[S],
+  def withStamp[T, S](stamp: S)(format: JsonFormat[T])(using
+      formatStamp: JsonFormat[S],
       equivStamp: Equiv[S]
   ): JsonFormat[T] =
     new JsonFormat[T] {
@@ -47,9 +47,9 @@ object StampedFormat extends BasicJsonProtocol {
       }
     }
 
-  private def stamp[T](format: JsonFormat[T])(implicit mf: Manifest[JsonFormat[T]]): Int =
-    typeHash(mf)
+  private def stamp[T](format: JsonFormat[T])(using mf: ClassTag[JsonFormat[T]]): Int =
+    typeHash(using mf)
 
-  private def typeHash[T](implicit mf: Manifest[T]) = mf.toString.hashCode
+  private def typeHash[T](using mf: ClassTag[T]) = mf.toString.hashCode
 
 }

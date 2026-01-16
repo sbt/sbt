@@ -8,19 +8,29 @@
 
 package sbt.internal.util
 
-import org.scalatest.flatspec.AnyFlatSpec
+import hedgehog.*
+import hedgehog.runner.*
 
-class SourcePositionSpec extends AnyFlatSpec {
-  "SourcePosition()" should "return a sane SourcePosition" in {
-    val filename = "SourcePositionSpec.scala"
-    val lineNumber = 17
-    SourcePosition.fromEnclosing() match {
-      case LinePosition(path, startLine) => assert(path === filename && startLine === lineNumber)
-      case RangePosition(path, range)    => assert(path === filename && inRange(range, lineNumber))
-      case NoPosition                    => fail("No source position found")
-    }
-  }
+object SourcePositionSpec extends Properties:
+  override def tests: List[Test] = List(
+    example(
+      "SourcePosition() should return a SourcePosition", {
+        val filename = "SourcePositionSpec.scala"
+        val lineNumber = 19
+        SourcePosition.fromEnclosing() match {
+          case pos @ LinePosition(path, startLine) =>
+            Result.assert(path == filename && startLine == lineNumber).log(pos.toString())
+            Result
+              .assert(pos.sourceCode == Some("SourcePosition.fromEnclosing()"))
+              .log(pos.sourceCode.toString())
+          case pos @ RangePosition(path, range) =>
+            Result.assert(path == filename && inRange(range, lineNumber)).log(pos.toString())
+          case NoPosition => Result.assert(false).log("No source position found")
+        }
+      }
+    )
+  )
 
   private def inRange(range: LineRange, lineNo: Int) =
     range.start until range.end contains lineNo
-}
+end SourcePositionSpec

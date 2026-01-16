@@ -10,24 +10,97 @@ package sbt
 package plugins
 
 import java.io.File
+import java.util.Locale
 
-import sbt.Def._
-import sbt.Keys._
-import sbt.SlashSyntax0._
-import sbt.Project._
-import sbt.internal.graph._
+import sbt.Def.*
+import sbt.Keys.*
+import sbt.ProjectExtra.*
+import sbt.internal.graph.*
 import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }
-import sbt.internal.librarymanagement._
+import sbt.internal.librarymanagement.*
 import sbt.internal.util.complete.{ Parser, Parsers }
+import sbt.internal.util.complete.DefaultParsers.*
 import sbt.io.IO
-import sbt.io.syntax._
-import sbt.librarymanagement._
+import sbt.io.syntax.*
+import sbt.librarymanagement.*
+import sbt.util.{ Level, Logger }
+import scala.Console
 
-object DependencyTreeSettings {
-  import sjsonnew.BasicJsonProtocol._
-  import MiniDependencyTreeKeys._
-  import DependencyTreeKeys._
+private[sbt] object DependencyTreeSettings:
+  import sjsonnew.BasicJsonProtocol.*
+  import DependencyTreeKeys.*
+
+  enum Arg:
+    case Help
+    case Quiet
+    case Format(format: Fmt)
+    case Out(out: String)
+    case Browse
+
+  enum Fmt:
+    case Tree
+    case List
+    case Stats
+    case Json
+    case Graph
+    case HtmlGraph
+    case Html
+    case Xml
+
+  // Parser for the supported formats
+  lazy val FmtParser: Parser[Fmt] =
+    (("tree" ^^^ Fmt.Tree)
+      | ("list" ^^^ Fmt.List)
+      | ("stats" ^^^ Fmt.Stats)
+      | ("json" ^^^ Fmt.Json)
+      | ("dot" ^^^ Fmt.Graph)
+      | ("graph" ^^^ Fmt.Graph)
+      | ("html-graph" ^^^ Fmt.HtmlGraph)
+      | ("html" ^^^ Fmt.Html)
+      | ("xml" ^^^ Fmt.Xml))
+
+  lazy val ArgParser: Parser[Arg] =
+    Space ~> (("help" ^^^ Arg.Help)
+      | ("--help" ^^^ Arg.Help)
+      | FmtParser.map(fmt => Arg.Format(fmt)))
+
+  lazy val ArgOptionParser: Parser[Arg] =
+    Space ~> (("--quiet" ^^^ Arg.Quiet)
+      | ("--browse" ^^^ Arg.Browse)
+      | ("--out" ~> Space ~> StringBasic)
+        .map(Arg.Out(_))
+        .examples("--out /tmp/deps.txt"))
+
+  // You can have zero-or-one format and options afterwards
+  lazy val ArgsParser: Parser[Seq[Arg]] =
+    (ArgParser.? ~ ArgOptionParser.*).map:
+      case (a, opts) => a.toList ::: opts.toList
+
+  def usageText: String =
+    s"""dependencyTree task displays the dependency graph.
+
+USAGE
+  dependencyTree [subcommand] [options]
+
+SUBCOMMAND
+  tree         Prints ascii tree (default)
+  list         Prints list of all dependencies
+  graph        Prints GraphViz DOT file
+  dot          Same as graph
+  html         Creates HTML page
+  html-graph   Creates HTML page with GraphViz DOT file
+  json         Prints JSON
+  xml          Prints GraphML
+  stats        Prints statistics for all dependencies
+  help         Prints this help
+
+OPTIONS
+  --quiet      Returns the output as task value, replacing asString
+  --out <file> Writes the output to the specified file;
+               The file extension will influence the default subcommand
+  --browse     Opens the browser when combined with graph or html subcommand
+"""
 
   /**
    * Core settings needed for any graphing tasks.
@@ -39,97 +112,128 @@ object DependencyTreeSettings {
       // dependency tree
       dependencyTreeIgnoreMissingUpdate / updateOptions := updateOptions.value
         .withCachedResolution(false),
-      dependencyTreeIgnoreMissingUpdate / ivyConfiguration := {
+      dependencyTreeIgnoreMissingUpdate / ivyConfiguration := Def.uncached {
         // inTask will make sure the new definition will pick up `updateOptions in dependencyTreeIgnoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
       },
-      dependencyTreeIgnoreMissingUpdate / ivyModule := {
+      dependencyTreeIgnoreMissingUpdate / ivyModule := Def.uncached {
         // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
         // NOT correctly force the scope when applied to `TaskKey.toTask` instances (as opposed to raw
         // implementations like `Classpaths.mkIvyConfiguration` or `Classpaths.updateTask`)
         val is = new IvySbt((dependencyTreeIgnoreMissingUpdate / ivyConfiguration).value)
         new is.Module(moduleSettings.value)
       },
-      // don't fail on missing dependencies
+      // don't fail on missing dependencies or eviction errors
       dependencyTreeIgnoreMissingUpdate / updateConfiguration := updateConfiguration.value
         .withMissingOk(true),
-      dependencyTreeIgnoreMissingUpdate := {
+      dependencyTreeIgnoreMissingUpdate / evictionErrorLevel := Level.Warn,
+      dependencyTreeIgnoreMissingUpdate / assumedEvictionErrorLevel := Level.Warn,
+      dependencyTreeIgnoreMissingUpdate := Def.uncached {
         // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
-        inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
+        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
       },
     )
 
   /**
-   * MiniDependencyTreePlugin includes these settings for Compile and Test scopes
+   * DependencyTreePlugin includes these settings for Compile and Test scopes
    * to provide dependencyTree task.
    */
-  lazy val baseBasicReportingSettings: Seq[Def.Setting[_]] =
+  lazy val baseSettings: Seq[Def.Setting[?]] =
     Seq(
       dependencyTreeCrossProjectId := CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(
         projectID.value
       ),
-      dependencyTreeModuleGraph0 := {
+      dependencyTreeModuleGraph0 := Def.uncached {
         val sv = scalaVersion.value
+        val internalConfig = Configurations.internalMap(configuration.value)
         val g = dependencyTreeIgnoreMissingUpdate.value
-          .configuration(configuration.value)
-          .map(
-            report =>
-              SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
+          .configuration(internalConfig)
+          .map(report =>
+            SbtUpdateReport.fromConfigurationReport(report, dependencyTreeCrossProjectId.value)
           )
           .getOrElse(ModuleGraph.empty)
         if (dependencyTreeIncludeScalaLibrary.value) g
         else GraphTransformations.ignoreScalaLibrary(sv, g)
       },
-      dependencyTreeModuleGraphStore := (dependencyTreeModuleGraph0 storeAs dependencyTreeModuleGraphStore triggeredBy dependencyTreeModuleGraph0).value,
-    ) ++ {
-      renderingTaskSettings(dependencyTree) :+ {
-        dependencyTree / asString := {
-          rendering.AsciiTree.asciiTree(dependencyTreeModuleGraph0.value, asciiGraphWidth.value)
-        }
-      }
-    }
-
-  /**
-   * This is the maximum strength settings for DependencyTreePlugin.
-   */
-  lazy val baseFullReportingSettings: Seq[Def.Setting[_]] =
-    Seq(
-      // browse
-      dependencyBrowseGraphTarget := { target.value / "browse-dependency-graph" },
-      dependencyBrowseGraphHTML := browseGraphHTMLTask.value,
-      dependencyBrowseGraph := openBrowser(dependencyBrowseGraphHTML).value,
-      dependencyBrowseTreeTarget := { target.value / "browse-dependency-tree" },
-      dependencyBrowseTreeHTML := browseTreeHTMLTask.value,
-      dependencyBrowseTree := openBrowser(dependencyBrowseTreeHTML).value,
-      // dot support
-      dependencyDotFile := {
-        val config = configuration.value
-        target.value / "dependencies-%s.dot".format(config.toString)
-      },
-      dependencyDot / asString := rendering.DOT.dotGraph(
-        dependencyTreeModuleGraph0.value,
-        dependencyDotHeader.value,
-        dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
-        dependencyDotNodeColors.value
-      ),
-      dependencyDot := writeToFile(dependencyDot / asString, dependencyDotFile).value,
-      dependencyDotHeader :=
-        """|digraph "dependency-graph" {
-         |    graph[rankdir="LR"; splines=polyline]
-         |    edge [
-         |        arrowtail="none"
-         |    ]""".stripMargin,
-      dependencyDotNodeColors := true,
-      dependencyDotNodeLabel := { (organization: String, name: String, version: String) =>
-        """%s<BR/><B>%s</B><BR/>%s""".format(organization, name, version)
-      },
-      // GraphML support
-      dependencyGraphMLFile := {
-        val config = configuration.value
-        target.value / "dependencies-%s.graphml".format(config.toString)
-      },
-      dependencyGraphML := dependencyGraphMLTask.value,
+      dependencyTreeModuleGraphStore := dependencyTreeModuleGraph0
+        .storeAs(dependencyTreeModuleGraphStore)
+        .triggeredBy(dependencyTreeModuleGraph0)
+        .value,
+      dependencyTree := (Def.inputTaskDyn {
+        val s = streams.value
+        val args = ArgsParser.parsed.toList
+        val isHelp = args.contains(Arg.Help)
+        val isQuiet = args.contains(Arg.Quiet)
+        val isBrowse = args.contains(Arg.Browse)
+        if isHelp then Def.task { s.log.info(usageText); "" }
+        else
+          val formatOpt = (args
+            .collect { case Arg.Format(fmt) => fmt })
+            .reverse
+            .headOption
+          val outFileNameOpt = (args
+            .collect { case Arg.Out(out) => out })
+            .reverse
+            .headOption
+          val outFileOpt = outFileNameOpt.map(new File(_))
+          val format = (formatOpt, outFileNameOpt) match
+            case (None, Some(out)) if out.endsWith(".dot")             => Fmt.Graph
+            case (None, Some(out)) if out.endsWith(".html")            => Fmt.Html
+            case (None, Some(out)) if out.endsWith(".xml")             => Fmt.Xml
+            case (None, Some(out)) if out.endsWith(".json")            => Fmt.Json
+            case (Some(Fmt.Graph), Some(out)) if out.endsWith(".html") => Fmt.HtmlGraph
+            case (Some(Fmt.Graph), _) if isBrowse                      => Fmt.HtmlGraph
+            case (Some(fmt), _)                                        => fmt
+            case _                                                     => Fmt.Tree
+          val config = configuration.value.name
+          val targetDir = target.value / config / format.toString.toLowerCase(Locale.ENGLISH)
+          format match
+            case Fmt.Tree | Fmt.List | Fmt.Stats =>
+              Def.task {
+                val graph = dependencyTreeModuleGraph0.value
+                val output = format match
+                  case Fmt.List  => rendering.FlatList.render(_.id.idString)(graph)
+                  case Fmt.Stats => rendering.Statistics.renderModuleStatsList(graph)
+                  case _         => rendering.AsciiTree.asciiTree(graph, asciiGraphWidth.value)
+                handleOutput(output, outFileOpt, isQuiet, s.log)
+              }
+            case Fmt.Json =>
+              Def.task {
+                val graph = dependencyTreeModuleGraph0.value
+                val output = TreeView.createJson(graph)
+                handleOutput(output, outFileOpt, isQuiet, s.log)
+              }
+            case Fmt.Xml =>
+              Def.task {
+                val graph = dependencyTreeModuleGraph0.value
+                val output = rendering.GraphML.graphMLAsString(graph)
+                handleOutput(output, outFileOpt, isQuiet, s.log)
+              }
+            case Fmt.Html =>
+              Def.task {
+                val graph = dependencyTreeModuleGraph0.value
+                val renderedTree = TreeView.createJson(graph)
+                val outputFile = TreeView.createFile(renderedTree, targetDir)
+                if isBrowse then openBrowser(outputFile.toURI)
+                outputFile.getAbsolutePath
+              }
+            case Fmt.Graph | Fmt.HtmlGraph =>
+              Def.task {
+                val graph = dependencyTreeModuleGraph0.value
+                val output = rendering.DOT.dotGraph(
+                  graph,
+                  dependencyDotHeader.value,
+                  dependencyDotNodeLabel.value,
+                  rendering.DOT.HTMLLabelRendering.AngleBrackets,
+                  dependencyDotNodeColors.value
+                )
+                if format == Fmt.Graph then handleOutput(output, outFileOpt, isQuiet, s.log)
+                else
+                  val outputFile = DagreHTML.createFile(output, targetDir)
+                  if isBrowse then openBrowser(outputFile.toURI)
+                  outputFile.getAbsolutePath
+              }
+      }).evaluated,
       whatDependsOn := {
         val ArtifactPattern(org, name, versionFilter) = artifactPatternParser.parsed
         val graph = dependencyTreeModuleGraph0.value
@@ -152,145 +256,121 @@ object DependencyTreeSettings {
         }
         output
       },
-    ) ++
-      renderingAlternatives.flatMap { case (key, renderer) => renderingTaskSettings(key, renderer) }
-
-  def renderingAlternatives: Seq[(TaskKey[Unit], ModuleGraph => String)] =
-    Seq(
-      dependencyList -> rendering.FlatList.render(_.id.idString),
-      dependencyStats -> rendering.Statistics.renderModuleStatsList _,
-      dependencyLicenseInfo -> rendering.LicenseInfo.render _
-    )
-
-  def renderingTaskSettings(key: TaskKey[Unit], renderer: ModuleGraph => String): Seq[Setting[_]] =
-    renderingTaskSettings(key) :+ {
-      key / asString := renderer(dependencyTreeModuleGraph0.value)
-    }
-
-  def renderingTaskSettings(key: TaskKey[Unit]): Seq[Setting[_]] =
-    Seq(
-      key := {
+      dependencyLicenseInfo := (Def.inputTaskDyn {
         val s = streams.value
-        val str = (key / asString).value
-        synchronized {
-          s.log.info(str)
-        }
-      },
-      key / toFile := {
-        val (targetFile, force) = targetFileAndForceParser.parsed
-        writeToFile(key.key.label, (key / asString).value, targetFile, force, streams.value)
-      },
+        val args = ArgsParser.parsed.toList
+        val isHelp = args.contains(Arg.Help)
+        val isQuiet = args.contains(Arg.Quiet)
+        if isHelp then Def.task { s.log.info(licenseInfoUsageText); "" }
+        else
+          val formatOpt = (args
+            .collect { case Arg.Format(fmt) => fmt })
+            .reverse
+            .headOption
+          val outFileNameOpt = (args
+            .collect { case Arg.Out(out) => out })
+            .reverse
+            .headOption
+          val outFileOpt = outFileNameOpt.map(new File(_))
+          val format = (formatOpt, outFileNameOpt) match
+            case (None, Some(out)) if out.endsWith(".json") => Fmt.Json
+            case (Some(fmt), _)                             => fmt
+            case _                                          => Fmt.Tree
+          Def.task {
+            val graph = dependencyTreeModuleGraph0.value
+            val output = format match
+              case Fmt.Json => rendering.LicenseInfo.renderJson(graph)
+              case _        => rendering.LicenseInfo.render(graph)
+            handleOutput(output, outFileOpt, isQuiet, s.log)
+          }
+      }).evaluated,
     )
 
-  def dependencyGraphMLTask =
-    Def.task {
-      val resultFile = dependencyGraphMLFile.value
-      val graph = dependencyTreeModuleGraph0.value
-      rendering.GraphML.saveAsGraphML(graph, resultFile.getAbsolutePath)
-      streams.value.log.info("Wrote dependency graph to '%s'" format resultFile)
-      resultFile
-    }
+  def licenseInfoUsageText: String =
+    s"""dependencyLicenseInfo task displays license information for dependencies.
 
-  def browseGraphHTMLTask =
-    Def.task {
-      val graph = dependencyTreeModuleGraph0.value
-      val dotGraph = rendering.DOT.dotGraph(
-        graph,
-        dependencyDotHeader.value,
-        dependencyDotNodeLabel.value,
-        rendering.DOT.AngleBrackets,
-        dependencyDotNodeColors.value
-      )
-      val link = DagreHTML.createLink(dotGraph, dependencyBrowseGraphTarget.value)
-      streams.value.log.info(s"HTML graph written to $link")
-      link
-    }
+USAGE
+  dependencyLicenseInfo [subcommand] [options]
 
-  def browseTreeHTMLTask =
-    Def.task {
-      val graph = dependencyTreeModuleGraph0.value
-      val renderedTree = TreeView.createJson(graph)
-      val link = TreeView.createLink(renderedTree, dependencyBrowseTreeTarget.value)
-      streams.value.log.info(s"HTML tree written to $link")
-      link
-    }
+SUBCOMMAND
+  json         Prints JSON (default is text)
+  help         Prints this help
 
-  def writeToFile(dataTask: TaskKey[String], fileTask: SettingKey[File]) =
-    Def.task {
-      val outFile = fileTask.value
-      IO.write(outFile, dataTask.value, IO.utf8)
+OPTIONS
+  --quiet      Returns the output as task value
+  --out <file> Writes the output to the specified file;
+               The file extension will influence the default subcommand
+"""
 
-      streams.value.log.info("Wrote dependency graph to '%s'" format outFile)
-      outFile
-    }
+  private def handleOutput(
+      content: String,
+      outputFileOpt: Option[File],
+      isQuiet: Boolean,
+      log: Logger,
+  ): String =
+    outputFileOpt match
+      case Some(output) =>
+        IO.write(output, content, IO.utf8)
+        if !isQuiet then log.info(s"wrote dependencies to $output")
+        output.toString
+      case None =>
+        if isQuiet then content
+        else
+          Console.out.println(content); ""
 
-  def writeToFile(
-      what: String,
-      data: String,
-      targetFile: File,
-      force: Boolean,
-      streams: TaskStreams
-  ): File =
-    if (targetFile.exists && !force)
-      throw new RuntimeException(
-        s"Target file for $what already exists at ${targetFile.getAbsolutePath}. Use '-f' to override"
-      )
-    else {
-      IO.write(targetFile, data, IO.utf8)
-
-      streams.log.info(s"Wrote $what to '$targetFile'")
-      targetFile
-    }
-
-  def absoluteReportPath = (file: File) => file.getAbsolutePath
-
-  def openBrowser(uriKey: TaskKey[URI]) =
-    Def.task {
-      val uri = uriKey.value
-      streams.value.log.info(s"Opening ${uri} in browser...")
-      val desktop = java.awt.Desktop.getDesktop
-      desktop.synchronized {
-        desktop.browse(uri)
-      }
-      uri
+  def openBrowser(uri: URI): Unit =
+    val desktop = java.awt.Desktop.getDesktop
+    desktop.synchronized {
+      desktop.browse(uri)
     }
 
   case class ArtifactPattern(organization: String, name: String, version: Option[String])
 
-  import sbt.internal.util.complete.DefaultParsers._
+  private[plugins] def createArtifactPatternParser(
+      graph: ModuleGraph
+  ): Parser[ArtifactPattern] =
+    graph.nodes
+      .map(_.id)
+      .groupBy(m => (m.organization, m.name))
+      .map { case ((org, name), modules) =>
+        // Empty versions cause parser token creation to fail
+        val versionParsers: Seq[Parser[Option[String]]] =
+          modules
+            .filter(_.version.nonEmpty)
+            .map { id =>
+              token(Space ~> id.version).?
+            }
+
+        // Handle modules with only empty versions
+        val effectiveVersionParser =
+          if versionParsers.isEmpty then success(None)
+          else oneOf(versionParsers)
+
+        (Space ~> token(org) ~ token(Space ~> name) ~ effectiveVersionParser).map {
+          case ((org, name), version) => ArtifactPattern(org, name, version)
+        }
+      }
+      .reduceOption(_ | _)
+      .getOrElse {
+        // If the dependencyTreeModuleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
+        ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
+          StringBasic,
+          "<module>"
+        )) ~ (Space ~> token(StringBasic, "<version?>")).?).map { case ((org, mod), version) =>
+          ArtifactPattern(org, mod, version)
+        }
+      }
+
   val artifactPatternParser: Def.Initialize[State => Parser[ArtifactPattern]] =
     Keys.resolvedScoped { ctx => (state: State) =>
-      val graph = Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
-        Nil,
-        Nil
-      )
-
-      graph.nodes
-        .map(_.id)
-        .groupBy(m => (m.organization, m.name))
-        .map {
-          case ((org, name), modules) =>
-            val versionParsers: Seq[Parser[Option[String]]] =
-              modules.map { id =>
-                token(Space ~> id.version).?
-              }
-
-            (Space ~> token(org) ~ token(Space ~> name) ~ oneOf(versionParsers)).map {
-              case ((org, name), version) => ArtifactPattern(org, name, version)
-            }
-        }
-        .reduceOption(_ | _)
-        .getOrElse {
-          // If the dependencyTreeModuleGraphStore couldn't be loaded because no dependency tree command was run before, we should still provide a parser for the command.
-          ((Space ~> token(StringBasic, "<organization>")) ~ (Space ~> token(
-            StringBasic,
-            "<module>"
-          )) ~ (Space ~> token(StringBasic, "<version?>")).?).map {
-            case ((org, mod), version) =>
-              ArtifactPattern(org, mod, version)
-          }
-        }
+      val graph =
+        Defaults.loadFromContext(dependencyTreeModuleGraphStore, ctx, state) getOrElse ModuleGraph(
+          Nil,
+          Nil
+        )
+      createArtifactPatternParser(graph)
     }
+
   val shouldForceParser: Parser[Boolean] =
     (Space ~> (Parser.literal("-f") | "--force")).?.map(_.isDefined)
 
@@ -318,4 +398,4 @@ object DependencyTreeSettings {
       case _ => None
     }
   }
-}
+end DependencyTreeSettings

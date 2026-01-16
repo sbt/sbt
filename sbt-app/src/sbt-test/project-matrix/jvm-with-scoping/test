@@ -1,0 +1,6 @@
+> compile
+
+$ exists target/out/jvm/scala-2.13.15/core/classes/a/Core.class
+$ exists target/out/jvm/scala-2.12.21/core/classes/a/Core.class
+
+> core2_13/check

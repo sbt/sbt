@@ -8,33 +8,33 @@
 
 package sbt.internal.util
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
-import sbt.util._
+import verify.BasicTestSuite
+import sbt.util.*
+import sbt.internal.util.appmacro.StringTypeTag
 import java.io.{ File, PrintWriter }
 import sbt.io.Using
-import scala.annotation.nowarn
 
-class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
-  val context = LoggerContext(useLog4J = true)
-  @nowarn
-  val asyncStdout = new ConsoleAppenderFromLog4J("asyncStdout", LogExchange.asyncStdout)
+object ManagedLoggerSpec extends BasicTestSuite:
+  val context: LoggerContext = LoggerContext()
+  // TODO create a new appender for testing purposes - 3/12/21
+  val asyncStdout: Appender = ConsoleAppender()
   def newLogger(name: String): ManagedLogger = context.logger(name, None, None)
-  "ManagedLogger" should "log to console" in {
+
+  test("ManagedLogger should log to console"):
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.info("test_info")
     log.debug("test_debug")
-  }
 
-  it should "support event logging" in {
-    import sjsonnew.BasicJsonProtocol._
+  test("ManagedLogger should support event logging"):
+    import sjsonnew.BasicJsonProtocol.*
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(1)
-  }
 
-  it should "validate performance improvement of disabling location calculation for async loggers" in {
+  test(
+    "ManagedLogger should validate performance improvement of disabling location calculation for async loggers"
+  ):
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     val before = System.currentTimeMillis()
@@ -42,80 +42,66 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
       log.debug("test")
     }
     val after = System.currentTimeMillis()
+    log.info(s"Performance test took: ${after - before}ms")
 
-    log.info(s"Peformance test took: ${after - before}ms")
-  }
-
-  it should "support logging Throwable out of the box" in {
-    import sbt.internal.util.codec.JsonProtocol._
+  test("ManagedLogger should support logging Throwable out of the box"):
+    import sbt.internal.util.codec.JsonProtocol.given
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
     log.infoEvent(SuccessEvent("yes"))
-  }
 
-  it should "allow registering Show[Int]" in {
-    import sjsonnew.BasicJsonProtocol._
+  test("ManagedLogger should allow registering Show[Int]"):
+    import sjsonnew.BasicJsonProtocol.given
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intShow: ShowLines[Int] =
+    given ShowLines[Int] =
       ShowLines((x: Int) => Vector(s"String representation of $x"))
     log.registerStringCodec[Int]
     log.infoEvent(1)
-  }
 
-  it should "allow registering Show[Array[Int]]" in {
-    import sjsonnew.BasicJsonProtocol._
+  test("ManagedLogger should allow registering Show[Array[Int]]"):
+    import sjsonnew.BasicJsonProtocol.given
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intArrayShow: ShowLines[Array[Int]] =
+    given ShowLines[Array[Int]] =
       ShowLines((x: Array[Int]) => Vector(s"String representation of ${x.mkString}"))
     log.registerStringCodec[Array[Int]]
     log.infoEvent(Array(1, 2, 3))
-  }
 
-  it should "allow registering Show[Vector[Vector[Int]]]" in {
-    import sjsonnew.BasicJsonProtocol._
+  test("ManagedLogger should allow registering Show[Vector[Vector[Int]]]"):
+    import sjsonnew.BasicJsonProtocol.given
     val log = newLogger("foo")
     context.addAppender("foo", asyncStdout -> Level.Info)
-    implicit val intVectorShow: ShowLines[Vector[Vector[Int]]] =
+    given ShowLines[Vector[Vector[Int]]] =
       ShowLines((xss: Vector[Vector[Int]]) => Vector(s"String representation of $xss"))
     log.registerStringCodec[Vector[Vector[Int]]]
     log.infoEvent(Vector(Vector(1, 2, 3)))
-  }
 
-  it should "be thread safe" in {
+  test("ManagedLogger should be thread safe"):
     import java.util.concurrent.{ Executors, TimeUnit }
     val pool = Executors.newFixedThreadPool(100)
-    for {
-      i <- 1 to 10000
-    } {
-      pool.submit(new Runnable {
-        def run(): Unit = {
-          val stringTypeTag = StringTypeTag.fast[List[Int]]
-          val log = newLogger(s"foo$i")
-          context.addAppender(s"foo$i", asyncStdout -> Level.Info)
-          if (i % 100 == 0) {
-            log.info(s"foo$i test $stringTypeTag")
-          }
-          Thread.sleep(1)
-        }
-      })
-    }
+    for i <- 1 to 10000 do
+      pool.submit((() =>
+        val stringTypeTag = implicitly[StringTypeTag[List[Int]]]
+        val log = newLogger(s"foo$i")
+        context.addAppender(s"foo$i", asyncStdout -> Level.Info)
+        if i % 100 == 0 then log.info(s"foo$i test $stringTypeTag")
+        Thread.sleep(1)
+      ): Runnable)
     pool.shutdown
     pool.awaitTermination(30, TimeUnit.SECONDS)
-  }
+    ()
 
-  "global logging" should "log immediately after initialization" in {
+  test("global logging should log immediately after initialization"):
     // this is passed into State normally
     val global0 = initialGlobalLogging
     val full = global0.full
     (1 to 3).toList foreach { x =>
       full.info(s"test$x")
     }
-  }
 
   // This is done in Mainloop.scala
-  it should "create a new backing with newAppender" in {
+  test("global logging should create a new backing with newAppender"):
     val global0 = initialGlobalLogging
     val logBacking0 = global0.backing
     val global1 = Using.fileWriter(append = true)(logBacking0.file) { writer =>
@@ -137,12 +123,11 @@ class ManagedLoggerSpec extends AnyFlatSpec with Matchers {
       // System.console.readLine
       assert(logBacking1.file.exists)
     }
-  }
 
-  val console = ConsoleOut.systemOut
+  val console: ConsoleOut = ConsoleOut.systemOut
   def initialGlobalLogging: GlobalLogging = GlobalLogging.initial(
     MainAppender.globalDefault(console),
     File.createTempFile("sbt", ".log"),
     console
   )
-}
+end ManagedLoggerSpec

@@ -10,24 +10,23 @@ package sbt
 package internal
 
 import java.net.URI
-import sbt.internal.util.complete, complete.{ DefaultParsers, Parser }, DefaultParsers._
-import sbt.compiler.Eval
+import sbt.internal.util.complete, complete.{ DefaultParsers, Parser }, DefaultParsers.*
 import Keys.sessionSettings
-import Project.updateCurrent
+import sbt.ProjectExtra.{ extract, updateCurrent }
 
 object ProjectNavigation {
   def command(s: State): Parser[() => State] =
-    if (s get sessionSettings isEmpty) failure("No project loaded")
+    if s.get(sessionSettings).isEmpty then failure("No project loaded")
     else (new ProjectNavigation(s)).command
 }
 
 final class ProjectNavigation(s: State) {
-  val extracted: Extracted = Project extract s
+  val extracted: Extracted = Project.extract(s)
   import extracted.{ currentRef, structure, session }
 
   def setProject(nuri: URI, nid: String): State = {
     val neval = if (currentRef.build == nuri) session.currentEval else mkEval(nuri)
-    updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
+    Project.updateCurrent(s.put(sessionSettings, session.setCurrent(nuri, nid, neval)))
   }
 
   def mkEval(nuri: URI): () => Eval = Load.lazyEval(structure.units(nuri).unit)
@@ -61,7 +60,7 @@ final class ProjectNavigation(s: State) {
 
   def fail(msg: String): State = { s.log.error(msg); s.fail }
 
-  import Parser._, complete.Parsers._
+  import Parser.*, complete.Parsers.*
 
   val parser: Parser[Option[ResolvedReference]] = {
     val reference = Act.resolvedReference(structure.index.keyIndex, currentRef.build, success(()))

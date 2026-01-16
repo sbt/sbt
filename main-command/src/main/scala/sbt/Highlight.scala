@@ -11,7 +11,7 @@ package sbt
 import java.util.regex.Pattern
 import scala.Console.{ BOLD, RESET }
 
-import sbt.internal.util.{ Terminal => UTerminal }
+import sbt.internal.util.{ Terminal as UTerminal }
 
 object Highlight {
 

@@ -1,11 +1,11 @@
-scalaVersion := "2.12.20"
+scalaVersion := "2.12.21"
 
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.28"
 updateOptions := updateOptions.value.withCachedResolution(true)
 
 TaskKey[Unit]("check") := {
   val report = (Test / updateFull).value
-  val graph = (Test / dependencyTree / asString).value
+  val graph = (Test / dependencyTree).toTask(" --quiet").value
 
   def sanitize(str: String): String = str.split('\n').drop(1).mkString("\n")
   val expectedGraph =

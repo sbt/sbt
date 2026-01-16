@@ -1,3 +1,4 @@
+scalaVersion := "2.12.21"
 val generateSourceFile = taskKey[Unit]("generate source file")
 generateSourceFile := {
   val testDir = ((Test / scalaSource).value.toPath / "Foo.scala").toString

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -30,7 +30,7 @@ final class InitializeBuildResult private (
   override def toString: String = {
     "InitializeBuildResult(" + displayName + ", " + version + ", " + bspVersion + ", " + capabilities + ", " + data + ")"
   }
-  private[this] def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, capabilities: sbt.internal.bsp.BuildServerCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildResult = {
+  private def copy(displayName: String = displayName, version: String = version, bspVersion: String = bspVersion, capabilities: sbt.internal.bsp.BuildServerCapabilities = capabilities, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): InitializeBuildResult = {
     new InitializeBuildResult(displayName, version, bspVersion, capabilities, data)
   }
   def withDisplayName(displayName: String): InitializeBuildResult = {

@@ -12,21 +12,22 @@ package internal
 import java.io.File
 import java.util.concurrent.Callable
 
-import sbt.SlashSyntax0._
-import sbt.internal.librarymanagement._
-import sbt.librarymanagement._
-import sbt.librarymanagement.syntax._
+import sbt.Def.ScopedKey
+import sbt.internal.librarymanagement.*
+import sbt.librarymanagement.*
+import sbt.librarymanagement.syntax.*
 import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
-import sbt.io.syntax._
-import sbt.Project.richInitializeTask
+import sbt.io.syntax.*
+import sbt.ProjectExtra.*
 import sjsonnew.JsonFormat
-import scala.compat.Platform.EOL
+import scala.concurrent.duration.FiniteDuration
 
 private[sbt] object LibraryManagement {
-  implicit val linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
+  given linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
 
-  private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration)
+  // The fourth element is transitive dependency stamps for cross-command cache invalidation
+  private type UpdateInputs = (Long, ModuleSettings, UpdateConfiguration, Vector[String])
 
   def cachedUpdate(
       lm: DependencyResolution,
@@ -37,7 +38,7 @@ private[sbt] object LibraryManagement {
       transform: UpdateReport => UpdateReport,
       skip: Boolean,
       force: Boolean,
-      depsUpdated: Boolean,
+      transitiveUpdates: Seq[UpdateReport],
       uwConfig: UnresolvedWarningConfiguration,
       evictionLevel: Level.Value,
       versionSchemeOverrides: Seq[ModuleID],
@@ -53,7 +54,7 @@ private[sbt] object LibraryManagement {
 
     /* Resolve the module settings from the inputs. */
     def resolve: UpdateReport = {
-      import sbt.util.ShowLines._
+      import sbt.util.ShowLines.*
 
       log.debug(s"Updating $label...")
       val reportOrUnresolved: Either[UnresolvedWarning, UpdateReport] =
@@ -68,32 +69,53 @@ private[sbt] object LibraryManagement {
       val report1 = transform(report)
 
       // Warn of any eviction and compatibility warnings
-      val evictionError = EvictionError(
+      val evictionErrorCompile = EvictionError(
         report1,
         module,
         versionSchemeOverrides,
         assumedVersionScheme,
         assumedVersionSchemeJava,
-        assumedEvictionErrorLevel
+        assumedEvictionErrorLevel,
+        Configurations.Compile,
+      )
+      val evictionErrorTest = EvictionError(
+        report1,
+        module,
+        versionSchemeOverrides,
+        assumedVersionScheme,
+        assumedVersionSchemeJava,
+        assumedEvictionErrorLevel,
+        Configurations.Test,
       )
       def extraLines = List(
         "",
         "this can be overridden using libraryDependencySchemes or evictionErrorLevel"
       )
-      val errorLines: Seq[String] =
-        (if (evictionError.incompatibleEvictions.isEmpty
-             || evictionLevel != Level.Error) Nil
+      def errorLinesFor(evictionError: EvictionError): Seq[String] =
+        (if (
+           evictionError.incompatibleEvictions.isEmpty
+           || evictionLevel != Level.Error
+         ) Nil
          else evictionError.lines) ++
-          (if (evictionError.assumedIncompatibleEvictions.isEmpty
-               || assumedEvictionErrorLevel != Level.Error) Nil
+          (if (
+             evictionError.assumedIncompatibleEvictions.isEmpty
+             || assumedEvictionErrorLevel != Level.Error
+           ) Nil
            else evictionError.toAssumedLines)
-      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(EOL))
+      val errorLines: Seq[String] =
+        errorLinesFor(evictionErrorCompile) ++ errorLinesFor(evictionErrorTest)
+      if (errorLines.nonEmpty) sys.error((errorLines ++ extraLines).mkString(System.lineSeparator))
       else {
-        if (evictionError.incompatibleEvictions.isEmpty) ()
-        else evictionError.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorCompile.incompatibleEvictions.isEmpty) ()
+        else evictionErrorCompile.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorCompile.assumedIncompatibleEvictions.isEmpty) ()
+        else
+          evictionErrorCompile.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
 
-        if (evictionError.assumedIncompatibleEvictions.isEmpty) ()
-        else evictionError.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
+        if (evictionErrorTest.incompatibleEvictions.isEmpty) ()
+        else evictionErrorTest.lines.foreach(log.log(evictionLevel, _: String))
+        if (evictionErrorTest.assumedIncompatibleEvictions.isEmpty) ()
+        else evictionErrorTest.toAssumedLines.foreach(log.log(assumedEvictionErrorLevel, _: String))
       }
       CompatibilityWarning.run(compatWarning, module, mavenStyle, log)
       val report2 = transformDetails(report1, includeCallers, includeDetails)
@@ -102,16 +124,17 @@ private[sbt] object LibraryManagement {
 
     /* Check if a update report is still up to date or we must resolve again. */
     def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
+      // Transitive dependency stamps are now part of UpdateInputs, so inChanged
+      // will be true if any transitive stamp changed (cross-command invalidation).
       !force &&
-      !depsUpdated &&
       !inChanged &&
-      out.allFiles.forall(f => fileUptodate(f, out.stamps, log)) &&
-      fileUptodate(out.cachedDescriptor, out.stamps, log)
+      out.allFiles.forall(f => fileUptodate(f.toString, out.stamps, log)) &&
+      fileUptodate(out.cachedDescriptor.toString, out.stamps, log)
     }
 
     /* Skip resolve if last output exists, otherwise error. */
     def skipResolve(cache: CacheStore)(inputs: UpdateInputs): UpdateReport = {
-      import sbt.librarymanagement.LibraryManagementCodec._
+      import sbt.librarymanagement.LibraryManagementCodec.given
       val cachedReport = Tracked
         .lastOutput[UpdateInputs, UpdateReport](cache) {
           case (_, Some(out)) => out
@@ -129,8 +152,8 @@ private[sbt] object LibraryManagement {
 
     def doResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       val doCachedResolve = { (inChanged: Boolean, updateInputs: UpdateInputs) =>
-        import sbt.librarymanagement.LibraryManagementCodec._
-        try {
+        import sbt.librarymanagement.LibraryManagementCodec.given
+        try
           var isCached = false
           val report = Tracked
             .lastOutput[UpdateInputs, UpdateReport](cache) {
@@ -142,9 +165,9 @@ private[sbt] object LibraryManagement {
                 resolve
             }
             .apply(updateInputs)
-          if (isCached) markAsCached(report) else report
-        } catch {
-          case t @ (_: NullPointerException | _: OutOfMemoryError) =>
+          if isCached then markAsCached(report) else report
+        catch
+          case t: (NullPointerException | OutOfMemoryError) =>
             val resolvedAgain = resolve
             val culprit = t.getClass.getSimpleName
             log.warn(s"Update task caching failed due to $culprit.")
@@ -152,9 +175,8 @@ private[sbt] object LibraryManagement {
             resolvedAgain.toString.linesIterator.foreach(log.warn(_))
             log.trace(t)
             resolvedAgain
-        }
       }
-      import LibraryManagementCodec._
+      import LibraryManagementCodec.given
       Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
     }
 
@@ -166,10 +188,13 @@ private[sbt] object LibraryManagement {
     val handler = if (skip && !force) skipResolve(outStore)(_) else doResolve(outStore)
     // Remove clock for caching purpose
     val withoutClock = updateConfig.withLogicalClock(LogicalClock.unknown)
-    handler((extraInputHash, settings, withoutClock))
+    // Collect transitive stamps for cross-command cache invalidation
+    val transitiveStamps = transitiveUpdates.flatMap(_.stats.stamp).toVector
+    handler((extraInputHash, settings, withoutClock, transitiveStamps))
   }
 
-  private[this] def fileUptodate(file: File, stamps: Map[File, Long], log: Logger): Boolean = {
+  private def fileUptodate(file0: String, stamps: Map[String, Long], log: Logger): Boolean = {
+    val file = File(file0)
     val exists = file.exists
     // https://github.com/sbt/sbt/issues/5292 warn the user that the file is missing since this indicates
     // that UpdateReport was persisted but Coursier cache was not.
@@ -178,7 +203,7 @@ private[sbt] object LibraryManagement {
     }
     // coursier doesn't populate stamps
     val timeStampIsSame = stamps
-      .get(file)
+      .get(file0)
       .forall(_ == IO.getModifiedTimeOrZero(file))
     exists && timeStampIsSame
   }
@@ -190,21 +215,21 @@ private[sbt] object LibraryManagement {
       uwconfig: UnresolvedWarningConfiguration,
       log: Logger
   ): Either[UnresolvedWarning, UpdateReport] = {
-    import config.{ updateConfiguration => c, module => mod }
-    import mod.{ id, dependencies => deps, scalaModuleInfo }
+    import config.{ updateConfiguration, module }
+    import module.{ id, dependencies, scalaModuleInfo }
     val base = restrictedCopy(id, true).withName(id.name + "$" + label)
-    val moduleSettings = ModuleDescriptorConfiguration(base, ModuleInfo(base.name))
-      .withScalaModuleInfo(scalaModuleInfo)
-      .withDependencies(deps)
-      .withConfigurations(mod.configurations)
-    val module = lm.moduleDescriptor(moduleSettings)
-    val report = lm.update(module, c, uwconfig, log) match {
+    val mod = lm.moduleDescriptor(base, dependencies, scalaModuleInfo)
+    val report = lm.update(mod, updateConfiguration, uwconfig, log) match {
       case Right(r) => r
       case Left(w) =>
         throw w.resolveException
     }
+    val key = (m: ModuleID) => (m.organization, m.name, m.revision)
+    val originalKeys = dependencies.map(key).toSet
+    val transitiveOnly = report.allModules.filterNot(m => originalKeys contains key(m))
+    val mergedDependencies = dependencies ++ transitiveOnly
     val newConfig = config
-      .withModule(mod.withDependencies(report.allModules))
+      .withModule(module.withDependencies(mergedDependencies))
     lm.updateClassifiers(newConfig, uwconfig, Vector(), log)
   }
 
@@ -215,7 +240,7 @@ private[sbt] object LibraryManagement {
       .withConfigurations(if (confs) m.configurations else None)
       .branch(m.branchName)
 
-  private[this] def transformDetails(
+  private def transformDetails(
       ur: UpdateReport,
       includeCallers: Boolean,
       includeDetails: Boolean
@@ -237,13 +262,13 @@ private[sbt] object LibraryManagement {
 
   val moduleIdJsonKeyFormat: sjsonnew.JsonKeyFormat[ModuleID] =
     new sjsonnew.JsonKeyFormat[ModuleID] {
-      import LibraryManagementCodec._
-      import sjsonnew.support.scalajson.unsafe._
+      import LibraryManagementCodec.given
+      import sjsonnew.support.scalajson.unsafe.*
       val moduleIdFormat: JsonFormat[ModuleID] = implicitly[JsonFormat[ModuleID]]
       def write(key: ModuleID): String =
-        CompactPrinter(Converter.toJsonUnsafe(key)(moduleIdFormat))
+        CompactPrinter(Converter.toJsonUnsafe(key)(using moduleIdFormat))
       def read(key: String): ModuleID =
-        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(moduleIdFormat)
+        Converter.fromJsonUnsafe[ModuleID](Parser.parseUnsafe(key))(using moduleIdFormat)
     }
 
   /**
@@ -251,40 +276,102 @@ private[sbt] object LibraryManagement {
    * for dependency definitions, transitively.
    */
   def updateClassifiersTask: Def.Initialize[Task[UpdateReport]] =
-    (Def.task {
-      import Keys._
-      val s = streams.value
-      val cacheDirectory = streams.value.cacheDirectory
-      val csr = useCoursier.value
-      val lm = dependencyResolution.value
-
-      if (csr) {
+    TupleWrap[
+      (
+          DependencyResolution,
+          State,
+          Keys.TaskStreams,
+          UpdateConfiguration,
+          Option[Level.Value],
+          Seq[ScopedKey[?]],
+          ScopedKey[?],
+          Option[FiniteDuration],
+          IvySbt#Module,
+          String,
+          ProjectRef,
+          Boolean,
+          Seq[UpdateReport],
+          UnresolvedWarningConfiguration,
+          Boolean,
+          CompatibilityWarningOptions,
+          IvySbt,
+          GetClassifiersModule,
+          File,
+          xsbti.AppConfiguration,
+          Seq[String],
+          Seq[String],
+      )
+    ](
+      Keys.dependencyResolution,
+      Keys.state,
+      Keys.streams,
+      Keys.updateConfiguration.toTaskable,
+      (Keys.update / Keys.logLevel).?.toTaskable,
+      Keys.executionRoots,
+      Keys.resolvedScoped.toTaskable,
+      Keys.forceUpdatePeriod.toTaskable,
+      Keys.ivyModule.toTaskable,
+      Keys.updateCacheName.toTaskable,
+      Keys.thisProjectRef.toTaskable,
+      (Keys.update / Keys.skip).toTaskable,
+      Keys.transitiveUpdate,
+      (Keys.update / Keys.unresolvedWarningConfiguration).toTaskable,
+      Keys.publishMavenStyle.toTaskable,
+      Keys.compatibilityWarningOptions.toTaskable,
+      Keys.ivySbt,
+      Keys.classifiersModule,
+      Keys.dependencyCacheDirectory,
+      Keys.appConfiguration.toTaskable,
+      Keys.sourceArtifactTypes.toTaskable,
+      Keys.docArtifactTypes.toTaskable,
+    ).mapN {
+      (
+          lm,
+          state0,
+          s,
+          conf,
+          maybeUpdateLevel,
+          er,
+          rs,
+          fup,
+          im,
+          ucn,
+          thisRef,
+          sk,
+          tu,
+          uwConfig,
+          mavenStyle,
+          cwo,
+          ivySbt0,
+          mod,
+          dcd,
+          app,
+          srcTypes,
+          docTypes,
+      ) =>
+        import Keys.*
+        val cacheDirectory = s.cacheDirectory
+        val isRoot = er.contains(rs)
         // following copied from https://github.com/coursier/sbt-coursier/blob/9173406bb399879508aa481fed16efda72f55820/modules/sbt-lm-coursier/src/main/scala/sbt/hack/Foo.scala
-        val isRoot = executionRoots.value contains resolvedScoped.value
         val shouldForce = isRoot || {
-          forceUpdatePeriod.value match {
+          fup match
             case None => false
             case Some(period) =>
               val fullUpdateOutput = cacheDirectory / "output"
               val now = System.currentTimeMillis
               val diff = now - fullUpdateOutput.lastModified()
-              val elapsedDuration = new scala.concurrent.duration.FiniteDuration(
+              val elapsedDuration = new FiniteDuration(
                 diff,
                 java.util.concurrent.TimeUnit.MILLISECONDS
               )
               fullUpdateOutput.exists() && elapsedDuration > period
-          }
         }
-        val state0 = state.value
         val updateConf = {
           import UpdateLogging.{ Full, DownloadOnly, Default }
-          val conf = updateConfiguration.value
-          val maybeUpdateLevel = (update / logLevel).?.value
-          val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match {
+          val conf1 = maybeUpdateLevel.orElse(state0.get(logLevel.key)) match
             case Some(Level.Debug) if conf.logging == Default => conf.withLogging(logging = Full)
-            case Some(_) if conf.logging == Default           => conf.withLogging(logging = DownloadOnly)
-            case _                                            => conf
-          }
+            case Some(_) if conf.logging == Default => conf.withLogging(logging = DownloadOnly)
+            case _                                  => conf
           // logical clock is folded into UpdateConfiguration
           conf1.withLogicalClock(LogicalClock(state0.hashCode))
         }
@@ -292,64 +379,33 @@ private[sbt] object LibraryManagement {
           // LM API
           lm = lm,
           // Ivy-free ModuleDescriptor
-          module = ivyModule.value,
-          s.cacheStoreFactory.sub(updateCacheName.value),
-          Reference.display(thisProjectRef.value),
+          module = im,
+          s.cacheStoreFactory.sub(ucn),
+          Reference.display(thisRef),
           updateConf,
           identity,
-          skip = (update / skip).value,
+          skip = sk,
           force = shouldForce,
-          depsUpdated = transitiveUpdate.value.exists(!_.stats.cached),
-          uwConfig = (update / unresolvedWarningConfiguration).value,
+          transitiveUpdates = tu,
+          uwConfig = uwConfig,
           evictionLevel = Level.Debug,
           versionSchemeOverrides = Nil,
           assumedEvictionErrorLevel = Level.Debug,
           assumedVersionScheme = VersionScheme.Always,
           assumedVersionSchemeJava = VersionScheme.Always,
-          mavenStyle = publishMavenStyle.value,
-          compatWarning = compatibilityWarningOptions.value,
+          mavenStyle = mavenStyle,
+          compatWarning = cwo,
           includeCallers = false,
           includeDetails = false,
           log = s.log
         )
-      } else {
-        val is = ivySbt.value
-        val mod = classifiersModule.value
-        val updateConfig0 = updateConfiguration.value
-        lazy val updateConfig = updateConfig0
-          .withMetadataDirectory(dependencyCacheDirectory.value)
-          .withArtifactFilter(
-            updateConfig0.artifactFilter.map(af => af.withInverted(!af.inverted))
-          )
-        val app = appConfiguration.value
-        val srcTypes = sourceArtifactTypes.value
-        val docTypes = docArtifactTypes.value
-        val uwConfig = (update / unresolvedWarningConfiguration).value
-        val out = is.withIvy(s.log)(_.getSettings.getDefaultIvyUserDir)
-        withExcludes(out, mod.classifiers, lock(app)) { excludes =>
-          lm.updateClassifiers(
-            GetClassifiersConfiguration(
-              mod,
-              excludes.toVector,
-              updateConfig,
-              srcTypes.toVector,
-              docTypes.toVector
-            ),
-            uwConfig,
-            Vector.empty,
-            s.log
-          ) match {
-            case Left(_)   => ???
-            case Right(ur) => ur
-          }
-        }
-      }
-    } tag (Tags.Update, Tags.Network))
+    }.tag(Tags.Update, Tags.Network)
 
+  // Used by Defaults.withExcludes
   def withExcludes(out: File, classifiers: Seq[String], lock: xsbti.GlobalLock)(
       f: Map[ModuleID, Vector[ConfigRef]] => UpdateReport
   ): UpdateReport = {
-    import sbt.librarymanagement.LibraryManagementCodec._
+    import sbt.librarymanagement.LibraryManagementCodec.given
     import sbt.util.FileBasedStore
     val exclName = "exclude_classifiers"
     val file = out / exclName
@@ -358,22 +414,24 @@ private[sbt] object LibraryManagement {
       out / (exclName + ".lock"),
       new Callable[UpdateReport] {
         def call = {
-          implicit val midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
+          given midJsonKeyFmt: sjsonnew.JsonKeyFormat[ModuleID] = moduleIdJsonKeyFormat
           val excludes =
             store
               .read[Map[ModuleID, Vector[ConfigRef]]](
                 default = Map.empty[ModuleID, Vector[ConfigRef]]
               )
           val report = f(excludes)
-          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++ IvyActions
-            .extractExcludes(report)
-            .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
+          val allExcludes: Map[ModuleID, Vector[ConfigRef]] = excludes ++
+            IvyActions
+              .extractExcludes(report)
+              .view
+              .mapValues(cs => cs.map(c => ConfigRef(c)).toVector)
           store.write(allExcludes)
           IvyActions
             .addExcluded(
               report,
               classifiers.toVector,
-              allExcludes.mapValues(_.map(_.name).toSet).toMap
+              allExcludes.view.mapValues(_.map(_.name).toSet).toMap
             )
         }
       }

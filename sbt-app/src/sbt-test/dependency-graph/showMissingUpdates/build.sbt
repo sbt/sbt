@@ -5,7 +5,7 @@ libraryDependencies +=
 
 TaskKey[Unit]("check") := {
   val report = updateFull.value
-  val graph = (Test / dependencyTree / asString).value
+  val graph = (Test / dependencyTree).toTask(" --quiet").value
 
   def sanitize(str: String): String = str.split('\n').drop(1).mkString("\n")
   val expectedGraph =

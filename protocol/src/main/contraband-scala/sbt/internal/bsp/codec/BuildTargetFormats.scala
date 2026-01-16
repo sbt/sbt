@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait BuildTargetFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats with sjsonnew.BasicJsonProtocol with sbt.internal.bsp.codec.BuildTargetCapabilitiesFormats with sbt.internal.util.codec.JValueFormats =>
-implicit lazy val BuildTargetFormat: JsonFormat[sbt.internal.bsp.BuildTarget] = new JsonFormat[sbt.internal.bsp.BuildTarget] {
+trait BuildTargetFormats { self: sbt.internal.bsp.codec.BuildTargetIdentifierFormats & sjsonnew.BasicJsonProtocol & sbt.internal.bsp.codec.BuildTargetCapabilitiesFormats & sbt.internal.util.codec.JValueFormats =>
+given BuildTargetFormat: JsonFormat[sbt.internal.bsp.BuildTarget] = new JsonFormat[sbt.internal.bsp.BuildTarget] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.BuildTarget = {
     __jsOpt match {
       case Some(__js) =>

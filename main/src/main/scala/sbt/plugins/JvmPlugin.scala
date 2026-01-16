@@ -31,13 +31,13 @@ object JvmPlugin extends AutoPlugin {
   override def requires = IvyPlugin
   override def trigger = allRequirements
 
-  override lazy val globalSettings: Seq[Setting[_]] =
+  override lazy val globalSettings: Seq[Setting[?]] =
     Defaults.globalJvmCore
 
-  override lazy val buildSettings: Seq[Setting[_]] =
+  override lazy val buildSettings: Seq[Setting[?]] =
     Defaults.buildLevelJvmSettings
 
-  override lazy val projectSettings: Seq[Setting[_]] =
+  override lazy val projectSettings: Seq[Setting[?]] =
     Defaults.runnerSettings ++
       Defaults.paths ++
       Classpaths.jvmPublishSettings ++

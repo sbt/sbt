@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.worker.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait FilePathFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val FilePathFormat: JsonFormat[sbt.internal.worker.FilePath] = new JsonFormat[sbt.internal.worker.FilePath] {
+given FilePathFormat: JsonFormat[sbt.internal.worker.FilePath] = new JsonFormat[sbt.internal.worker.FilePath] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.worker.FilePath = {
     __jsOpt match {
       case Some(__js) =>

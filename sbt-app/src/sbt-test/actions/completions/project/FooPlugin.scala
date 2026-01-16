@@ -1,4 +1,4 @@
-import sbt._
+import sbt.*
 
 object FooPlugin extends AutoPlugin {
   override def trigger = noTrigger
@@ -9,6 +9,6 @@ object FooPlugin extends AutoPlugin {
   import autoImport._
 
   override def buildSettings = super.buildSettings ++ Seq(
-    myTask := println("Called my task")
+    myTask := Def.uncached(println("Called my task"))
   )
 }

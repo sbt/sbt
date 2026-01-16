@@ -5,36 +5,47 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
 package sbt
 
 import java.net.URI
 
-import sbt.Def._
+import sbt.Def.*
+import sbt.ScopeAxis.{ Select, Zero }
 import sbt.internal.TestBuild
-import sbt.internal.TestBuild._
+import sbt.internal.TestBuild.*
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.DefaultParsers
 import sbt.librarymanagement.Configuration
-import hedgehog._
-import hedgehog.runner._
+import hedgehog.*
+import hedgehog.runner.*
 
 object ParserSpec extends Properties {
   override def tests: List[Test] =
     List(
-      property("can parse any build", TestBuild.uriGen.forAll.map { uri =>
-        parse(buildURI = uri)
-      }),
-      property("can parse any project", TestBuild.nonEmptyId.forAll.map { id =>
-        parse(projectID = id)
-      }),
-      property("can parse any configuration", TestBuild.nonEmptyId.map(_.capitalize).forAll.map {
-        name =>
+      property(
+        "can parse any build",
+        TestBuild.uriGen.forAll.map { uri =>
+          parse(buildURI = uri)
+        }
+      ),
+      property(
+        "can parse any project",
+        TestBuild.nonEmptyId.forAll.map { id =>
+          parse(projectID = id)
+        }
+      ),
+      property(
+        "can parse any configuration",
+        TestBuild.nonEmptyId.map(_.capitalize).forAll.map { name =>
           parse(configName = name)
-      }),
-      property("can parse any attribute", TestBuild.kebabIdGen.forAll.map { name =>
-        parse(attributeName = name)
-      })
+        }
+      ),
+      property(
+        "can parse any attribute",
+        TestBuild.kebabIdGen.forAll.map { name =>
+          parse(attributeName = name)
+        }
+      )
     )
 
   private def parse(

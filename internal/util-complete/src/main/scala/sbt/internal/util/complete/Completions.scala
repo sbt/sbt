@@ -10,14 +10,13 @@ package sbt.internal.util
 package complete
 
 /**
- * Represents a set of completions.
- * It exists instead of implicitly defined operations on top of Set[Completion]
- *  for laziness.
+ * Represents a set of completions. It exists instead of implicitly defined operations on top of
+ * Set[Completion] for laziness.
  */
 sealed trait Completions {
   def get: Set[Completion]
 
-  final def x(o: Completions): Completions = flatMap(_ x o)
+  final infix def x(o: Completions): Completions = flatMap(_ x o)
   final def ++(o: Completions): Completions = Completions(get ++ o.get)
   final def +:(o: Completion): Completions = Completions(get + o)
   final def filter(f: Completion => Boolean): Completions = Completions(get filter f)
@@ -47,53 +46,53 @@ object Completions {
   def strict(cs: Set[Completion]): Completions = apply(cs)
 
   /**
-   * No suggested completions, not even the empty Completion.
-   * This typically represents invalid input.
+   * No suggested completions, not even the empty Completion. This typically represents invalid
+   * input.
    */
   val nil: Completions = strict(Set.empty)
 
   /**
-   * Only includes an empty Suggestion.
-   * This typically represents valid input that either has no completions or accepts no further input.
+   * Only includes an empty Suggestion. This typically represents valid input that either has no
+   * completions or accepts no further input.
    */
   val empty: Completions = strict(Set.empty + Completion.empty)
 
-  /** Returns a strict Completions instance containing only the provided Completion.*/
+  /** Returns a strict Completions instance containing only the provided Completion. */
   def single(c: Completion): Completions = strict(Set.empty + c)
 
 }
 
 /**
- * Represents a completion.
- * The abstract members `display` and `append` are best explained with an example.
+ * Represents a completion. The abstract members `display` and `append` are best explained with an
+ * example.
  *
- * Assuming space-delimited tokens, processing this:
- *   am is are w<TAB>
- * could produce these Completions:
- *   Completion { display = "was"; append = "as" }
- *   Completion { display = "were"; append = "ere" }
- * to suggest the tokens "was" and "were".
+ * Assuming space-delimited tokens, processing this: am is are w<TAB> could produce these
+ * Completions: Completion { display = "was"; append = "as" } Completion { display = "were"; append
+ * = "ere" } to suggest the tokens "was" and "were".
  *
- * In this way, two pieces of information are preserved:
- *  1) what needs to be appended to the current input if a completion is selected
- *  2) the full token being completed, which is useful for presenting a user with choices to select
+ * In this way, two pieces of information are preserved: 1) what needs to be appended to the current
+ * input if a completion is selected 2) the full token being completed, which is useful for
+ * presenting a user with choices to select
  */
 sealed trait Completion {
 
-  /** The proposed suffix to append to the existing input to complete the last token in the input.*/
+  /**
+   * The proposed suffix to append to the existing input to complete the last token in the input.
+   */
   def append: String
 
-  /** The string to present to the user to represent the full token being suggested.*/
+  /** The string to present to the user to represent the full token being suggested. */
   def display: String
 
-  /** True if this Completion is suggesting the empty string.*/
+  /** True if this Completion is suggesting the empty string. */
   def isEmpty: Boolean
 
-  /** Appends the completions in `o` with the completions in this Completion.*/
+  /** Appends the completions in `o` with the completions in this Completion. */
   def ++(o: Completion): Completion = Completion.concat(this, o)
 
-  final def x(o: Completions): Completions =
-    if (Completion evaluatesRight this) o.map(this ++ _) else Completions.strict(Set.empty + this)
+  final infix def x(o: Completions): Completions =
+    if Completion.evaluatesRight(this) then o.map(this ++ _)
+    else Completions.strict(Set.empty + this)
 
   override final lazy val hashCode = Completion.hashCode(this)
   override final def equals(o: Any) = o match {
@@ -161,14 +160,4 @@ object Completion {
   def tokenDisplay(append: String, display: String): Completion = new Token(display, append)
 
   def suggestion(value: String): Completion = new Suggestion(value)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def displayOnly(value: => String): Completion = new DisplayOnly(value)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def token(prepend: => String, append: => String): Completion =
-    new Token(prepend + append, append)
-
-  @deprecated("No longer used. for binary compatibility", "1.1.0")
-  private[complete] def suggestion(value: => String): Completion = new Suggestion(value)
 }

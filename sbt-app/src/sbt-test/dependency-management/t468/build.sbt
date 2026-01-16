@@ -2,7 +2,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 
 autoScalaLibrary := false
 
-ivyPaths := IvyPaths(baseDirectory.value, Some(target.value / "ivy-cache"))
+ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
 
 libraryDependencies ++= Seq(
 	"org.sat4j" % "org.sat4j.pb" % "2.3.1",

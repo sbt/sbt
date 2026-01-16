@@ -14,8 +14,8 @@ import java.io.IOException
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.atomic.AtomicBoolean
 
-import sbt.protocol._
-import sbt.internal.protocol._
+import sbt.protocol.*
+import sbt.internal.protocol.*
 import sbt.internal.util.ReadJsonFromInputStream
 
 abstract class ServerConnection(connection: Socket) {

@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait TextDocumentIdentifierFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val TextDocumentIdentifierFormat: JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] = new JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] {
+given TextDocumentIdentifierFormat: JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] = new JsonFormat[sbt.internal.langserver.TextDocumentIdentifier] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.TextDocumentIdentifier = {
     __jsOpt match {
       case Some(__js) =>

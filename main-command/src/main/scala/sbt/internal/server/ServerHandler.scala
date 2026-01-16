@@ -11,10 +11,10 @@ package internal
 package server
 
 import sjsonnew.JsonFormat
-import sbt.internal.protocol._
+import sbt.internal.protocol.*
 import sbt.util.Logger
-import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
-import sbt.internal.langserver.{ CancelRequestParams => CRP }
+import sbt.protocol.{ CompletionParams as CP, SettingQuery as Q }
+import sbt.internal.langserver.{ CancelRequestParams as CRP }
 
 /**
  * ServerHandler allows plugins to extend sbt server.
@@ -30,10 +30,10 @@ object ServerHandler {
 
   lazy val fallback: ServerHandler = ServerHandler({ handler =>
     ServerIntent(
-      onRequest = { case x  => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
+      onRequest = { case x => handler.log.debug(s"Unhandled request received: ${x.method}: $x") },
       onResponse = { case x => handler.log.debug(s"Unhandled response received") },
-      onNotification = {
-        case x => handler.log.debug(s"Unhandled notification received: ${x.method}: $x")
+      onNotification = { case x =>
+        handler.log.debug(s"Unhandled notification received: ${x.method}: $x")
       },
     )
   })

@@ -1,0 +1,44 @@
+> show rootProj/projectID
+> + compile
+
+$ exists target/out/jvm/scala-3.2.1/foo-lib/foo-lib_3-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-2.13.1/foo-lib/foo-lib_2.13-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-3.2.1/sbt-foo/sbt-foo-0.1.0-SNAPSHOT-noresources.jar
+-$ exists target/out/jvm/scala-2.13.1/sbt-foo/sbt-foo-0.1.0-SNAPSHOT-noresources.jar
+
+> clean
+> + libProj/compile
+$ exists target/out/jvm/scala-3.2.1/foo-lib/foo-lib_3-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-2.13.1/foo-lib/foo-lib_2.13-0.1.0-SNAPSHOT-noresources.jar
+-$ exists target/out/jvm/scala-3.2.1/sbt-foo/sbt-foo-0.1.0-SNAPSHOT-noresources.jar
+
+# Test ++ leaves crossScalaVersions unchanged
+> clean
+> ++3.2.1
+> +extrasProj/compile
+$ exists target/out/jvm/scala-2.13.1/foo-extras/foo-extras_2.13-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-3.2.1/foo-extras/foo-extras_3-0.1.0-SNAPSHOT-noresources.jar
+
+# test safe switching
+> clean
+> ++ 2.13.1 -v compile
+-$ exists target/out/jvm/scala-3.2.1/foo-lib/foo-lib_3-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-2.13.1/foo-lib/foo-lib_2.13-0.1.0-SNAPSHOT-noresources.jar
+
+# test wildcard switching (3.2.1
+> clean
+> ++ 3.* -v compile
+$ exists target/out/jvm/scala-3.2.1/foo-lib/foo-lib_3-0.1.0-SNAPSHOT-noresources.jar
+-$ exists target/out/jvm/scala-2.13.1/foo-lib/foo-lib_2.13-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-3.2.1/sbt-foo/sbt-foo-0.1.0-SNAPSHOT-noresources.jar
+
+# test wildcard switching (2.13)
+> clean
+> ++ 2.13.x -v compile
+-$ exists target/out/jvm/scala-3.2.1/foo-lib/foo-lib_3-0.1.0-SNAPSHOT-noresources.jar
+$ exists target/out/jvm/scala-2.13.1/foo-lib/foo-lib_2.13-0.1.0-SNAPSHOT-noresources.jar
+
+# test wildcard switching (no matches)
+-> ++ 4.*
+# test wildcard switching (multiple matches)
+> ++ 2.*

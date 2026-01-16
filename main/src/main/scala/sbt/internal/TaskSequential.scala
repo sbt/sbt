@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import Def._
+import Def.*
 
 /**
  * This trait injected to `Def` object to provide `sequential` functions for tasks.
@@ -771,8 +771,7 @@ trait TaskSequential {
     tasks.toList match {
       case Nil => Def.task { last.value }
       case x :: xs =>
-        Def.taskDyn {
-          Def.unit(x.value)
+        Def.task { Def.unit(x.value) }.flatMapTask { case _ =>
           sequential(xs, last)
         }
     }

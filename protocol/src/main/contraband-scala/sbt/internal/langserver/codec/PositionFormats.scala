@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val PositionFormat: JsonFormat[sbt.internal.langserver.Position] = new JsonFormat[sbt.internal.langserver.Position] {
+given PositionFormat: JsonFormat[sbt.internal.langserver.Position] = new JsonFormat[sbt.internal.langserver.Position] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.Position = {
     __jsOpt match {
       case Some(__js) =>

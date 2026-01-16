@@ -1,3 +1,4 @@
+import sbt.internal.FileChangesMacro.inputFiles
 // The project contains two files: { Foo.txt, Bar.md } in the subdirector base/subdir/nested-subdir
 
 // Check that we can correctly extract Foo.txt with a recursive source

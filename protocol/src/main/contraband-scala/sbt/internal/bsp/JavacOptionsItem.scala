@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -31,7 +31,7 @@ final class JavacOptionsItem private (
   override def toString: String = {
     "JavacOptionsItem(" + target + ", " + options + ", " + classpath + ", " + classDirectory + ")"
   }
-  private[this] def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, options: Vector[String] = options, classpath: Vector[java.net.URI] = classpath, classDirectory: Option[java.net.URI] = classDirectory): JavacOptionsItem = {
+  private def copy(target: sbt.internal.bsp.BuildTargetIdentifier = target, options: Vector[String] = options, classpath: Vector[java.net.URI] = classpath, classDirectory: Option[java.net.URI] = classDirectory): JavacOptionsItem = {
     new JavacOptionsItem(target, options, classpath, classDirectory)
   }
   def withTarget(target: sbt.internal.bsp.BuildTargetIdentifier): JavacOptionsItem = {

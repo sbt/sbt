@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait TaskStartParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats with sjsonnew.BasicJsonProtocol with sbt.internal.util.codec.JValueFormats =>
-implicit lazy val TaskStartParamsFormat: JsonFormat[sbt.internal.bsp.TaskStartParams] = new JsonFormat[sbt.internal.bsp.TaskStartParams] {
+trait TaskStartParamsFormats { self: sbt.internal.bsp.codec.TaskIdFormats & sjsonnew.BasicJsonProtocol & sbt.internal.util.codec.JValueFormats =>
+given TaskStartParamsFormat: JsonFormat[sbt.internal.bsp.TaskStartParams] = new JsonFormat[sbt.internal.bsp.TaskStartParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.TaskStartParams = {
     __jsOpt match {
       case Some(__js) =>

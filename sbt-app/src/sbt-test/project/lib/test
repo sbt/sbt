@@ -1,8 +1,8 @@
 # this step builds a test jar for use by the project definition
-> package
+> packageBin
 
 $ delete build.sbt
-$ copy-file target/definition-lib-test-1.0.jar project/lib/test.jar
+$ copy-file target/out/jvm/u/definition-lib-test/definition-lib-test-1.0.jar project/lib/test.jar
 $ copy-file changes/build2.sbt build.sbt
 
 # the copied project definition depends on the Test module in test.jar and will

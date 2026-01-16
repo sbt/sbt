@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.worker.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait JvmRunInfoFormats { self: sbt.internal.worker.codec.FilePathFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val JvmRunInfoFormat: JsonFormat[sbt.internal.worker.JvmRunInfo] = new JsonFormat[sbt.internal.worker.JvmRunInfo] {
+trait JvmRunInfoFormats { self: sbt.internal.worker.codec.FilePathFormats & sjsonnew.BasicJsonProtocol =>
+given JvmRunInfoFormat: JsonFormat[sbt.internal.worker.JvmRunInfo] = new JsonFormat[sbt.internal.worker.JvmRunInfo] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.worker.JvmRunInfo = {
     __jsOpt match {
       case Some(__js) =>

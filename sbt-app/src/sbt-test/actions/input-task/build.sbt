@@ -1,6 +1,6 @@
 import complete.Parser
 
-// https://www.scala-sbt.org/0.13/docs/Input-Tasks.html
+// https://www.scala-sbt.org/1.x/docs/Input-Tasks.html
 
 val run2 = inputKey[Unit](
     "Runs the main class twice with different argument lists separated by --")
@@ -12,9 +12,9 @@ lazy val root = (project in file(".")).
   settings(
     name := "run-test",
     run2 := {
-       val one = (run in Compile).evaluated
+       val one = (Compile / run).evaluated
        val sep = separator.parsed
-       val two = (run in Compile).evaluated
+       val two = (Compile / run).evaluated
     },
     check := {
       val x = run2.toTask(" a b -- c d").value

@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import Def._
+import Def.*
 import Keys.{ sbtVersion, state, terminal }
 import sbt.internal.util.Terminal.hasConsole
 
@@ -19,7 +19,7 @@ import java.nio.file.{ Files, Path }
 import java.util.zip.ZipInputStream
 import sbt.io.IO
 import sbt.io.Path.userHome
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import scala.util.{ Properties, Try }
 
 private[sbt] object InstallSbtn {
@@ -61,7 +61,7 @@ private[sbt] object InstallSbtn {
 
   private[sbt] def extractSbtn(term: Terminal, version: String, sbtZip: Path, sbtn: Path): Unit = {
     downloadRelease(term, version, sbtZip)
-    Files.createDirectories(sbtn.getParent)
+    IO.createDirectory(sbtn.getParent().toFile())
     val bin =
       if (Properties.isWin) "pc-win32.exe"
       else if (Properties.isLinux) "pc-linux"
@@ -100,25 +100,27 @@ private[sbt] object InstallSbtn {
     }
     ()
   }
-  private[this] def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
+  private def downloadRelease(term: Terminal, version: String, location: Path): Unit = {
     val zip = s"https://github.com/sbt/sbt/releases/download/v$version/sbt-$version.zip"
     val url = new URI(zip).toURL
     term.printStream.println(s"downloading $zip to $location")
     transfer(url.openStream(), location)
   }
-  private[this] def transfer(inputStream: InputStream, path: Path): Unit =
+  private def transfer(inputStream: InputStream, path: Path): Unit =
     try {
       val os = new FileOutputStream(path.toFile)
       try {
         val result = new Array[Byte](1024 * 1024)
         var bytesRead = -1
-        do {
+        def impl(): Unit = {
           bytesRead = inputStream.read(result)
           if (bytesRead > 0) os.write(result, 0, bytesRead)
-        } while (bytesRead > 0)
+        }
+        impl()
+        while bytesRead > 0 do impl()
       } finally os.close()
     } finally inputStream.close()
-  private[this] def getShell(term: Terminal): String = {
+  private def getShell(term: Terminal): String = {
     term.printStream.print(s"""Setup sbtn for shell:
       | [1] bash
       | [2] fish
@@ -137,12 +139,12 @@ private[sbt] object InstallSbtn {
       case _  => "none"
     }
   }
-  private[this] def downloadCompletion(completion: String, version: String, target: Path): Unit = {
-    Files.createDirectories(target.getParent)
+  private def downloadCompletion(completion: String, version: String, target: Path): Unit = {
+    IO.createDirectory(target.getParent().toFile())
     val comp = s"https://raw.githubusercontent.com/sbt/sbt/v$version/client/completions/$completion"
     transfer(new URI(comp).toURL.openStream, target)
   }
-  private[this] def setupShell(
+  private def setupShell(
       shell: String,
       baseDirectory: Path,
       term: Terminal,
@@ -151,12 +153,13 @@ private[sbt] object InstallSbtn {
       setCompletions: Path => String,
   ): Unit = {
     val bin = baseDirectory.resolve("bin")
-    val export = setPath(bin)
+    val exp = setPath(bin)
     val completions = baseDirectory.resolve("completions")
     val sourceCompletions = setCompletions(completions)
-    val contents = try IO.read(configFile)
-    catch { case _: IOException => "" }
-    if (!contents.contains(export)) {
+    val contents =
+      try IO.read(configFile)
+      catch { case _: IOException => "" }
+    if (!contents.contains(exp)) {
       term.printStream.print(s"Add $bin to PATH in $configFile? y/n (y default): ")
       term.printStream.flush()
       term.inputStream.read() match {
@@ -165,11 +168,12 @@ private[sbt] object InstallSbtn {
           term.printStream.println(c.toChar)
           // put the export at the bottom so that the ~/.sbt/1.0/bin/sbtn is least preferred
           // but still on the path
-          IO.write(configFile, s"$contents\n$export")
+          IO.write(configFile, s"$contents\n$exp")
       }
     }
-    val newContents = try IO.read(configFile)
-    catch { case _: IOException => "" }
+    val newContents =
+      try IO.read(configFile)
+      catch { case _: IOException => "" }
     if (!newContents.contains(sourceCompletions)) {
       term.printStream.print(s"Add tab completions to $configFile? y/n (y default): ")
       term.printStream.flush()
@@ -192,7 +196,7 @@ private[sbt] object InstallSbtn {
       term.printStream.println()
     }
   }
-  private[this] def setupBash(baseDirectory: Path, term: Terminal): Unit =
+  private def setupBash(baseDirectory: Path, term: Terminal): Unit =
     setupShell(
       "bash",
       baseDirectory,
@@ -201,23 +205,23 @@ private[sbt] object InstallSbtn {
       bin => s"export PATH=$$PATH:$bin",
       completions => s"source $completions/sbtn.bash"
     )
-  private[this] def setupZsh(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupZsh(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => {
       "# The following two lines were added by the sbt installSbtn task:\n" +
         s"fpath=($$fpath $completions)\nautoload -Uz compinit; compinit"
     }
     setupShell("zsh", baseDirectory, term, userHome / ".zshrc", bin => s"path=($$path $bin)", comp)
   }
-  private[this] def setupFish(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupFish(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => s"source $completions/sbtn.fish"
     val path = (bin: Path) => s"set PATH $$PATH $bin"
     val config = userHome / ".config" / "fish" / "config.fish"
     setupShell("fish", baseDirectory, term, config, path, comp)
   }
-  private[this] def setupPowershell(baseDirectory: Path, term: Terminal): Unit = {
+  private def setupPowershell(baseDirectory: Path, term: Terminal): Unit = {
     val comp = (completions: Path) => s""". "$completions\\sbtn.ps1""""
     val path = (bin: Path) => s"""$$env:Path += ";$bin""""
-    import scala.sys.process._
+    import scala.sys.process.*
     Try(Seq("pwsh", "-Command", "echo $PROFILE").!!).foreach { output =>
       output.linesIterator.toSeq.headOption.foreach { l =>
         setupShell("pwsh", baseDirectory, term, new File(l), path, comp)
@@ -229,7 +233,7 @@ private[sbt] object InstallSbtn {
       }
     }
   }
-  private[this] val shellCompletions = Map(
+  private val shellCompletions = Map(
     "bash" -> "sbtn.bash",
     "fish" -> "sbtn.fish",
     "powershell" -> "sbtn.ps1",

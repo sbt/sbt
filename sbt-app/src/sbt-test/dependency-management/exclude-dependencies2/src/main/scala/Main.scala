@@ -3,7 +3,7 @@ import java.nio.file.Files
 
 import scala.util.Try
 
-object Main extends App {
+object Main {
 
   def classFound(clsName: String) = Try(
     Thread.currentThread()
@@ -11,22 +11,24 @@ object Main extends App {
       .loadClass(clsName)
   ).toOption.nonEmpty
 
-  val shapelessFound = classFound("shapeless.HList")
-  val argonautFound = classFound("argonaut.Json")
-  val argonautShapelessFound = classFound("argonaut.derive.MkEncodeJson")
+  def main(args: Array[String]): Unit = {
+    val shapelessFound = classFound("shapeless.HList")
+    val argonautFound = classFound("argonaut.Json")
+    val argonautShapelessFound = classFound("argonaut.derive.MkEncodeJson")
 
-  assert(
-    argonautShapelessFound,
-    "Expected to find class from argonaut-shapeless"
-  )
-  assert(
-    !shapelessFound,
-    "Expected not to find classes from shapeless"
-  )
-  assert(
-    !argonautFound,
-    "Expected not to find classes from argonaut"
-  )
+    assert(
+      argonautShapelessFound,
+      "Expected to find class from argonaut-shapeless"
+    )
+    assert(
+      !shapelessFound,
+      "Expected not to find classes from shapeless"
+    )
+    assert(
+      !argonautFound,
+      "Expected not to find classes from argonaut"
+    )
 
-  Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+    Files.write(new File("output").toPath, "OK".getBytes("UTF-8"))
+  }
 }

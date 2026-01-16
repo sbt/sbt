@@ -1,11 +1,13 @@
-ThisBuild / useCoursier := false
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
 lazy val check = taskKey[Unit]("Runs the check")
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
+    localCache,
     scalaVersion := "2.10.4",
     fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project"),
     updateOptions := updateOptions.value.withCircularDependencyLevel(CircularDependencyLevel.Error)
@@ -39,6 +41,6 @@ lazy val c = project.
 lazy val root = (project in file(".")).
   settings(commonSettings: _*).
   settings(
-    organization in ThisBuild := "org.example",
-    version in ThisBuild := "1.0-SNAPSHOT"
+    (ThisBuild / organization) := "org.example",
+    (ThisBuild / version) := "1.0-SNAPSHOT"
   )

@@ -3,10 +3,10 @@ import scala.collection.mutable.ListBuffer
 ThisBuild / scalaVersion := "2.9.2"
 ThisBuild / version := "0.1-SNAPSHOT"
 
-lazy val justATransiviteDependencyEndpointProject = project
+lazy val justATransitiveDependencyEndpointProject = project
 
 lazy val justATransitiveDependencyProject = project
-  .dependsOn(justATransiviteDependencyEndpointProject)
+  .dependsOn(justATransitiveDependencyEndpointProject)
 
 lazy val justADependencyProject = project
 
@@ -14,7 +14,7 @@ lazy val test_project = project
   .dependsOn(justADependencyProject, justATransitiveDependencyProject)
   .settings(
     TaskKey[Unit]("check") := {
-      val htmlFile = (dependencyBrowseGraphHTML in Compile).value
+      val htmlFile = (Compile / dependencyTree).toTask(" html-graph").value
       val expectedHtml =
         """<!doctype html>
           |
@@ -60,11 +60,10 @@ lazy val test_project = project
           |<script>
           |    d3.select("#graph").graphviz().renderDot(decodeURIComponent(data));
           |</script>
-          |
           """.stripMargin
 
       val html: String = scala.io.Source.fromFile(htmlFile).mkString
-      val errors = compareByLine(html, expectedHtml)
+      val errors = compareByLine(html.trim, expectedHtml.trim)
       require(errors.isEmpty, errors.mkString("\n"))
       ()
     }
@@ -72,7 +71,7 @@ lazy val test_project = project
 
 def compareByLine(got: String, expected: String): Seq[String] = {
   val errors = ListBuffer[String]()
-  got.split("\n").zip(expected.split("\n").toSeq).zipWithIndex.foreach {
+  got.linesIterator.toList.zip(expected.linesIterator.toList).zipWithIndex.foreach {
     case ((got_line: String, expected_line: String), i: Int) =>
       if (got_line != expected_line) {
         errors.append("""not matching lines at line %s
@@ -81,5 +80,5 @@ def compareByLine(got: String, expected: String): Seq[String] = {
           |""".stripMargin.format(i, expected_line, got_line))
       }
   }
-  errors
+  errors.toList
 }

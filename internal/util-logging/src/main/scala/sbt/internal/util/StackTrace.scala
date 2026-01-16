@@ -10,34 +10,34 @@ package sbt.internal.util
 
 import sbt.io.IO
 import scala.collection.mutable.ListBuffer
+import java.util.{ IdentityHashMap, Collections }
 
 object StackTrace {
   def isSbtClass(name: String) = name.startsWith("sbt.") || name.startsWith("xsbt.")
 
   /**
-   * Return a printable representation of the stack trace associated
-   * with t.  Information about t and its Throwable causes is included.
-   * The number of lines to be included for each Throwable is configured
-   * via d which should be greater than or equal to 0.
+   * Return a printable representation of the stack trace associated with t. Information about t and
+   * its Throwable causes is included. The number of lines to be included for each Throwable is
+   * configured via d which should be greater than or equal to 0.
    *
-   * - If d is 0, then all elements are included up to (but not including)
-   *   the first element that comes from sbt.
-   * - If d is greater than 0, then up to that many lines are included,
-   *   where the line for the Throwable is counted plus one line for each stack element.
-   *   Less lines will be included if there are not enough stack elements.
+   *   - If d is 0, then all elements are included up to (but not including) the first element that
+   *     comes from sbt.
+   *   - If d is greater than 0, then up to that many lines are included, where the line for the
+   *     Throwable is counted plus one line for each stack element. Less lines will be included if
+   *     there are not enough stack elements.
    *
-   * See also ConsoleAppender where d <= 2 is treated specially by
-   * printing a prepared statement.
+   * See also ConsoleAppender where d <= 2 is treated specially by printing a prepared statement.
    */
   def trimmedLines(t: Throwable, d: Int): List[String] = {
     require(d >= 0)
     val b = new ListBuffer[String]()
+    val seen: java.util.Set[Throwable] =
+      Collections.newSetFromMap(new IdentityHashMap[Throwable, java.lang.Boolean]())
 
     def appendStackTrace(t: Throwable, first: Boolean): Unit = {
 
       val include: StackTraceElement => Boolean =
-        if (d == 0)
-          element => !isSbtClass(element.getClassName)
+        if (d == 0) element => !isSbtClass(element.getClassName)
         else {
           var count = d - 1
           (_ => { count -= 1; count >= 0 })
@@ -61,25 +61,29 @@ object StackTrace {
     }
 
     appendStackTrace(t, true)
+    seen.add(t)
     var c = t
-    while (c.getCause() != null) {
+    while (c.getCause() != null && !seen.contains(c.getCause())) {
       c = c.getCause()
+      seen.add(c)
       appendStackTrace(c, false)
+    }
+    if (c.getCause() != null && seen.contains(c.getCause())) {
+      b.append("[CIRCULAR REFERENCE: " + c.getCause().toString + "]")
     }
     b.toList
   }
 
   /**
-   * Return a printable representation of the stack trace associated
-   * with t.  Information about t and its Throwable causes is included.
-   * The number of lines to be included for each Throwable is configured
-   * via d which should be greater than or equal to 0.
+   * Return a printable representation of the stack trace associated with t. Information about t and
+   * its Throwable causes is included. The number of lines to be included for each Throwable is
+   * configured via d which should be greater than or equal to 0.
    *
-   * - If d is 0, then all elements are included up to (but not including)
-   *   the first element that comes from sbt.
-   * - If d is greater than 0, then up to that many lines are included,
-   *   where the line for the Throwable is counted plus one line for each stack element.
-   *   Less lines will be included if there are not enough stack elements.
+   *   - If d is 0, then all elements are included up to (but not including) the first element that
+   *     comes from sbt.
+   *   - If d is greater than 0, then up to that many lines are included, where the line for the
+   *     Throwable is counted plus one line for each stack element. Less lines will be included if
+   *     there are not enough stack elements.
    */
   def trimmed(t: Throwable, d: Int): String =
     trimmedLines(t, d).mkString(IO.Newline)

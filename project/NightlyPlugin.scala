@@ -1,6 +1,6 @@
-import sbt._
-import Keys._
-import Dependencies._
+import sbt.*
+import Keys.*
+import Dependencies.*
 
 object NightlyPlugin extends AutoPlugin {
   override def trigger = allRequirements
@@ -21,13 +21,12 @@ object NightlyPlugin extends AutoPlugin {
       else Seq()
     )
   }
-  import autoImport._
+  import autoImport.*
 
-  override def buildSettings: Seq[Setting[_]] = Seq(
+  override def buildSettings: Seq[Setting[?]] = Seq(
     includeTestDependencies := true
   )
 
-  override def projectSettings: Seq[Setting[_]] = Seq(
-    resolvers += Resolver.typesafeIvyRepo("releases").withName("typesafe-alt-project-releases")
+  override def projectSettings: Seq[Setting[?]] = Seq(
   )
 }

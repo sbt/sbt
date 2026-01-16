@@ -10,10 +10,10 @@ package sbt
 package internal
 package server
 
-import sbt.internal.langserver._
-import sbt.internal.protocol._
-import sbt.internal.protocol.codec._
-import sbt.protocol.{ CompletionParams => CP, SettingQuery => Q }
+import sbt.internal.langserver.*
+import sbt.internal.protocol.*
+import sbt.internal.protocol.codec.*
+import sbt.protocol.{ CompletionParams as CP, SettingQuery as Q }
 import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.FileConverter
@@ -23,9 +23,11 @@ private[sbt] final case class LangServerError(code: Long, message: String)
 
 private[sbt] object LanguageServerProtocol {
   private val internalJsonProtocol = new sbt.internal.langserver.codec.JsonProtocol
-  with sbt.protocol.codec.JsonProtocol with sjsonnew.BasicJsonProtocol with InitializeOptionFormats
+    with sbt.protocol.codec.JsonProtocol
+    with sjsonnew.BasicJsonProtocol
+    with InitializeOptionFormats
 
-  import internalJsonProtocol._
+  import internalJsonProtocol.given
 
   def json(r: JsonRpcRequestMessage): JValue =
     r.params.getOrElse(
@@ -44,7 +46,7 @@ private[sbt] object LanguageServerProtocol {
   }
 
   def handler(converter: FileConverter): ServerHandler = ServerHandler { callback =>
-    import callback._
+    import callback.*
     ServerIntent(
       onRequest = {
         case r: JsonRpcRequestMessage if r.method == "initialize" =>
@@ -67,7 +69,7 @@ private[sbt] object LanguageServerProtocol {
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
 
         case r: JsonRpcRequestMessage if r.method == "textDocument/definition" =>
-          val _ = Definition.lspDefinition(json(r), r.id, CommandSource(name), converter, log)(
+          val _ = Definition.lspDefinition(json(r), r.id, CommandSource(name), converter, log)(using
             StandardMain.executionContext
           )
 
@@ -84,7 +86,6 @@ private[sbt] object LanguageServerProtocol {
           onCancellationRequest(Option(r.id), param)
 
         case r: JsonRpcRequestMessage if r.method == "sbt/completion" =>
-          import sbt.protocol.codec.JsonProtocol._
           val param = Converter.fromJson[CP](json(r)).get
           onCompletionRequest(Option(r.id), param)
 

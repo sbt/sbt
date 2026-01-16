@@ -1,5 +1,6 @@
-> v1-0-0/publish
-> v1-1-0/publish
+> semverSpecTest/publish
+> set semverSpecTest/version := "1.1.0"
+> semverSpecTest/publish
 > middle/publish
 
 > use/check

@@ -1,14 +1,6 @@
 > check
 
-> set useJCenter := true
-
-> check2
-
 > reload
-
-> set resolvers += Resolver.jcenterRepo
-
-> check2
 
 ## HTTP
 > set resolvers += ("old_typesafe" at "http://repo.typesafe.com/typesafe/")

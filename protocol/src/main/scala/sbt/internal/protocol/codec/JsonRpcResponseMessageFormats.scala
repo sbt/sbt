@@ -15,14 +15,12 @@ import _root_.sjsonnew.{
   Unbuilder,
   deserializationError
 }
-import sjsonnew.shaded.scalajson.ast.unsafe._
+import sjsonnew.shaded.scalajson.ast.unsafe.*
 
 trait JsonRpcResponseMessageFormats {
-  self: sbt.internal.util.codec.JValueFormats
-    with sbt.internal.protocol.codec.JsonRpcResponseErrorFormats
-    with sjsonnew.BasicJsonProtocol =>
-  implicit lazy val JsonRpcResponseMessageFormat
-      : JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
+  self: sbt.internal.util.codec.JValueFormats &
+    sbt.internal.protocol.codec.JsonRpcResponseErrorFormats & sjsonnew.BasicJsonProtocol =>
+  given JsonRpcResponseMessageFormat: JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] =
     new JsonFormat[sbt.internal.protocol.JsonRpcResponseMessage] {
       override def read[J](
           jsOpt: Option[J],
@@ -32,15 +30,16 @@ trait JsonRpcResponseMessageFormats {
           case Some(js) =>
             unbuilder.beginObject(js)
             val jsonrpc = unbuilder.readField[String]("jsonrpc")
-            val id = try {
-              unbuilder.readField[String]("id")
-            } catch {
-              case _: DeserializationException =>
-                unbuilder.readField[Long]("id").toString
-            }
+            val id =
+              try {
+                unbuilder.readField[String]("id")
+              } catch {
+                case _: DeserializationException =>
+                  unbuilder.readField[Long]("id").toString
+              }
 
-            val result = unbuilder.lookupField("result") map {
-              case x: JValue => x
+            val result = unbuilder.lookupField("result") map { case x: JValue =>
+              x
             }
 
             val error =

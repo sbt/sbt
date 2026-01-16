@@ -28,12 +28,6 @@ private[internal] object ClassLoaderWarmup {
       submit(IvyPlugin.projectSettings)
       submit(JvmPlugin.projectSettings)
       submit(() => {
-        try {
-          val clazz = Class.forName("scala.reflect.runtime.package$")
-          clazz.getMethod("universe").invoke(clazz.getField("MODULE$").get(null))
-        } catch {
-          case _: Exception =>
-        }
         executorService.shutdown()
       })
     }

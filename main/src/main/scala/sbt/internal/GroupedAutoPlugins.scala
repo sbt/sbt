@@ -16,15 +16,15 @@ private[sbt] final class GroupedAutoPlugins(
     val all: Seq[AutoPlugin],
     val byBuild: Map[URI, Seq[AutoPlugin]]
 ) {
-  def globalSettings: Seq[Setting[_]] = all.flatMap(_.globalSettings)
-  def buildSettings(uri: URI): Seq[Setting[_]] =
+  def globalSettings: Seq[Setting[?]] = all.flatMap(_.globalSettings)
+  def buildSettings(uri: URI): Seq[Setting[?]] =
     byBuild.getOrElse(uri, Nil).flatMap(_.buildSettings)
 }
 
 private[sbt] object GroupedAutoPlugins {
   private[sbt] def apply(units: Map[URI, LoadedBuildUnit]): GroupedAutoPlugins = {
     val byBuild: Map[URI, Seq[AutoPlugin]] =
-      units.mapValues(unit => unit.projects.flatMap(_.autoPlugins).toSeq.distinct).toMap
+      units.view.mapValues(unit => unit.projects.flatMap(_.autoPlugins).toSeq.distinct).toMap
     val all: Seq[AutoPlugin] = byBuild.values.toSeq.flatten.distinct
     new GroupedAutoPlugins(all, byBuild)
   }

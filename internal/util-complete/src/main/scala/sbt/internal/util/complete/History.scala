@@ -47,7 +47,7 @@ final class History private (val lines: IndexedSeq[String], val path: Option[Fil
     lines.toList
       .drop(scala.math.max(0, lines.size - historySize))
       .zipWithIndex
-      .map { case (line, number) => "   " + number + "  " + line }
+      .map { (line, number) => "   " + number + "  " + line }
       .takeRight(show max 1)
 }
 
@@ -57,8 +57,5 @@ object History {
   def apply(lines: Seq[String], path: Option[File]): History =
     new History(lines.toIndexedSeq, path)
 
-  def number(s: String): Option[Int] =
-    try {
-      Some(s.toInt)
-    } catch { case _: NumberFormatException => None }
+  def number(s: String): Option[Int] = s.toIntOption
 }

@@ -1,0 +1,3 @@
+# Verify that Compile / doc / scalacOptions += works correctly
+# This tests the fix for issue #7482
+> checkDocOptions

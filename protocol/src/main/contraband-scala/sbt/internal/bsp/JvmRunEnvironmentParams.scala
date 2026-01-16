@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -20,7 +20,7 @@ final class JvmRunEnvironmentParams private (
   override def toString: String = {
     "JvmRunEnvironmentParams(" + targets + ", " + originId + ")"
   }
-  private[this] def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): JvmRunEnvironmentParams = {
+  private def copy(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier] = targets, originId: Option[String] = originId): JvmRunEnvironmentParams = {
     new JvmRunEnvironmentParams(targets, originId)
   }
   def withTargets(targets: Vector[sbt.internal.bsp.BuildTargetIdentifier]): JvmRunEnvironmentParams = {

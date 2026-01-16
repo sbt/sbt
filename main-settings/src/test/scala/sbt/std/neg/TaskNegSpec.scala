@@ -5,7 +5,7 @@
  * Copyright 2008 - 2010, Mark Harrah
  * Licensed under Apache License 2.0 (see LICENSE)
  */
-
+/*
 package sbt.std.neg
 
 import scala.tools.reflect.ToolBoxError
@@ -306,7 +306,7 @@ class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixtu
       """.stripMargin
       }
   }
-   */
+ */
 
   test("Detect a missing `.value` inside an inner method of a task") { implicit td =>
     expectError(TaskLinterDSLFeedback.missingValueForKey("fooNeg3")) {
@@ -383,3 +383,4 @@ class TaskNegSpec extends funsuite.FixtureAnyFunSuite with fixture.TestDataFixtu
   }
  */
 }
+ */

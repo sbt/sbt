@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait TerminalSetSizeResponseFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val TerminalSetSizeResponseFormat: JsonFormat[sbt.protocol.TerminalSetSizeResponse] = new JsonFormat[sbt.protocol.TerminalSetSizeResponse] {
+given TerminalSetSizeResponseFormat: JsonFormat[sbt.protocol.TerminalSetSizeResponse] = new JsonFormat[sbt.protocol.TerminalSetSizeResponse] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.TerminalSetSizeResponse = {
     __jsOpt match {
       case Some(__js) =>

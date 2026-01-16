@@ -10,14 +10,10 @@ package sbt
 
 import scala.annotation.tailrec
 import java.io.File
-import sbt.io.syntax._
+import sbt.io.syntax.*
 import sbt.io.IO
 import sbt.internal.inc.{ RawCompiler, ScalaInstance }
-import sbt.internal.util.Types.:+:
-import sbt.internal.util.HListFormats._
-import sbt.internal.util.HNil
-import sbt.internal.util.HListFormats._
-import sbt.util.CacheImplicits._
+import sbt.util.CacheImplicits.*
 import sbt.util.Tracked.inputChanged
 import sbt.util.{ CacheStoreFactory, FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
 import sbt.util.FileInfo.{ exists, hash, lastModified }
@@ -31,7 +27,7 @@ object RawCompileLike {
     @tailrec
     def loop(opt: List[String], result: List[File]): List[File] = {
       opt.dropWhile(!fileInputOpts.contains(_)) match {
-        case List(_, fileOpt, tail @ _*) => {
+        case List(_, fileOpt, tail*) => {
           val file = new File(fileOpt)
           if (file.isFile) loop(tail.toList, file :: result)
           else loop(tail.toList, result)
@@ -51,14 +47,24 @@ object RawCompileLike {
       doCompile: Gen
   ): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
-      type Inputs =
-        FilesInfo[HashFileInfo] :+: FilesInfo[ModifiedFileInfo] :+: Seq[File] :+: File :+:
-          Seq[String] :+: Int :+: HNil
-      val inputs: Inputs = hash(sources.toSet ++ optionFiles(options, fileInputOpts)) :+:
-        FilesInfo(classpath.toSet.map(lastModified.fileOrDirectoryMax)) :+: classpath :+:
-        outputDirectory :+: options :+: maxErrors :+: HNil
-      val cachedComp = inputChanged(cacheStoreFactory make "inputs") { (inChanged, in: Inputs) =>
-        inputChanged(cacheStoreFactory make "output") {
+      type Inputs = (
+          FilesInfo[HashFileInfo],
+          FilesInfo[ModifiedFileInfo],
+          Seq[File],
+          File,
+          Seq[String],
+          Int,
+      )
+      val inputs: Inputs = (
+        hash(sources.toSet ++ optionFiles(options, fileInputOpts)),
+        FilesInfo[ModifiedFileInfo](classpath.toSet.map(lastModified.fileOrDirectoryMax)),
+        classpath,
+        outputDirectory,
+        options,
+        maxErrors
+      )
+      val cachedComp = inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+        inputChanged(cacheStoreFactory.make("output")) {
           (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
             if (inChanged || outChanged)
               doCompile(sources, classpath, outputDirectory, options, maxErrors, log)
@@ -71,8 +77,7 @@ object RawCompileLike {
 
   def prepare(description: String, doCompile: Gen): Gen =
     (sources, classpath, outputDirectory, options, maxErrors, log) => {
-      if (sources.isEmpty)
-        log.info("No sources available, skipping " + description + "...")
+      if (sources.isEmpty) log.info("No sources available, skipping " + description + "...")
       else {
         log.info(description.capitalize + " to " + outputDirectory.absolutePath + "...")
         IO.delete(outputDirectory)

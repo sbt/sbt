@@ -1,8 +1,13 @@
 # Note: this test is meaningless on less than four cores
 
-> test
--> check
-> clean
-> set testForkedParallel := true
-> test
+> testFull
 > check
+> clean
+$ delete max-concurrent-tests_1
+$ delete max-concurrent-tests_2
+$ delete max-concurrent-tests_3
+$ delete max-concurrent-tests_4
+
+> set testForkedParallel := false
+> testFull
+-> check

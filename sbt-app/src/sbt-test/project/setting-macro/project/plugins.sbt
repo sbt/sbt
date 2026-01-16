@@ -1,1 +1,0 @@
-Compile / scalacOptions += "-Xfatal-warnings"

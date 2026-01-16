@@ -1,3 +1,5 @@
-object B extends App {
-   println(A.`=`)
+object B {
+  def main(args: Array[String]): Unit = {
+    println(A.`=`)
+  }
 }

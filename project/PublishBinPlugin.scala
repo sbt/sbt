@@ -1,11 +1,9 @@
 package sbt
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{ FileAlreadyExistsException, Files }
 
-import org.apache.ivy.core.module.id.ModuleRevisionId
-import sbt.Keys._
-import sbt.internal.librarymanagement.{ IvySbt, IvyXml }
+import sbt.Keys.*
+import sbt.internal.librarymanagement.IvyXml
 
 /** This local plugin provides ways of publishing just the binary jar. */
 object PublishBinPlugin extends AutoPlugin {
@@ -15,13 +13,15 @@ object PublishBinPlugin extends AutoPlugin {
     val publishLocalBin = taskKey[Unit]("")
     val publishLocalBinConfig = taskKey[PublishConfiguration]("")
   }
-  import autoImport._
+  import autoImport.*
 
   private val dummyDoc = taskKey[File]("").withRank(Int.MaxValue)
   override val globalSettings = Seq(publishLocalBin := (()))
 
-  override val projectSettings: Seq[Def.Setting[_]] = Def settings (
-    publishLocalBin := Classpaths.publishTask(publishLocalBinConfig).value,
+  override val projectSettings: Seq[Def.Setting[?]] = Def settings (
+    publishLocalBin := Classpaths
+      .publishOrSkip(publishLocalBinConfig, publishLocalBin / skip)
+      .value,
     publishLocalBinConfig := Classpaths.publishConfig(
       false, // publishMavenStyle.value,
       Classpaths.deliverPattern(crossTarget.value),
@@ -35,18 +35,13 @@ object PublishBinPlugin extends AutoPlugin {
     publishLocalBinConfig := publishLocalBinConfig
       .dependsOn(
         // Copied from sbt.internal.
-        Def.taskDyn {
-          val doGen = useCoursier.value
-          if (doGen)
-            Def.task {
-              val currentProject = {
-                val proj = csrProject.value
-                val publications = csrPublications.value
-                proj.withPublications(publications)
-              }
-              IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
-            } else
-            Def.task(())
+        Def.task {
+          val currentProject = {
+            val proj = csrProject.value
+            val publications = csrPublications.value
+            proj.withPublications(publications)
+          }
+          IvyXml.writeFiles(currentProject, None, ivySbt.value, streams.value.log)
         }
       )
       .value,

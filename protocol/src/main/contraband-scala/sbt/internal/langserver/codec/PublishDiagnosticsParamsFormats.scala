@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait PublishDiagnosticsParamsFormats { self: sbt.internal.langserver.codec.DiagnosticFormats with sbt.internal.langserver.codec.RangeFormats with sbt.internal.langserver.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val PublishDiagnosticsParamsFormat: JsonFormat[sbt.internal.langserver.PublishDiagnosticsParams] = new JsonFormat[sbt.internal.langserver.PublishDiagnosticsParams] {
+trait PublishDiagnosticsParamsFormats { self: sbt.internal.langserver.codec.DiagnosticFormats & sbt.internal.langserver.codec.RangeFormats & sbt.internal.langserver.codec.PositionFormats & sjsonnew.BasicJsonProtocol =>
+given PublishDiagnosticsParamsFormat: JsonFormat[sbt.internal.langserver.PublishDiagnosticsParams] = new JsonFormat[sbt.internal.langserver.PublishDiagnosticsParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.PublishDiagnosticsParams = {
     __jsOpt match {
       case Some(__js) =>

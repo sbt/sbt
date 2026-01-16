@@ -12,8 +12,9 @@ import scala.util.Try
 
 import sjsonnew.JsonFormat
 import sjsonnew.support.murmurhash.Hasher
+import scala.annotation.nowarn
 
-import CacheImplicits._
+import CacheImplicits.*
 
 /**
  * A cache that stores a single value.
@@ -30,13 +31,14 @@ trait SingletonCache[A] {
 
 object SingletonCache {
 
-  implicit def basicSingletonCache[A: JsonFormat]: SingletonCache[A] =
+  given basicSingletonCache[A: JsonFormat]: SingletonCache[A] =
     new SingletonCache[A] {
       override def read(from: Input): A = from.read[A]()
       override def write(to: Output, value: A) = to.write(value)
     }
 
   /** A lazy `SingletonCache` */
+  @nowarn("msg=unused")
   def lzy[A: JsonFormat](mkCache: => SingletonCache[A]): SingletonCache[A] =
     new SingletonCache[A] {
       lazy val cache = mkCache

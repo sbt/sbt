@@ -9,7 +9,7 @@ lazy val common =
       name := "config",
       organization := "com.typesafe",
       version := "0.4.9-SNAPSHOT",
-      publishTo := Some(localRemote),
+      publishTo := Def.uncached(Some(localRemote)),
       autoScalaLibrary := false,
       crossPaths := false
     )
@@ -24,7 +24,7 @@ lazy val analyze =
       resolvers += localRemote,
       resolvers += Resolver.mavenLocal,
       resolvers += Resolver.sonatypeRepo("snapshots"),
-      fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
+      fullResolvers := Def.uncached(fullResolvers.value.filterNot(_.name == "inter-project"))
     )
 
 

@@ -59,6 +59,7 @@ type TestItemDetail {
 
 ## Testing result
 enum TestResult {
+  Empty
   Passed
   Failed
   Error

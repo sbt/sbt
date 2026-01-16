@@ -49,7 +49,7 @@ public interface Problem {
   }
 
   /**
-   * The possible releated information for the diagnostic being reported.
+   * The possible related information for the diagnostic being reported.
    *
    * <p>NOTE: To avoid breaking compatibility we provide a default to account for older Scala
    * versions that do not have the concept of "related information".

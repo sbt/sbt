@@ -10,7 +10,7 @@ package sbt
 package internal
 
 import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 import sbt.util.Logger
 

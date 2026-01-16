@@ -8,7 +8,7 @@
 
 package sbt
 
-import sbt.internal.util.{ SimpleReader, Terminal => ITerminal }
+import sbt.internal.util.{ SimpleReader, Terminal as ITerminal }
 
 trait CommandLineUIService extends InteractionService {
   override def readLine(prompt: String, mask: Boolean): Option[String] = {

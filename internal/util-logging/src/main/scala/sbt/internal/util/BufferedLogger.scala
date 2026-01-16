@@ -8,13 +8,9 @@
 
 package sbt.internal.util
 
-import sbt.util._
+import sbt.util.*
 import scala.collection.mutable.ListBuffer
-import org.apache.logging.log4j.core.{ LogEvent => XLogEvent }
-import org.apache.logging.log4j.core.appender.AbstractAppender
-import org.apache.logging.log4j.core.layout.PatternLayout
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 
 object BufferedAppender {
   def generateName: String =
@@ -30,57 +26,30 @@ object BufferedAppender {
 }
 
 /**
- * An appender that can buffer the logging done on it and then can flush the buffer
- * to the delegate appender provided in the constructor.  Use 'record()' to
- * start buffering and then 'play' to flush the buffer to the backing appender.
- *  The logging level set at the time a message is originally logged is used, not
- * the level at the time 'play' is called.
+ * An appender that can buffer the logging done on it and then can flush the buffer to the delegate
+ * appender provided in the constructor. Use 'record()' to start buffering and then 'play' to flush
+ * the buffer to the backing appender. The logging level set at the time a message is originally
+ * logged is used, not the level at the time 'play' is called.
  */
 class BufferedAppender(override val name: String, delegate: Appender) extends Appender {
-  override def close(): Unit = log4j.get match {
-    case null =>
-    case a    => a.stop()
-  }
+  override def close(): Unit = ()
   override private[sbt] def properties: ConsoleAppender.Properties = delegate.properties
   override private[sbt] def suppressedMessage: SuppressedTraceContext => Option[String] =
     delegate.suppressedMessage
-  private[this] val log4j = new AtomicReference[AbstractAppender]
-  override private[sbt] def toLog4J = log4j.get match {
-    case null =>
-      val a = new AbstractAppender(
-        delegate.name + "-log4j",
-        null,
-        PatternLayout.createDefaultLayout(),
-        true,
-        Array.empty
-      ) {
-        start()
-        override def append(event: XLogEvent): Unit = {
-          if (recording) {
-            Util.ignoreResult(buffer.add(Left(event.toImmutable)))
-          } else {
-            delegate.toLog4J.append(event)
-          }
-        }
-      }
-      log4j.set(a)
-      a
-    case a => a
-  }
 
-  private[this] val buffer =
-    new java.util.Vector[Either[XLogEvent, (Level.Value, Option[String], Option[ObjectEvent[_]])]]
-  private[this] var recording = false
+  private val buffer =
+    new java.util.Vector[(Level.Value, Option[String], Option[ObjectEvent[?]])]
+  private var recording = false
 
   override def appendLog(level: Level.Value, message: => String): Unit = {
-    if (recording) Util.ignoreResult(buffer.add(Right((level, Some(message), None))))
+    if (recording) Util.ignoreResult(buffer.add((level, Some(message), None)))
     else delegate.appendLog(level, message)
   }
   override private[sbt] def appendObjectEvent[T](
       level: Level.Value,
       message: => ObjectEvent[T]
   ): Unit = {
-    if (recording) Util.ignoreResult(buffer.add(Right(((level, None, Some(message))))))
+    if (recording) Util.ignoreResult(buffer.add(((level, None, Some(message)))))
     else delegate.appendObjectEvent(level, message)
   }
 
@@ -109,17 +78,15 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
   }
 
   /**
-   * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
-   * so that the messages are written consecutively. The buffer is cleared in the process.
+   * Flushes the buffer to the delegate logger. This method calls logAll on the delegate so that the
+   * messages are written consecutively. The buffer is cleared in the process.
    */
   def play(): Unit =
     synchronized {
-      buffer.forEach {
-        case Right((l, Some(m), _))  => delegate.appendLog(l, m)
-        case Right((l, _, Some(oe))) => delegate.appendObjectEvent(l, oe)
-        case Left(x)                 => delegate.toLog4J.append(x)
-        case _                       =>
-      }
+      buffer.forEach:
+        case (l, Some(m), _)  => delegate.appendLog(l, m)
+        case (l, _, Some(oe)) => delegate.appendObjectEvent(l, oe)
+        case _                =>
       buffer.clear()
     }
 
@@ -132,17 +99,16 @@ class BufferedAppender(override val name: String, delegate: Appender) extends Ap
 }
 
 /**
- * A logger that can buffer the logging done on it and then can flush the buffer
- * to the delegate logger provided in the constructor.  Use 'startRecording' to
- * start buffering and then 'play' from to flush the buffer to the backing logger.
- *  The logging level set at the time a message is originally logged is used, not
- * the level at the time 'play' is called.
+ * A logger that can buffer the logging done on it and then can flush the buffer to the delegate
+ * logger provided in the constructor. Use 'startRecording' to start buffering and then 'play' from
+ * to flush the buffer to the backing logger. The logging level set at the time a message is
+ * originally logged is used, not the level at the time 'play' is called.
  *
  * This class assumes that it is the only client of the delegate logger.
  */
 class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
-  private[this] val buffer = new ListBuffer[LogEvent]
-  private[this] var recording = false
+  private val buffer = new ListBuffer[LogEvent]
+  private var recording = false
 
   /** Enables buffering. */
   def record() = synchronized { recording = true }
@@ -169,8 +135,8 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
   }
 
   /**
-   * Flushes the buffer to the delegate logger.  This method calls logAll on the delegate
-   * so that the messages are written consecutively. The buffer is cleared in the process.
+   * Flushes the buffer to the delegate logger. This method calls logAll on the delegate so that the
+   * messages are written consecutively. The buffer is cleared in the process.
    */
   def play(): Unit = synchronized { delegate.logAll(buffer.toList); buffer.clear() }
 
@@ -179,9 +145,6 @@ class BufferedLogger(delegate: AbstractLogger) extends BasicLogger {
 
   /** Plays buffered events and disables buffering. */
   def stop(): Unit = synchronized { play(); clear() }
-
-  @deprecated("No longer used.", "1.0.0")
-  override def ansiCodesSupported = delegate.ansiCodesSupported
 
   override def setLevel(newLevel: Level.Value): Unit = synchronized {
     super.setLevel(newLevel)

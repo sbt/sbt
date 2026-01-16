@@ -8,51 +8,19 @@
 
 package sbt.internal.server
 
-import sbt._
-import sbt.internal.bsp._
-import sbt.internal.io.Retry
-import sbt.internal.server.BspCompileTask.compileReport
-import sbt.internal.server.BspCompileTask.exchange
+import sbt.*
+import sbt.internal.bsp.*
 import sbt.librarymanagement.Configuration
 import sbt.util.InterfaceUtil
 import sjsonnew.support.scalajson.unsafe.Converter
 import xsbti.CompileFailed
 import xsbti.Problem
 import xsbti.Severity
-import xsbti.compile.CompileResult
+import xsbti.compile.CompileAnalysis
 import xsbti.compile.Inputs
 
-import scala.util.control.NonFatal
-
-object BspCompileTask {
-  private lazy val exchange = StandardMain.exchange
-
-  def compute(
-      targetId: BuildTargetIdentifier,
-      project: ProjectRef,
-      config: Configuration,
-      ci: Inputs
-  )(
-      compile: BspCompileTask => CompileResult
-  ): CompileResult = {
-    val task = BspCompileTask(targetId, project, config, ci)
-    try {
-      task.notifyStart()
-      val result = Retry.io(compile(task))
-      task.notifySuccess(result)
-      result
-    } catch {
-      case NonFatal(cause) =>
-        val compileFailed = cause match {
-          case failed: CompileFailed => Some(failed)
-          case _                     => None
-        }
-        task.notifyFailure(compileFailed)
-        throw cause
-    }
-  }
-
-  private def apply(
+object BspCompileTask:
+  def start(
       targetId: BuildTargetIdentifier,
       project: ProjectRef,
       config: Configuration,
@@ -60,50 +28,36 @@ object BspCompileTask {
   ): BspCompileTask = {
     val taskId = TaskId(BuildServerTasks.uniqueId, Vector())
     val targetName = BuildTargetName.fromScope(project.project, config.name)
-    new BspCompileTask(targetId, targetName, taskId, inputs, System.currentTimeMillis())
+    val task = BspCompileTask(targetId, targetName, taskId, inputs, System.currentTimeMillis())
+    task.notifyStart()
+    task
   }
-
-  private def compileReport(
-      problems: Seq[Problem],
-      targetId: BuildTargetIdentifier,
-      elapsedTimeMillis: Long,
-      isNoOp: Option[Boolean]
-  ): CompileReport = {
-    val countBySeverity = problems.groupBy(_.severity()).mapValues(_.size)
-    val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
-    val errors = countBySeverity.getOrElse(Severity.Error, 0)
-    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt), isNoOp)
-  }
-}
+end BspCompileTask
 
 case class BspCompileTask private (
     targetId: BuildTargetIdentifier,
     targetName: String,
-    id: TaskId,
+    id: sbt.internal.bsp.TaskId,
     inputs: Inputs,
     startTimeMillis: Long
 ) {
-  import sbt.internal.bsp.codec.JsonProtocol._
+  import sbt.internal.bsp.codec.JsonProtocol.given
 
   private[sbt] def notifyStart(): Unit = {
     val message = s"Compiling $targetName"
     val data = Converter.toJsonUnsafe(CompileTask(targetId))
     val params = TaskStartParams(id, startTimeMillis, message, "compile-task", data)
-    exchange.notifyEvent("build/taskStart", params)
+    StandardMain.exchange.notifyEvent("build/taskStart", params)
   }
 
-  private[sbt] def notifySuccess(result: CompileResult): Unit = {
-    import collection.JavaConverters._
+  private[sbt] def notifySuccess(analysis: CompileAnalysis): Unit = {
+    import scala.jdk.CollectionConverters.*
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
-    val problems = result match {
-      case compileResult: CompileResult =>
-        val sourceInfos = compileResult.analysis().readSourceInfos().getAllSourceInfos.asScala
-        sourceInfos.values.flatMap(_.getReportedProblems).toSeq
-      case _ => Seq()
-    }
-    val isNoOp = InterfaceUtil.toOption(inputs.previousResult.analysis).map(_ == result.analysis)
-    val report = compileReport(problems, targetId, elapsedTimeMillis, isNoOp)
+    val sourceInfos = analysis.readSourceInfos().getAllSourceInfos.asScala
+    val problems = sourceInfos.values.flatMap(_.getReportedProblems).toSeq
+    val isNoOp = InterfaceUtil.toOption(inputs.previousResult.analysis).map(_ == analysis)
+    val report = compileReport(problems, elapsedTimeMillis, isNoOp)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -112,7 +66,7 @@ case class BspCompileTask private (
       "compile-report",
       Converter.toJsonUnsafe(report)
     )
-    exchange.notifyEvent("build/taskFinish", params)
+    StandardMain.exchange.notifyEvent("build/taskFinish", params)
   }
 
   private[sbt] def notifyProgress(percentage: Int, total: Int): Unit = {
@@ -129,14 +83,14 @@ case class BspCompileTask private (
       Some("compile-progress"),
       Some(data)
     )
-    exchange.notifyEvent("build/taskProgress", params)
+    StandardMain.exchange.notifyEvent("build/taskProgress", params)
   }
 
   private[sbt] def notifyFailure(cause: Option[CompileFailed]): Unit = {
     val endTimeMillis = System.currentTimeMillis()
     val elapsedTimeMillis = endTimeMillis - startTimeMillis
     val problems = cause.map(_.problems().toSeq).getOrElse(Seq.empty[Problem])
-    val report = compileReport(problems, targetId, elapsedTimeMillis, None)
+    val report = compileReport(problems, elapsedTimeMillis, None)
     val params = TaskFinishParams(
       id,
       endTimeMillis,
@@ -145,6 +99,17 @@ case class BspCompileTask private (
       "compile-report",
       Converter.toJsonUnsafe(report)
     )
-    exchange.notifyEvent("build/taskFinish", params)
+    StandardMain.exchange.notifyEvent("build/taskFinish", params)
+  }
+
+  private def compileReport(
+      problems: Seq[Problem],
+      elapsedTimeMillis: Long,
+      isNoOp: Option[Boolean]
+  ): CompileReport = {
+    val countBySeverity = problems.groupBy(_.severity()).view.mapValues(_.size).toMap
+    val warnings = countBySeverity.getOrElse(Severity.Warn, 0)
+    val errors = countBySeverity.getOrElse(Severity.Error, 0)
+    CompileReport(targetId, None, errors, warnings, Some(elapsedTimeMillis.toInt), isNoOp)
   }
 }

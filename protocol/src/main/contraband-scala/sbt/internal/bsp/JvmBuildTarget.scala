@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -25,7 +25,7 @@ final class JvmBuildTarget private (
   override def toString: String = {
     "JvmBuildTarget(" + javaHome + ", " + javaVersion + ")"
   }
-  private[this] def copy(javaHome: Option[java.net.URI] = javaHome, javaVersion: Option[String] = javaVersion): JvmBuildTarget = {
+  private def copy(javaHome: Option[java.net.URI] = javaHome, javaVersion: Option[String] = javaVersion): JvmBuildTarget = {
     new JvmBuildTarget(javaHome, javaVersion)
   }
   def withJavaHome(javaHome: Option[java.net.URI]): JvmBuildTarget = {

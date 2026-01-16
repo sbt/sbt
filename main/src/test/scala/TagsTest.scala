@@ -8,10 +8,10 @@
 
 package sbt
 
-import org.scalacheck._
+import org.scalacheck.*
 import Gen.listOf
-import Prop._
-import Tags._
+import Prop.*
+import Tags.*
 
 object TagsTest extends Properties("Tags") {
   final case class Size(value: Int)
@@ -23,10 +23,10 @@ object TagsTest extends Properties("Tags") {
   def size: Gen[Size] =
     for (i <- Arbitrary.arbitrary[Int] if i != Int.MinValue) yield Size(math.abs(i))
 
-  implicit def aTagMap = Arbitrary(tagMap)
-  implicit def aTagAndFrequency = Arbitrary(tagAndFrequency)
-  implicit def aTag = Arbitrary(tag)
-  implicit def aSize = Arbitrary(size)
+  given aTagMap: Arbitrary[Map[Tag, Int]] = Arbitrary(tagMap)
+  given aTagAndFrequency: Arbitrary[(Tag, Int)] = Arbitrary(tagAndFrequency)
+  given aTag: Arbitrary[Tag] = Arbitrary(tag)
+  given aSize: Arbitrary[Size] = Arbitrary(size)
 
   property("exclusive allows all groups without the exclusive tag") = forAll {
     (tm: TagMap, tag: Tag) =>
@@ -47,6 +47,6 @@ object TagsTest extends Properties("Tags") {
     excl(etag)(tm)
   }
 
-  private[this] def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
+  private def excl(tag: Tag): TagMap => Boolean = predicate(exclusive(tag) :: Nil)
 
 }

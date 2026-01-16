@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -52,7 +52,7 @@ final class BuildTarget private (
   override def toString: String = {
     "BuildTarget(" + id + ", " + displayName + ", " + baseDirectory + ", " + tags + ", " + capabilities + ", " + languageIds + ", " + dependencies + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(id: sbt.internal.bsp.BuildTargetIdentifier = id, displayName: Option[String] = displayName, baseDirectory: Option[java.net.URI] = baseDirectory, tags: Vector[String] = tags, capabilities: sbt.internal.bsp.BuildTargetCapabilities = capabilities, languageIds: Vector[String] = languageIds, dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier] = dependencies, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): BuildTarget = {
+  private def copy(id: sbt.internal.bsp.BuildTargetIdentifier = id, displayName: Option[String] = displayName, baseDirectory: Option[java.net.URI] = baseDirectory, tags: Vector[String] = tags, capabilities: sbt.internal.bsp.BuildTargetCapabilities = capabilities, languageIds: Vector[String] = languageIds, dependencies: Vector[sbt.internal.bsp.BuildTargetIdentifier] = dependencies, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): BuildTarget = {
     new BuildTarget(id, displayName, baseDirectory, tags, capabilities, languageIds, dependencies, dataKind, data)
   }
   def withId(id: sbt.internal.bsp.BuildTargetIdentifier): BuildTarget = {

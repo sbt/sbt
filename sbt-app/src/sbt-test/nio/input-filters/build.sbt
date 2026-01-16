@@ -1,4 +1,6 @@
 import java.nio.file.{ Files, Path }
+import sbt.internal.FileChangesMacro.inputFiles
+import sbt.internal.FileChangesMacro.outputFiles
 
 val copyPaths = taskKey[Seq[Path]]("Copy paths")
 copyPaths / fileInputs += baseDirectory.value.toGlob / "inputs" / *
@@ -25,7 +27,7 @@ newFilter := HiddenFileFilter.toNio || "**/bar.txt"
 val fooFilter = settingKey[PathFilter]("A filter for the bar.txt file")
 fooFilter := ** / ".foo.txt"
 
-Global / onLoad := { s: State =>
+Global / onLoad := { (s: State) =>
   if (scala.util.Properties.isWin) {
     val path = s.baseDir.toPath / "inputs" / ".foo.txt"
     Files.setAttribute(path, "dos:hidden", true)

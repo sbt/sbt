@@ -17,12 +17,12 @@ import sbt.internal.classpath.ClassLoaderCache
 import sbt.io.IO
 
 object ClassLoaderCacheTest {
-  implicit class CacheOps(val c: ClassLoaderCache) {
+  extension (c: ClassLoaderCache) {
     def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
   }
 }
 class ClassLoaderCacheTest extends AnyFlatSpec with Matchers {
-  import ClassLoaderCacheTest._
+  import ClassLoaderCacheTest.*
   private def withCache[R](f: ClassLoaderCache => R): R = {
     val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)
     try f(cache)

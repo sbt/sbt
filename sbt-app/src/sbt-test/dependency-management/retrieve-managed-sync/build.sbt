@@ -1,5 +1,3 @@
-ThisBuild / useCoursier := false
-
 retrieveManaged := true
 
 libraryDependencies += "log4j" % "log4j" % "1.2.16"

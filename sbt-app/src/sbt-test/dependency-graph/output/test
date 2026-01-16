@@ -1,0 +1,5 @@
+> dependencyTree --out target/tree.txt
+> dependencyTree list --out target/list.txt
+> dependencyTree stats --out target/stats.txt
+# > dependencyLicenseInfo/toFile target/licenses.txt
+> check

@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -36,7 +36,7 @@ final class TaskProgressParams private (
   override def toString: String = {
     "TaskProgressParams(" + taskId + ", " + eventTime + ", " + message + ", " + total + ", " + progress + ", " + unit + ", " + dataKind + ", " + data + ")"
   }
-  private[this] def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, total: Option[Long] = total, progress: Option[Long] = progress, unit: Option[String] = unit, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskProgressParams = {
+  private def copy(taskId: sbt.internal.bsp.TaskId = taskId, eventTime: Option[Long] = eventTime, message: Option[String] = message, total: Option[Long] = total, progress: Option[Long] = progress, unit: Option[String] = unit, dataKind: Option[String] = dataKind, data: Option[sjsonnew.shaded.scalajson.ast.unsafe.JValue] = data): TaskProgressParams = {
     new TaskProgressParams(taskId, eventTime, message, total, progress, unit, dataKind, data)
   }
   def withTaskId(taskId: sbt.internal.bsp.TaskId): TaskProgressParams = {

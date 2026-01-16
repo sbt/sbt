@@ -1,0 +1,25 @@
+> compile
+$ exists target/**/scala-2.12*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+$ exists target/**/scala-3*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+
+> clean
+-$ exists target/**/scala-2.12*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+-$ exists target/**/scala-3*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+> compile
+$ exists target/**/scala-2.12*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+$ exists target/**/scala-3*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+
+> set LocalProject("matrix2_12") / Compile / semanticdbTargetRoot := (LocalProject("matrix2_12") / Compile / target).value / "custom212"
+> set LocalProject("matrix3") / Compile / semanticdbTargetRoot := (LocalProject("matrix3") / Compile / target).value / "custom3"
+
+> compile
+$ exists target/**/scala-2.12*/**/custom212/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+$ exists target/**/scala-3*/**/custom3/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+
+> clean
+> compile
+-$ exists target/**/scala-2.12*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+-$ exists target/**/scala-3*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+$ exists target/**/scala-2.12*/**/custom212/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+$ exists target/**/scala-3*/**/custom3/META-INF/semanticdb/matrix/src/main/scala/foo/Compile.scala.semanticdb
+

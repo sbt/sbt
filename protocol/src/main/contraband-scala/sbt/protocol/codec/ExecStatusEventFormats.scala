@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.protocol.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait ExecStatusEventFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val ExecStatusEventFormat: JsonFormat[sbt.protocol.ExecStatusEvent] = new JsonFormat[sbt.protocol.ExecStatusEvent] {
+given ExecStatusEventFormat: JsonFormat[sbt.protocol.ExecStatusEvent] = new JsonFormat[sbt.protocol.ExecStatusEvent] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.protocol.ExecStatusEvent = {
     __jsOpt match {
       case Some(__js) =>

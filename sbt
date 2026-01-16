@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 set +e
-declare builtin_sbt_version="1.10.11"
+declare builtin_sbt_version="1.12.0"
 declare -a residual_args
 declare -a java_args
 declare -a scalac_args
@@ -22,11 +22,13 @@ declare sbt_verbose=
 declare sbt_debug=
 declare build_props_sbt_version=
 declare use_sbtn=
+declare use_jvm_client=
 declare no_server=
 declare sbtn_command="$SBTN_CMD"
-declare sbtn_version="1.10.8"
+declare sbtn_version="1.11.6"
 declare use_colors=1
 declare is_this_dir_sbt=""
+declare hide_jdk_warnings=1
 
 ###  ------------------------------- ###
 ###  Helper methods for BASH scripts ###
@@ -84,7 +86,7 @@ CYGWIN_FLAG=$(if is_cygwin; then echo true; else echo false; fi)
 # windows style paths.
 cygwinpath() {
   local file="$1"
-  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
     echo $(cygpath -w $file)
   else
     echo $file
@@ -113,7 +115,7 @@ echoerr_error () {
     echoerr -e "[${RED}error${NC}] $@"
   else
     echoerr "[error] $@"
-  fi
+  fi #"
 }
 vlog () {
   [[ $sbt_verbose || $sbt_debug ]] && echoerr "$@"
@@ -142,6 +144,9 @@ download_url () {
       curl --silent -L "$url" --output "$jar"
     elif command -v wget > /dev/null; then
       wget --quiet -O "$jar" "$url"
+    else
+      echoerr "failed to download $url: Neither curl nor wget is available"
+      exit 2
     fi
   } && [[ -f "$jar" ]]
 }
@@ -301,7 +306,7 @@ addMemory () {
 }
 
 addDefaultMemory() {
-  # if we detect any of these settings in ${JAVA_OPTS} or ${JAVA_TOOL_OPTIONS} we need to NOT output our settings.
+  # if we detect any of these settings in ${JAVA_OPTS} or ${JAVA_TOOL_OPTIONS} or ${JDK_JAVA_OPTIONS} we need to NOT output our settings.
   # The reason is the Xms/Xmx, if they don't line up, cause errors.
   if [[ "${java_args[@]}" == *-Xmx* ]] || \
      [[ "${java_args[@]}" == *-Xms* ]] || \
@@ -320,6 +325,15 @@ addDefaultMemory() {
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:InitialRAMPercentage* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAMPercentage* ]] || \
        [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MinRAMPercentage* ]] ; then
+    :
+  elif [[ "${JDK_JAVA_OPTIONS}" == *-Xmx* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-Xms* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-Xss* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-XX:MaxRAM* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-XX:InitialRAMPercentage* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-XX:MaxRAMPercentage* ]] || \
+       [[ "${JDK_JAVA_OPTIONS}" == *-XX:MinRAMPercentage* ]] ; then
     :
   elif [[ "${sbt_options[@]}" == *-Xmx* ]] || \
        [[ "${sbt_options[@]}" == *-Xms* ]] || \
@@ -343,6 +357,18 @@ addSbtScriptProperty () {
     # Use // to replace all spaces with %20.
     sbt_script=${sbt_script// /%20}
     addJava "-Dsbt.script=$sbt_script"
+  fi
+}
+
+addJdkWorkaround () {
+  local is_25="$(expr $java_version "=" 25)"
+  if [[ "$hide_jdk_warnings" == "0" ]]; then
+    :
+  else
+    if [[ "$is_25" == "1" ]]; then
+      addJava "--sun-misc-unsafe-memory-access=allow"
+      addJava "--enable-native-access=ALL-UNNAMED"
+    fi
   fi
 }
 
@@ -392,23 +418,27 @@ jdk_version() {
 #   - SBT_OPTS environment variable,
 #   - _JAVA_OPTIONS environment variable and
 #   - JAVA_TOOL_OPTIONS environment variable
+#   - JDK_JAVA_OPTIONS environment variable
 # in that order.
 findProperty() {
   local -a java_opts_array
   local -a sbt_opts_array
   local -a _java_options_array
   local -a java_tool_options_array
+  local -a jdk_java_options_array
   read -a java_opts_array <<< "$JAVA_OPTS"
   read -a sbt_opts_array <<< "$SBT_OPTS"
   read -a _java_options_array <<< "$_JAVA_OPTIONS"
   read -a java_tool_options_array <<< "$JAVA_TOOL_OPTIONS"
+  read -a jdk_java_options_array <<< "$JDK_JAVA_OPTIONS"
 
   local args_to_check=(
     "${java_args[@]}"
     "${java_opts_array[@]}"
     "${sbt_opts_array[@]}"
     "${_java_options_array[@]}"
-    "${java_tool_options_array[@]}")
+    "${java_tool_options_array[@]}"
+    "${jdk_java_options_array[@]}")
 
   for opt in "${args_to_check[@]}"; do
     if [[ "$opt" == -D$1=* ]]; then
@@ -520,7 +550,7 @@ run() {
   syncPreloaded
 
   # no jar? download it.
-  [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
+  [[ -f "$sbt_jar" ]] || acquire_sbt_jar || {
     exit 1
   }
 
@@ -531,7 +561,7 @@ run() {
   copyRt
 
   # If we're in cygwin, we should use the windows config, and terminal hacks
-  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
     stty -icanon min 1 -echo > /dev/null 2>&1
     addJava "-Djline.terminal=jline.UnixTerminal"
     addJava "-Dsbt.cygwin=true"
@@ -563,6 +593,7 @@ run() {
       "${java_args[@]}" \
       "${sbt_options[@]}" \
       "${java_tool_options[@]}" \
+      "${jdk_java_options[@]}" \
       -jar "$sbt_jar" \
       "${sbt_commands[@]}" \
       "${residual_args[@]}"
@@ -571,7 +602,7 @@ run() {
   exit_code=$?
 
   # Clean up the terminal from cygwin hacks.
-  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
     stty icanon echo > /dev/null 2>&1
   fi
   exit $exit_code
@@ -602,13 +633,15 @@ Usage: `basename "$0"` [options]
   shutdownall         shutdown all running sbt-launch processes
   -d | --debug        set sbt log level to debug
   -debug-inc | --debug-inc
-                      enable extra debugging for the incremental debugger
+                      enable extra debugging for the incremental compiler
   --no-colors         disable ANSI color codes
   --color=auto|always|true|false|never
                       enable or disable ANSI color codes      (sbt 1.3 and above)
   --supershell=auto|always|true|false|never
                       enable or disable supershell            (sbt 1.3 and above)
   --traces            generate Trace Event report on shutdown (sbt 1.3 and above)
+  --client            run native client
+  --jvm-client        run JVM client
   --timings           display task timings report on shutdown
   --allow-empty       start sbt even if current directory contains no sbt project
   --sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
@@ -701,6 +734,8 @@ process_args () {
           -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
            -client|--client) use_sbtn=1 && shift ;;
                    --server) use_sbtn=0 && shift ;;
+               --jvm-client) use_sbtn=0 && use_jvm_client=1 && addSbt "--client" && shift ;;
+     --no-hide-jdk-warnings) hide_jdk_warnings=0 && shift ;;
 
                  -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
      -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
@@ -711,7 +746,7 @@ process_args () {
                              sbt_cache="$2" &&
                              addJava "-Dsbt.global.localcache=$2" &&
                              shift 2 ;;
- -sbt-version|--sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+ -sbt-version|--sbt-version) require_arg version "$1" "$2" && addJava "-Dsbt.version=$2" && shift 2 ;;
      -java-home|--java-home) require_arg path "$1" "$2" &&
                              java_cmd="$2/bin/java" &&
                              export JAVA_HOME="$2" &&
@@ -770,6 +805,11 @@ detectNativeClient() {
 
 # Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
 isRunNativeClient() {
+  # sbt new/init should not use native client as it needs to run outside a project
+  if [[ "$sbt_new" == "true" ]]; then
+    echo "false"
+    return
+  fi
   sbtV="$build_props_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
   [[ "$sbtV" == "" ]] && sbtV="0.0.0"
@@ -818,14 +858,15 @@ original_args=("$@")
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  set -- $(loadConfigFile "$machine_sbt_opts_file") "$@"
+  set -- "$@" $(loadConfigFile "$machine_sbt_opts_file")
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && set -- $(loadConfigFile "$dist_sbt_opts_file") "$@"
+  [[ -f "$dist_sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$dist_sbt_opts_file")
 fi
 
-# Pull in the project-level config file, if it exists.
-[[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
+# Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
+# Append so it appears last in command line and wins for duplicate properties.
+[[ -f "$sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$sbt_opts_file")
 
 # Pull in the project-level java config, if it exists.
 [[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
@@ -838,6 +879,7 @@ fi
 java_args=($JAVA_OPTS)
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
 java_tool_options=($JAVA_TOOL_OPTIONS)
+jdk_java_options=($JDK_JAVA_OPTIONS)
 if [[ "$SBT_NATIVE_CLIENT" == "true" ]]; then
   use_sbtn=1
 fi
@@ -863,6 +905,7 @@ else
   vlog "[process_args] java_version = '$java_version'"
   addDefaultMemory
   addSbtScriptProperty
+  addJdkWorkaround
   set -- "${residual_args[@]}"
   argumentCount=$#
   run

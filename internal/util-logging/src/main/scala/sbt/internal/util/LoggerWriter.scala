@@ -8,11 +8,13 @@
 
 package sbt.internal.util
 
-import sbt.util._
+import sbt.util.*
+
+import scala.annotation.tailrec
 
 /**
- * Provides a `java.io.Writer` interface to a `Logger`.  Content is line-buffered and logged at `level`.
- * A line is delimited by `nl`, which is by default the platform line separator.
+ * Provides a `java.io.Writer` interface to a `Logger`. Content is line-buffered and logged at
+ * `level`. A line is delimited by `nl`, which is by default the platform line separator.
  */
 class LoggerWriter(
     delegate: Logger,
@@ -22,8 +24,8 @@ class LoggerWriter(
   def this(delegate: Logger, level: Level.Value) = this(delegate, Some(level))
   def this(delegate: Logger) = this(delegate, None)
 
-  private[this] val buffer = new StringBuilder
-  private[this] val lines = new collection.mutable.ListBuffer[String]
+  private val buffer = new StringBuilder
+  private val lines = new collection.mutable.ListBuffer[String]
 
   override def close() = flush()
 
@@ -48,7 +50,8 @@ class LoggerWriter(
       process()
     }
 
-  private[this] def process(): Unit = {
+  @tailrec
+  private def process(): Unit = {
     val i = buffer.indexOf(nl)
     if (i >= 0) {
       log(buffer.substring(0, i))
@@ -57,7 +60,7 @@ class LoggerWriter(
     }
   }
 
-  private[this] def log(s: String): Unit = unbufferedLevel match {
+  private def log(s: String): Unit = unbufferedLevel match {
     case None =>
       lines += s; ()
     case Some(level) => delegate.log(level, s)

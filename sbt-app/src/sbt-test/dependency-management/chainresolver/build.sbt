@@ -2,12 +2,15 @@ lazy val check = taskKey[Unit]("Runs the check")
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
+def localCache =
+  ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
+
 def commonSettings: Seq[Def.Setting[_]] =
   Seq(
-    ivyPaths := IvyPaths( (baseDirectory in ThisBuild).value, Some((target in LocalRootProject).value / "ivy-cache")),
-    scalaVersion in ThisBuild := "2.11.12",
-    organization in ThisBuild := "com.example",
-    version in ThisBuild := "0.1.0-SNAPSHOT",
+    localCache,
+    ThisBuild / scalaVersion := "2.11.12",
+    ThisBuild / organization := "com.example",
+    ThisBuild / version := "0.1.0-SNAPSHOT",
     autoScalaLibrary := false,
     crossPaths := false
   )
@@ -19,7 +22,7 @@ lazy val realCommonsIoClient = project.
     libraryDependencies := Seq(
       "commons-io" % "commons-io" % "1.3"
     ),
-    fullResolvers := fullResolvers.value.filterNot(_.name == "inter-project")
+    fullResolvers := Def.uncached(fullResolvers.value.filterNot(_.name == "inter-project"))
   )
 
 lazy val fakeCommonsIo = project.

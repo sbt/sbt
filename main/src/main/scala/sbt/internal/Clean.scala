@@ -12,17 +12,23 @@ package internal
 import java.io.IOException
 import java.nio.file.{ DirectoryNotEmptyException, Files, Path }
 
-import sbt.Def._
-import sbt.Keys._
-import sbt.Project.richInitializeTask
-import sbt.SlashSyntax0._
-import sbt.io.syntax._
-import sbt.nio.Keys._
-import sbt.nio.file._
-import sbt.nio.file.syntax._
-import sbt.util.Level
+import sbt.BasicCommandStrings.*
+import sbt.Def.*
+import sbt.Keys.*
+// import sbt.Project.richInitializeTask
+import sbt.ProjectExtra.*
+import sbt.ScopeAxis.Zero
+import sbt.io.syntax.*
+import sbt.io.IO
+import sbt.nio.Keys.*
+import sbt.nio.file.*
+import sbt.nio.file.syntax.pathToPathOps
+import sbt.nio.file.Glob.{ GlobOps }
+import sbt.util.{ DiskActionCacheStore, Level }
+import sbt.internal.util.complete.SizeParser
 import sjsonnew.JsonFormat
-import scala.annotation.nowarn
+import xsbti.{ PathBasedFile, VirtualFileRef }
+import xsbti.compile.CompilerCache
 
 private[sbt] object Clean {
 
@@ -33,7 +39,7 @@ private[sbt] object Clean {
       FileTreeView.default,
       tryDelete((_: String) => {})
     )
-  private[this] def deleteContents(
+  private def deleteContents(
       path: Path,
       exclude: Path => Boolean,
       view: FileTreeView.Nio[FileAttributes],
@@ -53,15 +59,15 @@ private[sbt] object Clean {
     deleteRecursive(path)
   }
 
-  private[this] def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
+  private def cleanFilter(scope: Scope): Def.Initialize[Task[Path => Boolean]] = Def.task {
     val excludes = (scope / cleanKeepFiles).value.map {
       // This mimics the legacy behavior of cleanFilesTask
       case f if f.isDirectory => Glob(f, AnyPath)
-      case f                  => f.toGlob
+      case f                  => f.toPath.toGlob
     } ++ (scope / cleanKeepGlobs).value
-    p: Path => excludes.exists(_.matches(p))
+    (p: Path) => excludes.exists(_.matches(p))
   }
-  private[this] def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
+  private def cleanDelete(scope: Scope): Def.Initialize[Task[Path => Unit]] = Def.task {
     // Don't use a regular logger because the logger actually writes to the target directory.
     val debug = (scope / logLevel).?.value.orElse(state.value.get(logLevel.key)) match {
       case Some(Level.Debug) =>
@@ -71,6 +77,11 @@ private[sbt] object Clean {
     }
     tryDelete(debug)
   }
+
+  private[sbt] def scopedTask: Def.Initialize[Task[Unit]] =
+    Keys.resolvedScoped.toTaskable.toTask.flatMapTask { case (r: ScopedKey[?]) =>
+      task(r.scope, full = true)
+    }
 
   /**
    * Implements the clean task in a given scope. It uses the outputs task value in the provided
@@ -83,73 +94,92 @@ private[sbt] object Clean {
       scope: Scope,
       full: Boolean
   ): Def.Initialize[Task[Unit]] =
-    Def.taskDyn {
-      val state = Keys.state.value
-      val extracted = Project.extract(state)
-      val view = (scope / fileTreeView).value
-      val manager = streamsManager.value
-      Def.task {
-        val excludeFilter = cleanFilter(scope).value
-        val delete = cleanDelete(scope).value
-        val targetDir = (scope / target).?.value.map(_.toPath)
+    (Def
+      .task {
+        val state = Keys.state.value
+        val extracted = Project.extract(state)
+        val view = (scope / fileTreeView).value
+        val manager = streamsManager.value
+        (state, extracted, view, manager)
+      })
+      .flatMapTask { (state, extracted, view, manager) =>
+        Def.task {
+          val excludeFilter = cleanFilter(scope).value
+          val delete = cleanDelete(scope).value
+          val targetDir = (scope / target).?.value.map(_.toPath)
 
-        targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
-        (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
-          if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
-          else delete(x.toPath)
-        }
-
-        // This is the special portion of the task where we clear out the relevant streams
-        // and file outputs of a task.
-        val streamsKey = scope.task.toOption.map(k => ScopedKey(scope.copy(task = Zero), k))
-        val stampsKey =
-          extracted.structure.data.getDirect(scope, inputFileStamps.key) match {
-            case Some(_) => ScopedKey(scope, inputFileStamps.key) :: Nil
-            case _       => Nil
+          targetDir.withFilter(_ => full).foreach(deleteContents(_, excludeFilter, view, delete))
+          (scope / cleanFiles).?.value.getOrElse(Nil).foreach { x =>
+            if (x.isDirectory) deleteContents(x.toPath, excludeFilter, view, delete)
+            else delete(x.toPath)
           }
-        val streamsGlobs =
-          (streamsKey.toSeq ++ stampsKey).map(k => manager(k).cacheDirectory.toGlob / **)
-        ((scope / fileOutputs).value.filter(g => targetDir.fold(true)(g.base.startsWith)) ++ streamsGlobs)
-          .foreach { g =>
-            val filter: Path => Boolean = { path =>
-              !g.matches(path) || excludeFilter(path)
+
+          // This is the special portion of the task where we clear out the relevant streams
+          // and file outputs of a task.
+          val streamsKey = scope.task.toOption.map(k => ScopedKey(scope.copy(task = Zero), k))
+          val stampKey = ScopedKey(scope, inputFileStamps.key)
+          val stampsKey =
+            if extracted.structure.data.contains(stampKey) then stampKey :: Nil else Nil
+          val streamsGlobs =
+            (streamsKey.toSeq ++ stampsKey)
+              .map(k => manager(k).cacheDirectory.toPath.toGlob / **)
+          ((scope / fileOutputs).value.filter { g =>
+            targetDir.fold(true)(g.base.startsWith)
+          } ++ streamsGlobs)
+            .foreach { g =>
+              val filter: Path => Boolean = { path =>
+                !g.matches(path) || excludeFilter(path)
+              }
+              deleteContents(g.base, filter, FileTreeView.default, delete)
+              delete(g.base)
             }
-            deleteContents(g.base, filter, FileTreeView.default, delete)
-            delete(g.base)
-          }
+        }
       }
-    } tag Tags.Clean
-  private[sbt] trait ToSeqPath[T] {
-    def apply(t: T): Seq[Path]
-  }
-  private[sbt] object ToSeqPath {
-    implicit val identitySeqPath: ToSeqPath[Seq[Path]] = identity _
-    implicit val seqFile: ToSeqPath[Seq[File]] = _.map(_.toPath)
-    implicit val path: ToSeqPath[Path] = _ :: Nil
-    implicit val file: ToSeqPath[File] = _.toPath :: Nil
-  }
-  private[this] implicit class ToSeqPathOps[T](val t: T) extends AnyVal {
-    def toSeqPath(implicit toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
+      .tag(Tags.Clean)
+
+  // SAM
+  private[sbt] trait ToSeqPath[A]:
+    def apply(a: A): Seq[Path]
+  end ToSeqPath
+
+  private[sbt] object ToSeqPath:
+    given identitySeqPath: ToSeqPath[Seq[Path]] = identity[Seq[Path]](_)
+    given seqFile: ToSeqPath[Seq[File]] = _.map(_.toPath)
+    given virtualFileRefSeq: ToSeqPath[Seq[VirtualFileRef]] =
+      _.collect { case f: PathBasedFile => f.toPath }
+    given path: ToSeqPath[Path] = _ :: Nil
+    given file: ToSeqPath[File] = _.toPath :: Nil
+    given virtualFileRef: ToSeqPath[VirtualFileRef] =
+      case f: PathBasedFile => Seq(f.toPath)
+      case _                => Nil
+  end ToSeqPath
+
+  extension [T](t: T) {
+    private def toSeqPath(using toSeqPath: ToSeqPath[T]): Seq[Path] = toSeqPath(t)
   }
 
-  @nowarn
   private[sbt] def cleanFileOutputTask[T: JsonFormat: ToSeqPath](
       taskKey: TaskKey[T]
   ): Def.Initialize[Task[Unit]] =
-    Def.taskDyn {
-      val scope = taskKey.scope in taskKey.key
-      Def.task {
-        val targetDir = (scope / target).value.toPath
-        val filter = cleanFilter(scope).value
-        // We do not want to inadvertently delete files that are not in the target directory.
-        val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
-        val delete = cleanDelete(scope).value
-        val st = (scope / streams).value
-        taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
-        delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
+    (Def
+      .task {
+        taskKey.scope.rescope(taskKey.key)
+      })
+      .flatMapTask { case scope =>
+        Def.task {
+          val targetDir = (scope / target).value.toPath
+          val filter = cleanFilter(scope).value
+          // We do not want to inadvertently delete files that are not in the target directory.
+          val excludeFilter: Path => Boolean = path => !path.startsWith(targetDir) || filter(path)
+          val delete = cleanDelete(scope).value
+          val st = (scope / streams).value
+          taskKey.previous.foreach(_.toSeqPath.foreach(p => if (!excludeFilter(p)) delete(p)))
+          delete(st.cacheDirectory.toPath / Previous.DependencyDirectory)
+        }
       }
-    } tag Tags.Clean
-  private[this] def tryDelete(debug: String => Unit): Path => Unit = path => {
+      .tag(Tags.Clean)
+
+  private def tryDelete(debug: String => Unit): Path => Unit = path => {
     try {
       debug(s"clean -- deleting file $path")
       Files.deleteIfExists(path)
@@ -161,4 +191,41 @@ private[sbt] object Clean {
         debug(s"Caught unexpected exception $e deleting $path")
     }
   }
+
+  val registerCompilerCache: State => State = (s: State) =>
+    s.get(Keys.stateCompilerCache).foreach(_.clear())
+    s.put(Keys.stateCompilerCache, CompilerCache.fresh)
+
+  val addCacheStoreFactoryFactory: State => State = (s: State) =>
+    val size = Project
+      .extract(s)
+      .getOpt(Keys.fileCacheSize)
+      .flatMap(SizeParser(_))
+      .getOrElse(SysProp.fileCacheSize)
+    s.get(Keys.cacheStoreFactoryFactory).foreach(_.close())
+    s.put(Keys.cacheStoreFactoryFactory, InMemoryCacheStore.factory(size))
+
+  private val clearCachesFun: State => State =
+    registerCompilerCache
+      .andThen(_.initializeClassLoaderCache)
+      .andThen(addCacheStoreFactoryFactory)
+
+  def clearCaches: Command =
+    val help = Help.more(ClearCaches, ClearCachesDetailed)
+    Command.command(ClearCaches, help)(clearCachesFun)
+
+  def cleanFull: Command =
+    val h = Help.more(CleanFull, cleanFullDetailed)
+    val expunge: State => State =
+      (s: State) =>
+        val outputDirectory = s
+          .get(BasicKeys.rootOutputDirectory)
+          .getOrElse(sys.error("outputDirectory has not been set"))
+        val cacheStore = s.get(BasicKeys.cacheStores).getOrElse(Nil)
+        cacheStore.foreach:
+          case d: DiskActionCacheStore => d.clear()
+          case _                       => ()
+        IO.delete(outputDirectory.toFile())
+        s
+    Command.command(CleanFull, h)(expunge andThen clearCachesFun)
 }

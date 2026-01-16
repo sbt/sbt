@@ -1,4 +1,4 @@
-import sbt._
+import sbt.*
 /*
 import StatusPlugin.autoImport._
 import com.typesafe.sbt.site.SitePlugin.autoImport._
@@ -9,7 +9,7 @@ import Sxr.{ sxr, SxrConf }
  */
 
 object Docs {
-  def settings: Seq[Setting[_]] = Nil
+  def settings: Seq[Setting[?]] = Nil
 
   /*
   val siteExcludes = Set(".buildinfo", "objects.inv")
@@ -52,5 +52,5 @@ object Docs {
     IO.copy(toCopy)
     repo
   }
- */
+   */
 }

@@ -10,5 +10,5 @@ $ copy-file changes/Failure.scala src/test/scala/Failure.scala
 -> testOnly com.foo.junit.test.blah.Failure
 > testOnly com.foo.junit.test.blah.Success
 
-> set fork in Test := true
+> set Test / fork := true
 > testOnly com.foo.junit.test.blah.Success

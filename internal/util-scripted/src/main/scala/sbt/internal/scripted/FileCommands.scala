@@ -13,8 +13,8 @@ package scripted
 import java.io.File
 import sbt.nio.file.{ FileTreeView, Glob, PathFilter, RecursiveGlob }
 import sbt.io.{ IO, Path }
-import sbt.io.syntax._
-import Path._
+import sbt.io.syntax.*
+import Path.*
 
 class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   final val OR = "||"
@@ -23,13 +23,13 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   lazy val commands = commandMap
   def commandMap =
     Map(
-      "touch" nonEmpty touch _,
-      "delete" nonEmpty delete _,
-      "exists" nonEmpty exists _,
-      "mkdir" nonEmpty makeDirectories _,
-      "absent" nonEmpty absent _,
+      "touch".nonEmpty(touch),
+      "delete".nonEmpty(delete),
+      "exists".nonEmpty(exists),
+      "mkdir".nonEmpty(makeDirectories),
+      "absent".nonEmpty(absent),
       //			"sync" twoArg("Two directory paths", sync _),
-      "newer".twoArg("Two paths", newer _),
+      "newer".twoArg("Two paths", newer),
       "pause" noArg {
         println("Pausing in " + baseDirectory)
         /*readLine("Press enter to continue. ") */
@@ -38,11 +38,11 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         println()
       },
       "sleep".oneArg("Time in milliseconds", time => Thread.sleep(time.toLong)),
-      "exec" nonEmpty (execute _),
-      "copy" copy (to => rebase(baseDirectory, to)),
-      "copy-file".twoArg("Two paths", copyFile _),
-      "must-mirror".twoArg("Two paths", diffFiles _),
-      "copy-flat" copy flat
+      "exec".nonEmpty(execute),
+      "copy".copy(to => rebase(baseDirectory, to)),
+      "copy-file".twoArg("Two paths", copyFile),
+      "must-mirror".twoArg("Two paths", diffFiles),
+      "copy-flat".copy(flat),
     )
 
   def apply(command: String, arguments: List[String]): Unit =
@@ -55,40 +55,35 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   def spaced[T](l: Seq[T]) = l.mkString(" ")
   def fromStrings(paths: List[String]) = paths.map(fromString)
   def fromString(path: String) = new File(baseDirectory, path)
-  def filterFromStrings(exprs: List[String]): List[PathFilter] = {
+  def filterFromStrings(exprs: List[String]): List[PathFilter] =
     def globs(exprs: List[String]): List[PathFilter] =
-      exprs.map { g =>
-        if (g.startsWith("/")) (Glob(g): PathFilter)
+      exprs.map: g =>
+        if g.startsWith("/") then (Glob(g): PathFilter)
         else (Glob(baseDirectory, g): PathFilter)
-      }
-    def orGlobs = {
+    def orGlobs =
       val exprs1 = exprs
         .mkString("")
         .split(OR)
         .filter(_ != OR)
         .toList
         .map(_.trim)
-      val combined = globs(exprs1) match {
+      val combined = globs(exprs1) match
         case Nil      => sys.error("unexpected Nil")
         case g :: Nil => g
         case g :: gs =>
-          gs.foldLeft(g) {
-            case (acc, g) => acc || g
+          gs.foldLeft(g) { (acc, g) =>
+            acc || g
           }
-      }
       List(combined)
-    }
-    if (exprs.contains("||")) orGlobs
+    if exprs.contains("||") then orGlobs
     else globs(exprs)
-  }
 
   def touch(paths: List[String]): Unit = IO.touch(fromStrings(paths))
   def delete(paths: List[String]): Unit =
     IO.delete(
       (filterFromStrings(paths)
-        .flatMap { filter =>
-          view.list(baseGlob / RecursiveGlob, filter)
-        })
+        .flatMap: filter =>
+          view.list(baseGlob / RecursiveGlob, filter))
         .map(_._1.toFile)
     )
   /*def sync(from: String, to: String) =
@@ -131,8 +126,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
   }
   def execute(command: List[String]): Unit = execute0(command.head, command.tail)
   def execute0(command: String, args: List[String]): Unit = {
-    if (command.trim.isEmpty)
-      scriptError("Command was empty.")
+    if (command.trim.isEmpty) scriptError("Command was empty.")
     else {
       val exitValue = sys.process.Process(command :: args, baseDirectory).!
       if (exitValue != 0)
@@ -140,10 +134,10 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
     }
   }
 
+  type NamedCommand = (String, List[String] => Unit)
+
   // these are for readability of the command list
-  implicit def commandBuilder(s: String): CommandBuilder = new CommandBuilder(s)
-  final class CommandBuilder(commandName: String) {
-    type NamedCommand = (String, List[String] => Unit)
+  extension (commandName: String)
     def nonEmpty(action: List[String] => Unit): NamedCommand =
       commandName -> { paths =>
         if (paths.isEmpty)
@@ -187,5 +181,4 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         "Wrong number of arguments to " + commandName + " command.  " +
           requiredArgs + " required, found: '" + spaced(args) + "'."
       )
-  }
 }

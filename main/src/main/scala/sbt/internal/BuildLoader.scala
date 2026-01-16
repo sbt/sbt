@@ -11,17 +11,17 @@ package internal
 
 import java.io.File
 import java.net.URI
-import BuildLoader._
+import BuildLoader.*
 import sbt.internal.util.Types.{ const, idFun }
 import sbt.util.Logger
 import sbt.librarymanagement.ModuleID
 
 private[internal] object Alternatives {
-  private[internal] implicit class Alternative[A, B](val f: A => Option[B]) {
+  extension [A, B](f: A => Option[B]) {
     def |(g: A => Option[B]): A => Option[B] = (a: A) => f(a) orElse g(a)
   }
 }
-import Alternatives.Alternative
+import Alternatives.*
 final class MultiHandler[S, T](
     builtIn: S => Option[T],
     root: Option[S => Option[T]],
@@ -56,14 +56,13 @@ final class MultiHandler[S, T](
   def setRoot(resolver: S => Option[T]) =
     new MultiHandler(builtIn, Some(resolver), nonRoots, getURI, log)
   def applyNonRoots(info: S): List[(URI, T)] =
-    nonRoots flatMap {
-      case (definingURI, loader) =>
-        loader(info) map { unit =>
-          (definingURI, unit)
-        }
+    nonRoots flatMap { (definingURI, loader) =>
+      loader(info) map { unit =>
+        (definingURI, unit)
+      }
     }
 
-  private[this] def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
+  private def warn(baseMessage: String, log: Logger, matching: Seq[(URI, T)]): Unit = {
     log.warn(baseMessage)
     log.debug("Non-root build resolvers defined in:")
     log.debug(matching.map(_._1).mkString("\n\t"))
@@ -184,7 +183,8 @@ object BuildLoader {
   }
 }
 
-/** Defines the responsible for loading builds.
+/**
+ * Defines the responsible for loading builds.
  *
  * @param fail A reporter for failures.
  * @param state The state.
@@ -233,7 +233,7 @@ final class BuildLoader(
     val mgmt = config.pluginManagement
     copyWithNewPM(mgmt.copy(overrides = mgmt.overrides ++ overrides))
   }
-  private[this] def copyWithNewPM(newpm: PluginManagement): BuildLoader = {
+  private def copyWithNewPM(newpm: PluginManagement): BuildLoader = {
     val newConfig = config.copy(pluginManagement = newpm)
     new BuildLoader(fail, state, newConfig, resolvers, builders, transformer, full, transformAll)
   }

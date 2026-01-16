@@ -3,9 +3,9 @@ lazy val check2 = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
   .settings(
-    scalaVersion := "2.12.4",
+    scalaVersion := "3.7.3",
     name := "Hello",
-    libraryDependencies += "com.eed3si9n.verify" %% "verify" % "0.2.0" % Test,
+    libraryDependencies += "com.eed3si9n.verify" %% "verify" % "1.0.0" % Test,
     testFrameworks += new TestFramework("verify.runner.Framework"),
     check := {
       val xs = IO.readLines(file("output.txt")).toVector

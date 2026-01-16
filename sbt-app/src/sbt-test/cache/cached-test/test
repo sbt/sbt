@@ -1,0 +1,7 @@
+> test
+
+> test
+> checkHit
+
+$ copy-file changed/MathFunction.scala src/test/scala/MathFunction.scala
+-> test

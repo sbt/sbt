@@ -1,0 +1,8 @@
+> compile
+
+> publish
+
+$ exists repo/com/example/sbt-example_2.12_1.0/0.1.0-SNAPSHOT/sbt-example_2.12_1.0-0.1.0-SNAPSHOT.pom
+$ absent repo/com/example/sbt-example_2.12_1.0/0.1.0-SNAPSHOT/sbt-example-0.1.0-SNAPSHOT.pom
+
+> checkSbt2Plugin

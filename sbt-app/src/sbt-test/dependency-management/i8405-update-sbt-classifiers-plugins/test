@@ -1,0 +1,5 @@
+> updateSbtClassifiers
+
+# see assertion definition in build.sbt
+> checkPluginsInUpdateSbtClassifiers
+

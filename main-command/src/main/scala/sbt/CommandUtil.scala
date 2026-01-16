@@ -13,11 +13,11 @@ import java.util.regex.{ Pattern, PatternSyntaxException }
 
 import sbt.internal.util.AttributeKey
 import sbt.internal.util.complete.Parser
-import sbt.internal.util.complete.DefaultParsers._
+import sbt.internal.util.complete.DefaultParsers.*
 import sbt.internal.util.Util.nilSeq
 
 import sbt.io.IO
-import sbt.io.syntax._
+import sbt.io.syntax.*
 
 object CommandUtil {
   def readLines(files: Seq[File]): Seq[String] =
@@ -46,15 +46,15 @@ object CommandUtil {
   def fill(s: String, size: Int): String = s + " " * math.max(size - s.length, 0)
 
   def withAttribute[T](s: State, key: AttributeKey[T], ifMissing: String)(f: T => State): State =
-    s get key match {
+    s.get(key) match {
       case None =>
         s.log.error(ifMissing); s.fail
       case Some(nav) => f(nav)
     }
 
   def singleArgument(exampleStrings: Set[String]): Parser[String] = {
-    val arg = (NotSpaceClass ~ any.*) map { case (ns, s) => (ns +: s).mkString }
-    token(Space) ~> token(arg examples exampleStrings)
+    val arg = (NotSpaceClass ~ any.*) map { (ns, s) => (ns +: s).mkString }
+    token(Space) ~> token(arg.examples(exampleStrings))
   }
 
   def detail(selected: String, detailMap: Map[String, String]): String =
@@ -75,21 +75,20 @@ object CommandUtil {
 
   def searchHelp(selected: String, detailMap: Map[String, String]): Map[String, String] = {
     val pattern = Pattern.compile(selected, HelpPatternFlags)
-    detailMap flatMap {
-      case (k, v) =>
-        val contentMatches = Highlight.showMatches(pattern)(v)
-        val keyMatches = Highlight.showMatches(pattern)(k)
-        val keyString = Highlight.bold(keyMatches getOrElse k)
-        val contentString = contentMatches getOrElse v
-        if (keyMatches.isDefined || contentMatches.isDefined)
-          Seq((keyString, contentString))
-        else
-          nilSeq
+    detailMap flatMap { (k, v) =>
+      val contentMatches = Highlight.showMatches(pattern)(v)
+      val keyMatches = Highlight.showMatches(pattern)(k)
+      val keyString = Highlight.bold(keyMatches getOrElse k)
+      val contentString = contentMatches getOrElse v
+      if (keyMatches.isDefined || contentMatches.isDefined)
+        Seq((keyString, contentString))
+      else
+        nilSeq
     }
   }
 
   def layoutDetails(details: Map[String, String]): String =
-    details.map { case (k, v) => k + "\n\n  " + v }.mkString("\n", "\n\n", "\n")
+    details.map { (k, v) => k + "\n\n  " + v }.mkString("\n", "\n\n", "\n")
 
   final val HelpPatternFlags = Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE
 

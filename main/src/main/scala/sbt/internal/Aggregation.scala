@@ -9,18 +9,17 @@
 package sbt
 package internal
 
-import java.text.DateFormat
-
-import sbt.Def.ScopedKey
-import sbt.Keys.{ showSuccess, showTiming, timingFormat }
-import sbt.SlashSyntax0._
+import sbt.Def.{ ScopedKey, Settings }
+import sbt.Keys.{ showSuccess, showTiming }
+import sbt.ProjectExtra.*
+import sbt.ScopeAxis.{ Select, Zero }
 import sbt.internal.util.complete.Parser
 import sbt.internal.util.complete.Parser.{ failure, seq, success }
-import sbt.internal.util._
+import sbt.internal.util.*
 import sbt.internal.client.NetworkClient
 import sbt.std.Transform.DummyTaskMap
 import sbt.util.{ Logger, Show }
-import scala.annotation.nowarn
+import scala.annotation.tailrec
 
 sealed trait Aggregation
 object Aggregation {
@@ -31,14 +30,15 @@ object Aggregation {
       success: Boolean
   )
 
-  final case class Complete[T](
+  final case class Complete[A](
       start: Long,
       stop: Long,
-      results: sbt.Result[Seq[KeyValue[T]]],
+      results: sbt.Result[Seq[KeyValue[A]]],
+      cacheSummary: String,
       state: State
   )
 
-  final case class KeyValue[+T](key: ScopedKey[_], value: T)
+  final case class KeyValue[+T](key: ScopedKey[?], value: T)
 
   def defaultShow(state: State, showTasks: Boolean): ShowConfig =
     ShowConfig(
@@ -48,18 +48,18 @@ object Aggregation {
       success = true
     )
 
-  def printSettings(xs: Seq[KeyValue[_]], print: String => Unit)(
-      implicit display: Show[ScopedKey[_]]
+  def printSettings(xs: Seq[KeyValue[?]], print: String => Unit)(using
+      display: Show[ScopedKey[?]]
   ): Unit =
     xs match {
-      case KeyValue(_, x: Seq[_]) :: Nil => print(x.mkString("* ", "\n* ", ""))
+      case KeyValue(_, x: Seq[?]) :: Nil => print(x.mkString("* ", "\n* ", ""))
       case KeyValue(_, x) :: Nil         => print(x.toString)
       case _ =>
         xs foreach (kv => print(display.show(kv.key) + "\n\t" + kv.value.toString))
     }
 
   type Values[T] = Seq[KeyValue[T]]
-  type AnyKeys = Values[_]
+  type AnyKeys = Values[Any]
 
   def seqParser[T](ps: Values[Parser[T]]): Parser[Seq[KeyValue[T]]] =
     seq(ps.map { case KeyValue(k, p) => p.map(v => KeyValue(k, v)) })
@@ -68,104 +68,100 @@ object Aggregation {
       s: State,
       ps: Values[Parser[Task[T]]],
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[_]]): Parser[() => State] =
+  )(using display: Show[ScopedKey[?]]): Parser[() => State] =
     Command.applyEffect(seqParser(ps))(ts => runTasks(s, ts, DummyTaskMap(Nil), show))
 
-  private def showRun[T](complete: Complete[T], show: ShowConfig)(
-      implicit display: Show[ScopedKey[_]]
-  ): Unit = {
-    import complete._
+  private def showRun[A](complete: Complete[A], show: ShowConfig)(using
+      Show[ScopedKey[?]]
+  ): Unit =
+    import complete.*
     val log = state.log
     val extracted = Project.extract(state)
-    val success = results match { case Value(_) => true; case Inc(_) => false }
-    results.toEither.right.foreach { r =>
-      if (show.taskValues) printSettings(r, show.print)
+    val success = results match
+      case Result.Value(_) => true
+      case Result.Inc(_)   => false
+    val isPaused = currentChannel(state) match
+      case Some(channel) => channel.isPaused
+      case None          => false
+    results.toEither.foreach { r =>
+      if show.taskValues then printSettings(r, show.print) else ()
     }
-    if (show.success && !state.get(suppressShow).getOrElse(false))
-      printSuccess(start, stop, extracted, success, log)
-  }
+    if !isPaused && show.success && !state.get(suppressShow).getOrElse(false) then
+      printSuccess(start, stop, extracted, success, cacheSummary, log)
+    else ()
 
-  def timedRun[T](
+  private def currentChannel(state: State): Option[CommandChannel] =
+    state.currentCommand match
+      case Some(exec) =>
+        exec.source match
+          case Some(source) =>
+            StandardMain.exchange.channels.find(_.name == source.channelName)
+          case _ => None
+      case _ => None
+
+  def timedRun[A](
       s: State,
-      ts: Values[Task[T]],
-      extra: DummyTaskMap
-  ): Complete[T] = {
-    import EvaluateTask._
-    import std.TaskExtra._
-
-    val extracted = Project extract s
+      ts: Values[Task[A]],
+      extra: DummyTaskMap,
+  ): Complete[A] =
+    import EvaluateTask.*
+    import std.TaskExtra.*
+    val extracted = Project.extract(s)
     import extracted.structure
-    val toRun = ts map { case KeyValue(k, t) => t.map(v => KeyValue(k, v)) } join;
-    val roots = ts map { case KeyValue(k, _) => k }
+    val toRun = ts.map { case KeyValue(k, t) => t.map(v => KeyValue(k, v)) }.join
+    val roots = ts.map { case KeyValue(k, _) => k }
     val config = extractedTaskConfig(extracted, structure, s)
-
     val start = System.currentTimeMillis
-    val (newS, result) = withStreams(structure, s) { str =>
+    Def.cacheEventLog.clear()
+    val (newS, result) = withStreams(structure, s): str =>
       val transform = nodeView(s, str, roots, extra)
-      runTask(toRun, s, str, structure.index.triggers, config)(transform)
-    }
+      runTask(toRun, s, str, structure.index.triggers, config)(using transform)
     val stop = System.currentTimeMillis
-    Complete(start, stop, result, newS)
-  }
+    val cacheSummary = Def.cacheEventLog.summary.toString()
+    Complete(start, stop, result, cacheSummary, newS)
 
-  def runTasks[HL <: HList, T](
+  def runTasks[A1](
       s: State,
-      ts: Values[Task[T]],
+      ts: Values[Task[A1]],
       extra: DummyTaskMap,
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[_]]): State = {
-    val complete = timedRun[T](s, ts, extra)
+  )(using display: Show[ScopedKey[?]]): State =
+    val complete = timedRun[A1](s, ts, extra)
     showRun(complete, show)
-    complete.results match {
-      case Inc(i)   => complete.state.handleError(i)
-      case Value(_) => complete.state
-    }
-  }
+    complete.results match
+      case Result.Inc(i)   => complete.state.handleError(i)
+      case Result.Value(_) => complete.state
 
   def printSuccess(
       start: Long,
       stop: Long,
       extracted: Extracted,
       success: Boolean,
-      log: Logger
-  ): Unit = {
-    import extracted._
+      cacheSummary: String,
+      log: Logger,
+  ): Unit =
+    import extracted.*
     def get(key: SettingKey[Boolean]): Boolean =
       (currentRef / key).get(structure.data) getOrElse true
+    if get(showSuccess) then
+      if get(showTiming) then
+        val msg = timing(start, stop) + (
+          if cacheSummary == "" then ""
+          else ", " + cacheSummary
+        )
+        if success then log.success(msg)
+        else if Terminal.get.isSuccessEnabled then log.error(msg)
+      else if success then log.success("")
+    else ()
 
-    if (get(showSuccess)) {
-      if (get(showTiming)) {
-        val msg = timingString(start, stop, structure.data, currentRef)
-        if (success) log.success(msg) else if (Terminal.get.isSuccessEnabled) log.error(msg)
-      } else if (success)
-        log.success("")
-    }
-  }
-
-  private def timingString(
-      startTime: Long,
-      endTime: Long,
-      data: Settings[Scope],
-      currentRef: ProjectRef,
-  ): String = {
-    val format = (currentRef / timingFormat).get(data) getOrElse defaultFormat
-    timing(format, startTime, endTime)
-  }
-
-  def timing(format: java.text.DateFormat, startTime: Long, endTime: Long): String = {
-    NetworkClient.timing(format, startTime, endTime)
-  }
-
-  def defaultFormat: DateFormat = {
-    import java.text.DateFormat
-    DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM)
-  }
+  def timing(startTime: Long, endTime: Long): String =
+    NetworkClient.elapsedString(startTime, endTime)
 
   def applyDynamicTasks[I](
       s: State,
       inputs: Values[InputTask[I]],
       show: ShowConfig
-  )(implicit display: Show[ScopedKey[_]]): Parser[() => State] = {
+  )(using display: Show[ScopedKey[?]]): Parser[() => State] = {
     val parsers =
       for (KeyValue(k, it) <- inputs)
         yield it.parser(s).map(v => KeyValue(k, v))
@@ -174,26 +170,25 @@ object Aggregation {
     }
   }
 
-  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[_]])(
-      implicit display: Show[ScopedKey[_]]
+  def evaluatingParser(s: State, show: ShowConfig)(keys: Seq[KeyValue[?]])(using
+      display: Show[ScopedKey[?]]
   ): Parser[() => State] = {
 
     // to make the call sites clearer
-    def separate[L](in: Seq[KeyValue[_]])(
-        f: KeyValue[_] => Either[KeyValue[L], KeyValue[_]]
-    ): (Seq[KeyValue[L]], Seq[KeyValue[_]]) =
+    def separate[L](in: Seq[KeyValue[?]])(
+        f: KeyValue[?] => Either[KeyValue[L], KeyValue[?]]
+    ): (Seq[KeyValue[L]], Seq[KeyValue[?]]) =
       Util.separate(in)(f)
 
     val kvs = keys.toList
-    if (kvs.isEmpty)
-      failure("No such setting/task")
+    if (kvs.isEmpty) failure("No such setting/task")
     else {
-      val (inputTasks, other) = separate[InputTask[_]](kvs) {
-        case KeyValue(k, v: InputTask[_]) => Left(KeyValue(k, v))
+      val (inputTasks, other) = separate[InputTask[?]](kvs) {
+        case KeyValue(k, v: InputTask[?]) => Left(KeyValue(k, v))
         case kv                           => Right(kv)
       }
-      val (tasks, settings) = separate[Task[_]](other) {
-        case KeyValue(k, v: Task[_]) => Left(KeyValue(k, v))
+      val (tasks, settings) = separate[Task[?]](other) {
+        case KeyValue(k, v: Task[?]) => Left(KeyValue(k, v))
         case kv                      => Right(kv)
       }
       // currently, disallow input tasks to be mixed with normal tasks.
@@ -209,7 +204,11 @@ object Aggregation {
           val otherStrings = other.map(_.key).mkString("Task(s)/setting(s):\n\t", "\n\t", "\n")
           failure(s"Cannot mix input tasks with plain tasks/settings.  $inputStrings $otherStrings")
         } else
-          applyDynamicTasks(s, maps(inputTasks)(castToAny), show)
+          applyDynamicTasks(
+            s,
+            inputTasks.map { case KeyValue(k, v: InputTask[a]) => KeyValue(k, castToAny(v)) },
+            show
+          )
       } else {
         val base =
           if (tasks.isEmpty) success(() => s)
@@ -223,54 +222,63 @@ object Aggregation {
       }
     }
   }
-  // this is a hack to avoid duplicating method implementations
-  private[this] def castToAny[T[_]](t: T[_]): T[Any] = t.asInstanceOf[T[Any]]
 
-  private[this] def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
+  // this is a hack to avoid duplicating method implementations
+  private def castToAny[F[_]]: [a] => F[a] => F[Any] = [a] => (fa: F[a]) => fa.asInstanceOf[F[Any]]
+
+  private def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
     vs map { case KeyValue(k, v) => KeyValue(k, f(v)) }
 
   def projectAggregates[Proj](
       proj: Option[Reference],
       extra: BuildUtil[Proj],
       reverse: Boolean
-  ): Seq[ProjectRef] = {
+  ): Seq[ProjectRef] =
     val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap(
-      ref => if (reverse) extra.aggregates.reverse(ref) else extra.aggregates.forward(ref)
-    )
-  }
+    resRef.toList.flatMap { ref =>
+      if reverse then extra.aggregates.reverse(ref)
+      else extra.aggregates.forward(ref)
+    }
 
-  def aggregate[T, Proj](
-      key: ScopedKey[T],
-      rawMask: ScopeMask,
+  /**
+   * Compute the reverse aggregate keys of all the `keys` at once.
+   * This is more performant than computing the revere aggregate keys of each key individually
+   * because of the duplicates. One aggregate key is the aggregation of many keys.
+   */
+  def reverseAggregate[Proj](
+      keys: Set[ScopedKey[?]],
       extra: BuildUtil[Proj],
-      reverse: Boolean = false
-  ): Seq[ScopedKey[T]] = {
-    val mask = rawMask.copy(project = true)
-    Dag.topologicalSort(key) { k =>
-      if (reverse)
-        reverseAggregatedKeys(k, extra, mask)
-      else if (aggregationEnabled(k, extra.data))
-        aggregatedKeys(k, extra, mask)
+  ): Iterable[ScopedKey[?]] =
+    val mask = ScopeMask()
+    @tailrec
+    def recur(keys: Set[ScopedKey[?]], acc: Set[ScopedKey[?]]): Set[ScopedKey[?]] =
+      if keys.isEmpty then acc
       else
-        Nil
-    }
-  }
-  def reverseAggregatedKeys[T](
-      key: ScopedKey[T],
-      extra: BuildUtil[_],
-      mask: ScopeMask
-  ): Seq[ScopedKey[T]] =
-    projectAggregates(key.scope.project.toOption, extra, reverse = true) flatMap { ref =>
-      val toResolve = key.scope.copy(project = Select(ref))
-      val resolved = Resolve(extra, Zero, key.key, mask)(toResolve)
-      val skey = ScopedKey(resolved, key.key)
-      if (aggregationEnabled(skey, extra.data)) skey :: Nil else Nil
-    }
+        val aggKeys = for
+          key <- keys
+          ref <- projectAggregates(key.scope.project.toOption, extra, reverse = true)
+          toResolve = key.scope.copy(project = Select(ref))
+          resolved = Resolve(extra, Zero, key.key, mask)(toResolve)
+          scoped = ScopedKey(resolved, key.key)
+          if !acc.contains(scoped)
+        yield scoped
+        val filteredAggKeys = aggKeys.filter(aggregationEnabled(_, extra.data))
+        // recursive because an aggregate project can be aggregated in another aggregate project
+        recur(filteredAggKeys, acc ++ filteredAggKeys)
+    recur(keys, keys)
+
+  def aggregate[A1, Proj](
+      key: ScopedKey[A1],
+      rawMask: ScopeMask,
+      extra: BuildUtil[Proj]
+  ): Seq[ScopedKey[A1]] =
+    val mask = rawMask.copy(project = true)
+    Dag.topologicalSort(key): (k) =>
+      if aggregationEnabled(k, extra.data) then aggregatedKeys(k, extra, mask) else Nil
 
   def aggregatedKeys[T](
       key: ScopedKey[T],
-      extra: BuildUtil[_],
+      extra: BuildUtil[?],
       mask: ScopeMask
   ): Seq[ScopedKey[T]] =
     projectAggregates(key.scope.project.toOption, extra, reverse = false) map { ref =>
@@ -279,9 +287,8 @@ object Aggregation {
       ScopedKey(resolved, key.key)
     }
 
-  @nowarn
-  def aggregationEnabled(key: ScopedKey[_], data: Settings[Scope]): Boolean =
-    Keys.aggregate in Scope.fillTaskAxis(key.scope, key.key) get data getOrElse true
+  def aggregationEnabled(key: ScopedKey[?], data: Settings): Boolean =
+    (Scope.fillTaskAxis(key.scope, key.key) / Keys.aggregate).get(data).getOrElse(true)
   private[sbt] val suppressShow =
     AttributeKey[Boolean]("suppress-aggregation-show", Int.MaxValue)
 }

@@ -7,12 +7,13 @@
  */
 
 package sbt.internal.util.codec
-import _root_.sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
+
+import sjsonnew.{ deserializationError, Builder, JsonFormat, Unbuilder }
 import xsbti.Position
 import java.util.Optional
 
 trait PositionFormats { self: sjsonnew.BasicJsonProtocol =>
-  implicit lazy val PositionFormat: JsonFormat[Position] = new JsonFormat[Position] {
+  given PositionFormat: JsonFormat[Position] = new JsonFormat[Position] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Position = {
       jsOpt match {
         case Some(js) =>

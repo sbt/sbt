@@ -1,0 +1,5 @@
+# https://github.com/sbt/sbt/issues/7424
+> name
+$ copy-file changes/build.sbt build.sbt
+> reload
+> name

@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait RangeFormats { self: sbt.internal.bsp.codec.PositionFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val RangeFormat: JsonFormat[sbt.internal.bsp.Range] = new JsonFormat[sbt.internal.bsp.Range] {
+trait RangeFormats { self: sbt.internal.bsp.codec.PositionFormats & sjsonnew.BasicJsonProtocol =>
+given RangeFormat: JsonFormat[sbt.internal.bsp.Range] = new JsonFormat[sbt.internal.bsp.Range] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.Range = {
     __jsOpt match {
       case Some(__js) =>

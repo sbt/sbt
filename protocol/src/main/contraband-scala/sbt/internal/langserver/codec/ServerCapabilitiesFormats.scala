@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
-trait ServerCapabilitiesFormats { self: sbt.internal.langserver.codec.TextDocumentSyncOptionsFormats with sbt.internal.langserver.codec.SaveOptionsFormats with sjsonnew.BasicJsonProtocol =>
-implicit lazy val ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.ServerCapabilities] = new JsonFormat[sbt.internal.langserver.ServerCapabilities] {
+trait ServerCapabilitiesFormats { self: sbt.internal.langserver.codec.TextDocumentSyncOptionsFormats & sbt.internal.langserver.codec.SaveOptionsFormats & sjsonnew.BasicJsonProtocol =>
+given ServerCapabilitiesFormat: JsonFormat[sbt.internal.langserver.ServerCapabilities] = new JsonFormat[sbt.internal.langserver.ServerCapabilities] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.ServerCapabilities = {
     __jsOpt match {
       case Some(__js) =>

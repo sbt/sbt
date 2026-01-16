@@ -12,8 +12,11 @@ object Build {
   val cached = settingKey[Unit]("")
   val newInputs = settingKey[Unit]("")
 
+  @transient
   val checkCompile = taskKey[Unit]("check compile inputs")
+  @transient
   val checkRun = taskKey[Unit]("check runtime inputs")
+  @transient
   val checkTest = taskKey[Unit]("check test inputs")
 
   val root = (project in file(".")).settings(

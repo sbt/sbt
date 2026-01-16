@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.bsp.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait CleanCacheResultFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val CleanCacheResultFormat: JsonFormat[sbt.internal.bsp.CleanCacheResult] = new JsonFormat[sbt.internal.bsp.CleanCacheResult] {
+given CleanCacheResultFormat: JsonFormat[sbt.internal.bsp.CleanCacheResult] = new JsonFormat[sbt.internal.bsp.CleanCacheResult] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.bsp.CleanCacheResult = {
     __jsOpt match {
       case Some(__js) =>

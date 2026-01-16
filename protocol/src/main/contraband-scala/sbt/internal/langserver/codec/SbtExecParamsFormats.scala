@@ -1,12 +1,12 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
 package sbt.internal.langserver.codec
 import _root_.sjsonnew.{ Unbuilder, Builder, JsonFormat, deserializationError }
 trait SbtExecParamsFormats { self: sjsonnew.BasicJsonProtocol =>
-implicit lazy val SbtExecParamsFormat: JsonFormat[sbt.internal.langserver.SbtExecParams] = new JsonFormat[sbt.internal.langserver.SbtExecParams] {
+given SbtExecParamsFormat: JsonFormat[sbt.internal.langserver.SbtExecParams] = new JsonFormat[sbt.internal.langserver.SbtExecParams] {
   override def read[J](__jsOpt: Option[J], unbuilder: Unbuilder[J]): sbt.internal.langserver.SbtExecParams = {
     __jsOpt match {
       case Some(__js) =>

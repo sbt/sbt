@@ -1,0 +1,6 @@
+$ absent ran
+> myTask
+$ exists ran
+
+# verify the task is not cached (i.e. annotation is not lost)
+-> myTask

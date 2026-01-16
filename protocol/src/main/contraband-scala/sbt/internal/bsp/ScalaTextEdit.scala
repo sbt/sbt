@@ -1,5 +1,5 @@
 /**
- * This code is generated using [[https://www.scala-sbt.org/contraband/ sbt-contraband]].
+ * This code is generated using [[https://www.scala-sbt.org/contraband]].
  */
 
 // DO NOT EDIT MANUALLY
@@ -27,7 +27,7 @@ final class ScalaTextEdit private (
   override def toString: String = {
     "ScalaTextEdit(" + range + ", " + newText + ")"
   }
-  private[this] def copy(range: sbt.internal.bsp.Range = range, newText: String = newText): ScalaTextEdit = {
+  private def copy(range: sbt.internal.bsp.Range = range, newText: String = newText): ScalaTextEdit = {
     new ScalaTextEdit(range, newText)
   }
   def withRange(range: sbt.internal.bsp.Range): ScalaTextEdit = {

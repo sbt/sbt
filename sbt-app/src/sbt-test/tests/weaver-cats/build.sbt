@@ -1,3 +1,3 @@
 ThisBuild / scalaVersion := "2.13.12"
 
-libraryDependencies += "com.disneystreaming" %% "weaver-cats" % "0.8.3" % Test
+libraryDependencies += "org.typelevel" %% "weaver-cats" % "0.10.1" % Test
