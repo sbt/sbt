@@ -1,11 +1,2 @@
 # Test that dependencyTree works despite eviction errors (issue #7255)
-#
-# The dependencies create a binary incompatible eviction:
-# - fs2-core 2.5.x depends on cats-effect 2.x
-# - We also depend on cats-effect 3.x directly
-# - cats-effect uses early-semver, so 2.x -> 3.x is binary incompatible
-#
-# Before the fix: dependencyTree would fail with eviction error
-# After the fix: dependencyTree displays the tree (eviction as warning)
-
 > dependencyTree
