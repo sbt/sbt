@@ -691,6 +691,14 @@ class NetworkClient(
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
+        case ("sbt/exec", Some(json)) =>
+          import sbt.protocol.codec.JsonProtocol.given
+          Converter.fromJson[ExecStatusEvent](json) match {
+            case Success(event) if event.status == "Queued" =>
+              event.message.foreach(m => errorStream.println(s"[info] $m"))
+              Vector.empty
+            case _ => Vector.empty
+          }
         case _ =>
           Vector(
             (
