@@ -1,0 +1,3 @@
+# Test that --addPluginSbtFile works with multi-build setup when nested project directory is missing
+# Fixes https://github.com/sbt/sbt/issues/8570
+> --addPluginSbtFile=extra.sbt compile

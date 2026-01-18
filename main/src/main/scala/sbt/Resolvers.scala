@@ -34,7 +34,12 @@ object Resolvers {
     if (from.isDirectory) Some { () =>
       if (from.canWrite) from else creates(to) { IO.copyDirectory(from, to) }
     }
-    else None
+    else if (!from.exists && from.getParentFile != null && from.getParentFile.isDirectory) {
+      Some { () =>
+        IO.createDirectory(from)
+        from
+      }
+    } else None
   }
 
   val remote: Resolver = (info: ResolveInfo) => {
