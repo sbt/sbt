@@ -191,6 +191,7 @@ object Defaults extends BuildCommon with DefExtra {
       apiURL := None,
       releaseNotesURL := None,
       javaHome :== None,
+      jdkVersion :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
@@ -1160,6 +1161,10 @@ object Defaults extends BuildCommon with DefExtra {
       discoveredSbtPlugins := Def.uncached(discoverSbtPluginNames.value),
       // This fork options, scoped to the configuration is used for tests
       forkOptions := Def.uncached(forkOptionsTask.value),
+      extraIncOptions := {
+        val orig = extraIncOptions.value
+        orig
+      },
       selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
       run / mainClass := (run / selectMainClass).value,
       mainClass := Def.uncached {
@@ -1437,8 +1442,15 @@ object Defaults extends BuildCommon with DefExtra {
       val canUseArgumentsFile = sys.props
         .getOrElse("java.vm.specification.version", "1")
         .toFloat >= 9.0
+      val jhs = fullJavaHomes.value
+      val jh = jdkVersion.value match
+        case Some(j) =>
+          jhs.get(j) match
+            case Some(value) => Some(value)
+            case None        => sys.error(s"jdkVersion \"$j\" was not found")
+        case None => javaHome.value
       ForkOptions(
-        javaHome = javaHome.value,
+        javaHome = jh,
         outputStrategy = outputStrategy.value,
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
         bootJars = Vector(),
@@ -2338,8 +2350,27 @@ object Defaults extends BuildCommon with DefExtra {
       val setup: Setup = (TaskZero / compileIncSetup).value
       val c = fileConverter.value
       val store = analysisStore(compileAnalysisFile.value.toPath(), c)
+      val fk = (compile / fork).value
+      val jh = (compile / jdkVersion).value
+      val fo = ((compile / forkOptions).value: @nowarn("msg=transient"))
+      val sic = (scalaInstanceConfig.value: @nowarn("msg=transient"))
+      val bridges = (scalaCompilerBridgeJars.value: @nowarn("msg=transient"))
+      val rs = rootPaths.value
+      val pickles = dependencyPicklePath.value
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
+      val analysisResult =
+        if fk then
+          ForkCompile.compile(
+            s,
+            fo,
+            rs,
+            ci,
+            sic,
+            bridges,
+            compileAnalysisFile.value.toPath(),
+            pickles
+          )
+        else Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
       val dir = ci.options.classesDirectory
       val vfDir = c.toVirtualFile(dir)
       val dirZip = ActionCache.dirZipPath(dir)

@@ -356,10 +356,13 @@ object Keys {
   val trapExit = settingKey[Boolean]("If true, enables exit trapping and thread management for 'run'-like tasks. This was removed in sbt 1.6.0 due to JDK 17 deprecating Security Manager.").withRank(CSetting)
 
   val fork = settingKey[Boolean]("If true, forks a new JVM when running.  If false, runs in the same JVM as the build.").withRank(ASetting)
+  
+  @transient
   val forkOptions = taskKey[ForkOptions]("Configures JVM forking.").withRank(DSetting)
   val outputStrategy = settingKey[Option[sbt.OutputStrategy]]("Selects how to log output when running a main class.").withRank(DSetting)
   val connectInput = settingKey[Boolean]("If true, connects standard input when running a main class forked.").withRank(CSetting)
-  val javaHome = settingKey[Option[File]]("Selects the Java installation used for compiling and forking.  If None, uses the Java installation running the build.").withRank(ASetting)
+  val javaHome = settingKey[Option[File]]("Selects the Java installation used for forking.  If None, uses the Java installation running the build.").withRank(CSetting)
+  val jdkVersion = settingKey[Option[String]]("Selects the Java installation used for forking.").withRank(ASetting)
   val discoveredJavaHomes = settingKey[Map[String, File]]("Discovered Java home directories")
   val javaHomes = settingKey[Map[String, File]]("The user-defined additional Java home directories")
   val fullJavaHomes = settingKey[Map[String, File]]("Combines discoveredJavaHomes and custom javaHomes.").withRank(CTask)

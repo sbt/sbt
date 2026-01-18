@@ -356,8 +356,10 @@ object BuildServerProtocol {
       val result = JvmTestEnvironmentResult(successfulItems.toVector, None)
       state.value.respondEvent(result)
     }.evaluated,
-    bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(forkOptions).value,
-    run / bspBuildTargetJvmEnvironmentItem := jvmEnvironmentItem(run / forkOptions).value,
+    bspBuildTargetJvmEnvironmentItem := Def.uncached(jvmEnvironmentItem(forkOptions).value),
+    run / bspBuildTargetJvmEnvironmentItem := Def.uncached(
+      jvmEnvironmentItem(run / forkOptions).value
+    ),
     bspInternalDependencyConfigurations := internalDependencyConfigurationsSetting.value,
     bspScalaTestClassesItem := scalaTestClassesTask.value,
     bspScalaMainClassesItem := scalaMainClassesTask.value,
