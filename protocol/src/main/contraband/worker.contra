@@ -50,3 +50,43 @@ type RunInfo {
 type ClientJobParams {
   runInfo: sbt.internal.worker.RunInfo
 }
+
+type ScalaInstanceConfig {
+  scalaVersion: String!
+  libraryJars: [java.net.URI],
+  allCompilerJars: [java.net.URI],
+  extraToolJars: [java.net.URI] @since("0.1.0"),
+}
+
+type StringURI {
+  name: String!
+  value: java.net.URI!
+}
+
+type FileConverterConfig {
+  rootPaths: [sbt.internal.worker.StringURI]
+}
+
+type HVFRURI {
+  name: xsbti.HashedVirtualFileRef!
+  value: java.net.URI!
+}
+
+type CompileConfig {
+  fileConverterConfig: sbt.internal.worker.FileConverterConfig!
+  scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
+  bridgeJars: [java.net.URI]
+  sources: [String]
+  externalDependencyJars: [String]
+  output: java.net.URI!
+  analysisFile: java.net.URI!
+  earlyJarPath: java.net.URI
+  scalacOptions: [String]
+  javacOptions: [String]
+  maxErrors: Int!
+  analysisMap: [sbt.internal.worker.HVFRURI]
+}
+
+type CompileResponse {
+  hasModified: Boolean!
+}

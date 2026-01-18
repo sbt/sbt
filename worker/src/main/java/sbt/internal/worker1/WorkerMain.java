@@ -131,6 +131,10 @@ public final class WorkerMain {
           TestInfo testInfo = g.fromJson(params, TestInfo.class);
           test(id, testInfo);
           break;
+        case "compile":
+          RunInfo r1 = g.fromJson(params, RunInfo.class);
+          compile(r1, id);
+          return;
         case "bye":
           break;
       }
@@ -159,6 +163,25 @@ public final class WorkerMain {
         Method mainMethod = mainClass.getMethod("main", String[].class);
         String[] mainArgs = jvmRunInfo.args.stream().toArray(String[]::new);
         mainMethod.invoke(null, (Object) mainArgs);
+      }
+    } else {
+      throw new RuntimeException("only jvm is supported");
+    }
+  }
+
+  // This is similar to the run(...) method except for passing the printstream.
+  void compile(RunInfo info, long id) throws Exception {
+    if (info.jvm) {
+      if (info.jvmRunInfo == null) {
+        throw new RuntimeException("missing jvmRunInfo element");
+      }
+      RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
+      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
+        Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
+        Method mainMethod =
+            mainClass.getMethod("main", String[].class, Long.class, PrintStream.class);
+        String[] mainArgs = jvmRunInfo.args.stream().toArray(String[]::new);
+        mainMethod.invoke(null, (Object) mainArgs, (Object) id, (Object) jsonOut);
       }
     } else {
       throw new RuntimeException("only jvm is supported");

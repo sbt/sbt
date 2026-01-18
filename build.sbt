@@ -552,6 +552,7 @@ lazy val actionsProj = (project in file("main-actions"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
+    Compile / scalacOptions --= Seq("-Werror"),
   )
   .dependsOn(lmCore)
   .configure(
@@ -564,7 +565,7 @@ lazy val actionsProj = (project in file("main-actions"))
 
 lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(collectionProj, utilLogging)
+  .dependsOn(collectionProj, utilLogging, utilCache)
   .settings(
     testedBaseSettings,
     name := "Protocol",
