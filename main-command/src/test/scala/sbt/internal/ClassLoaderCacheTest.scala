@@ -16,8 +16,7 @@ import sbt.internal.classpath.ClassLoaderCache
 import sbt.io.IO
 
 object ClassLoaderCacheTest extends BasicTestSuite:
-  extension (c: ClassLoaderCache)
-    def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
+  extension (c: ClassLoaderCache) def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
 
   private def withCache[R](f: ClassLoaderCache => R): R =
     val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)
