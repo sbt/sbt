@@ -55,7 +55,17 @@ object Aggregation {
       case KeyValue(_, x: Seq[?]) :: Nil => print(x.mkString("* ", "\n* ", ""))
       case KeyValue(_, x) :: Nil         => print(x.toString)
       case _ =>
-        xs foreach (kv => print(display.show(kv.key) + "\n\t" + kv.value.toString))
+        xs foreach { kv =>
+          print(display.show(kv.key))
+          kv.value match {
+            case seq: Seq[?] if seq.nonEmpty =>
+              seq.foreach(item => print("\t* " + item.toString))
+            case seq: Seq[?] =>
+              print("\t(empty)")
+            case x =>
+              print("\t" + x.toString)
+          }
+        }
     }
 
   type Values[T] = Seq[KeyValue[T]]

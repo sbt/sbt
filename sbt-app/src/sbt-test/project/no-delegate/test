@@ -1,0 +1,6 @@
+> compile
+> test
+
+# Fail on non-existent scoping
+-> Compile / update
+

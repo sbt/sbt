@@ -32,7 +32,6 @@ import sbt.internal.util.{
 }
 import sbt.io.IO
 import sbt.io.syntax.*
-import sbt.internal.UnixDomainSocketFactory
 import sbt.protocol.*
 import sbt.util.Level
 import sjsonnew.BasicJsonProtocol.*
@@ -692,6 +691,14 @@ class NetworkClient(
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
+        case ("sbt/exec", Some(json)) =>
+          import sbt.protocol.codec.JsonProtocol.given
+          Converter.fromJson[ExecStatusEvent](json) match {
+            case Success(event) if event.status == "Queued" =>
+              event.message.foreach(m => errorStream.println(s"[info] $m"))
+              Vector.empty
+            case _ => Vector.empty
+          }
         case _ =>
           Vector(
             (
@@ -1356,7 +1363,7 @@ object NetworkClient {
   }
   def main(args: Array[String]): Unit = {
     val (jnaArg, restOfArgs) = args.partition(_ == "--jna")
-    val useJNI = jnaArg.isEmpty && (Util.isWindows || !UnixDomainSocketFactory.isJdk17Available)
+    val useJNI = jnaArg.isEmpty
     val base = new File("").getCanonicalFile
     if (restOfArgs.exists(_.startsWith(NetworkClient.completions)))
       System.exit(complete(base, restOfArgs, useJNI, System.in, System.out))

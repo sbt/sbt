@@ -1,11 +1,12 @@
 package sbt.internal.librarymanagement
 
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import verify.BasicTestSuite
 
-class IvyActionsOverrideSpec extends AnyFlatSpec with Matchers {
+object IvyActionsOverrideSpec extends BasicTestSuite:
 
-  "IvyActions.applyDependencyOverrides" should "replace rev attribute for matching dependencies" in {
+  test(
+    "IvyActions.applyDependencyOverrides should replace rev attribute for matching dependencies"
+  ):
     val overrideMap = Map(("org.slf4j", "slf4j-api") -> "2.0.16")
 
     val sampleXml =
@@ -23,19 +24,20 @@ class IvyActionsOverrideSpec extends AnyFlatSpec with Matchers {
 
     // Check slf4j-api has overridden version
     val slf4jDep = dependencies.find(d => (d \ "@org").text == "org.slf4j")
-    slf4jDep shouldBe defined
-    (slf4jDep.get \ "@rev").text shouldBe "2.0.16"
-    (slf4jDep.get \ "@name").text shouldBe "slf4j-api"
-    (slf4jDep.get \ "@conf").text shouldBe "compile->default(compile)"
+    assert(slf4jDep.isDefined)
+    assert((slf4jDep.get \ "@rev").text == "2.0.16")
+    assert((slf4jDep.get \ "@name").text == "slf4j-api")
+    assert((slf4jDep.get \ "@conf").text == "compile->default(compile)")
 
     // Check other-lib is unchanged
     val otherDep = dependencies.find(d => (d \ "@org").text == "other.org")
-    otherDep shouldBe defined
-    (otherDep.get \ "@rev").text shouldBe "1.0.0"
-    (otherDep.get \ "@name").text shouldBe "other-lib"
-  }
+    assert(otherDep.isDefined)
+    assert((otherDep.get \ "@rev").text == "1.0.0")
+    assert((otherDep.get \ "@name").text == "other-lib")
 
-  it should "preserve all attributes when replacing rev" in {
+  test(
+    "IvyActions.applyDependencyOverrides should preserve all attributes when replacing rev"
+  ):
     val overrideMap = Map(("org.example", "test-lib") -> "3.0.0")
 
     val sampleXml =
@@ -48,15 +50,14 @@ class IvyActionsOverrideSpec extends AnyFlatSpec with Matchers {
     val updated = IvyActions.applyDependencyOverrides(sampleXml, overrideMap)
 
     val dep = (updated \\ "dependency").head
-    (dep \ "@org").text shouldBe "org.example"
-    (dep \ "@name").text shouldBe "test-lib"
-    (dep \ "@rev").text shouldBe "3.0.0"
-    (dep \ "@conf").text shouldBe "compile->default"
-    (dep \ "@transitive").text shouldBe "false"
-    (dep \ "@force").text shouldBe "true"
-  }
+    assert((dep \ "@org").text == "org.example")
+    assert((dep \ "@name").text == "test-lib")
+    assert((dep \ "@rev").text == "3.0.0")
+    assert((dep \ "@conf").text == "compile->default")
+    assert((dep \ "@transitive").text == "false")
+    assert((dep \ "@force").text == "true")
 
-  it should "not modify dependencies without overrides" in {
+  test("IvyActions.applyDependencyOverrides should not modify dependencies without overrides"):
     val overrideMap = Map(("org.other", "other-lib") -> "2.0.0")
 
     val sampleXml =
@@ -69,6 +70,5 @@ class IvyActionsOverrideSpec extends AnyFlatSpec with Matchers {
     val updated = IvyActions.applyDependencyOverrides(sampleXml, overrideMap)
 
     val dep = (updated \\ "dependency").head
-    (dep \ "@rev").text shouldBe "1.0.0" // Should remain unchanged
-  }
-}
+    assert((dep \ "@rev").text == "1.0.0") // Should remain unchanged
+end IvyActionsOverrideSpec

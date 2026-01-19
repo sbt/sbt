@@ -24,7 +24,7 @@ import sbt.internal.util.complete.DefaultParsers.*
 import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.librarymanagement.*
-import sbt.util.Logger
+import sbt.util.{ Level, Logger }
 import scala.Console
 
 private[sbt] object DependencyTreeSettings:
@@ -123,9 +123,11 @@ OPTIONS
         val is = new IvySbt((dependencyTreeIgnoreMissingUpdate / ivyConfiguration).value)
         new is.Module(moduleSettings.value)
       },
-      // don't fail on missing dependencies
+      // don't fail on missing dependencies or eviction errors
       dependencyTreeIgnoreMissingUpdate / updateConfiguration := updateConfiguration.value
         .withMissingOk(true),
+      dependencyTreeIgnoreMissingUpdate / evictionErrorLevel := Level.Warn,
+      dependencyTreeIgnoreMissingUpdate / assumedEvictionErrorLevel := Level.Warn,
       dependencyTreeIgnoreMissingUpdate := Def.uncached {
         // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
         Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
