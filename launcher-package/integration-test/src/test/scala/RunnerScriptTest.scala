@@ -216,15 +216,15 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         out.contains[String]("-Dtest.ampersand=value&other"),
         "Property with ampersands should be handled correctly"
       )
-    // Verify no shell errors occurred (no "command not found" messages or "unexpected" errors)
-    val errorMessages = out.filter(line =>
-      line.contains("command not found") ||
-        line.contains("was unexpected at this time") ||
-        line.contains("syntax error")
-    )
-    assert(
-      errorMessages.isEmpty,
-      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
-    )
+      // Verify no shell errors occurred (no "command not found" messages or "unexpected" errors)
+      val errorMessages = out.filter(line =>
+        line.contains("command not found") ||
+          line.contains("was unexpected at this time") ||
+          line.contains("syntax error")
+      )
+      assert(
+        errorMessages.isEmpty,
+        s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+      )
 
 end RunnerScriptTest
