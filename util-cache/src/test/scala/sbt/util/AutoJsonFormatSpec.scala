@@ -10,28 +10,29 @@ package sbt.util
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import scala.util.{Try, Failure}
+import scala.util.{ Try, Failure }
 
 class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
 
   "AutoJsonFormat" should "provide fallback format for xsbti types" in {
-    val format = AutoJsonFormat.fallbackFormat[xsbti.compile.CompileAnalysis]("xsbti.compile.CompileAnalysis")
-    
+    val format =
+      AutoJsonFormat.fallbackFormat[xsbti.compile.CompileAnalysis]("xsbti.compile.CompileAnalysis")
+
     Try(format.write(null, null)) should matchPattern {
-      case Failure(_: UnsupportedOperationException) => 
+      case Failure(_: UnsupportedOperationException) =>
     }
-    
+
     Try(format.read(None, null)) should matchPattern {
-      case Failure(_: UnsupportedOperationException) => 
+      case Failure(_: UnsupportedOperationException) =>
     }
   }
 
   it should "create case class format for simple case classes" in {
     case class TestData(name: String, age: Int, active: Boolean)
-    
+
     val format = AutoJsonFormat.caseClassFormat[TestData](using classOf[TestData])
     val testData = TestData("test", 42, true)
-    
+
     format should not be null
     testData should not be null
   }
@@ -39,21 +40,21 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
   it should "handle nested case classes" in {
     case class Address(street: String, city: String)
     case class Person(name: String, address: Address)
-    
+
     val format = AutoJsonFormat.caseClassFormat[Person](using classOf[Person])
     val person = Person("John", Address("123 Main St", "Anytown"))
-    
+
     format should not be null
     person should not be null
   }
 
   it should "handle optional fields" in {
     case class WithOptional(name: String, age: Option[Int])
-    
+
     val format = AutoJsonFormat.caseClassFormat[WithOptional](using classOf[WithOptional])
     val withSome = WithOptional("test", Some(42))
     val withNone = WithOptional("test", None)
-    
+
     format should not be null
     withSome should not be null
     withNone should not be null
@@ -61,26 +62,26 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
 
   "AutoJsonFormats" should "provide formats for common sbt types" in {
     // Import the formats
-    import AutoJsonFormats.{compileAnalysisFormat, compileResultFormat, previousResultFormat}
-    
+    import AutoJsonFormats.{ compileAnalysisFormat, compileResultFormat, previousResultFormat }
+
     // These should compile without errors
     val analysisFormat: sjsonnew.JsonFormat[xsbti.compile.CompileAnalysis] = compileAnalysisFormat
     val resultFormat: sjsonnew.JsonFormat[xsbti.compile.CompileResult] = compileResultFormat
     val prevResultFormat: sjsonnew.JsonFormat[xsbti.compile.PreviousResult] = previousResultFormat
-    
+
     // Verify they provide helpful error messages
     Try(analysisFormat.write(null, null)) should matchPattern {
-      case Failure(_: UnsupportedOperationException) => 
+      case Failure(_: UnsupportedOperationException) =>
     }
   }
 
   it should "include helpful error messages" in {
     val format = AutoJsonFormat.fallbackFormat[String]("TestType")
-    
+
     val exception = intercept[UnsupportedOperationException] {
       format.write("test", null)
     }
-    
+
     exception.getMessage should include("TestType")
     exception.getMessage should include("Def.uncached()")
     exception.getMessage should include("JsonFormat")

@@ -14,32 +14,32 @@ import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFileRef }
 
 /**
  * Automatic JsonFormat instances for common sbt types.
- * 
+ *
  * This addresses issue #8288 by providing JsonFormats for types that
  * commonly cause compilation errors when used in cached tasks.
  */
 object AutoJsonFormats {
 
   // Common sbt internal types that need JsonFormats
-  given compileAnalysisFormat: JsonFormat[CompileAnalysis] = 
+  given compileAnalysisFormat: JsonFormat[CompileAnalysis] =
     AutoJsonFormat.fallbackFormat[CompileAnalysis]("xsbti.compile.CompileAnalysis")
 
-  given compileResultFormat: JsonFormat[CompileResult] = 
+  given compileResultFormat: JsonFormat[CompileResult] =
     AutoJsonFormat.fallbackFormat[CompileResult]("xsbti.compile.CompileResult")
 
-  given previousResultFormat: JsonFormat[PreviousResult] = 
+  given previousResultFormat: JsonFormat[PreviousResult] =
     AutoJsonFormat.fallbackFormat[PreviousResult]("xsbti.compile.PreviousResult")
 
-  given setupFormat: JsonFormat[Setup] = 
+  given setupFormat: JsonFormat[Setup] =
     AutoJsonFormat.fallbackFormat[Setup]("xsbti.compile.Setup")
 
-  given fileConverterFormat: JsonFormat[FileConverter] = 
+  given fileConverterFormat: JsonFormat[FileConverter] =
     AutoJsonFormat.fallbackFormat[FileConverter]("xsbti.FileConverter")
 
-  given hashedVirtualFileRefFormat: JsonFormat[HashedVirtualFileRef] = 
+  given hashedVirtualFileRefFormat: JsonFormat[HashedVirtualFileRef] =
     AutoJsonFormat.fallbackFormat[HashedVirtualFileRef]("xsbti.HashedVirtualFileRef")
 
-  given virtualFileRefFormat: JsonFormat[VirtualFileRef] = 
+  given virtualFileRefFormat: JsonFormat[VirtualFileRef] =
     AutoJsonFormat.fallbackFormat[VirtualFileRef]("xsbti.VirtualFileRef")
 
   // Import existing formats for convenience

@@ -16,7 +16,7 @@ import scala.collection.mutable
 
 /**
  * Runtime JsonFormat derivation for common sbt types to address issue #8288.
- * 
+ *
  * This provides automatic JsonFormat instances for types that would otherwise
  * require users to use Def.uncached(), helping with sbt 2.0 migration.
  */
@@ -49,7 +49,7 @@ object AutoJsonFormat {
         case Some(js) =>
           unbuilder.beginObject(js)
           val fieldValues = mutable.Map[String, Any]()
-          
+
           // Try to read each field
           fields.foreach { field =>
             val fieldName = field.getName
@@ -58,57 +58,63 @@ object AutoJsonFormat {
               fieldValues += fieldName -> value
             } catch {
               case _: DeserializationException =>
-                // Optional field, skip
+              // Optional field, skip
             }
           }
-          
+
           unbuilder.endObject()
-          
+
           // Create instance using reflection
           val constructor = cls.getDeclaredConstructor()
           constructor.setAccessible(true)
           val instance = constructor.newInstance()
-          
+
           // Set field values
           fieldValues.foreach { case (fieldName, value) =>
             val field = cls.getDeclaredField(fieldName)
             field.setAccessible(true)
             field.set(instance, value)
           }
-          
+
           instance
         case None =>
-          throw new DeserializationException(s"Expected JSON object but found None for ${cls.getSimpleName}")
+          throw new DeserializationException(
+            s"Expected JSON object but found None for ${cls.getSimpleName}"
+          )
       }
     }
 
     private def writeField[J](value: Any, fieldName: String, builder: Builder[J]): Unit = {
       value match {
-        case s: String => builder.addField(fieldName, s)
-        case i: Int => builder.addField(fieldName, i)
-        case l: Long => builder.addField(fieldName, l)
-        case d: Double => builder.addField(fieldName, d)
-        case b: Boolean => builder.addField(fieldName, b)
+        case s: String        => builder.addField(fieldName, s)
+        case i: Int           => builder.addField(fieldName, i)
+        case l: Long          => builder.addField(fieldName, l)
+        case d: Double        => builder.addField(fieldName, d)
+        case b: Boolean       => builder.addField(fieldName, b)
         case arr: Array[Byte] => builder.addField(fieldName, arr)
-        case seq: Seq[_] => builder.addField(fieldName, seq.toString)
-        case opt: Option[_] => 
+        case seq: Seq[?]      => builder.addField(fieldName, seq.toString)
+        case opt: Option[?] =>
           opt.foreach(v => writeField(v, fieldName, builder))
-        case null => // skip null fields
-        case other => 
+        case null  => // skip null fields
+        case other =>
           // For complex objects, use toString as fallback
           builder.addField(fieldName, other.toString)
       }
     }
 
-    private def readField[J](unbuilder: Unbuilder[J], fieldName: String, fieldType: Class[?]): Any = {
+    private def readField[J](
+        unbuilder: Unbuilder[J],
+        fieldName: String,
+        fieldType: Class[?]
+    ): Any = {
       fieldType match {
-        case c if c == classOf[String] => unbuilder.readField[String](fieldName)
-        case c if c == classOf[Int] => unbuilder.readField[Int](fieldName)
-        case c if c == classOf[Long] => unbuilder.readField[Long](fieldName)
-        case c if c == classOf[Double] => unbuilder.readField[Double](fieldName)
-        case c if c == classOf[Boolean] => unbuilder.readField[Boolean](fieldName)
+        case c if c == classOf[String]      => unbuilder.readField[String](fieldName)
+        case c if c == classOf[Int]         => unbuilder.readField[Int](fieldName)
+        case c if c == classOf[Long]        => unbuilder.readField[Long](fieldName)
+        case c if c == classOf[Double]      => unbuilder.readField[Double](fieldName)
+        case c if c == classOf[Boolean]     => unbuilder.readField[Boolean](fieldName)
         case c if c == classOf[Array[Byte]] => unbuilder.readField[Array[Byte]](fieldName)
-        case _ => 
+        case _                              =>
           // For unsupported types, try string conversion
           unbuilder.readField[String](fieldName)
       }
@@ -126,7 +132,7 @@ object AutoJsonFormat {
            |For sbt internal types, you may need to add the format to AutoJsonFormats.""".stripMargin
       )
     }
-    
+
     def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T = {
       throw new UnsupportedOperationException(
         s"""Cannot deserialize $typeName.
