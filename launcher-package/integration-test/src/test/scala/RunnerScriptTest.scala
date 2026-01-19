@@ -50,10 +50,7 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       
       val envVars = scala.collection.mutable.Map[String, String]()
       val path = sys.env.getOrElse("PATH", sys.env("Path"))
-      if (isWindows)
-        envVars("JAVACMD") = new File("launcher-package/integration-test/bin", "java").getAbsolutePath()
-      else
-        envVars("PATH") = new File("launcher-package/integration-test/bin").getAbsolutePath + File.pathSeparator + path
+      envVars("PATH") = new File("launcher-package/integration-test/bin").getAbsolutePath + File.pathSeparator + path
 
       val process = scala.sys.process.Process(
         Seq(sbtScript.getAbsolutePath, "-Dfoo", "--help", "-v"),
