@@ -17,8 +17,7 @@ import verify.BasicTestSuite
 
 object ClassLoaderCacheTest extends BasicTestSuite:
 
-  extension (c: ClassLoaderCache)
-    def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
+  extension (c: ClassLoaderCache) def get(classpath: Seq[File]): ClassLoader = c(classpath.toList)
 
   private def withCache[R](f: ClassLoaderCache => R): R =
     val cache = new ClassLoaderCache(ClassLoader.getSystemClassLoader)
@@ -49,8 +48,8 @@ object ClassLoaderCacheTest extends BasicTestSuite:
         val initLoader = cache.get(jarClassPath)
         IO.setModifiedTimeOrFalse(snapshotJar, System.currentTimeMillis + 5000L)
         val secondLoader = cache.get(jarClassPath)
-        assert(initLoader != secondLoader)
-        assert(cache.get(jarClassPath) == secondLoader)
-        assert(cache.get(jarClassPath) != initLoader)
+        Predef.assert(initLoader != secondLoader)
+        Predef.assert(cache.get(jarClassPath) == secondLoader)
+        Predef.assert(cache.get(jarClassPath) != initLoader)
 
 end ClassLoaderCacheTest
