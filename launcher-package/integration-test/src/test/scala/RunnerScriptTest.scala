@@ -43,6 +43,7 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assert(out.contains[String]("-Dsbt.supershell=false"))
 
   test("sbt -D argument without value") {
+    if (isWindows) cancel("Test not supported on windows")
     val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
     try {
       retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
