@@ -198,33 +198,32 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
   testOutput(
     "sbt with special characters in .jvmopts (pipes, wildcards, ampersands)",
     jvmoptsFileContents =
-      "-Dtest.pipes=host1|host2|host3\n-Dtest.wildcards=path/*/pattern\n-Dtest.ampersand=value&other"
+      "-Dtest.pipes=host1|host2|host3\n-Dtest.wildcards=path/*/pattern\n-Dtest.ampersand=value&other",
+    windowsSupport = false,
   )("-v"): (out: List[String]) =>
-    if (isWindows) cancel("Test not supported on Windows without sbt.bat fix")
-    else
-      // Verify that properties with special characters are handled correctly
-      // The pipe characters should be treated literally, not as shell operators
-      assert(
-        out.contains[String]("-Dtest.pipes=host1|host2|host3"),
-        "Property with pipes should be handled correctly"
-      )
-      assert(
-        out.contains[String]("-Dtest.wildcards=path/*/pattern"),
-        "Property with wildcards should be handled correctly"
-      )
-      assert(
-        out.contains[String]("-Dtest.ampersand=value&other"),
-        "Property with ampersands should be handled correctly"
-      )
-      // Verify no shell errors occurred (no "command not found" messages or "unexpected" errors)
-      val errorMessages = out.filter(line =>
-        line.contains("command not found") ||
-          line.contains("was unexpected at this time") ||
-          line.contains("syntax error")
-      )
-      assert(
-        errorMessages.isEmpty,
-        s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
-      )
+    // Verify that properties with special characters are handled correctly
+    // The pipe characters should be treated literally, not as shell operators
+    assert(
+      out.contains[String]("-Dtest.pipes=host1|host2|host3"),
+      "Property with pipes should be handled correctly"
+    )
+    assert(
+      out.contains[String]("-Dtest.wildcards=path/*/pattern"),
+      "Property with wildcards should be handled correctly"
+    )
+    assert(
+      out.contains[String]("-Dtest.ampersand=value&other"),
+      "Property with ampersands should be handled correctly"
+    )
+    // Verify no shell errors occurred (no "command not found" messages or "unexpected" errors)
+    val errorMessages = out.filter(line =>
+      line.contains("command not found") ||
+        line.contains("was unexpected at this time") ||
+        line.contains("syntax error")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
+    )
 
 end RunnerScriptTest
