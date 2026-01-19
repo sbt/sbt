@@ -10,6 +10,7 @@ package sbt.util
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import sjsonnew.BasicJsonProtocol.given
 import scala.util.{ Try, Failure }
 
 class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
@@ -30,7 +31,8 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
   it should "create case class format for simple case classes" in {
     case class TestData(name: String, age: Int, active: Boolean)
 
-    val format = AutoJsonFormat.caseClassFormat[TestData](using classOf[TestData])
+    given sjsonnew.JsonFormat[TestData] = AutoJsonFormat.derived
+    val format = summon[sjsonnew.JsonFormat[TestData]]
     val testData = TestData("test", 42, true)
 
     format should not be null
@@ -41,7 +43,9 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
     case class Address(street: String, city: String)
     case class Person(name: String, address: Address)
 
-    val format = AutoJsonFormat.caseClassFormat[Person](using classOf[Person])
+    given sjsonnew.JsonFormat[Address] = AutoJsonFormat.derived
+    given sjsonnew.JsonFormat[Person] = AutoJsonFormat.derived
+    val format = summon[sjsonnew.JsonFormat[Person]]
     val person = Person("John", Address("123 Main St", "Anytown"))
 
     format should not be null
@@ -51,7 +55,8 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
   it should "handle optional fields" in {
     case class WithOptional(name: String, age: Option[Int])
 
-    val format = AutoJsonFormat.caseClassFormat[WithOptional](using classOf[WithOptional])
+    given sjsonnew.JsonFormat[WithOptional] = AutoJsonFormat.derived
+    val format = summon[sjsonnew.JsonFormat[WithOptional]]
     val withSome = WithOptional("test", Some(42))
     val withNone = WithOptional("test", None)
 

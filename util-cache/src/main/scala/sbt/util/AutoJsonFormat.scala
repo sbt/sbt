@@ -8,118 +8,71 @@
 
 package sbt.util
 
-import java.lang.reflect.{ Field, Modifier }
-import scala.util.Try
-import sjsonnew.{ JsonFormat, Builder, Unbuilder, DeserializationException }
-import sjsonnew.BasicJsonProtocol.*
-import scala.collection.mutable
+import scala.annotation.nowarn
+import scala.compiletime.{ constValue, erasedValue, summonInline }
+import scala.deriving.Mirror
+import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 
 /**
- * Runtime JsonFormat derivation for common sbt types to address issue #8288.
- *
- * This provides automatic JsonFormat instances for types that would otherwise
- * require users to use Def.uncached(), helping with sbt 2.0 migration.
+ * Compile-time JsonFormat derivation helpers.
  */
 object AutoJsonFormat {
 
   /**
-   * Creates a JsonFormat for case classes using runtime reflection.
-   * This works for simple case classes with standard field types.
+   * Derives a JsonFormat for a product type (typically a case class).
+   *
+   * This is intentionally strict: derivation succeeds only if a JsonFormat exists
+   * for every field type.
    */
-  def caseClassFormat[T](using cls: Class[T]): JsonFormat[T] = new JsonFormat[T] {
-    private val fields = cls.getDeclaredFields
-      .filter(f => !Modifier.isStatic(f.getModifiers))
-      .map { f =>
-        f.setAccessible(true)
-        f
-      }
+  @nowarn("msg=New anonymous class definition will be duplicated at each inline site")
+  inline def derived[T](using m: Mirror.ProductOf[T]): JsonFormat[T] =
+    new JsonFormat[T] {
+      override def write[J](obj: T, builder: Builder[J]): Unit =
+        builder.beginObject()
+        writeFields[m.MirroredElemTypes, m.MirroredElemLabels, J](
+          obj.asInstanceOf[Product],
+          0,
+          builder,
+        )
+        builder.endObject()
 
-    def write[J](obj: T, builder: Builder[J]): Unit = {
-      builder.beginObject()
-      fields.foreach { field =>
-        val value = field.get(obj)
-        val fieldName = field.getName
-        writeField(value, fieldName, builder)
-      }
-      builder.endObject()
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T =
+        jsOpt match
+          case Some(js) =>
+            unbuilder.beginObject(js)
+            val values = readFields[m.MirroredElemTypes, m.MirroredElemLabels, J](unbuilder)
+            unbuilder.endObject()
+            m.fromProduct(values)
+          case None =>
+            deserializationError("Expected JsObject but found None")
     }
 
-    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): T = {
-      jsOpt match {
-        case Some(js) =>
-          unbuilder.beginObject(js)
-          val fieldValues = mutable.Map[String, Any]()
+  private inline def writeFields[Ts <: Tuple, Ls <: Tuple, J](
+      p: Product,
+      idx: Int,
+      builder: Builder[J],
+  ): Unit =
+    inline erasedValue[Ts] match
+      case _: (t *: ts) =>
+        inline erasedValue[Ls] match
+          case _: (l *: ls) =>
+            val label = constValue[l].asInstanceOf[String]
+            val value = p.productElement(idx).asInstanceOf[t]
+            builder.addField[t](label, value)(using summonInline[JsonFormat[t]])
+            writeFields[ts, ls, J](p, idx + 1, builder)
+      case _: EmptyTuple =>
+        ()
 
-          // Try to read each field
-          fields.foreach { field =>
-            val fieldName = field.getName
-            try {
-              val value = readField(unbuilder, fieldName, field.getType)
-              fieldValues += fieldName -> value
-            } catch {
-              case _: DeserializationException =>
-              // Optional field, skip
-            }
-          }
-
-          unbuilder.endObject()
-
-          // Create instance using reflection
-          val constructor = cls.getDeclaredConstructor()
-          constructor.setAccessible(true)
-          val instance = constructor.newInstance()
-
-          // Set field values
-          fieldValues.foreach { case (fieldName, value) =>
-            val field = cls.getDeclaredField(fieldName)
-            field.setAccessible(true)
-            field.set(instance, value)
-          }
-
-          instance
-        case None =>
-          throw new DeserializationException(
-            s"Expected JSON object but found None for ${cls.getSimpleName}"
-          )
-      }
-    }
-
-    private def writeField[J](value: Any, fieldName: String, builder: Builder[J]): Unit = {
-      value match {
-        case s: String        => builder.addField(fieldName, s)
-        case i: Int           => builder.addField(fieldName, i)
-        case l: Long          => builder.addField(fieldName, l)
-        case d: Double        => builder.addField(fieldName, d)
-        case b: Boolean       => builder.addField(fieldName, b)
-        case arr: Array[Byte] => builder.addField(fieldName, arr)
-        case seq: Seq[?]      => builder.addField(fieldName, seq.toString)
-        case opt: Option[?] =>
-          opt.foreach(v => writeField(v, fieldName, builder))
-        case null  => // skip null fields
-        case other =>
-          // For complex objects, use toString as fallback
-          builder.addField(fieldName, other.toString)
-      }
-    }
-
-    private def readField[J](
-        unbuilder: Unbuilder[J],
-        fieldName: String,
-        fieldType: Class[?]
-    ): Any = {
-      fieldType match {
-        case c if c == classOf[String]      => unbuilder.readField[String](fieldName)
-        case c if c == classOf[Int]         => unbuilder.readField[Int](fieldName)
-        case c if c == classOf[Long]        => unbuilder.readField[Long](fieldName)
-        case c if c == classOf[Double]      => unbuilder.readField[Double](fieldName)
-        case c if c == classOf[Boolean]     => unbuilder.readField[Boolean](fieldName)
-        case c if c == classOf[Array[Byte]] => unbuilder.readField[Array[Byte]](fieldName)
-        case _                              =>
-          // For unsupported types, try string conversion
-          unbuilder.readField[String](fieldName)
-      }
-    }
-  }
+  private inline def readFields[Ts <: Tuple, Ls <: Tuple, J](unbuilder: Unbuilder[J]): Ts =
+    inline erasedValue[Ts] match
+      case _: (t *: ts) =>
+        inline erasedValue[Ls] match
+          case _: (l *: ls) =>
+            val label = constValue[l].asInstanceOf[String]
+            val head = unbuilder.readField[t](label)(using summonInline[JsonFormat[t]])
+            (head *: readFields[ts, ls, J](unbuilder)).asInstanceOf[Ts]
+      case _: EmptyTuple =>
+        EmptyTuple.asInstanceOf[Ts]
 
   /**
    * Fallback JsonFormat that provides helpful error messages
@@ -139,22 +92,6 @@ object AutoJsonFormat {
            |Consider using Def.uncached() or providing an explicit JsonFormat.
            |For sbt internal types, you may need to add the format to AutoJsonFormats.""".stripMargin
       )
-    }
-  }
-
-  /**
-   * Try to create a JsonFormat for the given type
-   */
-  def apply[T](using cls: Class[T]): JsonFormat[T] = {
-    if (cls.getSimpleName.startsWith("xsbti") || cls.getName.contains("compile")) {
-      // For xsbti types, try case class format first, then fallback
-      Try(caseClassFormat[T]).getOrElse(fallbackFormat[T](cls.getSimpleName))
-    } else if (scala.util.Try(cls.getDeclaredConstructor()).isSuccess) {
-      // For types with default constructor, try case class format
-      caseClassFormat[T]
-    } else {
-      // Use fallback for complex types
-      fallbackFormat[T](cls.getSimpleName)
     }
   }
 }

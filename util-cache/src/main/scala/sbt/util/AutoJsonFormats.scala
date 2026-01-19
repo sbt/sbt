@@ -44,9 +44,4 @@ object AutoJsonFormats {
 
   // Import existing formats for convenience
   // Note: FileInfo formats are available through FileInfo companion objects
-
-  /**
-   * Helper method to get JsonFormat for any type with fallback
-   */
-  def format[T](using cls: Class[T]): JsonFormat[T] = AutoJsonFormat[T]
 }
