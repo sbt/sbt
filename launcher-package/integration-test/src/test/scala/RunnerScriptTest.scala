@@ -201,20 +201,21 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       "-Dtest.pipes=host1|host2|host3\n-Dtest.wildcards=path/*/pattern\n-Dtest.ampersand=value&other"
   )("-v"): (out: List[String]) =>
     if (isWindows) cancel("Test not supported on Windows without sbt.bat fix")
-    // Verify that properties with special characters are handled correctly
-    // The pipe characters should be treated literally, not as shell operators
-    assert(
-      out.contains[String]("-Dtest.pipes=host1|host2|host3"),
-      "Property with pipes should be handled correctly"
-    )
-    assert(
-      out.contains[String]("-Dtest.wildcards=path/*/pattern"),
-      "Property with wildcards should be handled correctly"
-    )
-    assert(
-      out.contains[String]("-Dtest.ampersand=value&other"),
-      "Property with ampersands should be handled correctly"
-    )
+    else
+      // Verify that properties with special characters are handled correctly
+      // The pipe characters should be treated literally, not as shell operators
+      assert(
+        out.contains[String]("-Dtest.pipes=host1|host2|host3"),
+        "Property with pipes should be handled correctly"
+      )
+      assert(
+        out.contains[String]("-Dtest.wildcards=path/*/pattern"),
+        "Property with wildcards should be handled correctly"
+      )
+      assert(
+        out.contains[String]("-Dtest.ampersand=value&other"),
+        "Property with ampersands should be handled correctly"
+      )
     // Verify no shell errors occurred (no "command not found" messages or "unexpected" errors)
     val errorMessages = out.filter(line =>
       line.contains("command not found") ||
