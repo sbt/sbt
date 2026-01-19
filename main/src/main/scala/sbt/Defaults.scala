@@ -2492,7 +2492,8 @@ object Defaults extends BuildCommon {
     import Parser.and
     val base = token(Space) ~> token(and(NotSpace, not("--", "Unexpected: ---")).examples(exs))
     val recurse = base flatMap { ex =>
-      val (matching, notMatching) = exs.partition(GlobFilter(ex).accept)
+      val expandedEx = IncrementalTest.expandGlob(ex)
+      val (matching, notMatching) = exs.partition(GlobFilter(expandedEx).accept)
       distinctParser(notMatching, raw) map { result =>
         if (raw) ex +: result else matching.toSeq ++ result
       }
