@@ -70,7 +70,7 @@ $ delete target/Test1.run
 
 
 # with ... in exclusion pattern
-> testOnly ...Test* -...Test2
+> testOnly ...Test... -...Test2
 $ exists target/Test1.run
 -$ exists target/Test2.run
 

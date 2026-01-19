@@ -70,7 +70,7 @@ object IncrementalTest:
   }
 
   /** Expands `...` to `**` in glob patterns. */
-  def expandGlob(pattern: String): String = pattern.replace("...", "**")
+  def expandGlob(pattern: String): String = pattern.replaceAllLiterally("...", "**")
 
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
