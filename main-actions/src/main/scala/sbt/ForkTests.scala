@@ -204,7 +204,11 @@ private class React(
           else if o.has("error") then promise.failure(new RuntimeException(line))
           else promise.success(0)
         else ()
-      else if o.has("method") then processNotification(o)
+      // per JSON-PRC notifications do not have "id" field, so we use "re"
+      else if o.has("re") && o.has("method") then
+        val resId = o.getAsJsonPrimitive("re").getAsLong()
+        if resId == id then processNotification(o)
+        else ()
       else ()
     catch
       case _: JsonSyntaxException => log.info(line)
