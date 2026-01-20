@@ -93,6 +93,7 @@ object LMCoursier {
       sameVersions: Seq[Set[InclExclRule]],
       enableDependencyOverrides: Option[Boolean],
       localArtifactsShouldBeCached: Boolean,
+      lockFile: Option[File],
       log: Logger
   ): CoursierConfiguration = {
     val coursierExcludeDeps = Inputs
@@ -145,10 +146,12 @@ object LMCoursier {
       .withMissingOk(missingOk)
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
+      .withLockFile(lockFile)
   }
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     val sv = scalaVersion.value
+    val lockFileOpt = if (useDependencyLock.value) Some(dependencyLockFile.value) else None
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
@@ -173,6 +176,7 @@ object LMCoursier {
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
       csrLocalArtifactsShouldBeCached.value,
+      lockFileOpt,
       streams.value.log
     )
   }
@@ -210,6 +214,7 @@ object LMCoursier {
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
       csrLocalArtifactsShouldBeCached.value,
+      None,
       streams.value.log
     )
   }
@@ -240,6 +245,7 @@ object LMCoursier {
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
       csrLocalArtifactsShouldBeCached.value,
+      None,
       streams.value.log
     )
   }

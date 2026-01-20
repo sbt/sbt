@@ -1,12 +1,12 @@
 package lmcoursier.internal
 
 import coursier.cache.FileCache
-import coursier.core.{Classifier, Dependency, Extension, Publication, Type}
+import coursier.core.{ Classifier, Dependency, Extension, Publication, Type }
 import coursier.util.Artifact
 import sbt.util.Logger
 
 import java.io.File
-import scala.concurrent.{Await, ExecutionContext}
+import scala.concurrent.{ Await, ExecutionContext }
 import scala.concurrent.duration.Duration
 
 object LockedArtifactsRun {
