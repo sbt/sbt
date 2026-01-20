@@ -3340,6 +3340,11 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
+    dependencyLockFile := (ThisBuild / baseDirectory).value / DependencyLockFile.LockFileName,
+    useDependencyLock := false,
+    dependencyLock := Def.uncached(dependencyLockTask.value),
+    dependencyLockCheck := Def.uncached(dependencyLockCheckTask.value),
+    dependencyLockUpdate := Def.uncached(dependencyLockUpdateTask.value),
   ) ++
     inTask(updateClassifiers)(
       Seq(
@@ -3763,6 +3768,67 @@ object Classpaths {
     updateTask0("updateFull", true, true).tag(Tags.Update, Tags.Network)
   def updateWithoutDetails(label: String): Initialize[Task[UpdateReport]] =
     updateTask0(label, false, false).tag(Tags.Update, Tags.Network)
+
+  lazy val dependencyLockTask: Initialize[Task[File]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    val report = update.value
+    val projectId = thisProject.value.id
+    val sv = sbtVersion.value
+    val deps = libraryDependencies.value
+    val resolverNames = fullResolvers.value.map(_.name)
+    val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+
+    val lock = DependencyLockManager.createFromUpdateReport(
+      projectId,
+      report,
+      sv,
+      buildClock,
+      fullResolvers.value,
+      log
+    )
+
+    val existingLock = DependencyLockManager.read(lockFile, log)
+    val mergedLock = existingLock match
+      case Some(existing) =>
+        lock.projects.foldLeft(existing) { (acc, proj) =>
+          DependencyLockManager.mergeProjectLock(acc, proj)
+        }
+      case None => lock
+
+    DependencyLockManager.write(lockFile, mergedLock, log)
+    lockFile
+  }
+
+  lazy val dependencyLockCheckTask: Initialize[Task[Boolean]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    val deps = libraryDependencies.value
+    val resolverNames = fullResolvers.value.map(_.name)
+    val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+
+    DependencyLockManager.validate(lockFile, currentBuildClock, log) match
+      case Some(_) =>
+        log.info(s"Dependency lock file is up-to-date: ${lockFile.getAbsolutePath}")
+        true
+      case None =>
+        if lockFile.exists() then
+          log.warn(s"Dependency lock file is stale: ${lockFile.getAbsolutePath}")
+          log.warn("Run 'dependencyLockUpdate' to update it.")
+        else
+          log.warn(s"Dependency lock file does not exist: ${lockFile.getAbsolutePath}")
+          log.warn("Run 'dependencyLock' to create it.")
+        false
+  }
+
+  lazy val dependencyLockUpdateTask: Initialize[Task[File]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    if lockFile.exists() then
+      log.info(s"Removing existing lock file: ${lockFile.getAbsolutePath}")
+      IO.delete(lockFile)
+    dependencyLockTask.value
+  }
 
   /**
    * cacheLabel - label to identify an update cache

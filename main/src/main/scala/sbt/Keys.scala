@@ -533,6 +533,11 @@ object Keys {
   val updateClassifiers = TaskKey[UpdateReport]("updateClassifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = settingKey[Seq[String]]("List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.").withRank(BSetting)
   val updateSbtClassifiers = TaskKey[UpdateReport]("updateSbtClassifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
+  val dependencyLock = taskKey[File]("Generates a dependency lock file from the current resolution.").withRank(BTask)
+  val dependencyLockCheck = taskKey[Boolean]("Checks if the dependency lock file is up-to-date.").withRank(BTask)
+  val dependencyLockUpdate = taskKey[File]("Forces re-resolution and updates the dependency lock file.").withRank(BTask)
+  val dependencyLockFile = settingKey[File]("The location of the dependency lock file.").withRank(CSetting)
+  val useDependencyLock = settingKey[Boolean]("If true, uses the dependency lock file for resolution when available.").withRank(BSetting)
   val sourceArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
   val docArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
 

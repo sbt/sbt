@@ -149,7 +149,8 @@ object LMCoursier {
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     val sv = scalaVersion.value
-    coursierConfiguration(
+    val log = streams.value.log
+    val baseConfig = coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
       csrExtraProjects.value.toVector,
@@ -173,8 +174,42 @@ object LMCoursier {
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
       csrLocalArtifactsShouldBeCached.value,
-      streams.value.log
+      log
     )
+    if useDependencyLock.value then
+      val lockFile = dependencyLockFile.value
+      val projectId = thisProject.value.id
+      val deps = libraryDependencies.value
+      val resolverNames = fullResolvers.value.map(_.name)
+      val currentBuildClock =
+        sbt.internal.librarymanagement.DependencyLockFile.computeBuildClock(deps, resolverNames)
+      sbt.internal.librarymanagement.DependencyLockManager.validate(
+        lockFile,
+        currentBuildClock,
+        log
+      ) match
+        case Some(lock) =>
+          val lockedVersions =
+            sbt.internal.librarymanagement.DependencyLockManager.getLockedVersions(lock, projectId)
+          if lockedVersions.nonEmpty then
+            log.info(
+              s"Using ${lockedVersions.size} locked dependency versions from ${lockFile.getName}"
+            )
+            import lmcoursier.definitions.{
+              Module as CModule,
+              Organization as COrganization,
+              ModuleName as CModuleName
+            }
+            val additionalForceVersions = lockedVersions.map { case ((org, name), v) =>
+              CModule(COrganization(org), CModuleName(name), Map.empty) -> v
+            }.toVector
+            baseConfig.withForceVersions(baseConfig.forceVersions ++ additionalForceVersions)
+          else baseConfig
+        case None =>
+          if lockFile.exists() then
+            log.warn(s"Dependency lock file is stale, ignoring: ${lockFile.getAbsolutePath}")
+          baseConfig
+    else baseConfig
   }
 
   def updateClassifierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
