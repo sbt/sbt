@@ -224,6 +224,20 @@ object ResolutionRun {
       lockFileOpt: Option[java.io.File],
       scalaVersion: Option[String]
   ): Either[coursier.error.ResolutionError, (Map[Configuration, Resolution], Boolean)] = {
+    resolutionsWithLockFileData(params, verbosityLevel, log, lockFileOpt, scalaVersion)
+      .map { case (res, lockDataOpt) => (res, lockDataOpt.isDefined) }
+  }
+
+  def resolutionsWithLockFileData(
+      params: ResolutionParams,
+      verbosityLevel: Int,
+      log: Logger,
+      lockFileOpt: Option[java.io.File],
+      scalaVersion: Option[String]
+  ): Either[
+    coursier.error.ResolutionError,
+    (Map[Configuration, Resolution], Option[LockFileData])
+  ] = {
     lockFileOpt
       .flatMap { lockFile =>
         LockFile.read(lockFile) match {
@@ -241,7 +255,7 @@ object ResolutionRun {
                 log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
               }
               val reconstructed = ResolutionSerializer.reconstructResolutions(lockData, params)
-              Some(Right((reconstructed, true)))
+              Some(Right((reconstructed, Some(lockData))))
             } else {
               if (verbosityLevel >= 1) {
                 log.info(s"Lock file outdated, performing resolution")
@@ -256,7 +270,7 @@ object ResolutionRun {
         }
       }
       .getOrElse {
-        resolutions(params, verbosityLevel, log).map(res => (res, false))
+        resolutions(params, verbosityLevel, log).map(res => (res, None))
       }
   }
 

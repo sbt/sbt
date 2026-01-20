@@ -15,6 +15,7 @@ import lmcoursier.internal.{
   CoursierModuleDescriptor,
   InterProjectRepository,
   LockFile,
+  LockedArtifactsRun,
   ResolutionParams,
   ResolutionRun,
   ResolutionSerializer,
@@ -322,21 +323,34 @@ class CoursierDependencyResolution(
       )
 
     val e = for {
-      (resolutions, usedLockFile) <- ResolutionRun.resolutionsWithLockFile(
+      (resolutions, lockDataOpt) <- ResolutionRun.resolutionsWithLockFileData(
         resolutionParams,
         verbosityLevel,
         log,
         conf.lockFile,
         conf.scalaVersion
       )
-      artifactsParams0 = artifactsParams(resolutions)
-      artifacts <- ArtifactsRun(artifactsParams0, verbosityLevel, log)
+      artifactResult <- lockDataOpt match {
+        case Some(lockData) =>
+          LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match {
+            case Right(arts) => Right(arts)
+            case Left(err) =>
+              if (verbosityLevel >= 1) {
+                log.warn(s"Failed to fetch from lock file: $err, falling back to normal fetch")
+              }
+              ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
+                .map(_.fullDetailedArtifacts)
+          }
+        case None =>
+          ArtifactsRun(artifactsParams(resolutions), verbosityLevel, log)
+            .map(_.fullDetailedArtifacts)
+      }
     } yield {
-      val updateParams0 = updateParams(resolutions, artifacts.fullDetailedArtifacts)
+      val updateParams0 = updateParams(resolutions, artifactResult)
       val report = UpdateRun.update(updateParams0, verbosityLevel, log)
-      if (!usedLockFile) {
+      if (lockDataOpt.isEmpty) {
         conf.lockFile.foreach { lockFile =>
-          val artifactMap = artifacts.fullDetailedArtifacts
+          val artifactMap = artifactResult
             .groupBy(_._1)
             .view
             .mapValues(_.map { case (_, pub, art, _) =>
