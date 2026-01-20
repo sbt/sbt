@@ -1,6 +1,6 @@
 package lmcoursier.internal
 
-import coursier.core.{Configuration, Module, Resolution}
+import coursier.core.{ Configuration, Module, Resolution }
 import java.time.Instant
 import scala.collection.immutable.Seq
 
@@ -48,10 +48,11 @@ object ResolutionSerializer {
       val resolvedVersion: String = resolution.retainedVersions
         .get(dep.module) match {
         case Some(v) => s"$v"
-        case None => s"${dep.version}"
+        case None    => s"${dep.version}"
       }
 
-      val transitives = resolution.dependenciesOf(dep, withRetainedVersions = true)
+      val transitives = resolution
+        .dependenciesOf(dep, withRetainedVersions = true)
         .map(d => s"${d.module.organization.value}:${d.module.name.value}:${d.version}")
         .sorted
 
@@ -62,7 +63,7 @@ object ResolutionSerializer {
         configuration = dep.configuration.value,
         classifier = dep.attributes.classifier.value match {
           case "" => None
-          case c => Some(c)
+          case c  => Some(c)
         },
         `type` = dep.attributes.`type`.value,
         transitives = transitives

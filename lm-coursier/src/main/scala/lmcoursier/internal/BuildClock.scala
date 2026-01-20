@@ -1,6 +1,6 @@
 package lmcoursier.internal
 
-import coursier.core.{Configuration, Dependency, Repository}
+import coursier.core.{ Configuration, Dependency, Repository }
 import java.security.MessageDigest
 import scala.collection.immutable.Seq
 
@@ -32,10 +32,9 @@ object BuildClock {
     }
 
     digest.update(params.params.maxIterations.toString.getBytes("UTF-8"))
-    params.params.forceVersion.foreach {
-      case (mod, ver) =>
-        digest.update(mod.toString.getBytes("UTF-8"))
-        digest.update(ver.getBytes("UTF-8"))
+    params.params.forceVersion.foreach { case (mod, ver) =>
+      digest.update(mod.toString.getBytes("UTF-8"))
+      digest.update(ver.getBytes("UTF-8"))
     }
 
     val hashBytes = digest.digest()

@@ -3,11 +3,11 @@ package lmcoursier.internal
 import java.io.File
 import java.nio.file.Files
 import java.nio.charset.StandardCharsets
-import sjsonnew.support.scalajson.unsafe.{CompactPrinter, Converter, Parser}
-import scala.util.{Try, Success, Failure}
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import scala.util.{ Try, Success, Failure }
 
 object LockFile {
-  import LockFileFormats._
+  import LockFileFormats.*
 
   val defaultLockFileName = "dependencies.lock"
 
@@ -21,7 +21,7 @@ object LockFile {
         Converter.fromJson[LockFileData](json).get
       } match {
         case Success(data) => Right(data)
-        case Failure(ex) => Left(s"Failed to parse lock file: ${ex.getMessage}")
+        case Failure(ex)   => Left(s"Failed to parse lock file: ${ex.getMessage}")
       }
     }
   }
@@ -33,7 +33,7 @@ object LockFile {
       lockFile.getParentFile.mkdirs()
       Files.write(lockFile.toPath, content.getBytes(StandardCharsets.UTF_8))
     } match {
-      case Success(_) => Right(())
+      case Success(_)  => Right(())
       case Failure(ex) => Left(s"Failed to write lock file: ${ex.getMessage}")
     }
   }

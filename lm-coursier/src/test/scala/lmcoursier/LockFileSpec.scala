@@ -1,6 +1,6 @@
 package lmcoursier
 
-import lmcoursier.internal._
+import lmcoursier.internal.*
 import org.scalatest.funsuite.AnyFunSuite
 import java.io.File
 import java.time.Instant

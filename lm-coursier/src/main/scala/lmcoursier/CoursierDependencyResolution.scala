@@ -14,8 +14,10 @@ import lmcoursier.internal.{
   ArtifactsRun,
   CoursierModuleDescriptor,
   InterProjectRepository,
+  LockFile,
   ResolutionParams,
   ResolutionRun,
+  ResolutionSerializer,
   Resolvers,
   SbtBootJars,
   UpdateParams,
@@ -320,12 +322,30 @@ class CoursierDependencyResolution(
       )
 
     val e = for {
-      resolutions <- ResolutionRun.resolutions(resolutionParams, verbosityLevel, log)
+      (resolutions, usedLockFile) <- ResolutionRun.resolutionsWithLockFile(
+        resolutionParams,
+        verbosityLevel,
+        log,
+        conf.lockFile,
+        conf.scalaVersion
+      )
       artifactsParams0 = artifactsParams(resolutions)
       artifacts <- ArtifactsRun(artifactsParams0, verbosityLevel, log)
     } yield {
       val updateParams0 = updateParams(resolutions, artifacts.fullDetailedArtifacts)
-      UpdateRun.update(updateParams0, verbosityLevel, log)
+      val report = UpdateRun.update(updateParams0, verbosityLevel, log)
+      if (!usedLockFile) {
+        conf.lockFile.foreach { lockFile =>
+          val lockData = ResolutionSerializer.extractLockFileData(
+            resolutions,
+            resolutionParams,
+            conf.scalaVersion,
+            "2.0.0"
+          )
+          LockFile.write(lockFile, lockData)
+        }
+      }
+      report
     }
     e.left.map(unresolvedWarningOrThrow(uwconfig, _))
   }
