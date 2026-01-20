@@ -13,6 +13,7 @@ import java.io.File
 import org.scalatest.diagrams.Diagrams
 import org.scalatest.funsuite.AnyFunSuite
 import sbt.internal.CrossJava.JavaDiscoverConfig.*
+import sbt.io.{ IO, syntax }
 import sbt.io.syntax.*
 import scala.collection.immutable.ListMap
 
@@ -197,56 +198,48 @@ class CrossJavaTest extends AnyFunSuite with Diagrams {
   }
 
   test("The setup-java selector should correctly pick up Zulu JDK") {
-    val conf = new SetupJavaDiscoverConfig(sbt.io.syntax.file(".")) {
-      override def candidates(): Vector[String] = Vector("Java_Zulu_jdk")
-      override def javaHomes: Vector[(String, File)] = {
-        Vector("zulu@25.0.1" -> (sbt.io.syntax.file(".") / "Java_Zulu_jdk" / "25.0.1-8" / "x64"))
-      }
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Zulu_jdk" / "25.0.1-8" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, javaHome) = homes.head
+      assert(version == "zulu@25.0.1")
+      assert(javaHome.getName == "x64")
     }
-    val (version, file) = conf.javaHomes.head
-    assert(version == "zulu@25.0.1")
-    assert(file.getName == "x64")
   }
 
   test("The setup-java selector should correctly pick up Temurin JDK") {
-    val conf = new SetupJavaDiscoverConfig(sbt.io.syntax.file(".")) {
-      override def candidates(): Vector[String] = Vector("Java_Temurin-Hotspot_jdk")
-      override def javaHomes: Vector[(String, File)] = {
-        Vector(
-          "temurin@11.0.29" -> (sbt.io.syntax
-            .file(".") / "Java_Temurin-Hotspot_jdk" / "11.0.29-7" / "x64")
-        )
-      }
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Temurin-Hotspot_jdk" / "11.0.29-7" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, javaHome) = homes.head
+      assert(version == "temurin@11.0.29")
+      assert(javaHome.getName == "x64")
     }
-    val (version, file) = conf.javaHomes.head
-    assert(version == "temurin@11.0.29")
-    assert(file.getName == "x64")
   }
 
   test("The setup-java selector should normalize Temurin-Hotspot to temurin") {
-    val conf = new SetupJavaDiscoverConfig(sbt.io.syntax.file(".")) {
-      override def candidates(): Vector[String] = Vector("Java_Temurin-Hotspot_jdk")
-      override def javaHomes: Vector[(String, File)] = {
-        Vector(
-          "temurin@17.0.5" -> (sbt.io.syntax
-            .file(".") / "Java_Temurin-Hotspot_jdk" / "17.0.5-8" / "x64")
-        )
-      }
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Temurin-Hotspot_jdk" / "17.0.5-8" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, _) = homes.head
+      assert(version == "temurin@17.0.5")
     }
-    val (version, _) = conf.javaHomes.head
-    assert(version.startsWith("temurin@"))
   }
 
   test("The setup-java selector should normalize Adopt to temurin") {
-    val conf = new SetupJavaDiscoverConfig(sbt.io.syntax.file(".")) {
-      override def candidates(): Vector[String] = Vector("Java_Adopt_jdk")
-      override def javaHomes: Vector[(String, File)] = {
-        Vector(
-          "temurin@11.0.15" -> (sbt.io.syntax.file(".") / "Java_Adopt_jdk" / "11.0.15-10" / "x64")
-        )
-      }
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Adopt_jdk" / "11.0.15-10" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, _) = homes.head
+      assert(version == "temurin@11.0.15")
     }
-    val (version, _) = conf.javaHomes.head
-    assert(version.startsWith("temurin@"))
   }
 }
