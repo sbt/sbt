@@ -23,7 +23,16 @@ class LockFileSpec extends AnyFunSuite {
               configuration = "compile",
               classifier = None,
               `type` = "jar",
-              transitives = Seq("org.scala-lang:scala-library:2.13.16")
+              transitives = Seq("org.scala-lang:scala-library:2.13.16"),
+              artifacts = Seq(
+                ArtifactLock(
+                  url =
+                    "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.16/scala-library-2.13.16.jar",
+                  classifier = None,
+                  extension = "jar",
+                  `type` = "jar"
+                )
+              )
             )
           )
         )
@@ -78,7 +87,8 @@ class LockFileSpec extends AnyFunSuite {
       configuration = "compile",
       classifier = Some("sources"),
       `type` = "jar",
-      transitives = Seq.empty
+      transitives = Seq.empty,
+      artifacts = Seq.empty
     )
 
     val lockData = LockFileData(

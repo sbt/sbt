@@ -1,6 +1,6 @@
 package lmcoursier.internal
 
-import coursier.core.{ Configuration, Module, Resolution }
+import coursier.core.{ Configuration, Dependency, Module, Resolution }
 import java.time.Instant
 import scala.collection.immutable.Seq
 
@@ -10,7 +10,8 @@ object ResolutionSerializer {
       resolutions: Map[Configuration, Resolution],
       params: ResolutionParams,
       scalaVersion: Option[String],
-      sbtVersion: String
+      sbtVersion: String,
+      artifactMap: Map[Dependency, Seq[(String, String, String)]]
   ): LockFileData = {
     val buildClock = BuildClock.compute(
       params.dependencies,
@@ -20,7 +21,7 @@ object ResolutionSerializer {
     )
 
     val configurations = resolutions.toSeq.sortBy(_._1.value).map { case (config, resolution) =>
-      val dependencies = extractDependencies(resolution, config)
+      val dependencies = extractDependencies(resolution, config, artifactMap)
       ConfigurationLock(config.value, dependencies)
     }
 
@@ -40,7 +41,8 @@ object ResolutionSerializer {
 
   private def extractDependencies(
       resolution: Resolution,
-      config: Configuration
+      config: Configuration,
+      artifactMap: Map[Dependency, Seq[(String, String, String)]]
   ): Seq[DependencyLock] = {
     val dependencies = resolution.minDependencies
 
@@ -56,6 +58,15 @@ object ResolutionSerializer {
         .map(d => s"${d.module.organization.value}:${d.module.name.value}:${d.version}")
         .sorted
 
+      val artifacts = artifactMap.getOrElse(dep, Seq.empty).map { case (url, classifier, ext) =>
+        ArtifactLock(
+          url = url,
+          classifier = if (classifier.isEmpty) None else Some(classifier),
+          extension = ext,
+          `type` = dep.attributes.`type`.value
+        )
+      }
+
       DependencyLock(
         organization = dep.module.organization.value,
         name = dep.module.name.value,
@@ -66,7 +77,8 @@ object ResolutionSerializer {
           case c  => Some(c)
         },
         `type` = dep.attributes.`type`.value,
-        transitives = transitives
+        transitives = transitives,
+        artifacts = artifacts
       )
     }
   }
@@ -102,5 +114,15 @@ object ResolutionSerializer {
     Resolution()
       .withRootDependencies(rootDeps)
       .withForceVersions(forceVersions ++ params.params.forceVersion)
+  }
+
+  def getLockedArtifacts(
+      lockFileData: LockFileData
+  ): Map[(String, String, String), Seq[ArtifactLock]] = {
+    lockFileData.configurations.flatMap { configLock =>
+      configLock.dependencies.map { depLock =>
+        (depLock.organization, depLock.name, depLock.version) -> depLock.artifacts
+      }
+    }.toMap
   }
 }

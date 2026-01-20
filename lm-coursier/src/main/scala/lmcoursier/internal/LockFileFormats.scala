@@ -5,6 +5,32 @@ import java.time.Instant
 
 trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
 
+  implicit lazy val artifactLockFormat: JsonFormat[ArtifactLock] =
+    new JsonFormat[ArtifactLock] {
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): ArtifactLock = {
+        jsOpt match {
+          case Some(js) =>
+            unbuilder.beginObject(js)
+            val url = unbuilder.readField[String]("url")
+            val classifier = unbuilder.readField[Option[String]]("classifier")
+            val extension = unbuilder.readField[String]("extension")
+            val tpe = unbuilder.readField[String]("type")
+            unbuilder.endObject()
+            ArtifactLock(url, classifier, extension, tpe)
+          case None =>
+            deserializationError("Expected JsObject but found None")
+        }
+      }
+      override def write[J](obj: ArtifactLock, builder: Builder[J]): Unit = {
+        builder.beginObject()
+        builder.addField("url", obj.url)
+        builder.addField("classifier", obj.classifier)
+        builder.addField("extension", obj.extension)
+        builder.addField("type", obj.`type`)
+        builder.endObject()
+      }
+    }
+
   implicit lazy val dependencyLockFormat: JsonFormat[DependencyLock] =
     new JsonFormat[DependencyLock] {
       override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): DependencyLock = {
@@ -18,8 +44,18 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
             val classifier = unbuilder.readField[Option[String]]("classifier")
             val tpe = unbuilder.readField[String]("type")
             val transitives = unbuilder.readField[Seq[String]]("transitives")
+            val artifacts = unbuilder.readField[Seq[ArtifactLock]]("artifacts")
             unbuilder.endObject()
-            DependencyLock(organization, name, version, configuration, classifier, tpe, transitives)
+            DependencyLock(
+              organization,
+              name,
+              version,
+              configuration,
+              classifier,
+              tpe,
+              transitives,
+              artifacts
+            )
           case None =>
             deserializationError("Expected JsObject but found None")
         }
@@ -33,6 +69,7 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
         builder.addField("classifier", obj.classifier)
         builder.addField("type", obj.`type`)
         builder.addField("transitives", obj.transitives)
+        builder.addField("artifacts", obj.artifacts)
         builder.endObject()
       }
     }

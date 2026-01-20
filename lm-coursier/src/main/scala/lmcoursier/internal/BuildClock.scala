@@ -32,9 +32,19 @@ object BuildClock {
     }
 
     digest.update(params.params.maxIterations.toString.getBytes("UTF-8"))
-    params.params.forceVersion.foreach { case (mod, ver) =>
+
+    params.params.forceVersion.toSeq.sortBy(_._1.toString).foreach { case (mod, ver) =>
       digest.update(mod.toString.getBytes("UTF-8"))
       digest.update(ver.getBytes("UTF-8"))
+    }
+
+    params.params.exclusions.toSeq.sortBy(e => (e._1.value, e._2.value)).foreach {
+      case (org, name) =>
+        digest.update(s"exclude:${org.value}:${name.value}".getBytes("UTF-8"))
+    }
+
+    params.strictOpt.foreach { strict =>
+      digest.update(s"strict:${strict.toString}".getBytes("UTF-8"))
     }
 
     val hashBytes = digest.digest()

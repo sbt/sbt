@@ -336,11 +336,19 @@ class CoursierDependencyResolution(
       val report = UpdateRun.update(updateParams0, verbosityLevel, log)
       if (!usedLockFile) {
         conf.lockFile.foreach { lockFile =>
+          val artifactMap = artifacts.fullDetailedArtifacts
+            .groupBy(_._1)
+            .view
+            .mapValues(_.map { case (_, pub, art, _) =>
+              (art.url, pub.classifier.value, pub.ext.value)
+            })
+            .toMap
           val lockData = ResolutionSerializer.extractLockFileData(
             resolutions,
             resolutionParams,
             conf.scalaVersion,
-            "2.0.0"
+            "2.0.0",
+            artifactMap
           )
           LockFile.write(lockFile, lockData)
         }
