@@ -1,8 +1,0 @@
-# Start sbt first without dependency on c1
-> reload
-
-# Add dependency on c1
-$ copy-file temp/build.sbt build.sbt
-
-# Execute early command with addPluginSbtFile and reload
-> early(addPluginSbtFile=temp/extra.sbt); reload
