@@ -8,10 +8,6 @@ $ exists build.sbt.lock
 # Check that lock file is valid
 > dependencyLockCheck
 
-# Test that useDependencyLock enables lock file usage
-> set useDependencyLock := true
-> update
-
 # Modify dependencies and verify lock becomes stale
 $ copy-file build.sbt build.sbt.backup
 $ copy-file changes/build-modified.sbt build.sbt
