@@ -1,0 +1,18 @@
+# Test for transitive cached task side effects
+# See https://github.com/sbt/sbt/issues/8578
+
+# First run: both tasks execute and produce outputs
+> startServer
+> task1
+$ exists target/out/t1.txt
+$ exists target/out/t2.txt
+> checkTask
+
+# Test cache restoration after clean
+> clean
+
+# After clean, running task1 should restore both t1.txt and t2.txt from cache
+> task1
+$ exists target/out/t1.txt
+$ exists target/out/t2.txt
+> checkTask
