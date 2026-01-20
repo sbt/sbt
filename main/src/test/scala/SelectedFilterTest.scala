@@ -101,4 +101,32 @@ object DefaultsTest extends verify.BasicTestSuite {
       ) == expected
     )
   }
+
+  test("`expandGlob` should replace ... with **") {
+    assert(IncrementalTest.expandGlob("...Test") == "**Test")
+    assert(IncrementalTest.expandGlob("com...Test") == "com**Test")
+    assert(IncrementalTest.expandGlob("...") == "**")
+    assert(IncrementalTest.expandGlob("Test") == "Test")
+    assert(IncrementalTest.expandGlob("**Test") == "**Test")
+  }
+
+  test("it should work with ... as a shorthand for **") {
+    val expected = Map("com.example.Test1" -> true, "com.example.Test2" -> true, "Foo" -> false)
+    val filter = List("...Test*")
+    assert(
+      expected.map(t =>
+        (t._1, IncrementalTest.selectedFilter(filter).exists(fn => fn(t._1)))
+      ) == expected
+    )
+  }
+
+  test("it should work with ... in exclusion patterns") {
+    val expected = Map("com.example.Test1" -> true, "com.example.Foo" -> false)
+    val filter = List("...Test*", "-...Foo")
+    assert(
+      expected.map(t =>
+        (t._1, IncrementalTest.selectedFilter(filter).exists(fn => fn(t._1)))
+      ) == expected
+    )
+  }
 }

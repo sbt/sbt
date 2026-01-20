@@ -573,8 +573,14 @@ object Act {
   private def anyKeyValues(structure: BuildStructure, keys: Seq[ScopedKey[?]]): Seq[KeyValue[?]] =
     keys.flatMap(key => getValue(structure.data, key).map(KeyValue(key, _)))
 
+  /**
+   * Starting sbt 2.0.0, we will not delegate when a non-existent scoping
+   * such as Compile / update is required.
+   */
   private def getValue[T](data: Def.Settings, key: ScopedKey[T]): Option[T] =
-    if (java.lang.Boolean.getBoolean("sbt.cli.nodelegation")) data.getDirect(key)
+    if key.scope.config.isSelect ||
+      key.scope.task.isSelect
+    then data.getDirect(key)
     else data.get(key)
 
   def requireSession[T](s: State, p: => Parser[T]): Parser[T] =

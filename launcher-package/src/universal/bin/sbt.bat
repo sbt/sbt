@@ -547,6 +547,13 @@ if not "%g:~0,5%" == "-XX:+" if not "%g:~0,5%" == "-XX:-" if "%g:~0,3%" == "-XX"
   )
 )
 
+rem handle -X JVM options (e.g., -Xmx1G, -Xms512M, -Xss4M) - fixes #5742
+if "%g:~0,2%" == "-X" (
+  call :dlog [args_loop] -X JVM argument %~0
+  call :addJava %~0
+  goto args_loop
+)
+
 if defined sbt_new if "%g:~0,2%" == "--" (
   rem special handling for -- template arguments since '=' gets parsed away on Windows
   for /F "tokens=1 delims==" %%a in ("%g%") do (
@@ -1098,6 +1105,8 @@ echo                       are prepended to the runner args
 echo   !SBT_CONFIG!
 echo                       if this file exists, it is prepended to the runner args
 echo   -Dkey=val           pass -Dkey=val directly to the java runtime
+echo   -X^<flag^>            pass -X^<flag^> directly to the java runtime
+echo                       ^(e.g., -Xmx1G, -Xms512M, -Xss4M^)
 rem echo   -J-X                pass option -X directly to the java runtime
 rem echo                       ^(-J is stripped^)
 rem echo   -S-X                add -X to sbt's scalacOptions ^(-S is stripped^)
