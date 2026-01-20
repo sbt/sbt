@@ -1,6 +1,7 @@
 target/
 __pycache__
 node_modules
+util-cache/${OUT}
 vscode-sbt-scala/client/server
 npm-debug.log
 *.vsix

@@ -9,7 +9,7 @@
 package sbt.util
 
 import scala.annotation.nowarn
-import scala.compiletime.{ constValue, erasedValue, summonInline }
+import scala.compiletime.{ constValue, erasedValue, error, summonFrom }
 import scala.deriving.Mirror
 import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 
@@ -47,6 +47,17 @@ object AutoJsonFormat {
             deserializationError("Expected JsObject but found None")
     }
 
+  private transparent inline def summonFieldFormat[t, l]: JsonFormat[t] =
+    summonFrom {
+      case f: JsonFormat[`t`] => f
+      case _ =>
+        error(
+          "Cannot derive JsonFormat. Missing JsonFormat for field '" +
+            constValue[l].asInstanceOf[String] +
+            "'. Consider using Def.uncached() or providing an explicit JsonFormat."
+        )
+    }
+
   private inline def writeFields[Ts <: Tuple, Ls <: Tuple, J](
       p: Product,
       idx: Int,
@@ -58,7 +69,7 @@ object AutoJsonFormat {
           case _: (l *: ls) =>
             val label = constValue[l].asInstanceOf[String]
             val value = p.productElement(idx).asInstanceOf[t]
-            builder.addField[t](label, value)(using summonInline[JsonFormat[t]])
+            builder.addField[t](label, value)(using summonFieldFormat[t, l])
             writeFields[ts, ls, J](p, idx + 1, builder)
       case _: EmptyTuple =>
         ()
@@ -69,7 +80,7 @@ object AutoJsonFormat {
         inline erasedValue[Ls] match
           case _: (l *: ls) =>
             val label = constValue[l].asInstanceOf[String]
-            val head = unbuilder.readField[t](label)(using summonInline[JsonFormat[t]])
+            val head = unbuilder.readField[t](label)(using summonFieldFormat[t, l])
             (head *: readFields[ts, ls, J](unbuilder)).asInstanceOf[Ts]
       case _: EmptyTuple =>
         EmptyTuple.asInstanceOf[Ts]

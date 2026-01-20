@@ -1,0 +1,8 @@
+> startServer
+> useAnalysis
+$ exists target/out/analysis.txt
+
+> clean
+> useAnalysis
+$ exists target/out/analysis.txt
+> checkHit

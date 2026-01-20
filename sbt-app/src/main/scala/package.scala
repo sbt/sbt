@@ -7,11 +7,21 @@
  */
 
 import sbt.nio.FileStamp
-import sjsonnew.JsonFormat
+import sjsonnew.{ Builder, JsonFormat, Unbuilder, deserializationError }
 import java.nio.file.{ Path as NioPath }
+import java.io.{ ByteArrayInputStream, ByteArrayOutputStream }
+import java.util.Base64
 
 import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
 import scala.language.experimental.macros
+import xsbti.compile.CompileAnalysis
+import xsbti.compile.analysis.ReadWriteMappers
+import sbt.internal.inc.{ Analysis, CompileOutput }
+import sbt.internal.inc.consistent.{
+  BinaryDeserializer,
+  BinarySerializer,
+  ConsistentAnalysisFormat
+}
 
 package object sbt
     extends sbt.IOSyntax0
@@ -55,6 +65,53 @@ package object sbt
   given fileJsonFormatter: JsonFormat[Seq[File]] = FileStamp.Formats.seqFileJsonFormatter
   given singlePathJsonFormatter: JsonFormat[NioPath] = FileStamp.Formats.pathJsonFormatter
   given singleFileJsonFormatter: JsonFormat[File] = FileStamp.Formats.fileJsonFormatter
+  given compileAnalysisJsonFormatter: JsonFormat[CompileAnalysis] =
+    new JsonFormat[CompileAnalysis] {
+      private val analysisFormat =
+        new ConsistentAnalysisFormat(ReadWriteMappers.getEmptyMappers(), true)
+      private val encoder = Base64.getEncoder
+      private val decoder = Base64.getDecoder
+      private val emptyMiniSetup = xsbti.compile.MiniSetup.create(
+        CompileOutput.empty,
+        xsbti.compile.MiniOptions.create(
+          Array.empty[xsbti.compile.FileHash],
+          Array.empty[String],
+          Array.empty[String],
+        ),
+        "",
+        xsbti.compile.CompileOrder.Mixed,
+        true,
+        Array.empty[xsbti.T2[String, String]],
+      )
+
+      override def write[J](obj: CompileAnalysis, builder: Builder[J]): Unit = {
+        val bytes = obj match {
+          case a: Analysis =>
+            val baos = new ByteArrayOutputStream()
+            val serializer = new BinarySerializer(baos)
+            analysisFormat.write(serializer, a, emptyMiniSetup)
+            serializer.end()
+            baos.toByteArray
+          case _ =>
+            throw new UnsupportedOperationException(
+              s"Cannot serialize ${obj.getClass.getName}. Expected sbt.internal.inc.Analysis"
+            )
+        }
+        builder.writeString(encoder.encodeToString(bytes))
+      }
+
+      override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): CompileAnalysis =
+        jsOpt match {
+          case Some(js) =>
+            val bytes = decoder.decode(unbuilder.readString(js))
+            val deserializer = new BinaryDeserializer(new ByteArrayInputStream(bytes))
+            val (analysis, _) = analysisFormat.read(deserializer)
+            deserializer.end()
+            analysis
+          case None =>
+            deserializationError("Expected JsString but found None")
+        }
+    }
   // others
 
   object CompileOrder {

@@ -15,11 +15,10 @@ import scala.util.{ Try, Failure }
 
 class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
 
-  "AutoJsonFormat" should "provide fallback format for xsbti types" in {
-    val format =
-      AutoJsonFormat.fallbackFormat[xsbti.compile.CompileAnalysis]("xsbti.compile.CompileAnalysis")
+  "AutoJsonFormat" should "provide fallback format that throws with a helpful message" in {
+    val format = AutoJsonFormat.fallbackFormat[String]("TestType")
 
-    Try(format.write(null, null)) should matchPattern {
+    Try(format.write("test", null)) should matchPattern {
       case Failure(_: UnsupportedOperationException) =>
     }
 
@@ -63,21 +62,6 @@ class AutoJsonFormatSpec extends AnyFlatSpec with Matchers {
     format should not be null
     withSome should not be null
     withNone should not be null
-  }
-
-  "AutoJsonFormats" should "provide formats for common sbt types" in {
-    // Import the formats
-    import AutoJsonFormats.{ compileAnalysisFormat, compileResultFormat, previousResultFormat }
-
-    // These should compile without errors
-    val analysisFormat: sjsonnew.JsonFormat[xsbti.compile.CompileAnalysis] = compileAnalysisFormat
-    val resultFormat: sjsonnew.JsonFormat[xsbti.compile.CompileResult] = compileResultFormat
-    val prevResultFormat: sjsonnew.JsonFormat[xsbti.compile.PreviousResult] = previousResultFormat
-
-    // Verify they provide helpful error messages
-    Try(analysisFormat.write(null, null)) should matchPattern {
-      case Failure(_: UnsupportedOperationException) =>
-    }
   }
 
   it should "include helpful error messages" in {
