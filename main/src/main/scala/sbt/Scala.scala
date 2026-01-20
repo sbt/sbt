@@ -14,31 +14,34 @@ import scala.util.Using
 import scala.xml.XML
 
 object Scala:
+  private val ScalaNightliesBaseUrl = "https://repo.scala-lang.org/artifactory/maven-nightlies"
   private val MavenMetadataUrl =
-    "https://repo1.maven.org/maven2/org/scala-lang/scala3-library_3/maven-metadata.xml"
+    s"$ScalaNightliesBaseUrl/org/scala-lang/scala3-library_3/maven-metadata.xml"
   private val RCPattern = """3\.\d+\.\d+-RC\d+""".r
+  private val NightlyPattern = """3\.\d+\.\d+.*-NIGHTLY""".r
 
   /**
-   * Returns the latest Scala 3 Release Candidate version available on Maven Central.
+   * Returns the latest Scala 3 Release Candidate version available from the Scala nightlies repository.
    *
-   * This method fetches version information from Maven Central and returns the latest
+   * This method fetches version information from repo.scala-lang.org and returns the latest
    * RC version matching the pattern `3.x.x-RC*`.
    *
    * @example
    * {{{
    * ThisBuild / scalaVersion := Scala.latestRC
+   * ThisBuild / resolvers += Resolver.scalaNightlyRepository
    * }}}
    *
    * @throws RuntimeException if the latest RC version cannot be fetched
    * @return the latest Scala 3 RC version string (e.g., "3.8.1-RC1")
    */
   def latestRC: String =
-    fetchLatestRC.getOrElse:
+    fetchLatestVersion(RCPattern, "RC").getOrElse:
       sys.error(
         "Failed to fetch latest Scala 3 RC version. Please specify an explicit version or check your internet connection."
       )
 
-  private def fetchLatestRC: Option[String] =
+  private def fetchLatestVersion(pattern: scala.util.matching.Regex, versionType: String): Option[String] =
     try
       val url = URL(MavenMetadataUrl)
       val connection = url.openConnection.asInstanceOf[HttpURLConnection]
@@ -49,15 +52,15 @@ object Scala:
       if connection.getResponseCode == HttpURLConnection.HTTP_OK then
         Using.resource(connection.getInputStream): stream =>
           val xml = XML.load(stream)
-          parseVersionsFromXml(xml)
+          parseVersionsFromXml(xml, pattern)
       else None
     catch
       case NonFatal(_) => None
 
-  private def parseVersionsFromXml(xml: scala.xml.Elem): Option[String] =
+  private def parseVersionsFromXml(xml: scala.xml.Elem, pattern: scala.util.matching.Regex): Option[String] =
     val versions = (xml \ "versioning" \ "versions" \ "version")
       .map(_.text)
-      .filter(RCPattern.matches)
+      .filter(pattern.matches)
       .toSeq
     if versions.nonEmpty then
       val sorted = versions.sortWith(compareVersions)
@@ -70,10 +73,13 @@ object Scala:
     compareVersionParts(parts1, parts2) < 0
 
   private def parseVersionParts(version: String): (Int, Int, Int, Int) =
-    val pattern = """3\.(\d+)\.(\d+)-RC(\d+)""".r
+    val rcPattern = """3\.(\d+)\.(\d+)-RC(\d+)""".r
+    val nightlyPattern = """3\.(\d+)\.(\d+).*-NIGHTLY""".r
     version match
-      case pattern(major, minor, rc) =>
+      case rcPattern(major, minor, rc) =>
         (major.toInt, minor.toInt, rc.toInt, 0)
+      case nightlyPattern(major, minor) =>
+        (major.toInt, minor.toInt, Int.MaxValue, 0)
       case _ => (0, 0, 0, 0)
 
   private def compareVersionParts(
