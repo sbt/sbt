@@ -217,5 +217,48 @@ object ResolutionRun {
     }
   }
 
+  def resolutionsWithLockFile(
+      params: ResolutionParams,
+      verbosityLevel: Int,
+      log: Logger,
+      lockFileOpt: Option[java.io.File],
+      scalaVersion: Option[String]
+  ): Either[coursier.error.ResolutionError, (Map[Configuration, Resolution], Boolean)] = {
+    lockFileOpt
+      .flatMap { lockFile =>
+        LockFile.read(lockFile) match {
+          case Right(lockData) =>
+            if (
+              BuildClock.matches(
+                lockData,
+                params.dependencies,
+                params.mainRepositories,
+                scalaVersion,
+                params
+              )
+            ) {
+              if (verbosityLevel >= 1) {
+                log.info(s"Using lock file: ${lockFile.getAbsolutePath}")
+              }
+              val reconstructed = ResolutionSerializer.reconstructResolutions(lockData, params)
+              Some(Right((reconstructed, true)))
+            } else {
+              if (verbosityLevel >= 1) {
+                log.info(s"Lock file outdated, performing resolution")
+              }
+              None
+            }
+          case Left(err) =>
+            if (verbosityLevel >= 2) {
+              log.debug(s"Lock file error: $err")
+            }
+            None
+        }
+      }
+      .getOrElse {
+        resolutions(params, verbosityLevel, log).map(res => (res, false))
+      }
+  }
+
   private lazy val retryScheduler = ThreadUtil.fixedScheduledThreadPool(1)
 }
