@@ -1,0 +1,19 @@
+# Test resolution skipping with lock file
+# First update creates the lock file
+> update
+
+# Verify lock file was created
+$ exists dependencies.lock
+
+# Second update should use the lock file (resolution skipping)
+# The log should show "Using lock file" message
+> set logLevel := Level.Info
+> update
+
+# Compile should work with locked dependencies
+> compile
+
+# Clean and update again - should still use lock file
+> clean
+> update
+> compile
