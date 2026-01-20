@@ -1411,9 +1411,12 @@ private[sbt] object Load {
     val extraSbtFiles: Seq[VirtualFile] =
       if (isMetaBuildContext(context)) s.get(BasicKeys.extraMetaSbtFiles).getOrElse(Nil)
       else Nil
-    if (hasDefinition(dir) || extraSbtFiles.nonEmpty)
+    if (hasDefinition(dir) || extraSbtFiles.nonEmpty) {
+      if (extraSbtFiles.nonEmpty && !dir.exists()) {
+        IO.createDirectory(dir)
+      }
       buildPlugins(dir, s, enableSbtPlugin(activateGlobalPlugin(config)))
-    else
+    } else
       noPlugins(dir, config)
   }
 

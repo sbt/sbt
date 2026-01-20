@@ -770,8 +770,11 @@ process_args () {
 
 loadConfigFile() {
   # Make sure the last line is read even if it doesn't have a terminating \n
+  # Output lines literally without shell expansion to handle special characters safely
   cat "$1" | sed $'/^\#/d;s/\r$//' | while read -r line || [[ -n "$line" ]]; do
-    eval echo $line
+    # Use printf with properly quoted variable to prevent shell expansion
+    # This safely handles special characters like |, *, &, etc.
+    printf '%s\n' "$line"
   done
 }
 

@@ -484,17 +484,53 @@ private[sbt] object CrossJava {
           .toVector
     }
 
+    class SetupJavaDiscoverConfig(base: File) extends JavaDiscoverConf {
+      private val SetupJavaVendorDir =
+        """Java_(Zulu|Temurin-Hotspot|Temurin|Adopt|Corretto|Liberica|Microsoft|Semeru)_jdk""".r
+      private val SetupJavaVersionDir = """([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9]+)?""".r
+
+      private def normalizeVendor(vendor: String): String = vendor.toLowerCase match {
+        case "temurin-hotspot" => "temurin"
+        case "adopt"           => "temurin"
+        case other             => other
+      }
+
+      def candidates(): Vector[String] = wrapNull(base.list())
+
+      def javaHomes: Vector[(String, File)] =
+        candidates().flatMap {
+          case vendorDir @ SetupJavaVendorDir(vendor) =>
+            val vendorPath = base / vendorDir
+            wrapNull(vendorPath.list()).flatMap {
+              case versionDir @ SetupJavaVersionDir(major, minor, patch, _) =>
+                val versionPath = vendorPath / versionDir
+                val archDirs = wrapNull(versionPath.list())
+                archDirs.headOption.map { arch =>
+                  val javaHome = versionPath / arch
+                  val normalizedVendor = normalizeVendor(vendor)
+                  val version = s"$major.$minor.$patch"
+                  val jv = JavaVersion(version).withVendor(normalizedVendor)
+                  jv.toString -> javaHome
+                }
+              case _ => None
+            }
+          case _ => Vector.empty
+        }
+    }
+
     val configs = Vector(
       new JabbaDiscoverConfig,
       new SdkmanDiscoverConfig,
       new LinuxDiscoverConfig(file("/usr") / "java"),
       new LinuxDiscoverConfig(file("/usr") / "lib" / "jvm"),
+      new SetupJavaDiscoverConfig(file("/opt") / "hostedtoolcache"),
       new MacOsDiscoverConfig,
       new JavaHomeDiscoverConfig,
     ) ++ {
       if (IO.isWindows) {
         def discover(dir: String, vendors: String*) = new WindowsDiscoverConfig(file(dir), vendors)
         Vector(
+          new SetupJavaDiscoverConfig(file("C:") / "hostedtoolcache" / "windows"),
           discover("C://Program Files/Java", "openjdk"),
           discover("C://Program Files/Eclipse Foundation", "temurin", "adopt"),
           discover("C://Program Files/Semeru", "semeru", "adopt-openj9"),

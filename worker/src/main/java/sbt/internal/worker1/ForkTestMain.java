@@ -238,7 +238,8 @@ public class ForkTestMain {
       String params = this.gson.toJson(info, ForkErrorInfo.class);
       String notification =
           String.format(
-              "{ \"jsonrpc\": \"2.0\", \"method\": \"forkError\", \"params\": %s }", params);
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"forkError\", \"params\": %s, \"re\": %d }",
+              params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();
     }
@@ -248,7 +249,8 @@ public class ForkTestMain {
       String params = this.gson.toJson(info, TestLogInfo.class);
       String notification =
           String.format(
-              "{ \"jsonrpc\": \"2.0\", \"method\": \"testLog\", \"params\": %s }", params);
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"testLog\", \"params\": %s, \"re\": %d }",
+              params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();
     }
@@ -306,7 +308,8 @@ public class ForkTestMain {
       String params = this.gson.toJson(info, ForkEventsInfo.class);
       String notification =
           String.format(
-              "{ \"jsonrpc\": \"2.0\", \"method\": \"testEvents\", \"params\": %s }", params);
+              "{ \"jsonrpc\": \"2.0\", \"method\": \"testEvents\", \"params\": %s, \"re\": %d }",
+              params, this.id);
       this.originalOut.println(notification);
       this.originalOut.flush();
     }

@@ -59,3 +59,19 @@ $ delete target/Test2.run
 > testOnly -T*1 -T*2
 -$ exists target/Test1.run
 -$ exists target/Test2.run
+
+
+# with ... as a shorthand for ** (issue #8576)
+> testOnly ...Test1
+$ exists target/Test1.run
+-$ exists target/Test2.run
+
+$ delete target/Test1.run
+
+
+# with ... in exclusion pattern
+> testOnly ...Test... -...Test2
+$ exists target/Test1.run
+-$ exists target/Test2.run
+
+$ delete target/Test1.run

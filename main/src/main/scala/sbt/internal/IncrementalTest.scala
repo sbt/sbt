@@ -69,11 +69,14 @@ object IncrementalTest:
     Vector(Digest.sha256Hash(salt.getBytes("UTF-8")))
   }
 
+  /** Expands `...` to `**` in glob patterns. */
+  def expandGlob(pattern: String): String = pattern.replace("...", "**")
+
   def selectedFilter(args: Seq[String]): Seq[String => Boolean] =
     def matches(nfs: Seq[NameFilter], s: String) = nfs.exists(_.accept(s))
     val (excludeArgs, includeArgs) = args.partition(_.startsWith("-"))
-    val includeFilters = includeArgs.map(GlobFilter.apply)
-    val excludeFilters = excludeArgs.map(_.substring(1)).map(GlobFilter.apply)
+    val includeFilters = includeArgs.map(expandGlob).map(GlobFilter.apply)
+    val excludeFilters = excludeArgs.map(_.substring(1)).map(expandGlob).map(GlobFilter.apply)
     (includeFilters, excludeArgs) match
       case (Nil, Nil) => Seq(const(true))
       case (Nil, _)   => Seq((s: String) => !matches(excludeFilters, s))
