@@ -3,7 +3,7 @@
 > update
 
 # Verify lock file was created
-$ exists dependencies.lock
+$ exists deps.lock
 
 # Second update should use the lock file (resolution skipping)
 # The log should show "Using lock file" message

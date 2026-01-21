@@ -1228,7 +1228,7 @@ lazy val lmCoursierDependencies = Def.settings(
 
 lazy val lmCoursier = project
   .in(file("lm-coursier"))
-  .enablePlugins(ContrabandPlugin)
+  .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
   .settings(
     lmCoursierSettings,
     Mima.settings,

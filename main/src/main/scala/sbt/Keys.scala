@@ -537,7 +537,6 @@ object Keys {
   val dependencyLockCheck = taskKey[Boolean]("Checks if the dependency lock file is up-to-date.").withRank(BTask)
   val dependencyLockUpdate = taskKey[File]("Forces re-resolution and updates the dependency lock file.").withRank(BTask)
   val dependencyLockFile = settingKey[File]("The location of the dependency lock file.").withRank(CSetting)
-  val useDependencyLock = settingKey[Boolean]("If true, uses the dependency lock file for resolution when available.").withRank(BSetting)
   val sourceArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
   val docArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
 

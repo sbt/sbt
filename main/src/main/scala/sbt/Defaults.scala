@@ -3340,8 +3340,7 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
-    dependencyLockFile := (ThisBuild / baseDirectory).value / DependencyLockFile.lockFileName,
-    useDependencyLock := false,
+    dependencyLockFile := baseDirectory.value / DependencyLockFile.lockFileName,
     dependencyLock := Def.uncached(dependencyLockTask.value),
     dependencyLockCheck := Def.uncached(dependencyLockCheckTask.value),
     dependencyLockUpdate := Def.uncached(dependencyLockUpdateTask.value),

@@ -151,7 +151,8 @@ object LMCoursier {
 
   def coursierConfigurationTask: Def.Initialize[Task[CoursierConfiguration]] = Def.task {
     val sv = scalaVersion.value
-    val lockFileOpt = if (useDependencyLock.value) Some(dependencyLockFile.value) else None
+    val lockFile = dependencyLockFile.value
+    val lockFileOpt = if (lockFile.exists()) Some(lockFile) else None
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,

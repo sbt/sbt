@@ -12,25 +12,25 @@ class LockFileSpec extends AnyFunSuite {
     val lockData = LockFileData(
       version = "1.0",
       buildClock = "abc123",
-      configurations = Seq(
+      configurations = Vector(
         ConfigurationLock(
           name = "compile",
-          dependencies = Seq(
+          dependencies = Vector(
             DependencyLock(
               organization = "org.scala-lang",
               name = "scala-library",
               version = "2.13.16",
               configuration = "compile",
               classifier = None,
-              `type` = "jar",
-              transitives = Seq("org.scala-lang:scala-library:2.13.16"),
-              artifacts = Seq(
+              tpe = "jar",
+              transitives = Vector("org.scala-lang:scala-library:2.13.16"),
+              artifacts = Vector(
                 ArtifactLock(
                   url =
                     "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.16/scala-library-2.13.16.jar",
                   classifier = None,
                   extension = "jar",
-                  `type` = "jar"
+                  tpe = "jar"
                 )
               )
             )
@@ -86,15 +86,15 @@ class LockFileSpec extends AnyFunSuite {
       version = "1.0.0",
       configuration = "compile",
       classifier = Some("sources"),
-      `type` = "jar",
-      transitives = Seq.empty,
-      artifacts = Seq.empty
+      tpe = "jar",
+      transitives = Vector.empty,
+      artifacts = Vector.empty
     )
 
     val lockData = LockFileData(
       version = "1.0",
       buildClock = "test",
-      configurations = Seq(ConfigurationLock("compile", Seq(dep))),
+      configurations = Vector(ConfigurationLock("compile", Vector(dep))),
       metadata = LockFileMetadata("2.0.0", None, Instant.now())
     )
 

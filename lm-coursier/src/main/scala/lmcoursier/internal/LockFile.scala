@@ -7,7 +7,7 @@ import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
 import scala.util.{ Try, Success, Failure }
 
 object LockFile {
-  import LockFileFormats.*
+  import lmcoursier.internal.codec.LockFileCodec.given
 
   val defaultLockFileName = "dependencies.lock"
 

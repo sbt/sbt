@@ -4,6 +4,5 @@ lazy val root = (project in file("."))
   .settings(
     name := "resolution-skip-test",
     libraryDependencies += "org.typelevel" %% "cats-core" % "2.10.0",
-    useDependencyLock := true,
-    dependencyLockFile := baseDirectory.value / "dependencies.lock"
+    dependencyLockFile := baseDirectory.value / "deps.lock"
   )
