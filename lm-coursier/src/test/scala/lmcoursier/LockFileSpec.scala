@@ -4,7 +4,6 @@ import lmcoursier.internal.*
 import org.scalatest.funsuite.AnyFunSuite
 import java.io.File
 import sbt.io.IO
-import sbt.io.syntax.*
 
 class LockFileSpec extends AnyFunSuite {
 
