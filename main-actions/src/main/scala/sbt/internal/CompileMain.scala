@@ -53,9 +53,10 @@ object CompileMain:
       val log = mkLogger(Level.Warn)
       val output = Paths.get(config.output)
       val sources = config.sources.map(Paths.get(_)).map(conv.toVirtualFile)
-      val cp = config.externalDependencyJars.map(Paths.get(_)).map(conv.toVirtualFile)
+      val cp = config.externalDependencyJars.map(Paths.get(_))
+      val cpVf = cp.map(conv.toVirtualFile)
       val in = zinc.inputs(
-        classpath = cp.toArray,
+        classpath = cpVf.toArray,
         sources = sources.toArray,
         classesDirectory = output,
         earlyJarPath = config.earlyJarPath.map(Paths.get(_)),
