@@ -9,9 +9,12 @@
 package sbt
 package internal
 
+import java.io.File
 import org.scalatest.diagrams.Diagrams
 import org.scalatest.funsuite.AnyFunSuite
 import sbt.internal.CrossJava.JavaDiscoverConfig.*
+import sbt.io.{ IO, syntax }
+import sbt.io.syntax.*
 import scala.collection.immutable.ListMap
 
 class CrossJavaTest extends AnyFunSuite with Diagrams {
@@ -192,5 +195,51 @@ class CrossJavaTest extends AnyFunSuite with Diagrams {
         Some("graalvm")
       )
     )
+  }
+
+  test("The setup-java selector should correctly pick up Zulu JDK") {
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Zulu_jdk" / "25.0.1-8" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, javaHome) = homes.head
+      assert(version == "zulu@25.0.1")
+      assert(javaHome.getName == "x64")
+    }
+  }
+
+  test("The setup-java selector should correctly pick up Temurin JDK") {
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Temurin-Hotspot_jdk" / "11.0.29-7" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, javaHome) = homes.head
+      assert(version == "temurin@11.0.29")
+      assert(javaHome.getName == "x64")
+    }
+  }
+
+  test("The setup-java selector should normalize Temurin-Hotspot to temurin") {
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Temurin-Hotspot_jdk" / "17.0.5-8" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, _) = homes.head
+      assert(version == "temurin@17.0.5")
+    }
+  }
+
+  test("The setup-java selector should normalize Adopt to temurin") {
+    IO.withTemporaryDirectory { temp =>
+      IO.createDirectory(temp / "Java_Adopt_jdk" / "11.0.15-10" / "x64")
+      val conf = new SetupJavaDiscoverConfig(temp)
+      val homes = conf.javaHomes
+      assert(homes.size == 1)
+      val (version, _) = homes.head
+      assert(version == "temurin@11.0.15")
+    }
   }
 }
