@@ -3,9 +3,9 @@
 > dependencyLock
 
 # Verify lock file was created
-$ exists build.sbt.lock
+$ exists deps.lock
 
-# Check that lock file is valid
+# Check that lock file is valid (passes silently)
 > dependencyLockCheck
 
 # Modify dependencies and verify lock becomes stale
@@ -13,11 +13,11 @@ $ copy-file build.sbt build.sbt.backup
 $ copy-file changes/build-modified.sbt build.sbt
 > reload
 
-# Lock check should now show stale warning (task still succeeds but returns false)
-> dependencyLockCheck
+# Lock check should fail because lock is stale
+-> dependencyLockCheck
 
-# Update the lock file
-> dependencyLockUpdate
+# Regenerate the lock file
+> dependencyLock
 
 # Now lock check should pass again
 > dependencyLockCheck
