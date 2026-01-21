@@ -4,6 +4,7 @@ import lmcoursier.internal.*
 import org.scalatest.funsuite.AnyFunSuite
 import java.io.File
 import sbt.io.IO
+import sbt.io.syntax.*
 
 class LockFileSpec extends AnyFunSuite {
 
@@ -101,6 +102,33 @@ class LockFileSpec extends AnyFunSuite {
       LockFile.write(lockFile, lockData)
       val readData = LockFile.read(lockFile).toOption.get
       assert(readData.configurations.head.dependencies.head.classifier == Some("sources"))
+    }
+  }
+
+  test("cacheFileToOriginalUrl converts cache file URL to HTTP URL") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val fileUrl =
+        s"file:${cacheDir.getAbsolutePath}/https/repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar"
+      val result = CoursierDependencyResolution.cacheFileToOriginalUrl(fileUrl, cacheDir)
+      assert(
+        result == "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar"
+      )
+    }
+  }
+
+  test("cacheFileToOriginalUrl handles non-matching paths with CSR_CACHE placeholder") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val fileUrl = "file:/some/other/path/artifact.jar"
+      val result = CoursierDependencyResolution.cacheFileToOriginalUrl(fileUrl, cacheDir)
+      assert(result == "${CSR_CACHE}/some/other/path/artifact.jar")
+    }
+  }
+
+  test("cacheFileToOriginalUrl preserves non-file URLs") {
+    IO.withTemporaryDirectory { cacheDir =>
+      val httpUrl = "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar"
+      val result = CoursierDependencyResolution.cacheFileToOriginalUrl(httpUrl, cacheDir)
+      assert(result == httpUrl)
     }
   }
 }
