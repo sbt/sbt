@@ -20,7 +20,10 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -227,8 +230,19 @@ public final class WorkerMain {
   }
 
   private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {
-    URL[] urls =
+    Map<Boolean, List<FilePath>> groups =
         info.classpath.stream()
+            .collect(
+                Collectors.partitioningBy(
+                    filePath ->
+                        Paths.get(filePath.path)
+                            .getFileName()
+                            .toString()
+                            .startsWith("compiler-interface")));
+    List<FilePath> xs0 = groups.get(true);
+    List<FilePath> xs1 = groups.get(false);
+    URL[] us1 =
+        xs1.stream()
             .map(
                 filePath -> {
                   try {
@@ -238,6 +252,21 @@ public final class WorkerMain {
                   }
                 })
             .toArray(URL[]::new);
-    return new URLClassLoader(urls, parent);
+    if (!xs0.equals(null) && xs0.size() >= 1) {
+      URL[] us0 =
+          xs0.stream()
+              .map(
+                  filePath -> {
+                    try {
+                      return filePath.path.toURL();
+                    } catch (MalformedURLException e) {
+                      throw new RuntimeException(e);
+                    }
+                  })
+              .toArray(URL[]::new);
+      return new URLClassLoader(us1, new URLClassLoader(us0, parent));
+    } else {
+      return new URLClassLoader(us1, parent);
+    }
   }
 }
