@@ -51,3 +51,4 @@ The fix adds:
 4. Proper cleanup of signal handler in `close()` method
 
 This ensures that when JLine queries the terminal size after a resize, it gets the fresh value immediately.
+# CLA signed
