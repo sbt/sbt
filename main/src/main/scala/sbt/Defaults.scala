@@ -3773,6 +3773,7 @@ object Classpaths {
     val report = update.value
     val projectId = thisProject.value.id
     val sv = sbtVersion.value
+    val scalaV = scalaVersion.?.value
     val deps = libraryDependencies.value
     val resolverNames = fullResolvers.value.map(_.name)
     val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
@@ -3781,20 +3782,12 @@ object Classpaths {
       projectId,
       report,
       sv,
+      scalaV,
       buildClock,
-      fullResolvers.value,
       log
     )
 
-    val existingLock = DependencyLockManager.read(lockFile, log)
-    val mergedLock = existingLock match
-      case Some(existing) =>
-        lock.projects.foldLeft(existing) { (acc, proj) =>
-          DependencyLockManager.mergeProjectLock(acc, proj)
-        }
-      case None => lock
-
-    DependencyLockManager.write(lockFile, mergedLock, log)
+    DependencyLockManager.write(lockFile, lock, log)
     lockFile
   }
 

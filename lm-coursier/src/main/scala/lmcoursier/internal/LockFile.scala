@@ -9,7 +9,7 @@ import scala.util.{ Try, Success, Failure }
 object LockFile {
   import LockFileFormats.given
 
-  val defaultLockFileName = "dependencies.lock"
+  val defaultLockFileName = "deps.lock"
 
   def read(lockFile: File): Either[String, LockFileData] = {
     if (!lockFile.exists()) {

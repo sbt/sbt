@@ -9,44 +9,35 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import sbt.io.IO
+import java.time.Instant
+import lmcoursier.internal.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
-import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter, Parser }
 
 object DependencyLockManager:
-  import DependencyLockCodec.given
 
-  def read(lockFile: File, log: Logger): Option[DependencyLockFile] =
-    if lockFile.exists() then
-      try
-        val content = IO.read(lockFile)
-        val json = Parser.parseUnsafe(content)
-        Some(Converter.fromJsonUnsafe[DependencyLockFile](json))
-      catch
-        case e: Exception =>
-          log.warn(s"Failed to read lock file ${lockFile.getAbsolutePath}: ${e.getMessage}")
-          None
-    else None
+  def read(lockFile: File, log: Logger): Option[LockFileData] =
+    LockFile.read(lockFile) match
+      case Right(data) => Some(data)
+      case Left(err) =>
+        if lockFile.exists() then log.warn(s"Failed to read lock file: $err")
+        None
 
-  def write(lockFile: File, lock: DependencyLockFile, log: Logger): Unit =
-    try
-      val json = Converter.toJsonUnsafe(lock)
-      val content = CompactPrinter(json)
-      IO.write(lockFile, formatJson(content))
-      log.info(s"Wrote dependency lock file to ${lockFile.getAbsolutePath}")
-    catch
-      case e: Exception =>
-        log.error(s"Failed to write lock file ${lockFile.getAbsolutePath}: ${e.getMessage}")
-        throw e
+  def write(lockFile: File, lock: LockFileData, log: Logger): Unit =
+    LockFile.write(lockFile, lock) match
+      case Right(_) =>
+        log.info(s"Wrote dependency lock file to ${lockFile.getAbsolutePath}")
+      case Left(err) =>
+        log.error(s"Failed to write lock file: $err")
+        throw new RuntimeException(err)
 
   def validate(
       lockFile: File,
       currentBuildClock: String,
       log: Logger
-  ): Option[DependencyLockFile] =
+  ): Option[LockFileData] =
     read(lockFile, log).filter { lock =>
-      val isValid = lock.isValid(currentBuildClock)
+      val isValid = lock.buildClock == currentBuildClock
       if !isValid then
         log.debug(
           s"Lock file is stale (buildClock mismatch: ${lock.buildClock} != $currentBuildClock)"
@@ -58,72 +49,57 @@ object DependencyLockManager:
       projectId: String,
       report: UpdateReport,
       sbtVersion: String,
+      scalaVersion: Option[String],
       buildClock: String,
-      resolvers: Seq[Resolver],
       log: Logger
-  ): DependencyLockFile =
-    val lockedResolvers = resolvers.collect { case m: MavenRepository =>
-      LockedResolver(m.name, m.root)
-    }.toVector
+  ): LockFileData =
+    val configurations = report.configurations.map { configReport =>
+      val deps = configReport.modules.map { moduleReport =>
+        val artifacts = moduleReport.artifacts.map { case (artifact, file) =>
+          ArtifactLock(
+            url = file.toURI.toString,
+            classifier = artifact.classifier,
+            extension = artifact.extension,
+            tpe = artifact.`type`
+          )
+        }.toVector
 
-    val lockedDeps = for
-      configReport <- report.configurations
-      moduleReport <- configReport.modules
-    yield
-      val artifacts = moduleReport.artifacts.map { case (artifact, file) =>
-        LockedArtifact(
-          classifier = artifact.classifier,
-          extension = artifact.extension,
-          url = file.toURI.toString,
-          sha256 = None
+        DependencyLock(
+          organization = moduleReport.module.organization,
+          name = moduleReport.module.name,
+          version = moduleReport.module.revision,
+          configuration = configReport.configuration.name,
+          classifier = None,
+          tpe = "jar",
+          transitives = Vector.empty,
+          artifacts = artifacts
         )
       }.toVector
 
-      LockedDependency(
-        organization = moduleReport.module.organization,
-        name = moduleReport.module.name,
-        version = moduleReport.module.revision,
-        configurations = Some(configReport.configuration.name),
-        artifacts = artifacts
+      ConfigurationLock(
+        name = configReport.configuration.name,
+        dependencies = deps
       )
+    }.toVector
 
-    val projectLock = ProjectLock(
-      projectId = projectId,
-      dependencies = lockedDeps.toVector
-    )
-
-    DependencyLockFile(
-      lockVersion = DependencyLockFile.CurrentLockVersion,
+    val metadata = LockFileMetadata(
       sbtVersion = sbtVersion,
-      buildClock = buildClock,
-      resolvers = lockedResolvers,
-      projects = Vector(projectLock)
+      scalaVersion = scalaVersion,
+      timestamp = Instant.now()
     )
 
-  def mergeProjectLock(
-      existing: DependencyLockFile,
-      projectLock: ProjectLock
-  ): DependencyLockFile =
-    val updatedProjects =
-      existing.projects.filterNot(_.projectId == projectLock.projectId) :+ projectLock
-    existing.copy(projects = updatedProjects)
+    LockFileData(
+      version = LockFileConstants.currentVersion,
+      buildClock = buildClock,
+      configurations = configurations,
+      metadata = metadata
+    )
 
   def getLockedVersions(
-      lock: DependencyLockFile,
-      projectId: String
+      lock: LockFileData
   ): Map[(String, String), String] =
-    lock.projects
-      .find(_.projectId == projectId)
-      .map { projectLock =>
-        projectLock.dependencies
-          .map(dep => (dep.organization, dep.name) -> dep.version)
-          .toMap
+    lock.configurations.flatMap { config =>
+      config.dependencies.map { dep =>
+        (dep.organization, dep.name) -> dep.version
       }
-      .getOrElse(Map.empty)
-
-  private def formatJson(compact: String): String =
-    import sjsonnew.support.scalajson.unsafe.{ Parser as JsonParser, PrettyPrinter }
-    try
-      val json = JsonParser.parseUnsafe(compact)
-      PrettyPrinter(json)
-    catch case _: Exception => compact
+    }.toMap
