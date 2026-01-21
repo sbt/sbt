@@ -50,7 +50,7 @@ final case class DependencyLockFile(
 
 object DependencyLockFile:
   val CurrentLockVersion = "1.0"
-  val LockFileName = "build.sbt.lock"
+  val lockFileName = "deps.lock"
 
   def computeBuildClock(
       libraryDependencies: Seq[ModuleID],
@@ -65,7 +65,7 @@ object DependencyLockFile:
     digest.digest().map("%02x".format(_)).mkString
 
   def lockFilePath(baseDirectory: File): File =
-    new File(baseDirectory, LockFileName)
+    new File(baseDirectory, lockFileName)
 
 trait LockedArtifactFormats:
   self: sjsonnew.BasicJsonProtocol =>
