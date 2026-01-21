@@ -3396,7 +3396,8 @@ object Classpaths {
       autoScalaLibrary.value && scalaHome.value.isEmpty && managedScalaInstance.value,
       sbtPlugin.value,
       scalaOrganization.value,
-      scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
     ),
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := Def.uncached {
