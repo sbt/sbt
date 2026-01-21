@@ -721,6 +721,7 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem]("sbt.internal.Compiler.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
       exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
     ),
