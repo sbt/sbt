@@ -21,10 +21,13 @@ object ResolutionSerializer {
       params
     )
 
-    val configurations = resolutions.toSeq.sortBy(_._1.value).map { case (config, resolution) =>
-      val dependencies = extractDependencies(resolution, config, artifactMap)
-      ConfigurationLock(config.value, dependencies)
-    }
+    val configurations = resolutions.toSeq
+      .sortBy(_._1.value)
+      .map { case (config, resolution) =>
+        val dependencies = extractDependencies(resolution, config, artifactMap)
+        ConfigurationLock(config.value, dependencies.toVector)
+      }
+      .toVector
 
     val metadata = LockFileMetadata(
       sbtVersion = sbtVersion,
@@ -33,7 +36,7 @@ object ResolutionSerializer {
     )
 
     LockFileData(
-      version = LockFileData.currentVersion,
+      version = LockFileConstants.currentVersion,
       buildClock = buildClock,
       configurations = configurations,
       metadata = metadata
@@ -64,7 +67,7 @@ object ResolutionSerializer {
           url = url,
           classifier = if (classifier.isEmpty) None else Some(classifier),
           extension = ext,
-          `type` = dep.attributes.`type`.value
+          tpe = dep.attributes.`type`.value
         )
       }
 
@@ -77,9 +80,9 @@ object ResolutionSerializer {
           case "" => None
           case c  => Some(c)
         },
-        `type` = dep.attributes.`type`.value,
-        transitives = transitives,
-        artifacts = artifacts
+        tpe = dep.attributes.`type`.value,
+        transitives = transitives.toVector,
+        artifacts = artifacts.toVector
       )
     }
   }

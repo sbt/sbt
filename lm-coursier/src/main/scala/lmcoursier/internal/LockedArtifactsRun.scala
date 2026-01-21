@@ -41,7 +41,7 @@ object LockedArtifactsRun {
 
       val classifier = Classifier(artLock.classifier.getOrElse(""))
       val extension = Extension(artLock.extension)
-      val tpe = Type(artLock.`type`)
+      val tpe = Type(artLock.tpe)
 
       val publication = Publication(
         name = depLock.name,

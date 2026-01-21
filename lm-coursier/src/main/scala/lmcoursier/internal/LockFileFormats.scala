@@ -26,7 +26,7 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
         builder.addField("url", obj.url)
         builder.addField("classifier", obj.classifier)
         builder.addField("extension", obj.extension)
-        builder.addField("type", obj.`type`)
+        builder.addField("type", obj.tpe)
         builder.endObject()
       }
     }
@@ -43,8 +43,8 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
             val configuration = unbuilder.readField[String]("configuration")
             val classifier = unbuilder.readField[Option[String]]("classifier")
             val tpe = unbuilder.readField[String]("type")
-            val transitives = unbuilder.readField[Seq[String]]("transitives")
-            val artifacts = unbuilder.readField[Seq[ArtifactLock]]("artifacts")
+            val transitives = unbuilder.readField[Vector[String]]("transitives")
+            val artifacts = unbuilder.readField[Vector[ArtifactLock]]("artifacts")
             unbuilder.endObject()
             DependencyLock(
               organization,
@@ -67,7 +67,7 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
         builder.addField("version", obj.version)
         builder.addField("configuration", obj.configuration)
         builder.addField("classifier", obj.classifier)
-        builder.addField("type", obj.`type`)
+        builder.addField("type", obj.tpe)
         builder.addField("transitives", obj.transitives)
         builder.addField("artifacts", obj.artifacts)
         builder.endObject()
@@ -81,7 +81,7 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
           case Some(js) =>
             unbuilder.beginObject(js)
             val name = unbuilder.readField[String]("name")
-            val dependencies = unbuilder.readField[Seq[DependencyLock]]("dependencies")
+            val dependencies = unbuilder.readField[Vector[DependencyLock]]("dependencies")
             unbuilder.endObject()
             ConfigurationLock(name, dependencies)
           case None =>
@@ -142,7 +142,7 @@ trait LockFileFormats { self: sjsonnew.BasicJsonProtocol =>
           unbuilder.beginObject(js)
           val version = unbuilder.readField[String]("version")
           val buildClock = unbuilder.readField[String]("buildClock")
-          val configurations = unbuilder.readField[Seq[ConfigurationLock]]("configurations")
+          val configurations = unbuilder.readField[Vector[ConfigurationLock]]("configurations")
           val metadata = unbuilder.readField[LockFileMetadata]("metadata")
           unbuilder.endObject()
           LockFileData(version, buildClock, configurations, metadata)
