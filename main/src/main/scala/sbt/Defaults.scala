@@ -774,11 +774,13 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
-      scalaDynVersion := {
-        val sv = scalaVersion.value
-        val log = streams.value.log
-        LibraryManagement.resolveDynamicScalaVersion(sv, log)
-      },
+      derive(
+        scalaDynVersion := {
+          val sv = scalaVersion.value
+          val log = streams.value.log
+          LibraryManagement.resolveDynamicScalaVersion(sv, log)
+        }
+      ),
       consoleProject := ConsoleProject.consoleProjectTask.value,
       consoleProject / scalaInstance := {
         val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
