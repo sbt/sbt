@@ -3343,7 +3343,6 @@ object Classpaths {
     dependencyLockFile := baseDirectory.value / DependencyLockFile.lockFileName,
     dependencyLock := Def.uncached(dependencyLockTask.value),
     dependencyLockCheck := Def.uncached(dependencyLockCheckTask.value),
-    dependencyLockUpdate := Def.uncached(dependencyLockUpdateTask.value),
   ) ++
     inTask(updateClassifiers)(
       Seq(
@@ -3799,7 +3798,7 @@ object Classpaths {
     lockFile
   }
 
-  lazy val dependencyLockCheckTask: Initialize[Task[Boolean]] = Def.task {
+  lazy val dependencyLockCheckTask: Initialize[Task[Unit]] = Def.task {
     val log = streams.value.log
     val lockFile = dependencyLockFile.value
     val deps = libraryDependencies.value
@@ -3809,24 +3808,13 @@ object Classpaths {
     DependencyLockManager.validate(lockFile, currentBuildClock, log) match
       case Some(_) =>
         log.info(s"Dependency lock file is up-to-date: ${lockFile.getAbsolutePath}")
-        true
       case None =>
-        if lockFile.exists() then
-          log.warn(s"Dependency lock file is stale: ${lockFile.getAbsolutePath}")
-          log.warn("Run 'dependencyLockUpdate' to update it.")
-        else
-          log.warn(s"Dependency lock file does not exist: ${lockFile.getAbsolutePath}")
-          log.warn("Run 'dependencyLock' to create it.")
-        false
-  }
-
-  lazy val dependencyLockUpdateTask: Initialize[Task[File]] = Def.task {
-    val log = streams.value.log
-    val lockFile = dependencyLockFile.value
-    if lockFile.exists() then
-      log.info(s"Removing existing lock file: ${lockFile.getAbsolutePath}")
-      IO.delete(lockFile)
-    dependencyLockTask.value
+        val msg =
+          if lockFile.exists() then
+            s"Dependency lock file is stale: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to update it."
+          else
+            s"Dependency lock file does not exist: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to create it."
+        throw new MessageOnlyException(msg)
   }
 
   /**

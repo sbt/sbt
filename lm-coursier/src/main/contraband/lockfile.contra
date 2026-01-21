@@ -1,7 +1,5 @@
 package lmcoursier.internal
 @target(Scala)
-@codecPackage("lmcoursier.internal.codec")
-@fullCodec("LockFileCodec")
 
 type ArtifactLock {
   url: String!
