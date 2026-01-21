@@ -1,4 +1,4 @@
-scalaVersion := "3-latest.candidate"
+ThisBuild / scalaVersion := "3-latest.candidate"
 
 lazy val checkDynVersion = taskKey[Unit]("Check that scalaDynVersion resolves correctly")
 
