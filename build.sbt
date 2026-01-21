@@ -312,7 +312,7 @@ lazy val utilCore = project
 lazy val utilLogging = project
   .in(file("internal") / "util-logging")
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(utilInterface, utilCore)
+  .dependsOn(utilInterface, utilCore, collectionProj)
   .settings(
     utilCommonSettings,
     name := "Util Logging",
