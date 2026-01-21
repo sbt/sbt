@@ -138,4 +138,48 @@ object ExtendedRunnerTest extends BasicTestSuite:
     }
     ()
   }
+
+  // Test for issue #6485: Test `sbt --client` startup
+  // https://github.com/sbt/sbt/issues/6485
+  test("sbt --client startup time") {
+    if (isWindows) {
+      // Skip on Windows for now as sbtn behavior differs
+      ()
+    } else {
+      // First call starts the server if not running (warmup)
+      val warmup = sbtProcess("--client", "version").!
+      assert(warmup == 0, "Warmup sbt --client version failed")
+
+      // Measure startup time for sbt --client when server is already running
+      // Run multiple times and take the average to reduce variance
+      val iterations = 5
+      val times = (1 to iterations).map { _ =>
+        val start = System.nanoTime()
+        val exitCode = sbtProcess("--client", "version").!
+        val elapsed = (System.nanoTime() - start) / 1_000_000 // Convert to milliseconds
+        assert(exitCode == 0, "sbt --client version failed")
+        elapsed
+      }
+
+      val avgTime = times.sum / iterations
+      val maxTime = times.max
+
+      println(s"sbt --client startup times (ms): ${times.mkString(", ")}")
+      println(s"Average: ${avgTime}ms, Max: ${maxTime}ms")
+
+      // Cap at 2000ms to catch major regressions while allowing for CI variance.
+      // The original issue #5980 mentioned ~200ms on developer machines in 2021,
+      // but actual times vary based on system load, hardware, and sbtn version.
+      // This test ensures we don't have order-of-magnitude regressions.
+      assert(
+        avgTime < 2000,
+        s"sbt --client startup time (${avgTime}ms average) exceeded 2000ms threshold"
+      )
+
+      // Cleanup: shutdown the server
+      val shutdown = sbtProcess("--client", "shutdown").!
+      assert(shutdown == 0, "Failed to shutdown sbt server")
+    }
+    ()
+  }
 end ExtendedRunnerTest
