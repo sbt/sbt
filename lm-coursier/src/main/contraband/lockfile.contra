@@ -27,7 +27,6 @@ type ConfigurationLock {
 type LockFileMetadata {
   sbtVersion: String!
   scalaVersion: String
-  timestamp: java.time.Instant!
 }
 
 type LockFileData {

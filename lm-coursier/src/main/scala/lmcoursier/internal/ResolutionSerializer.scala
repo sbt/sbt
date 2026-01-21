@@ -2,7 +2,6 @@ package lmcoursier.internal
 
 import coursier.{ Project, Resolution }
 import coursier.core.{ ArtifactSource, Configuration, Dependency, Info, Module }
-import java.time.Instant
 import scala.collection.immutable.Seq
 
 object ResolutionSerializer {
@@ -31,8 +30,7 @@ object ResolutionSerializer {
 
     val metadata = LockFileMetadata(
       sbtVersion = sbtVersion,
-      scalaVersion = scalaVersion,
-      timestamp = Instant.now()
+      scalaVersion = scalaVersion
     )
 
     LockFileData(

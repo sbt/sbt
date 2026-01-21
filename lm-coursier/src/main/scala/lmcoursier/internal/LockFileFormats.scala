@@ -1,23 +1,6 @@
 package lmcoursier.internal
 
 import sjsonnew.*
-import java.time.Instant
-
-trait InstantFormats { self: sjsonnew.BasicJsonProtocol =>
-  given InstantFormat: JsonFormat[Instant] = new JsonFormat[Instant] {
-    def write[J](obj: Instant, builder: Builder[J]): Unit =
-      builder.writeString(obj.toString)
-
-    def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): Instant =
-      jsOpt match {
-        case Some(js) =>
-          val str = unbuilder.readString(js)
-          Instant.parse(str)
-        case None =>
-          deserializationError("Expected JString for Instant")
-      }
-  }
-}
 
 trait ArtifactLockFormats { self: sjsonnew.BasicJsonProtocol =>
   given ArtifactLockFormat: JsonFormat[ArtifactLock] = new JsonFormat[ArtifactLock] {
@@ -114,7 +97,7 @@ trait ConfigurationLockFormats {
   }
 }
 
-trait LockFileMetadataFormats { self: sjsonnew.BasicJsonProtocol & InstantFormats =>
+trait LockFileMetadataFormats { self: sjsonnew.BasicJsonProtocol =>
   given LockFileMetadataFormat: JsonFormat[LockFileMetadata] = new JsonFormat[LockFileMetadata] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): LockFileMetadata =
       jsOpt match {
@@ -122,9 +105,8 @@ trait LockFileMetadataFormats { self: sjsonnew.BasicJsonProtocol & InstantFormat
           unbuilder.beginObject(js)
           val sbtVersion = unbuilder.readField[String]("sbtVersion")
           val scalaVersion = unbuilder.readField[Option[String]]("scalaVersion")
-          val timestamp = unbuilder.readField[Instant]("timestamp")
           unbuilder.endObject()
-          LockFileMetadata(sbtVersion, scalaVersion, timestamp)
+          LockFileMetadata(sbtVersion, scalaVersion)
         case None =>
           deserializationError("Expected JsObject but found None")
       }
@@ -133,7 +115,6 @@ trait LockFileMetadataFormats { self: sjsonnew.BasicJsonProtocol & InstantFormat
       builder.beginObject()
       builder.addField("sbtVersion", obj.sbtVersion)
       builder.addField("scalaVersion", obj.scalaVersion)
-      builder.addField("timestamp", obj.timestamp)
       builder.endObject()
     }
   }
@@ -141,7 +122,7 @@ trait LockFileMetadataFormats { self: sjsonnew.BasicJsonProtocol & InstantFormat
 
 trait LockFileDataFormats {
   self: sjsonnew.BasicJsonProtocol & ArtifactLockFormats & DependencyLockFormats &
-    ConfigurationLockFormats & LockFileMetadataFormats & InstantFormats =>
+    ConfigurationLockFormats & LockFileMetadataFormats =>
   given LockFileDataFormat: JsonFormat[LockFileData] = new JsonFormat[LockFileData] {
     override def read[J](jsOpt: Option[J], unbuilder: Unbuilder[J]): LockFileData =
       jsOpt match {
@@ -170,7 +151,6 @@ trait LockFileDataFormats {
 
 object LockFileFormats
     extends sjsonnew.BasicJsonProtocol
-    with InstantFormats
     with ArtifactLockFormats
     with DependencyLockFormats
     with ConfigurationLockFormats

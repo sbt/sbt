@@ -9,7 +9,6 @@
 package sbt.internal.librarymanagement
 
 import java.io.File
-import java.time.Instant
 import lmcoursier.internal.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
@@ -84,8 +83,7 @@ object DependencyLockManager:
 
     val metadata = LockFileMetadata(
       sbtVersion = sbtVersion,
-      scalaVersion = scalaVersion,
-      timestamp = Instant.now()
+      scalaVersion = scalaVersion
     )
 
     LockFileData(

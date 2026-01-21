@@ -354,7 +354,8 @@ class CoursierDependencyResolution(
             .groupBy(_._1)
             .view
             .mapValues(_.map { case (_, pub, art, _) =>
-              (art.url, pub.classifier.value, pub.ext.value)
+              val originalUrl = CoursierDependencyResolution.cacheFileToOriginalUrl(art.url, cache)
+              (originalUrl, pub.classifier.value, pub.ext.value)
             })
             .toMap
           val lockData = ResolutionSerializer.extractLockFileData(
@@ -429,4 +430,23 @@ object CoursierDependencyResolution {
 
   def defaultCacheLocation: File =
     CacheDefaults.location
+
+  private[lmcoursier] def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String = {
+    val cachePath = cacheDir.getAbsolutePath
+    val filePrefix = "file:"
+    if (fileUrl.startsWith(filePrefix)) {
+      val filePath = fileUrl.stripPrefix(filePrefix)
+      val normalizedCachePath = if (cachePath.endsWith("/")) cachePath else cachePath + "/"
+      val normalizedFilePath = filePath.replaceFirst("^/+", "/")
+      if (normalizedFilePath.startsWith(normalizedCachePath)) {
+        val relativePath = normalizedFilePath.stripPrefix(normalizedCachePath)
+        val protocolSepIndex = relativePath.indexOf('/')
+        if (protocolSepIndex > 0) {
+          val protocol = relativePath.substring(0, protocolSepIndex)
+          val rest = relativePath.substring(protocolSepIndex + 1)
+          s"$protocol://$rest"
+        } else fileUrl
+      } else fileUrl
+    } else fileUrl
+  }
 }
