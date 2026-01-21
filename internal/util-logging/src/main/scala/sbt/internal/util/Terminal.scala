@@ -1001,6 +1001,7 @@ object Terminal {
     private val size =
       new AtomicReference[((Int, Int), Deadline)](((1, 1), Deadline.now - 1.day))
     private def setSize() = size.set((Try(getSizeImpl).getOrElse((1, 1)), Deadline.now))
+
     /**
      * Invalidates the cached terminal size, forcing a refresh on the next getSize() call.
      * This should be called when a terminal resize is detected (e.g., via SIGWINCH).
