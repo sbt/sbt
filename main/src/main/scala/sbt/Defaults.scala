@@ -734,7 +734,8 @@ object Defaults extends BuildCommon {
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ZincLmUtil.hasScala2SbtBridge(sv)
           hasSbtBridge && managed
         })(Def.cachedTask {
-          val sv = scalaVersion.value
+          // Use scalaDynVersion to resolve dynamic versions (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+          val sv = scalaDynVersion.value
           val conv = fileConverter.value
           val s = streams.value
           val t = target.value
@@ -774,6 +775,13 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+      derive(
+        scalaDynVersion := {
+          val sv = scalaVersion.value
+          val log = streams.value.log
+          LibraryManagement.resolveDynamicScalaVersion(sv, log)
+        }
+      ),
       consoleProject := ConsoleProject.consoleProjectTask.value,
       consoleProject / scalaInstance := {
         val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
@@ -3119,9 +3127,12 @@ object Classpaths {
     allExcludeDependencies := excludeDependencies.value,
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
+        // Resolve dynamic Scala version for scalaModuleInfo
+        val resolvedScalaVersion =
+          LibraryManagement.resolveDynamicScalaVersion((update / scalaVersion).value)
         Option(
           ScalaModuleInfo(
-            (update / scalaVersion).value,
+            resolvedScalaVersion,
             (update / scalaBinaryVersion).value,
             Vector.empty,
             filterImplicit = false,
@@ -3385,7 +3396,8 @@ object Classpaths {
       autoScalaLibrary.value && scalaHome.value.isEmpty && managedScalaInstance.value,
       sbtPlugin.value,
       scalaOrganization.value,
-      scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
     ),
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := Def.uncached {
@@ -3397,7 +3409,8 @@ object Classpaths {
         if (isPlugin) sbtdeps +: base
         else base
       val scalaOrg = scalaOrganization.value
-      val version = scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      val version = LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
       val extResolvers = externalResolvers.value
       val allToolDeps =
         if scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value
