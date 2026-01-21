@@ -3794,20 +3794,16 @@ object Classpaths {
   lazy val dependencyLockCheckTask: Initialize[Task[Unit]] = Def.task {
     val log = streams.value.log
     val lockFile = dependencyLockFile.value
-    val deps = libraryDependencies.value
-    val resolverNames = fullResolvers.value.map(_.name)
-    val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
-
-    DependencyLockManager.validate(lockFile, currentBuildClock, log) match
-      case Some(_) =>
-        log.info(s"Dependency lock file is up-to-date: ${lockFile.getAbsolutePath}")
-      case None =>
-        val msg =
-          if lockFile.exists() then
+    if lockFile.exists() then
+      val deps = libraryDependencies.value
+      val resolverNames = fullResolvers.value.map(_.name)
+      val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+      DependencyLockManager.validate(lockFile, currentBuildClock, log) match
+        case Some(_) => ()
+        case None =>
+          throw new MessageOnlyException(
             s"Dependency lock file is stale: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to update it."
-          else
-            s"Dependency lock file does not exist: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to create it."
-        throw new MessageOnlyException(msg)
+          )
   }
 
   /**
