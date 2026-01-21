@@ -125,7 +125,8 @@ class LockFileSpec extends AnyFunSuite {
 
   test("cacheFileToOriginalUrl preserves non-file URLs") {
     IO.withTemporaryDirectory { cacheDir =>
-      val httpUrl = "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar"
+      val httpUrl =
+        "https://repo1.maven.org/maven2/org/scala-lang/scala-library/2.13.12/scala-library-2.13.12.jar"
       val result = CoursierDependencyResolution.cacheFileToOriginalUrl(httpUrl, cacheDir)
       assert(result == httpUrl)
     }
