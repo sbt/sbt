@@ -3,7 +3,6 @@ package lmcoursier
 import lmcoursier.internal.*
 import org.scalatest.funsuite.AnyFunSuite
 import java.io.File
-import java.time.Instant
 import sbt.io.IO
 
 class LockFileSpec extends AnyFunSuite {
@@ -39,8 +38,7 @@ class LockFileSpec extends AnyFunSuite {
       ),
       metadata = LockFileMetadata(
         sbtVersion = "2.0.0",
-        scalaVersion = Some("3.7.4"),
-        timestamp = Instant.parse("2026-01-20T15:00:00Z")
+        scalaVersion = Some("3.7.4")
       )
     )
 
@@ -95,7 +93,7 @@ class LockFileSpec extends AnyFunSuite {
       version = "1.0",
       buildClock = "test",
       configurations = Vector(ConfigurationLock("compile", Vector(dep))),
-      metadata = LockFileMetadata("2.0.0", None, Instant.now())
+      metadata = LockFileMetadata("2.0.0", None)
     )
 
     IO.withTemporaryDirectory { dir =>
