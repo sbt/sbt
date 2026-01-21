@@ -1,6 +1,7 @@
 package lmcoursier.internal
 
-import coursier.core.{ Configuration, Dependency, Module, Resolution }
+import coursier.{ Project, Resolution }
+import coursier.core.{ ArtifactSource, Configuration, Dependency, Info, Module }
 import java.time.Instant
 import scala.collection.immutable.Seq
 
@@ -111,9 +112,58 @@ object ResolutionSerializer {
       .filter(_._1.value == configLock.name)
       .map(_._2)
 
+    val dependencies: Set[Dependency] = configLock.dependencies.map { depLock =>
+      Dependency(
+        Module(
+          coursier.Organization(depLock.organization),
+          coursier.ModuleName(depLock.name),
+          Map.empty[String, String]
+        ),
+        depLock.version
+      )
+    }.toSet
+
+    val projectCache: Map[(Module, String), (ArtifactSource, Project)] =
+      configLock.dependencies.map { depLock =>
+        val module = Module(
+          coursier.Organization(depLock.organization),
+          coursier.ModuleName(depLock.name),
+          Map.empty[String, String]
+        )
+        val project = Project(
+          module = module,
+          version = depLock.version,
+          dependencies = Seq.empty,
+          configurations = Map.empty,
+          parent = None,
+          dependencyManagement = Seq.empty,
+          properties = Seq.empty,
+          profiles = Seq.empty,
+          versions = None,
+          snapshotVersioning = None,
+          packagingOpt = None,
+          relocated = false,
+          actualVersionOpt = None,
+          publications = Seq.empty,
+          info = Info.empty
+        )
+        (module, depLock.version) -> (EmptyArtifactSource, project)
+      }.toMap
+
     Resolution()
       .withRootDependencies(rootDeps)
+      .withDependencies(dependencies)
       .withForceVersions(forceVersions ++ params.params.forceVersion)
+      .withProjectCache(projectCache)
+  }
+
+  private object EmptyArtifactSource extends ArtifactSource {
+    def artifacts(
+        dependency: Dependency,
+        project: Project,
+        overrideClassifiers: Option[scala.collection.immutable.Seq[coursier.core.Classifier]]
+    ): scala.collection.immutable.Seq[(coursier.core.Publication, coursier.util.Artifact)] =
+      scala.collection.immutable.Seq.empty
   }
 
   def getLockedArtifacts(

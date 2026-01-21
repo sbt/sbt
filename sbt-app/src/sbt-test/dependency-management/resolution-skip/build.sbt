@@ -5,5 +5,5 @@ lazy val root = (project in file("."))
     name := "resolution-skip-test",
     libraryDependencies += "org.typelevel" %% "cats-core" % "2.10.0",
     useDependencyLock := true,
-    dependencyLockFile := Some(baseDirectory.value / "dependencies.lock")
+    dependencyLockFile := baseDirectory.value / "dependencies.lock"
   )
