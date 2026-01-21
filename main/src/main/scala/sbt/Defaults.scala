@@ -2030,7 +2030,10 @@ object Defaults extends BuildCommon {
               val xapisFiles = xapis.map { (k, v) =>
                 converter.toPath(k).toFile() -> v
               }
-              val options = sOpts ++ Opts.doc.externalAPI(xapisFiles)
+              val externalApiOpts =
+                if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+                else Opts.doc.externalAPI(xapisFiles)
+              val options = sOpts ++ externalApiOpts
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs

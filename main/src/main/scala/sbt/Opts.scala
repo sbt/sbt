@@ -38,6 +38,37 @@ object Opts {
         mappings
           .map { (f, u) => s"${f.getAbsolutePath}#${u.toURL().toExternalForm}" }
           .mkString("-doc-external-doc:", ",", "") :: Nil
+
+    /**
+     * Generates Scala 3 scaladoc external mappings option.
+     * Format: -external-mappings:regex::[scaladoc3|scaladoc|javadoc]::url,...
+     */
+    def externalAPIScala3(mappings: Iterable[(File, URI)]): Seq[String] =
+      if (mappings.isEmpty) Nil
+      else
+        mappings
+          .map { (f, u) =>
+            val fileName = f.getName
+            // Escape regex special characters in the filename
+            val escapedName = fileName.replaceAll("([\\[\\]{}()*+?.\\\\^$|])", "\\\\$1")
+            // Use a regex pattern that matches the file anywhere in the classpath
+            val regex = s".*$escapedName"
+            // Determine if this is javadoc or scaladoc based on the file/URL
+            val docType = if (isJavaDoc(f, u)) "javadoc" else "scaladoc3"
+            s"$regex::$docType::${u.toURL().toExternalForm}"
+          }
+          .mkString("-external-mappings:", ",", "") :: Nil
+
+    private def isJavaDoc(file: File, uri: URI): Boolean = {
+      val name = file.getName.toLowerCase
+      val url = uri.toString.toLowerCase
+      // Heuristics to detect Java documentation
+      name.startsWith("rt.jar") ||
+      name.contains("java") && !name.contains("scala") ||
+      url.contains("docs.oracle.com") ||
+      url.contains("javadoc") ||
+      url.contains("/java/") && !url.contains("scala")
+    }
   }
   object resolver {
     import sbt.io.syntax.*
