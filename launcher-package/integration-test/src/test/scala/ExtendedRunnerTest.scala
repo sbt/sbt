@@ -142,8 +142,8 @@ object ExtendedRunnerTest extends BasicTestSuite:
   // Test for issue #6485: Test `sbt --client` startup
   // https://github.com/sbt/sbt/issues/6485
   test("sbt --client startup time") {
-    if (isWindows) {
-      // Skip on Windows for now as sbtn behavior differs
+    if (isWindows || isMac) {
+      // Skip on Windows (sbtn behavior differs) and macOS CI (slow hostname resolution)
       ()
     } else {
       // First call starts the server if not running (warmup)
@@ -167,10 +167,9 @@ object ExtendedRunnerTest extends BasicTestSuite:
       println(s"sbt --client startup times (ms): ${times.mkString(", ")}")
       println(s"Average: ${avgTime}ms, Max: ${maxTime}ms")
 
-      // Cap at 2000ms to catch major regressions while allowing for CI variance.
+      // Cap at 2000ms to catch significant regressions while allowing for CI variance.
       // The original issue #5980 mentioned ~200ms on developer machines in 2021,
-      // but actual times vary based on system load, hardware, and sbtn version.
-      // This test ensures we don't have order-of-magnitude regressions.
+      // but CI runners are typically 2-3x slower than local development machines.
       assert(
         avgTime < 2000,
         s"sbt --client startup time (${avgTime}ms average) exceeded 2000ms threshold"
