@@ -41,7 +41,8 @@ object ScalaArtifacts {
     name.startsWith(Scala3ReplPrefix)
   }
 
-  def isScala3(scalaVersion: String): Boolean = scalaVersion.startsWith("3.")
+  def isScala3(scalaVersion: String): Boolean =
+    scalaVersion.startsWith("3.") || scalaVersion.startsWith("3-latest.")
 
   /**
    * Returns true for pre-release nightlies intentionally.

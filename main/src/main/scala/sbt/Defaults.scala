@@ -774,6 +774,11 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+      scalaDynVersion := {
+        val sv = scalaVersion.value
+        val log = streams.value.log
+        LibraryManagement.resolveDynamicScalaVersion(sv, log)
+      },
       consoleProject := ConsoleProject.consoleProjectTask.value,
       consoleProject / scalaInstance := {
         val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
@@ -3119,9 +3124,12 @@ object Classpaths {
     allExcludeDependencies := excludeDependencies.value,
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
+        // Resolve dynamic Scala version for scalaModuleInfo
+        val resolvedScalaVersion =
+          LibraryManagement.resolveDynamicScalaVersion((update / scalaVersion).value)
         Option(
           ScalaModuleInfo(
-            (update / scalaVersion).value,
+            resolvedScalaVersion,
             (update / scalaBinaryVersion).value,
             Vector.empty,
             filterImplicit = false,
@@ -3397,7 +3405,8 @@ object Classpaths {
         if (isPlugin) sbtdeps +: base
         else base
       val scalaOrg = scalaOrganization.value
-      val version = scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      val version = LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
       val extResolvers = externalResolvers.value
       val allToolDeps =
         if scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value

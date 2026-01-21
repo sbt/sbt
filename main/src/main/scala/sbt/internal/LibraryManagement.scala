@@ -440,4 +440,107 @@ private[sbt] object LibraryManagement {
 
   def lock(app: xsbti.AppConfiguration): xsbti.GlobalLock =
     app.provider.scalaProvider.launcher.globalLock
+
+  // Pattern for Scala 3 release candidates: X.Y.Z-RCN (not nightlies)
+  private val Scala3RCPattern = """^(\d+)\.(\d+)\.(\d+)-RC(\d+)$""".r
+
+  // Cache for the latest Scala 3 RC version lookup (24-hour TTL)
+  private var cachedScala3RC: Option[(String, Long)] = None
+  private val scala3RCCacheLock = new Object
+  private val cacheTtlMillis = 24L * 60 * 60 * 1000 // 24 hours
+
+  /**
+   * Fetches the latest Scala 3 release candidate version from Maven Central.
+   * Results are cached for 24 hours.
+   *
+   * @param log Logger for debug output
+   * @return The latest Scala 3 RC version string (e.g., "3.8.1-RC1")
+   */
+  def fetchLatestScala3RC(log: Logger): String = {
+    scala3RCCacheLock.synchronized {
+      val now = System.currentTimeMillis()
+      cachedScala3RC match {
+        case Some((version, timestamp)) if (now - timestamp) < cacheTtlMillis =>
+          log.debug(s"Using cached Scala 3 RC version: $version")
+          version
+        case _ =>
+          log.info("Fetching latest Scala 3 release candidate from Maven Central...")
+          val version = fetchScala3RCFromMaven(log)
+          cachedScala3RC = Some((version, now))
+          version
+      }
+    }
+  }
+
+  private def fetchScala3RCFromMaven(log: Logger): String = {
+    import scala.util.Using
+    import java.net.{ HttpURLConnection, URI }
+    import scala.xml.XML
+
+    val metadataUrl =
+      "https://repo1.maven.org/maven2/org/scala-lang/scala3-library_3/maven-metadata.xml"
+    val uri = new URI(metadataUrl)
+    val conn = uri.toURL.openConnection().asInstanceOf[HttpURLConnection]
+    conn.setConnectTimeout(10000)
+    conn.setReadTimeout(30000)
+
+    try {
+      val xml = Using.resource(conn.getInputStream) { is =>
+        XML.load(is)
+      }
+      val versions = (xml \\ "version").map(_.text)
+
+      // Filter for RC versions (not nightlies) and sort to get the latest
+      val rcVersions = versions.flatMap { v =>
+        v match {
+          case Scala3RCPattern(major, minor, patch, rc) =>
+            Some((major.toInt, minor.toInt, patch.toInt, rc.toInt, v))
+          case _ => None
+        }
+      }
+
+      if (rcVersions.isEmpty) {
+        sys.error("No Scala 3 release candidates found in Maven Central")
+      }
+
+      // Sort by version components (major, minor, patch, rc) descending
+      val latestRC =
+        rcVersions.sortBy { case (maj, min, pat, rc, _) => (-maj, -min, -pat, -rc) }.head._5
+      log.info(s"Latest Scala 3 release candidate: $latestRC")
+      latestRC
+    } finally {
+      conn.disconnect()
+    }
+  }
+
+  /**
+   * Resolves a dynamic Scala version string to a concrete version.
+   * Currently supports:
+   * - "3-latest.candidate" - resolves to the latest Scala 3 RC
+   *
+   * @param version The version string (may be dynamic or concrete)
+   * @param log Logger for debug output
+   * @return The resolved concrete version string
+   */
+  def resolveDynamicScalaVersion(version: String, log: Logger): String = {
+    version match {
+      case "3-latest.candidate" => fetchLatestScala3RC(log)
+      case other                => other
+    }
+  }
+
+  /**
+   * Resolves a dynamic Scala version string to a concrete version.
+   * Uses a silent logger for background resolution.
+   */
+  def resolveDynamicScalaVersion(version: String): String = {
+    resolveDynamicScalaVersion(version, Logger.Null)
+  }
+
+  /**
+   * Checks if a version string is a dynamic version that needs resolution.
+   */
+  def isDynamicScalaVersion(version: String): Boolean = {
+    version == "3-latest.candidate"
+  }
 }

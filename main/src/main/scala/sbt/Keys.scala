@@ -218,6 +218,7 @@ object Keys {
   val scalaInstance = taskKey[ScalaInstance]("Defines the Scala instance to use for compilation, running, and testing.").withRank(DTask)
   val scalaOrganization = settingKey[String]("Organization/group ID of the Scala used in the project. Default value is 'org.scala-lang'. This is an advanced setting used for clones of the Scala Language. It should be disregarded in standard use cases.").withRank(CSetting)
   val scalaVersion = settingKey[String]("The version of Scala used for building.").withRank(APlusSetting)
+  val scalaDynVersion = taskKey[String]("Resolves dynamic Scala version strings like '3-latest.candidate' to concrete versions.").withRank(DSetting)
   val scalaBinaryVersion = settingKey[String]("The Scala version substring describing binary compatibility.").withRank(BPlusSetting)
   val scalaEarlyVersion = settingKey[String]("The Scala version substring describing the binary compatibility, except for prereleases it returns the binary version of the release.").withRank(DSetting)
   val crossScalaVersions = settingKey[Seq[String]]("The versions of Scala used when cross-building.").withRank(BPlusSetting)
