@@ -894,6 +894,14 @@ object Terminal {
       private[util] val system: org.jline.terminal.Terminal,
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private val rawMode = new AtomicBoolean(false)
+    // Register a SIGWINCH handler to invalidate the size cache when the terminal is resized
+    private val winchHandler: Option[Signals.Registration] = {
+      if (!Util.isWindows && Signals.supported("WINCH")) {
+        Some(Signals.register(() => invalidateSizeCache(), "WINCH"))
+      } else {
+        None
+      }
+    }
     if (Util.isWindows && hasConsole) {
       // It is necessary to enter and exit raw mode in order to get the windows
       // console to echo input.
@@ -936,8 +944,11 @@ object Terminal {
       system.setAttributes(JLine3.attributesFromMap(attributes))
       JLine3.setEnableProcessInput()
     }
-    override private[sbt] def setSize(width: Int, height: Int): Unit =
+    override private[sbt] def setSize(width: Int, height: Int): Unit = {
       system.setSize(new org.jline.terminal.Size(width, height))
+      // Invalidate the cache when size is explicitly set
+      invalidateSizeCache()
+    }
 
     override def inputStream: InputStream = in
 
@@ -970,6 +981,8 @@ object Terminal {
         })
     override def close(): Unit = {
       try {
+        // Remove the SIGWINCH handler when closing
+        winchHandler.foreach(_.remove())
         system.setAttributes(JLine3.initialAttributes.get)
         system.close()
         in.close()
@@ -988,6 +1001,13 @@ object Terminal {
     private val size =
       new AtomicReference[((Int, Int), Deadline)](((1, 1), Deadline.now - 1.day))
     private def setSize() = size.set((Try(getSizeImpl).getOrElse((1, 1)), Deadline.now))
+    /**
+     * Invalidates the cached terminal size, forcing a refresh on the next getSize() call.
+     * This should be called when a terminal resize is detected (e.g., via SIGWINCH).
+     */
+    private[sbt] def invalidateSizeCache(): Unit = {
+      size.set(((1, 1), Deadline.now - 1.day))
+    }
     private def getSize = size.get match {
       case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
         setSize()
