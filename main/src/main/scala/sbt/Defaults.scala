@@ -1050,7 +1050,10 @@ object Defaults extends BuildCommon {
         cache.get
       },
       compileIncSetup := Def.uncached(compileIncSetupTask.value),
-      console := consoleTask.value,
+      console := Def.taskDyn {
+        if (console / fork).value then forkedConsoleTask
+        else Def.task(consoleTask.value)
+      }.value,
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
       discoveredMainClasses := compile
@@ -2099,6 +2102,52 @@ object Defaults extends BuildCommon {
       val ic = (task / initialCommands).value
       val cc = (task / cleanupCommands).value
       (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
+      println()
+    }
+
+  private def forkedConsoleTask: Initialize[Task[Unit]] =
+    Def.task {
+      import sbt.internal.worker.{ ConsoleConfig, ScalaInstanceConfig }
+      val si = (console / scalaInstance).value
+      val conv = fileConverter.value
+      val depsJars = (console / externalDependencyClasspath).value.toVector
+        .map(_.data)
+        .map(conv.toPath)
+      val bridgeJars = scalaCompilerBridgeBin.value
+      val bridgeJar =
+        if bridgeJars.nonEmpty then conv.toPath(bridgeJars.head).toFile
+        else
+          // Fall back to fetching the bridge module
+          val dr = scalaCompilerBridgeDependencyResolution.value
+          val uc = (update / updateConfiguration).value
+          val uwc = (update / unresolvedWarningConfiguration).value
+          ZincLmUtil.fetchDefaultBridgeModule(
+            si.version,
+            dr,
+            uc,
+            uwc,
+            streams.value.log
+          )
+      val siConfig = ScalaInstanceConfig(
+        scalaVersion = si.version,
+        libraryJars = si.libraryJars.map(_.toString).toVector,
+        allCompilerJars = si.compilerJars.map(_.toString).toVector,
+        allDocJars = Vector.empty,
+      )
+      val config = ConsoleConfig(
+        scalaInstanceConfig = siConfig,
+        bridgeJar = bridgeJar.toString,
+        externalDependencyJars = depsJars.map(_.toString),
+        scalacOptions = (console / scalacOptions).value.toVector,
+        initialCommands = (console / initialCommands).value,
+        cleanupCommands = (console / cleanupCommands).value,
+      )
+      val fo = (console / forkOptions).value
+      val terminal = ITerminal.console
+      terminal.restore()
+      val exitCode = ForkConsole(config, fo)
+      terminal.restore()
+      if exitCode != 0 then throw MessageOnlyException(s"Forked console exited with code $exitCode")
       println()
     }
 
