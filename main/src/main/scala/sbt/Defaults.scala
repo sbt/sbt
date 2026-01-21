@@ -734,7 +734,8 @@ object Defaults extends BuildCommon {
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ZincLmUtil.hasScala2SbtBridge(sv)
           hasSbtBridge && managed
         })(Def.cachedTask {
-          val sv = scalaVersion.value
+          // Use scalaDynVersion to resolve dynamic versions (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+          val sv = scalaDynVersion.value
           val conv = fileConverter.value
           val s = streams.value
           val t = target.value
