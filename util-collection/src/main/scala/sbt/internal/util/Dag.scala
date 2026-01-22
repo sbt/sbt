@@ -137,7 +137,17 @@ object Dag {
           }
         } else if (!finished(node)) {
           // cycle. If a negative edge is involved, it is an error.
-          val between = edge :: stack.takeWhile(f => head(f) != node)
+          // Find the cycle by taking edges from stack until we reach the node
+          // that completes the cycle. The node must be in the stack since we
+          // detected a cycle (visited but not finished).
+          val cycleStart = stack.indexWhere(f => head(f) == node)
+          val between = if (cycleStart >= 0) {
+            edge :: stack.take(cycleStart + 1)
+          } else {
+            // Fallback: if node not found in stack (shouldn't happen in valid cycles),
+            // include the current edge to ensure we detect negative cycles
+            edge :: stack.takeWhile(f => head(f) != node)
+          }
           if (between exists isNegative)
             between
           else
