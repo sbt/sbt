@@ -1,0 +1,27 @@
+# Test dependency lock file generation
+> update
+> dependencyLock
+
+# Verify lock file was created
+$ exists deps.lock
+
+# Check that lock file is valid (passes silently)
+> dependencyLockCheck
+
+# Modify dependencies and verify lock becomes stale
+$ copy-file build.sbt build.sbt.backup
+$ copy-file changes/build-modified.sbt build.sbt
+> reload
+
+# Lock check should fail because lock is stale
+-> dependencyLockCheck
+
+# Regenerate the lock file
+> dependencyLock
+
+# Now lock check should pass again
+> dependencyLockCheck
+
+# Restore original build
+$ copy-file build.sbt.backup build.sbt
+> reload

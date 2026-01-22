@@ -3351,6 +3351,9 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
+    dependencyLockFile := baseDirectory.value / DependencyLockFile.lockFileName,
+    dependencyLock := Def.uncached(dependencyLockTask.value),
+    dependencyLockCheck := Def.uncached(dependencyLockCheckTask.value),
   ) ++
     inTask(updateClassifiers)(
       Seq(
@@ -3776,6 +3779,45 @@ object Classpaths {
     updateTask0("updateFull", true, true).tag(Tags.Update, Tags.Network)
   def updateWithoutDetails(label: String): Initialize[Task[UpdateReport]] =
     updateTask0(label, false, false).tag(Tags.Update, Tags.Network)
+
+  lazy val dependencyLockTask: Initialize[Task[File]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    val report = update.value
+    val projectId = thisProject.value.id
+    val sv = sbtVersion.value
+    val scalaV = scalaVersion.?.value
+    val deps = libraryDependencies.value
+    val resolverNames = fullResolvers.value.map(_.name)
+    val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+
+    val lock = DependencyLockManager.createFromUpdateReport(
+      projectId,
+      report,
+      sv,
+      scalaV,
+      buildClock,
+      log
+    )
+
+    DependencyLockManager.write(lockFile, lock, log)
+    lockFile
+  }
+
+  lazy val dependencyLockCheckTask: Initialize[Task[Unit]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    if lockFile.exists() then
+      val deps = libraryDependencies.value
+      val resolverNames = fullResolvers.value.map(_.name)
+      val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+      DependencyLockManager.validate(lockFile, currentBuildClock, log) match
+        case Some(_) => ()
+        case None =>
+          throw new MessageOnlyException(
+            s"Dependency lock file is stale: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to update it."
+          )
+  }
 
   /**
    * cacheLabel - label to identify an update cache
