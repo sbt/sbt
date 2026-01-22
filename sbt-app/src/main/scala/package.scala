@@ -49,6 +49,7 @@ package object sbt
    * of FileChangesMacro.TaskOps is ever made which is why it is ok to use `???`.
    */
   // implicit def taskToTaskOpts[T](t: TaskKey[T]): FileChangesMacro.TaskOps[T] = ???
+  export sbt.internal.FileChangesMacro.*
   given fileStampJsonFormatter: JsonFormat[Seq[(NioPath, FileStamp)]] =
     FileStamp.Formats.seqPathFileStampJsonFormatter
   given pathJsonFormatter: JsonFormat[Seq[NioPath]] = FileStamp.Formats.seqPathJsonFormatter
