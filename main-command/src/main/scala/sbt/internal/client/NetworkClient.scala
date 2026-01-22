@@ -1129,7 +1129,7 @@ class NetworkClient(
     // Check parent directory
     val parentDir = currentDir.getParentFile
     if (parentDir != null && parentDir.exists) {
-      val parentPortfile = parentDir / "project" / "target" / "active.json"
+      val parentPortfile = parentDir / "project" / "target" / "1234.json"
       if (parentPortfile.exists && parentPortfile != currentPortfile) {
         portfiles += parentPortfile
       }
@@ -1139,7 +1139,7 @@ class NetworkClient(
       if (siblings != null) {
         for (sibling <- siblings) {
           if (sibling.isDirectory && sibling != currentDir) {
-            val siblingPortfile = sibling / "project" / "target" / "active.json"
+            val siblingPortfile = sibling / "project" / "target" / "1234.json"
             if (siblingPortfile.exists && siblingPortfile != currentPortfile) {
               portfiles += siblingPortfile
             }
