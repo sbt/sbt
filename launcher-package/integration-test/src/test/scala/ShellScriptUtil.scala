@@ -45,7 +45,13 @@ trait ShellScriptUtil extends BasicTestSuite {
     else
       test(name) {
         val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-        retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+        val citestDir = new File("launcher-package/citest")
+        // Clean target directory if it exists to avoid copying temporary files
+        val targetDir = new File(citestDir, "target")
+        if (targetDir.exists()) {
+          IO.delete(targetDir)
+        }
+        retry(() => IO.copyDirectory(citestDir, workingDirectory))
 
         var sbtHome: Option[File] = None
         var configHome: Option[File] = None
