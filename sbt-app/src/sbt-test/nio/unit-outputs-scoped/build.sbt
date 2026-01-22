@@ -1,5 +1,3 @@
-import sbt.internal.FileChangesMacro.*
-
 val a = taskKey[Seq[java.nio.file.Path]]("")
 val b = taskKey[Unit]("")
 val scope = taskKey[Unit]("")

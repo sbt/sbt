@@ -1,5 +1,3 @@
-import sbt.internal.FileChangesMacro.*
-
 val a = taskKey[Unit]("")
 val b = taskKey[Unit]("")
 
