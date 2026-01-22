@@ -115,8 +115,13 @@ package object syntax {
         value.authenticationByRepositoryId :+ (repositoryId, authentication)
       )
 
-    def withUpdateConfiguration(conf: UpdateConfiguration): CoursierConfiguration =
-      value.withMissingOk(conf.missingOk)
+    def withUpdateConfiguration(conf: UpdateConfiguration): CoursierConfiguration = {
+      val config0 = value.withMissingOk(conf.missingOk)
+      if (conf.offline)
+        config0.withCachePolicies(Vector(CachePolicy.LocalOnly))
+      else
+        config0
+    }
 
     def withRetry(retry: (FiniteDuration, Int)): CoursierConfiguration =
       value.withRetry(Some((retry._1, retry._2)))

@@ -1,0 +1,13 @@
+# Test offline mode prevents URL downloads
+# First try online mode
+> checkOffline
+
+# Clean and try offline mode
+> clean
+> set offline := true
+> checkOffline
+
+# Clean and try online mode again
+> clean
+> set offline := false
+> checkOffline
