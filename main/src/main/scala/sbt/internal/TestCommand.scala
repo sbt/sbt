@@ -12,6 +12,7 @@ package internal
 import sbt.Keys.*
 import sbt.ProjectExtra.*
 import sbt.ScopeAxis.{ Select, Zero }
+import sbt.SessionVar
 import sbt.internal.util.complete.Parser
 import sbt.librarymanagement.Configurations.{ Test as TestConfig }
 
@@ -48,13 +49,20 @@ object TestCommand:
 
   /**
    * Parser for testOnly command arguments.
-   * Uses a simple parser since we don't have cached test names available in command context.
+   * Uses the standard testOnly parser with definedTestNames for consistent completion behavior.
    */
   private def testOnlyParser(state: State): Parser[(Seq[String], Seq[String])] =
-    import sbt.internal.util.complete.DefaultParsers.*
-    val selectTests = (token(Space) ~> token(NotSpace.examples("<test-class>"))).+
-    val options = (token(Space) ~> token("--") ~> spaceDelimited("<option>")) ?? Nil
-    selectTests ~ options
+    import Defaults.testOnlyParser as defaultParser
+    val tests = if Project.isProjectLoaded(state) then
+      val extracted = Project.extract(state)
+      val currentRef = extracted.currentRef
+      val scope = Scope(Select(currentRef), Select(ConfigKey(TestConfig.name)), Zero, Zero)
+      val scopedKey = (scope / definedTestNames).scopedKey
+      SessionVar.loadAndSet(scopedKey, state, false) match
+        case (_, Some(names)) => names.toList
+        case _                => Nil
+    else Nil
+    defaultParser(state, tests)
 
   /**
    * Get all test names from all aggregated subprojects by running definedTestNames task.
@@ -100,28 +108,40 @@ object TestCommand:
         else s"testSelected -- ${frameworkOptions.mkString(" ")}"
       taskStr :: state
     else
-      // Get all test names by running definedTestNames (this also compiles)
-      val (newState, allTestNames) = getAllTestNames(state)
-      val filters = IncrementalTest.selectedFilter(patterns)
-      val matchingTests = allTestNames.filter(name => filters.exists(f => f(name)))
+      // Separate include patterns from exclude patterns (prefixed with -)
+      val (excludePatterns, includePatterns) = patterns.partition(_.startsWith("-"))
 
-      if matchingTests.isEmpty then
-        newState.log.error(s"No tests match the patterns: ${patterns.mkString(", ")}")
-        newState.log.error(
-          "The following patterns were specified but no tests were found in any subproject:"
-        )
-        patterns.foreach(p => newState.log.error(s"  - $p"))
-        newState.log.error("")
-        newState.log.error("Available tests:")
-        allTestNames.sorted.take(20).foreach(t => newState.log.error(s"  - $t"))
-        if allTestNames.size > 20 then
-          newState.log.error(s"  ... and ${allTestNames.size - 20} more")
-        newState.fail
+      // Only check for matches if there are include patterns
+      // If only exclude patterns are specified, skip the check (user wants to exclude, not include)
+      if includePatterns.nonEmpty then
+        // Get all test names by running definedTestNames (this also compiles)
+        val (newState, allTestNames) = getAllTestNames(state)
+        val filters = IncrementalTest.selectedFilter(includePatterns)
+        val matchingTests = allTestNames.filter(name => filters.exists(f => f(name)))
+
+        if matchingTests.isEmpty then
+          newState.log.error(s"No tests match the patterns: ${includePatterns.mkString(", ")}")
+          newState.log.error(
+            "The following patterns were specified but no tests were found in any subproject:"
+          )
+          includePatterns.foreach(p => newState.log.error(s"  - $p"))
+          newState.log.error("")
+          newState.log.error("Available tests:")
+          allTestNames.sorted.take(20).foreach(t => newState.log.error(s"  - $t"))
+          if allTestNames.size > 20 then
+            newState.log.error(s"  ... and ${allTestNames.size - 20} more")
+          newState.fail
+        else
+          // Build the testSelected task string
+          val testSelectedArgs =
+            patterns ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
+          val taskStr = s"testSelected ${testSelectedArgs.mkString(" ")}"
+          taskStr :: newState
       else
-        // Build the testSelected task string
+        // Only exclude patterns - just run the task without validation
         val testSelectedArgs =
           patterns ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
         val taskStr = s"testSelected ${testSelectedArgs.mkString(" ")}"
-        taskStr :: newState
+        taskStr :: state
 
 end TestCommand
