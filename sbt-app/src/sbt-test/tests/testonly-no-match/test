@@ -1,0 +1,17 @@
+# Test for issue #3188: testOnly should fail when no tests match the pattern
+# https://github.com/sbt/sbt/issues/3188
+
+# Test that testOnly succeeds when matching tests exist in sub1
+> testOnly example.HelloTest
+
+# Test that testOnly succeeds when matching tests exist in sub2
+> testOnly example.WorldTest
+
+# Test that testOnly fails when no tests match the pattern
+-> testOnly NonExistentTest
+
+# Test that testOnly fails when no tests match a glob pattern
+-> testOnly *NonExistent*
+
+# The testSelected task should still silently pass (backwards compatibility)
+> testSelected NonExistentTest

@@ -149,7 +149,9 @@ object Defaults extends BuildCommon {
       )
     )
   private[sbt] lazy val globalCore: Seq[Setting[?]] = globalDefaults(
-    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(
+      testSelected
+    ) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
       fileInputIncludeFilter :== AllPassFilter.toNio,
@@ -1129,12 +1131,14 @@ object Defaults extends BuildCommon {
         testOptionDigests :== Nil,
         testResultLogger :== TestResultLogger.Default,
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
+        testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[?]] = Def.settings(
     testTaskOptions(test),
     testTaskOptions(testOnly),
+    testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
     testLoader := Def.uncached(ClassLoaders.testTask.value),
@@ -1184,8 +1188,12 @@ object Defaults extends BuildCommon {
         output.overall
       finally close(testLoader.value)
     },
+    testSelected := {
+      try inputTests(testSelected).evaluated
+      finally close(testLoader.value)
+    },
     testOnly := {
-      try inputTests(testOnly).evaluated
+      try inputTests(testSelected).evaluated
       finally close(testLoader.value)
     },
     testQuick := {
@@ -2030,7 +2038,10 @@ object Defaults extends BuildCommon {
               val xapisFiles = xapis.map { (k, v) =>
                 converter.toPath(k).toFile() -> v
               }
-              val options = sOpts ++ Opts.doc.externalAPI(xapisFiles)
+              val externalApiOpts =
+                if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+                else Opts.doc.externalAPI(xapisFiles)
+              val options = sOpts ++ externalApiOpts
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs

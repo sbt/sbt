@@ -363,6 +363,7 @@ object Keys {
   val test = inputKey[TestResult]("Executes the tests that either failed before, were not run or whose transitive dependencies changed, among those provided as arguments.").withRank(ATask)
   val testFull = taskKey[TestResult]("Executes all tests.").withRank(APlusTask)
   val testOnly = inputKey[TestResult]("Executes the tests provided as arguments or all tests if no arguments are provided.").withRank(ATask)
+  val testSelected = inputKey[TestResult]("Executes the tests provided as arguments or all tests if no arguments are provided. Used internally by testOnly command.").withRank(BMinusTask)
   val testQuick = inputKey[TestResult]("Alias for test.").withRank(CTask)
   @transient
   val testOptions = taskKey[Seq[TestOption]]("Options for running tests.").withRank(BPlusTask)
