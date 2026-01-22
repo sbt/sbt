@@ -1,0 +1,3 @@
+# https://github.com/sbt/sbt/issues/6175
+# MethodHandle.invokeExact fails to compile on JDK 15+ when targeting Java 11
+> compile

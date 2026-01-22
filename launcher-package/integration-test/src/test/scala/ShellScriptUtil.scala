@@ -16,9 +16,10 @@ trait ShellScriptUtil extends BasicTestSuite {
     try {
       f()
     } catch {
-      case _ if maxAttempt <= 1 =>
+      case e: Exception if maxAttempt > 1 =>
         Thread.sleep(100)
         retry(f, maxAttempt - 1)
+      case e: Exception => throw e
     }
 
   val sbtScript =
@@ -45,7 +46,34 @@ trait ShellScriptUtil extends BasicTestSuite {
     else
       test(name) {
         val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-        retry(() => IO.copyDirectory(new File("launcher-package/citest"), workingDirectory))
+        val citestDir = new File("launcher-package/citest")
+        // Clean target directory if it exists to avoid copying temporary files that may be deleted during copy
+        val targetDir = new File(citestDir, "target")
+        if (targetDir.exists()) {
+          try {
+            IO.delete(targetDir)
+          } catch {
+            case _: Exception => // Ignore deletion errors, will retry copy
+          }
+        }
+        // Retry copy operation to handle race conditions with temporary files
+        retry(() => {
+          try {
+            IO.copyDirectory(citestDir, workingDirectory)
+          } catch {
+            case e: java.io.IOException if e.getMessage.contains("does not exist") =>
+              // If a file doesn't exist during copy, clean target and retry
+              val targetInCitest = new File(citestDir, "target")
+              if (targetInCitest.exists()) {
+                try {
+                  IO.delete(targetInCitest)
+                } catch {
+                  case _: Exception => // Ignore
+                }
+              }
+              throw e // Re-throw to trigger retry
+          }
+        })
 
         var sbtHome: Option[File] = None
         var configHome: Option[File] = None

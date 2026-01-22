@@ -149,7 +149,9 @@ object Defaults extends BuildCommon {
       )
     )
   private[sbt] lazy val globalCore: Seq[Setting[?]] = globalDefaults(
-    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(
+      testSelected
+    ) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
       fileInputIncludeFilter :== AllPassFilter.toNio,
@@ -734,7 +736,8 @@ object Defaults extends BuildCommon {
           val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ZincLmUtil.hasScala2SbtBridge(sv)
           hasSbtBridge && managed
         })(Def.cachedTask {
-          val sv = scalaVersion.value
+          // Use scalaDynVersion to resolve dynamic versions (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+          val sv = scalaDynVersion.value
           val conv = fileConverter.value
           val s = streams.value
           val t = target.value
@@ -774,6 +777,13 @@ object Defaults extends BuildCommon {
       javacOptions :== Nil,
       scalacOptions :== Nil,
       scalaVersion := appConfiguration.value.provider.scalaProvider.version,
+      derive(
+        scalaDynVersion := {
+          val sv = scalaVersion.value
+          val log = streams.value.log
+          LibraryManagement.resolveDynamicScalaVersion(sv, log)
+        }
+      ),
       consoleProject := ConsoleProject.consoleProjectTask.value,
       consoleProject / scalaInstance := {
         val topLoader = classOf[org.jline.terminal.Terminal].getClassLoader
@@ -1121,12 +1131,14 @@ object Defaults extends BuildCommon {
         testOptionDigests :== Nil,
         testResultLogger :== TestResultLogger.Default,
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
+        testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[?]] = Def.settings(
     testTaskOptions(test),
     testTaskOptions(testOnly),
+    testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
     testLoader := Def.uncached(ClassLoaders.testTask.value),
@@ -1176,8 +1188,12 @@ object Defaults extends BuildCommon {
         output.overall
       finally close(testLoader.value)
     },
+    testSelected := {
+      try inputTests(testSelected).evaluated
+      finally close(testLoader.value)
+    },
     testOnly := {
-      try inputTests(testOnly).evaluated
+      try inputTests(testSelected).evaluated
       finally close(testLoader.value)
     },
     testQuick := {
@@ -2022,7 +2038,10 @@ object Defaults extends BuildCommon {
               val xapisFiles = xapis.map { (k, v) =>
                 converter.toPath(k).toFile() -> v
               }
-              val options = sOpts ++ Opts.doc.externalAPI(xapisFiles)
+              val externalApiOpts =
+                if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+                else Opts.doc.externalAPI(xapisFiles)
+              val options = sOpts ++ externalApiOpts
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
@@ -3119,9 +3138,12 @@ object Classpaths {
     allExcludeDependencies := excludeDependencies.value,
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
+        // Resolve dynamic Scala version for scalaModuleInfo
+        val resolvedScalaVersion =
+          LibraryManagement.resolveDynamicScalaVersion((update / scalaVersion).value)
         Option(
           ScalaModuleInfo(
-            (update / scalaVersion).value,
+            resolvedScalaVersion,
             (update / scalaBinaryVersion).value,
             Vector.empty,
             filterImplicit = false,
@@ -3340,6 +3362,9 @@ object Classpaths {
       ew.infoAllTheThings foreach { log.info(_) }
       ew
     },
+    dependencyLockFile := baseDirectory.value / DependencyLockFile.lockFileName,
+    dependencyLock := Def.uncached(dependencyLockTask.value),
+    dependencyLockCheck := Def.uncached(dependencyLockCheckTask.value),
   ) ++
     inTask(updateClassifiers)(
       Seq(
@@ -3385,7 +3410,8 @@ object Classpaths {
       autoScalaLibrary.value && scalaHome.value.isEmpty && managedScalaInstance.value,
       sbtPlugin.value,
       scalaOrganization.value,
-      scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
     ),
     // Override the default to handle mixing in the sbtPlugin + scala dependencies.
     allDependencies := Def.uncached {
@@ -3397,7 +3423,8 @@ object Classpaths {
         if (isPlugin) sbtdeps +: base
         else base
       val scalaOrg = scalaOrganization.value
-      val version = scalaVersion.value
+      // Resolve dynamic Scala version (e.g., "3-latest.candidate" -> "3.8.1-RC1")
+      val version = LibraryManagement.resolveDynamicScalaVersion(scalaVersion.value)
       val extResolvers = externalResolvers.value
       val allToolDeps =
         if scalaHome.value.isDefined || scalaModuleInfo.value.isEmpty || !managedScalaInstance.value
@@ -3763,6 +3790,45 @@ object Classpaths {
     updateTask0("updateFull", true, true).tag(Tags.Update, Tags.Network)
   def updateWithoutDetails(label: String): Initialize[Task[UpdateReport]] =
     updateTask0(label, false, false).tag(Tags.Update, Tags.Network)
+
+  lazy val dependencyLockTask: Initialize[Task[File]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    val report = update.value
+    val projectId = thisProject.value.id
+    val sv = sbtVersion.value
+    val scalaV = scalaVersion.?.value
+    val deps = libraryDependencies.value
+    val resolverNames = fullResolvers.value.map(_.name)
+    val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+
+    val lock = DependencyLockManager.createFromUpdateReport(
+      projectId,
+      report,
+      sv,
+      scalaV,
+      buildClock,
+      log
+    )
+
+    DependencyLockManager.write(lockFile, lock, log)
+    lockFile
+  }
+
+  lazy val dependencyLockCheckTask: Initialize[Task[Unit]] = Def.task {
+    val log = streams.value.log
+    val lockFile = dependencyLockFile.value
+    if lockFile.exists() then
+      val deps = libraryDependencies.value
+      val resolverNames = fullResolvers.value.map(_.name)
+      val currentBuildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
+      DependencyLockManager.validate(lockFile, currentBuildClock, log) match
+        case Some(_) => ()
+        case None =>
+          throw new MessageOnlyException(
+            s"Dependency lock file is stale: ${lockFile.getAbsolutePath}. Run 'dependencyLock' to update it."
+          )
+  }
 
   /**
    * cacheLabel - label to identify an update cache

@@ -1,0 +1,37 @@
+package lmcoursier.internal
+@target(Scala)
+
+type ArtifactLock {
+  url: String!
+  classifier: String
+  extension: String!
+  tpe: String!
+}
+
+type DependencyLock {
+  organization: String!
+  name: String!
+  version: String!
+  configuration: String!
+  classifier: String
+  tpe: String!
+  transitives: [String]
+  artifacts: [lmcoursier.internal.ArtifactLock]
+}
+
+type ConfigurationLock {
+  name: String!
+  dependencies: [lmcoursier.internal.DependencyLock]
+}
+
+type LockFileMetadata {
+  sbtVersion: String!
+  scalaVersion: String
+}
+
+type LockFileData {
+  version: String!
+  buildClock: String!
+  configurations: [lmcoursier.internal.ConfigurationLock]
+  metadata: lmcoursier.internal.LockFileMetadata!
+}

@@ -1,0 +1,12 @@
+# Test for issue #6652: Doc task should use -external-mappings for Scala 3
+# instead of -doc-external-doc which causes "bad option" warnings
+
+# Show the API mappings that will be used
+> checkApiMappings
+
+# Run the doc task - this should succeed without "bad option" warnings
+# Before the fix, this would emit a warning about bad option -doc-external-doc
+> doc
+
+# Verify documentation was actually generated
+> checkDocGenerated

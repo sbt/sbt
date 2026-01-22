@@ -71,4 +71,6 @@ import scala.concurrent.duration.{ Duration, FiniteDuration }
     sameVersions: Seq[Set[InclExclRule]] = Nil,
     @since
     localArtifactsShouldBeCached: Boolean = false,
+    @since
+    lockFile: Option[File] = None,
 )
