@@ -359,6 +359,7 @@ object BuiltinCommands {
       NetworkChannel.disconnect,
       waitCmd,
       promptChannel,
+      TestCommand.testOnlyCommand,
     ) ++
       allBasicCommands ++
       ContinuousCommands.value ++

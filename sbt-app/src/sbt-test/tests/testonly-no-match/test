@@ -1,0 +1,17 @@
+# Test for issue #3188: testOnly should fail when no tests match the pattern
+# https://github.com/sbt/sbt/issues/3188
+
+# Test that testOnlyCommand succeeds when matching tests exist in sub1
+> testOnlyCommand example.HelloTest
+
+# Test that testOnlyCommand succeeds when matching tests exist in sub2
+> testOnlyCommand example.WorldTest
+
+# Test that testOnlyCommand fails when no tests match the pattern
+-> testOnlyCommand NonExistentTest
+
+# Test that testOnlyCommand fails when no tests match a glob pattern
+-> testOnlyCommand *NonExistent*
+
+# The normal testOnly task should still silently pass (backwards compatibility)
+> testOnly NonExistentTest
