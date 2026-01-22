@@ -232,7 +232,17 @@ trait Init:
     }
 
   def sort(cMap: CompiledMap): Seq[Compiled[?]] =
-    Dag.topologicalSort(cMap.values)(_.dependencies.map(cMap))
+    Dag.topologicalSort(cMap.values) { compiled =>
+      compiled.dependencies.map { dep =>
+        cMap.getOrElse(dep, {
+          // This should not happen in a well-formed CompiledMap, but provide better error message
+          throw new IllegalStateException(
+            s"Internal error: dependency ${compiled.key} -> ${dep} not found in compiled map. " +
+            s"This indicates a bug in the settings compilation. Available keys: ${cMap.keys.take(10).mkString(", ")}${if (cMap.size > 10) "..." else ""}"
+          )
+        })
+      }
+    }
 
   def compile(sMap: ScopedMap): CompiledMap =
     sMap match
