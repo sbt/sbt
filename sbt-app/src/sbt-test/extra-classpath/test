@@ -1,0 +1,3 @@
+# Test that sbt.extraClasspath system property is processed
+# This test verifies that the onLoad hook reads the property and updates classpathExtra
+> checkExtraClasspath

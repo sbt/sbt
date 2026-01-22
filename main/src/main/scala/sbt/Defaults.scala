@@ -329,7 +329,7 @@ object Defaults extends BuildCommon {
       sbtVersion := appConfiguration.value.provider.id.version,
       sbtBinaryVersion := binarySbtVersion(sbtVersion.value),
       pluginCrossBuild / sbtVersion := sbtVersion.value,
-      onLoad := idFun[State],
+      onLoad := idFun[State].andThen(processExtraClasspath),
       onUnload := idFun[State],
       onUnload := { s =>
         try onUnload.value(s)
@@ -422,6 +422,24 @@ object Defaults extends BuildCommon {
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
   )
+
+  /** Process sbt.extraClasspath system property and add jars to classpathExtra */
+  private def processExtraClasspath: State => State = { state =>
+    val extraClasspathProp = System.getProperty("sbt.extraClasspath")
+    if (extraClasspathProp != null && !extraClasspathProp.trim.isEmpty) {
+      val extraFiles = extraClasspathProp.split(File.pathSeparator).toSeq.map(new File(_)).filter(_.exists())
+      if (extraFiles.nonEmpty) {
+        // Modify the ApplicationID and trigger a reboot to make it take effect
+        val reload = State.defaultReload(state)
+        val currentId = reload.app
+        val newExtra = (currentId.classpathExtra ++ extraFiles).distinct
+        if (newExtra.length != currentId.classpathExtra.length) {
+          val newId = ApplicationID(currentId).copy(extra = newExtra)
+          state.setNext(new State.Return(reload.copy(app = newId)))
+        } else state
+      } else state
+    } else state
+  }
 
   private[sbt] lazy val buildLevelJvmSettings: Seq[Setting[?]] = Seq(
     exportPipelining := usePipelining.value,
