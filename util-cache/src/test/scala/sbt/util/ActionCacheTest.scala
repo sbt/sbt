@@ -168,6 +168,36 @@ object ActionCacheTest extends BasicTestSuite:
       assert(caught2.problems()(0).message() == "Test error message")
       assert(caught2.getMessage() == "Compilation failed")
 
+  test("In-memory cache handles missing inline output files gracefully"):
+    withInMemoryCache(testMissingInlineFiles)
+
+  test("Disk cache handles missing inline output files gracefully"):
+    withDiskCache(testMissingInlineFiles)
+
+  def testMissingInlineFiles(cache: ActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    IO.withTemporaryDirectory: tempDir =>
+      // Create a cached action result with some output files
+      val out1 = StringVirtualFile1(s"$tempDir/file1.txt", "content1")
+      val out2 = StringVirtualFile1(s"$tempDir/file2.txt", "content2")
+      val refs = cache.putBlobs(out1 :: out2 :: Nil)
+      
+      // Store the action result
+      val digest = Digest.zero
+      val updateRequest = UpdateActionResultRequest(digest, refs.toVector, Some(0))
+      cache.put(updateRequest)
+      
+      // Now try to retrieve it with inline files that don't exist in the result
+      // This should NOT throw NoSuchElementException - the original bug
+      val getRequest = GetActionResultRequest(digest, inlineStdout = false, inlineStderr = false, Vector("nonexistent-file.txt"))
+      val result = cache.get(getRequest)
+      
+      // Should return Left with an error, not throw NoSuchElementException
+      assert(result.isLeft, "Expected Left when requesting non-existent inline file")
+      val error = result.left.get
+      assert(error.isInstanceOf[NoSuchElementException], s"Expected NoSuchElementException, got ${error.getClass}")
+      assert(error.getMessage.contains("not found in cached action result"), s"Error message should mention missing files, got: ${error.getMessage}")
+
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
     f(cache)

@@ -135,11 +135,15 @@ class InMemoryActionCacheStore extends AbstractActionCacheStore:
           val value = Converter.fromJsonUnsafe[ActionResult](j)
           if request.inlineOutputFiles.isEmpty then Some(value)
           else
-            val inlineRefs = request.inlineOutputFiles.map: path =>
-              value.outputFiles.find(_.id == path).get
-            val contents = getBlobs(inlineRefs).toVector.map: b =>
-              ByteBuffer.wrap(IO.readBytes(b.input))
-            Some(value.withContents(contents))
+            val inlineRefs = request.inlineOutputFiles.flatMap: path =>
+              value.outputFiles.find(_.id == path)
+            if inlineRefs.size != request.inlineOutputFiles.size then
+              // Some requested files were not found in the cached result
+              None
+            else
+              val contents = getBlobs(inlineRefs).toVector.map: b =>
+                ByteBuffer.wrap(IO.readBytes(b.input))
+              Some(value.withContents(contents))
         catch case NonFatal(_) => None
     optResult match
       case Some(r) => Right(r)
@@ -205,11 +209,19 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
         val value = Converter.fromJsonUnsafe[ActionResult](json)
         if request.inlineOutputFiles.isEmpty then Right(value)
         else
-          val inlineRefs = request.inlineOutputFiles.map: path =>
-            value.outputFiles.find(_.id == path).get
-          val contents = getBlobs(inlineRefs).toVector.map: b =>
-            ByteBuffer.wrap(IO.readBytes(b.input))
-          Right(value.withContents(contents))
+          val inlineRefs = request.inlineOutputFiles.flatMap: path =>
+            value.outputFiles.find(_.id == path)
+          if inlineRefs.size != request.inlineOutputFiles.size then
+            // Some requested files were not found in the cached result
+            Left(new NoSuchElementException(
+              s"One or more requested output files not found in cached action result. " +
+              s"Requested: ${request.inlineOutputFiles.mkString(", ")}, " +
+              s"Available: ${value.outputFiles.map(_.id).mkString(", ")}"
+            ))
+          else
+            val contents = getBlobs(inlineRefs).toVector.map: b =>
+              ByteBuffer.wrap(IO.readBytes(b.input))
+            Right(value.withContents(contents))
       catch case NonFatal(e) => Left(e)
     else Left(notFound)
 
