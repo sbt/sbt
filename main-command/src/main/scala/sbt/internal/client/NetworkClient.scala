@@ -177,14 +177,7 @@ class NetworkClient(
   private lazy val log: Logger = new Logger {
     def trace(t: => Throwable): Unit = ()
     def success(message: => String): Unit = ()
-    def log(level: Level.Value, message: => String): Unit = {
-      // For forked processes in client mode, write directly to output streams
-      // to ensure stdout/stderr is captured correctly, especially during watch re-evaluation
-      synchronized {
-        printStream.println(message)
-        printStream.flush()
-      }
-    }
+    def log(level: Level.Value, message: => String): Unit = console.appendLog(level, message)
   }
 
   private[sbt] def connectOrStartServerAndConnect(
