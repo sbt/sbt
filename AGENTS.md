@@ -38,6 +38,11 @@ For changes that require coordination with file changes and tasks, use scripted 
 - [contributing-docs/05_scripted_tests.md](contributing-docs/05_scripted_tests.md)
 - [contributing-docs/06_manual_tests.md](contributing-docs/06_manual_tests.md)
 
+Tech stack
+----------
+
+- [contributing-docs/07_tech_stack.md](contribution-docs/07_tech_stach.md)
+
 Binary compatibility
 --------------------
 

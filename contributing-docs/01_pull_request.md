@@ -90,6 +90,12 @@ sbt features a testing infrastructure encompassing multiple testing methodologie
 - [scripted tests](05_scripted_tests.md)
 - [Manual tests](06_manual_tests.md), using the locally baked sbt
 
+### Tech stack
+
+sbt code base uses a set of libraries and tooling, sometimes unique to sbt:
+
+- [Tech stack](07_tech_stack.md)
+
 ### Instruction to build just sbt
 
 sbt has a number of sub-modules. If the change you are making is just contained in sbt/sbt (not one of the sub-modules),
