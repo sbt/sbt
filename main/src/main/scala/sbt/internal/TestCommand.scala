@@ -18,20 +18,19 @@ import sbt.librarymanagement.Configurations.{ Test as TestConfig }
 /**
  * Provides commands for running tests with aggregation-aware failure semantics.
  *
- * When `testOnly` is run with test patterns, it should fail if no tests match
- * the patterns across ALL aggregated subprojects, not just silently pass.
+ * The `testOnly` command fails if no tests match the patterns across ALL
+ * aggregated subprojects, instead of silently passing.
  * See https://github.com/sbt/sbt/issues/3188
  */
 object TestCommand:
-  val TestOnlyCommand = "testOnlyCommand"
+  val TestOnly = "testOnly"
 
   private def testOnlyHelp = Help.more(
-    TestOnlyCommand,
-    """testOnlyCommand <test-pattern>... [-- <framework-options>]
+    TestOnly,
+    """testOnly <test-pattern>... [-- <framework-options>]
       |
-      |Runs tests matching the given patterns. Unlike the testOnly task,
-      |this command will fail if no tests match the patterns across all
-      |aggregated subprojects.
+      |Runs tests matching the given patterns. This command will fail if no
+      |tests match the patterns across all aggregated subprojects.
       |""".stripMargin
   )
 
@@ -43,9 +42,9 @@ object TestCommand:
    * 2. Determines all aggregated subprojects
    * 3. Runs definedTestNames to get all available tests (this also compiles tests)
    * 4. Checks if any tests match the patterns across all subprojects
-   * 5. Fails if no tests match, otherwise runs the normal testOnly task
+   * 5. Fails if no tests match, otherwise runs the testSelected task
    */
-  def testOnlyCommand: Command = Command(TestOnlyCommand, testOnlyHelp)(testOnlyParser)(runTestOnly)
+  def testOnly: Command = Command(TestOnly, testOnlyHelp)(testOnlyParser)(runTestOnly)
 
   /**
    * Parser for testOnly command arguments.
@@ -95,10 +94,10 @@ object TestCommand:
       state.log.error("No project is loaded.")
       state.fail
     else if patterns.isEmpty then
-      // No patterns specified, just run the normal testOnly task
+      // No patterns specified, just run the testSelected task
       val taskStr =
-        if frameworkOptions.isEmpty then "testOnly"
-        else s"testOnly -- ${frameworkOptions.mkString(" ")}"
+        if frameworkOptions.isEmpty then "testSelected"
+        else s"testSelected -- ${frameworkOptions.mkString(" ")}"
       taskStr :: state
     else
       // Get all test names by running definedTestNames (this also compiles)
@@ -119,10 +118,10 @@ object TestCommand:
           newState.log.error(s"  ... and ${allTestNames.size - 20} more")
         newState.fail
       else
-        // Build the testOnly command string
-        val testOnlyArgs =
+        // Build the testSelected task string
+        val testSelectedArgs =
           patterns ++ (if frameworkOptions.nonEmpty then Seq("--") ++ frameworkOptions else Nil)
-        val taskStr = s"testOnly ${testOnlyArgs.mkString(" ")}"
+        val taskStr = s"testSelected ${testSelectedArgs.mkString(" ")}"
         taskStr :: newState
 
 end TestCommand

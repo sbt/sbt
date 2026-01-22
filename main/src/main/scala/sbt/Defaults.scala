@@ -149,7 +149,9 @@ object Defaults extends BuildCommon {
       )
     )
   private[sbt] lazy val globalCore: Seq[Setting[?]] = globalDefaults(
-    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(testQuick) ++ Seq(
+    defaultTestTasks(test) ++ defaultTestTasks(testOnly) ++ defaultTestTasks(
+      testSelected
+    ) ++ defaultTestTasks(testQuick) ++ Seq(
       excludeFilter :== HiddenFileFilter,
       fileInputs :== Nil,
       fileInputIncludeFilter :== AllPassFilter.toNio,
@@ -1129,12 +1131,14 @@ object Defaults extends BuildCommon {
         testOptionDigests :== Nil,
         testResultLogger :== TestResultLogger.Default,
         testOnly / testFilter :== (IncrementalTest.selectedFilter),
+        testSelected / testFilter :== (IncrementalTest.selectedFilter),
         extraTestDigests :== Nil,
       )
     )
   lazy val testTasks: Seq[Setting[?]] = Def.settings(
     testTaskOptions(test),
     testTaskOptions(testOnly),
+    testTaskOptions(testSelected),
     testTaskOptions(testQuick),
     testDefaults,
     testLoader := Def.uncached(ClassLoaders.testTask.value),
@@ -1184,8 +1188,12 @@ object Defaults extends BuildCommon {
         output.overall
       finally close(testLoader.value)
     },
+    testSelected := {
+      try inputTests(testSelected).evaluated
+      finally close(testLoader.value)
+    },
     testOnly := {
-      try inputTests(testOnly).evaluated
+      try inputTests(testSelected).evaluated
       finally close(testLoader.value)
     },
     testQuick := {
