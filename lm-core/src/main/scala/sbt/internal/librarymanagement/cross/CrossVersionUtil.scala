@@ -31,6 +31,8 @@ object CrossVersionUtil {
     raw"""$basicVersion((?:-$tagPattern)*)""".r // 0-n word suffixes, with leading dashes
   private val NonReleaseV_1 = raw"""$basicVersion(-$tagPattern)""".r // 1 word suffix, after a dash
   private[sbt] val PartialVersion = raw"""($longPattern)\.($longPattern)(?:\..+)?""".r
+  // Dynamic Scala version patterns like "3-latest.candidate"
+  private val DynamicScala3V = raw"""($longPattern)-latest\..*""".r
 
   private[sbt] def isSbtApiCompatible(v: String): Boolean = sbtApiVersion(v).isDefined
 
@@ -113,9 +115,15 @@ object CrossVersionUtil {
   }
 
   def binaryScalaVersion(full: String): String =
-    if full.startsWith("2.") then
-      binaryVersionWithApi(full, TransitionScalaVersion)(scalaApiVersion) // Scala 2 binary version
-    else binaryScala3Version(full)
+    full match {
+      // Handle dynamic Scala 3 version patterns like "3-latest.candidate"
+      case DynamicScala3V(maj) => maj
+      case _ if full.startsWith("2.") =>
+        binaryVersionWithApi(full, TransitionScalaVersion)(
+          scalaApiVersion
+        ) // Scala 2 binary version
+      case _ => binaryScala3Version(full)
+    }
 
   /**
    * Returns the binary version of the Scala, except for
@@ -124,14 +132,18 @@ object CrossVersionUtil {
    * In Scala 3 onwards, it would be the major version.
    */
   def earlyScalaVersion(full: String): String =
-    if full.startsWith("2.") then
-      partialVersion(full) match
-        case Some((major, minor)) => s"$major.$minor"
-        case None                 => full
-    else
-      partialVersion(full) match
-        case Some((major, minor)) => major.toString
-        case None                 => full
+    full match {
+      // Handle dynamic Scala 3 version patterns like "3-latest.candidate"
+      case DynamicScala3V(maj) => maj
+      case _ if full.startsWith("2.") =>
+        partialVersion(full) match
+          case Some((major, minor)) => s"$major.$minor"
+          case None                 => full
+      case _ =>
+        partialVersion(full) match
+          case Some((major, minor)) => major.toString
+          case None                 => full
+    }
 
   def binarySbtVersion(full: String): String =
     sbtApiVersion(full) match {

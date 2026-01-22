@@ -218,6 +218,7 @@ object Keys {
   val scalaInstance = taskKey[ScalaInstance]("Defines the Scala instance to use for compilation, running, and testing.").withRank(DTask)
   val scalaOrganization = settingKey[String]("Organization/group ID of the Scala used in the project. Default value is 'org.scala-lang'. This is an advanced setting used for clones of the Scala Language. It should be disregarded in standard use cases.").withRank(CSetting)
   val scalaVersion = settingKey[String]("The version of Scala used for building.").withRank(APlusSetting)
+  val scalaDynVersion = taskKey[String]("Resolves dynamic Scala version strings like '3-latest.candidate' to concrete versions.").withRank(DSetting)
   val scalaBinaryVersion = settingKey[String]("The Scala version substring describing binary compatibility.").withRank(BPlusSetting)
   val scalaEarlyVersion = settingKey[String]("The Scala version substring describing the binary compatibility, except for prereleases it returns the binary version of the release.").withRank(DSetting)
   val crossScalaVersions = settingKey[Seq[String]]("The versions of Scala used when cross-building.").withRank(BPlusSetting)
@@ -362,6 +363,7 @@ object Keys {
   val test = inputKey[TestResult]("Executes the tests that either failed before, were not run or whose transitive dependencies changed, among those provided as arguments.").withRank(ATask)
   val testFull = taskKey[TestResult]("Executes all tests.").withRank(APlusTask)
   val testOnly = inputKey[TestResult]("Executes the tests provided as arguments or all tests if no arguments are provided.").withRank(ATask)
+  val testSelected = inputKey[TestResult]("Executes the tests provided as arguments or all tests if no arguments are provided. Used internally by testOnly command.").withRank(BMinusTask)
   val testQuick = inputKey[TestResult]("Alias for test.").withRank(CTask)
   @transient
   val testOptions = taskKey[Seq[TestOption]]("Options for running tests.").withRank(BPlusTask)
@@ -533,6 +535,9 @@ object Keys {
   val updateClassifiers = TaskKey[UpdateReport]("updateClassifiers", "Resolves and optionally retrieves classified artifacts, such as javadocs and sources, for dependency definitions, transitively.", BPlusTask, update)
   val transitiveClassifiers = settingKey[Seq[String]]("List of classifiers used for transitively obtaining extra artifacts for sbt or declared dependencies.").withRank(BSetting)
   val updateSbtClassifiers = TaskKey[UpdateReport]("updateSbtClassifiers", "Resolves and optionally retrieves classifiers, such as javadocs and sources, for sbt, transitively.", BPlusTask, updateClassifiers)
+  val dependencyLock = taskKey[File]("Generates a dependency lock file from the current resolution.").withRank(BTask)
+  val dependencyLockCheck = taskKey[Unit]("Checks if the dependency lock file is up-to-date.").withRank(BTask)
+  val dependencyLockFile = settingKey[File]("The location of the dependency lock file.").withRank(CSetting)
   val sourceArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to source artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
   val docArtifactTypes = settingKey[Seq[String]]("Ivy artifact types that correspond to javadoc artifacts. Used by IDEs to resolve these resources.").withRank(BSetting)
 

@@ -1,0 +1,19 @@
+# Test resolution skipping with lock file
+> update
+
+# Generate lock file
+> dependencyLock
+
+# Verify lock file was created
+$ exists deps.lock
+
+# Second update should use the lock file
+> update
+
+# Compile should work with locked dependencies
+> compile
+
+# Clean and update again - should still use lock file
+> clean
+> update
+> compile

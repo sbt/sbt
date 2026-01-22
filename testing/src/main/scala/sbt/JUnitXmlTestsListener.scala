@@ -30,6 +30,33 @@ import util.Logger
 import sbt.protocol.testing.TestResult
 
 /**
+ * Companion object for JUnitXmlTestsListener that caches the hostname lazily.
+ * This ensures hostname resolution only happens once per session and doesn't
+ * block sbt startup (only resolves when tests actually run).
+ * See https://github.com/sbt/sbt/issues/8601
+ */
+object JUnitXmlTestsListener {
+
+  /** Cached hostname resolution result with timing info */
+  private lazy val hostnameInfo: (String, Long) = {
+    val start = System.nanoTime
+    val name =
+      try InetAddress.getLocalHost.getHostName
+      catch {
+        case _: IOException => "localhost"
+      }
+    val elapsed = System.nanoTime - start
+    (name, elapsed)
+  }
+
+  /** Lazily resolved hostname, cached at object level */
+  lazy val hostname: String = hostnameInfo._1
+
+  /** Time taken to resolve hostname in nanoseconds */
+  lazy val hostnameResolutionTime: Long = hostnameInfo._2
+}
+
+/**
  * A tests listener that outputs the results it receives in junit xml report format.
  * @param targetDir
  *   directory in which test reports are generated
@@ -44,14 +71,9 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
   def this(outputDir: String) = this(outputDir, false, null)
 
   /** Current hostname so we know which machine executed the tests */
-  val hostname: String = {
-    val start = System.nanoTime
-    val name =
-      try InetAddress.getLocalHost.getHostName
-      catch {
-        case _: IOException => "localhost"
-      }
-    val elapsed = System.nanoTime - start
+  lazy val hostname: String = {
+    val name = JUnitXmlTestsListener.hostname
+    val elapsed = JUnitXmlTestsListener.hostnameResolutionTime
     if ((NANOSECONDS.toSeconds(elapsed) >= 4) && Properties.isMac && logger != null) {
       logger.warn(
         s"Getting the hostname $name was slow (${elapsed / 1.0e6} ms). " +

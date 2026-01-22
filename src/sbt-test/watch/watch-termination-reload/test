@@ -1,0 +1,4 @@
+# Start watch mode with ~compile, which triggers file modification and reload
+> ~compile
+# Check that watchOnTermination received Reload action
+> checkTerminationAction Reload

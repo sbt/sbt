@@ -1228,11 +1228,13 @@ lazy val lmCoursierDependencies = Def.settings(
 
 lazy val lmCoursier = project
   .in(file("lm-coursier"))
+  .enablePlugins(ContrabandPlugin)
   .settings(
     lmCoursierSettings,
     Mima.settings,
     Mima.lmCoursierFilters,
     lmCoursierDependencies,
+    contrabandSettings,
     Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
   )
   .dependsOn(

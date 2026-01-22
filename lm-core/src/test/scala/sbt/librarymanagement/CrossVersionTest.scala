@@ -264,6 +264,13 @@ class CrossVersionTest extends UnitSpec {
   it should "for 4.0.0-M2 return 4.0.0-M2" in {
     binaryScalaVersion("4.0.0-M2") shouldBe "4.0.0-M2"
   }
+  // Dynamic Scala version patterns
+  it should "for 3-latest.candidate return 3" in {
+    binaryScalaVersion("3-latest.candidate") shouldBe "3"
+  }
+  it should "for 4-latest.candidate return 4" in {
+    binaryScalaVersion("4-latest.candidate") shouldBe "4"
+  }
 
   "earlyScalaVersion" should "for 2.9.2 return 2.9" in {
     assert(earlyScalaVersion("2.9.2") == "2.9")
@@ -276,6 +283,13 @@ class CrossVersionTest extends UnitSpec {
   }
   it should "for 4.0.0-M1 return 4" in {
     assert(earlyScalaVersion("4.0.0-M1") == "4")
+  }
+  // Dynamic Scala version patterns
+  it should "for 3-latest.candidate return 3" in {
+    assert(earlyScalaVersion("3-latest.candidate") == "3")
+  }
+  it should "for 4-latest.candidate return 4" in {
+    assert(earlyScalaVersion("4-latest.candidate") == "4")
   }
 
   private def patchVersion(fullVersion: String) =

@@ -78,6 +78,7 @@ package object syntax {
         retry = None,
         sameVersions = Nil,
         localArtifactsShouldBeCached = false,
+        lockFile = None,
       )
   }
 

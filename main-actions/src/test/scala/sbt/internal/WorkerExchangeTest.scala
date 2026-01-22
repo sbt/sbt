@@ -41,6 +41,7 @@ object WorkerExchangeTest extends Properties:
     yield withListener: l =>
       w.println(s"""{"jsonrpc": "2.0", "method": "bye", "params": {}, "id": $i}""")
       val exitCode = w.blockForExitCode()
+      l.awaitResponse()
       Result
         .assert(exitCode == 0)
         .and(Result.assert(l.sb.toString() == s"""{ "jsonrpc": "2.0", "result": 0, "id": $i }"""))
@@ -54,7 +55,12 @@ object WorkerExchangeTest extends Properties:
     finally WorkerExchange.unregisterListener(l)
 
   class ConcreteListener extends WorkerResponseListener:
+    import java.util.concurrent.{ CountDownLatch, TimeUnit }
     val sb = StringBuilder()
+    private val latch = CountDownLatch(1)
     def notifyExit(p: Process): Unit = ()
-    def apply(line: String): Unit = sb.append(line)
+    def apply(line: String): Unit =
+      sb.append(line)
+      latch.countDown()
+    def awaitResponse(): Unit = latch.await(30, TimeUnit.SECONDS)
 end WorkerExchangeTest
