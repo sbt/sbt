@@ -98,7 +98,8 @@ private[sbt] object Settings {
       val scopedKey = Keys.dynamicFileOutputs.rescope(sk.scope.rescope(sk.key))
       val init: Def.Initialize[Task[Seq[Path]]] = sk(_.map(_ => Nil))
       addTaskDefinition(Def.setting[Task[Seq[Path]]](scopedKey, init, setting.pos)) ::
-        allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(scope) :: Nil
+        allOutputPathsImpl(scope) :: outputFileStampsImpl(scope) :: cleanImpl(scope) ::
+        changedFilesImpl(scope, changedOutputFiles, outputFileStamps) :: Nil
     } else Nil
   }
 
