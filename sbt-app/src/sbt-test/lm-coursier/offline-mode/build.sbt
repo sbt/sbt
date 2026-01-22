@@ -1,5 +1,5 @@
 // Test for offline mode with URL dependencies
-libraryDependencies += "org.jsoup" % "jsoup" % "1.9.1" from "https://jsoup.org/packages/jsoup-1.9.1.jar"
+libraryDependencies += ("org.jsoup" % "jsoup" % "1.9.1").from("https://jsoup.org/packages/jsoup-1.9.1.jar")
 
 val checkOffline = taskKey[Unit]("Check that offline mode prevents URL access")
 checkOffline := {
