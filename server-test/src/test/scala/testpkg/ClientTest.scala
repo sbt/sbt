@@ -156,6 +156,7 @@ class ClientTest extends AbstractServerTest {
       "testOnly",
       "testOnly/",
       "testOnly;",
+      "testOnlyCommand",
     )
     assert(complete("testOnly") == testOnlyExpected)
 
