@@ -1091,6 +1091,120 @@ class NetworkClient(
     connection.sendString(s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params }""")
   }
 
+  /**
+   * Drops other idle servers on exit by scanning for other portfiles
+   * and sending shutdown commands to them.
+   */
+  private def dropOtherIdleServers(): Unit = {
+    try {
+      val currentPortfile = portfile
+      if (!currentPortfile.exists) return
+
+      // Find other portfiles in parent and sibling directories
+      val otherPortfiles = findOtherPortfiles(currentPortfile)
+
+      for (otherPortfile <- otherPortfiles) {
+        try {
+          shutdownOtherServer(otherPortfile)
+        } catch {
+          case NonFatal(e) =>
+          // Silently ignore errors when trying to shut down other servers
+          // as they might not be idle or might have already shut down
+        }
+      }
+    } catch {
+      case NonFatal(_) =>
+      // Silently ignore errors in finding/shutting down other servers
+    }
+  }
+
+  /**
+   * Finds other portfiles in parent and sibling directories.
+   */
+  private def findOtherPortfiles(currentPortfile: File): Seq[File] = {
+    val portfiles = mutable.ArrayBuffer[File]()
+    val currentDir =
+      currentPortfile.getParentFile.getParentFile.getParentFile // project/target -> project -> base
+
+    // Check parent directory
+    val parentDir = currentDir.getParentFile
+    if (parentDir != null && parentDir.exists) {
+      val parentPortfile = parentDir / "project" / "target" / "active.json"
+      if (parentPortfile.exists && parentPortfile != currentPortfile) {
+        portfiles += parentPortfile
+      }
+
+      // Check sibling directories
+      val siblings = parentDir.listFiles()
+      if (siblings != null) {
+        for (sibling <- siblings) {
+          if (sibling.isDirectory && sibling != currentDir) {
+            val siblingPortfile = sibling / "project" / "target" / "active.json"
+            if (siblingPortfile.exists && siblingPortfile != currentPortfile) {
+              portfiles += siblingPortfile
+            }
+          }
+        }
+      }
+    }
+
+    portfiles.toSeq
+  }
+
+  /**
+   * Attempts to shut down another server by connecting to it and sending a shutdown command.
+   * This is a best-effort attempt - if the server has active clients, it will reject the shutdown.
+   */
+  private def shutdownOtherServer(portfile: File): Unit = {
+    var socket: Socket = null
+    try {
+      val (sk, tokenOpt) = mkSocket(portfile)
+      socket = sk
+      val conn = new ServerConnection(socket) {
+        override def onRequest(msg: JsonRpcRequestMessage): Unit = {}
+        override def onResponse(msg: JsonRpcResponseMessage): Unit = {}
+        override def onNotification(msg: JsonRpcNotificationMessage): Unit = {}
+        override def onShutdown(): Unit = {}
+      }
+
+      // Try to initialize connection first (required for authentication)
+      val execId = UUID.randomUUID.toString
+      val skipAnalysis = true
+      val opts = InitializeOption(
+        token = tokenOpt,
+        skipAnalysis = Some(skipAnalysis),
+        canWork = Some(true),
+      )
+      val initCommand = InitCommand(
+        token = tokenOpt,
+        execId = Option(execId),
+        skipAnalysis = Some(skipAnalysis),
+        initializationOptions = Some(opts),
+      )
+      conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
+
+      // Wait a bit for initialization, then send shutdown
+      Thread.sleep(200)
+
+      // Send shutdown command as a notification (idle servers should accept this)
+      val shutdownParams = s"""{"log": false}"""
+      conn.sendString(s"""{ "jsonrpc": "2.0", "method": "$Shutdown", "params": $shutdownParams }""")
+
+      // Give it a moment to process
+      Thread.sleep(100)
+      conn.shutdown()
+    } catch {
+      case _: IOException | _: SocketException | _: Exception =>
+      // Server might not be accessible, already shut down, or has active clients
+      // Silently ignore - this is expected behavior
+    } finally {
+      if (socket != null && !socket.isClosed) {
+        try socket.close()
+        catch { case _: IOException => }
+      }
+    }
+  }
+
   override def close(): Unit =
     try {
       running.set(false)
@@ -1104,6 +1218,8 @@ class NetworkClient(
           finally c.shutdown()
       }
       Option(inputThread.get).foreach(_.interrupt())
+      // Drop other idle servers on exit
+      dropOtherIdleServers()
     } catch {
       case t: Throwable => t.printStackTrace(); throw t
     }
