@@ -895,27 +895,30 @@ object Terminal {
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private val rawMode = new AtomicBoolean(false)
     // Register a SIGWINCH handler to invalidate the size cache when the terminal is resized
-    // On macOS/iTerm, we also need to force JLine3 to refresh by querying the actual terminal size
+    // On macOS/iTerm, we need to immediately refresh the size to prevent cursor jumping
     private val winchHandler: Option[Signals.Registration] = {
       if (!Util.isWindows && Signals.supported("WINCH")) {
         Some(
           Signals.register(
             () => {
-              // Invalidate our cache first
-              invalidateSizeCache()
-              // Force JLine3 to refresh by querying the actual terminal size immediately
-              // This is especially important on macOS/iTerm where the underlying terminal
-              // may cache the size. By calling getSize() here, we force JLine3 to query
-              // the OS for the current size, bypassing any internal caching.
+              // Immediately query the actual terminal size from the OS (bypassing our cache)
+              // This is critical on macOS/iTerm where delayed updates cause cursor jumping
               try {
+                // Get size directly from the underlying JLine3 terminal, which queries the OS
                 val actualSize = system.getSize
-                // Directly update the cache with the fresh size to avoid the 1-second delay
-                // This ensures immediate responsiveness on terminal resize
-                updateSizeCache(actualSize.getColumns, actualSize.getRows)
+                val newWidth = actualSize.getColumns
+                val newHeight = actualSize.getRows
+                // Update our cache immediately with the fresh size
+                // This ensures getWidth/getHeight return the correct size right away
+                updateSizeCache(newWidth, newHeight)
+                // Also update JLine3's terminal size to keep it in sync
+                // This is important for JLine2's ConsoleReader which uses toJLine
+                system.setSize(new org.jline.terminal.Size(newWidth, newHeight))
               } catch {
                 case _: Exception =>
-                // If we can't get the size, cache invalidation is sufficient
-                // The next getSize() call will refresh it
+                  // If we can't get the size, at least invalidate the cache
+                  // The next getSize() call will refresh it
+                  invalidateSizeCache()
               }
             },
             "WINCH"
@@ -1041,11 +1044,15 @@ object Terminal {
     private[sbt] def updateSizeCache(width: Int, height: Int): Unit = {
       size.set(((width, height), Deadline.now))
     }
-    private def getSize = size.get match {
-      case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
-        setSize()
-        size.get._1
-      case (s, _) => s
+    private def getSize = {
+      val current = size.get
+      current match {
+        case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
+          // Cache expired, refresh it
+          setSize()
+          size.get._1
+        case (s, _) => s
+      }
     }
     override def getWidth: Int = getSize._1
     override def getHeight: Int = getSize._2
