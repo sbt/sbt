@@ -1,0 +1,18 @@
+# Test that run commands work with multiple main classes without showing useless warning
+# This tests issue #3739
+
+# First compile to discover main classes
+> compile
+
+# Test runMain - user explicitly specifies main class, no warning needed
+> runMain foo.MainA
+> runMain foo.MainB
+
+# Test scoped runMain with slash syntax (new syntax)
+> Compile/runMain foo.MainA
+
+# Test bgRunMain - background run with explicit main class
+> bgRunMain foo.MainA
+
+# Test fgRunMain - foreground run with explicit main class
+> fgRunMain foo.MainB

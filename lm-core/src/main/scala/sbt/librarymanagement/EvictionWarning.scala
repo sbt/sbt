@@ -3,7 +3,7 @@ package sbt.librarymanagement
 import collection.mutable
 import Configurations.Compile
 import ScalaArtifacts.{ LibraryID, CompilerID }
-import sbt.internal.librarymanagement.VersionSchemes
+import sbt.internal.librarymanagement.{ VersionSchemes, VersionRange }
 import sbt.util.Logger
 import sbt.util.ShowLines
 
@@ -337,28 +337,40 @@ object EvictionWarning {
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
         val winnerOpt = p.winner map { _.module }
-        val extraAttributes = ((p.winner match {
-          case Some(r) => r.extraAttributes
-          case _       => Map.empty
-        }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
-          case Some(w) => w.extraAttributes
-          case _       => Map.empty
-        })
-        val schemeOpt = VersionSchemes.extractFromExtraAttributes(extraAttributes)
-        val f = (winnerOpt, schemeOpt) match {
-          case (Some(_), Some(VersionSchemes.Always)) =>
-            EvictionWarningOptions.guessTrue
-          case (Some(_), Some(VersionSchemes.Strict)) =>
-            EvictionWarningOptions.guessStrict
-          case (Some(_), Some(VersionSchemes.EarlySemVer)) =>
-            EvictionWarningOptions.guessEarlySemVer
-          case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
-            EvictionWarningOptions.guessSemVer
-          case (Some(_), Some(VersionSchemes.PackVer)) =>
-            EvictionWarningOptions.evalPvp
-          case _ => options.guessCompatible(_)
+        // Check if the evicted module's revision is a version range and if the winner satisfies it
+        // This handles cases like [4.1.0,5) where 4.2.1 would be within range (fixes #3978)
+        val evictedRev = r.module.revision
+        val winnerSatisfiesRange: Boolean = winnerOpt match {
+          case Some(winner) if VersionRange.isVersionRange(evictedRev) =>
+            VersionRange.versionSatisfiesRange(winner.revision, evictedRev)
+          case _ => false
         }
-        f((r.module, winnerOpt, module.scalaModuleInfo))
+        if (winnerSatisfiesRange) {
+          true
+        } else {
+          val extraAttributes = ((p.winner match {
+            case Some(r) => r.extraAttributes
+            case _       => Map.empty
+          }): collection.immutable.Map[String, String]) ++ (winnerOpt match {
+            case Some(w) => w.extraAttributes
+            case _       => Map.empty
+          })
+          val schemeOpt = VersionSchemes.extractFromExtraAttributes(extraAttributes)
+          val f = (winnerOpt, schemeOpt) match {
+            case (Some(_), Some(VersionSchemes.Always)) =>
+              EvictionWarningOptions.guessTrue
+            case (Some(_), Some(VersionSchemes.Strict)) =>
+              EvictionWarningOptions.guessStrict
+            case (Some(_), Some(VersionSchemes.EarlySemVer)) =>
+              EvictionWarningOptions.guessEarlySemVer
+            case (Some(_), Some(VersionSchemes.SemVerSpec)) =>
+              EvictionWarningOptions.guessSemVer
+            case (Some(_), Some(VersionSchemes.PackVer)) =>
+              EvictionWarningOptions.evalPvp
+            case _ => options.guessCompatible(_)
+          }
+          f((r.module, winnerOpt, module.scalaModuleInfo))
+        }
       }
     pairs foreach {
       case p if isScalaArtifact(module, p.organization, p.name) =>
