@@ -151,21 +151,30 @@ class CoursierDependencyResolution(
         sys.error(s"unrecognized ModuleDescriptor type: $module")
     }
 
+    // When offline, filter out artifacts with URLs to prevent downloads
+    val moduleFiltered = if (configuration.offline) {
+      module0.withExplicitArtifacts(
+        module0.explicitArtifacts.filterNot { artifact =>
+          artifact.url.isDefined && artifact.url.get.getScheme != "file" // Keep file:// URLs, filter http/https URLs
+        }
+      )
+    } else module0
+
     val so = conf.scalaOrganization
       .map(Organization(_))
-      .orElse(module0.scalaModuleInfo.map(m => Organization(m.scalaOrganization)))
+      .orElse(moduleFiltered.scalaModuleInfo.map(m => Organization(m.scalaOrganization)))
       .getOrElse(Organization("org.scala-lang"))
     val sv = conf.scalaVersion
-      .orElse(module0.scalaModuleInfo.map(_.scalaFullVersion))
+      .orElse(moduleFiltered.scalaModuleInfo.map(_.scalaFullVersion))
       // FIXME Manage to do stuff below without a scala version?
       .getOrElse(scala.util.Properties.versionNumberString)
 
-    val sbv = module0.scalaModuleInfo.map(_.scalaBinaryVersion).getOrElse {
+    val sbv = moduleFiltered.scalaModuleInfo.map(_.scalaBinaryVersion).getOrElse {
       sv.split('.').take(2).mkString(".")
     }
-    val projectPlatform = module0.scalaModuleInfo.flatMap(_.platform)
+    val projectPlatform = moduleFiltered.scalaModuleInfo.flatMap(_.platform)
     val (mod, ver) = FromSbt.moduleVersion(
-      module0.module,
+      moduleFiltered.module,
       sv,
       sbv,
       optionalCrossVer = true,
@@ -191,7 +200,7 @@ class CoursierDependencyResolution(
     val cache = conf.cache.getOrElse(CacheDefaults.location)
     val cachePolicies = conf.cachePolicies.map(ToCoursier.cachePolicy)
     val checksums = conf.checksums
-    val projectName = module0.module.name
+    val projectName = moduleFiltered.module.name
 
     val ivyProperties = ResolutionParams.defaultIvyProperties(conf.ivyHome)
 
@@ -217,7 +226,7 @@ class CoursierDependencyResolution(
     val interProjectRepo = InterProjectRepository(interProjectDependencies)
     val extraProjectsRepo = InterProjectRepository(extraProjects)
 
-    val dependencies = module0.dependencies
+    val dependencies = moduleFiltered.dependencies
       .flatMap { d =>
         // crossVersion sometimes already taken into account (when called via the update task), sometimes not
         // (e.g. sbt-dotty 0.13.0-RC1)
@@ -228,7 +237,7 @@ class CoursierDependencyResolution(
       }
 
     val orderedConfigs = Inputs
-      .orderedConfigurations(Inputs.configExtendsSeq(module0.configurations))
+      .orderedConfigurations(Inputs.configExtendsSeq(moduleFiltered.configurations))
       .map { (config, extends0) =>
         (ToCoursier.configuration(config), extends0.map(ToCoursier.configuration))
       }
@@ -297,7 +306,7 @@ class CoursierDependencyResolution(
       conf.sbtScalaJars
     )
 
-    val configs = Inputs.coursierConfigurationsMap(module0.configurations).map { (k, l) =>
+    val configs = Inputs.coursierConfigurationsMap(moduleFiltered.configurations).map { (k, l) =>
       ToCoursier.configuration(k) -> l.map(ToCoursier.configuration)
     }
 
