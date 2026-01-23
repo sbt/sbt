@@ -177,6 +177,8 @@ private[sbt] final class CommandExchange {
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
+    // When a client disconnects, notify other servers to drop if idle
+    notifyOtherServersOnExit()
   }
 
   private def mkAskUser(
@@ -300,8 +302,6 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
-    // Notify other idle servers before shutting down
-    notifyOtherServersOnExit()
     fastTrackThread.close()
     channels foreach (_.shutdown(true))
     // interrupt and kill the thread
@@ -311,7 +311,7 @@ private[sbt] final class CommandExchange {
   }
 
   /**
-   * Notify other sbt servers to drop if idle when this server exits.
+   * Notify other sbt servers to drop if idle when a client disconnects.
    * This helps reduce the number of idle servers left running.
    */
   private def notifyOtherServersOnExit(): Unit = {
