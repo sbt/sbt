@@ -4389,17 +4389,12 @@ object Classpaths {
   private def autoPlugins(
       report: UpdateReport,
       internalPluginClasspath: Seq[NioPath],
-      isDotty: Boolean,
-      currentConfig: Configuration
+      isDotty: Boolean
   )(using conv: FileConverter): Seq[String] =
     import sbt.internal.inc.classpath.ClasspathUtil.compilerPlugins
-    val configName = currentConfig.name
-    val pluginConfigName = s"$configName-${CompilerPlugin.name}"
     val pluginClasspath =
       report
-        .matching(
-          configurationFilter(name => name == CompilerPlugin.name || name == pluginConfigName)
-        )
+        .matching(configurationFilter(CompilerPlugin.name))
         .map(_.toPath) ++ internalPluginClasspath
     val plugins = compilerPlugins(pluginClasspath, isDotty)
     plugins.toVector.map: p =>
@@ -4427,8 +4422,7 @@ object Classpaths {
       val newPlugins = autoPlugins(
         update.value,
         internalCompilerPluginClasspath.value.files,
-        ScalaInstance.isDotty(scalaVersion.value),
-        configuration.value
+        ScalaInstance.isDotty(scalaVersion.value)
       )
       val existing = options.toSet
       if (autoCompilerPlugins.value) options ++ newPlugins.filterNot(existing) else options
@@ -4648,15 +4642,19 @@ trait BuildExtra extends BuildCommon with DefExtra {
     }
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
-  def compilerPlugin(dependency: ModuleID): ModuleID =
+  def compilerPlugin(dependency: ModuleID): ModuleID = {
     dependency.configurations match {
-      case Some(confs) if confs.contains("test") || confs.toLowerCase.contains("test") =>
-        dependency.withConfigurations(Some("test-plugin->default(compile)"))
-      case Some(confs) if confs.contains("compile") || confs.toLowerCase.contains("compile") =>
-        dependency.withConfigurations(Some("plugin->default(compile)"))
+      case Some(confs) if confs.toLowerCase != "compile" && confs.nonEmpty =>
+        sys.error(
+          s"""Configuration-scoped compiler plugins are not supported.
+             |Found: addCompilerPlugin(... % $confs)
+             |Use: addCompilerPlugin(...) without configuration scope.
+             |The plugin will be applied to all configurations.""".stripMargin
+        )
       case _ =>
         dependency.withConfigurations(Some("plugin->default(compile)"))
     }
+  }
 
   /** Adds `dependency` to `libraryDependencies` in the auto-compiler plugin configuration. */
   def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =

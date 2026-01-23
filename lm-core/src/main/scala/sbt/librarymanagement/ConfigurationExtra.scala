@@ -50,7 +50,6 @@ object Configurations {
   lazy val ScalaDocTool = Configuration.of("ScalaDocTool", "scala-doc-tool").hide
   lazy val ScalaReplTool = Configuration.of("ScalaReplTool", "scala-repl-tool").hide
   lazy val CompilerPlugin = Configuration.of("CompilerPlugin", "plugin").hide
-  lazy val TestCompilerPlugin = Configuration.of("TestCompilerPlugin", "test-plugin").hide
   lazy val Component = Configuration.of("Component", "component").hide
 
   private[sbt] val DefaultMavenConfiguration = defaultConfiguration(true)
