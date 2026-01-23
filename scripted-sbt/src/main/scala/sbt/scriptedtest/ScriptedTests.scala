@@ -147,6 +147,12 @@ final class ScriptedTests(
         )
       logTests(runFromSourceBasedTests.size, prop.toString)
 
+      if (keepTempDirectory && runFromSourceBasedTests.size > 1) {
+        sys.error(
+          s"scriptedKeepTempDirectory requires exactly one test, but ${runFromSourceBasedTests.size} tests were requested"
+        )
+      }
+
       def createTestRunners(tests: Seq[TestInfo]): Seq[TestRunner] = {
         tests
           .sortBy(_._1)
