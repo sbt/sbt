@@ -45,12 +45,7 @@ import scala.concurrent.duration.*
 import scala.util.Try
 import scala.util.control.NonFatal
 import sbt.protocol.*
-import sbt.protocol.Serialization.{
-  attach,
-  cancelReadSystemIn,
-  readSystemIn,
-  promptChannel
-}
+import sbt.protocol.Serialization.{ attach, cancelReadSystemIn, readSystemIn, promptChannel }
 
 import sbt.protocol.codec.JsonProtocol.given
 
