@@ -895,9 +895,32 @@ object Terminal {
   ) extends TerminalImpl(in, out, originalErr, "console0") {
     private val rawMode = new AtomicBoolean(false)
     // Register a SIGWINCH handler to invalidate the size cache when the terminal is resized
+    // On macOS/iTerm, we also need to force JLine3 to refresh by querying the actual terminal size
     private val winchHandler: Option[Signals.Registration] = {
       if (!Util.isWindows && Signals.supported("WINCH")) {
-        Some(Signals.register(() => invalidateSizeCache(), "WINCH"))
+        Some(
+          Signals.register(
+            () => {
+              // Invalidate our cache first
+              invalidateSizeCache()
+              // Force JLine3 to refresh by querying the actual terminal size immediately
+              // This is especially important on macOS/iTerm where the underlying terminal
+              // may cache the size. By calling getSize() here, we force JLine3 to query
+              // the OS for the current size, bypassing any internal caching.
+              try {
+                val actualSize = system.getSize
+                // Directly update the cache with the fresh size to avoid the 1-second delay
+                // This ensures immediate responsiveness on terminal resize
+                updateSizeCache(actualSize.getColumns, actualSize.getRows)
+              } catch {
+                case _: Exception =>
+                // If we can't get the size, cache invalidation is sufficient
+                // The next getSize() call will refresh it
+              }
+            },
+            "WINCH"
+          )
+        )
       } else {
         None
       }
@@ -1008,6 +1031,15 @@ object Terminal {
      */
     private[sbt] def invalidateSizeCache(): Unit = {
       size.set(((1, 1), Deadline.now - 1.day))
+    }
+
+    /**
+     * Updates the cached terminal size with the given dimensions.
+     * This is used to immediately update the cache when a resize is detected,
+     * avoiding the 1-second refresh delay.
+     */
+    private[sbt] def updateSizeCache(width: Int, height: Int): Unit = {
+      size.set(((width, height), Deadline.now))
     }
     private def getSize = size.get match {
       case (s, d) if (d + sizeRefreshPeriod).isOverdue() =>
