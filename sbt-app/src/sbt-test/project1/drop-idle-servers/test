@@ -1,3 +1,0 @@
-# Test for drop-idle-servers feature
-# Full testing requires manual testing with multiple sbt instances
-> exit

@@ -632,3 +632,19 @@ private[sbt] final class CommandExchange {
     channels.find(_.name == channelName)
   private val fastTrackThread = new FastTrackThread
 }
+
+object CommandExchange:
+  /**
+   * ServerHandler for dropIfIdle notifications.
+   * When a server exits, it sends dropIfIdle to other servers to reduce idle server count.
+   */
+  val idleHandler: ServerHandler = ServerHandler: callback =>
+    ServerIntent(
+      onRequest = PartialFunction.empty,
+      onResponse = PartialFunction.empty,
+      onNotification = {
+        case n if n.method == dropIfIdle =>
+          StandardMain.exchange.handleDropIfIdle()
+          ()
+      }
+    )

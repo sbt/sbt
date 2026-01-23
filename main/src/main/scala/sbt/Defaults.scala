@@ -441,6 +441,7 @@ object Defaults extends BuildCommon {
           semanticdbVersion.value
         ),
         VirtualTerminal.handler,
+        CommandExchange.idleHandler,
       ) ++ serverHandlers.value :+ ServerHandler.fallback
     },
     timeWrappedStamper := Stamps

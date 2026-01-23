@@ -48,7 +48,6 @@ import sbt.protocol.*
 import sbt.protocol.Serialization.{
   attach,
   cancelReadSystemIn,
-  dropIfIdle,
   readSystemIn,
   promptChannel
 }
@@ -255,12 +254,7 @@ final class NetworkChannel(
       }
 
     lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
-      val builtIn: PartialFunction[JsonRpcNotificationMessage, Unit] = {
-        case ntf if ntf.method == dropIfIdle =>
-          StandardMain.exchange.handleDropIfIdle()
-          ()
-      }
-      intents.foldLeft(builtIn) { (f, i) =>
+      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) { (f, i) =>
         f orElse i.onNotification
       }
 
