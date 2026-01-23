@@ -109,7 +109,8 @@ final class ScriptedTests(
       prescripted: File => Unit,
       sbtInstances: Int,
       prop: RemoteSbtCreatorProp,
-      log: Logger
+      log: Logger,
+      keepTempDirectory: Boolean = false,
   ): Seq[TestRunner] = {
     // Test group and names may be file filters (like '*')
     val groupAndNameDirs = {
@@ -151,8 +152,14 @@ final class ScriptedTests(
           .sortBy(_._1)
           .grouped(batchSize)
           .map { batch => () =>
-            IO.withTemporaryDirectory {
-              runBatchedTests(batch, _, prescripted, prop, log)
+            if (keepTempDirectory) {
+              val tempDir = IO.createTemporaryDirectory
+              log.info(s"Temporary directory for scripted tests: ${tempDir.getAbsolutePath}")
+              runBatchedTests(batch, tempDir, prescripted, prop, log)
+            } else {
+              IO.withTemporaryDirectory {
+                runBatchedTests(batch, _, prescripted, prop, log)
+              }
             }
           }
           .toList
@@ -352,7 +359,7 @@ object ScriptedTests extends ScriptedRunner {
       buffer,
       tests,
       logger,
-      Array(),
+      Array[String](),
       new java.util.ArrayList[File],
       defScalaVersion,
       sbtVersion,
@@ -452,6 +459,32 @@ class ScriptedRunner {
     )
   }
 
+  def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      keepTempDirectory: Boolean,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    run(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      Int.MaxValue,
+      parallelExecution = false,
+      keepTempDirectory,
+    )
+  }
+
   /**
    * This is the entry point used by SbtPlugin in sbt 1.2.x, 1.3.x, 1.4.x etc.
    * Removing this method will break scripted and sbt plugin cross building.
@@ -510,6 +543,32 @@ class ScriptedRunner {
     )
   }
 
+  def runInParallel(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instance: Int,
+      keepTempDirectory: Boolean,
+  ): Unit = {
+    val logger = TestConsoleLogger()
+    runInParallel(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      logger,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      LauncherBased(launcherJar),
+      instance,
+      keepTempDirectory,
+    )
+  }
+
   // This is called by project/Scripted.scala
   // Using java.util.List[File] to encode File => Unit
   def runInParallel(
@@ -545,7 +604,8 @@ class ScriptedRunner {
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       prop: RemoteSbtCreatorProp,
-      instances: Int
+      instances: Int,
+      keepTempDirectory: Boolean = false,
   ): Unit =
     run(
       baseDir,
@@ -557,7 +617,8 @@ class ScriptedRunner {
       prescripted,
       prop,
       instances,
-      parallelExecution = true
+      parallelExecution = true,
+      keepTempDirectory,
     )
 
   @nowarn
@@ -572,6 +633,7 @@ class ScriptedRunner {
       prop: RemoteSbtCreatorProp,
       instances: Int,
       parallelExecution: Boolean,
+      keepTempDirectory: Boolean = false,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
     val runner = new ScriptedTests(baseDir, bufferLog, javaCommand, launchOpts)
@@ -588,7 +650,14 @@ class ScriptedRunner {
     // Choosing Int.MaxValue will make the groupSize 1 in batchScriptedRunner
     val groupCount = if (parallelExecution) instances else Int.MaxValue
     val scriptedRunners =
-      runner.batchScriptedRunner(scriptedTests, addTestFile, groupCount, prop, logger)
+      runner.batchScriptedRunner(
+        scriptedTests,
+        addTestFile,
+        groupCount,
+        prop,
+        logger,
+        keepTempDirectory
+      )
     // Fail if user provided test patterns but none matched any existing test directories
     if (tests.nonEmpty && scriptedRunners.isEmpty) {
       sys.error(s"No tests found matching: ${tests.mkString(", ")}")

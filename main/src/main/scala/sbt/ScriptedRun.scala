@@ -22,6 +22,7 @@ sealed trait ScriptedRun {
       launchOpts: Seq[String],
       prescripted: java.util.List[File],
       instances: Int,
+      keepTempDirectory: Boolean,
   ): Unit = {
     try {
       invoke(
@@ -33,6 +34,7 @@ sealed trait ScriptedRun {
         launchOpts.toArray,
         prescripted,
         instances,
+        keepTempDirectory,
       )
       ()
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
@@ -47,6 +49,7 @@ sealed trait ScriptedRun {
       launchOpts: Array[String],
       prescripted: java.util.List[File],
       instances: java.lang.Integer,
+      keepTempDirectory: java.lang.Boolean,
   ): AnyRef
 
 }
@@ -64,26 +67,45 @@ object ScriptedRun {
     val clazz = scriptedTests.getClass
     if (batchExecution)
       try
-        new RunInParallelV2(
+        new RunInParallelV3(
           scriptedTests,
-          clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
+          clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls, bCls)
         )
       catch {
         case _: NoSuchMethodException =>
-          new RunInParallelV1(
-            scriptedTests,
-            clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
-          )
+          try
+            new RunInParallelV2(
+              scriptedTests,
+              clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, iCls)
+            )
+          catch {
+            case _: NoSuchMethodException =>
+              new RunInParallelV1(
+                scriptedTests,
+                clazz.getMethod("runInParallel", fCls, bCls, asCls, fCls, asCls, lfCls, iCls)
+              )
+          }
       }
     else
       try
-        new RunV2(
+        new RunV3(
           scriptedTests,
-          clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
+          clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls, bCls)
         )
       catch {
         case _: NoSuchMethodException =>
-          new RunV1(scriptedTests, clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls))
+          try
+            new RunV2(
+              scriptedTests,
+              clazz.getMethod("run", fCls, bCls, asCls, fCls, sCls, asCls, lfCls)
+            )
+          catch {
+            case _: NoSuchMethodException =>
+              new RunV1(
+                scriptedTests,
+                clazz.getMethod("run", fCls, bCls, asCls, fCls, asCls, lfCls)
+              )
+          }
       }
   }
 
@@ -97,6 +119,7 @@ object ScriptedRun {
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         @unused instances: java.lang.Integer,
+        @unused keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       run.invoke(
         scriptedTests,
@@ -119,6 +142,7 @@ object ScriptedRun {
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         instances: Integer,
+        @unused keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       runInParallel.invoke(
         scriptedTests,
@@ -142,6 +166,7 @@ object ScriptedRun {
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         @unused instances: java.lang.Integer,
+        @unused keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       run.invoke(
         scriptedTests,
@@ -165,6 +190,7 @@ object ScriptedRun {
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         instances: Integer,
+        @unused keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       runInParallel.invoke(
         scriptedTests,
@@ -176,6 +202,57 @@ object ScriptedRun {
         launchOpts,
         prescripted,
         instances,
+      )
+  }
+
+  private class RunV3(scriptedTests: AnyRef, run: Method) extends ScriptedRun {
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        @unused instances: java.lang.Integer,
+        keepTempDirectory: java.lang.Boolean,
+    ): AnyRef =
+      run.invoke(
+        scriptedTests,
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        keepTempDirectory,
+      )
+  }
+
+  private class RunInParallelV3(scriptedTests: AnyRef, runInParallel: Method) extends ScriptedRun {
+    override protected def invoke(
+        resourceBaseDirectory: File,
+        bufferLog: java.lang.Boolean,
+        tests: Array[String],
+        launcherJar: File,
+        javaCommand: String,
+        launchOpts: Array[String],
+        prescripted: java.util.List[File],
+        instances: Integer,
+        keepTempDirectory: java.lang.Boolean,
+    ): AnyRef =
+      runInParallel.invoke(
+        scriptedTests,
+        resourceBaseDirectory,
+        bufferLog,
+        tests,
+        launcherJar,
+        javaCommand,
+        launchOpts,
+        prescripted,
+        instances,
+        keepTempDirectory,
       )
   }
 
