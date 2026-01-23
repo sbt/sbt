@@ -905,19 +905,18 @@ object Terminal {
               // This is critical on macOS/iTerm where delayed updates cause cursor jumping
               try {
                 // Get size directly from the underlying JLine3 terminal, which queries the OS
+                // This bypasses our cache and gets the real-time terminal dimensions
                 val actualSize = system.getSize
                 val newWidth = actualSize.getColumns
                 val newHeight = actualSize.getRows
                 // Update our cache immediately with the fresh size
-                // This ensures getWidth/getHeight return the correct size right away
+                // This ensures getWidth/getHeight return the correct size right away,
+                // which is critical for JLine2's ConsoleReader.printColumns() to align correctly
                 updateSizeCache(newWidth, newHeight)
-                // Also update JLine3's terminal size to keep it in sync
-                // This is important for JLine2's ConsoleReader which uses toJLine
-                system.setSize(new org.jline.terminal.Size(newWidth, newHeight))
               } catch {
                 case _: Exception =>
                   // If we can't get the size, at least invalidate the cache
-                  // The next getSize() call will refresh it
+                  // The next getSize() call will refresh it via getSizeImpl
                   invalidateSizeCache()
               }
             },
