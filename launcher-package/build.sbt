@@ -89,6 +89,7 @@ val launcherPackage = (project in file(".")).
     UniversalDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
     name := "sbt-launcher-packaging",
+    libraryDependencies += "com.lihaoyi" %% "ujson" % "3.1.0" % Test,
     packageName := "sbt",
     crossTarget := target.value,
     clean := {
