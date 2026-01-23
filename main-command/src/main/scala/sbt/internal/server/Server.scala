@@ -280,7 +280,7 @@ private[sbt] case class ServerConnection(
 ) {
 
   /** The proc file for this server, stored in the global cache directory. */
-  def procfile: Option[File] = procDir.map(_ / s"${ProcessHandle.current.pid}.json")
+  def procfile: Option[File] = procDir.map(_ / s"${ServerConnection.pid}.json")
   def shortName: String = {
     connectionType match {
       case ConnectionType.Local if isWindows => s"local:$pipeName"
@@ -288,6 +288,15 @@ private[sbt] case class ServerConnection(
       case ConnectionType.Tcp                => s"tcp://$host:$port"
       // case ConnectionType.Ssh                => s"ssh://$host:$port"
     }
+  }
+}
+
+private[sbt] object ServerConnection {
+  /** Get current process ID in a Java 8 compatible way. */
+  lazy val pid: String = {
+    import java.lang.management.ManagementFactory
+    val name = ManagementFactory.getRuntimeMXBean.getName
+    name.split("@").head
   }
 }
 

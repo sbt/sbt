@@ -317,7 +317,10 @@ private[sbt] final class CommandExchange {
     val procDir = SysProp.globalLocalCache / "proc"
     if (!procDir.exists) return
 
-    val currentPid = ProcessHandle.current.pid.toString
+    val currentPid = {
+      import java.lang.management.ManagementFactory
+      ManagementFactory.getRuntimeMXBean.getName.split("@").head
+    }
     val procFiles = procDir.listFiles().toList.filter { f =>
       f.getName.endsWith(".json") && !f.getName.startsWith(currentPid)
     }
