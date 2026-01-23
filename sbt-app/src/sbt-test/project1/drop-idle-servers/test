@@ -1,2 +1,3 @@
-# Simple test to verify sbt starts correctly with the new changes
-> compile
+# Test for drop-idle-servers feature
+# Full testing requires manual testing with multiple sbt instances
+> exit

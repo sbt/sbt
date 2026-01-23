@@ -41,6 +41,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 import scala.util.{ Failure, Success, Try }
+import scala.util.control.NonFatal
 
 /**
  * The command exchange merges multiple command channels (e.g. network and console),
@@ -331,7 +332,7 @@ private[sbt] final class CommandExchange {
         import sbt.internal.server.Server.JsonProtocol.given
         val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
         sendDropIfIdle(portFile, procFile)
-      }.recover { case e: Exception =>
+      }.recover { case NonFatal(_) =>
         // If we can't parse the file, it's likely stale - remove it
         Try(IO.delete(procFile))
       }
@@ -378,7 +379,7 @@ private[sbt] final class CommandExchange {
       } finally {
         socket.close()
       }
-    }.recover { case _: Exception =>
+    }.recover { case NonFatal(_) =>
       // Server is unreachable, remove its proc file
       Try(IO.delete(procFile))
     }
@@ -474,7 +475,7 @@ private[sbt] final class CommandExchange {
    * Threshold in seconds for dropIfIdle to trigger shutdown.
    * Default is 600 seconds (10 minutes).
    */
-  private val dropIfIdleThresholdSeconds: Long = 600
+  private def dropIfIdleThresholdSeconds: Long = SysProp.secondaryIdleTimeoutSec
 
   /**
    * Handle dropIfIdle request from another server.

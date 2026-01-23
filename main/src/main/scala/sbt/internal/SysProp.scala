@@ -200,6 +200,12 @@ object SysProp {
 
   def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
 
+  /**
+   * Threshold in seconds for dropIfIdle to trigger shutdown on secondary servers.
+   * Default is 600 seconds (10 minutes).
+   */
+  def secondaryIdleTimeoutSec: Long = long("sbt.secondaryIdleTimeoutSec", 600L)
+
   private def file(value: String): File = new File(value)
   private def home: File = file(sys.props("user.home"))
 
