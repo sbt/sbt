@@ -5,6 +5,10 @@ import com.typesafe.sbt.packager.SettingsHelper.*
 import DebianConstants.*
 import Dependencies.*
 
+lazy val IntegrationTest = config("it") extend(Test)
+
+inConfig(IntegrationTest)(Defaults.testSettings)
+
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
     case "true" | "1"  => true
@@ -89,7 +93,7 @@ val launcherPackage = (project in file(".")).
     UniversalDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
   settings(
     name := "sbt-launcher-packaging",
-    libraryDependencies += "com.lihaoyi" %% "ujson" % "3.1.0" % Test,
+    libraryDependencies += "com.lihaoyi" %% "ujson" % "3.1.0" % IntegrationTest,
     packageName := "sbt",
     crossTarget := target.value,
     clean := {
