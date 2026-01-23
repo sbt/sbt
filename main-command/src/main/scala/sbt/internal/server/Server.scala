@@ -292,6 +292,7 @@ private[sbt] case class ServerConnection(
 }
 
 private[sbt] object ServerConnection {
+
   /** Get current process ID in a Java 8 compatible way. */
   lazy val pid: String = {
     import java.lang.management.ManagementFactory
