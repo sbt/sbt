@@ -155,10 +155,10 @@ final class ScriptedTests(
             if (keepTempDirectory) {
               val tempDir = IO.createTemporaryDirectory
               log.info(s"Temporary directory for scripted tests: ${tempDir.getAbsolutePath}")
-              runBatchedTests(batch, tempDir, prescripted, prop, log)
+              runBatchedTests(batch, tempDir, prescripted, prop, log, keepTempDirectory)
             } else {
               IO.withTemporaryDirectory {
-                runBatchedTests(batch, _, prescripted, prop, log)
+                runBatchedTests(batch, _, prescripted, prop, log, keepTempDirectory)
               }
             }
           }
@@ -209,7 +209,8 @@ final class ScriptedTests(
       tempTestDir: File,
       preHook: File => Unit,
       prop: RemoteSbtCreatorProp,
-      log: Logger
+      log: Logger,
+      keepTempDirectory: Boolean = false
   ): Seq[Option[String]] = {
 
     val runner = new BatchScriptRunner
@@ -248,16 +249,18 @@ final class ScriptedTests(
 
         // Run the test and delete files (except global that holds local scala jars)
         val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
-        val view = sbt.nio.file.FileTreeView.default
-        val base = tempTestDir.getCanonicalFile.toGlob
-        val global = base / "global"
-        val globalLogging = base / ** / "global-logging"
-        def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
-        val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
-        val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
-        toDelete.foreach { p =>
-          try Files.deleteIfExists(p)
-          catch { case _: IOException => }
+        if (!keepTempDirectory) {
+          val view = sbt.nio.file.FileTreeView.default
+          val base = tempTestDir.getCanonicalFile.toGlob
+          val global = base / "global"
+          val globalLogging = base / ** / "global-logging"
+          def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
+          val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
+          val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
+          toDelete.foreach { p =>
+            try Files.deleteIfExists(p)
+            catch { case _: IOException => }
+          }
         }
         result
       }
