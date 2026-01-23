@@ -4642,8 +4642,19 @@ trait BuildExtra extends BuildCommon with DefExtra {
     }
 
   /** Transforms `dependency` to be in the auto-compiler plugin configuration. */
-  def compilerPlugin(dependency: ModuleID): ModuleID =
-    dependency.withConfigurations(Some("plugin->default(compile)"))
+  def compilerPlugin(dependency: ModuleID): ModuleID = {
+    dependency.configurations match {
+      case Some(confs) if confs.toLowerCase != "compile" && confs.nonEmpty =>
+        sys.error(
+          s"""Configuration-scoped compiler plugins are not supported.
+             |Found: addCompilerPlugin(... % $confs)
+             |Use: addCompilerPlugin(...) without configuration scope.
+             |The plugin will be applied to all configurations.""".stripMargin
+        )
+      case _ =>
+        dependency.withConfigurations(Some("plugin->default(compile)"))
+    }
+  }
 
   /** Adds `dependency` to `libraryDependencies` in the auto-compiler plugin configuration. */
   def addCompilerPlugin(dependency: ModuleID): Setting[Seq[ModuleID]] =
