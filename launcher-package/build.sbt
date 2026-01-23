@@ -5,10 +5,6 @@ import com.typesafe.sbt.packager.SettingsHelper.*
 import DebianConstants.*
 import Dependencies.*
 
-lazy val IntegrationTest = config("it") extend(Test)
-
-inConfig(IntegrationTest)(Defaults.testSettings)
-
 lazy val sbtOfflineInstall =
   sys.props.getOrElse("sbt.build.offline", sys.env.getOrElse("sbt.build.offline", "false")) match {
     case "true" | "1"  => true
