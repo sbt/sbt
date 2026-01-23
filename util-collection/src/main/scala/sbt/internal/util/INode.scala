@@ -41,8 +41,8 @@ class EvaluateSettings[I <: Init](
       fa match
         case g: GetValue[s, A]     => single(getStatic(g.scopedKey), g.transform)
         case k: KeyedInitialize[A] =>
-          // TODO create a Single node with no transform?
-          single(getStatic(k.scopedKey), identity)
+          // Optimization: return the node directly when transform is identity (no wrapping needed)
+          singleIdentity(getStatic(k.scopedKey))
         case u: Uniform[s, A] => UniformNode(u.inputs.map(transform[s]), u.f)
         case a: Apply[k, A] =>
           MixedNode[k, A](TupleMapExtension.transform(a.inputs)(transform), a.f)
@@ -212,6 +212,9 @@ class EvaluateSettings[I <: Init](
 
   private def single[A1, A2](in: INode[A1], f: A1 => A2): INode[A2] =
     MixedNode[Tuple1[A1], A2](Tuple1(in), { case Tuple1(a) => f(a) })
+  
+  // Optimization: when transform is identity, return the node directly to avoid unnecessary wrapping
+  private def singleIdentity[A](in: INode[A]): INode[A] = in
 
   private final class BindNode[A1, A2](in: INode[A1], f: A1 => INode[A2]) extends INode[A2]:
     protected def dependsOn: Seq[INode[?]] = in :: Nil
