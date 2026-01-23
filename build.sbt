@@ -955,7 +955,8 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
       .map(_.data)
       .filterNot(_.getName.contains("scala-compiler")),
     (bundledLauncherProj / Compile / packageBin).value,
-    streams.value.log
+    streams.value.log,
+    scriptedKeepTempDirectory.value
   )
 }
 
@@ -1010,6 +1011,7 @@ lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
 ThisBuild / scriptedBufferLog := true
 ThisBuild / scriptedPrescripted := { _ => }
+ThisBuild / scriptedKeepTempDirectory := false
 
 def otherRootSettings =
   Seq(
