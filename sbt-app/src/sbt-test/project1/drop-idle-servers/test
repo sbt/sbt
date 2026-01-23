@@ -1,0 +1,2 @@
+# Simple test to verify sbt starts correctly with the new changes
+> compile

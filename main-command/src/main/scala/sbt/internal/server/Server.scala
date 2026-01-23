@@ -99,6 +99,7 @@ private[sbt] object Server {
               }
               log.info(s"sbt server started at ${connection.shortName}")
               writePortfile()
+              writeProcfile()
               if (connection.bspEnabled) {
                 log.debug("Writing bsp connection file")
                 BuildServerConnection.writeConnectionFile(
@@ -166,6 +167,12 @@ private[sbt] object Server {
         if (tokenfile.exists) {
           IO.delete(tokenfile)
         }
+        connection.procfile.foreach { pf =>
+          if (pf.exists) {
+            IO.delete(pf)
+            log.debug(s"deleted proc file: $pf")
+          }
+        }
         running.set(false)
         serverSocketHolder.getAndSet(null) match {
           case null =>
@@ -224,6 +231,29 @@ private[sbt] object Server {
         IO.write(portfile, CompactPrinter(json))
       }
 
+      /**
+       * Write proc file to the global cache directory.
+       * This file is used to discover other running sbt servers.
+       */
+      private def writeProcfile(): Unit = {
+        import JsonProtocol.given
+
+        connection.procfile.foreach { pf =>
+          val uri = connection.shortName
+          val p =
+            auth match {
+              case _ if auth(ServerAuthentication.Token) =>
+                PortFile(uri, Option(tokenfile.toString), Option(IO.toURI(tokenfile).toString))
+              case _ =>
+                PortFile(uri, None, None)
+            }
+          val json = Converter.toJson(p).get
+          IO.createDirectory(pf.getParentFile)
+          IO.write(pf, CompactPrinter(json))
+          log.debug(s"wrote proc file: $pf")
+        }
+      }
+
       private[sbt] def prepareSocketfile(): Unit = {
         if (socketfile.exists) {
           IO.delete(socketfile)
@@ -246,7 +276,11 @@ private[sbt] case class ServerConnection(
     windowsServerSecurityLevel: Int,
     useJni: Boolean,
     bspEnabled: Boolean,
+    procDir: Option[File] = None,
 ) {
+
+  /** The proc file for this server, stored in the global cache directory. */
+  def procfile: Option[File] = procDir.map(_ / s"${ProcessHandle.current.pid}.json")
   def shortName: String = {
     connectionType match {
       case ConnectionType.Local if isWindows => s"local:$pipeName"

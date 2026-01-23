@@ -45,7 +45,13 @@ import scala.concurrent.duration.*
 import scala.util.Try
 import scala.util.control.NonFatal
 import sbt.protocol.*
-import sbt.protocol.Serialization.{ attach, cancelReadSystemIn, readSystemIn, promptChannel }
+import sbt.protocol.Serialization.{
+  attach,
+  cancelReadSystemIn,
+  dropIfIdle,
+  readSystemIn,
+  promptChannel
+}
 
 import sbt.protocol.codec.JsonProtocol.given
 
@@ -249,7 +255,12 @@ final class NetworkChannel(
       }
 
     lazy val onNotification: PartialFunction[JsonRpcNotificationMessage, Unit] =
-      intents.foldLeft(PartialFunction.empty[JsonRpcNotificationMessage, Unit]) { (f, i) =>
+      val builtIn: PartialFunction[JsonRpcNotificationMessage, Unit] = {
+        case ntf if ntf.method == dropIfIdle =>
+          StandardMain.exchange.handleDropIfIdle()
+          ()
+      }
+      intents.foldLeft(builtIn) { (f, i) =>
         f orElse i.onNotification
       }
 

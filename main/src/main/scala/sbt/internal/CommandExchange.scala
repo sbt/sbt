@@ -29,10 +29,12 @@ import sbt.internal.util.*
 import sbt.io.syntax.*
 import sbt.io.{ Hash, IO }
 import sbt.nio.Watch.NullLogger
-import sbt.protocol.Serialization.attach
+import sbt.protocol.Serialization.{ attach, dropIfIdle }
 import sbt.protocol.{ ExecStatusEvent, LogEvent }
+import sbt.internal.protocol.{ JsonRpcNotificationMessage, PortFile }
 import sbt.util.Logger
 import sjsonnew.JsonFormat
+import sjsonnew.support.scalajson.unsafe.{ Parser, Converter, CompactPrinter }
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
@@ -59,6 +61,7 @@ private[sbt] final class CommandExchange {
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private val lastState = new AtomicReference[State]
   private val currentExecRef = new AtomicReference[Exec]
+  private val lastActivityTime = new AtomicReference[Long](System.currentTimeMillis())
   private[sbt] def hasServer = server.isDefined
   addConsoleChannel()
 
@@ -223,6 +226,7 @@ private[sbt] final class CommandExchange {
       val tokenfile = serverDir / h / "token.json"
       val socketfile = serverDir / h / "sock"
       val pipeName = "sbt-server-" + h
+      val procDir = SysProp.globalLocalCache / "proc"
       val connection = ServerConnection(
         connectionType,
         host,
@@ -236,6 +240,7 @@ private[sbt] final class CommandExchange {
         win32Level,
         useJni,
         enableBsp,
+        Some(procDir),
       )
       val serverInstance = Server.start(connection, onIncomingSocket, s.log)
       // don't throw exception when it times out
@@ -294,12 +299,86 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
+    // Notify other idle servers before shutting down
+    notifyOtherServersOnExit()
     fastTrackThread.close()
     channels foreach (_.shutdown(true))
     // interrupt and kill the thread
     server.foreach(_.shutdown())
     server = None
     EvaluateTask.onShutdown()
+  }
+
+  /**
+   * Notify other sbt servers to drop if idle when this server exits.
+   * This helps reduce the number of idle servers left running.
+   */
+  private def notifyOtherServersOnExit(): Unit = {
+    val procDir = SysProp.globalLocalCache / "proc"
+    if (!procDir.exists) return
+
+    val currentPid = ProcessHandle.current.pid.toString
+    val procFiles = procDir.listFiles().toList.filter { f =>
+      f.getName.endsWith(".json") && !f.getName.startsWith(currentPid)
+    }
+
+    procFiles.foreach { procFile =>
+      Try {
+        val content = IO.read(procFile)
+        import sbt.internal.server.Server.JsonProtocol.given
+        val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
+        sendDropIfIdle(portFile, procFile)
+      }.recover { case e: Exception =>
+        // If we can't parse the file, it's likely stale - remove it
+        Try(IO.delete(procFile))
+      }
+    }
+  }
+
+  /**
+   * Send dropIfIdle notification to a server.
+   * If the server is unreachable, remove its proc file.
+   */
+  private def sendDropIfIdle(portFile: PortFile, procFile: java.io.File): Unit = {
+    import sbt.internal.protocol.codec.JsonRPCProtocol.given
+
+    Try {
+      // Parse the URI to determine connection type
+      val uri = portFile.uri
+      val socket: Socket =
+        if (uri.startsWith("local://")) {
+          // Unix domain socket
+          val socketPath = uri.stripPrefix("local://")
+          new org.scalasbt.ipcsocket.UnixDomainSocket(socketPath, false)
+        } else if (uri.startsWith("local:")) {
+          // Windows named pipe
+          val pipeName = uri.stripPrefix("local:")
+          new org.scalasbt.ipcsocket.Win32NamedPipeSocket(pipeName, false)
+        } else if (uri.startsWith("tcp://")) {
+          // TCP socket
+          val hostPort = uri.stripPrefix("tcp://").split(":")
+          new Socket(hostPort(0), hostPort(1).toInt)
+        } else {
+          throw new IOException(s"Unknown server URI format: $uri")
+        }
+
+      try {
+        socket.setSoTimeout(5000) // 5 second timeout
+        val notification = JsonRpcNotificationMessage("2.0", dropIfIdle, None)
+        val json = Converter.toJson(notification).get
+        val body = CompactPrinter(json)
+        val bytes = body.getBytes("UTF-8")
+        val message =
+          s"Content-Length: ${bytes.length}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n$body"
+        socket.getOutputStream.write(message.getBytes("UTF-8"))
+        socket.getOutputStream.flush()
+      } finally {
+        socket.close()
+      }
+    }.recover { case _: Exception =>
+      // Server is unreachable, remove its proc file
+      Try(IO.delete(procFile))
+    }
   }
 
   // This is an interface to directly respond events.
@@ -376,7 +455,37 @@ private[sbt] final class CommandExchange {
     }
   }
 
-  private[sbt] def setExec(exec: Option[Exec]): Unit = currentExecRef.set(exec.orNull)
+  private[sbt] def setExec(exec: Option[Exec]): Unit =
+    currentExecRef.set(exec.orNull)
+    // Update last activity time when a command starts executing
+    exec.foreach(_ => lastActivityTime.set(System.currentTimeMillis()))
+
+  /**
+   * Returns the number of seconds the server has been idle.
+   * Idle means no command has been executed.
+   */
+  private[sbt] def idleSeconds: Long =
+    (System.currentTimeMillis() - lastActivityTime.get()) / 1000
+
+  /**
+   * Threshold in seconds for dropIfIdle to trigger shutdown.
+   * Default is 600 seconds (10 minutes).
+   */
+  private val dropIfIdleThresholdSeconds: Long = 600
+
+  /**
+   * Handle dropIfIdle request from another server.
+   * If this server has been idle for more than the threshold, shut it down.
+   */
+  private[sbt] def handleDropIfIdle(): Boolean =
+    if idleSeconds >= dropIfIdleThresholdSeconds then
+      lastState.get match
+        case s: State =>
+          s.log.info(s"Received dropIfIdle request, idle for $idleSeconds seconds, shutting down")
+        case null => // State not yet initialized
+      commandQueue.add(Exec(TerminateAction, None))
+      true
+    else false
 
   def prompt(event: ConsolePromptEvent): Unit =
     currentExecRef.set(null)
