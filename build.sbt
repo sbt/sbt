@@ -1329,7 +1329,6 @@ lazy val launcherPackageIntegrationTest =
       name := "integration-test",
       scalaVersion := scala3,
       libraryDependencies ++= Seq(
-        scalatest % Test,
         scalaVerify % Test,
         hedgehog % Test,
         "com.lihaoyi" %% "ujson" % "3.1.0" % Test,

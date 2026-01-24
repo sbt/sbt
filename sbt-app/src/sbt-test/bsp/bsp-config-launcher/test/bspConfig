@@ -1,3 +1,0 @@
-﻿> bspConfig
-$ exists .bsp/sbt.json
-$ grep -q '"argv"' .bsp/sbt.json
