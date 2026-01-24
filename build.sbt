@@ -507,8 +507,10 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
     name := "scripted-sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
-    scriptedSbtMimaSettings,
-    mimaSettings,
+    mimaBinaryIssueFilters ++= Seq(
+      exclude[IncompatibleMethTypeProblem]("sbt.scriptedtest.ScriptedTests.runInParallel"),
+      exclude[DirectMissingMethodProblem]("sbt.scriptedtest.ScriptedTests.batchScriptedRunner"),
+    ),
   )
   .dependsOn(lmCore)
   .configure(addSbtIO, addSbtCompilerInterface)
@@ -722,6 +724,13 @@ lazy val mainProj = (project in file("main"))
     mimaBinaryIssueFilters ++= Vector(
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
       exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun.run"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun.invoke"),
+      exclude[ReversedMissingMethodProblem]("sbt.ScriptedRun.invoke"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunInParallelV1.invoke"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunInParallelV2.invoke"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV1.invoke"),
+      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV2.invoke"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
@@ -946,7 +955,8 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
       .map(_.data)
       .filterNot(_.getName.contains("scala-compiler")),
     (bundledLauncherProj / Compile / packageBin).value,
-    streams.value.log
+    streams.value.log,
+    scriptedKeepTempDirectory.value
   )
 }
 
@@ -1001,6 +1011,7 @@ lazy val nonRoots = allProjects.map(p => LocalProject(p.id))
 
 ThisBuild / scriptedBufferLog := true
 ThisBuild / scriptedPrescripted := { _ => }
+ThisBuild / scriptedKeepTempDirectory := false
 
 def otherRootSettings =
   Seq(
@@ -1329,10 +1340,8 @@ lazy val launcherPackageIntegrationTest =
       name := "integration-test",
       scalaVersion := scala3,
       libraryDependencies ++= Seq(
-        scalatest % Test,
         scalaVerify % Test,
         hedgehog % Test,
-        "com.lihaoyi" %% "ujson" % "3.1.0" % Test,
         // This needs to be hardcoded here, and not use addSbtIO
         "org.scala-sbt" %% "io" % "1.10.5" % Test,
       ),
