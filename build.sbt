@@ -507,6 +507,8 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
     name := "scripted-sbt",
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
+    scriptedSbtMimaSettings,
+    mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
       exclude[IncompatibleMethTypeProblem]("sbt.scriptedtest.ScriptedTests.runInParallel"),
       exclude[DirectMissingMethodProblem]("sbt.scriptedtest.ScriptedTests.batchScriptedRunner"),
@@ -955,6 +957,7 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
       .map(_.data)
       .filterNot(_.getName.contains("scala-compiler")),
     (bundledLauncherProj / Compile / packageBin).value,
+    streams.value.log
     streams.value.log,
     scriptedKeepTempDirectory.value
   )
