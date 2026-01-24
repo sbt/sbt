@@ -338,7 +338,7 @@ private[sbt] final class CommandExchange {
           val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
           sendDropIfIdle(portFile)
         }.recover { case NonFatal(_) =>
-          // Failed to parse or send, but process is alive - don't delete
+        // Failed to parse or send, but process is alive - don't delete
         }
       }
     }
@@ -349,10 +349,10 @@ private[sbt] final class CommandExchange {
    */
   private def isProcessAlive(pid: String): Boolean = {
     Try {
-      val pb = new ProcessBuilder(
-        if (scala.util.Properties.isWin) Array("tasklist", "/FI", s"PID eq $pid")
-        else Array("kill", "-0", pid): _*
-      )
+      val command =
+        if (scala.util.Properties.isWin) java.util.Arrays.asList("tasklist", "/FI", s"PID eq $pid")
+        else java.util.Arrays.asList("kill", "-0", pid)
+      val pb = new ProcessBuilder(command)
       pb.redirectErrorStream(true)
       val process = pb.start()
       val exitCode = process.waitFor()
@@ -407,8 +407,8 @@ private[sbt] final class CommandExchange {
         socket.close()
       }
     }.recover { case NonFatal(_) =>
-      // Connection failed, but we don't delete proc file here
-      // The proc file will be cleaned up when the process dies
+    // Connection failed, but we don't delete proc file here
+    // The proc file will be cleaned up when the process dies
     }
   }
 
