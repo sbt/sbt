@@ -376,6 +376,8 @@ private[sbt] final class CommandExchange {
           s"Content-Length: ${bytes.length}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n$body"
         socket.getOutputStream.write(message.getBytes("UTF-8"))
         socket.getOutputStream.flush()
+        // Give the server time to process the notification before closing
+        Thread.sleep(100)
       } finally {
         socket.close()
       }
