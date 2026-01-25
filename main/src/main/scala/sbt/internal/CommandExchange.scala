@@ -327,50 +327,23 @@ private[sbt] final class CommandExchange {
     }
 
     procFiles.foreach { procFile =>
-      val pid = procFile.getName.stripSuffix(".json")
-      if (!isProcessAlive(pid)) {
-        // Process is dead, remove stale proc file
+      Try {
+        val content = IO.read(procFile)
+        import sbt.internal.server.Server.JsonProtocol.given
+        val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
+        sendDropIfIdle(portFile, procFile)
+      }.recover { case NonFatal(_) =>
+        // If we can't parse the file, it's likely stale - remove it
         Try(IO.delete(procFile))
-      } else {
-        Try {
-          val content = IO.read(procFile)
-          import sbt.internal.server.Server.JsonProtocol.given
-          val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
-          sendDropIfIdle(portFile)
-        }.recover { case NonFatal(_) =>
-        // Failed to parse or send, but process is alive - don't delete
-        }
       }
     }
   }
 
   /**
-   * Check if a process with the given PID is still running.
-   */
-  private def isProcessAlive(pid: String): Boolean = {
-    Try {
-      val command =
-        if (scala.util.Properties.isWin) java.util.Arrays.asList("tasklist", "/FI", s"PID eq $pid")
-        else java.util.Arrays.asList("kill", "-0", pid)
-      val pb = new ProcessBuilder(command)
-      pb.redirectErrorStream(true)
-      val process = pb.start()
-      val exitCode = process.waitFor()
-      if (scala.util.Properties.isWin) {
-        // On Windows, tasklist returns 0 even if process not found, check output
-        val output = scala.io.Source.fromInputStream(process.getInputStream).mkString
-        output.contains(pid)
-      } else {
-        // On Unix, kill -0 returns 0 if process exists
-        exitCode == 0
-      }
-    }.getOrElse(false)
-  }
-
-  /**
    * Send dropIfIdle notification to a server.
+   * If the server is unreachable, remove its proc file.
    */
-  private def sendDropIfIdle(portFile: PortFile): Unit = {
+  private def sendDropIfIdle(portFile: PortFile, procFile: java.io.File): Unit = {
     import sbt.internal.protocol.codec.JsonRPCProtocol.given
 
     Try {
@@ -407,8 +380,8 @@ private[sbt] final class CommandExchange {
         socket.close()
       }
     }.recover { case NonFatal(_) =>
-    // Connection failed, but we don't delete proc file here
-    // The proc file will be cleaned up when the process dies
+      // Server is unreachable, remove its proc file
+      Try(IO.delete(procFile))
     }
   }
 
