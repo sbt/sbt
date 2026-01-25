@@ -15,8 +15,10 @@ sbt compile
 Pull reuqest guideline
 ----------------------
 
-- Follow the PR guidance in [contributing-docs/01_pull_request.md](contributing-docs/01_pull_request.md).
-- In the commit message, include "Generated-by" tag for Gen-AI tools.
+- Follow the PR guidance in [CONTRIBUTING.md](./CONTRIBUTING.md).
+- [ ] Before working on a pull request, please confirm that **you can reproduce the reported problem** using GitHub Actions or your computer.
+- [ ] After making the code change, please confirm that **your change compiles, and has fixed the problem**.
+- [ ] In the commit message, include "Generated-by" tag for Gen-AI tools.
 
 Coding style
 ------------

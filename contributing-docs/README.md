@@ -1,5 +1,3 @@
-Contributor's guide
-===================
 
 Contributions are welcome and are greatly appreciated! There are lots of avenues to contribute to the sbt ecosystem, depending on your interests and skill level.
 
@@ -26,7 +24,7 @@ See [CONTRIBUTING](../CONTRIBUTING.md).
 Patching the core (sending pull request)
 ----------------------------------------
 
-See [pull request](01_pull_request.md)
+See [CONTRIBUTING](../CONTRIBUTING.md).
 
   [documentation]: https://github.com/sbt/website
   [Discord]: https://discord.com/invite/scala

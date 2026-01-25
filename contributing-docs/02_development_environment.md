@@ -4,7 +4,7 @@ Development environment
 Generally sbt can be developed on any environment that supports JDK and sbt.
 This includes macOS, Linux, and modern Windows.
 
-1. Install JDK (We recommend Azul Zulu JDK 8, 11, or 17 on macOS, and Temurin elsewhere).
+1. Install JDK (We recommend Azul Zulu JDK 17 on macOS, and Temurin elsewhere).
 2. Install `sbt`, following <https://www.scala-sbt.org/download>.
 
 sbt acts as a package manager, so once you installed JDK and sbt, it will download necessary dependencies.
