@@ -554,6 +554,7 @@ lazy val actionsProj = (project in file("main-actions"))
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
     ),
+    Compile / scalacOptions --= Seq("-Werror"),
   )
   .dependsOn(lmCore)
   .configure(
@@ -566,7 +567,7 @@ lazy val actionsProj = (project in file("main-actions"))
 
 lazy val protocolProj = (project in file("protocol"))
   .enablePlugins(ContrabandPlugin, JsonCodecPlugin)
-  .dependsOn(collectionProj, utilLogging)
+  .dependsOn(collectionProj, utilLogging, utilCache)
   .settings(
     testedBaseSettings,
     name := "Protocol",
@@ -722,6 +723,7 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[DirectMissingMethodProblem]("sbt.internal.Compiler.*"),
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
       exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
       exclude[DirectMissingMethodProblem]("sbt.ScriptedRun.run"),

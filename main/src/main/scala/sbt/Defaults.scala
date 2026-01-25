@@ -40,7 +40,6 @@ import sbt.internal.librarymanagement.mavenint.{
 import sbt.internal.librarymanagement.*
 import sbt.internal.nio.{ CheckBuildSources, Globs }
 import sbt.internal.server.{
-  BspCompileProgress,
   BspCompileTask,
   BuildServerProtocol,
   Definition,
@@ -199,6 +198,7 @@ object Defaults extends BuildCommon {
       apiURL := None,
       releaseNotesURL := None,
       javaHome :== None,
+      jdkVersion :== None,
       discoveredJavaHomes := CrossJava.discoverJavaHomes,
       javaHomes :== ListMap.empty,
       fullJavaHomes := CrossJava.expandJavaHomes(discoveredJavaHomes.value ++ javaHomes.value),
@@ -691,6 +691,7 @@ object Defaults extends BuildCommon {
         }
         else topLoader
       },
+      scalaInstanceConfig := Def.uncached(Compiler.scalaInstanceConfigTask(None).value),
       scalaInstance := Def.uncached(Compiler.scalaInstanceTask(None).value),
       crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
       pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
@@ -757,6 +758,12 @@ object Defaults extends BuildCommon {
           Vector(outVf: HashedVirtualFileRef)
         })(Def.task(Vector.empty))
         .value,
+      scalaCompilerBridgeJars := (Def.taskDyn {
+        val s = streams.value
+        val b = scalaCompilerBridgeBin.value
+        if b.nonEmpty then Def.task { b }
+        else Compiler.scalaCompilerBridgeJarsTask(scalaCompilerBridgeSource, s.log)
+      }).value,
       scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
@@ -1063,6 +1070,10 @@ object Defaults extends BuildCommon {
       discoveredSbtPlugins := Def.uncached(discoverSbtPluginNames.value),
       // This fork options, scoped to the configuration is used for tests
       forkOptions := Def.uncached(forkOptionsTask.value),
+      extraIncOptions := {
+        val orig = extraIncOptions.value
+        orig
+      },
       selectMainClass := mainClass.value orElse askForMainClass(discoveredMainClasses.value),
       run / mainClass := (run / selectMainClass).value,
       mainClass := Def.uncached {
@@ -1307,8 +1318,15 @@ object Defaults extends BuildCommon {
       val canUseArgumentsFile = sys.props
         .getOrElse("java.vm.specification.version", "1")
         .toFloat >= 9.0
+      val jhs = fullJavaHomes.value
+      val jh = jdkVersion.value match
+        case Some(j) =>
+          jhs.get(j) match
+            case Some(value) => Some(value)
+            case None        => sys.error(s"jdkVersion \"$j\" was not found")
+        case None => javaHome.value
       ForkOptions(
-        javaHome = javaHome.value,
+        javaHome = jh,
         outputStrategy = outputStrategy.value,
         // bootJars is empty by default because only jars on the user's classpath should be on the boot classpath
         bootJars = Vector(),
@@ -2226,8 +2244,27 @@ object Defaults extends BuildCommon {
       val setup: Setup = (TaskZero / compileIncSetup).value
       val store = analysisStore(compileAnalysisFile)
       val c = fileConverter.value
+      val fk = (compile / fork).value
+      val jh = (compile / jdkVersion).value
+      val fo = (compile / forkOptions).value
+      val sic = scalaInstanceConfig.value
+      val bridges = scalaCompilerBridgeJars.value
+      val rs = rootPaths.value
+      val pickles = dependencyPicklePath.value
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping))
+      val analysisResult =
+        if fk then
+          ForkCompile.compile(
+            s,
+            fo,
+            rs,
+            ci,
+            sic,
+            bridges,
+            compileAnalysisFile.value.toPath(),
+            pickles
+          )
+        else Retry.io(Compiler.compileIncrementalTaskImpl(bspTask, s, ci, ping))
       val analysisOut = c.toVirtualFile(setup.cachePath())
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
@@ -2240,7 +2277,7 @@ object Defaults extends BuildCommon {
     }
     .tag(Tags.Compile, Tags.CPU)
 
-  private val incCompiler = ZincUtil.defaultIncrementalCompiler
+  private val incCompiler = Compiler.incCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
     val s = streams.value
     val r = compileScalaBackend.value
@@ -2260,35 +2297,6 @@ object Defaults extends BuildCommon {
         reporter.sendFailureReport(in.options.sources)
         throw e
     }
-  }
-
-  private def compileIncrementalTaskImpl(
-      task: BspCompileTask,
-      s: TaskStreams,
-      ci: Inputs,
-      promise: PromiseWrap[Boolean]
-  ): CompileResult = {
-    lazy val x = s.text(ExportStream)
-    def onArgs(cs: Compilers) =
-      cs.withScalac(
-        cs.scalac match
-          case ac: AnalyzingCompiler => ac.onArgs(exported(x, "scalac"))
-          case x                     => x
-      )
-    def onProgress(s: Setup) =
-      val cp = new BspCompileProgress(task, s.progress.asScala)
-      s.withProgress(cp)
-    val compilers: Compilers = ci.compilers
-    val setup: Setup = ci.setup
-    val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
-    try incCompiler.compile(i, s.log)
-    catch
-      case e: Throwable =>
-        if !promise.isCompleted then
-          promise.failure(e)
-          ConcurrentRestrictions.cancelAllSentinels()
-        throw e
-    finally x.close() // workaround for #937
   }
 
   def compileIncSetupTask = Def.task {

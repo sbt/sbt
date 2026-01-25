@@ -8,6 +8,22 @@
 
 package sbt.internal.worker1;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Paths;
+import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.stream.Collectors;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -15,18 +31,6 @@ import org.scalasbt.shadedgson.com.google.gson.JsonObject;
 import org.scalasbt.shadedgson.com.google.gson.JsonParser;
 import org.scalasbt.shadedgson.com.google.gson.JsonPrimitive;
 import org.scalasbt.shadedgson.com.google.gson.typeadapters.RuntimeTypeAdapterFactory;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Scanner;
 import sbt.testing.*;
 
 /**
@@ -131,6 +135,10 @@ public final class WorkerMain {
           TestInfo testInfo = g.fromJson(params, TestInfo.class);
           test(id, testInfo);
           break;
+        case "compile":
+          RunInfo r1 = g.fromJson(params, RunInfo.class);
+          compile(r1, id);
+          return;
         case "bye":
           break;
       }
@@ -165,6 +173,25 @@ public final class WorkerMain {
     }
   }
 
+  // This is similar to the run(...) method except for passing the printstream.
+  void compile(RunInfo info, long id) throws Exception {
+    if (info.jvm) {
+      if (info.jvmRunInfo == null) {
+        throw new RuntimeException("missing jvmRunInfo element");
+      }
+      RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
+      try (URLClassLoader cl = createClassLoader(jvmRunInfo, ClassLoader.getSystemClassLoader())) {
+        Class<?> mainClass = cl.loadClass(jvmRunInfo.mainClass);
+        Method mainMethod =
+            mainClass.getMethod("main", String[].class, Long.class, PrintStream.class);
+        String[] mainArgs = jvmRunInfo.args.stream().toArray(String[]::new);
+        mainMethod.invoke(null, (Object) mainArgs, (Object) id, (Object) jsonOut);
+      }
+    } else {
+      throw new RuntimeException("only jvm is supported");
+    }
+  }
+
   void test(long id, TestInfo info) throws Exception {
     if (info.jvm) {
       RunInfo.JvmRunInfo jvmRunInfo = info.jvmRunInfo;
@@ -178,9 +205,20 @@ public final class WorkerMain {
   }
 
   private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {
-    URL[] urls =
+    Map<Boolean, List<FilePath>> groups =
         info.classpath
             .stream()
+            .collect(
+                Collectors.partitioningBy(
+                    filePath ->
+                        Paths.get(filePath.path)
+                            .getFileName()
+                            .toString()
+                            .startsWith("compiler-interface")));
+    List<FilePath> xs0 = groups.get(true);
+    List<FilePath> xs1 = groups.get(false);
+    URL[] us1 =
+        xs1.stream()
             .map(
                 filePath -> {
                   try {
@@ -190,6 +228,21 @@ public final class WorkerMain {
                   }
                 })
             .toArray(URL[]::new);
-    return new URLClassLoader(urls, parent);
+    if (!xs0.equals(null) && xs0.size() >= 1) {
+      URL[] us0 =
+          xs0.stream()
+              .map(
+                  filePath -> {
+                    try {
+                      return filePath.path.toURL();
+                    } catch (MalformedURLException e) {
+                      throw new RuntimeException(e);
+                    }
+                  })
+              .toArray(URL[]::new);
+      return new URLClassLoader(us1, new URLClassLoader(us0, parent));
+    } else {
+      return new URLClassLoader(us1, parent);
+    }
   }
 }
