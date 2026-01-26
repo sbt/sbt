@@ -21,6 +21,9 @@ trait ScriptedKeys {
   )
   val scriptedSource = settingKey[File]("")
   val scriptedPrescripted = taskKey[File => Unit]("")
+  val scriptedKeepTempDirectory = settingKey[Boolean](
+    "If true, keeps the temporary directory after scripted tests complete for debugging."
+  )
 }
 
 object Scripted {
@@ -102,7 +105,8 @@ object Scripted {
       sbtVersion: String,
       classpath: Seq[File],
       launcherJar: File,
-      logger: Logger
+      logger: Logger,
+      keepTempDirectory: Boolean
   ): Unit = {
     logger.info(s"Tests selected: ${args.mkString("\n * ", "\n * ", "\n")}")
     logger.info("")
@@ -137,6 +141,7 @@ object Scripted {
           launchOpts: Array[String],
           prescripted: java.util.List[File],
           instance: Int,
+          keepTempDirectory: Boolean
       ): Unit
     }
 
@@ -180,7 +185,8 @@ object Scripted {
           "java",
           launchOpts.toArray,
           callback,
-          instances
+          instances,
+          keepTempDirectory
         )
       } catch { case ite: InvocationTargetException => throw ite.getCause }
     } finally {

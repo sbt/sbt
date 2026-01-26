@@ -1,5 +1,5 @@
 lazy val scala3_LTS = "3.3.5"
-lazy val scala3_current = "3.7.4"
+lazy val scala3_current = "3.8.1"
 lazy val check = taskKey[Unit]("")
 
 organization := "com.example"

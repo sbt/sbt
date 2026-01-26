@@ -75,12 +75,12 @@ case object ThisProject extends ProjectReference
 case object LocalAggregate extends ProjectReference
 
 object ProjectRef {
-  def apply(base: File, id: String): ProjectRef = ProjectRef(IO toURI base, id)
+  def apply(base: File, id: String): ProjectRef = ProjectRef(IO.toURI(base), id)
 }
 object RootProject {
 
   /** Reference to the root project at 'base'. */
-  def apply(base: File): RootProject = RootProject(IO toURI base)
+  def apply(base: File): RootProject = RootProject(IO.toURI(base))
 }
 object Reference {
   given resolvedReferenceOrdering: Ordering[ResolvedReference] = {

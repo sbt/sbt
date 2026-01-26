@@ -1,5 +1,5 @@
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
 
-scalaVersion := "3.7.3"
+scalaVersion := "3.8.1"
 fork := true
 libraryDependencies += scalatest % Test

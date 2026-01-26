@@ -23,8 +23,8 @@ check := {
   assert((bar / scalaVersion).value == scala212)
   assert((baz / scalaVersion).value == scala212)
 
-  assert((root / organization).value == o)
-  assert((foo / organization).value == o)
+  assert((root / organization).value == o, s"(root / organization).value: ${(root / organization).value}")
+  assert((foo / organization).value == o, s"(foo / organization).value: ${(foo / organization).value}")
   // Test that bar can override common setting in settings(...)
   assert((bar / organization).value == "com.example.bar")
   // Test that baz/build.sbt bare settings get loaded

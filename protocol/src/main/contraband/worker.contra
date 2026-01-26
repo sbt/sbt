@@ -43,10 +43,28 @@ type RunInfo {
 ## Client-side job support.
 ##
 ## Notification: sbt/clientJob
-## 
+##
 ## Parameter for the sbt/clientJob notification.
 ## A client-side job represents a unit of work that sbt server
 ## can outsourse back to the client, for example for run task.
 type ClientJobParams {
   runInfo: sbt.internal.worker.RunInfo
+}
+
+## Configuration for creating a ScalaInstance in forked process.
+type ScalaInstanceConfig {
+  scalaVersion: String!
+  libraryJars: [String]
+  allCompilerJars: [String]
+  allDocJars: [String]
+}
+
+## Configuration for forked console.
+type ConsoleConfig {
+  scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
+  bridgeJar: String!
+  externalDependencyJars: [String]
+  scalacOptions: [String]
+  initialCommands: String!
+  cleanupCommands: String!
 }

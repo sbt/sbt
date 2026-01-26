@@ -13,13 +13,13 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            java: 8
+            java: 17
             distribution: zulu
           - os: macos-latest
             java: 17
             distribution: temurin
           - os: windows-latest
-            java: 8
+            java: 17
             distribution: zulu
     runs-on: ${{ matrix.os }}
     env:
@@ -35,7 +35,7 @@ jobs:
         distribution: "zulu"
         java-version: |
           25
-          8
+          17
         cache: sbt
     - uses: sbt/setup-sbt@v1
       with:
@@ -57,7 +57,7 @@ jobs:
         ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt about
         ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
         # test launcher script
-        echo build using JDK 8 test using JDK 8 and JDK 25
+        echo build using JDK 17 test using JDK 17 and JDK 25
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackage/Rpm/packageBin launcherPackage/Debian/packageBin
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackageIntegrationTest/test
         cd launcher-package/citest && ./test.sh
@@ -94,7 +94,7 @@ jobs:
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
         # test launcher script
-        echo build using JDK 8 test using JDK 8 and JDK 25
+        echo build using JDK 17 test using JDK 17 and JDK 25
         launcher-package/bin/coursier.bat resolve
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackageIntegrationTest/test
         cd launcher-package/citest

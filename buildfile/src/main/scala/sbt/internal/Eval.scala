@@ -6,11 +6,12 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Contexts.{ atPhase, Context }
 import dotty.tools.dotc.core.{ Flags, NameKinds, Names, Phases, Symbols, Types }
+import dotty.tools.dotc.core.Periods.Period
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.Run
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.{ PlainDirectory, Directory, VirtualDirectory, VirtualFile }
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io.AbstractFileClassLoader
 import java.io.File
 import java.net.URLClassLoader
 import java.nio.charset.StandardCharsets
@@ -70,6 +71,7 @@ class Eval(
       case Some((_, ctx)) => ctx
       case _              => sys.error(s"initialization failed for $options")
     val compileCtx2 = compileCtx1.fresh
+      .setPeriod(Period(2, 1)) // RunId 2 is the actually the first one in the compiler
       .setSetting(
         compileCtx1.settings.outputDir,
         outputDir
@@ -194,7 +196,12 @@ class Eval(
       override def extraHash: String = extraHash0
 
     val inter = evalCommon[Seq[String]](definitions.map(_._1), imports, tpeName = Some(""), ev)
-    EvalDefinitions(inter.loader, inter.generated, inter.enclosingModule, inter.extra.reverse)
+    EvalDefinitions(
+      inter.loader,
+      inter.generated,
+      inter.enclosingModule,
+      inter.extra.reverse.distinct
+    )
 
   end evalDefinitions
 
@@ -421,9 +428,10 @@ object Eval:
             if isTopLevelModule(tree.symbol.owner) && isAcceptableType(tpt.tpe) =>
           vals ::= name.mangledString
         case tpd.ValDef(name, tpt, _) if name.is(NameKinds.LazyLocalName) =>
-          val methodName = name.underlying
-          val m = tree.symbol.owner.requiredMethod(methodName)
-          if isAcceptableType(m.info) then vals ::= methodName.mangledString
+          val str = name.mangledString
+          val methodName = str.take(str.indexOf("$lzy"))
+          val m = tree.symbol.owner.requiredMethod(methodName.replace("$minus", "-"))
+          if isAcceptableType(m.info) then vals ::= methodName
         case t: tpd.Template   => this((), t.body)
         case t: tpd.PackageDef => this((), t.stats)
         case t: tpd.TypeDef    => this((), t.rhs)

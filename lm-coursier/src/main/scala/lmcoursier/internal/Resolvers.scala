@@ -8,7 +8,7 @@ import coursier.core.{ Authentication, Repository }
 import coursier.ivy.IvyRepository
 import coursier.maven.SbtMavenRepository
 import org.apache.ivy.plugins.resolver.IBiblioResolver
-import sbt.librarymanagement.{ Configuration as _, MavenRepository as _, * }
+import sbt.librarymanagement.*
 import sbt.util.Logger
 
 import scala.jdk.CollectionConverters.*

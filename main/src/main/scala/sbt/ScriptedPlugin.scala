@@ -46,6 +46,10 @@ object ScriptedPlugin extends AutoPlugin {
     val scriptedRun = taskKey[ScriptedRun]("")
     val scriptedLaunchOpts =
       settingKey[Seq[String]]("options to pass to jvm launching scripted tasks")
+    val scriptedKeepTempDirectory =
+      settingKey[Boolean](
+        "If true, keeps the temporary directory after scripted tests complete for debugging."
+      )
     val scriptedDependencies = taskKey[Unit]("")
     val scripted = inputKey[Unit]("")
   }
@@ -54,6 +58,7 @@ object ScriptedPlugin extends AutoPlugin {
   override lazy val globalSettings: Seq[Setting[?]] = Seq(
     scriptedBufferLog := true,
     scriptedLaunchOpts := Seq(),
+    scriptedKeepTempDirectory := false,
   )
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
@@ -177,7 +182,8 @@ object ScriptedPlugin extends AutoPlugin {
         Fork.javaCommand((scripted / javaHome).value, "java").getAbsolutePath,
         scriptedLaunchOpts.value,
         new java.util.ArrayList[File](),
-        scriptedParallelInstances.value
+        scriptedParallelInstances.value,
+        scriptedKeepTempDirectory.value
       )
     }
 

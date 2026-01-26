@@ -15,7 +15,7 @@ import lmcoursier.definitions.{
   Type
 }
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
-import sbt.librarymanagement.{ Configuration as _, MavenRepository as _, * }
+import sbt.librarymanagement.{ Configuration as _, * }
 
 object FromSbt {
 

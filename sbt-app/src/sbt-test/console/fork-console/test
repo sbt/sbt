@@ -1,0 +1,3 @@
+# Test that fork in console setting is accepted
+> set Compile / console / fork := true
+> show Compile / console / fork

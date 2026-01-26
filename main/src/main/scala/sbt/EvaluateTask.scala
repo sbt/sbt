@@ -12,7 +12,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 import sbt.Def.{ ScopedKey, Setting, dummyState }
-import sbt.Keys.{ TaskProgress as _, name as _, * }
+import sbt.Keys.{ name as _, * }
 import sbt.BuildExtra.*
 import sbt.ProjectExtra.*
 import sbt.Scope.Global

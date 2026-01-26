@@ -71,7 +71,7 @@ class CacheEventLog:
       val hits = events.view.collect { case (ActionCacheEvent.Found(id), v) => (id, v) }.toMap
       val hitCount = hits.values.sum
       val missCount = total - hitCount
-      val hitRate = (hitCount.toDouble / total.toDouble)
+      val hitRate = if total > 0 then (hitCount.toDouble / total.toDouble) else 0.0
       val onsiteCount = events.get(ActionCacheEvent.OnsiteTask)
       val errorCount = events.get(ActionCacheEvent.Error)
       CacheEventSummary.Data(

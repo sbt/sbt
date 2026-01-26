@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import java.io.{ ByteArrayInputStream, IOException, InputStream, File as _ }
+import java.io.{ ByteArrayInputStream, IOException, InputStream }
 import java.nio.file.Path
 import java.util.concurrent.{
   ConcurrentHashMap,

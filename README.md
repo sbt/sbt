@@ -41,7 +41,7 @@ several GitHub repositories, including this one.
 Issues and Pull Requests
 ------------------------
 
-Please read [CONTRIBUTING] carefully before opening a GitHub Issue, and [Contributor's guide][contributing-docs] before opening a pull request.
+Please read [CONTRIBUTING] carefully before opening a GitHub Issue or a pull request.
 
 If you're looking for an idea for a contribution, issues labeled with
 [good first issue](https://github.com/sbt/sbt/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or

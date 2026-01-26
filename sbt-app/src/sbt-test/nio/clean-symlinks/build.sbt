@@ -2,7 +2,7 @@ import java.nio.file.Files
 
 name := "clean-symlinks-test"
 
-scalaVersion := "3.7.3"
+scalaVersion := "3.8.1"
 
 TaskKey[Unit]("createSymlinkedDirectory") := {
   IO.createDirectory(target.value)

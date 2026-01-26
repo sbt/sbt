@@ -17,7 +17,7 @@ jobs:
             distribution: temurin
             jobtype: 1
           - os: ubuntu-latest
-            java: 8
+            java: 17
             distribution: zulu
             jobtype: 2
           - os: ubuntu-latest
@@ -41,15 +41,15 @@ jobs:
             distribution: zulu
             jobtype: 7
           - os: ubuntu-latest
-            java: 11
+            java: 17
             distribution: temurin
             jobtype: 10
           - os: ubuntu-latest
-            java: 11
+            java: 17
             distribution: temurin
             jobtype: 11
           - os: windows-latest
-            java: 11
+            java: 17
             distribution: temurin
             jobtype: 10
     runs-on: ${{ matrix.os }}

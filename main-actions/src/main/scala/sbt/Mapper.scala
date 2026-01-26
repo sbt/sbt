@@ -49,8 +49,8 @@ object Mapper:
    */
   def directory(baseDirectory: File)(using conv: FileConverter): Seq[(VirtualFile, String)] =
     Option(baseDirectory.getParentFile)
-      .map(parent => PathFinder(baseDirectory).allPaths pair relativeTo(parent))
-      .getOrElse(PathFinder(baseDirectory).allPaths pair basic)
+      .map(parent => PathFinder(baseDirectory).allPaths.pair(relativeTo(parent)))
+      .getOrElse(PathFinder(baseDirectory).allPaths.pair(basic))
       .map { (f, s) => conv.toVirtualFile(f.toPath) -> s }
 
   /**

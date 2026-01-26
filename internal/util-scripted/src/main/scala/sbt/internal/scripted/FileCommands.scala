@@ -167,7 +167,7 @@ class FileCommands(baseDirectory: File) extends BasicStatementHandler {
         case paths =>
           val mapped = fromStrings(paths)
           val map = mapper(mapped.last)
-          IO.copy(mapped.init pair map)
+          IO.copy(mapped.init.pair(map))
           ()
       }
 

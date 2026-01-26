@@ -38,7 +38,7 @@ class LockFileSpec extends AnyFunSuite {
       ),
       metadata = LockFileMetadata(
         sbtVersion = "2.0.0",
-        scalaVersion = Some("3.7.4")
+        scalaVersion = Some("3.8.1")
       )
     )
 
@@ -59,7 +59,7 @@ class LockFileSpec extends AnyFunSuite {
       assert(readData.configurations.head.dependencies.head.organization == "org.scala-lang")
       assert(readData.configurations.head.dependencies.head.version == "2.13.16")
       assert(readData.metadata.sbtVersion == "2.0.0")
-      assert(readData.metadata.scalaVersion == Some("3.7.4"))
+      assert(readData.metadata.scalaVersion == Some("3.8.1"))
     }
   }
 

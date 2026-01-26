@@ -11,7 +11,6 @@ package parser
 
 import sbt.internal.util.{ LineRange, MessageOnlyException }
 import sbt.internal.io.Retry
-import java.io.File
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.ConcurrentHashMap
 import sbt.internal.parser.SbtParser.*
