@@ -3134,17 +3134,16 @@ object Classpaths {
       }).value),
     csrSameVersions ++= {
       partialVersion(scalaVersion.value) match {
-        // See https://github.com/sbt/sbt/issues/8224
-        // Scala 3.8+ should align only Scala3_8Artifacts
-        case Some((3, minor)) if minor >= 8 =>
-          ScalaArtifacts.Scala3_8Artifacts
-            .map(a => InclExclRule(scalaOrganization.value, a))
-            .toSet :: Nil
-        case Some((major, minor)) if major == 2 || major == 3 =>
+        case Some((major, minor)) if major == 2 && minor < 13 =>
           ScalaArtifacts.Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
-        case _ => Nil
+        // Due to the Scala 2.13-3.x sandwich, the absence of scala-reflect
+        // that corresponds with scala-library 3.8.x propagates to 2.13 builds as well.
+        case _ =>
+          ScalaArtifacts.Scala3_8Artifacts
+            .map(a => InclExclRule(scalaOrganization.value, a))
+            .toSet :: Nil
       }
     },
     moduleName := normalizedName.value,
