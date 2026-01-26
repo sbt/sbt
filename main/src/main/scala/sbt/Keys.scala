@@ -550,6 +550,7 @@ object Keys {
   val packagedArtifacts = taskKey[Map[Artifact, HashedVirtualFileRef]]("Packages all artifacts for publishing and maps the Artifact definition to the generated file.").withRank(CTask)
   val publishMavenStyle = settingKey[Boolean]("Configures whether to generate and publish a pom (true) or Ivy file (false).").withRank(BSetting)
   val sbtPluginPublishLegacyMavenStyle = settingKey[Boolean]("Configuration for generating the legacy pom of sbt plugins, to publish to Maven").withRank(CSetting)
+  val useIvy = settingKey[Boolean]("Use Ivy for publishing. When false, use the ivyless publisher.").withRank(BSetting)
 
   @transient
   val credentials = taskKey[Seq[Credentials]]("The credentials to use for updating and publishing.").withRank(BMinusTask)
