@@ -1,0 +1,7 @@
+# Initial reload should succeed - an sbt file with BuildInfo plugin is present in global
+> reload
+
+$ delete global/plugins/temp.sbt
+
+# Reload again. This should fail since the sbt file with BuildInfo plugin is removed
+-> reload
