@@ -10,7 +10,7 @@ case class StringVirtualFile1(path: String, content: String)
   override def contentHash: Long = HashUtil.farmHash(content.getBytes("UTF-8"))
   override def sizeBytes: Long = content.getBytes("UTF-8").size
   override def contentHashStr: String =
-    import Digest._
+    import Digest.*
     val d = Digest.sha256Hash(content.getBytes("UTF-8"))
     d.contentHashStr
   override def input: InputStream = new ByteArrayInputStream(content.getBytes("UTF-8"))
