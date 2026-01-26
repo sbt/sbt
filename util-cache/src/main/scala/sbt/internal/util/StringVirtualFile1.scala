@@ -5,7 +5,10 @@ import sbt.util.{ Digest, HashUtil }
 import xsbti.{ BasicVirtualFileRef, VirtualFile }
 
 case class StringVirtualFile1(path: String, content: String)
-    extends BasicVirtualFileRef(path)
+    extends BasicVirtualFileRef({
+      val normalized = java.nio.file.Paths.get(path).normalize().toString().replace('\\', '/')
+      normalized
+    })
     with VirtualFile:
   override def contentHash: Long = HashUtil.farmHash(content.getBytes("UTF-8"))
   override def sizeBytes: Long = content.getBytes("UTF-8").size
@@ -14,5 +17,5 @@ case class StringVirtualFile1(path: String, content: String)
     val d = Digest.sha256Hash(content.getBytes("UTF-8"))
     d.contentHashStr
   override def input: InputStream = new ByteArrayInputStream(content.getBytes("UTF-8"))
-  override def toString: String = s"StringVirtualFile1($path, <content>)"
+  override def toString: String = s"StringVirtualFile1(${id()}, <content>)"
 end StringVirtualFile1
