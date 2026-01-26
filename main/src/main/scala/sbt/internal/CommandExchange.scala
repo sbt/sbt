@@ -333,8 +333,8 @@ private[sbt] final class CommandExchange {
         val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
         sendDropIfIdle(portFile)
       }.recover { case NonFatal(_) =>
-        // If we can't parse the file, it's likely stale - but don't delete
-        // The file will be cleaned up when the server eventually shuts down
+      // If we can't parse the file, it's likely stale - but don't delete
+      // The file will be cleaned up when the server eventually shuts down
       }
     }
   }
@@ -379,8 +379,8 @@ private[sbt] final class CommandExchange {
         socket.close()
       }
     }.recover { case NonFatal(_) =>
-      // Connection failed - don't delete proc file, server might still be running
-      // The proc file will be cleaned up when the server eventually shuts down
+    // Connection failed - don't delete proc file, server might still be running
+    // The proc file will be cleaned up when the server eventually shuts down
     }
   }
 
