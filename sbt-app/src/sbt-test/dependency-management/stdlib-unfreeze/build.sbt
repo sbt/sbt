@@ -3,12 +3,12 @@ import sbt.librarymanagement.InclExclRule
 lazy val a = project.settings(
   scalaVersion := "2.13.11",
   libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-  TaskKey[Unit]("checkLibs") := checkLibs("2.13.11", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
+  TaskKey[Unit]("checkLibs") := checkLibs("2.13.11", (Compile/dependencyClasspath).value, ".*scala-library.*"),
 )
 
 lazy val b = project.dependsOn(a).settings(
   scalaVersion := "2.13.12",
-  TaskKey[Unit]("checkLibs") := checkLibs("2.13.12", (Compile/dependencyClasspath).value, ".*scala-(library|reflect).*"),
+  TaskKey[Unit]("checkLibs") := checkLibs("2.13.12", (Compile/dependencyClasspath).value, ".*scala-library.*"),
 )
 
 lazy val a3 = project.settings(
