@@ -331,19 +331,18 @@ private[sbt] final class CommandExchange {
         val content = IO.read(procFile)
         import sbt.internal.server.Server.JsonProtocol.given
         val portFile = Converter.fromJson[PortFile](Parser.parseUnsafe(content)).get
-        sendDropIfIdle(portFile, procFile)
+        sendDropIfIdle(portFile)
       }.recover { case NonFatal(_) =>
-        // If we can't parse the file, it's likely stale - remove it
-        Try(IO.delete(procFile))
+        // If we can't parse the file, it's likely stale - but don't delete
+        // The file will be cleaned up when the server eventually shuts down
       }
     }
   }
 
   /**
    * Send dropIfIdle notification to a server.
-   * If the server is unreachable, remove its proc file.
    */
-  private def sendDropIfIdle(portFile: PortFile, procFile: java.io.File): Unit = {
+  private def sendDropIfIdle(portFile: PortFile): Unit = {
     import sbt.internal.protocol.codec.JsonRPCProtocol.given
 
     Try {
@@ -376,14 +375,12 @@ private[sbt] final class CommandExchange {
           s"Content-Length: ${bytes.length}\r\nContent-Type: application/vscode-jsonrpc; charset=utf-8\r\n\r\n$body"
         socket.getOutputStream.write(message.getBytes("UTF-8"))
         socket.getOutputStream.flush()
-        // Give the server time to process the notification before closing
-        Thread.sleep(100)
       } finally {
         socket.close()
       }
     }.recover { case NonFatal(_) =>
-      // Server is unreachable, remove its proc file
-      Try(IO.delete(procFile))
+      // Connection failed - don't delete proc file, server might still be running
+      // The proc file will be cleaned up when the server eventually shuts down
     }
   }
 
