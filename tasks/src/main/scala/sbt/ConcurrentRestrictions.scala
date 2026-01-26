@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.internal.util.AttributeKey
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{ Future as JFuture, RejectedExecutionException }
+import java.util.concurrent.{ CancellationException, Future as JFuture, RejectedExecutionException }
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
@@ -312,7 +312,16 @@ object ConcurrentRestrictions {
           throw new RejectedExecutionException(
             "Tried to get values for a closed completion service"
           )
-        jservice.take().get()
+        try {
+          jservice.take().get()
+        } catch {
+          case _: CancellationException =>
+            // Handle cancellation gracefully - return a Completed that throws Incomplete
+            // This prevents the CancellationException from propagating and showing a stack trace
+            new Completed {
+              def process(): Unit = throw Incomplete(None, message = Some("cancelled"))
+            }
+        }
       }
     }
   }
