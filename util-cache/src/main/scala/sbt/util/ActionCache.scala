@@ -117,8 +117,7 @@ object ActionCache:
                   Option(outputPath.getParent()).foreach(parent =>
                     IO.createDirectory(parent.toFile())
                   )
-                  if !Files.exists(outputPath) then
-                    IO.write(outputPath.toFile(), svf.content)
+                  if !Files.exists(outputPath) then IO.write(outputPath.toFile(), svf.content)
                 case _ =>
             result
           case Left(e) => throw e
