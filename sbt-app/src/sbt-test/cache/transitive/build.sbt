@@ -7,14 +7,14 @@ val checkTask = taskKey[Unit]("Check that files exist")
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
 task2 := {
-  val output = StringVirtualFile1("target/out/t2.txt", "task2 output")
+  val output = StringVirtualFile1("${OUT}/t2.txt", "task2 output")
   Def.declareOutput(output)
   ()
 }
 
 task1 := {
   task2.value
-  val output = StringVirtualFile1("target/out/t1.txt", "task1 output")
+  val output = StringVirtualFile1("${OUT}/t1.txt", "task1 output")
   Def.declareOutput(output)
   ()
 }

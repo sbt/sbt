@@ -314,13 +314,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
       result
     val resolvedPath = converter.toPath(ref) match
       case p if p.isAbsolute => p
-      case p =>
-        ref match
-          case svf: StringVirtualFile1 if svf.id.startsWith("target/out/") =>
-            val relativePath = svf.id.stripPrefix("target/out/")
-            outputDirectory.resolve(relativePath)
-          case _ =>
-            outputDirectory.resolve(p)
+      case p => outputDirectory.resolve(p)
     resolvedPath match
       case p if !Files.exists(p) =>
         // println(s"- syncFile: $p does not exist")
