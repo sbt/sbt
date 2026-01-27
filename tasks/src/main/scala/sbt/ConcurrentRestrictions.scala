@@ -318,8 +318,8 @@ object ConcurrentRestrictions {
           case _: CancellationException =>
             // Handle cancellation gracefully - return a Completed that throws Incomplete
             // This prevents the CancellationException from propagating and showing a stack trace
-            new Completed {
-              def process(): Unit = throw Incomplete(None, message = Some("cancelled"))
+            Execute.completed {
+              throw Incomplete(None, message = Some("cancelled"))
             }
         }
       }
