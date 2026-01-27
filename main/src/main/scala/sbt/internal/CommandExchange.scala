@@ -63,6 +63,7 @@ private[sbt] final class CommandExchange {
   private val lastState = new AtomicReference[State]
   private val currentExecRef = new AtomicReference[Exec]
   private val lastActivityTime = new AtomicReference[Long](System.currentTimeMillis())
+  private val shuttingDown = new AtomicBoolean(false)
   private[sbt] def hasServer = server.isDefined
   addConsoleChannel()
 
@@ -178,7 +179,10 @@ private[sbt] final class CommandExchange {
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
     // When a client disconnects, notify other servers to drop if idle
-    notifyOtherServersOnExit()
+    // But skip if we're already shutting down to avoid loops
+    if (!shuttingDown.get()) {
+      notifyOtherServersOnExit()
+    }
   }
 
   private def mkAskUser(
@@ -302,6 +306,7 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
+    shuttingDown.set(true)
     fastTrackThread.close()
     channels foreach (_.shutdown(true))
     // interrupt and kill the thread
