@@ -2977,34 +2977,7 @@ object Classpaths {
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
     publish := publishOrSkip(publishConfiguration, publish / skip).value,
-    publishLocal := Def.uncached {
-      val log = streams.value.log
-      val skipValue = (publishLocal / skip).value
-      val useIvyValue = useIvy.value
-      if (skipValue) {
-        val ref = thisProjectRef.value
-        logSkipPublish(log, ref)
-      } else if (useIvyValue) {
-        // Use the existing Ivy-based publisher
-        val conf = publishLocalConfiguration.value
-        val module = ivyModule.value
-        val publisherInterface = publisher.value
-        publisherInterface.publish(module, conf, log)
-      } else {
-        // Use the ivyless publisher
-        val project = csrProject.value.withPublications(csrPublications.value)
-        val config = publishLocalConfiguration.value
-        val artifacts = config.artifacts.map { case (a, f) => (a, f) }
-        val checksumAlgos = config.checksums
-        val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
-          val userHome = new File(System.getProperty("user.home"))
-          userHome / ".ivy2"
-        }
-        val localRepoBase = ivyHome / "local"
-        val overwrite = config.overwrite
-        ivylessPublishLocalImpl(project, artifacts, checksumAlgos, localRepoBase, overwrite, log)
-      }
-    },
+    publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
     credentials ++= Def.uncached {
       val alreadyContainsCentralCredentials: Boolean = credentials.value.exists {
@@ -3814,104 +3787,6 @@ object Classpaths {
 
   private def logSkipPublish(log: Logger, ref: ProjectRef): Unit =
     log.debug(s"Skipping publish* for ${ref.project}")
-
-  /**
-   * Publishes artifacts to the local Ivy repository without using Apache Ivy.
-   * This is an alternative implementation that writes files directly to the local Ivy repo
-   * following the standard Ivy layout pattern.
-   */
-  private def ivylessPublishLocalImpl(
-      project: lmcoursier.definitions.Project,
-      artifacts: Vector[(Artifact, File)],
-      checksumAlgorithms: Vector[String],
-      localRepoBase: File,
-      overwrite: Boolean,
-      log: Logger
-  ): Unit = {
-    val org = project.module.organization.value
-    val moduleName = project.module.name.value
-    val version = project.version
-
-    // Base directory: localRepoBase / org / module / version
-    val moduleDir = localRepoBase / org / moduleName / version
-
-    log.info(s"Publishing to $moduleDir")
-
-    // Helper to map artifact type to folder name
-    def typeToFolder(tpe: String): String = tpe match {
-      case "jar"                                   => "jars"
-      case "src" | "source" | "sources"            => "srcs"
-      case "doc" | "docs" | "javadoc" | "javadocs" => "docs"
-      case "pom"                                   => "poms"
-      case "ivy"                                   => "ivys"
-      case other                                   => other + "s"
-    }
-
-    // Helper to compute hash using MessageDigest
-    def computeHash(file: File, algorithm: String): String = {
-      import java.security.MessageDigest
-      val md = MessageDigest.getInstance(algorithm)
-      val buffer = new Array[Byte](8192)
-      val is = new java.io.FileInputStream(file)
-      try {
-        var len = is.read(buffer)
-        while (len > 0) {
-          md.update(buffer, 0, len)
-          len = is.read(buffer)
-        }
-      } finally is.close()
-      md.digest().map("%02x".format(_)).mkString
-    }
-
-    // Helper to write checksums for a file
-    def writeChecksums(file: File): Unit = {
-      checksumAlgorithms.foreach { algo =>
-        val algorithm = algo.toLowerCase match {
-          case "md5"  => "MD5"
-          case "sha1" => "SHA-1"
-          case other =>
-            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
-        }
-        val hash = computeHash(file, algorithm)
-        val checksumFile = new File(file.getPath + "." + algo.toLowerCase)
-        IO.write(checksumFile, hash)
-        log.debug(s"Wrote checksum: $checksumFile")
-      }
-    }
-
-    // Publish each artifact
-    artifacts.foreach { case (artifact, sourceFile) =>
-      val folder = typeToFolder(artifact.`type`)
-      val targetDir = moduleDir / folder
-
-      // Construct filename using module name (includes Scala version suffix) + classifier + extension
-      val classifier = artifact.classifier.map("-" + _).getOrElse("")
-      val fileName = s"$moduleName$classifier.${artifact.extension}"
-      val targetFile = targetDir / fileName
-
-      if (!targetFile.exists || overwrite) {
-        IO.createDirectory(targetDir)
-        IO.copyFile(sourceFile, targetFile)
-        log.info(s"Published $targetFile")
-        writeChecksums(targetFile)
-      } else {
-        log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
-      }
-    }
-
-    // Generate and write ivy.xml
-    val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
-    val ivysDir = moduleDir / "ivys"
-    val ivyXmlFile = ivysDir / "ivy.xml"
-    if (!ivyXmlFile.exists || overwrite) {
-      IO.createDirectory(ivysDir)
-      IO.write(ivyXmlFile, ivyXmlContent)
-      log.info(s"Published $ivyXmlFile")
-      writeChecksums(ivyXmlFile)
-    } else {
-      log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
-    }
-  }
 
   @deprecated("use publishOrSkip instead", "1.9.1")
   def publishTask(config: TaskKey[PublishConfiguration]): Initialize[Task[Unit]] = {
