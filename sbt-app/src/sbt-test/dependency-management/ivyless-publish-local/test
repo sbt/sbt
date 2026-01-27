@@ -1,0 +1,15 @@
+# Test ivyless publishLocal
+# This test verifies that when useIvy is set to false in build.sbt,
+# publishLocal produces the expected file structure
+
+# Clean any previous test state
+> cleanLocalIvy
+
+# Print paths for debugging (should show useIvy = false)
+> printPaths
+
+# Run publishLocal with ivyless publisher
+> publishLocal
+
+# Verify the published files
+> checkIvylessPublish

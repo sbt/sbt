@@ -22,6 +22,7 @@ import sbt.io.syntax.*
 import sbt.ProjectExtra.*
 import sjsonnew.JsonFormat
 import scala.concurrent.duration.FiniteDuration
+import lmcoursier.definitions.Project as CsrProject
 
 private[sbt] object LibraryManagement {
   given linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
@@ -543,4 +544,119 @@ private[sbt] object LibraryManagement {
   def isDynamicScalaVersion(version: String): Boolean = {
     version == "3-latest.candidate"
   }
+
+  /**
+   * Publishes artifacts to the local Ivy repository without using Apache Ivy.
+   * Uses the pattern: [org]/[module]/[revision]/[types]/[artifact](-[classifier]).[ext]
+   */
+  def ivylessPublishLocal(
+      project: CsrProject,
+      artifacts: Vector[(Artifact, File)],
+      checksumAlgorithms: Vector[String],
+      localRepoBase: File,
+      overwrite: Boolean,
+      log: Logger
+  ): Unit =
+    val org = project.module.organization.value
+    val moduleName = project.module.name.value
+    val version = project.version
+
+    // Base directory: localRepoBase / org / module / version
+    val moduleDir = localRepoBase / org / moduleName / version
+
+    log.info(s"Publishing to $moduleDir")
+
+    // Helper to map artifact type to folder name
+    def typeToFolder(tpe: String): String = tpe match
+      case "jar"                                   => "jars"
+      case "src" | "source" | "sources"            => "srcs"
+      case "doc" | "docs" | "javadoc" | "javadocs" => "docs"
+      case "pom"                                   => "poms"
+      case "ivy"                                   => "ivys"
+      case other                                   => other + "s"
+
+    // Helper to write checksums for a file using sbt.util.Digest
+    def writeChecksums(file: File): Unit =
+      checksumAlgorithms.foreach: algo =>
+        val digestAlgo = algo.toLowerCase match
+          case "md5"  => sbt.util.Digest.Md5
+          case "sha1" => sbt.util.Digest.Sha1
+          case other =>
+            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+        val digest = sbt.util.Digest(digestAlgo, file.toPath)
+        val checksumFile = new File(file.getPath + "." + algo.toLowerCase)
+        IO.write(checksumFile, digest.hashHexString)
+        log.debug(s"Wrote checksum: $checksumFile")
+
+    // Publish each artifact
+    artifacts.foreach: (artifact, sourceFile) =>
+      val folder = typeToFolder(artifact.`type`)
+      val targetDir = moduleDir / folder
+
+      // Construct filename using module name (includes Scala version suffix) + classifier + extension
+      val classifier = artifact.classifier.map("-" + _).getOrElse("")
+      val fileName = s"$moduleName$classifier.${artifact.extension}"
+      val targetFile = targetDir / fileName
+
+      if !targetFile.exists || overwrite then
+        IO.createDirectory(targetDir)
+        IO.copyFile(sourceFile, targetFile)
+        log.info(s"Published $targetFile")
+        writeChecksums(targetFile)
+      else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
+
+    // Generate and write ivy.xml
+    val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
+    val ivysDir = moduleDir / "ivys"
+    val ivyXmlFile = ivysDir / "ivy.xml"
+    if !ivyXmlFile.exists || overwrite then
+      IO.createDirectory(ivysDir)
+      IO.write(ivyXmlFile, ivyXmlContent)
+      log.info(s"Published $ivyXmlFile")
+      writeChecksums(ivyXmlFile)
+    else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
+  end ivylessPublishLocal
+
+  /**
+   * Task initializer for ivyless publishLocal.
+   * Uses Def.ifS for proper selective functor behavior.
+   */
+  def ivylessPublishLocalTask: Def.Initialize[Task[Unit]] =
+    import Keys.*
+    Def.ifS(Def.task { (publishLocal / skip).value })(
+      // skip = true
+      Def.task {
+        val log = streams.value.log
+        val ref = thisProjectRef.value
+        log.debug(s"Skipping publishLocal for ${Reference.display(ref)}")
+      }
+    )(
+      // skip = false
+      Def.ifS(Def.task { useIvy.value })(
+        // useIvy = true: use Ivy-based publisher
+        Def.task {
+          val log = streams.value.log
+          val conf = publishLocalConfiguration.value
+          val module = ivyModule.value
+          val publisherInterface = publisher.value
+          publisherInterface.publish(module, conf, log)
+        }
+      )(
+        // useIvy = false: use ivyless publisher
+        Def.task {
+          val log = streams.value.log
+          val project = csrProject.value.withPublications(csrPublications.value)
+          val config = publishLocalConfiguration.value
+          val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+          val checksumAlgos = config.checksums
+          val ivyHome = ivyPaths.value.ivyHome.map(new File(_)).getOrElse {
+            val userHome = new File(System.getProperty("user.home"))
+            userHome / ".ivy2"
+          }
+          val localRepoBase = ivyHome / "local"
+          val overwriteFlag = config.overwrite
+          ivylessPublishLocal(project, artifacts, checksumAlgos, localRepoBase, overwriteFlag, log)
+        }
+      )
+    )
 }
