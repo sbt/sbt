@@ -14,6 +14,7 @@ import java.util.concurrent.Callable
 
 import sbt.Def.ScopedKey
 import sbt.internal.librarymanagement.*
+import sbt.internal.librarymanagement.ivy.IvyCredentials
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
 import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
@@ -23,6 +24,7 @@ import sbt.ProjectExtra.*
 import sjsonnew.JsonFormat
 import scala.concurrent.duration.FiniteDuration
 import lmcoursier.definitions.Project as CsrProject
+import gigahorse.InMemoryBody
 
 private[sbt] object LibraryManagement {
   given linter: sbt.dsl.LinterLevel.Ignore.type = sbt.dsl.LinterLevel.Ignore
@@ -616,6 +618,247 @@ private[sbt] object LibraryManagement {
       writeChecksums(ivyXmlFile)
     else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
   end ivylessPublishLocal
+
+  /**
+   * Publishes artifacts to a remote Ivy repository without using Apache Ivy.
+   * Uses HTTP PUT requests via gigahorse to upload files.
+   *
+   * @param project Coursier project containing module info
+   * @param artifacts Vector of (Artifact, File) pairs to publish
+   * @param checksumAlgorithms Checksum algorithms to use (e.g., "md5", "sha1")
+   * @param patterns The Ivy patterns containing the base URL and path patterns
+   * @param credentials Optional credentials for authentication
+   * @param overwrite Whether to overwrite existing artifacts
+   * @param log Logger for output
+   */
+  def ivylessPublish(
+      project: CsrProject,
+      artifacts: Vector[(Artifact, File)],
+      checksumAlgorithms: Vector[String],
+      patterns: Patterns,
+      credentials: Option[DirectCredentials],
+      overwrite: Boolean,
+      log: Logger
+  ): Unit =
+    import gigahorse.*
+    import gigahorse.support.apachehttp.Gigahorse
+    import scala.concurrent.Await
+    import scala.concurrent.duration.*
+
+    val org = project.module.organization.value
+    val moduleName = project.module.name.value
+    val version = project.version
+
+    // Get the artifact pattern (first one)
+    val artifactPattern = patterns.artifactPatterns.headOption.getOrElse(
+      throw new IllegalArgumentException("No artifact pattern defined in resolver")
+    )
+
+    // Get the ivy pattern (first one, or derive from artifact pattern)
+    val ivyPattern = patterns.ivyPatterns.headOption.getOrElse(artifactPattern)
+
+    /**
+     * Substitutes Ivy pattern tokens with actual values.
+     * Tokens: [organisation], [module], [revision], [type], [artifact], [ext], [classifier]
+     */
+    def substitutePattern(
+        pattern: String,
+        artifactType: String,
+        artifactName: String,
+        extension: String,
+        classifier: Option[String]
+    ): String =
+      val substituted = pattern
+        .replace("[organisation]", org.replace('.', '/'))
+        .replace("[organization]", org.replace('.', '/'))
+        .replace("[module]", moduleName)
+        .replace("[revision]", version)
+        .replace("[type]", artifactType)
+        .replace("[artifact]", artifactName)
+        .replace("[ext]", extension)
+
+      // Handle optional classifier: (-[classifier]) should be removed if no classifier
+      val classifierPattern = """\(-\[classifier\]\)|\[classifier\]""".r
+      classifier match
+        case Some(c) =>
+          classifierPattern.replaceAllIn(substituted, "-" + c)
+        case None =>
+          classifierPattern.replaceAllIn(substituted, "")
+    end substitutePattern
+
+    /**
+     * Uploads a file to the given URL using HTTP PUT.
+     */
+    def uploadFile(url: String, file: File): Unit =
+      log.info(s"Uploading ${file.getName} to $url")
+
+      val http = sbt.librarymanagement.Http.http
+      val fileBytes = IO.readBytes(file)
+
+      val baseReq = Gigahorse
+        .url(url)
+        .withMethod("PUT")
+        .withBody(InMemoryBody(fileBytes))
+        .withHeaders(
+          "Content-Type" -> "application/octet-stream",
+          "Content-Length" -> fileBytes.length.toString
+        )
+
+      // Add authentication if credentials are provided
+      val req = credentials match
+        case Some(creds) =>
+          val auth = java.util.Base64.getEncoder.encodeToString(
+            s"${creds.userName}:${creds.passwd}".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+          )
+          baseReq.withHeaders("Authorization" -> s"Basic $auth")
+        case None => baseReq
+
+      try
+        val response = Await.result(http.run(req, Gigahorse.asString), 5.minutes)
+        log.debug(s"Upload successful: $url")
+      catch
+        case e: gigahorse.StatusError if e.status == 409 && !overwrite =>
+          log.warn(s"Artifact already exists at $url (overwrite=$overwrite)")
+        case e: Exception =>
+          throw new RuntimeException(s"Failed to upload to $url: ${e.getMessage}", e)
+    end uploadFile
+
+    /**
+     * Generates checksum and uploads it.
+     */
+    def uploadChecksums(url: String, file: File): Unit =
+      checksumAlgorithms.foreach: algo =>
+        val digestAlgo = algo.toLowerCase match
+          case "md5"  => sbt.util.Digest.Md5
+          case "sha1" => sbt.util.Digest.Sha1
+          case other =>
+            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+        val digest = sbt.util.Digest(digestAlgo, file.toPath)
+        val checksumUrl = s"$url.${algo.toLowerCase}"
+
+        log.debug(s"Uploading checksum to $checksumUrl")
+
+        val http = sbt.librarymanagement.Http.http
+        val checksumBytes = digest.hashHexString.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+
+        val baseReq = Gigahorse
+          .url(checksumUrl)
+          .withMethod("PUT")
+          .withBody(InMemoryBody(checksumBytes))
+          .withHeaders("Content-Type" -> "text/plain")
+
+        val req = credentials match
+          case Some(creds) =>
+            val auth = java.util.Base64.getEncoder.encodeToString(
+              s"${creds.userName}:${creds.passwd}".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+            )
+            baseReq.withHeaders("Authorization" -> s"Basic $auth")
+          case None => baseReq
+
+        try Await.result(http.run(req, Gigahorse.asString), 1.minute)
+        catch
+          case e: gigahorse.StatusError if e.status == 409 && !overwrite =>
+            log.warn(s"Checksum already exists at $checksumUrl")
+          case e: Exception =>
+            throw new RuntimeException(s"Failed to upload checksum to $checksumUrl: ${e.getMessage}", e)
+    end uploadChecksums
+
+    // Helper to map artifact type to Ivy type
+    def toIvyType(tpe: String): String = tpe match
+      case "src" | "source" | "sources" => "source"
+      case "doc" | "docs" | "javadoc"   => "doc"
+      case other                        => other
+
+    // Publish each artifact
+    artifacts.foreach: (artifact, sourceFile) =>
+      val ivyType = toIvyType(artifact.`type`)
+      val url = substitutePattern(
+        artifactPattern,
+        ivyType,
+        moduleName,
+        artifact.extension,
+        artifact.classifier
+      )
+      uploadFile(url, sourceFile)
+      uploadChecksums(url, sourceFile)
+
+    // Generate and upload ivy.xml
+    val ivyXmlContent = lmcoursier.IvyXml(project, Nil, Nil)
+    val ivyUrl = substitutePattern(ivyPattern, "ivy", "ivy", "xml", None)
+
+    // Write ivy.xml to temp file for upload
+    val tempIvyFile = java.io.File.createTempFile("ivy", ".xml")
+    try
+      IO.write(tempIvyFile, ivyXmlContent)
+      uploadFile(ivyUrl, tempIvyFile)
+      uploadChecksums(ivyUrl, tempIvyFile)
+    finally
+      tempIvyFile.delete()
+
+    log.info(s"Published $moduleName to remote Ivy repository")
+  end ivylessPublish
+
+  /**
+   * Task initializer for ivyless publish (remote).
+   * Uses Def.ifS for proper selective functor behavior.
+   */
+  def ivylessPublishTask: Def.Initialize[Task[Unit]] =
+    import Keys.*
+    Def.ifS(Def.task { (publish / skip).value })(
+      // skip = true
+      Def.task {
+        val log = streams.value.log
+        val ref = thisProjectRef.value
+        log.debug(s"Skipping publish for ${Reference.display(ref)}")
+      }
+    )(
+      // skip = false
+      Def.ifS(Def.task { useIvy.value })(
+        // useIvy = true: use Ivy-based publisher
+        Def.task {
+          val log = streams.value.log
+          val conf = publishConfiguration.value
+          val module = ivyModule.value
+          val publisherInterface = publisher.value
+          publisherInterface.publish(module, conf, log)
+        }
+      )(
+        // useIvy = false: use ivyless publisher
+        Def.task {
+          val log = streams.value.log
+          publishTo.value match
+            case Some(repo: URLRepository) =>
+              val project = csrProject.value.withPublications(csrPublications.value)
+              val config = publishConfiguration.value
+              val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+              val checksumAlgos = config.checksums
+              val creds = credentials.value
+              val resolvedCreds = repo.patterns.artifactPatterns.headOption.flatMap { pattern =>
+                // Extract host from pattern URL
+                val hostPattern = """https?://([^/]+)""".r
+                hostPattern.findFirstMatchIn(pattern).map(_.group(1)).flatMap { host =>
+                  IvyCredentials.forHost(creds, host)
+                }
+              }
+              val overwriteFlag = config.overwrite
+              ivylessPublish(
+                project,
+                artifacts,
+                checksumAlgos,
+                repo.patterns,
+                resolvedCreds,
+                overwriteFlag,
+                log
+              )
+            case Some(other) =>
+              throw new MessageOnlyException(
+                s"Ivyless publish only supports URLRepository, got: ${other.getClass.getName}"
+              )
+            case None =>
+              throw new MessageOnlyException("publishTo is not set")
+        }
+      )
+    )
 
   /**
    * Task initializer for ivyless publishLocal.
