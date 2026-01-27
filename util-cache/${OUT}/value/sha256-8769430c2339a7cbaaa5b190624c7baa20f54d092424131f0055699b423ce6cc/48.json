@@ -1,1 +1,0 @@
-{"kind":"CompileFailed","message":"Compilation failed","problems":[{"category":"Test","severity":"Error","message":"Test error message","position":{"line":42,"lineContent":"val x = 1","sourcePath":"/test/file.scala"}}]}
