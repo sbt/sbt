@@ -168,7 +168,7 @@ class ClassStamper(
         .maximumWeight(analysisCacheByteSize)
         .weigher(weigher)
         .build()
-    
+
     def getOrElseUpdate(
         ref: VirtualFileRef,
         lastModified: Long,
@@ -181,7 +181,7 @@ class ClassStamper(
           cache.put(ref.id(), (v, lastModified, sizeBytes))
           v
   }
-  
+
   private def extractAnalysisCached(
       metadata: sbt.internal.util.StringAttributeMap,
       converter: FileConverter
@@ -192,19 +192,19 @@ class ClassStamper(
       ref = VirtualFileRef.of(refStr)
       path = converter.toPath(ref)
       file = path.toFile()
-      attrs <- try Some(Files.readAttributes(path, classOf[BasicFileAttributes]))
-               catch case _: NoSuchFileException => None
+      attrs <-
+        try Some(Files.readAttributes(path, classOf[BasicFileAttributes]))
+        catch case _: NoSuchFileException => None
       if !attrs.isDirectory
     yield
-      val lastModified = attrs.lastModifiedTime().toMillis()
-      val sizeBytes = attrs.size()
-      AnalysisCache.getOrElseUpdate(ref, lastModified, sizeBytes) {
-        BuildDef.extractAnalysis(metadata, converter).collect { case a: Analysis => a }
-      }
-    .flatten
+    val lastModified = attrs.lastModifiedTime().toMillis()
+    val sizeBytes = attrs.size()
+    AnalysisCache.getOrElseUpdate(ref, lastModified, sizeBytes) {
+      BuildDef.extractAnalysis(metadata, converter).collect { case a: Analysis => a }
+    }.flatten
 
   private lazy val analyses = classpath
-    .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
+    .flatMap(a => BuildDef.extractAnalysisCached(a.metadata, converter))
     .collect { case analysis: Analysis => analysis }
 
   /**
