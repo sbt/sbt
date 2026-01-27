@@ -21,6 +21,7 @@ import sbt.internal.util.{
   Prompt,
   Terminal as ITerminal
 }
+import sbt.internal.io.Retry
 import sbt.io.{ IO, Using }
 import sbt.protocol.*
 import sbt.util.{ Logger, LoggerContext }
@@ -105,7 +106,9 @@ private[sbt] object MainLoop:
     val currentArtDirs = defaultBoot * "*" / appId.groupID / appId.name / sbtVersion
     currentArtDirs.get().foreach { dir =>
       state.log.info(s"deleting $dir")
-      IO.delete(dir)
+      // Retry is needed on Windows where files may be locked by the classloader.
+      // See https://github.com/sbt/sbt/issues/7960
+      Retry(IO.delete(dir))
     }
   }
 
