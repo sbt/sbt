@@ -111,7 +111,9 @@ object ActionCache:
               output match
                 case svf: StringVirtualFile1 =>
                   val outputPath = fileConverter.toPath(svf).toAbsolutePath.normalize()
-                  if outputPath.startsWith(normalizedOutputDir) && !syncedPaths.contains(outputPath) then
+                  val inOutputDir = outputPath.startsWith(normalizedOutputDir)
+                  val notSynced = !syncedPaths.contains(outputPath)
+                  if inOutputDir && notSynced then
                     Option(outputPath.getParent()).foreach(parent =>
                       IO.createDirectory(parent.toFile())
                     )
