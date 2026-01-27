@@ -1,0 +1,8 @@
+# Test for issue #7973: CancellationException thrown on compile error with usePipelining
+# This test verifies that when a compile error occurs with usePipelining enabled,
+# no CancellationException stack trace is displayed.
+
+# Compile should fail due to compile error, but should not show CancellationException
+# The verifyNoCancellationException task will check that compilation fails gracefully
+> verifyNoCancellationException
+
