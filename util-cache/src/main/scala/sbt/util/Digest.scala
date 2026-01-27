@@ -23,6 +23,7 @@ object Digest:
       val tokens = parse(d)
       s"${tokens._1}-${tokens._2}"
     def algo: String = parse(d)._1
+    def hashHexString: String = parse(d)._2
     def toBytes: Array[Byte] = parse(d)._4
     def sizeBytes: Long = parse(d)._3
 

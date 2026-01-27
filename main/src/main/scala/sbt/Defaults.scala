@@ -2867,6 +2867,7 @@ object Classpaths {
       Seq(
         publishMavenStyle :== true,
         sbtPluginPublishLegacyMavenStyle :== false,
+        useIvy :== true,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )
@@ -2977,7 +2978,7 @@ object Classpaths {
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
     publish := publishOrSkip(publishConfiguration, publish / skip).value,
-    publishLocal := publishOrSkip(publishLocalConfiguration, publishLocal / skip).value,
+    publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
     credentials ++= Def.uncached {
       val alreadyContainsCentralCredentials: Boolean = credentials.value.exists {
