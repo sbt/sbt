@@ -106,7 +106,18 @@ object ActionCache:
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            store.syncBlobs(cachedResult.outputFiles, outputDirectory)
+            val syncedPaths = store.syncBlobs(cachedResult.outputFiles, outputDirectory).toSet
+            outputs.foreach: output =>
+              output match
+                case svf: StringVirtualFile1 =>
+                  val outputPath = fileConverter.toPath(svf).toAbsolutePath.normalize()
+                  if outputPath.startsWith(normalizedOutputDir) && !syncedPaths.contains(outputPath) then
+                    Option(outputPath.getParent()).foreach(parent =>
+                      IO.createDirectory(parent.toFile())
+                    )
+                    if !Files.exists(outputPath) || Files.size(outputPath) == 0 then
+                      IO.write(outputPath.toFile(), svf.content)
+                case _ =>
             result
           case Left(e) => throw e
 
