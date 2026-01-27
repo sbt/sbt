@@ -1,0 +1,18 @@
+# Test ivyless publish to remote HTTP server
+# This test verifies that when useIvy is set to false,
+# publish uploads files to a remote Ivy repository via HTTP
+
+# Clean any previous test state
+> cleanRepo
+
+# Print paths for debugging
+> printPaths
+
+# Start the HTTP server
+> startServer
+
+# Run publish with ivyless publisher
+> publish
+
+# Verify the published files
+> checkPublish

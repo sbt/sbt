@@ -636,7 +636,7 @@ private[sbt] object LibraryManagement {
       artifacts: Vector[(Artifact, File)],
       checksumAlgorithms: Vector[String],
       patterns: Patterns,
-      credentials: Option[DirectCredentials],
+      credentials: Option[Credentials.DirectCredentials],
       overwrite: Boolean,
       log: Logger
   ): Unit =
