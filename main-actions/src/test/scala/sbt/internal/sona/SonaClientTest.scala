@@ -17,6 +17,21 @@ import scala.collection.immutable
 
 object SonaClientTest extends BasicTestSuite:
 
+  test("SonaStatusError should include both status and body in message"):
+    val error = new SonaStatusError(401, "Invalid token")
+    assert(error.status == 401)
+    assert(error.body == "Invalid token")
+    assert(error.getMessage == "Unexpected status: 401\nInvalid token")
+
+  test("SonaStatusError should handle empty body"):
+    val error = new SonaStatusError(500, "")
+    assert(error.getMessage == "Unexpected status: 500")
+
+  test("SonaStatusError should preserve multiline error body"):
+    val body = """{"error": "Unauthorized", "message": "Invalid credentials"}"""
+    val error = new SonaStatusError(401, body)
+    assert(error.getMessage.contains(body))
+
   private def doTest(
       errorsJsonText: Option[String],
       expectedErrorMessage: String,

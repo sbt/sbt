@@ -14,7 +14,11 @@ import java.util.Properties
 private[inc] object ResourceLoader {
   def getPropertiesFor(resource: String): Properties = {
     val properties = new Properties
-    val propertiesStream = getClass.getResource(resource).openStream
+    val resourceUrl = getClass.getResource(resource)
+    if (resourceUrl eq null) {
+      throw new java.io.FileNotFoundException(s"Resource not found: $resource")
+    }
+    val propertiesStream = resourceUrl.openStream
     try {
       properties.load(propertiesStream)
     } finally propertiesStream.close()
