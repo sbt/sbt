@@ -156,53 +156,6 @@ class ClassStamper(
   private val stamps = mutable.Map.empty[String, SortedSet[Digest]]
   private val vfStamps = mutable.Map.empty[VirtualFileRef, Digest]
 
-// Shared cache for Analysis objects to avoid repeated deserialization
-  private object AnalysisCache {
-    private final val analysisCacheByteSize = 100 * 1024L * 1024L // 100MB
-    private val weigher: Weigher[String, (Option[Analysis], Long, Long)] = {
-      case (_, (_, _, sizeBytes)) => sizeBytes.toInt
-    }
-    private val cache: CCache[String, (Option[Analysis], Long, Long)] =
-      Caffeine
-        .newBuilder()
-        .maximumWeight(analysisCacheByteSize)
-        .weigher(weigher)
-        .build()
-
-    def getOrElseUpdate(
-        ref: VirtualFileRef,
-        lastModified: Long,
-        sizeBytes: Long
-    )(value: => Option[Analysis]): Option[Analysis] =
-      Option(cache.getIfPresent(ref.id())) match
-        case Some((v, mod, size)) if lastModified == mod && sizeBytes == size => v
-        case _ =>
-          val v = value
-          cache.put(ref.id(), (v, lastModified, sizeBytes))
-          v
-  }
-
-  private def extractAnalysisCached(
-      metadata: sbt.internal.util.StringAttributeMap,
-      converter: FileConverter
-  ): Option[Analysis] =
-    import sbt.OptionSyntax.*
-    for
-      refStr <- metadata.get(Keys.analysis)
-      ref = VirtualFileRef.of(refStr)
-      path = converter.toPath(ref)
-      file = path.toFile()
-      attrs <-
-        try Some(Files.readAttributes(path, classOf[BasicFileAttributes]))
-        catch case _: NoSuchFileException => None
-      if !attrs.isDirectory
-    yield
-    val lastModified = attrs.lastModifiedTime().toMillis()
-    val sizeBytes = attrs.size()
-    AnalysisCache.getOrElseUpdate(ref, lastModified, sizeBytes) {
-      BuildDef.extractAnalysis(metadata, converter).collect { case a: Analysis => a }
-    }.flatten
-
   private lazy val analyses = classpath
     .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
     .collect { case analysis: Analysis => analysis }
