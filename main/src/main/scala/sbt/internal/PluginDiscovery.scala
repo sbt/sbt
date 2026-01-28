@@ -77,7 +77,7 @@ object PluginDiscovery:
       writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
         writeDescriptor(names.builds, dir, Builds) ::
         Nil
-    files.flatten
+    files.flatMap(_.toList)
   }
 
   /** Stores the module `names` in `dir / path`, one per line, unless `names` is empty and then the file is deleted and `None` returned. */
@@ -115,7 +115,7 @@ object PluginDiscovery:
     val ds = Discovery(subclassSet, Set.empty)(defs)
     ds.flatMap {
       case (definition, Discovered(subs, _, _, true)) =>
-        Option.when((subs & subclassSet).nonEmpty)(definition.name).toList
+        if ((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
       case _ => Nil
     }
   }
