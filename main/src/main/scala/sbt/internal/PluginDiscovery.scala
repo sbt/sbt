@@ -77,7 +77,7 @@ object PluginDiscovery:
       writeDescriptor(names.autoPlugins, dir, AutoPlugins) ::
         writeDescriptor(names.builds, dir, Builds) ::
         Nil
-    files.flatMap(_.toList)
+    files.flatten
   }
 
   /** Stores the module `names` in `dir / path`, one per line, unless `names` is empty and then the file is deleted and `None` returned. */
