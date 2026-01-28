@@ -731,6 +731,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunInParallelV2.invoke"),
       exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV1.invoke"),
       exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV2.invoke"),
+      exclude[IncompatibleMethTypeProblem]("sbt.internal.Compiler.scalaInstanceTask"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)

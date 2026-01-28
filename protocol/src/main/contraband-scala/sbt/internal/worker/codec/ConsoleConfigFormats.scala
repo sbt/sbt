@@ -12,13 +12,13 @@ given ConsoleConfigFormat: JsonFormat[sbt.internal.worker.ConsoleConfig] = new J
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val scalaInstanceConfig = unbuilder.readField[sbt.internal.worker.ScalaInstanceConfig]("scalaInstanceConfig")
-      val bridgeJar = unbuilder.readField[String]("bridgeJar")
+      val bridgeJars = unbuilder.readField[Vector[java.net.URI]]("bridgeJars")
       val externalDependencyJars = unbuilder.readField[Vector[String]]("externalDependencyJars")
       val scalacOptions = unbuilder.readField[Vector[String]]("scalacOptions")
       val initialCommands = unbuilder.readField[String]("initialCommands")
       val cleanupCommands = unbuilder.readField[String]("cleanupCommands")
       unbuilder.endObject()
-      sbt.internal.worker.ConsoleConfig(scalaInstanceConfig, bridgeJar, externalDependencyJars, scalacOptions, initialCommands, cleanupCommands)
+      sbt.internal.worker.ConsoleConfig(scalaInstanceConfig, bridgeJars, externalDependencyJars, scalacOptions, initialCommands, cleanupCommands)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -26,7 +26,7 @@ given ConsoleConfigFormat: JsonFormat[sbt.internal.worker.ConsoleConfig] = new J
   override def write[J](obj: sbt.internal.worker.ConsoleConfig, builder: Builder[J]): Unit = {
     builder.beginObject()
     builder.addField("scalaInstanceConfig", obj.scalaInstanceConfig)
-    builder.addField("bridgeJar", obj.bridgeJar)
+    builder.addField("bridgeJars", obj.bridgeJars)
     builder.addField("externalDependencyJars", obj.externalDependencyJars)
     builder.addField("scalacOptions", obj.scalacOptions)
     builder.addField("initialCommands", obj.initialCommands)

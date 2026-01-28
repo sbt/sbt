@@ -27,7 +27,7 @@ import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BspCompileTask, BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
 import sbt.internal.util.StringAttributeKey
-import sbt.internal.worker.ClientJobParams
+import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
 import sbt.io.*
 import sbt.librarymanagement.Configurations.CompilerPlugin
 import sbt.librarymanagement.LibraryManagementCodec.*
@@ -216,6 +216,8 @@ object Keys {
   val scalaHome = settingKey[Option[File]]("If Some, defines the local Scala installation to use for compilation, running, and testing.").withRank(ASetting)
   @transient
   val scalaInstance = taskKey[ScalaInstance]("Defines the Scala instance to use for compilation, running, and testing.").withRank(DTask)
+  @transient
+  val scalaInstanceConfig = taskKey[ScalaInstanceConfig]("Defines the Scala instance configuration.").withRank(DTask)
   val scalaOrganization = settingKey[String]("Organization/group ID of the Scala used in the project. Default value is 'org.scala-lang'. This is an advanced setting used for clones of the Scala Language. It should be disregarded in standard use cases.").withRank(CSetting)
   val scalaVersion = settingKey[String]("The version of Scala used for building.").withRank(APlusSetting)
   val scalaDynVersion = taskKey[String]("Resolves dynamic Scala version strings like '3-latest.candidate' to concrete versions.").withRank(DSetting)
@@ -236,6 +238,8 @@ object Keys {
   val scalaCompilerBridgeBin = taskKey[Seq[HashedVirtualFileRef]]("Optionally, the jar of the compiler bridge. When not None, this takes precedence over scalaCompilerBridgeSource").withRank(DTask)
   val scalaCompilerBridgeSource = settingKey[ModuleID]("Configures the module ID of the sources of the compiler bridge when scalaCompilerBridgeBinaryJar is None").withRank(CSetting)
   val scalaCompilerBridgeScope = taskKey[Unit]("The compiler bridge scope.").withRank(DTask)
+  @transient
+  val scalaCompilerBridgeJars = taskKey[Seq[HashedVirtualFileRef]]("The compiler bridge JAR.").withRank(DTask)
   val scalaArtifacts = settingKey[Seq[String]]("Configures the list of artifacts which should match the Scala binary version").withRank(CSetting)
   val crossJavaVersions = settingKey[Seq[String]]("The java versions used during JDK cross testing").withRank(BPlusSetting)
   val semanticdbEnabled = settingKey[Boolean]("Enables SemanticDB Scalac plugin").withRank(CSetting)

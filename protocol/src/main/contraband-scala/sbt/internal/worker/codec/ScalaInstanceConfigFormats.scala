@@ -12,11 +12,11 @@ given ScalaInstanceConfigFormat: JsonFormat[sbt.internal.worker.ScalaInstanceCon
       case Some(__js) =>
       unbuilder.beginObject(__js)
       val scalaVersion = unbuilder.readField[String]("scalaVersion")
-      val libraryJars = unbuilder.readField[Vector[String]]("libraryJars")
-      val allCompilerJars = unbuilder.readField[Vector[String]]("allCompilerJars")
-      val allDocJars = unbuilder.readField[Vector[String]]("allDocJars")
+      val libraryJars = unbuilder.readField[Vector[java.net.URI]]("libraryJars")
+      val allCompilerJars = unbuilder.readField[Vector[java.net.URI]]("allCompilerJars")
+      val extraToolJars = unbuilder.readField[Vector[java.net.URI]]("extraToolJars")
       unbuilder.endObject()
-      sbt.internal.worker.ScalaInstanceConfig(scalaVersion, libraryJars, allCompilerJars, allDocJars)
+      sbt.internal.worker.ScalaInstanceConfig(scalaVersion, libraryJars, allCompilerJars, extraToolJars)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -26,7 +26,7 @@ given ScalaInstanceConfigFormat: JsonFormat[sbt.internal.worker.ScalaInstanceCon
     builder.addField("scalaVersion", obj.scalaVersion)
     builder.addField("libraryJars", obj.libraryJars)
     builder.addField("allCompilerJars", obj.allCompilerJars)
-    builder.addField("allDocJars", obj.allDocJars)
+    builder.addField("extraToolJars", obj.extraToolJars)
     builder.endObject()
   }
 }
