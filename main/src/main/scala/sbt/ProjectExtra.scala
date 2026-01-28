@@ -237,8 +237,12 @@ trait ProjectExtra extends Scoped.Syntax:
     def isProjectLoaded(state: State): Boolean =
       (state has Keys.sessionSettings) && (state has Keys.stateBuildStructure)
 
-    def extract(state: State): Extracted =
-      Project.extract(Project.session(state), Project.structure(state))
+    def extract(state: State): Extracted = {
+      val se = Project.session(state)
+      val st = Project.structure(state)
+      val currentRef = internal.ProjectNavigation.effectiveCurrentRef(state)
+      Extracted(st, se, currentRef)(using Project.showContextKey2(se))
+    }
 
     private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted =
       Extracted(st, se, se.current)(using Project.showContextKey2(se))
