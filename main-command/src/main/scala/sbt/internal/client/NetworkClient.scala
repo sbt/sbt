@@ -70,6 +70,7 @@ import Serialization.{
 import NetworkClient.Arguments
 import java.util.concurrent.TimeoutException
 import sbt.util.Logger
+import sbt.OutputStrategy
 
 trait ConsoleInterface {
   def appendLog(level: Level.Value, message: => String): Unit
@@ -759,7 +760,7 @@ class NetworkClient(
     def jvmRun(info: JvmRunInfo): Try[Unit] = {
       val option = ForkOptions(
         javaHome = info.javaHome.map(new File(_)),
-        outputStrategy = None, // TODO: Handle buffered output etc
+        outputStrategy = Some(OutputStrategy.BufferedOutput(log)),
         bootJars = Vector.empty,
         workingDirectory = info.workingDirectory.map(new File(_)),
         runJVMOptions = info.jvmOptions,
@@ -780,7 +781,7 @@ class NetworkClient(
       import java.lang.{ ProcessBuilder as JProcessBuilder }
       val option = ForkOptions(
         javaHome = None,
-        outputStrategy = None, // TODO: Handle buffered output etc
+        outputStrategy = Some(OutputStrategy.BufferedOutput(log)),
         bootJars = Vector.empty,
         workingDirectory = info.workingDirectory.map(new File(_)),
         runJVMOptions = Vector.empty,
