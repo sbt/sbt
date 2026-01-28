@@ -82,7 +82,7 @@ class SonaClient(reqTransform: Request => Request, uploadRequestTimeout: FiniteD
           )
         )
         .withRequestTimeout(uploadRequestTimeout)
-      http.run(reqTransform(req), Gigahorse.asString)
+      http.run(reqTransform(req), SonaClient.asStringWithErrorBody)
     }
     awaitWithMessage(res, "uploading...", log, totalAwaitDuration)
   }
@@ -200,6 +200,17 @@ object SonaClient {
     Parser.parseFromByteBuffer(r.bodyAsByteBuffer).get
   def as[A1: JsonFormat]: FullResponse => A1 = asJson.andThen(Converter.fromJsonUnsafe[A1])
   val asPublisherStatus: FullResponse => PublisherStatus = as[PublisherStatus]
+
+  /**
+   * Response handler that returns the body as a String on success (2xx status),
+   * or throws a [[SonaStatusError]] with both the status code and response body on failure.
+   * This provides more detailed error information than [[gigahorse.StatusError]].
+   */
+  val asStringWithErrorBody: FullResponse => String = { response =>
+    val body = response.bodyAsString
+    if (response.status >= 200 && response.status < 300) body
+    else throw new SonaStatusError(response.status, body)
+  }
   def oauthClient(
       userName: String,
       userToken: String,
@@ -270,3 +281,17 @@ object PublishingType {
   case object Automatic extends PublishingType
   case object UserManaged extends PublishingType
 }
+
+/**
+ * Exception thrown when an HTTP request to the Sonatype API fails with a non-2xx status.
+ * Unlike [[gigahorse.StatusError]], this exception includes the response body which
+ * typically contains useful error details from the server.
+ *
+ * @param status the HTTP status code
+ * @param body the response body content
+ */
+class SonaStatusError(val status: Int, val body: String)
+    extends RuntimeException(
+      if (body.nonEmpty) s"Unexpected status: $status\n$body"
+      else s"Unexpected status: $status"
+    )
