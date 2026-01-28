@@ -138,7 +138,7 @@ object PluginDiscovery:
       .toSeq
       .withFilter(onClasspath(classpath, converter))
       .flatMap { u =>
-        IO.readLinesURL(u).map(_.trim).filter(!_.isEmpty)
+        IO.readLinesURL(u).map(_.trim).filter(_.nonEmpty)
       }
 
   /** Returns `true` if `url` is an entry in `classpath`. */
