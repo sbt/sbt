@@ -135,7 +135,7 @@ object LintUnused {
     val comp = structure.compiledMap
     val cMap = Def.flattenLocals(comp)
     val used: Set[ScopedKey[?]] = cMap.values.flatMap(_.dependencies).toSet
-    val unused: Seq[ScopedKey[?]] = cMap.keys.filter(!used.contains(_)).toSeq
+    val unused: Seq[ScopedKey[?]] = cMap.keys.filterNot(used.contains).toSeq
     val withDefinedAts: Seq[UnusedKey] = unused.map { u =>
       val data = Project.scopedKeyData(structure, u)
       val definedAt = comp.get(data.map(_.definingKey).getOrElse(u)) match
