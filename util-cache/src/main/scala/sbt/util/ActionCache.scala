@@ -82,8 +82,16 @@ object ActionCache:
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
       val json = Converter.toJsonUnsafe(result)
+      val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
       val uncacheableOutputs =
-        outputs.filter(f => !fileConverter.toPath(f).toAbsolutePath.startsWith(outputDirectory))
+        outputs.filter(f =>
+          f match
+            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
+              false
+            case _ =>
+              val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
+              !outputPath.startsWith(normalizedOutputDir)
+        )
       if uncacheableOutputs.nonEmpty then
         cacheEventLog.append(ActionCacheEvent.Error)
         logger.error(

@@ -9,15 +9,15 @@ val checkMapN1 = taskKey[Unit]("")
 Global / localCacheDirectory := baseDirectory.value / "diskcache"
 
 pure1 := {
-  val output = StringVirtualFile1("target/out/a.txt", "foo")
+  val output = StringVirtualFile1("${OUT}/a.txt", "foo")
   Def.declareOutput(output)
   ()
 }
 
 map1 := {
   pure1.value
-  val output1 = StringVirtualFile1("target/out/b1.txt", "foo")
-  val output2 = StringVirtualFile1("target/out/b2.txt", "foo")
+  val output1 = StringVirtualFile1("${OUT}/b1.txt", "foo")
+  val output2 = StringVirtualFile1("${OUT}/b2.txt", "foo")
   Def.declareOutput(output1)
   Def.declareOutput(output2)
   "something"
@@ -26,7 +26,7 @@ map1 := {
 mapN1 := {
   pure1.value
   map1.value
-  val output = StringVirtualFile1("target/out/c.txt", "foo")
+  val output = StringVirtualFile1("${OUT}/c.txt", "foo")
   Def.declareOutput(output)
   ()
 }
