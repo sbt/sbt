@@ -86,7 +86,7 @@ object ActionCache:
       val uncacheableOutputs =
         outputs.filter(f =>
           f match
-            case svf: StringVirtualFile1 if svf.id.endsWith(ActionCache.dirZipExt) =>
+            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
               false
             case _ =>
               val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
@@ -106,20 +106,7 @@ object ActionCache:
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
           case Right(cachedResult) =>
-            val syncedPaths = store.syncBlobs(cachedResult.outputFiles, outputDirectory).toSet
-            outputs.foreach: output =>
-              output match
-                case svf: StringVirtualFile1 =>
-                  val outputPath = fileConverter.toPath(svf).toAbsolutePath.normalize()
-                  val inOutputDir = outputPath.startsWith(normalizedOutputDir)
-                  val notSynced = !syncedPaths.contains(outputPath)
-                  if inOutputDir && notSynced then
-                    Option(outputPath.getParent()).foreach(parent =>
-                      IO.createDirectory(parent.toFile())
-                    )
-                    if !Files.exists(outputPath) || Files.size(outputPath) == 0 then
-                      IO.write(outputPath.toFile(), svf.content)
-                case _ =>
+            store.syncBlobs(cachedResult.outputFiles, outputDirectory)
             result
           case Left(e) => throw e
 
