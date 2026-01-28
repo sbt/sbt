@@ -54,15 +54,15 @@ type ClientJobParams {
 ## Configuration for creating a ScalaInstance in forked process.
 type ScalaInstanceConfig {
   scalaVersion: String!
-  libraryJars: [String]
-  allCompilerJars: [String]
-  allDocJars: [String]
+  libraryJars: [java.net.URI]
+  allCompilerJars: [java.net.URI]
+  extraToolJars: [java.net.URI] @since("0.1.0")
 }
 
 ## Configuration for forked console.
 type ConsoleConfig {
   scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
-  bridgeJar: String!
+  bridgeJars: [java.net.URI]
   externalDependencyJars: [String]
   scalacOptions: [String]
   initialCommands: String!

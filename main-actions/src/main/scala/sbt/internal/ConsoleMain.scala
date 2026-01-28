@@ -69,7 +69,12 @@ class ConsoleMain:
     )
 
   def analyzingCompiler(config: ConsoleConfig, si: ScalaInstance): AnalyzingCompiler =
-    val bridgeProvider = ZincUtil.constantBridgeProvider(si, File(config.bridgeJar))
+    val bridgeProvider = ZincUtil.constantBridgeProvider(
+      si,
+      config.bridgeJars.toList match
+        case x :: Nil => Paths.get(x)
+        case xs       => sys.error(s"expected one bridge jar, but got $xs")
+    )
     val classpathOptions = ClasspathOptionsUtil.repl()
     AnalyzingCompiler(
       si,
@@ -87,18 +92,18 @@ class ConsoleMain:
     val jlineJars = allCompilerJars.filter(_.getFileName.toString.contains("jline"))
     val compilerJars =
       allCompilerJars.filterNot(x => libraryJars.contains(x) || jlineJars.contains(x)).distinct
-    val allDocJars = siConfig.allDocJars.map(Paths.get(_)).sortBy(_.getFileName.toString)
-    val docJars = allDocJars
+    val extraToolJars0 = siConfig.extraToolJars.map(Paths.get(_)).sortBy(_.getFileName.toString())
+    val extraToolJars = extraToolJars0
       .filterNot(jar => libraryJars.contains(jar) || compilerJars.contains(jar))
       .distinct
-    val allJars = libraryJars ++ compilerJars ++ docJars
+    val allJars = libraryJars ++ compilerJars ++ extraToolJars
     // Use parent class loader for JLine to avoid conflicts
     val jlineLoader = classOf[org.jline.terminal.Terminal].getClassLoader
     val libraryLoader = ClasspathUtil.toLoader(libraryJars, jlineLoader)
     val compilerLoader = ClasspathUtil.toLoader(compilerJars, libraryLoader)
     val fullLoader =
-      if docJars.isEmpty then compilerLoader
-      else ClasspathUtil.toLoader(docJars, compilerLoader)
+      if extraToolJars.isEmpty then compilerLoader
+      else ClasspathUtil.toLoader(extraToolJars, compilerLoader)
     new ScalaInstance(
       version = siConfig.scalaVersion,
       loader = fullLoader,

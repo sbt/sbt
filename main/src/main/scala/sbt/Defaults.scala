@@ -672,7 +672,10 @@ object Defaults extends BuildCommon {
   def compileBase =
     inTask(console)(
       Seq(
-        scalaInstance := Compiler.scalaInstanceTask(Some(Configurations.ScalaReplTool)).value,
+        scalaInstanceConfig := Compiler
+          .scalaInstanceConfigTask(Some(Configurations.ScalaReplTool))
+          .value,
+        scalaInstance := Compiler.scalaInstanceTask(console / scalaInstanceConfig).value,
       ) ++ compilersSetting
     ) ++ compileBaseGlobal ++ Seq(
       useScalaReplJLine :== false,
@@ -691,7 +694,8 @@ object Defaults extends BuildCommon {
         }
         else topLoader
       },
-      scalaInstance := Def.uncached(Compiler.scalaInstanceTask(None).value),
+      scalaInstanceConfig := Def.uncached(Compiler.scalaInstanceConfigTask(None).value),
+      scalaInstance := Def.uncached(Compiler.scalaInstanceTask(scalaInstanceConfig).value),
       crossVersion := (if (crossPaths.value) CrossVersion.binary else CrossVersion.disabled),
       pluginCrossBuild / sbtBinaryVersion := binarySbtVersion(
         (pluginCrossBuild / sbtVersion).value
@@ -757,6 +761,12 @@ object Defaults extends BuildCommon {
           Vector(outVf: HashedVirtualFileRef)
         })(Def.task(Vector.empty))
         .value,
+      scalaCompilerBridgeJars := (Def.taskDyn {
+        val s = streams.value
+        val b = scalaCompilerBridgeBin.value
+        if b.nonEmpty then Def.task { b }
+        else Compiler.scalaCompilerBridgeJarsTask(scalaCompilerBridgeSource, s.log)
+      }).value,
       scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
@@ -2008,7 +2018,10 @@ object Defaults extends BuildCommon {
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[?]] =
     inTask(key)(
       Seq(
-        scalaInstance := Compiler.scalaInstanceTask(Some(Configurations.ScalaDocTool)).value,
+        scalaInstanceConfig := Compiler
+          .scalaInstanceConfigTask(Some(Configurations.ScalaDocTool))
+          .value,
+        scalaInstance := Compiler.scalaInstanceTask(key / scalaInstanceConfig).value,
         apiMappings ++= {
           val dependencyCp = dependencyClasspath.value
           val log = streams.value.log
@@ -2123,36 +2136,17 @@ object Defaults extends BuildCommon {
 
   private def forkedConsoleTask: Initialize[Task[Unit]] =
     Def.task {
-      import sbt.internal.worker.{ ConsoleConfig, ScalaInstanceConfig }
-      val si = (console / scalaInstance).value
+      import sbt.internal.worker.ConsoleConfig
+      val s = streams.value
       val conv = fileConverter.value
       val depsJars = (console / externalDependencyClasspath).value.toVector
         .map(_.data)
         .map(conv.toPath)
-      val bridgeJars = scalaCompilerBridgeBin.value
-      val bridgeJar =
-        if bridgeJars.nonEmpty then conv.toPath(bridgeJars.head).toFile
-        else
-          // Fall back to fetching the bridge module
-          val dr = scalaCompilerBridgeDependencyResolution.value
-          val uc = (update / updateConfiguration).value
-          val uwc = (update / unresolvedWarningConfiguration).value
-          ZincLmUtil.fetchDefaultBridgeModule(
-            si.version,
-            dr,
-            uc,
-            uwc,
-            streams.value.log
-          )
-      val siConfig = ScalaInstanceConfig(
-        scalaVersion = si.version,
-        libraryJars = si.libraryJars.map(_.toString).toVector,
-        allCompilerJars = si.compilerJars.map(_.toString).toVector,
-        allDocJars = Vector.empty,
-      )
+      val siConfig = (console / scalaInstanceConfig).value
+      val bridgeJars = scalaCompilerBridgeJars.value
       val config = ConsoleConfig(
         scalaInstanceConfig = siConfig,
-        bridgeJar = bridgeJar.toString,
+        bridgeJars = bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()),
         externalDependencyJars = depsJars.map(_.toString),
         scalacOptions = (console / scalacOptions).value.toVector,
         initialCommands = (console / initialCommands).value,
@@ -2160,10 +2154,13 @@ object Defaults extends BuildCommon {
       )
       val fo = (console / forkOptions).value
       val terminal = ITerminal.console
-      terminal.restore()
-      val exitCode = ForkConsole(config, fo)
-      terminal.restore()
-      if exitCode != 0 then throw MessageOnlyException(s"Forked console exited with code $exitCode")
+      s.log.info("running console (fork)")
+      try
+        terminal.restore()
+        val exitCode = ForkConsole(config, fo)
+        if exitCode != 0 then
+          throw MessageOnlyException(s"Forked console exited with code $exitCode")
+      finally terminal.restore()
       println()
     }
 
