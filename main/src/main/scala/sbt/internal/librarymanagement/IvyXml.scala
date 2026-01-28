@@ -223,11 +223,7 @@ object IvyXml {
       val task = m.invoke(sbt.Keys).asInstanceOf[TaskKey[PublishConfiguration]]
       List(task)
     } catch {
-      case _: NoSuchMethodException | _: SecurityException | _: IllegalAccessException |
-          _: IllegalArgumentException | _: java.lang.reflect.InvocationTargetException |
-          _: ClassCastException =>
-        // Method not found or reflection access failed - return empty list
-        // This is expected when optional methods don't exist
+      case _: Throwable => // FIXME Too wide
         Nil
     }
 
