@@ -115,7 +115,7 @@ object PluginDiscovery:
     val ds = Discovery(subclassSet, Set.empty)(defs)
     ds.flatMap {
       case (definition, Discovered(subs, _, _, true)) =>
-        if ((subs & subclassSet).isEmpty) Nil else definition.name :: Nil
+        Option.when((subs & subclassSet).nonEmpty)(definition.name).toList
       case _ => Nil
     }
   }
