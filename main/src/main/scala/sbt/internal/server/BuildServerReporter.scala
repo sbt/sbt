@@ -173,7 +173,7 @@ final class BuildServerReporterImpl(
   }
 
   private def getAndClearPreviousDocuments(source: VirtualFileRef): Seq[TextDocumentIdentifier] =
-    bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).getOrElse(source, Seq.empty)
+    bspCompileState.problemsBySourceFiles.getAndUpdate(_ - source).get(source).getOrElse(Seq.empty)
 
   private def updateNewDocuments(
       source: VirtualFileRef,
