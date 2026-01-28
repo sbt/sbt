@@ -204,7 +204,7 @@ class ClassStamper(
     }.flatten
 
   private lazy val analyses = classpath
-    .flatMap(a => BuildDef.extractAnalysisCached(a.metadata, converter))
+    .flatMap(a => BuildDef.extractAnalysis(a.metadata, converter))
     .collect { case analysis: Analysis => analysis }
 
   /**

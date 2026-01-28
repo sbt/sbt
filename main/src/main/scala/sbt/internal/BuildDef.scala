@@ -121,6 +121,31 @@ private[sbt] object BuildDef:
     def getContents(ref: VirtualFileRef): Option[AnalysisContents] =
       val path = converter.toPath(ref)
       val file = path.toFile()
+
+      val cached = inMemoryAnalysisCache.getIfPresent(ref.id())
+    
+    if cached != null then
+      // We have a cached entry, validate it with current file attributes
+      try
+        val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
+        if attrs.isDirectory then
+          // Directory case - fallback to direct read
+          fallback(file)
+        else
+          val lastModified = attrs.lastModifiedTime().toMillis()
+          val sizeBytes = attrs.size()
+          val (cachedValue, cachedMod, cachedSize) = cached
+          // Validate cache entry
+          if lastModified == cachedMod && sizeBytes == cachedSize then
+            cachedValue
+          else
+            // Cache invalid, update it
+            val v = fallback(file)
+            inMemoryAnalysisCache.put(ref.id(), (v, lastModified, sizeBytes))
+            v
+      catch case _: NoSuchFileException => fallback(file)
+    else
+      // Cache miss - read file attributes and deserialize
       try
         val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
         if attrs.isDirectory then fallback(file)
