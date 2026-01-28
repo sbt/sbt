@@ -1452,11 +1452,14 @@ private[sbt] object Load {
       pluginData: PluginData
   ): LoadedPlugins = {
     val definitionClasspath = pluginData.definitionClasspath
-    val dependencyClasspath = pluginData.dependencyClasspath
+    val dependencyClasspath = config.globalPlugin match {
+      case Some(gp) => removeEntries(pluginData.dependencyClasspath, gp.data.internalClasspath)
+      case None     => pluginData.dependencyClasspath
+    }
     val pluginLoader: ClassLoader =
       pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
     val fullDependencyClasspath: Def.Classpath =
-      buildPluginClasspath(config, pluginData.dependencyClasspath)
+      buildPluginClasspath(config, dependencyClasspath)
     val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
     loadPlugins(dir, newData, pluginLoader)
   }
