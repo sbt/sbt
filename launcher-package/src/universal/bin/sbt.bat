@@ -582,13 +582,16 @@ if exist project\build.properties (
   set is_this_dir_sbt=1
 )
 
+rem Store current directory in a variable for delayed expansion to handle paths with parentheses
+set "CURRENT_DIR=%CD%"
+
 rem Confirm a user's intent if the current directory does not look like an sbt
 rem top-level directory and the "new" command was not given.
 
 if not defined sbt_args_allow_empty if not defined sbt_args_print_version if not defined sbt_args_print_sbt_version if not defined sbt_args_print_sbt_script_version if not defined shutdownall (
   if not !is_this_dir_sbt! equ 1 (
     if not defined sbt_new (
-      >&2 echo [error] Neither build.sbt nor a 'project' directory in the current directory: "%CD%"
+      >&2 echo [error] Neither build.sbt nor a 'project' directory in the current directory: "!CURRENT_DIR!"
       >&2 echo [error] run 'sbt new', touch build.sbt, or run 'sbt --allow-empty'.
       goto error
     )
