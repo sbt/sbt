@@ -91,24 +91,27 @@ private[sbt] object BuildDef:
     in.flatMap(a => extractAnalysis(a.metadata, converter))
 
   private[sbt] final val localAnalysisCacheByteSize = 100 * 1024L * 1024L
-  private val weigher: Weigher[String, (Option[AnalysisContents], Long, Long)] = {
-    case (_, (_, _, sizeBytes)) => sizeBytes.toInt
+  private val weigher: Weigher[String, (Option[AnalysisContents], Option[CompileAnalysis], Long, Long)] = {
+    case (_, (_, _, _, sizeBytes)) => sizeBytes.toInt
   }
-  private val inMemoryAnalysisCache: CCache[String, (Option[AnalysisContents], Long, Long)] =
+  private val inMemoryAnalysisCache: CCache[String, (Option[AnalysisContents], Option[CompileAnalysis], Long, Long)] =
     Caffeine
       .newBuilder()
       .maximumWeight(localAnalysisCacheByteSize)
       .weigher(weigher)
       .build()
+      
   private def getOrElseUpdate(ref: VirtualFileRef, lastModified: Long, sizeBytes: Long)(
       value: => Option[AnalysisContents]
-  ): Option[AnalysisContents] =
+  ): (Option[AnalysisContents], Option[CompileAnalysis]) =
     Option(inMemoryAnalysisCache.getIfPresent(ref.id())) match
-      case Some((v, mod, i)) if lastModified == mod && sizeBytes == i => v
+      case Some((contents, analysis, mod, size)) if lastModified == mod && sizeBytes == size =>
+        (contents, analysis)
       case _ =>
-        val v = value
-        inMemoryAnalysisCache.put(ref.id(), (v, lastModified, sizeBytes))
-        v
+        val contents = value
+        val analysis = contents.map(_.getAnalysis)
+        inMemoryAnalysisCache.put(ref.id(), (contents, analysis, lastModified, sizeBytes))
+        (contents, analysis)
 
   private[sbt] def extractAnalysis(
       metadata: StringAttributeMap,
@@ -134,12 +137,12 @@ private[sbt] object BuildDef:
       val file = path.toFile()
       try
         val attrs = Files.readAttributes(path, classOf[BasicFileAttributes])
-        if attrs.isDirectory then None
+        if attrs.isDirectory then fallback(file).map(_.getAnalysis)
         else
           val lastModified = attrs.lastModifiedTime().toMillis()
           val sizeBytes = attrs.size()
           getOrElseUpdate(ref, lastModified, sizeBytes)(fallback(file))._2
-      catch case _: NoSuchFileException => None
+      catch case _: NoSuchFileException => fallback(file).map(_.getAnalysis)
     for
       ref <- metadata.get(Keys.analysis)
       analysis <- getCachedAnalysis(VirtualFileRef.of(ref))
