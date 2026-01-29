@@ -20,7 +20,8 @@ import scala.concurrent.duration.*
 class ChannelCursorTest extends AbstractServerTest {
   override val testDirectory: String = "channel-cursor"
 
-  private def createSecondConnection(): (Socket, java.io.OutputStream, LinkedBlockingQueue[String], AtomicBoolean) = {
+  private def createSecondConnection()
+      : (Socket, java.io.OutputStream, LinkedBlockingQueue[String], AtomicBoolean) = {
     val portfile = testPath.resolve("project/target/active.json").toFile
     @tailrec
     def connect(attempt: Int): Socket = {
@@ -70,7 +71,9 @@ class ChannelCursorTest extends AbstractServerTest {
     writeLine(message)
   }
 
-  private def waitForString(lines: LinkedBlockingQueue[String], duration: FiniteDuration)(f: String => Boolean): Boolean = {
+  private def waitForString(lines: LinkedBlockingQueue[String], duration: FiniteDuration)(
+      f: String => Boolean
+  ): Boolean = {
     val deadline = duration.fromNow
     @tailrec def impl(): Boolean =
       lines.poll(deadline.timeLeft.toMillis, TimeUnit.MILLISECONDS) match {
@@ -83,7 +86,8 @@ class ChannelCursorTest extends AbstractServerTest {
   test("channel cursor - independent project cursors") {
     val (sk2, out2, lines2, running2) = createSecondConnection()
     try {
-      sendJsonRpc(out2,
+      sendJsonRpc(
+        out2,
         """{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true } } }"""
       )
       waitForString(lines2, 10.seconds)(_.contains(""""capabilities":{"""))
@@ -91,39 +95,53 @@ class ChannelCursorTest extends AbstractServerTest {
       svr.sendJsonRpc(
         """{ "jsonrpc": "2.0", "id": 10, "method": "sbt/exec", "params": { "commandLine": "project projectA" } }"""
       )
-      assert(svr.waitForString(10.seconds) { s =>
-        println(s"[channel1] $s")
-        s.contains("projectA") || s.contains("\"execId\":10")
-      }, "Channel 1 should switch to projectA")
+      assert(
+        svr.waitForString(10.seconds) { s =>
+          println(s"[channel1] $s")
+          s.contains("projectA") || s.contains("\"execId\":10")
+        },
+        "Channel 1 should switch to projectA"
+      )
 
-      sendJsonRpc(out2,
+      sendJsonRpc(
+        out2,
         """{ "jsonrpc": "2.0", "id": 20, "method": "sbt/exec", "params": { "commandLine": "project projectB" } }"""
       )
-      assert(waitForString(lines2, 10.seconds) { s =>
-        println(s"[channel2] $s")
-        s.contains("projectB") || s.contains("\"execId\":20")
-      }, "Channel 2 should switch to projectB")
+      assert(
+        waitForString(lines2, 10.seconds) { s =>
+          println(s"[channel2] $s")
+          s.contains("projectB") || s.contains("\"execId\":20")
+        },
+        "Channel 2 should switch to projectB"
+      )
 
       svr.sendJsonRpc(
         """{ "jsonrpc": "2.0", "id": 11, "method": "sbt/exec", "params": { "commandLine": "printCurrentProject" } }"""
       )
       var foundProjectA = false
-      assert(svr.waitForString(30.seconds) { s =>
-        println(s"[channel1 name] $s")
-        if (s.contains("CURRENT_PROJECT_IS:project-a")) foundProjectA = true
-        s.contains("\"execId\":11") && s.contains("\"status\":\"Done\"")
-      }, "First channel printCurrentProject command should complete")
+      assert(
+        svr.waitForString(30.seconds) { s =>
+          println(s"[channel1 name] $s")
+          if (s.contains("CURRENT_PROJECT_IS:project-a")) foundProjectA = true
+          s.contains("\"execId\":11") && s.contains("\"status\":\"Done\"")
+        },
+        "First channel printCurrentProject command should complete"
+      )
       assert(foundProjectA, "First channel should still be on projectA")
 
-      sendJsonRpc(out2,
+      sendJsonRpc(
+        out2,
         """{ "jsonrpc": "2.0", "id": 21, "method": "sbt/exec", "params": { "commandLine": "printCurrentProject" } }"""
       )
       var foundProjectB = false
-      assert(waitForString(lines2, 30.seconds) { s =>
-        println(s"[channel2 name] $s")
-        if (s.contains("CURRENT_PROJECT_IS:project-b")) foundProjectB = true
-        s.contains("\"execId\":21") && s.contains("\"status\":\"Done\"")
-      }, "Second channel printCurrentProject command should complete")
+      assert(
+        waitForString(lines2, 30.seconds) { s =>
+          println(s"[channel2 name] $s")
+          if (s.contains("CURRENT_PROJECT_IS:project-b")) foundProjectB = true
+          s.contains("\"execId\":21") && s.contains("\"status\":\"Done\"")
+        },
+        "Second channel printCurrentProject command should complete"
+      )
       assert(foundProjectB, "Second channel should still be on projectB")
     } finally {
       running2.set(false)
