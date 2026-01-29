@@ -724,14 +724,8 @@ lazy val mainProj = (project in file("main"))
     mimaBinaryIssueFilters ++= Vector(
       exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
       exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun.run"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun.invoke"),
-      exclude[ReversedMissingMethodProblem]("sbt.ScriptedRun.invoke"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunInParallelV1.invoke"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunInParallelV2.invoke"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV1.invoke"),
-      exclude[DirectMissingMethodProblem]("sbt.ScriptedRun#RunV2.invoke"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.Compiler.scalaInstanceTask"),
+      exclude[ReversedMissingMethodProblem]("sbt.ScriptedRun.invoke"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
