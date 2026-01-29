@@ -10,9 +10,31 @@ package sbt
 
 import java.io.File
 import java.lang.reflect.Method
-import scala.annotation.unused
 
 sealed trait ScriptedRun {
+  final def run(
+      resourceBaseDirectory: File,
+      bufferLog: Boolean,
+      tests: Seq[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Seq[String],
+      prescripted: java.util.List[File],
+      instances: Int,
+  ): Unit = {
+    run(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      launcherJar,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      instances,
+      keepTempDirectory = false,
+    )
+  }
+
   final def run(
       resourceBaseDirectory: File,
       bufferLog: Boolean,
@@ -38,6 +60,29 @@ sealed trait ScriptedRun {
       )
       ()
     } catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+  }
+
+  protected def invoke(
+      resourceBaseDirectory: File,
+      bufferLog: java.lang.Boolean,
+      tests: Array[String],
+      launcherJar: File,
+      javaCommand: String,
+      launchOpts: Array[String],
+      prescripted: java.util.List[File],
+      instances: java.lang.Integer,
+  ): AnyRef = {
+    invoke(
+      resourceBaseDirectory,
+      bufferLog,
+      tests,
+      launcherJar,
+      javaCommand,
+      launchOpts,
+      prescripted,
+      instances,
+      keepTempDirectory = false,
+    )
   }
 
   protected def invoke(
@@ -115,11 +160,11 @@ object ScriptedRun {
         bufferLog: java.lang.Boolean,
         tests: Array[String],
         launcherJar: File,
-        @unused javaCommand: String,
+        javaCommand: String,
         launchOpts: Array[String],
         prescripted: java.util.List[File],
-        @unused instances: java.lang.Integer,
-        @unused keepTempDirectory: java.lang.Boolean,
+        instances: java.lang.Integer,
+        keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       run.invoke(
         scriptedTests,
@@ -138,11 +183,11 @@ object ScriptedRun {
         bufferLog: java.lang.Boolean,
         tests: Array[String],
         launcherJar: File,
-        @unused javaCommand: String,
+        javaCommand: String,
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         instances: Integer,
-        @unused keepTempDirectory: java.lang.Boolean,
+        keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       runInParallel.invoke(
         scriptedTests,
@@ -165,8 +210,8 @@ object ScriptedRun {
         javaCommand: String,
         launchOpts: Array[String],
         prescripted: java.util.List[File],
-        @unused instances: java.lang.Integer,
-        @unused keepTempDirectory: java.lang.Boolean,
+        instances: java.lang.Integer,
+        keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       run.invoke(
         scriptedTests,
@@ -190,7 +235,7 @@ object ScriptedRun {
         launchOpts: Array[String],
         prescripted: java.util.List[File],
         instances: Integer,
-        @unused keepTempDirectory: java.lang.Boolean,
+        keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       runInParallel.invoke(
         scriptedTests,
@@ -214,7 +259,7 @@ object ScriptedRun {
         javaCommand: String,
         launchOpts: Array[String],
         prescripted: java.util.List[File],
-        @unused instances: java.lang.Integer,
+        instances: java.lang.Integer,
         keepTempDirectory: java.lang.Boolean,
     ): AnyRef =
       run.invoke(
