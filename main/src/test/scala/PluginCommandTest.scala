@@ -121,7 +121,7 @@ object FakeState {
       plugins.map(p => DetectedAutoPlugin(p.label, p, hasAutoImport = false))
     val detectedPlugins = new DetectedPlugins(detectedAutoPlugins, builds)
     val loadedPlugins =
-      new LoadedPlugins(base, pluginData, ClassLoader.getSystemClassLoader, detectedPlugins)
+      new LoadedPlugins(base, pluginData, ClassLoader.getSystemClassLoader, detectedPlugins, Nil)
     val buildUnit = new BuildUnit(base.toURI, base, loadedDefinitions, loadedPlugins, converter)
 
     val (partBuildUnit: PartBuildUnit, _) = Load.loaded(buildUnit)

@@ -233,12 +233,14 @@ final class DetectedPlugins(
  *                   This is necessary because the build definition project is discarded.
  * @param loader The class loader for the build definition project, notably excluding classes used for .sbt files.
  * @param detected Auto-detected modules in the build definition.
+ * @param globalPluginInternalClasspath The internal classpath of the global plugin.
  */
 final class LoadedPlugins(
     val base: File,
     val pluginData: PluginData,
     val loader: ClassLoader,
-    val detected: DetectedPlugins
+    val detected: DetectedPlugins,
+    val globalPluginInternalClasspath: Def.Classpath
 ) {
   def fullClasspath: Def.Classpath = pluginData.classpath
   def classpath = data(fullClasspath)

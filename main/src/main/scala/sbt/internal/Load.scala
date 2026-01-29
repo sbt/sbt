@@ -1382,7 +1382,7 @@ private[sbt] object Load {
     )
   )
 
-  private def removeEntries(
+  private[sbt] def removeEntries(
       cp: Def.Classpath,
       remove: Def.Classpath
   ): Def.Classpath =
@@ -1452,16 +1452,14 @@ private[sbt] object Load {
       pluginData: PluginData
   ): LoadedPlugins = {
     val definitionClasspath = pluginData.definitionClasspath
-    val dependencyClasspath = config.globalPlugin match {
-      case Some(gp) => removeEntries(pluginData.dependencyClasspath, gp.data.internalClasspath)
-      case None     => pluginData.dependencyClasspath
-    }
+    val dependencyClasspath = pluginData.dependencyClasspath
     val pluginLoader: ClassLoader =
       pluginDefinitionLoader(config, dependencyClasspath, definitionClasspath)
     val fullDependencyClasspath: Def.Classpath =
       buildPluginClasspath(config, dependencyClasspath)
     val newData = pluginData.copy(dependencyClasspath = fullDependencyClasspath)
-    loadPlugins(dir, newData, pluginLoader)
+    val globalPluginInternalCp = config.globalPlugin.map(_.data.internalClasspath).getOrElse(Nil)
+    loadPlugins(dir, newData, pluginLoader, globalPluginInternalCp)
   }
 
   /**
@@ -1520,8 +1518,19 @@ private[sbt] object Load {
     config.evalPluginDef(Project.structure(pluginState), pluginState)
   }
 
-  def loadPlugins(dir: File, data: PluginData, loader: ClassLoader): LoadedPlugins =
-    new LoadedPlugins(dir, data, loader, PluginDiscovery.discoverAll(data, loader))
+  def loadPlugins(
+      dir: File,
+      data: PluginData,
+      loader: ClassLoader,
+      globalPluginInternalClasspath: Def.Classpath
+  ): LoadedPlugins =
+    new LoadedPlugins(
+      dir,
+      data,
+      loader,
+      PluginDiscovery.discoverAll(data, loader),
+      globalPluginInternalClasspath
+    )
 
   def initialSession(structure: BuildStructure, rootEval: () => Eval, s: State): SessionSettings = {
     val session = s.get(Keys.sessionSettings)
