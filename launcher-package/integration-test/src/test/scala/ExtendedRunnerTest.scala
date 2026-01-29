@@ -181,4 +181,54 @@ object ExtendedRunnerTest extends BasicTestSuite:
     }
     ()
   }
+
+  // Test for issue #8644: sbt.bat fails when project path contains parentheses
+  // https://github.com/sbt/sbt/issues/8644
+  test("sbt.bat handles paths with parentheses") {
+    if (!isWindows) {
+      // This test is Windows-specific, skip on other platforms
+      ()
+    } else {
+      IO.withTemporaryDirectory { baseDir =>
+        // Create a temporary directory with parentheses in the name
+        val testDir = new File(baseDir, "test(parentheses)")
+        
+        // Create the directory structure
+        IO.createDirectory(testDir)
+        val projectDir = new File(testDir, "project")
+        IO.createDirectory(projectDir)
+        
+        // Create a minimal build.properties to make it a valid sbt project
+        val buildProps = new File(projectDir, "build.properties")
+        IO.write(buildProps, "sbt.version=1.12.1\n")
+        
+        // Test 1: Run sbt from directory with parentheses - should work without parsing errors
+        val out1 = sbtProcessInDir(testDir)("--script-version").!!.trim
+        val expectedVersion = "^" + versionRegEx + "$"
+        assert(out1.matches(expectedVersion), s"Expected version format, got: $out1")
+        
+        // Test 2: Test error message when no build.sbt exists (this is where the fix is most visible)
+        // Create a directory with parentheses but no build.sbt
+        val emptyDir = new File(baseDir, "empty(parentheses)")
+        IO.createDirectory(emptyDir)
+        
+        // Run sbt from empty directory - should fail gracefully with proper error message
+        // Use ProcessLogger to capture stderr without throwing on non-zero exit
+        import scala.sys.process.ProcessLogger
+        val errorBuffer = new StringBuilder
+        val logger = ProcessLogger(
+          _ => (), // ignore stdout
+          line => errorBuffer.append(line).append("\n") // capture stderr
+        )
+        val exitCode = sbtProcessInDir(emptyDir)("compile").!(logger)
+        assert(exitCode == 1, "Expected sbt to fail when no build.sbt exists")
+        
+        // Verify the error output doesn't contain ") was unexpected" parsing error
+        val errorOutput = errorBuffer.toString
+        val hasParsingError = errorOutput.contains(") was unexpected")
+        assert(!hasParsingError, s"Error message should not contain parsing error when path has parentheses. Error output: $errorOutput")
+      }
+    }
+    ()
+  }
 end ExtendedRunnerTest
