@@ -1,0 +1,11 @@
+> reload
+
+$ copy-file changes/temp.sbt global/plugins/temp.sbt
+$ copy-file changes/build.sbt build.sbt
+$ copy-file changes/build_a.sbt buildA/build.sbt
+> reload
+
+$ delete global/plugins/temp.sbt
+
+# Reload again. This should fail since the sbt file with BuildInfo plugin is removed
+-> reload
