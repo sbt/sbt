@@ -290,7 +290,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
     // On Windows, the program has be running under the Administrator privileges or the
     // user enable Developer Mode on Windows 10+ to create symbolic links.
     def writeFileAndNotify(outPath: Path): Path =
-      IO.createDirectory(outPath.getParent().toFile())
+      Option(outPath.getParent()).foreach(parent => IO.createDirectory(parent.toFile()))
       val result = Retry:
         if Files.exists(outPath) then IO.delete(outPath.toFile())
         if symlinkSupported.get() && Files.exists(casFile) then
@@ -312,7 +312,10 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
         else copyFile(outPath)
       afterFileWrite(ref, result, outputDirectory)
       result
-    converter.toPath(ref) match
+    val resolvedPath = converter.toPath(ref) match
+      case p if p.isAbsolute => p
+      case p                 => outputDirectory.resolve(p)
+    resolvedPath match
       case p if !Files.exists(p) =>
         // println(s"- syncFile: $p does not exist")
         writeFileAndNotify(p)

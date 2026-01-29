@@ -52,6 +52,10 @@ jobs:
             java: 17
             distribution: temurin
             jobtype: 10
+          - os: windows-latest
+            java: 17
+            distribution: zulu
+            jobtype: 12
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     env:
@@ -192,3 +196,8 @@ jobs:
           find **/src/main/contraband-scala -name "*.scala" -delete || true
           sbt generateContrabands
           git diff --exit-code
+      - name: Build and test (12)
+        if: ${{ matrix.jobtype == 12 }}
+        shell: bash
+        run: |
+          ./sbt -v "scripted cache/*"
