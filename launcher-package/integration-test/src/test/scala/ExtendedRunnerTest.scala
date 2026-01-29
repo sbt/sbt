@@ -213,14 +213,20 @@ object ExtendedRunnerTest extends BasicTestSuite:
       IO.createDirectory(emptyDir)
       
       // Run sbt from empty directory - should fail gracefully with proper error message
-      // Capture both exit code and error output
-      val errorOutput = sbtProcessInDir(emptyDir)("compile").!!.linesIterator.toList
-      val exitCode = sbtProcessInDir(emptyDir)("compile").!
+      // Use ProcessLogger to capture stderr without throwing on non-zero exit
+      import scala.sys.process.ProcessLogger
+      val errorBuffer = new StringBuilder
+      val logger = ProcessLogger(
+        _ => (), // ignore stdout
+        line => errorBuffer.append(line).append("\n") // capture stderr
+      )
+      val exitCode = sbtProcessInDir(emptyDir)("compile").!(logger)
       assert(exitCode == 1, "Expected sbt to fail when no build.sbt exists")
       
       // Verify the error output doesn't contain ") was unexpected" parsing error
-      val hasParsingError = errorOutput.exists(_.contains(") was unexpected"))
-      assert(!hasParsingError, "Error message should not contain parsing error when path has parentheses")
+      val errorOutput = errorBuffer.toString
+      val hasParsingError = errorOutput.contains(") was unexpected")
+      assert(!hasParsingError, s"Error message should not contain parsing error when path has parentheses. Error output: $errorOutput")
       
       // Cleanup
       IO.delete(baseDir)
