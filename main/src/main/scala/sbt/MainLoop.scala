@@ -254,6 +254,7 @@ private[sbt] object MainLoop:
          * Dropping (FastTrackCommands.evaluate ... getOrElse) should be functionally identical
          * but slower.
          */
+        val prevSessionCurrent = termState.get(Keys.sessionSettings).map(_.current)
         val newState =
           try {
             var errorMsg: Option[String] = None
@@ -267,7 +268,7 @@ private[sbt] object MainLoop:
                 )
               case None => currentCmdProgress.foreach(_.afterCommand(exec.commandLine, Right(res)))
             }
-            res
+            syncChannelCursor(res, prevSessionCurrent, channelName)
           } catch {
             case _: RejectedExecutionException =>
               val cancelled = new Cancelled(exec.commandLine)
@@ -375,6 +376,21 @@ private[sbt] object MainLoop:
       state.currentCommand.fold(true)(_.commandLine != StashOnFailure)
     then ExitCode(ErrorCodes.UnknownError)
     else ExitCode.Success
+
+  private def syncChannelCursor(
+      state: State,
+      prevSessionCurrent: Option[ProjectRef],
+      channelName: Option[String]
+  ): State =
+    channelName match
+      case Some(cn) =>
+        val newSessionCurrent = state.get(Keys.sessionSettings).map(_.current)
+        (prevSessionCurrent, newSessionCurrent) match
+          case (prev, Some(curr)) if prev != Some(curr) =>
+            val cursors = state.get(Keys.channelProjectCursors).getOrElse(Map.empty)
+            state.put(Keys.channelProjectCursors, cursors.updated(cn, curr))
+          case _ => state
+      case None => state
 
 end MainLoop
 
