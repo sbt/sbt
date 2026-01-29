@@ -162,12 +162,12 @@ jobs:
         run: |
           # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
           ./sbt -v "scripted source-dependencies/*"
-          ./sbt -v "scripted project/*"
       - name: Build and test (5)
         if: ${{ matrix.jobtype == 5 }}
         shell: bash
         run: |
-          ./sbt -v --client test
+          ./sbt -v "scripted project/*"
+          ./sbt -v "scripted project1/*"
       # - name: Build and test (6)
       #  if: ${{ matrix.jobtype == 6 }}
       #  shell: bash

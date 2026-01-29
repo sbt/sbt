@@ -1,0 +1,7 @@
+> compile
+
+$ exists target/**/classes/Foo$.class
+
+> package
+
+$ exists target/**/foo_3-1.0.0.jar

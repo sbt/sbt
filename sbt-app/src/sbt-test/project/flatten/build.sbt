@@ -1,0 +1,26 @@
+val unpackage = TaskKey[Unit]("unpackage")
+
+ThisBuild / scalaVersion := "2.12.21"
+
+lazy val root = (project in file("."))
+  .settings(
+    forConfig(Compile, "src"),
+    forConfig(Test, "test-src"),
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0" % Test,
+    unmanagedSources / includeFilter := "*.java" | "*.scala"
+  )
+
+def forConfig(conf: Configuration, name: String) =
+  inConfig(conf)( unpackageSettings(name) )
+
+def unpackageSettings(name: String) = Seq(
+  unmanagedSourceDirectories := (baseDirectory.value / name) :: Nil,
+  unmanagedResources / excludeFilter := (unmanagedSources / includeFilter).value,
+  unmanagedResourceDirectories := unmanagedSourceDirectories.value,
+  unpackage := Def.uncached {
+    val conv = fileConverter.value
+    IO.unzip(conv.toPath((packageSrc / artifactPath).value).toFile(),
+      baseDirectory.value / name)
+    IO.delete(baseDirectory.value / name / "META-INF")
+  }
+)

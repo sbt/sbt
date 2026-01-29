@@ -1,0 +1,2 @@
+> compile
+$ exists target/**/classes/A.class

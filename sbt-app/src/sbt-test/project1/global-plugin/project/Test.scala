@@ -1,4 +1,4 @@
-import sbt._
+import sbt.*
 
 object Test {
   assert(test.Global.x == 3);

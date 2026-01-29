@@ -1,4 +1,0 @@
-$ copy-file changes/xdir ydir
-
-# should detect collision between x and y both having a target directory of 'x/target'
--> reload

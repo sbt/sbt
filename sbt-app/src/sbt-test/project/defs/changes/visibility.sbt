@@ -1,0 +1,1 @@
+LocalRootProject / description := descr

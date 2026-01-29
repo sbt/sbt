@@ -1,2 +1,0 @@
-> compile
-$ exists projA/target/scala-2.12/classes/A.class

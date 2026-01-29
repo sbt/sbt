@@ -1,1 +1,0 @@
-enablePlugins(SbtPlugin)
