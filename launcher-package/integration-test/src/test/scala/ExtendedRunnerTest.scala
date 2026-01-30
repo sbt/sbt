@@ -239,14 +239,12 @@ object ExtendedRunnerTest extends BasicTestSuite:
       // This test is Windows-specific, skip on other platforms
       ()
     } else {
-      IO.withTemporaryDirectory { tmp =>
-        // Test that -Dfoo without value doesn't error (should pass through to Java)
-        // Use --script-version with --allow-empty to avoid project directory requirement
-        // Before the fix, this would fail with "-Dfoo is missing a value"
-        // Just check exit code - if it's 0, the fix works (no error about missing value)
-        val exitCode = sbtProcessInDir(tmp)("-Dfoo", "--script-version", "--allow-empty").!
-        assert(exitCode == 0, "Expected sbt to succeed with -Dfoo without value (before fix would error with 'missing a value')")
-      }
+      // Test that -Dfoo without value doesn't error (should pass through to Java)
+      // Use --script-version which exits immediately without starting sbt
+      // Before the fix, this would fail with "-Dfoo is missing a value"
+      // Test in citest directory which already has a project setup
+      val exitCode = sbtProcess("-Dfoo", "--script-version").!
+      assert(exitCode == 0, "Expected sbt to succeed with -Dfoo without value (before fix would error with 'missing a value')")
     }
     ()
   }
