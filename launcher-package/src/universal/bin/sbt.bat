@@ -509,15 +509,19 @@ if "%g:~0,2%" == "-D" (
     rem make sure it doesn't have the '=' already
     if "%g%" == "%%a" (
       if not "%~1" == "" (
+        rem -Dkey=value format
         call :dlog [args_loop] -D argument %~0=%~1
         set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
         shift
         goto args_loop
       ) else (
-        echo %g% is missing a value
-        goto error
+        rem -Dkey without value (Java accepts this and sets property to empty string)
+        call :dlog [args_loop] -D argument %~0
+        set "SBT_ARGS=!SBT_ARGS! %~0"
+        goto args_loop
       )
     ) else (
+      rem -Dkey=value format (already has =)
       call :dlog [args_loop] -D argument %~0
       set "SBT_ARGS=!SBT_ARGS! %~0"
       goto args_loop
