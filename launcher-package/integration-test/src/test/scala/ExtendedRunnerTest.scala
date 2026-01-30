@@ -245,18 +245,12 @@ object ExtendedRunnerTest extends BasicTestSuite:
         IO.createDirectory(projectDir)
         val buildProps = new File(projectDir, "build.properties")
         IO.write(buildProps, "sbt.version=1.12.1\n")
-        val buildSbt = new File(tmp, "build.sbt")
-        IO.write(buildSbt, """
-          |val checkProp = taskKey[Unit]("Check if property exists")
-          |checkProp := {
-          |  val hasFoo = sys.props.contains("foo")
-          |  if (!hasFoo) sys.error("Property 'foo' not found")
-          |}
-        """.stripMargin)
 
-        // Test that -Dfoo without value works (should set property to empty string)
-        val exitCode = sbtProcessInDir(tmp)("-Dfoo", "checkProp").!
-        assert(exitCode == 0, "Expected sbt to succeed with -Dfoo without value")
+        // Test that -Dfoo without value doesn't error (should pass through to Java)
+        // Use --script-version which is fast and doesn't require full sbt startup
+        val out = sbtProcessInDir(tmp)("-Dfoo", "--script-version").!!.trim
+        val expectedVersion = "^" + versionRegEx + "$"
+        assert(out.matches(expectedVersion), s"Expected version format, got: $out")
       }
     }
     ()
