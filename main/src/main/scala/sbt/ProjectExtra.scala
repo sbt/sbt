@@ -276,10 +276,13 @@ trait ProjectExtra extends Scoped.Syntax:
     ): State = {
       val unloaded = Project.runUnloadHooks(s)
       val (onLoad, onUnload) = getHooks(structure.data)
+      val keyIndex = structure.index.keyIndex
+      val definedKeys = collectAllKeyNames(keyIndex)
       val newAttrs = unloaded.attributes
         .put(stateBuildStructure, structure)
         .put(sessionSettings, session)
         .put(Keys.onUnload.key, onUnload)
+        .put(BasicKeys.definedTaskNames, definedKeys)
       val newState = unloaded.copy(attributes = newAttrs)
       // TODO: Fix this
       onLoad(
@@ -288,6 +291,15 @@ trait ProjectExtra extends Scoped.Syntax:
         ) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
       )
     }
+
+    private def collectAllKeyNames(keyIndex: sbt.internal.KeyIndex): Set[String] =
+      val globalKeys = keyIndex.keys(None)
+      val projectKeys = for
+        uri <- keyIndex.buildURIs
+        project <- keyIndex.projects(uri)
+        key <- keyIndex.keys(Some(ProjectRef(uri, project)))
+      yield key
+      globalKeys ++ projectKeys
 
     def orIdentity[A](opt: Option[A => A]): A => A =
       opt.getOrElse(identity)

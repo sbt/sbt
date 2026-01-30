@@ -172,6 +172,12 @@ object BasicKeys {
     "Toggles whether or not to close system in, out and error when the server starts.",
     1000
   )
+
+  private[sbt] val definedTaskNames = AttributeKey[Set[String]](
+    "defined-task-names",
+    "Set of all defined task and setting key names in the build.",
+    10
+  )
 }
 
 case class TemplateResolverInfo(module: ModuleID, implementationClass: String)

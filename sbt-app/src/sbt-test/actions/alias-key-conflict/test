@@ -1,0 +1,6 @@
+# Test that alias creation fails when it conflicts with a task key name
+# The task 'c' is defined in build.sbt, so 'alias c = compile' should fail
+-> alias c = compile
+
+# Verify the task 'c' still works
+> c

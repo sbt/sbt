@@ -478,12 +478,21 @@ object BasicCommands {
       case _                              => printAliases(s); s
     }
   def addAlias(s: State, name: String, value: String): State =
-    if Command.validID(name) then
-      val removed = removeAlias(s, name)
-      if value.isEmpty then removed else addAlias0(removed, name, value)
-    else
+    if !Command.validID(name) then
       System.err.println("Invalid alias name '" + name + "'.")
       s.fail
+    else if hasConflictingKey(s, name) then
+      System.err.println(
+        s"Alias '$name' conflicts with a task or setting key of the same name. " +
+          "Use a different alias name to avoid ambiguity."
+      )
+      s.fail
+    else
+      val removed = removeAlias(s, name)
+      if value.isEmpty then removed else addAlias0(removed, name, value)
+
+  def hasConflictingKey(s: State, name: String): Boolean =
+    s.get(BasicKeys.definedTaskNames).exists(_.contains(name))
   private def addAlias0(s: State, name: String, value: String): State =
     s.copy(definedCommands = newAlias(name, value) +: s.definedCommands)
 
