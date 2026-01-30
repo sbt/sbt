@@ -3748,11 +3748,15 @@ object Classpaths {
       val ref = thisProjectRef.value
       val unit = loadedBuild.value.units(ref.build).unit
       val converter = unit.converter
-      val pluginClasspath = unit.plugins.pluginData.dependencyClasspath.toVector
+      // Filter out global plugin's internal classpath
+      val pluginClasspath = Load.removeEntries(
+        cp = unit.plugins.pluginData.dependencyClasspath,
+        remove = unit.plugins.globalPluginInternalClasspath
+      )
       // Exclude directories: an approximation to whether they've been published
       // Note: it might be a redundant legacy from sbt 0.13/1.x times where the classpath contained directories
       // but it's left just in case
-      val pluginJars = pluginClasspath.filter: x =>
+      val pluginJars = pluginClasspath.toVector.filter: x =>
         !Files.isDirectory(converter.toPath(x.data))
       val pluginIDs: Vector[ModuleID] = pluginJars.flatMap(_.get(moduleIDStr).map: str =>
         moduleIdJsonKeyFormat.read(str))

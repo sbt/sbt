@@ -123,11 +123,13 @@ private[sbt] object LibraryManagement {
       report2
     }
 
+    val depsUpdated = transitiveUpdates.exists(!_.stats.cached)
     /* Check if a update report is still up to date or we must resolve again. */
     def upToDate(inChanged: Boolean, out: UpdateReport): Boolean = {
       // Transitive dependency stamps are now part of UpdateInputs, so inChanged
       // will be true if any transitive stamp changed (cross-command invalidation).
       !force &&
+      !depsUpdated &&
       !inChanged &&
       out.allFiles.forall(f => fileUptodate(f.toString, out.stamps, log)) &&
       fileUptodate(out.cachedDescriptor.toString, out.stamps, log)
