@@ -240,18 +240,13 @@ object ExtendedRunnerTest extends BasicTestSuite:
       ()
     } else {
       IO.withTemporaryDirectory { tmp =>
-        // Create a minimal sbt project
-        val projectDir = new File(tmp, "project")
-        IO.createDirectory(projectDir)
-        val buildProps = new File(projectDir, "build.properties")
-        IO.write(buildProps, "sbt.version=1.12.1\n")
-
         // Test that -Dfoo without value doesn't error (should pass through to Java)
         // Use --script-version which is fast and doesn't require full sbt startup
         // Before the fix, this would fail with "-Dfoo is missing a value"
-        // We only check exit code to avoid hanging - if it succeeds, the fix works
-        val exitCode = sbtProcessInDir(tmp)("-Dfoo", "--script-version").!
-        assert(exitCode == 0, "Expected sbt to succeed with -Dfoo without value (before fix would error with 'missing a value')")
+        // Just verify it outputs version (not an error message)
+        val out = sbtProcessInDir(tmp)("-Dfoo", "--script-version").!!.trim
+        val expectedVersion = "^" + versionRegEx + "$"
+        assert(out.matches(expectedVersion), s"Expected version format, got: $out")
       }
     }
     ()
