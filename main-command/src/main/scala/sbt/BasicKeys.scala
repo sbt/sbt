@@ -173,9 +173,9 @@ object BasicKeys {
     1000
   )
 
-  private[sbt] val definedTaskNames = AttributeKey[Set[String]](
-    "defined-task-names",
-    "Set of all defined task and setting key names in the build.",
+  private[sbt] val keyNameExtractor = AttributeKey[() => Set[String]](
+    "key-name-extractor",
+    "Function to extract all defined task and setting key names from the build.",
     10
   )
 }

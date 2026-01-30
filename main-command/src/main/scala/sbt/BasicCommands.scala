@@ -491,8 +491,8 @@ object BasicCommands {
       val removed = removeAlias(s, name)
       if value.isEmpty then removed else addAlias0(removed, name, value)
 
-  def hasConflictingKey(s: State, name: String): Boolean =
-    s.get(BasicKeys.definedTaskNames).exists(_.contains(name))
+  private def hasConflictingKey(s: State, name: String): Boolean =
+    s.get(BasicKeys.keyNameExtractor).exists(extractor => extractor().contains(name))
   private def addAlias0(s: State, name: String, value: String): State =
     s.copy(definedCommands = newAlias(name, value) +: s.definedCommands)
 

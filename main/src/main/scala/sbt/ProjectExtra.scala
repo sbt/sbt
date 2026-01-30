@@ -277,18 +277,17 @@ trait ProjectExtra extends Scoped.Syntax:
       val unloaded = Project.runUnloadHooks(s)
       val (onLoad, onUnload) = getHooks(structure.data)
       val keyIndex = structure.index.keyIndex
-      val definedKeys = collectAllKeyNames(keyIndex)
+      val extractKeyNames: () => Set[String] = () => collectAllKeyNames(keyIndex)
       val newAttrs = unloaded.attributes
         .put(stateBuildStructure, structure)
         .put(sessionSettings, session)
         .put(Keys.onUnload.key, onUnload)
-        .put(BasicKeys.definedTaskNames, definedKeys)
+        .put(BasicKeys.keyNameExtractor, extractKeyNames)
       val newState = unloaded.copy(attributes = newAttrs)
-      // TODO: Fix this
       onLoad(
         preOnLoad(
           updateCurrent(newState)
-        ) /*LogManager.setGlobalLogLevels(updateCurrent(newState), structure.data)*/
+        )
       )
     }
 
