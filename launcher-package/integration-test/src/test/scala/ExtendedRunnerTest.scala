@@ -231,4 +231,34 @@ object ExtendedRunnerTest extends BasicTestSuite:
     }
     ()
   }
+
+  // Test for issue #7332: Windows sbt.bat should handle -D properties without values
+  // https://github.com/sbt/sbt/issues/7332
+  test("sbt.bat handles -D system property without value") {
+    if (!isWindows) {
+      // This test is Windows-specific, skip on other platforms
+      ()
+    } else {
+      IO.withTemporaryDirectory { tmp =>
+        // Create a minimal sbt project
+        val projectDir = new File(tmp, "project")
+        IO.createDirectory(projectDir)
+        val buildProps = new File(projectDir, "build.properties")
+        IO.write(buildProps, "sbt.version=1.12.1\n")
+        val buildSbt = new File(tmp, "build.sbt")
+        IO.write(buildSbt, """
+          |val checkProp = taskKey[Unit]("Check if property exists")
+          |checkProp := {
+          |  val hasFoo = sys.props.contains("foo")
+          |  if (!hasFoo) sys.error("Property 'foo' not found")
+          |}
+        """.stripMargin)
+
+        // Test that -Dfoo without value works (should set property to empty string)
+        val exitCode = sbtProcessInDir(tmp)("-Dfoo", "checkProp").!
+        assert(exitCode == 0, "Expected sbt to succeed with -Dfoo without value")
+      }
+    }
+    ()
+  }
 end ExtendedRunnerTest
