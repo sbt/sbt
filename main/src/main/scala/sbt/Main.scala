@@ -305,6 +305,16 @@ import sbt.internal.util.complete.DefaultParsers.*
 object BuiltinCommands {
   def initialAttributes = AttributeMap.empty
   import BasicCommands.exit
+
+  def aliasWithKeyConflictCheck: Command =
+    Command(AliasCommand, Help.more(AliasCommand, AliasDetailed)) { s =>
+      val name = token(OpOrID.examples(aliasNames(s)*))
+      val assign = token(OptSpace ~ '=' ~ OptSpace)
+      val sfree = removeAliases(s)
+      val to = matched(sfree.combinedParser, partial = true).failOnException | any.+.string
+      OptSpace ~> (name ~ (assign ~> to.?).?).?
+    }((s, args) => runAlias(s, args, Project.definedKeyNames))
+
   def ConsoleCommands: Seq[Command] =
     Seq(ignore, exit, IvyConsole.command, setLogLevel, early, act, nop)
 
@@ -360,8 +370,9 @@ object BuiltinCommands {
       waitCmd,
       promptChannel,
       TestCommand.testOnly,
+      aliasWithKeyConflictCheck,
     ) ++
-      allBasicCommands ++
+      allBasicCommands.filterNot(_.nameOption.contains(AliasCommand)) ++
       ContinuousCommands.value ++
       BuildServerProtocol.commands
 

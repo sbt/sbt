@@ -172,12 +172,6 @@ object BasicKeys {
     "Toggles whether or not to close system in, out and error when the server starts.",
     1000
   )
-
-  private[sbt] val keyNameExtractor = AttributeKey[() => Set[String]](
-    "key-name-extractor",
-    "Function to extract all defined task and setting key names from the build.",
-    10
-  )
 }
 
 case class TemplateResolverInfo(module: ModuleID, implementationClass: String)
