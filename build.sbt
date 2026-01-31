@@ -10,7 +10,7 @@ import com.eed3si9n.jarjarabrams.ModuleCoordinate
 // ThisBuild settings take lower precedence,
 // but can be shared across the multi projects.
 ThisBuild / version := {
-  val v = "2.0.0-RC8-bin-SNAPSHOT"
+  val v = "2.0.0-RC9-bin-SNAPSHOT"
   nightlyVersion.getOrElse(v)
 }
 ThisBuild / Utils.version2_13 := "2.0.0-SNAPSHOT"
