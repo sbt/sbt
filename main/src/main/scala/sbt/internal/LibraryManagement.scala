@@ -17,6 +17,7 @@ import sbt.internal.librarymanagement.*
 import sbt.internal.librarymanagement.ivy.IvyCredentials
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
+import sbt.internal.util.MessageOnlyException
 import sbt.util.{ CacheStore, CacheStoreFactory, Level, Logger, Tracked }
 import sbt.io.IO
 import sbt.io.syntax.*
