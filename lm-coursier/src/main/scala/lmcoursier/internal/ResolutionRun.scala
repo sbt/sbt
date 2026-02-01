@@ -99,6 +99,7 @@ object ResolutionRun {
               dep
           }
         )
+        .withBoms(params.boms)
         .withRepositories(repositories)
         .withResolutionParams(
           params.params

@@ -501,9 +501,6 @@ object Keys {
   val csrReconciliations = settingKey[Seq[(ModuleMatchers, Reconciliation)]]("Strategy to reconcile version conflicts.")
   val csrSameVersions = settingKey[Seq[Set[InclExclRule]]]("Modules to keep at the same version.")
   val csrMavenDependencyOverride = settingKey[Boolean]("Enables Maven dependency override (bill of materials) support")
-  val csrBomDependencies = settingKey[Seq[ModuleID]](
-    "Maven BOM (Bill of Materials) artifacts to import; their dependencyManagement section is applied as version constraints."
-  )
   val csrLocalArtifactsShouldBeCached =
     settingKey[Boolean]("When true, local file:// artifacts are copied to the cache directory.")
 

@@ -289,7 +289,6 @@ object Defaults extends BuildCommon {
       csrMavenProfiles :== Set.empty,
       csrReconciliations :== LMCoursier.relaxedForAllModules,
       csrMavenDependencyOverride :== false,
-      csrBomDependencies :== Nil,
       csrLocalArtifactsShouldBeCached :== false,
       csrCacheDirectory := LMCoursier.defaultCacheLocation,
       csrSameVersions :== Nil,

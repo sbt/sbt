@@ -97,8 +97,14 @@ class MakePom(val log: Logger) {
        {extra}
        {
       val deps = depsInConfs(module, configurations)
+      val (bomDeps, regularDeps) =
+        deps.partition(d =>
+          d.getAllDependencyArtifacts.nonEmpty &&
+          d.getAllDependencyArtifacts.forall(_.getType == Artifact.PomType)
+        )
       makeProperties(module, deps) ++
-        makeDependencies(deps, includeTypes, ArraySeq.unsafeWrapArray(module.getAllExcludeRules))
+        makeDependencyManagement(bomDeps) ++
+        makeDependencies(regularDeps, includeTypes, ArraySeq.unsafeWrapArray(module.getAllExcludeRules))
     }
        {makeRepositories(ivy.getSettings, allRepositories, filterRepositories)}
      </project>)
@@ -301,10 +307,14 @@ class MakePom(val log: Logger) {
       excludes: Seq[ExcludeRule]
   ): Elem = {
     val mrid = dependency.getDependencyRevisionId
+    val rev = mrid.getRevision
+    val versionNode =
+      if (rev == null || rev == "*" || rev.isEmpty) NodeSeq.Empty
+      else <version>{makeDependencyVersion(rev)}</version>
     <dependency>
       <groupId>{mrid.getOrganisation}</groupId>
       <artifactId>{mrid.getName}</artifactId>
-      <version>{makeDependencyVersion(mrid.getRevision)}</version>
+      {versionNode}
       {scopeElem(scope)}
       {optionalElem(optional)}
       {classifierElem(classifier)}
