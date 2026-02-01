@@ -1115,8 +1115,17 @@ object BuiltinCommands {
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
-  private def writeSbtVersionUnconditionally(state: State) = {
+  /** True if baseDir appears to be inside a scripted test directory (sbt#4536). */
+  private def isScriptedTestDirectory(baseDir: File): Boolean = {
+    val path = baseDir.getAbsolutePath
+    path.contains(java.io.File.separator + "sbt-test" + java.io.File.separator) ||
+    path.contains("/sbt-test/")
+  }
+
+  private def writeSbtVersionUnconditionally(state: State): Unit = {
     val baseDir = state.baseDir
+    if (isScriptedTestDirectory(baseDir)) return // sbt#4536: don't alter scripted test setup
+
     val sbtVersion = BuiltinCommands.sbtVersion(state)
     val projectDir = baseDir / "project"
     val buildProps = projectDir / "build.properties"
