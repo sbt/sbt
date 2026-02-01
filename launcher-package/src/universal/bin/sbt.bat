@@ -505,27 +505,20 @@ if "%~0" == "init" (
 
 if "%g:~0,2%" == "-D" (
   rem special handling for -D since '=' gets parsed away
-  for /F "tokens=1 delims==" %%a in ("%g%") do (
-    rem make sure it doesn't have the '=' already
-    if "%g%" == "%%a" (
-      if not "%~1" == "" (
-        rem -Dkey=value format
-        call :dlog [args_loop] -D argument %~0=%~1
-        set "SBT_ARGS=!SBT_ARGS! %~0=%~1"
-        shift
-        goto args_loop
-      ) else (
-        rem -Dkey without value (Java accepts this and sets property to empty string)
-        call :dlog [args_loop] -D argument %~0
-        set "SBT_ARGS=!SBT_ARGS! %~0"
-        goto args_loop
-      )
-    ) else (
-      rem -Dkey=value format (already has =)
-      call :dlog [args_loop] -D argument %~0
-      set "SBT_ARGS=!SBT_ARGS! %~0"
-      goto args_loop
-    )
+  rem Use string substitution to check if '=' exists in the argument
+  set "d_arg=%g%"
+  set "d_arg_check=!d_arg:==!"
+  if not "!d_arg!" == "!d_arg_check!" (
+    rem -Dkey=value format (contains =)
+    call :dlog [args_loop] -D argument %~0
+    set "SBT_ARGS=!SBT_ARGS! %~0"
+    goto args_loop
+  ) else (
+    rem -Dkey without = (no shift needed - Java accepts -Dkey without value)
+    rem Pass through as-is, Java will set property to empty string
+    call :dlog [args_loop] -D argument %~0
+    set "SBT_ARGS=!SBT_ARGS! %~0"
+    goto args_loop
   )
 )
 
