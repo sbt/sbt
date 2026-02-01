@@ -111,6 +111,9 @@ class CrossVersionTest extends UnitSpec {
   it should "for 2.0.0-RC1 return 2" in {
     binarySbtVersion("2.0.0-RC1") shouldBe "2"
   }
+  it should "for 2.0.0-RC9-bin-SNAPSHOT return 2" in {
+    binarySbtVersion("2.0.0-RC9-bin-SNAPSHOT") shouldBe "2"
+  }
   it should "for 2 return 2" in {
     binarySbtVersion("2") shouldBe "2"
   }

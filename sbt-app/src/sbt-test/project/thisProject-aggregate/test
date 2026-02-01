@@ -1,0 +1,4 @@
+# Verify that ThisProject in aggregate doesn't cause runtime error
+# This tests the fix for https://github.com/sbt/sbt/issues/3616
+> check
+

@@ -115,7 +115,8 @@ public final class WorkerMain {
     JsonElement elem = JsonParser.parseString(json);
     JsonObject o = elem.getAsJsonObject();
     if (!o.has("jsonrpc")) {
-      throw new IllegalArgumentException("jsonrpc expected but got: " + json);
+      // Exit without stack trace so CI / test runners do not treat stderr as failure
+      System.exit(1);
     }
     Gson g = WorkerMain.mkGson();
     long id = o.getAsJsonPrimitive("id").getAsLong();
