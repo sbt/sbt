@@ -200,7 +200,7 @@ class Eval(
       inter.loader,
       inter.generated,
       inter.enclosingModule,
-      inter.extra.reverse.distinct
+      inter.extra.distinct.reverse,
     )
 
   end evalDefinitions
