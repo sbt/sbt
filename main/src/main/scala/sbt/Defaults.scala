@@ -4618,6 +4618,13 @@ trait BuildExtra extends BuildCommon with DefExtra {
    * The name of the val is used as the project ID and the name of the base directory of the project.
    */
   inline def project: Project = ${ std.KeyMacro.projectImpl }
+
+  /**
+   * Creates the root project with base directory ".".
+   * This is a macro that expects to be assigned directly to a val (e.g. `val root = rootProject`).
+   * The name of the val is used as the project ID; the base is always the build root.
+   */
+  inline def rootProject: Project = ${ std.KeyMacro.rootProjectImpl }
   inline def projectMatrix: ProjectMatrix = ${ ProjectMatrix.projectMatrixImpl }
 
   /**

@@ -11,7 +11,7 @@ package sbt
 import scala.util.control.NonFatal
 import org.scalacheck.*
 import Prop.*
-import sbt.BuildExtra.project
+import sbt.BuildExtra.{ project, rootProject }
 import java.io.File
 
 class ProjectDefs {
@@ -23,6 +23,8 @@ class ProjectDefs {
   // def y = project
 
   val z = (project in new File("dir"))
+
+  val root = rootProject
 
   val a: Project = project
 
@@ -60,6 +62,10 @@ object ProjectMacro extends Properties("ProjectMacro") {
 
   property("Directory overridable") = secure {
     check(z, "z", "dir")
+  }
+
+  property("rootProject has base .") = secure {
+    check(root, "root", ".")
   }
 
   def check(p: Project, id: String, dir: String): Prop = {

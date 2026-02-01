@@ -43,6 +43,10 @@ private[sbt] object KeyMacro:
     val name = definingValName(errorMsg2)
     '{ Project($name, new File($name)) }
 
+  def rootProjectImpl(using Quotes): Expr[Project] =
+    val name = definingValName(errorMsgRootProject)
+    '{ Project($name, new File(".")) }
+
   private def summonRuntimeClass[A: Type](using Quotes): Expr[Class[?]] =
     val classTag = Expr
       .summon[ClassTag[A]]
@@ -57,6 +61,9 @@ private[sbt] object KeyMacro:
 
   private def errorMsg2: String =
     """project must be directly assigned to a val, such as `val x = project.in(file("core"))`."""
+
+  private def errorMsgRootProject: String =
+    """rootProject must be directly assigned to a val, such as `val root = rootProject`."""
 
   private[sbt] def definingValName(errorMsg: String)(using Quotes): Expr[String] =
     val term = enclosingTerm
