@@ -218,11 +218,17 @@ class CoursierDependencyResolution(
 
     // BOM (Bill of Materials): deps with only pom artifact (e.g. .pomOnly()) go to Resolve.addBom (sbt#4531)
     def isBom(m: ModuleID): Boolean =
-      m.explicitArtifacts.nonEmpty && m.explicitArtifacts.forall(_.`type` == Artifact.PomType)
+      m.explicitArtifacts.nonEmpty && m.explicitArtifacts.forall(_.`type` == "pom")
     val (bomModules, regularModules) = module0.dependencies.partition(isBom)
     val boms: Seq[BomDependency] = bomModules.map { m =>
       val (mod, ver) =
-        FromSbt.moduleVersion(m, sv, sbv, optionalCrossVer = true, projectPlatform = projectPlatform)
+        FromSbt.moduleVersion(
+          m,
+          sv,
+          sbv,
+          optionalCrossVer = true,
+          projectPlatform = projectPlatform
+        )
       BomDependency(ToCoursier.module(mod), ver, Configuration.empty)
     }
     val dependencies = regularModules
