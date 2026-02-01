@@ -15,11 +15,13 @@ import lmcoursier.definitions.{
   Classifier,
   Configuration as CConfiguration,
   CacheLogger,
+  Module as CModule,
   Project as CProject,
   ModuleMatchers,
   Reconciliation,
   Strict as CStrict,
 }
+import lmcoursier.internal.BomSupport
 import lmcoursier.*
 import lmcoursier.syntax.*
 import lmcoursier.credentials.Credentials
@@ -92,6 +94,7 @@ object LMCoursier {
       updateConfig: Option[UpdateConfiguration],
       sameVersions: Seq[Set[InclExclRule]],
       enableDependencyOverrides: Option[Boolean],
+      bomForceVersions: Seq[(CModule, String)],
       localArtifactsShouldBeCached: Boolean,
       lockFile: Option[File],
       log: Logger
@@ -116,6 +119,7 @@ object LMCoursier {
     val sbtScalaVersion = internalSbtScalaProvider.version()
     val sbtScalaOrganization = "org.scala-lang" // always assuming sbt uses mainline scala
     val userForceVersions = Inputs.forceVersions(depsOverrides, scalaVer, scalaBinaryVer)
+    val allForceVersions = bomForceVersions ++ userForceVersions
     Classpaths.warnResolversConflict(rs, log)
     Classpaths.errorInsecureProtocol(rs, log)
     val missingOk = updateConfig match {
@@ -142,7 +146,7 @@ object LMCoursier {
       .withLog(log)
       .withIvyHome(ivyHome)
       .withStrict(strict)
-      .withForceVersions(userForceVersions.toVector)
+      .withForceVersions(allForceVersions.toVector)
       .withMissingOk(missingOk)
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
@@ -153,6 +157,22 @@ object LMCoursier {
     val sv = scalaVersion.value
     val lockFile = dependencyLockFile.value
     val lockFileOpt = if (lockFile.exists()) Some(lockFile) else None
+    val ivyHomeOpt = ivyPaths.value.ivyHome.map(new File(_))
+    val bomFv =
+      if (csrBomDependencies.value.isEmpty) Vector.empty[(CModule, String)]
+      else
+        BomSupport
+          .bomForceVersions(
+            csrRecursiveResolvers.value,
+            csrBomDependencies.value,
+            csrCacheDirectory.value,
+            streams.value.log,
+            sv,
+            scalaBinaryVersion.value,
+            lmcoursier.internal.ResolutionParams.defaultIvyProperties(ivyHomeOpt),
+            CoursierInputsTasks.credentialsTask.value,
+          )
+          .toVector
     coursierConfiguration(
       csrRecursiveResolvers.value,
       csrInterProjectDependencies.value.toVector,
@@ -170,12 +190,13 @@ object LMCoursier {
       csrLogger.value,
       csrCacheDirectory.value,
       csrReconciliations.value,
-      ivyPaths.value.ivyHome.map(new File(_)),
+      ivyHomeOpt,
       CoursierInputsTasks.strictTask.value,
       dependencyOverrides.value,
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      bomFv,
       csrLocalArtifactsShouldBeCached.value,
       lockFileOpt,
       streams.value.log
@@ -214,6 +235,7 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      Vector.empty[(CModule, String)],
       csrLocalArtifactsShouldBeCached.value,
       None,
       streams.value.log
@@ -245,6 +267,7 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
+      Vector.empty,
       csrLocalArtifactsShouldBeCached.value,
       None,
       streams.value.log
