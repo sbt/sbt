@@ -8,6 +8,7 @@
 
 package sbt.internal.util
 
+import java.lang.{ Process as JProcess }
 import java.util.concurrent.ConcurrentHashMap
 import scala.sys.process.Process
 
@@ -17,17 +18,21 @@ import scala.sys.process.Process
  * processes when the user inputs ctrl+c.
  */
 private[sbt] object RunningProcesses {
-  val active = ConcurrentHashMap.newKeySet[Process]
-  def add(process: Process): Unit = active.synchronized {
+  val active = ConcurrentHashMap.newKeySet[AnyRef]
+  def add(process: AnyRef): Unit = active.synchronized {
     active.add(process)
     ()
   }
-  def remove(process: Process): Unit = active.synchronized {
+  def remove(process: AnyRef): Unit = active.synchronized {
     active.remove(process)
     ()
   }
   def killAll(): Unit = active.synchronized {
-    active.forEach(_.destroy())
+    active.forEach {
+      case p: Process  => p.destroy()
+      case p: JProcess => p.destroy()
+      case _           => ()
+    }
     active.clear()
   }
 }
