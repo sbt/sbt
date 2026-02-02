@@ -1,6 +1,6 @@
 // BOM + publishLocal (sbt#4531): a uses BOM + jackson-core "*"; b depends on a.
-// Verifies a's published ivy lists BOM-resolved jackson-core (forced), so b/update gets it.
-// If b/update fails with jackson-core:*, the scripted subprocess may be using a cached lm-coursier.
+// For publishLocal, a's published ivy may still list jackson-core:*; so b also needs the BOM
+// to resolve that transitive * (per eed3si9n: BOM needs to be added to all subprojects).
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ThisBuild / organization := "org.example"
 ThisBuild / version := "1.0"
@@ -16,7 +16,8 @@ lazy val a = project
 lazy val b = project
   .settings(common: _*)
   .settings(
-    libraryDependencies := Seq(organization.value %% "a" % version.value),
+    libraryDependencies += ("com.fasterxml.jackson" % "jackson-bom" % "2.21.0").pomOnly(),
+    libraryDependencies += organization.value %% "a" % version.value,
     TaskKey[Unit]("checkBomFromA") := {
       val report = (Compile / updateFull).value
       val compileConfig = report.configurations.find(_.configuration.name == "compile").getOrElse(
