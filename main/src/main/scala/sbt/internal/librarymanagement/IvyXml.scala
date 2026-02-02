@@ -150,6 +150,7 @@ object IvyXml {
         n
     }
 
+    val bomForcedSet = bomForcedDeps.toSet
     val dependencyElems = project.dependencies.toVector.map { (conf, dep) =>
       val classifier = {
         val pub = dep.publication
@@ -171,10 +172,18 @@ object IvyXml {
         } name="*" type="*" ext="*" conf="" matcher="exact"/>
       }
 
+      val org0 = dep.module.organization.value
+      val name0 = dep.module.name.value
+      val rev0 = dep.version
+      val forced = bomForcedSet((org0, name0, rev0))
+      val forceAttr =
+        if (forced) new scala.xml.UnprefixedAttribute("force", "true", scala.xml.Null)
+        else scala.xml.Null
+
       val n =
-        <dependency org={dep.module.organization.value} name={dep.module.name.value} rev={
-          dep.version
-        } conf={s"${conf.value}->${dep.configuration.value}"}>
+        <dependency org={org0} name={name0} rev={rev0} conf={
+          s"${conf.value}->${dep.configuration.value}"
+        }>
           {classifier}
           {excludes}
         </dependency>
@@ -184,7 +193,7 @@ object IvyXml {
           new PrefixedAttribute("e", k, v, acc)
       }
 
-      n % moduleAttrs
+      n % moduleAttrs % forceAttr
     }
 
     <ivy-module version="2.0" xmlns:e="http://ant.apache.org/ivy/extra">

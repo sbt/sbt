@@ -15,7 +15,6 @@ import lmcoursier.definitions.{
   Classifier,
   Configuration as CConfiguration,
   CacheLogger,
-  Module as CModule,
   Project as CProject,
   ModuleMatchers,
   Reconciliation,
@@ -216,7 +215,6 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
-      Vector.empty[(CModule, String)],
       csrLocalArtifactsShouldBeCached.value,
       None,
       streams.value.log
