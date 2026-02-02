@@ -4264,7 +4264,22 @@ object Classpaths {
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
             case _ =>
-              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+              // When current and dependency use different Scala versions, request the
+              // dependency's artifact (e.g. bar_2.12) so resolution finds it. Disabled
+              // and Constant already pin the artifact; others (e.g. Patch) use current
+              // project's version and would request the wrong artifact.
+              val useDepVersion = depSBV != sbv && (depProjId.crossVersion match {
+                case _: sbt.librarymanagement.Disabled => false
+                case _: sbt.librarymanagement.Constant => false
+                case _                                 => true
+              })
+              val cross =
+                if (useDepVersion) CrossVersion.constant("_" + depSBV)
+                else depProjId.crossVersion
+              depProjId
+                .withCrossVersion(cross)
+                .withConfigurations(dep.configuration)
+                .withExplicitArtifacts(Vector.empty)
     }
 
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
