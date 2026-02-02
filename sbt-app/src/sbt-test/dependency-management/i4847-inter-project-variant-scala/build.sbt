@@ -12,7 +12,7 @@ lazy val bar = project.settings(
 )
 
 lazy val baz = project
-  .dependsOn(bar % Runtime)
+  .dependsOn(bar)
   .settings(
     scalaVersion := "2.13.12",
     name := "baz",
