@@ -1115,26 +1115,37 @@ object BuiltinCommands {
   private val sbtVersionRegex = """sbt\.version\s*=.*""".r
   private def isSbtVersionLine(s: String) = sbtVersionRegex.pattern.matcher(s).matches()
 
-  private def writeSbtVersionUnconditionally(state: State) = {
+  /** True if baseDir appears to be inside a scripted test directory (sbt#4536). */
+  private def isScriptedTestDirectory(baseDir: File): Boolean = {
+    val path = baseDir.getAbsolutePath
+    path.contains(java.io.File.separator + "sbt-test" + java.io.File.separator) ||
+    path.contains("/sbt-test/")
+  }
+
+  private def writeSbtVersionUnconditionally(state: State): Unit = {
     val baseDir = state.baseDir
-    val sbtVersion = BuiltinCommands.sbtVersion(state)
-    val projectDir = baseDir / "project"
-    val buildProps = projectDir / "build.properties"
+    if (isScriptedTestDirectory(baseDir)) {
+      // sbt#4536: don't alter scripted test setup
+    } else {
+      val sbtVersion = BuiltinCommands.sbtVersion(state)
+      val projectDir = baseDir / "project"
+      val buildProps = projectDir / "build.properties"
 
-    val buildPropsLines = if (buildProps.canRead) IO.readLines(buildProps) else Nil
+      val buildPropsLines = if (buildProps.canRead) IO.readLines(buildProps) else Nil
 
-    val sbtVersionAbsent = buildPropsLines forall (!isSbtVersionLine(_))
+      val sbtVersionAbsent = buildPropsLines forall (!isSbtVersionLine(_))
 
-    if (sbtVersionAbsent) {
-      val warnMsg = s"No sbt.version set in project/build.properties, base directory: $baseDir"
-      try {
-        if (isSbtBuild(baseDir)) {
-          val line = s"sbt.version=$sbtVersion"
-          IO.writeLines(buildProps, line :: buildPropsLines)
-          state.log.info(s"Updated file $buildProps: set sbt.version to $sbtVersion")
-        } else state.log.warn(warnMsg)
-      } catch {
-        case _: IOException => state.log.warn(warnMsg)
+      if (sbtVersionAbsent) {
+        val warnMsg = s"No sbt.version set in project/build.properties, base directory: $baseDir"
+        try {
+          if (isSbtBuild(baseDir)) {
+            val line = s"sbt.version=$sbtVersion"
+            IO.writeLines(buildProps, line :: buildPropsLines)
+            state.log.info(s"Updated file $buildProps: set sbt.version to $sbtVersion")
+          } else state.log.warn(warnMsg)
+        } catch {
+          case _: IOException => state.log.warn(warnMsg)
+        }
       }
     }
   }
