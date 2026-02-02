@@ -2973,6 +2973,24 @@ object Classpaths {
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
+    publishBomOverrides := Def.task {
+      val report = update.value
+      val deps = allDependencies.value
+      val starDeps = deps.filter(d => d.revision == "*" || d.revision.isEmpty)
+      val compileModules = report.configurations
+        .find(_.configuration.name == "compile")
+        .toVector
+        .flatMap(_.modules)
+      starDeps.flatMap { d =>
+        compileModules
+          .find(m =>
+            m.module.organization == d.organization &&
+              m.module.name == d.name &&
+              !m.evicted
+          )
+          .map(m => (m.module.organization, m.module.name, m.module.revision))
+      }.distinct
+    }.value,
     publish := publishOrSkip(publishConfiguration, publish / skip).value,
     publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,

@@ -26,7 +26,8 @@ object IvyXml {
 
   private def rawContent(
       currentProject: Project,
-      shadedConfigOpt: Option[Configuration]
+      shadedConfigOpt: Option[Configuration],
+      bomForcedDeps: Seq[(String, String, String)]
   ): String = {
 
     // Important: width = Int.MaxValue, so that no tag gets truncated.
@@ -38,7 +39,7 @@ object IvyXml {
     val printer = new scala.xml.PrettyPrinter(Int.MaxValue, 2)
 
     """<?xml version="1.0" encoding="UTF-8"?>""" + '\n' +
-      printer.format(content(currentProject, shadedConfigOpt))
+      printer.format(content(currentProject, shadedConfigOpt, bomForcedDeps))
   }
 
   // These are required for publish to be fine, later on.
@@ -72,7 +73,11 @@ object IvyXml {
     ()
   }
 
-  private def content(project0: Project, shadedConfigOpt: Option[Configuration]): Node = {
+  private def content(
+      project0: Project,
+      shadedConfigOpt: Option[Configuration],
+      bomForcedDeps: Seq[(String, String, String)]
+  ): Node = {
 
     val filterOutDependencies =
       shadedConfigOpt.toSet[Configuration].flatMap { shadedConfig =>
@@ -200,11 +205,13 @@ object IvyXml {
           val publications = csrPublications.value
           proj.withPublications(publications)
         }
+        val bomOverrides = sbt.Keys.publishBomOverrides.value
         IvyXml.writeFiles(
           currentProject,
           shadedConfigOpt,
           sbt.Keys.ivySbt.value,
-          sbt.Keys.streams.value.log
+          sbt.Keys.streams.value.log,
+          bomOverrides
         )
       }
     }.value)
