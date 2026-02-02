@@ -231,12 +231,27 @@ class CoursierDependencyResolution(
         )
       BomDependency(ToCoursier.module(mod), ver, Configuration.empty)
     }
+    // Coursier fills version from BOM only when versionConstraint is empty (Resolution.processedRootDependencies).
+    // So for deps with "*" or "" and BOMs present, pass empty version so BOM can supply it (sbt#4531).
     val dependencies = regularModules
       .flatMap { d =>
         FromSbt.dependencies(d, sv, sbv, optionalCrossVer = true, projectPlatform = projectPlatform)
       }
       .map { (config, dep) =>
-        (ToCoursier.configuration(config), ToCoursier.dependency(dep))
+        val depForResolve =
+          if (boms.nonEmpty && (dep.version == "*" || dep.version.isEmpty))
+            lmcoursier.definitions.Dependency(
+              dep.module,
+              "",
+              dep.configuration,
+              dep.exclusions,
+              dep.publication,
+              dep.optional,
+              dep.transitive
+            )
+          else
+            dep
+        (ToCoursier.configuration(config), ToCoursier.dependency(depForResolve))
       }
 
     val orderedConfigs = Inputs
