@@ -7,15 +7,15 @@ ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.12.18"
 
 lazy val a = project
-  .settings(common: _*)
+  .settings(common*)
   .settings(
     libraryDependencies += ("com.fasterxml.jackson" % "jackson-bom" % "2.21.0").pomOnly(),
     libraryDependencies += "com.fasterxml.jackson.core" % "jackson-core" % "*",
   )
 
 lazy val b = project
-  .settings(common: _*)
   .settings(
+    common*,
     libraryDependencies += ("com.fasterxml.jackson" % "jackson-bom" % "2.21.0").pomOnly(),
     libraryDependencies += organization.value %% "a" % version.value,
     TaskKey[Unit]("checkBomFromA") := {
