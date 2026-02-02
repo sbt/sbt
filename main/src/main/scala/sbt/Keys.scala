@@ -566,8 +566,8 @@ object Keys {
   val deliverLocal = taskKey[File]("Generates the Ivy file for publishing to the local repository.").withRank(BTask)
   // makeIvyXml is currently identical to the confusingly-named "deliver", which may be deprecated in the future
   val makeIvyXml = taskKey[File]("Generates the Ivy file for publishing to a repository.").withRank(BTask)
-  /** BOM-resolved (org, name, version) for deps that had \"*\"; emitted as forced deps in published ivy.xml (sbt#4531). */
-  val publishBomOverrides = taskKey[Seq[(String, String, String)]]("")
+  /** BOM-resolved ModuleIDs for deps that had \"*\" (version from BOM); emitted as forced deps in published ivy.xml (sbt#4531). */
+  val resolvedDependencies = taskKey[Seq[ModuleID]]("")
   val publish = taskKey[Unit]("Publishes artifacts to a repository.").withRank(APlusTask)
   val publishLocal = taskKey[Unit]("Publishes artifacts to the local Ivy repository.").withRank(APlusTask)
   val publishM2 = taskKey[Unit]("Publishes artifacts to the local Maven repository.").withRank(ATask)

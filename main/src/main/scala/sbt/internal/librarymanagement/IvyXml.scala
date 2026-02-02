@@ -48,8 +48,9 @@ object IvyXml {
       shadedConfigOpt: Option[Configuration],
       ivySbt: IvySbt,
       log: sbt.util.Logger,
-      bomForcedDeps: Seq[(String, String, String)]
+      resolvedDeps: Seq[sbt.librarymanagement.ModuleID]
   ): Unit = {
+    val bomForcedDeps = resolvedDeps.map(m => (m.organization, m.name, m.revision))
 
     val ivyCacheManager = ivySbt.withIvy(log)(ivy => ivy.getResolutionCacheManager)
 
@@ -215,13 +216,13 @@ object IvyXml {
           val publications = csrPublications.value
           proj.withPublications(publications)
         }
-        val bomOverrides = sbt.Keys.publishBomOverrides.value
+        val resolved = sbt.Keys.resolvedDependencies.value
         IvyXml.writeFiles(
           currentProject,
           shadedConfigOpt,
           sbt.Keys.ivySbt.value,
           sbt.Keys.streams.value.log,
-          bomOverrides
+          resolved
         )
       }
     }.value)

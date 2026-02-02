@@ -2973,7 +2973,7 @@ object Classpaths {
     deliver := deliverTask(makeIvyXmlConfiguration).value,
     deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
     makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
-    publishBomOverrides := Def.task {
+    resolvedDependencies := Def.task {
       val report = update.value
       val deps = allDependencies.value
       val starDeps = deps.filter(d => d.revision == "*" || d.revision.isEmpty)
@@ -2988,7 +2988,7 @@ object Classpaths {
               m.module.name == d.name &&
               !m.evicted
           )
-          .map(m => (m.module.organization, m.module.name, m.module.revision))
+          .map(m => d.withRevision(m.module.revision))
       }.distinct
     }.value,
     publish := publishOrSkip(publishConfiguration, publish / skip).value,
