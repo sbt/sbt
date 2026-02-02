@@ -1,5 +1,5 @@
 # sbt#4847: baz (2.13) dependsOn bar (2.12); update must resolve bar_2.12, then baz/run must succeed.
-$ delete output
+$ delete baz/output
 > baz/update
 > baz/run
-$ exists output
+$ exists baz/output
