@@ -143,7 +143,7 @@ object LMCoursier {
       .withLog(log)
       .withIvyHome(ivyHome)
       .withStrict(strict)
-      .withForceVersions(allForceVersions.toVector)
+      .withForceVersions(userForceVersions.toVector)
       .withMissingOk(missingOk)
       .withSameVersions(sameVersions)
       .withLocalArtifactsShouldBeCached(localArtifactsShouldBeCached)
@@ -248,7 +248,6 @@ object LMCoursier {
       Some(updateConfiguration.value),
       csrSameVersions.value,
       Some(csrMavenDependencyOverride.value),
-      Vector.empty,
       csrLocalArtifactsShouldBeCached.value,
       None,
       streams.value.log

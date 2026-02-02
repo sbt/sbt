@@ -47,7 +47,8 @@ object IvyXml {
       currentProject: Project,
       shadedConfigOpt: Option[Configuration],
       ivySbt: IvySbt,
-      log: sbt.util.Logger
+      log: sbt.util.Logger,
+      bomForcedDeps: Seq[(String, String, String)]
   ): Unit = {
 
     val ivyCacheManager = ivySbt.withIvy(log)(ivy => ivy.getResolutionCacheManager)
@@ -62,7 +63,7 @@ object IvyXml {
     val cacheIvyFile = ivyCacheManager.getResolvedIvyFileInCache(ivyModule)
     val cacheIvyPropertiesFile = ivyCacheManager.getResolvedIvyPropertiesInCache(ivyModule)
 
-    val content0 = rawContent(currentProject, shadedConfigOpt)
+    val content0 = rawContent(currentProject, shadedConfigOpt, bomForcedDeps)
     cacheIvyFile.getParentFile.mkdirs()
     log.debug(s"writing Ivy file $cacheIvyFile")
     Files.write(cacheIvyFile.toPath, content0.getBytes(UTF_8))
