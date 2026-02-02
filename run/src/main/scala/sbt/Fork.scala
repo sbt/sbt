@@ -16,7 +16,7 @@ import OutputStrategy._
 import sbt.internal.util.{ RunningProcesses, Util }
 import Util.{ AnyOps, none }
 
-import java.lang.{ ProcessBuilder => JProcessBuilder }
+import java.lang.{ ProcessBuilder => JProcessBuilder, Process => JProcess }
 import java.util.Locale
 
 /**
@@ -33,8 +33,18 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
    * It is configured according to `config`.
    * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
    */
-  def apply(config: ForkOptions, arguments: Seq[String]): Int =
-    Fork.blockForExitCode(fork(config, arguments))
+  def apply(config: ForkOptions, arguments: Seq[String]): Int = {
+    import config._
+    val outStrategy = outputStrategy.getOrElse(StdoutOutput)
+    if (connectInput && outStrategy == StdoutOutput)
+      Fork.blockJForExitCode(interactiveFork(config, arguments))
+    else Fork.blockForExitCode(fork(config, arguments))
+  }
+
+  private def interactiveFork(config: ForkOptions, arguments: Seq[String]): JProcess = {
+    val (extraEnv, jpb) = prep(config, arguments)
+    Fork.forkInternalInteractive(config, extraEnv, jpb)
+  }
 
   /**
    * Forks the configured process and returns a `Process` that can be used to wait for completion or to terminate the forked process.
@@ -43,6 +53,14 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
    * If `runnerClass` is defined for this Fork instance, it is prepended to `arguments` to define the arguments passed to the forked command.
    */
   def fork(config: ForkOptions, arguments: Seq[String]): Process = {
+    val (extraEnv, jpb) = prep(config, arguments)
+    Fork.forkInternal(config, extraEnv, jpb)
+  }
+
+  private def prep(
+      config: ForkOptions,
+      arguments: Seq[String]
+  ): (List[(String, String)], JProcessBuilder) = {
     import config._
     val executable = Fork.javaCommand(javaHome, commandName).getAbsolutePath
     val preOptions = makeOptions(runJVMOptions, bootJars, arguments)
@@ -58,7 +76,7 @@ final class Fork(val commandName: String, val runnerClass: Option[String]) {
     val extraEnv = classpathEnv.toList.map { value =>
       Fork.ClasspathEnvKey -> value
     }
-    Fork.forkInternal(config, extraEnv, jpb)
+    (extraEnv, jpb)
   }
 
   private[this] def makeOptions(
@@ -184,6 +202,30 @@ object Fork {
         out.logger.buffer { process.run(out.logger, connectInput = false) }
       case out: LoggedOutput => process.run(out.logger, connectInput = false)
       case out: CustomOutput => (process #> out.output).run(connectInput = false)
+    }
+  }
+
+  private[sbt] def forkInternalInteractive(
+      config: ForkOptions,
+      extraEnv: List[(String, String)],
+      jpb: JProcessBuilder
+  ): JProcess = {
+    import config.{ envVars => env, _ }
+    val environment: List[(String, String)] = env.toList ++ extraEnv
+    workingDirectory.foreach(jpb.directory(_))
+    environment.foreach { case (k, v) => jpb.environment.put(k, v) }
+    jpb.inheritIO()
+    jpb.start()
+  }
+
+  private[sbt] def blockJForExitCode(p: JProcess): Int = {
+    RunningProcesses.add(p)
+    try {
+      p.waitFor()
+      p.exitValue()
+    } finally {
+      if (p.isAlive()) p.destroy()
+      RunningProcesses.remove(p)
     }
   }
 

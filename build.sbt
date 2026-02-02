@@ -180,7 +180,8 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[_]] = Def settings
     exclude[DirectMissingMethodProblem]("sbt.PluginData.this"),
     exclude[IncompatibleResultTypeProblem]("sbt.EvaluateTask.executeProgress"),
     exclude[DirectMissingMethodProblem]("sbt.Keys.currentTaskProgress"),
-    exclude[IncompatibleResultTypeProblem]("sbt.PluginData.copy$default$10")
+    exclude[IncompatibleResultTypeProblem]("sbt.PluginData.copy$default$10"),
+    exclude[IncompatibleMethTypeProblem]("sbt.internal.util.*"),
   ),
 )
 
