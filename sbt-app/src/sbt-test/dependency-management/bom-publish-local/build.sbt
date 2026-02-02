@@ -1,6 +1,7 @@
 // BOM + publishLocal (sbt#4531): a uses BOM + jackson-core "*"; b depends on a.
 // For publishLocal, a's published ivy may still list jackson-core:*; so b also needs the BOM
 // to resolve that transitive * (per eed3si9n: BOM needs to be added to all subprojects).
+// Use `common,` not `common*`—compiler's vararg hint is misleading; sbt accepts Seq here.
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ThisBuild / organization := "org.example"
 ThisBuild / version := "1.0"
