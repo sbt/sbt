@@ -5,6 +5,7 @@ import local.Scripted
 import java.nio.file.{ Files, Path => JPath }
 import java.util.Locale
 import sbt.internal.inc.Analysis
+import sbt.Tags
 import com.eed3si9n.jarjarabrams.ModuleCoordinate
 
 // ThisBuild settings take lower precedence,
@@ -74,6 +75,10 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
   testFrameworks += TestFramework("hedgehog.sbt.Framework"),
   testFrameworks += TestFramework("verify.runner.Framework"),
   Global / concurrentRestrictions += Utils.testExclusiveRestriction,
+  // On Windows, limit to one task at a time to avoid OverlappingFileLockException when
+  // multiple tasks (e.g. scalafix plugin and sbt Coursier) write to the same cache.
+  Global / concurrentRestrictions ++= (if (scala.util.Properties.isWin) Seq(Tags.limitAll(1))
+                                       else Nil),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-w", "1"),
   Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-verbosity", "2"),
   compile / javacOptions ++= Seq("-Xlint", "-Xlint:-serial"),

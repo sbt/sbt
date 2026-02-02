@@ -1,6 +1,6 @@
 lazy val p1 = (project in file("p1")).
   settings(
-    checkTask(expectedMongo),
+    checkTask(expectedMongo, fromDependencyManagement = true),
     libraryDependencies += ("org.mongodb" %% "casbah" % "2.4.1").pomOnly(),
     inThisBuild(List(
       organization := "org.example",
@@ -16,12 +16,14 @@ lazy val p2 = (project in file("p2")).
     checkTask(expectedInter)
   )
 
+// BOM (sbt#4531): .pomOnly() deps are emitted under <dependencyManagement> with type=pom, scope=import
 lazy val expectedMongo =
   <dependency>
     <groupId>org.mongodb</groupId>
     <artifactId>casbah_2.9.2</artifactId>
     <version>2.4.1</version>
     <type>pom</type>
+    <scope>import</scope>
   </dependency>
 
 lazy val expectedInter =
@@ -31,15 +33,15 @@ lazy val expectedInter =
     <version>1.0</version>
   </dependency>
 
-def checkTask(expectedDep: xml.Elem) = TaskKey[Unit]("checkPom") := {
+def checkTask(expectedDep: xml.Elem, fromDependencyManagement: Boolean = false) = TaskKey[Unit]("checkPom") := {
   val vf = makePom.value
   val converter = fileConverter.value
   val pom = xml.XML.loadFile(converter.toPath(vf).toFile)
-  val actual = pom \\ "dependencies"
+  val actual = if (fromDependencyManagement) pom \ "dependencyManagement" \ "dependencies" else pom \ "dependencies"
   val expected = <d>
     {expectedDep}
   </d>
-  def dropTopElem(s:String): String = s.split("""\n""").drop(1).dropRight(1).mkString("\n")
+  def dropTopElem(s: String): String = s.split("""\n""").drop(1).dropRight(1).mkString("\n")
   val pp = new xml.PrettyPrinter(Int.MaxValue, 0)
   val expectedString = dropTopElem(pp.format(expected))
   val actualString = dropTopElem(pp.formatNodes(actual))
