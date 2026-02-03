@@ -4249,6 +4249,8 @@ object Classpaths {
                 .withCrossVersion(cross)
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
+            // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
+            // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
             case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
               val compat =
                 if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
