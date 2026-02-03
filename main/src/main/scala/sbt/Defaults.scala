@@ -4235,12 +4235,12 @@ object Classpaths {
                 .withCrossVersion(CrossVersion.constant(depSBV))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-            case b: CrossVersion.Binary =>
+            case b: CrossVersion.Binary if sbv != depSBV =>
               depProjId
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-            case f: CrossVersion.Full =>
+            case f: CrossVersion.Full if sbv != depSBV =>
               val cross = (dep.project / scalaVersion)
                 .get(data)
                 .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
@@ -4249,7 +4249,7 @@ object Classpaths {
                 .withCrossVersion(cross)
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-            case c: sbt.librarymanagement.For3Use2_13 =>
+            case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
               val compat =
                 if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
                 else depSBV
@@ -4257,7 +4257,7 @@ object Classpaths {
                 .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-            case c: sbt.librarymanagement.For2_13Use3 =>
+            case c: sbt.librarymanagement.For2_13Use3 if sbv != depSBV =>
               val compat = if (depSBV == "2.13") "3" else depSBV
               depProjId
                 .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
