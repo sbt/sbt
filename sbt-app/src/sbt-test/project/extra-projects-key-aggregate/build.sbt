@@ -8,8 +8,11 @@
 
 val check = taskKey[Unit]("Repro for #4947: task at root when extraProjects creates auto root")
 
-val a = project
-val p = project
+lazy val root = (project in file("."))
+  .aggregate(a, p, LocalProject("z"))
+
+lazy val a = project
+lazy val p = project
   .settings(
     name := "p",
     check := ()
