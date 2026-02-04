@@ -643,7 +643,7 @@ private[sbt] object LibraryManagement {
     if (classifier.nonEmpty) s = s.replace("(-[classifier])", s"-$classifier")
     else s = s.replace("(-[classifier])", "")
     // Remove optional Ivy pattern parts (scala/sbt version, branch) for ivyless layout
-    s = s.replaceAll("\\(scala_[^)]+\\)/", "").replaceAll("\\(sbt_[^)]+\\)/", "")
+    s = s.replaceAll("\\(scala_[^)]+/\\)", "").replaceAll("\\(sbt_[^)]+/\\)", "")
     s = s.replaceAll("\\(\\[branch\\]/\\)", "")
     s
   }
