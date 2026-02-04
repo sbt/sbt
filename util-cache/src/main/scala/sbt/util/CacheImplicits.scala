@@ -61,7 +61,12 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
    * A string representation of HashedVirtualFileRef, delimited by `>`.
    */
   override def hashedVirtualFileRefToStr(ref: HashedVirtualFileRef): String =
-    def fallback: String = super.hashedVirtualFileRefToStr(ref)
+    def fallback: String =
+      try super.hashedVirtualFileRefToStr(ref)
+      catch
+        case _: NoSuchFileException =>
+          import Digest.*
+          s"${ref.id}>${Digest.zero.contentHashStr}/0"
     if ref.id().endsWith(".scala") || ref.id().endsWith(".java") then fallback
     else
       ref match
