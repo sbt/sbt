@@ -1,0 +1,7 @@
+# Test ivyless publish to HTTP server (issue #8639)
+# HTTP server accepts PUT to repo directory; publish uses ivyless publisher
+# and produces the same layout as ivyless publishLocal
+
+> cleanPublishRepo
+> publishToHttp
+> checkIvylessPublish
