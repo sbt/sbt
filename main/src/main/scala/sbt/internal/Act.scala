@@ -231,7 +231,7 @@ object Act {
           parsed.mask,
           structure.extra
         )
-      aggregated.nonEmpty && aggregated.forall(data.contains)
+      aggregated.nonEmpty && aggregated.exists(data.contains)
 
   def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(using
       show: Show[ScopedKey[?]]
