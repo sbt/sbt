@@ -63,7 +63,7 @@ object Act {
       keyMap: Map[String, AttributeKey[?]],
       data: Def.Settings
   ): Parser[ScopedKey[Any]] =
-    scopedKeySelected(index, current, defaultConfigs, keyMap, data, askProject = true)
+    scopedKeySelected(index, current, defaultConfigs, keyMap, data, askProject = true, None)
       .map(_.key.asInstanceOf[ScopedKey[Any]])
 
   // the index should be an aggregated index for proper tab completion
@@ -119,7 +119,7 @@ object Act {
       keyMap: Map[String, AttributeKey[?]],
       data: Def.Settings,
       askProject: Boolean,
-      structure: Option[BuildStructure] = None,
+      structure: Option[BuildStructure],
   ): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap, askProject = askProject).flatMap {
       choices =>
@@ -202,8 +202,14 @@ object Act {
 
   def select(
       allKeys: Seq[Parser[ParsedKey]],
+      data: Def.Settings
+  )(using show: Show[ScopedKey[?]]): Parser[ParsedKey] =
+    select(allKeys, data, None)
+
+  def select(
+      allKeys: Seq[Parser[ParsedKey]],
       data: Def.Settings,
-      structure: Option[BuildStructure] = None
+      structure: Option[BuildStructure]
   )(using show: Show[ScopedKey[?]]): Parser[ParsedKey] =
     seq(allKeys) flatMap { ss =>
       val default: Parser[ParsedKey] = ss.headOption match
