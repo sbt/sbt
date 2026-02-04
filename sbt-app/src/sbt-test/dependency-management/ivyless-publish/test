@@ -1,0 +1,7 @@
+# Test ivyless publish (remote/file repo)
+# When useIvy is false and publishTo is Resolver.file, publish uses ivyless publisher
+# and produces the same layout as ivyless publishLocal
+
+> cleanPublishRepo
+> publish
+> checkIvylessPublish

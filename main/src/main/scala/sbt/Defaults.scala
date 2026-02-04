@@ -2991,7 +2991,7 @@ object Classpaths {
           .map(m => d.withRevision(m.module.revision))
       }.distinct
     }.value,
-    publish := publishOrSkip(publishConfiguration, publish / skip).value,
+    publish := LibraryManagement.ivylessPublishTask.tag(Tags.Publish, Tags.Network).value,
     publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
     publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
     credentials ++= Def.uncached {
