@@ -9,11 +9,12 @@
 package sbt
 package internal
 
-import java.io.{ File, FileInputStream, IOException }
-import java.net.{ HttpURLConnection, URI, URL }
-import java.util.Base64
+import java.io.{ File, IOException }
+import java.net.{ URI, URL }
 import java.util.concurrent.Callable
 
+import gigahorse.{ AuthScheme }
+import gigahorse.support.apachehttp.Gigahorse
 import sbt.Def.ScopedKey
 import sbt.internal.librarymanagement.*
 import sbt.librarymanagement.*
@@ -23,7 +24,8 @@ import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.ProjectExtra.*
 import sjsonnew.JsonFormat
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.*
+import scala.concurrent.duration.*
 import lmcoursier.definitions.Project as CsrProject
 
 private[sbt] object LibraryManagement {
@@ -650,6 +652,7 @@ private[sbt] object LibraryManagement {
 
   /**
    * HTTP PUT a file to a URL with optional Basic auth.
+   * Uses Gigahorse (Apache HttpClient) per sbt tech stack.
    */
   private def httpPut(
       url: URL,
@@ -657,33 +660,20 @@ private[sbt] object LibraryManagement {
       credentials: Option[Credentials.DirectCredentials],
       log: Logger
   ): Unit = {
-    val conn = url.openConnection().asInstanceOf[HttpURLConnection]
-    try {
-      conn.setDoOutput(true)
-      conn.setRequestMethod("PUT")
-      conn.setRequestProperty("Content-Type", "application/octet-stream")
-      conn.setRequestProperty("Content-Length", sourceFile.length().toString)
-      credentials.filter(_.host == url.getHost).foreach { dc =>
-        val auth =
-          Base64.getEncoder.encodeToString(s"${dc.userName}:${dc.passwd}".getBytes("UTF-8"))
-        conn.setRequestProperty("Authorization", s"Basic $auth")
-      }
-      conn.setInstanceFollowRedirects(true)
-      val in = new FileInputStream(sourceFile)
-      try {
-        val out = conn.getOutputStream
-        try IO.transfer(in, out)
-        finally out.close()
-      } finally in.close()
-      val code = conn.getResponseCode
-      if (code < 200 || code >= 300) {
-        val msg = Option(conn.getErrorStream)
-          .map(s => scala.io.Source.fromInputStream(s, "UTF-8").mkString)
-          .getOrElse("")
-        throw new IOException(s"PUT $url failed: $code ${conn.getResponseMessage}$msg")
-      }
-      log.info(s"Published $url")
-    } finally conn.disconnect()
+    val baseReq = Gigahorse.url(url.toString).put(sourceFile)
+    val req = credentials.filter(_.host == url.getHost) match {
+      case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
+      case None     => baseReq
+    }
+    val f = sbt.librarymanagement.Http.http.processFull(req)
+    val response = Await.result(f, 5.minutes)
+    if (response.status < 200 || response.status >= 300) {
+      val body = response.bodyAsString
+      throw new IOException(
+        s"PUT $url failed: ${response.status} ${response.statusText}$body"
+      )
+    }
+    log.info(s"Published $url")
   }
 
   /**
@@ -876,15 +866,6 @@ private[sbt] object LibraryManagement {
                 artifacts,
                 config.checksums,
                 repoDir,
-                config.overwrite,
-                log
-              )
-            case _ if resolver.getClass.getName == "sbt.librarymanagement.FileRepository" =>
-              ivylessPublishToFile(
-                project,
-                artifacts,
-                config.checksums,
-                resolver.asInstanceOf[sbt.librarymanagement.FileRepository],
                 config.overwrite,
                 log
               )
