@@ -10,7 +10,7 @@ package sbt
 package internal
 
 import java.io.{ File, FileInputStream, IOException }
-import java.net.{ HttpURLConnection, URL }
+import java.net.{ HttpURLConnection, URI, URL }
 import java.util.Base64
 import java.util.concurrent.Callable
 
@@ -747,11 +747,11 @@ private[sbt] object LibraryManagement {
         classifier,
         artifact.extension
       )
-      val url = new URL(pathPattern)
+      val url = URI.create(pathPattern).toURL()
       httpPut(url, sourceFile, directCreds.find(_.host == url.getHost), log)
       val checksums = writeChecksums(sourceFile)
       checksums.foreach { case (cf, suffix) =>
-        val checksumUrl = new URL(pathPattern + suffix)
+        val checksumUrl = URI.create(pathPattern + suffix).toURL()
         try httpPut(checksumUrl, cf, directCreds.find(_.host == url.getHost), log)
         finally cf.delete()
       }
@@ -768,14 +768,14 @@ private[sbt] object LibraryManagement {
       "",
       "xml"
     )
-    val ivyUrl = new URL(ivyPathPattern)
+    val ivyUrl = URI.create(ivyPathPattern).toURL()
     val ivyTmp = File.createTempFile("ivy", ".xml")
     try {
       IO.write(ivyTmp, ivyXmlContent)
       httpPut(ivyUrl, ivyTmp, directCreds.find(_.host == ivyUrl.getHost), log)
       val checksums = writeChecksums(ivyTmp)
       checksums.foreach { case (cf, suffix) =>
-        val checksumUrl = new URL(ivyPathPattern + suffix)
+        val checksumUrl = URI.create(ivyPathPattern + suffix).toURL()
         try httpPut(checksumUrl, cf, directCreds.find(_.host == ivyUrl.getHost), log)
         finally cf.delete()
       }
