@@ -1,0 +1,6 @@
+# Test ivyless publish to Maven repo (file) - issue #8688
+# When useIvy is false and publishTo is MavenCache, publish uses ivyless Maven layout
+
+> cleanPublishRepo
+> publish
+> checkMavenPublish

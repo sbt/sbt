@@ -1,0 +1,9 @@
+# Test ivyless publish to Maven repo via HTTP - issue #8688
+# a publishes to HTTP server; b consumes a from the same Maven repo (server stays up for resolve)
+
+> cleanPublishRepo
+> startPublishServer
+> a/publish
+> checkMavenPublish
+> b/compile
+> stopPublishServer
