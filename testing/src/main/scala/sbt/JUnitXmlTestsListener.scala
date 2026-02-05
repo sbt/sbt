@@ -279,7 +279,7 @@ class JUnitXmlTestsListener(val targetDir: File, legacyTestReport: Boolean, logg
       new File(targetDir, s"TEST-${normalizeName(withTestSuite(_.name))}.xml").getAbsolutePath
     }
     if (logger != null) {
-      logger.info(s"Writing JUnit XML test report: $file")
+      logger.debug(s"writing JUnit XML test report: $file")
     }
     val testSuiteResult = withTestSuite(_.stop())
     XML.save(file, testSuiteResult, "UTF-8", xmlDecl = true, null)
