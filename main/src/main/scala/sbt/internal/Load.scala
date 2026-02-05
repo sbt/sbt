@@ -867,7 +867,7 @@ private[sbt] object Load {
             defaultProjects.generatedConfigClassFiles ++ loadedProjectsRaw.generatedConfigClassFiles
           )
         }
-      val loadedProjects = processAutoAggregate(loadedProjects0, uri)
+      val loadedProjects = processAutoAggregate(loadedProjects0, uri, normBase, !hasRoot)
       timed("Load.loadUnit: cleanEvalClasses", log) {
         cleanEvalClasses(defDir, keepClassFiles)
       }
@@ -889,9 +889,29 @@ private[sbt] object Load {
       new BuildUnit(uri, normBase, loadedDefs, plugs, converter)
     }
 
-  private def processAutoAggregate(inProjects: Seq[Project], uri: URI): Seq[Project] =
-    inProjects.map: proj =>
-      proj
+  private def processAutoAggregate(
+      inProjects: Seq[Project],
+      uri: URI,
+      buildBase: File,
+      hasAutoRoot: Boolean
+  ): Seq[Project] =
+    if !hasAutoRoot then inProjects
+    else
+      val allProjectIds = inProjects.map(_.id).toSet
+      inProjects.map: proj =>
+        val isAutoRoot = isRootPath(proj.base, buildBase) && proj.aggregate.nonEmpty
+        if isAutoRoot then
+          val currentAggregateIds = proj.aggregate
+            .flatMap:
+              case ref: ProjectRef => Some(ref.project)
+              case _               => None
+            .toSet
+          val missingIds = allProjectIds - proj.id -- currentAggregateIds
+          if missingIds.nonEmpty then
+            val missingRefs = missingIds.toSeq.map(id => ProjectRef(uri, id))
+            proj.aggregate((proj.aggregate ++ missingRefs)*)
+          else proj
+        else proj
 
   private def autoID(
       localBase: File,

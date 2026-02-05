@@ -63,7 +63,7 @@ object Act {
       keyMap: Map[String, AttributeKey[?]],
       data: Def.Settings
   ): Parser[ScopedKey[Any]] =
-    scopedKeySelected(index, current, defaultConfigs, keyMap, data, askProject = true)
+    scopedKeySelected(index, current, defaultConfigs, keyMap, data, askProject = true, None)
       .map(_.key.asInstanceOf[ScopedKey[Any]])
 
   // the index should be an aggregated index for proper tab completion
@@ -80,6 +80,7 @@ object Act {
           structure.index.keyMap,
           structure.data,
           askProject = true,
+          structure = Some(structure),
         )
       )
       yield Aggregation.aggregate(
@@ -102,6 +103,7 @@ object Act {
         structure.index.keyMap,
         structure.data,
         askProject = optQuery.isEmpty,
+        structure = Some(structure),
       )
     yield Aggregation
       .aggregate(selected.key, selected.mask, structure.extra)
@@ -117,10 +119,11 @@ object Act {
       keyMap: Map[String, AttributeKey[?]],
       data: Def.Settings,
       askProject: Boolean,
+      structure: Option[BuildStructure],
   ): Parser[ParsedKey] =
     scopedKeyFull(index, current, defaultConfigs, keyMap, askProject = askProject).flatMap {
       choices =>
-        select(choices, data)(using showRelativeKey2(current))
+        select(choices, data, structure)(using showRelativeKey2(current))
     }
 
   def scopedKeyFull(
@@ -197,15 +200,38 @@ object Act {
       key
     )
 
-  def select(allKeys: Seq[Parser[ParsedKey]], data: Def.Settings)(using
-      show: Show[ScopedKey[?]]
-  ): Parser[ParsedKey] =
+  def select(
+      allKeys: Seq[Parser[ParsedKey]],
+      data: Def.Settings
+  )(using show: Show[ScopedKey[?]]): Parser[ParsedKey] =
+    select(allKeys, data, None)
+
+  def select(
+      allKeys: Seq[Parser[ParsedKey]],
+      data: Def.Settings,
+      structure: Option[BuildStructure]
+  )(using show: Show[ScopedKey[?]]): Parser[ParsedKey] =
     seq(allKeys) flatMap { ss =>
       val default: Parser[ParsedKey] = ss.headOption match
         case None    => noValidKeys
         case Some(x) => success(x)
-      selectFromValid(ss filter isValid(data), default)
+      val validFilter = structure.fold(isValid(data))(isValidForAggregate(data, _))
+      selectFromValid(ss filter validFilter, default)
     }
+
+  private def isValidForAggregate(
+      data: Def.Settings,
+      structure: BuildStructure
+  )(parsed: ParsedKey): Boolean =
+    if data.contains(parsed.key) then true
+    else
+      val aggregated =
+        Aggregation.aggregate(
+          parsed.key.asInstanceOf[ScopedKey[Any]],
+          parsed.mask,
+          structure.extra
+        )
+      aggregated.nonEmpty && aggregated.exists(data.contains)
 
   def selectFromValid(ss: Seq[ParsedKey], default: Parser[ParsedKey])(using
       show: Show[ScopedKey[?]]
@@ -230,7 +256,7 @@ object Act {
     if (zeros.nonEmpty) zeros else selects
   }
 
-  def noValidKeys = failure("No such key.")
+  def noValidKeys: Parser[ParsedKey] = failure("No such key.")
 
   def showAmbiguous(keys: Seq[ScopedKey[?]])(using show: Show[ScopedKey[?]]): String =
     keys.take(3).map(x => show.show(x)).mkString("", ", ", if (keys.size > 3) ", ..." else "")
