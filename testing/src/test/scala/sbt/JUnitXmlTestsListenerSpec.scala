@@ -11,6 +11,7 @@ package sbt
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
+import verify.BasicTestSuite
 import testing.{
   Event as TEvent,
   OptionalThrowable,
@@ -19,9 +20,8 @@ import testing.{
 }
 import util.{ AbstractLogger, Level }
 import sbt.protocol.testing.TestResult
-import verify.BasicTestSuite
 
-object JUnitXmlTestsListenerSpec extends verify.BasicTestSuite:
+object JUnitXmlTestsListenerSpec extends BasicTestSuite:
 
   test("JUnitXmlTestsListener should log info message when writing test report"):
     val tempDir = File.createTempFile("junit-test", "")
