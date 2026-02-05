@@ -1,0 +1,6 @@
+# Root project is defined by plugin via extraProjects (#4976). Without the fix,
+# loading fails with "Overlapping output directories" (build root + foo).
+
+> compile
+
+> show name
