@@ -812,10 +812,15 @@ private[sbt] object Load {
           mkReporter,
         )
       }
+      val projectsFromBuildDef = defsScala.flatMap(b => projectsFromBuild(b, normBase))
+      val rootFromExtra =
+        buildLevelExtraProjects.filter(p => isRootPath(p.base, normBase))
       val initialProjects =
-        defsScala.flatMap(b => projectsFromBuild(b, normBase)) ++ buildLevelExtraProjects
-
-      val hasRootAlreadyDefined = defsScala.exists(_.rootProject.isDefined)
+        if rootFromExtra.nonEmpty then
+          projectsFromBuildDef.filterNot(p => isRootPath(p.base, normBase)) ++ buildLevelExtraProjects
+        else projectsFromBuildDef ++ buildLevelExtraProjects
+      val hasRootAlreadyDefined =
+        defsScala.exists(_.rootProject.isDefined) || rootFromExtra.nonEmpty
 
       val memoSettings = new mutable.HashMap[VirtualFile, LoadedSbtFile]
       def loadProjects(ps: Seq[Project], createRoot: Boolean) =
