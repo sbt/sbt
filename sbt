@@ -859,17 +859,23 @@ runNativeClient() {
 
 original_args=("$@")
 
+sbt_file_opts=()
+
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  set -- "$@" $(loadConfigFile "$machine_sbt_opts_file")
+  sbt_file_opts+=($(loadConfigFile "$machine_sbt_opts_file"))
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$dist_sbt_opts_file")
+  [[ -f "$dist_sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$dist_sbt_opts_file"))
 fi
 
 # Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
-# Append so it appears last in command line and wins for duplicate properties.
-[[ -f "$sbt_opts_file" ]] && set -- "$@" $(loadConfigFile "$sbt_opts_file")
+[[ -f "$sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$sbt_opts_file"))
+
+# Prepend sbtopts so command line args appear last and win for duplicate properties.
+if (( ${#sbt_file_opts[@]} > 0 )); then
+  set -- "${sbt_file_opts[@]}" "$@"
+fi
 
 # Pull in the project-level java config, if it exists.
 [[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
