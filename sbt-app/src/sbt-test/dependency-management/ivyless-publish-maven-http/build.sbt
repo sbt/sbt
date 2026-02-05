@@ -1,52 +1,58 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
+ThisBuild / organization := "com.example"
+ThisBuild / version := "0.1.0-SNAPSHOT"
+ThisBuild / scalaVersion := "3.8.1"
 
-name := "lib1"
-organization := "com.example"
-version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.1"
-
-publishMavenStyle := true
 val publishRepoBase = settingKey[File]("Base directory for Maven publish repo (HTTP server writes here)")
-publishRepoBase := baseDirectory.value / "repo"
-
+ThisBuild / publishRepoBase := (ThisBuild / baseDirectory).value / "repo"
 val publishPort = 3031
 
-publishTo := Some(
-  sbt.librarymanagement.MavenRepo("test-repo", s"http://localhost:$publishPort/")
-    .withAllowInsecureProtocol(true)
-)
+lazy val root = (project in file("."))
+  .aggregate(a, b)
+  .settings(
+    publish / skip := true,
+  )
 
-useIvy := false
+lazy val a = project
+  .settings(
+    publishMavenStyle := true,
+    publishTo := Some(
+      sbt.librarymanagement.MavenRepo("test-repo", s"http://localhost:$publishPort/")
+        .withAllowInsecureProtocol(true)
+    ),
+    useIvy := false,
+    Compile / packageDoc / publishArtifact := false,
+    Compile / packageSrc / publishArtifact := false,
+  )
 
-Compile / packageDoc / publishArtifact := false
-Compile / packageSrc / publishArtifact := false
+lazy val b = project
+  .settings(
+    libraryDependencies += organization.value %% "a" % version.value,
+    resolvers += sbt.librarymanagement.MavenRepo(
+      "test-repo",
+      s"http://localhost:$publishPort/"
+    ).withAllowInsecureProtocol(true),
+  )
 
 val startPublishServer = taskKey[Unit]("Start HTTP server that accepts PUT to repo directory")
-startPublishServer := {
-  HttpPutServer.start(publishPort, publishRepoBase.value)
-  streams.value.log.info(s"HTTP PUT server started on port $publishPort, writing to ${publishRepoBase.value}")
+Global / startPublishServer := {
+  HttpPutServer.start(publishPort, (ThisBuild / publishRepoBase).value)
+  streams.value.log.info(s"HTTP PUT server started on port $publishPort, writing to ${(ThisBuild / publishRepoBase).value}")
 }
 
 val stopPublishServer = taskKey[Unit]("Stop HTTP server")
-stopPublishServer := {
+Global / stopPublishServer := {
   HttpPutServer.stop()
   streams.value.log.info("HTTP PUT server stopped")
 }
 
-val publishToHttp = taskKey[Unit]("Publish to HTTP server (start server, publish, stop server)")
-publishToHttp := {
-  startPublishServer.value
-  try publish.value
-  finally stopPublishServer.value
-}
-
 val checkMavenPublish = taskKey[Unit]("Check that ivyless Maven publish produced the expected files")
-checkMavenPublish := {
+Global / checkMavenPublish := {
   val log = streams.value.log
-  val base = publishRepoBase.value
-  val groupId = organization.value
-  val artifactId = normalizedName.value + "_3"
-  val ver = version.value
+  val base = (ThisBuild / publishRepoBase).value
+  val groupId = (ThisBuild / organization).value
+  val artifactId = "a_3"
+  val ver = (ThisBuild / version).value
   val groupPath = groupId.replace('.', '/')
   val versionDir = base / groupPath / artifactId / ver
 
@@ -86,6 +92,6 @@ checkMavenPublish := {
 }
 
 val cleanPublishRepo = taskKey[Unit]("Clean the publish repo")
-cleanPublishRepo := {
-  IO.delete(publishRepoBase.value)
+Global / cleanPublishRepo := {
+  IO.delete((ThisBuild / publishRepoBase).value)
 }
