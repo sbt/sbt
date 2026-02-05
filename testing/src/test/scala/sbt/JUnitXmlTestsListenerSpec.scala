@@ -11,37 +11,32 @@ package sbt
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
-import testing.{
-  Event as TEvent,
-  OptionalThrowable,
-  Status as TStatus,
-  TestSelector
-}
-import util.{ AbstractLogger, Level }
+import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSelector }
+import util.{ AbstractLogger, Level, ControlEvent, LogEvent }
 import sbt.protocol.testing.TestResult
 import verify.BasicTestSuite
 
 object JUnitXmlTestsListenerSpec extends BasicTestSuite:
 
-  test("JUnitXmlTestsListener should log info message when writing test report"):
+  test("JUnitXmlTestsListener should log debug message when writing test report"):
     val tempDir = File.createTempFile("junit-test", "")
     tempDir.delete()
     tempDir.mkdirs()
     try
       val loggedMessages = new AtomicReference[List[String]](Nil)
       val mockLogger = new AbstractLogger:
-        def getLevel: Level.Value = Level.Info
+        def getLevel: Level.Value = Level.Debug
         def setLevel(newLevel: Level.Value): Unit = ()
         def getTrace: Int = 0
         def setTrace(flag: Int): Unit = ()
         def successEnabled: Boolean = false
         def setSuccessEnabled(flag: Boolean): Unit = ()
-        def control(event: sbt.internal.util.ControlEvent.Value, message: => String): Unit = ()
-        def logAll(events: Seq[sbt.internal.util.LogEvent]): Unit = ()
+        def control(event: ControlEvent.Value, message: => String): Unit = ()
+        def logAll(events: Seq[LogEvent]): Unit = ()
         def trace(t: => Throwable): Unit = ()
         def success(message: => String): Unit = ()
         def log(level: Level.Value, message: => String): Unit =
-          if level == Level.Info then loggedMessages.updateAndGet(_ :+ message)
+          if level == Level.Debug then loggedMessages.updateAndGet(_ :+ message)
 
       val listener = new JUnitXmlTestsListener(tempDir, false, mockLogger)
       listener.doInit()
@@ -54,18 +49,18 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         def status = TStatus.Success
         def fingerprint = null
         def selector = new TestSelector("testMethod")
-        def throwable = new OptionalThrowable(None)
+        def throwable = new OptionalThrowable()
 
       listener.testEvent(sbt.TestEvent(Seq(testEvent)))
 
       // End the group to trigger writeSuite()
-      listener.endGroup("TestSuite", TestResult(0, 0, 0, 0))
+      listener.endGroup("TestSuite", TestResult.Passed)
 
-      // Verify that the info message was logged
+      // Verify that the debug message was logged
       val messages = loggedMessages.get()
       assert(
-        messages.exists(_.contains("Writing JUnit XML test report")),
-        s"Expected log message containing 'Writing JUnit XML test report', but got: $messages"
+        messages.exists(_.contains("writing JUnit XML test report")),
+        s"Expected log message containing 'writing JUnit XML test report', but got: $messages"
       )
       assert(
         messages.exists(_.contains("TEST-TestSuite.xml")),
@@ -92,12 +87,12 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         def status = TStatus.Success
         def fingerprint = null
         def selector = new TestSelector("testMethod")
-        def throwable = new OptionalThrowable(None)
+        def throwable = new OptionalThrowable()
 
       listener.testEvent(sbt.TestEvent(Seq(testEvent)))
 
       // Should not throw when logger is null
-      listener.endGroup("TestSuite", TestResult(0, 0, 0, 0))
+      listener.endGroup("TestSuite", TestResult.Passed)
 
       // Verify XML file was still created
       val xmlFile = new File(tempDir, "TEST-TestSuite.xml")
