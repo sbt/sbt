@@ -12,7 +12,12 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import sbt.protocol.testing.TestResult
 import sbt.util.{ AbstractLogger, Level }
-import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSelector }
+import testing.{
+  Event as TEvent,
+  OptionalThrowable,
+  Status as TStatus,
+  TestSelector
+}
 
 object JUnitXmlTestsListenerSpec extends verify.BasicTestSuite:
 
