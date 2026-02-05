@@ -657,13 +657,11 @@ private[sbt] object LibraryManagement {
       url: URL,
       credentials: Seq[Credentials.DirectCredentials],
       realm: Option[String] = None
-  ): Option[Credentials.DirectCredentials] = {
+  ): Option[Credentials.DirectCredentials] =
     val byHost = credentials.filter(_.host == url.getHost)
-    realm match {
+    realm match
       case Some(r) => byHost.find(_.realm == r).orElse(byHost.headOption)
       case None    => byHost.headOption
-    }
-  }
 
   /**
    * HTTP PUT a file to a URL with optional Basic auth.
@@ -674,22 +672,19 @@ private[sbt] object LibraryManagement {
       sourceFile: File,
       credentials: Option[Credentials.DirectCredentials],
       log: Logger
-  ): Unit = {
+  ): Unit =
     val baseReq = Gigahorse.url(url.toString).put(sourceFile)
-    val req = credentials match {
+    val req = credentials match
       case Some(dc) => baseReq.withAuth(dc.userName, dc.passwd, AuthScheme.Basic)
       case None     => baseReq
-    }
     val f = sbt.librarymanagement.Http.http.processFull(req)
     val response = Await.result(f, 5.minutes)
     val body = response.bodyAsString
-    if (response.status < 200 || response.status >= 300) {
+    if response.status < 200 || response.status >= 300 then
       throw new IOException(
         s"PUT $url failed: ${response.status} ${response.statusText}$body"
       )
-    }
     log.info(s"Published $url")
-  }
 
   /**
    * Publishes artifacts to a remote Ivy repo (URLRepository) without using Apache Ivy.
@@ -795,19 +790,18 @@ private[sbt] object LibraryManagement {
       artifactId: String,
       version: String,
       artifact: Artifact
-  ): String = {
+  ): String =
     val groupPath = groupId.replace('.', '/')
     val classifierPart = artifact.classifier.map("-" + _).getOrElse("")
     val fileName = s"$artifactId-$version$classifierPart.${artifact.extension}"
     s"$groupPath/$artifactId/$version/$fileName"
-  }
 
   private def writeChecksumsForFile(
       targetFile: File,
       algorithms: Vector[String],
       log: Logger
   ): Unit =
-    algorithms.foreach { algo =>
+    algorithms.foreach: algo =>
       val digestAlgo = algo.toLowerCase match
         case "md5"  => sbt.util.Digest.Md5
         case "sha1" => sbt.util.Digest.Sha1
@@ -817,7 +811,6 @@ private[sbt] object LibraryManagement {
       val checksumFile = new File(targetFile.getPath + "." + algo.toLowerCase)
       IO.write(checksumFile, digest.hashHexString)
       log.debug(s"Wrote checksum: $checksumFile")
-    }
 
   /**
    * Publishes artifacts to a local Maven repo (Maven layout) without using Apache Ivy.
@@ -830,9 +823,8 @@ private[sbt] object LibraryManagement {
       repoBase: File,
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
-    if (repoBase == null)
-      throw new IllegalArgumentException("repoBase must not be null")
+  ): Unit =
+    if repoBase == null then throw new IllegalArgumentException("repoBase must not be null")
     val groupId = project.module.organization.value
     val artifactId = project.module.name.value
     val version = project.version
@@ -840,19 +832,16 @@ private[sbt] object LibraryManagement {
     val versionDir = new File(repoBase, s"$groupPath/$artifactId/$version")
     log.info(s"Publishing to Maven repo: $versionDir")
 
-    artifacts.foreach { case (artifact, sourceFile) =>
-      val path = mavenLayoutPath(groupId, artifactId, version, artifact)
-      val targetFile = new File(repoBase, path.replace('/', File.separatorChar))
-      if (!targetFile.exists || overwrite) {
-        targetFile.getParentFile.mkdirs()
-        IO.copyFile(sourceFile, targetFile)
-        log.info(s"Published $targetFile")
-        writeChecksumsForFile(targetFile, checksumAlgorithms, log)
-      } else {
-        log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
-      }
-    }
-  }
+    artifacts.foreach:
+      case (artifact, sourceFile) =>
+        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
+        val targetFile = new File(repoBase, path.replace('/', File.separatorChar))
+        if !targetFile.exists || overwrite then
+          targetFile.getParentFile.mkdirs()
+          IO.copyFile(sourceFile, targetFile)
+          log.info(s"Published $targetFile")
+          writeChecksumsForFile(targetFile, checksumAlgorithms, log)
+        else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
 
   /**
    * Publishes artifacts to a remote Maven repo (HTTP) without using Apache Ivy.
@@ -866,47 +855,47 @@ private[sbt] object LibraryManagement {
       credentials: Seq[Credentials],
       overwrite: Boolean,
       log: Logger
-  ): Unit = {
-    if (baseUrl == null || baseUrl.trim.isEmpty)
+  ): Unit =
+    if baseUrl == null || baseUrl.trim.isEmpty then
       throw new IllegalArgumentException("baseUrl must not be null or empty")
     val groupId = project.module.organization.value
     val artifactId = project.module.name.value
     val version = project.version
-    val directCreds = credentials.collect { case d: Credentials.DirectCredentials => d }
+    val directCreds = credentials.collect:
+      case d: Credentials.DirectCredentials => d
 
     def writeChecksums(file: File): Vector[(File, String)] =
-      checksumAlgorithms.map { algo =>
-        val digestAlgo = algo.toLowerCase match
-          case "md5"  => sbt.util.Digest.Md5
-          case "sha1" => sbt.util.Digest.Sha1
-          case other =>
-            throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
-        val digest = sbt.util.Digest(digestAlgo, file.toPath)
-        val content = digest.hashHexString
-        val suffix = "." + algo.toLowerCase
-        val tmpFile = File.createTempFile("checksum", suffix)
-        IO.write(tmpFile, content)
-        (tmpFile, suffix)
-      }.toVector
+      checksumAlgorithms
+        .map: algo =>
+          val digestAlgo = algo.toLowerCase match
+            case "md5"  => sbt.util.Digest.Md5
+            case "sha1" => sbt.util.Digest.Sha1
+            case other =>
+              throw new IllegalArgumentException(s"Unsupported checksum algorithm: $other")
+          val digest = sbt.util.Digest(digestAlgo, file.toPath)
+          val content = digest.hashHexString
+          val suffix = "." + algo.toLowerCase
+          val tmpFile = File.createTempFile("checksum", suffix)
+          IO.write(tmpFile, content)
+          (tmpFile, suffix)
+        .toVector
 
     val base = baseUrl.stripSuffix("/") + "/"
-    artifacts.foreach { case (artifact, sourceFile) =>
-      val path = mavenLayoutPath(groupId, artifactId, version, artifact)
-      val url = URI.create(base + path).toURL()
-      try {
-        httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
-        val checksums = writeChecksums(sourceFile)
-        checksums.foreach { case (cf, suffix) =>
-          val checksumUrl = URI.create(base + path + suffix).toURL()
-          try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
-          finally cf.delete()
-        }
-      } catch {
-        case e: IOException =>
-          throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
-      }
-    }
-  }
+    artifacts.foreach:
+      case (artifact, sourceFile) =>
+        val path = mavenLayoutPath(groupId, artifactId, version, artifact)
+        val url = URI.create(base + path).toURL()
+        try
+          httpPut(url, sourceFile, credentialFor(url, directCreds, None), log)
+          val checksums = writeChecksums(sourceFile)
+          checksums.foreach:
+            case (cf, suffix) =>
+              val checksumUrl = URI.create(base + path + suffix).toURL()
+              try httpPut(checksumUrl, cf, credentialFor(checksumUrl, directCreds, None), log)
+              finally cf.delete()
+        catch
+          case e: IOException =>
+            throw new IOException(s"Failed to publish $path: ${e.getMessage}", e)
 
   /**
    * Publishes artifacts to a local file repo (FileRepository) without using Apache Ivy.
@@ -1016,7 +1005,7 @@ private[sbt] object LibraryManagement {
               )
             case mavenRepo: sbt.librarymanagement.MavenRepo =>
               val root = mavenRepo.root.stripSuffix("/")
-              if (root.startsWith("http://") || root.startsWith("https://")) {
+              if root.startsWith("http://") || root.startsWith("https://") then
                 val creds = allCredentials.value
                 ivylessPublishMavenToUrl(
                   project,
@@ -1027,7 +1016,7 @@ private[sbt] object LibraryManagement {
                   config.overwrite,
                   log
                 )
-              } else if (root.startsWith("file:")) {
+              else if root.startsWith("file:") then
                 val repoBase = new File(URI.create(root))
                 ivylessPublishMavenToFile(
                   project,
@@ -1037,12 +1026,11 @@ private[sbt] object LibraryManagement {
                   config.overwrite,
                   log
                 )
-              } else {
+              else
                 log.warn(s"Ivyless Maven publish: unsupported root '$root'. Falling back to Ivy.")
                 val conf = publishConfiguration.value
                 val module = ivyModule.value
                 publisher.value.publish(module, conf, log)
-              }
             case _ =>
               log.warn(
                 "Ivyless publish only supports URLRepository, FileRepository, or MavenRepository. Falling back to Ivy."
