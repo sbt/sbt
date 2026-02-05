@@ -4301,7 +4301,7 @@ object Classpaths {
   private[sbt] def makePickleProducts: Initialize[Task[Seq[VirtualFile]]] = Def.task {
     // This is a conditional task.
     if (earlyOutputPing.await.value) {
-      // TODO: copyResources.value
+      val _ = copyResources.value
       earlyOutput.value :: Nil
     } else {
       val c = fileConverter.value

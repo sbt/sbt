@@ -241,7 +241,7 @@ object IvyXml {
       val task = m.invoke(sbt.Keys).asInstanceOf[TaskKey[PublishConfiguration]]
       List(task)
     } catch {
-      case _: Throwable => // FIXME Too wide
+      case _: NoSuchMethodException | _: IllegalAccessException | _: java.lang.reflect.InvocationTargetException | _: ClassCastException =>
         Nil
     }
 

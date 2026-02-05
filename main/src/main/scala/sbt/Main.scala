@@ -11,7 +11,7 @@ package sbt
 import java.io.{ File, IOException }
 import java.net.URI
 import java.nio.channels.ClosedChannelException
-import java.nio.file.{ FileAlreadyExistsException, FileSystems, Files }
+import java.nio.file.{ FileSystems, Files }
 import java.util.Properties
 import java.util.concurrent.ForkJoinPool
 import java.util.concurrent.atomic.AtomicBoolean
@@ -1230,10 +1230,11 @@ object BuiltinCommands {
   private def skipBanner: Command = Command.command(SkipBanner)(skipBanner)
   private def skipBanner(state: State): State = {
     val skipFile = skipWelcomeFile(state, sbtVersion(state))
-    try Files.createFile(skipFile)
-    catch {
-      case _: FileAlreadyExistsException =>
-      case e: IOException                => state.log.error(s"Couldn't create file $skipFile: $e")
+    if (!Files.exists(skipFile)) {
+      try Files.createFile(skipFile)
+      catch {
+        case e: IOException => state.log.error(s"Couldn't create file $skipFile: $e")
+      }
     }
     state
   }
