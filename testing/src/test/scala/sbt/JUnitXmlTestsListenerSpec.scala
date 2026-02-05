@@ -106,3 +106,4 @@ object JUnitXmlTestsListenerSpec extends BasicTestSuite:
         tempDir.listFiles().foreach(_.delete())
         tempDir.delete()
 
+end JUnitXmlTestsListenerSpec
