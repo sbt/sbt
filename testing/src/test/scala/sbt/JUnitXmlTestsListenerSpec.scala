@@ -10,9 +10,9 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
-import sbt.util.{ AbstractLogger, Level }
-import testing.{ Event as TEvent, Status as TStatus, OptionalThrowable, TestSelector }
 import sbt.protocol.testing.TestResult
+import sbt.util.{ AbstractLogger, Level }
+import testing.{ Event as TEvent, OptionalThrowable, Status as TStatus, TestSelector }
 
 object JUnitXmlTestsListenerSpec extends verify.BasicTestSuite:
 
@@ -34,8 +34,7 @@ object JUnitXmlTestsListenerSpec extends verify.BasicTestSuite:
         def trace(t: => Throwable): Unit = ()
         def success(message: => String): Unit = ()
         def log(level: Level.Value, message: => String): Unit =
-          if level == Level.Info then
-            loggedMessages.updateAndGet(_ :+ message)
+          if level == Level.Info then loggedMessages.updateAndGet(_ :+ message)
 
       val listener = new JUnitXmlTestsListener(tempDir, false, mockLogger)
       listener.doInit()
