@@ -1,0 +1,6 @@
+# Test ivyless publish to Maven repo via HTTP - issue #8688
+# HTTP server accepts PUT to repo directory; publish uses ivyless Maven layout
+
+> cleanPublishRepo
+> publishToHttp
+> checkMavenPublish
