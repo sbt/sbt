@@ -169,6 +169,9 @@ object Scope:
 
   def display(config: ConfigKey): String = guessConfigIdent(config.name) + " /"
 
+  def display(config: ConfigKey, configNameToIdent: String => String): String =
+    configNameToIdent(config.name) + " /"
+
   private[sbt] val configIdents: Map[String, String] =
     Map(
       "scala-tool" -> "ScalaTool",
@@ -190,6 +193,14 @@ object Scope:
 
   def display(scope: Scope, sep: String, showProject: Reference => String): String =
     displayMasked(scope, sep, showProject, ScopeMask())
+
+  def display(
+      scope: Scope,
+      sep: String,
+      showProject: Reference => String,
+      configNameToIdent: String => String
+  ): String =
+    displayMasked(scope, sep, showProject, ScopeMask(), showZeroConfig = false, configNameToIdent)
 
   private[sbt] def displayPedantic(scope: Scope, sep: String): String =
     displayMasked(scope, sep, showProject, ScopeMask(), true)
@@ -237,15 +248,25 @@ object Scope:
       showProject: Reference => String,
       mask: ScopeMask,
       showZeroConfig: Boolean
-  ): String = {
+  ): String =
+    displayMasked(scope, sep, showProject, mask, showZeroConfig, guessConfigIdent)
+
+  def displayMasked(
+      scope: Scope,
+      sep: String,
+      showProject: Reference => String,
+      mask: ScopeMask,
+      showZeroConfig: Boolean,
+      configNameToIdent: String => String
+  ): String =
     import scope.{ project, config, task, extra }
-    extra.toOption.flatMap(_.get(customShowString)).getOrElse {
-      val zeroConfig = if (showZeroConfig) "Zero /" else ""
-      val configPrefix = config.foldStrict(display, zeroConfig, "./")
+    extra.toOption.flatMap(_.get(customShowString)).getOrElse:
+      val zeroConfig = if showZeroConfig then "Zero /" else ""
+      val configPrefix = config.foldStrict(c => display(c, configNameToIdent), zeroConfig, "./")
       val taskPrefix = task.foldStrict(_.label + " /", "", "./")
       val extras = extra.foldStrict(_.entries.map(_.toString).toList, nil, nil)
-      val postfix = if (extras.isEmpty) "" else extras.mkString("(", ", ", ")")
-      if (scope == GlobalScope) "Global / " + sep + postfix
+      val postfix = if extras.isEmpty then "" else extras.mkString("(", ", ", ")")
+      if scope == GlobalScope then "Global / " + sep + postfix
       else
         mask.concatShow(
           appendSpace(projectPrefix(project, showProject)),
@@ -254,8 +275,6 @@ object Scope:
           sep,
           postfix
         )
-    }
-  }
 
   private[sbt] def appendSpace(s: String): String =
     if (s == "") ""

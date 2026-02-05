@@ -733,6 +733,7 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
       exclude[IncompatibleMethTypeProblem]("sbt.internal.Compiler.scalaInstanceTask"),
       exclude[ReversedMissingMethodProblem]("sbt.ScriptedRun.invoke"),
+      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.toConfigIdent"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
