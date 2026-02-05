@@ -10,6 +10,7 @@ package sbt
 
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+
 import testing.{
   Event as TEvent,
   OptionalThrowable,
