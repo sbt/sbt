@@ -239,13 +239,22 @@ object Aggregation {
   private def maps[T, S](vs: Values[T])(f: T => S): Values[S] =
     vs map { case KeyValue(k, v) => KeyValue(k, f(v)) }
 
+  /**
+   * Returns the aggregated projects for the given reference.
+   * Build-level references (ThisBuild, BuildRef) do not aggregate - only project-level
+   * references participate in aggregation. This fixes issue #5349 where ThisBuild-scoped
+   * keys incorrectly used the root project's aggregates.
+   */
   def projectAggregates[Proj](
       proj: Option[Reference],
       extra: BuildUtil[Proj],
       reverse: Boolean
   ): Seq[ProjectRef] =
-    val resRef = proj.map(p => extra.projectRefFor(extra.resolveRef(p)))
-    resRef.toList.flatMap { ref =>
+    val projectRef = proj.flatMap {
+      case _: BuildReference => None
+      case ref               => Some(extra.projectRefFor(extra.resolveRef(ref)))
+    }
+    projectRef.toList.flatMap { ref =>
       if reverse then extra.aggregates.reverse(ref)
       else extra.aggregates.forward(ref)
     }
