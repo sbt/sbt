@@ -270,7 +270,6 @@ final class NetworkChannel(
           try {
             onNotification(ntf)
           } catch {
-            case _: MatchError => ()
             case LangServerError(code, message) =>
               logMessage("error", s"error $code while handling notification: $message")
           }

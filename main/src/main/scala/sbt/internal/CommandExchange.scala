@@ -497,12 +497,12 @@ private[sbt] final class CommandExchange {
   }
 
   /** Handle a dropIfIdle notification from another server. */
-  private[sbt] def handleDropIfIdle(callerChannelName: String): Unit = {
+  private[sbt] def handleDropIfIdle(): Unit = {
     val idleSec = idleSeconds
     val threshold = SysProp.secondaryIdleTimeoutSec
     val idle = idleSec >= threshold
     val hasClients = channels.exists {
-      case nc: NetworkChannel => nc.name != callerChannelName && nc.isInitialized
+      case nc: NetworkChannel => nc.isInitialized
       case _                  => false
     }
     if (idle && !hasClients) {
@@ -607,3 +607,16 @@ private[sbt] final class CommandExchange {
     channels.find(_.name == channelName)
   private val fastTrackThread = new FastTrackThread
 }
+
+private[sbt] object CommandExchange:
+  import sbt.protocol.Serialization.dropIfIdle
+  val idleHandler: ServerHandler = ServerHandler: callback =>
+    ServerIntent(
+      onRequest = PartialFunction.empty,
+      onResponse = PartialFunction.empty,
+      onNotification = {
+        case n if n.method == dropIfIdle =>
+          StandardMain.exchange.handleDropIfIdle()
+          ()
+      }
+    )
