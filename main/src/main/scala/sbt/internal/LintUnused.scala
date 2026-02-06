@@ -29,6 +29,7 @@ object LintUnused {
     },
     excludeLintKeys := Set(
       aggregate,
+      autoStartServer,
       concurrentRestrictions,
       commands,
       configuration,
