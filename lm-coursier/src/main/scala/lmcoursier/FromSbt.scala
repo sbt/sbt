@@ -55,9 +55,11 @@ object FromSbt {
         case _          => s"${name}_$platformName"
       }
     (platformOpt, projectPlatform) match {
-      case (Some(p), None) => addSuffix(p)
-      case (_, Some(p))    => addSuffix(p)
-      case _               => name
+      case (Some(p), _) =>
+        addSuffix(p) // Use explicit platform if set (don't override with project platform)
+      case (None, Some(p)) =>
+        addSuffix(p) // Only use project platform if dependency has no explicit platform
+      case _ => name
     }
   }
 

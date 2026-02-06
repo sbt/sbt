@@ -10,7 +10,7 @@ package sbt.util
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
+import java.nio.file.{ Files, NoSuchFileException, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -81,34 +81,40 @@ object ActionCache:
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
-      val json = Converter.toJsonUnsafe(result)
-      val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-      val uncacheableOutputs =
-        outputs.filter(f =>
-          f match
-            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
-              false
-            case _ =>
-              val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
-              !outputPath.startsWith(normalizedOutputDir)
-        )
-      if uncacheableOutputs.nonEmpty then
-        cacheEventLog.append(ActionCacheEvent.Error)
-        logger.error(
-          s"Cannot cache task because its output files are outside the output directory: \n" +
-            uncacheableOutputs.mkString("  - ", "\n  - ", "")
-        )
-        result
-      else
-        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-        val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
-        val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
-        val newOutputs = Vector(valueFile) ++ outputs.toVector
-        store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
-          case Right(cachedResult) =>
-            store.syncBlobs(cachedResult.outputFiles, outputDirectory)
-            result
-          case Left(e) => throw e
+      try
+        val json = Converter.toJsonUnsafe(result)
+        val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
+        val uncacheableOutputs =
+          outputs.filter(f =>
+            f match
+              case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
+                false
+              case _ =>
+                val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
+                !outputPath.startsWith(normalizedOutputDir)
+          )
+        if uncacheableOutputs.nonEmpty then
+          cacheEventLog.append(ActionCacheEvent.Error)
+          logger.error(
+            s"Cannot cache task because its output files are outside the output directory: \n" +
+              uncacheableOutputs.mkString("  - ", "\n  - ", "")
+          )
+          result
+        else
+          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+          val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+          val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+          val newOutputs = Vector(valueFile) ++ outputs.toVector
+          store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
+            case Right(cachedResult) =>
+              store.syncBlobs(cachedResult.outputFiles, outputDirectory)
+              result
+            case Left(e) => throw e
+      catch
+        case e: NoSuchFileException =>
+          logger.debug(s"Skipping cache storage due to missing file: ${e.getMessage}")
+          cacheEventLog.append(ActionCacheEvent.Error)
+          result
 
     // Single cache lookup - use exitCode to distinguish success from failure
     getWithFailure(key, codeContentHash, extraHash, tags, config) match
