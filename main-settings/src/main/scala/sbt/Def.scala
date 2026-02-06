@@ -102,6 +102,12 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
 
   private[sbt] def showShortKey(
       keyNameColor: Option[String],
+  ): Show[ScopedKey[?]] =
+    showShortKey(keyNameColor, Scope.guessConfigIdent)
+
+  private[sbt] def showShortKey(
+      keyNameColor: Option[String],
+      configNameToIdent: String => String,
   ): Show[ScopedKey[?]] = {
     def displayShort(
         project: Reference
@@ -117,7 +123,8 @@ object Def extends BuildSyntax with Init with InitializeImplicits:
       Scope.display(
         key.scope,
         withColor(key.key.label, keyNameColor),
-        ref => displayShort(ref)
+        ref => displayShort(ref),
+        configNameToIdent
       )
     )
   }

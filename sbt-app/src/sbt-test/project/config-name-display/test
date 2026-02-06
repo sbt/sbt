@@ -1,0 +1,3 @@
+# Verify that custom configuration MultiJvm displays correctly
+# instead of the guessed Multi-jvm (#5211)
+> checkShortKeyDisplay

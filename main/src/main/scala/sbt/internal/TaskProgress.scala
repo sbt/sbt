@@ -25,8 +25,9 @@ import sbt.util.Logger
 private[sbt] class TaskProgress(
     sleepDuration: FiniteDuration,
     threshold: FiniteDuration,
-    logger: Logger
-) extends AbstractTaskExecuteProgress
+    logger: Logger,
+    configNameToIdent: String => String = Scope.guessConfigIdent
+) extends AbstractTaskExecuteProgress(configNameToIdent)
     with ExecuteProgress
     with AutoCloseable {
   private val lastTaskCount = new AtomicInteger(0)

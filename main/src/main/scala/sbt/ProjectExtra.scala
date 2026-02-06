@@ -249,14 +249,20 @@ trait ProjectExtra extends Scoped.Syntax:
               configNameToIdent
             )
 
+    private[sbt] def configNameToIdent(state: State): String => String =
+      if isProjectLoaded(state) then buildConfigNameToIdent(structure(state).units)
+      else Scope.guessConfigIdent
+
     private def buildConfigNameToIdent(loaded: LoadedBuild): String => String =
-      val configMap = for
-        (_, unit) <- loaded.units.iterator
+      buildConfigNameToIdent(loaded.units)
+
+    private def buildConfigNameToIdent(units: Map[URI, LoadedBuildUnit]): String => String =
+      val configMap = (for
+        (_, unit) <- units.iterator
         (_, project) <- unit.defined.iterator
         config <- project.configurations.iterator
-      yield config.name -> config.id
-      val lookup = configMap.toMap
-      name => lookup.getOrElse(name, Scope.guessConfigIdent(name))
+      yield config.name -> config.id).toMap
+      name => configMap.getOrElse(name, Scope.guessConfigIdent(name))
 
     def getOrError[T](state: State, key: AttributeKey[T], msg: String): T =
       state.get(key).getOrElse(sys.error(msg))

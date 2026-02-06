@@ -9,7 +9,7 @@
 package sbt
 
 import sbt.BasicCommandStrings.{ StashOnFailure, networkExecPrefix }
-import sbt.ProjectExtra.extract
+import sbt.ProjectExtra.*
 import sbt.internal.{ ConsoleChannel, FastTrackCommands, ShutdownHooks, SysProp, TaskProgress }
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.nio.CheckBuildSources.CheckBuildSourcesKey
@@ -156,7 +156,13 @@ private[sbt] object MainLoop:
       state.get(Keys.superShellSleep.key).getOrElse(SysProp.supershellSleep.millis)
     val superShellThreshold =
       state.get(Keys.superShellThreshold.key).getOrElse(SysProp.supershellThreshold)
-    val taskProgress = new TaskProgress(superShellSleep, superShellThreshold, state.log)
+    val taskProgress =
+      new TaskProgress(
+        superShellSleep,
+        superShellThreshold,
+        state.log,
+        Project.configNameToIdent(state)
+      )
     val gcMonitor = if (SysProp.gcMonitor) Some(new sbt.internal.GCMonitor(state.log)) else None
     try {
       ErrorHandling.wideConvert {

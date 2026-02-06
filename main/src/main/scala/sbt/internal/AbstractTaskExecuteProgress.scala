@@ -17,10 +17,12 @@ import scala.collection.mutable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
-private[sbt] abstract class AbstractTaskExecuteProgress extends ExecuteProgress {
+private[sbt] abstract class AbstractTaskExecuteProgress(
+    configNameToIdent: String => String = Scope.guessConfigIdent
+) extends ExecuteProgress {
   import AbstractTaskExecuteProgress.Timer
 
-  private val showScopedKey = Def.showShortKey(None)
+  private val showScopedKey = Def.showShortKey(None, configNameToIdent)
   private val anonOwners = new ConcurrentHashMap[TaskId[?], TaskId[?]]
   private val calledBy = new ConcurrentHashMap[TaskId[?], TaskId[?]]
   private val timings = new ConcurrentHashMap[TaskId[?], Timer]
