@@ -4230,17 +4230,10 @@ object Classpaths {
           yield depCross match
             case b: CrossVersion.Binary
                 if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
-              val base = depProjId
+              depProjId
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-              // When Scala 2 depends on Scala 3.8+, exclude scala-library to prevent
-              // scala-library:3.x from bumping Scala 2 artifacts via csrSameVersions.
-              // See https://github.com/sbt/sbt/issues/8632
-              val depSV = (dep.project / scalaVersion).get(data)
-              if sbv.startsWith("2.") && depSV.exists(ScalaArtifacts.isScala3_8Plus) then
-                base.exclude(ScalaArtifacts.Organization, ScalaArtifacts.LibraryID)
-              else base
             case b: CrossVersion.Binary if sbv != depSBV =>
               depProjId
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
