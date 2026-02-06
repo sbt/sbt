@@ -74,6 +74,6 @@ trait CacheImplicits extends BasicCacheImplicits with BasicJsonProtocol:
               val lastModified = attrs.lastModifiedTime().toMillis()
               val sizeBytes = attrs.size()
               getOrElseUpdate(ref, lastModified, sizeBytes)(fallback)
-          catch case _: NoSuchFileException => fallback
+          catch case e: NoSuchFileException => throw e
         case _ => fallback
 end CacheImplicits
