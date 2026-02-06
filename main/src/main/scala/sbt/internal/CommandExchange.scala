@@ -9,7 +9,7 @@
 package sbt
 
 package internal
-import java.io.IOException
+import java.io.{ File, IOException }
 import java.net.Socket
 import java.util.concurrent.atomic.*
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
@@ -59,6 +59,9 @@ private[sbt] final class CommandExchange {
   private val nextChannelId: AtomicInteger = new AtomicInteger(0)
   private val lastState = new AtomicReference[State]
   private val currentExecRef = new AtomicReference[Exec]
+  private val lastActivityTime = new AtomicLong(System.currentTimeMillis)
+  private val shuttingDown = new AtomicBoolean(false)
+  @volatile private var procFile: Option[File] = None
   private[sbt] def hasServer = server.isDefined
   addConsoleChannel()
 
@@ -162,6 +165,10 @@ private[sbt] final class CommandExchange {
   private def newNetworkName: String = s"network-${nextChannelId.incrementAndGet()}"
 
   private[sbt] def removeChannel(c: CommandChannel): Unit = {
+    val wasInitialized = c match {
+      case nc: NetworkChannel => nc.isInitialized
+      case _                  => false
+    }
     channelBufferLock.synchronized {
       Util.ignoreResult(channelBuffer -= c)
     }
@@ -173,6 +180,8 @@ private[sbt] final class CommandExchange {
     }
     try commandQueue.put(Exec(s"${ContinuousCommands.stopWatch} ${c.name}", None))
     catch { case _: InterruptedException => }
+    // Notify other servers to drop if idle when a real client disconnects
+    if (wasInitialized && !shuttingDown.get) notifyOtherServers()
   }
 
   private def mkAskUser(
@@ -246,6 +255,15 @@ private[sbt] final class CommandExchange {
           // remember to shutdown only when the server comes up
           server = Some(serverInstance)
           s.log.info("started sbt server")
+          // register this server in the shared proc directory
+          try {
+            val procDir = SysProp.globalLocalCache / "proc"
+            IO.createDirectory(procDir)
+            val pid = ProcessHandle.current().pid()
+            val pf = procDir / s"$pid.json"
+            IO.copyFile(portfile, pf)
+            procFile = Some(pf)
+          } catch { case scala.util.control.NonFatal(_) => }
         case Some(Failure(_: AlreadyRunningException)) =>
           s.log.warn(
             "sbt server could not start because there's another instance of sbt running on this build."
@@ -294,6 +312,12 @@ private[sbt] final class CommandExchange {
   }
 
   def shutdown(): Unit = {
+    shuttingDown.set(true)
+    procFile.foreach { pf =>
+      try IO.delete(pf)
+      catch { case scala.util.control.NonFatal(_) => }
+    }
+    procFile = None
     fastTrackThread.close()
     channels foreach (_.shutdown(true))
     // interrupt and kill the thread
@@ -376,10 +400,16 @@ private[sbt] final class CommandExchange {
     }
   }
 
-  private[sbt] def setExec(exec: Option[Exec]): Unit = currentExecRef.set(exec.orNull)
+  private[sbt] def setExec(exec: Option[Exec]): Unit =
+    currentExecRef.set(exec.orNull)
+    lastActivityTime.set(System.currentTimeMillis)
+
+  private def idleSeconds: Long =
+    (System.currentTimeMillis - lastActivityTime.get) / 1000
 
   def prompt(event: ConsolePromptEvent): Unit =
     currentExecRef.set(null)
+    lastActivityTime.set(System.currentTimeMillis)
     channels.foreach {
       case c if ContinuousCommands.isInWatch(lastState.get, c) =>
       case c =>
@@ -464,6 +494,64 @@ private[sbt] final class CommandExchange {
     } else {
       Util.ignoreResult(NetworkChannel.cancel(e.execId, e.execId.getOrElse("0"), force = true))
     }
+  }
+
+  /** Handle a dropIfIdle notification from another server. */
+  private[sbt] def handleDropIfIdle(callerChannelName: String): Unit = {
+    val idleSec = idleSeconds
+    val threshold = SysProp.secondaryIdleTimeoutSec
+    val idle = idleSec >= threshold
+    val hasClients = channels.exists {
+      case nc: NetworkChannel => nc.name != callerChannelName && nc.isInitialized
+      case _                  => false
+    }
+    if (idle && !hasClients) {
+      Terminal.consoleLog("dropping idle server (requested by another sbt instance)")
+      commandQueue.add(Exec(TerminateAction, Some(CommandSource(ConsoleChannel.defaultName))))
+    }
+  }
+
+  /** Notify other sbt servers to drop if idle. Runs on a daemon thread to avoid blocking. */
+  private def notifyOtherServers(): Unit = {
+    val thread = new Thread("sbt-notify-other-servers") {
+      setDaemon(true)
+      override def run(): Unit = {
+        val procDir = SysProp.globalLocalCache / "proc"
+        if (!procDir.exists) return
+        val myPid = ProcessHandle.current().pid()
+        val files = procDir.listFiles
+        if (files == null) return
+        for (f <- files if f.getName.endsWith(".json")) {
+          val pidStr = f.getName.stripSuffix(".json")
+          val pid =
+            try pidStr.toLong
+            catch { case _: NumberFormatException => -1L }
+          if (pid != myPid) {
+            try {
+              val (socket, _) = sbt.protocol.ClientSocket.socket(f)
+              try {
+                val notification = sbt.internal.protocol.JsonRpcNotificationMessage(
+                  "2.0",
+                  sbt.protocol.Serialization.dropIfIdle,
+                  None
+                )
+                val bytes = sbt.protocol.Serialization.serializeNotificationMessage(notification)
+                socket.getOutputStream.write(bytes)
+                socket.getOutputStream.flush()
+              } finally {
+                socket.close()
+              }
+            } catch {
+              case scala.util.control.NonFatal(_) =>
+                // Server unreachable - clean up stale proc file
+                try IO.delete(f)
+                catch { case scala.util.control.NonFatal(_) => }
+            }
+          }
+        }
+      }
+    }
+    thread.start()
   }
 
   private class FastTrackThread

@@ -199,6 +199,7 @@ object SysProp {
         sbt.nio.Keys.WarnOnSourceChanges
 
   def serverUseJni = getOrFalse("sbt.ipcsocket.jni")
+  def secondaryIdleTimeoutSec: Long = long("sbt.server.secondaryIdleTimeout", 600L)
 
   private def file(value: String): File = new File(value)
   private def home: File = file(sys.props("user.home"))

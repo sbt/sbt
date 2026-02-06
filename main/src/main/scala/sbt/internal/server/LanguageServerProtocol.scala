@@ -92,6 +92,8 @@ private[sbt] object LanguageServerProtocol {
       },
       onResponse = PartialFunction.empty,
       onNotification = {
+        case n: JsonRpcNotificationMessage if n.method == sbt.protocol.Serialization.dropIfIdle =>
+          StandardMain.exchange.handleDropIfIdle(name)
         case n: JsonRpcNotificationMessage if n.method == "textDocument/didSave" =>
           val _ = appendExec(";Test/compile; collectAnalyses", None)
       }
