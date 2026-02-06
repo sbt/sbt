@@ -3156,8 +3156,12 @@ object Classpaths {
           ScalaArtifacts.Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
-        // Scala 3.x should only align library artifacts to avoid issues with
-        // artifacts that don't exist across major version boundaries (e.g. scala-reflect for 3.8+)
+        // Scala 3.0-3.7 uses the Scala 2.13 standard library, so align all Scala 2 artifacts
+        case Some((3, minor)) if minor < 8 =>
+          ScalaArtifacts.Artifacts
+            .map(a => InclExclRule(scalaOrganization.value, a))
+            .toSet :: Nil
+        // Scala 3.8+ has its own scala-library, only align library artifacts
         // See https://github.com/sbt/sbt/issues/8224
         case Some((3, _)) =>
           ScalaArtifacts.Scala3_8Artifacts
