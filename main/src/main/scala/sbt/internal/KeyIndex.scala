@@ -49,7 +49,12 @@ object KeyIndex {
         val configs = configurations.getOrElse(id, Seq())
         val configIdentToName = configs.map(config => config.id -> config.name).toMap
         val configNameToIdent = configs.map(config => config.name -> config.id).toMap
-        Option(id) -> new ConfigIndex(Map.empty, configIdentToName, configNameToIdent, emptyAKeyIndex)
+        Option(id) -> new ConfigIndex(
+          Map.empty,
+          configIdentToName,
+          configNameToIdent,
+          emptyAKeyIndex
+        )
       }
       Option(uri) -> new ProjectIndex(data.toMap)
     }
@@ -85,7 +90,8 @@ object KeyIndex {
   private[sbt] def getOr[A, B](m: Map[A, B], key: A, or: B): B = m.getOrElse(key, or)
   private[sbt] def keySet[A, B](m: Map[Option[A], B]): Set[A] = m.keys.flatten.toSet
   private[sbt] val emptyAKeyIndex = new AKeyIndex(Relation.empty)
-  private[sbt] val emptyConfigIndex = new ConfigIndex(Map.empty, Map.empty, Map.empty, emptyAKeyIndex)
+  private[sbt] val emptyConfigIndex =
+    new ConfigIndex(Map.empty, Map.empty, Map.empty, emptyAKeyIndex)
   private[sbt] val emptyProjectIndex = new ProjectIndex(Map.empty)
   private[sbt] val emptyBuildIndex = new BuildIndex(Map.empty)
 

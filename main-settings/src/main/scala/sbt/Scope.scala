@@ -260,21 +260,23 @@ object Scope:
       configNameToIdent: String => String
   ): String =
     import scope.{ project, config, task, extra }
-    extra.toOption.flatMap(_.get(customShowString)).getOrElse:
-      val zeroConfig = if showZeroConfig then "Zero /" else ""
-      val configPrefix = config.foldStrict(c => display(c, configNameToIdent), zeroConfig, "./")
-      val taskPrefix = task.foldStrict(_.label + " /", "", "./")
-      val extras = extra.foldStrict(_.entries.map(_.toString).toList, nil, nil)
-      val postfix = if extras.isEmpty then "" else extras.mkString("(", ", ", ")")
-      if scope == GlobalScope then "Global / " + sep + postfix
-      else
-        mask.concatShow(
-          appendSpace(projectPrefix(project, showProject)),
-          appendSpace(configPrefix),
-          appendSpace(taskPrefix),
-          sep,
-          postfix
-        )
+    extra.toOption
+      .flatMap(_.get(customShowString))
+      .getOrElse:
+        val zeroConfig = if showZeroConfig then "Zero /" else ""
+        val configPrefix = config.foldStrict(c => display(c, configNameToIdent), zeroConfig, "./")
+        val taskPrefix = task.foldStrict(_.label + " /", "", "./")
+        val extras = extra.foldStrict(_.entries.map(_.toString).toList, nil, nil)
+        val postfix = if extras.isEmpty then "" else extras.mkString("(", ", ", ")")
+        if scope == GlobalScope then "Global / " + sep + postfix
+        else
+          mask.concatShow(
+            appendSpace(projectPrefix(project, showProject)),
+            appendSpace(configPrefix),
+            appendSpace(taskPrefix),
+            sep,
+            postfix
+          )
 
   private[sbt] def appendSpace(s: String): String =
     if (s == "") ""

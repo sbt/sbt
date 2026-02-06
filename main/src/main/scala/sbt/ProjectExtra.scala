@@ -218,8 +218,7 @@ trait ProjectExtra extends Scoped.Syntax:
         keyNameColor: Option[String]
     ): Show[ScopedKey[?]] =
       val current = session.current
-      val configNameToIdent: String => String = name =>
-        keyIndex.toConfigIdent(Some(current))(name)
+      val configNameToIdent: String => String = name => keyIndex.toConfigIdent(Some(current))(name)
       Show[ScopedKey[?]]: key =>
         val color: String => String = Def.withColor(_, keyNameColor)
         key.scope.extra.toOption
@@ -287,11 +286,11 @@ trait ProjectExtra extends Scoped.Syntax:
       val se = Project.session(state)
       val st = Project.structure(state)
       val currentRef = internal.ProjectNavigation.effectiveCurrentRef(state)
-      Extracted(st, se, currentRef)(using Project.showContextKey2(se))
+      Extracted(st, se, currentRef)(using Project.showContextKey2(se, st.index.keyIndex, None))
     }
 
     private[sbt] def extract(se: SessionSettings, st: BuildStructure): Extracted =
-      Extracted(st, se, se.current)(using Project.showContextKey2(se))
+      Extracted(st, se, se.current)(using Project.showContextKey2(se, st.index.keyIndex, None))
 
     def getProjectForReference(ref: Reference, structure: BuildStructure): Option[ResolvedProject] =
       ref match
@@ -435,7 +434,7 @@ trait ProjectExtra extends Scoped.Syntax:
         case None       => ""
 
       val (definingKey, providedBy) = structure.data.definingKey(key) match
-        case Some(k) => k -> s"Provided by:\n\t${Scope.display(k.scope, key.key.label)}\n"
+        case Some(k) => k -> s"Provided by:\n\t${display.show(ScopedKey(k.scope, key.key))}\n"
         case None    => key -> ""
       val comp =
         Def.compiled(structure.settings, actual)(using
