@@ -15,5 +15,6 @@ $ delete s2.13.14.txt
 # without the default `csrSameVersions`, scala-reflect in b stays at 2.13.11
 > set b/csrSameVersions := Nil
 > b/update
+-> b/checkLibs
 
 > ak/checkLibs

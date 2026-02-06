@@ -3150,16 +3150,20 @@ object Classpaths {
       }).value),
     csrSameVersions ++= {
       partialVersion(scalaVersion.value) match {
-        case Some((major, minor)) if major == 2 && minor < 13 =>
+        // See https://github.com/sbt/sbt/issues/8689
+        // Scala 2.x should align all Scala 2 artifacts (scala-library, scala-compiler, scala-reflect, etc.)
+        case Some((major, _)) if major == 2 =>
           ScalaArtifacts.Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
-        // Due to the Scala 2.13-3.x sandwich, the absence of scala-reflect
-        // that corresponds with scala-library 3.8.x propagates to 2.13 builds as well.
-        case _ =>
+        // Scala 3.x should only align library artifacts to avoid issues with
+        // artifacts that don't exist across major version boundaries (e.g. scala-reflect for 3.8+)
+        // See https://github.com/sbt/sbt/issues/8224
+        case Some((3, _)) =>
           ScalaArtifacts.Scala3_8Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
+        case _ => Nil
       }
     },
     moduleName := normalizedName.value,
@@ -4226,10 +4230,17 @@ object Classpaths {
           yield depCross match
             case b: CrossVersion.Binary
                 if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
-              depProjId
+              val base = depProjId
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
+              // When Scala 2 depends on Scala 3.8+, exclude scala-library to prevent
+              // scala-library:3.x from bumping Scala 2 artifacts via csrSameVersions.
+              // See https://github.com/sbt/sbt/issues/8632
+              val depSV = (dep.project / scalaVersion).get(data)
+              if sbv.startsWith("2.") && depSV.exists(ScalaArtifacts.isScala3_8Plus) then
+                base.exclude(ScalaArtifacts.Organization, ScalaArtifacts.LibraryID)
+              else base
             case b: CrossVersion.Binary if sbv != depSBV =>
               depProjId
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
