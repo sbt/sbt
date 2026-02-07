@@ -51,15 +51,7 @@ private[sbt] object ForkConsole:
       args: List[String],
       forkOptions: ForkOptions,
   ): Int =
-    val jlineJars = Seq(
-      IO.classLocationPath(classOf[jline.Terminal]),
-      IO.classLocationPath(classOf[org.jline.terminal.Terminal]),
-      IO.classLocationPath(classOf[org.jline.reader.LineReader]),
-      IO.classLocationPath(classOf[org.jline.utils.InfoCmp]),
-      IO.classLocationPath(classOf[org.jline.keymap.KeyMap[?]]),
-    ).distinct
-    val fullCp = (classpath ++ jlineJars).distinct
-
+    val fullCp = classpath.distinct
     // Build environment variables for proper terminal handling
     val termEnv = sys.env.get("TERM").getOrElse("xterm-256color")
     val baseEnv = forkOptions.envVars ++ Map(
@@ -117,6 +109,11 @@ private[sbt] object ForkConsole:
       IO.classLocationPath(classOf[sbt.internal.inc.classpath.ClasspathUtil.type]),
       IO.classLocationPath(classOf[sbt.util.Logger]),
       IO.classLocationPath(classOf[sjsonnew.JsonFormat[?]]),
+      IO.classLocationPath(classOf[jline.Terminal]),
+      IO.classLocationPath(classOf[org.jline.terminal.Terminal]),
+      IO.classLocationPath(classOf[org.jline.reader.LineReader]),
+      IO.classLocationPath(classOf[org.jline.utils.InfoCmp]),
+      IO.classLocationPath(classOf[org.jline.keymap.KeyMap[?]]),
     )
     (urls.map(u => Paths.get(u.toURI)) ++ extraJars).distinct
 end ForkConsole

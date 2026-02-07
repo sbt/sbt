@@ -1,1 +1,3 @@
-> update
+# Scala 3.8+ no longer supports being included into Scala 2.13 classpath
+> a/update
+-> b/update

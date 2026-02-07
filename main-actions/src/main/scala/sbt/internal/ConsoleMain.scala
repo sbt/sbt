@@ -10,6 +10,7 @@ package sbt
 package internal
 
 import java.io.File
+import java.net.URL
 import java.nio.file.Paths
 import sbt.internal.inc.{
   AnalyzingCompiler,
@@ -34,11 +35,13 @@ class ConsoleMain:
     val si = scalaInstance(config.scalaInstanceConfig)
     val compiler = analyzingCompiler(config, si)
     given log: Logger = ConsoleMain.consoleLogger
-    val externalCp = config.externalDependencyJars.map(Paths.get(_))
-    val cpFiles = externalCp.map(_.toFile)
+    val classpathJars = config.classpathJars.map(Paths.get(_))
+    val products = config.products.map(Paths.get(_))
+    val cpFiles = products.map(_.toFile()) ++ classpathJars.map(_.toFile())
     IO.withTemporaryDirectory: tempDir =>
       val fullCp = cpFiles ++ si.allJars
-      val loader = ClasspathUtil.makeLoader(fullCp.map(_.toPath), si, tempDir.toPath)
+      val loader =
+        ClasspathUtil.makeLoader(fullCp.map(_.toPath), ConsoleMain.jlineLoader, si, tempDir.toPath)
       runConsole(
         compiler = compiler,
         classpath = cpFiles,
@@ -98,8 +101,7 @@ class ConsoleMain:
       .distinct
     val allJars = libraryJars ++ compilerJars ++ extraToolJars
     // Use parent class loader for JLine to avoid conflicts
-    val jlineLoader = classOf[org.jline.terminal.Terminal].getClassLoader
-    val libraryLoader = ClasspathUtil.toLoader(libraryJars, jlineLoader)
+    val libraryLoader = ClasspathUtil.toLoader(libraryJars, ConsoleMain.jlineLoader)
     val compilerLoader = ClasspathUtil.toLoader(compilerJars, libraryLoader)
     val fullLoader =
       if extraToolJars.isEmpty then compilerLoader
@@ -127,6 +129,18 @@ object ConsoleMain:
         case Level.Info  => scala.Console.out.println(message)
         case Level.Warn  => scala.Console.err.println(s"[warn] $message")
         case Level.Error => scala.Console.err.println(s"[error] $message")
+
+  class FilteredLoader(parent: ClassLoader) extends ClassLoader(parent):
+    override final def loadClass(className: String, resolve: Boolean): Class[?] =
+      if className.startsWith("org.jline.") || className.startsWith("java.") || className
+          .startsWith("javax.") || className.startsWith("sun.")
+      then super.loadClass(className, resolve)
+      else throw new ClassNotFoundException(className)
+    override def getResources(name: String): java.util.Enumeration[URL] = null
+    override def getResource(name: String): URL = null
+  end FilteredLoader
+  lazy val jlineLoader =
+    FilteredLoader(classOf[org.jline.terminal.Terminal].getClassLoader)
 
   def main(args: Array[String]): Unit =
     args.toList match

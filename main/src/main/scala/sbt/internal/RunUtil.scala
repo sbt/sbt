@@ -94,7 +94,7 @@ object RunUtil:
   private def getMainClass(value: Option[String]): String =
     value.getOrElse(sys.error("no main class detected"))
 
-  private def mkRunInfo(
+  private[sbt] def mkRunInfo(
       args: Vector[String],
       mainClass: String,
       cp: Classpath,

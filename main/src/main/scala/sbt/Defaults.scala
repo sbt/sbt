@@ -8,7 +8,7 @@
 
 package sbt
 
-import java.io.{ File, PrintWriter }
+import java.io.File
 import java.nio.file.{ Files, Path as NioPath }
 import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
@@ -30,7 +30,7 @@ import sbt.internal.CommandStrings.ExportStream
 import sbt.internal.*
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil.*
-import sbt.internal.inc.classpath.{ ClasspathFilter, ClasspathUtil }
+import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
 import sbt.internal.librarymanagement.ivy.*
 import sbt.internal.librarymanagement.mavenint.{
@@ -1063,12 +1063,11 @@ object Defaults extends BuildCommon {
         cache.get
       },
       compileIncSetup := Def.uncached(compileIncSetupTask.value),
-      console := Def.taskDyn {
-        if (console / fork).value then forkedConsoleTask
-        else Def.task(consoleTask.value)
-      }.value,
+      console := Compiler.consoleTask.value,
+      console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
+      consoleQuick / forkOptions := Def.uncached((console / forkOptions).value),
       discoveredMainClasses := compile
         .map(discoverMainClasses)
         .storeAs(discoveredMainClasses)
@@ -2065,7 +2064,7 @@ object Defaults extends BuildCommon {
                 else Opts.doc.externalAPI(xapisFiles)
               val options = sOpts ++ externalApiOpts
               val scalac = cs.scalac match
-                case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
+                case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
               // todo: cache this
               if docSrcFiles.nonEmpty then
@@ -2112,67 +2111,11 @@ object Defaults extends BuildCommon {
   }
 
   def consoleProjectTask = ConsoleProject.consoleProjectTask
-  def consoleTask: Initialize[Task[Unit]] = consoleTask(fullClasspath, console)
+  def consoleTask: Initialize[Task[Unit]] =
+    Compiler.consoleTask(console, exportedProductJars, fullClasspathAsJars)
   def consoleQuickTask = consoleTask(externalDependencyClasspath, consoleQuick)
   def consoleTask(classpath: TaskKey[Classpath], task: TaskKey[?]): Initialize[Task[Unit]] =
-    Def.task {
-      val si = (task / scalaInstance).value
-      val s = streams.value
-      val cp = data((task / classpath).value)
-      val converter = fileConverter.value
-      val cpFiles = cp.map(converter.toPath).map(_.toFile())
-      val fullcp = (cpFiles ++ si.allJars).distinct
-      val tempDir = IO.createUniqueDirectory((task / taskTemporaryDirectory).value).toPath
-      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
-      val compiler =
-        (task / compilers).value.scalac match {
-          case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
-        }
-      val sc = (task / scalacOptions).value
-      val ic = (task / initialCommands).value
-      val cc = (task / cleanupCommands).value
-      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
-      println()
-    }
-
-  private def forkedConsoleTask: Initialize[Task[Unit]] =
-    Def.task {
-      import sbt.internal.worker.ConsoleConfig
-      val s = streams.value
-      val conv = fileConverter.value
-      val depsJars = (console / externalDependencyClasspath).value.toVector
-        .map(_.data)
-        .map(conv.toPath)
-      val siConfig = (console / scalaInstanceConfig).value
-      val bridgeJars = scalaCompilerBridgeJars.value
-      val config = ConsoleConfig(
-        scalaInstanceConfig = siConfig,
-        bridgeJars = bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()),
-        externalDependencyJars = depsJars.map(_.toString),
-        scalacOptions = (console / scalacOptions).value.toVector,
-        initialCommands = (console / initialCommands).value,
-        cleanupCommands = (console / cleanupCommands).value,
-      )
-      val fo = (console / forkOptions).value
-      val terminal = ITerminal.console
-      s.log.info("running console (fork)")
-      try
-        terminal.restore()
-        val exitCode = ForkConsole(config, fo)
-        if exitCode != 0 then
-          throw MessageOnlyException(s"Forked console exited with code $exitCode")
-      finally terminal.restore()
-      println()
-    }
-
-  private def exported(w: PrintWriter, command: String): Seq[String] => Unit =
-    args => w.println((command +: args).mkString(" "))
-
-  private def exported(s: TaskStreams, command: String): Seq[String] => Unit = {
-    val w = s.text(ExportStream)
-    try exported(w, command)
-    finally w.close() // workaround for #937
-  }
+    Compiler.consoleTask(task, Def.task(Nil), classpath)
 
   /**
    * Handles traditional Scalac compilation. For non-pipelined compilation,
@@ -2319,7 +2262,7 @@ object Defaults extends BuildCommon {
     def onArgs(cs: Compilers) =
       cs.withScalac(
         cs.scalac match
-          case ac: AnalyzingCompiler => ac.onArgs(exported(x, "scalac"))
+          case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(x, "scalac"))
           case x                     => x
       )
     def onProgress(s: Setup) =
@@ -3151,16 +3094,24 @@ object Classpaths {
       }).value),
     csrSameVersions ++= {
       partialVersion(scalaVersion.value) match {
-        case Some((major, minor)) if major == 2 && minor < 13 =>
+        // See https://github.com/sbt/sbt/issues/8689
+        // Scala 2.x should align all Scala 2 artifacts (scala-library, scala-compiler, scala-reflect, etc.)
+        case Some((major, _)) if major == 2 =>
           ScalaArtifacts.Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
-        // Due to the Scala 2.13-3.x sandwich, the absence of scala-reflect
-        // that corresponds with scala-library 3.8.x propagates to 2.13 builds as well.
-        case _ =>
+        // Scala 3.0-3.7 uses the Scala 2.13 standard library, so align all Scala 2 artifacts
+        case Some((3, minor)) if minor < 8 =>
+          ScalaArtifacts.Artifacts
+            .map(a => InclExclRule(scalaOrganization.value, a))
+            .toSet :: Nil
+        // Scala 3.8+ has its own scala-library, only align library artifacts
+        // See https://github.com/sbt/sbt/issues/8224
+        case Some((3, _)) =>
           ScalaArtifacts.Scala3_8Artifacts
             .map(a => InclExclRule(scalaOrganization.value, a))
             .toSet :: Nil
+        case _ => Nil
       }
     },
     moduleName := normalizedName.value,

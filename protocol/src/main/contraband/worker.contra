@@ -63,7 +63,8 @@ type ScalaInstanceConfig {
 type ConsoleConfig {
   scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
   bridgeJars: [java.net.URI]
-  externalDependencyJars: [String]
+  products: [java.net.URI]
+  classpathJars: [java.net.URI]
   scalacOptions: [String]
   initialCommands: String!
   cleanupCommands: String!

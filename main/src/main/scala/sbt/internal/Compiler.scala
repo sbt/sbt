@@ -9,9 +9,17 @@
 package sbt
 package internal
 
-import java.io.File
-import sbt.internal.inc.{ ScalaInstance, ZincLmUtil }
-import sbt.internal.worker.ScalaInstanceConfig
+import java.io.{ File, PrintWriter }
+import sbt.BuildExtra.*
+import sbt.Keys.Classpath
+import sbt.internal.CommandStrings
+import sbt.internal.inc.{ AnalyzingCompiler, ScalaInstance, ZincLmUtil }
+import sbt.internal.inc.classpath.ClasspathUtil
+import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
+import sbt.internal.worker.codec.JsonProtocol.given
+import sbt.internal.util.{ Attributed, MessageOnlyException, Terminal as ITerminal }
+import sbt.io.IO
+import sbt.protocol.Serialization
 import sbt.librarymanagement.{
   Artifact,
   Configuration,
@@ -23,6 +31,7 @@ import sbt.librarymanagement.{
   VersionNumber
 }
 import sbt.util.Logger
+import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
 import xsbti.{ HashedVirtualFileRef, ScalaProvider }
 
 object Compiler:
@@ -281,4 +290,123 @@ object Compiler:
       val conv = Keys.fileConverter.value
       jars.map(jar => (conv.toVirtualFile(jar.toPath()): HashedVirtualFileRef))
     }
+
+  def consoleTask: Def.Initialize[Task[Unit]] =
+    consoleTask(Keys.console, Keys.exportedProductJars, Keys.fullClasspath)
+
+  def consoleTask(
+      task: TaskKey[?],
+      products: Def.Initialize[Task[Classpath]],
+      classpath: Def.Initialize[Task[Classpath]],
+  ): Def.Initialize[Task[Unit]] =
+    Def.taskIf {
+      if (task / Keys.fork).value then forkedConsoleTask(task, products, classpath).value
+      else serverSideConsoleTask(task, products, classpath).value
+    }
+
+  private def serverSideConsoleTask(
+      task: TaskKey[?],
+      products: Def.Initialize[Task[Classpath]],
+      classpath: Def.Initialize[Task[Classpath]],
+  ): Def.Initialize[Task[Unit]] =
+    Def.task {
+      val si = (task / Keys.scalaInstance).value
+      val s = Keys.streams.value
+      val cp = Attributed.data(classpath.value)
+      val converter = Keys.fileConverter.value
+      val cpFiles = cp.map(converter.toPath).map(_.toFile())
+      val fullcp = (cpFiles ++ si.allJars).distinct
+      val tempDir = IO.createUniqueDirectory((task / Keys.taskTemporaryDirectory).value).toPath
+      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
+      val compiler =
+        (task / Keys.compilers).value.scalac match
+          case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
+      val sc = (task / Keys.scalacOptions).value
+      val ic = (task / Keys.initialCommands).value
+      val cc = (task / Keys.cleanupCommands).value
+      (new Console(compiler))(cpFiles, sc, loader, ic, cc)()(using s.log).get
+      println()
+    }
+
+  private def forkedConsoleTask(
+      task: TaskKey[?],
+      products: Def.Initialize[Task[Classpath]],
+      classpath: Def.Initialize[Task[Classpath]],
+  ): Def.Initialize[Task[Unit]] =
+    Def.task {
+      import sbt.internal.worker.ConsoleConfig
+      val s = Keys.streams.value
+      val conv = Keys.fileConverter.value
+      val cside = (task / Keys.clientSide).value
+      val depsJars = (task / Keys.externalDependencyClasspath).value.toVector
+        .map(_.data)
+        .map(conv.toPath)
+      val siConfig = (Keys.console / Keys.scalaInstanceConfig).value
+      val bridgeJars = Keys.scalaCompilerBridgeJars.value
+      val state = Keys.state.value
+      val config = ConsoleConfig(
+        scalaInstanceConfig = siConfig,
+        bridgeJars = bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()),
+        products = products.value.toVector.map(vf => conv.toPath(vf.data).toUri()),
+        classpathJars = classpath.value.toVector.map(vf => conv.toPath(vf.data).toUri()),
+        scalacOptions = (task / Keys.scalacOptions).value.toVector,
+        initialCommands = (task / Keys.initialCommands).value,
+        cleanupCommands = (task / Keys.cleanupCommands).value,
+      )
+      val fo = (task / Keys.forkOptions).value
+      val service = Keys.bgJobService.value
+      if cside && state.isNetworkCommand then
+        val workingDir = service.createWorkingDirectory
+        val cp = service.copyClasspath(
+          products.value,
+          classpath.value,
+          workingDir,
+          conv,
+        )
+        val workerMainClass = classOf[ConsoleMain].getCanonicalName
+        val workerCp = ForkConsole.currentClasspath.map: p =>
+          Attributed.blank(conv.toVirtualFile(p): HashedVirtualFileRef)
+        val json = Converter.toJson[ConsoleConfig](config).get
+        val params = workingDir.toPath.resolve("console-params.json")
+        IO.write(params.toFile, CompactPrinter(json))
+        val info =
+          RunUtil.mkRunInfo(Vector(s"@$params"), workerMainClass, workerCp, fo, conv, None)
+        val result = ClientJobParams(
+          runInfo = info
+        )
+        import sbt.internal.worker.codec.JsonProtocol.given
+        state.notifyEvent(Serialization.clientJob, result)
+      else
+        val terminal = ITerminal.console
+        s.log.info("running console (fork)")
+        try
+          terminal.restore()
+          val exitCode = ForkConsole(config, fo)
+          if exitCode != 0 then
+            throw MessageOnlyException(s"Forked console exited with code $exitCode")
+        finally terminal.restore()
+        println()
+    }
+
+  private[sbt] def exported(w: PrintWriter, command: String): Seq[String] => Unit =
+    args => w.println((command +: args).mkString(" "))
+
+  private[sbt] def exported(s: Keys.TaskStreams, command: String): Seq[String] => Unit =
+    val w = s.text(CommandStrings.ExportStream)
+    try exported(w, command)
+    finally w.close() // workaround for gh-937
+
+  def consoleForkOptions: Def.Initialize[Task[ForkOptions]] = Def.task {
+    // Build environment variables for proper terminal handling
+    val termEnv = sys.env.get("TERM").getOrElse("xterm-256color")
+    ForkOptions()
+      .withConnectInput(true)
+      .withRunJVMOptions(
+        Vector(
+          s"-Dorg.jline.terminal.type=$termEnv",
+          "-Djline.terminal=auto",
+        )
+      )
+      .withEnvVars(sys.env)
+  }
 end Compiler
