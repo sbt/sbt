@@ -879,7 +879,7 @@ object BuildServerProtocol {
       case Result.Inc(cause) =>
         cause.getCause match {
           case _: InterruptedException => StatusCode.Cancelled
-          case _: MessageOnlyException  =>
+          case _: MessageOnlyException =>
             // Rethrow so task failure path sends JSON-RPC error (e.g. respondError project)
             throw cause
           case _ =>
