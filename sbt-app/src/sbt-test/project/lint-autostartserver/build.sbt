@@ -21,8 +21,3 @@ lazy val root = (project in file("."))
       streams.value.log.info("✓ autoStartServer correctly excluded from lintUnused warnings")
     }
   )
-
-<<<<<<< HEAD
-=======
-
->>>>>>> c032ef729 ([2.x] fix: Exclude autoStartServer from lintUnused warnings (#6624))
