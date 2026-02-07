@@ -879,7 +879,7 @@ object BuildServerProtocol {
       case Result.Inc(cause) =>
         cause.getCause match {
           case _: InterruptedException => StatusCode.Cancelled
-          case _ =>
+          case _                       =>
             // Return Error for any compile failure (CompileFailed or other Incomplete)
             // so BSP returns a proper BspCompileResult instead of a JSON-RPC error (#8104)
             StatusCode.Error

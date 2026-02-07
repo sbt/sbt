@@ -130,7 +130,10 @@ class BuildServerTest extends AbstractServerTest {
       )
       compile(buildTarget)
       val res = svr.waitFor[BspCompileResult](30.seconds)
-      assert(res.statusCode == StatusCode.Error, s"expected StatusCode.Error, got ${res.statusCode}")
+      assert(
+        res.statusCode == StatusCode.Error,
+        s"expected StatusCode.Error, got ${res.statusCode}"
+      )
     } finally {
       IO.write(mainFile, original)
     }
