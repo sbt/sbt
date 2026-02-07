@@ -11,13 +11,13 @@ lazy val root = (project in file("."))
       val excludeKeys = (Global / lintExcludeFilter).value
       val result = sbt.internal.LintUnused.lintUnused(state, includeKeys, excludeKeys)
       // autoStartServer should not appear in the lint results
+      // Check for both "Global / autoStartServer" and "autoStartServer" patterns
       val autoStartServerWarnings = result.filter { case (_, key, _) =>
         key.contains("autoStartServer")
       }
-      assert(
-        autoStartServerWarnings.isEmpty,
-        s"autoStartServer should not trigger lintUnused warnings, but found: $autoStartServerWarnings"
-      )
+      if (autoStartServerWarnings.nonEmpty) {
+        sys.error(s"autoStartServer should not trigger lintUnused warnings, but found: ${autoStartServerWarnings.mkString(", ")}")
+      }
       streams.value.log.info("✓ autoStartServer correctly excluded from lintUnused warnings")
     }
   )
