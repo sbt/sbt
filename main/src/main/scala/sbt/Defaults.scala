@@ -2029,14 +2029,18 @@ object Defaults extends BuildCommon {
           else Map.empty[HashedVirtualFileRef, URI]
         },
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
-        scalacOptions ++= {
+        scalacOptions := {
           val sv = scalaVersion.value
           val config = configuration.value
           val projectName = name.value
+          val base = scalacOptions.value
           if (ScalaArtifacts.isScala3(sv)) {
-            val project = if (config == Compile) projectName else s"$projectName-$config"
-            Seq("-project", project)
-          } else Seq.empty
+            // Only add -project flag if it's not already present to avoid "Flag -project set repeatedly" warning
+            if (!base.contains("-project")) {
+              val project = if (config == Compile) projectName else s"$projectName-$config"
+              base ++ Seq("-project", project)
+            } else base
+          } else base
         },
         (TaskZero / key) := Def.uncached {
           val s = streams.value

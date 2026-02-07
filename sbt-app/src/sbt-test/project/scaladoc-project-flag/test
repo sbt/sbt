@@ -1,0 +1,6 @@
+# Test that scaladoc doesn't warn about "Flag -project set repeatedly"
+# This test verifies the fix for issue #7487
+
+# Check that -project flag is not duplicated
+> check
+
