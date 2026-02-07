@@ -8,8 +8,34 @@
 
 package sbt.internal
 
+import java.net.URI
+import sbt.{ BuildRef, Def, Scope }
+import sbt.Def.ScopedKey
+import sbt.ScopeAxis.{ Select, Zero }
+import sbt.internal.TestBuild.{ Build, Env, Proj, Taskk }
+import sbt.internal.util.AttributeKey
+import sbt.librarymanagement.Configuration
+
 object AggregationSpec extends verify.BasicTestSuite {
   val timing = Aggregation.timing(0, _: Long)
+
+  test(
+    "projectAggregates should return empty for BuildRef (ThisBuild-scoped keys do not aggregate, #5349)"
+  ) {
+    val buildURI = new URI("file", "///path/", null)
+    val config = Configuration.of("Compile", "compile")
+    val project = Proj("root", Nil, Seq(config))
+    val build = Build(buildURI, Vector(project))
+    val key = AttributeKey[String]("test")
+    val task = Taskk(key, Nil)
+    val env = Env(Vector(build), Vector(task))
+    val scope = Scope(Select(BuildRef(buildURI)), Zero, Select(key), Zero)
+    val settings = Seq(Def.setting(ScopedKey(scope, key), Def.value("v")))
+    val structure = TestBuild.structure(env, settings, build.allProjects.head._1)
+    val result =
+      Aggregation.projectAggregates(Some(BuildRef(buildURI)), structure.extra, reverse = false)
+    assert(result.isEmpty, s"BuildRef must not aggregate; got: $result")
+  }
 
   test("timing should format total time properly") {
     assert(timing(101).startsWith("elapsed time: 0 s"))

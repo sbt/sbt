@@ -1,0 +1,8 @@
+# Verify ThisBuild-scoped keys do not participate in aggregation (sbt/sbt#5349, PR #8703).
+# When running a ThisBuild-scoped task, it must run once at build level, not on root + each aggregated project.
+# Before the fix, "show ThisBuild/mark" would run on root and sub (using root's aggregates), creating both ran and sub/ran.
+# After the fix, it runs only at build level, so only ran is created.
+$ mkdir sub
+> show ThisBuild/mark
+$ exists ran
+$ absent sub/ran
