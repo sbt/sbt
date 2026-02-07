@@ -60,7 +60,7 @@ Global / excludeLint += nativeImageVersion
 usePgpKeyHex("642AC823")
 // usePgpKeyHex("2BE67AC00D699E04E840B7FE29967E804D85663F")
 
-def commonBaseSettings: Seq[Setting[_]] = Def.settings(
+def commonBaseSettings: Seq[Setting[?]] = Def.settings(
   headerLicense := Some(
     HeaderLicense.Custom(
       """|sbt
