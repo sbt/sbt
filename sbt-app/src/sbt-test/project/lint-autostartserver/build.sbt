@@ -22,3 +22,7 @@ lazy val root = (project in file("."))
     }
   )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> c032ef729 ([2.x] fix: Exclude autoStartServer from lintUnused warnings (#6624))
