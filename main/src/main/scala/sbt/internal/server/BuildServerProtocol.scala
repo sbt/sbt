@@ -31,7 +31,6 @@ import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser as JsonParser }
-import xsbti.CompileFailed
 
 import java.io.File
 import java.nio.file.Paths
@@ -879,9 +878,11 @@ object BuildServerProtocol {
       case Result.Value(_) => StatusCode.Success
       case Result.Inc(cause) =>
         cause.getCause match {
-          case _: CompileFailed        => StatusCode.Error
           case _: InterruptedException => StatusCode.Cancelled
-          case err                     => throw cause
+          case _ =>
+            // Return Error for any compile failure (CompileFailed or other Incomplete)
+            // so BSP returns a proper BspCompileResult instead of a JSON-RPC error (#8104)
+            StatusCode.Error
         }
     }
   }

@@ -115,6 +115,27 @@ class BuildServerTest extends AbstractServerTest {
     assert(res.statusCode == StatusCode.Success)
   }
 
+  test("buildTarget/compile - returns StatusCode.Error when compilation fails") {
+    // Reproduces #8104: failed BSP compile must return BspCompileResult with statusCode Error,
+    // not a JSON-RPC error
+    val buildTarget = buildTargetUri("diagnostics", "Compile")
+    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
+    val original = IO.read(mainFile)
+    try {
+      IO.write(
+        mainFile,
+        """|object Diagnostics {
+           |  private val a: Int = ""
+           |}""".stripMargin
+      )
+      compile(buildTarget)
+      val res = svr.waitFor[BspCompileResult](30.seconds)
+      assert(res.statusCode == StatusCode.Error, s"expected StatusCode.Error, got ${res.statusCode}")
+    } finally {
+      IO.write(mainFile, original)
+    }
+  }
+
   test("buildTarget/compile - reports compilation progress") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     compile(buildTarget)
