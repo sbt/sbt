@@ -1,6 +1,6 @@
 ThisBuild / scalaVersion := "2.13.16"
 
-import Marker.autoImport._
+lazy val mark = taskKey[Unit]("Creates a marker file to track where this task ran")
 
 lazy val root = (project in file("."))
   .aggregate(sub)
