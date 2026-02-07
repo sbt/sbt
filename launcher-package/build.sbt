@@ -101,7 +101,6 @@ val launcherPackage = (project in file(".")).
         case _ => Nil
       }
     },
-    usePgpKeyHex("642AC823"),
     pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
     pgpPublicRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.pub",
     publishToSettings,
@@ -302,11 +301,11 @@ val launcherPackage = (project in file(".")).
     rpmVendor := "scalacenter",
     rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
     rpmLicense := Some("Apache-2.0"),
-    // This is intentionally empty. java-devel could bring in JDK 9-ea on Fedora,
+    // This is intentionally does not list Java. java-devel could bring in JDK 9-ea on Fedora,
     // and java-1.8.0-devel doesn't work on CentOS 6 and 7.
     // https://github.com/sbt/sbt-launcher-package/issues/151
     // https://github.com/elastic/logstash/issues/6275#issuecomment-261359933
-    rpmRequirements := Seq(),
+    rpmRequirements := Seq("coreutils"),
     rpmProvides := Seq("sbt"),
 
     // WINDOWS SPECIFIC

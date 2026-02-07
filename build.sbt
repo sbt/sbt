@@ -57,6 +57,9 @@ Global / excludeLint += checkPluginCross
 Global / excludeLint += nativeImageJvm
 Global / excludeLint += nativeImageVersion
 
+usePgpKeyHex("642AC823")
+// usePgpKeyHex("2BE67AC00D699E04E840B7FE29967E804D85663F")
+
 def commonSettings: Seq[Setting[?]] = Def.settings(
   headerLicense := Some(
     HeaderLicense.Custom(
