@@ -23,7 +23,7 @@ import sbt.StandardMain.exchange
 import sbt.internal.bsp.*
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
-import sbt.internal.util.{ Attributed, ErrorHandling }
+import sbt.internal.util.{ Attributed, ErrorHandling, MessageOnlyException }
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.CrossVersion.binaryScalaVersion
 import sbt.librarymanagement.{ Configuration, ScalaArtifacts, UpdateReport }
@@ -879,7 +879,10 @@ object BuildServerProtocol {
       case Result.Inc(cause) =>
         cause.getCause match {
           case _: InterruptedException => StatusCode.Cancelled
-          case _                       =>
+          case _: MessageOnlyException  =>
+            // Rethrow so task failure path sends JSON-RPC error (e.g. respondError project)
+            throw cause
+          case _ =>
             // Return Error for any compile failure (CompileFailed or other Incomplete)
             // so BSP returns a proper BspCompileResult instead of a JSON-RPC error (#8104)
             StatusCode.Error

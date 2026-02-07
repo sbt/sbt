@@ -115,30 +115,6 @@ class BuildServerTest extends AbstractServerTest {
     assert(res.statusCode == StatusCode.Success)
   }
 
-  test("buildTarget/compile - returns StatusCode.Error when compilation fails") {
-    // Reproduces #8104: failed BSP compile must return BspCompileResult with statusCode Error,
-    // not a JSON-RPC error
-    val buildTarget = buildTargetUri("diagnostics", "Compile")
-    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
-    val original = IO.read(mainFile)
-    try {
-      IO.write(
-        mainFile,
-        """|object Diagnostics {
-           |  private val a: Int = ""
-           |}""".stripMargin
-      )
-      compile(buildTarget)
-      val res = svr.waitFor[BspCompileResult](30.seconds)
-      assert(
-        res.statusCode == StatusCode.Error,
-        s"expected StatusCode.Error, got ${res.statusCode}"
-      )
-    } finally {
-      IO.write(mainFile, original)
-    }
-  }
-
   test("buildTarget/compile - reports compilation progress") {
     val buildTarget = buildTargetUri("runAndTest", "Compile")
     compile(buildTarget)
@@ -262,6 +238,42 @@ class BuildServerTest extends AbstractServerTest {
       duration = 30.seconds,
       message = "should send publishDiagnostics with empty diagnostics"
     )
+  }
+
+  test("buildTarget/compile - returns StatusCode.Error when compilation fails") {
+    // Reproduces #8104: failed BSP compile must return BspCompileResult with statusCode Error,
+    // not a JSON-RPC error. Placed after diagnostics tests so shared message queue is not polluted.
+    val buildTarget = buildTargetUri("diagnostics", "Compile")
+    val mainFile = new File(svr.baseDirectory, "diagnostics/src/main/scala/Diagnostics.scala")
+    val original = IO.read(mainFile)
+    try {
+      IO.write(
+        mainFile,
+        """|object Diagnostics {
+           |  private val a: Int = ""
+           |}""".stripMargin
+      )
+      compile(buildTarget)
+      val res = svr.waitFor[BspCompileResult](30.seconds)
+      assert(
+        res.statusCode == StatusCode.Error,
+        s"expected StatusCode.Error, got ${res.statusCode}"
+      )
+      // Drain notifications from this failing compile so the next test does not consume them
+      def ourFailureNotification(s: String): Boolean =
+        (s.contains("build/taskStart") && s.contains("diagnostics")) ||
+          (s.contains("build/taskFinish") && s.contains("Compiled diagnostics") && s.contains(
+            "\"status\":2"
+          )) ||
+          (s.contains("build/publishDiagnostics") && s.contains("Diagnostics.scala") && s.contains(
+            "type mismatch"
+          ))
+      svr.waitForString(30.seconds)(ourFailureNotification)
+      svr.waitForString(30.seconds)(ourFailureNotification)
+      svr.waitForString(30.seconds)(ourFailureNotification)
+    } finally {
+      IO.write(mainFile, original)
+    }
   }
 
   test("buildTarget/compile: Java diagnostics") {
