@@ -23,7 +23,7 @@ import sbt.StandardMain.exchange
 import sbt.internal.bsp.*
 import sbt.internal.langserver.ErrorCodes
 import sbt.internal.protocol.JsonRpcRequestMessage
-import sbt.internal.util.{ Attributed, ErrorHandling }
+import sbt.internal.util.{ Attributed, ErrorHandling, MessageOnlyException }
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.librarymanagement.CrossVersion.binaryScalaVersion
 import sbt.librarymanagement.{ Configuration, ScalaArtifacts, UpdateReport }
@@ -31,7 +31,6 @@ import sbt.std.TaskExtra
 import sbt.util.Logger
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JNull, JValue }
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser as JsonParser }
-import xsbti.CompileFailed
 
 import java.io.File
 import java.nio.file.Paths
@@ -879,9 +878,14 @@ object BuildServerProtocol {
       case Result.Value(_) => StatusCode.Success
       case Result.Inc(cause) =>
         cause.getCause match {
-          case _: CompileFailed        => StatusCode.Error
           case _: InterruptedException => StatusCode.Cancelled
-          case err                     => throw cause
+          case _: MessageOnlyException =>
+            // Rethrow so task failure path sends JSON-RPC error (e.g. respondError project)
+            throw cause
+          case _ =>
+            // Return Error for any compile failure (CompileFailed or other Incomplete)
+            // so BSP returns a proper BspCompileResult instead of a JSON-RPC error (#8104)
+            StatusCode.Error
         }
     }
   }
