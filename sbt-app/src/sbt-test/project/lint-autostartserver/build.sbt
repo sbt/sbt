@@ -6,7 +6,7 @@ lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
   .settings(
-    check := {
+    check := Def.uncached {
       val state = Keys.state.value
       val includeKeys = (Global / lintIncludeFilter).value
       val excludeKeys = (Global / lintExcludeFilter).value
