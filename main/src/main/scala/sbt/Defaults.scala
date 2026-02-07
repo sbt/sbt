@@ -2034,9 +2034,12 @@ object Defaults extends BuildCommon {
           val config = configuration.value
           val projectName = name.value
           val base = scalacOptions.value
+          // Check both task-scoped and configuration-scoped scalacOptions for -project flag
+          val configScalacOptions = (config / scalacOptions).value
+          val hasProjectFlag = base.contains("-project") || configScalacOptions.contains("-project")
           if (ScalaArtifacts.isScala3(sv)) {
             // Only add -project flag if it's not already present to avoid "Flag -project set repeatedly" warning
-            if (!base.contains("-project")) {
+            if (!hasProjectFlag) {
               val project = if (config == Compile) projectName else s"$projectName-$config"
               base ++ Seq("-project", project)
             } else base
