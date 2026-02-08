@@ -8,6 +8,8 @@
 
 package sbt
 
+import java.util.concurrent.CopyOnWriteArrayList
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 import testing.{ Task as TestTask, * }
 import org.scalatools.testing.{ Framework as OldFramework }
@@ -130,9 +132,10 @@ private[sbt] final class TestRunner(
     val name = testDefinition.name
 
     def runTest() = {
-      // here we get the results! here is where we'd pass in the event listener
-      val results = new scala.collection.mutable.ListBuffer[Event]
-      val handler = new EventHandler { def handle(e: Event): Unit = { results += e } }
+      // Thread-safe collection so AsyncFunSuite (and other async frameworks) can call
+      // handle() from multiple threads without corrupting results (fixes #5245).
+      val results = new CopyOnWriteArrayList[Event]
+      val handler = new EventHandler { def handle(e: Event): Unit = { results.add(e) } }
       val loggers: Vector[ContentLogger] = listeners.flatMap(_.contentLogger(testDefinition))
       def errorEvents(e: Throwable): Array[sbt.testing.Task] = {
         val taskDef = testTask.taskDef
@@ -144,7 +147,7 @@ private[sbt] final class TestRunner(
           val fingerprint = taskDef.fingerprint
           val duration = -1L
         }
-        results += event
+        results.add(event)
         Array.empty
       }
       val nestedTasks =
@@ -156,9 +159,10 @@ private[sbt] final class TestRunner(
         } finally {
           loggers.foreach(_.flush())
         }
-      val event = TestEvent(results.toList)
+      val resultsList = results.asScala.toList
+      val event = TestEvent(resultsList)
       safeListenersCall(_.testEvent(event))
-      (SuiteResult(results.toList), nestedTasks.toSeq)
+      (SuiteResult(resultsList), nestedTasks.toSeq)
     }
 
     safeListenersCall(_.startGroup(name))
