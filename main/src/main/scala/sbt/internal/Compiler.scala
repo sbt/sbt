@@ -10,14 +10,16 @@ package sbt
 package internal
 
 import java.io.{ File, PrintWriter }
+import java.nio.file.{ Path, Paths }
+import java.util.ArrayList
 import sbt.BuildExtra.*
 import sbt.Keys.Classpath
 import sbt.internal.CommandStrings
 import sbt.internal.inc.{ AnalyzingCompiler, ScalaInstance, ZincLmUtil }
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.worker.{ ClientJobParams, ScalaInstanceConfig }
-import sbt.internal.worker.codec.JsonProtocol.given
-import sbt.internal.util.{ Attributed, MessageOnlyException, Terminal as ITerminal }
+import sbt.internal.worker1.{ ConsoleInfo, WorkerMain }
+import sbt.internal.util.{ Attributed, RunHandler, Terminal as ITerminal }
 import sbt.io.IO
 import sbt.protocol.Serialization
 import sbt.librarymanagement.{
@@ -31,10 +33,13 @@ import sbt.librarymanagement.{
   VersionNumber
 }
 import sbt.util.Logger
-import sjsonnew.support.scalajson.unsafe.{ Converter, CompactPrinter }
+import scala.jdk.CollectionConverters.*
+import scala.util.Random
 import xsbti.{ HashedVirtualFileRef, ScalaProvider }
 
 object Compiler:
+  private val r = Random()
+
   def scalaInstanceTask(
       configKey: TaskKey[ScalaInstanceConfig]
   ): Def.Initialize[Task[ScalaInstance]] =
@@ -300,7 +305,8 @@ object Compiler:
       classpath: Def.Initialize[Task[Classpath]],
   ): Def.Initialize[Task[Unit]] =
     Def.taskIf {
-      if (task / Keys.fork).value then forkedConsoleTask(task, products, classpath).value
+      if (task / Keys.fork).value || (Keys.state.value.isNetworkCommand && (task / Keys.clientSide).value)
+      then forkedConsoleTask(task, products, classpath).value
       else serverSideConsoleTask(task, products, classpath).value
     }
 
@@ -334,7 +340,6 @@ object Compiler:
       classpath: Def.Initialize[Task[Classpath]],
   ): Def.Initialize[Task[Unit]] =
     Def.task {
-      import sbt.internal.worker.ConsoleConfig
       val s = Keys.streams.value
       val conv = Keys.fileConverter.value
       val cside = (task / Keys.clientSide).value
@@ -344,33 +349,39 @@ object Compiler:
       val siConfig = (Keys.console / Keys.scalaInstanceConfig).value
       val bridgeJars = Keys.scalaCompilerBridgeJars.value
       val state = Keys.state.value
-      val config = ConsoleConfig(
-        scalaInstanceConfig = siConfig,
-        bridgeJars = bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()),
-        products = products.value.toVector.map(vf => conv.toPath(vf.data).toUri()),
-        classpathJars = classpath.value.toVector.map(vf => conv.toPath(vf.data).toUri()),
-        scalacOptions = (task / Keys.scalacOptions).value.toVector,
-        initialCommands = (task / Keys.initialCommands).value,
-        cleanupCommands = (task / Keys.cleanupCommands).value,
-      )
+      val toolJars = siConfig.libraryJars ++ siConfig.allCompilerJars ++ siConfig.extraToolJars
+      val toolJarsVf = toolJars.map(u => conv.toVirtualFile(Paths.get(u)): HashedVirtualFileRef)
       val fo = (task / Keys.forkOptions).value
       val service = Keys.bgJobService.value
+      val workingDir = service.createWorkingDirectory
+      val cp = service.copyClasspath(
+        products.value,
+        classpath.value,
+        workingDir,
+        conv,
+      )
+      val param = ConsoleInfo(
+        ArrayList(toolJars.asJava),
+        ArrayList(bridgeJars.toVector.map(vf => conv.toPath(vf).toUri()).asJava),
+        ArrayList(),
+        ArrayList(Attributed.data(cp).toVector.map(vf => conv.toPath(vf).toUri()).asJava),
+        ArrayList((task / Keys.scalacOptions).value.asJava),
+        (task / Keys.initialCommands).value,
+        (task / Keys.cleanupCommands).value,
+      )
+      val randomId = r.nextLong()
+      val workerMainClass = classOf[WorkerMain].getCanonicalName
+      val workerCp0 = workerClasspath.map: p =>
+        Attributed.blank(conv.toVirtualFile(p): HashedVirtualFileRef)
+      val workerCp = workerCp0 ++ Attributed.blankSeq(bridgeJars ++ toolJarsVf).toVector
+      val g = WorkerMain.mkGson()
+      val paramJson = g.toJson(param, param.getClass)
+      val json = jsonRpcRequest(randomId, "console", paramJson)
+      val params = workingDir.toPath.resolve("console-params.json")
+      IO.write(params.toFile, json)
+      val info =
+        RunUtil.mkRunInfo(Vector(s"@$params"), workerMainClass, workerCp, fo, conv, None)
       if cside && state.isNetworkCommand then
-        val workingDir = service.createWorkingDirectory
-        val cp = service.copyClasspath(
-          products.value,
-          classpath.value,
-          workingDir,
-          conv,
-        )
-        val workerMainClass = classOf[ConsoleMain].getCanonicalName
-        val workerCp = ForkConsole.currentClasspath.map: p =>
-          Attributed.blank(conv.toVirtualFile(p): HashedVirtualFileRef)
-        val json = Converter.toJson[ConsoleConfig](config).get
-        val params = workingDir.toPath.resolve("console-params.json")
-        IO.write(params.toFile, CompactPrinter(json))
-        val info =
-          RunUtil.mkRunInfo(Vector(s"@$params"), workerMainClass, workerCp, fo, conv, None)
         val result = ClientJobParams(
           runInfo = info
         )
@@ -381,9 +392,7 @@ object Compiler:
         s.log.info("running console (fork)")
         try
           terminal.restore()
-          val exitCode = ForkConsole(config, fo)
-          if exitCode != 0 then
-            throw MessageOnlyException(s"Forked console exited with code $exitCode")
+          RunHandler.jvmRun(info.jvmRunInfo.get, s.log).get
         finally terminal.restore()
         println()
     }
@@ -395,6 +404,18 @@ object Compiler:
     val w = s.text(CommandStrings.ExportStream)
     try exported(w, command)
     finally w.close() // workaround for gh-937
+
+  private def workerClasspath: Vector[Path] =
+    Vector(
+      IO.classLocationPath(classOf[WorkerMain]),
+      IO.classLocationPath(classOf[org.scalasbt.shadedgson.com.google.gson.Gson]),
+      IO.classLocationPath(classOf[xsbti.compile.ScalaInstance]),
+      IO.classLocationPath(classOf[xsbti.Logger]),
+      IO.classLocationPath(classOf[sbt.testing.Framework]),
+    )
+
+  private def jsonRpcRequest(id: Long, method: String, params: String): String =
+    s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params, "id": $id }"""
 
   def consoleForkOptions: Def.Initialize[Task[ForkOptions]] = Def.task {
     // Build environment variables for proper terminal handling

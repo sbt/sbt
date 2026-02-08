@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -67,6 +70,10 @@ public final class WorkerMain {
         WorkerMain app = new WorkerMain();
         app.consoleWork();
         System.exit(0);
+      } else if (args.length == 1 && args[0].startsWith("@")) {
+        WorkerMain app = new WorkerMain();
+        app.argFileWork(Paths.get(args[0].substring(1)));
+        System.exit(0);
       } else if (args.length == 2 && args[0].equals("--tcp")) {
         WorkerMain app = new WorkerMain();
         int serverPort = Integer.parseInt(args[1]);
@@ -97,6 +104,13 @@ public final class WorkerMain {
       String line = this.inScanner.nextLine();
       process(line);
     }
+  }
+
+  void argFileWork(Path arg) throws Exception {
+    this.jsonOut = this.originalOut;
+    byte[] encoded = Files.readAllBytes(arg);
+    String line = new String(encoded, "UTF-8");
+    process(line);
   }
 
   void socketWork(int serverPort) throws Exception {
@@ -132,6 +146,10 @@ public final class WorkerMain {
           TestInfo testInfo = g.fromJson(params, TestInfo.class);
           test(id, testInfo);
           break;
+        case "console":
+          ConsoleInfo consoleInfo = g.fromJson(params, ConsoleInfo.class);
+          console(id, consoleInfo);
+          return;
         case "bye":
           break;
       }
@@ -176,6 +194,11 @@ public final class WorkerMain {
     } else {
       throw new RuntimeException("only jvm is supported");
     }
+  }
+
+  void console(long id, ConsoleInfo info) throws Exception {
+    ForkConsoleMain.main(id, info);
+    return;
   }
 
   private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {

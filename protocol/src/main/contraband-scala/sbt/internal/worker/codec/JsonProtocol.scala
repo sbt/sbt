@@ -11,5 +11,4 @@ trait JsonProtocol extends sjsonnew.BasicJsonProtocol
   with sbt.internal.worker.codec.RunInfoFormats
   with sbt.internal.worker.codec.ClientJobParamsFormats
   with sbt.internal.worker.codec.ScalaInstanceConfigFormats
-  with sbt.internal.worker.codec.ConsoleConfigFormats
 object JsonProtocol extends JsonProtocol

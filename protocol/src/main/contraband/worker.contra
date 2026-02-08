@@ -58,14 +58,3 @@ type ScalaInstanceConfig {
   allCompilerJars: [java.net.URI]
   extraToolJars: [java.net.URI] @since("0.1.0")
 }
-
-## Configuration for forked console.
-type ConsoleConfig {
-  scalaInstanceConfig: sbt.internal.worker.ScalaInstanceConfig!
-  bridgeJars: [java.net.URI]
-  products: [java.net.URI]
-  classpathJars: [java.net.URI]
-  scalacOptions: [String]
-  initialCommands: String!
-  cleanupCommands: String!
-}

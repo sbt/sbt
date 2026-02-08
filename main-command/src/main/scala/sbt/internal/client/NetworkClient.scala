@@ -13,19 +13,20 @@ package client
 import java.io.{ File, IOException, InputStream, PrintStream }
 import java.lang.ProcessBuilder.Redirect
 import java.net.{ Socket, SocketException }
-import java.nio.file.{ Files, Paths }
+import java.nio.file.Files
 import java.util.UUID
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
 import sbt.internal.langserver.{ LogMessageParams, MessageType, PublishDiagnosticsParams }
-import sbt.internal.worker.{ ClientJobParams, JvmRunInfo, NativeRunInfo, RunInfo }
+import sbt.internal.worker.{ ClientJobParams, NativeRunInfo, RunInfo }
 import sbt.internal.protocol.*
 import sbt.internal.util.{
   ConsoleAppender,
   ConsoleOut,
   MessageOnlyException,
+  RunHandler,
   Signals,
   Terminal,
   Util
@@ -33,7 +34,7 @@ import sbt.internal.util.{
 import sbt.io.IO
 import sbt.io.syntax.*
 import sbt.protocol.*
-import sbt.util.Level
+import sbt.util.{ Level, Logger }
 import sjsonnew.BasicJsonProtocol.*
 import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
 import sjsonnew.support.scalajson.unsafe.Converter
@@ -69,7 +70,6 @@ import Serialization.{
 }
 import NetworkClient.Arguments
 import java.util.concurrent.TimeoutException
-import sbt.util.Logger
 
 trait ConsoleInterface {
   def appendLog(level: Level.Value, message: => String): Unit
@@ -756,26 +756,6 @@ class NetworkClient(
 
   private def clientSideRun(runInfo: RunInfo): Try[Unit] = {
     runInfo.windowTitle.foreach(setWindowTitle)
-    def jvmRun(info: JvmRunInfo): Try[Unit] = {
-      val option = ForkOptions(
-        javaHome = info.javaHome.map(new File(_)),
-        outputStrategy = None, // TODO: Handle buffered output etc
-        bootJars = Vector.empty,
-        workingDirectory = info.workingDirectory.map(new File(_)),
-        runJVMOptions = info.jvmOptions,
-        connectInput = info.connectInput,
-        envVars = info.environmentVariables,
-      )
-      // ForkRun handles exit code handling and cancellation
-      val runner = new ForkRun(option)
-      runner
-        .run(
-          mainClass = info.mainClass,
-          classpath = info.classpath.map(_.path).map(Paths.get),
-          options = info.args,
-          log = log
-        )
-    }
     def nativeRun(info: NativeRunInfo): Try[Unit] = {
       import java.lang.{ ProcessBuilder as JProcessBuilder }
       val option = ForkOptions(
@@ -798,7 +778,8 @@ class NetworkClient(
         }
       Run.processExitCode(exitCode, "runner")
     }
-    if (runInfo.jvm) jvmRun(runInfo.jvmRunInfo.getOrElse(sys.error("missing jvmRunInfo")))
+    if (runInfo.jvm)
+      RunHandler.jvmRun(runInfo.jvmRunInfo.getOrElse(sys.error("missing jvmRunInfo")), log)
     else nativeRun(runInfo.nativeRunInfo.getOrElse(sys.error("missing nativeRunInfo")))
   }
 
