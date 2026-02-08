@@ -567,8 +567,6 @@ run() {
   detect_working_directory
   if [[ $print_sbt_version ]]; then
     execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
-  elif [[ $print_sbt_script_version ]]; then
-    echo "$init_sbt_version"
   elif [[ $print_version ]]; then
     if [[ -n "$is_this_dir_sbt" ]]; then
       execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
@@ -901,6 +899,12 @@ args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}"
 # process the combined args, then reset "$@" to the residuals
 process_args "${args1[@]}"
 vlog "[sbt_options] $(declare -p sbt_options)"
+
+# Handle --script-version before native client so it works on sbt 2.x project dirs (#8711)
+if [[ $print_sbt_script_version ]]; then
+  echo "$init_sbt_version"
+  exit 0
+fi
 
 if [[ "$(isRunNativeClient)" == "true" ]]; then
   set -- "${residual_args[@]}"
