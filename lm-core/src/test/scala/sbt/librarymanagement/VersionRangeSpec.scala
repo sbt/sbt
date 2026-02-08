@@ -98,4 +98,19 @@ class VersionRangeSpec extends UnitSpec {
     assert(VersionRange.versionSatisfiesRange("1.0.0", "[1.0]") == true)
     assert(VersionRange.versionSatisfiesRange("1.1", "[1.0]") == false)
   }
+
+  // Exact reproduction case from issue #6244 (net.minidev:json-smart, [1.3.1,2.3] -> 2.3 selected)
+  it should "not treat 2.3 as evicted when range is [1.3.1,2.3] (fixes #6244)" in {
+    assert(VersionRange.isVersionRange("[1.3.1,2.3]") == true)
+    assert(VersionRange.versionSatisfiesRange("2.3", "[1.3.1,2.3]") == true)
+    assert(VersionRange.versionSatisfiesRange("1.3.1", "[1.3.1,2.3]") == true)
+    assert(VersionRange.versionSatisfiesRange("2.4", "[1.3.1,2.3]") == false)
+  }
+
+  it should "handle comma-separated range without brackets (fixes #6244)" in {
+    assert(VersionRange.isVersionRange("1.3.1,2.3") == true)
+    assert(VersionRange.versionSatisfiesRange("2.3", "1.3.1,2.3") == true)
+    assert(VersionRange.versionSatisfiesRange("1.3.1", "1.3.1,2.3") == true)
+    assert(VersionRange.versionSatisfiesRange("2.4", "1.3.1,2.3") == false)
+  }
 }

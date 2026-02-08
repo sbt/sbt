@@ -337,15 +337,18 @@ object EvictionWarning {
     def guessCompatible(p: EvictionPair): Boolean =
       p.evicteds forall { r =>
         val winnerOpt = p.winner map { _.module }
+        val evictedRev = r.module.revision
+        // Same version: no eviction (fixes #6244 when resolution picks version within requested range)
+        val sameVersion: Boolean = winnerOpt.exists(_.revision == evictedRev)
         // Check if the evicted module's revision is a version range and if the winner satisfies it
         // This handles cases like [4.1.0,5) where 4.2.1 would be within range (fixes #3978)
-        val evictedRev = r.module.revision
+        // and [1.3.1,2.3] where 2.3 is valid (fixes #6244)
         val winnerSatisfiesRange: Boolean = winnerOpt match {
           case Some(winner) if VersionRange.isVersionRange(evictedRev) =>
             VersionRange.versionSatisfiesRange(winner.revision, evictedRev)
           case _ => false
         }
-        if (winnerSatisfiesRange) {
+        if (sameVersion || winnerSatisfiesRange) {
           true
         } else {
           val extraAttributes = ((p.winner match {

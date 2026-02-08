@@ -12,7 +12,9 @@ object VersionRange {
     (revision.contains("[")) ||
     (revision.contains("]")) ||
     (revision.contains("(")) ||
-    (revision.contains(")"))
+    (revision.contains(")")) ||
+    // Comma-separated range e.g. "1.3.1,2.3" (fixes #6244 when Coursier passes range without brackets)
+    (revision.contains(",") && revision.exists(_.isDigit))
   }
 
   /**
@@ -25,6 +27,15 @@ object VersionRange {
     if (!isVersionRange(range)) {
       // Not a range, just compare directly
       version == range
+    } else if (range.contains(",") && !hasMavenVersionRange(range)) {
+      // Comma-separated range without brackets e.g. "1.3.1,2.3" (fixes #6244)
+      val parts = range.split(",", 2)
+      if (parts.length == 2) {
+        val lower = parts(0).trim
+        val upper = parts(1).trim
+        lower.nonEmpty && upper.nonEmpty &&
+        compareVersions(version, lower) >= 0 && compareVersions(version, upper) <= 0
+      } else false
     } else if (range.endsWith("+")) {
       // Handle plus ranges like "1.0+" meaning >= 1.0
       val base = range.dropRight(1)
