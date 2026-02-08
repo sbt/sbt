@@ -39,6 +39,7 @@ trait ShellScriptUtil extends BasicTestSuite {
       machineSbtoptsContents: String = "",
       jvmoptsFileContents: String = "",
       windowsSupport: Boolean = true,
+      citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
     if !windowsSupport && isWindows then
       test(name):
@@ -46,7 +47,7 @@ trait ShellScriptUtil extends BasicTestSuite {
     else
       test(name) {
         val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-        val citestDir = new File("launcher-package/citest")
+        val citestDir = new File("launcher-package", citestVariant)
         // Clean target directory if it exists to avoid copying temporary files that may be deleted during copy
         val targetDir = new File(citestDir, "target")
         if (targetDir.exists()) {

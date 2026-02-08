@@ -113,11 +113,21 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       if (isWindows) cancel("Test not supported on windows")
       else assert(out.contains[String]("-Dsbt.ivy.home=/ivy/dir"))
 
-  testOutput("sbt --script-version should print sbtVersion")("--script-version"):
-    (out: List[String]) =>
-      val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
-      assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
-      ()
+  testOutput(
+    "sbt --script-version should print sbtVersion (sbt 1.x project)",
+    citestVariant = "citest",
+  )("--script-version"): (out: List[String]) =>
+    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
+    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    ()
+
+  testOutput(
+    "sbt --script-version should print sbtVersion (sbt 2.x project)",
+    citestVariant = "citest2",
+  )("--script-version"): (out: List[String]) =>
+    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
+    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    ()
 
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.global.localcache=./cachePath"))
