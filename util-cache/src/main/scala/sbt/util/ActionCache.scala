@@ -166,7 +166,7 @@ object ActionCache:
                 store.syncBlobs(result.outputFiles, config.outputDirectory)
                 if result.exitCode.contains(failureExitCode) then
                   Some(Left(Some(failureFromStr(str))))
-                else Some(Right(valueFromStr(str, Some("symlink"))))
+                else Some(Right(valueFromStr(str, Some("disk"))))
               case Left(_) => None
       else None
 
