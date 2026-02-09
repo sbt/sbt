@@ -617,6 +617,20 @@ if !sbt_args_print_sbt_script_version! equ 1 (
   goto :eof
 )
 
+rem Handle --version before native client so it works on sbt 2.x project dirs (#8717)
+if !sbt_args_print_version! equ 1 (
+  if !is_this_dir_sbt! equ 1 (
+    if not "!build_props_sbt_version!" == "" (
+      echo sbt version in this project: !build_props_sbt_version!
+    )
+  )
+  echo sbt runner version: !init_sbt_version!
+  echo.
+  echo [info] sbt runner (sbt-the-batch-script) is a runner to run any declared version of sbt.
+  echo [info] Actual version of the sbt is declared using project\build.properties for each build.
+  goto :eof
+)
+
 if !run_native_client! equ 1 (
   goto :runnative !SBT_ARGS!
   goto :eof
@@ -725,17 +739,7 @@ if !sbt_args_print_sbt_version! equ 1 (
   goto :eof
 )
 
-if !sbt_args_print_version! equ 1 (
-  if !is_this_dir_sbt! equ 1 (
-    call :set_sbt_version
-    echo sbt version in this project: !sbt_version!
-  )
-  echo sbt runner version: !init_sbt_version!
-  >&2 echo.
-  >&2 echo [info] sbt runner ^(sbt-the-batch-script^) is a runner to run any declared version of sbt.
-  >&2 echo [info] Actual version of the sbt is declared using project\build.properties for each build.
-  goto :eof
-)
+rem This block is now handled earlier, before native client check
 
 if defined sbt_args_verbose (
   echo # Executing command line:
