@@ -1004,7 +1004,7 @@ trait Init:
       else Left(undefs.toSeq)
 
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
-      inputs.toList0.foldLeft(init): (v, i) => i.processAttributes(v)(f)
+      inputs.toList0.foldLeft(init) { (v, i) => i.processAttributes(v)(f) }
   end Apply
 
   private[sbt] final class DynamicDepsInitialize[A1](
