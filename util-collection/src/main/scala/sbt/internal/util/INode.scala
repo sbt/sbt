@@ -55,7 +55,7 @@ class EvaluateSettings[I <: Init](
             case None    => constant(() => o.f(None))
             case Some(i) => single[s, A](transform(i), x => o.f(Some(x)))
         case d: DynamicDepsInitialize[A] => transform(d.inner)
-        case StaticScopes => strictConstant(allScopes)
+        case StaticScopes                => strictConstant(allScopes)
 
   private lazy val roots: Seq[INode[?]] = compiledSettings.flatMap { cs =>
     (cs.settings map { s =>
