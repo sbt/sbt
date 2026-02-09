@@ -8,7 +8,7 @@
 
 package sbt
 
-import sbt.internal.{ Load, LoadedBuildUnit }
+import sbt.internal.{ BuildStructure, Load, LoadedBuildUnit }
 import sbt.internal.util.{ AttributeKey, Dag }
 import sbt.librarymanagement.{ ConfigRef, Configuration }
 import sbt.internal.util.Types.const
@@ -96,8 +96,14 @@ object ScopeFilter {
      * Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] = Def.flatMap(getData) { data =>
-      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
+    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] = {
+      val inner = Def.flatMap(getData) { data =>
+        sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
+      }
+      val dynamicDeps = i match
+        case k: Def.KeyedInitialize[?] => Seq((k.scopedKey.key, sfilter))
+        case _                        => Nil
+      Def.withDynamicDependencies(inner, dynamicDeps)
     }
 
   final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
@@ -105,9 +111,15 @@ object ScopeFilter {
      * Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] = Def.flatMap(getData) { data =>
-      import std.TaskExtra.*
-      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
+    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] = {
+      val inner = Def.flatMap(getData) { data =>
+        import std.TaskExtra.*
+        sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
+      }
+      val dynamicDeps = i match
+        case k: Def.KeyedInitialize[?] => Seq((k.scopedKey.key, sfilter))
+        case _                        => Nil
+      Def.withDynamicDependencies(inner, dynamicDeps)
     }
 
   private[sbt] val Make = new Make {}
@@ -217,6 +229,41 @@ object ScopeFilter {
       val resolve: ProjectReference => ProjectRef,
       val allScopes: AllScopes
   )
+
+  private def dataFromStructure(structure: BuildStructure): Data = {
+    val units = structure.units
+    val rootProject = Load.getRootProject(units)
+    val resolve: ProjectReference => ProjectRef = ref =>
+      Scope.resolveProjectRef(structure.root, rootProject, ref)
+    val scopes = structure.data.scopes
+    val grouped: ScopeMap = scopes
+      .groupBy(_.project)
+      .view
+      .mapValues { byProj =>
+        byProj.groupBy(_.config).view.mapValues { byConfig =>
+          byConfig.groupBy(_.task).view.mapValues(_.toSet).toMap
+        }.toMap
+      }
+      .toMap
+    new Data(units, resolve, new AllScopes(scopes, grouped))
+  }
+
+  def expandDynamicDeps(deps: Seq[Any], structure: BuildStructure): Set[ScopedKey[?]] = {
+    if deps.isEmpty then Set.empty
+    else {
+    val data = dataFromStructure(structure)
+    val result = scala.collection.mutable.Set.empty[ScopedKey[?]]
+    for dep <- deps do
+      dep match
+        case (key: AttributeKey[?], filter: ScopeFilter) =>
+          try
+            filter(data).foreach(scope => result += Def.ScopedKey(scope, key))
+          catch
+            case _: Exception => ()
+        case _ =>
+    result.toSet
+    }
+  }
 
   private[sbt] val allScopes: Initialize[AllScopes] = Def.setting {
     val scopes = Def.StaticScopes.value

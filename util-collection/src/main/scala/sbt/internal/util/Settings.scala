@@ -630,6 +630,10 @@ trait Init:
    */
   sealed trait Initialize[A1]:
     def dependencies: Seq[ScopedKey[?]]
+
+    /** Dynamic dependencies (e.g. from .all(ScopeFilter)) not visible in the static graph. */
+    private[sbt] def dynamicDependencies: Seq[Any] = Nil
+
     def apply[A2](g: A1 => A2): Initialize[A2]
 
     private[sbt] def mapReferenced(g: MapScoped): Initialize[A1]
@@ -998,6 +1002,32 @@ trait Init:
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
       inputs.toList0.foldLeft(init) { (v, i) => i.processAttributes(v)(f) }
   end Apply
+
+  private[sbt] final class DynamicDepsInitialize[A1](
+      inner: Initialize[A1],
+      val dynamicDeps: Seq[Any]
+  ) extends Initialize[A1]:
+    override def dependencies: Seq[ScopedKey[?]] = inner.dependencies
+    override def dynamicDependencies: Seq[Any] = dynamicDeps
+    override def apply[A2](g: A1 => A2): Initialize[A2] =
+      DynamicDepsInitialize(inner.apply(g), dynamicDeps)
+    override def mapReferenced(g: MapScoped): Initialize[A1] =
+      DynamicDepsInitialize(inner.mapReferenced(g), dynamicDeps)
+    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] =
+      inner.validateKeyReferenced(g).map(DynamicDepsInitialize(_, dynamicDeps))
+    override def mapConstant(g: MapConstant): Initialize[A1] =
+      DynamicDepsInitialize(inner.mapConstant(g), dynamicDeps)
+    override def evaluate(ss: Settings): A1 = inner.evaluate(ss)
+    private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
+      inner.processAttributes(init)(f)
+  end DynamicDepsInitialize
+
+  private[sbt] object DynamicDepsInitialize:
+    def apply[A1](inner: Initialize[A1], deps: Seq[Any]): Initialize[A1] =
+      if deps.isEmpty then inner else new DynamicDepsInitialize(inner, deps)
+
+  def withDynamicDependencies[A1](init: Initialize[A1], deps: Seq[Any]): Initialize[A1] =
+    DynamicDepsInitialize(init, deps)
 
   private def remove[A](s: Seq[A], v: A) = s.filterNot(_ == v)
 
