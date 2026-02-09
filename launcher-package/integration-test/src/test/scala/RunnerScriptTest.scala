@@ -129,6 +129,25 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
     ()
 
+  testOutput(
+    "sbt --version should work (sbt 1.x project)",
+    citestVariant = "citest",
+  )("--version"): (out: List[String]) =>
+    val output = out.mkString(System.lineSeparator())
+    assert(output.contains("sbt runner version:"))
+    assert(output.contains("[info] sbt runner (sbt-the-shell-script)"))
+    ()
+
+  testOutput(
+    "sbt --version should work (sbt 2.x project) (#8717)",
+    citestVariant = "citest2",
+  )("--version"): (out: List[String]) =>
+    val output = out.mkString(System.lineSeparator())
+    assert(output.contains("sbt version in this project:"))
+    assert(output.contains("sbt runner version:"))
+    assert(output.contains("[info] sbt runner (sbt-the-shell-script)"))
+    ()
+
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.global.localcache=./cachePath"))
 

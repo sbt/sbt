@@ -123,6 +123,27 @@ object ExtendedRunnerTest extends BasicTestSuite:
     ()
   }
 
+  test("sbt --version in empty directory") {
+    IO.withTemporaryDirectory { tmp =>
+      val out = sbtProcessInDir(tmp)("--version").!!
+      assert(out.contains("sbt runner version:"))
+      assert(out.contains("[info] sbt runner (sbt-the-shell-script)"))
+    }
+    ()
+  }
+
+  test("sbt --version in sbt 2.x project directory (#8717)") {
+    IO.withTemporaryDirectory { tmp =>
+      IO.write(tmp / "build.sbt", "")
+      IO.write(tmp / "project" / "build.properties", "sbt.version=2.0.0-RC8")
+      val out = sbtProcessInDir(tmp)("--version").!!
+      assert(out.contains("sbt version in this project: 2.0.0-RC8"))
+      assert(out.contains("sbt runner version:"))
+      assert(out.contains("[info] sbt runner (sbt-the-shell-script)"))
+    }
+    ()
+  }
+
   test("sbt --jvm-client") {
     val out = sbtProcess("--jvm-client", "--no-colors", "compile").!!.linesIterator.toList
     if (isWindows) {
