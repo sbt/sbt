@@ -135,11 +135,7 @@ object LintUnused {
     val display = Def.showShortKey(None) // extracted.showKey
     val comp = structure.compiledMap
     val cMap = Def.flattenLocals(comp)
-    val staticUsed: Set[ScopedKey[?]] = cMap.values.flatMap(_.dependencies).toSet
-    val dynamicDeps =
-      comp.values.flatMap(_.settings).flatMap(s => s.init.dynamicDependencies).toSeq
-    val dynamicUsed = ScopeFilter.expandDynamicDeps(dynamicDeps, structure)
-    val used: Set[ScopedKey[?]] = staticUsed ++ dynamicUsed
+    val used: Set[ScopedKey[?]] = cMap.values.flatMap(_.dependencies).toSet
     val unused: Seq[ScopedKey[?]] = cMap.keys.filter(!used.contains(_)).toSeq
     val withDefinedAts: Seq[UnusedKey] = unused.map: u =>
       val data = Project.scopedKeyData(structure, u)

@@ -631,9 +631,6 @@ trait Init:
   sealed trait Initialize[A1]:
     def dependencies: Seq[ScopedKey[?]]
 
-    /** Dynamic dependencies (e.g. from .all(ScopeFilter)) not visible in the static graph. */
-    private[sbt] def dynamicDependencies: Seq[Any] = Nil
-
     def apply[A2](g: A1 => A2): Initialize[A2]
 
     private[sbt] def mapReferenced(g: MapScoped): Initialize[A1]
@@ -890,7 +887,6 @@ trait Init:
   private[sbt] final class Bind[S, A1](val f: S => Initialize[A1], val in: Initialize[S])
       extends Initialize[A1]:
     override def dependencies: Seq[ScopedKey[?]] = in.dependencies
-    override def dynamicDependencies: Seq[Any] = in.dynamicDependencies
     override def apply[A2](g: A1 => A2): Initialize[A2] = Bind[S, A2](s => f(s)(g), in)
     override def evaluate(ss: Settings): A1 = f(in.evaluate(ss)).evaluate(ss)
     override def mapReferenced(g: MapScoped) =
@@ -911,7 +907,6 @@ trait Init:
   private[sbt] final class Optional[S, A1](val a: Option[Initialize[S]], val f: Option[S] => A1)
       extends Initialize[A1]:
     override def dependencies: Seq[ScopedKey[?]] = deps(a.toList)
-    override def dynamicDependencies: Seq[Any] = a.toList.flatMap(_.dynamicDependencies)
     override def apply[A2](g: A1 => A2): Initialize[A2] = new Optional[S, A2](a, g compose f)
 
     override def mapReferenced(g: MapScoped): Initialize[A1] =
@@ -961,7 +956,6 @@ trait Init:
   private[sbt] final class Uniform[A1, A2](val f: Seq[A1] => A2, val inputs: List[Initialize[A1]])
       extends Initialize[A2]:
     override def dependencies: Seq[ScopedKey[?]] = deps(inputs)
-    override def dynamicDependencies: Seq[Any] = inputs.flatMap(_.dynamicDependencies)
     override def mapReferenced(g: MapScoped): Initialize[A2] =
       Uniform(f, inputs.map(_.mapReferenced(g)))
     override def mapConstant(g: MapConstant): Initialize[A2] =
@@ -986,7 +980,6 @@ trait Init:
     import sbt.internal.util.TupleMapExtension.*
 
     override def dependencies: Seq[ScopedKey[?]] = deps(inputs.toList0)
-    override def dynamicDependencies: Seq[Any] = inputs.toList0.flatMap(_.dynamicDependencies)
     override def mapReferenced(g: MapScoped): Initialize[A1] =
       Apply(f, inputs.transform(mapReferencedK(g)))
     override def mapConstant(g: MapConstant): Initialize[A1] =
@@ -1006,32 +999,6 @@ trait Init:
     private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
       inputs.toList0.foldLeft(init) { (v, i) => i.processAttributes(v)(f) }
   end Apply
-
-  private[sbt] final class DynamicDepsInitialize[A1](
-      val inner: Initialize[A1],
-      val dynamicDeps: Seq[Any]
-  ) extends Initialize[A1]:
-    override def dependencies: Seq[ScopedKey[?]] = inner.dependencies
-    override def dynamicDependencies: Seq[Any] = dynamicDeps
-    override def apply[A2](g: A1 => A2): Initialize[A2] =
-      DynamicDepsInitialize(inner.apply(g), dynamicDeps)
-    override def mapReferenced(g: MapScoped): Initialize[A1] =
-      DynamicDepsInitialize(inner.mapReferenced(g), dynamicDeps)
-    override def validateKeyReferenced(g: ValidateKeyRef): ValidatedInit[A1] =
-      inner.validateKeyReferenced(g).map(DynamicDepsInitialize(_, dynamicDeps))
-    override def mapConstant(g: MapConstant): Initialize[A1] =
-      DynamicDepsInitialize(inner.mapConstant(g), dynamicDeps)
-    override def evaluate(ss: Settings): A1 = inner.evaluate(ss)
-    private[sbt] override def processAttributes[A2](init: A2)(f: (A2, AttributeMap) => A2): A2 =
-      inner.processAttributes(init)(f)
-  end DynamicDepsInitialize
-
-  private[sbt] object DynamicDepsInitialize:
-    def apply[A1](inner: Initialize[A1], deps: Seq[Any]): Initialize[A1] =
-      if deps.isEmpty then inner else new DynamicDepsInitialize(inner, deps)
-
-  def withDynamicDependencies[A1](init: Initialize[A1], deps: Seq[Any]): Initialize[A1] =
-    DynamicDepsInitialize(init, deps)
 
   private def remove[A](s: Seq[A], v: A) = s.filterNot(_ == v)
 
