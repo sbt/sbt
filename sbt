@@ -909,6 +909,18 @@ if [[ $print_sbt_script_version ]]; then
   exit 0
 fi
 
+# Handle --version before native client so it works on sbt 2.x project dirs (#8717)
+if [[ $print_version ]]; then
+  detect_working_directory
+  if [[ -n "$is_this_dir_sbt" ]] && [[ -n "$build_props_sbt_version" ]]; then
+    echo "sbt version in this project: $build_props_sbt_version"
+  fi
+  echo "sbt runner version: $init_sbt_version"
+  echo ""
+  echo "[info] sbt runner (sbt-the-shell-script) is a runner to run any declared version of sbt."
+  echo "[info] Actual version of the sbt is declared using project/build.properties for each build."
+  exit 0
+fi
 if [[ "$(isRunNativeClient)" == "true" ]]; then
   set -- "${residual_args[@]}"
   argumentCount=$#
