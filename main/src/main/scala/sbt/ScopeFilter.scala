@@ -101,7 +101,7 @@ object ScopeFilter {
         sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
       val dynamicDeps = i match
         case k: Def.KeyedInitialize[?] => Seq((k.scopedKey.key, sfilter))
-        case _                        => Nil
+        case _                         => Nil
       Def.withDynamicDependencies(inner, dynamicDeps)
 
   final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
@@ -115,7 +115,7 @@ object ScopeFilter {
         sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
       val dynamicDeps = i match
         case k: Def.KeyedInitialize[?] => Seq((k.scopedKey.key, sfilter))
-        case _                        => Nil
+        case _                         => Nil
       Def.withDynamicDependencies(inner, dynamicDeps)
 
   private[sbt] val Make = new Make {}
@@ -236,13 +236,18 @@ object ScopeFilter {
       .groupBy(_.project)
       .view
       .mapValues: byProj =>
-        byProj.groupBy(_.config).view.mapValues: byConfig =>
-          byConfig.groupBy(_.task).view.mapValues(_.toSet).toMap
-        .toMap
+        byProj
+          .groupBy(_.config)
+          .view
+          .mapValues: byConfig =>
+            byConfig.groupBy(_.task).view.mapValues(_.toSet).toMap
+          .toMap
       .toMap
     new Data(units, resolve, new AllScopes(scopes, grouped))
 
-  def expandDynamicDeps(deps: Seq[Any], structure: BuildStructure): Set[Def.ScopedKey[?]] =
+  def expandDynamicDeps(deps: Seq[Any], structure: BuildStructure): Set[
+    Def.ScopedKey[?]
+  ] =
     if deps.isEmpty then Set.empty
     else
       val data = dataFromStructure(structure)

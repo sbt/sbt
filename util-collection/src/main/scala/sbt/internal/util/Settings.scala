@@ -1008,7 +1008,7 @@ trait Init:
   end Apply
 
   private[sbt] final class DynamicDepsInitialize[A1](
-      inner: Initialize[A1],
+      val inner: Initialize[A1],
       val dynamicDeps: Seq[Any]
   ) extends Initialize[A1]:
     override def dependencies: Seq[ScopedKey[?]] = inner.dependencies
