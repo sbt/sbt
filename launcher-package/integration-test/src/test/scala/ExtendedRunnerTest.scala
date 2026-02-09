@@ -4,6 +4,7 @@ import scala.sys.process.*
 import java.io.File
 import java.util.Locale
 import sbt.io.IO
+import sbt.io.syntax.fileToRichFile
 import verify.BasicTestSuite
 
 object ExtendedRunnerTest extends BasicTestSuite:
