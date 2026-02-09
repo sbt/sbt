@@ -890,6 +890,7 @@ trait Init:
   private[sbt] final class Bind[S, A1](val f: S => Initialize[A1], val in: Initialize[S])
       extends Initialize[A1]:
     override def dependencies: Seq[ScopedKey[?]] = in.dependencies
+    override def dynamicDependencies: Seq[Any] = in.dynamicDependencies
     override def apply[A2](g: A1 => A2): Initialize[A2] = Bind[S, A2](s => f(s)(g), in)
     override def evaluate(ss: Settings): A1 = f(in.evaluate(ss)).evaluate(ss)
     override def mapReferenced(g: MapScoped) =
@@ -910,6 +911,7 @@ trait Init:
   private[sbt] final class Optional[S, A1](val a: Option[Initialize[S]], val f: Option[S] => A1)
       extends Initialize[A1]:
     override def dependencies: Seq[ScopedKey[?]] = deps(a.toList)
+    override def dynamicDependencies: Seq[Any] = a.toList.flatMap(_.dynamicDependencies)
     override def apply[A2](g: A1 => A2): Initialize[A2] = new Optional[S, A2](a, g compose f)
 
     override def mapReferenced(g: MapScoped): Initialize[A1] =
@@ -959,6 +961,7 @@ trait Init:
   private[sbt] final class Uniform[A1, A2](val f: Seq[A1] => A2, val inputs: List[Initialize[A1]])
       extends Initialize[A2]:
     override def dependencies: Seq[ScopedKey[?]] = deps(inputs)
+    override def dynamicDependencies: Seq[Any] = inputs.flatMap(_.dynamicDependencies)
     override def mapReferenced(g: MapScoped): Initialize[A2] =
       Uniform(f, inputs.map(_.mapReferenced(g)))
     override def mapConstant(g: MapConstant): Initialize[A2] =
@@ -983,6 +986,7 @@ trait Init:
     import sbt.internal.util.TupleMapExtension.*
 
     override def dependencies: Seq[ScopedKey[?]] = deps(inputs.toList0)
+    override def dynamicDependencies: Seq[Any] = inputs.toList0.flatMap(_.dynamicDependencies)
     override def mapReferenced(g: MapScoped): Initialize[A1] =
       Apply(f, inputs.transform(mapReferencedK(g)))
     override def mapConstant(g: MapConstant): Initialize[A1] =
