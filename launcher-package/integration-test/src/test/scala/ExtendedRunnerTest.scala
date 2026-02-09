@@ -128,7 +128,8 @@ object ExtendedRunnerTest extends BasicTestSuite:
     IO.withTemporaryDirectory { tmp =>
       val out = sbtProcessInDir(tmp)("--version").!!
       assert(out.contains("sbt runner version:"))
-      assert(out.contains("[info] sbt runner (sbt-the-shell-script)"))
+      val expectedRunner = if (isWindows) "[info] sbt runner (sbt-the-batch-script)" else "[info] sbt runner (sbt-the-shell-script)"
+      assert(out.contains(expectedRunner))
     }
     ()
   }
@@ -140,7 +141,8 @@ object ExtendedRunnerTest extends BasicTestSuite:
       val out = sbtProcessInDir(tmp)("--version").!!
       assert(out.contains("sbt version in this project: 2.0.0-RC8"))
       assert(out.contains("sbt runner version:"))
-      assert(out.contains("[info] sbt runner (sbt-the-shell-script)"))
+      val expectedRunner = if (isWindows) "[info] sbt runner (sbt-the-batch-script)" else "[info] sbt runner (sbt-the-shell-script)"
+      assert(out.contains(expectedRunner))
     }
     ()
   }

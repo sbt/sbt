@@ -628,7 +628,8 @@ if !sbt_args_print_version! equ 1 (
   echo.
   echo [info] sbt runner (sbt-the-batch-script) is a runner to run any declared version of sbt.
   echo [info] Actual version of the sbt is declared using project\build.properties for each build.
-  goto :eof
+  @endlocal
+  exit /B 0
 )
 
 if !run_native_client! equ 1 (
