@@ -14,7 +14,9 @@ import sbt.internal.Output.grep
 
 object OutputSpec extends BasicTestSuite {
 
-  test("grep should match pattern against visible text when lines contain ANSI escape sequences (#4840)") {
+  test(
+    "grep should match pattern against visible text when lines contain ANSI escape sequences (#4840)"
+  ) {
     // Line with ANSI color around "error" - user searching for "error" should find it (strip before match)
     val lineWithAnsi = s"${RED}error${RESET}: something failed"
     val lines = Seq("info: ok", lineWithAnsi, "warn: deprecated")
