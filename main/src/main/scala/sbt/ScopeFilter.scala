@@ -242,11 +242,11 @@ object ScopeFilter {
       .toMap
     new Data(units, resolve, new AllScopes(scopes, grouped))
 
-  def expandDynamicDeps(deps: Seq[Any], structure: BuildStructure): Set[ScopedKey[?]] =
+  def expandDynamicDeps(deps: Seq[Any], structure: BuildStructure): Set[Def.ScopedKey[?]] =
     if deps.isEmpty then Set.empty
     else
       val data = dataFromStructure(structure)
-      val result = scala.collection.mutable.Set.empty[ScopedKey[?]]
+      val result = scala.collection.mutable.Set.empty[Def.ScopedKey[?]]
       for dep <- deps do
         dep match
           case (key: AttributeKey[?], filter: ScopeFilter) =>
