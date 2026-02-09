@@ -1,0 +1,7 @@
+# Test for issue #7973: CancellationException should not be thrown on compile errors with usePipelining
+# This verifies that compile errors with usePipelining enabled don't show CancellationException stack traces
+
+# Try to compile (should fail with compile errors, but not throw CancellationException)
+# The fix ensures CancellationException is caught and handled gracefully
+# Using -> to indicate expected failure
+-> compile

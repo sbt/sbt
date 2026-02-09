@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import sbt.internal.util.AttributeKey
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.{ Future as JFuture, RejectedExecutionException }
+import java.util.concurrent.{ Future as JFuture, RejectedExecutionException, CancellationException }
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
@@ -312,7 +312,17 @@ object ConcurrentRestrictions {
           throw new RejectedExecutionException(
             "Tried to get values for a closed completion service"
           )
-        jservice.take().get()
+        try {
+          jservice.take().get()
+        } catch {
+          case ce: CancellationException =>
+            // When tasks are cancelled (e.g., due to compile errors with usePipelining),
+            // the future's get() throws CancellationException. Convert this to an Incomplete
+            // to avoid showing stack traces to users. The cancellation is already handled
+            // by the task execution framework, so we just need to prevent the exception
+            // from propagating as an unhandled exception.
+            throw Incomplete(node = None, message = Some("cancelled"), directCause = Some(ce))
+        }
       }
     }
   }
