@@ -129,7 +129,7 @@ object LintUnused {
       state: State,
       includeKeys: String => Boolean,
       excludeKeys: String => Boolean
-  ): Seq[(ScopedKey[?], String, Seq[SourcePosition])] = {
+  ): Seq[(ScopedKey[?], String, Seq[SourcePosition])] =
     val extracted = Project.extract(state)
     val structure = extracted.structure
     val display = Def.showShortKey(None) // extracted.showKey
@@ -141,34 +141,29 @@ object LintUnused {
     val dynamicUsed = ScopeFilter.expandDynamicDeps(dynamicDeps, structure)
     val used: Set[ScopedKey[?]] = staticUsed ++ dynamicUsed
     val unused: Seq[ScopedKey[?]] = cMap.keys.filter(!used.contains(_)).toSeq
-    val withDefinedAts: Seq[UnusedKey] = unused.map { u =>
+    val withDefinedAts: Seq[UnusedKey] = unused.map: u =>
       val data = Project.scopedKeyData(structure, u)
       val definedAt = comp.get(data.map(_.definingKey).getOrElse(u)) match
         case Some(c) => definedAtString(c.settings)
         case _       => Vector.empty
       UnusedKey(u, definedAt, data)
-    }
 
     def isIncludeKey(u: UnusedKey): Boolean = includeKeys(u.scoped.key.label)
     def isExcludeKey(u: UnusedKey): Boolean = excludeKeys(u.scoped.key.label)
-    def isSettingKey(u: UnusedKey): Boolean = u.data match {
+    def isSettingKey(u: UnusedKey): Boolean = u.data match
       case Some(data) => data.settingValue.isDefined
       case _          => false
-    }
-    def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists {
+    def isLocallyDefined(u: UnusedKey): Boolean = u.positions.exists:
       case pos: FilePosition => pos.path.contains(File.separator)
       case _                 => false
-    }
     def isInvisible(u: UnusedKey): Boolean = u.scoped.key.rank == KeyRanks.Invisible
-    val unusedKeys = withDefinedAts collect {
+    val unusedKeys = withDefinedAts collect:
       case u
           if !isExcludeKey(u) && !isInvisible(u)
             && (isSettingKey(u) || isIncludeKey(u))
             && isLocallyDefined(u) =>
         u
-    }
     unusedKeys.map(u => (u.scoped, display.show(u.scoped), u.positions)).sortBy(_._2)
-  }
 
   def lintScalaVersion(state: State): State = {
     val log = state.log
