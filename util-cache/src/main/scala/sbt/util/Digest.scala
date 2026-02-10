@@ -113,8 +113,8 @@ object Digest:
             (a, value, sizeBytes.toLong, parseHex(value, 384))
           case (a @ Sha512) :: value :: sizeBytes :: Nil =>
             (a, value, sizeBytes.toLong, parseHex(value, 512))
-          case _ => throw IllegalArgumentException(s"unexpected digest: $s")
-      case _ => throw IllegalArgumentException(s"unexpected digest: $s")
+          case _ => throw new IllegalArgumentException(s"unexpected digest: $s")
+      case _ => throw new IllegalArgumentException(s"unexpected digest: $s")
 
   private def jvmAlgo(algo: String): String =
     algo match

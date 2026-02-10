@@ -42,7 +42,11 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
   def read[T: JsonReader](): T = {
     val str = readFully()
     if (str == "") throw new EmptyCacheError()
-    else converter.fromJson(isoFormat.from(str)).get
+    else converter.fromJson(isoFormat.from(str)).getOrElse(
+      throw new IllegalStateException(
+        s"Failed to deserialize JSON from input stream. The data may be corrupted or invalid."
+      )
+    )
   }
 
   def close() = input.close()
@@ -51,9 +55,16 @@ class PlainInput[J: IsoString](input: InputStream, converter: SupportConverter[J
 class FileInput(file: File) extends Input {
 
   override def read[T: JsonReader](): T = {
-    sjsonnew.support.scalajson.unsafe.Converter
-      .fromJson(sjsonnew.support.scalajson.unsafe.Parser.parseFromFile(file).get)
-      .get
+    val json = sjsonnew.support.scalajson.unsafe.Parser.parseFromFile(file).getOrElse(
+      throw new IllegalStateException(
+        s"Failed to parse JSON file: $file. The file may be corrupted or empty."
+      )
+    )
+    sjsonnew.support.scalajson.unsafe.Converter.fromJson(json).getOrElse(
+      throw new IllegalStateException(
+        s"Failed to deserialize JSON from file: $file. The file may contain invalid data."
+      )
+    )
   }
 
   def close() = ()

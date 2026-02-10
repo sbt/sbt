@@ -243,7 +243,11 @@ object ActionCache:
 
   def manifestFromFile(manifest: Path): Manifest =
     import sbt.internal.util.codec.ManifestCodec.given
-    val json = Parser.parseFromFile(manifest.toFile()).get
+    val json = Parser.parseFromFile(manifest.toFile()).getOrElse(
+      throw new IllegalStateException(
+        s"Failed to parse manifest file: $manifest. The file may be corrupted or empty."
+      )
+    )
     Converter.fromJsonUnsafe[Manifest](json)
 
   private val default2010Timestamp: Long = 1262304000000L
