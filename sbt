@@ -912,6 +912,9 @@ fi
 # Handle --version before native client so it works on sbt 2.x project dirs (#8717)
 if [[ $print_version ]]; then
   detect_working_directory
+  if [[ -n "$is_this_dir_sbt" ]] && [[ -f ./project/build.properties ]]; then
+    loadPropFile ./project/build.properties
+  fi
   if [[ -n "$is_this_dir_sbt" ]] && [[ -n "$build_props_sbt_version" ]]; then
     echo "sbt version in this project: $build_props_sbt_version"
   fi
