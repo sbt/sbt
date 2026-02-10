@@ -619,10 +619,16 @@ if !sbt_args_print_sbt_script_version! equ 1 (
 
 rem Handle --version before native client so it works on sbt 2.x project dirs (#8717)
 if !sbt_args_print_version! equ 1 (
-  if !is_this_dir_sbt! equ 1 (
-    if not "!build_props_sbt_version!" == "" (
-      echo sbt version in this project: !build_props_sbt_version!
+  set "local_build_props_version="
+  if exist "project\build.properties" (
+    for /F "eol=# delims== tokens=1*" %%a in (project\build.properties) do (
+      if "%%a" == "sbt.version" if not "%%b" == "" (
+        set "local_build_props_version=%%b"
+      )
     )
+  )
+  if not "!local_build_props_version!" == "" (
+    echo sbt version in this project: !local_build_props_version!
   )
   echo sbt runner version: !init_sbt_version!
   echo.
