@@ -1,0 +1,5 @@
+# #5609: When explicitly requested via testOnly, @DoNotDiscover suite should run
+> clean
+> testOnly com.test.TestSpec2
+$ exists target/SuiteStarting-TestSpec2
+$ exists target/SuiteCompleted-TestSpec2

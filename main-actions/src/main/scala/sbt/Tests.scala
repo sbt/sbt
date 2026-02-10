@@ -281,8 +281,23 @@ object Tests {
       if (orderedFilters.isEmpty) filtered0
       else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
     val uniqueTests = distinctBy(tests)(_.name)
+    // When user ran testOnly with explicit args and the filter restricted the set, mark matching
+    // tests as explicitlySpecified so frameworks (e.g. ScalaTest) can run @DoNotDiscover suites.
+    // Do not mark when orderedFilters is "run all" (e.g. test with no args -> selectedFilter(Nil) -> match all).
+    val filteredToSubset = orderedFilters.nonEmpty && uniqueTests.size < discovered.size
+    val testsToUse =
+      if (!filteredToSubset) uniqueTests
+      else
+        uniqueTests.map(t =>
+          new TestDefinition(
+            t.name,
+            t.fingerprint,
+            explicitlySpecified = true,
+            Array(new SuiteSelector: Selector)
+          )
+        )
     new ProcessedOptions(
-      uniqueTests.toVector,
+      testsToUse.toVector,
       setup.toVector,
       cleanup.toVector,
       testListeners.toVector
@@ -555,7 +570,6 @@ object Tests {
         c.topLevel
       case _ => false
     })
-    // TODO: To pass in correct explicitlySpecified and selectors
     val tests =
       for {
         (df, di) <- discovered
