@@ -133,6 +133,9 @@ object Tests {
   /** Test execution will be ordered by the position of the matching filter. */
   final case class Filters(filterTest: Seq[String => Boolean]) extends TestOption
 
+  /** Names explicitly requested (e.g. testOnly com.example.MySuite). Used to set explicitlySpecified on TaskDef. */
+  final case class ExplicitlyRequestedNames(names: Seq[String]) extends TestOption
+
   /** Defines a TestOption that passes arguments `args` to all test frameworks. */
   def Argument(args: String*): Argument = Argument(None, args.toList)
 
@@ -247,9 +250,12 @@ object Tests {
     val testFilters = new ListBuffer[String => Boolean]
     var orderedFilters = Seq[String => Boolean]()
     val excludeTestsSet = new HashSet[String]
+    var explicitlyRequestedNames = Set.empty[String]
     val setup, cleanup = new ListBuffer[ClassLoader => Unit]
     val testListeners = new ListBuffer[TestReportListener]
     val undefinedFrameworks = new ListBuffer[String]
+
+    def isExplicitFqn(s: String): Boolean = !s.contains('*') && !s.contains('?')
 
     for (option <- config.options) {
       option match {
@@ -257,6 +263,9 @@ object Tests {
         case Filters(includes) =>
           if (orderedFilters.nonEmpty) sys.error("Cannot define multiple ordered test filters.")
           else orderedFilters = includes
+          ()
+        case ExplicitlyRequestedNames(names) =>
+          explicitlyRequestedNames = names.filter(isExplicitFqn).toSet
           ()
         case Exclude(exclude)            => excludeTestsSet ++= exclude; ()
         case Listeners(listeners)        => testListeners ++= listeners; ()
