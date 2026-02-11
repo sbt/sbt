@@ -253,6 +253,30 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         s"sbtopts options should appear before CLI memory settings. g1Index=$g1Index, xmxCliIndex=$xmxCliIndex"
       )
 
+  // Test for issue #7333: JVM parameters with spaces in .sbtopts
+  testOutput(
+    "sbt with -J--add-modules jdk.incubator.concurrent in .sbtopts (args with spaces)",
+    sbtOptsFileContents = "-J--add-modules jdk.incubator.concurrent",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(out.contains[String]("--add-modules"))
+    assert(out.contains[String]("jdk.incubator.concurrent"))
+
+  // Test for issue #7333: -D with spaces in .jvmopts
+  testOutput(
+    "sbt with -Dkey=\"value with spaces\" in .jvmopts",
+    jvmoptsFileContents = """-Dtest.7333="value with spaces"""",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(
+      out.exists(_.contains("test.7333")),
+      s"Expected -Dtest.7333= in output, got: ${out.filter(_.contains("test.7333")).mkString(", ")}"
+    )
+    assert(
+      out.exists(_.contains("value with spaces")),
+      "Expected 'value with spaces' in -D value"
+    )
+
   // Test for issue #7289: Special characters in .jvmopts should not cause shell expansion
   testOutput(
     "sbt with special characters in .jvmopts (pipes, wildcards, ampersands)",

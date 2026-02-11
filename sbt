@@ -766,6 +766,61 @@ process_args () {
   }
 }
 
+# Parse a line into words respecting double and single quotes.
+# Outputs one word per line. Used for .sbtopts and .jvmopts to handle args with spaces (#7333).
+parseLineIntoWords() {
+  local line="$1"
+  local word=""
+  local i=0
+  local len=${#line}
+  local in_dq=0 in_sq=0
+  while (( i < len )); do
+    local c="${line:$i:1}"
+    if (( in_dq )); then
+      word+="$c"
+      [[ "$c" == '"' ]] && in_dq=0
+    elif (( in_sq )); then
+      word+="$c"
+      [[ "$c" == "'" ]] && in_sq=0
+    else
+      case "$c" in
+        '"')  in_dq=1; word+="$c" ;;
+        "'")  in_sq=1; word+="$c" ;;
+        ' '|$'\t')
+          [[ -n "$word" ]] && printf '%s\n' "$word"
+          word=""
+          ;;
+        *)    word+="$c" ;;
+      esac
+    fi
+    ((i++))
+  done
+  [[ -n "$word" ]] && printf '%s\n' "$word"
+}
+
+# Load config file into array, parsing each line and respecting quotes.
+# For -J lines: split the remainder and prepend -J to each token (so -J--add-modules jdk.incubator.concurrent
+# becomes -J--add-modules and -Jjdk.incubator.concurrent). Fixes #7333.
+loadConfigFileIntoArray() {
+  local -n arr=$1
+  local file="$2"
+  [[ ! -f "$file" ]] && return
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line=$(printf '%s' "$line" | sed $'/^\#/d;s/\r$//')
+    [[ -z "$line" ]] && continue
+    if [[ "$line" == -J* ]]; then
+      local rest="${line#-J}"
+      while IFS= read -r token; do
+        [[ -n "$token" ]] && arr+=("-J$token")
+      done < <(parseLineIntoWords "$rest")
+    else
+      while IFS= read -r token; do
+        [[ -n "$token" ]] && arr+=("$token")
+      done < <(parseLineIntoWords "$line")
+    fi
+  done < <(cat "$file")
+}
+
 loadConfigFile() {
   # Make sure the last line is read even if it doesn't have a terminating \n
   # Output lines literally without shell expansion to handle special characters safely
@@ -861,14 +916,14 @@ sbt_file_opts=()
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  sbt_file_opts+=($(loadConfigFile "$machine_sbt_opts_file"))
+  loadConfigFileIntoArray sbt_file_opts "$machine_sbt_opts_file"
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$dist_sbt_opts_file"))
+  [[ -f "$dist_sbt_opts_file" ]] && loadConfigFileIntoArray sbt_file_opts "$dist_sbt_opts_file"
 fi
 
 # Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
-[[ -f "$sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$sbt_opts_file"))
+[[ -f "$sbt_opts_file" ]] && loadConfigFileIntoArray sbt_file_opts "$sbt_opts_file"
 
 # Prepend sbtopts so command line args appear last and win for duplicate properties.
 if (( ${#sbt_file_opts[@]} > 0 )); then
@@ -876,14 +931,15 @@ if (( ${#sbt_file_opts[@]} > 0 )); then
 fi
 
 # Pull in the project-level java config, if it exists.
-[[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
+jvmopts_args=()
+[[ -f ".jvmopts" ]] && loadConfigFileIntoArray jvmopts_args ".jvmopts"
 
 # Pull in default JAVA_OPTS
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
 
 [[ -f "$build_props_file" ]] && loadPropFile "$build_props_file"
 
-java_args=($JAVA_OPTS)
+java_args=($JAVA_OPTS "${jvmopts_args[@]}")
 sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
 java_tool_options=($JAVA_TOOL_OPTIONS)
 jdk_java_options=($JDK_JAVA_OPTIONS)
