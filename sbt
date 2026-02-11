@@ -801,8 +801,9 @@ parseLineIntoWords() {
 # Load config file into array, parsing each line and respecting quotes.
 # For -J lines: split the remainder and prepend -J to each token (so -J--add-modules jdk.incubator.concurrent
 # becomes -J--add-modules and -Jjdk.incubator.concurrent). Fixes #7333.
+# Uses eval+printf %q instead of local -n for Bash 3.x compatibility (macOS default).
 loadConfigFileIntoArray() {
-  local -n arr=$1
+  local arr_name="$1"
   local file="$2"
   [[ ! -f "$file" ]] && return
   while IFS= read -r line || [[ -n "$line" ]]; do
@@ -811,11 +812,11 @@ loadConfigFileIntoArray() {
     if [[ "$line" == -J* ]]; then
       local rest="${line#-J}"
       while IFS= read -r token; do
-        [[ -n "$token" ]] && arr+=("-J$token")
+        [[ -n "$token" ]] && eval "$arr_name+=($(printf '%q' "-J$token"))"
       done < <(parseLineIntoWords "$rest")
     else
       while IFS= read -r token; do
-        [[ -n "$token" ]] && arr+=("$token")
+        [[ -n "$token" ]] && eval "$arr_name+=($(printf '%q' "$token"))"
       done < <(parseLineIntoWords "$line")
     fi
   done < <(cat "$file")
