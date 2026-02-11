@@ -617,11 +617,21 @@ if !sbt_args_print_sbt_script_version! equ 1 (
   goto :eof
 )
 
-if !run_native_client! equ 1 (
-  rem Skip native client if --version is set to avoid hangs in sbt 2.x project dirs (#8717)
-  if "!sbt_args_print_version!" == "1" (
-    goto :skip_native_for_version
+rem Handle --version before native client to avoid hangs in sbt 2.x project dirs (#8717)
+if "!sbt_args_print_version!" == "1" (
+  if "!is_this_dir_sbt!" == "1" (
+    if not "!build_props_sbt_version!" == "" (
+      echo sbt version in this project: !build_props_sbt_version!
+    )
   )
+  echo sbt runner version: !init_sbt_version!
+  echo.
+  echo [info] sbt runner (sbt-the-batch-script) is a runner to run any declared version of sbt.
+  echo [info] Actual version of the sbt is declared using project\build.properties for each build.
+  goto :eof
+)
+
+if !run_native_client! equ 1 (
   goto :runnative !SBT_ARGS!
   goto :eof
 )
@@ -726,21 +736,6 @@ rem TODO: _SBT_OPTS needs to be processed as args and diffed against SBT_ARGS
 if !sbt_args_print_sbt_version! equ 1 (
   call :set_sbt_version
   echo !sbt_version!
-  goto :eof
-)
-
-rem Handle --version here (after native client check is skipped) for sbt 2.x project dirs (#8717)
-:skip_native_for_version
-if "!sbt_args_print_version!" == "1" (
-  if "!is_this_dir_sbt!" == "1" (
-    if not "!build_props_sbt_version!" == "" (
-      echo sbt version in this project: !build_props_sbt_version!
-    )
-  )
-  echo sbt runner version: !init_sbt_version!
-  echo.
-  echo [info] sbt runner (sbt-the-batch-script) is a runner to run any declared version of sbt.
-  echo [info] Actual version of the sbt is declared using project\build.properties for each build.
   goto :eof
 )
 

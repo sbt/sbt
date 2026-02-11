@@ -1,3 +1,0 @@
-#-XX:+CMSClassUnloadingEnabled
-#-XX:ReservedCodeCacheSize=192m
-#-Duser.timezone=GMT
