@@ -281,18 +281,16 @@ object Tests {
       if (orderedFilters.isEmpty) filtered0
       else orderedFilters.flatMap(f => filtered0.filter(d => f(d.name))).toList.distinct
     val uniqueTests = distinctBy(tests)(_.name)
-    // When user ran testOnly with explicit args and the filter restricted the set, mark matching
-    // tests as explicitlySpecified so frameworks (e.g. ScalaTest) can run @DoNotDiscover suites.
-    // Do not mark when orderedFilters is "run all" (e.g. test with no args -> selectedFilter(Nil) -> match all).
-    val filteredToSubset = orderedFilters.nonEmpty && uniqueTests.size < discovered.size
+    // Per TaskDef: explicitlySpecified=true only when user supplied a complete FQN (e.g. testOnly com.example.MySuite),
+    // not for patterns (testOnly *Spec) or plain "test". So only mark when test.name is in explicitlyRequestedNames.
     val testsToUse =
-      if (!filteredToSubset) uniqueTests
+      if (explicitlyRequestedNames.isEmpty) uniqueTests
       else
         uniqueTests.map(t =>
           new TestDefinition(
             t.name,
             t.fingerprint,
-            explicitlySpecified = true,
+            explicitlySpecified = explicitlyRequestedNames.contains(t.name),
             Array(new SuiteSelector: Selector)
           )
         )

@@ -1354,7 +1354,8 @@ object Defaults extends BuildCommon {
       val st = state.value
       given display: Show[ScopedKey[?]] = Project.showContextKey(st)
       val modifiedOpts =
-        Tests.Filters(filter(selected)) +: Tests.Argument(frameworkOptions*) +: config.options
+        Tests.ExplicitlyRequestedNames(selected) +: Tests.Filters(filter(selected)) +:
+          Tests.Argument(frameworkOptions*) +: config.options
       val newConfig = config.copy(options = modifiedOpts)
       val output = allTestGroupsTask(
         s,
