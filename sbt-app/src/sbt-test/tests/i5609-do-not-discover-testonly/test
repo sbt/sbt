@@ -15,8 +15,10 @@ $ exists target/SuiteStarting-TestSpec2
 $ exists target/SuiteCompleted-TestSpec2
 
 > clean
+$ absent target/SuiteStarting-TestSpec2
+$ absent target/SuiteCompleted-TestSpec2
 > testOnly com.test...
 $ exists target/SuiteStarting-TestSpec
 $ exists target/SuiteCompleted-TestSpec
-$ absent target/SuiteStarting-TestSpec2
-$ absent target/SuiteCompleted-TestSpec2
+-$ exists target/SuiteStarting-TestSpec2
+-$ exists target/SuiteCompleted-TestSpec2
