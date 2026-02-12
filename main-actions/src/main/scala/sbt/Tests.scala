@@ -255,7 +255,7 @@ object Tests {
     val testListeners = new ListBuffer[TestReportListener]
     val undefinedFrameworks = new ListBuffer[String]
 
-    def isExplicitFqn(s: String): Boolean = !s.contains('*') && !s.contains('?')
+    def isExplicitFqn(s: String): Boolean = !s.contains('*') && !s.contains('?') && !s.contains("...")
 
     for (option <- config.options) {
       option match {

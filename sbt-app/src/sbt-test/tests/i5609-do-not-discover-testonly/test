@@ -1,7 +1,6 @@
 # #5609: When explicitly requested via testOnly, @DoNotDiscover suite should run.
 # First: full test run must exclude @DoNotDiscover (TestSpec2).
 # Second: testOnly with explicit FQN must run TestSpec2.
-# Third: testOnly with a pattern filter (com.test...) — no explicit FQN, so @DoNotDiscover stays excluded.
 
 > clean
 > testFull
