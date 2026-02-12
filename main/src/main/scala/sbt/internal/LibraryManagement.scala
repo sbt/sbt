@@ -172,6 +172,11 @@ private[sbt] object LibraryManagement {
             .apply(updateInputs)
           if isCached then markAsCached(report) else report
         catch
+          case r: ResolveException
+              if r.failed.exists(isMissingScalaLib) &&
+                module.scalaModuleInfo.exists(_.scalaBinaryVersion == "2.13") =>
+            informSandwich()
+            throw r
           case t: (NullPointerException | OutOfMemoryError) =>
             val resolvedAgain = resolve
             val culprit = t.getClass.getSimpleName
@@ -184,6 +189,26 @@ private[sbt] object LibraryManagement {
       import LibraryManagementCodec.given
       Tracked.inputChanged(cacheStoreFactory.make("inputs"))(doCachedResolve)
     }
+
+    def informSandwich(): Unit =
+      log.warn("[sbt-8728] Smorrebrod - the end of Scala 2.13-3.x sandwich")
+      log.warn("")
+      log.warn("Scala 3.8+ cannot be used in a Scala 2.13 subproject.")
+      log.warn(
+        "Dependency resolution failed because scala-reflect or -compiler 3.x does not exist."
+      )
+      log.warn(
+        "This happens when a Scala 2.13 subproject depends on Scala 3.8+ directly or transitively."
+      )
+      log.warn("To fix this, either")
+      log.warn("  - Keep Scala 3 subproject or transitive dependency to 3.7 or below, or")
+      log.warn("  - Migrate the Scala 2.13 subproject to Scala 3.x")
+      log.warn("See https://github.com/sbt/sbt/discussions/8728")
+
+    def isMissingScalaLib(m: ModuleID): Boolean =
+      m.organization == "org.scala-lang" &&
+        (m.name == "scala-compiler" || m.name == "scala-reflect") &&
+        (m.revision.startsWith("3."))
 
     // Get the handler to use and feed it in the inputs
     // This is lm-engine specific input hashed into Long
