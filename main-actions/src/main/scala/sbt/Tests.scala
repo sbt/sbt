@@ -293,17 +293,14 @@ object Tests {
     val uniqueTests = distinctBy(tests)(_.name)
     // Per TaskDef: explicitlySpecified=true only when user supplied a complete FQN (e.g. testOnly com.example.MySuite),
     // not for patterns (testOnly *Spec) or plain "test". So only mark when test.name is in explicitlyRequestedNames.
-    val testsToUse =
-      if (explicitlyRequestedNames.isEmpty) uniqueTests
-      else
-        uniqueTests.map(t =>
-          new TestDefinition(
-            t.name,
-            t.fingerprint,
-            explicitlySpecified = explicitlyRequestedNames.contains(t.name),
-            Array(new SuiteSelector: Selector)
-          )
-        )
+    val testsToUse = uniqueTests.map(t =>
+      new TestDefinition(
+        t.name,
+        t.fingerprint,
+        explicitlySpecified = explicitlyRequestedNames.contains(t.name),
+        Array(new SuiteSelector: Selector)
+      )
+    )
     new ProcessedOptions(
       testsToUse.toVector,
       setup.toVector,
