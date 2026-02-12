@@ -298,7 +298,7 @@ object Tests {
         t.name,
         t.fingerprint,
         explicitlySpecified = explicitlyRequestedNames.contains(t.name),
-        Array(new SuiteSelector: Selector)
+        t.selectors
       )
     )
     new ProcessedOptions(
