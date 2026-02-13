@@ -798,13 +798,11 @@ parseLineIntoWords() {
   [[ -n "$word" ]] && printf '%s\n' "$word"
 }
 
-# Load config file into array, parsing each line and respecting quotes.
-# For -J lines: split the remainder and prepend -J to each token (so -J--add-modules jdk.incubator.concurrent
-# becomes -J--add-modules and -Jjdk.incubator.concurrent). Fixes #7333.
-# Uses eval+printf %q instead of local -n for Bash 3.x compatibility (macOS default).
-loadConfigFileIntoArray() {
-  local arr_name="$1"
-  local file="$2"
+# Output config file tokens one per line. For -J lines, each token is prefixed with -J.
+# No eval; caller appends via: while IFS= read -r t; do [[ -n "$t" ]] && arr+=("$t"); done < <(outputConfigFileTokens "$file")
+# Fixes #7333; Bash 3.x compatible.
+outputConfigFileTokens() {
+  local file="$1"
   [[ ! -f "$file" ]] && return
   while IFS= read -r line || [[ -n "$line" ]]; do
     line=$(printf '%s' "$line" | sed $'/^\#/d;s/\r$//')
@@ -812,11 +810,11 @@ loadConfigFileIntoArray() {
     if [[ "$line" == -J* ]]; then
       local rest="${line#-J}"
       while IFS= read -r token; do
-        [[ -n "$token" ]] && eval "$arr_name+=($(printf '%q' "-J$token"))"
+        [[ -n "$token" ]] && printf '%s\n' "-J$token"
       done < <(parseLineIntoWords "$rest")
     else
       while IFS= read -r token; do
-        [[ -n "$token" ]] && eval "$arr_name+=($(printf '%q' "$token"))"
+        [[ -n "$token" ]] && printf '%s\n' "$token"
       done < <(parseLineIntoWords "$line")
     fi
   done < <(cat "$file")
@@ -917,14 +915,14 @@ sbt_file_opts=()
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  loadConfigFileIntoArray sbt_file_opts "$machine_sbt_opts_file"
+  while IFS= read -r t; do [[ -n "$t" ]] && sbt_file_opts+=("$t"); done < <(outputConfigFileTokens "$machine_sbt_opts_file")
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && loadConfigFileIntoArray sbt_file_opts "$dist_sbt_opts_file"
+  [[ -f "$dist_sbt_opts_file" ]] && while IFS= read -r t; do [[ -n "$t" ]] && sbt_file_opts+=("$t"); done < <(outputConfigFileTokens "$dist_sbt_opts_file")
 fi
 
 # Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
-[[ -f "$sbt_opts_file" ]] && loadConfigFileIntoArray sbt_file_opts "$sbt_opts_file"
+[[ -f "$sbt_opts_file" ]] && while IFS= read -r t; do [[ -n "$t" ]] && sbt_file_opts+=("$t"); done < <(outputConfigFileTokens "$sbt_opts_file")
 
 # Prepend sbtopts so command line args appear last and win for duplicate properties.
 if (( ${#sbt_file_opts[@]} > 0 )); then
@@ -933,7 +931,7 @@ fi
 
 # Pull in the project-level java config, if it exists.
 jvmopts_args=()
-[[ -f ".jvmopts" ]] && loadConfigFileIntoArray jvmopts_args ".jvmopts"
+[[ -f ".jvmopts" ]] && while IFS= read -r t; do [[ -n "$t" ]] && jvmopts_args+=("$t"); done < <(outputConfigFileTokens ".jvmopts")
 
 # Pull in default JAVA_OPTS
 [[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
