@@ -909,7 +909,7 @@ if [[ $print_sbt_script_version ]]; then
   exit 0
 fi
 
-if [[ "$(isRunNativeClient)" == "true" ]]; then
+if [[ "$(isRunNativeClient)" == "true" ]] && [[ -z "$print_version" ]]; then
   set -- "${residual_args[@]}"
   argumentCount=$#
   runNativeClient

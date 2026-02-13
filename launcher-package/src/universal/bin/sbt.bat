@@ -617,7 +617,7 @@ if !sbt_args_print_sbt_script_version! equ 1 (
   goto :eof
 )
 
-if !run_native_client! equ 1 (
+if !run_native_client! equ 1 if not defined sbt_args_print_version (
   goto :runnative !SBT_ARGS!
   goto :eof
 )
