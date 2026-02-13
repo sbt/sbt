@@ -4,6 +4,20 @@ package example.test
  * RunnerScriptTest is used to test the sbt shell script, for both macOS/Linux and Windows.
  */
 object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
+  private val versionPattern = "\\d(\\.\\d+){2}(-\\w+)?"
+
+  private def assertScriptVersion(out: List[String]): Unit =
+    assert(out.mkString(System.lineSeparator()).trim.matches("^" + versionPattern + "$"))
+
+  private def assertVersionOutput(out: List[String]): Unit =
+    val lines =
+      out.mkString(System.lineSeparator()).linesIterator.map(_.stripPrefix("[0J").trim).toList
+    assert(
+      lines.exists(_.matches("^sbt version in this project: " + versionPattern + "\\r?$")) ||
+        lines.contains("sbtVersion")
+    )
+    assert(lines.exists(_.matches("^sbt runner version: " + versionPattern + "\\r?$")))
+    assert(!lines.exists(_.contains("failed to connect to server")))
 
   testOutput("sbt -no-colors")("compile", "-no-colors", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.log.noformat=true"))
@@ -117,16 +131,28 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     "sbt --script-version should print sbtVersion (sbt 1.x project)",
     citestVariant = "citest",
   )("--script-version"): (out: List[String]) =>
-    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
-    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    assertScriptVersion(out)
     ()
 
   testOutput(
     "sbt --script-version should print sbtVersion (sbt 2.x project)",
     citestVariant = "citest2",
   )("--script-version"): (out: List[String]) =>
-    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
-    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    assertScriptVersion(out)
+    ()
+
+  testOutput(
+    "sbt --version should work (sbt 1.x project)",
+    citestVariant = "citest",
+  )("--version"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput(
+    "sbt --version should work (sbt 2.x project)",
+    citestVariant = "citest2",
+  )("--version"): (out: List[String]) =>
+    assertVersionOutput(out)
     ()
 
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
