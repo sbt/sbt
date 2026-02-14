@@ -630,7 +630,6 @@ trait Init:
    */
   sealed trait Initialize[A1]:
     def dependencies: Seq[ScopedKey[?]]
-
     def apply[A2](g: A1 => A2): Initialize[A2]
 
     private[sbt] def mapReferenced(g: MapScoped): Initialize[A1]

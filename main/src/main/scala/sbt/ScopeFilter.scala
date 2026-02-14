@@ -8,7 +8,7 @@
 
 package sbt
 
-import sbt.internal.{ BuildStructure, Load, LoadedBuildUnit }
+import sbt.internal.{ Load, LoadedBuildUnit }
 import sbt.internal.util.{ AttributeKey, Dag }
 import sbt.librarymanagement.{ ConfigRef, Configuration }
 import sbt.internal.util.Types.const
@@ -96,19 +96,19 @@ object ScopeFilter {
      * Evaluates the initialization in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] =
-      Def.flatMap(getData): data =>
-        sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
+    def all(sfilter: => ScopeFilter): Initialize[Seq[A]] = Def.flatMap(getData) { data =>
+      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
+    }
 
   final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
     /**
      * Evaluates the task in all scopes selected by the filter.  These are dynamic dependencies, so
      * static inspections will not show them.
      */
-    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] =
-      Def.flatMap(getData): data =>
-        import std.TaskExtra.*
-        sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
+    def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] = Def.flatMap(getData) { data =>
+      import std.TaskExtra.*
+      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
+    }
 
   private[sbt] val Make = new Make {}
   trait Make {
@@ -217,25 +217,6 @@ object ScopeFilter {
       val resolve: ProjectReference => ProjectRef,
       val allScopes: AllScopes
   )
-
-  private def dataFromStructure(structure: BuildStructure): Data =
-    val units = structure.units
-    val rootProject = Load.getRootProject(units)
-    val resolve: ProjectReference => ProjectRef = ref =>
-      Scope.resolveProjectRef(structure.root, rootProject, ref)
-    val scopes = structure.data.scopes
-    val grouped: ScopeMap = scopes
-      .groupBy(_.project)
-      .view
-      .mapValues: byProj =>
-        byProj
-          .groupBy(_.config)
-          .view
-          .mapValues: byConfig =>
-            byConfig.groupBy(_.task).view.mapValues(_.toSet).toMap
-          .toMap
-      .toMap
-    new Data(units, resolve, new AllScopes(scopes, grouped))
 
   private[sbt] val allScopes: Initialize[AllScopes] = Def.setting {
     val scopes = Def.StaticScopes.value
