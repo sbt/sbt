@@ -1,0 +1,8 @@
+# Verify the local plugins are loaded and active
+> checkLocalPlugins
+
+# Verify the local plugins are not included in the classifiersModule dependencies
+> checkClassifiersModule
+
+# Also verify updateSbtClassifiers itself succeeds
+> updateSbtClassifiers

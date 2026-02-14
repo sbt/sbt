@@ -142,6 +142,10 @@ object EvaluateTaskConfig {
   ) extends EvaluateTaskConfig
 }
 
+/**
+ * @param internalDependencyClasspath internal classpath entries from the metabuild that are used to exclude
+ *                                    them when resolving/retrieving classifiers for sbt.
+ */
 final case class PluginData(
     dependencyClasspath: Def.Classpath,
     definitionClasspath: Def.Classpath,
@@ -155,13 +159,28 @@ final case class PluginData(
     managedSources: Seq[File],
     buildTarget: Option[BuildTargetIdentifier],
     converter: FileConverter,
+    internalDependencyClasspath: Def.Classpath,
 ) {
   val classpath: Def.Classpath = definitionClasspath ++ dependencyClasspath
 }
 
 object PluginData {
   private[sbt] def apply(dependencyClasspath: Def.Classpath, converter: FileConverter): PluginData =
-    PluginData(dependencyClasspath, Nil, None, None, Nil, Nil, Nil, Nil, Nil, Nil, None, converter)
+    PluginData(
+      dependencyClasspath,
+      Nil,
+      None,
+      None,
+      Nil,
+      Nil,
+      Nil,
+      Nil,
+      Nil,
+      Nil,
+      None,
+      converter,
+      Nil
+    )
 }
 
 object EvaluateTask {

@@ -19,6 +19,7 @@ import Aggregation.{ KeyValue, Values }
 import Types.idFun
 import Highlight.{ bold, showMatches }
 import annotation.tailrec
+import sbt.internal.util.EscHelpers
 
 import sbt.io.IO
 
@@ -43,7 +44,12 @@ object Output {
       printLines: Seq[String] => Unit
   )(using display: Show[ScopedKey[?]]): Unit = {
     val pattern = Pattern.compile(patternString)
-    val lines = flatLines(lastLines(keys, streams))(_ flatMap showMatches(pattern))
+    val lines = flatLines(lastLines(keys, streams)) { rawLines =>
+      rawLines.flatMap { line =>
+        val stripped = EscHelpers.stripColorsAndMoves(line)
+        showMatches(pattern)(stripped)
+      }
+    }
     printLines(lines)
   }
 
@@ -55,8 +61,13 @@ object Output {
   ): Unit =
     printLines(grep(tailLines(file, tailDelim), patternString))
 
-  def grep(lines: Seq[String], patternString: String): Seq[String] =
-    lines.flatMap(showMatches(Pattern.compile(patternString)))
+  def grep(lines: Seq[String], patternString: String): Seq[String] = {
+    val pattern = Pattern.compile(patternString)
+    lines.flatMap { line =>
+      val stripped = EscHelpers.stripColorsAndMoves(line)
+      showMatches(pattern)(stripped)
+    }
+  }
 
   def flatLines(outputs: Values[Seq[String]])(f: Seq[String] => Seq[String])(using
       display: Show[ScopedKey[?]]

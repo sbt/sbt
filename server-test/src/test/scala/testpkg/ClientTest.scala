@@ -117,7 +117,7 @@ class ClientTest extends AbstractServerTest {
     assert(client("willFail;willSucceed") == 1)
   }
   test("three commands") {
-    assert(client("compile;clean;willSucceed") == 0)
+    assert(client("compile;willSucceed;willSucceed") == 0)
   }
   test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)

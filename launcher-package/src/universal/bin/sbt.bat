@@ -617,7 +617,7 @@ if !sbt_args_print_sbt_script_version! equ 1 (
   goto :eof
 )
 
-if !run_native_client! equ 1 (
+if !run_native_client! equ 1 if not defined sbt_args_print_version (
   goto :runnative !SBT_ARGS!
   goto :eof
 )
@@ -1122,8 +1122,16 @@ echo.
 exit /B 1
 
 :set_sbt_version
-rem set project sbtVersion
-for /F "usebackq tokens=2" %%G in (`CALL "!_JAVACMD!" -jar "!sbt_jar!" "sbtVersion" 2^>^&1`) do set "sbt_version=%%G"
+set "sbt_version="
+for /F "usebackq tokens=1,2 delims= " %%a in (`CALL "!_JAVACMD!" -jar "!sbt_jar!" "sbtVersion" 2^>^&1`) do (
+  if "%%a" == "[info]" (
+    set "_version_candidate=%%b"
+  ) else (
+    set "_version_candidate=%%a"
+  )
+  echo !_version_candidate!| findstr /R "^[0-9][0-9.]*[-+0-9A-Za-z._]*$" >nul && set "sbt_version=!_version_candidate!"
+)
+if not defined sbt_version if defined build_props_sbt_version set "sbt_version=!build_props_sbt_version!"
 exit /B 0
 
 :error
