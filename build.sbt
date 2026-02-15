@@ -1398,6 +1398,7 @@ lazy val launcherPackageIntegrationTest =
           .mkString(java.io.File.pathSeparator)
         s"-Dsbt.test.classpath=$cp"
       },
+      Test / javaOptions += s"-Dsbt.test.integrationtest.basedir=${(baseDirectory).value.getAbsolutePath}",
       Test / test := {
         (Test / test)
           .dependsOn(launcherPackage / Universal / packageBin)

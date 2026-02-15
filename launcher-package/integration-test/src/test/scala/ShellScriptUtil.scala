@@ -10,7 +10,7 @@ trait ShellScriptUtil extends BasicTestSuite {
   val isWindows: Boolean =
     sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
 
-  protected val javaBinDir = new File("launcher-package/integration-test/bin").getAbsolutePath
+  protected val javaBinDir = new File("bin").getAbsolutePath
 
   protected def retry[A1](f: () => A1, maxAttempt: Int = 10): A1 =
     try {
@@ -22,9 +22,7 @@ trait ShellScriptUtil extends BasicTestSuite {
       case e: Exception => throw e
     }
 
-  val sbtScript =
-    if (isWindows) new File("launcher-package/target/universal/stage/bin/sbt.bat")
-    else new File("launcher-package/target/universal/stage/bin/sbt")
+  val sbtScript = IntegrationTestPaths.sbtScript(isWindows)
 
   /**
    * testOutput is a helper function to create a test for shell script.
@@ -47,7 +45,7 @@ trait ShellScriptUtil extends BasicTestSuite {
     else
       test(name) {
         val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
-        val citestDir = new File("launcher-package", citestVariant)
+        val citestDir = IntegrationTestPaths.citestDir(citestVariant)
         // Clean target directory if it exists to avoid copying temporary files that may be deleted during copy
         val targetDir = new File(citestDir, "target")
         if (targetDir.exists()) {

@@ -12,9 +12,7 @@ object ExtendedRunnerTest extends BasicTestSuite:
 
   lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("windows")
   lazy val isMac: Boolean = sys.props("os.name").toLowerCase(Locale.ENGLISH).contains("mac")
-  lazy val sbtScript =
-    if (isWindows) new File("launcher-package/target/universal/stage/bin/sbt.bat")
-    else new File("launcher-package/target/universal/stage/bin/sbt")
+  lazy val sbtScript = IntegrationTestPaths.sbtScript(isWindows)
 
   private def launcherCmd = LauncherTestHelper.launcherCommand(sbtScript.getAbsolutePath)
 
@@ -22,7 +20,7 @@ object ExtendedRunnerTest extends BasicTestSuite:
   def sbtProcessWithOpts(args: String*)(javaOpts: String, sbtOpts: String) =
     Process(
       launcherCmd ++ args,
-      new File("launcher-package/citest"),
+      IntegrationTestPaths.citestDir("citest"),
       "JAVA_OPTS" -> javaOpts,
       "SBT_OPTS" -> sbtOpts
     )
