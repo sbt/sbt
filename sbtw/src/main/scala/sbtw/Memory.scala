@@ -3,10 +3,17 @@ package sbtw
 object Memory {
 
   private val memoryOptPrefixes = Set(
-    "-Xmx", "-Xms", "-Xss",
-    "-XX:MaxPermSize", "-XX:MaxMetaspaceSize", "-XX:ReservedCodeCacheSize",
-    "-XX:+UseCGroupMemoryLimitForHeap", "-XX:MaxRAM", "-XX:InitialRAMPercentage",
-    "-XX:MaxRAMPercentage", "-XX:MinRAMPercentage"
+    "-Xmx",
+    "-Xms",
+    "-Xss",
+    "-XX:MaxPermSize",
+    "-XX:MaxMetaspaceSize",
+    "-XX:ReservedCodeCacheSize",
+    "-XX:+UseCGroupMemoryLimitForHeap",
+    "-XX:MaxRAM",
+    "-XX:InitialRAMPercentage",
+    "-XX:MaxRAMPercentage",
+    "-XX:MinRAMPercentage"
   )
 
   def hasMemoryOpts(opts: Seq[String]): Boolean =
@@ -31,13 +38,14 @@ object Memory {
   }
 
   def addDefaultMemory(
-    javaOpts: Seq[String],
-    sbtOpts: Seq[String],
-    javaVersion: Int,
-    defaultMemMb: Int
+      javaOpts: Seq[String],
+      sbtOpts: Seq[String],
+      javaVersion: Int,
+      defaultMemMb: Int
   ): (Seq[String], Seq[String]) = {
     val fromJava = hasMemoryOpts(javaOpts)
-    val fromTool = sys.env.get("JAVA_TOOL_OPTIONS").exists(s => hasMemoryOpts(s.split("\\s+").toSeq))
+    val fromTool =
+      sys.env.get("JAVA_TOOL_OPTIONS").exists(s => hasMemoryOpts(s.split("\\s+").toSeq))
     val fromJdk = sys.env.get("JDK_JAVA_OPTIONS").exists(s => hasMemoryOpts(s.split("\\s+").toSeq))
     val fromSbt = hasMemoryOpts(sbtOpts)
     if (fromJava || fromTool || fromJdk || fromSbt)

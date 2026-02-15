@@ -7,7 +7,7 @@ object ArgParser {
   def parse(args: Array[String]): Option[LauncherOptions] = {
     val b = OParser.builder[LauncherOptions]
     val parser = {
-      import b._
+      import b.*
       OParser.sequence(
         programName("sbtw"),
         head("sbtw", "Windows launcher for sbt"),
@@ -43,9 +43,10 @@ object ArgParser {
         opt[String]("color").action((x, c) => c.copy(color = Some(x))),
         opt[Int]("jvm-debug").action((x, c) => c.copy(jvmDebug = Some(x))),
         opt[String]("java-home").action((x, c) => c.copy(javaHome = Some(x))),
-        arg[String]("<arg>").unbounded().optional().action((x, c) =>
-          c.copy(residual = c.residual :+ x)
-        ),
+        arg[String]("<arg>")
+          .unbounded()
+          .optional()
+          .action((x, c) => c.copy(residual = c.residual :+ x)),
       )
     }
     OParser.parse(parser, args, LauncherOptions()).map { opts =>

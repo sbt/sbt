@@ -1,7 +1,6 @@
 package sbtw
 
 import java.io.File
-import java.nio.file.{ Paths, Files }
 import scala.sys.process.*
 
 object Runner {
@@ -11,10 +10,16 @@ object Runner {
       case Some(h) =>
         val exe = new File(h, "bin/java.exe")
         if (exe.isFile) exe.getAbsolutePath
-        else sys.env.get("JAVACMD").orElse(sys.env.get("JAVA_HOME").map(h0 =>
-          new File(h0, "bin/java.exe").getAbsolutePath)).getOrElse("java")
+        else
+          sys.env
+            .get("JAVACMD")
+            .orElse(
+              sys.env.get("JAVA_HOME").map(h0 => new File(h0, "bin/java.exe").getAbsolutePath)
+            )
+            .getOrElse("java")
       case None =>
-        sys.env.get("JAVACMD")
+        sys.env
+          .get("JAVACMD")
           .orElse(sys.env.get("JAVA_HOME").map(h => new File(h, "bin/java.exe").getAbsolutePath))
           .getOrElse("java")
     }
@@ -41,7 +46,12 @@ object Runner {
     if (opts.debugInc) s = s :+ "-Dxsbt.inc.debug=true"
     if (opts.noColors) s = s :+ "-Dsbt.log.noformat=true"
     if (opts.noGlobal) s = s :+ "-Dsbt.global.base=project/.sbtboot"
-    if (opts.noShare) s = s ++ Seq("-Dsbt.global.base=project/.sbtboot", "-Dsbt.boot.directory=project/.boot", "-Dsbt.ivy.home=project/.ivy")
+    if (opts.noShare)
+      s = s ++ Seq(
+        "-Dsbt.global.base=project/.sbtboot",
+        "-Dsbt.boot.directory=project/.boot",
+        "-Dsbt.ivy.home=project/.ivy"
+      )
     opts.supershell.foreach(v => s = s :+ s"-Dsbt.supershell=$v")
     opts.sbtVersion.foreach(v => s = s :+ s"-Dsbt.version=$v")
     opts.sbtDir.foreach(v => s = s :+ s"-Dsbt.global.base=$v")
@@ -75,14 +85,15 @@ object Runner {
   }
 
   def runJvm(
-    javaCmd: String,
-    javaOpts: Seq[String],
-    sbtOpts: Seq[String],
-    sbtJar: String,
-    bootArgs: Seq[String],
-    verbose: Boolean
+      javaCmd: String,
+      javaOpts: Seq[String],
+      sbtOpts: Seq[String],
+      sbtJar: String,
+      bootArgs: Seq[String],
+      verbose: Boolean
   ): Int = {
-    val toolOpts = sys.env.get("JAVA_TOOL_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
+    val toolOpts =
+      sys.env.get("JAVA_TOOL_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val jdkOpts = sys.env.get("JDK_JAVA_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val fullJavaOpts = javaOpts ++ sbtOpts ++ toolOpts ++ jdkOpts
     val cmd = Seq(javaCmd) ++ fullJavaOpts ++ Seq("-cp", sbtJar, "xsbt.boot.Boot") ++ bootArgs
@@ -98,7 +109,10 @@ object Runner {
       val jpsOut = Process(Seq("jps", "-lv")).!!
       val pids = jpsOut.linesIterator
         .filter(_.contains("xsbt.boot.Boot"))
-        .flatMap(line => scala.util.Try(line.takeWhile(_.isDigit).toLong).toOption)
+        .flatMap { line =>
+          val pidStr = line.trim.takeWhile(_.isDigit)
+          if (pidStr.nonEmpty) scala.util.Try(pidStr.toLong).toOption else None
+        }
         .toList
       pids.foreach { pid =>
         try Process(Seq("taskkill", "/F", "/PID", pid.toString)).!

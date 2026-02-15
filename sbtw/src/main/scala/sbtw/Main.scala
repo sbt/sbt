@@ -35,7 +35,9 @@ object Main {
     }
 
     if (!opts.allowEmpty && !opts.sbtNew && !ConfigLoader.isSbtProjectDir(cwd)) {
-      System.err.println("[error] Neither build.sbt nor a 'project' directory in the current directory: " + cwd)
+      System.err.println(
+        "[error] Neither build.sbt nor a 'project' directory in the current directory: " + cwd
+      )
       System.err.println("[error] run 'sbt new', touch build.sbt, or run 'sbt --allow-empty'.")
       return 1
     }
@@ -82,7 +84,10 @@ object Main {
     sbtOpts = finalSbt
 
     if (!opts.noHideJdkWarnings && javaVer == 25) {
-      sbtOpts = sbtOpts ++ Seq("--sun-misc-unsafe-memory-access=allow", "--enable-native-access=ALL-UNNAMED")
+      sbtOpts = sbtOpts ++ Seq(
+        "--sun-misc-unsafe-memory-access=allow",
+        "--enable-native-access=ALL-UNNAMED"
+      )
     }
     val javaOptsWithDebug = opts.jvmDebug.fold(finalJava)(port =>
       finalJava :+ s"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$port"
@@ -91,7 +96,10 @@ object Main {
     Runner.runJvm(javaCmd, javaOptsWithDebug, sbtOpts, sbtJar, bootArgs, opts.verbose)
   }
 
-  private def shouldRunNativeClient(opts: LauncherOptions, buildPropsVersion: Option[String]): Boolean = {
+  private def shouldRunNativeClient(
+      opts: LauncherOptions,
+      buildPropsVersion: Option[String]
+  ): Boolean = {
     if (opts.sbtNew) return false
     if (opts.jvmClient) return false
     val version = buildPropsVersion.getOrElse(LauncherOptions.initSbtVersion)
@@ -102,7 +110,12 @@ object Main {
     else false
   }
 
-  private def handleVersionCommands(cwd: File, sbtHome: File, sbtBinDir: File, opts: LauncherOptions): Int = {
+  private def handleVersionCommands(
+      cwd: File,
+      sbtHome: File,
+      sbtBinDir: File,
+      opts: LauncherOptions
+  ): Int = {
     if (opts.scriptVersion) {
       println(LauncherOptions.initSbtVersion)
       return 0
@@ -118,19 +131,23 @@ object Main {
     if (opts.numericVersion) {
       try {
         val out = Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
-        println(out.linesIterator.lastOption.map(_.trim).getOrElse(""))
+        println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
         return 0
       } catch { case _: Exception => return 1 }
     }
     if (opts.version) {
       if (ConfigLoader.isSbtProjectDir(cwd)) {
-        val out = try Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!! catch { case _: Exception => "" }
-        val ver = out.linesIterator.lastOption.map(_.trim).getOrElse("")
+        val out =
+          try Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
+          catch { case _: Exception => "" }
+        val ver = out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse("")
         println("sbt version in this project: " + ver)
       }
       println("sbt runner version: " + LauncherOptions.initSbtVersion)
       System.err.println("[info] sbt runner (sbtw) is a runner to run any declared version of sbt.")
-      System.err.println("[info] Actual version of sbt is declared using project\\build.properties for each build.")
+      System.err.println(
+        "[info] Actual version of sbt is declared using project\\build.properties for each build."
+      )
       return 0
     }
     0

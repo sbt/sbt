@@ -968,6 +968,28 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
 
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
 
+lazy val sbtwProj = (project in file("sbtw"))
+  .enablePlugins(NativeImagePlugin)
+  .settings(
+    commonSettings,
+    name := "sbtw",
+    description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
+    scalaVersion := "3.3.7",
+    crossPaths := false,
+    Compile / mainClass := Some("sbtw.Main"),
+    libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
+    nativeImageVersion := "23.0",
+    nativeImageJvm := "graalvm-java23",
+    nativeImageOutput := (target.value / "bin" / "sbtw").toPath.toFile,
+    nativeImageOptions ++= Seq(
+      "--no-fallback",
+      s"--initialize-at-run-time=sbtw",
+      "-H:+ReportExceptionStackTraces",
+      s"-H:Name=${(target.value / "bin" / "sbtw").getAbsolutePath}",
+    ),
+    Utils.noPublish,
+  )
+
 def allProjects =
   Seq(
     logicProj,
@@ -986,6 +1008,7 @@ def allProjects =
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
+    sbtwProj,
     buildFileProj,
     utilCache,
     utilTracking,

@@ -1,7 +1,6 @@
 package sbtw
 
 import java.io.File
-import java.nio.file.{ Files, Paths }
 import scala.io.Source
 import scala.util.Using
 
@@ -47,12 +46,16 @@ object ConfigLoader {
     if (!f.isFile) return None
     try
       Using.resource(Source.fromFile(f)) { src =>
-        src.getLines()
+        src
+          .getLines()
           .map(_.trim)
           .filterNot(_.startsWith("#"))
-          .find(_.startsWith("sbt.version="))
-          .map(_.drop("sbt.version=".length).trim)
-          .filter(_.nonEmpty)
+          .find(line => line.startsWith("sbt.version") && (line.contains("=")))
+          .flatMap { line =>
+            val eq = line.indexOf('=')
+            if (eq >= 0) Some(line.substring(eq + 1).trim).filter(_.nonEmpty)
+            else None
+          }
       }
     catch { case _: Exception => None }
   }
