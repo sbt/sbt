@@ -1391,6 +1391,11 @@ lazy val launcherPackageIntegrationTest =
       ),
       testFrameworks += TestFramework("hedgehog.sbt.Framework"),
       testFrameworks += TestFramework("verify.runner.Framework"),
+      Test / fork := true,
+      Test / javaOptions += {
+        val cp = (Test / fullClasspath).value.map(_.data.getAbsolutePath).mkString(java.io.File.pathSeparator)
+        s"-Dsbt.test.classpath=$cp"
+      },
       Test / test := {
         (Test / test)
           .dependsOn(launcherPackage / Universal / packageBin)

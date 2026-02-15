@@ -15,8 +15,9 @@ object LauncherTestHelper {
 
   /** Command prefix to run the launcher: either script path or java -cp sbtw.Main */
   def launcherCommand(scriptPath: String): Seq[String] =
-    if (useSbtw)
-      Seq("java", "-cp", System.getProperty("java.class.path"), "sbtw.Main")
-    else
+    if (useSbtw) {
+      val cp = sys.props.get("sbt.test.classpath").getOrElse(System.getProperty("java.class.path"))
+      Seq("java", "-cp", cp, "sbtw.Main")
+    } else
       Seq(scriptPath)
 }
