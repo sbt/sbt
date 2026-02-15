@@ -4371,6 +4371,7 @@ object Classpaths {
   val sbtMavenSnapshots: MavenRepository =
     MavenRepository("sbt-maven-snapshot", Resolver.SbtRepositoryRoot + "/" + "maven-snapshots/")
 
+  @deprecated("no longer true for sbt 2.x", "2.0.0")
   def modifyForPlugin(plugin: Boolean, dep: ModuleID): ModuleID =
     if (plugin) dep.withConfigurations(Some(Provided.name)) else dep
 
@@ -4380,11 +4381,10 @@ object Classpaths {
       org: String,
       version: String
   ): Seq[ModuleID] =
-    if (auto)
-      modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version))
-        .platform(Platform.jvm) :: Nil
-    else
-      Nil
+    if auto then
+      if ScalaArtifacts.isScala3(version) then ScalaArtifacts.libraryDependency(org, version) :: Nil
+      else (modifyForPlugin(plugin, ScalaArtifacts.libraryDependency(org, version)): @nowarn) :: Nil
+    else Nil
 
   def addUnmanagedLibrary: Seq[Setting[?]] =
     Seq((Compile / unmanagedJars) ++= unmanagedScalaLibrary.value)
