@@ -96,12 +96,14 @@ jobs:
         # smoke test native Image (sbtn)
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
-        # sbtw native image built; skip running it (scopt lazy vals break under Graal native image)
+        # verify sbtw native image was built (do not run: scopt lazy vals break under Graal native image)
         test -f sbtw/target/bin/sbtw.exe || test -f sbtw/target/bin/sbtw
         # test launcher script
         echo build using JDK 17 test using JDK 17 and JDK 25
         launcher-package/bin/coursier.bat resolve
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackageIntegrationTest/test
+        # integration tests with sbtw as drop-in for sbt.bat (JVM runner)
+        sbt -Dsbt.build.version=$TEST_SBT_VER -Dsbt.test.useSbtw=true launcherPackageIntegrationTest/test
         cd launcher-package/citest
         ./test.bat
         test3/test3.bat

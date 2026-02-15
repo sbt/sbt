@@ -159,9 +159,10 @@ trait ShellScriptUtil extends BasicTestSuite {
           else
             envVars("PATH") = javaBinDir + File.pathSeparator + path
 
+          val cmd = LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath) ++ args
           val out = scala.sys.process
             .Process(
-              Seq(testSbtScript.getAbsolutePath) ++ args,
+              cmd,
               workingDirectory,
               envVars.toSeq*
             )

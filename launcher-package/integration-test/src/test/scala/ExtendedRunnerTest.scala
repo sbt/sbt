@@ -16,17 +16,19 @@ object ExtendedRunnerTest extends BasicTestSuite:
     if (isWindows) new File("launcher-package/target/universal/stage/bin/sbt.bat")
     else new File("launcher-package/target/universal/stage/bin/sbt")
 
+  private def launcherCmd = LauncherTestHelper.launcherCommand(sbtScript.getAbsolutePath)
+
   def sbtProcess(args: String*) = sbtProcessWithOpts(args*)("", "")
   def sbtProcessWithOpts(args: String*)(javaOpts: String, sbtOpts: String) =
     Process(
-      Seq(sbtScript.getAbsolutePath) ++ args,
+      launcherCmd ++ args,
       new File("launcher-package/citest"),
       "JAVA_OPTS" -> javaOpts,
       "SBT_OPTS" -> sbtOpts
     )
   def sbtProcessInDir(dir: File)(args: String*) =
     Process(
-      Seq(sbtScript.getAbsolutePath) ++ args,
+      launcherCmd ++ args,
       dir,
       "JAVA_OPTS" -> "",
       "SBT_OPTS" -> ""

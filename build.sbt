@@ -1378,6 +1378,7 @@ lazy val lmCoursierShadedPublishing = project
 lazy val launcherPackage = (project in file("launcher-package"))
 lazy val launcherPackageIntegrationTest =
   (project in (file("launcher-package") / "integration-test"))
+    .dependsOn(sbtwProj)
     .settings(
       name := "integration-test",
       scalaVersion := scala3,
