@@ -48,7 +48,9 @@ object ArgParser:
           .optional()
           .action((x, c) => c.copy(residual = c.residual :+ x)),
       )
-    OParser.parse(parser, args, LauncherOptions()).map: opts =>
-      val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
-      opts.copy(sbtNew = sbtNew)
+    OParser
+      .parse(parser, args, LauncherOptions())
+      .map: opts =>
+        val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
+        opts.copy(sbtNew = sbtNew)
 end ArgParser
