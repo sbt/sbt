@@ -1,3 +1,4 @@
+Global / semanticdbVersion := "4.15.2"
 scalacOptions ++= Seq("-feature", "-language:postfixOps", "-Ywarn-unused:_,-imports")
 
 addSbtPlugin("com.github.sbt" % "sbt-dynver" % "5.1.1")

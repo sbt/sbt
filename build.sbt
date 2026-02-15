@@ -48,7 +48,7 @@ ThisBuild / mimaFailOnNoPrevious := false
 
 Global / semanticdbEnabled := !(Global / insideCI).value
 // Change main/src/main/scala/sbt/plugins/SemanticdbPlugin.scala too, if you change this.
-Global / semanticdbVersion := "4.14.2"
+Global / semanticdbVersion := "4.15.2"
 val excludeLint = SettingKey[Set[Def.KeyedInitialize[?]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += Utils.componentID
@@ -725,6 +725,7 @@ lazy val mainProj = (project in file("main"))
         sjsonNewCore.value,
         launcherInterface,
         caffeine,
+        scala3Library,
       ),
     libraryDependencies ++= List(scalaPar),
     contrabandSettings,
@@ -1274,6 +1275,7 @@ lazy val lmCoursierShaded = project
     Compile / sources := (lmCoursier / Compile / sources).value,
     lmCoursierDependencies,
     autoScalaLibrary := false,
+    bspEnabled := false,
     libraryDependencies ++= Seq(
       scala3Library % Provided,
     ),
