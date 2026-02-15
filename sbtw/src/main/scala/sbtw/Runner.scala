@@ -1,6 +1,7 @@
 package sbtw
 
 import java.io.File
+import java.lang.{ Process as JProcess, ProcessBuilder as JProcessBuilder }
 import scala.sys.process.*
 
 object Runner {
@@ -91,18 +92,22 @@ object Runner {
       sbtJar: String,
       bootArgs: Seq[String],
       verbose: Boolean
-  ): Int = {
+  ): Int =
     val toolOpts =
       sys.env.get("JAVA_TOOL_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val jdkOpts = sys.env.get("JDK_JAVA_OPTIONS").toSeq.flatMap(_.split("\\s+").filter(_.nonEmpty))
     val fullJavaOpts = javaOpts ++ sbtOpts ++ toolOpts ++ jdkOpts
     val cmd = Seq(javaCmd) ++ fullJavaOpts ++ Seq("-cp", sbtJar, "xsbt.boot.Boot") ++ bootArgs
-    if (verbose) {
+    if verbose then
       System.err.println("# Executing command line:")
-      cmd.foreach(a => System.err.println(if (a.contains(" ")) s""""$a"""" else a))
-    }
-    Process(cmd).!
-  }
+      cmd.foreach(a => System.err.println(if a.contains(" ") then s""""$a"""" else a))
+    val jpb = new JProcessBuilder(cmd*)
+    jpb.inheritIO()
+    val p = jpb.start()
+    try
+      p.waitFor()
+      p.exitValue()
+    finally if p.isAlive then p.destroy()
 
   def shutdownAll(javaCmd: String): Int = {
     try {
