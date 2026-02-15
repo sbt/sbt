@@ -382,7 +382,8 @@ class CoursierDependencyResolution(
             .groupBy(_._1)
             .view
             .mapValues(_.map { case (_, pub, art, _) =>
-              val originalUrl = CoursierDependencyResolution.cacheFileToOriginalUrl(art.url, cache)
+              val originalUrl =
+                lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(art.url, cache)
               (originalUrl, pub.classifier.value, pub.ext.value)
             })
             .toMap
@@ -459,32 +460,6 @@ object CoursierDependencyResolution {
   def defaultCacheLocation: File =
     CacheDefaults.location
 
-  private[lmcoursier] def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String = {
-    val filePrefix = "file:"
-    if (fileUrl.startsWith(filePrefix)) {
-      val filePath = fileUrl.stripPrefix(filePrefix).replaceFirst("^/+", "/")
-      val cachePaths = Seq(
-        cacheDir.getAbsolutePath,
-        cacheDir.getCanonicalPath
-      ).distinct.map(p => if (p.endsWith("/")) p else p + "/")
-
-      def extractHttpUrl(relativePath: String): Option[String] = {
-        val protocolSepIndex = relativePath.indexOf('/')
-        if (protocolSepIndex > 0) {
-          val protocol = relativePath.substring(0, protocolSepIndex)
-          val rest = relativePath.substring(protocolSepIndex + 1)
-          Some(s"$protocol://$rest")
-        } else None
-      }
-
-      cachePaths
-        .collectFirst {
-          case cachePath if filePath.startsWith(cachePath) =>
-            val relativePath = filePath.stripPrefix(cachePath)
-            extractHttpUrl(relativePath)
-        }
-        .flatten
-        .getOrElse(s"$${CSR_CACHE}$filePath")
-    } else fileUrl
-  }
+  private[lmcoursier] def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String =
+    lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(fileUrl, cacheDir)
 }

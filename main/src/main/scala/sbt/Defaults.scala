@@ -3828,13 +3828,15 @@ object Classpaths {
     val resolverNames = fullResolvers.value.map(_.name)
     val buildClock = DependencyLockFile.computeBuildClock(deps, resolverNames)
 
+    val cacheDir = csrCacheDirectory.value
     val lock = DependencyLockManager.createFromUpdateReport(
       projectId,
       report,
       sv,
       scalaV,
       buildClock,
-      log
+      log,
+      Some(cacheDir)
     )
 
     DependencyLockManager.write(lockFile, lock, log)

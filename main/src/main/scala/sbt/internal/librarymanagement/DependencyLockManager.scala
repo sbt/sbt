@@ -44,19 +44,44 @@ object DependencyLockManager:
       isValid
     }
 
+  private def artifactUrlForLock(
+      rawUrl: String,
+      cacheDir: Option[File],
+      moduleDesc: String
+  ): String =
+    if !rawUrl.startsWith(CacheUrlConversion.FileUrlPrefix) then rawUrl
+    else
+      cacheDir match
+        case None =>
+          throw new RuntimeException(
+            s"Cannot create dependency lock file: artifact has file URL (e.g. local cache path). " +
+              s"Lock files must use portable repository URLs. Module: $moduleDesc. " +
+              s"Run 'update' first or ensure dependencies are resolved from remote repositories."
+          )
+        case Some(dir) =>
+          val converted = CacheUrlConversion.cacheFileToOriginalUrl(rawUrl, dir)
+          if !CacheUrlConversion.isPortableUrl(converted) then
+            throw new RuntimeException(
+              s"Cannot create dependency lock file: artifact path is not under Coursier cache. " +
+                s"Module: $moduleDesc. URL: $rawUrl"
+            )
+          converted
+
   def createFromUpdateReport(
       projectId: String,
       report: UpdateReport,
       sbtVersion: String,
       scalaVersion: Option[String],
       buildClock: String,
-      log: Logger
+      log: Logger,
+      cacheDir: Option[File] = None
   ): LockFileData =
     val configurations = report.configurations.map { configReport =>
       val deps = configReport.modules.map { moduleReport =>
         val artifacts = moduleReport.artifacts.map { case (artifact, file) =>
+          val url = artifactUrlForLock(file.toURI.toString, cacheDir, moduleReport.module.toString)
           ArtifactLock(
-            url = file.toURI.toString,
+            url = url,
             classifier = artifact.classifier,
             extension = artifact.extension,
             tpe = artifact.`type`

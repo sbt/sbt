@@ -149,6 +149,16 @@ object ActionCache:
       val json = Parser.parseUnsafe(str)
       Converter.fromJsonUnsafe[CachedCompileFailure](json)
 
+    def parseCachedValue(
+        str: String,
+        origin: Option[String],
+        isFailure: Boolean,
+    ): Option[Either[Option[CachedCompileFailure], O]] =
+      try
+        if isFailure then Some(Left(Some(failureFromStr(str))))
+        else Some(Right(valueFromStr(str, origin)))
+      catch case _: Exception => None
+
     // Optimization: Check if we can read directly from symlinked value file
     val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
     val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
@@ -160,13 +170,10 @@ object ActionCache:
         Exception.nonFatalCatch
           .opt(IO.read(resolvedValuePath.toFile(), StandardCharsets.UTF_8))
           .flatMap: str =>
-            // We still need to sync output files for side effects and check exitCode
             findActionResult(key, codeContentHash, extraHash, config) match
               case Right(result) =>
                 store.syncBlobs(result.outputFiles, config.outputDirectory)
-                if result.exitCode.contains(failureExitCode) then
-                  Some(Left(Some(failureFromStr(str))))
-                else Some(Right(valueFromStr(str, Some("disk"))))
+                parseCachedValue(str, Some("disk"), result.exitCode.contains(failureExitCode))
               case Left(_) => None
       else None
 
@@ -175,21 +182,18 @@ object ActionCache:
       case None =>
         findActionResult(key, codeContentHash, extraHash, config) match
           case Right(result) =>
-            // Check exitCode to determine if this is a cached failure
             val isFailure = result.exitCode.contains(failureExitCode)
             result.contents.headOption match
               case Some(head) =>
                 store.syncBlobs(result.outputFiles, config.outputDirectory)
                 val str = String(head.array(), StandardCharsets.UTF_8)
-                if isFailure then Left(Some(failureFromStr(str)))
-                else Right(valueFromStr(str, result.origin))
+                parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
               case _ =>
                 val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
                 if paths.isEmpty then Left(None)
                 else
                   val str = IO.read(paths.head.toFile())
-                  if isFailure then Left(Some(failureFromStr(str)))
-                  else Right(valueFromStr(str, result.origin))
+                  parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
           case Left(_) => Left(None)
 
   /**
