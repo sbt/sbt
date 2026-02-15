@@ -1381,6 +1381,7 @@ private[sbt] object Load {
       isMetaBuild :== true,
       pluginData := Def.uncached {
         val prod = (Configurations.Runtime / exportedProducts).value
+        val internalCp = (Configurations.Runtime / internalDependencyClasspath).value
         val cp = (Configurations.Runtime / fullClasspath).value
         val opts = (Configurations.Compile / scalacOptions).value
         val javaOpts = (Configurations.Compile / javacOptions).value
@@ -1403,6 +1404,7 @@ private[sbt] object Load {
           managedSrcs,
           Some(buildTarget),
           converter,
+          internalCp,
         )
       },
       onLoadMessage := ("loading project definition from " + baseDirectory.value)
@@ -1670,6 +1672,7 @@ final case class LoadBuildConfiguration(
           Nil,
           None,
           converter,
+          Nil
         )
       case None => PluginData(globalPluginClasspath, converter)
     }

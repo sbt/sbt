@@ -1,0 +1,25 @@
+# #5609: When explicitly requested via testOnly, @DoNotDiscover suite should run.
+# First: full test run must exclude @DoNotDiscover (TestSpec2).
+# Second: testOnly with explicit FQN must run TestSpec2.
+
+> clean
+> testFull
+$ exists target/SuiteStarting-TestSpec
+$ exists target/SuiteCompleted-TestSpec
+$ absent target/SuiteStarting-TestSpec2
+$ absent target/SuiteCompleted-TestSpec2
+
+> clean
+> testOnly com.test.TestSpec2
+$ exists target/SuiteStarting-TestSpec2
+$ exists target/SuiteCompleted-TestSpec2
+
+$ delete target/SuiteStarting-TestSpec
+$ delete target/SuiteCompleted-TestSpec
+$ delete target/SuiteStarting-TestSpec2
+$ delete target/SuiteCompleted-TestSpec2
+> testOnly com.test...
+$ exists target/SuiteStarting-TestSpec
+$ exists target/SuiteCompleted-TestSpec
+$ absent target/SuiteStarting-TestSpec2
+$ absent target/SuiteCompleted-TestSpec2

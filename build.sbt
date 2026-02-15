@@ -455,7 +455,10 @@ lazy val workerProj = (project in file("worker"))
       exclude[DirectMissingMethodProblem]("sbt.internal.worker1.TestInfo.this"),
     ),
   )
-  .configure(addSbtIOForTest)
+  .configure(
+    addSbtCompilerInterface,
+    addSbtIOForTest
+  )
 
 lazy val exampleWorkProj = (project in file("internal") / "example-work")
   .settings(

@@ -701,7 +701,7 @@ object Keys {
   @deprecated("No longer used", "1.3.0")
   private[sbt] val executeProgress = settingKey[State => TaskProgress]("Experimental task execution listener.").withRank(DTask)
   val commandProgress = settingKey[Seq[ExecuteProgress2]]("Command progress listeners receive events when commands start and end, in addition to task progress events.")
-  val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks.")
+  val lintUnused = inputKey[Unit]("Check for keys unused by other settings and tasks. Keys that are only used via key.all(ScopeFilter).value may still be reported as unused.")
   val lintIncludeFilter = settingKey[String => Boolean]("Filters key names that should be included in the lint check.")
   val lintExcludeFilter = settingKey[String => Boolean]("Filters key names that should be excluded in the lint check.")
   val excludeLintKeys = settingKey[Set[Def.KeyedInitialize[?]]]("Keys excluded from lintUnused task")

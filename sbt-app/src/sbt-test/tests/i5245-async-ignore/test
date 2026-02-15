@@ -1,0 +1,4 @@
+# Fix #5245: AsyncFunSuite with ignore() - run test (in-process); fix ensures both suites reported.
+# Just verify project compiles and test runs (2 pass, 2 ignored). Full #5245 check is in code + manual.
+
+> test

@@ -4,6 +4,20 @@ package example.test
  * RunnerScriptTest is used to test the sbt shell script, for both macOS/Linux and Windows.
  */
 object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
+  private val versionPattern = "\\d(\\.\\d+){2}(-\\w+)?"
+
+  private def assertScriptVersion(out: List[String]): Unit =
+    assert(out.mkString(System.lineSeparator()).trim.matches("^" + versionPattern + "$"))
+
+  private def assertVersionOutput(out: List[String]): Unit =
+    val lines =
+      out.mkString(System.lineSeparator()).linesIterator.map(_.stripPrefix("[0J").trim).toList
+    assert(
+      lines.exists(_.matches("^sbt version in this project: " + versionPattern + "\\r?$")) ||
+        lines.contains("sbtVersion")
+    )
+    assert(lines.exists(_.matches("^sbt runner version: " + versionPattern + "\\r?$")))
+    assert(!lines.exists(_.contains("failed to connect to server")))
 
   testOutput("sbt -no-colors")("compile", "-no-colors", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.log.noformat=true"))
@@ -117,16 +131,28 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     "sbt --script-version should print sbtVersion (sbt 1.x project)",
     citestVariant = "citest",
   )("--script-version"): (out: List[String]) =>
-    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
-    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    assertScriptVersion(out)
     ()
 
   testOutput(
     "sbt --script-version should print sbtVersion (sbt 2.x project)",
     citestVariant = "citest2",
   )("--script-version"): (out: List[String]) =>
-    val expectedVersion = "^" + ExtendedRunnerTest.versionRegEx + "$"
-    assert(out.mkString(System.lineSeparator()).trim.matches(expectedVersion))
+    assertScriptVersion(out)
+    ()
+
+  testOutput(
+    "sbt --version should work (sbt 1.x project)",
+    citestVariant = "citest",
+  )("--version"): (out: List[String]) =>
+    assertVersionOutput(out)
+    ()
+
+  testOutput(
+    "sbt --version should work (sbt 2.x project)",
+    citestVariant = "citest2",
+  )("--version"): (out: List[String]) =>
+    assertVersionOutput(out)
     ()
 
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
@@ -226,6 +252,30 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         g1Index < xmxCliIndex,
         s"sbtopts options should appear before CLI memory settings. g1Index=$g1Index, xmxCliIndex=$xmxCliIndex"
       )
+
+  // Test for issue #7333: JVM parameters with spaces in .sbtopts
+  testOutput(
+    "sbt with -J--add-modules jdk.incubator.concurrent in .sbtopts (args with spaces)",
+    sbtOptsFileContents = "-J--add-modules jdk.incubator.concurrent",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(out.contains[String]("--add-modules"))
+    assert(out.contains[String]("jdk.incubator.concurrent"))
+
+  // Test for issue #7333: -D with spaces in .jvmopts
+  testOutput(
+    "sbt with -Dkey=\"value with spaces\" in .jvmopts",
+    jvmoptsFileContents = """-Dtest.7333="value with spaces"""",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(
+      out.exists(_.contains("test.7333")),
+      s"Expected -Dtest.7333= in output, got: ${out.filter(_.contains("test.7333")).mkString(", ")}"
+    )
+    assert(
+      out.exists(_.contains("value with spaces")),
+      "Expected 'value with spaces' in -D value"
+    )
 
   // Test for issue #7289: Special characters in .jvmopts should not cause shell expansion
   testOutput(
