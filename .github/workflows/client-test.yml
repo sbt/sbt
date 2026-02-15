@@ -51,8 +51,9 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        # test building sbtn on Linux
+        # test building sbtn and sbtw on Linux
         sbt "-Dsbt.io.virtual=false" nativeImage
+        sbt "-Dsbt.io.virtual=false" sbtwProj/nativeImage
         # smoke test native Image
         ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt about
         ./client/target/bin/sbtn --sbt-script=$(pwd)/sbt shutdown
@@ -69,8 +70,9 @@ jobs:
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
       run: |
-        # test building sbtn on macOS
+        # test building sbtn and sbtw on macOS
         ./sbt "-Dsbt.io.virtual=false" nativeImage
+        ./sbt "-Dsbt.io.virtual=false" sbtwProj/nativeImage
         # test launcher script
         launcher-package/bin/coursier resolve
         sbt -Dsbt.build.version=$TEST_SBT_VER launcherPackageIntegrationTest/test
@@ -84,15 +86,18 @@ jobs:
         max_attempts: 3
         shell: bash
         command: |
-          # test building sbtn on Windows
+          # test building sbtn and sbtw on Windows
           sbt "-Dsbt.io.virtual=false" nativeImage
+          sbt "-Dsbt.io.virtual=false" sbtwProj/nativeImage
     - name: Client test (Windows)
       if: ${{ matrix.os == 'windows-latest' }}
       shell: bash
       run: |
-        # smoke test native Image
+        # smoke test native Image (sbtn)
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat about
         ./client/target/bin/sbtn --sbt-script=$(pwd)/launcher-package/src/universal/bin/sbt.bat shutdown
+        # smoke test sbtw (Windows launcher)
+        if [ -f sbtw/target/bin/sbtw.exe ]; then ./sbtw/target/bin/sbtw.exe --help; else ./sbtw/target/bin/sbtw --help; fi
         # test launcher script
         echo build using JDK 17 test using JDK 17 and JDK 25
         launcher-package/bin/coursier.bat resolve
