@@ -1,7 +1,7 @@
 package sbtw
 
 import java.io.File
-import java.lang.{ Process as JProcess, ProcessBuilder as JProcessBuilder }
+import java.lang.ProcessBuilder as JProcessBuilder
 import scala.sys.process.*
 
 object Runner {
