@@ -9,7 +9,7 @@
 package sbt.internal
 
 import java.util.concurrent.CopyOnWriteArrayList
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import sbt.util.{ Level, Logger }
 
 object CompileDebugLoggerSpec extends verify.BasicTestSuite {
