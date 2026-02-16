@@ -1,6 +1,6 @@
 package sbtw
 
-object Memory {
+object Memory:
 
   private val memoryOptPrefixes = Set(
     "-Xmx",
@@ -22,10 +22,10 @@ object Memory {
   def evictMemoryOpts(opts: Seq[String]): Seq[String] =
     opts.filter(o => !memoryOptPrefixes.exists(p => o.startsWith(p)))
 
-  def addMemory(memMb: Int, javaVersion: Int): Seq[String] = {
+  def addMemory(memMb: Int, javaVersion: Int): Seq[String] =
     var codecache = memMb / 8
-    if (codecache > 512) codecache = 512
-    if (codecache < 128) codecache = 128
+    if codecache > 512 then codecache = 512
+    if codecache < 128 then codecache = 128
     val classMetadataSize = codecache * 2
     val base = Seq(
       s"-Xms${memMb}m",
@@ -33,28 +33,24 @@ object Memory {
       "-Xss4M",
       s"-XX:ReservedCodeCacheSize=${codecache}m"
     )
-    if (javaVersion < 8) base :+ s"-XX:MaxPermSize=${classMetadataSize}m"
+    if javaVersion < 8 then base :+ s"-XX:MaxPermSize=${classMetadataSize}m"
     else base
-  }
 
   def addDefaultMemory(
       javaOpts: Seq[String],
       sbtOpts: Seq[String],
       javaVersion: Int,
       defaultMemMb: Int
-  ): (Seq[String], Seq[String]) = {
+  ): (Seq[String], Seq[String]) =
     val fromJava = hasMemoryOpts(javaOpts)
     val fromTool =
       sys.env.get("JAVA_TOOL_OPTIONS").exists(s => hasMemoryOpts(s.split("\\s+").toSeq))
     val fromJdk = sys.env.get("JDK_JAVA_OPTIONS").exists(s => hasMemoryOpts(s.split("\\s+").toSeq))
     val fromSbt = hasMemoryOpts(sbtOpts)
-    if (fromJava || fromTool || fromJdk || fromSbt)
-      (javaOpts, sbtOpts)
-    else {
+    if fromJava || fromTool || fromJdk || fromSbt then (javaOpts, sbtOpts)
+    else
       val evictedJava = evictMemoryOpts(javaOpts)
       val evictedSbt = evictMemoryOpts(sbtOpts)
       val memOpts = addMemory(defaultMemMb, javaVersion)
       (evictedJava ++ memOpts, evictedSbt)
-    }
-  }
-}
+end Memory

@@ -36,7 +36,7 @@ case class LauncherOptions(
     sbtNew: Boolean = false,
 )
 
-object LauncherOptions {
+object LauncherOptions:
   val defaultMemMb = 1024
   val initSbtVersion = "_to_be_replaced"
-}
+end LauncherOptions
