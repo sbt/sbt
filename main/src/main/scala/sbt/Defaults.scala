@@ -753,7 +753,8 @@ object Defaults extends BuildCommon {
             r,
             uc,
             (update / unresolvedWarningConfiguration).value,
-            s.log
+            s.log,
+            scalaOrganization.value
           )
           val out = t / "compiler-bridge" / jar.getName()
           val outVf = conv.toVirtualFile(out.toPath())
@@ -768,7 +769,7 @@ object Defaults extends BuildCommon {
         if b.nonEmpty then Def.task { b }
         else Compiler.scalaCompilerBridgeJarsTask(scalaCompilerBridgeSource, s.log)
       }).value,
-      scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+      scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value, scalaOrganization.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
         else Nil
