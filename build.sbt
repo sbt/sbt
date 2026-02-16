@@ -971,10 +971,8 @@ def scriptedTask(launch: Boolean): Def.Initialize[InputTask[Unit]] = Def.inputTa
 }
 
 lazy val publishLauncher = TaskKey[Unit]("publish-launcher")
-val createSbtwBinDir = taskKey[Unit]("Create sbtw target/bin before native-image")
 
 lazy val sbtwProj = (project in file("sbtw"))
-  .enablePlugins(NativeImagePlugin)
   .settings(
     commonSettings,
     name := "sbtw",
@@ -983,24 +981,6 @@ lazy val sbtwProj = (project in file("sbtw"))
     crossPaths := false,
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
-    nativeImageVersion := "23.0",
-    nativeImageJvm := "graalvm-java23",
-    createSbtwBinDir := {
-      val d = (target.value / "bin").toPath
-      if (!Files.exists(d)) Files.createDirectories(d)
-    },
-    Compile / nativeImage := (Compile / nativeImage).dependsOn(createSbtwBinDir).value,
-    nativeImageOutput := {
-      val outputDir = (target.value / "bin").toPath
-      if (!Files.exists(outputDir)) Files.createDirectories(outputDir)
-      outputDir.resolve("sbtw").toFile
-    },
-    nativeImageOptions ++= Seq(
-      "--no-fallback",
-      s"--initialize-at-run-time=sbtw",
-      "-H:+ReportExceptionStackTraces",
-      s"-H:Name=${(target.value / "bin" / "sbtw").getAbsolutePath}",
-    ),
     Utils.noPublish,
   )
 
