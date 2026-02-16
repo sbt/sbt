@@ -1,0 +1,8 @@
+# #408: With logLevel Debug, incremental compile debug output should show project id per block.
+# Run compile with Debug so zinc logs invalidations; we verify build succeeds.
+# (Prefix content is tested in CompileDebugLoggerSpec.)
+
+> set ThisBuild / logLevel := Level.Debug
+> compile
+> a/compile
+> b/compile

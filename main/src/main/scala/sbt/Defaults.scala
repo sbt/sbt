@@ -27,6 +27,7 @@ import sbt.ScopeAxis.{ Select, This, Zero }
 import sbt.State.StateOpsImpl
 import sbt.coursierint.*
 import sbt.internal.CommandStrings.ExportStream
+import sbt.internal.CompileDebugLogger
 import sbt.internal.*
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil.*
@@ -2205,9 +2206,16 @@ object Defaults extends BuildCommon {
     )
   )
 
+  private def projectIdFromScope(s: TaskStreams): String =
+    s.key.scope.project match {
+      case Select(ref: ProjectRef) => ref.project
+      case _                       => "root"
+    }
+
   private val cachedCompileIncrementalTask = Def
     .cachedTask {
       val s = streams.value
+      val projectId = projectIdFromScope(s)
       val ci = (compile / compileInputs).value
       val bspTask = (compile / bspCompileTask).value
       // This is a cacheable version
@@ -2217,7 +2225,7 @@ object Defaults extends BuildCommon {
       val store = analysisStore(compileAnalysisFile)
       val c = fileConverter.value
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
       val analysisOut = c.toVirtualFile(setup.cachePath())
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
@@ -2233,15 +2241,17 @@ object Defaults extends BuildCommon {
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
     val s = streams.value
+    val projectId = thisProject.value.id
     val r = compileScalaBackend.value
     val in0 = (compileJava / compileInputs).value
     val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
     val reporter = (compile / bspReporter).value
+    val log = CompileDebugLogger(projectId, s.log)
     try {
       if (r.hasModified) {
         val result0 = incCompiler
           .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
-          .compileAllJava(in, s.log)
+          .compileAllJava(in, log)
         reporter.sendSuccessReport(result0.analysis())
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
@@ -2256,7 +2266,8 @@ object Defaults extends BuildCommon {
       task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
-      promise: PromiseWrap[Boolean]
+      promise: PromiseWrap[Boolean],
+      projectId: String
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) =
@@ -2271,7 +2282,8 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val setup: Setup = ci.setup
     val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
-    try incCompiler.compile(i, s.log)
+    val log = CompileDebugLogger(projectId, s.log)
+    try incCompiler.compile(i, log)
     catch
       case e: Throwable =>
         if !promise.isCompleted then
