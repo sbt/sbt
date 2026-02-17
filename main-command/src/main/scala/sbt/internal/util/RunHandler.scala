@@ -18,6 +18,11 @@ import scala.util.Try
 
 // Process runinfos
 object RunHandler:
+  private[internal] def mergedEnvVars(
+      environmentVariables: Map[String, String]
+  ): Map[String, String] =
+    sys.env.toMap ++ environmentVariables
+
   def jvmRun(info: JvmRunInfo, log: Logger): Try[Unit] =
     val option = ForkOptions(
       javaHome = info.javaHome.map(File(_)),
@@ -26,7 +31,7 @@ object RunHandler:
       workingDirectory = info.workingDirectory.map(File(_)),
       runJVMOptions = info.jvmOptions,
       connectInput = info.connectInput,
-      envVars = info.environmentVariables,
+      envVars = mergedEnvVars(info.environmentVariables),
     )
     // ForkRun handles exit code handling and cancellation
     val runner = new ForkRun(option)
