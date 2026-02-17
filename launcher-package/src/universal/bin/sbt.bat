@@ -64,9 +64,10 @@ if exist .sbtopts for /F %%A in (.sbtopts) do (
       set _sbtopts_line=!_sbtopts_line:~2,1000!
     )
     if defined _SBT_OPTS (
-      set _SBT_OPTS=!_SBT_OPTS! !_sbtopts_line!
+      rem Use quotes to prevent pipe characters (|) from being interpreted as command separators
+      set "_SBT_OPTS=!_SBT_OPTS! !_sbtopts_line!"
     ) else (
-      set _SBT_OPTS=!_sbtopts_line!
+      set "_SBT_OPTS=!_sbtopts_line!"
     )
   )
 )
@@ -81,7 +82,8 @@ if exist "!SBT_CONFIG!" (
     set DO_NOT_REUSE_ME=%%i
     rem ZOMG (Part #2) WE use !! here to delay the expansion of
     rem SBT_CFG_OPTS, otherwise it remains "" for this loop.
-    set SBT_CFG_OPTS=!SBT_CFG_OPTS! !DO_NOT_REUSE_ME!
+    rem Use quotes to prevent pipe characters (|) from being interpreted as command separators
+    set "SBT_CFG_OPTS=!SBT_CFG_OPTS! !DO_NOT_REUSE_ME!"
   )
 )
 
