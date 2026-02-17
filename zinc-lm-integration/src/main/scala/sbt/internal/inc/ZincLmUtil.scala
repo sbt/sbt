@@ -109,7 +109,10 @@ object ZincLmUtil {
       .getOrElse(throw new MessageOnlyException(s"Missing $bridgeModule"))
   }
 
-  def getDefaultBridgeModule(scalaVersion: String, scalaOrganization: String = ScalaArtifacts.Organization): ModuleID = {
+  def getDefaultBridgeModule(
+      scalaVersion: String,
+      scalaOrganization: String = ScalaArtifacts.Organization
+  ): ModuleID = {
     if (ScalaArtifacts.isScala3(scalaVersion)) {
       ModuleID(scalaOrganization, "scala3-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
@@ -129,6 +132,9 @@ object ZincLmUtil {
     }
   }
 
-  def getDefaultBridgeSourceModule(scalaVersion: String, scalaOrganization: String = ScalaArtifacts.Organization): ModuleID =
+  def getDefaultBridgeSourceModule(
+      scalaVersion: String,
+      scalaOrganization: String = ScalaArtifacts.Organization
+  ): ModuleID =
     getDefaultBridgeModule(scalaVersion, scalaOrganization).sources()
 }
