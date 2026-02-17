@@ -9,6 +9,7 @@ import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import scala.collection.mutable.ListBuffer
 import sbt.librarymanagement.syntax.*
 import sbt.util.Logger
+import sbt.librarymanagement.DependencyBuilders.OrganizationArtifactName
 
 private[librarymanagement] abstract class ModuleIDExtra {
   def organization: String
@@ -152,8 +153,17 @@ private[librarymanagement] abstract class ModuleIDExtra {
   def excludeAll(rules: ExclusionRule*): ModuleID = withExclusions(exclusions ++ rules)
 
   /** Excludes the dependency with organization `org` and `name` from being introduced by this dependency during resolution. */
+  @deprecated(
+    "`name` parameter must contain scala version if artifact is cross-versioned. Use `exclude(\"org\" %% \"name\")`.",
+    since = "2.0.0"
+  )
   def exclude(org: String, name: String): ModuleID =
     excludeAll(ExclusionRule().withOrganization(org).withName(name))
+
+  /** Excludes the dependency from being introduced by this dependency during resolution. */
+  def exclude(rule: OrganizationArtifactName): ModuleID = {
+    excludeAll(rule)
+  }
 
   /**
    * Adds extra attributes for this module.  All keys are prefixed with `e:` if they are not already so prefixed.
