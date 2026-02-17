@@ -94,7 +94,7 @@ object SemanticdbPlugin extends AutoPlugin {
         val sdbOpts = semanticdbOptions.value.toSet
         (doc / scalacOptions).value.filterNot { opt =>
           sdbOpts.contains(opt) ||
-            (opt.startsWith("-Xplugin:") && opt.contains("semanticdb"))
+          (opt.startsWith("-Xplugin:") && opt.contains("semanticdb"))
         }
       } else (doc / scalacOptions).value
     },
