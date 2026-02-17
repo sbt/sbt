@@ -127,7 +127,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC8",
+    "2.0.0-RC9",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings (
@@ -148,7 +148,6 @@ def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings
     }
   },
   mimaBinaryIssueFilters ++= Seq(
-    exclude[DirectMissingMethodProblem]("*"),
   ),
 )
 
@@ -452,7 +451,6 @@ lazy val workerProj = (project in file("worker"))
     Test / fork := true,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[DirectMissingMethodProblem]("sbt.internal.worker1.TestInfo.this"),
     ),
   )
   .configure(
@@ -502,7 +500,6 @@ lazy val runProj = (project in file("run"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[MissingClassProblem]("sbt.TrapExitSecurityException"),
     )
   )
   .configure(addSbtIO, addSbtCompilerClasspath)
@@ -521,8 +518,6 @@ lazy val scriptedSbtProj = (project in file("scripted-sbt"))
     libraryDependencies ++= Seq(launcherInterface % "provided"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[IncompatibleMethTypeProblem]("sbt.scriptedtest.ScriptedTests.runInParallel"),
-      exclude[DirectMissingMethodProblem]("sbt.scriptedtest.ScriptedTests.batchScriptedRunner"),
     ),
   )
   .dependsOn(lmCore)
@@ -588,8 +583,6 @@ lazy val protocolProj = (project in file("protocol"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.worker.RunInfo.apply"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.worker.RunInfo.apply"),
     )
   )
 
@@ -736,11 +729,6 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
-      exclude[DirectMissingMethodProblem]("sbt.internal.ConsoleProject.*"),
-      exclude[DirectMissingMethodProblem]("sbt.coursierint.LMCoursier.coursierConfiguration"),
-      exclude[IncompatibleMethTypeProblem]("sbt.internal.Compiler.scalaInstanceTask"),
-      exclude[ReversedMissingMethodProblem]("sbt.ScriptedRun.invoke"),
-      exclude[ReversedMissingMethodProblem]("sbt.internal.KeyIndex.toConfigIdent"),
     ),
   )
   .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
@@ -1184,7 +1172,6 @@ lazy val lmCore = (project in file("lm-core"))
     },
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.librarymanagement.EvictionError.processEvictions"),
     ),
   )
   .dependsOn(utilLogging, utilPosition, utilCache)
