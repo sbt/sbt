@@ -178,9 +178,9 @@ lazy val sbtRoot: Project = (project in file("."))
         |  /____/_.___/\__/
         |Welcome to the build for sbt.
         |""".stripMargin +
-        (if (version != "1.8")
+        (if (version != "17")
            s"""!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-               |  Java version is $version. We recommend java 8.
+               |  Java version is $version. We recommend java 17.
                |!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!""".stripMargin
          else "")
     },
