@@ -805,7 +805,7 @@ outputConfigFileTokens() {
   local file="$1"
   [[ ! -f "$file" ]] && return
   while IFS= read -r line || [[ -n "$line" ]]; do
-    line=$(printf '%s' "$line" | sed $'/^\#/d;s/\r$//')
+    line=$(printf '%s' "$line" | sed $'/^\#/d;s/\s*\#.*//;s/\r$//')
     [[ -z "$line" ]] && continue
     if [[ "$line" == -J* ]]; then
       local rest="${line#-J}"

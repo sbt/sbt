@@ -309,4 +309,40 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       s"Should not have shell expansion errors, but found: ${errorMessages.mkString(", ")}"
     )
 
+  // Test for issue #8755: Inline comments should be supported in .jvmopts
+  testOutput(
+    "sbt with inline comments in .jvmopts",
+    jvmoptsFileContents =
+      "--add-opens=java.base/java.util=ALL-UNNAMED # This is an inline comment\n-Dtest.key=value # Another comment",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    // Verify that options are present (comments should be stripped)
+    assert(
+      out.contains[String]("--add-opens=java.base/java.util=ALL-UNNAMED"),
+      "Option with inline comment should be parsed correctly"
+    )
+    assert(
+      out.contains[String]("-Dtest.key=value"),
+      "System property with inline comment should be parsed correctly"
+    )
+    // Verify comments themselves are NOT present as separate arguments
+    assert(
+      !out.exists(_.contains("This is an inline comment")),
+      "Inline comment should not appear in command line"
+    )
+    assert(
+      !out.exists(_.contains("Another comment")),
+      "Inline comment should not appear in command line"
+    )
+    // Verify no "command not found" errors for '#' character
+    val errorMessages = out.filter(line =>
+      line.contains("Could not find or load main class #") ||
+        line.contains("command not found") ||
+        line.contains("was unexpected")
+    )
+    assert(
+      errorMessages.isEmpty,
+      s"Should not have errors from comment character, but found: ${errorMessages.mkString(", ")}"
+    )
+
 end RunnerScriptTest
