@@ -600,14 +600,21 @@ object Act {
     keys.flatMap(key => getValue(structure.data, key).map(KeyValue(key, _)))
 
   /**
-   * Starting sbt 2.0.0, we will not delegate when a non-existent scoping
-   * such as Compile / update is required.
+   * Resolves a key from settings data. Starting sbt 2.0.0 we do not delegate for
+   * tasks when the user specified an explicit scope (config or task axis), so that
+   * non-existent scopes like `Compile / update` fail. Settings may still delegate
+   * so that e.g. `Compile/console/fork` resolves when `console/fork` is defined
+   * in a delegated scope (see #8757).
    */
   private def getValue[T](data: Def.Settings, key: ScopedKey[T]): Option[T] =
-    if key.scope.config.isSelect ||
-      key.scope.task.isSelect
-    then data.getDirect(key)
-    else data.get(key)
+    val scopeExplicit = key.scope.config.isSelect || key.scope.task.isSelect
+    if !scopeExplicit then data.get(key)
+    else
+      data
+        .getDirect(key)
+        .orElse:
+          if key.key.tag.isSetting then data.get(key)
+          else None
 
   def requireSession[T](s: State, p: => Parser[T]): Parser[T] =
     if s.get(sessionSettings).isEmpty then failure("No project loaded") else p
