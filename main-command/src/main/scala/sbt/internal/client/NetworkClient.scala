@@ -765,7 +765,7 @@ class NetworkClient(
         workingDirectory = info.workingDirectory.map(new File(_)),
         runJVMOptions = Vector.empty,
         connectInput = info.connectInput,
-        envVars = info.environmentVariables,
+        envVars = RunHandler.mergedEnvVars(info.environmentVariables),
       )
       val command = info.cmd :: info.args.toList
       val jpb = new JProcessBuilder(command*)
