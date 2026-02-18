@@ -1,0 +1,6 @@
+# Fix #8757: settings may delegate when scope is explicit (tasks still must not).
+# console/fork is defined in default scope; Compile/console/fork should resolve via delegation.
+> compile
+
+# Setting with explicit config scope delegates (e.g. Compile/console/fork -> console/fork)
+> show Compile/console/fork
