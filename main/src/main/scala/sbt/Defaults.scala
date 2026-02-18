@@ -4514,9 +4514,15 @@ object Classpaths {
       .getFileProperty(BuildPaths.GlobalBaseProperty)
       .getOrElse(BuildPaths.defaultGlobalBase)
 
+  /** True when {{sbt.global.base}}/repositories_force exists and {{sbt.global.base}}/repositories
+   *  exists (see #1870). Requiring both avoids enabling override in environments that only have
+   *  the sentinel file (e.g. scripted test dirs) and would break resolution for custom resolvers.
+   */
   def repositoriesForceFileExists: Boolean =
-    try new File(globalBaseForRepositoriesForce, "repositories_force").exists()
-    catch { case _: SecurityException => false }
+    try {
+      val base = globalBaseForRepositoriesForce
+      new File(base, "repositories_force").exists() && new File(base, "repositories").exists()
+    } catch { case _: SecurityException => false }
 
   def shouldOverrideBuildResolvers(app: xsbti.AppConfiguration): Boolean =
     isOverrideRepositories(app) ||
