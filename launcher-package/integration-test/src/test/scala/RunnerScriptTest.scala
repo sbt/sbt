@@ -282,7 +282,6 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     "sbt with special characters in .jvmopts (pipes, wildcards, ampersands)",
     jvmoptsFileContents =
       "-Dtest.pipes=host1|host2|host3\n-Dtest.wildcards=path/*/pattern\n-Dtest.ampersand=value&other",
-    windowsSupport = false,
   )("-v"): (out: List[String]) =>
     // Verify that properties with special characters are handled correctly
     // The pipe characters should be treated literally, not as shell operators
