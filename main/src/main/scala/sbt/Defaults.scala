@@ -4510,7 +4510,9 @@ object Classpaths {
     catch { case _: NoSuchMethodError => false }
 
   private def globalBaseForRepositoriesForce: File =
-    BuildPaths.getFileProperty(BuildPaths.GlobalBaseProperty).getOrElse(BuildPaths.defaultGlobalBase)
+    BuildPaths
+      .getFileProperty(BuildPaths.GlobalBaseProperty)
+      .getOrElse(BuildPaths.defaultGlobalBase)
 
   def repositoriesForceFileExists: Boolean =
     try new File(globalBaseForRepositoriesForce, "repositories_force").exists()
