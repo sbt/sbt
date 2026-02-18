@@ -1,0 +1,4 @@
+# Test for #1870: forcing proxy repos via ~/.sbt/repositories_force (or sbt.global.base/repositories_force).
+# Scripted sets -Dsbt.global.base=<testDir>/global. We ship global/repositories_force in the test
+# resources so it exists before the child sbt starts; then shouldOverrideBuildResolvers is true.
+> check
