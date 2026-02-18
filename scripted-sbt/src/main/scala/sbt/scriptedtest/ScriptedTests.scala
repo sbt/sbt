@@ -230,15 +230,13 @@ final class ScriptedTests(
       groupedTests.map { case ((group, name), originalDir) =>
         val label = s"$group/$name"
         log.info(s"Running $label")
+        val targetGlobal = new File(tempTestDir, "global")
+        val reposForce = new File(targetGlobal, "repositories_force")
+        if (reposForce.exists()) IO.delete(reposForce)
+        val repos = new File(targetGlobal, "repositories")
+        if (repos.exists()) IO.delete(repos)
         // Copy test's contents and reload the sbt instance to pick them up
         IO.copyDirectory(originalDir, tempTestDir)
-        // If this test has no global/ dir, remove any leftover global from a previous test
-        // so we don't inherit repositories_force/repositories (force proxy repos) and break resolution.
-        val sourceGlobal = new File(originalDir, "global")
-        if (!sourceGlobal.isDirectory) {
-          val targetGlobal = new File(tempTestDir, "global")
-          if (targetGlobal.exists()) IO.delete(targetGlobal)
-        }
 
         val runTest = () => {
           // Reload and initialize (to reload contents of .sbtrc files)
