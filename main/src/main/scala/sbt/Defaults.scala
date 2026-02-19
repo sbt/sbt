@@ -4509,26 +4509,8 @@ object Classpaths {
     try app.provider.scalaProvider.launcher.isOverrideRepositories
     catch { case _: NoSuchMethodError => false }
 
-  private def globalBaseForRepositoriesForce: File =
-    BuildPaths
-      .getFileProperty(BuildPaths.GlobalBaseProperty)
-      .getOrElse(BuildPaths.defaultGlobalBase)
-
-  /**
-   * True when {{sbt.global.base}}/repositories_force exists and {{sbt.global.base}}/repositories
-   *  exists (see #1870). Requiring both avoids enabling override in environments that only have
-   *  the sentinel file (e.g. scripted test dirs) and would break resolution for custom resolvers.
-   */
-  def repositoriesForceFileExists: Boolean =
-    try
-      val base = globalBaseForRepositoriesForce
-      new File(base, "repositories_force").exists() && new File(base, "repositories").exists()
-    catch { case _: SecurityException => false }
-
   def shouldOverrideBuildResolvers(app: xsbti.AppConfiguration): Boolean =
-    isOverrideRepositories(app) ||
-      SysProp.getOrFalse("sbt.override.build.repos") ||
-      repositoriesForceFileExists
+    isOverrideRepositories(app) || SysProp.getOrFalse("sbt.override.build.repos")
 
   /** Loads the `appRepositories` configured for this launcher, if supported. */
   def appRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =
