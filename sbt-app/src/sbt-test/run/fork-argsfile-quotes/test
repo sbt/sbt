@@ -1,0 +1,2 @@
+# Verify that double quotes in JVM options survive the argsfile round-trip (sbt/sbt#7129)
+> run
