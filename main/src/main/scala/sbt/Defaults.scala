@@ -2247,6 +2247,7 @@ object Defaults extends BuildCommon {
     val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
     val reporter = (compile / bspReporter).value
     val log = CompileDebugLogger(projectId, s.log)
+    s.log.info(s"[$projectId] Incremental compile (Java) (#408)")
     try {
       if (r.hasModified) {
         val result0 = incCompiler
@@ -2283,6 +2284,8 @@ object Defaults extends BuildCommon {
     val setup: Setup = ci.setup
     val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
     val log = CompileDebugLogger(projectId, s.log)
+    // Visible only when the running sbt is the built one (e.g. after publishLocal or in scripted).
+    s.log.info(s"[$projectId] Incremental compile (#408)")
     try incCompiler.compile(i, log)
     catch
       case e: Throwable =>

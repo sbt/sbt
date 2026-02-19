@@ -1,8 +1,9 @@
 # #408: With logLevel Debug, incremental compile debug output should show project id per block.
-# Run compile with Debug so zinc logs invalidations; we verify build succeeds.
-# (Prefix content is tested in CompileDebugLoggerSpec.)
+# project/build.properties sets sbt.version=2.0.0-RC9-bin-SNAPSHOT so scripted runs built sbt.
+# With our fix, each Zinc debug/info line is prefixed with the projectId, e.g.:
+#   projectId: Initial source changes: ...
+#   projectId: all 1 sources are invalidated
 
 > set ThisBuild / logLevel := Level.Debug
-> compile
 > a/compile
 > b/compile

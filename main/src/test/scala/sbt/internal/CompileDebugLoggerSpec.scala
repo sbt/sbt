@@ -14,24 +14,25 @@ import sbt.util.{ Level, Logger }
 
 object CompileDebugLoggerSpec extends verify.BasicTestSuite {
 
-  test("CompileDebugLogger prefixes debug messages with project id (#408)") {
-    val debugMessages = new CopyOnWriteArrayList[String]()
+  test("CompileDebugLogger prefixes debug and info messages with project id (#408)") {
+    val messages = new CopyOnWriteArrayList[(Level.Value, String)]()
     val delegate: Logger = new Logger {
       def log(level: Level.Value, message: => String): Unit =
-        if (level == Level.Debug) debugMessages.add(message)
+        if (level == Level.Debug || level == Level.Info) messages.add((level, message))
       def trace(t: => Throwable): Unit = ()
       def success(message: => String): Unit = ()
     }
     val prefixed = CompileDebugLogger("myProject", delegate)
     prefixed.debug("Initial source changes: ")
     prefixed.debug("removed:Set()")
-    prefixed.info("compile success")
-    assert(debugMessages.size() >= 2)
-    assert(debugMessages.get(0) == "[myProject] Initial source changes: ")
-    assert(debugMessages.get(1) == "[myProject] removed:Set()")
+    prefixed.info("compiling 1 Scala source to ...")
+    assert(messages.size() >= 3)
+    assert(messages.get(0) == (Level.Debug, "[myProject] Initial source changes: "))
+    assert(messages.get(1) == (Level.Debug, "[myProject] removed:Set()"))
+    assert(messages.get(2) == (Level.Info, "[myProject] compiling 1 Scala source to ..."))
   }
 
-  test("CompileDebugLogger does not prefix info/warn/error") {
+  test("CompileDebugLogger does not prefix warn/error") {
     val allMessages = new CopyOnWriteArrayList[(Level.Value, String)]()
     val delegate: Logger = new Logger {
       def log(level: Level.Value, message: => String): Unit =
@@ -45,9 +46,9 @@ object CompileDebugLoggerSpec extends verify.BasicTestSuite {
     prefixed.warn("warn msg")
     prefixed.error("error msg")
     val list = allMessages.asScala.toSeq
-    val debugOnly = list.filter(_._1 == Level.Debug).map(_._2)
-    val nonDebug = list.filter(_._1 != Level.Debug).map(_._2)
-    assert(debugOnly.forall(_.startsWith("[p] ")))
-    assert(nonDebug.forall(!_.startsWith("[p] ")))
+    val prefixedLevels = list.filter { case (_, msg) => msg.startsWith("[p] ") }.map(_._1)
+    val notPrefixed = list.filter { case (_, msg) => !msg.startsWith("[p] ") }
+    assert(prefixedLevels.forall(l => l == Level.Debug || l == Level.Info))
+    assert(notPrefixed.map(_._1).forall(l => l == Level.Warn || l == Level.Error))
   }
 }
