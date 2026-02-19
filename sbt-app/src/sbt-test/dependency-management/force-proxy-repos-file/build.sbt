@@ -3,6 +3,6 @@ lazy val check = taskKey[Unit]("Verifies overrideBuildResolvers is true when rep
 lazy val root = (project in file(".")).settings(
   check := {
     val overrideOn = overrideBuildResolvers.value
-    assert(overrideOn, "overrideBuildResolvers should be true when global/repositories_force and global/repositories exist")
+    assert(overrideOn, "overrideBuildResolvers should be true when global/repositories_force exists")
   }
 )
