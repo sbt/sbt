@@ -1,4 +1,0 @@
-# Test for #1870: forcing proxy repos via ~/.sbt/repositories_force.
-# Scripted sets -Dsbt.global.base=<testDir>/global. We ship global/repositories_force (repo list);
-# launcher uses it as repository-override, so override is enabled and overrideBuildResolvers is true.
-> check

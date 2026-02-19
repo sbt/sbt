@@ -1044,9 +1044,7 @@ def otherRootSettings =
       scriptedLaunchOpts := List(
         "-Xmx1500M",
         "-Xms512M",
-        "-server",
-        "-Dsbt.override.build.repos=true",
-        s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}"""
+        "-server"
       ) :::
         (sys.props.get("sbt.ivy.home") match {
           case Some(home) => List(s"-Dsbt.ivy.home=$home")
