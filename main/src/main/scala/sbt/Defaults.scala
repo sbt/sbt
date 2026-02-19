@@ -4189,20 +4189,22 @@ object Classpaths {
                 .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
                 .withConfigurations(dep.configuration)
                 .withExplicitArtifacts(Vector.empty)
-            case b: CrossVersion.Binary if sbv != depSBV =>
-              depProjId
-                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case f: CrossVersion.Full if sbv != depSBV =>
-              val cross = (dep.project / scalaVersion)
-                .get(data)
-                .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
-                .getOrElse(depProjId.crossVersion)
-              depProjId
-                .withCrossVersion(cross)
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
+            case _: CrossVersion.Binary if sbv != depSBV =>
+              throw new MessageOnlyException(
+                s"""Scala binary version mismatch in inter-project dependency: """
+                  + s"""project "${ref.project}" (Scala binary version "$sbv") """
+                  + s"""depends on project "${dep.project.project}" (Scala binary version "$depSBV"). """
+                  + s"""These Scala binary versions are not compatible. """
+                  + s"""To use Scala 2.13/3.x TASTy sandwich, """
+                  + s"""set one project to Scala 2.13 and the other to Scala 3.x."""
+              )
+            case _: CrossVersion.Full if sbv != depSBV =>
+              throw new MessageOnlyException(
+                s"""Scala version mismatch in inter-project dependency: """
+                  + s"""project "${ref.project}" (Scala binary version "$sbv") """
+                  + s"""depends on project "${dep.project.project}" (Scala binary version "$depSBV"). """
+                  + s"""These Scala versions are not compatible."""
+              )
             // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
             // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
             case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>

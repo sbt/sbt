@@ -1,0 +1,2 @@
+# project b (2.12) depends on project a (2.13); update must detect Scala binary version mismatch.
+-> b/update
