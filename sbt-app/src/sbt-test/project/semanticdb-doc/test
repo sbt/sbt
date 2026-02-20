@@ -1,0 +1,2 @@
+# scaladoc should succeed when semanticdbEnabled is true
+> doc
