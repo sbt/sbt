@@ -1,0 +1,13 @@
+# Verify that scaladoc works when semanticdbEnabled is true
+# This tests the fix for issue #8740
+
+# Scala 2.x: doc should succeed without semanticdb options leaking
+> matrix2_12/doc
+
+# Scala 3.x: doc should succeed without semanticdb options leaking
+> matrix3/doc
+
+# Verify that compile still generates semanticdb files
+> compile
+$ exists target/**/scala-2.12*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/A.scala.semanticdb
+$ exists target/**/scala-3*/**/meta/META-INF/semanticdb/matrix/src/main/scala/foo/A.scala.semanticdb

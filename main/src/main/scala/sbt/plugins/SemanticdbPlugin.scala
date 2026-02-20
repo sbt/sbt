@@ -89,6 +89,15 @@ object SemanticdbPlugin extends AutoPlugin {
           orig
         }
     }).value,
+    doc / scalacOptions := {
+      if (semanticdbEnabled.value) {
+        val sdbOpts = semanticdbOptions.value.toSet
+        (doc / scalacOptions).value.filterNot { opt =>
+          sdbOpts.contains(opt) ||
+          (opt.startsWith("-Xplugin:") && opt.contains("semanticdb"))
+        }
+      } else (doc / scalacOptions).value
+    },
   )
 
   def targetRootOptions(scalaVersion: String, targetRoot: File): Seq[String] = {
