@@ -8,9 +8,29 @@
 
 package sbt
 
-import BuildPaths.expandTildePrefix
+import java.io.File
+import BuildPaths.{ expandTildePrefix, defaultGlobalBase, GlobalBaseProperty }
 
 object BuildPathsTest extends verify.BasicTestSuite {
+
+  test("defaultGlobalBase respects sbt.global.base system property") {
+    val custom = new File(System.getProperty("java.io.tmpdir"), "sbt-test-3681").getAbsolutePath
+    val prev = sys.props.get(GlobalBaseProperty)
+    try {
+      sys.props(GlobalBaseProperty) = custom
+      assert(defaultGlobalBase.getAbsolutePath == new File(custom).getAbsolutePath)
+    } finally {
+      prev match {
+        case Some(v) => sys.props(GlobalBaseProperty) = v
+        case None   => sys.props.remove(GlobalBaseProperty)
+      }
+    }
+  }
+
+  test("defaultGlobalBase returns absolute path") {
+    assert(defaultGlobalBase.getAbsolutePath.nonEmpty)
+    assert(defaultGlobalBase.isAbsolute)
+  }
 
   test("expandTildePrefix should expand empty path to itself") {
     assertEquals("", expandTildePrefix(""))

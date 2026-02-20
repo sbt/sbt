@@ -12,7 +12,7 @@ import java.io.File
 import java.util.Locale
 import KeyRanks.DSetting
 
-import sbt.io.{ GlobFilter, Path }
+import sbt.io.GlobFilter
 import sbt.internal.util.AttributeKey
 
 object BuildPaths {
@@ -106,7 +106,7 @@ object BuildPaths {
   }
 
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
-  def defaultGlobalBase = Path.userHome / ConfigDirectoryName
+  def defaultGlobalBase: File = internal.SysProp.defaultGlobalBaseDirectory
 
   private def binarySbtVersion(state: State): String =
     sbt.internal.librarymanagement.cross.CrossVersionUtil
