@@ -4,7 +4,7 @@ ThisBuild / scalaVersion := "2.12.21"
 
 lazy val root = (project in file("."))
   .settings(
-    buildInfo := {
+    buildInfo := Def.uncached {
       val file = sourceManaged.value / "BuildInfo.scala"
       IO.write(file, "object BuildInfo")
       file :: Nil

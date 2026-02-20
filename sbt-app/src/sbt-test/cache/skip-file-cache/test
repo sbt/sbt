@@ -1,0 +1,7 @@
+# File-returning tasks wrapped in Def.uncached should work correctly.
+> checkFileTask
+> set scalaVersion := "2.13.18"
+> checkFileTask
+
+# Using File as the return type of tasks without Def.uncached should fail compilation.
+-> set myFileTask := { new java.io.File(scalaVersion.value) }

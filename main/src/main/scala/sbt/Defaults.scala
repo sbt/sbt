@@ -294,12 +294,14 @@ object Defaults extends BuildCommon {
       csrSameVersions :== Nil,
       stagingDirectory := (ThisBuild / baseDirectory).value / "target" / "sona-staging",
       localStaging := Some(Resolver.file("local-staging", stagingDirectory.value)),
-      sonaBundle := Publishing
-        .makeBundle(
-          stagingDirectory.value.toPath(),
-          ((ThisBuild / baseDirectory).value / "target" / "sona-bundle" / "bundle.zip").toPath()
-        )
-        .toFile(),
+      sonaBundle := Def.uncached(
+        Publishing
+          .makeBundle(
+            stagingDirectory.value.toPath(),
+            ((ThisBuild / baseDirectory).value / "target" / "sona-bundle" / "bundle.zip").toPath()
+          )
+          .toFile()
+      ),
       sonaBundle / aggregate :== false,
       sonaUploadRequestTimeout :== 10.minutes,
       commands ++= Seq(Publishing.sonaRelease, Publishing.sonaUpload),
@@ -613,7 +615,7 @@ object Defaults extends BuildCommon {
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
-    sources := Classpaths.concatDistinct(unmanagedSources, managedSources).value
+    sources := Def.uncached(Classpaths.concatDistinct(unmanagedSources, managedSources).value)
   )
   lazy val resourceConfigPaths = Seq(
     resourceDirectory := sourceDirectory.value / "resources",
@@ -639,8 +641,8 @@ object Defaults extends BuildCommon {
     resourceGenerators += (Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
     }).taskValue,
-    managedResources := generate(resourceGenerators).value,
-    resources := Classpaths.concat(managedResources, unmanagedResources).value,
+    managedResources := Def.uncached(generate(resourceGenerators).value),
+    resources := Def.uncached(Classpaths.concat(managedResources, unmanagedResources).value),
     resourceDigests := Def.uncached {
       val uifs = (unmanagedResources / inputFileStamps).value
       val mifs = (managedResources / inputFileStamps).value
@@ -958,15 +960,17 @@ object Defaults extends BuildCommon {
           c.toPath(packedDir)
       },
       compileOutputs := Def.uncached(compileOutputs.triggeredBy(compile).value),
-      tastyFiles := Def.taskIf {
-        if (ScalaArtifacts.isScala3(scalaVersion.value)) {
-          val _ = compile.value
-          val c = fileConverter.value
-          val dir = c.toPath(backendOutput.value).toFile
-          val tastyFiles = dir.**("*.tasty").get()
-          tastyFiles.map(_.getAbsoluteFile)
-        } else Nil
-      }.value,
+      tastyFiles := Def.uncached(
+        Def.taskIf {
+          if (ScalaArtifacts.isScala3(scalaVersion.value)) {
+            val _ = compile.value
+            val c = fileConverter.value
+            val dir = c.toPath(backendOutput.value).toFile
+            val tastyFiles = dir.**("*.tasty").get()
+            tastyFiles.map(_.getAbsoluteFile)
+          } else Nil
+        }.value
+      ),
       clean := {
         (compileOutputs / clean).value
         (products / clean).value
@@ -1006,10 +1010,10 @@ object Defaults extends BuildCommon {
           else ""
         s"inc_compile$extra.zip"
       },
-      earlyCompileAnalysisFile := {
+      earlyCompileAnalysisFile := Def.uncached {
         earlyCompileAnalysisTargetRoot.value / compileAnalysisFilename.value
       },
-      compileAnalysisFile := {
+      compileAnalysisFile := Def.uncached {
         compileAnalysisTargetRoot.value / compileAnalysisFilename.value
       },
       externalHooks := Def.uncached(IncOptions.defaultExternal),
@@ -1099,7 +1103,7 @@ object Defaults extends BuildCommon {
       },
       fgRun := runTask(fullClasspath, (run / mainClass), (run / runner)).evaluated,
       fgRunMain := runMainTask(fullClasspath, (run / runner)).evaluated,
-      copyResources := copyResourcesTask.value,
+      copyResources := Def.uncached(copyResourcesTask.value),
     ) ++ RunUtil.configTasks(This) ++ inTask(run)(
       runnerSettings ++ newRunnerSettings
     ) ++ compileIncrementalTaskSettings
@@ -1113,7 +1117,7 @@ object Defaults extends BuildCommon {
   )
 
   lazy val projectTasks: Seq[Setting[?]] = Seq(
-    cleanFiles := cleanFilesTask.value,
+    cleanFiles := Def.uncached(cleanFilesTask.value),
     cleanKeepFiles := Vector.empty,
     cleanKeepGlobs ++= historyPath.value.map(_.toGlob).toVector,
     // clean := Def.taskDyn(Clean.task(resolvedScoped.value.scope, full = true)).value,
@@ -2631,9 +2635,9 @@ object Classpaths {
 
   // Included as part of JvmPlugin#projectSettings.
   lazy val configSettings: Seq[Setting[?]] = classpaths ++ Seq(
-    products := makeProducts.value,
+    products := Def.uncached(makeProducts.value),
     pickleProducts := Def.uncached(makePickleProducts.value),
-    productDirectories := classDirectory.value :: Nil,
+    productDirectories := Def.uncached(classDirectory.value :: Nil),
     classpathConfiguration := Def.uncached(
       findClasspathConfig(
         internalConfigurationMap.value,
@@ -2915,9 +2919,9 @@ object Classpaths {
       converter.toVirtualFile(config.file.get.toPath())
     },
     (makePom / packagedArtifact) := Def.uncached((makePom / artifact).value -> makePom.value),
-    deliver := deliverTask(makeIvyXmlConfiguration).value,
-    deliverLocal := deliverTask(makeIvyXmlLocalConfiguration).value,
-    makeIvyXml := deliverTask(makeIvyXmlConfiguration).value,
+    deliver := Def.uncached(deliverTask(makeIvyXmlConfiguration).value),
+    deliverLocal := Def.uncached(deliverTask(makeIvyXmlLocalConfiguration).value),
+    makeIvyXml := Def.uncached(deliverTask(makeIvyXmlConfiguration).value),
     resolvedDependencies := Def.task {
       val report = update.value
       val deps = allDependencies.value
@@ -3144,7 +3148,7 @@ object Classpaths {
           case _          => old
         }
     },
-    dependencyCacheDirectory := {
+    dependencyCacheDirectory := Def.uncached {
       val st = state.value
       BuildPaths.getDependencyDirectory(st, BuildPaths.getGlobalBase(st))
     },

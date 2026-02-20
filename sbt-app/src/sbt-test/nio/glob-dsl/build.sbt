@@ -6,7 +6,7 @@ val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
 foo / fileInputs += baseDirectory.value.toGlob / ** / "*.txt"
 
-foo := foo.inputFiles.map(_.toFile)
+foo := Def.uncached(foo.inputFiles.map(_.toFile))
 
 val checkFoo = taskKey[Unit]("Check that the Foo.txt file is retrieved")
 
@@ -17,7 +17,7 @@ val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
 bar / fileInputs += baseDirectory.value.toGlob / "base" / "subdir" / "nested-subdir" / "*.md"
 
-bar := bar.inputFiles.map(_.toFile)
+bar := Def.uncached(bar.inputFiles.map(_.toFile))
 
 val checkBar = taskKey[Unit]("Check that the Bar.md file is retrieved")
 

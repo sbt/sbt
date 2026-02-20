@@ -27,7 +27,7 @@ lazy val root = (project in file("."))
     Compile / bar := {
       (Compile / foo).previous.getOrElse(2)
     },
-    Test / buildInfo := Nil,
+    Test / buildInfo := Def.uncached(Nil),
     baz := {
       val x = (Test / buildInfo).taskValue
       (Compile / run).evaluated

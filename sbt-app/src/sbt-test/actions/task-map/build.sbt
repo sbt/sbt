@@ -6,31 +6,23 @@ val taskF = taskKey[File]("")
 
 scalaVersion := "3.3.1"
 name := "task-map"
-taskA := {
-  val c = fileConverter.value
+taskA := Def.uncached {
   touch(target.value / "a")
-  Def.declareOutput(c.toVirtualFile((target.value / "a").toPath()))
   target.value / "a"
 }
 
-taskB := {
-  val c = fileConverter.value
+taskB := Def.uncached {
   touch(target.value / "b")
-  Def.declareOutput(c.toVirtualFile((target.value / "b").toPath()))
   target.value / "b"
 }
 
-taskE := {
-  val c = fileConverter.value
+taskE := Def.uncached {
   touch(target.value / "e")
-  Def.declareOutput(c.toVirtualFile((target.value / "e").toPath()))
   target.value / "e"
 }
 
-taskF := {
-  val c = fileConverter.value
+taskF := Def.uncached {
   touch(target.value / "f")
-  Def.declareOutput(c.toVirtualFile((target.value / "f").toPath()))
   target.value / "f"
 }
 
