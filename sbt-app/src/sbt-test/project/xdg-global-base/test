@@ -1,0 +1,2 @@
+# Closes #3681: verify global base (XDG / sbt.global.base) is resolvable and absolute
+> checkGlobalBase

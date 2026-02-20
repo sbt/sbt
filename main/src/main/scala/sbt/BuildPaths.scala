@@ -15,7 +15,7 @@ import KeyRanks.DSetting
 import sbt.io.GlobFilter
 import sbt.internal.util.AttributeKey
 
-object BuildPaths {
+object BuildPaths:
   val globalBaseDirectory = AttributeKey[File](
     "global-base-directory",
     "The base directory for global sbt configuration and staging.",
@@ -145,4 +145,4 @@ object BuildPaths {
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File =
     base / ("scala_" + instance.version)
-}
+end BuildPaths
