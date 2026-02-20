@@ -2064,6 +2064,13 @@ object Defaults extends BuildCommon {
                 if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
                 else Opts.doc.externalAPI(xapisFiles)
               val options = sOpts ++ externalApiOpts
+              def convertVfRef(value: String): String =
+                if !value.contains("$") then value
+                else converter.toPath(VirtualFileRef.of(value)).toString
+              val resolvedOptions = options.map { x =>
+                if !x.contains("$") then x
+                else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
+              }
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
@@ -2077,7 +2084,7 @@ object Defaults extends BuildCommon {
                   cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
                   converter,
                   out.toPath(),
-                  options,
+                  resolvedOptions,
                   maxErrors.value,
                   s.log,
                 )
