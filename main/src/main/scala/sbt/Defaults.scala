@@ -3048,7 +3048,7 @@ object Classpaths {
       scmInfo.value,
       developers.value.toVector
     ),
-    overrideBuildResolvers := appConfiguration(isOverrideRepositories).value,
+    overrideBuildResolvers := appConfiguration(Classpaths.shouldOverrideBuildResolvers).value,
     externalResolvers := Def.uncached(
       (
         externalResolvers.?.value,
@@ -4510,6 +4510,9 @@ object Classpaths {
   def isOverrideRepositories(app: xsbti.AppConfiguration): Boolean =
     try app.provider.scalaProvider.launcher.isOverrideRepositories
     catch { case _: NoSuchMethodError => false }
+
+  def shouldOverrideBuildResolvers(app: xsbti.AppConfiguration): Boolean =
+    isOverrideRepositories(app) || SysProp.getOrFalse("sbt.override.build.repos")
 
   /** Loads the `appRepositories` configured for this launcher, if supported. */
   def appRepositories(app: xsbti.AppConfiguration): Option[Vector[Resolver]] =

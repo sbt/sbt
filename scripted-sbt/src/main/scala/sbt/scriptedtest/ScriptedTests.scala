@@ -230,6 +230,11 @@ final class ScriptedTests(
       groupedTests.map { case ((group, name), originalDir) =>
         val label = s"$group/$name"
         log.info(s"Running $label")
+        val targetGlobal = new File(tempTestDir, "global")
+        val reposForce = new File(targetGlobal, "repositories_force")
+        if (reposForce.exists()) IO.delete(reposForce)
+        val repos = new File(targetGlobal, "repositories")
+        if (repos.exists()) IO.delete(repos)
         // Copy test's contents and reload the sbt instance to pick them up
         IO.copyDirectory(originalDir, tempTestDir)
 

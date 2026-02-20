@@ -51,7 +51,7 @@ jobs:
         cd ../
         sbt -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.fatal=false "+lowerUtils/publish; {zinc}/publish; upperModules/publish; bundledLauncherProj/publish"
         rm -rf "$HOME/.ivy2/local" || true
-        rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+        find "$HOME/.sbt/boot" -name "*-SNAPSHOT" -exec rm -rf {} + 2>/dev/null || true
         find $HOME/Library/Caches/Coursier/v1        -name "ivydata-*.properties" -delete || true
         find $HOME/.ivy2/cache                       -name "ivydata-*.properties" -delete || true
         find $HOME/.cache/coursier/v1                -name "ivydata-*.properties" -delete || true

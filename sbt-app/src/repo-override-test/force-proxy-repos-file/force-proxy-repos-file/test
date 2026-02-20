@@ -1,0 +1,4 @@
+# Test for #1870: forcing proxy repos via ~/.sbt/repositories_force.
+# repoOverrideTest runs with launcher; -Dsbt.global.base=<testDir>/global.
+# Launcher uses repository-override (repositories_force), so override is enabled.
+> check

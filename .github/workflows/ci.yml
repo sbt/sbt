@@ -115,7 +115,7 @@ jobs:
         run: |
           rm -rf "$HOME/.sbt/scripted/" || true
           rm -rf "$HOME/.ivy2/local" || true
-          rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+          find "$HOME/.sbt/boot" -name "*-SNAPSHOT" -exec rm -rf {} + 2>/dev/null || true
       - name: Publish local Zinc
         if: ${{ matrix.jobtype == 6 }}
         shell: bash
@@ -160,7 +160,7 @@ jobs:
         if: ${{ matrix.jobtype == 4 }}
         shell: bash
         run: |
-          # ./sbt -v "repoOverrideTest:scripted dependency-management/*"
+          ./sbt -v "repoOverrideTest:scripted force-proxy-repos-file/*"
           ./sbt -v "scripted source-dependencies/*"
       - name: Build and test (5)
         if: ${{ matrix.jobtype == 5 }}
@@ -178,7 +178,7 @@ jobs:
       #    sbt -v -Dsbt.build.version=${BUILD_VERSION} +publishLocal
       #    cd ../
       #    sbt -Dsbtzinc.path=$HOME/work/sbt/sbt/zinc -Dsbt.build.version=$BUILD_VERSION -Dsbt.build.fatal=false "+lowerUtils/publishLocal; {zinc}/publishLocal; upperModules/publishLocal"
-      #    rm -r $(find $HOME/.sbt/boot -name "*-SNAPSHOT") || true
+      #    find "$HOME/.sbt/boot" -name "*-SNAPSHOT" -exec rm -rf {} + 2>/dev/null || true
       #    sbt -v -Dsbt.version=$BUILD_VERSION "++$SCALA_213; all $UTIL_TESTS; ++$SCALA_212; all $UTIL_TESTS; scripted actions/* source-dependencies/*1of3 dependency-management/*1of4 java/*"
       - name: Scripted (tests)
         if: ${{ matrix.jobtype == 7 }}
