@@ -122,6 +122,14 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
     assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
 
+  testOutput(
+    "sbt with XDG_CONFIG_HOME set uses it for sbt.global.base (Closes #3681)",
+    machineSbtoptsContents = "-v",
+    windowsSupport = false,
+  )("compile", "-v"): (out: List[String]) =>
+    val hasGlobalBase = out.exists(s => s.contains("-Dsbt.global.base=") && s.contains("/sbt"))
+    assert(hasGlobalBase, s"Expected -Dsbt.global.base=.../sbt in output (XDG): ${out.mkString(System.lineSeparator())}")
+
   testOutput("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v"):
     (out: List[String]) =>
       if (isWindows) cancel("Test not supported on windows")

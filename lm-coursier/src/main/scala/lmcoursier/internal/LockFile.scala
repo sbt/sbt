@@ -3,7 +3,7 @@ package lmcoursier.internal
 import java.io.File
 import java.nio.file.Files
 import java.nio.charset.StandardCharsets
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sjsonnew.support.scalajson.unsafe.{ Converter, Parser, PrettyPrinter }
 import scala.util.{ Try, Success, Failure }
 
 object LockFile {
@@ -29,7 +29,7 @@ object LockFile {
   def write(lockFile: File, data: LockFileData): Either[String, Unit] = {
     Try {
       val json = Converter.toJson(data).get
-      val content = CompactPrinter(json)
+      val content = PrettyPrinter(json)
       lockFile.getParentFile.mkdirs()
       Files.write(lockFile.toPath, content.getBytes(StandardCharsets.UTF_8))
     } match {

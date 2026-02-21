@@ -448,14 +448,17 @@ findProperty() {
   done
 }
 
-# Extracts the preloaded directory from either -Dsbt.preloaded, -Dsbt.global.base or -Duser.home
-# in that order.
+# Extracts the preloaded directory from -Dsbt.preloaded, -Dsbt.global.base, SBT_CONFIG_HOME,
+# XDG_CONFIG_HOME/sbt, or user.home/.sbt in that order.
 getPreloaded() {
   local preloaded && preloaded=$(findProperty sbt.preloaded)
   [ "$preloaded" ] && echo "$preloaded" && return
 
   local global_base && global_base=$(findProperty sbt.global.base)
   [ "$global_base" ] && echo "$global_base/preloaded" && return
+
+  [ -n "${SBT_CONFIG_HOME}" ] && echo "${SBT_CONFIG_HOME}/preloaded" && return
+  [ -n "${XDG_CONFIG_HOME}" ] && echo "${XDG_CONFIG_HOME}/sbt/preloaded" && return
 
   local user_home && user_home=$(findProperty user.home)
   echo "${user_home:-$HOME}/.sbt/preloaded"
@@ -642,7 +645,7 @@ Usage: `basename "$0"` [options]
   --jvm-client        run JVM client
   --timings           display task timings report on shutdown
   --allow-empty       start sbt even if current directory contains no sbt project
-  --sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
+  --sbt-dir   <path>  path to global settings/plugins directory (default: \$XDG_CONFIG_HOME/sbt or ~/.sbt)
   --sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   --sbt-cache <path>  path to global cache directory (default: operating system specific)
   --ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
@@ -973,6 +976,13 @@ else
   vlog "[process_args] java_version = '$java_version'"
   addDefaultMemory
   addSbtScriptProperty
+  if ! printf '%s\n' "${sbt_options[@]}" | grep -q '^-Dsbt\.global\.base='; then
+    if [[ -n "${SBT_CONFIG_HOME}" ]]; then
+      addSbt "-Dsbt.global.base=$SBT_CONFIG_HOME"
+    elif [[ -n "${XDG_CONFIG_HOME}" ]]; then
+      addSbt "-Dsbt.global.base=${XDG_CONFIG_HOME}/sbt"
+    fi
+  fi
   addJdkWorkaround
   set -- "${residual_args[@]}"
   argumentCount=$#

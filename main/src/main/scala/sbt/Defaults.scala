@@ -749,6 +749,7 @@ object Defaults extends BuildCommon {
           val r = dependencyResolution.value
           val uc = updateConfiguration.value
           val jar = ZincLmUtil.fetchDefaultBridgeModule(
+            scalaOrganization.value,
             sv,
             r,
             uc,
@@ -768,12 +769,14 @@ object Defaults extends BuildCommon {
         if b.nonEmpty then Def.task { b }
         else Compiler.scalaCompilerBridgeJarsTask(scalaCompilerBridgeSource, s.log)
       }).value,
-      scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+      scalaCompilerBridgeSource := ZincLmUtil
+        .getDefaultBridgeSourceModule(scalaOrganization.value, scalaVersion.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
         else Nil
       },
       consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
+        ScalaArtifacts.Organization,
         appConfiguration.value.provider.scalaProvider.version
       ),
       classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),

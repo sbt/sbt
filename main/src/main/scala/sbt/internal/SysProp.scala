@@ -25,7 +25,7 @@ import sbt.nio.Keys.*
 
 // See also BuildPaths.scala
 // See also LineReader.scala
-object SysProp {
+object SysProp:
   def booleanOpt(name: String): Option[Boolean] =
     sys.props.get(name) match {
       case Some(x) => parseBoolean(x)
@@ -205,6 +205,25 @@ object SysProp {
   private def home: File = file(sys.props("user.home"))
 
   /**
+   * Default directory for global sbt config (plugins, settings). Respects XDG Base Directory
+   * and platform conventions: SBT_CONFIG_HOME, then XDG_CONFIG_HOME/sbt (Unix), then
+   * LOCALAPPDATA/sbt (Windows), else user.home/.sbt.
+   */
+  def defaultGlobalBaseDirectory: File =
+    def fromEnv(name: String): Option[File] =
+      sys.env.get(name).filter(_.nonEmpty).map(p => file(p.trim))
+    val propBase =
+      sys.props.get(BuildPaths.GlobalBaseProperty).filter(_.nonEmpty).map(p => file(p.trim))
+    propBase
+      .orElse(fromEnv("SBT_CONFIG_HOME"))
+      .orElse(
+        if Util.isWindows then fromEnv("LOCALAPPDATA").map(_ / "sbt")
+        else fromEnv("XDG_CONFIG_HOME").map(_ / "sbt")
+      )
+      .getOrElse(home / BuildPaths.ConfigDirectoryName)
+      .getAbsoluteFile
+
+  /**
    * Operating system specific cache directory, similar to Coursier cache.
    */
   def globalLocalCache: File = {
@@ -289,4 +308,4 @@ object SysProp {
       .get(sys.env.getOrElse("XDG_RUNTIME_DIR", sys.props("java.io.tmpdir")))
       .resolve(s".sbt$halfhash")
   }
-}
+end SysProp
