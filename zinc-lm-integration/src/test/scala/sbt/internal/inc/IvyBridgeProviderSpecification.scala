@@ -64,7 +64,7 @@ abstract class IvyBridgeProviderSpecification
       case Some(v: String) => v
       case _               => throw new IllegalStateException("No zinc version specified")
     }
-    val bridge0 = ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion)
+    val bridge0 = ZincLmUtil.getDefaultBridgeSourceModule(ScalaArtifacts.Organization, scalaVersion)
     // redefine the compiler bridge version
     // using the version of zinc used during testing
     // this way when building with zinc as a source dependency

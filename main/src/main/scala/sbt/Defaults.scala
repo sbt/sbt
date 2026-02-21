@@ -747,13 +747,15 @@ object Defaults extends BuildCommon {
           fetchBridgeBinaryJarTask(sv)
         else Def.task[Option[File]](None)
       }.value,
-      scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+      scalaCompilerBridgeSource := ZincLmUtil
+        .getDefaultBridgeSourceModule(scalaOrganization.value, scalaVersion.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
         else Nil
       },
       consoleProject / scalaCompilerBridgeBinaryJar := None,
       consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
+        ScalaArtifacts.Organization,
         appConfiguration.value.provider.scalaProvider.version
       ),
       classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
@@ -842,6 +844,7 @@ object Defaults extends BuildCommon {
   private def fetchBridgeBinaryJarTask(scalaVersion: String): Initialize[Task[Option[File]]] =
     Def.task {
       val bridgeJar = ZincLmUtil.fetchDefaultBridgeModule(
+        scalaOrganization.value,
         scalaVersion,
         dependencyResolution.value,
         updateConfiguration.value,

@@ -62,13 +62,14 @@ object ZincLmUtil {
   }
 
   def fetchDefaultBridgeModule(
+      scalaOrganization: String,
       scalaVersion: String,
       dependencyResolution: DependencyResolution,
       updateConfiguration: UpdateConfiguration,
       warningConfig: UnresolvedWarningConfiguration,
       logger: Logger
   ): File = {
-    val bridgeModule = getDefaultBridgeModule(scalaVersion)
+    val bridgeModule = getDefaultBridgeModule(scalaOrganization, scalaVersion)
     val descriptor = dependencyResolution.wrapDependencyInModule(bridgeModule)
     dependencyResolution
       .update(descriptor, updateConfiguration, warningConfig, logger)
@@ -86,14 +87,14 @@ object ZincLmUtil {
       .getOrElse(throw new MessageOnlyException(s"Missing $bridgeModule"))
   }
 
-  def getDefaultBridgeModule(scalaVersion: String): ModuleID = {
+  def getDefaultBridgeModule(scalaOrganization: String, scalaVersion: String): ModuleID = {
     if (ScalaArtifacts.isScala3(scalaVersion)) {
-      ModuleID(ScalaArtifacts.Organization, "scala3-sbt-bridge", scalaVersion)
+      ModuleID(scalaOrganization, "scala3-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
     } else if (VersionNumber(scalaVersion).matchesSemVer(
                  SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
                )) {
-      ModuleID(ScalaArtifacts.Organization, "scala2-sbt-bridge", scalaVersion)
+      ModuleID(scalaOrganization, "scala2-sbt-bridge", scalaVersion)
         .withConfigurations(Some(Compile.name))
     } else {
       val compilerBridgeId = scalaVersion match {
@@ -108,6 +109,6 @@ object ZincLmUtil {
     }
   }
 
-  def getDefaultBridgeSourceModule(scalaVersion: String): ModuleID =
-    getDefaultBridgeModule(scalaVersion).sources()
+  def getDefaultBridgeSourceModule(scalaOrganization: String, scalaVersion: String): ModuleID =
+    getDefaultBridgeModule(scalaOrganization, scalaVersion).sources()
 }

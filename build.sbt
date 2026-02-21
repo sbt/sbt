@@ -922,6 +922,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
       exclude[IncompatibleMethTypeProblem]("sbt.internal.inc.ZincComponentCompiler*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.inc.ZincComponentCompiler*"),
       exclude[IncompatibleSignatureProblem]("sbt.internal.inc.ZincLMHelper.update"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.inc.ZincLmUtil.*"),
     ),
     libraryDependencies += launcherInterface,
   )

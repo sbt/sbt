@@ -25,7 +25,7 @@ import sbt.internal.util.Types.const
 import sbt.internal.util.{ Attributed, Settings, ~> }
 import sbt.io.{ GlobFilter, IO, Path }
 import sbt.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution, IvyPaths }
-import sbt.librarymanagement.{ Configuration, Configurations, Resolver }
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver, ScalaArtifacts }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
 import xsbti.compile.{ ClasspathOptionsUtil, Compilers }
@@ -87,7 +87,8 @@ private[sbt] object Load {
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
       dependencyResolution = dependencyResolution,
-      compilerBridgeSource = ZincLmUtil.getDefaultBridgeSourceModule(scalaProvider.version),
+      compilerBridgeSource =
+        ZincLmUtil.getDefaultBridgeSourceModule(ScalaArtifacts.Organization, scalaProvider.version),
       scalaJarsTarget = zincDir,
       state.get(BasicKeys.classLoaderCache),
       log = log
