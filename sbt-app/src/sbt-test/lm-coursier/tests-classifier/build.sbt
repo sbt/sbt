@@ -9,8 +9,8 @@ lazy val a = project
     name := nme,
     Test / publishArtifact := true,
     version := ver,
-    Compile / doc / sources := Def.uncached(Seq.empty), // TODO fix doc task
-    Test / doc / sources := Def.uncached(Seq.empty)
+    Compile / doc / sources := Seq.empty, // TODO fix doc task
+    Test / doc / sources := Seq.empty
   )
 
 lazy val b = project

@@ -1,27 +1,31 @@
+@transient
 val taskA = taskKey[File]("")
+@transient
 val taskB = taskKey[File]("")
 
+@transient
 val taskE = taskKey[File]("")
+@transient
 val taskF = taskKey[File]("")
 
 scalaVersion := "3.3.1"
 name := "task-map"
-taskA := Def.uncached {
+taskA := {
   touch(target.value / "a")
   target.value / "a"
 }
 
-taskB := Def.uncached {
+taskB := {
   touch(target.value / "b")
   target.value / "b"
 }
 
-taskE := Def.uncached {
+taskE := {
   touch(target.value / "e")
   target.value / "e"
 }
 
-taskF := Def.uncached {
+taskF := {
   touch(target.value / "f")
   target.value / "f"
 }
@@ -30,13 +34,13 @@ taskF := Def.uncached {
 // means "a" will be triggered by "b"
 // said differently, invoking "b" will run "b" and then run "a"
 
-taskA := Def.uncached(taskA.triggeredBy(taskB).value)
+taskA := taskA.triggeredBy(taskB).value
 
 //   e <<= e runBefore f
 // means "e" will be run before running "f"
 // said differently, invoking "f" will run "e" and then run "f"
 
-taskE := Def.uncached(taskE.runBefore(taskF).value)
+taskE := taskE.runBefore(taskF).value
 
 // test utils
 def touch(f: File): File = { IO.touch(f); f }

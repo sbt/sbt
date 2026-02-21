@@ -20,10 +20,10 @@ object TwirlPlugin extends AutoPlugin {
     twirlCompileTemplates / excludeFilter := HiddenFileFilter,
     twirlCompileTemplates / sourceDirectories := Seq(sourceDirectory.value / "twirl"),
 
-    twirlCompileTemplates / sources := Def.uncached(Defaults.collectFiles(
+    twirlCompileTemplates / sources := Defaults.collectFiles(
       twirlCompileTemplates / sourceDirectories,
       twirlCompileTemplates / includeFilter,
       twirlCompileTemplates / excludeFilter
-    ).value)
+    ).value
   )
 }

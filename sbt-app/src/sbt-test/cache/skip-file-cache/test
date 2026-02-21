@@ -1,7 +1,8 @@
-# File-returning tasks wrapped in Def.uncached should work correctly.
+# @transient File-returning tasks should not be cached, so
+# changing scalaVersion should immediately be reflected.
 > checkFileTask
 > set scalaVersion := "2.13.18"
 > checkFileTask
 
-# Using File as the return type of tasks without Def.uncached should fail compilation.
--> set myFileTask := { new java.io.File(scalaVersion.value) }
+# Using File as the return type of tasks without @transient should fail compilation.
+-> set badFileTask := { new java.io.File(scalaVersion.value) }

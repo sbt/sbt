@@ -1,10 +1,11 @@
+@transient
 val buildInfo = taskKey[Seq[File]]("generates the build info")
 
 ThisBuild / scalaVersion := "2.12.21"
 
 lazy val root = (project in file("."))
   .settings(
-    buildInfo := Def.uncached {
+    buildInfo := {
       val file = sourceManaged.value / "BuildInfo.scala"
       IO.write(file, "object BuildInfo")
       file :: Nil

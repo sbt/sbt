@@ -359,7 +359,7 @@ trait Cont:
                |  - xsbti.HashedVirtualFileRef
                |  - xsbti.VirtualFileRef
                |  - xsbti.VirtualFile
-               |If caching is not needed, wrap the task in Def.uncached.
+               |If caching is not needed, annotate the key with @transient, or wrap the task in Def.uncached.
                |See https://www.scala-sbt.org/2.x/docs/en/concepts/caching.html#caching-files""".stripMargin
           )
         else

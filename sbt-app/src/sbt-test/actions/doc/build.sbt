@@ -10,12 +10,12 @@ lazy val root = (project in file("."))
     Compile / doc / scalacOptions += "-Werror",
     commands += Command.command("excludeB") { s =>
       val impl = """val src = (Compile / sources).value; src.filterNot(_.getName.contains("B"))"""
-      s"set Compile / doc / sources := Def.uncached { $impl }" :: s
+      s"set Compile / doc / sources := { $impl }" :: s
     },
     commands += Command.arb(_ => ("setDocExtension": Parser[String]) ~> " " ~> matched(any.*)) {
       (s, filter: String) =>
         val impl =
           s"""val src = (Compile / sources).value; src.filter(_.getName.endsWith("$filter"))"""
-        s"set Compile / doc / sources := Def.uncached { $impl }" :: s
+        s"set Compile / doc / sources := { $impl }" :: s
     },
   )
