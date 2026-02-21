@@ -93,6 +93,21 @@ cygwinpath() {
   fi
 }
 
+# Prefer explicit Java settings to avoid PATH picking an unexpected runtime
+# (notably on Windows Git Bash where JAVA_HOME can be set but java on PATH differs).
+if [[ -n "$JAVACMD" ]]; then
+  java_cmd="$JAVACMD"
+elif [[ -n "$JAVA_HOME" ]]; then
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    java_home_unix=$(cygpath -u "$JAVA_HOME" 2>/dev/null)
+    if [[ -n "$java_home_unix" ]] && [[ -x "$java_home_unix/bin/java" ]]; then
+      java_cmd="$java_home_unix/bin/java"
+    fi
+  elif [[ -x "$JAVA_HOME/bin/java" ]]; then
+    java_cmd="$JAVA_HOME/bin/java"
+  fi
+fi
+
 # Trim leading and trailing spaces from a string.
 # Echos the new trimmed string.
 trimString() {
