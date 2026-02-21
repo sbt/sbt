@@ -83,4 +83,13 @@ object RunnerMemoryScriptTest extends verify.BasicTestSuite with ShellScriptUtil
       assert(out.contains[String]("-Xms512M"))
       assert(out.contains[String]("-Xmx1G"))
 
+  // Regression test for #8767: options from .jvmopts should be passed correctly on Windows
+  testOutput(
+    "sbt use .jvmopts file with uppercase memory suffixes",
+    jvmoptsFileContents = """-Xmx2G
+        |-Xss1M""".stripMargin
+  )("compile", "-v"): (out: List[String]) =>
+    assert(out.contains[String]("-Xmx2G"))
+    assert(out.contains[String]("-Xss1M"))
+
 end RunnerMemoryScriptTest

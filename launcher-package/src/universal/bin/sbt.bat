@@ -122,13 +122,13 @@ rem We use the value of the JAVA_OPTS environment variable if defined, rather th
 if not defined _JAVA_OPTS if defined JAVA_OPTS set _JAVA_OPTS=%JAVA_OPTS% 
 
 rem users can set JAVA_OPTS via .jvmopts (sbt-extras style) 
-if exist .jvmopts for /F %%A in (.jvmopts) do ( 
+if exist .jvmopts for /F "usebackq tokens=* delims=" %%A in (".jvmopts") do ( 
   set _jvmopts_line=%%A 
   if not "!_jvmopts_line:~0,1!" == "#" ( 
     if defined _JAVA_OPTS ( 
-      set _JAVA_OPTS=!_JAVA_OPTS! %%A 
+      set _JAVA_OPTS=!_JAVA_OPTS! !_jvmopts_line! 
     ) else ( 
-      set _JAVA_OPTS=%%A 
+      set _JAVA_OPTS=!_jvmopts_line! 
     ) 
   ) 
 ) 
