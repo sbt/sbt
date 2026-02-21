@@ -104,6 +104,27 @@ class LockFileSpec extends AnyFunSuite {
     }
   }
 
+  test("LockFile.write outputs pretty JSON") {
+    val lockData = LockFileData(
+      version = "1.0",
+      buildClock = "pretty-test",
+      configurations = Vector.empty,
+      metadata = LockFileMetadata(
+        sbtVersion = "2.0.0",
+        scalaVersion = Some("3.8.1")
+      )
+    )
+
+    IO.withTemporaryDirectory { dir =>
+      val lockFile = new File(dir, "pretty.lock")
+      val writeResult = LockFile.write(lockFile, lockData)
+      assert(writeResult.isRight, s"Write failed: ${writeResult.left.getOrElse("")}")
+
+      val content = IO.read(lockFile)
+      assert(content.contains("\n"), "Expected pretty-printed JSON with multiple lines")
+    }
+  }
+
   test("cacheFileToOriginalUrl converts cache file URL to HTTP URL") {
     IO.withTemporaryDirectory { cacheDir =>
       val fileUrl =
