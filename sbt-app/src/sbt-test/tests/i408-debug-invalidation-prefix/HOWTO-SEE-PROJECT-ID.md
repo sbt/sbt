@@ -8,8 +8,10 @@ To see `[projectId]` you must run an sbt that was built from this code.
 ## Option A: Run the scripted test and read the stream log
 
 The scripted test uses `project/build.properties: sbt.version=2.0.0-RC9-bin-SNAPSHOT`
-so it runs with the *built* sbt. With `scriptedKeepTempDirectory := true` the child sbt
-writes its task streams to disk. The compile stream log contains all `[projectId]` lines.
+so it runs with the *built* sbt. The test does a first compile, then touches sources and
+compiles again to trigger *incremental* compilation (so Zinc logs "Initial source changes",
+"changed = Set(...)", "invalidated", etc.). With `scriptedKeepTempDirectory := true` the
+child sbt writes its task streams to disk; the compile stream log contains all `[projectId]` lines.
 
 ```bash
 # From sbt repo root, after ./sbt publishLocal:
