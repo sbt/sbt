@@ -161,7 +161,7 @@ private[sbt] object CrossJava {
       val verbose = Parser.opt(token(Space ~> "-v"))
       val optionalCommand =
         Parser.opt(
-          token(Space ~> matched(state.combinedParser)).examples(JavaSwitchCommandCompletions*)
+          token(Space ~> matched(state.combinedParser).examples(JavaSwitchCommandCompletions*))
         )
       (spacedVersion ~ verbose ~ optionalCommand).map { case v ~ verbose ~ command =>
         SwitchJavaHome(v, verbose.isDefined, command)

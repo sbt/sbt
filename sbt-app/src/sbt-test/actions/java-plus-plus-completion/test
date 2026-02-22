@@ -1,2 +1,0 @@
-# Verify java++ tab completion returns a bounded list (#4310)
-> checkJavaPlusPlusCompletions
