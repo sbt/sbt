@@ -3992,10 +3992,10 @@ object Classpaths {
           val scalaProvider = ac.provider.scalaProvider
           usiOnly match
             case Some(instance) =>
-              unmanagedJarsTask(sv, instance.version, instance.allJars)
+              unmanagedJarsTask(sv, instance.version, instance.allJars.toIndexedSeq)
             case None =>
               (subVersion: String) =>
-                if (scalaProvider.version == subVersion) scalaProvider.jars else Nil
+                if (scalaProvider.version == subVersion) scalaProvider.jars.toIndexedSeq else Nil
         }
         val updateConf = {
           // Log captures log messages at all levels, except ivy logs.
@@ -4042,7 +4042,7 @@ object Classpaths {
           includeDetails = includeDetails,
           log = s.log
         )
-    }: @nowarn
+    }
 
   private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] =
     Def.task {
