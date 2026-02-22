@@ -207,11 +207,12 @@ object SysProp:
   /**
    * Default directory for global sbt config (plugins, settings). Respects XDG Base Directory
    * and platform conventions: SBT_CONFIG_HOME, then XDG_CONFIG_HOME/sbt (Unix), then
-   * LOCALAPPDATA/sbt (Windows), else user.home/.sbt.
+   * LOCALAPPDATA/sbt (Windows), else user.home/.config/sbt.
    */
   def defaultGlobalBaseDirectory: File =
     def fromEnv(name: String): Option[File] =
       sys.env.get(name).filter(_.nonEmpty).map(p => file(p.trim))
+    def fallbackDir: File = home / ".config" / "sbt"
     val propBase =
       sys.props.get(BuildPaths.GlobalBaseProperty).filter(_.nonEmpty).map(p => file(p.trim))
     propBase
@@ -220,7 +221,7 @@ object SysProp:
         if Util.isWindows then fromEnv("LOCALAPPDATA").map(_ / "sbt")
         else fromEnv("XDG_CONFIG_HOME").map(_ / "sbt")
       )
-      .getOrElse(home / BuildPaths.ConfigDirectoryName)
+      .getOrElse(fallbackDir)
       .getAbsoluteFile
 
   /**

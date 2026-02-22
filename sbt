@@ -645,7 +645,7 @@ Usage: `basename "$0"` [options]
   --jvm-client        run JVM client
   --timings           display task timings report on shutdown
   --allow-empty       start sbt even if current directory contains no sbt project
-  --sbt-dir   <path>  path to global settings/plugins directory (default: \$XDG_CONFIG_HOME/sbt or ~/.sbt)
+  --sbt-dir   <path>  path to global settings/plugins directory (default: \$XDG_CONFIG_HOME/sbt or ~/.config/sbt)
   --sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
   --sbt-cache <path>  path to global cache directory (default: operating system specific)
   --ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
