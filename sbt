@@ -862,6 +862,10 @@ original_args=("$@")
 
 sbt_file_opts=()
 
+if [[ -f "$JAVACMD" ]]; then
+  java_cmd="$JAVACMD"
+fi
+
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
   sbt_file_opts+=($(loadConfigFile "$machine_sbt_opts_file"))

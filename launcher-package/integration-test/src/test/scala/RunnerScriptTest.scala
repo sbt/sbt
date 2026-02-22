@@ -3,7 +3,7 @@ package example.test
 /**
  * RunnerScriptTest is used to test the sbt shell script, for both macOS/Linux and Windows.
  */
-object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
+abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
   private val versionPattern = "\\d(\\.\\d+){2}(-\\w+)?"
 
   private def assertScriptVersion(out: List[String]): Unit =
@@ -59,11 +59,11 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     assert(out.contains[String]("-Dhttp.proxyPort=8080"))
 
   testOutput(
-    name = "sbt with -XX:ParallelGCThreads=16 -XX:PermSize=128M in SBT_OPTS",
-    sbtOpts = "-XX:ParallelGCThreads=16 -XX:PermSize=128M",
+    name = "sbt with -XX:+UseG1GC -XX:+PrintGC in SBT_OPTS",
+    sbtOpts = "-XX:+UseG1GC -XX:+PrintGC",
   )("-v"): (out: List[String]) =>
-    assert(out.contains[String]("-XX:ParallelGCThreads=16"))
-    assert(out.contains[String]("-XX:PermSize=128M"))
+    assert(out.contains[String]("-XX:+UseG1GC"))
+    assert(out.contains[String]("-XX:+PrintGC"))
 
   testOutput(
     "sbt with -XX:+UseG1GC -XX:+PrintGC in JAVA_OPTS",
@@ -117,10 +117,11 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
       out.contains[String]("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=12346")
     )
 
-  testOutput("sbt --no-share adds three system properties")("--no-share"): (out: List[String]) =>
-    assert(out.contains[String]("-Dsbt.global.base=project/.sbtboot"))
-    assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
-    assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
+  testOutput("sbt --no-share adds three system properties")("--no-share", "-v"):
+    (out: List[String]) =>
+      assert(out.contains[String]("-Dsbt.global.base=project/.sbtboot"))
+      assert(out.contains[String]("-Dsbt.boot.directory=project/.boot"))
+      assert(out.contains[String]("-Dsbt.ivy.home=project/.ivy"))
 
   testOutput("accept `--ivy` in `SBT_OPTS`", sbtOpts = "--ivy /ivy/dir")("-v"):
     (out: List[String]) =>
@@ -253,6 +254,23 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
         s"sbtopts options should appear before CLI memory settings. g1Index=$g1Index, xmxCliIndex=$xmxCliIndex"
       )
 
+  // Test for issue #7333: JVM parameters with spaces in .sbtopts
+  testOutput(
+    "sbt with -J--add-modules ALL-DEFAULT in .sbtopts (args with spaces)",
+    sbtOptsFileContents = "-J--add-modules ALL-DEFAULT",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(out.contains[String]("--add-modules"))
+    assert(out.contains[String]("ALL-DEFAULT"))
+
+  // Test for issue #8767
+  testOutput(
+    "sbt with newline in .jvmopts",
+    jvmoptsFileContents = "-Xmx2G\n-Xss1M\n",
+    windowsSupport = false,
+  )("-v"): (out: List[String]) =>
+    assert(out.exists(_.contains("-Xmx2G")))
+
   // Test for issue #7289: Special characters in .jvmopts should not cause shell expansion
   testOutput(
     "sbt with special characters in .jvmopts (pipes, wildcards, ampersands)",
@@ -322,3 +340,9 @@ object RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUtil:
     )
 
 end RunnerScriptTest
+
+object RunnerScriptTest extends RunnerScriptTest
+
+object RunnerScriptGitBashTest extends RunnerScriptTest:
+  override def isGitBashTest: Boolean = true
+end RunnerScriptGitBashTest

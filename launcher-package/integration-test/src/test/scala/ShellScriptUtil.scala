@@ -24,7 +24,8 @@ trait ShellScriptUtil extends BasicTestSuite {
       case e: Exception => throw e
     }
 
-  val sbtScript = IntegrationTestPaths.sbtScript(isWindows)
+  def isGitBashTest: Boolean = false
+  lazy val sbtScript = IntegrationTestPaths.sbtScript(isWindows && !isGitBashTest)
 
   /**
    * testOutput is a helper function to create a test for shell script.
@@ -41,11 +42,14 @@ trait ShellScriptUtil extends BasicTestSuite {
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
-    if !windowsSupport && isWindows then
+    if isGitBashTest && !isWindows then
+      test("gitbash: " + name):
+        cancel("skip")
+    else if !isGitBashTest && !windowsSupport && isWindows then
       test(name):
         cancel("test not supported on Windows")
     else
-      test(name) {
+      test(if isGitBashTest then "gitbash: " + name else name) {
         val workingDirectory = Files.createTempDirectory("sbt-launcher-package-test").toFile
         val citestDir = IntegrationTestPaths.citestDir(citestVariant)
         // Clean target directory if it exists to avoid copying temporary files that may be deleted during copy
@@ -154,12 +158,14 @@ trait ShellScriptUtil extends BasicTestSuite {
           envVars("JAVA_OPTS") = javaOpts
           envVars("SBT_OPTS") = sbtOpts
           envVars("JAVA_TOOL_OPTIONS") = javaToolOptions
-          if (isWindows)
+          if isWindows then
             envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
+            envVars("JAVA_HOME") = sys.env("JAVA_HOME")
           else
             envVars("PATH") = javaBinDir + File.pathSeparator + path
-
-          val cmd = LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath) ++ args
+            envVars("JAVA_HOME") = sys.env("JAVA_HOME")
+          val cmd =
+            LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath, isGitBashTest) ++ args
           val lines = mutable.ListBuffer.empty[String]
           def processLine(line: String): Unit =
             Console.err.println(line)
