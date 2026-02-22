@@ -19,7 +19,6 @@ import sbt.internal.io.Resources
 import sbt.internal.scripted.*
 import RemoteSbtCreatorProp.*
 
-import scala.annotation.nowarn
 import scala.collection.parallel.ForkJoinTaskSupport
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -635,7 +634,6 @@ class ScriptedRunner {
       keepTempDirectory,
     )
 
-  @nowarn
   private def run(
       baseDir: File,
       bufferLog: Boolean,
@@ -650,7 +648,7 @@ class ScriptedRunner {
       keepTempDirectory: Boolean = false,
   ): Unit = {
     val addTestFile = (f: File) => { prescripted.add(f); () }
-    val runner = new ScriptedTests(baseDir, bufferLog, javaCommand, launchOpts)
+    val runner = new ScriptedTests(baseDir, bufferLog, javaCommand, launchOpts.toIndexedSeq)
     val sbtVersion =
       prop match {
         case LauncherBased(launcherJar) =>
@@ -660,7 +658,7 @@ class ScriptedRunner {
     val accept = isTestCompatible(baseDir, sbtVersion)
     // The scripted tests mapped to the inputs that the user wrote after `scripted`.
     val scriptedTests =
-      get(tests, baseDir, accept, logger).map(st => (st.group, st.name))
+      get(tests.toIndexedSeq, baseDir, accept, logger).map(st => (st.group, st.name))
     // Choosing Int.MaxValue will make the groupSize 1 in batchScriptedRunner
     val groupCount = if (parallelExecution) instances else Int.MaxValue
     val scriptedRunners =
