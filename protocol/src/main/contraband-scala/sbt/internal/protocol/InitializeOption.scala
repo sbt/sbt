@@ -11,23 +11,25 @@ package sbt.internal.protocol
 final class InitializeOption private (
   val token: Option[String],
   val skipAnalysis: Option[Boolean],
-  val canWork: Option[Boolean]) extends Serializable {
+  val canWork: Option[Boolean],
+  val subscribeToAll: Option[Boolean]) extends Serializable {
   
-  private def this(token: Option[String]) = this(token, None, None)
-  private def this(token: Option[String], skipAnalysis: Option[Boolean]) = this(token, skipAnalysis, None)
+  private def this(token: Option[String]) = this(token, None, None, None)
+  private def this(token: Option[String], skipAnalysis: Option[Boolean]) = this(token, skipAnalysis, None, None)
+  private def this(token: Option[String], skipAnalysis: Option[Boolean], canWork: Option[Boolean]) = this(token, skipAnalysis, canWork, None)
   
   override def equals(o: Any): Boolean = this.eq(o.asInstanceOf[AnyRef]) || (o match {
-    case x: InitializeOption => (this.token == x.token) && (this.skipAnalysis == x.skipAnalysis) && (this.canWork == x.canWork)
+    case x: InitializeOption => (this.token == x.token) && (this.skipAnalysis == x.skipAnalysis) && (this.canWork == x.canWork) && (this.subscribeToAll == x.subscribeToAll)
     case _ => false
   })
   override def hashCode: Int = {
-    37 * (37 * (37 * (37 * (17 + "sbt.internal.protocol.InitializeOption".##) + token.##) + skipAnalysis.##) + canWork.##)
+    37 * (37 * (37 * (37 * (37 * (17 + "sbt.internal.protocol.InitializeOption".##) + token.##) + skipAnalysis.##) + canWork.##) + subscribeToAll.##)
   }
   override def toString: String = {
-    "InitializeOption(" + token + ", " + skipAnalysis + ", " + canWork + ")"
+    "InitializeOption(" + token + ", " + skipAnalysis + ", " + canWork + ", " + subscribeToAll + ")"
   }
-  private def copy(token: Option[String] = token, skipAnalysis: Option[Boolean] = skipAnalysis, canWork: Option[Boolean] = canWork): InitializeOption = {
-    new InitializeOption(token, skipAnalysis, canWork)
+  private def copy(token: Option[String] = token, skipAnalysis: Option[Boolean] = skipAnalysis, canWork: Option[Boolean] = canWork, subscribeToAll: Option[Boolean] = subscribeToAll): InitializeOption = {
+    new InitializeOption(token, skipAnalysis, canWork, subscribeToAll)
   }
   def withToken(token: Option[String]): InitializeOption = {
     copy(token = token)
@@ -47,6 +49,12 @@ final class InitializeOption private (
   def withCanWork(canWork: Boolean): InitializeOption = {
     copy(canWork = Option(canWork))
   }
+  def withSubscribeToAll(subscribeToAll: Option[Boolean]): InitializeOption = {
+    copy(subscribeToAll = subscribeToAll)
+  }
+  def withSubscribeToAll(subscribeToAll: Boolean): InitializeOption = {
+    copy(subscribeToAll = Option(subscribeToAll))
+  }
 }
 object InitializeOption {
   
@@ -56,4 +64,6 @@ object InitializeOption {
   def apply(token: String, skipAnalysis: Boolean): InitializeOption = new InitializeOption(Option(token), Option(skipAnalysis))
   def apply(token: Option[String], skipAnalysis: Option[Boolean], canWork: Option[Boolean]): InitializeOption = new InitializeOption(token, skipAnalysis, canWork)
   def apply(token: String, skipAnalysis: Boolean, canWork: Boolean): InitializeOption = new InitializeOption(Option(token), Option(skipAnalysis), Option(canWork))
+  def apply(token: Option[String], skipAnalysis: Option[Boolean], canWork: Option[Boolean], subscribeToAll: Option[Boolean]): InitializeOption = new InitializeOption(token, skipAnalysis, canWork, subscribeToAll)
+  def apply(token: String, skipAnalysis: Boolean, canWork: Boolean, subscribeToAll: Boolean): InitializeOption = new InitializeOption(Option(token), Option(skipAnalysis), Option(canWork), Option(subscribeToAll))
 }

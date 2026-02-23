@@ -22,4 +22,5 @@ type InitializeOption {
   token: String
   skipAnalysis: Boolean @since("1.4.0")
   canWork: Boolean @since("1.10.8")
+  subscribeToAll: Boolean @since("2.0.0")
 }

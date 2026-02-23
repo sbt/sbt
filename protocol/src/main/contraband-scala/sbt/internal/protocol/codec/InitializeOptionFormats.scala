@@ -14,8 +14,9 @@ given InitializeOptionFormat: JsonFormat[sbt.internal.protocol.InitializeOption]
       val token = unbuilder.readField[Option[String]]("token")
       val skipAnalysis = unbuilder.readField[Option[Boolean]]("skipAnalysis")
       val canWork = unbuilder.readField[Option[Boolean]]("canWork")
+      val subscribeToAll = unbuilder.readField[Option[Boolean]]("subscribeToAll")
       unbuilder.endObject()
-      sbt.internal.protocol.InitializeOption(token, skipAnalysis, canWork)
+      sbt.internal.protocol.InitializeOption(token, skipAnalysis, canWork, subscribeToAll)
       case None =>
       deserializationError("Expected JsObject but found None")
     }
@@ -25,6 +26,7 @@ given InitializeOptionFormat: JsonFormat[sbt.internal.protocol.InitializeOption]
     builder.addField("token", obj.token)
     builder.addField("skipAnalysis", obj.skipAnalysis)
     builder.addField("canWork", obj.canWork)
+    builder.addField("subscribeToAll", obj.subscribeToAll)
     builder.endObject()
   }
 }

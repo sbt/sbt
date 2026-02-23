@@ -1,0 +1,2 @@
+# Exercise server client path (subscribe-to-all by default). Closes #4399.
+> show name
