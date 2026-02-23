@@ -74,6 +74,14 @@ class ZincComponentManager(
   def file(id: String)(ifMissing: IfMissing): File = {
     files(id)(ifMissing).toList match {
       case x :: Nil => x
+      case xs if xs.size > 1 =>
+        val canonical = xs.find(_.getName == s"$id.jar").getOrElse(xs.head)
+        val toRemove = xs.filterNot(_ == canonical)
+        toRemove.foreach(f => IO.delete(f))
+        log.warn(
+          s"Multiple files found for component '$id', removing extras: ${toRemove.mkString(", ")}"
+        )
+        canonical
       case xs => invalid(s"Expected single file for component '$id', found: ${xs.mkString(", ")}")
     }
   }
@@ -100,9 +108,13 @@ class ZincComponentManager(
   /** Retrieve the file for component 'id' from the secondary cache. */
   private def update(id: String): Unit = {
     secondaryCacheDir.foreach { dir =>
-      val file = secondaryCacheFile(id, dir)
-      if (file.exists) {
-        define(id, Seq(file))
+      val secondary = secondaryCacheFile(id, dir)
+      if (secondary.exists) {
+        IO.withTemporaryDirectory { tmp =>
+          val bridgeJar = new File(tmp, s"$id.jar")
+          IO.copyFile(secondary, bridgeJar)
+          define(id, Seq(bridgeJar))
+        }
       }
     }
   }
