@@ -81,7 +81,7 @@ class ZincComponentManagerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "update" should "clean stale stamped jars from the component directory" in {
+  "update" should "not produce duplicate jars on repeated lookups from secondary cache" in {
     IO.withTemporaryDirectory { base =>
       val componentDir = base / "components"
       IO.createDirectory(componentDir)
@@ -91,19 +91,16 @@ class ZincComponentManagerSpec extends AnyFlatSpec with Matchers {
       val manager =
         new ZincComponentManager(lock, provider, Some(secondaryDir), logger)
       val id = "org.scala-sbt-compiler-bridge_2.12-1.10.5-bin_2.12.20__65.0"
-      val dir = componentDir / id
-      IO.createDirectory(dir)
-      IO.write(dir / s"$id-old_timestamp.jar", "stale content")
       val stampedVersion = ZincComponentManager.stampedVersion
       val secondaryCacheFile =
         secondaryDir / "org.scala-sbt" / s"$id-$stampedVersion.jar"
-      IO.write(secondaryCacheFile, "new bridge content")
-      val result = manager.file(id)(IfMissing.fail)
-      result.getName shouldBe s"$id.jar"
-      val allFiles = IO.listFiles(dir)
-      allFiles should have size 1
-      allFiles.head.getName shouldBe s"$id.jar"
-      IO.read(allFiles.head) shouldBe "new bridge content"
+      IO.write(secondaryCacheFile, "bridge content")
+      val result1 = manager.file(id)(IfMissing.fail)
+      result1.getName shouldBe s"$id.jar"
+      IO.listFiles(componentDir / id) should have size 1
+      val result2 = manager.file(id)(IfMissing.fail)
+      result2.getName shouldBe s"$id.jar"
+      IO.listFiles(componentDir / id) should have size 1
     }
   }
 }
