@@ -144,9 +144,8 @@ private[sbt] object CrossJava {
       val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
       val version: Parser[SwitchTarget] =
         (token(
-          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions*) ~ "!".?
-        ) || token(StringBasic))
+          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*) ~ "!".?
+        ) || token(StringBasic)).examples(knownVersions*)
           .map {
             case Left(((vendor, (v1, vs)), bang)) =>
               val force = bang.isDefined
