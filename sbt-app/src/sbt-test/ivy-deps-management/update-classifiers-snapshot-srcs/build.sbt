@@ -3,7 +3,7 @@ def localRepo = Def.setting((target in LocalRootProject).value / "local-repo")
 
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
-val commonSettings = Seq[Def.Setting[_]](
+val commonSettings = Seq[Def.Setting[?]](
   organization := "org.example",
   version := "1.0-SNAPSHOT",
   scalaVersion := "2.11.7",

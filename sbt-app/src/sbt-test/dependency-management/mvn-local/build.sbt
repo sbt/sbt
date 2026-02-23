@@ -1,6 +1,6 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
-def commonSettings: Seq[Def.Setting[_]] =
+def commonSettings: Seq[Def.Setting[?]] =
   Seq(
     ivyPaths := IvyPaths( (ThisBuild / baseDirectory).value, Some((baseDirectory in LocalRootProject).value / "ivy-cache")),
     dependencyCacheDirectory := (baseDirectory in LocalRootProject).value / "dependency",

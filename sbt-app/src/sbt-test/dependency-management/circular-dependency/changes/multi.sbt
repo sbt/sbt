@@ -5,7 +5,7 @@ lazy val check = taskKey[Unit]("Runs the check")
 def localCache =
   ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
 
-def commonSettings: Seq[Def.Setting[_]] =
+def commonSettings: Seq[Def.Setting[?]] =
   Seq(
     localCache,
     scalaVersion := "2.10.4",

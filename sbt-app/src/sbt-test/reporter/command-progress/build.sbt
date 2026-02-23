@@ -15,8 +15,8 @@ commandProgress += new ExecuteProgress2:
       allDeps: Iterable[TaskId[?]],
       pendingDeps: Iterable[TaskId[?]]
   ): Unit = ()
-  override def afterReady(task: TaskId[_]): Unit = ()
-  override def beforeWork(task: TaskId[_]): Unit = ()
+  override def afterReady(task: TaskId[?]): Unit = ()
+  override def beforeWork(task: TaskId[?]): Unit = ()
   override def afterWork[A](task: TaskId[A], result: Either[TaskId[A], Result[A]]): Unit = ()
   override def afterCompleted[A](task: TaskId[A], result: Result[A]): Unit = ()
   override def afterAllCompleted(results: RMap[TaskId, Result]): Unit = ()
