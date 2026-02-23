@@ -620,7 +620,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
           } else testLoop(m, c, c :: history)
         }
       }
-      orgNamePairs map { orgname =>
+      orgNamePairs foreach { orgname =>
         testLoop(orgname, orgname, List(orgname))
       }
       loopLists.toList
