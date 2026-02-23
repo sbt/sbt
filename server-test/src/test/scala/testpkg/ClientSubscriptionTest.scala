@@ -18,7 +18,9 @@ class ClientSubscriptionTest extends AbstractServerTest {
       """{ "jsonrpc": "2.0", "id": 2, "method": "sbt/exec", "params": { "commandLine": "show name" } }"""
     )
     def isLogMessageNotification(line: String): Boolean =
-      line.contains("\"method\":\"build/logMessage\"") || line.contains("\"method\": \"build/logMessage\"")
+      line.contains("\"method\":\"build/logMessage\"") || line.contains(
+        "\"method\": \"build/logMessage\""
+      )
     assert(
       svr.waitForString(10.seconds)(isLogMessageNotification),
       "subscribe-to-all client must receive broadcast build/logMessage when a command produces log output"

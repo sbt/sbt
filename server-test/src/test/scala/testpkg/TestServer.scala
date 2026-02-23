@@ -49,7 +49,14 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
     val sbtVersion = TestProperties.version
     val scalaVersion = TestProperties.scalaVersion
-    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath.toSeq, temp, subscribeToAllForTest)
+    svr = TestServer.get(
+      testDirectory,
+      scalaVersion,
+      sbtVersion,
+      classpath.toSeq,
+      temp,
+      subscribeToAllForTest
+    )
   }
   override protected def afterAll(): Unit = {
     svr.bye()
@@ -78,7 +85,8 @@ object TestServer {
     println(s"Starting test server $testBuild")
     IO.copyDirectory(serverTestBase / testBuild, temp / testBuild)
 
-    val testServer = TestServer(temp / testBuild, scalaVersion, sbtVersion, classpath, subscribeToAll)
+    val testServer =
+      TestServer(temp / testBuild, scalaVersion, sbtVersion, classpath, subscribeToAll)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
