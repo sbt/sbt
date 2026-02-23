@@ -2246,6 +2246,7 @@ object Defaults extends BuildCommon {
     val in0 = (compileJava / compileInputs).value
     val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
     val reporter = (compile / bspReporter).value
+    val log = CompileDebugLogger(projectId, s.log)
     try {
       if (r.hasModified) {
         val result0 = incCompiler
