@@ -455,10 +455,17 @@ object ProjectMatrix {
       copy(settings = (settings: Seq[Def.Setting[?]]) ++ Def.settings(ss*))
 
     override def enablePlugins(ns: Plugins*): ProjectMatrix =
-      setPlugins(ns.foldLeft(plugins)(Plugins.and))
+      setPlugins(ns.foldLeft(plugins)(Plugins.overrideWith))
 
     override def disablePlugins(ps: AutoPlugin*): ProjectMatrix =
-      setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
+      if ps.isEmpty then this
+      else
+        setPlugins(
+          Plugins.overrideWith(
+            plugins,
+            Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)
+          )
+        )
 
     override def configure(ts: (Project => Project)*): ProjectMatrix =
       copy(transforms = transforms ++ ts)
