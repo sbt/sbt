@@ -145,7 +145,8 @@ private[sbt] object CrossJava {
       val version: Parser[SwitchTarget] =
         (token(
           (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*) ~ "!".?
-        ) || token(StringBasic)).examples(knownVersions*)
+        ) || token(StringBasic))
+          .examples(knownVersions*)
           .map {
             case Left(((vendor, (v1, vs)), bang)) =>
               val force = bang.isDefined
