@@ -13,7 +13,7 @@ object TupleMapExtension:
 
     // typed version of tuple.toList
     def toList0: List[F1[Any]] =
-      tuple.iterator.toList.asInstanceOf[List[F1[Any]]]
+      tuple.iterator.toList
 
     def unmap(f: [a] => F1[a] => a): Tup = transform[[A] =>> A](f).asInstanceOf[Tup]
     def transform[F2[_]](f: [a] => F1[a] => F2[a]): Tuple.Map[Tup, F2] =
