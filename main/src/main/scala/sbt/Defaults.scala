@@ -2019,6 +2019,16 @@ object Defaults extends BuildCommon {
     ()
   }
 
+  private[sbt] def docOptionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] =
+    def loop(opt: List[String], result: List[File]): List[File] =
+      opt.dropWhile(!fileInputOpts.contains(_)) match
+        case _ :: fileOpt :: tail =>
+          val file = new File(fileOpt)
+          if file.isFile then loop(tail, file :: result)
+          else loop(tail, result)
+        case _ => result
+    loop(options.toList, Nil)
+
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[?]] =
     inTask(key)(
       Seq(
@@ -2058,6 +2068,8 @@ object Defaults extends BuildCommon {
           val tFiles = tastyFiles.value
           val sv = scalaVersion.value
           val allDeps = allDependencies.value
+          val fiOpts = fileInputOptions.value
+          val maxErr = maxErrors.value
           (hasScala, hasJava) match {
             case (true, _) =>
               val xapisFiles = xapis.map { (k, v) =>
@@ -2077,38 +2089,94 @@ object Defaults extends BuildCommon {
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
-              // todo: cache this
               if docSrcFiles.nonEmpty then
-                IO.delete(out)
-                IO.createDirectory(out)
-                // use PlainVirtualFile since Scaladoc currently doesn't handle actual VirtualFiles
-                scalac.doc(
-                  docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                  cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                  converter,
-                  out.toPath(),
-                  resolvedOptions,
-                  maxErrors.value,
-                  s.log,
+                val inputFiles = docSrcFiles.toSet ++ docOptionFiles(resolvedOptions, fiOpts)
+                type Inputs = (
+                    FilesInfo[HashFileInfo],
+                    FilesInfo[ModifiedFileInfo],
+                    Seq[String],
+                    Int,
                 )
+                val inputs: Inputs = (
+                  FileInfo.hash(inputFiles),
+                  FilesInfo[ModifiedFileInfo](
+                    cp.toSet.map(FileInfo.lastModified.fileOrDirectoryMax)
+                  ),
+                  resolvedOptions,
+                  maxErr,
+                )
+                val cachedDoc =
+                  Tracked.inputChangedW(s.cacheStoreFactory.make("inputs")) {
+                    (inChanged: Boolean, _: Inputs) =>
+                      Tracked.inputChangedW(s.cacheStoreFactory.make("output")) {
+                        (outChanged: Boolean, _: FilesInfo[PlainFileInfo]) =>
+                          if inChanged || outChanged then
+                            IO.delete(out)
+                            IO.createDirectory(out)
+                            scalac.doc(
+                              docSrcFiles
+                                .map(_.toPath())
+                                .map(new sbt.internal.inc.PlainVirtualFile(_)),
+                              cp.map(converter.toPath)
+                                .map(new sbt.internal.inc.PlainVirtualFile(_)),
+                              converter,
+                              out.toPath(),
+                              resolvedOptions,
+                              maxErr,
+                              s.log,
+                            )
+                          else
+                            s.log.debug(
+                              "Scaladoc is up to date: " + out.getAbsolutePath
+                            )
+                      }
+                  }
+                cachedDoc(inputs)(FileInfo.exists(out.allPaths.get().toSet))
               else ()
             case (_, true) =>
               import sbt.internal.inc.javac.JavaCompilerArguments
-              val javaSourcesOnly: VirtualFile => Boolean = _.id.endsWith(".java")
               val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
               val options = javacOptions.value.toList
-              cs.javaTools.javadoc.run(
-                srcs.toArray
-                  .map { x =>
-                    converter.toVirtualFile(x.toPath)
+              val javaSrcs = srcs.filter(_.name.endsWith(".java"))
+              if javaSrcs.nonEmpty then
+                val inputFiles = javaSrcs.toSet ++ docOptionFiles(options, fiOpts)
+                type JInputs = (
+                    FilesInfo[HashFileInfo],
+                    FilesInfo[ModifiedFileInfo],
+                    Seq[String],
+                )
+                val inputs: JInputs = (
+                  FileInfo.hash(inputFiles),
+                  FilesInfo[ModifiedFileInfo](
+                    cp.toSet.map(FileInfo.lastModified.fileOrDirectoryMax)
+                  ),
+                  options,
+                )
+                val cachedDoc =
+                  Tracked.inputChangedW(s.cacheStoreFactory.make("java-inputs")) {
+                    (inChanged: Boolean, _: JInputs) =>
+                      Tracked.inputChangedW(s.cacheStoreFactory.make("java-output")) {
+                        (outChanged: Boolean, _: FilesInfo[PlainFileInfo]) =>
+                          if inChanged || outChanged then
+                            IO.delete(out)
+                            IO.createDirectory(out)
+                            cs.javaTools.javadoc.run(
+                              javaSrcs.toArray
+                                .map(x => converter.toVirtualFile(x.toPath)),
+                              JavaCompilerArguments(Nil, classpath, options).toArray,
+                              CompileOutput(out.toPath),
+                              IncToolOptionsUtil.defaultIncToolOptions(),
+                              reporter,
+                              s.log,
+                            )
+                          else
+                            s.log.debug(
+                              "Javadoc is up to date: " + out.getAbsolutePath
+                            )
+                      }
                   }
-                  .filter(javaSourcesOnly),
-                JavaCompilerArguments(Nil, classpath, options).toArray,
-                CompileOutput(out.toPath),
-                IncToolOptionsUtil.defaultIncToolOptions(),
-                reporter,
-                s.log,
-              )
+                cachedDoc(inputs)(FileInfo.exists(out.allPaths.get().toSet))
+              else ()
             case _ => () // do nothing
           }
           out

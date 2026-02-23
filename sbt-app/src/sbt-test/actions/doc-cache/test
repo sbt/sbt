@@ -1,0 +1,22 @@
+# Generate docs
+> doc
+$ exists target/**/api/index.html
+$ exists target/**/api/example/Hello$.html
+
+# Delete the api output directory
+$ delete target/scala-3.6.4/api
+
+# Regenerate docs after deletion: sbt should notice the output is missing
+> doc
+$ exists target/**/api/index.html
+$ exists target/**/api/example/Hello$.html
+
+# Run doc again without changes: should be cached (no-op)
+> doc
+$ exists target/**/api/index.html
+
+# Add a new source file and regenerate: should detect input change
+$ copy-file changes/World.scala src/main/scala/example/World.scala
+> compile
+> doc
+$ exists target/**/api/example/World$.html
