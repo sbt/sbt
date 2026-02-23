@@ -11,6 +11,7 @@ package parser
 
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.core.Contexts.Context
+import scala.annotation.tailrec
 
 private[sbt] object SbtRefactorings:
 
@@ -91,6 +92,7 @@ private[sbt] object SbtRefactorings:
     seq.toMap
   }
 
+  @tailrec
   private def extractSettingName(tree: untpd.Tree): String = tree match
     case untpd.Ident(name)        => name.toString
     case untpd.InfixOp(lhs, _, _) => extractSettingName(lhs)

@@ -71,7 +71,12 @@ private[sbt] object ZincComponentCompiler {
     override def fetchCompiledBridge(scalaInstance: XScalaInstance, logger: Logger): File = {
       val scalaVersion = scalaInstance.actualVersion()
       val bridgeSources = userProvidedBridgeSources
-        .getOrElse(ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion))
+        .getOrElse(
+          ZincLmUtil.getDefaultBridgeSourceModule(
+            sbt.librarymanagement.ScalaArtifacts.Organization,
+            scalaVersion
+          )
+        )
       compiledBridge(bridgeSources, scalaInstance, logger)
     }
 

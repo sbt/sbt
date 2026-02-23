@@ -216,7 +216,9 @@ object Act {
         case None    => noValidKeys
         case Some(x) => success(x)
       val validFilter = structure.fold(isValid(data))(isValidForAggregate(data, _))
-      selectFromValid(ss filter validFilter, default)
+      val valid = ss filter validFilter
+      val directlyDefined = valid filter isValid(data)
+      selectFromValid(if directlyDefined.nonEmpty then directlyDefined else valid, default)
     }
 
   private def isValidForAggregate(

@@ -473,6 +473,12 @@ lazy val taskProj = (project in file("tasks"))
     name := "Tasks",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingTypesProblem]("sbt.Execute$State$"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.Execute#State.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Pending"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Running"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Calling"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Done"),
     )
   )
 
@@ -669,6 +675,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
       Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.inc.ZincLmUtil.*"),
     ),
     libraryDependencies += launcherInterface,
   )

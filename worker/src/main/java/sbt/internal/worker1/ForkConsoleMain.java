@@ -19,11 +19,12 @@ import xsbti.compile.ConsoleInterface1;
 public final class ForkConsoleMain {
   public void run(long id, ConsoleInfo info) throws Exception {
     try {
-      Class cls = ConsoleInterface1.class;
-      Iterator iter = ServiceLoader.load(cls, ForkConsoleMain.class.getClassLoader()).iterator();
+      Class<ConsoleInterface1> cls = ConsoleInterface1.class;
+      Iterator<ConsoleInterface1> iter =
+          ServiceLoader.load(cls, ForkConsoleMain.class.getClassLoader()).iterator();
       List<ConsoleInterface1> list = new ArrayList<>();
       while (iter.hasNext()) {
-        list.add((ConsoleInterface1) iter.next());
+        list.add(iter.next());
       }
       if (list.size() > 0) {
         runInterface1(list.get(0), info);
@@ -59,7 +60,7 @@ public final class ForkConsoleMain {
   }
 
   private void runOldInterface(ConsoleInfo info) throws Exception {
-    Class concrete = Class.forName("xsbt.ConsoleInterface");
+    Class<?> concrete = Class.forName("xsbt.ConsoleInterface");
     Object instance = concrete.getDeclaredConstructor().newInstance();
     Method m =
         concrete.getMethod(

@@ -17,6 +17,7 @@ import Def.{ ScopedKey, Setting, Settings }
 import Scope.GlobalScope
 import sbt.internal.parser.SbtParser
 import sbt.io.IO
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 import xsbti.PathBasedFile
 import xsbti.VirtualFile
@@ -299,6 +300,7 @@ private[sbt] object EvaluateConfigurations {
   ): (Seq[(String, Tree, LineRange)], Seq[(String, Tree, LineRange)]) =
     lines partition { case (_, tree, _) => isDefinition(tree) }
 
+  @tailrec
   private def isDefinition(tree: Tree): Boolean = {
     tree match {
       case Annotated(arg, annot) => isDefinition(arg)

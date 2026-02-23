@@ -38,6 +38,7 @@ private[sbt] object ClassLoaders {
    */
   private[sbt] def testTask: Def.Initialize[Task[ClassLoader]] = Def.task {
     val si = scalaInstance.value
+    val useScalaLibraryLayer = autoScalaLibrary.value
     val converter = fileConverter.value
     val cp = fullClasspath.value
       .map(_.data)
@@ -47,17 +48,21 @@ private[sbt] object ClassLoaders {
     def getLm(f: File): Long = dependencyStamps.getOrElse(f, IO.getModifiedTimeOrZero(f))
     val rawCP = cp.map(f => f -> getLm(f))
     val fullCP =
-      if si.isManagedVersion then rawCP
+      if !useScalaLibraryLayer then rawCP
+      else if si.isManagedVersion then rawCP
       else si.libraryJars.map(j => j -> IO.getModifiedTimeOrZero(j)).toSeq ++ rawCP
     val exclude: Set[File] = dependencyJars(exportedProducts).value
       .map(converter.toPath)
       .map(_.toFile)
-      .toSet ++ si.libraryJars
+      .toSet ++ (if useScalaLibraryLayer then si.libraryJars.toSeq else Seq.empty)
+    val strategy =
+      if useScalaLibraryLayer then classLoaderLayeringStrategy.value
+      else ClassLoaderLayeringStrategy.Flat
     val logger = state.value.globalLogging.full
     val close = closeClassLoaders.value
     val allowZombies = allowZombieClassLoaders.value
     buildLayers(
-      strategy = classLoaderLayeringStrategy.value,
+      strategy = strategy,
       si = si,
       fullCP = fullCP,
       allDependenciesSet = dependencyJars(dependencyClasspath).value

@@ -535,7 +535,7 @@ private[sbt] object LibraryManagement {
 
       // Sort by version components (major, minor, patch, rc) descending
       val latestRC =
-        rcVersions.sortBy { case (maj, min, pat, rc, _) => (-maj, -min, -pat, -rc) }.head._5
+        rcVersions.minBy { case (maj, min, pat, rc, _) => (-maj, -min, -pat, -rc) }._5
       log.info(s"Latest Scala 3 release candidate: $latestRC")
       latestRC
     } finally {
@@ -756,7 +756,7 @@ private[sbt] object LibraryManagement {
         val tmpFile = File.createTempFile("checksum", suffix)
         IO.write(tmpFile, content)
         (tmpFile, suffix)
-      }.toVector
+      }
 
     artifacts.foreach { case (artifact, sourceFile) =>
       val folder = typeToFolder(artifact.`type`)
@@ -903,7 +903,6 @@ private[sbt] object LibraryManagement {
           val tmpFile = File.createTempFile("checksum", suffix)
           IO.write(tmpFile, content)
           (tmpFile, suffix)
-        .toVector
 
     val base = baseUrl.stripSuffix("/") + "/"
     artifacts.foreach:

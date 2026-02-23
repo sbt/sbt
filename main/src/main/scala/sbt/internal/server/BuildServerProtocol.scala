@@ -242,7 +242,7 @@ object BuildServerProtocol {
       workspace.warnIfBuildsNonEmpty(Method.ScalaTestClasses, s.log)
       val items = bspScalaTestClassesItem.result.all(filter).value
       val successfulItems = anyOrThrow(items).flatten.toVector
-      val result = ScalaTestClassesResult(successfulItems.toVector, None)
+      val result = ScalaTestClassesResult(successfulItems, None)
       s.respondEvent(result)
     }.evaluated,
     bspBuildTargetJVMRunEnvironment / aggregate := false,

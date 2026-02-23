@@ -749,6 +749,7 @@ object Defaults extends BuildCommon {
           val r = dependencyResolution.value
           val uc = updateConfiguration.value
           val jar = ZincLmUtil.fetchDefaultBridgeModule(
+            scalaOrganization.value,
             sv,
             r,
             uc,
@@ -768,12 +769,14 @@ object Defaults extends BuildCommon {
         if b.nonEmpty then Def.task { b }
         else Compiler.scalaCompilerBridgeJarsTask(scalaCompilerBridgeSource, s.log)
       }).value,
-      scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(scalaVersion.value),
+      scalaCompilerBridgeSource := ZincLmUtil
+        .getDefaultBridgeSourceModule(scalaOrganization.value, scalaVersion.value),
       auxiliaryClassFiles ++= {
         if (ScalaArtifacts.isScala3(scalaVersion.value)) List(TastyFiles.instance)
         else Nil
       },
       consoleProject / scalaCompilerBridgeSource := ZincLmUtil.getDefaultBridgeSourceModule(
+        ScalaArtifacts.Organization,
         appConfiguration.value.provider.scalaProvider.version
       ),
       classpathOptions := ClasspathOptionsUtil.noboot(scalaVersion.value),
@@ -1546,7 +1549,7 @@ object Defaults extends BuildCommon {
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)
     val result = output map { out =>
-      out.events.foreach { (suite, e) =>
+      out.events.foreachEntry { (suite, e) =>
         if (
           strategy != ClassLoaderLayeringStrategy.Flat ||
           strategy != ClassLoaderLayeringStrategy.ScalaLibrary
@@ -2064,6 +2067,13 @@ object Defaults extends BuildCommon {
                 if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
                 else Opts.doc.externalAPI(xapisFiles)
               val options = sOpts ++ externalApiOpts
+              def convertVfRef(value: String): String =
+                if !value.contains("$") then value
+                else converter.toPath(VirtualFileRef.of(value)).toString
+              val resolvedOptions = options.map { x =>
+                if !x.contains("$") then x
+                else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
+              }
               val scalac = cs.scalac match
                 case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
               val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
@@ -2077,7 +2087,7 @@ object Defaults extends BuildCommon {
                   cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
                   converter,
                   out.toPath(),
-                  options,
+                  resolvedOptions,
                   maxErrors.value,
                   s.log,
                 )
@@ -2175,7 +2185,7 @@ object Defaults extends BuildCommon {
     val map = managedFileStampCache.value
     val analysis = analysisResult.analysis
     import scala.jdk.CollectionConverters.*
-    analysis.readStamps.getAllProductStamps.asScala.foreach { case (f: VirtualFileRef, s) =>
+    analysis.readStamps.getAllProductStamps.asScala.foreachEntry { case (f: VirtualFileRef, s) =>
       map.put(c.toPath(f), sbt.nio.FileStamp.fromZincStamp(s))
     }
     analysis
@@ -3693,7 +3703,7 @@ object Classpaths {
           // https://github.com/sbt/sbt/issues/4408
           val xs = (explicit, boot) match {
             case (Some(ex), Some(b)) => (ex.toVector ++ b.toVector).distinct
-            case (Some(ex), None)    => ex.toVector
+            case (Some(ex), None)    => ex
             case (None, Some(b))     => b.toVector
             case _                   => Vector()
           }
@@ -3982,10 +3992,10 @@ object Classpaths {
           val scalaProvider = ac.provider.scalaProvider
           usiOnly match
             case Some(instance) =>
-              unmanagedJarsTask(sv, instance.version, instance.allJars)
+              unmanagedJarsTask(sv, instance.version, instance.allJars.toIndexedSeq)
             case None =>
               (subVersion: String) =>
-                if (scalaProvider.version == subVersion) scalaProvider.jars else Nil
+                if (scalaProvider.version == subVersion) scalaProvider.jars.toIndexedSeq else Nil
         }
         val updateConf = {
           // Log captures log messages at all levels, except ivy logs.
@@ -4032,7 +4042,7 @@ object Classpaths {
           includeDetails = includeDetails,
           log = s.log
         )
-    }: @nowarn
+    }
 
   private[sbt] def dependencyPositionsTask: Initialize[Task[Map[ModuleID, SourcePosition]]] =
     Def.task {
