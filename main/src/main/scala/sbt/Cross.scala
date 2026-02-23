@@ -306,7 +306,7 @@ object Cross {
       } else {
         included
           .groupBy(_._2)
-          .foreach { (selectedVersion, projects) =>
+          .foreachEntry { (selectedVersion, projects) =>
             state.log.info(
               s"Setting Scala version to $selectedVersion on ${projects.size} projects."
             )

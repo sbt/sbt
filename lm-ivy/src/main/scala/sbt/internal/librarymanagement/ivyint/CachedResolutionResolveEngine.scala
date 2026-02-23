@@ -646,7 +646,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
               val next: (String, String) = loop(loop.indexOf(moduleWithMostCallers) + 1)
               // remove the module with most callers as the caller of next.
               // so, A -> C, B -> C, and C -> A. C has the most callers, and C -> A will be removed.
-              allModules2 foreach {
+              allModules2 foreachEntry {
                 case (k: (String, String), oars0) if k == next =>
                   val oars: Vector[OrganizationArtifactReport] = oars0 map { oar =>
                     val mrs = oar.modules map { mr =>

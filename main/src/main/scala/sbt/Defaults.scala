@@ -1549,7 +1549,7 @@ object Defaults extends BuildCommon {
     }
     val output = Tests.foldTasks(groupTasks, config.parallel)
     val result = output map { out =>
-      out.events.foreach { (suite, e) =>
+      out.events.foreachEntry { (suite, e) =>
         if (
           strategy != ClassLoaderLayeringStrategy.Flat ||
           strategy != ClassLoaderLayeringStrategy.ScalaLibrary
@@ -2185,7 +2185,7 @@ object Defaults extends BuildCommon {
     val map = managedFileStampCache.value
     val analysis = analysisResult.analysis
     import scala.jdk.CollectionConverters.*
-    analysis.readStamps.getAllProductStamps.asScala.foreach { case (f: VirtualFileRef, s) =>
+    analysis.readStamps.getAllProductStamps.asScala.foreachEntry { case (f: VirtualFileRef, s) =>
       map.put(c.toPath(f), sbt.nio.FileStamp.fromZincStamp(s))
     }
     analysis
