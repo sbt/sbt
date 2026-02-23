@@ -182,6 +182,7 @@ object Defaults extends BuildCommon {
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
       allowUnsafeScalaLibUpgrade :== false,
+      allowMismatchScala :== false,
       classpathEntryDefinesClass := Def.uncached { (file: File) =>
         sys.error("use classpathEntryDefinesClassVF instead")
       },

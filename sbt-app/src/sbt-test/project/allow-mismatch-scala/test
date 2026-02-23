@@ -1,0 +1,11 @@
+# 2.13 depending on 3.5 (<=3.7) is allowed as a sandwich exception
+> scala213/compile
+
+# Now change scala3 to 3.8.x to trigger the mismatch error
+> set scala3 / scalaVersion := "3.8.1"
+-> scala213/compile
+
+# Now allow the mismatch
+> set scala213 / allowMismatchScala := true
+> set scala3 / scalaVersion := "3.8.1"
+> scala213/compile

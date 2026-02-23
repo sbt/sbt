@@ -15,7 +15,7 @@ import sbt.nio.Keys.*
 import sbt.nio.file.{ Glob, RecursiveGlob }
 import sbt.Def.Initialize
 import sbt.internal.util.{ Attributed, Dag }
-import sbt.librarymanagement.{ Configuration, TrackLevel }
+import sbt.librarymanagement.{ Configuration, CrossVersion, TrackLevel }
 import sbt.librarymanagement.Configurations.names
 import sbt.SlashSyntax0.*
 import sbt.std.TaskExtra.*
@@ -309,6 +309,35 @@ private[sbt] object ClasspathImpl {
   ): Task[Classpath] =
     getClasspath(unmanagedJars, dep, conf, data)
 
+  private[sbt] def isAllowedScalaMismatch(sv1: String, sv2: String): Boolean =
+    val pv1 = CrossVersion.partialVersion(sv1)
+    val pv2 = CrossVersion.partialVersion(sv2)
+    (pv1, pv2) match
+      case (Some((2, 13)), Some((3, minor))) => minor <= 7
+      case (Some((3, minor)), Some((2, 13))) => minor <= 7
+      case _                                 => false
+
+  private def validateScalaVersions(
+      projectRef: ProjectRef,
+      deps: BuildDependencies,
+      data: Def.Settings,
+  ): Unit =
+    val dominated = (projectRef / allowMismatchScala).get(data).getOrElse(false)
+    if !dominated then
+      (projectRef / scalaVersion).get(data).foreach { sv =>
+        val sbv = CrossVersion.binaryScalaVersion(sv)
+        for case ClasspathDep.ResolvedClasspathDependency(dep, _) <- deps.classpath(projectRef)
+        do
+          val depSv = (dep / scalaVersion).get(data).getOrElse("")
+          val depSbv = CrossVersion.binaryScalaVersion(depSv)
+          if sbv != depSbv then
+            if !isAllowedScalaMismatch(sv, depSv) then
+              sys.error(
+                s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.asInstanceOf[ProjectRef].project} (Scala $depSv). " +
+                  s"To allow this, set `ThisProject / allowMismatchScala := true`"
+              )
+      }
+
   def interDependencies[A](
       projectRef: ProjectRef,
       deps: BuildDependencies,
@@ -323,6 +352,7 @@ private[sbt] object ClasspathImpl {
       trackIfMissing: TaskKey[Seq[A]],
       trackAlways: TaskKey[Seq[A]]
   ): Task[Seq[A]] = {
+    validateScalaVersions(projectRef, deps, data)
     val interDepConfigs = interSort(projectRef, conf, data, deps) filter { (dep, c) =>
       includeSelf || (dep != projectRef) || (conf.name != c && self.name != c)
     }
