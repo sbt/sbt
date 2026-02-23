@@ -3703,7 +3703,7 @@ object Classpaths {
           // https://github.com/sbt/sbt/issues/4408
           val xs = (explicit, boot) match {
             case (Some(ex), Some(b)) => (ex.toVector ++ b.toVector).distinct
-            case (Some(ex), None)    => ex.toVector
+            case (Some(ex), None)    => ex
             case (None, Some(b))     => b.toVector
             case _                   => Vector()
           }

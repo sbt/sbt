@@ -138,8 +138,8 @@ private[sbt] final class AKeyIndex(val data: Relation[Option[AttributeKey[?]], S
   def add(task: Option[AttributeKey[?]], key: AttributeKey[?]): AKeyIndex =
     new AKeyIndex(data + (task, key.label))
   def keys(task: Option[AttributeKey[?]]): Set[String] = data.forward(task)
-  def allKeys: Set[String] = data._2s.toSet
-  def tasks: Set[AttributeKey[?]] = data._1s.flatten.toSet
+  def allKeys: Set[String] = data._2s
+  def tasks: Set[AttributeKey[?]] = data._1s.flatten
   def tasks(key: String): Set[AttributeKey[?]] = data.reverse(key).flatten
 }
 

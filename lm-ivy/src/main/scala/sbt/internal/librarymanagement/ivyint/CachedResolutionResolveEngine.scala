@@ -220,7 +220,7 @@ private[sbt] class CachedResolutionResolveCache {
        else if (dynamicGraphPath.exists) Some(dynamicGraphPath)
        else None) match {
         case Some(path) =>
-          log.debug(s"parsing ${path.getAbsolutePath.toString}")
+          log.debug(s"parsing ${path.getAbsolutePath}")
           val ur = JsonUtil.parseUpdateReport(path, cachedDescriptor, log)
           if (ur.allFiles forall { _.exists }) {
             updateReportCache(md.getModuleRevisionId) = Right(ur)
@@ -568,7 +568,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
   ): Vector[OrganizationArtifactReport] = {
     // filter out evicted modules from further logic
     def filterReports(report0: OrganizationArtifactReport): Option[OrganizationArtifactReport] =
-      report0.modules.toVector flatMap { mr =>
+      report0.modules flatMap { mr =>
         if (mr.evicted || mr.problem.nonEmpty) None
         else
           // https://github.com/sbt/sbt/issues/1763
@@ -980,7 +980,7 @@ private[sbt] trait CachedResolutionResolveEngine extends ResolveEngine {
       }
     // These are the configurations from the original project we want to resolve.
     val rootModuleConfs = md0.getConfigurations.toVector
-    val configurations0: Vector[ConfigurationReport] = ur.configurations.toVector
+    val configurations0: Vector[ConfigurationReport] = ur.configurations
     // This is how md looks from md0 via dd's mapping.
     val remappedConfigs0: Map[String, Vector[String]] = Map(rootModuleConfs map { conf0 =>
       val remapped: Vector[String] = dd

@@ -756,7 +756,7 @@ private[sbt] object LibraryManagement {
         val tmpFile = File.createTempFile("checksum", suffix)
         IO.write(tmpFile, content)
         (tmpFile, suffix)
-      }.toVector
+      }
 
     artifacts.foreach { case (artifact, sourceFile) =>
       val folder = typeToFolder(artifact.`type`)
@@ -903,7 +903,6 @@ private[sbt] object LibraryManagement {
           val tmpFile = File.createTempFile("checksum", suffix)
           IO.write(tmpFile, content)
           (tmpFile, suffix)
-        .toVector
 
     val base = baseUrl.stripSuffix("/") + "/"
     artifacts.foreach:

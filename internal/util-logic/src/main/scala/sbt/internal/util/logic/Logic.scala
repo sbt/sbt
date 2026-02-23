@@ -236,7 +236,7 @@ object Logic {
   }
 
   private def keepPositive(lits: Set[Literal]): Set[Atom] =
-    lits.collect { case a: Atom => a }.toSet
+    lits.collect { case a: Atom => a }
 
   // precondition: factsToProcess contains no contradictions
   @tailrec private def reduce0(

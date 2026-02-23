@@ -154,7 +154,7 @@ private[internal] object SbtUpdateReport {
 
     val deps = classifiersOpt match {
       case Some(classifiers) =>
-        res.dependencyArtifacts(Some(classifiers.toSeq), classpathOrder)
+        res.dependencyArtifacts(Some(classifiers), classpathOrder)
       case None =>
         res.dependencyArtifacts(None, classpathOrder)
     }

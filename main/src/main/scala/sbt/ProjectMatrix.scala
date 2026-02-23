@@ -592,7 +592,7 @@ object ProjectMatrix {
       jsPlatform(scalaVersions, Nil)
 
     override def defaultAxes(axes: VirtualAxis*): ProjectMatrix =
-      copy(defAxes = axes.toSeq)
+      copy(defAxes = axes)
 
     def scalajsPlugin: Try[AutoPlugin] = {
       import ReflectionUtil.*
@@ -775,7 +775,7 @@ object ProjectMatrix {
       customRow(autoScalaLibrary, crossVersion = None, scalaVersions, axisValues)(process)
 
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
-      new AxisBaseProjectFinder(axisValues.toSeq)
+      new AxisBaseProjectFinder(axisValues)
 
     override def allProjects(): Seq[(Project, Seq[VirtualAxis])] =
       resolvedMappings.map { (row, project) =>

@@ -27,7 +27,7 @@ object ConfigLoader:
     val fromConfigLines = loadLines(fromConfig)
     val fromEtcLines = loadLines(fromEtc)
     val fromSbtConfigLines = loadLines(fromSbtConfig)
-    (fromEtcLines ++ fromConfigLines ++ fromSbtConfigLines ++ fromEnv ++ fromProjectLines).toSeq
+    (fromEtcLines ++ fromConfigLines ++ fromSbtConfigLines ++ fromEnv ++ fromProjectLines)
 
   def loadJvmOpts(cwd: File): Seq[String] =
     val fromProject = new File(cwd, ".jvmopts")
