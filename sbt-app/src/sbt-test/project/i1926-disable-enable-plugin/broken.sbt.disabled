@@ -1,0 +1,4 @@
+def myProject(id: String): Project =
+  Project(id, file(id)).disablePlugins(Issue1926Plugin)
+
+lazy val b = myProject("b").enablePlugins(Issue1926Plugin)

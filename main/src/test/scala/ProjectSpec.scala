@@ -8,9 +8,29 @@
 
 package sbt
 
+import java.io.File
+
 object ProjectSpec extends verify.BasicTestSuite {
+  object TestPlugin extends AutoPlugin {
+    override def requires: Plugins = empty
+  }
+
+  private val base = new File(".")
+
   test("Project should normalize projectIDs if they are empty") {
     assert(Project.normalizeProjectID(emptyFilename) == Right("root"))
+  }
+
+  test("disablePlugins then enablePlugins should keep plugin enabled") {
+    val p = Project("test", base).disablePlugins(TestPlugin).enablePlugins(TestPlugin)
+    assert(Plugins.hasInclude(p.plugins, TestPlugin))
+    assert(!Plugins.hasExclude(p.plugins, TestPlugin))
+  }
+
+  test("enablePlugins then disablePlugins should keep plugin disabled") {
+    val p = Project("test", base).enablePlugins(TestPlugin).disablePlugins(TestPlugin)
+    assert(!Plugins.hasInclude(p.plugins, TestPlugin))
+    assert(Plugins.hasExclude(p.plugins, TestPlugin))
   }
 
   def emptyFilename = ""

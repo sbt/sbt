@@ -976,13 +976,6 @@ else
   vlog "[process_args] java_version = '$java_version'"
   addDefaultMemory
   addSbtScriptProperty
-  if ! printf '%s\n' "${sbt_options[@]}" | grep -q '^-Dsbt\.global\.base='; then
-    if [[ -n "${SBT_CONFIG_HOME}" ]]; then
-      addSbt "-Dsbt.global.base=$SBT_CONFIG_HOME"
-    elif [[ -n "${XDG_CONFIG_HOME}" ]]; then
-      addSbt "-Dsbt.global.base=${XDG_CONFIG_HOME}/sbt"
-    fi
-  fi
   addJdkWorkaround
   set -- "${residual_args[@]}"
   argumentCount=$#

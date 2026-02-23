@@ -18,7 +18,9 @@ object IntegrationTestPaths {
         val name = if (isWindows) "sbt.bat" else "sbt"
         new File(b.getParentFile, s"target/universal/stage/bin/$name").getAbsoluteFile
       case None =>
-        val rel = if (isWindows) "../target/universal/stage/bin/sbt.bat" else "../target/universal/stage/bin/sbt"
+        val rel =
+          if (isWindows) "../target/universal/stage/bin/sbt.bat"
+          else "../target/universal/stage/bin/sbt"
         new File(rel).getAbsoluteFile
     }
 

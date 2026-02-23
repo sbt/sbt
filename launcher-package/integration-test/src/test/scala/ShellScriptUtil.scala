@@ -4,6 +4,8 @@ import java.io.File
 import java.io.PrintWriter
 import java.nio.file.Files
 import sbt.io.IO
+import scala.collection.mutable
+import scala.sys.process.{ BasicIO, Process, ProcessIO }
 import verify.BasicTestSuite
 
 trait ShellScriptUtil extends BasicTestSuite {
@@ -158,16 +160,22 @@ trait ShellScriptUtil extends BasicTestSuite {
             envVars("PATH") = javaBinDir + File.pathSeparator + path
 
           val cmd = LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath) ++ args
-          val out = scala.sys.process
-            .Process(
-              cmd,
-              workingDirectory,
-              envVars.toSeq*
+          val lines = mutable.ListBuffer.empty[String]
+          def processLine(line: String): Unit =
+            Console.err.println(line)
+            lines.append(line)
+          val p = Process(cmd, workingDirectory, envVars.toSeq*)
+            .run(
+              new ProcessIO(
+                _.close(),
+                BasicIO.processFully(processLine),
+                BasicIO.processFully(processLine)
+              )
             )
-            .!!
-            .linesIterator
-            .toList
-          f(out)
+          if p.exitValue != 0 then
+            lines.foreach(l => Console.err.println(l))
+            sys.error(s"process exit with ${p.exitValue}")
+          f(lines.toList)
           ()
         finally
           IO.delete(workingDirectory)
