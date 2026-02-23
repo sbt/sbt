@@ -12,6 +12,7 @@ package complete
 import Parser.*
 import sbt.internal.util.Types.{ left, right, some }
 import sbt.internal.util.Util.{ makeList, separate }
+import scala.annotation.tailrec
 
 /**
  * A String parser that provides semi-automatic tab completion. A successful parse results in a
@@ -505,6 +506,7 @@ trait ParserMain {
 
   // intended to be temporary pending proper error feedback
   def result[T](p: Parser[T], s: String): Either[() => (Seq[String], Int), T] = {
+    @tailrec
     def loop(i: Int, a: Parser[T]): Either[() => (Seq[String], Int), T] =
       a match {
         case Invalid(f) => Left(() => (f.errors, i))
@@ -1003,6 +1005,7 @@ private final class Repeat[T](
     repeat(Some(repeated.derive(c)), repeated, scala.math.max(0, min - 1), max.decrement, accRev)
 
   def completions(level: Int) = {
+    @tailrec
     def pow(comp: Completions, exp: Completions, n: Int): Completions =
       if (n == 1) comp else pow(comp.x(exp), exp, n - 1)
 
