@@ -2174,6 +2174,11 @@ object Defaults extends BuildCommon {
   }
 
   def compileTask: Initialize[Task[CompileAnalysis]] = Def.task {
+    ClasspathImpl.validateScalaVersions(
+      thisProjectRef.value,
+      buildDependencies.value,
+      settingsData.value,
+    )
     val setup: Setup = compileIncSetup.value
     val store = analysisStore(compileAnalysisFile)
     val c = fileConverter.value

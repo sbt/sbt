@@ -317,7 +317,7 @@ private[sbt] object ClasspathImpl {
       case (Some((3, minor)), Some((2, 13))) => minor <= 7
       case _                                 => false
 
-  private def validateScalaVersions(
+  private[sbt] def validateScalaVersions(
       projectRef: ProjectRef,
       deps: BuildDependencies,
       data: Def.Settings,
@@ -333,7 +333,7 @@ private[sbt] object ClasspathImpl {
           if sbv != depSbv then
             if !isAllowedScalaMismatch(sv, depSv) then
               sys.error(
-                s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.asInstanceOf[ProjectRef].project} (Scala $depSv). " +
+                s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.project} (Scala $depSv). " +
                   s"To allow this, set `ThisProject / allowMismatchScala := true`"
               )
       }
@@ -352,7 +352,6 @@ private[sbt] object ClasspathImpl {
       trackIfMissing: TaskKey[Seq[A]],
       trackAlways: TaskKey[Seq[A]]
   ): Task[Seq[A]] = {
-    validateScalaVersions(projectRef, deps, data)
     val interDepConfigs = interSort(projectRef, conf, data, deps) filter { (dep, c) =>
       includeSelf || (dep != projectRef) || (conf.name != c && self.name != c)
     }
