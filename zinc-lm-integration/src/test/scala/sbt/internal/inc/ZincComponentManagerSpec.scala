@@ -80,4 +80,30 @@ class ZincComponentManagerSpec extends AnyFlatSpec with Matchers {
       allFiles.head.getName shouldBe s"$id.jar"
     }
   }
+
+  "update" should "clean stale stamped jars from the component directory" in {
+    IO.withTemporaryDirectory { base =>
+      val componentDir = base / "components"
+      IO.createDirectory(componentDir)
+      val secondaryDir = base / "secondary"
+      IO.createDirectory(secondaryDir / "org.scala-sbt")
+      val provider = componentProvider(componentDir)
+      val manager =
+        new ZincComponentManager(lock, provider, Some(secondaryDir), logger)
+      val id = "org.scala-sbt-compiler-bridge_2.12-1.10.5-bin_2.12.20__65.0"
+      val dir = componentDir / id
+      IO.createDirectory(dir)
+      IO.write(dir / s"$id-old_timestamp.jar", "stale content")
+      val stampedVersion = ZincComponentManager.stampedVersion
+      val secondaryCacheFile =
+        secondaryDir / "org.scala-sbt" / s"$id-$stampedVersion.jar"
+      IO.write(secondaryCacheFile, "new bridge content")
+      val result = manager.file(id)(IfMissing.fail)
+      result.getName shouldBe s"$id.jar"
+      val allFiles = IO.listFiles(dir)
+      allFiles should have size 1
+      allFiles.head.getName shouldBe s"$id.jar"
+      IO.read(allFiles.head) shouldBe "new bridge content"
+    }
+  }
 }

@@ -105,16 +105,28 @@ class ZincComponentManager(
 
   private def invalid(msg: String) = throw new InvalidComponent(msg)
 
-  /** Retrieve the file for component 'id' from the secondary cache. */
+  /**
+   * Retrieve the file for component 'id' from the secondary cache.
+   *
+   * The secondary cache stores jars with a stamped version in the file name
+   * (e.g. `id-1.10.5_20241130T035052.jar`). When `defineComponent` copies this file
+   * into the local component directory, it preserves the original file name.
+   * If the stamped version later changes, a new file is created alongside the old one,
+   * causing `file()` to find multiple jars for the same component.
+   *
+   * To prevent this, we first remove any existing files in the component directory
+   * before defining the component with the canonical name (`id.jar`).
+   */
   private def update(id: String): Unit = {
     secondaryCacheDir.foreach { dir =>
       val secondary = secondaryCacheFile(id, dir)
       if (secondary.exists) {
-        IO.withTemporaryDirectory { tmp =>
-          val bridgeJar = new File(tmp, s"$id.jar")
-          IO.copyFile(secondary, bridgeJar)
-          define(id, Seq(bridgeJar))
+        val componentDir = provider.componentLocation(id)
+        if (componentDir.isDirectory) {
+          IO.listFiles(componentDir).foreach(IO.delete)
         }
+        val canonicalJar = new File(componentDir, s"$id.jar")
+        IO.copyFile(secondary, canonicalJar)
       }
     }
   }
