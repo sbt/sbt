@@ -9,7 +9,7 @@ lazy val PerformanceTest = (config("pt") extend Test)
 
 lazy val root = (project in file("."))
   .configs(PerformanceTest)
-  .settings(Seq(Compile, Test, Runtime, PerformanceTest).map(makeFoo) :_*)
+  .settings(Seq(Compile, Test, Runtime, PerformanceTest).map(makeFoo)*)
   .settings(
      PerformanceTest / bar := IO.write(file("pt-bar"), "bar")
   )

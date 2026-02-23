@@ -11,7 +11,7 @@ def commonSettings: Seq[Def.Setting[_]] =
   )
 
 lazy val main = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     uniqueName,
     libraryDependencies += (projectID in library).value,
@@ -21,7 +21,7 @@ lazy val main = project.
   )
 
 lazy val library = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     uniqueName
   )

@@ -11,7 +11,7 @@ def commonSettings: Seq[Def.Setting[_]] = Seq(
   )
 
 lazy val projA = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.3.2"),
     addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager"  % "0.7.3")

@@ -14,7 +14,7 @@ def commonSettings: Seq[Def.Setting[_]] =
   )
 
 lazy val a = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "a",
     libraryDependencies := Seq(
@@ -24,7 +24,7 @@ lazy val a = project.
   )
 
 lazy val b = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "b",
     // this adds circular dependency
@@ -32,14 +32,14 @@ lazy val b = project.
   )
 
 lazy val c = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "c",
     libraryDependencies := Seq(organization.value %% "b" % version.value)
   )
 
 lazy val root = (project in file(".")).
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     (ThisBuild / organization) := "org.example",
     (ThisBuild / version) := "1.0-SNAPSHOT"
