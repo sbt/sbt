@@ -41,9 +41,9 @@ object VirtualAxis {
   def isSecondaryCompatible(v: VirtualAxis, stack: Seq[VirtualAxis]): Boolean =
     v match {
       case v: ScalaVersionAxis =>
-        val thatSVOpt = (stack collect { case x: ScalaVersionAxis =>
+        val thatSVOpt = stack.collectFirst { case x: ScalaVersionAxis =>
           x
-        }).headOption
+        }
         thatSVOpt match {
           case Some(ScalaVersionAxis(sv, _)) =>
             (v.scalaVersion == sv) ||

@@ -248,9 +248,9 @@ object ProjectMatrix {
   ) {
     def scalaVersionOpt: Option[String] =
       if (autoScalaLibrary)
-        (axisValues collect { case sv: VirtualAxis.ScalaVersionAxis =>
+        axisValues collectFirst { case sv: VirtualAxis.ScalaVersionAxis =>
           sv.scalaVersion
-        }).headOption
+        }
       else None
 
     def isMatch(that: ProjectRow): Boolean =
