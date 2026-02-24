@@ -317,29 +317,6 @@ private[sbt] object ClasspathImpl {
       case (Some((3, minor)), Some((2, 13))) => minor <= 7
       case _                                 => false
 
-  private[sbt] def validateScalaVersions(
-      projectRef: ProjectRef,
-      deps: BuildDependencies,
-      data: Def.Settings,
-  ): Unit =
-    val dominated = (projectRef / allowMismatchScala).get(data).getOrElse(false)
-    if !dominated then
-      (projectRef / scalaVersion).get(data).foreach { sv =>
-        val sbv = CrossVersion.binaryScalaVersion(sv)
-        for case ClasspathDep.ResolvedClasspathDependency(dep, _) <- deps.classpath(projectRef)
-        do
-          val depCrossPaths = (dep / crossPaths).get(data).getOrElse(true)
-          if depCrossPaths then
-            val depSv = (dep / scalaVersion).get(data).getOrElse("")
-            val depSbv = CrossVersion.binaryScalaVersion(depSv)
-            if sbv != depSbv then
-              if !isAllowedScalaMismatch(sv, depSv) then
-                sys.error(
-                  s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.project} (Scala $depSv). " +
-                    s"To allow this, set `ThisProject / allowMismatchScala := true`"
-                )
-      }
-
   def interDependencies[A](
       projectRef: ProjectRef,
       deps: BuildDependencies,
