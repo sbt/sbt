@@ -343,6 +343,16 @@ ${listConflicts(conflicting)}""")
     case And(ns)  => ns.foldLeft(a)(_ && _)
     case b: Basic => a && b
   }
+
+  private[sbt] def overrideWith(current: Plugins, update: Plugins): Plugins = {
+    val opposite: Set[Basic] = flatten(update).map {
+      case Exclude(p) => p: Basic
+      case p: AutoPlugin =>
+        Exclude(p): Basic
+    }.toSet
+    and(remove(current, opposite), update)
+  }
+
   private[sbt] def remove(a: Plugins, del: Set[Basic]): Plugins = a match {
     case b: Basic => if (del(b)) Empty else b
     case Empty    => Empty

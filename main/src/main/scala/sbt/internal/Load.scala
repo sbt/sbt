@@ -27,7 +27,7 @@ import sbt.internal.util.Attributed
 import sbt.internal.util.appmacro.ContextUtil
 import sbt.internal.server.BuildServerEvalReporter
 import sbt.io.{ GlobFilter, IO }
-import sbt.librarymanagement.{ Configuration, Configurations, IvyPaths, Resolver }
+import sbt.librarymanagement.{ Configuration, Configurations, IvyPaths, Resolver, ScalaArtifacts }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile }
@@ -105,7 +105,8 @@ private[sbt] object Load {
       componentProvider = app.provider.components,
       secondaryCacheDir = Option(zincDir),
       dependencyResolution = dependencyResolution,
-      compilerBridgeSource = ZincLmUtil.getDefaultBridgeSourceModule(scalaProvider.version),
+      compilerBridgeSource =
+        ZincLmUtil.getDefaultBridgeSourceModule(ScalaArtifacts.Organization, scalaProvider.version),
       scalaJarsTarget = zincDir,
       state.get(BasicKeys.classLoaderCache),
       log = log

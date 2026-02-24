@@ -10,6 +10,7 @@ package sbt.internal.util
 import Types.*
 import sbt.util.Show
 import Util.{ nil, nilSeq }
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters.*
 
 // delegates should contain the input ScopeType as the first entry
@@ -590,6 +591,7 @@ trait Init:
     val processed = new mutable.HashSet[ScopedKey[?]]
 
     // derives settings, transitively so that a derived setting can trigger another
+    @tailrec
     def process(rem: List[Setting[?]]): Unit = rem match {
       case s :: ss =>
         val sk = s.key

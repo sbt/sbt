@@ -86,7 +86,7 @@ object DependencyLockManager:
             extension = artifact.extension,
             tpe = artifact.`type`
           )
-        }.toVector
+        }
 
         DependencyLock(
           organization = moduleReport.module.organization,
@@ -98,13 +98,13 @@ object DependencyLockManager:
           transitives = Vector.empty,
           artifacts = artifacts
         )
-      }.toVector
+      }
 
       ConfigurationLock(
         name = configReport.configuration.name,
         dependencies = deps
       )
-    }.toVector
+    }
 
     val metadata = LockFileMetadata(
       sbtVersion = sbtVersion,

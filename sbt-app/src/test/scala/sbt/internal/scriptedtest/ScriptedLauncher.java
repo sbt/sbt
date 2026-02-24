@@ -419,6 +419,14 @@ public class ScriptedLauncher {
 
                       @Override
                       public boolean isOverrideRepositories() {
+                        try {
+                          String globalBase = System.getProperty("sbt.global.base");
+                          if (globalBase != null) {
+                            File reposForce = new File(globalBase, "repositories_force");
+                            return reposForce.exists();
+                          }
+                        } catch (SecurityException ignored) {
+                        }
                         return false;
                       }
 

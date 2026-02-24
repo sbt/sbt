@@ -1,0 +1,4 @@
+> projects
+$ copy-file broken.sbt.disabled broken.sbt
+> reload
+> show b/issue1926Marker

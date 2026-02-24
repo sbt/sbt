@@ -1,3 +1,4 @@
+@transient
 val buildInfo = taskKey[Seq[File]]("generates the build info")
 
 ThisBuild / scalaVersion := "2.12.21"

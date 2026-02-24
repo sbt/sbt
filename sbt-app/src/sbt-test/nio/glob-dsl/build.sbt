@@ -2,6 +2,7 @@ import sbt.internal.FileChangesMacro.inputFiles
 // The project contains two files: { Foo.txt, Bar.md } in the subdirector base/subdir/nested-subdir
 
 // Check that we can correctly extract Foo.txt with a recursive source
+@transient
 val foo = taskKey[Seq[File]]("Retrieve Foo.txt")
 
 foo / fileInputs += baseDirectory.value.toGlob / ** / "*.txt"
@@ -13,6 +14,7 @@ val checkFoo = taskKey[Unit]("Check that the Foo.txt file is retrieved")
 checkFoo := assert(foo.value == Seq(baseDirectory.value / "base/subdir/nested-subdir/Foo.txt"))
 
 // Check that we can correctly extract Bar.md with a non-recursive source
+@transient
 val bar = taskKey[Seq[File]]("Retrieve Bar.md")
 
 bar / fileInputs += baseDirectory.value.toGlob / "base" / "subdir" / "nested-subdir" / "*.md"

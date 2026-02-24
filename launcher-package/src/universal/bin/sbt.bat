@@ -675,6 +675,8 @@ if defined sbt_args_sbt_version (
 
 if defined sbt_args_sbt_dir (
   set _SBT_OPTS=-Dsbt.global.base=!sbt_args_sbt_dir! !_SBT_OPTS!
+) else if defined LOCALAPPDATA (
+  set _SBT_OPTS=-Dsbt.global.base=!LOCALAPPDATA!\sbt !_SBT_OPTS!
 )
 
 if defined sbt_args_sbt_boot (

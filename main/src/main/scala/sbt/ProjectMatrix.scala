@@ -248,9 +248,9 @@ object ProjectMatrix {
   ) {
     def scalaVersionOpt: Option[String] =
       if (autoScalaLibrary)
-        (axisValues collect { case sv: VirtualAxis.ScalaVersionAxis =>
+        axisValues collectFirst { case sv: VirtualAxis.ScalaVersionAxis =>
           sv.scalaVersion
-        }).headOption
+        }
       else None
 
     def isMatch(that: ProjectRow): Boolean =
@@ -455,10 +455,17 @@ object ProjectMatrix {
       copy(settings = (settings: Seq[Def.Setting[?]]) ++ Def.settings(ss*))
 
     override def enablePlugins(ns: Plugins*): ProjectMatrix =
-      setPlugins(ns.foldLeft(plugins)(Plugins.and))
+      setPlugins(ns.foldLeft(plugins)(Plugins.overrideWith))
 
     override def disablePlugins(ps: AutoPlugin*): ProjectMatrix =
-      setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
+      if ps.isEmpty then this
+      else
+        setPlugins(
+          Plugins.overrideWith(
+            plugins,
+            Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)
+          )
+        )
 
     override def configure(ts: (Project => Project)*): ProjectMatrix =
       copy(transforms = transforms ++ ts)
@@ -592,7 +599,7 @@ object ProjectMatrix {
       jsPlatform(scalaVersions, Nil)
 
     override def defaultAxes(axes: VirtualAxis*): ProjectMatrix =
-      copy(defAxes = axes.toSeq)
+      copy(defAxes = axes)
 
     def scalajsPlugin: Try[AutoPlugin] = {
       import ReflectionUtil.*
@@ -775,7 +782,7 @@ object ProjectMatrix {
       customRow(autoScalaLibrary, crossVersion = None, scalaVersions, axisValues)(process)
 
     override def finder(axisValues: VirtualAxis*): ProjectFinder =
-      new AxisBaseProjectFinder(axisValues.toSeq)
+      new AxisBaseProjectFinder(axisValues)
 
     override def allProjects(): Seq[(Project, Seq[VirtualAxis])] =
       resolvedMappings.map { (row, project) =>

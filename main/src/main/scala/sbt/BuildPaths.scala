@@ -12,10 +12,10 @@ import java.io.File
 import java.util.Locale
 import KeyRanks.DSetting
 
-import sbt.io.{ GlobFilter, Path }
+import sbt.io.GlobFilter
 import sbt.internal.util.AttributeKey
 
-object BuildPaths {
+object BuildPaths:
   val globalBaseDirectory = AttributeKey[File](
     "global-base-directory",
     "The base directory for global sbt configuration and staging.",
@@ -106,7 +106,7 @@ object BuildPaths {
   }
 
   def defaultVersionedGlobalBase(sbtVersion: String): File = defaultGlobalBase / sbtVersion
-  def defaultGlobalBase = Path.userHome / ConfigDirectoryName
+  def defaultGlobalBase: File = internal.SysProp.defaultGlobalBaseDirectory
 
   private def binarySbtVersion(state: State): String =
     sbt.internal.librarymanagement.cross.CrossVersionUtil
@@ -145,4 +145,4 @@ object BuildPaths {
 
   def crossPath(base: File, instance: xsbti.compile.ScalaInstance): File =
     base / ("scala_" + instance.version)
-}
+end BuildPaths

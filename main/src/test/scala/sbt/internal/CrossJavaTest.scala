@@ -242,4 +242,15 @@ class CrossJavaTest extends AnyFunSuite with Diagrams {
       assert(version == "temurin@11.0.15")
     }
   }
+
+  test("java++ tab completion list is bounded (#4310)"):
+    val completions = CrossJava.JavaSwitchCommandCompletions
+    assert(completions.nonEmpty, "completion list must not be empty")
+    assert(
+      completions.size <= 20,
+      "completion list must stay small to avoid JLine 'Display all N possibilities?'"
+    )
+    assert(completions.contains("-v"), "completion list should suggest -v")
+    assert(completions.contains("compile"), "completion list should suggest compile")
+    assert(completions.contains("test"), "completion list should suggest test")
 }

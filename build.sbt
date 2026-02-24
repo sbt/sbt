@@ -473,6 +473,12 @@ lazy val taskProj = (project in file("tasks"))
     name := "Tasks",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      ProblemFilters.exclude[MissingTypesProblem]("sbt.Execute$State$"),
+      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.Execute#State.this"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Pending"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Running"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Calling"),
+      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Done"),
     )
   )
 
@@ -669,6 +675,7 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
       Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
+      exclude[DirectMissingMethodProblem]("sbt.internal.inc.ZincLmUtil.*"),
     ),
     libraryDependencies += launcherInterface,
   )
@@ -965,7 +972,7 @@ lazy val sbtwProj = (project in file("sbtw"))
     commonSettings,
     name := "sbtw",
     description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.2",
     crossPaths := false,
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
@@ -1044,9 +1051,7 @@ def otherRootSettings =
       scriptedLaunchOpts := List(
         "-Xmx1500M",
         "-Xms512M",
-        "-server",
-        "-Dsbt.override.build.repos=true",
-        s"""-Dsbt.repository.config=${scriptedSource.value / "repo.config"}"""
+        "-server"
       ) :::
         (sys.props.get("sbt.ivy.home") match {
           case Some(home) => List(s"-Dsbt.ivy.home=$home")

@@ -75,9 +75,8 @@ private[sbt] final class Execute(
       view.inline1(a) match
         case Some(v) => Result.Value(v())
         case None    => results(a)
-  private type State = State.Value
-  private object State extends Enumeration {
-    val Pending, Running, Calling, Done = Value
+  private enum State {
+    case Pending, Running, Calling, Done
   }
   import State.{ Pending, Running, Calling, Done }
 

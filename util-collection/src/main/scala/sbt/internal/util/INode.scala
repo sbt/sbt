@@ -11,7 +11,6 @@ package sbt.internal.util
 import java.lang.Runnable
 import java.util.concurrent.{ Executor, LinkedBlockingQueue, atomic }
 import atomic.{ AtomicBoolean, AtomicInteger }
-import scala.annotation.nowarn
 
 enum EvaluationState:
   case New
@@ -35,7 +34,6 @@ class EvaluateSettings[I <: Init](
   private def getStatic[A](key: ScopedKey[A]): INode[A] =
     static.get(key).getOrElse { sys.error("Illegal reference to key " + key) }
 
-  @nowarn
   private val transform: [A] => Initialize[A] => INode[A] = [A] =>
     (fa: Initialize[A]) =>
       fa match

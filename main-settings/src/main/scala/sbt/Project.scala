@@ -158,11 +158,18 @@ sealed trait Project extends ProjectDefinition[ProjectReference] with CompositeP
    * A [[AutoPlugin]] is a common label that is used by plugins to determine what settings, if any, to enable on a project.
    */
   def enablePlugins(ns: Plugins*): Project =
-    setPlugins(ns.foldLeft(plugins)(Plugins.and))
+    setPlugins(ns.foldLeft(plugins)(Plugins.overrideWith))
 
   /** Disable the given plugins on this project. */
   def disablePlugins(ps: AutoPlugin*): Project =
-    setPlugins(Plugins.and(plugins, Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)))
+    if ps.isEmpty then this
+    else
+      setPlugins(
+        Plugins.overrideWith(
+          plugins,
+          Plugins.And(ps.map(p => Plugins.Exclude(p)).toList)
+        )
+      )
 
   private[sbt] def setPlugins(ns: Plugins): Project = copy(plugins = ns)
 

@@ -178,6 +178,16 @@ trait Cont:
         case Left(l)  => (l, TypeRepr.of[Effect[A]])
         case Right(r) => (r, faTpe)
 
+      def containsFileType[A1: Type]: Boolean =
+        val fileRepr = TypeRepr.of[java.io.File]
+        def containsFile(tpe: TypeRepr): Boolean =
+          if tpe =:= fileRepr then true
+          else
+            tpe.dealias match
+              case AppliedType(_, args) => args.exists(containsFile)
+              case _                    => false
+        containsFile(TypeRepr.of[A1])
+
       val inputBuf = ListBuffer[Input]()
       val outputBuf = ListBuffer[Output]()
 
@@ -342,38 +352,49 @@ trait Cont:
           cacheConfigExpr: Expr[BuildWideCacheConfiguration],
           tags: List[CacheLevelTag],
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
-        val codeContentHash =
-          try Expr[Long](body.show.##)
-          catch
-            case e: Throwable =>
-              Expr[Long](Printer.TreeStructure.show(body.asTerm).##)
-        val extraHash = Expr[Long](0L)
-        val aJsonFormat = summonJsonFormat[A1]
-        val aClassTag = summonClassTag[A1]
-        val inputHashWriter =
-          if TypeRepr.of[A2] =:= TypeRepr.of[Unit] then
-            '{
-              import BasicJsonProtocol.*
-              summon[HashWriter[Unit]]
-            }.asExprOf[HashWriter[A2]]
-          else summonHashWriter[A2]
-        val tagsExpr = '{ List(${ Varargs(tags.map(Expr[CacheLevelTag](_))) }*) }
-        val block = letOutput(outputs, cacheConfigExpr)(body)
-        '{
-          given HashWriter[A2] = $inputHashWriter
-          given JsonFormat[A1] = $aJsonFormat
-          given ClassTag[A1] = $aClassTag
-          ActionCache
-            .cache(
-              $input,
-              codeContentHash = Digest.dummy($codeContentHash),
-              extraHash = Digest.dummy($extraHash),
-              tags = $tagsExpr,
-              config = $cacheConfigExpr,
-            )({ _ =>
-              $block
-            })
-        }
+        if containsFileType[A1] then
+          report.errorAndAbort(
+            s"""java.io.File is not a valid output type for a cached task.
+               |Consider using one of the following alternatives:
+               |  - xsbti.HashedVirtualFileRef
+               |  - xsbti.VirtualFileRef
+               |  - xsbti.VirtualFile
+               |If caching is not needed, annotate the key with @transient, or wrap the task in Def.uncached.
+               |See https://www.scala-sbt.org/2.x/docs/en/concepts/caching.html#caching-files""".stripMargin
+          )
+        else
+          val codeContentHash =
+            try Expr[Long](body.show.##)
+            catch
+              case e: Throwable =>
+                Expr[Long](Printer.TreeStructure.show(body.asTerm).##)
+          val extraHash = Expr[Long](0L)
+          val aJsonFormat = summonJsonFormat[A1]
+          val aClassTag = summonClassTag[A1]
+          val inputHashWriter =
+            if TypeRepr.of[A2] =:= TypeRepr.of[Unit] then
+              '{
+                import BasicJsonProtocol.*
+                summon[HashWriter[Unit]]
+              }.asExprOf[HashWriter[A2]]
+            else summonHashWriter[A2]
+          val tagsExpr = '{ List(${ Varargs(tags.map(Expr[CacheLevelTag](_))) }*) }
+          val block = letOutput(outputs, cacheConfigExpr)(body)
+          '{
+            given HashWriter[A2] = $inputHashWriter
+            given JsonFormat[A1] = $aJsonFormat
+            given ClassTag[A1] = $aClassTag
+            ActionCache
+              .cache(
+                $input,
+                codeContentHash = Digest.dummy($codeContentHash),
+                extraHash = Digest.dummy($extraHash),
+                tags = $tagsExpr,
+                config = $cacheConfigExpr,
+              )({ _ =>
+                $block
+              })
+          }
 
       // This will generate following code for Def.declareOutput(...):
       //   var $o1: VirtualFile = null

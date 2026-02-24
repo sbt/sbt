@@ -38,7 +38,7 @@ class LockFileSpec extends AnyFunSuite {
       ),
       metadata = LockFileMetadata(
         sbtVersion = "2.0.0",
-        scalaVersion = Some("3.8.1")
+        scalaVersion = Some("3.8.2")
       )
     )
 
@@ -59,7 +59,7 @@ class LockFileSpec extends AnyFunSuite {
       assert(readData.configurations.head.dependencies.head.organization == "org.scala-lang")
       assert(readData.configurations.head.dependencies.head.version == "2.13.16")
       assert(readData.metadata.sbtVersion == "2.0.0")
-      assert(readData.metadata.scalaVersion == Some("3.8.1"))
+      assert(readData.metadata.scalaVersion == Some("3.8.2"))
     }
   }
 
@@ -101,6 +101,27 @@ class LockFileSpec extends AnyFunSuite {
       LockFile.write(lockFile, lockData)
       val readData = LockFile.read(lockFile).toOption.get
       assert(readData.configurations.head.dependencies.head.classifier == Some("sources"))
+    }
+  }
+
+  test("LockFile.write outputs pretty JSON") {
+    val lockData = LockFileData(
+      version = "1.0",
+      buildClock = "pretty-test",
+      configurations = Vector.empty,
+      metadata = LockFileMetadata(
+        sbtVersion = "2.0.0",
+        scalaVersion = Some("3.8.2")
+      )
+    )
+
+    IO.withTemporaryDirectory { dir =>
+      val lockFile = new File(dir, "pretty.lock")
+      val writeResult = LockFile.write(lockFile, lockData)
+      assert(writeResult.isRight, s"Write failed: ${writeResult.left.getOrElse("")}")
+
+      val content = IO.read(lockFile)
+      assert(content.contains("\n"), "Expected pretty-printed JSON with multiple lines")
     }
   }
 

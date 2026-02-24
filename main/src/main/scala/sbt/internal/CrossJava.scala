@@ -132,6 +132,9 @@ private[sbt] object CrossJava {
   private case class SwitchTarget(version: Option[JavaVersion], home: Option[File], force: Boolean)
   private case class SwitchJavaHome(target: SwitchTarget, verbose: Boolean, command: Option[String])
 
+  private[sbt] val JavaSwitchCommandCompletions =
+    Vector("-v", "compile", "test", "run", "clean", "console", "package")
+
   private def switchParser(state: State): Parser[SwitchJavaHome] = {
     import DefaultParsers.*
     def versionAndCommand(spacePresent: Boolean) = {
@@ -141,9 +144,9 @@ private[sbt] object CrossJava {
       val knownVersions = javaHomes.keysIterator.map(_.numberStr).toVector
       val version: Parser[SwitchTarget] =
         (token(
-          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*)
-            .examples(knownVersions*) ~ "!".?
+          (StringBasic <~ "@").? ~ ((NatBasic) ~ ("." ~> NatBasic).*) ~ "!".?
         ) || token(StringBasic))
+          .examples(knownVersions*)
           .map {
             case Left(((vendor, (v1, vs)), bang)) =>
               val force = bang.isDefined
@@ -156,7 +159,10 @@ private[sbt] object CrossJava {
         if (spacePresent) version
         else version & spacedFirst(JavaSwitchCommand)
       val verbose = Parser.opt(token(Space ~> "-v"))
-      val optionalCommand = Parser.opt(token(Space ~> matched(state.combinedParser)))
+      val optionalCommand =
+        Parser.opt(
+          token(Space ~> matched(state.combinedParser).examples(JavaSwitchCommandCompletions*))
+        )
       (spacedVersion ~ verbose ~ optionalCommand).map { case v ~ verbose ~ command =>
         SwitchJavaHome(v, verbose.isDefined, command)
       }
