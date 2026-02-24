@@ -5,7 +5,5 @@
 > set scala3 / scalaVersion := "3.8.1"
 -> scala213/compile
 
-# Now allow the mismatch
-> set scala213 / allowMismatchScala := true
-> set scala3 / scalaVersion := "3.8.1"
-> scala213/compile
+# allowMismatchScala := true bypasses the check (using 2.13/2.12 pair to avoid SIP-51)
+> app213/compile

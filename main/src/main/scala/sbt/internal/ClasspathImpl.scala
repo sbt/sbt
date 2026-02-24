@@ -328,14 +328,16 @@ private[sbt] object ClasspathImpl {
         val sbv = CrossVersion.binaryScalaVersion(sv)
         for case ClasspathDep.ResolvedClasspathDependency(dep, _) <- deps.classpath(projectRef)
         do
-          val depSv = (dep / scalaVersion).get(data).getOrElse("")
-          val depSbv = CrossVersion.binaryScalaVersion(depSv)
-          if sbv != depSbv then
-            if !isAllowedScalaMismatch(sv, depSv) then
-              sys.error(
-                s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.project} (Scala $depSv). " +
-                  s"To allow this, set `ThisProject / allowMismatchScala := true`"
-              )
+          val depCrossPaths = (dep / crossPaths).get(data).getOrElse(true)
+          if depCrossPaths then
+            val depSv = (dep / scalaVersion).get(data).getOrElse("")
+            val depSbv = CrossVersion.binaryScalaVersion(depSv)
+            if sbv != depSbv then
+              if !isAllowedScalaMismatch(sv, depSv) then
+                sys.error(
+                  s"Scala version mismatch: ${projectRef.project} (Scala $sv) depends on ${dep.project} (Scala $depSv). " +
+                    s"To allow this, set `ThisProject / allowMismatchScala := true`"
+                )
       }
 
   def interDependencies[A](
