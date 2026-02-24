@@ -167,7 +167,7 @@ final class NetworkChannel(
 
   /** True if this channel should receive broadcast events (logMessage, notifyEvent). Default true for backward compatibility. */
   private[sbt] def subscribeToAll: Boolean =
-    Option(initializeOption.get).flatMap(_.subscribeToAll).getOrElse(true)
+    Option(initializeOption.get).flatMap(_.subscribeToAll).getOrElse(false)
 
   protected def authenticate(token: String): Boolean = instance.authenticate(token)
 
