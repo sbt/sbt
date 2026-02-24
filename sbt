@@ -721,7 +721,9 @@ detectNativeClient() {
     arch=$(uname -m)
     [[ -f "${sbt_bin_dir}/sbtn-${arch}-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-pc-linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then
-    [[ -f "${sbt_bin_dir}/sbtn-x86_64-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-apple-darwin"
+    arch=$(uname -m)
+    [[ "$arch" == "arm64" ]] && arch="aarch64"
+    [[ -f "${sbt_bin_dir}/sbtn-${arch}-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-${arch}-apple-darwin"
   elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
     [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe"
   elif [[ "$OSTYPE" == "freebsd"* ]]; then
