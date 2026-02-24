@@ -15,7 +15,7 @@ transform := {
   StateTransform(_.put(foo, 1))
 }
 
-def inputCheck[T](f: (ScopedKey[_], State) => Parser[T]): Initialize[InputTask[Unit]] =
+def inputCheck[T](f: (ScopedKey[?], State) => Parser[T]): Initialize[InputTask[Unit]] =
   InputTask(resolvedScoped(ctx => (s: State) => f(ctx, s)))(dummyTask)
 
 val checkTransform = taskKey[Unit]("")

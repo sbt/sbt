@@ -2,7 +2,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 ThisBuild / organization := "org.example"
 ThisBuild / version := "1.0"
 
-lazy val a = project.settings(common: _*).settings(
+lazy val a = project.settings(common).settings(
   // verifies that a can be published as an ivy.xml file and preserve the extra artifact information,
   //   such as a classifier
   libraryDependencies := Seq(("net.sf.json-lib" % "json-lib" % "2.4").classifier("jdk15").intransitive()),
@@ -10,7 +10,7 @@ lazy val a = project.settings(common: _*).settings(
   (Compile / packageBin / artifact) := Artifact("demo")
 )
 
-lazy val b = project.settings(common: _*).settings(
+lazy val b = project.settings(common).settings(
   libraryDependencies := Seq(organization.value %% "a" % version.value)
 )
 

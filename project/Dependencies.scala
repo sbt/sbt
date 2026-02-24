@@ -4,7 +4,7 @@ import Keys.*
 object Dependencies {
   // WARNING: Please Scala update versions in PluginCross.scala too
   val scala213 = "2.13.16"
-  val scala3 = "3.8.1"
+  val scala3 = "3.8.2"
   val scala212 = "2.12.21"
   val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3

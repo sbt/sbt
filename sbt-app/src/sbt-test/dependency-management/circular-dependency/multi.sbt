@@ -5,7 +5,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 def localCache =
   ivyPaths := IvyPaths(baseDirectory.value.toString, Some(((ThisBuild / baseDirectory).value / "ivy" / "cache").toString))
 
-def commonSettings: Seq[Def.Setting[_]] =
+def commonSettings: Seq[Def.Setting[?]] =
   Seq(
     localCache,
     scalaVersion := "2.10.4",
@@ -13,7 +13,7 @@ def commonSettings: Seq[Def.Setting[_]] =
   )
 
 lazy val a = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "a",
     libraryDependencies := Seq(
@@ -22,20 +22,20 @@ lazy val a = project.
   )
 
 lazy val b = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "b"
   )
 
 lazy val c = project.
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     name := "c",
     libraryDependencies := Seq(organization.value %% "b" % version.value)
   )
 
 lazy val root = (project in file(".")).
-  settings(commonSettings: _*).
+  settings(commonSettings).
   settings(
     ThisBuild / organization := "org.example",
     ThisBuild / version := "1.0-SNAPSHOT",

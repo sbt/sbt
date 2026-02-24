@@ -44,7 +44,7 @@ def persistedSetting = persist := (loadPrevious(persist) map { case None => 17; 
 def  inMemoryCheck = checkKeep    := (inputCheck( (ctx, s) => Space ~> str( getFromContext(   keep, ctx, s)) )).evaluated
 def persistedCheck = checkPersist := (inputCheck( (ctx, s) => Space ~> str(loadFromContext(persist, ctx, s)) )).evaluated
 
-def inputCheck[T](f: (ScopedKey[_], State) => Parser[T]): Initialize[InputTask[Unit]] =
+def inputCheck[T](f: (ScopedKey[?], State) => Parser[T]): Initialize[InputTask[Unit]] =
   InputTask.separate( resolvedScoped(ctx => (s: State) => f(ctx, s)) )( dummyTask )
 
 import sbt.TupleSyntax.*
