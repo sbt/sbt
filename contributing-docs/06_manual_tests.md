@@ -22,7 +22,7 @@ $ sbt --server
 
 ### Clearing out boot and local cache
 
-sbt consists of lots of JAR files. When running sbt locally, these JAR artifacts are cached in the `boot` directory under `$HOME/.sbt/boot/scala-3.8.1/org.scala-sbt/sbt/2.0.0-RC9-bin-SNAPSHOT` directory (The Scala version and sbt version part changes).
+sbt consists of lots of JAR files. When running sbt locally, these JAR artifacts are cached in the `boot` directory under `$HOME/.sbt/boot/scala-3.8.2/org.scala-sbt/sbt/2.0.0-RC9-bin-SNAPSHOT` directory (The Scala version and sbt version part changes).
 
 In order to see a change you've made to sbt's source code, this cache MUST be cleared. To clear this out, from the sbt shell in your application run:
 

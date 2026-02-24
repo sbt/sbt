@@ -4,7 +4,7 @@ ThisBuild / scalaVersion := "2.13.12"
 ThisBuild / versionScheme := Some("semver-spec")
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 
-def commonSettings: Seq[Def.Setting[_]] =
+def commonSettings: Seq[Def.Setting[?]] =
   Seq(
     fullResolvers := Def.uncached(fullResolvers.value.filterNot(_.name == "inter-project")),
     publishTo := Some(MavenCache("local-maven", (LocalRootProject / target).value / "local-maven")),

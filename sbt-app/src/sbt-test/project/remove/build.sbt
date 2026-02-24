@@ -11,7 +11,7 @@ lazy val intsSetting2 = Def.setting {
   Seq(1, 2, 3)
 }
 
-scalaVersion := "3.8.1"
+scalaVersion := "3.8.2"
 
 intsTask := Seq(1, 2, 3, 4, 5, 6, 7)
 intsTask -= 3
@@ -30,10 +30,10 @@ intsSetting -= intSetting2.value
 intsSetting --= intsSetting2.value
 
 intsFromScalaV := Seq(1, 2, 3, 4, 5, 6, 7)
-intsFromScalaV -= { if scalaVersion.value == "3.8.1" then 3 else 5 }
-intsFromScalaV --= { if scalaVersion.value == "3.8.1" then Seq(1, 2) else Seq(4) }
-intsFromScalaV -= { if scalaVersion.value == "3.8.1" then Option(6) else None }
-intsFromScalaV --= { if scalaVersion.value == "3.8.1" then Option(7) else None }
+intsFromScalaV -= { if scalaVersion.value == "3.8.2" then 3 else 5 }
+intsFromScalaV --= { if scalaVersion.value == "3.8.2" then Seq(1, 2) else Seq(4) }
+intsFromScalaV -= { if scalaVersion.value == "3.8.2" then Option(6) else None }
+intsFromScalaV --= { if scalaVersion.value == "3.8.2" then Option(7) else None }
 
 intsSetSetting := Set(1, 2, 3, 4, 5, 6, 7)
 intsSetSetting -= 3
