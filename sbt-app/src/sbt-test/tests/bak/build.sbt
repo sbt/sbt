@@ -23,7 +23,7 @@ val CustomConfigs = List(Config_0, Config_1, Config_2, Config_3, Config_4, Confi
 
 val t = taskKey[Unit]("")
 val p1 = project
-  .configs(CustomConfigs: _*)
+  .configs(CustomConfigs*)
   .settings(
     t := Def.uncached {
         (Config_0 / compile).value

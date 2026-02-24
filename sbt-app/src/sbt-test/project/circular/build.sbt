@@ -15,4 +15,4 @@ lazy val foo: Project = project.
   dependsOn(LocalProject("root")).
   settings(List(
     name := (LocalProject("root") / name).value + "foo"
-  ): _*)
+  )*)
