@@ -137,8 +137,8 @@ private[librarymanagement] abstract class ResolverFunctions {
       using ivyStylePatterns
     )
   def sbtIvyRepo(status: String) =
-    url(s"sbt-ivy-$status", new URI(s"$SbtRepositoryRoot/ivy-$status/").toURL)(using
-      ivyStylePatterns
+    url(s"sbt-ivy-$status", new URI(s"$SbtRepositoryRoot/ivy-$status/").toURL)(
+      using ivyStylePatterns
     )
   def sbtPluginRepo(status: String) =
     url("sbt-plugin-" + status, new URI(SbtRepositoryRoot + "/sbt-plugin-" + status + "/").toURL)(
