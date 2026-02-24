@@ -102,7 +102,7 @@ private[sbt] object PluginCross {
       case VersionNumber(Seq(0, 12, _*), _, _) => "2.9.2"
       case VersionNumber(Seq(0, 13, _*), _, _) => "2.10.7"
       case VersionNumber(Seq(1, 0, _*), _, _)  => "2.12.21"
-      case VersionNumber(Seq(2, _*), _, _)     => "3.8.1"
+      case VersionNumber(Seq(2, _*), _, _)     => "3.8.2"
       case _                                   => sys.error(s"Unsupported sbt binary version: $sv")
     }
 }

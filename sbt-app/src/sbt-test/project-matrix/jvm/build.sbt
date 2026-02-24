@@ -3,7 +3,7 @@ lazy val scala3 = "3.4.2"
 lazy val check = taskKey[Unit]("")
 
 lazy val root = (project in file("."))
-  .aggregate(core.projectRefs ++ app.projectRefs: _*)
+  .aggregate((core.projectRefs ++ app.projectRefs)*)
   .settings(
   )
 

@@ -3,7 +3,7 @@ ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-c
 name := "lib1"
 organization := "com.example"
 version := "0.1.0-SNAPSHOT"
-scalaVersion := "3.8.1"
+scalaVersion := "3.8.2"
 
 publishMavenStyle := true
 val publishRepoBase = settingKey[File]("Base directory for Maven publish repo")

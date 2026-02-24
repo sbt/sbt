@@ -972,7 +972,7 @@ lazy val sbtwProj = (project in file("sbtw"))
     commonSettings,
     name := "sbtw",
     description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
-    scalaVersion := "3.8.1",
+    scalaVersion := "3.8.2",
     crossPaths := false,
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",

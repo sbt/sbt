@@ -7,7 +7,7 @@ lazy val config12 = ConfigAxis("Config1_2", "config1.2")
 lazy val config13 = ConfigAxis("Config1_3", "config1.3")
 
 lazy val root = (project in file("."))
-  .aggregate((core.projectRefs ++ custom.projectRefs):_*)
+  .aggregate((core.projectRefs ++ custom.projectRefs)*)
 
 lazy val core = (projectMatrix in file("core"))
   .jvmPlatform(scalaVersions = Seq(scala213, scala212))
