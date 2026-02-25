@@ -74,6 +74,7 @@ import sbt.std.TaskExtra.*
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits.given
 import sbt.util.InterfaceUtil.{ t2, toJavaFunction as f1 }
+import sbt.util.PathHashWriters.given
 import sbt.util.*
 import sjsonnew.*
 
@@ -2055,136 +2056,153 @@ object Defaults extends BuildCommon {
           } else Seq.empty
         },
         (TaskZero / key) := Def.uncached {
-          val s = streams.value
-          val cs: Compilers = compilers.value
-          val srcs = sources.value
-          val out = target.value
-          val sOpts = scalacOptions.value
-          val xapis = apiMappings.value
-          val hasScala = srcs.exists(_.name.endsWith(".scala"))
-          val hasJava = srcs.exists(_.name.endsWith(".java"))
-          val cp = data(dependencyClasspath.value).toList
-          val label = nameForSrc(configuration.value.name)
-          val reporter = (compile / bspReporter).value
           val converter = fileConverter.value
-          val tFiles = tastyFiles.value
-          val sv = scalaVersion.value
-          val allDeps = allDependencies.value
-          val fiOpts = fileInputOptions.value
-          val maxErr = maxErrors.value
-          (hasScala, hasJava) match {
-            case (true, _) =>
-              val xapisFiles = xapis.map { (k, v) =>
-                converter.toPath(k).toFile() -> v
-              }
-              val externalApiOpts =
-                if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
-                else Opts.doc.externalAPI(xapisFiles)
-              val options = sOpts ++ externalApiOpts
-              def convertVfRef(value: String): String =
-                if !value.contains("$") then value
-                else converter.toPath(VirtualFileRef.of(value)).toString
-              val resolvedOptions = options.map { x =>
-                if !x.contains("$") then x
-                else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
-              }
-              val scalac = cs.scalac match
-                case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
-              val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
-              if docSrcFiles.nonEmpty then
-                val inputFiles = docSrcFiles.toSet ++ docOptionFiles(resolvedOptions, fiOpts)
-                type Inputs = (
-                    FilesInfo[HashFileInfo],
-                    FilesInfo[ModifiedFileInfo],
-                    Seq[String],
-                    Int,
-                )
-                val inputs: Inputs = (
-                  FileInfo.hash(inputFiles),
-                  FilesInfo[ModifiedFileInfo](
-                    cp.toSet.map(FileInfo.lastModified.fileOrDirectoryMax)
-                  ),
-                  resolvedOptions,
-                  maxErr,
-                )
-                val cachedDoc =
-                  Tracked.inputChangedW(s.cacheStoreFactory.make("inputs")) {
-                    (inChanged: Boolean, _: Inputs) =>
-                      Tracked.inputChangedW(s.cacheStoreFactory.make("output")) {
-                        (outChanged: Boolean, _: FilesInfo[PlainFileInfo]) =>
-                          if inChanged || outChanged then
-                            IO.delete(out)
-                            IO.createDirectory(out)
-                            scalac.doc(
-                              docSrcFiles
-                                .map(_.toPath())
-                                .map(new sbt.internal.inc.PlainVirtualFile(_)),
-                              cp.map(converter.toPath)
-                                .map(new sbt.internal.inc.PlainVirtualFile(_)),
-                              converter,
-                              out.toPath(),
-                              resolvedOptions,
-                              maxErr,
-                              s.log,
-                            )
-                          else
-                            s.log.debug(
-                              "Scaladoc is up to date: " + out.getAbsolutePath
-                            )
-                      }
-                  }
-                cachedDoc(inputs)(FileInfo.exists(out.allPaths.get().toSet))
-              else ()
-            case (_, true) =>
-              import sbt.internal.inc.javac.JavaCompilerArguments
-              val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
-              val options = javacOptions.value.toList
-              val javaSrcs = srcs.filter(_.name.endsWith(".java"))
-              if javaSrcs.nonEmpty then
-                val inputFiles = javaSrcs.toSet ++ docOptionFiles(options, fiOpts)
-                type JInputs = (
-                    FilesInfo[HashFileInfo],
-                    FilesInfo[ModifiedFileInfo],
-                    Seq[String],
-                )
-                val inputs: JInputs = (
-                  FileInfo.hash(inputFiles),
-                  FilesInfo[ModifiedFileInfo](
-                    cp.toSet.map(FileInfo.lastModified.fileOrDirectoryMax)
-                  ),
-                  options,
-                )
-                val cachedDoc =
-                  Tracked.inputChangedW(s.cacheStoreFactory.make("java-inputs")) {
-                    (inChanged: Boolean, _: JInputs) =>
-                      Tracked.inputChangedW(s.cacheStoreFactory.make("java-output")) {
-                        (outChanged: Boolean, _: FilesInfo[PlainFileInfo]) =>
-                          if inChanged || outChanged then
-                            IO.delete(out)
-                            IO.createDirectory(out)
-                            cs.javaTools.javadoc.run(
-                              javaSrcs.toArray
-                                .map(x => converter.toVirtualFile(x.toPath)),
-                              JavaCompilerArguments(Nil, classpath, options).toArray,
-                              CompileOutput(out.toPath),
-                              IncToolOptionsUtil.defaultIncToolOptions(),
-                              reporter,
-                              s.log,
-                            )
-                          else
-                            s.log.debug(
-                              "Javadoc is up to date: " + out.getAbsolutePath
-                            )
-                      }
-                  }
-                cachedDoc(inputs)(FileInfo.exists(out.allPaths.get().toSet))
-              else ()
-            case _ => () // do nothing
-          }
-          out
+          converter.toPath(cachedDocGenTask.value).toFile()
         }
       ) ++ compilersSetting
     )
+
+  private given HashWriter[EmptyTuple] with
+    def write[J](
+        obj: EmptyTuple,
+        builder: sjsonnew.Builder[J],
+    ): Unit = ()
+
+  private given [H: HashWriter, T <: Tuple: HashWriter]
+      : HashWriter[H *: T] with
+    def write[J](
+        obj: H *: T,
+        builder: sjsonnew.Builder[J],
+    ): Unit =
+      summon[HashWriter[H]].write(obj.head, builder)
+      summon[HashWriter[T]].write(obj.tail, builder)
+
+  private given HashWriter[Compilers] with
+    def write[J](
+        obj: Compilers,
+        builder: sjsonnew.Builder[J],
+    ): Unit =
+      builder.writeString(
+        obj.scalac().scalaInstance().version()
+      )
+
+  private given HashWriter[java.net.URI] with
+    def write[J](
+        obj: java.net.URI,
+        builder: sjsonnew.Builder[J],
+    ): Unit =
+      builder.writeString(obj.toString)
+
+  private given HashWriter[Attributed[HashedVirtualFileRef]] with
+    def write[J](
+        obj: Attributed[HashedVirtualFileRef],
+        builder: sjsonnew.Builder[J],
+    ): Unit =
+      PathHashWriters
+        .stringStringLike[HashedVirtualFileRef]
+        .write(obj.data, builder)
+
+  private given HashWriter[ModuleID] with
+    def write[J](
+        obj: ModuleID,
+        builder: sjsonnew.Builder[J],
+    ): Unit =
+      builder.beginObject()
+      builder.addFieldName("organization")
+      builder.writeString(obj.organization)
+      builder.addFieldName("name")
+      builder.writeString(obj.name)
+      builder.addFieldName("revision")
+      builder.writeString(obj.revision)
+      builder.endObject()
+
+  private lazy val cachedDocGenTask
+      : Initialize[Task[HashedVirtualFileRef]] =
+    Def.cachedTask {
+      val s = streams.value
+      val cs: Compilers = compilers.value
+      val srcs = sources.value
+      val out = target.value
+      val sOpts = scalacOptions.value
+      val xapis = apiMappings.value
+      val hasScala = srcs.exists(_.name.endsWith(".scala"))
+      val hasJava = srcs.exists(_.name.endsWith(".java"))
+      val cp = data(dependencyClasspath.value).toList
+      val label = nameForSrc(configuration.value.name)
+      val reporter = (compile / bspReporter).value
+      val converter = fileConverter.value
+      val tFiles = tastyFiles.value
+      val sv = scalaVersion.value
+      val allDeps = allDependencies.value
+      val maxErr = maxErrors.value
+      (hasScala, hasJava) match {
+        case (true, _) =>
+          val xapisFiles = xapis.map { (k, v) =>
+            converter.toPath(k).toFile() -> v
+          }
+          val externalApiOpts =
+            if (ScalaArtifacts.isScala3(sv))
+              Opts.doc.externalAPIScala3(xapisFiles)
+            else Opts.doc.externalAPI(xapisFiles)
+          val options = sOpts ++ externalApiOpts
+          def convertVfRef(value: String): String =
+            if !value.contains("$") then value
+            else converter.toPath(VirtualFileRef.of(value)).toString
+          val resolvedOptions = options.map { x =>
+            if !x.contains("$") then x
+            else
+              x.split(":")
+                .map(_.split(",").map(convertVfRef).mkString(","))
+                .mkString(":")
+          }
+          val scalac = cs.scalac match
+            case ac: AnalyzingCompiler =>
+              ac.onArgs(Compiler.exported(s, "scaladoc"))
+          val docSrcFiles =
+            if ScalaArtifacts.isScala3(sv) then tFiles else srcs
+          if docSrcFiles.nonEmpty then
+            IO.delete(out)
+            IO.createDirectory(out)
+            scalac.doc(
+              docSrcFiles
+                .map(_.toPath())
+                .map(new sbt.internal.inc.PlainVirtualFile(_)),
+              cp.map(converter.toPath)
+                .map(new sbt.internal.inc.PlainVirtualFile(_)),
+              converter,
+              out.toPath(),
+              resolvedOptions,
+              maxErr,
+              s.log,
+            )
+          else ()
+        case (_, true) =>
+          import sbt.internal.inc.javac.JavaCompilerArguments
+          val classpath =
+            cp.map(converter.toPath).map(converter.toVirtualFile)
+          val options = javacOptions.value.toList
+          val javaSrcs = srcs.filter(_.name.endsWith(".java"))
+          if javaSrcs.nonEmpty then
+            IO.delete(out)
+            IO.createDirectory(out)
+            cs.javaTools.javadoc.run(
+              javaSrcs.toArray
+                .map(x => converter.toVirtualFile(x.toPath)),
+              JavaCompilerArguments(Nil, classpath, options).toArray,
+              CompileOutput(out.toPath),
+              IncToolOptionsUtil.defaultIncToolOptions(),
+              reporter,
+              s.log,
+            )
+          else ()
+        case _ => ()
+      }
+      val outVf: HashedVirtualFileRef =
+        Def.declareOutputDirectory(
+          converter.toVirtualFile(out.toPath())
+        )
+      outVf
+    }
 
   def discoverMainClasses(analysis: CompileAnalysis): Seq[String] = analysis match {
     case analysis: Analysis =>
