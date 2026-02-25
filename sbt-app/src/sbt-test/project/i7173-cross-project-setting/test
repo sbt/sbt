@@ -1,0 +1,3 @@
+# Adding an unrelated project (baz) should not prevent foo / Compile / sourceGenerators
+# from including the generator registered by fooAux.
+> foo/check

@@ -427,17 +427,31 @@ private[sbt] object Load {
       inScope(GlobalScope)(loaded.autos.globalSettings) ++
       loaded.units.toSeq.flatMap { (uri, build) =>
         val pluginBuildSettings = loaded.autos.buildSettings(uri)
-        val projectSettings = build.defined flatMap { (id, project) =>
-          val ref = ProjectRef(uri, id)
-          val defineConfig: Seq[Setting[?]] =
-            for (c <- project.configurations)
-              yield ((ref / ConfigKey(c.name) / configuration) :== c)
-          val builtin: Seq[Setting[?]] =
-            (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
-          val settings = builtin ++ injectSettings.project ++ project.settings
-          // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
-          transformSettings(projectScope(ref), uri, rootProject, settings)
-        }
+        // Collect transformed settings per project and split them into "own-scope" and "cross-project":
+        // "own-scope" - key's project axis is `ref` itself (or global)
+        // "cross-project" - key explicitly targets a different project (`otherProj / key += ...`)
+        //
+        // It's necessary so that global defaults always precedes any other project's append
+        // See https://github.com/sbt/sbt/issues/7173
+        val (ownSettingsSeqs, crossSettingsSeqs) =
+          build.defined.toSeq.map { (id, project) =>
+            val ref = ProjectRef(uri, id)
+            val defineConfig: Seq[Setting[?]] =
+              for (c <- project.configurations)
+                yield ((ref / ConfigKey(c.name) / configuration) :== c)
+            val builtin: Seq[Setting[?]] =
+              (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
+            val settings = builtin ++ injectSettings.project ++ project.settings
+            // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
+            val transformed = transformSettings(projectScope(ref), uri, rootProject, settings)
+            transformed.partition { s =>
+              s.key.scope.project match {
+                case Select(r) => r == ref
+                case _         => true // global scope
+              }
+            }
+          }.unzip
+        val projectSettings = (ownSettingsSeqs ++ crossSettingsSeqs).flatten
         val buildScope = Scope(Select(BuildRef(uri)), Zero, Zero, Zero)
         val buildBase = baseDirectory :== build.localBase
         val settings3 = pluginBuildSettings ++ (buildBase +: build.buildSettings)
