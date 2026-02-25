@@ -166,7 +166,7 @@ object Fork {
 
   /**
    * Create an arguments file from a sequence of command line arguments
-   * by quoting each argument to a line with escaped backslashes
+   * by quoting each argument to a line with escaped backslashes and double quotes
    *
    * @param options command line options to write to the args file
    * @return
@@ -178,7 +178,7 @@ object Fork {
     val pw = new PrintWriter(file)
     options.foreach { option =>
       pw.write("\"")
-      pw.write(option.replace("\\", "\\\\"))
+      pw.write(option.replace("\\", "\\\\").replace("\"", "\\\""))
       pw.write("\"")
       pw.write(System.lineSeparator())
     }
