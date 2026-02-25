@@ -93,4 +93,14 @@ private[sbt] object JsonUtil {
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
   }
+
+  def fromLiteFull(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport = {
+    val stats = UpdateStats(0L, 0L, 0L, false)
+    val configReports = lite.configurations map { cr =>
+      val details = cr.details
+      val modules = details.flatMap(_.modules)
+      ConfigurationReport(ConfigRef(cr.configuration), modules, details)
+    }
+    UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
+  }
 }

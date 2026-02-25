@@ -139,15 +139,11 @@ private[sbt] object LibraryManagement {
 
     /* Skip resolve if last output exists, otherwise error. */
     def skipResolve(cache: CacheStore)(inputs: UpdateInputs): UpdateReport = {
-      import sbt.librarymanagement.LibraryManagementCodec.given
-      val cachedReport = Tracked
-        .lastOutput[UpdateInputs, UpdateReport](cache) {
-          case (_, Some(out)) => out
-          case _ =>
-            sys.error("Skipping update requested, but update has not previously run successfully.")
-        }
-        .apply(inputs)
-      markAsCached(cachedReport)
+      UpdateReportPersistence.readFrom(cache) match
+        case Some(cached) =>
+          markAsCached(UpdateReportPersistence.fromCache(cached))
+        case None =>
+          sys.error("Skipping update requested, but update has not previously run successfully.")
     }
 
     // Mark UpdateReport#stats as "cached." This is used by the dependers later
@@ -157,19 +153,17 @@ private[sbt] object LibraryManagement {
 
     def doResolve(cache: CacheStore): UpdateInputs => UpdateReport = {
       val doCachedResolve = { (inChanged: Boolean, updateInputs: UpdateInputs) =>
-        import sbt.librarymanagement.LibraryManagementCodec.given
         try
-          var isCached = false
-          val report = Tracked
-            .lastOutput[UpdateInputs, UpdateReport](cache) {
-              case (_, Some(out)) if upToDate(inChanged, out) =>
-                isCached = true
-                out
-              case pair =>
-                log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
-                resolve
-            }
-            .apply(updateInputs)
+          val previous =
+            UpdateReportPersistence.readFrom(cache).map(UpdateReportPersistence.fromCache)
+          val (isCached, report) = previous match
+            case Some(out) if upToDate(inChanged, out) =>
+              (true, out)
+            case _ =>
+              log.debug(s"""not up to date. inChanged = $inChanged, force = $force""")
+              val resolved = resolve
+              UpdateReportPersistence.writeTo(cache, UpdateReportPersistence.toCache(resolved))
+              (false, resolved)
           if isCached then markAsCached(report) else report
         catch
           case r: ResolveException
