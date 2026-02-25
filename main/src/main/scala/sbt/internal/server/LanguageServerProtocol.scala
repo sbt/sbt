@@ -58,13 +58,13 @@ private[sbt] object LanguageServerProtocol {
             )
           )
           val opt = Converter.fromJson[InitializeOption](optionJson).get
+          setInitializeOption(opt)
           if (authOptions(ServerAuthentication.Token)) {
             val token = opt.token.getOrElse(sys.error("'token' is missing."))
             if (authenticate(token)) ()
             else throw LangServerError(ErrorCodes.InvalidRequest, "invalid token")
           } else ()
           setInitialized(true)
-          setInitializeOption(opt)
           if (!opt.skipAnalysis.getOrElse(false)) appendExec("collectAnalyses", None)
           jsonRpcRespond(InitializeResult(serverCapabilities), Some(r.id))
 

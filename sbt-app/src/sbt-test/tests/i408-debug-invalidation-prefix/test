@@ -1,0 +1,13 @@
+# #408: With logLevel Debug, incremental compile debug output should show project id per block.
+# project/build.properties sets sbt.version=2.0.0-RC9-bin-SNAPSHOT so scripted runs built sbt.
+# First compile (full), then change sources and compile again to trigger incremental compilation
+# so Zinc emits debug lines (Initial source changes, changed = Set(...), invalidated, etc.)
+# with our projectId prefix. See HOWTO-SEE-PROJECT-ID.md to view the logs.
+
+> set ThisBuild / logLevel := Level.Debug
+> a/compile
+> b/compile
+$ copy-file modified/A_scala a/src/main/scala/A.scala
+$ copy-file modified/B_scala b/src/main/scala/B.scala
+> a/compile
+> b/compile

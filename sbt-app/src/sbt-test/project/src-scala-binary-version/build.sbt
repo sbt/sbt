@@ -1,5 +1,5 @@
 lazy val a = project.dependsOn(b)
-  .settings(scalaVersion := "2.9.3")
+  .settings(scalaVersion := "2.9.3", allowMismatchScala := true)
 lazy val b = RootProject(uri("b"))
 lazy val check = taskKey[Unit]("Checks the configured scalaBinaryVersion")
 

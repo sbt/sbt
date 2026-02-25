@@ -666,6 +666,7 @@ object Keys {
   val autoScalaLibrary = settingKey[Boolean]("Adds a dependency on scala-library if true.").withRank(ASetting)
   val managedScalaInstance = settingKey[Boolean]("Automatically obtains Scala tools as managed dependencies if true.").withRank(BSetting)
   val allowUnsafeScalaLibUpgrade = settingKey[Boolean]("Allow the Scala library on the compilation classpath to be newer than the scalaVersion (see Scala SIP-51).").withRank(CSetting)
+  val allowMismatchScala = settingKey[Boolean]("When set to true, allow dependsOn to an arbitrary Scala version subproject without error.").withRank(CSetting)
   val sbtResolver = settingKey[Resolver]("Provides a resolver for obtaining sbt as a dependency.").withRank(BMinusSetting)
   val sbtResolvers = settingKey[Seq[Resolver]]("The external resolvers for sbt and plugin dependencies.").withRank(BMinusSetting)
   val sbtDependency = settingKey[ModuleID]("Provides a definition for declaring the current version of sbt.").withRank(BMinusSetting)

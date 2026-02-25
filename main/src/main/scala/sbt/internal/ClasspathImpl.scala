@@ -15,7 +15,7 @@ import sbt.nio.Keys.*
 import sbt.nio.file.{ Glob, RecursiveGlob }
 import sbt.Def.Initialize
 import sbt.internal.util.{ Attributed, Dag }
-import sbt.librarymanagement.{ Configuration, TrackLevel }
+import sbt.librarymanagement.{ Configuration, CrossVersion, TrackLevel }
 import sbt.librarymanagement.Configurations.names
 import sbt.SlashSyntax0.*
 import sbt.std.TaskExtra.*
@@ -308,6 +308,14 @@ private[sbt] object ClasspathImpl {
       data: Def.Settings
   ): Task[Classpath] =
     getClasspath(unmanagedJars, dep, conf, data)
+
+  private[sbt] def isAllowedScalaMismatch(sv1: String, sv2: String): Boolean =
+    val pv1 = CrossVersion.partialVersion(sv1)
+    val pv2 = CrossVersion.partialVersion(sv2)
+    (pv1, pv2) match
+      case (Some((2, 13)), Some((3, minor))) => minor <= 7
+      case (Some((3, minor)), Some((2, 13))) => minor <= 7
+      case _                                 => false
 
   def interDependencies[A](
       projectRef: ProjectRef,
