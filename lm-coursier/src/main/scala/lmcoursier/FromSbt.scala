@@ -19,19 +19,21 @@ import sbt.librarymanagement.{ Configuration as _, * }
 
 object FromSbt {
 
-  private def sbtModuleIdName(
-      moduleId: ModuleID,
+  private def sbtCrossName(
+      name: String,
+      crossVersion: CrossVersion,
+      platformOpt: Option[String],
       scalaVersion: => String,
       scalaBinaryVersion: => String,
       optionalCrossVer: Boolean = false,
       projectPlatform: Option[String],
   ): String = {
-    val name0 = moduleId.name
+    val name0 = name
     val name1 =
-      moduleId.crossVersion match
+      crossVersion match
         case _: Disabled => name0
-        case _           => addPlatformSuffix(name0, moduleId.platformOpt, projectPlatform)
-    val updatedName = CrossVersion(moduleId.crossVersion, scalaVersion, scalaBinaryVersion)
+        case _           => addPlatformSuffix(name0, platformOpt, projectPlatform)
+    val updatedName = CrossVersion(crossVersion, scalaVersion, scalaBinaryVersion)
       .fold(name1)(_(name1))
     if (!optionalCrossVer || updatedName.length <= name0.length)
       updatedName
@@ -81,7 +83,15 @@ object FromSbt {
   ): (Module, String) = {
 
     val fullName =
-      sbtModuleIdName(module, scalaVersion, scalaBinaryVersion, optionalCrossVer, projectPlatform)
+      sbtCrossName(
+        module.name,
+        module.crossVersion,
+        module.platformOpt,
+        scalaVersion,
+        scalaBinaryVersion,
+        optionalCrossVer,
+        projectPlatform
+      )
 
     val module0 = Module(
       Organization(module.organization),
@@ -125,7 +135,16 @@ object FromSbt {
       Configuration(""),
       exclusions = module.exclusions.map { rule =>
         // FIXME Other `rule` fields are ignored here
-        (Organization(rule.organization), ModuleName(rule.name))
+        val ruleFullName = sbtCrossName(
+          rule.name,
+          rule.crossVersion,
+          platformOpt = None,
+          scalaVersion,
+          scalaBinaryVersion,
+          optionalCrossVer,
+          projectPlatform
+        )
+        (Organization(rule.organization), ModuleName(ruleFullName))
       }.toSet,
       Publication("", Type(""), Extension(""), Classifier("")),
       optional = false,
@@ -200,8 +219,10 @@ object FromSbt {
       Module(
         Organization(projectID.organization),
         ModuleName(
-          sbtModuleIdName(
-            projectID,
+          sbtCrossName(
+            projectID.name,
+            projectID.crossVersion,
+            projectID.platformOpt,
             scalaVersion,
             scalaBinaryVersion,
             projectPlatform = projectPlatform

@@ -1,3 +1,13 @@
 # git blame should ignore the following commits:
+# - scalariform sbt/sbt
+adb41611cf73260938274915d8462d924df200c8
+# - scalafmt sbt/sbt
+da046791e0a0ca950d4482f98bea6878baf8ef81
 # - scalafmt lm-core, lm-ivy and lm-coursier
 30248a451385540a604505911985b44b7a9f0d73
+# - scalariform lm
+e64165ce9edd3c3630f98039a4ad4a75b6427ef2
+# - formatting lm
+d42ea869d064a28c692df7d93c506b698dd6937c
+# - scalafmt 2.0.0-RC6 lm
+6a36ce7689fb326235e96bb52b034e73e621d273
