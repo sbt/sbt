@@ -40,6 +40,7 @@ trait ShellScriptUtil extends BasicTestSuite {
       failingPathJava: Boolean = false,
       useJavaHomeFromTestBin: Boolean = false,
       setWindowsJavacmd: Boolean = true,
+      simulateCygwinShell: Boolean = false,
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
@@ -183,6 +184,28 @@ trait ShellScriptUtil extends BasicTestSuite {
                     |""".stripMargin
                 )
                 fakeJava.setExecutable(true)
+              }
+              if (simulateCygwinShell && !isWindows) {
+                val fakeUname = new File(fakePathBin, "uname")
+                IO.write(
+                  fakeUname,
+                  """#!/usr/bin/env bash
+                    |echo MINGW64_NT-10.0
+                    |""".stripMargin
+                )
+                fakeUname.setExecutable(true)
+
+                val fakeCygpath = new File(fakePathBin, "cygpath")
+                IO.write(
+                  fakeCygpath,
+                  """#!/usr/bin/env bash
+                    |if [[ "$1" == "-u" ]]; then
+                    |  shift
+                    |fi
+                    |printf '%s\n' "$1"
+                    |""".stripMargin
+                )
+                fakeCygpath.setExecutable(true)
               }
               fakePathBin.getAbsolutePath + File.pathSeparator + path
             } else path

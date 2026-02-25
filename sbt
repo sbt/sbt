@@ -93,11 +93,12 @@ cygwinpath() {
   fi
 }
 
-# Prefer explicit Java settings to avoid PATH picking an unexpected runtime
-# (notably on Windows Git Bash where JAVA_HOME can be set but java on PATH differs).
+# Prefer explicit Java settings to avoid PATH picking an unexpected runtime.
+# Limit JAVA_HOME precedence to Cygwin/MSYS/MINGW shells to avoid changing
+# long-standing PATH-vs-JAVA_HOME behavior on non-Windows environments.
 if [[ -n "$JAVACMD" ]]; then
   java_cmd="$JAVACMD"
-elif [[ -n "$JAVA_HOME" ]]; then
+elif [[ "$CYGWIN_FLAG" == "true" ]] && [[ -n "$JAVA_HOME" ]]; then
   if [[ "$CYGWIN_FLAG" == "true" ]]; then
     java_home_unix=$(cygpath -u "$JAVA_HOME" 2>/dev/null)
     if [[ -n "$java_home_unix" ]] && [[ -x "$java_home_unix/bin/java" ]]; then

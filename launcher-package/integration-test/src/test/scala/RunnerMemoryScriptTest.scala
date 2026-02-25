@@ -93,12 +93,13 @@ object RunnerMemoryScriptTest extends verify.BasicTestSuite with ShellScriptUtil
     assert(out.contains[String]("-Xss1M"))
 
   testOutput(
-    "sbt prefers JAVA_HOME over PATH when JAVACMD is unset",
+    "sbt prefers JAVA_HOME over PATH in cygwin shell when JAVACMD is unset",
     jvmoptsFileContents = """-Xmx2G
         |-Xss1M""".stripMargin,
     failingPathJava = true,
     useJavaHomeFromTestBin = true,
-    setWindowsJavacmd = false
+    setWindowsJavacmd = false,
+    simulateCygwinShell = true
   )("compile", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Xmx2G"))
     assert(out.contains[String]("-Xss1M"))
