@@ -88,6 +88,22 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       restored.allFiles.size.shouldBe(original.allFiles.size)
     finally IO.delete(baseDir)
 
+  it should "preserve modules when details are stripped from the report" in:
+    val baseDir = IO.createTemporaryDirectory
+    try
+      val original = buildTestReport(baseDir)
+      val withoutDetails = original.withConfigurations(
+        original.configurations.map(_.withDetails(Vector.empty))
+      )
+      val cache = UpdateReportPersistence.toCache(withoutDetails)
+      val restored = UpdateReportPersistence.fromCache(cache)
+
+      restored.configurations.size.shouldBe(withoutDetails.configurations.size)
+      restored.configurations.head.modules.size
+        .shouldBe(withoutDetails.configurations.head.modules.size)
+      restored.allFiles.size.shouldBe(withoutDetails.allFiles.size)
+    finally IO.delete(baseDir)
+
   "UpdateReportPersistence.readFrom and writeTo" should "round-trip correctly" in:
     val baseDir = IO.createTemporaryDirectory
     try
