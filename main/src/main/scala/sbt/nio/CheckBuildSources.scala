@@ -50,7 +50,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   private val sources = new AtomicReference[Seq[Glob]](Nil)
   private val needUpdate = new AtomicBoolean(true)
   private val lastPolled = new AtomicReference[SDeadline](SDeadline.now)
-  private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]]
+  private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]](Nil)
   private[sbt] def fileTreeRepository: Option[FileTreeRepository[FileAttributes]] =
     Option(repository.get)
   private def getStamps(force: Boolean) = {
@@ -148,6 +148,8 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
               case Left(l)  => l.info(msg)
             }
             true
+          } else if (onChanges == IgnoreSourceChanges) {
+            false
           } else {
             val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
               "build when source changes are detected by setting " +

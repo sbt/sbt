@@ -555,7 +555,12 @@ object Defaults extends BuildCommon {
     // Adds subproject build.sbt files to the global list of build files to monitor
     Scope.Global / checkBuildSources / pollInterval :==
       new FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS),
-    Scope.Global / checkBuildSources / fileInputs += baseDirectory.value.toGlob / "*.sbt",
+    Scope.Global / checkBuildSources / fileInputs ++= {
+      if ((Scope.Global / onChangedBuildSource).value != IgnoreSourceChanges)
+        Seq(baseDirectory.value.toGlob / "*.sbt")
+      else
+        Nil
+    },
   )
 
   lazy val configPaths = sourceConfigPaths ++ resourceConfigPaths ++ outputConfigPaths
