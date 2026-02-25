@@ -16,4 +16,5 @@ lazy val baz = project
   .settings(
     scalaVersion := "2.13.12",
     name := "baz",
+    allowMismatchScala := true,
   )

@@ -182,6 +182,7 @@ object Defaults extends BuildCommon {
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
       allowUnsafeScalaLibUpgrade :== false,
+      allowMismatchScala :== false,
       classpathEntryDefinesClass := Def.uncached { (file: File) =>
         sys.error("use classpathEntryDefinesClassVF instead")
       },
@@ -4180,10 +4181,12 @@ object Classpaths {
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
+      val sv = scalaVersion.value
       val sbv = scalaBinaryVersion.value
       val ref = thisProjectRef.value
       val data = settingsData.value
       val deps = buildDependencies.value
+      val allow = allowMismatchScala.value
       deps
         .classpath(ref)
         .flatMap: dep =>
@@ -4192,45 +4195,55 @@ object Classpaths {
             depSBV <- (dep.project / scalaBinaryVersion).get(data)
             depCross <- (dep.project / crossVersion).get(data)
             depAuto <- (dep.project / autoScalaLibrary).get(data)
-          yield depCross match
-            case b: CrossVersion.Binary
-                if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
-              depProjId
-                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case b: CrossVersion.Binary if sbv != depSBV =>
-              depProjId
-                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case f: CrossVersion.Full if sbv != depSBV =>
-              val cross = (dep.project / scalaVersion)
-                .get(data)
-                .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
-                .getOrElse(depProjId.crossVersion)
-              depProjId
-                .withCrossVersion(cross)
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
-            // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
-            case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
-              val compat =
-                if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
-                else depSBV
-              depProjId
-                .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case c: sbt.librarymanagement.For2_13Use3 if sbv != depSBV =>
-              val compat = if (depSBV == "2.13") "3" else depSBV
-              depProjId
-                .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case _ =>
-              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+          yield
+            if !allow && sbv != depSBV then
+              val depCp = (dep.project / crossPaths).get(data).getOrElse(true)
+              if depCp then
+                val depSv = (dep.project / scalaVersion).get(data).getOrElse("")
+                if !ClasspathImpl.isAllowedScalaMismatch(sv, depSv) then
+                  sys.error(
+                    s"Scala version mismatch: ${ref.project} (Scala $sv) depends on ${dep.project.project} (Scala $depSv). " +
+                      s"To allow this, set `ThisProject / allowMismatchScala := true`"
+                  )
+            depCross match
+              case b: CrossVersion.Binary
+                  if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case b: CrossVersion.Binary if sbv != depSBV =>
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case f: CrossVersion.Full if sbv != depSBV =>
+                val cross = (dep.project / scalaVersion)
+                  .get(data)
+                  .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
+                  .getOrElse(depProjId.crossVersion)
+                depProjId
+                  .withCrossVersion(cross)
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
+              // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
+              case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
+                val compat =
+                  if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
+                  else depSBV
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case c: sbt.librarymanagement.For2_13Use3 if sbv != depSBV =>
+                val compat = if (depSBV == "2.13") "3" else depSBV
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case _ =>
+                depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
     }
 
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
