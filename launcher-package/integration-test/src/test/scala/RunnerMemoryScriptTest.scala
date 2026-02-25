@@ -99,7 +99,8 @@ object RunnerMemoryScriptTest extends verify.BasicTestSuite with ShellScriptUtil
     failingPathJava = true,
     useJavaHomeFromTestBin = true,
     setWindowsJavacmd = false,
-    simulateCygwinShell = true
+    simulateCygwinShell = true,
+    windowsSupport = false
   )("compile", "-v"): (out: List[String]) =>
     assert(out.contains[String]("-Xmx2G"))
     assert(out.contains[String]("-Xss1M"))
