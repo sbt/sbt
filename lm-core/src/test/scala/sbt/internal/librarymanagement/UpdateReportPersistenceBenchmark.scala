@@ -15,7 +15,6 @@ import sbt.io.IO
 import sbt.util.CacheStore
 import sbt.librarymanagement.*
 import sbt.librarymanagement.LibraryManagementCodec.given
-import UpdateReportPersistence.given
 
 final case class BenchmarkResult(
     iterationCount: Int,
@@ -54,14 +53,21 @@ object UpdateReportPersistenceBenchmark:
 
       for _ <- 0 until warmupIterations do
         fullStore.read[UpdateReport]()
-        cacheStore.read[UpdateReportCache]()
+        UpdateReportPersistence
+          .readFrom(cacheStore)
+          .map(UpdateReportPersistence.fromCache)
+          .getOrElse(sys.error("Expected cache report during warmup"))
 
       val fullStart = System.currentTimeMillis()
       for _ <- 0 until iterations do fullStore.read[UpdateReport]()
       val fullEnd = System.currentTimeMillis()
 
       val cacheStart = System.currentTimeMillis()
-      for _ <- 0 until iterations do cacheStore.read[UpdateReportCache]()
+      for _ <- 0 until iterations do
+        UpdateReportPersistence
+          .readFrom(cacheStore)
+          .map(UpdateReportPersistence.fromCache)
+          .getOrElse(sys.error("Expected cache report during benchmark"))
       val cacheEnd = System.currentTimeMillis()
 
       val fullSize = new File(baseDir, "full-format.json").length()

@@ -1,5 +1,6 @@
 package example
 
-object Example:
+object Example {
   def main(args: Array[String]): Unit =
     println("Update report cache persistence test")
+}

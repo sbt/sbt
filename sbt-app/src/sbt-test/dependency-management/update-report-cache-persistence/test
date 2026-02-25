@@ -1,9 +1,8 @@
-# Test that update cache round-trip works correctly
-# First update resolves dependencies and writes cache
-> update
+# Test that update cache round-trip works correctly.
+# First run should resolve (not cached), second run should hit cache.
+> checkCacheBehavior
 
-# Second update should use cache (no re-resolve needed)
-> update
+> checkCacheBehavior
 
 # Compile should work with cached classpath
 > compile
