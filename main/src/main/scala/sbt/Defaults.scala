@@ -74,7 +74,6 @@ import sbt.std.TaskExtra.*
 import sbt.testing.{ AnnotatedFingerprint, Framework, Runner, SubclassFingerprint }
 import sbt.util.CacheImplicits.given
 import sbt.util.InterfaceUtil.{ t2, toJavaFunction as f1 }
-import sbt.util.PathHashWriters.given
 import sbt.util.*
 import sjsonnew.*
 
