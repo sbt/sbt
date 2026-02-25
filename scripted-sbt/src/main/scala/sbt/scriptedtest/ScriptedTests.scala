@@ -347,7 +347,10 @@ final class ScriptedTests(
         log.clear()
         log.error(" Pending test passed. Mark as passing to remove this failure.")
         Some(label)
-      } else None
+      } else {
+        log.play()
+        None
+      }
     }
   }
 }

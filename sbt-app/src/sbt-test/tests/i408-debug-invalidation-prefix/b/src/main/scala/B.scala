@@ -1,0 +1,1 @@
+object B { def use: Int = A.value }

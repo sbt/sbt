@@ -31,6 +31,7 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
   var svr: TestServer = scala.compiletime.uninitialized
   def testDirectory: String
   def testPath: Path = temp.toPath.resolve(testDirectory)
+  def subscribeToAllForTest: Boolean = true
 
   private val targetDir: File = {
     val p0 = new File("..").getAbsoluteFile.getCanonicalFile / "target"
@@ -48,7 +49,14 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     val classpath = TestProperties.classpath.split(File.pathSeparator).map(new File(_))
     val sbtVersion = TestProperties.version
     val scalaVersion = TestProperties.scalaVersion
-    svr = TestServer.get(testDirectory, scalaVersion, sbtVersion, classpath.toSeq, temp)
+    svr = TestServer.get(
+      testDirectory,
+      scalaVersion,
+      sbtVersion,
+      classpath.toSeq,
+      temp,
+      subscribeToAllForTest
+    )
   }
   override protected def afterAll(): Unit = {
     svr.bye()
@@ -71,13 +79,14 @@ object TestServer {
       scalaVersion: String,
       sbtVersion: String,
       classpath: Seq[File],
-      temp: File
+      temp: File,
+      subscribeToAll: Boolean = true
   ): TestServer = {
     println(s"Starting test server $testBuild")
     IO.copyDirectory(serverTestBase / testBuild, temp / testBuild)
 
-    // Each test server instance will be executed in a Thread pool separated from the tests
-    val testServer = TestServer(temp / testBuild, scalaVersion, sbtVersion, classpath)
+    val testServer =
+      TestServer(temp / testBuild, scalaVersion, sbtVersion, classpath, subscribeToAll)
     // checking last log message after initialization
     // if something goes wrong here the communication streams are corrupted, restarting
     val init =
@@ -155,7 +164,8 @@ case class TestServer(
     baseDirectory: File,
     scalaVersion: String,
     sbtVersion: String,
-    classpath: Seq[File]
+    classpath: Seq[File],
+    subscribeToAll: Boolean = true
 ) {
   import TestServer.hostLog
 
@@ -227,8 +237,11 @@ case class TestServer(
     }
 
   // initiate handshake
+  private val initOptions =
+    if subscribeToAll then """{ "skipAnalysis": true, "canWork": true }"""
+    else """{ "skipAnalysis": true, "canWork": true, "subscribeToAll": false }"""
   sendJsonRpc(
-    s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": { "skipAnalysis": true, "canWork": true } } }"""
+    s"""{ "jsonrpc": "2.0", "id": 1, "method": "initialize", "params": { "initializationOptions": $initOptions } }"""
   )
 
   def test(f: TestServer => Future[Unit]): Future[Unit] = f(this)

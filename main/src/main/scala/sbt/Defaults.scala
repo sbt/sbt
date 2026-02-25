@@ -27,6 +27,7 @@ import sbt.ScopeAxis.{ Select, This, Zero }
 import sbt.State.StateOpsImpl
 import sbt.coursierint.*
 import sbt.internal.CommandStrings.ExportStream
+import sbt.internal.CompileDebugLogger
 import sbt.internal.*
 import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil.*
@@ -182,6 +183,7 @@ object Defaults extends BuildCommon {
       autoScalaLibrary :== true,
       managedScalaInstance :== true,
       allowUnsafeScalaLibUpgrade :== false,
+      allowMismatchScala :== false,
       classpathEntryDefinesClass := Def.uncached { (file: File) =>
         sys.error("use classpathEntryDefinesClassVF instead")
       },
@@ -2284,9 +2286,16 @@ object Defaults extends BuildCommon {
     )
   )
 
+  private def projectIdFromScope(s: TaskStreams): String =
+    s.key.scope.project match {
+      case Select(ref: ProjectRef) => ref.project
+      case _                       => "root"
+    }
+
   private val cachedCompileIncrementalTask = Def
     .cachedTask {
       val s = streams.value
+      val projectId = projectIdFromScope(s)
       val ci = (compile / compileInputs).value
       val bspTask = (compile / bspCompileTask).value
       // This is a cacheable version
@@ -2296,7 +2305,7 @@ object Defaults extends BuildCommon {
       val store = analysisStore(compileAnalysisFile)
       val c = fileConverter.value
       // TODO - Should readAnalysis + saveAnalysis be scoped by the compile task too?
-      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping))
+      val analysisResult = Retry.io(compileIncrementalTaskImpl(bspTask, s, ci, ping, projectId))
       val analysisOut = c.toVirtualFile(setup.cachePath())
       val contents = AnalysisContents.create(analysisResult.analysis(), analysisResult.setup())
       store.set(contents)
@@ -2312,15 +2321,17 @@ object Defaults extends BuildCommon {
   private val incCompiler = ZincUtil.defaultIncrementalCompiler
   private[sbt] def compileJavaTask: Initialize[Task[CompileResult]] = Def.task {
     val s = streams.value
+    val projectId = thisProject.value.id
     val r = compileScalaBackend.value
     val in0 = (compileJava / compileInputs).value
     val in = in0.withPreviousResult(PreviousResult.of(r.analysis, r.setup))
     val reporter = (compile / bspReporter).value
+    val log = CompileDebugLogger(projectId, s.log)
     try {
       if (r.hasModified) {
         val result0 = incCompiler
           .asInstanceOf[sbt.internal.inc.IncrementalCompilerImpl]
-          .compileAllJava(in, s.log)
+          .compileAllJava(in, log)
         reporter.sendSuccessReport(result0.analysis())
         result0.withHasModified(result0.hasModified || r.hasModified)
       } else r
@@ -2335,7 +2346,8 @@ object Defaults extends BuildCommon {
       task: BspCompileTask,
       s: TaskStreams,
       ci: Inputs,
-      promise: PromiseWrap[Boolean]
+      promise: PromiseWrap[Boolean],
+      projectId: String
   ): CompileResult = {
     lazy val x = s.text(ExportStream)
     def onArgs(cs: Compilers) =
@@ -2350,7 +2362,8 @@ object Defaults extends BuildCommon {
     val compilers: Compilers = ci.compilers
     val setup: Setup = ci.setup
     val i = ci.withCompilers(onArgs(compilers)).withSetup(onProgress(setup))
-    try incCompiler.compile(i, s.log)
+    val log = CompileDebugLogger(projectId, s.log)
+    try incCompiler.compile(i, log)
     catch
       case e: Throwable =>
         if !promise.isCompleted then
@@ -4248,10 +4261,12 @@ object Classpaths {
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
+      val sv = scalaVersion.value
       val sbv = scalaBinaryVersion.value
       val ref = thisProjectRef.value
       val data = settingsData.value
       val deps = buildDependencies.value
+      val allow = allowMismatchScala.value
       deps
         .classpath(ref)
         .flatMap: dep =>
@@ -4260,45 +4275,55 @@ object Classpaths {
             depSBV <- (dep.project / scalaBinaryVersion).get(data)
             depCross <- (dep.project / crossVersion).get(data)
             depAuto <- (dep.project / autoScalaLibrary).get(data)
-          yield depCross match
-            case b: CrossVersion.Binary
-                if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
-              depProjId
-                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case b: CrossVersion.Binary if sbv != depSBV =>
-              depProjId
-                .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case f: CrossVersion.Full if sbv != depSBV =>
-              val cross = (dep.project / scalaVersion)
-                .get(data)
-                .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
-                .getOrElse(depProjId.crossVersion)
-              depProjId
-                .withCrossVersion(cross)
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
-            // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
-            case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
-              val compat =
-                if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
-                else depSBV
-              depProjId
-                .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case c: sbt.librarymanagement.For2_13Use3 if sbv != depSBV =>
-              val compat = if (depSBV == "2.13") "3" else depSBV
-              depProjId
-                .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
-                .withConfigurations(dep.configuration)
-                .withExplicitArtifacts(Vector.empty)
-            case _ =>
-              depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
+          yield
+            if !allow && sbv != depSBV then
+              val depCp = (dep.project / crossPaths).get(data).getOrElse(true)
+              if depCp then
+                val depSv = (dep.project / scalaVersion).get(data).getOrElse("")
+                if !ClasspathImpl.isAllowedScalaMismatch(sv, depSv) then
+                  sys.error(
+                    s"Scala version mismatch: ${ref.project} (Scala $sv) depends on ${dep.project.project} (Scala $depSv). " +
+                      s"To allow this, set `ThisProject / allowMismatchScala := true`"
+                  )
+            depCross match
+              case b: CrossVersion.Binary
+                  if depAuto && VirtualAxis.isScala2Scala3Sandwich(sbv, depSBV) =>
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(b.prefix + depSBV))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case b: CrossVersion.Binary if sbv != depSBV =>
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(b.prefix + depSBV + b.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case f: CrossVersion.Full if sbv != depSBV =>
+                val cross = (dep.project / scalaVersion)
+                  .get(data)
+                  .map(sv => CrossVersion.constant(f.prefix + sv + f.suffix))
+                  .getOrElse(depProjId.crossVersion)
+                depProjId
+                  .withCrossVersion(cross)
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              // For3Use2_13/For2_13Use3 publish under compat suffix (e.g. bar_2.13 on Scala 3),
+              // not raw depSBV; sandwich case uses constant(depSBV) so would request wrong artifact.
+              case c: sbt.librarymanagement.For3Use2_13 if sbv != depSBV =>
+                val compat =
+                  if (depSBV == "3" || depSBV.startsWith("3.0.0")) "2.13"
+                  else depSBV
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case c: sbt.librarymanagement.For2_13Use3 if sbv != depSBV =>
+                val compat = if (depSBV == "2.13") "3" else depSBV
+                depProjId
+                  .withCrossVersion(CrossVersion.constant(c.prefix + compat + c.suffix))
+                  .withConfigurations(dep.configuration)
+                  .withExplicitArtifacts(Vector.empty)
+              case _ =>
+                depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
     }
 
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
