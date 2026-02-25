@@ -64,6 +64,25 @@ object ForkTest extends Properties("Fork") {
         }
     }
 
+  property("Arguments with double quotes preserved in arguments file mode.") = {
+    val baos = new java.io.ByteArrayOutputStream()
+    val jsonArg = """{"a":1}"""
+    // Pad JVM options to exceed MaxConcatenatedOptionLength (5000) and trigger argsfile mode
+    val padding = "-Dproperty=" + ("X" * 5000)
+    val absClasspath = Path.makeString(requiredEntries)
+    val args = List("-cp", absClasspath, padding, "sbt.echoArgs", jsonArg)
+    val config = ForkOptions()
+      .withOutputStrategy(CustomOutput(baos))
+      .withCanUseArgumentsFile(true)
+    val exitCode =
+      try Fork.java(config, args)
+      catch { case e: Exception => e.printStackTrace(); 1 }
+    val output = baos.toString("UTF-8").trim
+    s"exitCode: $exitCode" |:
+      s"output: '$output', expected: '$jsonArg'" |:
+      (exitCode == 0) && (output == jsonArg)
+  }
+
   private def trimClasspath(cp: String): String =
     if (cp.length > MaximumClasspathLength) {
       val lastEntryI = cp.lastIndexOf(File.pathSeparatorChar.toInt, MaximumClasspathLength)
@@ -78,5 +97,12 @@ object ForkTest extends Properties("Fork") {
 object exit {
   def main(args: Array[String]): Unit = {
     System.exit(java.lang.Integer.parseInt(args(0)))
+  }
+}
+
+// Echoes each argument on its own line, used to verify argument passing
+object echoArgs {
+  def main(args: Array[String]): Unit = {
+    args.foreach(println)
   }
 }
