@@ -23,7 +23,10 @@ import xsbti.{ ComponentProvider, GlobalLock, Logger }
 object ZincComponentManagerTest extends Properties:
   override def tests: List[Test] = List(
     example("files should return defined component files", testFilesReturnsDefined),
-    example("files should throw InvalidComponent when component is missing and IfMissing.Fail", testFilesMissingFail),
+    example(
+      "files should throw InvalidComponent when component is missing and IfMissing.Fail",
+      testFilesMissingFail,
+    ),
     example("file should return single file for a component", testFileSingle),
     example("file should throw when multiple files exist for a component", testFileMultiple),
     example("define should register component files", testDefine),
@@ -120,16 +123,15 @@ object ZincComponentManagerTest extends Properties:
     val manager = new ZincComponentManager(noOpLock, provider, None, silentLogger)
     val sourceDir = tmpDir / "source"
     IO.createDirectory(sourceDir)
-    val jar1 = createTempJar(sourceDir, "a.jar")
+    val jar1 = createTempJar(sourceDir, "multi-component.jar")
     val jar2 = createTempJar(sourceDir, "b.jar")
     manager.define("multi-component", Seq(jar1, jar2))
-    try
-      manager.file("multi-component")(IfMissing.fail)
-      Result.failure.log("expected InvalidComponent for multiple files")
-    catch
-      case _: InvalidComponent => Result.success
-      case e: Throwable =>
-        Result.failure.log(s"unexpected exception: ${e.getClass.getName}: ${e.getMessage}")
+    val result = manager.file("multi-component")(IfMissing.fail)
+    val remaining = provider.component("multi-component").filter(_.isFile)
+    Result
+      .assert(result.getName == "multi-component.jar")
+      .and(Result.assert(remaining.length == 1))
+      .log(s"got: ${result.getName}, remaining: ${remaining.toList.map(_.getName)}")
 
   def testDefine: Result = withTempDir: tmpDir =>
     val provider = fileProvider(tmpDir / "components")
