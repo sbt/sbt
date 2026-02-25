@@ -37,6 +37,9 @@ trait ShellScriptUtil extends BasicTestSuite {
       distSbtoptsContents: String = "",
       machineSbtoptsContents: String = "",
       jvmoptsFileContents: String = "",
+      failingPathJava: Boolean = false,
+      useJavaHomeFromTestBin: Boolean = false,
+      setWindowsJavacmd: Boolean = true,
       windowsSupport: Boolean = true,
       citestVariant: String = "citest",
   )(args: String*)(f: List[String] => Any) =
@@ -153,10 +156,41 @@ trait ShellScriptUtil extends BasicTestSuite {
           envVars("JAVA_OPTS") = javaOpts
           envVars("SBT_OPTS") = sbtOpts
           envVars("JAVA_TOOL_OPTIONS") = javaToolOptions
-          if (isWindows)
+
+          if (useJavaHomeFromTestBin) {
+            envVars("JAVA_HOME") = new File(javaBinDir).getParentFile.getAbsolutePath
+          }
+
+          val pathWithFakeJava =
+            if (failingPathJava) {
+              val fakePathBin = new File(workingDirectory, "fake-path-bin")
+              fakePathBin.mkdirs()
+              if (isWindows) {
+                val fakeJavaCmd = new File(fakePathBin, "java.cmd")
+                IO.write(
+                  fakeJavaCmd,
+                  """@echo PATH_JAVA_SHOULD_NOT_RUN 1>&2
+                    |@exit /b 1
+                    |""".stripMargin
+                )
+              } else {
+                val fakeJava = new File(fakePathBin, "java")
+                IO.write(
+                  fakeJava,
+                  """#!/usr/bin/env bash
+                    |echo PATH_JAVA_SHOULD_NOT_RUN 1>&2
+                    |exit 1
+                    |""".stripMargin
+                )
+                fakeJava.setExecutable(true)
+              }
+              fakePathBin.getAbsolutePath + File.pathSeparator + path
+            } else path
+
+          envVars("PATH") = pathWithFakeJava
+
+          if (isWindows && setWindowsJavacmd)
             envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
-          else
-            envVars("PATH") = javaBinDir + File.pathSeparator + path
 
           val out = scala.sys.process
             .Process(
