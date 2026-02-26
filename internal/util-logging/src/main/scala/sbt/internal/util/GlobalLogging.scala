@@ -83,6 +83,13 @@ object GlobalLogging {
   def initial(
       newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
       newBackingFile: => File,
+      console: ConsoleOut
+  ): GlobalLogging =
+    initial(newAppender, newBackingFile, console, Level.Info)
+
+  def initial(
+      newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
+      newBackingFile: => File,
       console: ConsoleOut,
       initialLevel: Level.Value = Level.Info
   ): GlobalLogging = {
