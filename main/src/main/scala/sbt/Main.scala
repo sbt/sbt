@@ -246,17 +246,33 @@ object StandardMain {
     ConsoleOut.systemOutOverwrite(ConsoleOut.overwriteContaining("Resolving "))
   ConsoleOut.setGlobalProxy(console)
 
-  private def initialGlobalLogging(file: Option[File]): GlobalLogging = {
-    def createTemp(attempt: Int = 0): File = Retry {
+  private[sbt] def logLevelFromArguments(args: Seq[String]): Level.Value =
+    val earlyCmd = BasicCommandStrings.EarlyCommand
+    val levelOptions = Level.values.toSeq.flatMap: v =>
+      List("-" + v.toString, "--" + v.toString)
+    def levelFromArg(arg: String): Option[Level.Value] =
+      if arg.startsWith(earlyCmd + "(") && arg.endsWith(")") then
+        val inner = arg.slice(earlyCmd.length + 1, arg.length - 1).trim
+        Level.values.find(_.toString == inner)
+      else if levelOptions.contains(arg) then
+        Level.values.find(v => arg == "-" + v.toString || arg == "--" + v.toString)
+      else None
+    args.flatMap(levelFromArg).headOption.getOrElse(Level.Info)
+
+  private def initialGlobalLogging(file: Option[File], initialLevel: Level.Value): GlobalLogging =
+    def createTemp(attempt: Int = 0): File = Retry:
       file.foreach(f => if (!f.exists()) IO.createDirectory(f))
       File.createTempFile("sbt-global-log", ".log", file.orNull)
-    }
     GlobalLogging.initial(
       MainAppender.globalDefault(ConsoleOut.globalProxy),
       createTemp(),
-      ConsoleOut.globalProxy
+      ConsoleOut.globalProxy,
+      initialLevel
     )
-  }
+
+  private def initialGlobalLogging(file: Option[File]): GlobalLogging =
+    initialGlobalLogging(file, Level.Info)
+
   def initialGlobalLogging(file: File): GlobalLogging = initialGlobalLogging(Option(file))
   @deprecated("use version that takes file argument", "1.4.0")
   def initialGlobalLogging: GlobalLogging = initialGlobalLogging(None)
@@ -265,8 +281,7 @@ object StandardMain {
       configuration: xsbti.AppConfiguration,
       initialDefinitions: Seq[Command],
       preCommands: Seq[String]
-  ): State = {
-    // This is to workaround https://github.com/sbt/io/issues/110
+  ): State =
     if (!sys.props.contains("jna.nosys")) sys.props.put("jna.nosys", "true")
 
     import BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, isEarlyCommand }
@@ -274,11 +289,18 @@ object StandardMain {
       configuration.arguments
         .map(_.trim)
         .filterNot(c => c == DashDashDetachStdio || c == DashDashServer)
+        .toSeq
+    val initialLevel = logLevelFromArguments(userCommands)
     val (earlyCommands, normalCommands) = (preCommands ++ userCommands).partition(isEarlyCommand)
-    val commands = (earlyCommands ++ normalCommands).toList map { x =>
-      Exec(x, None)
-    }
-    val initAttrs = BuiltinCommands.initialAttributes
+    val commands = (earlyCommands ++ normalCommands).toList.map(x => Exec(x, None))
+    val baseAttrs = BuiltinCommands.initialAttributes
+    val initAttrs =
+      if initialLevel == Level.Info then baseAttrs
+      else
+        baseAttrs
+          .put(Keys.logLevel.key, initialLevel)
+          .put(BasicKeys.explicitGlobalLogLevels, true)
+    val logDir = BuildPaths.globalLoggingStandard(configuration.baseDirectory)
     val s = State(
       configuration,
       initialDefinitions,
@@ -287,12 +309,12 @@ object StandardMain {
       commands,
       State.newHistory,
       initAttrs,
-      initialGlobalLogging(BuildPaths.globalLoggingStandard(configuration.baseDirectory)),
+      initialGlobalLogging(Option(logDir), initialLevel),
       None,
       State.Continue
     )
     s.initializeClassLoaderCache
-  }
+  end initialState
 }
 
 import sbt.BasicCommandStrings.*

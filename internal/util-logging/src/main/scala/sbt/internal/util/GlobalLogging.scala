@@ -84,11 +84,19 @@ object GlobalLogging {
       newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
       newBackingFile: => File,
       console: ConsoleOut
+  ): GlobalLogging =
+    initial(newAppender, newBackingFile, console, Level.Info)
+
+  def initial(
+      newAppender: (ManagedLogger, PrintWriter, GlobalLogBacking, LoggerContext) => GlobalLogging,
+      newBackingFile: => File,
+      console: ConsoleOut,
+      initialLevel: Level.Value = Level.Info
   ): GlobalLogging = {
     val loggerName = generateName
     val log = LoggerContext.globalContext.logger(loggerName, None, None)
     val appender = ConsoleAppender(ConsoleAppender.generateName(), console)
-    LoggerContext.globalContext.addAppender(loggerName, appender -> Level.Info)
+    LoggerContext.globalContext.addAppender(loggerName, appender -> initialLevel)
     GlobalLogging(log, console, appender, GlobalLogBacking(newBackingFile), newAppender)
   }
 }
