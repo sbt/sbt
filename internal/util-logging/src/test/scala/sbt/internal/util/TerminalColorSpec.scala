@@ -60,4 +60,54 @@ object TerminalColorSpec extends BasicTestSuite:
     val output = out.toString("UTF-8")
     assert(output.contains(ESC))
     assert(output.contains("red text"))
+
+  // isColorDefault pure function tests
+
+  private def colorDefault(
+      propsColor: Option[Boolean] = None,
+      colorProp: Option[Boolean] = None,
+      logFormatOpt: Option[Boolean] = None,
+      hasConsole: Boolean = false,
+      isDumbTerminal: Boolean = false,
+      isCI: Boolean = false,
+      isEmacs: Boolean = false,
+  ): Boolean =
+    Terminal.isColorDefault(
+      propsColor,
+      colorProp,
+      logFormatOpt,
+      hasConsole,
+      isDumbTerminal,
+      isCI,
+      isEmacs
+    )
+
+  test("isColorDefault should use propsColor when set"):
+    assert(colorDefault(propsColor = Some(true), colorProp = Some(false), hasConsole = false))
+    assert(!colorDefault(propsColor = Some(false), colorProp = Some(true), hasConsole = true))
+
+  test("isColorDefault should fall back to colorProp when propsColor is None"):
+    assert(colorDefault(colorProp = Some(true), hasConsole = false))
+    assert(!colorDefault(colorProp = Some(false), hasConsole = true))
+
+  test("isColorDefault should use logFormatOpt when props and colorProp are None"):
+    // logFormatOpt = Some(false) vetoes color even with console and CI
+    assert(!colorDefault(logFormatOpt = Some(false), hasConsole = true, isCI = true))
+    // logFormatOpt = Some(true) allows color when terminal heuristic is positive
+    assert(colorDefault(logFormatOpt = Some(true), hasConsole = true))
+
+  test("isColorDefault should enable color for interactive console"):
+    assert(colorDefault(hasConsole = true))
+
+  test("isColorDefault should disable color for dumb terminal without CI"):
+    assert(!colorDefault(hasConsole = true, isDumbTerminal = true))
+
+  test("isColorDefault should enable color on CI"):
+    assert(colorDefault(isCI = true))
+
+  test("isColorDefault should enable color in Emacs"):
+    assert(colorDefault(isEmacs = true))
+
+  test("isColorDefault should disable color when no console, no CI, no Emacs"):
+    assert(!colorDefault())
 end TerminalColorSpec

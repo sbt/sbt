@@ -378,17 +378,41 @@ object Terminal {
       }
     }
   }
-  private def useColorDefault: Boolean = {
-    // This approximates that both stdin and stdio are connected,
-    // so by default color will be turned off for pipes and redirects.
-    props
-      .map(_.color)
-      .orElse(isColorEnabledProp)
+
+  /**
+   * Pure function that determines whether color output should be enabled.
+   *
+   * Priority (highest to lowest):
+   *   1. propsColor — explicit color preference from terminal properties
+   *   2. colorProp — explicit color option
+   *   3. logFormatOpt — log format option (None defaults to true)
+   *   4. terminal heuristic — console type, CI, and Emacs detection
+   */
+  private[sbt] def isColorDefault(
+      propsColor: Option[Boolean],
+      colorProp: Option[Boolean],
+      logFormatOpt: Option[Boolean],
+      hasConsole: Boolean,
+      isDumbTerminal: Boolean,
+      isCI: Boolean,
+      isEmacs: Boolean,
+  ): Boolean =
+    propsColor
+      .orElse(colorProp)
       .getOrElse(
-        logFormatEnabled
-          .getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || Util.isEmacs)
+        logFormatOpt.getOrElse(true) && ((hasConsole && !isDumbTerminal) || isCI || isEmacs)
       )
-  }
+
+  private def useColorDefault: Boolean =
+    isColorDefault(
+      propsColor = props.map(_.color),
+      colorProp = isColorEnabledProp,
+      logFormatOpt = logFormatEnabled,
+      hasConsole = hasConsole,
+      isDumbTerminal = isDumbTerminal,
+      isCI = isCI,
+      isEmacs = Util.isEmacs,
+    )
   private lazy val isColorEnabledProp: Option[Boolean] =
     sys.props.get("sbt.color").orElse(sys.props.get("sbt.colour")).flatMap(parseLogOption)
   private[sbt] lazy val isColorEnabled = useColorDefault
