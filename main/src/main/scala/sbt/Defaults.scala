@@ -2031,6 +2031,13 @@ object Defaults extends BuildCommon {
         case _ => result
     loop(options.toList, Nil)
 
+  private val docSourceFilesHash =
+    TaskKey[Int](
+      "docSourceFilesHash",
+      "Hash of doc source files for cache invalidation",
+      Int.MaxValue
+    )
+
   def docTaskSettings(key: TaskKey[File] = doc): Seq[Setting[?]] =
     inTask(key)(
       Seq(
@@ -2053,6 +2060,13 @@ object Defaults extends BuildCommon {
             val project = if (config == Compile) projectName else s"$projectName-$config"
             Seq("-project", project)
           } else Seq.empty
+        },
+        docSourceFilesHash := Def.uncached {
+          val srcs = sources.value
+          val tFiles = tastyFiles.value
+          val sv = scalaVersion.value
+          val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
+          docSrcFiles.map(f => (f.getAbsolutePath, f.length(), f.lastModified())).hashCode
         },
         (TaskZero / key) := Def.uncached {
           val converter = fileConverter.value
@@ -2122,6 +2136,7 @@ object Defaults extends BuildCommon {
       val cs: Compilers = compilers.value
       val srcs = sources.value
       val out = target.value
+      val _docSrcHash = docSourceFilesHash.value
       val sOpts = scalacOptions.value
       val xapis = apiMappings.value
       val hasScala = srcs.exists(_.name.endsWith(".scala"))
