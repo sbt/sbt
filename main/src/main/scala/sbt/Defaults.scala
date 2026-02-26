@@ -2067,8 +2067,7 @@ object Defaults extends BuildCommon {
         builder: sjsonnew.Builder[J],
     ): Unit = ()
 
-  private given [H: HashWriter, T <: Tuple: HashWriter]
-      : HashWriter[H *: T] with
+  private given [H: HashWriter, T <: Tuple: HashWriter]: HashWriter[H *: T] with
     def write[J](
         obj: H *: T,
         builder: sjsonnew.Builder[J],
@@ -2115,8 +2114,7 @@ object Defaults extends BuildCommon {
       builder.writeString(obj.revision)
       builder.endObject()
 
-  private lazy val cachedDocGenTask
-      : Initialize[Task[HashedVirtualFileRef]] =
+  private lazy val cachedDocGenTask: Initialize[Task[HashedVirtualFileRef]] =
     Def.cachedTask {
       val s = streams.value
       val cs: Compilers = compilers.value
