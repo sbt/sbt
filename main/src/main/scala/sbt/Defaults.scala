@@ -117,7 +117,6 @@ import xsbti.compile.{
   Compilers,
   DefinesClass,
   IncOptions,
-  IncToolOptionsUtil,
   Inputs,
   MiniSetup,
   PerClasspathEntryLookup,
@@ -2044,77 +2043,7 @@ object Defaults extends BuildCommon {
             Seq("-project", project)
           } else Seq.empty
         },
-        (TaskZero / key) := Def.uncached {
-          val s = streams.value
-          val cs: Compilers = compilers.value
-          val srcs = sources.value
-          val out = target.value
-          val sOpts = scalacOptions.value
-          val xapis = apiMappings.value
-          val hasScala = srcs.exists(_.name.endsWith(".scala"))
-          val hasJava = srcs.exists(_.name.endsWith(".java"))
-          val cp = data(dependencyClasspath.value).toList
-          val label = nameForSrc(configuration.value.name)
-          val reporter = (compile / bspReporter).value
-          val converter = fileConverter.value
-          val tFiles = tastyFiles.value
-          val sv = scalaVersion.value
-          val allDeps = allDependencies.value
-          (hasScala, hasJava) match {
-            case (true, _) =>
-              val xapisFiles = xapis.map { (k, v) =>
-                converter.toPath(k).toFile() -> v
-              }
-              val externalApiOpts =
-                if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
-                else Opts.doc.externalAPI(xapisFiles)
-              val options = sOpts ++ externalApiOpts
-              def convertVfRef(value: String): String =
-                if !value.contains("$") then value
-                else converter.toPath(VirtualFileRef.of(value)).toString
-              val resolvedOptions = options.map { x =>
-                if !x.contains("$") then x
-                else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
-              }
-              val scalac = cs.scalac match
-                case ac: AnalyzingCompiler => ac.onArgs(Compiler.exported(s, "scaladoc"))
-              val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
-              // todo: cache this
-              if docSrcFiles.nonEmpty then
-                IO.delete(out)
-                IO.createDirectory(out)
-                // use PlainVirtualFile since Scaladoc currently doesn't handle actual VirtualFiles
-                scalac.doc(
-                  docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                  cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                  converter,
-                  out.toPath(),
-                  resolvedOptions,
-                  maxErrors.value,
-                  s.log,
-                )
-              else ()
-            case (_, true) =>
-              import sbt.internal.inc.javac.JavaCompilerArguments
-              val javaSourcesOnly: VirtualFile => Boolean = _.id.endsWith(".java")
-              val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
-              val options = javacOptions.value.toList
-              cs.javaTools.javadoc.run(
-                srcs.toArray
-                  .map { x =>
-                    converter.toVirtualFile(x.toPath)
-                  }
-                  .filter(javaSourcesOnly),
-                JavaCompilerArguments(Nil, classpath, options).toArray,
-                CompileOutput(out.toPath),
-                IncToolOptionsUtil.defaultIncToolOptions(),
-                reporter,
-                s.log,
-              )
-            case _ => () // do nothing
-          }
-          out
-        }
+        (TaskZero / key) := Def.uncached(Compiler.docTask(key).value)
       ) ++ compilersSetting
     )
 
