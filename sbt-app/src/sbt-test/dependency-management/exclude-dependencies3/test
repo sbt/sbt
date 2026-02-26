@@ -1,0 +1,19 @@
+$ delete output
+$ delete repo
+$ delete coursier-cache
+$ delete ivy
+
+> set libWithExcludedDeps/publishMavenStyle := true
+> libWithExcludedDeps/publish
+> dependsOnLibWithExcludedDeps/run
+$ exists output
+
+$ delete output
+$ delete repo
+$ delete coursier-cache
+$ delete ivy
+
+> set libWithExcludedDeps/publishMavenStyle := false
+> libWithExcludedDeps/publish
+> dependsOnLibWithExcludedDeps/run
+$ exists output

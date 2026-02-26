@@ -32,9 +32,10 @@ private[sbt] object JsonUtil {
 
   def toLite(ur: UpdateReport): UpdateReportLite =
     UpdateReportLite(ur.configurations map { cr =>
+      val details0 = if (cr.details.nonEmpty) cr.details else modulesToDetails(cr.modules)
       ConfigurationReportLite(
         cr.configuration.name,
-        cr.details map { oar =>
+        details0 map { oar =>
           OrganizationArtifactReport(
             oar.organization,
             oar.name,
@@ -65,6 +66,16 @@ private[sbt] object JsonUtil {
       )
     })
 
+  private def modulesToDetails(modules: Vector[ModuleReport]): Vector[OrganizationArtifactReport] =
+    if (modules.isEmpty) Vector.empty
+    else {
+      val grouped = modules.groupBy(m => (m.module.organization, m.module.name))
+      val orderedKeys = modules.map(m => (m.module.organization, m.module.name)).distinct
+      orderedKeys.map { case (organization, name) =>
+        OrganizationArtifactReport(organization, name, grouped((organization, name)))
+      }
+    }
+
   // #1763/#2030. Caller takes up 97% of space, so we need to shrink it down,
   // but there are semantics associated with some of them.
   def filterOutArtificialCallers(callers: Vector[Caller]): Vector[Caller] =
@@ -89,6 +100,16 @@ private[sbt] object JsonUtil {
           !mr.evicted && mr.problem.isEmpty
         }
       }
+      ConfigurationReport(ConfigRef(cr.configuration), modules, details)
+    }
+    UpdateReport(cachedDescriptor, configReports, stats, Map.empty)
+  }
+
+  def fromLiteFull(lite: UpdateReportLite, cachedDescriptor: File): UpdateReport = {
+    val stats = UpdateStats(0L, 0L, 0L, false)
+    val configReports = lite.configurations map { cr =>
+      val details = cr.details
+      val modules = details.flatMap(_.modules)
       ConfigurationReport(ConfigRef(cr.configuration), modules, details)
     }
     UpdateReport(cachedDescriptor, configReports, stats, Map.empty)

@@ -21,14 +21,16 @@ check := {
       .toTask(" org.typelevel cats-core_2.13 2.6.0")
       .value
   val expectedGraphWithVersion =
-    """org.typelevel:cats-core_2.13:2.6.0 [S]
-      |  +-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
-      |    +-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
-      |    | +-org.typelevel:cats-effect_2.13:3.1.0 [S]
-      |    |   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
-      |    |
-      |    +-org.typelevel:cats-effect_2.13:3.1.0 [S]
-      |      +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
+    Seq(
+      "org.typelevel:cats-core_2.13:2.6.0 [S]",
+      "+-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]",
+      "+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]",
+      "| +-org.typelevel:cats-effect_2.13:3.1.0 [S]",
+      "|   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]",
+      "|",
+      "+-org.typelevel:cats-effect_2.13:3.1.0 [S]",
+      "+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]"
+    ).mkString("\n")
 
   checkOutput(withVersion.trim, expectedGraphWithVersion)
 
@@ -37,14 +39,16 @@ check := {
       .toTask(" org.typelevel cats-core_2.13")
       .value
   val expectedGraphWithoutVersion =
-    """org.typelevel:cats-core_2.13:2.6.0 [S]
-      |+-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]
-      |+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]
-      || +-org.typelevel:cats-effect_2.13:3.1.0 [S]
-      ||   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]
-      ||
-      |+-org.typelevel:cats-effect_2.13:3.1.0 [S]
-      |+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]""".stripMargin
+    Seq(
+      "org.typelevel:cats-core_2.13:2.6.0 [S]",
+      "+-org.typelevel:cats-effect-kernel_2.13:3.1.0 [S]",
+      "+-org.typelevel:cats-effect-std_2.13:3.1.0 [S]",
+      "| +-org.typelevel:cats-effect_2.13:3.1.0 [S]",
+      "|   +-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]",
+      "|",
+      "+-org.typelevel:cats-effect_2.13:3.1.0 [S]",
+      "+-whatdependson:whatdependson_2.13:0.1.0-SNAPSHOT [S]"
+    ).mkString("\n")
 
   checkOutput(withoutVersion.trim, expectedGraphWithoutVersion.trim)
 

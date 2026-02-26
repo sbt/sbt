@@ -3,6 +3,7 @@ package sbt.internal.librarymanagement
 import sbt.librarymanagement.*
 import sbt.librarymanagement.syntax.*
 import DependencyBuilders.OrganizationArtifactName
+import scala.annotation.nowarn
 
 object InclExclSpec extends BaseIvySpecification {
   val scala210 = Some("2.10.4")
@@ -21,6 +22,35 @@ object InclExclSpec extends BaseIvySpecification {
   test("it should exclude any version of cross-built lift-json") {
     val excluded: OrganizationArtifactName = "net.liftweb" %% "lift-json"
     val report = getIvyReport(createLiftDep(excluded), scala210)
+    testLiftJsonIsMissing(report)
+  }
+
+  test(
+    "it should exclude any version of cross-built lift-json using `.exclude(String, String)` method with direct scala version definition"
+  ) {
+    @nowarn
+    val liftDep =
+      ("net.liftweb" %% "lift-mapper" % "2.6-M4" % "compile")
+        .exclude("net.liftweb", "lift-json_2.10")
+    val report = getIvyReport(liftDep, scala210)
+    testLiftJsonIsMissing(report)
+  }
+
+  test(
+    "it should exclude any version of cross-built lift-json using `.exclude(OrganizationArtifactName)` method"
+  ) {
+    val liftDep =
+      ("net.liftweb" %% "lift-mapper" % "2.6-M4" % "compile")
+        .exclude("net.liftweb" %% "lift-json")
+    val report = getIvyReport(liftDep, scala210)
+    testLiftJsonIsMissing(report)
+  }
+
+  test("it should exclude any version of cross-built lift-json using `.excludeAll` method") {
+    val liftDep =
+      ("net.liftweb" %% "lift-mapper" % "2.6-M4" % "compile")
+        .excludeAll("net.liftweb" %% "lift-json")
+    val report = getIvyReport(liftDep, scala210)
     testLiftJsonIsMissing(report)
   }
 
