@@ -1,0 +1,8 @@
+# Test that update cache round-trip works correctly.
+# First run should resolve (not cached), second run should hit cache.
+> checkCacheBehavior
+
+> checkCacheBehavior
+
+# Compile should work with cached classpath
+> compile
