@@ -347,6 +347,7 @@ class NetworkClient(
       else None
     val term = Terminal.console
     term.exitRawMode()
+    var serverStderrFile: Option[File] = None
     val process = socket match {
       case None if startServer =>
         if (log) console.appendLog(Level.Info, "server was not detected. starting an instance")
@@ -393,15 +394,19 @@ class NetworkClient(
 
         // https://github.com/sbt/sbt/issues/8442
         // On Linux, if stdout/stderr are inherited and the buffer fills up (~64KB),
-        // the server process will block on writes. Discard output since the server
-        // communicates via the boot socket, not stdout/stderr.
+        // the server process will block on writes. Redirect to files instead of
+        // inheriting or piping to avoid buffer deadlocks while still capturing
+        // errors for diagnostics (https://github.com/sbt/sbt/issues/8812).
         val nullFile = new File(if (Util.isWindows) "NUL" else "/dev/null")
+        val stderrFile = Files.createTempFile("sbt-server-err", ".log").toFile
+        stderrFile.deleteOnExit()
+        serverStderrFile = Some(stderrFile)
         val processBuilder =
           new ProcessBuilder((nohup ++ cmd)*)
             .directory(arguments.baseDirectory)
             .redirectInput(Redirect.PIPE)
             .redirectOutput(nullFile)
-            .redirectError(nullFile)
+            .redirectError(stderrFile)
         processBuilder.environment.put(Terminal.TERMINAL_PROPS, props)
         Try(processBuilder.start()) match {
           case Success(process) =>
@@ -540,7 +545,22 @@ class NetworkClient(
       sbtProcess.set(null)
       Util.ignoreResult(Runtime.getRuntime.removeShutdownHook(shutdown))
     }
-    if (!portfile.exists()) throw new ServerFailedException
+    if (!portfile.exists()) {
+      // Print captured server stderr so users can see why the server failed to start
+      for (errFile <- serverStderrFile) {
+        try {
+          val bytes = Files.readAllBytes(errFile.toPath)
+          if (bytes.nonEmpty) {
+            errorStream.write(bytes)
+            errorStream.flush()
+          }
+        } catch { case _: Exception => }
+        finally errFile.delete()
+      }
+      throw new ServerFailedException
+    }
+    // Clean up stderr temp file on successful startup
+    serverStderrFile.foreach(_.delete())
     if (attached.get && !stdinBytes.isEmpty) Option(inputThread.get).foreach(_.drain())
   }
 
