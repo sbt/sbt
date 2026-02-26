@@ -19,6 +19,7 @@ import java.nio.file.{ Files, Path, Paths, StandardOpenOption }
 import java.security.MessageDigest
 import scala.jdk.CollectionConverters.*
 import scala.quoted.*
+import scala.reflect.NameTransformer
 import sbt.io.{ Hash, IO }
 
 /**
@@ -429,8 +430,9 @@ object Eval:
           vals ::= name.mangledString
         case tpd.ValDef(name, tpt, _) if name.is(NameKinds.LazyLocalName) =>
           val str = name.mangledString
-          val methodName = str.take(str.indexOf("$lzy"))
-          val m = tree.symbol.owner.requiredMethod(methodName.replace("$minus", "-"))
+          val methodName = str.take(str.indexOf(NameTransformer.LAZY_LOCAL_SUFFIX_STRING))
+          val decodedName = NameTransformer.decode(methodName)
+          val m = tree.symbol.owner.requiredMethod(decodedName)
           if isAcceptableType(m.info) then vals ::= methodName
         case t: tpd.Template   => this((), t.body)
         case t: tpd.PackageDef => this((), t.stats)
