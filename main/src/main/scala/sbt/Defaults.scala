@@ -2072,8 +2072,10 @@ object Defaults extends BuildCommon {
         obj: H *: T,
         builder: sjsonnew.Builder[J],
     ): Unit =
+      builder.beginArray()
       summon[HashWriter[H]].write(obj.head, builder)
       summon[HashWriter[T]].write(obj.tail, builder)
+      builder.endArray()
 
   private given HashWriter[Compilers] with
     def write[J](
