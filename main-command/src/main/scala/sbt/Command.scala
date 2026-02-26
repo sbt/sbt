@@ -172,11 +172,12 @@ object Command {
       commandMap: Map[String, State => Parser[() => State]]
   ): State => Parser[() => State] =
     state =>
-      token(OpOrID.examples(commandMap.keys.toSet)).flatMap: id =>
+      token(OpOrID.examples(commandMap.keys.toSet)).flatMap { id =>
         (commandMap get id) match {
           case None    => failure(invalidValue("command", commandMap.keys)(id))
           case Some(c) => c(state)
         }
+      }
 
   // overload instead of default parameter to keep binary compatibility
   @deprecated("Use overload that takes the onParseError callback", since = "1.9.4")
