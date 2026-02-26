@@ -2065,8 +2065,15 @@ object Defaults extends BuildCommon {
           val srcs = sources.value
           val tFiles = tastyFiles.value
           val sv = scalaVersion.value
+          val sOpts = scalacOptions.value
+          val fileOpts = fileInputOptions.value
           val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
-          docSrcFiles.map(f => (f.getAbsolutePath, f.length(), f.lastModified())).hashCode
+          val srcHash =
+            docSrcFiles.map(f => (f.getAbsolutePath, f.length(), f.lastModified())).hashCode
+          val optionFiles = docOptionFiles(sOpts, fileOpts)
+          val optionFilesHash =
+            optionFiles.map(f => (f.getAbsolutePath, f.length(), f.lastModified())).hashCode
+          srcHash * 41 + optionFilesHash
         },
         (TaskZero / key) := Def.uncached {
           val converter = fileConverter.value
