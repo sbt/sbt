@@ -19,6 +19,10 @@ object InitialLogLevelSpec extends verify.BasicTestSuite:
   test("logLevelFromArguments returns Debug when --debug is in arguments"):
     assert(StandardMain.logLevelFromArguments(Seq("compile", "--debug")) == Level.Debug)
 
+  test("logLevelFromArguments returns Debug when early(debug) is in arguments"):
+    assert(StandardMain.logLevelFromArguments(Seq("early(debug)")) == Level.Debug)
+    assert(StandardMain.logLevelFromArguments(Seq("compile", "early(debug)")) == Level.Debug)
+
   test("logLevelFromArguments returns Info when no level option in arguments"):
     assert(StandardMain.logLevelFromArguments(Seq()) == Level.Info)
     assert(StandardMain.logLevelFromArguments(Seq("compile", "run")) == Level.Info)

@@ -247,13 +247,17 @@ object StandardMain {
   ConsoleOut.setGlobalProxy(console)
 
   private[sbt] def logLevelFromArguments(args: Seq[String]): Level.Value =
+    val earlyCmd = BasicCommandStrings.EarlyCommand
     val levelOptions = Level.values.toSeq.flatMap: v =>
       List("-" + v.toString, "--" + v.toString)
-    args
-      .find(levelOptions.contains)
-      .flatMap: arg =>
+    def levelFromArg(arg: String): Option[Level.Value] =
+      if arg.startsWith(earlyCmd + "(") && arg.endsWith(")") then
+        val inner = arg.slice(earlyCmd.length + 1, arg.length - 1).trim
+        Level.values.find(_.toString == inner)
+      else if levelOptions.contains(arg) then
         Level.values.find(v => arg == "-" + v.toString || arg == "--" + v.toString)
-      .getOrElse(Level.Info)
+      else None
+    args.flatMap(levelFromArg).headOption.getOrElse(Level.Info)
 
   private def initialGlobalLogging(file: Option[File], initialLevel: Level.Value): GlobalLogging =
     def createTemp(attempt: Int = 0): File = Retry:
