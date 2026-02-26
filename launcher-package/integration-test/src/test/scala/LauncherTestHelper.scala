@@ -14,10 +14,11 @@ object LauncherTestHelper {
     isWindows && sys.props.get("sbt.test.useSbtw").contains("true")
 
   /** Command prefix to run the launcher: either script path or java -cp sbtw.Main */
-  def launcherCommand(scriptPath: String): Seq[String] =
-    if (useSbtw) {
+  def launcherCommand(scriptPath: String, useGitBash: Boolean = false): Seq[String] =
+    if useGitBash then
+      Seq("C:\\Program Files\\Git\\bin\\bash.EXE", "--noprofile", "-e", "--", scriptPath)
+    else if useSbtw then
       val cp = sys.props.get("sbt.test.classpath").getOrElse(System.getProperty("java.class.path"))
       Seq("java", "-cp", cp, "sbtw.Main")
-    } else
-      Seq(scriptPath)
+    else Seq(scriptPath)
 }
