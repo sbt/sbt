@@ -506,6 +506,18 @@ checkJava() {
   fi
 }
 
+# sbt 2.x requires JDK 17+
+checkJava17ForSbt2() {
+  local sbtV="$build_props_sbt_version"
+  [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
+  [[ "$sbtV" == "" ]] && return
+  local sbtMajor=$(echo "$sbtV" | sed 's/^\([0-9]*\).*/\1/')
+  if (( sbtMajor >= 2 )) && [[ "$java_version" != "no_java" ]] && (( java_version < 17 )); then
+    echoerr "[error] sbt 2.x requires JDK 17 or above, but you have JDK $java_version"
+    exit 1
+  fi
+}
+
 copyRt() {
   local at_least_9="$(expr $java_version ">=" 9)"
   if [[ "$at_least_9" == "1" ]]; then
@@ -916,13 +928,15 @@ if [[ $print_sbt_script_version ]]; then
   exit 0
 fi
 
+java_version="$(jdk_version)"
+vlog "[process_args] java_version = '$java_version'"
+checkJava17ForSbt2
+
 if [[ "$(isRunNativeClient)" == "true" ]] && [[ -z "$print_version" ]]; then
   set -- "${residual_args[@]}"
   argumentCount=$#
   runNativeClient
 else
-  java_version="$(jdk_version)"
-  vlog "[process_args] java_version = '$java_version'"
   addDefaultMemory
   addSbtScriptProperty
   addJdkWorkaround
