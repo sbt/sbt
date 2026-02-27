@@ -37,6 +37,19 @@ lazy val foo = project
   .settings(x := y)""" -> LineRange(7, 8)))
   }
 
+  test("comma separated imports") {
+    val ref = VirtualFileRef.of("vfile")
+    val code = """import scala.util, util.Random
+
+def f = Random.nextInt()
+"""
+    val p = SbtParser(ref, code.linesIterator.toList)
+    assert(p.imports.size == 2)
+    assert(p.imports(0)._1 == "import scala.util")
+    assert(p.imports(1)._1 == "import util.Random")
+    assert(p.settings.size == 1)
+  }
+
   test("isIdentifier") {
     assert(SbtParser.isIdentifier("1a") == false)
   }
