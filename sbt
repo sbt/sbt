@@ -868,10 +868,47 @@ runNativeClient() {
   [[ -f "$sbtn_command" ]] || acquire_sbtn "$sbtn_version" || {
     exit 1
   }
-  for i in "${!original_args[@]}"; do
-    if [[ "${original_args[i]}" = "--client" ]]; then
-      unset 'original_args[i]'
-    fi
+
+  # Build sbtn args by allowlisting; skip launcher-only flags (#6825)
+  local -a sbtn_args=()
+  local total=${#original_args[@]}
+  local i=0
+  while [[ $i -lt $total ]]; do
+    local arg="${original_args[$i]}"
+    case "$arg" in
+      # Value-taking launcher flags: skip flag and its argument
+      -mem|--mem|-jvm-debug|--jvm-debug|-sbt-jar|--sbt-jar| \
+      -sbt-cache|--sbt-cache|-sbt-version|--sbt-version| \
+      -java-home|--java-home|-ivy|--ivy|-sbt-boot|--sbt-boot| \
+      -sbt-dir|--sbt-dir)
+        i=$((i + 2))
+        ;;
+      # No-value launcher flags: skip
+      -client|--client|--server|--jvm-client| \
+      -h|-help|--help|-v|-verbose|--verbose| \
+      -V|-version|--version|--numeric-version|--script-version| \
+      -d|-debug|--debug|-debug-inc|--debug-inc| \
+      -batch|--batch|--no-hide-jdk-warnings| \
+      -no-colors|--no-colors|-timings|--timings|-traces|--traces| \
+      -no-server|--no-server|-no-share|--no-share|-no-global|--no-global| \
+      -allow-empty|--allow-empty|-sbt-create|--sbt-create| \
+      shutdownall)
+        i=$((i + 1))
+        ;;
+      # Flags with = syntax: skip
+      --supershell=*|-supershell=*|--color=*|-color=*)
+        i=$((i + 1))
+        ;;
+      # -J* flags (JVM flags): skip
+      -J*)
+        i=$((i + 1))
+        ;;
+      # Forward -D properties, -bsp/--bsp, --sbt-launch-jar, and non-flag args
+      *)
+        sbtn_args+=("$arg")
+        i=$((i + 1))
+        ;;
+    esac
   done
 
   if [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
@@ -880,7 +917,7 @@ runNativeClient() {
     sbt_script="$0"
   fi
   sbt_script=${sbt_script/ /%20}
-  execRunner "$sbtn_command" "--sbt-script=$sbt_script" "${original_args[@]}"
+  execRunner "$sbtn_command" "--sbt-script=$sbt_script" "${sbtn_args[@]}"
 }
 
 original_args=("$@")

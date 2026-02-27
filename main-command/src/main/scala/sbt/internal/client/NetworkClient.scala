@@ -1194,6 +1194,77 @@ object NetworkClient {
   private[client] val noTab = "--no-tab"
   private[client] val noStdErr = "--no-stderr"
   private[client] val sbtBase = "--sbt-base-directory"
+  // Launcher flags that take a value argument (flag + next arg should be skipped)
+  private[client] val launcherValueFlags: Set[String] = Set(
+    "-mem",
+    "--mem",
+    "-jvm-debug",
+    "--jvm-debug",
+    "-sbt-jar",
+    "--sbt-jar",
+    "-sbt-cache",
+    "--sbt-cache",
+    "-sbt-version",
+    "--sbt-version",
+    "-java-home",
+    "--java-home",
+    "-ivy",
+    "--ivy",
+    "-sbt-boot",
+    "--sbt-boot",
+    "-sbt-dir",
+    "--sbt-dir",
+  )
+  // Launcher flags that take no value (flag itself should be skipped)
+  private[client] val launcherNoValueFlags: Set[String] = Set(
+    "-client",
+    "--client",
+    "--server",
+    "--jvm-client",
+    "-h",
+    "-help",
+    "--help",
+    "-v",
+    "-verbose",
+    "--verbose",
+    "-V",
+    "-version",
+    "--version",
+    "--numeric-version",
+    "--script-version",
+    "-d",
+    "-debug",
+    "--debug",
+    "-debug-inc",
+    "--debug-inc",
+    "-batch",
+    "--batch",
+    "--no-hide-jdk-warnings",
+    "-no-colors",
+    "--no-colors",
+    "-timings",
+    "--timings",
+    "-traces",
+    "--traces",
+    "-no-server",
+    "--no-server",
+    "-no-share",
+    "--no-share",
+    "-no-global",
+    "--no-global",
+    "-allow-empty",
+    "--allow-empty",
+    "-sbt-create",
+    "--sbt-create",
+    "shutdownall",
+  )
+  // Prefixes for launcher flags using = syntax
+  private[client] val launcherEqPrefixes: Seq[String] = Seq(
+    "--supershell=",
+    "-supershell=",
+    "--color=",
+    "-color=",
+  )
   private[client] def parseArgs(args: Array[String]): Arguments = {
     val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
     var sbtScript = Properties.propOrNone("sbt.script")
@@ -1230,8 +1301,13 @@ object NetworkClient {
         case "--sbt-launch-jar" if i + 1 < sanitized.length =>
           i += 1
           launchJar = Option(sanitized(i).replace("%20", " "))
-        case "-bsp" | "--bsp"        => bsp = true
-        case a if !a.startsWith("-") => commandArgs += a
+        case "-bsp" | "--bsp" => bsp = true
+        case a if launcherValueFlags.contains(a) =>
+          if (i + 1 < sanitized.length) i += 1
+        case a if launcherNoValueFlags.contains(a)                => ()
+        case a if launcherEqPrefixes.exists(p => a.startsWith(p)) => ()
+        case a if a.startsWith("-J")                              => ()
+        case a if !a.startsWith("-")                              => commandArgs += a
         case a @ SysProp(key, value) =>
           System.setProperty(key, value)
           sbtArguments += a
