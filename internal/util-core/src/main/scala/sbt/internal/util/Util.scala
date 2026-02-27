@@ -45,6 +45,14 @@ object Util:
 
   def quoteIfKeyword(s: String): String = if (ScalaKeywords.values(s)) s"`${s}`" else s
 
+  def quoteIfNotScalaId(s: String): String =
+    if isValidScalaId(s) && !ScalaKeywords.values(s) then s
+    else s"`$s`"
+
+  private def isValidScalaId(s: String): Boolean =
+    s.nonEmpty && (s.charAt(0).isLetter || s.charAt(0) == '_') &&
+      s.forall(c => c.isLetterOrDigit || c == '_')
+
   def ignoreResult[A](f: => A): Unit = {
     val _ = f
     ()
