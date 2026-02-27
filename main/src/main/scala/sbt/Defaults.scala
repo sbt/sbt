@@ -1196,7 +1196,20 @@ object Defaults extends BuildCommon {
         thisProject,
         fileConverter,
       ).flatMapN { (s, lt, tl, gp, ex, cp, fp, jo, clls, thisProj, c) =>
-        allTestGroupsTask(s, lt, tl, gp, ex, cp, fp, fpm, jo, clls, s"${thisProj.id} / ", c)
+        allTestGroupsTask(
+          s,
+          lt,
+          tl,
+          gp,
+          ex,
+          cp,
+          fp,
+          fpm,
+          jo,
+          clls,
+          s"${Util.quoteIfNotScalaId(thisProj.id)} / ",
+          c
+        )
       }
     }.value),
     // ((streams in test, loadedTestFrameworks, testLoader, testGrouping in test, testExecution in test, fullClasspath in test, javaHome in test, testForkedParallel, javaOptions in test) flatMap allTestGroupsTask).value,
@@ -1372,7 +1385,7 @@ object Defaults extends BuildCommon {
         testForkedParallelism.value,
         javaOptions.value,
         classLoaderLayeringStrategy.value,
-        projectId = s"${thisProject.value.id} / ",
+        projectId = s"${Util.quoteIfNotScalaId(thisProject.value.id)} / ",
         converter = fileConverter.value,
       )
       val taskName = display.show(resolvedScoped.value)
