@@ -41,18 +41,22 @@ object Main:
       return 1
 
     val buildPropsVersion = ConfigLoader.sbtVersionFromBuildProperties(cwd)
+
+    val javaCmd = Runner.findJavaCmd(opts.javaHome)
+    val javaVer = Runner.javaVersion(javaCmd)
+    val minJdk = Runner.minimumJdkVersion(buildPropsVersion)
+    if javaVer > 0 && javaVer < minJdk then
+      if minJdk >= 17 then
+        System.err.println("[error] sbt 2.x requires JDK 17 or above, but you have JDK " + javaVer)
+      else System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
+      return 1
+
     val clientOpt = opts.client || sys.env.get("SBT_NATIVE_CLIENT").contains("true")
     val useNativeClient = shouldRunNativeClient(opts.copy(client = clientOpt), buildPropsVersion)
 
     if useNativeClient then
       val scriptPath = sbtBinDir.getAbsolutePath.replace("\\", "/") + "/sbt.bat"
       return Runner.runNativeClient(sbtBinDir, scriptPath, opts)
-
-    val javaCmd = Runner.findJavaCmd(opts.javaHome)
-    val javaVer = Runner.javaVersion(javaCmd)
-    if javaVer > 0 && javaVer < 8 then
-      System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
-      return 1
 
     val sbtJar = opts.sbtJar
       .filter(p => new File(p).isFile)

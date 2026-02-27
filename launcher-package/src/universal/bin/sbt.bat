@@ -617,12 +617,12 @@ if !sbt_args_print_sbt_script_version! equ 1 (
   goto :eof
 )
 
+call :checkjava
+
 if !run_native_client! equ 1 if not defined sbt_args_print_version (
   goto :runnative !SBT_ARGS!
   goto :eof
 )
-
-call :checkjava
 
 if defined sbt_args_sbt_jar (
   set "sbt_jar=!sbt_args_sbt_jar!"
@@ -1008,8 +1008,23 @@ exit /B 0
 
 :checkjava
 set /a required_version=8
+rem sbt 2.x requires JDK 17+
+set "_sbt_check_ver=!build_props_sbt_version!"
+if not defined _sbt_check_ver set "_sbt_check_ver=!init_sbt_version!"
+if defined _sbt_check_ver (
+  for /F "delims=.-_ tokens=1" %%m in ("!_sbt_check_ver!") do (
+    if %%m GEQ 2 set /a required_version=17
+  )
+)
+set "_sbt_check_ver="
 if /I !JAVA_VERSION! GEQ !required_version! (
   exit /B 0
+)
+if !required_version! GEQ 17 (
+  >&2 echo.
+  >&2 echo [error] sbt 2.x requires JDK 17 or above, but you have JDK !JAVA_VERSION!
+  >&2 echo.
+  exit /B 1
 )
 >&2 echo.
 >&2 echo The Java Development Kit ^(JDK^) installation you have is not up to date.

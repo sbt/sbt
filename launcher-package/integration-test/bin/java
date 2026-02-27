@@ -1,9 +1,28 @@
 #!/usr/bin/env python3
 
+import os
 import sys
+import tempfile
 
 if '--version' in sys.argv or '-version' in sys.argv:
-    print('openjdk version "1.8.0_212"')
+    print('openjdk version "17.0.12" 2024-07-16')
+elif '--rt-ext-dir' in sys.argv:
+    # Simulate JDK 9+ rt.jar ext dir: output a directory path containing
+    # "java9-rt-ext-" that the launcher scripts look for via grep/findstr.
+    ext_dir = os.path.join(tempfile.gettempdir(), 'java9-rt-ext-fake')
+    os.makedirs(ext_dir, exist_ok=True)
+    # Create a dummy rt.jar so the launcher won't try to --export-rt
+    rt_jar = os.path.join(ext_dir, 'rt.jar')
+    if not os.path.exists(rt_jar):
+        open(rt_jar, 'w').close()
+    print(ext_dir)
+elif '--export-rt' in sys.argv:
+    # Simulate rt.jar export: create the file at the specified path
+    idx = sys.argv.index('--export-rt')
+    if idx + 1 < len(sys.argv):
+        rt_path = sys.argv[idx + 1]
+        os.makedirs(os.path.dirname(rt_path), exist_ok=True)
+        open(rt_path, 'w').close()
 else:
     for arg in sys.argv[1:]:
         print(repr(arg)[1:-1])
