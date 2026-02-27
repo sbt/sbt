@@ -311,6 +311,7 @@ lazy val utilCore = project
     utilCommonSettings,
     name := "Util Core",
     Utils.keywordsSettings,
+    libraryDependencies ++= Seq(hedgehog % Test),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
     ),
