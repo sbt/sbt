@@ -1,0 +1,4 @@
+# Verify that backtick-quoted project IDs work in set commands.
+# This is the syntax the classloader error message now suggests for hyphenated projects.
+> set `bug-report` / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.ScalaLibrary
+> set `bug-report` / Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
