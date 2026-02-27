@@ -3180,7 +3180,14 @@ object Classpaths {
     allDependencies := Def.uncached {
       projectDependencies.value ++ libraryDependencies.value
     },
-    allExcludeDependencies := excludeDependencies.value,
+    allExcludeDependencies := {
+      val excludes = excludeDependencies.value
+      excludes ++ scalaOrgExclusions(
+        scalaOrganization.value,
+        scalaVersion.value,
+        scalaArtifacts.value,
+      )
+    },
     scalaModuleInfo := (scalaModuleInfo or (
       Def.setting {
         // Resolve dynamic Scala version for scalaModuleInfo
@@ -3496,8 +3503,13 @@ object Classpaths {
         o %% "util-position",
         o %% "io"
       )
-      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes
-      else excludes
+      val scalaExcludes = scalaOrgExclusions(
+        scalaOrganization.value,
+        scalaVersion.value,
+        scalaArtifacts.value,
+      )
+      if (isMeta && !force) excludes.toVector ++ sbtModulesExcludes ++ scalaExcludes
+      else excludes ++ scalaExcludes
     },
     dependencyOverrides ++= {
       val isPlugin = sbtPlugin.value
@@ -3630,6 +3642,14 @@ object Classpaths {
           scalaBinaryVersion := binaryScalaVersion(scalaVersion.value),
           scalaEarlyVersion := CrossVersion.earlyScalaVersion(scalaVersion.value),
           scalaOrganization := ScalaArtifacts.Organization,
+          allExcludeDependencies := {
+            val excludes = excludeDependencies.value
+            excludes ++ scalaOrgExclusions(
+              scalaOrganization.value,
+              scalaVersion.value,
+              scalaArtifacts.value,
+            )
+          },
           scalaModuleInfo := {
             Some(
               ScalaModuleInfo(
@@ -4190,6 +4210,30 @@ object Classpaths {
     (outputPath / "[artifact]-[revision](-[classifier]).[ext]").absolutePath
 
   private[sbt] def isScala213(sv: String) = sv.startsWith("2.13.")
+
+  private[sbt] def scalaOrgExclusions(
+      scalaOrg: String,
+      sv: String,
+      scalaArtifactNames: Seq[String],
+  ): Vector[InclExclRule] =
+    if scalaOrg == ScalaArtifacts.Organization then Vector.empty
+    else
+      val defaultOrg = ScalaArtifacts.Organization
+      val scala2Excludes = scalaArtifactNames.toVector.map(a => InclExclRule(defaultOrg, a))
+      val scala3Excludes =
+        if ScalaArtifacts.isScala3(sv) then
+          Vector(
+            ScalaArtifacts.Scala3LibraryID,
+            ScalaArtifacts.Scala3CompilerID,
+            ScalaArtifacts.TastyCoreID,
+            ScalaArtifacts.ScaladocID,
+            ScalaArtifacts.Scala3DocID,
+            ScalaArtifacts.Scala3TastyInspectorID,
+            ScalaArtifacts.Scala3ReplID,
+          ).map(a => InclExclRule(defaultOrg, a, "*", Vector.empty, CrossVersion.binary))
+            :+ InclExclRule(defaultOrg, ScalaArtifacts.Scala3InterfacesID)
+        else Vector.empty
+      scala2Excludes ++ scala3Excludes
 
   def projectDependenciesTask: Initialize[Task[Seq[ModuleID]]] =
     Def.task {
