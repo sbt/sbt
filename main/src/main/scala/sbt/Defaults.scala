@@ -2060,7 +2060,6 @@ object Defaults extends BuildCommon {
             Seq("-project", project)
           } else Seq.empty
         },
-<<<<<<< fix/doc-cache-output-deletion
         docSourceFilesHash := Def.uncached {
           val srcs = sources.value
           val tFiles = tastyFiles.value
@@ -2079,9 +2078,6 @@ object Defaults extends BuildCommon {
           val converter = fileConverter.value
           converter.toPath(cachedDocGenTask.value).toFile()
         }
-=======
-        (TaskZero / key) := Def.uncached(Compiler.docTask(key).value)
->>>>>>> develop
       ) ++ compilersSetting
     )
 
