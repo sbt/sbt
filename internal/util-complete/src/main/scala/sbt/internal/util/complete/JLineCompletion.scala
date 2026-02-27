@@ -110,7 +110,6 @@ object JLineCompletion {
     b.buffer.substring(0, b.cursor)
   }
 
-  // returns false if there was nothing to insert and nothing to display
   def complete(
       beforeCursor: String,
       completions: String => (Seq[String], Seq[String]),
@@ -118,21 +117,95 @@ object JLineCompletion {
   ): Boolean = {
     val (insert, display) = completions(beforeCursor)
     val common = commonPrefix(insert)
-    if (common.isEmpty)
-      if (display.isEmpty)
-        ()
-      else
-        showCompletions(display, reader)
-    else
+    if (common.nonEmpty) {
       appendCompletion(common, reader)
-
-    !(common.isEmpty && display.isEmpty)
+      true
+    } else if (insert.nonEmpty) {
+      showCompletions(display, reader)
+      true
+    } else if (caseInsensitiveFallback(beforeCursor, completions, reader)) {
+      true
+    } else if (display.nonEmpty) {
+      showCompletions(display, reader)
+      true
+    } else {
+      false
+    }
   }
 
   def appendCompletion(common: String, reader: ConsoleReader): Unit = {
     reader.getCursorBuffer.write(common)
     reader.redrawLine()
   }
+
+  private def caseInsensitiveFallback(
+      beforeCursor: String,
+      completions: String => (Seq[String], Seq[String]),
+      reader: ConsoleReader
+  ): Boolean = {
+    try {
+      val token = tokenBeforeCursor(beforeCursor)
+      if (token.isEmpty) return false
+
+      val prefix = beforeCursor.dropRight(token.length)
+      val (fallbackInsert, _) = completions(prefix)
+      val candidates = filterCaseInsensitive(token, fallbackInsert)
+
+      if (candidates.isEmpty) false
+      else if (candidates.size == 1) {
+        replaceCurrentToken(beforeCursor, candidates.head, reader)
+        true
+      } else {
+        val common = commonPrefixIgnoreCase(candidates)
+        replaceCurrentToken(beforeCursor, common, reader)
+        if (common.length <= token.length)
+          showCompletions(candidates.sorted, reader)
+        true
+      }
+    } catch {
+      case _: Exception => false
+    }
+  }
+
+  private[complete] def filterCaseInsensitive(
+      token: String,
+      candidates: Seq[String]
+  ): Seq[String] =
+    candidates.filter(startsWithIgnoreCase(_, token))
+
+  private[complete] def tokenBeforeCursor(beforeCursor: String): String = {
+    val tokenStart = beforeCursor.lastIndexWhere(_.isWhitespace) + 1
+    beforeCursor.substring(tokenStart)
+  }
+
+  private def replaceCurrentToken(
+      beforeCursor: String,
+      replacement: String,
+      reader: ConsoleReader
+  ): Unit = {
+    val tokenLength = tokenBeforeCursor(beforeCursor).length
+    var remaining = tokenLength
+    while (remaining > 0 && reader.backspace()) remaining -= 1
+    reader.putString(replacement)
+    reader.redrawLine()
+  }
+
+  private[complete] def commonPrefixIgnoreCase(values: Seq[String]): String =
+    if (values.isEmpty) ""
+    else values.reduceLeft(commonPrefixIgnoreCase)
+
+  private[complete] def commonPrefixIgnoreCase(a: String, b: String): String = {
+    val len = scala.math.min(a.length, b.length)
+    @tailrec def loop(i: Int): Int =
+      if (i >= len) i
+      else if (a.charAt(i).toLower == b.charAt(i).toLower) loop(i + 1)
+      else i
+    a.substring(0, loop(0))
+  }
+
+  private[complete] def startsWithIgnoreCase(value: String, prefix: String): Boolean =
+    value.length >= prefix.length &&
+      value.regionMatches(true, 0, prefix, 0, prefix.length)
 
   /**
    * `display` is assumed to be the exact strings requested to be displayed. In particular,
