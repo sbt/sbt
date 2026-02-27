@@ -142,30 +142,28 @@ object JLineCompletion {
       beforeCursor: String,
       completions: String => (Seq[String], Seq[String]),
       reader: ConsoleReader
-  ): Boolean = {
-    try {
+  ): Boolean =
+    try
       val token = tokenBeforeCursor(beforeCursor)
-      if (token.isEmpty) return false
-
-      val prefix = beforeCursor.dropRight(token.length)
-      val (fallbackInsert, _) = completions(prefix)
-      val candidates = filterCaseInsensitive(token, fallbackInsert)
-
-      if (candidates.isEmpty) false
-      else if (candidates.size == 1) {
-        replaceCurrentToken(beforeCursor, candidates.head, reader)
-        true
-      } else {
-        val common = commonPrefixIgnoreCase(candidates)
-        replaceCurrentToken(beforeCursor, common, reader)
-        if (common.length <= token.length)
-          showCompletions(candidates.sorted, reader)
-        true
-      }
-    } catch {
+      if token.isEmpty then false
+      else
+        val prefix = beforeCursor.dropRight(token.length)
+        val (fallbackInsert, _) = completions(prefix)
+        val candidates = filterCaseInsensitive(token, fallbackInsert)
+        candidates match
+          case Seq() =>
+            false
+          case Seq(single) =>
+            replaceCurrentToken(beforeCursor, single, reader)
+            true
+          case many =>
+            val common = commonPrefixIgnoreCase(many)
+            replaceCurrentToken(beforeCursor, common, reader)
+            if common.length <= token.length then
+              showCompletions(many.sorted, reader)
+            true
+    catch
       case _: Exception => false
-    }
-  }
 
   private[complete] def filterCaseInsensitive(
       token: String,
@@ -182,13 +180,12 @@ object JLineCompletion {
       beforeCursor: String,
       replacement: String,
       reader: ConsoleReader
-  ): Unit = {
+  ): Unit =
     val tokenLength = tokenBeforeCursor(beforeCursor).length
     var remaining = tokenLength
-    while (remaining > 0 && reader.backspace()) remaining -= 1
+    while remaining > 0 && reader.backspace() do remaining -= 1
     reader.putString(replacement)
     reader.redrawLine()
-  }
 
   private[complete] def commonPrefixIgnoreCase(values: Seq[String]): String =
     if (values.isEmpty) ""
