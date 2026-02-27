@@ -22,17 +22,15 @@ object JLineCompletionSpec extends Properties("JLineCompletion"):
   private def randomCase(s: String): Gen[String] =
     sequence[Seq[Char], Char](s.toVector.map: c =>
       if c.isLetter then oneOf(c.toLower, c.toUpper)
-      else const(c)
-    ).map(_.mkString)
+      else const(c)).map(_.mkString)
 
   property("startsWithIgnoreCase accepts case variants of matching prefix") =
     forAll(genToken, genTail): (prefix, tail) =>
       forAll(randomCase(prefix)): casedPrefix =>
         JLineCompletion.startsWithIgnoreCase(prefix + tail, casedPrefix)
 
-  property("startsWithIgnoreCase rejects longer prefixes") =
-    forAll(genToken): token =>
-      !JLineCompletion.startsWithIgnoreCase(token, token + "x")
+  property("startsWithIgnoreCase rejects longer prefixes") = forAll(genToken): token =>
+    !JLineCompletion.startsWithIgnoreCase(token, token + "x")
 
   property("tokenBeforeCursor returns suffix after last whitespace") =
     forAll(listOf(genToken), genToken): (parts, lastToken) =>
@@ -44,11 +42,10 @@ object JLineCompletionSpec extends Properties("JLineCompletion"):
       val candidates = Seq("testOnly", "testQuick", "compile", "clean")
       JLineCompletion.filterCaseInsensitive(token, candidates) == Seq("testOnly")
 
-  property("commonPrefixIgnoreCase preserves shared prefix length") =
-    forAll(genToken): prefix =>
-      val a = prefix + "Only"
-      val b = prefix + "Quick"
-      JLineCompletion.commonPrefixIgnoreCase(Seq(a, b)).length == prefix.length
+  property("commonPrefixIgnoreCase preserves shared prefix length") = forAll(genToken): prefix =>
+    val a = prefix + "Only"
+    val b = prefix + "Quick"
+    JLineCompletion.commonPrefixIgnoreCase(Seq(a, b)).length == prefix.length
 
   property("parser completor drops wrong-case insertions for issue scenario") =
     val commands = Set("testOnly", "testQuick", "compile", "clean")
