@@ -38,6 +38,11 @@ object Runner:
       else major
     catch { case _: Exception => 0 }
 
+  /** Returns the minimum JDK version required for the given sbt version. */
+  def minimumJdkVersion(sbtVersion: Option[String]): Int =
+    val isSbt2 = sbtVersion.exists(v => v.takeWhile(_.isDigit).toIntOption.exists(_ >= 2))
+    if isSbt2 then 17 else 8
+
   def buildSbtOpts(opts: LauncherOptions): Seq[String] =
     var s: Seq[String] = Nil
     if opts.debug then s = s :+ "-debug"

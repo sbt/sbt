@@ -41,13 +41,12 @@ object Main:
       return 1
 
     val buildPropsVersion = ConfigLoader.sbtVersionFromBuildProperties(cwd)
-    val isSbt2 = buildPropsVersion.exists(v => v.takeWhile(_.isDigit).toIntOption.exists(_ >= 2))
 
     val javaCmd = Runner.findJavaCmd(opts.javaHome)
     val javaVer = Runner.javaVersion(javaCmd)
-    val minJdk = if isSbt2 then 17 else 8
+    val minJdk = Runner.minimumJdkVersion(buildPropsVersion)
     if javaVer > 0 && javaVer < minJdk then
-      if isSbt2 then
+      if minJdk >= 17 then
         System.err.println("[error] sbt 2.x requires JDK 17 or above, but you have JDK " + javaVer)
       else System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
       return 1

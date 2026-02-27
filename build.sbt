@@ -976,6 +976,7 @@ lazy val sbtwProj = (project in file("sbtw"))
     crossPaths := false,
     Compile / mainClass := Some("sbtw.Main"),
     libraryDependencies += "com.github.scopt" %% "scopt" % "4.1.0",
+    libraryDependencies += scalaVerify % Test,
     Utils.noPublish,
   )
 
