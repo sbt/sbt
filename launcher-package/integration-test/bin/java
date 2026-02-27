@@ -3,7 +3,10 @@
 import sys
 
 if '--version' in sys.argv or '-version' in sys.argv:
-    print('openjdk version "1.8.0_212"')
+    print('openjdk version "17.0.12" 2024-07-16')
+elif '--rt-ext-dir' in sys.argv or '--export-rt' in sys.argv:
+    # Silently ignore JDK 9+ rt.jar export requests
+    pass
 else:
     for arg in sys.argv[1:]:
         print(repr(arg)[1:-1])
