@@ -116,33 +116,37 @@ object Main:
     if opts.scriptVersion then
       println(LauncherOptions.initSbtVersion)
       return 0
-    val javaCmd = Runner.findJavaCmd(opts.javaHome)
-    val sbtJar = opts.sbtJar
-      .filter(p => new File(p).isFile)
-      .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
-    if !new File(sbtJar).isFile then
-      System.err.println("[error] Launcher jar not found for version check")
-      return 1
-    if opts.numericVersion then
-      try
-        val out = Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
-        println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
-        return 0
-      catch { case _: Exception => return 1 }
     if opts.version then
       if ConfigLoader.isSbtProjectDir(cwd) then
-        val out =
-          try Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
-          catch { case _: Exception => "" }
-        val ver = out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse("")
-        println("sbt version in this project: " + ver)
+        projectSbtVersion(cwd).foreach: version =>
+          println("sbt version in this project: " + version)
       println("sbt runner version: " + LauncherOptions.initSbtVersion)
       System.err.println("[info] sbt runner (sbtw) is a runner to run any declared version of sbt.")
       System.err.println(
         "[info] Actual version of sbt is declared using project\\build.properties for each build."
       )
       return 0
+    if opts.numericVersion then
+      val javaCmd = Runner.findJavaCmd(opts.javaHome)
+      val sbtJar = opts.sbtJar
+        .filter(p => new File(p).isFile)
+        .getOrElse(new File(sbtBinDir, "sbt-launch.jar").getAbsolutePath)
+      if !new File(sbtJar).isFile then
+        System.err.println("[error] Launcher jar not found for version check")
+        return 1
+      try
+        val out = Process(Seq(javaCmd, "-jar", sbtJar, "sbtVersion")).!!
+        println(out.linesIterator.toSeq.lastOption.map(_.trim).getOrElse(""))
+        return 0
+      catch { case _: Exception => return 1 }
     0
+
+  private def projectSbtVersion(cwd: File): Option[String] =
+    ConfigLoader.sbtVersionFromBuildProperties(cwd).flatMap(normalizeVersion)
+
+  private def normalizeVersion(version: String): Option[String] =
+    val trimmed = version.trim
+    if trimmed.nonEmpty then Some(trimmed) else None
 
   private def printUsage(): Int =
     println("""
