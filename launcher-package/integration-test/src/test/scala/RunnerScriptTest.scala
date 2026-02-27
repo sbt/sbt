@@ -12,11 +12,9 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
   private def assertVersionOutput(out: List[String]): Unit =
     val lines =
       out.mkString(System.lineSeparator()).linesIterator.map(_.stripPrefix("[0J").trim).toList
-    assert(
-      lines.exists(_.matches("^sbt version in this project: " + versionPattern + "\\r?$")) ||
-        lines.contains("sbtVersion")
-    )
+    assert(lines.exists(_.matches("^sbt version in this project: " + versionPattern + "\\r?$")))
     assert(lines.exists(_.matches("^sbt runner version: " + versionPattern + "\\r?$")))
+    assert(!lines.exists(_.contains("sbtVersion")))
     assert(!lines.exists(_.contains("failed to connect to server")))
 
   testOutput("sbt -no-colors")("compile", "-no-colors", "-v"): (out: List[String]) =>
