@@ -417,6 +417,82 @@ object Compiler:
   private def jsonRpcRequest(id: Long, method: String, params: String): String =
     s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params, "id": $id }"""
 
+  def docTask(key: TaskKey[File]): Def.Initialize[Task[File]] =
+    Def.taskIf {
+      if (key / Keys.skip).value then
+        val out = (key / Keys.target).value
+        Keys.streams.value.log.debug(s"Skipping doc for ${Keys.thisProjectRef.value.project}")
+        out
+      else
+        val s = Keys.streams.value
+        val cs: xsbti.compile.Compilers = Keys.compilers.value
+        val srcs = Keys.sources.value
+        val out = (key / Keys.target).value
+        val sOpts = Keys.scalacOptions.value
+        val xapis = Keys.apiMappings.value
+        val hasScala = srcs.exists(_.getName.endsWith(".scala"))
+        val hasJava = srcs.exists(_.getName.endsWith(".java"))
+        val cp = Attributed.data(Keys.dependencyClasspath.value).toList
+        val reporter = (Keys.compile / Keys.bspReporter).value
+        val converter = Keys.fileConverter.value
+        val tFiles = Keys.tastyFiles.value
+        val sv = Keys.scalaVersion.value
+        (hasScala, hasJava) match {
+          case (true, _) =>
+            val xapisFiles = xapis.map { (k, v) =>
+              converter.toPath(k).toFile() -> v
+            }
+            val externalApiOpts =
+              if (ScalaArtifacts.isScala3(sv)) Opts.doc.externalAPIScala3(xapisFiles)
+              else Opts.doc.externalAPI(xapisFiles)
+            val options = sOpts ++ externalApiOpts
+            def convertVfRef(value: String): String =
+              if !value.contains("$") then value
+              else converter.toPath(xsbti.VirtualFileRef.of(value)).toString
+            val resolvedOptions = options.map { x =>
+              if !x.contains("$") then x
+              else x.split(":").map(_.split(",").map(convertVfRef).mkString(",")).mkString(":")
+            }
+            val scalac = cs.scalac match
+              case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scaladoc"))
+            val docSrcFiles = if ScalaArtifacts.isScala3(sv) then tFiles else srcs
+            // todo: cache this
+            if docSrcFiles.nonEmpty then
+              IO.delete(out)
+              IO.createDirectory(out)
+              // use PlainVirtualFile since Scaladoc currently doesn't handle actual VirtualFiles
+              scalac.doc(
+                docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
+                cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
+                converter,
+                out.toPath(),
+                resolvedOptions,
+                Keys.maxErrors.value,
+                s.log,
+              )
+            else ()
+          case (_, true) =>
+            import sbt.internal.inc.javac.JavaCompilerArguments
+            val javaSourcesOnly: xsbti.VirtualFile => Boolean = _.id.endsWith(".java")
+            val classpath = cp.map(converter.toPath).map(converter.toVirtualFile)
+            val options = Keys.javacOptions.value.toList
+            cs.javaTools.javadoc.run(
+              srcs.toArray
+                .map { x =>
+                  converter.toVirtualFile(x.toPath)
+                }
+                .filter(javaSourcesOnly),
+              JavaCompilerArguments(Nil, classpath, options).toArray,
+              sbt.internal.inc.CompileOutput(out.toPath),
+              xsbti.compile.IncToolOptionsUtil.defaultIncToolOptions(),
+              reporter,
+              s.log,
+            )
+          case _ => () // do nothing
+        }
+        out
+    }
+
   def consoleForkOptions: Def.Initialize[Task[ForkOptions]] = Def.task {
     // Build environment variables for proper terminal handling
     val termEnv = sys.env.get("TERM").getOrElse("xterm-256color")

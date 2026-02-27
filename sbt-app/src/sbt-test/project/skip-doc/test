@@ -1,0 +1,4 @@
+# doc should succeed even with skip := true
+> doc
+# The target/scala-3.7.4/api directory should not contain generated docs
+$ absent target/scala-3.7.4/api/index.html
