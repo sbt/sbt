@@ -581,7 +581,10 @@ run() {
     execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
   elif [[ $print_version ]]; then
     if [[ -n "$is_this_dir_sbt" ]]; then
-      execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
+      local project_sbt_version
+      if project_sbt_version="$(projectSbtVersion)"; then
+        echo "sbt version in this project: $project_sbt_version"
+      fi
     fi
     echo "sbt runner version: $init_sbt_version"
     echoerr ""
@@ -794,6 +797,16 @@ loadPropFile() {
       build_props_sbt_version="$v"
     fi
   done <<< "$(cat "$1" | sed $'/^\#/d;s/\r$//')"
+}
+
+projectSbtVersion() {
+  local version
+  version="$(trimString "$build_props_sbt_version")"
+  if [[ -n "$version" ]]; then
+    echo "$version"
+    return 0
+  fi
+  return 1
 }
 
 detectNativeClient() {

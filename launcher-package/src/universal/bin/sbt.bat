@@ -727,8 +727,12 @@ if !sbt_args_print_sbt_version! equ 1 (
 
 if !sbt_args_print_version! equ 1 (
   if !is_this_dir_sbt! equ 1 (
-    call :set_sbt_version
-    echo sbt version in this project: !sbt_version!
+    if defined build_props_sbt_version (
+      call :set_sbt_version_from_build_props
+    ) else (
+      call :set_sbt_version
+    )
+    if defined sbt_version echo sbt version in this project: !sbt_version!
   )
   echo sbt runner version: !init_sbt_version!
   >&2 echo.
@@ -1145,6 +1149,16 @@ for /F "usebackq tokens=1,2 delims= " %%a in (`CALL "!_JAVACMD!" -jar "!sbt_jar!
   echo !_version_candidate!| findstr /R "^[0-9][0-9.]*[-+0-9A-Za-z._]*$" >nul && set "sbt_version=!_version_candidate!"
 )
 if not defined sbt_version if defined build_props_sbt_version set "sbt_version=!build_props_sbt_version!"
+exit /B 0
+
+:set_sbt_version_from_build_props
+set "sbt_version=!build_props_sbt_version!"
+for /F "tokens=* delims= " %%a in ("!sbt_version!") do set "sbt_version=%%a"
+:trim_version_end
+if "!sbt_version:~-1!" == " " (
+  set "sbt_version=!sbt_version:~0,-1!"
+  goto trim_version_end
+)
 exit /B 0
 
 :error
