@@ -2210,7 +2210,7 @@ object Defaults extends BuildCommon {
                 .map(x => converter.toVirtualFile(x.toPath)),
               JavaCompilerArguments(Nil, classpath, options).toArray,
               CompileOutput(out.toPath),
-              IncToolOptionsUtil.defaultIncToolOptions(),
+              xsbti.compile.IncToolOptionsUtil.defaultIncToolOptions(),
               reporter,
               s.log,
             )
