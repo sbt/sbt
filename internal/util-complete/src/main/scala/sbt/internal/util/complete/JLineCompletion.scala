@@ -159,11 +159,9 @@ object JLineCompletion {
           case many =>
             val common = commonPrefixIgnoreCase(many)
             replaceCurrentToken(beforeCursor, common, reader)
-            if common.length <= token.length then
-              showCompletions(many.sorted, reader)
+            if common.length <= token.length then showCompletions(many.sorted, reader)
             true
-    catch
-      case _: Exception => false
+    catch case _: Exception => false
 
   private[complete] def filterCaseInsensitive(
       token: String,
