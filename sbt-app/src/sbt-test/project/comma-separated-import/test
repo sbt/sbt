@@ -1,0 +1,2 @@
+# Verify that comma-separated imports work in build.sbt
+> check
