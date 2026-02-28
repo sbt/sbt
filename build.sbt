@@ -1238,7 +1238,7 @@ lazy val lmCoursierDefinitions = project
     conflictWarning := ConflictWarning.disable,
     Utils.noPublish,
   )
-  .dependsOn(lmIvy % "provided")
+  .dependsOn(lmCore % "provided")
 
 lazy val lmCoursierDependencies = Def.settings(
   libraryDependencies ++= Seq(
@@ -1264,12 +1264,7 @@ lazy val lmCoursier = project
     contrabandSettings,
     Compile / sourceGenerators += Utils.dataclassGen(lmCoursierDefinitions).taskValue,
   )
-  .dependsOn(
-    // We depend on lmIvy rather than just lmCore to handle the ModuleDescriptor
-    // passed to DependencyResolutionInterface.update, which is an IvySbt#Module
-    // (seems DependencyResolutionInterface.moduleDescriptor is ignored).
-    lmIvy
-  )
+  .dependsOn(lmCore)
 
 lazy val lmCoursierShaded = project
   .in(file("lm-coursier/target/shaded-module"))
@@ -1339,7 +1334,7 @@ lazy val lmCoursierShaded = project
         oldStrategy(x)
     }
   )
-  .dependsOn(lmIvy % "provided")
+  .dependsOn(lmCore % "provided")
 
 lazy val lmCoursierShadedPublishing = project
   .in(file("lm-coursier/target/shaded-publishing-module"))
