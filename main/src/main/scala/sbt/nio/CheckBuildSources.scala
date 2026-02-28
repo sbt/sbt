@@ -50,7 +50,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   private val sources = new AtomicReference[Seq[Glob]](Nil)
   private val needUpdate = new AtomicBoolean(true)
   private val lastPolled = new AtomicReference[SDeadline](SDeadline.now)
-  private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]]
+  private val previousStamps = new AtomicReference[Seq[(Path, FileStamp)]](Nil)
   private[sbt] def fileTreeRepository: Option[FileTreeRepository[FileAttributes]] =
     Option(repository.get)
   private def getStamps(force: Boolean) = {
@@ -66,7 +66,7 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   private def reset(state: State): Unit = {
     val extracted = Project.extract(state)
     val interval = extracted.get(checkBuildSources / pollInterval)
-    val newSources = extracted.get(Global / checkBuildSources / fileInputs)
+    val newSources = extracted.get(Global / checkBuildSources / fileInputs).distinct
     if (interval >= 0.seconds || "polling" == SysProp.watchMode) {
       Option(repository.getAndSet(null)).foreach(_.close())
       pollingPeriod.set(interval)
@@ -141,26 +141,31 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
                s"modified files: ${modified.mkString("\n  ", "\n  ", "\n")}"
              else "")
           val prefix = rawPrefix.linesIterator.filterNot(_.trim.isEmpty).mkString("\n")
-          if (onChanges == ReloadOnSourceChanges) {
-            val msg = s"$prefix\nReloading sbt..."
-            loggerOrTerminal match {
-              case Right(t) => msg.linesIterator.foreach(l => t.printStream.println(s"[info] $l"))
-              case Left(l)  => l.info(msg)
-            }
-            true
-          } else {
-            val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
-              "build when source changes are detected by setting " +
-              "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
-              "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
-            val msg = s"$prefix\n$tail"
-            loggerOrTerminal match {
-              case Right(t) =>
-                val prefix = s"[${Def.withColor("warn", Some(AnsiColor.YELLOW), t.isColorEnabled)}]"
-                msg.linesIterator.foreach(l => t.printStream.println(s"$prefix $l"))
-              case Left(l) => l.warn(msg)
-            }
-            false
+
+          onChanges match {
+            case ReloadOnSourceChanges =>
+              val msg = s"$prefix\nReloading sbt..."
+              loggerOrTerminal match {
+                case Right(t) => msg.linesIterator.foreach(l => t.printStream.println(s"[info] $l"))
+                case Left(l)  => l.info(msg)
+              }
+              true
+            case WarnOnSourceChanges =>
+              val tail = "Apply these changes by running `reload`.\nAutomatically reload the " +
+                "build when source changes are detected by setting " +
+                "`Global / onChangedBuildSource := ReloadOnSourceChanges`.\nDisable this " +
+                "warning by setting `Global / onChangedBuildSource := IgnoreSourceChanges`."
+              val msg = s"$prefix\n$tail"
+              loggerOrTerminal match {
+                case Right(t) =>
+                  val prefix =
+                    s"[${Def.withColor("warn", Some(AnsiColor.YELLOW), t.isColorEnabled)}]"
+                  msg.linesIterator.foreach(l => t.printStream.println(s"$prefix $l"))
+                case Left(l) => l.warn(msg)
+              }
+              false
+            case IgnoreSourceChanges =>
+              false
           }
         case _ => false
       }

@@ -1,0 +1,24 @@
+> set awaitsWarn := false
+> checkBuildSourcesWarn
+
+> set awaitsWarn := true
+> set Global / onChangedBuildSource := WarnOnSourceChanges
+$ copy-file changes/build.1.sbt build.sbt
+> checkBuildSourcesWarn
+
+> set awaitsWarn := false
+> set Global / onChangedBuildSource := IgnoreSourceChanges
+$ copy-file changes/build.2.sbt build.sbt
+> checkBuildSourcesWarn
+
+# Checking that subproject `.sbt` files are also monitored
+
+> set awaitsWarn := true
+> set Global / onChangedBuildSource := WarnOnSourceChanges
+$ copy-file changes/sub.1.sbt sub/build.sbt
+> checkBuildSourcesWarn
+
+> set awaitsWarn := false
+> set Global / onChangedBuildSource := IgnoreSourceChanges
+$ copy-file changes/sub.2.sbt sub/build.sbt
+> checkBuildSourcesWarn
