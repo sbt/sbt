@@ -107,7 +107,12 @@ object LineReader {
     new LineReader {
       override def readLine(prompt: String, mask: Option[Char]): Option[String] = {
         val term = JLine3(terminal)
-        val reader = LineReaderBuilder.builder().terminal(term).completer(completer(parser)).build()
+        val reader = LineReaderBuilder
+          .builder()
+          .terminal(term)
+          .completer(completer(parser))
+          .option(JLineReader.Option.CASE_INSENSITIVE, true)
+          .build()
         try {
           inputrcFileContents.foreach { bytes =>
             InputRC.configure(
