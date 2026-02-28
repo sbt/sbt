@@ -7,7 +7,6 @@ import coursier.cache.CacheUrl
 import coursier.core.{ Authentication, Repository }
 import coursier.ivy.IvyRepository
 import coursier.maven.SbtMavenRepository
-import org.apache.ivy.plugins.resolver.IBiblioResolver
 import sbt.librarymanagement.*
 import sbt.util.Logger
 
@@ -133,29 +132,42 @@ object Resolvers {
 
   private object IBiblioRepository {
 
+    // Use reflection to avoid a compile-time dependency on lm-ivy / Apache Ivy.
+    // At runtime the class will be present on the classpath via the main module.
+    private val ibiblioClass: Option[Class[?]] =
+      try Some(Class.forName("org.apache.ivy.plugins.resolver.IBiblioResolver"))
+      catch { case _: ClassNotFoundException => None }
+
     private def stringVector(v: java.util.List[?]): Vector[String] =
       Option(v).map(_.asScala.toVector).getOrElse(Vector.empty).collect { case s: String =>
         s
       }
 
-    private def patterns(resolver: IBiblioResolver): Patterns = Patterns(
-      ivyPatterns = stringVector(resolver.getIvyPatterns),
-      artifactPatterns = stringVector(resolver.getArtifactPatterns),
-      isMavenCompatible = resolver.isM2compatible,
-      descriptorOptional = !resolver.isUseMavenMetadata,
-      skipConsistencyCheck = !resolver.isCheckconsistency
-    )
+    private def patternsViaReflection(resolver: AnyRef): Patterns =
+      val cls = resolver.getClass
+      Patterns(
+        ivyPatterns = stringVector(
+          cls.getMethod("getIvyPatterns").invoke(resolver).asInstanceOf[java.util.List[?]]
+        ),
+        artifactPatterns = stringVector(
+          cls.getMethod("getArtifactPatterns").invoke(resolver).asInstanceOf[java.util.List[?]]
+        ),
+        isMavenCompatible = cls.getMethod("isM2compatible").invoke(resolver).asInstanceOf[Boolean],
+        descriptorOptional =
+          !cls.getMethod("isUseMavenMetadata").invoke(resolver).asInstanceOf[Boolean],
+        skipConsistencyCheck =
+          !cls.getMethod("isCheckconsistency").invoke(resolver).asInstanceOf[Boolean],
+      )
 
     def unapply(r: Resolver): Option[Patterns] =
       r match {
         case raw: RawRepository =>
-          raw.resolver match {
-            case b: IBiblioResolver =>
-              Some(patterns(b))
+          ibiblioClass match
+            case Some(cls) if cls.isInstance(raw.resolver) =>
+              Some(patternsViaReflection(raw.resolver))
                 .filter(patternMatchGuard)
             case _ =>
               None
-          }
         case _ =>
           None
       }

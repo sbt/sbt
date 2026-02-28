@@ -25,7 +25,6 @@ import lmcoursier.internal.{
   UpdateRun
 }
 import lmcoursier.syntax.*
-import sbt.internal.librarymanagement.IvySbt
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import coursier.core.{ BomDependency, Dependency, Publication }
@@ -139,15 +138,12 @@ class CoursierDependencyResolution(
 
     val module0 = module match {
       case c: CoursierModuleDescriptor =>
-        // seems not to happen, not sure what DependencyResolutionInterface.moduleDescriptor is for
         c.descriptor
-      case i: IvySbt#Module =>
-        i.moduleSettings match {
+      case other =>
+        other.moduleSettings match {
           case d: ModuleDescriptorConfiguration => d
-          case other => sys.error(s"unrecognized module settings: $other")
+          case s                                => sys.error(s"unrecognized module settings: $s")
         }
-      case _ =>
-        sys.error(s"unrecognized ModuleDescriptor type: $module")
     }
 
     val so = conf.scalaOrganization
