@@ -3838,7 +3838,7 @@ object Classpaths {
           Option[FiniteDuration],
           Boolean,
           ProjectRef,
-          IvySbt#Module,
+          ModuleSettings,
           String,
           Boolean,
           Seq[UpdateReport],
@@ -3868,7 +3868,7 @@ object Classpaths {
       forceUpdatePeriod.toTaskable,
       sbtPlugin.toTaskable,
       thisProjectRef.toTaskable,
-      ivyModule.toTaskable,
+      moduleSettings.toTaskable,
       scalaOrganization.toTaskable,
       (update / skip).toTaskable,
       transitiveUpdate.toTaskable,
@@ -3898,7 +3898,7 @@ object Classpaths {
           fup,
           isPlugin,
           thisRef,
-          im,
+          ms,
           so,
           sk,
           tu,
@@ -3961,10 +3961,8 @@ object Classpaths {
           else Def.displayRelativeReference(extracted.currentRef, thisRef)
 
         LibraryManagement.cachedUpdate(
-          // LM API
           lm = lm,
-          // Ivy-free ModuleDescriptor
-          module = im,
+          module = lm.moduleDescriptor(ms.asInstanceOf[ModuleDescriptorConfiguration]),
           cacheStoreFactory = cacheStoreFactory,
           label = label,
           updateConf,
