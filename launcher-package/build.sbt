@@ -299,7 +299,7 @@ val launcherPackage = (project in file(".")).
       }))
     },
     rpmVendor := "scalacenter",
-    rpmUrl := Some("http://github.com/sbt/sbt-launcher-package"),
+    rpmUrl := Some("https://github.com/sbt/sbt"),
     rpmLicense := Some("Apache-2.0"),
     // This is intentionally does not list Java. java-devel could bring in JDK 9-ea on Fedora,
     // and java-1.8.0-devel doesn't work on CentOS 6 and 7.
