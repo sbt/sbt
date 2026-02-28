@@ -20,14 +20,15 @@ import sbt.SlashSyntax0.*
 import sbt.internal.BuildStreams.*
 import sbt.internal.inc.classpath.ClasspathUtil
 import sbt.internal.inc.{ MappedFileConverter, ScalaInstance, ZincLmUtil, ZincUtil }
-import sbt.internal.librarymanagement.ivy.{ InlineIvyConfiguration, IvyDependencyResolution }
+import lmcoursier.{ CoursierConfiguration, CoursierDependencyResolution }
+import lmcoursier.syntax.*
 import sbt.internal.util.Attributed.data
 import sbt.internal.util.Types.const
 import sbt.internal.util.Attributed
 import sbt.internal.util.appmacro.ContextUtil
 import sbt.internal.server.BuildServerEvalReporter
 import sbt.io.{ GlobFilter, IO }
-import sbt.librarymanagement.{ Configuration, Configurations, IvyPaths, Resolver, ScalaArtifacts }
+import sbt.librarymanagement.{ Configuration, Configurations, Resolver, ScalaArtifacts }
 import sbt.nio.Settings
 import sbt.util.{ Logger, Show }
 import xsbti.{ FileConverter, HashedVirtualFileRef, VirtualFile }
@@ -87,14 +88,10 @@ private[sbt] object Load {
     val classpath = Attributed.blankSeq(
       cp0.map(_.toPath).map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
     )
-    val ivyConfiguration =
-      InlineIvyConfiguration()
-        .withPaths(
-          IvyPaths(baseDirectory.toString, bootIvyHome(state.configuration).map(_.toString))
-        )
-        .withResolvers(Resolver.combineDefaultResolvers(Vector.empty))
-        .withLog(log)
-    val dependencyResolution = IvyDependencyResolution(ivyConfiguration)
+    val csrConfig = CoursierConfiguration()
+      .withResolvers(Resolver.combineDefaultResolvers(Vector.empty).toVector)
+      .withLog(log)
+    val dependencyResolution = CoursierDependencyResolution(csrConfig)
     val si = ScalaInstance(scalaProvider.version, scalaProvider.launcher)
     val zincDir = BuildPaths.getZincDirectory(state, globalBase)
     val classpathOptions = ClasspathOptionsUtil.noboot(si.version)
@@ -139,13 +136,6 @@ private[sbt] object Load {
       log
     )
   }
-
-  private def bootIvyHome(app: xsbti.AppConfiguration): Option[File] =
-    try {
-      Option(app.provider.scalaProvider.launcher.ivyHome)
-    } catch {
-      case _: NoSuchMethodError => None
-    }
 
   def injectGlobal(state: State): Seq[Setting[?]] =
     ((GlobalScope / appConfiguration) :== state.configuration) +:

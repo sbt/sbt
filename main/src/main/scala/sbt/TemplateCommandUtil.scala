@@ -14,7 +14,6 @@ import java.io.File
 
 import sbt.io.*, syntax.*
 import sbt.util.*
-import sbt.internal.librarymanagement.ivy.{ IvyConfiguration, IvyDependencyResolution }
 import sbt.internal.util.{ ConsoleAppender, Terminal as ITerminal }
 import sbt.internal.util.complete.{ DefaultParsers, Parser }, DefaultParsers.*
 import xsbti.AppConfiguration
@@ -43,7 +42,7 @@ private[sbt] object TemplateCommandUtil {
     val infos = s0.get(templateResolverInfos).getOrElse(Nil).toList
     val log = s0.globalLogging.full
     val extracted = Project.extract(s0)
-    val (s1, ivyConf) = extracted.runTask(Keys.ivyConfiguration, s0)
+    val (s1, lm) = extracted.runTask(Keys.dependencyResolution, s0)
     val scalaModuleInfo = extracted.get(Keys.updateSbtClassifiers / Keys.scalaModuleInfo)
     val templateDescriptions = extracted.get(Keys.templateDescriptions)
     val args0 = inputArg.toList ++
@@ -54,7 +53,7 @@ private[sbt] object TemplateCommandUtil {
     def terminate = TerminateAction :: s1.copy(remainingCommands = Nil)
     def reload = "reboot" :: s1.copy(remainingCommands = Nil)
     if (args0.nonEmpty) {
-      run(infos, args0, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
+      run(infos, args0, s0.configuration, lm, globalBase, scalaModuleInfo, log)
       terminate
     } else {
       fortifyArgs(templateDescriptions.toList) match {
@@ -63,7 +62,7 @@ private[sbt] object TemplateCommandUtil {
           extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
           reload
         case args =>
-          run(infos, args, s0.configuration, ivyConf, globalBase, scalaModuleInfo, log)
+          run(infos, args, s0.configuration, lm, globalBase, scalaModuleInfo, log)
           terminate
       }
     }
@@ -73,13 +72,13 @@ private[sbt] object TemplateCommandUtil {
       infos: List[TemplateResolverInfo],
       arguments: List[String],
       config: AppConfiguration,
-      ivyConf: IvyConfiguration,
+      lm: DependencyResolution,
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): Unit =
     infos find { info =>
-      val loader = infoLoader(info, config, ivyConf, globalBase, scalaModuleInfo, log)
+      val loader = infoLoader(info, config, lm, globalBase, scalaModuleInfo, log)
       val hit = tryTemplate(info, arguments, loader)
       if (hit) {
         runTemplate(info, arguments, loader)
@@ -115,12 +114,12 @@ private[sbt] object TemplateCommandUtil {
   private def infoLoader(
       info: TemplateResolverInfo,
       config: AppConfiguration,
-      ivyConf: IvyConfiguration,
+      lm: DependencyResolution,
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): ClassLoader = {
-    val cp = classpathForInfo(info, ivyConf, globalBase, scalaModuleInfo, log)
+    val cp = classpathForInfo(info, lm, globalBase, scalaModuleInfo, log)
     ClasspathUtil.toLoader(cp, config.provider.loader)
   }
 
@@ -146,12 +145,11 @@ private[sbt] object TemplateCommandUtil {
   // Cache files under ~/.sbt/sbt_version/templates/org_name_version
   private def classpathForInfo(
       info: TemplateResolverInfo,
-      ivyConf: IvyConfiguration,
+      lm: DependencyResolution,
       globalBase: File,
       scalaModuleInfo: Option[ScalaModuleInfo],
       log: Logger
   ): List[Path] = {
-    val lm = IvyDependencyResolution(ivyConf)
     val templatesBaseDirectory = new File(globalBase, "templates")
     val templateId = s"${info.module.organization}_${info.module.name}_${info.module.revision}"
     val templateDirectory = new File(templatesBaseDirectory, templateId)
