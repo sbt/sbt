@@ -58,7 +58,7 @@ end O1
 ### Comments
 
 - Use ScalaDoc to provide API documentation. In general, however, document the intent and background behind the code, rather than transcribing code to English.
-- Avoid exessive inline comments, especially the ones that repeats the same information as the code.
+- Avoid excessive inline comments, especially the ones that repeats the same information as the code.
 
 ### Returns
 

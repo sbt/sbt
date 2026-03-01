@@ -12,7 +12,7 @@ project.
 Property-based testing with HedgeHog
 ------------------------------------
 
-sbt contains various testing frameworks, but our prefered unit testing framework is HedgeHog.
+sbt contains various testing frameworks, but our preferred unit testing framework is HedgeHog.
 
 See [main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala](../main-actions/src/test/scala/sbt/internal/WorkerExchangeTest.scala) for an example.
 

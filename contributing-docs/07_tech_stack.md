@@ -76,7 +76,7 @@ Gigahorse for HTTP
 ------------------
 
 [Gigahorse][gigahorse] is a backend-independent HTTP library sbt uses for some features.
-As the concete backend we use Apache HttpClient 5.x.
+As the concrete backend we use Apache HttpClient 5.x.
 
 ```scala
 private val http = {
