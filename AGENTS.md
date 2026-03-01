@@ -12,7 +12,7 @@ Compiling with sbt
 sbt compile
 ```
 
-Pull reuqest guideline
+Pull request guideline
 ----------------------
 
 - Follow the PR guidance in [CONTRIBUTING.md](./CONTRIBUTING.md).
@@ -43,7 +43,7 @@ For changes that require coordination with file changes and tasks, use scripted 
 Tech stack
 ----------
 
-- [contributing-docs/07_tech_stack.md](contribution-docs/07_tech_stach.md)
+- [contributing-docs/07_tech_stack.md](contributing-docs/07_tech_stack.md)
 
 Binary compatibility
 --------------------
