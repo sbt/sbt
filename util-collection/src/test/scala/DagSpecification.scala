@@ -8,8 +8,8 @@
 
 package sbt.internal.util
 
-import org.scalacheck._
-import Prop._
+import org.scalacheck.*
+import Prop.*
 
 import scala.collection.mutable.HashSet
 
@@ -38,7 +38,7 @@ object DagSpecification extends Properties("Dag") {
     Gen.parameterized(nonterminalGen)
   }
 
-  private def isSet[T](c: Seq[T]) = Set(c: _*).size == c.size
+  private def isSet[T](c: Seq[T]) = Set(c*).size == c.size
   private def dependenciesPrecedeNodes(sort: List[TestDag]) = {
     val seen = new HashSet[TestDag]
     def iterate(remaining: List[TestDag]): Boolean = {
@@ -56,5 +56,5 @@ object DagSpecification extends Properties("Dag") {
   }
 }
 class TestDag(id: Int, val dependencies: Iterable[TestDag]) extends Dag[TestDag] {
-  override def toString = id + "->" + dependencies.mkString("[", ",", "]")
+  override def toString = String.valueOf(id) + "->" + dependencies.mkString("[", ",", "]")
 }
