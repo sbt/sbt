@@ -22,6 +22,6 @@ object A extends AutoPlugin {
   }
 
   // used to ensure the build-level and global settings are only added once
-  private[this] val buildCount = new AtomicInteger(0)
-  private[this] val globalCount = new AtomicInteger(0)
+  private val buildCount = new AtomicInteger(0)
+  private val globalCount = new AtomicInteger(0)
 }

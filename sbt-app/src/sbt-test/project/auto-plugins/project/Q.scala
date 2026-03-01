@@ -62,8 +62,8 @@ object Q extends AutoPlugin {
     Nil
 
   // used to ensure the build-level and global settings are only added once
-  private[this] val buildCount = new AInt(0)
-  private[this] val globalCount = new AInt(0)
+  private val buildCount = new AInt(0)
+  private val globalCount = new AInt(0)
 }
 
 object R extends AutoPlugin {

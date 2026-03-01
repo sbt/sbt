@@ -3,8 +3,8 @@ import sbt._
 import sbt.internal.util.complete.Parser._
 
 object Build {
-  private[this] var string: String = ""
-  private[this] val stringFile = file("string.txt")
+  private var string: String = ""
+  private val stringFile = file("string.txt")
   val setStringValue = inputKey[Unit]("set a global string to a value")
   val checkStringValue = inputKey[Unit]("check the value of a global")
   val taskThatFails = taskKey[Unit]("this should fail")
