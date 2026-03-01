@@ -140,6 +140,17 @@ object Compiler:
       )
     }
 
+  def compilerBridgeFromUpdate: Def.Initialize[Task[Seq[HashedVirtualFileRef]]] =
+    Def.task {
+      val fullReport = Keys.update.value
+      val report = fullReport.configuration(Configurations.ZincTool)
+      val allJars = report match
+        case Some(r) => r.modules.flatMap(_.artifacts.map(_._2))
+        case None    => Nil
+      val conv = Keys.fileConverter.value
+      allJars.map(x => (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef))
+    }
+
   def scalaInstanceConfigFromUpdate(
       extraToolConf: Option[Configuration]
   ): Def.Initialize[Task[ScalaInstanceConfig]] = Def.task {

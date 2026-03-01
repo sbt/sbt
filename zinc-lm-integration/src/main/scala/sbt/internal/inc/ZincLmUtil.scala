@@ -15,10 +15,8 @@ import sbt.librarymanagement.{
   DependencyResolution,
   ModuleID,
   ScalaArtifacts,
-  SemanticSelector,
   UnresolvedWarningConfiguration,
   UpdateConfiguration,
-  VersionNumber,
 }
 import sbt.librarymanagement.syntax.*
 import xsbti.ArtifactInfo.SbtOrganization
@@ -27,11 +25,9 @@ import xsbti.compile.{ ClasspathOptions, ScalaInstance as XScalaInstance }
 
 object ZincLmUtil {
 
-  final val scala2SbtBridgeStart = "2.13.12"
+  final val scala2SbtBridgeStart = ScalaArtifacts.scala2SbtBridgeStart
   def hasScala2SbtBridge(sv: String): Boolean =
-    VersionNumber(sv).matchesSemVer(
-      SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
-    )
+    ScalaArtifacts.hasScala2SbtBridge(sv)
 
   /**
    * Instantiate a Scala compiler that is instrumented to analyze dependencies.

@@ -18,6 +18,7 @@ object ScalaArtifacts {
   final val Scala3TastyInspectorID = "scala3-tasty-inspector"
   final val Scala3ReplID = "scala3-repl"
   final val Scala3_8Artifacts = Vector(LibraryID, Scala3LibraryID)
+  final val scala2SbtBridgeStart = "2.13.12"
 
   private[sbt] final val Scala3LibraryPrefix = Scala3LibraryID + "_"
   private[sbt] final val Scala3CompilerPrefix = Scala3CompilerID + "_"
@@ -132,6 +133,29 @@ object ScalaArtifacts {
         Some(Configurations.ScalaTool.name + "->default,optional(default)")
       )
       .platform(Platform.jvm)
+
+  private[sbt] def hasScala2SbtBridge(sv: String): Boolean =
+    VersionNumber(sv).matchesSemVer(
+      SemanticSelector(s"=2.13 >=$scala2SbtBridgeStart")
+    )
+
+  private[sbt] def compilerBridgeDependencies(
+      org: String,
+      scalaVersion: String
+  ): Seq[ModuleID] =
+    if isScala3(scalaVersion) then
+      Vector(
+        ModuleID(org, "scala3-sbt-bridge", scalaVersion)
+          .withConfigurations(Some(s"${Configurations.ZincTool.name}->default,optional(default)"))
+          .platform(Platform.jvm)
+      )
+    else if hasScala2SbtBridge(scalaVersion) then
+      Vector(
+        ModuleID(org, "scala2-sbt-bridge", scalaVersion)
+          .withConfigurations(Some(s"${Configurations.ZincTool.name}->default,optional(default)"))
+          .platform(Platform.jvm)
+      )
+    else Nil
 }
 
 object SbtArtifacts {

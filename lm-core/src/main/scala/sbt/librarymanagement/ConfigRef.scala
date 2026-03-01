@@ -44,11 +44,13 @@ object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions {
   private lazy val Pom = new ConfigRef("pom")
   private lazy val ScalaTool = new ConfigRef("scala-tool")
   private lazy val ScalaDocTool = new ConfigRef("scala-doc-tool")
+  private lazy val ScalaReplTool = new ConfigRef("scala-repl-tool")
   private lazy val CompilerPlugin = new ConfigRef("plugin")
   private lazy val Component = new ConfigRef("component")
   private lazy val RuntimeInternal = new ConfigRef("runtime-internal")
   private lazy val TestInternal = new ConfigRef("test-internal")
   private lazy val CompileInternal = new ConfigRef("compile-internal")
+  private lazy val ZincTool = new ConfigRef("zinc-tool")
 
   def apply(name: String): ConfigRef = name match {
     case "default"          => Default
@@ -61,11 +63,13 @@ object ConfigRef extends sbt.librarymanagement.ConfigRefFunctions {
     case "pom"              => Pom
     case "scala-tool"       => ScalaTool
     case "scala-doc-tool"   => ScalaDocTool
+    case "scala-repl-tool"  => ScalaReplTool
     case "plugin"           => CompilerPlugin
     case "component"        => Component
     case "runtime-internal" => RuntimeInternal
     case "test-internal"    => TestInternal
     case "compile-internal" => CompileInternal
+    case "zinc-tool"        => ZincTool
     case _                  => cache.getOrElseUpdate(name, new ConfigRef(name))
   }
 }

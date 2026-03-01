@@ -744,30 +744,9 @@ object Defaults extends BuildCommon {
         .ifS(Def.task {
           val sv = scalaVersion.value
           val managed = managedScalaInstance.value
-          val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ZincLmUtil.hasScala2SbtBridge(sv)
+          val hasSbtBridge = ScalaArtifacts.isScala3(sv) || ScalaArtifacts.hasScala2SbtBridge(sv)
           hasSbtBridge && managed
-        })(Def.cachedTask {
-          // Use scalaDynVersion to resolve dynamic versions (e.g., "3-latest.candidate" -> "3.8.1-RC1")
-          val sv = scalaDynVersion.value
-          val conv = fileConverter.value
-          val s = streams.value
-          val t = target.value
-          val r = dependencyResolution.value
-          val uc = updateConfiguration.value
-          val jar = ZincLmUtil.fetchDefaultBridgeModule(
-            scalaOrganization.value,
-            sv,
-            r,
-            uc,
-            (update / unresolvedWarningConfiguration).value,
-            s.log
-          )
-          val out = t / "compiler-bridge" / jar.getName()
-          val outVf = conv.toVirtualFile(out.toPath())
-          IO.copyFile(jar, out)
-          Def.declareOutput(outVf)
-          Vector(outVf: HashedVirtualFileRef)
-        })(Def.task(Vector.empty))
+        })(Compiler.compilerBridgeFromUpdate)(Def.task(Vector.empty))
         .value,
       scalaCompilerBridgeJars := (Def.taskDyn {
         val s = streams.value
@@ -3186,7 +3165,7 @@ object Classpaths {
     ivyConfigurations ++= Configurations.auxiliary,
     ivyConfigurations ++= {
       if (managedScalaInstance.value && scalaHome.value.isEmpty)
-        Configurations.ScalaTool :: Configurations.ScalaDocTool :: Configurations.ScalaReplTool :: Nil
+        Configurations.ScalaTool :: Configurations.ScalaDocTool :: Configurations.ScalaReplTool :: Configurations.ZincTool :: Nil
       else Nil
     },
     // Coursier needs these
@@ -3423,6 +3402,7 @@ object Classpaths {
         then Nil
         else
           ScalaArtifacts.toolDependencies(scalaOrg, version) ++
+            ScalaArtifacts.compilerBridgeDependencies(scalaOrg, version) ++
             ScalaArtifacts.docToolDependencies(scalaOrg, version) ++
             ScalaArtifacts.replToolDependencies(scalaOrg, version)
       allToolDeps.map(_.platform(Platform.jvm)) ++ pluginAdjust
