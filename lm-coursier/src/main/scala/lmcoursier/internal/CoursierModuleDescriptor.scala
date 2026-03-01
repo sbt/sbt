@@ -14,9 +14,11 @@ private[lmcoursier] final case class CoursierModuleDescriptor(
   def scalaModuleInfo: Option[ScalaModuleInfo] =
     descriptor.scalaModuleInfo
 
-  def moduleSettings: CoursierModuleSettings =
-    CoursierModuleSettings()
+  def moduleSettings: ModuleDescriptorConfiguration =
+    descriptor
 
   lazy val extraInputHash: Long =
-    conf.##
+    // Exclude log/logger fields — they contain Logger instances with
+    // non-deterministic hashCodes that would break update caching.
+    conf.withLog(None).withLogger(None).##
 }
