@@ -283,6 +283,8 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
     imports.map { tree =>
       val pos = tree.sourcePos
       val content = String(pos.source.content.slice(pos.start, pos.end)).trim
-      (content, tree.sourcePos.line)
+      // Dotty splits `import a, b` into separate Import trees; subsequent ones lack `import`
+      val importStr = if content.startsWith("import ") then content else s"import $content"
+      (importStr, tree.sourcePos.line)
     }
 end SbtParser
