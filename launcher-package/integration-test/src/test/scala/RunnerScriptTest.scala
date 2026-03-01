@@ -304,17 +304,26 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
   // Test for issue #8755: Inline comments should be supported in .jvmopts
   testOutput(
     "sbt with inline comments in .jvmopts",
-    jvmoptsFileContents =
-      "--add-opens=java.base/java.util=ALL-UNNAMED # This is an inline comment\n-Dtest.key=value # Another comment",
+    jvmoptsFileContents = """--add-opens=java.base/java.util=ALL-UNNAMED # This is an inline comment
+        |-Dtest.key=value # Another comment
+        |-Dtest.key2=file:/log4j2#prod.xml""".stripMargin,
     windowsSupport = false,
   )("-v"): (out: List[String]) =>
     // Verify that options are present (comments should be stripped)
+    assert(
+      !out.contains[String]("#"),
+      "Comments are stripped out"
+    )
     assert(
       out.contains[String]("--add-opens=java.base/java.util=ALL-UNNAMED"),
       "Option with inline comment should be parsed correctly"
     )
     assert(
       out.contains[String]("-Dtest.key=value"),
+      "System property with inline comment should be parsed correctly"
+    )
+    assert(
+      out.contains[String]("-Dtest.key2=file:/log4j2#prod.xml"),
       "System property with inline comment should be parsed correctly"
     )
     // Verify comments themselves are NOT present as separate arguments
