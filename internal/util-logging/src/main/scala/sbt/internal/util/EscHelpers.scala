@@ -237,7 +237,6 @@ object EscHelpers {
         index += 1
         limit = math.max(limit, index)
     }
-    (res, limit)
     new String(res, 0, limit)
   }
 

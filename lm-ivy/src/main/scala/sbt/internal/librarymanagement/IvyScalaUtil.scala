@@ -4,7 +4,6 @@
 package sbt.internal.librarymanagement
 
 import java.util.Collections.emptyMap
-import scala.collection.mutable.HashSet
 
 import org.apache.ivy.core.module.descriptor.*
 import org.apache.ivy.core.module.id.{ ArtifactId, ModuleId, ModuleRevisionId }
@@ -186,7 +185,6 @@ object IvyScalaUtil {
       if (configurations.isEmpty) names
       else {
         val configSet = configurationSet(configurations)
-        configSet.intersect(HashSet(names*))
         configSet.toArray
       }
     }
