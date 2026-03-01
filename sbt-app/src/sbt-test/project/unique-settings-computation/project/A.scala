@@ -8,11 +8,11 @@ object A extends AutoPlugin {
   import autoImport._
   override def trigger = allRequirements
 
-  override def buildSettings: Seq[Setting[_]] =
+  override def buildSettings: Seq[Setting[?]] =
     (foo := s"build ${buildCount.getAndIncrement}") ::
     Nil
 
-  override def globalSettings: Seq[Setting[_]] =
+  override def globalSettings: Seq[Setting[?]] =
     (foo := s"global ${globalCount.getAndIncrement}") ::
     (commands += setUpScripted) ::
     Nil

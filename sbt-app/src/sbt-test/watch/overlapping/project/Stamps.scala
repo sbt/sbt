@@ -5,7 +5,7 @@ import java.nio.file._
 import sbt.nio.Keys._
 
 object Stamps {
-  def check(key: TaskKey[_]): Def.Initialize[Task[Unit]] = Def.task {
+  def check(key: TaskKey[?]): Def.Initialize[Task[Unit]] = Def.task {
     (key / inputFileStamps).value.map {
       case (p, FileStamp.Hash(_)) =>
       case (p, _) =>

@@ -9,13 +9,13 @@ object TwirlPlugin extends AutoPlugin {
     val twirlCompileTemplates = taskKey[Seq[File]]("Compile twirl templates into scala source files")
   }
 
-  override def projectSettings: Seq[Setting[_]] =
+  override def projectSettings: Seq[Setting[?]] =
     inConfig(Compile)(twirlSettings) ++
         inConfig(Test)(twirlSettings)
 
   import autoImport._
 
-  def twirlSettings: Seq[Setting[_]] =  Seq(
+  def twirlSettings: Seq[Setting[?]] =  Seq(
     twirlCompileTemplates / includeFilter := "*.scala.*",
     twirlCompileTemplates / excludeFilter := HiddenFileFilter,
     twirlCompileTemplates / sourceDirectories := Seq(sourceDirectory.value / "twirl"),

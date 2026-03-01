@@ -48,16 +48,16 @@ object Q extends AutoPlugin {
     Quux ::
     Nil
 
-   override def projectSettings: Seq[Setting[_]] =
+   override def projectSettings: Seq[Setting[?]] =
     (demo := s"project ${name.value}") ::
     (Quux / del := " Q") ::
     Nil
 
-   override def buildSettings: Seq[Setting[_]] =
+   override def buildSettings: Seq[Setting[?]] =
     (demo := s"build ${buildCount.getAndIncrement}") ::
     Nil
 
-   override def globalSettings: Seq[Setting[_]] =
+   override def globalSettings: Seq[Setting[?]] =
     (demo := s"global ${globalCount.getAndIncrement}") ::
     Nil
 

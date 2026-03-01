@@ -5,7 +5,7 @@ object ExtraProjectPluginExample2 extends AutoPlugin {
   override def requires: Plugins = sbt.plugins.CorePlugin
   override def trigger = allRequirements
 
-  override def derivedProjects(proj: ProjectDefinition[_]): Seq[Project] =
+  override def derivedProjects(proj: ProjectDefinition[?]): Seq[Project] =
     // Make sure to exclude project extras to avoid recursive generation
     if (proj.projectOrigin != ProjectOrigin.DerivedProject) {
       val id = proj.id + "1"

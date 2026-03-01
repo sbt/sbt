@@ -8,7 +8,7 @@ object DatabasePlugin extends AutoPlugin {
     lazy val databaseName = settingKey[String]("name of the database")
   }
   import autoImport._
-  override def projectSettings: Seq[Setting[_]] =
+  override def projectSettings: Seq[Setting[?]] =
     Seq(
       databaseName := "something"
     )

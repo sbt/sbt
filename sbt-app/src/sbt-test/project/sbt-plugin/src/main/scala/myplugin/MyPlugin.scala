@@ -8,7 +8,7 @@ case object MyPlugin extends AutoPlugin {
     val helloWorld = Def.taskKey[String]("log and return hello world")
   }
   import autoImport._
-  override def projectSettings: Seq[Def.Setting[_]] = Seq(
+  override def projectSettings: Seq[Def.Setting[?]] = Seq(
     // should not produce a "@nowarn annotation does not suppress any warnings" warning
     helloWorld := {
       streams.value.log("Hello world")
