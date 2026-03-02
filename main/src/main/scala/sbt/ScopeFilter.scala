@@ -147,6 +147,11 @@ object ScopeFilter {
       )
     }
 
+  private[sbt] def orderedScopesForTests(
+      scopes: Iterable[Scope],
+      scopeOrdering: Scope => Option[Int]
+  ): Seq[Scope] = orderedScopes(scopes, scopeOrdering)
+
   private def scopeOrderingKey(scope: Scope): ScopeOrderingKey =
     (
       scopeAxisOrderingKey(scope.project)(referenceOrderingKey),
