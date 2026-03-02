@@ -95,6 +95,18 @@ private[internal] object SbtUpdateReport {
       artifact((dependency.module, infoProperties(project).toMap, pub, artifact0, classLoaders))
     }
 
+    val explicitArts = artifacts
+      .collect {
+        case (pub, _, _) if pub.classifier.nonEmpty =>
+          sbt.librarymanagement
+            .Artifact(pub.name)
+            .withType(pub.`type`.value)
+            .withExtension(pub.ext.value)
+            .withClassifier(Some(pub.classifier.value))
+      }
+      .distinct
+      .toVector
+
     val publicationDate = project.info.publication.map { dt =>
       new GregorianCalendar(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     }
@@ -113,8 +125,13 @@ private[internal] object SbtUpdateReport {
       )
     }
 
+    val modId = moduleId((dependency, project.version, infoProperties(project).toMap))
+    val modIdWithArts =
+      if explicitArts.nonEmpty then modId.withExplicitArtifacts(explicitArts)
+      else modId
+
     val rep = ModuleReport(
-      moduleId((dependency, project.version, infoProperties(project).toMap)),
+      modIdWithArts,
       sbtArtifacts.toVector,
       sbtMissingArtifacts.toVector
     )
