@@ -271,7 +271,9 @@ private[sbt] object Continuous {
     validateCommands(s, commands)
     val configs = getAllConfigs(s, commands, dynamicInputs)
     val appender = ConsoleAppender(channel.name + "-watch", channel.terminal)
-    val level = configs.minBy(_.watchSettings.logLevel).watchSettings.logLevel
+    val watchLevel = configs.minBy(_.watchSettings.logLevel).watchSettings.logLevel
+    val globalLevel = s.get(Keys.logLevel.key).getOrElse(Level.Info)
+    val level = Seq(watchLevel, globalLevel).max
     context.addAppender(channel.name + "-watch", appender -> level)
     aggregate(
       configs,
