@@ -2,9 +2,9 @@ lazy val checkPom = taskKey[Unit]("check pom to ensure no <type> sections are ge
 
 lazy val root = (project in file(".")).
   settings(
-    scalaVersion := "2.10.6",
-    libraryDependencies += { ("org.scala-tools.sbinary" %% "sbinary" % "0.4.1").withSources().withJavadoc() },
-    libraryDependencies += { ("org.scala-sbt" % "io" % "0.13.8").intransitive() },
+    scalaVersion := "2.13.16",
+    libraryDependencies += { ("com.typesafe" % "config" % "1.4.3").withSources().withJavadoc() },
+    libraryDependencies += { ("org.slf4j" % "slf4j-api" % "2.0.16").intransitive() },
     checkPom := {
       val converter = fileConverter.value
       val pomFile = makePom.value
@@ -16,8 +16,7 @@ lazy val root = (project in file(".")).
       val ur = update.value
       val dir = (update / streams).value.cacheDirectory / "out"
       val lines = IO.readLines(dir)
-      val hasError = lines exists { line => line contains "Found intransitive dependency "}
+      val hasError = lines.exists(line => line.contains("Found intransitive dependency "))
       assert(hasError, s"Failed to detect intransitive dependencies, got: ${lines.mkString("\n")}")
     },
-    resolvers += Resolver.typesafeIvyRepo("releases")
   )
