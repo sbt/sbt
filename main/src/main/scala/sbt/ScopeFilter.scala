@@ -9,17 +9,23 @@
 package sbt
 
 import sbt.internal.{ Load, LoadedBuildUnit }
-import sbt.internal.util.{ AttributeKey, Dag }
+import sbt.internal.util.{ AttributeKey, AttributeMap, Dag }
 import sbt.librarymanagement.{ ConfigRef, Configuration }
 import sbt.internal.util.Types.const
 import Def.Initialize
-import sbt.ScopeAxis.{ Select, Zero }
+import sbt.ScopeAxis.{ Select, This, Zero }
 import java.net.URI
 
 sealed abstract class ScopeFilter { self =>
 
   /** Implements this filter. */
   private[ScopeFilter] def apply(data: ScopeFilter.Data): Set[Scope]
+
+  /**
+   * Optional ordering hint used by `.all(...)` when the filter can provide a stable
+   * project ordering.
+   */
+  private[ScopeFilter] def scopeOrdering(data: ScopeFilter.Data): Scope => Option[Int] = _ => None
 
   /** Constructs a filter that selects values that match this filter but not `other`. */
   def --(other: ScopeFilter): ScopeFilter = this && -other
@@ -84,6 +90,10 @@ object ScopeFilter {
           } yield scope
         res.toSet
 
+      override private[ScopeFilter] def scopeOrdering(data: Data): Scope => Option[Int] =
+        val projectOrdering = projects.ordering(data)
+        scope => projectOrdering(scope.project)
+
   def debug(delegate: ScopeFilter): ScopeFilter =
     new ScopeFilter:
       def apply(data: Data): Set[Scope] =
@@ -97,7 +107,8 @@ object ScopeFilter {
      * static inspections will not show them.
      */
     def all(sfilter: => ScopeFilter): Initialize[Seq[A]] = Def.flatMap(getData) { data =>
-      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join
+      val filter = sfilter
+      orderedScopes(filter(data), filter.scopeOrdering(data)).map(s => Project.inScope(s, i)).join
     }
 
   final class TaskKeyAll[A] private[sbt] (i: Initialize[Task[A]]):
@@ -107,8 +118,97 @@ object ScopeFilter {
      */
     def all(sfilter: => ScopeFilter): Initialize[Task[Seq[A]]] = Def.flatMap(getData) { data =>
       import std.TaskExtra.*
-      sfilter(data).toSeq.map(s => Project.inScope(s, i)).join(_.join)
+      val filter = sfilter
+      orderedScopes(filter(data), filter.scopeOrdering(data))
+        .map(s => Project.inScope(s, i))
+        .join(
+          _.join
+        )
     }
+
+  private type ScopeAxisOrderingKey = (Int, String)
+  private type ScopeOrderingKey = (
+      ScopeAxisOrderingKey,
+      ScopeAxisOrderingKey,
+      ScopeAxisOrderingKey,
+      ScopeAxisOrderingKey
+  )
+
+  private def orderedScopes(
+      scopes: Iterable[Scope],
+      scopeOrdering: Scope => Option[Int]
+  ): Seq[Scope] =
+    scopes.toSeq.sortBy { scope =>
+      (
+        scopeOrdering(scope) match
+          case Some(order) => (0, order)
+          case None        => (1, Int.MaxValue),
+        scopeOrderingKey(scope)
+      )
+    }
+
+  private def scopeOrderingKey(scope: Scope): ScopeOrderingKey =
+    (
+      scopeAxisOrderingKey(scope.project)(referenceOrderingKey),
+      scopeAxisOrderingKey(scope.config)(_.name),
+      scopeAxisOrderingKey(scope.task)(attributeKeyOrderingKey),
+      scopeAxisOrderingKey(scope.extra)(attributeMapOrderingKey)
+    )
+
+  private def scopeAxisOrderingKey[A](
+      axis: ScopeAxis[A]
+  )(selectedKey: A => String): ScopeAxisOrderingKey =
+    axis match
+      case Select(selected) => (0, selectedKey(selected))
+      case This             => (1, "")
+      case Zero             => (2, "")
+
+  private def referenceOrderingKey(reference: Reference): String =
+    reference match
+      case ThisBuild          => "0"
+      case ThisProject        => "1"
+      case LocalAggregate     => "2"
+      case LocalRootProject   => "3"
+      case LocalProject(id)   => s"4:$id"
+      case BuildRef(build)    => s"5:${uriOrderingKey(build)}"
+      case RootProject(build) => s"6:${uriOrderingKey(build)}"
+      case ProjectRef(build, project) =>
+        s"7:${uriOrderingKey(build)}:$project"
+
+  private def uriOrderingKey(uri: URI): String = uri.normalize.toASCIIString
+
+  private def attributeKeyOrderingKey(key: AttributeKey[?]): String =
+    s"${key.label}:${key.tag}:rank=${key.rank}"
+
+  private def attributeMapOrderingKey(map: AttributeMap): String =
+    map.entries.toSeq
+      .map(entry =>
+        val key = attributeKeyOrderingKey(entry.key)
+        val value = attributeValueOrderingKey(entry.value)
+        s"$key=$value"
+      )
+      .sorted
+      .mkString("[", ",", "]")
+
+  private def attributeValueOrderingKey(value: Any): String =
+    value match
+      case null => "null"
+      case m: collection.Map[?, ?] =>
+        m.iterator
+          .map((k, v) => s"${attributeValueOrderingKey(k)}->${attributeValueOrderingKey(v)}")
+          .toSeq
+          .sorted
+          .mkString("Map(", ",", ")")
+      case i: Iterable[?] =>
+        i.iterator
+          .map(attributeValueOrderingKey)
+          .mkString("Iterable(", ",", ")")
+      case p: Product =>
+        p.productIterator
+          .map(attributeValueOrderingKey)
+          .mkString(s"Product(${p.productPrefix}|", ",", ")")
+      case other =>
+        s"${other.getClass.getName}(${other.toString})"
 
   private[sbt] val Make = new Make {}
   trait Make {
@@ -283,7 +383,20 @@ object ScopeFilter {
     inResolvedProjects(data => projects.map(data.resolve))
 
   private def inResolvedProjects(projects: Data => Seq[ProjectRef]): ProjectFilter =
-    selectAxis(data => projects(data).toSet)
+    new AxisFilter[Reference]:
+      private[sbt] def apply(data: Data): ScopeAxis[Reference] => Boolean =
+        val selected = projects(data).toSet
+        _ match
+          case Select(ref: ProjectRef) => selected(ref)
+          case _                       => false
+
+      override private[ScopeFilter] def ordering(
+          data: Data
+      ): ScopeAxis[Reference] => Option[Int] =
+        val index = projects(data).zipWithIndex.toMap
+        _ match
+          case Select(ref: ProjectRef) => index.get(ref)
+          case _                       => None
 
   private def zeroAxis[T]: AxisFilter[T] = new AxisFilter[T] {
     private[sbt] def apply(data: Data): ScopeAxis[T] => Boolean = _ == Zero
@@ -304,6 +417,11 @@ object ScopeFilter {
 
     /** Implements this filter. */
     private[ScopeFilter] def apply(data: Data): ScopeAxis[In] => Boolean
+
+    /**
+     * Optional ordering hint for axes selected by this filter.
+     */
+    private[ScopeFilter] def ordering(data: Data): ScopeAxis[In] => Option[Int] = _ => None
 
     /** Constructs a filter that selects values that match this filter but not `other`. */
     def --(other: AxisFilter[In]): AxisFilter[In] = this && -other
