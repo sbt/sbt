@@ -1,0 +1,5 @@
+-> update
+$ exec sh -c 'grep -F "Note: Unresolved dependencies path:" target/out/jvm/*/*/streams/_global/update/_global/streams/out'
+$ exec sh -c 'grep -F "foundrylogic.vpp:vpp:2.2.1" target/out/jvm/*/*/streams/_global/update/_global/streams/out'
+$ exec sh -c 'grep -F "org.apache.cayenne.plugins:maven-cayenne-plugin:3.0.2" target/out/jvm/*/*/streams/_global/update/_global/streams/out'
+$ exec sh -c 'grep -F "com.example:" target/out/jvm/*/*/streams/_global/update/_global/streams/out'
