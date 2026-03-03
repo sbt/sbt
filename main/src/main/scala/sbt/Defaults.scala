@@ -3352,8 +3352,11 @@ object Classpaths {
       import ShowLines.*
       val report = updateTask.value
       val log = streams.value.log
+      val module = dependencyResolution.value.moduleDescriptor(
+        moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration]
+      )
       val ew =
-        EvictionWarning(ivyModule.value, (evicted / evictionWarningOptions).value, report)
+        EvictionWarning(module, (evicted / evictionWarningOptions).value, report)
       ew.lines foreach { log.warn(_) }
       ew.infoAllTheThings foreach { log.info(_) }
       ew
