@@ -4,6 +4,7 @@ val descriptionValue = "This is just a test"
 val homepageValue = "http://example.com"
 
 lazy val root = (project in file(".")) settings(
+  useIvy := true,
   name := "ivy-xml-test",
   description := descriptionValue,
   homepage := Some(url(homepageValue)),

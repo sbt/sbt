@@ -2782,7 +2782,7 @@ object Classpaths {
       Seq(
         publishMavenStyle :== true,
         sbtPluginPublishLegacyMavenStyle :== false,
-        useIvy :== true,
+        useIvy :== false,
         publishArtifact :== true,
         (Test / publishArtifact) :== false
       )

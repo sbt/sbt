@@ -1,6 +1,7 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ThisBuild / organization := "org.example"
 ThisBuild / version := "1.0"
+ThisBuild / useIvy := true
 
 lazy val a = project.settings(common).settings(
   // verifies that a can be published as an ivy.xml file and preserve the extra artifact information,
