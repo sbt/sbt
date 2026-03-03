@@ -12,9 +12,43 @@ import sbt.internal.worker.{ ClientJobParams, FilePath, JvmRunInfo, RunInfo }
 import sbt.io.IO
 import sbt.protocol.Serialization
 import sbt.util.CacheImplicits.given
+import sbt.util.Logger
 import xsbti.FileConverter
 
 object RunUtil:
+  /**
+   * Split arguments at the first `--` delimiter.
+   *  Tokens before `--` are JVM args; tokens after are app args.
+   *  If no `--` is present, all tokens are app args (backward compatible).
+   */
+  private[sbt] def splitArgs(args: Seq[String]): (Seq[String], Seq[String]) =
+    val idx = args.indexOf("--")
+    if idx < 0 then (Nil, args)
+    else (args.take(idx), args.drop(idx + 1))
+
+  /**
+   * Apply CLI JVM args to the ScalaRun and ForkOptions.
+   *  For ForkRun: creates new ForkRun with augmented runJVMOptions.
+   *  For Run (non-fork): warns and returns unchanged.
+   */
+  private[sbt] def applyJvmArgs(
+      scalaRun: ScalaRun,
+      jvmArgs: Seq[String],
+      fo: ForkOptions,
+      log: Logger,
+  ): (ScalaRun, ForkOptions) =
+    if jvmArgs.isEmpty then (scalaRun, fo)
+    else
+      scalaRun match
+        case _: ForkRun =>
+          val newFo = fo.withRunJVMOptions(fo.runJVMOptions ++ jvmArgs)
+          (new ForkRun(newFo), newFo)
+        case _ =>
+          log.warn(
+            s"JVM options (${jvmArgs.mkString(" ")}) will be ignored, fork is set to false"
+          )
+          (scalaRun, fo)
+
   private def setWindowTitle(title: String): Unit =
     if System.console() != null && System.getenv("TERM") != null then
       scala.Console.print(s"\u001b]0;$title\u0007")
@@ -38,11 +72,14 @@ object RunUtil:
   ): Initialize[InputTask[Unit]] =
     val parser = Def.spaceDelimited()
     Def.inputTask {
-      val in = parser.parsed
+      val (jvmArgs, appArgs) = splitArgs(parser.parsed)
       val mainClass = getMainClass(mainClassTask.value)
       val cp = classpath.value
+      val fo = (run / forkOptions).value
+      val log = streams.value.log
       given FileConverter = fileConverter.value
-      scalaRun.value.run(mainClass, cp.files, in, streams.value.log).get
+      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
+      modifiedRun.run(mainClass, cp.files, appArgs, log).get
     }
 
   def configTasks(c: ScopeAxis[ConfigKey]): Seq[Setting[?]] = Seq(
@@ -136,9 +173,12 @@ object RunUtil:
       val conv = fileConverter.value
       given FileConverter = conv
       val service = bgJobService.value
-      val (mainClass, args) = parser.parsed
+      val (mainClass, allArgs) = parser.parsed
+      val (jvmArgs, appArgs) = splitArgs(allArgs)
       val hashClasspath = (bgRunMain / bgHashClasspath).value
       val fo = (run / forkOptions).value
+      val log = streams.value.log
+      val (modifiedRun, modifiedFo) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
       val state = Keys.state.value
       val windowTitle = mkWindowTitle("runMain", organization.value, name.value, version.value)
       if clientRun.value && state.isNetworkCommand then
@@ -149,7 +189,8 @@ object RunUtil:
           workingDir,
           conv,
         )
-        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv, Some(windowTitle))
+        val info =
+          mkRunInfo(appArgs.toVector, mainClass, cp, modifiedFo, conv, Some(windowTitle))
         val result = ClientJobParams(
           runInfo = info
         )
@@ -168,15 +209,15 @@ object RunUtil:
               hashClasspath,
               conv,
             )
-            scalaRun.value match
+            modifiedRun match
               case r: Run =>
                 val loader = r.newLoader(cp.files)
                 (
                   Some(loader),
-                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, appArgs, logger).get)
                 )
               case sr =>
-                (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+                (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
         service.waitForTry(handle).get
         ()
     }
@@ -192,11 +233,13 @@ object RunUtil:
     Def.inputTask {
       val conv = fileConverter.value
       given FileConverter = conv
-      val args = parser.parsed
+      val (jvmArgs, appArgs) = splitArgs(parser.parsed)
       val service = bgJobService.value
       val mainClass = getMainClass(mainClassTask.value)
       val hashClasspath = (bgRun / bgHashClasspath).value
       val fo = (run / forkOptions).value
+      val log = streams.value.log
+      val (modifiedRun, modifiedFo) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
       val state = Keys.state.value
       val windowTitle = mkWindowTitle("run", organization.value, name.value, version.value)
       if clientRun.value && state.isNetworkCommand then
@@ -207,7 +250,7 @@ object RunUtil:
           workingDir,
           conv,
         )
-        val info = mkRunInfo(args.toVector, mainClass, cp, fo, conv, Some(windowTitle))
+        val info = mkRunInfo(appArgs.toVector, mainClass, cp, modifiedFo, conv, Some(windowTitle))
         val result = ClientJobParams(
           runInfo = info
         )
@@ -226,15 +269,15 @@ object RunUtil:
               hashClasspath,
               conv
             )
-            scalaRun.value match
+            modifiedRun match
               case r: Run =>
                 val loader = r.newLoader(cp.files)
                 (
                   Some(loader),
-                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                  wrapper(() => r.runWithLoader(loader, cp.files, mainClass, appArgs, logger).get)
                 )
               case sr =>
-                (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+                (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
         service.waitForTry(handle).get
         ()
     }
@@ -250,8 +293,12 @@ object RunUtil:
     )
     Def.inputTask {
       val service = bgJobService.value
-      val (mainClass, args) = parser.parsed
+      val (mainClass, allArgs) = parser.parsed
+      val (jvmArgs, appArgs) = splitArgs(allArgs)
       val hashClasspath = (bgRunMain / bgHashClasspath).value
+      val fo = (run / forkOptions).value
+      val log = streams.value.log
+      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
       setWindowTitle(mkWindowTitle("bgRunMain", organization.value, name.value, version.value))
@@ -268,15 +315,15 @@ object RunUtil:
               )
             else classpath.value
           given FileConverter = fileConverter.value
-          scalaRun.value match
+          modifiedRun match
             case r: Run =>
               val loader = r.newLoader(cp.files)
               (
                 Some(loader),
-                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, appArgs, logger).get)
               )
             case sr =>
-              (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+              (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
       }
     }
 
@@ -289,10 +336,13 @@ object RunUtil:
   ): Initialize[InputTask[JobHandle]] =
     val parser = Def.spaceDelimited()
     Def.inputTask {
-      val args = parser.parsed
+      val (jvmArgs, appArgs) = splitArgs(parser.parsed)
       val service = bgJobService.value
       val mainClass = getMainClass(mainClassTask.value)
       val hashClasspath = (bgRun / bgHashClasspath).value
+      val fo = (run / forkOptions).value
+      val log = streams.value.log
+      val (modifiedRun, _) = applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
       val wrapper = termWrapper(canonicalInput.value, echoInput.value)
       val converter = fileConverter.value
       setWindowTitle(mkWindowTitle("bgRun", organization.value, name.value, version.value))
@@ -309,15 +359,15 @@ object RunUtil:
               )
             else classpath.value
           given FileConverter = converter
-          scalaRun.value match
+          modifiedRun match
             case r: Run =>
               val loader = r.newLoader(cp.files)
               (
                 Some(loader),
-                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, args, logger).get)
+                wrapper(() => r.runWithLoader(loader, cp.files, mainClass, appArgs, logger).get)
               )
             case sr =>
-              (None, wrapper(() => sr.run(mainClass, cp.files, args, logger).get))
+              (None, wrapper(() => sr.run(mainClass, cp.files, appArgs, logger).get))
       }
     }
 end RunUtil

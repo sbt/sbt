@@ -1953,11 +1953,15 @@ object Defaults extends BuildCommon {
     val parser =
       loadForParser(discoveredMainClasses)((s, names) => runMainParser(s, names getOrElse Nil))
     Def.inputTask {
-      val (mainClass, args) = parser.parsed
+      val (mainClass, allArgs) = parser.parsed
+      val (jvmArgs, appArgs) = RunUtil.splitArgs(allArgs)
       val cp = classpath.value
+      val fo = (run / forkOptions).value
+      val log = streams.value.log
       given FileConverter = fileConverter.value
-      scalaRun.value
-        .run(mainClass, cp.files, args, streams.value.log)
+      val (modifiedRun, _) = RunUtil.applyJvmArgs(scalaRun.value, jvmArgs, fo, log)
+      modifiedRun
+        .run(mainClass, cp.files, appArgs, log)
         .get
     }
   }

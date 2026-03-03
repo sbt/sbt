@@ -1,0 +1,5 @@
+# Verify that JVM args can be passed via the -- delimiter
+> run -Dtest.prop=hello -- arg1 arg2
+
+# Verify runMain also supports JVM args via --
+> runMain Main -Dtest.prop=hello -- arg1 arg2
