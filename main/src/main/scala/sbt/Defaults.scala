@@ -2912,7 +2912,7 @@ object Classpaths {
     }.value,
     publish := LibraryManagement.ivylessPublishTask.tag(Tags.Publish, Tags.Network).value,
     publishLocal := LibraryManagement.ivylessPublishLocalTask.value,
-    publishM2 := publishOrSkip(publishM2Configuration, publishM2 / skip).value,
+    publishM2 := LibraryManagement.ivylessPublishM2Task.tag(Tags.Publish, Tags.Network).value,
     credentials ++= Def.uncached {
       val alreadyContainsCentralCredentials: Boolean = credentials.value.exists {
         case d: Credentials.DirectCredentials => d.host == Sona.host

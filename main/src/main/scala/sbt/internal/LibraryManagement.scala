@@ -622,14 +622,23 @@ private[sbt] object LibraryManagement {
       writeChecksums(ivyXmlFile)
     else log.warn(s"$ivyXmlFile already exists, skipping (overwrite=$overwrite)")
 
+    // Build a lookup from (type, classifier, ext) to cross-versioned publication name
+    val pubNameLookup: Map[(String, String, String), String] =
+      project.publications.map { (_, pub) =>
+        (pub.`type`.value, pub.classifier.value, pub.ext.value) -> pub.name
+      }.toMap
+
     // Publish each artifact
     artifacts.foreach: (artifact, sourceFile) =>
       val folder = typeToFolder(artifact.`type`)
       val targetDir = moduleDir / folder
 
-      // Construct filename using module name (includes Scala version suffix) + classifier + extension
+      // Look up the cross-versioned artifact name from publications, fall back to module name
+      val classifierStr = artifact.classifier.getOrElse("")
+      val artName = pubNameLookup
+        .getOrElse((artifact.`type`, classifierStr, artifact.extension), moduleName)
       val classifier = artifact.classifier.map("-" + _).getOrElse("")
-      val fileName = s"$moduleName$classifier.${artifact.extension}"
+      val fileName = s"$artName$classifier.${artifact.extension}"
       val targetFile = targetDir / fileName
 
       if !targetFile.exists || overwrite then
@@ -845,7 +854,13 @@ private[sbt] object LibraryManagement {
   ): Unit =
     if repoBase == null then throw new IllegalArgumentException("repoBase must not be null")
     val groupId = project.module.organization.value
-    val artifactId = project.module.name.value
+    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
+    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
+    val baseModuleName = project.module.name.value
+    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
+    val artifactId = pomArtName match
+      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
+      case _                                                                       => baseModuleName
     val version = project.version
     val groupPath = groupId.replace('.', '/')
     val versionDir = new File(repoBase, s"$groupPath/$artifactId/$version")
@@ -878,7 +893,13 @@ private[sbt] object LibraryManagement {
     if baseUrl == null || baseUrl.trim.isEmpty then
       throw new IllegalArgumentException("baseUrl must not be null or empty")
     val groupId = project.module.organization.value
-    val artifactId = project.module.name.value
+    // Derive artifactId: for sbt 2 plugins, module.name has cross-version (e.g. sbt-example_sbt2_3).
+    // For sbt 1 plugins, mavenArtifactsOfSbtPlugin cross-versions the POM artifact name (e.g. sbt-example_2.12_1.0).
+    val baseModuleName = project.module.name.value
+    val pomArtName = artifacts.collectFirst { case (a, _) if a.`type` == "pom" => a.name }
+    val artifactId = pomArtName match
+      case Some(name) if name.startsWith(baseModuleName) && name != baseModuleName => name
+      case _                                                                       => baseModuleName
     val version = project.version
     val directCreds = credentials.collect:
       case d: Credentials.DirectCredentials => d
@@ -939,8 +960,13 @@ private[sbt] object LibraryManagement {
       if (normalized.startsWith("file:")) new File(new java.net.URI(normalized))
       else new File(normalized)
     val repoDir = localRepoBase.getAbsoluteFile
-    log.info(s"Ivyless publish to file repo: $repoDir")
-    ivylessPublishLocal(project, artifacts, checksumAlgorithms, repoDir, overwrite, log)
+    val isMavenLayout = fileRepo.patterns.isMavenCompatible
+    if isMavenLayout then
+      log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
+      ivylessPublishMavenToFile(project, artifacts, checksumAlgorithms, repoDir, overwrite, log)
+    else
+      log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
+      ivylessPublishLocal(project, artifacts, checksumAlgorithms, repoDir, overwrite, log)
   }
 
   /**
@@ -1003,15 +1029,26 @@ private[sbt] object LibraryManagement {
               val repoDir =
                 (if (baseStr.startsWith("file:")) new File(new java.net.URI(baseStr))
                  else new File(baseStr)).getAbsoluteFile
-              log.info(s"Ivyless publish to file repo: $repoDir")
-              ivylessPublishLocal(
-                project,
-                artifacts,
-                config.checksums,
-                repoDir,
-                config.overwrite,
-                log
-              )
+              if pbr.patterns.isMavenCompatible then
+                log.info(s"Ivyless publish (Maven layout) to file repo: $repoDir")
+                ivylessPublishMavenToFile(
+                  project,
+                  artifacts,
+                  config.checksums,
+                  repoDir,
+                  config.overwrite,
+                  log
+                )
+              else
+                log.info(s"Ivyless publish (Ivy layout) to file repo: $repoDir")
+                ivylessPublishLocal(
+                  project,
+                  artifacts,
+                  config.checksums,
+                  repoDir,
+                  config.overwrite,
+                  log
+                )
             case mavenCache: sbt.librarymanagement.MavenCache =>
               ivylessPublishMavenToFile(
                 project,
@@ -1045,18 +1082,13 @@ private[sbt] object LibraryManagement {
                   log
                 )
               else
-                log.warn(s"Ivyless Maven publish: unsupported root '$root'. Falling back to Ivy.")
-                val conf = publishConfiguration.value
-                val module = ivyModule.value
-                publisher.value.publish(module, conf, log)
-            case _ =>
-              log.warn(
-                "Ivyless publish only supports URLRepository, FileRepository, or MavenRepository. Falling back to Ivy."
+                sys.error(
+                  s"Ivyless Maven publish: unsupported root '$root'. Set useIvy := true or use a supported repository (http/https/file)."
+                )
+            case other =>
+              sys.error(
+                s"Ivyless publish does not support ${other.getClass.getName}. Set useIvy := true or use URLRepository, FileRepository, or MavenRepository."
               )
-              val conf = publishConfiguration.value
-              val module = ivyModule.value
-              val publisherInterface = publisher.value
-              publisherInterface.publish(module, conf, log)
           }
         }
       )
@@ -1101,6 +1133,50 @@ private[sbt] object LibraryManagement {
           val localRepoBase = ivyHome / "local"
           val overwriteFlag = config.overwrite
           ivylessPublishLocal(project, artifacts, checksumAlgos, localRepoBase, overwriteFlag, log)
+        }
+      )
+    )
+
+  /**
+   * Task initializer for ivyless publishM2 (publish to local Maven ~/.m2 repository).
+   * Uses Def.ifS for proper selective functor behavior.
+   */
+  def ivylessPublishM2Task: Def.Initialize[Task[Unit]] =
+    import Keys.*
+    Def.ifS(Def.task { (publishM2 / skip).value })(
+      // skip = true
+      Def.task {
+        val log = streams.value.log
+        val ref = thisProjectRef.value
+        log.debug(s"Skipping publishM2 for ${Reference.display(ref)}")
+      }
+    )(
+      // skip = false
+      Def.ifS(Def.task { useIvy.value })(
+        // useIvy = true: use Ivy-based publisher
+        Def.task {
+          val log = streams.value.log
+          val conf = publishM2Configuration.value
+          val module = ivyModule.value
+          val publisherInterface = publisher.value
+          publisherInterface.publish(module, conf, log)
+        }
+      )(
+        // useIvy = false: use ivyless publisher to Maven local
+        Def.task {
+          val log = streams.value.log
+          val project = csrProject.value.withPublications(csrPublications.value)
+          val config = publishM2Configuration.value
+          val artifacts = config.artifacts.map { case (a, f) => (a, f) }
+          val m2Repo = Resolver.publishMavenLocal
+          ivylessPublishMavenToFile(
+            project,
+            artifacts,
+            config.checksums,
+            m2Repo.rootFile,
+            config.overwrite,
+            log
+          )
         }
       )
     )
