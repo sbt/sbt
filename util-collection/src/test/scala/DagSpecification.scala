@@ -24,7 +24,7 @@ object DagSpecification extends Properties("Dag") {
     dependenciesPrecedeNodes(dag.topologicalSort)
   }
 
-  implicit lazy val arbTestDag: Arbitrary[TestDag] = Arbitrary(Gen.sized(dagGen))
+  given Arbitrary[TestDag] = Arbitrary(Gen.sized(dagGen))
   private def dagGen(nodeCount: Int): Gen[TestDag] = {
     val nodes = new HashSet[TestDag]
     def nonterminalGen(p: Gen.Parameters): Gen[TestDag] = {

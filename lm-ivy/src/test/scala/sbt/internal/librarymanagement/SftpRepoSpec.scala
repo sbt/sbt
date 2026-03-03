@@ -18,7 +18,7 @@ object SftpRepoSpec extends BaseIvySpecification {
   def module(org: String) = org % "some-lib" % "version"
 
   override def resolvers = {
-    implicit val patterns = Resolver.defaultIvyPatterns
+    given Patterns = Resolver.defaultIvyPatterns
     repo.map { repo =>
       val privateKeyFile = Paths.get(sys.env("HOME"), ".ssh", s"id_${repo}").toFile
       Resolver.sftp(repo, s"repo.${repo}.com", 2222).as(repo, privateKeyFile)

@@ -17,7 +17,7 @@ object LockedArtifactsRun {
       verbosityLevel: Int,
       log: Logger
   ): Either[String, Seq[(Dependency, Publication, Artifact, Option[File])]] = {
-    implicit val ec: ExecutionContext = cache.ec
+    given ExecutionContext = cache.ec
 
     if (verbosityLevel >= 1) {
       log.info("Fetching artifacts from lock file")
