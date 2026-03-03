@@ -497,7 +497,7 @@ private[sbt] object Continuous {
              * are other changes detected in the burst. As soon as no changes are detected
              * during the polling window, we return all of the detected events. The polling
              * period is by default 5 milliseconds which is short enough to detect bursts
-             * induced by commands like git rebase but fast enough to not lead to a noticable
+             * induced by commands like git rebase but fast enough to not lead to a noticeable
              * increase in latency.
              */
             @tailrec def aggregate(res: Seq[Event]): Seq[Event] =

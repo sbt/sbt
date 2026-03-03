@@ -153,7 +153,7 @@ shift
 if "%~0" == "" goto args_end
 set g=%~0
 
-rem make sure the sbt_args_debug gets set first incase any argument parsing uses :dlog
+rem make sure the sbt_args_debug gets set first in case any argument parsing uses :dlog
 if "%~0" == "-d" set _debug_arg=true
 if "%~0" == "--debug" set _debug_arg=true
 
