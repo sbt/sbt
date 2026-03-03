@@ -79,7 +79,9 @@ object GlobalPlugin {
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
-      val depMap = projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
+      val depMap =
+        if useIvy.value then projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
+        else projectDescriptors.value
 
       GlobalPluginData(
         projectID.value,

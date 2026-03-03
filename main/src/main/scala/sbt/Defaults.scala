@@ -3724,6 +3724,7 @@ object Classpaths {
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
       Def.unit(update.value)
+      if !useIvy.value then sys.error("deliver/makeIvyXml requires useIvy := true")
       IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
     }
 
@@ -3755,6 +3756,10 @@ object Classpaths {
           val log = streams.value.log
           val ref = thisProjectRef.value
           logSkipPublish(log, ref)
+        } else if (!useIvy.value) {
+          sys.error(
+            "publishOrSkip requires useIvy := true. Use publish/publishLocal for ivyless publishing."
+          )
         } else {
           val conf = config.value
           val log = streams.value.log
@@ -4212,10 +4217,10 @@ object Classpaths {
 
   private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
     import sbt.TupleSyntax.*
-    (buildDependencies.toTaskable, thisProjectRef.toTaskable, settingsData, streams).flatMapN {
-      (bd, thisProj, data, s) =>
+    (buildDependencies.toTaskable, thisProjectRef.toTaskable, settingsData, streams)
+      .flatMapN { (bd, thisProj, data, s) =>
         depMap(bd.classpathTransitiveRefs(thisProj), data, s.log)
-    }
+      }
 
   private[sbt] def depMap(
       projects: Seq[ProjectRef],
