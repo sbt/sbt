@@ -7,6 +7,7 @@ import sbt.internal.util.ConsoleLogger
 import sbt.librarymanagement.*
 import sbt.librarymanagement.Configurations.Component
 import sbt.librarymanagement.Resolver.{ DefaultMavenRepository, JavaNet2Repository }
+import sbt.util.ShowLines.*
 // import sbt.librarymanagement.{ Resolver, UnresolvedWarningConfiguration, UpdateConfiguration }
 import sbt.librarymanagement.syntax.*
 
@@ -50,6 +51,20 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
 
   private final val stubModule = "com.example" % "foo" % "0.1.0" % "compile"
 
+  private def unresolvedWarningLines(module: ModuleDescriptor): Seq[String] =
+    lmEngine.update(module, UpdateConfiguration(), UnresolvedWarningConfiguration(), log) match {
+      case Left(uw) => uw.lines
+      case Right(report) =>
+        fail(s"Expected resolution to fail, but it succeeded with report: $report")
+    }
+
+  private def assertContainsAll(lines: Seq[String], expected: Seq[String]): Unit =
+    expected.foreach { line =>
+      withClue(lines.mkString("\n")) {
+        lines should contain(line)
+      }
+    }
+
   property("very simple module") {
     val dependencies = Vector(
       "com.typesafe.scala-logging" % "scala-logging_2.12" % "3.7.2" % "compile",
@@ -86,6 +101,52 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     componentConfig.modules should have size 2
     componentConfig.modules.head.artifacts should have size 1
     componentConfig.modules.head.artifacts.head._1.classifier should contain("sources")
+  }
+
+  property("unresolved warning includes transitive caller graph for Coursier") {
+    val dependencies =
+      Vector("org.apache.cayenne.plugins" % "maven-cayenne-plugin" % "3.0.2" % "compile")
+    val unresolvedModule = module(
+      lmEngine,
+      stubModule.withRevision("0.2.0"),
+      dependencies,
+      Some("2.12.4")
+    )
+
+    val lines = unresolvedWarningLines(unresolvedModule)
+    assertContainsAll(
+      lines,
+      Seq(
+        "\n\tNote: Unresolved dependencies path:",
+        "\t\tfoundrylogic.vpp:vpp:2.2.1",
+        "\t\t  +- org.apache.cayenne.plugins:maven-cayenne-plugin:3.0.2",
+        "\t\t  +- com.example:foo:0.2.0"
+      )
+    )
+    lines.count(_.startsWith("\t\t  +-")) should be >= 2
+  }
+
+  property("unresolved warning includes root caller for direct missing dependency") {
+    val dependencies =
+      Vector(
+        "io.github.sbt.nonexistent" % "issue-5168-missing-artifact-zzzzzz" % "0.0.1" % "compile"
+      )
+    val unresolvedModule = module(
+      lmEngine,
+      stubModule.withRevision("0.3.0"),
+      dependencies,
+      Some("2.12.4")
+    )
+
+    val lines = unresolvedWarningLines(unresolvedModule)
+    assertContainsAll(
+      lines,
+      Seq(
+        "\n\tNote: Unresolved dependencies path:",
+        "\t\tio.github.sbt.nonexistent:issue-5168-missing-artifact-zzzzzz:0.0.1",
+        "\t\t  +- com.example:foo:0.3.0"
+      )
+    )
   }
 
   property("resolve sbt jars") {
