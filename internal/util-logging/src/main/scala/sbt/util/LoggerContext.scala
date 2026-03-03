@@ -56,18 +56,15 @@ object LoggerContext {
       if (closed.get) {
         throw new IllegalStateException("Tried to create logger for closed LoggerContext")
       }
-      val loggerConfig = LoggerConfig.createLogger(
-        false,
-        XLevel.DEBUG,
-        name,
-        // disable the calculation of caller location as it is very expensive
-        // https://issues.apache.org/jira/browse/LOG4J2-153
-        "false",
-        Array[AppenderRef](),
-        null,
-        config,
-        null
-      )
+      val loggerConfig = LoggerConfig
+        .newBuilder()
+        .withAdditivity(false)
+        .withLevel(XLevel.DEBUG)
+        .withLoggerName(name)
+        .withIncludeLocation("false")
+        .withRefs(Array[AppenderRef]())
+        .withConfig(config)
+        .build()
       config.addLogger(name, loggerConfig)
       val logger = xlc.getLogger(name)
       LogExchange.addConfig(name, loggerConfig)
