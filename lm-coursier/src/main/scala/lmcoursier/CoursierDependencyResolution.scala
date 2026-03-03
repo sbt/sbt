@@ -28,6 +28,7 @@ import lmcoursier.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
 import coursier.core.{ BomDependency, Dependency, Publication }
+import scala.util.control.NonFatal
 
 import scala.util.{ Try, Failure }
 
@@ -395,10 +396,110 @@ class CoursierDependencyResolution(
       }
       report
     }
-    e.left.map(unresolvedWarningOrThrow(uwconfig, _))
+    e.left.map(unresolvedWarningOrThrow(module0.module, uwconfig, _))
   }
 
+  private def toModuleId(module: coursier.core.Module, version: String): ModuleID =
+    ModuleID(module.organization.value, module.name.value, version)
+      .withExtraAttributes(module.attributes)
+
+  private type DependencyKey = (coursier.core.Module, String)
+
+  private def dependencyKey(dependency: Dependency): DependencyKey =
+    dependency.module -> dependency.version
+
+  private def sortDependencies(dependencies: Seq[Dependency]): Vector[Dependency] =
+    dependencies.toVector.sortBy { dep =>
+      (dep.module.organization.value, dep.module.name.value, dep.version)
+    }
+
+  private def safeDependenciesOf(
+      resolution: Resolution,
+      dependency: Dependency
+  ): Vector[Dependency] =
+    try sortDependencies(resolution.dependenciesOf(dependency, false, false))
+    catch {
+      case NonFatal(_) => Vector.empty
+    }
+
+  private def pathScore(path: Vector[Dependency]): (Int, String) =
+    path.size -> path
+      .map(dep => s"${dep.module.organization.value}:${dep.module.name.value}:${dep.version}")
+      .mkString("->")
+
+  private def betterPath(
+      candidate: Vector[Dependency],
+      currentBest: Option[Vector[Dependency]]
+  ): Option[Vector[Dependency]] =
+    currentBest match {
+      case Some(best) =>
+        val (bestLength, bestPathStr) = pathScore(best)
+        val (candidateLength, candidatePathStr) = pathScore(candidate)
+        if (
+          bestLength > candidateLength || (bestLength == candidateLength && bestPathStr >= candidatePathStr)
+        ) currentBest
+        else Some(candidate)
+      case _ => Some(candidate)
+    }
+
+  private def longestPathToTarget(
+      resolution: Resolution,
+      current: Dependency,
+      target: DependencyKey,
+      seen: Set[DependencyKey]
+  ): Option[Vector[Dependency]] = {
+    val currentKey = dependencyKey(current)
+    if (currentKey == target) Some(Vector(current))
+    else {
+      safeDependenciesOf(resolution, current).iterator
+        .filterNot(dep => seen(dependencyKey(dep)))
+        .foldLeft(Option.empty[Vector[Dependency]]) { (best, dep) =>
+          val key = dependencyKey(dep)
+          val candidate = longestPathToTarget(resolution, dep, target, seen + key).map { tail =>
+            current +: tail
+          }
+          candidate match {
+            case Some(path) => betterPath(path, best)
+            case None       => best
+          }
+        }
+    }
+  }
+
+  private def resolvePath(
+      resolution: Resolution,
+      failedDependency: Dependency,
+      rootModule: ModuleID
+  ): Seq[ModuleID] = {
+    val normalizedRootModule = rootModule.withConfigurations(None)
+    val roots = sortDependencies(resolution.rootDependencies)
+    val target = dependencyKey(failedDependency)
+    val resolvedPath = roots
+      .foldLeft(Option.empty[Vector[Dependency]]) { (best, root) =>
+        val candidate = longestPathToTarget(resolution, root, target, Set(dependencyKey(root)))
+        candidate match {
+          case Some(path) => betterPath(path, best)
+          case None       => best
+        }
+      }
+      .getOrElse(Vector(failedDependency))
+
+    normalizedRootModule +: resolvedPath.map(dep => toModuleId(dep.module, dep.version))
+  }
+
+  private def failedPaths(
+      rootModule: ModuleID,
+      resolution: Resolution,
+      downloadErrors: Seq[coursier.error.ResolutionError.CantDownloadModule]
+  ): Map[ModuleID, Seq[ModuleID]] =
+    downloadErrors.map { err =>
+      val failedDependency = Dependency(err.module, err.version)
+      val failedModule = toModuleId(err.module, err.version)
+      failedModule -> resolvePath(resolution, failedDependency, rootModule)
+    }.toMap
+
   private def unresolvedWarningOrThrow(
+      rootModule: ModuleID,
       uwconfig: UnresolvedWarningConfiguration,
       ex: coursier.error.CoursierError
   ): UnresolvedWarning = {
@@ -424,12 +525,17 @@ class CoursierDependencyResolution(
     }
 
     if (otherErrors.isEmpty) {
+      val resolution = ex match {
+        case ex0: coursier.error.ResolutionError => ex0.resolution
+        case _                                   => Resolution()
+      }
+      val resolvedPaths = failedPaths(rootModule, resolution, downloadErrors)
       val r = new ResolveException(
         downloadErrors.map(_.getMessage),
         downloadErrors.map { err =>
-          ModuleID(err.module.organization.value, err.module.name.value, err.version)
-            .withExtraAttributes(err.module.attributes)
-        }
+          toModuleId(err.module, err.version)
+        },
+        resolvedPaths
       )
       UnresolvedWarning(r, uwconfig)
     } else
