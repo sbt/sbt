@@ -15,6 +15,7 @@ import org.apache.logging.log4j.{ Level => XLevel }
 import org.apache.logging.log4j.core.{ Appender => XAppender, LoggerContext => XLoggerContext }
 import org.apache.logging.log4j.core.config.{ AppenderRef, LoggerConfig }
 import sbt.internal.util._
+import scala.annotation.nowarn
 import scala.collection.JavaConverters._
 import org.apache.logging.log4j.core.config.AbstractConfiguration
 import org.apache.logging.log4j.message.ObjectMessage
@@ -56,6 +57,7 @@ object LoggerContext {
       if (closed.get) {
         throw new IllegalStateException("Tried to create logger for closed LoggerContext")
       }
+      @nowarn
       val loggerConfig = LoggerConfig.createLogger(
         false,
         XLevel.DEBUG,
