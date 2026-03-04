@@ -10,7 +10,7 @@ package sbt
 package plugins
 
 import java.io.File
-import org.apache.ivy.core.module.descriptor.ModuleDescriptor
+import org.apache.ivy.core.module.descriptor.{ DependencyDescriptor, ModuleDescriptor }
 import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Def.{ Initialize, Setting }
 import sbt.Keys.*
@@ -21,6 +21,21 @@ import sbt.internal.librarymanagement.ivy.*
 import sbt.io.syntax.*
 import sbt.librarymanagement.*
 import sbt.std.TaskExtra.*
+import lmcoursier.definitions.{
+  Classifier as CClassifier,
+  Configuration as CConfiguration,
+  Dependency as CDependency,
+  Extension as CExtension,
+  Info as CInfo,
+  Module as CModule,
+  ModuleName as CModuleName,
+  Organization as COrganization,
+  Project as CProject,
+  Publication as CPublication,
+  Type as CType,
+}
+import lmcoursier.Inputs
+import scala.jdk.CollectionConverters.*
 
 /**
  * AutoPlugin that provides all Ivy-specific functionality.
@@ -44,6 +59,7 @@ object IvyDependencyPlugin extends AutoPlugin:
     },
     projectDescriptors := Def.uncached(depMap.value.asInstanceOf[Map[Any, Any]]),
     projectResolver := Def.uncached(projectResolverTask.value),
+    csrExtraProjects := Def.uncached(coursierExtraProjectsTask.value),
   ) ++ IvyXml.generateIvyXmlSettings() ++ ivyPublishOrSkipSettings
 
   private lazy val ivySbt0: Initialize[Task[IvySbt]] =
@@ -112,5 +128,87 @@ object IvyDependencyPlugin extends AutoPlugin:
         config.value,
         streams.value.log
       )
+    }
+
+  private lazy val coursierExtraProjectsTask: Initialize[Task[Seq[CProject]]] =
+    Def.task {
+      val projects = csrInterProjectDependencies.value
+      val projectModules = projects.map(_.module).toSet
+      projectDescriptors.value
+        .map { (k, v) =>
+          val id = k.asInstanceOf[ModuleRevisionId]
+          val desc = v.asInstanceOf[ModuleDescriptor]
+          moduleFromIvy(id) -> desc
+        }
+        .filter { case (module, _) =>
+          !projectModules(module)
+        }
+        .toVector
+        .map { (module, v) =>
+          val configurations = v.getConfigurations.map { c =>
+            CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
+          }.toMap
+          val deps = v.getDependencies.flatMap(dependencyFromIvy)
+          CProject(
+            module,
+            v.getModuleRevisionId.getRevision,
+            deps.toSeq,
+            configurations,
+            Nil,
+            None,
+            Nil,
+            CInfo("", "", Nil, Nil, None)
+          )
+        }
+    }
+
+  private def moduleFromIvy(id: ModuleRevisionId): CModule =
+    CModule(
+      COrganization(id.getOrganisation),
+      CModuleName(id.getName),
+      id.getExtraAttributes.asScala.map { (k0, v0) =>
+        k0.asInstanceOf[String] -> v0.asInstanceOf[String]
+      }.toMap
+    )
+
+  private def dependencyFromIvy(
+      desc: DependencyDescriptor
+  ): Seq[(CConfiguration, CDependency)] =
+    val id = desc.getDependencyRevisionId
+    val module = moduleFromIvy(id)
+    val exclusions = desc.getAllExcludeRules.map { rule =>
+      val modId = rule.getId.getModuleId
+      (COrganization(modId.getOrganisation), CModuleName(modId.getName))
+    }.toSet
+    val configurations = desc.getModuleConfigurations.toVector
+      .flatMap(Inputs.ivyXmlMappings)
+
+    def dependency(conf: CConfiguration, pub: CPublication) = CDependency(
+      module,
+      id.getRevision,
+      conf,
+      exclusions,
+      pub,
+      optional = false,
+      desc.isTransitive
+    )
+
+    val publications: CConfiguration => CPublication =
+      val artifacts = desc.getAllDependencyArtifacts
+      val m = artifacts.toVector.flatMap { art =>
+        val pub = CPublication(
+          art.getName,
+          CType(art.getType),
+          CExtension(art.getExt()),
+          CClassifier("")
+        )
+        art.getConfigurations.map(CConfiguration(_)).toVector.map { conf =>
+          conf -> pub
+        }
+      }.toMap
+      c => m.getOrElse(c, CPublication("", CType(""), CExtension(""), CClassifier("")))
+
+    configurations.map { (from, to) =>
+      from -> dependency(to, publications(to))
     }
 end IvyDependencyPlugin

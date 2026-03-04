@@ -753,6 +753,8 @@ lazy val sbtIvyProj = (project in file("sbt-ivy"))
   .settings(
     testedBaseSettings,
     name := "sbt-ivy",
+    // TODO: Fix doc
+    Compile / doc / sources := Nil,
     mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
   )
   .configure(addSbtIO)

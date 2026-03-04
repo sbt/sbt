@@ -36,7 +36,7 @@ lazy val root = (project in file(".")).
         sys.error("dispatch-core_2.11-0.11.1.jar found when it should NOT be included: " + bcp.toString)
       }
 
-      val bPomXml = makePomXml(streams.value.log, (b / makePomConfiguration).value, (b / ivyModule).value)
+      val bPomXml = makePomXml(streams.value.log, (b / makePomConfiguration).value, (b / ivyModule).value.asInstanceOf[IvySbt#Module])
 
       val repatchTwitterXml = bPomXml \ "dependencies" \ "dependency" find { d =>
         (d \ "groupId").text == "com.eed3si9n" && (d \ "artifactId").text == "repatch-twitter-core_2.11"
