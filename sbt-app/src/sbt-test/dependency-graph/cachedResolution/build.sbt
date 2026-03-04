@@ -1,7 +1,10 @@
 scalaVersion := "2.12.21"
 
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.28"
-updateOptions := updateOptions.value.withCachedResolution(true)
+updateOptions := {
+  import sbt.internal.librarymanagement.ivy.UpdateOptions
+  updateOptions.value.asInstanceOf[UpdateOptions].withCachedResolution(true)
+}
 
 TaskKey[Unit]("check") := {
   val report = (Test / updateFull).value
