@@ -15,7 +15,7 @@ import sbt.internal.util.MessageOnlyException
 import sbt.io.IO
 import sbt.io.Path.contentOf
 import sbt.librarymanagement.Credentials
-import sbt.internal.librarymanagement.ivy.IvyCredentials
+import sbt.librarymanagement.CredentialUtils
 import sona.{ PublishingType, Sona }
 
 import scala.concurrent.duration.FiniteDuration
@@ -65,7 +65,7 @@ see https://www.scala-sbt.org/1.x/docs/Using-Sonatype.html for details.""")
   }
 
   private def fromCreds(creds: Seq[Credentials], uploadRequestTimeout: FiniteDuration): Sona = {
-    val cred = IvyCredentials
+    val cred = CredentialUtils
       .forHost(creds, Sona.host)
       .getOrElse(throw new MessageOnlyException(s"no credentials are found for ${Sona.host}"))
     Sona.oauthClient(cred.userName, cred.passwd, uploadRequestTimeout)

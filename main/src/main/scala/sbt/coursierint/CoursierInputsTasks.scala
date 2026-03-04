@@ -13,26 +13,12 @@ import java.net.URI
 import sbt.librarymanagement.{ Credentials as IvyCredentials, * }
 import sbt.util.Logger
 import sbt.Keys.*
-import lmcoursier.definitions.{
-  Classifier as CClassifier,
-  Configuration as CConfiguration,
-  Dependency as CDependency,
-  Extension as CExtension,
-  Info as CInfo,
-  Module as CModule,
-  ModuleName as CModuleName,
-  Organization as COrganization,
-  Project as CProject,
-  Publication as CPublication,
-  Type as CType,
-  Strict as CStrict,
-}
+import lmcoursier.definitions.{ Project as CProject, Strict as CStrict }
 import lmcoursier.credentials.DirectCredentials
 import lmcoursier.{ FallbackDependency, FromSbt, Inputs }
 import sbt.internal.librarymanagement.mavenint.SbtPomExtraProperties
 import sbt.ProjectExtra.transitiveInterDependencies
 import sbt.ScopeFilter.Make.*
-import scala.jdk.CollectionConverters.*
 
 object CoursierInputsTasks {
   private def coursierProject0(
@@ -100,61 +86,6 @@ object CoursierInputsTasks {
       )
     }
 
-  private def moduleFromIvy(id: org.apache.ivy.core.module.id.ModuleRevisionId): CModule =
-    CModule(
-      COrganization(id.getOrganisation),
-      CModuleName(id.getName),
-      id.getExtraAttributes.asScala.map { (k0, v0) =>
-        k0.asInstanceOf[String] -> v0.asInstanceOf[String]
-      }.toMap
-    )
-
-  private def dependencyFromIvy(
-      desc: org.apache.ivy.core.module.descriptor.DependencyDescriptor
-  ): Seq[(CConfiguration, CDependency)] = {
-
-    val id = desc.getDependencyRevisionId
-    val module = moduleFromIvy(id)
-    val exclusions = desc.getAllExcludeRules.map { rule =>
-      // we're ignoring rule.getConfigurations and rule.getMatcher here
-      val modId = rule.getId.getModuleId
-      // we're ignoring modId.getAttributes here
-      (COrganization(modId.getOrganisation), CModuleName(modId.getName))
-    }.toSet
-
-    val configurations = desc.getModuleConfigurations.toVector
-      .flatMap(Inputs.ivyXmlMappings)
-
-    def dependency(conf: CConfiguration, pub: CPublication) = CDependency(
-      module,
-      id.getRevision,
-      conf,
-      exclusions,
-      pub,
-      optional = false,
-      desc.isTransitive
-    )
-
-    val publications: CConfiguration => CPublication = {
-
-      val artifacts = desc.getAllDependencyArtifacts
-
-      val m = artifacts.toVector.flatMap { art =>
-        val pub =
-          CPublication(art.getName, CType(art.getType), CExtension(art.getExt()), CClassifier(""))
-        art.getConfigurations.map(CConfiguration(_)).toVector.map { conf =>
-          conf -> pub
-        }
-      }.toMap
-
-      c => m.getOrElse(c, CPublication("", CType(""), CExtension(""), CClassifier("")))
-    }
-
-    configurations.map { (from, to) =>
-      from -> dependency(to, publications(to))
-    }
-  }
-
   private[sbt] def coursierInterProjectDependenciesTask: Def.Initialize[sbt.Task[Seq[CProject]]] =
     (Def
       .task {
@@ -171,34 +102,9 @@ object CoursierInputsTasks {
 
   private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
     Def.task {
-      val projects = csrInterProjectDependencies.value
-      val projectModules = projects.map(_.module).toSet
-
-      // this includes org.scala-sbt:global-plugins referenced from meta-builds in particular
-      sbt.Keys.projectDescriptors.value
-        .map { (k, v) =>
-          moduleFromIvy(k) -> v
-        }
-        .filter { case (module, _) =>
-          !projectModules(module)
-        }
-        .toVector
-        .map { (module, v) =>
-          val configurations = v.getConfigurations.map { c =>
-            CConfiguration(c.getName) -> c.getExtends.map(CConfiguration(_)).toSeq
-          }.toMap
-          val deps = v.getDependencies.flatMap(dependencyFromIvy)
-          CProject(
-            module,
-            v.getModuleRevisionId.getRevision,
-            deps.toSeq,
-            configurations,
-            Nil,
-            None,
-            Nil,
-            CInfo("", "", Nil, Nil, None)
-          )
-        }
+      // Coursier handles inter-project dependencies natively via csrInterProjectDependencies.
+      // The Ivy-typed projectDescriptors are only populated when IvyDependencyPlugin is enabled.
+      Seq.empty[CProject]
     }
   }
 
@@ -230,7 +136,7 @@ object CoursierInputsTasks {
       .flatMap {
         case dc: IvyCredentials.DirectCredentials => List(dc)
         case fc: IvyCredentials.FileCredentials =>
-          sbt.internal.librarymanagement.ivy.IvyCredentials.loadCredentials(fc.path) match {
+          sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path) match {
             case Left(err) =>
               log.warn(s"$err, ignoring it")
               Nil

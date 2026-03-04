@@ -14,8 +14,6 @@ import java.util.{ Optional, UUID }
 import java.util.concurrent.TimeUnit
 import lmcoursier.CoursierDependencyResolution
 import lmcoursier.definitions.{ Configuration as CConfiguration }
-import org.apache.ivy.core.module.descriptor.ModuleDescriptor
-import org.apache.ivy.core.module.id.ModuleRevisionId
 import org.scalasbt.ipcsocket.Win32SecurityLevel
 import sbt.Def.{ Initialize, ScopedKey, Setting, SettingsDefinition, parsed }
 import sbt.Keys.*
@@ -33,7 +31,6 @@ import sbt.internal.classpath.AlternativeZincUtil
 import sbt.internal.inc.JavaInterfaceUtil.*
 import sbt.internal.inc.classpath.ClasspathFilter
 import sbt.internal.inc.{ CompileOutput, MappedFileConverter, Stamps, ZincLmUtil, ZincUtil }
-import sbt.internal.librarymanagement.ivy.*
 import sbt.internal.librarymanagement.mavenint.{
   PomExtraDependencyAttributes,
   SbtPomExtraProperties
@@ -281,7 +278,7 @@ object Defaults extends BuildCommon {
       pomPostProcess :== idFun,
       pomAllRepositories :== false,
       pomIncludeRepository :== Classpaths.defaultRepositoryFilter,
-      updateOptions := UpdateOptions(),
+      updateOptions := None, // overridden by IvyDependencyPlugin with UpdateOptions()
       forceUpdatePeriod :== None,
       platform :== Platform.jvm,
       // coursier settings
@@ -2851,10 +2848,10 @@ object Classpaths {
     val nameWithCross = crossVersion(artifact.value.name)
     val version = Keys.version.value
     val pomFile = config.file.get.getParentFile / s"$nameWithCross-$version.pom"
-    val publisher = Keys.publisher.value
-    val ivySbt = Keys.ivySbt.value
-    val module = new ivySbt.Module(moduleSettings.value, appendSbtCrossVersion = true)
-    publisher.makePomFile(module, config.withFile(pomFile), streams.value.log)
+    val pub = Keys.publisher.value
+    val module =
+      pub.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+    pub.makePomFile(module, config.withFile(pomFile), streams.value.log)
     converter.toVirtualFile(pomFile.toPath)
 
   def ivyPublishSettings: Seq[Setting[?]] = publishGlobalDefaults ++ Seq(
@@ -2863,8 +2860,10 @@ object Classpaths {
     makePom := Def.uncached {
       val converter = fileConverter.value
       val config = makePomConfiguration.value
-      val publisher = Keys.publisher.value
-      publisher.makePomFile(ivyModule.value, config, streams.value.log)
+      val pub = Keys.publisher.value
+      val module =
+        pub.moduleDescriptor(moduleSettings.value.asInstanceOf[ModuleDescriptorConfiguration])
+      pub.makePomFile(module, config, streams.value.log)
       converter.toVirtualFile(config.file.get.toPath())
     },
     (makePom / packagedArtifact) := Def.uncached((makePom / artifact).value -> makePom.value),
@@ -3135,7 +3134,7 @@ object Classpaths {
     makePom / artifact := Artifact.pom(moduleName.value),
     projectID := defaultProjectID.value,
     projectID := pluginProjectID.value,
-    projectDescriptors := Def.uncached(depMap.value),
+    projectDescriptors := Def.uncached(Map.empty[Any, Any]),
     updateConfiguration := {
       // Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
       val specialArtifactTypes = sourceArtifactTypes.value.toSet union docArtifactTypes.value.toSet
@@ -3158,8 +3157,7 @@ object Classpaths {
       else None
     },
     dependencyResolution := Def.uncached(dependencyResolutionTask.value),
-    publisher := Def.uncached(IvyPublisher(ivyConfiguration.value)),
-    ivyConfiguration := Def.uncached(mkIvyConfiguration.value),
+    ivyConfiguration := Def.uncached((): Any),
     ivyConfigurations := {
       val confs = thisProject.value.configurations
       (confs ++ confs.map(internalConfigurationMap.value) ++ (if (autoCompilerPlugins.value)
@@ -3302,8 +3300,9 @@ object Classpaths {
         overwrite = isSnapshot.value
       )
     },
-    ivySbt := Def.uncached(ivySbt0.value),
-    ivyModule := Def.uncached { val is = ivySbt.value; new is.Module(moduleSettings.value) },
+    ivySbt := Def.uncached((): Any),
+    ivyModule := Def.uncached((): Any),
+    publisher := Def.uncached(Classpaths.defaultPublisher(dependencyResolution.value)),
     allCredentials := Def.uncached(LMCoursier.allCredentialsTask.value),
     transitiveUpdate := Def.uncached(transitiveUpdateTask.value),
     updateCacheName := {
@@ -3380,7 +3379,6 @@ object Classpaths {
         CoursierInputsTasks.coursierFallbackDependenciesTask.value
       ),
     ) ++
-    IvyXml.generateIvyXmlSettings() ++
     LMCoursier.publicationsSetting(Seq(Compile, Test).map(c => c -> CConfiguration(c.name)))
 
   def jvmBaseSettings: Seq[Setting[?]] = Seq(
@@ -3496,11 +3494,6 @@ object Classpaths {
         )
       else projectID.value
     }
-  private[sbt] lazy val ivySbt0: Initialize[Task[IvySbt]] =
-    Def.task {
-      IvyCredentials.register(credentials.value, streams.value.log)
-      new IvySbt(ivyConfiguration.value)
-    }
   def moduleSettings0: Initialize[Task[ModuleSettings]] = Def.task {
     val deps = allDependencies.value.toVector
     errorInsecureProtocolInModules(deps, streams.value.log)
@@ -3536,21 +3529,6 @@ object Classpaths {
               .resolvers
             explicit orElse boot getOrElse externalResolvers.value
           },
-          ivyConfiguration := Def.uncached(
-            InlineIvyConfiguration(
-              lock = Option(lock(appConfiguration.value)),
-              log = Option(streams.value.log),
-              updateOptions = UpdateOptions(),
-              paths = Option(ivyPaths.value),
-              resolvers = externalResolvers.value.toVector,
-              otherResolvers = Vector.empty,
-              moduleConfigurations = Vector.empty,
-              checksums = checksums.value.toVector,
-              managedChecksums = false,
-              resolutionCacheDir = Some(target.value / "resolution-cache"),
-            )
-          ),
-          ivySbt := Def.uncached(ivySbt0.value),
           classifiersModule := Def.uncached(classifiersModuleTask.value),
           // Redefine scalaVersion and scalaBinaryVersion specifically for the dependency graph used for updateSbtClassifiers task.
           // to fix https://github.com/sbt/sbt/issues/2686
@@ -3583,7 +3561,6 @@ object Classpaths {
               .task {
                 val lm = dependencyResolution.value
                 val s = streams.value
-                val is = ivySbt.value
                 val mod = classifiersModule.value
                 val updateConfig0 = updateConfiguration.value
                 val updateConfig = updateConfig0
@@ -3596,7 +3573,9 @@ object Classpaths {
                 val srcTypes = sourceArtifactTypes.value
                 val docTypes = docArtifactTypes.value
                 val log = s.log
-                val out = is.withIvy(log)(_.getSettings.getDefaultIvyUserDir)
+                val out = ivyPaths.value.ivyHome
+                  .map(new File(_))
+                  .getOrElse(new File(System.getProperty("user.home"), ".ivy2"))
                 val uwConfig = (update / unresolvedWarningConfiguration).value
                 withExcludes(out, mod.classifiers, lock(app)) { excludes =>
                   // val noExplicitCheck = ivy.map(_.withCheckExplicit(false))
@@ -3703,9 +3682,9 @@ object Classpaths {
 
   def deliverTask(config: TaskKey[PublishConfiguration]): Initialize[Task[File]] =
     Def.task {
-      Def.unit(update.value)
-      if !useIvy.value then sys.error("deliver/makeIvyXml requires useIvy := true")
-      IvyActions.deliver(ivyModule.value, config.value, streams.value.log)
+      sys.error(
+        "deliver/makeIvyXml requires the sbt-ivy plugin. Add IvyDependencyPlugin to your project."
+      )
     }
 
   @deprecated("Use variant without delivery key", "1.1.1")
@@ -3736,16 +3715,10 @@ object Classpaths {
           val log = streams.value.log
           val ref = thisProjectRef.value
           logSkipPublish(log, ref)
-        } else if (!useIvy.value) {
-          sys.error(
-            "publishOrSkip requires useIvy := true. Use publish/publishLocal for ivyless publishing."
-          )
         } else {
-          val conf = config.value
-          val log = streams.value.log
-          val module = ivyModule.value
-          val publisherInterface = publisher.value
-          publisherInterface.publish(module, conf, log)
+          sys.error(
+            "publishOrSkip requires the sbt-ivy plugin. Use publish/publishLocal for ivyless publishing."
+          )
         }
       }
       .tag(Tags.Publish, Tags.Network)
@@ -4062,17 +4035,6 @@ object Classpaths {
       f(libraryDependencies.value)
     }
 
-  /*
-    // can't cache deliver/publish easily since files involved are hidden behind patterns.  publish will be difficult to verify target-side anyway
-    def cachedPublish(cacheFile: File)(g: (IvySbt#Module, PublishConfiguration) => Unit, module: IvySbt#Module, config: PublishConfiguration) => Unit =
-    { case module :+: config :+: HNil =>
-    /*	implicit val publishCache = publishIC
-      val f = cached(cacheFile) { (conf: IvyConfiguration, settings: ModuleSettings, config: PublishConfiguration) =>*/
-          g(module, config)
-      /*}
-      f(module.owner.configuration :+: module.moduleSettings :+: config :+: HNil)*/
-    }*/
-
   def defaultRepositoryFilter: MavenRepository => Boolean = repo => !repo.root.startsWith("file:")
 
   def getPublishTo(repo: Option[Resolver]): Resolver =
@@ -4195,30 +4157,35 @@ object Classpaths {
                 depProjId.withConfigurations(dep.configuration).withExplicitArtifacts(Vector.empty)
     }
 
-  private[sbt] def depMap: Initialize[Task[Map[ModuleRevisionId, ModuleDescriptor]]] =
-    import sbt.TupleSyntax.*
-    (buildDependencies.toTaskable, thisProjectRef.toTaskable, settingsData, streams)
-      .flatMapN { (bd, thisProj, data, s) =>
-        depMap(bd.classpathTransitiveRefs(thisProj), data, s.log)
-      }
-
-  private[sbt] def depMap(
-      projects: Seq[ProjectRef],
-      data: Def.Settings,
-      log: Logger
-  ): Task[Map[ModuleRevisionId, ModuleDescriptor]] =
-    val ivyModules = projects.flatMap { proj =>
-      (proj / ivyModule).get(data)
-    }.join
-    ivyModules.mapN { mod =>
-      mod.map { _.dependencyMapping(log) }.toMap
-    }
-
   def projectResolverTask: Initialize[Task[Resolver]] =
-    projectDescriptors.map { m =>
-      val resolver = new ProjectResolver(ProjectResolver.InterProject, m)
-      new RawRepository(resolver, resolver.getName)
+    Def.task {
+      // Stub resolver — Coursier handles inter-project deps via csrInterProjectDependencies.
+      // Overridden by IvyDependencyPlugin with a real ProjectResolver.
+      new RawRepository(NoOpResolver, NoOpResolver.name)
     }
+
+  private object NoOpResolver:
+    val name = "inter-project"
+    override def toString: String = name
+
+  /** Default publisher that delegates moduleDescriptor to Coursier but errors on Ivy-only operations. */
+  private[sbt] def defaultPublisher(lm: DependencyResolution): Publisher =
+    Publisher(new PublisherInterface {
+      def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
+        lm.moduleDescriptor(moduleSetting)
+      def publish(
+          module: ModuleDescriptor,
+          configuration: PublishConfiguration,
+          log: Logger
+      ): Unit =
+        sys.error("Ivy-based publish requires the sbt-ivy plugin or useIvy := true")
+      def makePomFile(
+          module: ModuleDescriptor,
+          configuration: MakePomConfiguration,
+          log: Logger
+      ): java.io.File =
+        sys.error("Ivy-based makePomFile requires the sbt-ivy plugin or useIvy := true")
+    })
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
     val c = fileConverter.value
@@ -4247,23 +4214,6 @@ object Classpaths {
 
   def internalDependencyJarsTask: Initialize[Task[Classpath]] =
     ClasspathImpl.internalDependencyJarsTask
-  lazy val mkIvyConfiguration: Initialize[Task[InlineIvyConfiguration]] =
-    Def.task {
-      val (rs, other) = (fullResolvers.value.toVector, otherResolvers.value.toVector)
-      val s = streams.value
-      warnResolversConflict(rs ++: other, s.log)
-      errorInsecureProtocol(rs ++: other, s.log)
-      InlineIvyConfiguration()
-        .withPaths(ivyPaths.value)
-        .withResolvers(rs)
-        .withOtherResolvers(other)
-        .withModuleConfigurations(moduleConfigurations.value.toVector)
-        .withLock(lock(appConfiguration.value))
-        .withChecksums((update / checksums).value.toVector)
-        .withResolutionCacheDir(target.value / "resolution-cache")
-        .withUpdateOptions(updateOptions.value)
-        .withLog(s.log)
-    }
 
   def interSort(
       projectRef: ProjectRef,
@@ -4474,7 +4424,7 @@ object Classpaths {
     try {
       app.provider.scalaProvider.launcher.checksums.toVector
     } catch {
-      case _: NoSuchMethodError => IvySbt.DefaultChecksums
+      case _: NoSuchMethodError => Vector("sha1", "md5")
     }
 
   def isOverrideRepositories(app: xsbti.AppConfiguration): Boolean =

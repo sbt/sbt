@@ -18,7 +18,6 @@ import sbt.ProjectExtra.*
 import sbt.internal.graph.*
 import sbt.internal.graph.backend.SbtUpdateReport
 import sbt.internal.graph.rendering.{ DagreHTML, TreeView }
-import sbt.internal.librarymanagement.*
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.internal.util.complete.DefaultParsers.*
 import sbt.io.IO
@@ -107,29 +106,12 @@ OPTIONS
    */
   def coreSettings =
     Seq(
-      // disable the cached resolution engine (exposing a scoped `ivyModule` used directly by `updateTask`), as it
-      // generates artificial module descriptors which are internal to sbt, making it hard to reconstruct the
-      // dependency tree
-      dependencyTreeIgnoreMissingUpdate / updateOptions := updateOptions.value
-        .withCachedResolution(false),
-      dependencyTreeIgnoreMissingUpdate / ivyConfiguration := Def.uncached {
-        // inTask will make sure the new definition will pick up `updateOptions in dependencyTreeIgnoreMissingUpdate`
-        Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.mkIvyConfiguration).value
-      },
-      dependencyTreeIgnoreMissingUpdate / ivyModule := Def.uncached {
-        // concatenating & inlining ivySbt & ivyModule default task implementations, as `SbtAccess.inTask` does
-        // NOT correctly force the scope when applied to `TaskKey.toTask` instances (as opposed to raw
-        // implementations like `Classpaths.mkIvyConfiguration` or `Classpaths.updateTask`)
-        val is = new IvySbt((dependencyTreeIgnoreMissingUpdate / ivyConfiguration).value)
-        new is.Module(moduleSettings.value)
-      },
       // don't fail on missing dependencies or eviction errors
       dependencyTreeIgnoreMissingUpdate / updateConfiguration := updateConfiguration.value
         .withMissingOk(true),
       dependencyTreeIgnoreMissingUpdate / evictionErrorLevel := Level.Warn,
       dependencyTreeIgnoreMissingUpdate / assumedEvictionErrorLevel := Level.Warn,
       dependencyTreeIgnoreMissingUpdate := Def.uncached {
-        // inTask will make sure the new definition will pick up `ivyModule/updateConfiguration in ignoreMissingUpdate`
         Project.inTask(dependencyTreeIgnoreMissingUpdate, Classpaths.updateTask).value
       },
     )
@@ -381,8 +363,8 @@ OPTIONS
   type HasModule = {
     val module: ModuleID
   }
-  def crossName(ivyModule: IvySbt#Module) =
-    ivyModule.moduleSettings match {
+  def crossName(module: Any) =
+    module match {
       case ic: ModuleDescriptorConfiguration => ic.module.name
       case _ =>
         throw new IllegalStateException(

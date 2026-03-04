@@ -13,16 +13,13 @@ import java.io.File
 import java.net.URI
 import lmcoursier.definitions.{ CacheLogger, ModuleMatchers, Reconciliation }
 import lmcoursier.{ CoursierConfiguration, FallbackDependency }
-import org.apache.ivy.core.module.descriptor.ModuleDescriptor
-import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Def.*
 import sbt.KeyRanks.*
 import sbt.internal.InMemoryCacheStore.CacheStoreFactoryFactory
 import sbt.internal.*
 import sbt.internal.bsp.*
 import sbt.internal.inc.ScalaInstance
-import sbt.internal.librarymanagement.{ CompatibilityWarningOptions, IvySbt }
-import sbt.internal.librarymanagement.ivy.{ IvyConfiguration, UpdateOptions }
+import sbt.internal.librarymanagement.CompatibilityWarningOptions
 import sbt.internal.server.BuildServerProtocol.BspFullWorkspace
 import sbt.internal.server.{ BspCompileTask, BuildServerReporter, ServerHandler }
 import sbt.internal.util.{ AttributeKey, ProgressState, SourcePosition }
@@ -519,16 +516,16 @@ object Keys {
 
   val internalConfigurationMap = settingKey[Configuration => Configuration]("Maps configurations to the actual configuration used to define the classpath.").withRank(CSetting)
   val classpathConfiguration = taskKey[Configuration]("The configuration used to define the classpath.").withRank(CTask)
-  val ivyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, such as the resolvers and paths to use.").withRank(DTask)
+  val ivyConfiguration = taskKey[Any]("General dependency management (Ivy) settings, such as the resolvers and paths to use.").withRank(DTask)
   val ivyConfigurations = settingKey[Seq[Configuration]]("The defined configurations for dependency management.  This may be different from the configurations for Project settings.").withRank(BSetting)
   // This setting was created to work around the limitation of derived tasks not being able to use task-scoped task: ivyConfiguration in updateSbtClassifiers
-  val bootIvyConfiguration = taskKey[IvyConfiguration]("General dependency management (Ivy) settings, configured to retrieve sbt's components.").withRank(DTask)
+  val bootIvyConfiguration = taskKey[Any]("General dependency management (Ivy) settings, configured to retrieve sbt's components.").withRank(DTask)
   val bootDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve sbt's components.").withRank(CTask)
   val scalaCompilerBridgeDependencyResolution = taskKey[DependencyResolution]("Dependency resolution to retrieve the compiler bridge.").withRank(CTask)
   val moduleSettings = taskKey[ModuleSettings]("Module settings, which configure dependency management for a specific module, such as a project.").withRank(DTask)
   val unmanagedBase = settingKey[File]("The default directory for manually managed libraries.").withRank(ASetting)
   val updateConfiguration = settingKey[UpdateConfiguration]("Configuration for resolving and retrieving managed dependencies.").withRank(DSetting)
-  val updateOptions = settingKey[UpdateOptions]("Options for resolving managed dependencies.").withRank(DSetting)
+  val updateOptions = settingKey[Any]("Options for resolving managed dependencies.").withRank(DSetting)
 
   @transient
   val unresolvedWarningConfiguration = taskKey[UnresolvedWarningConfiguration]("Configuration for unresolved dependency warning.").withRank(DTask)
@@ -537,8 +534,8 @@ object Keys {
   @transient
   val dependencyResolution = taskKey[DependencyResolution]("Provides the sbt interface to dependency resolution.").withRank(CTask)
   val publisher = taskKey[Publisher]("Provides the sbt interface to publisher")
-  val ivySbt = taskKey[IvySbt]("Provides the sbt interface to Ivy.").withRank(CTask)
-  val ivyModule = taskKey[IvySbt#Module]("Provides the sbt interface to a configured Ivy module.").withRank(CTask)
+  val ivySbt = taskKey[Any]("Provides the sbt interface to Ivy.").withRank(CTask)
+  val ivyModule = taskKey[Any]("Provides the sbt interface to a configured Ivy module.").withRank(CTask)
   val updateCacheName = taskKey[String]("Defines the directory name used to store the update cache files (inside the streams cacheDirectory).").withRank(DTask)
   val update = taskKey[UpdateReport]("Resolves and optionally retrieves dependencies, producing a report.").withRank(ATask)
   val updateFull = taskKey[UpdateReport]("Resolves and optionally retrieves dependencies, producing a full report with callers.").withRank(CTask)
@@ -638,7 +635,7 @@ object Keys {
   @transient
   val publishTo = taskKey[Option[Resolver]]("The resolver to publish to.").withRank(ASetting)
   val artifacts = settingKey[Seq[Artifact]]("The artifact definitions for the current module.  Must be consistent with " + packagedArtifacts.key.label + ".").withRank(BSetting)
-  val projectDescriptors = taskKey[Map[ModuleRevisionId, ModuleDescriptor]]("Project dependency map for the inter-project resolver.").withRank(DTask)
+  val projectDescriptors = taskKey[Map[Any, Any]]("Project dependency map for the inter-project resolver.").withRank(DTask)
   val autoUpdate = settingKey[Boolean]("<unimplemented>").withRank(Invisible)
   val retrieveManaged = settingKey[Boolean]("If true, enables retrieving dependencies to the current build.  Otherwise, dependencies are used directly from the cache.").withRank(BSetting)
   val retrieveManagedSync = settingKey[Boolean]("If true, enables synchronizing the dependencies retrieved to the current build by removed unneeded files.").withRank(BSetting)

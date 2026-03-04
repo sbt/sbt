@@ -54,13 +54,20 @@ object PluginDiscovery:
       "sbt.plugins.JUnitXmlReportPlugin" -> sbt.plugins.JUnitXmlReportPlugin,
       "sbt.plugins.Giter8TemplatePlugin" -> sbt.plugins.Giter8TemplatePlugin,
       "sbt.plugins.DependencyTreePlugin" -> sbt.plugins.DependencyTreePlugin,
-    )
+    ) ++ discoverIvyDependencyPlugin(loader)
     val detectedAutoPlugins = discover[AutoPlugin](AutoPlugins)
     val allAutoPlugins = (defaultAutoPlugins ++ detectedAutoPlugins.modules) map { (name, value) =>
       DetectedAutoPlugin(name, value, sbt.Plugins.hasAutoImportGetter(value, loader))
     }
     new DetectedPlugins(allAutoPlugins, discover[BuildDef](Builds))
   }
+
+  private def discoverIvyDependencyPlugin(loader: ClassLoader): Seq[(String, AutoPlugin)] =
+    try
+      val cls = loader.loadClass("sbt.plugins.IvyDependencyPlugin$")
+      val plugin = cls.getField("MODULE$").get(null).asInstanceOf[AutoPlugin]
+      Seq("sbt.plugins.IvyDependencyPlugin" -> plugin)
+    catch case _: ClassNotFoundException | _: NoClassDefFoundError => Nil
 
   /** Discovers the sbt-plugin-related top-level modules from the provided source `analysis`. */
   def discoverSourceAll(analysis: CompileAnalysis): DiscoveredNames = {

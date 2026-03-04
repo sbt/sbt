@@ -24,8 +24,6 @@ import sbt.ProjectExtra.{ extract, runUnloadHooks, setProject }
 import sbt.SlashSyntax0.*
 import sbt.librarymanagement.LibraryManagementCodec.given
 import java.io.File
-import org.apache.ivy.core.module.{ descriptor, id }
-import descriptor.ModuleDescriptor, id.ModuleRevisionId
 
 object GlobalPlugin {
   // constructs a sequence of settings that may be appended to a project's settings to
@@ -79,9 +77,7 @@ object GlobalPlugin {
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
-      val depMap =
-        if useIvy.value then projectDescriptors.value + ivyModule.value.dependencyMapping(state.log)
-        else projectDescriptors.value
+      val depMap = projectDescriptors.value
 
       GlobalPluginData(
         projectID.value,
@@ -125,7 +121,7 @@ object GlobalPlugin {
 final case class GlobalPluginData(
     projectID: ModuleID,
     dependencies: Seq[ModuleID],
-    descriptors: Map[ModuleRevisionId, ModuleDescriptor],
+    descriptors: Map[Any, Any],
     resolvers: Vector[Resolver],
     fullClasspath: Classpath,
     internalClasspath: Classpath

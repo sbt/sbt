@@ -278,7 +278,7 @@ object LMCoursier {
         case dc: IvyCredentials.DirectCredentials =>
           Right[String, IvyCredentials.DirectCredentials](dc)
         case fc: IvyCredentials.FileCredentials =>
-          sbt.internal.librarymanagement.ivy.IvyCredentials.loadCredentials(fc.path)
+          sbt.librarymanagement.CredentialUtils.loadCredentials(fc.path)
       }) match {
         case Left(err) => st.log.warn(err)
         case Right(d) =>
