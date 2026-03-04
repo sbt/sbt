@@ -2,6 +2,7 @@ package sbt.internal.librarymanagement
 
 import java.io.File
 import sbt.librarymanagement.*
+import sbt.librarymanagement.syntax.*
 
 object UpdateClassifiersUtil {
 
@@ -75,5 +76,27 @@ object UpdateClassifiersUtil {
       .withIsTransitive(false)
       .withExplicitArtifacts(arts)
       .withInclusions(Vector(InclExclRule.everything))
+
+  def extractExcludes(report: UpdateReport): Map[ModuleID, Set[String]] =
+    report.allMissing
+      .flatMap { case (_, mod, art) =>
+        art.classifier.map { c =>
+          (restrictedCopy(mod, false), c)
+        }
+      }
+      .groupBy(_._1)
+      .map { (mod, pairs) => (mod, pairs.map(_._2).toSet) }
+
+  def addExcluded(
+      report: UpdateReport,
+      classifiers: Vector[String],
+      exclude: Map[ModuleID, Set[String]]
+  ): UpdateReport =
+    report.addMissing { id =>
+      classifiedArtifacts(id.name, classifiers.filter(getExcluded(id, exclude)))
+    }
+
+  private def getExcluded(id: ModuleID, exclude: Map[ModuleID, Set[String]]): Set[String] =
+    exclude.getOrElse(restrictedCopy(id, false), Set.empty[String])
 
 }
