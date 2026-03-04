@@ -45,8 +45,14 @@ object CredentialUtils:
   private val UserKeys = List("user", "user.name", "username")
   private val PasswordKeys = List("password", "pwd", "pass", "passwd")
 
-  private def lookup(props: Map[String, String], keys: List[String], path: File): Either[String, String] =
-    keys.flatMap(props.get).headOption
+  private def lookup(
+      props: Map[String, String],
+      keys: List[String],
+      path: File
+  ): Either[String, String] =
+    keys
+      .flatMap(props.get)
+      .headOption
       .toRight(s"${keys.head} not specified in credentials file: $path")
 
   import scala.jdk.CollectionConverters.*
