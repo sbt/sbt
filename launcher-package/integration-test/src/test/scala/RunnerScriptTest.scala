@@ -252,6 +252,31 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
         s"sbtopts options should appear before CLI memory settings. g1Index=$g1Index, xmxCliIndex=$xmxCliIndex"
       )
 
+  // Test for issue #7197: -sbt-dir with spaces (and quotes) in .sbtopts
+  testOutput(
+    "sbt -sbt-dir with space and quote in .sbtopts",
+    sbtOptsFileContents = """-sbt-dir "/Users/a' dog"""",
+  )("-d", "-v"): (out: List[String]) =>
+    if (isWindows) cancel("Test not supported on windows")
+    else
+      val cmdLineStart = out.indexWhere(_.contains("Executing command line"))
+      assert(cmdLineStart >= 0, "Command line section not found")
+
+      val cmdLine = out.drop(cmdLineStart + 1).takeWhile(!_.trim.isEmpty)
+      val globalBaseArgs =
+        cmdLine.filter(_.contains("Dsbt.global.base"))
+
+      assert(
+        globalBaseArgs.nonEmpty,
+        s"-Dsbt.global.base should be present in command line. cmdLine=${cmdLine.mkString(", ")}"
+      )
+      assert(
+        globalBaseArgs.exists(arg =>
+          arg.contains("= /Users/a' dog") || arg.contains("=/Users/a' dog")
+        ),
+        s"-Dsbt.global.base should contain full path with space and quote. args=${globalBaseArgs.mkString(", ")}"
+      )
+
   // Test for issue #7333: JVM parameters with spaces in .sbtopts
   testOutput(
     "sbt with -J--add-modules ALL-DEFAULT in .sbtopts (args with spaces)",

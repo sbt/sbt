@@ -738,6 +738,47 @@ map_args () {
   declare -p commands
 }
 
+# Parse a line into words, respecting single and double quotes.
+# This is used for .sbtopts so that options like:
+#   -sbt-dir "/Users/a' dog"
+# are split into two arguments: -sbt-dir and /Users/a' dog
+parseLineIntoWords() {
+  local line="$1"
+  local word=""
+  local i=0
+  local len=${#line}
+  local in_dq=0
+  local in_sq=0
+  while (( i < len )); do
+    local c="${line:$i:1}"
+    if (( in_dq )); then
+      if [[ "$c" == '"' ]]; then
+        in_dq=0
+      else
+        word+="$c"
+      fi
+    elif (( in_sq )); then
+      if [[ "$c" == "'" ]]; then
+        in_sq=0
+      else
+        word+="$c"
+      fi
+    else
+      case "$c" in
+        '"')  in_dq=1 ;;
+        "'")  in_sq=1 ;;
+        ' '|$'\t')
+          [[ -n "$word" ]] && printf '%s\n' "$word"
+          word=""
+          ;;
+        *)    word+="$c" ;;
+      esac
+    fi
+    ((i++))
+  done
+  [[ -n "$word" ]] && printf '%s\n' "$word"
+}
+
 process_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -792,6 +833,21 @@ loadConfigFile() {
     # This safely handles special characters like |, *, &, etc.
     printf '%s\n' "$line"
   done
+}
+
+# Append tokens from an sbtopts-style file into the global sbt_file_opts array.
+# Each non-empty, non-comment line is split using parseLineIntoWords so that
+# quoted values with spaces (and embedded quotes) are preserved as single arguments.
+appendSbtoptsFromFile() {
+  local file="$1"
+  [[ ! -f "$file" ]] && return
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    line=$(printf '%s' "$line" | sed $'/^\#/d;s/[[:space:]]\{1,\}#.*//;s/\r$//')
+    [[ -z "$line" ]] && continue
+    while IFS= read -r token; do
+      [[ -n "$token" ]] && sbt_file_opts+=("$token")
+    done < <(parseLineIntoWords "$line")
+  done < "$file"
 }
 
 loadPropFile() {
@@ -893,14 +949,14 @@ fi
 
 # Pull in the machine-wide settings configuration.
 if [[ -f "$machine_sbt_opts_file" ]]; then
-  sbt_file_opts+=($(loadConfigFile "$machine_sbt_opts_file"))
+  appendSbtoptsFromFile "$machine_sbt_opts_file"
 else
   # Otherwise pull in the default settings configuration.
-  [[ -f "$dist_sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$dist_sbt_opts_file"))
+  [[ -f "$dist_sbt_opts_file" ]] && appendSbtoptsFromFile "$dist_sbt_opts_file"
 fi
 
 # Pull in the project-level config file, if it exists (highest priority, overrides machine/dist).
-[[ -f "$sbt_opts_file" ]] && sbt_file_opts+=($(loadConfigFile "$sbt_opts_file"))
+[[ -f "$sbt_opts_file" ]] && appendSbtoptsFromFile "$sbt_opts_file"
 
 # Prepend sbtopts so command line args appear last and win for duplicate properties.
 if (( ${#sbt_file_opts[@]} > 0 )); then
