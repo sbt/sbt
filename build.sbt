@@ -693,7 +693,7 @@ lazy val buildFileProj = (project in file("buildfile"))
     libraryDependencies ++= Seq(scalaCompiler),
     mimaSettings,
   )
-  .dependsOn(lmCore, lmIvy)
+  .dependsOn(lmCore)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
 // The main integration project for sbt.  It brings all of the projects together, configures them, and provides for overriding conventions.
@@ -737,16 +737,31 @@ lazy val mainProj = (project in file("main"))
     Compile / doc / sources := Nil,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      // Moved to sbt-ivy module (Step 5 of sbt#7640)
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.depMap"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.ivySbt0"),
+      exclude[DirectMissingMethodProblem]("sbt.Classpaths.mkIvyConfiguration"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml"),
+      exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml$"),
     ),
   )
-  .dependsOn(lmCore, lmIvy, lmCoursierShadedPublishing)
+  .dependsOn(lmCore, lmCoursierShadedPublishing)
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
+
+lazy val sbtIvyProj = (project in file("sbt-ivy"))
+  .dependsOn(mainProj, lmIvy)
+  .settings(
+    testedBaseSettings,
+    name := "sbt-ivy",
+    mimaPreviousArtifacts := Set.empty, // new module, no previous artifacts
+  )
+  .configure(addSbtIO)
 
 // Strictly for bringing implicits and aliases from subsystems into the top-level sbt namespace through a single package object
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt-app"))
-  .dependsOn(mainProj)
+  .dependsOn(mainProj, sbtIvyProj)
   .settings(
     testedBaseSettings,
     name := "sbt",
@@ -996,6 +1011,7 @@ def allProjects =
     mainSettingsProj,
     zincLmIntegrationProj,
     mainProj,
+    sbtIvyProj,
     sbtProj,
     bundledLauncherProj,
     sbtClientProj,
