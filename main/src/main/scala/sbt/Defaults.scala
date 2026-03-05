@@ -4168,7 +4168,7 @@ object Classpaths {
     val name = "inter-project"
     override def toString: String = name
 
-  /** Default publisher that delegates moduleDescriptor to Coursier but errors on Ivy-only operations. */
+  /** Default publisher that delegates moduleDescriptor to Coursier and generates POM without Ivy. */
   private[sbt] def defaultPublisher(lm: DependencyResolution): Publisher =
     Publisher(new PublisherInterface {
       def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
@@ -4184,7 +4184,19 @@ object Classpaths {
           configuration: MakePomConfiguration,
           log: Logger
       ): java.io.File =
-        sys.error("Ivy-based makePomFile requires the sbt-ivy plugin or useIvy := true")
+        val file = configuration.file.getOrElse(sys.error("makePom file must be specified."))
+        val ms = module.moduleSettings.asInstanceOf[ModuleDescriptorConfiguration]
+        val mid = ms.module
+        val info = configuration.moduleInfo.orElse(Option(ms.moduleInfo))
+        val deps = module.directDependencies
+        val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
+        val confs = configuration.configurations
+        val pomXml =
+          sbt.internal.PomGenerator.makePom(mid, info, deps, confs, extra)
+        val processed = configuration.process(pomXml)
+        scala.xml.XML.save(file.getAbsolutePath, processed, "UTF-8", xmlDecl = true)
+        log.info("Wrote " + file.getAbsolutePath)
+        file
     })
 
   def makeProducts: Initialize[Task[Seq[File]]] = Def.task {
