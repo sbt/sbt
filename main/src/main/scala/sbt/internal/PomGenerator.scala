@@ -51,9 +51,11 @@ private[sbt] object PomGenerator:
     </project>
 
   private def confIntersects(confStr: String, keepConfs: Set[String]): Boolean =
-    confStr.split(';').exists: mapping =>
-      val from = mapping.split("->").head.trim
-      keepConfs.contains(from) || from == "*"
+    confStr
+      .split(';')
+      .exists: mapping =>
+        val from = mapping.split("->").head.trim
+        keepConfs.contains(from) || from == "*"
 
   private def makeModuleID(mid: ModuleID): NodeSeq =
     val packaging =
@@ -88,34 +90,43 @@ private[sbt] object PomGenerator:
         <scm>
           <url>{s.browseUrl}</url>
           <connection>{s.connection}</connection>
-          {s.devConnection.map(d => <developerConnection>{d}</developerConnection>).getOrElse(NodeSeq.Empty)}
+          {
+          s.devConnection
+            .map(d => <developerConnection>{d}</developerConnection>)
+            .getOrElse(NodeSeq.Empty)
+        }
         </scm>
       case _ => NodeSeq.Empty
 
   private def makeDeveloperInfo(info: ModuleInfo): NodeSeq =
     if info.developers.nonEmpty then
       <developers>
-        {info.developers.map: dev =>
+        {
+        info.developers.map: dev =>
           <developer>
             <id>{dev.id}</id>
             <name>{dev.name}</name>
             <url>{dev.url}</url>
-            {if dev.email != null && dev.email.nonEmpty then <email>{dev.email}</email> else NodeSeq.Empty}
+            {
+            if dev.email != null && dev.email.nonEmpty then <email>{dev.email}</email>
+            else NodeSeq.Empty
+          }
           </developer>
-        }
+      }
       </developers>
     else NodeSeq.Empty
 
   private def makeLicenses(info: ModuleInfo): NodeSeq =
     if info.licenses.nonEmpty then
       <licenses>
-        {info.licenses.map: lic =>
+        {
+        info.licenses.map: lic =>
           <license>
             <name>{lic.spdxId}</name>
             <url>{lic.uri}</url>
             <distribution>repo</distribution>
           </license>
-        }
+      }
       </licenses>
     else NodeSeq.Empty
 
@@ -124,22 +135,22 @@ private[sbt] object PomGenerator:
     else
       <dependencyManagement>
         <dependencies>
-          {deps.map: dep =>
-            <dependency>
+          {
+        deps.map: dep =>
+          <dependency>
               <groupId>{dep.organization}</groupId>
               <artifactId>{dep.name}</artifactId>
               <version>{dep.revision}</version>
               <type>pom</type>
               <scope>import</scope>
             </dependency>
-          }
+      }
         </dependencies>
       </dependencyManagement>
 
   private def makeDependencies(deps: Vector[ModuleID]): NodeSeq =
     if deps.isEmpty then NodeSeq.Empty
-    else
-      <dependencies>
+    else <dependencies>
         {deps.map(makeDependencyElem)}
       </dependencies>
 
@@ -191,8 +202,7 @@ private[sbt] object PomGenerator:
       val elems = dep.exclusions.flatMap { excl =>
         val g = excl.organization
         val a = excl.name
-        if g.nonEmpty && g != "*" && a.nonEmpty && a != "*" then
-          Some(<exclusion>
+        if g.nonEmpty && g != "*" && a.nonEmpty && a != "*" then Some(<exclusion>
             <groupId>{g}</groupId>
             <artifactId>{a}</artifactId>
           </exclusion>)
