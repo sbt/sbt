@@ -310,7 +310,7 @@ private[sbt] object LibraryManagement {
           Seq[ScopedKey[?]],
           ScopedKey[?],
           Option[FiniteDuration],
-          Any,
+          ModuleSettings,
           String,
           ProjectRef,
           Boolean,
@@ -333,7 +333,7 @@ private[sbt] object LibraryManagement {
       Keys.executionRoots,
       Keys.resolvedScoped.toTaskable,
       Keys.forceUpdatePeriod.toTaskable,
-      Keys.ivyModule.toTaskable,
+      Keys.moduleSettings.toTaskable,
       Keys.updateCacheName.toTaskable,
       Keys.thisProjectRef.toTaskable,
       (Keys.update / Keys.skip).toTaskable,
@@ -356,7 +356,7 @@ private[sbt] object LibraryManagement {
           er,
           rs,
           fup,
-          im,
+          ms,
           ucn,
           thisRef,
           sk,
@@ -397,10 +397,8 @@ private[sbt] object LibraryManagement {
           conf1.withLogicalClock(LogicalClock(state0.hashCode))
         }
         cachedUpdate(
-          // LM API
           lm = lm,
-          // ModuleDescriptor from dependency resolution
-          module = im.asInstanceOf[ModuleDescriptor],
+          module = lm.moduleDescriptor(ms.asInstanceOf[ModuleDescriptorConfiguration]),
           s.cacheStoreFactory.sub(ucn),
           Reference.display(thisRef),
           updateConf,
