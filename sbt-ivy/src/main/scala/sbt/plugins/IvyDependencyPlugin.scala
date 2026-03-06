@@ -66,7 +66,9 @@ object IvyDependencyPlugin extends AutoPlugin:
             IvyPublisher(ivyConfiguration.value.asInstanceOf[IvyConfiguration])
           }
         )(
-          Def.task { Classpaths.defaultPublisher(dependencyResolution.value) }
+          Def.task {
+            Classpaths.defaultPublisher(dependencyResolution.value, fullResolvers.value.toVector)
+          }
         )
         .value
     ),

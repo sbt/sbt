@@ -25,6 +25,9 @@ private[sbt] object PomGenerator:
       configurations: Option[Vector[Configuration]],
       extra: NodeSeq,
       scalaModuleInfo: Option[ScalaModuleInfo] = None,
+      resolvers: Vector[Resolver] = Vector.empty,
+      filterRepositories: MavenRepository => Boolean = _ => true,
+      allRepositories: Boolean = false,
   ): Node =
     val crossMid = crossVersionDep(mid, scalaModuleInfo)
     val keepConfs: Set[String] =
@@ -48,23 +51,34 @@ private[sbt] object PomGenerator:
       {info.map(makeScmInfo).getOrElse(NodeSeq.Empty)}
       {info.map(makeDeveloperInfo).getOrElse(NodeSeq.Empty)}
       {info.map(makeLicenses).getOrElse(NodeSeq.Empty)}
+      {makeProperties(crossMid)}
       {extra}
+      {makeRepositories(resolvers, filterRepositories, allRepositories)}
       {makeDependencyManagement(bomDeps)}
       {makeDependencies(regularDeps)}
     </project>
 
   private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
     val crossFn = CrossVersion(dep, scalaInfo)
-    crossFn match
+    val crossDep = crossFn match
       case Some(fn) => dep.withName(fn(dep.name)).withCrossVersion(CrossVersion.disabled)
       case None     => dep
+    if crossDep.exclusions.isEmpty || scalaInfo.isEmpty then crossDep
+    else
+      val si = scalaInfo.get
+      val crossedExclusions = crossDep.exclusions.map: excl =>
+        CrossVersion(excl.crossVersion, si.scalaFullVersion, si.scalaBinaryVersion) match
+          case Some(fn) =>
+            excl.withName(fn(excl.name)).withCrossVersion(CrossVersion.disabled)
+          case None => excl
+      crossDep.withExclusions(crossedExclusions)
 
   private def confIntersects(confStr: String, keepConfs: Set[String]): Boolean =
     confStr
       .split(';')
       .exists: mapping =>
         val from = mapping.split("->").head.trim
-        keepConfs.contains(from) || from == "*"
+        from.split(',').exists(c => keepConfs.contains(c.trim) || c.trim == "*")
 
   private def makeModuleID(mid: ModuleID): NodeSeq =
     val packaging =
@@ -139,6 +153,37 @@ private[sbt] object PomGenerator:
       </licenses>
     else NodeSeq.Empty
 
+  private def makeProperties(mid: ModuleID): NodeSeq =
+    val props = mid.extraAttributes
+      .collect:
+        case (k, v) if k.startsWith("e:info.") => (k.stripPrefix("e:"), v)
+        case (k, v) if k.startsWith("info.")   => (k, v)
+    if props.isEmpty then NodeSeq.Empty
+    else
+      <properties>
+        {
+        props.toSeq
+          .sortBy(_._1)
+          .map: (k, v) =>
+            Elem(null, k, scala.xml.Null, scala.xml.TopScope, false, scala.xml.Text(v))
+      }
+      </properties>
+
+  private def makeRepositories(
+      resolvers: Vector[Resolver],
+      filter: MavenRepository => Boolean,
+      allRepositories: Boolean,
+  ): NodeSeq =
+    val repos = resolvers.collect:
+      case r: MavenRepository if r.name != "public" && (allRepositories || filter(r)) =>
+        <repository>
+          <id>{r.name}</id>
+          <name>{r.name}</name>
+          <url>{r.root}</url>
+        </repository>
+    if repos.isEmpty then NodeSeq.Empty
+    else <repositories>{repos}</repositories>
+
   private def makeDependencyManagement(deps: Vector[ModuleID]): NodeSeq =
     if deps.isEmpty then NodeSeq.Empty
     else
@@ -165,9 +210,10 @@ private[sbt] object PomGenerator:
 
   private def makeDependencyElem(dep: ModuleID): Elem =
     val (scope, optional) = getScopeAndOptional(dep.configurations)
+    val mavenVersion = convertVersion(dep.revision)
     val versionNode: NodeSeq =
-      if dep.revision == null || dep.revision == "*" || dep.revision.isEmpty then NodeSeq.Empty
-      else <version>{dep.revision}</version>
+      if mavenVersion == null || mavenVersion == "*" || mavenVersion.isEmpty then NodeSeq.Empty
+      else <version>{mavenVersion}</version>
     val result: Elem =
       <dependency>
         <groupId>{dep.organization}</groupId>
@@ -184,13 +230,30 @@ private[sbt] object PomGenerator:
     configurations match
       case None => (None, false)
       case Some(confStr) =>
-        val confs = confStr.split(';').map(_.split("->").head.trim).toSet
+        val confs =
+          confStr.split(';').flatMap(_.split("->").head.trim.split(',')).map(_.trim).toSet
         val optional = confs.contains(Configurations.Optional.name)
         val notOptional = confs - Configurations.Optional.name
         val scope = Configurations.defaultMavenConfigurations
           .find(c => notOptional.contains(c.name))
           .map(_.name)
         (scope, optional)
+
+  /** Convert Ivy-style dynamic versions to Maven range format. */
+  private def convertVersion(version: String): String =
+    if version == null then null
+    else if version.endsWith("+") then
+      val base = version.stripSuffix("+").stripSuffix(".")
+      val parts = base.split('.')
+      if parts.nonEmpty then
+        val last =
+          try parts.last.toInt + 1
+          catch case _: NumberFormatException => return version
+        val upper = (parts.init :+ last.toString).mkString(".")
+        s"[$base,$upper)"
+      else version
+    else if version == "latest.integration" || version == "latest.release" then ""
+    else version
 
   private def scopeElem(scope: Option[String]): NodeSeq =
     scope match

@@ -3302,7 +3302,9 @@ object Classpaths {
     },
     ivySbt := Def.uncached((): Any),
     ivyModule := Def.uncached((): Any),
-    publisher := Def.uncached(Classpaths.defaultPublisher(dependencyResolution.value)),
+    publisher := Def.uncached(
+      Classpaths.defaultPublisher(dependencyResolution.value, fullResolvers.value.toVector)
+    ),
     allCredentials := Def.uncached(LMCoursier.allCredentialsTask.value),
     transitiveUpdate := Def.uncached(transitiveUpdateTask.value),
     updateCacheName := {
@@ -4169,7 +4171,10 @@ object Classpaths {
     override def toString: String = name
 
   /** Default publisher that delegates moduleDescriptor to Coursier and generates POM without Ivy. */
-  private[sbt] def defaultPublisher(lm: DependencyResolution): Publisher =
+  private[sbt] def defaultPublisher(
+      lm: DependencyResolution,
+      resolvers: Vector[Resolver] = Vector.empty,
+  ): Publisher =
     Publisher(new PublisherInterface {
       def moduleDescriptor(moduleSetting: ModuleDescriptorConfiguration): ModuleDescriptor =
         lm.moduleDescriptor(moduleSetting)
@@ -4193,7 +4198,17 @@ object Classpaths {
         val confs = configuration.configurations
         val scalaInfo = ms.scalaModuleInfo
         val pomXml =
-          sbt.internal.PomGenerator.makePom(mid, info, deps, confs, extra, scalaInfo)
+          sbt.internal.PomGenerator.makePom(
+            mid,
+            info,
+            deps,
+            confs,
+            extra,
+            scalaInfo,
+            resolvers,
+            configuration.filterRepositories,
+            configuration.allRepositories,
+          )
         val processed = configuration.process(pomXml)
         scala.xml.XML.save(file.getAbsolutePath, processed, "UTF-8", xmlDecl = true)
         log.info("Wrote " + file.getAbsolutePath)
