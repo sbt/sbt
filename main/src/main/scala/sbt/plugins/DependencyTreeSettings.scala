@@ -286,7 +286,7 @@ OPTIONS
             val output = format match
               case Fmt.Json => rendering.LicenseInfo.renderJson(graph)
               case _        => rendering.LicenseInfo.render(graph)
-            handleOutput(output, outFileOpt, isQuiet, s.log)
+            handleOutput(output, outFileOpt, isQuiet, appendToFile = false, s.log)
           }
       }).evaluated,
     )
