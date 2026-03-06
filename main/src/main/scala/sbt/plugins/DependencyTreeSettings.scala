@@ -36,6 +36,7 @@ private[sbt] object DependencyTreeSettings:
     case Quiet
     case Format(format: Fmt)
     case Out(out: String)
+    case Append
     case Browse
 
   enum Fmt:
@@ -67,6 +68,7 @@ private[sbt] object DependencyTreeSettings:
 
   lazy val ArgOptionParser: Parser[Arg] =
     Space ~> (("--quiet" ^^^ Arg.Quiet)
+      | ("--append" ^^^ Arg.Append)
       | ("--browse" ^^^ Arg.Browse)
       | ("--out" ~> Space ~> StringBasic)
         .map(Arg.Out(_))
@@ -97,6 +99,7 @@ SUBCOMMAND
 
 OPTIONS
   --quiet      Returns the output as task value, replacing asString
+  --append     Append to the output file when used with --out
   --out <file> Writes the output to the specified file;
                The file extension will influence the default subcommand
   --browse     Opens the browser when combined with graph or html subcommand
@@ -164,6 +167,7 @@ OPTIONS
         val args = ArgsParser.parsed.toList
         val isHelp = args.contains(Arg.Help)
         val isQuiet = args.contains(Arg.Quiet)
+        val isAppend = args.contains(Arg.Append)
         val isBrowse = args.contains(Arg.Browse)
         if isHelp then Def.task { s.log.info(usageText); "" }
         else
@@ -195,19 +199,19 @@ OPTIONS
                   case Fmt.List  => rendering.FlatList.render(_.id.idString)(graph)
                   case Fmt.Stats => rendering.Statistics.renderModuleStatsList(graph)
                   case _         => rendering.AsciiTree.asciiTree(graph, asciiGraphWidth.value)
-                handleOutput(output, outFileOpt, isQuiet, s.log)
+                handleOutput(output, outFileOpt, isQuiet, isAppend, s.log)
               }
             case Fmt.Json =>
               Def.task {
                 val graph = dependencyTreeModuleGraph0.value
                 val output = TreeView.createJson(graph)
-                handleOutput(output, outFileOpt, isQuiet, s.log)
+                handleOutput(output, outFileOpt, isQuiet, isAppend, s.log)
               }
             case Fmt.Xml =>
               Def.task {
                 val graph = dependencyTreeModuleGraph0.value
                 val output = rendering.GraphML.graphMLAsString(graph)
-                handleOutput(output, outFileOpt, isQuiet, s.log)
+                handleOutput(output, outFileOpt, isQuiet, isAppend, s.log)
               }
             case Fmt.Html =>
               Def.task {
@@ -227,7 +231,8 @@ OPTIONS
                   rendering.DOT.HTMLLabelRendering.AngleBrackets,
                   dependencyDotNodeColors.value
                 )
-                if format == Fmt.Graph then handleOutput(output, outFileOpt, isQuiet, s.log)
+                if format == Fmt.Graph then
+                  handleOutput(output, outFileOpt, isQuiet, isAppend, s.log)
                 else
                   val outputFile = DagreHTML.createFile(output, targetDir)
                   if isBrowse then openBrowser(outputFile.toURI)
@@ -306,11 +311,15 @@ OPTIONS
       content: String,
       outputFileOpt: Option[File],
       isQuiet: Boolean,
+      appendToFile: Boolean,
       log: Logger,
   ): String =
     outputFileOpt match
       case Some(output) =>
-        IO.write(output, content, IO.utf8)
+        val toWrite =
+          if appendToFile && output.exists() && output.length() > 0 then "\n" + content
+          else content
+        IO.write(output, toWrite, IO.utf8, append = appendToFile)
         if !isQuiet then log.info(s"wrote dependencies to $output")
         output.toString
       case None =>

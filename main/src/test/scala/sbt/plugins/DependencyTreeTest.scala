@@ -27,6 +27,7 @@ object DependencyTreeTest extends verify.BasicTestSuite:
     assert(parseArgs(List("help")) == List(Arg.Help))
     assert(parseArgs(List("--help")) == List(Arg.Help))
     assert(parseArgs(List("--quiet")) == List(Arg.Quiet))
+    assert(parseArgs(List("--append")) == List(Arg.Append))
     assert(parseArgs(List("tree")) == List(Arg.Format(Fmt.Tree)))
     assert(parseArgs(List("--out", "/tmp/deps.txt")) == List(Arg.Out("/tmp/deps.txt")))
     assert(parseArgs(List("--browse")) == List(Arg.Browse))

@@ -1,0 +1,3 @@
+> a/dependencyTree --out target/tree.txt
+> b/dependencyTree --out target/tree.txt --append
+> check
