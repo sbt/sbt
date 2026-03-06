@@ -763,7 +763,7 @@ lazy val sbtIvyProj = (project in file("sbt-ivy"))
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt-app"))
-  .dependsOn(mainProj)
+  .dependsOn(mainProj, sbtIvyProj % Runtime)
   .settings(
     testedBaseSettings,
     name := "sbt",

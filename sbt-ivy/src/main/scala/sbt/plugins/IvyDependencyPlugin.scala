@@ -50,16 +50,36 @@ object IvyDependencyPlugin extends AutoPlugin:
   )
 
   override lazy val projectSettings: Seq[Setting[?]] = Seq(
-    ivyConfiguration := Def.uncached(mkIvyConfiguration.value),
-    publisher := Def.uncached(IvyPublisher(ivyConfiguration.value.asInstanceOf[IvyConfiguration])),
-    ivySbt := Def.uncached(ivySbt0.value),
-    ivyModule := Def.uncached {
-      val is = ivySbt.value.asInstanceOf[IvySbt]
-      new is.Module(moduleSettings.value)
+    ivyConfiguration := Def.uncached {
+      if useIvy.value then mkIvyConfiguration.value
+      else (): Any
     },
-    projectDescriptors := Def.uncached(depMap.value.asInstanceOf[Map[Any, Any]]),
-    projectResolver := Def.uncached(projectResolverTask.value),
-    csrExtraProjects := Def.uncached(coursierExtraProjectsTask.value),
+    publisher := Def.uncached {
+      if useIvy.value then IvyPublisher(ivyConfiguration.value.asInstanceOf[IvyConfiguration])
+      else Classpaths.defaultPublisher(dependencyResolution.value)
+    },
+    ivySbt := Def.uncached {
+      if useIvy.value then ivySbt0.value
+      else (): Any
+    },
+    ivyModule := Def.uncached {
+      if useIvy.value then
+        val is = ivySbt.value.asInstanceOf[IvySbt]
+        new is.Module(moduleSettings.value)
+      else (): Any
+    },
+    projectDescriptors := Def.uncached {
+      if useIvy.value then depMap.value.asInstanceOf[Map[Any, Any]]
+      else Map.empty[Any, Any]
+    },
+    projectResolver := Def.uncached {
+      if useIvy.value then projectResolverTask.value
+      else Classpaths.projectResolverTask.value
+    },
+    csrExtraProjects := Def.uncached {
+      if useIvy.value then coursierExtraProjectsTask.value
+      else Nil
+    },
   ) ++ IvyXml.generateIvyXmlSettings() ++ ivyPublishOrSkipSettings
 
   private lazy val ivySbt0: Initialize[Task[IvySbt]] =

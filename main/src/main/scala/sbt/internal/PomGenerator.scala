@@ -24,12 +24,15 @@ private[sbt] object PomGenerator:
       deps: Vector[ModuleID],
       configurations: Option[Vector[Configuration]],
       extra: NodeSeq,
+      scalaModuleInfo: Option[ScalaModuleInfo] = None,
   ): Node =
+    val crossMid = crossVersionDep(mid, scalaModuleInfo)
     val keepConfs: Set[String] =
       configurations.map(_.map(_.name).toSet).getOrElse(Set.empty)
+    val crossVersioned = deps.map(crossVersionDep(_, scalaModuleInfo))
     val filteredDeps =
-      if keepConfs.isEmpty then deps
-      else deps.filter(d => d.configurations.forall(c => confIntersects(c, keepConfs)))
+      if keepConfs.isEmpty then crossVersioned
+      else crossVersioned.filter(d => d.configurations.forall(c => confIntersects(c, keepConfs)))
 
     val (bomDeps, regularDeps) = filteredDeps.partition: d =>
       d.explicitArtifacts.nonEmpty && d.explicitArtifacts.forall(_.`type` == Artifact.PomType)
@@ -38,7 +41,7 @@ private[sbt] object PomGenerator:
              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
              xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
       <modelVersion>4.0.0</modelVersion>
-      {makeModuleID(mid)}
+      {makeModuleID(crossMid)}
       {info.map(i => <name>{i.nameFormal}</name>).getOrElse(NodeSeq.Empty)}
       {info.map(makeStartYear).getOrElse(NodeSeq.Empty)}
       {info.map(makeOrganization).getOrElse(NodeSeq.Empty)}
@@ -49,6 +52,12 @@ private[sbt] object PomGenerator:
       {makeDependencyManagement(bomDeps)}
       {makeDependencies(regularDeps)}
     </project>
+
+  private def crossVersionDep(dep: ModuleID, scalaInfo: Option[ScalaModuleInfo]): ModuleID =
+    val crossFn = CrossVersion(dep, scalaInfo)
+    crossFn match
+      case Some(fn) => dep.withName(fn(dep.name)).withCrossVersion(CrossVersion.disabled)
+      case None     => dep
 
   private def confIntersects(confStr: String, keepConfs: Set[String]): Boolean =
     confStr

@@ -2,6 +2,8 @@ import scala.xml.{ Node, _ }
 import scala.xml.Utility.trim
 import sbt.internal.librarymanagement.{ IvySbt, MakePom }
 
+ThisBuild / useIvy := true
+
 lazy val check = taskKey[Unit]("check")
 
 val dispatch = "net.databinder.dispatch" %% "dispatch-core" % "0.11.2"

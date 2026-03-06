@@ -211,19 +211,20 @@ object IvyXml {
   ): Setting[Task[T]] =
     task := Def.uncached(task.dependsOnTask {
       Def.task {
-        val currentProject = {
-          val proj = csrProject.value
-          val publications = csrPublications.value
-          proj.withPublications(publications)
-        }
-        val resolved = sbt.Keys.resolvedDependencies.value
-        IvyXml.writeFiles(
-          currentProject,
-          shadedConfigOpt,
-          sbt.Keys.ivySbt.value.asInstanceOf[IvySbt],
-          sbt.Keys.streams.value.log,
-          resolved
-        )
+        if sbt.Keys.useIvy.value then
+          val currentProject = {
+            val proj = csrProject.value
+            val publications = csrPublications.value
+            proj.withPublications(publications)
+          }
+          val resolved = sbt.Keys.resolvedDependencies.value
+          IvyXml.writeFiles(
+            currentProject,
+            shadedConfigOpt,
+            sbt.Keys.ivySbt.value.asInstanceOf[IvySbt],
+            sbt.Keys.streams.value.log,
+            resolved
+          )
       }
     }.value)
 

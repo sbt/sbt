@@ -4191,8 +4191,9 @@ object Classpaths {
         val deps = module.directDependencies
         val extra = configuration.extra.getOrElse(scala.xml.NodeSeq.Empty)
         val confs = configuration.configurations
+        val scalaInfo = ms.scalaModuleInfo
         val pomXml =
-          sbt.internal.PomGenerator.makePom(mid, info, deps, confs, extra)
+          sbt.internal.PomGenerator.makePom(mid, info, deps, confs, extra, scalaInfo)
         val processed = configuration.process(pomXml)
         scala.xml.XML.save(file.getAbsolutePath, processed, "UTF-8", xmlDecl = true)
         log.info("Wrote " + file.getAbsolutePath)
