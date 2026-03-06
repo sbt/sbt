@@ -4579,7 +4579,15 @@ object Classpaths {
     val extracted = Project.extract(s)
     (extracted.currentRef / name).get(extracted.structure.data) match {
       case Some(name) =>
-        s"sbt:$name" + Def.withColor(s"> ", Option(scala.Console.CYAN), isColorEnabled)
+        Def.withColor(
+          "sbt",
+          Option(scala.Console.CYAN + scala.Console.BOLD),
+          isColorEnabled
+        ) + s":$name" + Def.withColor(
+          s"> ",
+          Option(scala.Console.CYAN + scala.Console.BOLD),
+          isColorEnabled
+        )
       case _ => "> "
     }
   }
