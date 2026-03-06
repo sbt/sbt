@@ -154,7 +154,7 @@ trait ShellScriptUtil extends BasicTestSuite {
             envVars("XDG_CONFIG_HOME") = configHomeDir.getAbsolutePath
           }
 
-          val path = sys.env.getOrElse("PATH", sys.env("Path"))
+          val path = sys.env.getOrElse("PATH", sys.env.getOrElse("Path", ""))
           val javaHomeEnv = sys.env.getOrElse("JAVA_HOME", System.getProperty("java.home"))
           envVars("JAVA_OPTS") = javaOpts
           envVars("SBT_OPTS") = sbtOpts
