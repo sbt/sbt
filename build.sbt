@@ -518,7 +518,7 @@ val sbtProjDepsCompileScopeFilter =
   )
 
 lazy val scriptedSbtProj = (project in file("scripted-sbt"))
-  .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
+  .dependsOn(sbtProj % "compile;test->test", sbtIvyProj % Runtime, commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
     name := "scripted-sbt",
@@ -763,7 +763,7 @@ lazy val sbtIvyProj = (project in file("sbt-ivy"))
 //  technically, we need a dependency on all of mainProj's dependencies, but we don't do that since this is strictly an integration project
 //  with the sole purpose of providing certain identifiers without qualification (with a package object)
 lazy val sbtProj = (project in file("sbt-app"))
-  .dependsOn(mainProj, sbtIvyProj % Runtime)
+  .dependsOn(mainProj)
   .settings(
     testedBaseSettings,
     name := "sbt",

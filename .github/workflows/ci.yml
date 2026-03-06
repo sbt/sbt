@@ -156,6 +156,7 @@ jobs:
           ./sbt -v --client "scripted dependency-management/* project-load/* project-matrix/* java/* run/*"
           ./sbt -v --client "scripted plugins/*"
           ./sbt -v --client "scripted nio/*"
+          ./sbt -v --client "scripted ivy/*"
       - name: Build and test (4)
         if: ${{ matrix.jobtype == 4 }}
         shell: bash
