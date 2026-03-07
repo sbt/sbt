@@ -12,7 +12,7 @@ import scala.annotation.tailrec
 import scala.concurrent.duration.*
 import java.util.concurrent.TimeoutException
 
-object JoinThread {
+private[sbt] object JoinThread {
   extension (t: Thread) {
     def joinFor(duration: FiniteDuration): Unit = {
       val deadline = duration.fromNow

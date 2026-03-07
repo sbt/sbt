@@ -33,7 +33,8 @@ import sbt.internal.protocol.{
 }
 
 import sbt.internal.ui.{ UITask, UserThread }
-import sbt.internal.util.{ Prompt, ReadJsonFromInputStream, Terminal, Util }
+import sbt.internal.util.{ Prompt, Terminal, Util }
+import sbt.protocol.JsonRpcReader
 import sbt.internal.util.Terminal.TerminalImpl
 import sbt.internal.util.complete.{ Parser, Parsers }
 import sbt.util.Logger
@@ -225,7 +226,7 @@ final class NetworkChannel(
                 logMessage("error", s"server protocol $x1 is no longer supported")
               }
             }
-            val content = ReadJsonFromInputStream(in, running, Some(onHeader))
+            val content = JsonRpcReader.read(in, running, Some(onHeader))
             if (content.nonEmpty) handleBody(content)
           } catch {
             case _: SocketTimeoutException                => // its ok

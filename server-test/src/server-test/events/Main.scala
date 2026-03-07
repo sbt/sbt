@@ -1,6 +1,6 @@
 object Main extends App {
 
-  try this.synchronized(this.wait)
+  try this.synchronized(this.wait())
   catch { case _: InterruptedException => }
 
 }

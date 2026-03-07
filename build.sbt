@@ -611,6 +611,11 @@ lazy val commandProj = (project in file("main-command"))
     contrabandSettings,
     mimaSettings,
     mimaBinaryIssueFilters ++= Vector(
+      exclude[MissingClassProblem]("sbt.internal.util.JoinThread"),
+      exclude[MissingClassProblem]("sbt.internal.util.JoinThread$"),
+      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream"),
+      exclude[MissingClassProblem]("sbt.internal.util.ReadJsonFromInputStream$"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.client.ServerConnection.thread")
     ),
     Compile / headerCreate / unmanagedSources := {
       val old = (Compile / headerCreate / unmanagedSources).value
@@ -842,7 +847,7 @@ lazy val serverTestProj = (project in file("server-test"))
         else rawClasspath
       val content = {
         s"""|
-            |package testpkg
+            |package sbt
             |
             |object TestProperties {
             |  val classpath = "$cp"
@@ -852,7 +857,7 @@ lazy val serverTestProj = (project in file("server-test"))
           """.stripMargin
       }
       val file =
-        (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
+        (Test / target).value / "generated" / "src" / "test" / "scala" / "sbt" / "TestProperties.scala"
       IO.write(file, content)
       file :: Nil
     },

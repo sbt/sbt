@@ -1,6 +1,6 @@
 scalaVersion := "3.8.2"
 
-val printCurrentProject = taskKey[Unit]("Prints current project name")
+val printCurrentProject = inputKey[Unit]("Prints current project name")
 
 lazy val projectA = (project in file("projectA"))
   .settings(

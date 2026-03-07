@@ -6,14 +6,15 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt.internal.util
+package sbt.protocol
 
 import java.io.InputStream
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.atomic.AtomicBoolean
 
-private[sbt] object ReadJsonFromInputStream {
-  def apply(
+object JsonRpcReader {
+
+  def read(
       inputStream: InputStream,
       running: AtomicBoolean,
       onHeader: Option[String => Unit]
@@ -76,6 +77,7 @@ private[sbt] object ReadJsonFromInputStream {
               def drainHeaders(): Unit =
                 doDrainHeaders()
                 while consecutiveLineEndings < 2 && running.get do doDrainHeaders()
+
               drainHeaders()
               if (running.get) {
                 val buf = new Array[Byte](len)
@@ -107,4 +109,6 @@ private[sbt] object ReadJsonFromInputStream {
     content
   }
 
+  def readAsString(inputStream: InputStream, running: AtomicBoolean): String =
+    new String(read(inputStream, running, onHeader = None).toArray, "UTF-8")
 }
