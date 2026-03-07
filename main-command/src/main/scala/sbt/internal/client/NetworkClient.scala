@@ -36,7 +36,7 @@ import sbt.io.syntax.*
 import sbt.protocol.*
 import sbt.util.{ Level, Logger }
 import sjsonnew.BasicJsonProtocol.*
-import sjsonnew.shaded.scalajson.ast.unsafe.{ JObject, JValue }
+import sjsonnew.shaded.scalajson.ast.unsafe.JValue
 import sjsonnew.support.scalajson.unsafe.Converter
 
 import scala.annotation.tailrec
@@ -584,14 +584,12 @@ class NetworkClient(
   }
 
   private def getExitCode(jvalue: Option[JValue]): Integer = jvalue match {
-    case Some(o: JObject) =>
-      o.value
-        .collectFirst {
-          case v if v.field == "exitCode" =>
-            Converter.fromJson[Integer](v.value).getOrElse(Integer.valueOf(1))
-        }
-        .getOrElse(1)
-    case _ => 1
+    case Some(jv) =>
+      import sbt.protocol.codec.JsonProtocol.given
+      Converter.fromJson[ExecStatusEvent](jv).toOption
+        .flatMap(_.exitCode)
+        .fold(Integer.valueOf(1))(code => Integer.valueOf(code.toInt))
+    case _ => Integer.valueOf(1)
   }
 
   private val onAttachResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
@@ -630,28 +628,13 @@ class NetworkClient(
       pendingCompletions.remove(msg.id) match {
         case null => ()
         case completions =>
-          completions(msg.result match {
-            case Some(o: JObject) =>
-              o.value
-                .foldLeft(CompletionResponse(Vector.empty[String])) { (resp, i) =>
-                  if (i.field == "items")
-                    resp.withItems(
-                      Converter
-                        .fromJson[Vector[String]](i.value)
-                        .getOrElse(Vector.empty[String])
-                    )
-                  else if (i.field == "cachedTestNames")
-                    resp.withCachedTestNames(
-                      Converter.fromJson[Boolean](i.value).getOrElse(true)
-                    )
-                  else if (i.field == "cachedMainClassNames")
-                    resp.withCachedMainClassNames(
-                      Converter.fromJson[Boolean](i.value).getOrElse(true)
-                    )
-                  else resp
-                }
+          val response = msg.result match {
+            case Some(jvalue) =>
+              import sbt.protocol.codec.JsonProtocol.given
+              Converter.fromJson[CompletionResponse](jvalue).getOrElse(CompletionResponse(Vector.empty[String]))
             case _ => CompletionResponse(Vector.empty[String])
-          })
+          }
+          completions(response)
       }
   }
   // cache the composed plan
