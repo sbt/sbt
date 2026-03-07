@@ -586,7 +586,9 @@ class NetworkClient(
   private def getExitCode(jvalue: Option[JValue]): Integer = jvalue match {
     case Some(jv) =>
       import sbt.protocol.codec.JsonProtocol.given
-      Converter.fromJson[ExecStatusEvent](jv).toOption
+      Converter
+        .fromJson[ExecStatusEvent](jv)
+        .toOption
         .flatMap(_.exitCode)
         .fold(Integer.valueOf(1))(code => Integer.valueOf(code.toInt))
     case _ => Integer.valueOf(1)
@@ -631,7 +633,9 @@ class NetworkClient(
           val response = msg.result match {
             case Some(jvalue) =>
               import sbt.protocol.codec.JsonProtocol.given
-              Converter.fromJson[CompletionResponse](jvalue).getOrElse(CompletionResponse(Vector.empty[String]))
+              Converter
+                .fromJson[CompletionResponse](jvalue)
+                .getOrElse(CompletionResponse(Vector.empty[String]))
             case _ => CompletionResponse(Vector.empty[String])
           }
           completions(response)
