@@ -518,7 +518,7 @@ val sbtProjDepsCompileScopeFilter =
   )
 
 lazy val scriptedSbtProj = (project in file("scripted-sbt"))
-  .dependsOn(sbtProj % "compile;test->test", sbtIvyProj % Runtime, commandProj, utilLogging, utilScripted)
+  .dependsOn(sbtProj % "compile;test->test", commandProj, utilLogging, utilScripted)
   .settings(
     baseSettings,
     name := "scripted-sbt",
