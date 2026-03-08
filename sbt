@@ -694,10 +694,7 @@ shows precedence: JAVA_OPTS lowest, command line options highest.
 
 Getting started with sbt:
 
-  - To create a new project:
-      sbt new scala/scala3.g8
-    or, for Scala 2:
-      sbt new scala/scala-seed.g8
+  - To create a new project run: sbt init
 
   - Once in the sbt shell, type:
       help
