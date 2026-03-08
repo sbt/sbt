@@ -704,12 +704,15 @@ object BuiltinCommands {
     (ext.structure, Select(ext.currentRef), ext.showKey)
   }
 
-  def setParser = (s: State) => {
-    val extracted = Project.extract(s)
-    import extracted.*
-    token(Space ~> flag("every" ~ Space)) ~
-      SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject)
-  }
+  def setParser = (s: State) =>
+    Act.requireSession(
+      s, {
+        val extracted = Project.extract(s)
+        import extracted.*
+        token(Space ~> flag("every" ~ Space)) ~
+          SettingCompletions.settingParser(structure.data, structure.index.keyMap, currentProject)
+      }
+    )
 
   import Def.ScopedKey
   // type PolyStateKeysParser = [a] => State => Parser[Seq[ScopedKey[a]]]
