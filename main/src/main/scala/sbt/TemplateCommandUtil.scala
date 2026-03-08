@@ -284,9 +284,9 @@ private[sbt] object TemplateCommandUtil {
         throw new IllegalArgumentException(error)
     }
 
-  private final val defaultScalaV = "3.3.4"
+  private final val defaultScalaV = "3.3.7"
   private def scalaToolkitTemplate(): Unit = {
-    val defaultScalaToolkitV = "0.5.0"
+    val defaultScalaToolkitV = "0.9.1"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Scala Toolkit version", defaultScalaToolkitV)
     val content = s"""
@@ -304,7 +304,7 @@ libraryDependencies += (toolkitTest % Test)
   }
 
   private def typelevelToolkitTemplate(): Unit = {
-    val defaultTypelevelToolkitV = "0.1.28"
+    val defaultTypelevelToolkitV = "0.1.29"
     val scalaV = ask("Scala version", defaultScalaV)
     val toolkitV = ask("Typelevel Toolkit version", defaultTypelevelToolkitV)
     val content = s"""
@@ -340,8 +340,8 @@ lazy val core = (projectMatrix in file("core"))
     IO.write(new File("build.sbt"), content)
 
     val pluginsContent = """
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.17.0")
-addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.5")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.20.2")
+addSbtPlugin("org.scala-native" % "sbt-scala-native" % "0.5.10")
 """
     IO.write(new File("project/plugins.sbt"), pluginsContent)
     copyResource("ScalaMain.scala.txt", new File("core/src/main/scala/example/Main.scala"))
