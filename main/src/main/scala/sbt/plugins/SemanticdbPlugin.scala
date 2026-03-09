@@ -27,7 +27,7 @@ object SemanticdbPlugin extends AutoPlugin {
     semanticdbEnabled := SysProp.semanticdb,
     semanticdbIncludeInJar := false,
     semanticdbOptions := List(),
-    semanticdbVersion := "4.14.2"
+    semanticdbVersion := "4.15.2"
   )
 
   override lazy val projectSettings: Seq[Def.Setting[_]] = Seq(
