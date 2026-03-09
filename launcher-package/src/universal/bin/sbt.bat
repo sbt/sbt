@@ -1140,10 +1140,7 @@ echo shows precedence: JAVA_OPTS lowest, command line options highest.
 echo.
 echo Getting started with sbt:
 echo.
-echo   - To create a new project:
-echo       sbt new scala/scala3.g8
-echo     or, for Scala 2:
-echo       sbt new scala/scala-seed.g8
+echo   - To create a new project run: sbt init
 echo.
 echo   - Once in the sbt shell, type:
 echo       help

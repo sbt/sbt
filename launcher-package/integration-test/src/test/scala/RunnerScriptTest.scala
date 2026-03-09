@@ -161,7 +161,7 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
   )("--help"): (out: List[String]) =>
     val helpText = out.mkString(System.lineSeparator())
     assert(helpText.contains("Getting started with sbt"))
-    assert(helpText.contains("sbt new scala/scala3.g8"))
+    assert(helpText.contains("sbt init"))
     assert(helpText.contains("help <command>"))
 
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
