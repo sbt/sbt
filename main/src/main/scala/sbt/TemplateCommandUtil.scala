@@ -53,8 +53,14 @@ private[sbt] object TemplateCommandUtil {
     def terminate = TerminateAction :: s1.copy(remainingCommands = Nil)
     def reload = "reboot" :: s1.copy(remainingCommands = Nil)
     if (args0.nonEmpty) {
-      run(infos, args0, s0.configuration, lm, globalBase, scalaModuleInfo, log)
-      terminate
+      args0 match {
+        case arg :: Nil if arg.endsWith(".local") =>
+          extracted.runInputTask(Keys.templateRunLocal, " " + arg, s0)
+          reload
+        case _ =>
+          run(infos, args0, s0.configuration, lm, globalBase, scalaModuleInfo, log)
+          terminate
+      }
     } else {
       fortifyArgs(templateDescriptions.toList) match {
         case Nil => terminate
