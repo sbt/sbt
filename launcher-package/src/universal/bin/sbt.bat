@@ -94,7 +94,7 @@ if defined JAVA_HOMES (
 )
 
 if exist "project\build.properties" (
-  for /F "eol=# delims== tokens=1*" %%a in (project\build.properties) do (
+  for /F "usebackq eol=# delims== tokens=1*" %%a in ("project\build.properties") do (
     if "%%a" == "sbt.version" if not "%%b" == "" (
       set build_props_sbt_version=%%b
     )
