@@ -18,7 +18,7 @@ lazy val b = project
     classpathTypes += "test-jar",
     libraryDependencies ++= Seq(
       org %% nme % ver,
-      org %% nme % ver % "test" classifier "tests"
+      (org %% nme % ver % "test").classifier("tests")
     )
   )
 

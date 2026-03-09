@@ -25,10 +25,11 @@ object TemplateCommandUtilTest extends verify.BasicTestSuite:
 
   test("defaultRunLocalTemplate throws for unknown .local slug"):
     val log = Logger.Null
-    val ex = try {
-      TemplateCommandUtil.defaultRunLocalTemplate(List("unknown/template.local"), log)
-      null
-    } catch { case e: IllegalArgumentException => e }
+    val ex =
+      try {
+        TemplateCommandUtil.defaultRunLocalTemplate(List("unknown/template.local"), log)
+        null
+      } catch { case e: IllegalArgumentException => e }
     assert(ex ne null)
     assert(ex.getMessage.contains("Local template not found for:"))
     assert(ex.getMessage.contains("unknown/template.local"))
