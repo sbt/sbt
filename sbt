@@ -7,6 +7,7 @@ declare -a java_args
 declare -a scalac_args
 declare -a sbt_commands
 declare -a sbt_options
+declare -a print_help
 declare -a print_version
 declare -a print_sbt_version
 declare -a print_sbt_script_version
@@ -690,6 +691,15 @@ Usage: `basename "$0"` [options]
 
 In the case of duplicated or conflicting options, the order above
 shows precedence: JAVA_OPTS lowest, command line options highest.
+
+Getting started with sbt:
+
+  - To create a new project run: sbt init
+
+  - Once in the sbt shell, type:
+      help
+      help <command>
+    to see available commands and detailed help.
 EOM
 }
 
@@ -782,7 +792,7 @@ parseLineIntoWords() {
 process_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-            -h|-help|--help) usage; exit 1 ;;
+            -h|-help|--help) print_help=1 && shift ;;
       -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
       -V|-version|--version) print_version=1 && shift ;;
           --numeric-version) print_sbt_version=1 && shift ;;
@@ -990,6 +1000,12 @@ args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}"
 # process the combined args, then reset "$@" to the residuals
 process_args "${args1[@]}"
 vlog "[sbt_options] $(declare -p sbt_options)"
+
+# Handle -h/--help/-help at the script level without requiring Java or a project
+if [[ $print_help ]]; then
+  usage
+  exit 0
+fi
 
 # Handle --script-version before native client so it works on sbt 2.x project dirs (#8711)
 if [[ $print_sbt_script_version ]]; then
