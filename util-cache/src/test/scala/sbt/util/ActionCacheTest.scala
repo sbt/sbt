@@ -7,6 +7,7 @@ import sbt.io.syntax.*
 import verify.BasicTestSuite
 import xsbti.{
   CompileFailed,
+  HashedVirtualFileRef,
   Problem,
   Position,
   Severity,
@@ -167,6 +168,96 @@ object ActionCacheTest extends BasicTestSuite:
       assert(caught2.problems().length == 1)
       assert(caught2.problems()(0).message() == "Test error message")
       assert(caught2.getMessage() == "Compilation failed")
+
+  test("Cache falls back to recompute when syncBlobs throws FileNotFoundException"):
+    withDiskCache(testSyncBlobsThrowsFallback)
+
+  def testSyncBlobsThrowsFallback(underlying: DiskActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    }
+    class ThrowingSyncStore extends AbstractActionCacheStore:
+      override def storeName: String = "throwing-sync"
+      override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+        underlying.get(request)
+      override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+        underlying.put(request)
+      override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+        underlying.putBlobs(blobs)
+      override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+        throw new java.io.FileNotFoundException("simulated missing CAS entry")
+      override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+        underlying.findBlobs(refs)
+    IO.withTemporaryDirectory: tempDir =>
+      val config = getCacheConfig(ThrowingSyncStore(), tempDir)
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v1 == 2)
+      assert(called == 1)
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config)(action)
+      assert(v2 == 2)
+      assert(called == 2)
+
+  test(
+    "readFromSymlink fast path falls back to recompute when syncBlobs throws FileNotFoundException"
+  ):
+    IO.withTemporaryDirectory: cacheDir =>
+      IO.withTemporaryDirectory: outputDir =>
+        testReadFromSymlinkFallback(cacheDir, outputDir)
+
+  def testReadFromSymlinkFallback(cacheDir: File, outputDir: File): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    val absConverter: FileConverter = new FileConverter:
+      override def toPath(ref: VirtualFileRef): Path = outputDir.toPath.resolve(ref.id)
+      override def toVirtualFile(path: Path): VirtualFile =
+        val content = if Files.isRegularFile(path) then new String(Files.readAllBytes(path)) else ""
+        StringVirtualFile1(path.toString, content)
+    val diskCache = DiskActionCacheStore(cacheDir.toPath, absConverter)
+    var called = 0
+    val action: Unit => InternalActionResult[Int] = { _ =>
+      called += 1
+      InternalActionResult(42, Nil)
+    }
+    val logger = new Logger:
+      override def trace(t: => Throwable): Unit = ()
+      override def success(message: => String): Unit = ()
+      override def log(level: Level.Value, message: => String): Unit = ()
+    val config1 =
+      BuildWideCacheConfiguration(
+        diskCache,
+        outputDir.toPath,
+        absConverter,
+        logger,
+        CacheEventLog()
+      )
+    val v1 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config1)(action)
+    assert(v1 == 42)
+    assert(called == 1)
+    class ThrowingSyncStore extends AbstractActionCacheStore:
+      override def storeName: String = "throwing-sync"
+      override def get(request: GetActionResultRequest): Either[Throwable, ActionResult] =
+        diskCache.get(request)
+      override def put(request: UpdateActionResultRequest): Either[Throwable, ActionResult] =
+        diskCache.put(request)
+      override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
+        diskCache.putBlobs(blobs)
+      override def syncBlobs(refs: Seq[HashedVirtualFileRef], outputDirectory: Path): Seq[Path] =
+        throw new java.io.FileNotFoundException("simulated missing CAS entry")
+      override def findBlobs(refs: Seq[HashedVirtualFileRef]): Seq[HashedVirtualFileRef] =
+        diskCache.findBlobs(refs)
+    val config2 =
+      BuildWideCacheConfiguration(
+        ThrowingSyncStore(),
+        outputDir.toPath,
+        absConverter,
+        logger,
+        CacheEventLog()
+      )
+    val v2 = ActionCache.cache((), Digest.zero, Digest.zero, tags, config2)(action)
+    assert(v2 == 42)
+    assert(called == 2)
 
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
