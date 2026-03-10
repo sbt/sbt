@@ -16,6 +16,9 @@
 
 package org.scalasbt.shadedgson.com.google.gson.typeadapters;
 
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.scalasbt.shadedgson.com.google.errorprone.annotations.CanIgnoreReturnValue;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
@@ -27,9 +30,6 @@ import org.scalasbt.shadedgson.com.google.gson.TypeAdapterFactory;
 import org.scalasbt.shadedgson.com.google.gson.reflect.TypeToken;
 import org.scalasbt.shadedgson.com.google.gson.stream.JsonReader;
 import org.scalasbt.shadedgson.com.google.gson.stream.JsonWriter;
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * Adapts values whose runtime type may differ from their declaration type. This is necessary when a

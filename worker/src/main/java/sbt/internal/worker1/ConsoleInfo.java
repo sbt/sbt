@@ -8,8 +8,8 @@
 
 package sbt.internal.worker1;
 
-import java.net.URI;
 import java.io.Serializable;
+import java.net.URI;
 import java.util.ArrayList;
 
 public class ConsoleInfo implements Serializable {

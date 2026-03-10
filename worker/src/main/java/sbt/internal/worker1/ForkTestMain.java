@@ -8,19 +8,16 @@
 
 package sbt.internal.worker1;
 
-import org.scalasbt.shadedgson.com.google.gson.Gson;
-
-import sbt.testing.*;
-
-import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.concurrent.*;
+import org.scalasbt.shadedgson.com.google.gson.Gson;
+import sbt.testing.*;
 
 public class ForkTestMain {
 

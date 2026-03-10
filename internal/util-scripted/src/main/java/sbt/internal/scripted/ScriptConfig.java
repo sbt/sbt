@@ -9,7 +9,6 @@
 package sbt.internal.scripted;
 
 import java.io.File;
-
 import xsbti.Logger;
 
 public class ScriptConfig {

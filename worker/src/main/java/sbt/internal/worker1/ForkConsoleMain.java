@@ -1,19 +1,17 @@
 package sbt.internal.worker1;
 
+import java.io.File;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Paths;
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import xsbti.compile.ConsoleInterface1;
 
 public final class ForkConsoleMain {
@@ -39,8 +37,7 @@ public final class ForkConsoleMain {
 
   private void runInterface1(ConsoleInterface1 intf, ConsoleInfo info) throws Exception {
     String toolsJars =
-        info.toolsJars
-            .stream()
+        info.toolsJars.stream()
             .map(u -> Paths.get(u).toString())
             .collect(Collectors.joining(File.pathSeparator));
     String classpathJars =
@@ -75,8 +72,7 @@ public final class ForkConsoleMain {
             Object[].class,
             xsbti.Logger.class);
     String toolsJars =
-        info.toolsJars
-            .stream()
+        info.toolsJars.stream()
             .map(u -> Paths.get(u).toString())
             .collect(Collectors.joining(File.pathSeparator));
     String classpathJars =

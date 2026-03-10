@@ -8,14 +8,14 @@
 
 package sbt.internal.worker1;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.TypeAdapter;
 import org.scalasbt.shadedgson.com.google.gson.TypeAdapterFactory;
 import org.scalasbt.shadedgson.com.google.gson.reflect.TypeToken;
 import org.scalasbt.shadedgson.com.google.gson.stream.JsonReader;
 import org.scalasbt.shadedgson.com.google.gson.stream.JsonWriter;
-import java.io.IOException;
-import java.util.ArrayList;
 
 class ThrowableAdapterFactory implements TypeAdapterFactory {
   private ThrowableAdapterFactory() {}

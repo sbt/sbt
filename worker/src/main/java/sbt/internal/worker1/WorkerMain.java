@@ -8,28 +8,25 @@
 
 package sbt.internal.worker1;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.PrintStream;
+import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.Socket;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Scanner;
 import org.scalasbt.shadedgson.com.google.gson.Gson;
 import org.scalasbt.shadedgson.com.google.gson.GsonBuilder;
 import org.scalasbt.shadedgson.com.google.gson.JsonElement;
 import org.scalasbt.shadedgson.com.google.gson.JsonObject;
 import org.scalasbt.shadedgson.com.google.gson.JsonParser;
-import org.scalasbt.shadedgson.com.google.gson.JsonPrimitive;
 import org.scalasbt.shadedgson.com.google.gson.typeadapters.RuntimeTypeAdapterFactory;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Scanner;
 import sbt.testing.*;
 
 /**
@@ -203,8 +200,7 @@ public final class WorkerMain {
 
   private URLClassLoader createClassLoader(RunInfo.JvmRunInfo info, ClassLoader parent) {
     URL[] urls =
-        info.classpath
-            .stream()
+        info.classpath.stream()
             .map(
                 filePath -> {
                   try {

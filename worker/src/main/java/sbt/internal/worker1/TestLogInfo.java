@@ -9,8 +9,6 @@
 package sbt.internal.worker1;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import sbt.testing.TaskDef;
 
 public class TestLogInfo implements Serializable {
   public final long id;

@@ -14,7 +14,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
 import java.util.Set;
-import java.util.Stack;
 import java.util.regex.Pattern;
 import xsbti.AppProvider;
 import xsbti.ScalaProvider;

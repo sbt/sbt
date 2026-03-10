@@ -98,16 +98,12 @@ def commonSettings: Seq[Setting[?]] = Def.settings(
     )
   },
    */
-  Compile / javafmtOnCompile := Def
-    .taskDyn(if ((scalafmtOnCompile).value) Compile / javafmt else Def.task(()))
-    .value,
-  Test / javafmtOnCompile := Def
-    .taskDyn(if ((Test / scalafmtOnCompile).value) Test / javafmt else Def.task(()))
-    .value,
+  Compile / javafmtOnCompile := scalafmtOnCompile.value,
+  Test / javafmtOnCompile := (Test / scalafmtOnCompile).value,
   Compile / unmanagedSources / inputFileStamps :=
-    (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmtOnCompile).value,
+    (Compile / unmanagedSources / inputFileStamps).dependsOn(Compile / javafmt).value,
   Test / unmanagedSources / inputFileStamps :=
-    (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmtOnCompile).value,
+    (Test / unmanagedSources / inputFileStamps).dependsOn(Test / javafmt).value,
   Test / publishArtifact := false,
   run / fork := true,
 )
@@ -1075,7 +1071,6 @@ lazy val docProjects: ScopeFilter = ScopeFilter(
   ),
   inConfigurations(Compile)
 )
-lazy val javafmtOnCompile = taskKey[Unit]("Formats java sources before compile")
 lazy val scriptedProjects = ScopeFilter(inAnyProject)
 
 def customCommands: Seq[Setting[?]] = Seq(

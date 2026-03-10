@@ -8,6 +8,7 @@
 
 package xsbti.compile;
 
+import java.io.File;
 import sbt.internal.inc.ZincComponentCompiler;
 import sbt.internal.inc.ZincComponentManager;
 import sbt.librarymanagement.DependencyResolution;
@@ -16,8 +17,6 @@ import scala.None$;
 import xsbti.ComponentProvider;
 import xsbti.GlobalLock;
 import xsbti.Logger;
-
-import java.io.File;
 
 public interface ZincBridgeProvider {
   /**
