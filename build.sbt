@@ -749,7 +749,7 @@ lazy val mainProj = (project in file("main"))
   .configure(addSbtIO, addSbtCompilerInterface, addSbtZincCompileCore)
 
 lazy val sbtIvyProj = (project in file("sbt-ivy"))
-  .dependsOn(mainProj, lmIvy)
+  .dependsOn(sbtProj, lmIvy)
   .settings(
     testedBaseSettings,
     name := "sbt-ivy",
