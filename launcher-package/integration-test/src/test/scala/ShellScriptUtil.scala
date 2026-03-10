@@ -154,16 +154,17 @@ trait ShellScriptUtil extends BasicTestSuite {
             envVars("XDG_CONFIG_HOME") = configHomeDir.getAbsolutePath
           }
 
-          val path = sys.env.getOrElse("PATH", sys.env("Path"))
+          val path = sys.env.getOrElse("PATH", sys.env.getOrElse("Path", ""))
+          val javaHomeEnv = sys.env.getOrElse("JAVA_HOME", System.getProperty("java.home"))
           envVars("JAVA_OPTS") = javaOpts
           envVars("SBT_OPTS") = sbtOpts
           envVars("JAVA_TOOL_OPTIONS") = javaToolOptions
           if isWindows then
             envVars("JAVACMD") = new File(javaBinDir, "java").getAbsolutePath()
-            envVars("JAVA_HOME") = sys.env("JAVA_HOME")
+            envVars("JAVA_HOME") = javaHomeEnv
           else
             envVars("PATH") = javaBinDir + File.pathSeparator + path
-            envVars("JAVA_HOME") = sys.env("JAVA_HOME")
+            envVars("JAVA_HOME") = javaHomeEnv
           val cmd =
             LauncherTestHelper.launcherCommand(testSbtScript.getAbsolutePath, isGitBashTest) ++ args
           val lines = mutable.ListBuffer.empty[String]

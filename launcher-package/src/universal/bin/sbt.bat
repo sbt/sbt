@@ -1138,9 +1138,18 @@ echo.
 echo In the case of duplicated or conflicting options, the order above
 echo shows precedence: JAVA_OPTS lowest, command line options highest.
 echo.
+echo Getting started with sbt:
+echo.
+echo   - To create a new project run: sbt init
+echo.
+echo   - Once in the sbt shell, type:
+echo       help
+echo       help ^<command^>
+echo     to see available commands and detailed help.
+echo.
 
 @endlocal
-exit /B 1
+exit /B 0
 
 :set_sbt_version
 set "sbt_version="

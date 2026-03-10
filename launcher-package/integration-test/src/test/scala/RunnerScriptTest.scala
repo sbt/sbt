@@ -154,6 +154,16 @@ abstract class RunnerScriptTest extends verify.BasicTestSuite with ShellScriptUt
     assertVersionOutput(out)
     ()
 
+  // Test for issue #4189: Improve -help and help commands
+  testOutput(
+    "sbt --help should show getting-started hints",
+    citestVariant = "citest",
+  )("--help"): (out: List[String]) =>
+    val helpText = out.mkString(System.lineSeparator())
+    assert(helpText.contains("Getting started with sbt"))
+    assert(helpText.contains("sbt init"))
+    assert(helpText.contains("help <command>"))
+
   testOutput("--sbt-cache")("--sbt-cache", "./cachePath"): (out: List[String]) =>
     assert(out.contains[String]("-Dsbt.global.localcache=./cachePath"))
 
