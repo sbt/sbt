@@ -117,12 +117,7 @@ val launcherPackage = (project in file(".")).
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
          try {
-           val buffer = new Array[Byte](8192)
-           var bytesRead = input.read(buffer)
-           while (bytesRead != -1) {
-             writer.write(buffer, 0, bytesRead)
-             bytesRead = input.read(buffer)
-           }
+           input.transferTo(writer)
          } finally {
            input.close()
            writer.close()
@@ -153,12 +148,7 @@ val launcherPackage = (project in file(".")).
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
          try {
-           val buffer = new Array[Byte](8192)
-           var bytesRead = input.read(buffer)
-           while (bytesRead != -1) {
-             writer.write(buffer, 0, bytesRead)
-             bytesRead = input.read(buffer)
-           }
+           input.transferTo(writer)
          } finally {
            input.close()
            writer.close()
@@ -175,12 +165,7 @@ val launcherPackage = (project in file(".")).
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
          try {
-           val buffer = new Array[Byte](8192)
-           var bytesRead = input.read(buffer)
-           while (bytesRead != -1) {
-             writer.write(buffer, 0, bytesRead)
-             bytesRead = input.read(buffer)
-           }
+           input.transferTo(writer)
          } finally {
            input.close()
            writer.close()
@@ -197,12 +182,7 @@ val launcherPackage = (project in file(".")).
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
          try {
-           val buffer = new Array[Byte](8192)
-           var bytesRead = input.read(buffer)
-           while (bytesRead != -1) {
-             writer.write(buffer, 0, bytesRead)
-             bytesRead = input.read(buffer)
-           }
+           input.transferTo(writer)
          } finally {
            input.close()
            writer.close()
@@ -219,12 +199,7 @@ val launcherPackage = (project in file(".")).
          val input = connection.getInputStream
          val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
          try {
-           val buffer = new Array[Byte](8192)
-           var bytesRead = input.read(buffer)
-           while (bytesRead != -1) {
-             writer.write(buffer, 0, bytesRead)
-             bytesRead = input.read(buffer)
-           }
+           input.transferTo(writer)
          } finally {
            input.close()
            writer.close()
@@ -458,12 +433,7 @@ def downloadUrl(uri: URI, out: File): Unit =
        val input = connection.getInputStream
        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
        try {
-         val buffer = new Array[Byte](8192)
-         var bytesRead = input.read(buffer)
-         while (bytesRead != -1) {
-           writer.write(buffer, 0, bytesRead)
-           bytesRead = input.read(buffer)
-         }
+         input.transferTo(writer)
        } finally {
          input.close()
          writer.close()

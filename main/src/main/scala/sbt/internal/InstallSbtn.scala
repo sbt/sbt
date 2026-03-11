@@ -110,14 +110,7 @@ private[sbt] object InstallSbtn {
     try {
       val os = new FileOutputStream(path.toFile)
       try {
-        val result = new Array[Byte](1024 * 1024)
-        var bytesRead = -1
-        def impl(): Unit = {
-          bytesRead = inputStream.read(result)
-          if (bytesRead > 0) os.write(result, 0, bytesRead)
-        }
-        impl()
-        while bytesRead > 0 do impl()
+        inputStream.transferTo(os)
       } finally os.close()
     } finally inputStream.close()
   private def getShell(term: Terminal): String = {
