@@ -1,6 +1,6 @@
 package sbt.util
 
-import java.io.RandomAccessFile
+import java.io.{ IOException, RandomAccessFile }
 import java.nio.ByteBuffer
 import java.nio.file.{
   Files,
@@ -221,7 +221,7 @@ class DiskActionCacheStore(base: Path, converter: FileConverter) extends Abstrac
       val json = Converter.toJsonUnsafe(v)
       IO.write(acFile, CompactPrinter(json))
       Right(v)
-    catch case NonFatal(e) => Left(e)
+    catch case e: IOException => Left(e)
 
   override def putBlobs(blobs: Seq[VirtualFile]): Seq[HashedVirtualFileRef] =
     blobs.map: (b: VirtualFile) =>

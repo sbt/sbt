@@ -8,9 +8,9 @@
 
 package sbt.util
 
-import java.io.File
+import java.io.{ File, IOException }
 import java.nio.charset.StandardCharsets
-import java.nio.file.{ Files, NoSuchFileException, Path, Paths, StandardCopyOption }
+import java.nio.file.{ Files, Path, Paths, StandardCopyOption }
 import sbt.internal.util.{ ActionCacheEvent, CacheEventLog, StringVirtualFile1 }
 import sbt.io.syntax.*
 import sbt.io.IO
@@ -19,7 +19,7 @@ import sbt.nio.file.syntax.*
 import sbt.util.CacheImplicits
 import scala.reflect.ClassTag
 import scala.annotation.{ meta, StaticAnnotation }
-import scala.util.control.Exception
+import scala.util.control.{ Exception, NonFatal }
 import sjsonnew.{ HashWriter, JsonFormat }
 import sjsonnew.support.murmurhash.Hasher
 import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
@@ -81,40 +81,40 @@ object ActionCache:
           case e: Exception =>
             cacheEventLog.append(ActionCacheEvent.Error)
             throw e
-      try
-        val json = Converter.toJsonUnsafe(result)
-        val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
-        val uncacheableOutputs =
-          outputs.filter(f =>
-            f match
-              case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
-                false
-              case _ =>
-                val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
-                !outputPath.startsWith(normalizedOutputDir)
-          )
-        if uncacheableOutputs.nonEmpty then
-          cacheEventLog.append(ActionCacheEvent.Error)
-          logger.error(
-            s"Cannot cache task because its output files are outside the output directory: \n" +
-              uncacheableOutputs.mkString("  - ", "\n  - ", "")
-          )
-          result
-        else
-          cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-          val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
-          val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
-          val newOutputs = Vector(valueFile) ++ outputs.toVector
+      val json = Converter.toJsonUnsafe(result)
+      val normalizedOutputDir = outputDirectory.toAbsolutePath.normalize()
+      val uncacheableOutputs =
+        outputs.filter(f =>
+          f match
+            case vf if vf.id.endsWith(ActionCache.dirZipExt) =>
+              false
+            case _ =>
+              val outputPath = fileConverter.toPath(f).toAbsolutePath.normalize()
+              !outputPath.startsWith(normalizedOutputDir)
+        )
+      if uncacheableOutputs.nonEmpty then
+        cacheEventLog.append(ActionCacheEvent.Error)
+        logger.error(
+          s"Cannot cache task because its output files are outside the output directory: \n" +
+            uncacheableOutputs.mkString("  - ", "\n  - ", "")
+        )
+        result
+      else
+        cacheEventLog.append(ActionCacheEvent.OnsiteTask)
+        val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+        val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
+        val newOutputs = Vector(valueFile) ++ outputs.toVector
+        try
           store.put(UpdateActionResultRequest(input, newOutputs, exitCode = 0)) match
             case Right(cachedResult) =>
               store.syncBlobs(cachedResult.outputFiles, outputDirectory)
               result
             case Left(e) => throw e
-      catch
-        case e: NoSuchFileException =>
-          logger.debug(s"Skipping cache storage due to missing file: ${e.getMessage}")
-          cacheEventLog.append(ActionCacheEvent.Error)
-          result
+        catch
+          case e: IOException =>
+            logger.debug(s"Skipping cache storage due to error: ${e.getMessage}")
+            cacheEventLog.append(ActionCacheEvent.Error)
+            result
 
     // Single cache lookup - use exitCode to distinguish success from failure
     getWithFailure(key, codeContentHash, extraHash, tags, config) match
@@ -172,8 +172,10 @@ object ActionCache:
           .flatMap: str =>
             findActionResult(key, codeContentHash, extraHash, config) match
               case Right(result) =>
-                store.syncBlobs(result.outputFiles, config.outputDirectory)
-                parseCachedValue(str, Some("disk"), result.exitCode.contains(failureExitCode))
+                try
+                  store.syncBlobs(result.outputFiles, config.outputDirectory)
+                  parseCachedValue(str, Some("disk"), result.exitCode.contains(failureExitCode))
+                catch case NonFatal(_) => None
               case Left(_) => None
       else None
 
@@ -182,18 +184,25 @@ object ActionCache:
       case None =>
         findActionResult(key, codeContentHash, extraHash, config) match
           case Right(result) =>
-            val isFailure = result.exitCode.contains(failureExitCode)
-            result.contents.headOption match
-              case Some(head) =>
-                store.syncBlobs(result.outputFiles, config.outputDirectory)
-                val str = String(head.array(), StandardCharsets.UTF_8)
-                parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
-              case _ =>
-                val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
-                if paths.isEmpty then Left(None)
-                else
-                  val str = IO.read(paths.head.toFile())
+            try
+              val isFailure = result.exitCode.contains(failureExitCode)
+              result.contents.headOption match
+                case Some(head) =>
+                  store.syncBlobs(result.outputFiles, config.outputDirectory)
+                  val str = String(head.array(), StandardCharsets.UTF_8)
                   parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
+                case _ =>
+                  val paths = store.syncBlobs(result.outputFiles, config.outputDirectory)
+                  if paths.isEmpty then Left(None)
+                  else
+                    val str = IO.read(paths.head.toFile())
+                    parseCachedValue(str, result.origin, isFailure).getOrElse(Left(None))
+            catch
+              case NonFatal(e) =>
+                config.logger.debug(
+                  s"Ignoring cache retrieval failure, will recompute: ${e.getMessage}"
+                )
+                Left(None)
           case Left(_) => Left(None)
 
   /**
