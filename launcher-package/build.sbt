@@ -12,13 +12,19 @@ lazy val sbtOfflineInstall =
     case _             => false
   }
 lazy val sbtIncludeSbtn =
-  sys.props.getOrElse("sbt.build.includesbtn", sys.env.getOrElse("sbt.build.includesbtn", "true")) match {
+  sys.props.getOrElse(
+    "sbt.build.includesbtn",
+    sys.env.getOrElse("sbt.build.includesbtn", "true")
+  ) match {
     case "true" | "1"  => true
     case "false" | "0" => false
     case _             => false
   }
 lazy val sbtIncludeSbtLaunch =
-  sys.props.getOrElse("sbt.build.includesbtlaunch", sys.env.getOrElse("sbt.build.includesbtlaunch", "true")) match {
+  sys.props.getOrElse(
+    "sbt.build.includesbtlaunch",
+    sys.env.getOrElse("sbt.build.includesbtlaunch", "true")
+  ) match {
     case "true" | "1"  => true
     case "false" | "0" => false
     case _             => false
@@ -43,7 +49,8 @@ lazy val sbt013ExtraDeps = {
   else Seq()
 }
 
-lazy val isWindows: Boolean = sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
+lazy val isWindows: Boolean =
+  sys.props("os.name").toLowerCase(java.util.Locale.ENGLISH).contains("windows")
 lazy val isExperimental = (sbtVersionToRelease contains "RC") || (sbtVersionToRelease contains "M")
 val sbtLaunchJarUrl = SettingKey[String]("sbt-launch-jar-url")
 val sbtLaunchJarLocation = SettingKey[File]("sbt-launch-jar-location")
@@ -54,16 +61,19 @@ val sbtnJarsMappings = TaskKey[Seq[(File, String)]]("sbtn-jars-mappings", "Resol
 val sbtnJarsBaseUrl = SettingKey[String]("sbtn-jars-base-url")
 
 lazy val bintrayDebianUrl = settingKey[String]("API point for Debian packages")
-lazy val bintrayDebianExperimentalUrl = settingKey[String]("API point for Debian experimental packages")
+lazy val bintrayDebianExperimentalUrl =
+  settingKey[String]("API point for Debian experimental packages")
 lazy val bintrayRpmUrl = settingKey[String]("API point for RPM packages")
 lazy val bintrayRpmExperimentalUrl = settingKey[String]("API point for RPM experimental packages")
 lazy val bintrayGenericPackagesUrl = settingKey[String]("API point for generic packages")
 lazy val bintrayTripple = settingKey[(String, String, String)]("id, url, and pattern")
 
 val artifactoryLinuxPattern = "[module]-[revision].[ext]"
-val artifactoryDebianPattern = "[module]-[revision].[ext];deb.distribution=all;deb.component=main;deb.architecture=all"
+val artifactoryDebianPattern =
+  "[module]-[revision].[ext];deb.distribution=all;deb.component=main;deb.architecture=all"
 val bintrayGenericPattern = "[module]/[revision]/[module]/[revision]/[module]-[revision].[ext]"
-val bintrayReleaseAllStaged = TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
+val bintrayReleaseAllStaged =
+  TaskKey[Unit]("bintray-release-all-staged", "Release all staged artifacts on bintray.")
 val windowsBuildId = settingKey[Int]("build id for Windows installer")
 val debianBuildId = settingKey[Int]("build id for Debian")
 
@@ -84,10 +94,18 @@ val x86WindowsImageName = s"sbtn-$x86WindowsPlatform.exe"
 Global / excludeLintKeys += bintrayGenericPackagesUrl
 
 // This build creates a SBT plugin with handy features *and* bundles the SBT script for distribution.
-val launcherPackage = (project in file(".")).
-  enablePlugins(UniversalPlugin, LinuxPlugin, DebianPlugin, RpmPlugin, WindowsPlugin,
-    UniversalDeployPlugin, RpmDeployPlugin, WindowsDeployPlugin).
-  settings(
+val launcherPackage = (project in file("."))
+  .enablePlugins(
+    UniversalPlugin,
+    LinuxPlugin,
+    DebianPlugin,
+    RpmPlugin,
+    WindowsPlugin,
+    UniversalDeployPlugin,
+    RpmDeployPlugin,
+    WindowsDeployPlugin
+  )
+  .settings(
     name := "sbt-launcher-packaging",
     packageName := "sbt",
     crossTarget := target.value,
@@ -98,7 +116,7 @@ val launcherPackage = (project in file(".")).
     credentials ++= {
       (sys.env.get("BINTRAY_USER"), sys.env.get("BINTRAY_PASS")) match {
         case (Some(u), Some(p)) => Seq(Credentials("Bintray API Realm", "api.bintray.com", u, p))
-        case _ => Nil
+        case _                  => Nil
       }
     },
     pgpSecretRing := file(s"""${sys.props("user.home")}""") / ".ssh" / "scalasbt.key",
@@ -109,19 +127,19 @@ val launcherPackage = (project in file(".")).
     sbtLaunchJar := {
       val uri = sbtLaunchJarUrl.value
       val file = sbtLaunchJarLocation.value
-      if(!file.exists) {
-         // oddly, some places require us to create the file before writing...
-         IO.touch(file)
-         val url = new URI(uri).toURL
-         val connection = url.openConnection()
-         val input = connection.getInputStream
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
-         try {
-           input.transferTo(writer)
-         } finally {
-           input.close()
-           writer.close()
-         }
+      if (!file.exists) {
+        // oddly, some places require us to create the file before writing...
+        IO.touch(file)
+        val url = new URI(uri).toURL
+        val connection = url.openConnection()
+        val input = connection.getInputStream
+        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(file))
+        try {
+          input.transferTo(writer)
+        } finally {
+          input.close()
+          writer.close()
+        }
       }
       // TODO - GPG Trust validation.
       file
@@ -141,80 +159,83 @@ val launcherPackage = (project in file(".")).
       val linuxX86Tar = t / linuxX86ImageTar
       val linuxAarch64Tar = t / linuxAarch64ImageTar
       val windowsZip = t / windowsImageZip
-      if(!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(macosUniversalTar)
-         val url = new URI(s"$baseUrl/v$v/$macosUniversalImageTar").toURL
-         val connection = url.openConnection()
-         val input = connection.getInputStream
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
-         try {
-           input.transferTo(writer)
-         } finally {
-           input.close()
-           writer.close()
-         }
-         val platformDir = t / universalMacPlatform
-         IO.createDirectory(platformDir)
-         s"tar zxvf $macosUniversalTar --directory $platformDir".!
-         IO.move(platformDir / "sbtn", t / universalMacImageName)
+      if (!macosUniversalTar.exists && !isWindows && sbtIncludeSbtn) {
+        IO.touch(macosUniversalTar)
+        val url = new URI(s"$baseUrl/v$v/$macosUniversalImageTar").toURL
+        val connection = url.openConnection()
+        val input = connection.getInputStream
+        val writer =
+          new java.io.BufferedOutputStream(new java.io.FileOutputStream(macosUniversalTar))
+        try {
+          input.transferTo(writer)
+        } finally {
+          input.close()
+          writer.close()
+        }
+        val platformDir = t / universalMacPlatform
+        IO.createDirectory(platformDir)
+        s"tar zxvf $macosUniversalTar --directory $platformDir".!
+        IO.move(platformDir / "sbtn", t / universalMacImageName)
       }
-      if(!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(linuxX86Tar)
-         val url = new URI(s"$baseUrl/v$v/$linuxX86ImageTar").toURL
-         val connection = url.openConnection()
-         val input = connection.getInputStream
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
-         try {
-           input.transferTo(writer)
-         } finally {
-           input.close()
-           writer.close()
-         }
-         val platformDir = t / x86LinuxPlatform
-         IO.createDirectory(platformDir)
-         s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
-         IO.move(platformDir / "sbtn", t / x86LinuxImageName)
+      if (!linuxX86Tar.exists && !isWindows && sbtIncludeSbtn) {
+        IO.touch(linuxX86Tar)
+        val url = new URI(s"$baseUrl/v$v/$linuxX86ImageTar").toURL
+        val connection = url.openConnection()
+        val input = connection.getInputStream
+        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxX86Tar))
+        try {
+          input.transferTo(writer)
+        } finally {
+          input.close()
+          writer.close()
+        }
+        val platformDir = t / x86LinuxPlatform
+        IO.createDirectory(platformDir)
+        s"""tar zxvf $linuxX86Tar --directory $platformDir""".!
+        IO.move(platformDir / "sbtn", t / x86LinuxImageName)
       }
-      if(!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
-         IO.touch(linuxAarch64Tar)
-         val url = new URI(s"$baseUrl/v$v/$linuxAarch64ImageTar").toURL
-         val connection = url.openConnection()
-         val input = connection.getInputStream
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
-         try {
-           input.transferTo(writer)
-         } finally {
-           input.close()
-           writer.close()
-         }
-         val platformDir = t / aarch64LinuxPlatform
-         IO.createDirectory(platformDir)
-         s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
-         IO.move(platformDir / "sbtn", t / aarch64LinuxImageName)
+      if (!linuxAarch64Tar.exists && !isWindows && sbtIncludeSbtn) {
+        IO.touch(linuxAarch64Tar)
+        val url = new URI(s"$baseUrl/v$v/$linuxAarch64ImageTar").toURL
+        val connection = url.openConnection()
+        val input = connection.getInputStream
+        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(linuxAarch64Tar))
+        try {
+          input.transferTo(writer)
+        } finally {
+          input.close()
+          writer.close()
+        }
+        val platformDir = t / aarch64LinuxPlatform
+        IO.createDirectory(platformDir)
+        s"""tar zxvf $linuxAarch64Tar --directory $platformDir""".!
+        IO.move(platformDir / "sbtn", t / aarch64LinuxImageName)
       }
-      if(!windowsZip.exists && sbtIncludeSbtn) {
-         IO.touch(windowsZip)
-         val url = new URI(s"$baseUrl/v$v/$windowsImageZip").toURL
-         val connection = url.openConnection()
-         val input = connection.getInputStream
-         val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
-         try {
-           input.transferTo(writer)
-         } finally {
-           input.close()
-           writer.close()
-         }
-         val platformDir = t / x86WindowsPlatform
-         IO.unzip(windowsZip, platformDir)
-         IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
+      if (!windowsZip.exists && sbtIncludeSbtn) {
+        IO.touch(windowsZip)
+        val url = new URI(s"$baseUrl/v$v/$windowsImageZip").toURL
+        val connection = url.openConnection()
+        val input = connection.getInputStream
+        val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(windowsZip))
+        try {
+          input.transferTo(writer)
+        } finally {
+          input.close()
+          writer.close()
+        }
+        val platformDir = t / x86WindowsPlatform
+        IO.unzip(windowsZip, platformDir)
+        IO.move(platformDir / "sbtn.exe", t / x86WindowsImageName)
       }
       if (!sbtIncludeSbtn) Seq()
       else if (isWindows) Seq(t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
       else
-        Seq(t / universalMacImageName -> s"bin/$universalMacImageName",
+        Seq(
+          t / universalMacImageName -> s"bin/$universalMacImageName",
           t / x86LinuxImageName -> s"bin/$x86LinuxImageName",
           t / aarch64LinuxImageName -> s"bin/$aarch64LinuxImageName",
-          t / x86WindowsImageName -> s"bin/$x86WindowsImageName")
+          t / x86WindowsImageName -> s"bin/$x86WindowsImageName"
+        )
     },
 
     // GENERAL LINUX PACKAGING STUFFS
@@ -232,7 +253,9 @@ val launcherPackage = (project in file(".")).
     },
 
     // DEBIAN SPECIFIC
-    debianBuildId := sys.props.getOrElse("sbt.build.patch", sys.env.getOrElse("DIST_PATCHVER", "0")).toInt,
+    debianBuildId := sys.props
+      .getOrElse("sbt.build.patch", sys.env.getOrElse("DIST_PATCHVER", "0"))
+      .toInt,
     Debian / version := {
       if (debianBuildId.value == 0) sbtVersionToRelease
       else sbtVersionToRelease + "." + debianBuildId.value
@@ -245,7 +268,7 @@ val launcherPackage = (project in file(".")).
       val bd = sourceDirectory.value
       (packageMapping(
         (bd / "debian" / "changelog") -> "/usr/share/doc/sbt/changelog.gz"
-      ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs()
+      ) withUser "root" withGroup "root" withPerms "0644" gzipped) asDocs ()
     },
     Debian / debianChangelog := { Some(sourceDirectory.value / "debian" / "changelog") },
     addPackage(Debian, (Debian / packageBin), "deb"),
@@ -258,8 +281,9 @@ val launcherPackage = (project in file(".")).
     rpmRelease := debianBuildId.value.toString,
     Rpm / version := {
       val stable0 = (sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty) mkString ".")
-      val stable = if (rpmRelease.value == "0") stable0
-                   else stable0 + "." + rpmRelease.value
+      val stable =
+        if (rpmRelease.value == "0") stable0
+        else stable0 + "." + rpmRelease.value
       if (isExperimental) ((sbtVersionToRelease split "[^\\d]" filterNot (_.isEmpty)).toList match {
         case List(_, _, c, d) => List(0, 99, c, d).mkString(".")
       })
@@ -269,9 +293,11 @@ val launcherPackage = (project in file(".")).
     Rpm / linuxPackageMappings := {
       val orig = ((Rpm / linuxPackageMappings)).value
       val _ = sbtnJarsMappings.value
-      orig.map(o => o.copy(mappings = o.mappings.toList filterNot {
-        case (_, p) => p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
-      }))
+      orig.map(o =>
+        o.copy(mappings = o.mappings.toList filterNot { case (_, p) =>
+          p.contains("sbtn-x86_64") || p.contains("sbtn-aarch64")
+        })
+      )
     },
     rpmVendor := "scalacenter",
     rpmUrl := Some("https://github.com/sbt/sbt"),
@@ -289,10 +315,10 @@ val launcherPackage = (project in file(".")).
       val bid = windowsBuildId.value
       val sv = sbtVersionToRelease
       (sv split "[^\\d]" filterNot (_.isEmpty)) match {
-        case Array(major,minor,bugfix, _*) if bid == 0 => Seq(major, minor, bugfix) mkString "."
-        case Array(major,minor,bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
-        case Array(major,minor) => Seq(major, minor, "0", bid.toString) mkString "."
-        case Array(major) => Seq(major, "0", "0", bid.toString) mkString "."
+        case Array(major, minor, bugfix, _*) if bid == 0 => Seq(major, minor, bugfix) mkString "."
+        case Array(major, minor, bugfix, _*) => Seq(major, minor, bugfix, bid.toString) mkString "."
+        case Array(major, minor)             => Seq(major, minor, "0", bid.toString) mkString "."
+        case Array(major)                    => Seq(major, "0", "0", bid.toString) mkString "."
       }
     },
     Windows / maintainer := "Scala Center",
@@ -307,11 +333,9 @@ val launcherPackage = (project in file(".")).
     Windows / name := packageName.value,
     Windows / packageName := packageName.value,
     Universal / version := sbtVersionToRelease,
-
     Universal / mappings += {
       (baseDirectory.value.getParentFile / "sbt") -> ("bin" + java.io.File.separator + "sbt")
     },
-
     Universal / mappings := {
       val t = (Universal / target).value
       val prev = (Universal / mappings).value
@@ -319,11 +343,15 @@ val launcherPackage = (project in file(".")).
       val BinBat = BinSbt + ".bat"
       prev.toList map {
         case (k, BinSbt) =>
-          import java.nio.file.{Files, FileSystems}
+          import java.nio.file.{ Files, FileSystems }
           val x = IO.read(k)
-          IO.write(t / "sbt", x.replace(
-            "declare init_sbt_version=_to_be_replaced",
-            s"declare init_sbt_version=$sbtVersionToRelease"))
+          IO.write(
+            t / "sbt",
+            x.replace(
+              "declare init_sbt_version=_to_be_replaced",
+              s"declare init_sbt_version=$sbtVersionToRelease"
+            )
+          )
 
           if (FileSystems.getDefault.supportedFileAttributeViews.contains("posix")) {
             val perms = Files.getPosixFilePermissions(k.toPath)
@@ -333,9 +361,13 @@ val launcherPackage = (project in file(".")).
           (t / "sbt", BinSbt)
         case (k, BinBat) =>
           val x = IO.read(k)
-          IO.write(t / "sbt.bat", x.replaceAllLiterally(
-            "set init_sbt_version=_to_be_replaced",
-            s"set init_sbt_version=$sbtVersionToRelease"))
+          IO.write(
+            t / "sbt.bat",
+            x.replaceAllLiterally(
+              "set init_sbt_version=_to_be_replaced",
+              s"set init_sbt_version=$sbtVersionToRelease"
+            )
+          )
           (t / "sbt.bat", BinBat)
         case (k, v) => (k, v)
       }
@@ -366,7 +398,11 @@ val launcherPackage = (project in file(".")).
     Universal / mappings ++= {
       val base = baseDirectory.value
       if (sbtVersionToRelease startsWith "0.13.") Nil
-      else Seq[(File, String)](base.getParentFile / "LICENSE" -> "LICENSE", base / "NOTICE" -> "NOTICE")
+      else
+        Seq[(File, String)](
+          base.getParentFile / "LICENSE" -> "LICENSE",
+          base / "NOTICE" -> "NOTICE"
+        )
     },
 
     // Miscellaneous publishing stuff...
@@ -388,58 +424,67 @@ val launcherPackage = (project in file(".")).
     }
   )
 
-def downloadUrlForVersion(v: String) = (v.split("[^\\d]") flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
-  case Array(0, 11, 3, _*)           => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
-  case Array(0, 11, x, _*) if x >= 3 => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(0, y, _*) if y >= 12    => "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case Array(1, _, _*) if v contains ("-20") => "https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/"+v+"/sbt-launch.jar"
-  case _                             => "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/"+v+"/sbt-launch-"+v+".jar"
-}
+def downloadUrlForVersion(v: String) =
+  (v.split("[^\\d]") flatMap (i => catching(classOf[Exception]) opt (i.toInt))) match {
+    case Array(0, 11, 3, _*) =>
+      "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/0.11.3-2/sbt-launch.jar"
+    case Array(0, 11, x, _*) if x >= 3 =>
+      "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
+    case Array(0, y, _*) if y >= 12 =>
+      "https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
+    case Array(1, _, _*) if v contains ("-20") =>
+      "https://repo.scala-sbt.org/scalasbt/maven-snapshots/org/scala-sbt/sbt-launch/" + v + "/sbt-launch.jar"
+    case _ =>
+      "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/" + v + "/sbt-launch-" + v + ".jar"
+  }
 
 def makePublishToForConfig(config: Configuration) = {
   // Add the publish to and ensure global resolvers has the resolver we just configured.
-  inConfig(config)(Seq(
-    name := "sbt",
-    bintrayDebianUrl             := s"https://scala.jfrog.io/artifactory/debian/",
-    bintrayDebianExperimentalUrl := s"https://scala.jfrog.io/artifactory/debian-experimental/",
-    bintrayRpmUrl                := s"https://scala.jfrog.io/artifactory/rpm/",
-    bintrayRpmExperimentalUrl    := s"https://scala.jfrog.io/artifactory/rpm-experimental/",
-    bintrayGenericPackagesUrl    := s"https://scala.jfrog.io/artifactory/native-packages/",
-    bintrayTripple := {
-      config.name match {
-        case Debian.name if isExperimental => ("debian-experimental", bintrayDebianExperimentalUrl.value, artifactoryDebianPattern)
-        case Debian.name                   => ("debian", bintrayDebianUrl.value, artifactoryDebianPattern)
-        case Rpm.name if isExperimental    => ("rpm-experimental", bintrayRpmExperimentalUrl.value, artifactoryLinuxPattern)
-        case Rpm.name                      => ("rpm", bintrayRpmUrl.value, artifactoryLinuxPattern)
+  inConfig(config)(
+    Seq(
+      name := "sbt",
+      bintrayDebianUrl := s"https://scala.jfrog.io/artifactory/debian/",
+      bintrayDebianExperimentalUrl := s"https://scala.jfrog.io/artifactory/debian-experimental/",
+      bintrayRpmUrl := s"https://scala.jfrog.io/artifactory/rpm/",
+      bintrayRpmExperimentalUrl := s"https://scala.jfrog.io/artifactory/rpm-experimental/",
+      bintrayGenericPackagesUrl := s"https://scala.jfrog.io/artifactory/native-packages/",
+      bintrayTripple := {
+        config.name match {
+          case Debian.name if isExperimental =>
+            ("debian-experimental", bintrayDebianExperimentalUrl.value, artifactoryDebianPattern)
+          case Debian.name => ("debian", bintrayDebianUrl.value, artifactoryDebianPattern)
+          case Rpm.name if isExperimental =>
+            ("rpm-experimental", bintrayRpmExperimentalUrl.value, artifactoryLinuxPattern)
+          case Rpm.name => ("rpm", bintrayRpmUrl.value, artifactoryLinuxPattern)
+        }
+      },
+      publishTo := {
+        val (id, url, pattern) = bintrayTripple.value
+        val resolver = Resolver.url(id, new URI(url).toURL)(Patterns(pattern))
+        Some(resolver)
       }
-    },
-    publishTo := {
-      val (id, url, pattern) = bintrayTripple.value
-      val resolver = Resolver.url(id, new URI(url).toURL)(Patterns(pattern))
-      Some(resolver)
-    }
-  ))
+    )
+  )
 }
 
 def publishToSettings =
   Seq[Configuration](Debian, Rpm) flatMap makePublishToForConfig
 
-def downloadUrl(uri: URI, out: File): Unit =
-  {
-    if(!out.exists) {
-       IO.touch(out)
-       val url = new URI(uri.toString).toURL
-       val connection = url.openConnection()
-       val input = connection.getInputStream
-       val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
-       try {
-         input.transferTo(writer)
-       } finally {
-         input.close()
-         writer.close()
-       }
+def downloadUrl(uri: URI, out: File): Unit = {
+  if (!out.exists) {
+    IO.touch(out)
+    val url = new URI(uri.toString).toURL
+    val connection = url.openConnection()
+    val input = connection.getInputStream
+    val writer = new java.io.BufferedOutputStream(new java.io.FileOutputStream(out))
+    try {
+      input.transferTo(writer)
+    } finally {
+      input.close()
+      writer.close()
     }
   }
+}
 
 def colonName(m: ModuleID): String = s"${m.organization}:${m.name}:${m.revision}"
 
@@ -450,7 +495,13 @@ lazy val dist = (project in file("dist"))
       if (sbtVersionToRelease startsWith "0.13.") scala210
       else scala212
     },
-    libraryDependencies ++= Seq(sbtActual, jansi, scala212Compiler, scala212Jline, scala212Xml) ++ sbt013ExtraDeps,
+    libraryDependencies ++= Seq(
+      sbtActual,
+      jansi,
+      scala212Compiler,
+      scala212Jline,
+      scala212Xml
+    ) ++ sbt013ExtraDeps,
     exportRepo := {
       val outDir = exportRepoDirectory.value
       sbtVersionToRelease match {
@@ -458,10 +509,17 @@ lazy val dist = (project in file("dist"))
           sys.error("sbt 1.x should use coursier")
         case v if v.startsWith("0.13.") =>
           val outbase = outDir / "org.scala-sbt" / "compiler-interface" / v
-          val uribase = s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
+          val uribase =
+            s"https://repo.typesafe.com/typesafe/ivy-releases/org.scala-sbt/compiler-interface/$v/"
           downloadUrl(uri(uribase + "ivys/ivy.xml"), outbase / "ivys" / "ivy.xml")
-          downloadUrl(uri(uribase + "jars/compiler-interface.jar"), outbase / "jars" / "compiler-interface.jar")
-          downloadUrl(uri(uribase + "srcs/compiler-interface-sources.jar"), outbase / "srcs" / "compiler-interface-sources.jar")
+          downloadUrl(
+            uri(uribase + "jars/compiler-interface.jar"),
+            outbase / "jars" / "compiler-interface.jar"
+          )
+          downloadUrl(
+            uri(uribase + "srcs/compiler-interface-sources.jar"),
+            outbase / "srcs" / "compiler-interface-sources.jar"
+          )
         case _ =>
       }
       outDir
@@ -481,7 +539,10 @@ lazy val dist = (project in file("dist"))
       s"$csr fetch --cache $cache ${colonName(scala212Compiler)}".!
       s"$csr fetch --cache $cache ${colonName(scala212Xml)}".!
       val mavenCache = cache / "https" / "repo1.maven.org" / "maven2"
-      val compilerBridgeVer = IO.listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter).toList.headOption
+      val compilerBridgeVer = IO
+        .listFiles(mavenCache / "org" / "scala-sbt" / "compiler-bridge_2.12", DirectoryFilter)
+        .toList
+        .headOption
       compilerBridgeVer match {
         case Some(bridgeDir) =>
           val bridgeVer = bridgeDir.getName

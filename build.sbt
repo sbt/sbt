@@ -162,6 +162,12 @@ lazy val sbtRoot: Project = (project in file("."))
       .map(p => LocalProject(p.id))*
   )
   .settings(
+    Seq(scalafmtSbt, scalafmtSbtCheck).map { formatTask =>
+      Compile / formatTask := {
+        (Compile / formatTask).value
+        (launcherPackage / Compile / formatTask).value
+      }
+    },
     minimalSettings,
     onLoadMessage := {
       val version = sys.props("java.specification.version")
