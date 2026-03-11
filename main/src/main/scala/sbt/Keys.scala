@@ -635,7 +635,6 @@ object Keys {
   @transient
   val publishTo = taskKey[Option[Resolver]]("The resolver to publish to.").withRank(ASetting)
   val artifacts = settingKey[Seq[Artifact]]("The artifact definitions for the current module.  Must be consistent with " + packagedArtifacts.key.label + ".").withRank(BSetting)
-  val projectDescriptors = taskKey[Map[Any, Any]]("Project dependency map for the inter-project resolver.").withRank(DTask)
   val autoUpdate = settingKey[Boolean]("<unimplemented>").withRank(Invisible)
   val retrieveManaged = settingKey[Boolean]("If true, enables retrieving dependencies to the current build.  Otherwise, dependencies are used directly from the cache.").withRank(BSetting)
   val retrieveManagedSync = settingKey[Boolean]("If true, enables synchronizing the dependencies retrieved to the current build by removed unneeded files.").withRank(BSetting)

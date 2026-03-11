@@ -93,15 +93,6 @@ object IvyDependencyPlugin extends AutoPlugin:
         )
         .value
     ),
-    projectDescriptors := Def.uncached(
-      Def
-        .ifS(Def.task { useIvy.value })(
-          Def.task { depMap.value.asInstanceOf[Map[Any, Any]] }
-        )(
-          Def.task { Map.empty[Any, Any] }
-        )
-        .value
-    ),
     projectResolver := Def.uncached(
       Def
         .ifS(Def.task { useIvy.value })(
@@ -166,9 +157,8 @@ object IvyDependencyPlugin extends AutoPlugin:
     }
 
   private def projectResolverTask: Initialize[Task[Resolver]] =
-    projectDescriptors.map { m =>
-      val typedMap = m.asInstanceOf[Map[ModuleRevisionId, ModuleDescriptor]]
-      val resolver = new ProjectResolver(ProjectResolver.InterProject, typedMap)
+    depMap.map { m =>
+      val resolver = new ProjectResolver(ProjectResolver.InterProject, m)
       new RawRepository(resolver, resolver.getName)
     }
 
@@ -194,10 +184,8 @@ object IvyDependencyPlugin extends AutoPlugin:
     Def.task {
       val projects = csrInterProjectDependencies.value
       val projectModules = projects.map(_.module).toSet
-      projectDescriptors.value
-        .map { (k, v) =>
-          val id = k.asInstanceOf[ModuleRevisionId]
-          val desc = v.asInstanceOf[ModuleDescriptor]
+      depMap.value
+        .map { (id, desc) =>
           moduleFromIvy(id) -> desc
         }
         .filter { case (module, _) =>

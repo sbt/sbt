@@ -3134,7 +3134,6 @@ object Classpaths {
     makePom / artifact := Artifact.pom(moduleName.value),
     projectID := defaultProjectID.value,
     projectID := pluginProjectID.value,
-    projectDescriptors := Def.uncached(Map.empty[Any, Any]),
     updateConfiguration := {
       // Tell the UpdateConfiguration which artifact types are special (for sources and javadocs)
       val specialArtifactTypes = sourceArtifactTypes.value.toSet union docArtifactTypes.value.toSet

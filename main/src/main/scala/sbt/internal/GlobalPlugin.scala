@@ -31,7 +31,6 @@ object GlobalPlugin {
   //  static here meaning that the relevant tasks for the global plugin have already been evaluated
   def inject(gp: GlobalPluginData): Seq[Setting[?]] =
     Seq[Setting[?]](
-      projectDescriptors ~= { _ ++ gp.descriptors },
       projectDependencies ++= gp.projectID +: gp.dependencies,
       resolvers := {
         val rs = resolvers.value
@@ -77,12 +76,10 @@ object GlobalPlugin {
     val taskInit = Def.task {
       val intcp = (Runtime / internalDependencyClasspath).value
       val prods = (Runtime / exportedProducts).value
-      val depMap = projectDescriptors.value
 
       GlobalPluginData(
         projectID.value,
         projectDependencies.value,
-        depMap,
         resolvers.value.toVector,
         (Runtime / fullClasspath).value,
         (prods ++ intcp).distinct
@@ -121,7 +118,6 @@ object GlobalPlugin {
 final case class GlobalPluginData(
     projectID: ModuleID,
     dependencies: Seq[ModuleID],
-    descriptors: Map[Any, Any],
     resolvers: Vector[Resolver],
     fullClasspath: Classpath,
     internalClasspath: Classpath

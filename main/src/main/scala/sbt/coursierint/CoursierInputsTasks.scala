@@ -103,7 +103,7 @@ object CoursierInputsTasks {
   private[sbt] def coursierExtraProjectsTask: Def.Initialize[sbt.Task[Seq[CProject]]] = {
     Def.task {
       // Coursier handles inter-project dependencies natively via csrInterProjectDependencies.
-      // The Ivy-typed projectDescriptors are only populated when IvyDependencyPlugin is enabled.
+      // When IvyDependencyPlugin is enabled, it overrides csrExtraProjects with Ivy descriptors.
       Seq.empty[CProject]
     }
   }
