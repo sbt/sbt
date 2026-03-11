@@ -6,7 +6,6 @@ object Dependencies {
   val scala213 = "2.13.16"
   val scala3 = "3.8.2"
   val scala212 = "2.12.21"
-  val checkPluginCross = settingKey[Unit]("Make sure scalaVersion match up")
   val baseScalaVersion = scala3
   def nightlyVersion: Option[String] =
     sys.env.get("BUILD_VERSION") orElse sys.props.get("sbt.build.version")

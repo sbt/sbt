@@ -53,7 +53,6 @@ val excludeLint = SettingKey[Set[Def.KeyedInitialize[?]]]("excludeLintKeys")
 Global / excludeLint := (Global / excludeLint).?.value.getOrElse(Set.empty)
 Global / excludeLint += Utils.componentID
 Global / excludeLint += scriptedBufferLog
-Global / excludeLint += checkPluginCross
 Global / excludeLint += nativeImageJvm
 Global / excludeLint += nativeImageVersion
 
@@ -709,12 +708,18 @@ lazy val mainProj = (project in file("main"))
   .settings(
     testedBaseSettings,
     name := "Main",
-    checkPluginCross := {
-      val sv = scalaVersion.value
-      val f = baseDirectory.value / "src" / "main" / "scala" / "sbt" / "PluginCross.scala"
-      if (sv.startsWith("2.12") && !IO.readLines(f).exists(_.contains(s""""$sv""""))) {
-        sys.error(s"PluginCross.scala does not match up with the scalaVersion $sv")
-      }
+    Compile / sourceGenerators += task {
+      val f = (Compile / sourceManaged).value / "sbt" / "PluginCrossExtra.scala"
+      IO.write(
+        f,
+        s"""|package sbt
+            |
+            |private[sbt] trait PluginCrossExtra { self: PluginCross.type =>
+            |  def scala3: String = "${Dependencies.scala3}"
+            |}
+            |""".stripMargin
+      )
+      Seq(f)
     },
     libraryDependencies ++=
       Seq(
