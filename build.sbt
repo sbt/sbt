@@ -740,6 +740,19 @@ lazy val mainProj = (project in file("main"))
       exclude[DirectMissingMethodProblem]("sbt.Classpaths.mkIvyConfiguration"),
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml"),
       exclude[MissingClassProblem]("sbt.internal.librarymanagement.IvyXml$"),
+      // Removed projectDescriptors key (sbt#8865)
+      exclude[DirectMissingMethodProblem]("sbt.Keys.projectDescriptors"),
+      // Removed descriptors field from GlobalPluginData (sbt#8865)
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.apply"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.this"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.descriptors"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$3"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData.copy$default$4"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData.copy$default$6"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._3"),
+      exclude[IncompatibleResultTypeProblem]("sbt.internal.GlobalPluginData._4"),
+      exclude[DirectMissingMethodProblem]("sbt.internal.GlobalPluginData._6"),
     ),
   )
   .dependsOn(lmCore, lmCoursierShadedPublishing)
