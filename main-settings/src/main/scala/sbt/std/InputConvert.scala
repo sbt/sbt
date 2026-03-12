@@ -13,6 +13,7 @@ import sbt.internal.util.appmacro.{ Convert, ContextUtil }
 import sbt.internal.util.complete.Parser
 import Def.Initialize
 import sbt.util.Applicative
+import sbt.util.Monad
 import scala.quoted.*
 
 class InputInitConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart: Int)
@@ -59,7 +60,7 @@ class TaskConvert[C <: Quotes & scala.Singleton](override val qctx: C, valStart:
     if nme == InputWrapper.WrapTaskName then Converted.success(in)
     else Converted.NotApplicable()
 
-  def appExpr[Expr[Monad[Task]]] =
+  def appExpr: Expr[Monad[Task]] =
     '{ Task.taskMonad }
 end TaskConvert
 
