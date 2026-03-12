@@ -1,0 +1,16 @@
+# Verify that testQuick works with nested test classes.
+# Nested test classes use $ encoding (e.g. CalcTest$Nested)
+# and we need to verify that testQuick properly tracks them.
+
+# Run all tests -- should pass.
+> test
+
+# testQuick should be a no-op since all tests passed.
+> testQuick
+
+# Introduce a bug in Calc.java (add -> multiply).
+$ copy-file changed/Calc.java src/main/java/com/example/Calc.java
+> compile
+
+# testQuick should re-run and fail because the source changed.
+-> testQuick
