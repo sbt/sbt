@@ -41,6 +41,7 @@ object ArgParser:
         opt[Int]("mem").action((x, c) => c.copy(mem = Some(x))),
         opt[String]("supershell").action((x, c) => c.copy(supershell = Some(x))),
         opt[String]("color").action((x, c) => c.copy(color = Some(x))),
+        opt[String]("autostart").action((x, c) => c.copy(autostart = Some(x))),
         opt[Int]("jvm-debug").action((x, c) => c.copy(jvmDebug = Some(x))),
         opt[String]("java-home").action((x, c) => c.copy(javaHome = Some(x))),
         arg[String]("<arg>")

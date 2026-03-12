@@ -111,6 +111,38 @@ object NetworkClientParseArgsTest extends BasicTestSuite:
     val result = parse("-bsp")
     assert(result.bsp)
 
+  // -- --no-server and --autostart= set sbt.server.autostart --
+
+  test("--no-server sets sbt.server.autostart=false"):
+    try
+      System.clearProperty("sbt.server.autostart")
+      parse("--no-server", "compile")
+      assert(System.getProperty("sbt.server.autostart") == "false")
+    finally System.clearProperty("sbt.server.autostart")
+
+  test("-no-server sets sbt.server.autostart=false"):
+    try
+      System.clearProperty("sbt.server.autostart")
+      parse("-no-server", "compile")
+      assert(System.getProperty("sbt.server.autostart") == "false")
+    finally System.clearProperty("sbt.server.autostart")
+
+  test("--autostart=false sets sbt.server.autostart=false"):
+    try
+      System.clearProperty("sbt.server.autostart")
+      val result = parse("--autostart=false", "compile")
+      assert(System.getProperty("sbt.server.autostart") == "false")
+      assert(!result.sbtArguments.exists(_.contains("autostart")))
+      assert(result.commandArguments.contains("compile"))
+    finally System.clearProperty("sbt.server.autostart")
+
+  test("--autostart=true sets sbt.server.autostart=true"):
+    try
+      System.clearProperty("sbt.server.autostart")
+      parse("--autostart=true", "compile")
+      assert(System.getProperty("sbt.server.autostart") == "true")
+    finally System.clearProperty("sbt.server.autostart")
+
   test("--sbt-launch-jar is preserved"):
     val result = parse("--sbt-launch-jar", "/path/to/sbt-launch.jar", "compile")
     assert(result.sbtLaunchJar.contains("/path/to/sbt-launch.jar"))

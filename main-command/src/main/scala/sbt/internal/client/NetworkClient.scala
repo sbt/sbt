@@ -151,6 +151,8 @@ class NetworkClient(
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
     !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
   private def shutdownOnly = arguments.commandArguments == Seq(Shutdown)
+  private lazy val serverAutoStart: Boolean =
+    sys.props.get("sbt.server.autostart").forall(_.toLowerCase == "true")
 
   private def mkSocket(file: File): (Socket, Option[String]) = ClientSocket.socket(file, useJNI)
 
@@ -189,6 +191,9 @@ class NetworkClient(
         if (shutdownOnly) {
           console.appendLog(Level.Info, "no sbt server is running. ciao")
           System.exit(0)
+        } else if (!serverAutoStart) {
+          console.appendLog(Level.Error, "no sbt server is running (sbt.server.autostart=false)")
+          System.exit(1)
         } else if (promptCompleteUsers) {
           val msg = if (noTab) "" else "No sbt server is running. Press <tab> to start one..."
           errorStream.print(s"\n$msg")
@@ -1187,7 +1192,7 @@ object NetworkClient {
         completionArguments,
         sbtScript,
         bsp,
-        sbtLaunchJar
+        sbtLaunchJar,
       )
   }
   private[client] val completions = "--completions"
@@ -1246,8 +1251,6 @@ object NetworkClient {
     "--timings",
     "-traces",
     "--traces",
-    "-no-server",
-    "--no-server",
     "-no-share",
     "--no-share",
     "-no-global",
@@ -1264,6 +1267,8 @@ object NetworkClient {
     "-supershell=",
     "--color=",
     "-color=",
+    "--autostart=",
+    "-autostart=",
   )
   private[client] def parseArgs(args: Array[String]): Arguments = {
     val defaultSbtScript = if (Properties.isWin) "sbt.bat" else "sbt"
@@ -1302,6 +1307,12 @@ object NetworkClient {
           i += 1
           launchJar = Option(sanitized(i).replace("%20", " "))
         case "-bsp" | "--bsp" => bsp = true
+        case "-no-server" | "--no-server" =>
+          System.setProperty("sbt.server.autostart", "false")
+        case a if a.startsWith("--autostart=") =>
+          System.setProperty("sbt.server.autostart", a.stripPrefix("--autostart="))
+        case a if a.startsWith("-autostart=") =>
+          System.setProperty("sbt.server.autostart", a.stripPrefix("-autostart="))
         case a if launcherValueFlags.contains(a) =>
           if (i + 1 < sanitized.length) i += 1
         case a if launcherNoValueFlags.contains(a)                => ()
@@ -1329,7 +1340,7 @@ object NetworkClient {
       completionArguments.toSeq,
       sbtScript.getOrElse(defaultSbtScript).replace("%20", " "),
       bsp,
-      launchJar
+      launchJar,
     )
   }
 
