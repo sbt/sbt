@@ -78,7 +78,7 @@ object Dependencies {
   def addSbtZincCompile = addSbtModule(sbtZincPath, "zincCompile", zincCompile)
   def addSbtZincCompileCore = addSbtModule(sbtZincPath, "zincCompileCore", zincCompileCore)
 
-  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.10"
+  val lmCoursierShaded = "io.get-coursier" %% "lm-coursier-shaded" % "2.1.12"
 
   def sjsonNew(n: String) =
     Def.setting("com.eed3si9n" %% n % "0.10.1") // contrabandSjsonNewVersion.value
