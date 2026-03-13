@@ -9,7 +9,7 @@
 package sbt
 package internal
 
-import sbt.librarymanagement.Configurations
+import sbt.librarymanagement.{ Configurations, ScalaArtifacts }
 
 import sbt.util.Level
 
@@ -26,6 +26,37 @@ import scala.annotation.tailrec
 
 object Script {
   final val Name = "script"
+  // When shebang is stripped, compiler error line numbers may be off by one for the original file;
+  // position mapping could be added in a future improvement (see sbt/sbt#6274).
+  /** If the first line is a shebang (#!), drop it so the compiler never sees it. */
+  private[internal] def stripShebang(lines: Seq[String]): Seq[String] =
+    if (lines.nonEmpty && lines.head.startsWith("#!")) lines.drop(1) else lines
+
+  /** Lines that are not inside any /*** ... */ block (i.e. the executable script body). */
+  private[internal] def scriptBodyLines(file: File): Seq[String] = {
+    val lines = IO.readLines(file).toIndexedSeq
+    // Block(offset, lines): offset = index of /*** line, lines = content between /*** and */ (excl. both).
+    // Exclude /*** (off), content (off+1..off+ls.size), and */ (off+1+ls.size).
+    val blockSet = blocks(file).flatMap {
+      case Block(off, ls) => (off until off + 2 + ls.size)
+    }.toSet
+    lines.indices.filterNot(blockSet).map(lines)
+  }
+
+  /** Write a Scala 3 compilable file that wraps the script body in object Main { def main(...) = { ... } }. */
+  private def writeWrappedScript(body: Seq[String], out: File): Unit = {
+    val indent = "  "
+    val inner = body.map(line => indent + line).mkString("\n")
+    val content =
+      s"""object Main {
+         |  def main(args: Array[String]): Unit = {
+         |$inner
+         |  }
+         |}
+         |""".stripMargin
+    IO.write(out, content)
+  }
+
   lazy val command =
     Command.command(Name) { state =>
       val scriptArg = state.remainingCommands.headOption map { _.commandLine } getOrElse sys.error(
@@ -44,7 +75,11 @@ object Script {
         else scriptArg.substring(0, dotIndex) + ".scala"
       }
       val script = new File(src, scalaFile)
-      IO.copyFile(scriptFile, script)
+      val linesWithoutShebang = stripShebang(IO.readLines(scriptFile))
+      IO.write(script, linesWithoutShebang.mkString("", "\n", "\n"))
+
+      val scriptMain = new File(src, "Main.scala")
+      writeWrappedScript(scriptBodyLines(script), scriptMain)
 
       val (eval, structure) = Load.defaultLoad(state, base, state.log)
       val session = Load.initialSession(structure, eval)
@@ -55,12 +90,23 @@ object Script {
       val embeddedSettings = blocks(script).flatMap { block =>
         evaluate(eval(), vf, block.lines, currentUnit.imports, block.offset + 1)(currentLoader)
       }
-      val scriptAsSource = (Compile / sources) := Def.uncached(script :: Nil)
-      val asScript =
-        scalacOptions ++= Def.uncached(Seq("-Xscript", script.getName.stripSuffix(".scala")))
+      val scriptBaseName = script.getName.stripSuffix(".scala")
+      val scriptAsSource = (Compile / sources) := Def.uncached {
+        if (ScalaArtifacts.isScala3(scalaVersion.value)) scriptMain :: Nil else script :: Nil
+      }
+      val asScript = scalacOptions := Def.uncached {
+        val extra =
+          if (ScalaArtifacts.isScala3(scalaVersion.value)) Nil
+          else Seq("-Xscript", scriptBaseName)
+        scalacOptions.value ++ extra
+      }
+      val scriptMainClass = (run / mainClass) := Def.uncached {
+        if (ScalaArtifacts.isScala3(scalaVersion.value)) Some("Main") else Some(scriptBaseName)
+      }
       val scriptSettings = Seq(
         asScript,
         scriptAsSource,
+        scriptMainClass,
         (Global / logLevel) := Level.Warn,
         (Global / showSuccess) := false
       )
