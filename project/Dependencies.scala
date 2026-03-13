@@ -112,7 +112,7 @@ object Dependencies {
 
   // lm-coursier dependencies
   val dataclassScalafixVersion = "0.3.0"
-  val coursierVersion = "2.1.25-M19"
+  val coursierVersion = "2.1.25-M24"
 
   val coursier = ("io.get-coursier" %% "coursier" % coursierVersion)
     .cross(CrossVersion.for3Use2_13)
