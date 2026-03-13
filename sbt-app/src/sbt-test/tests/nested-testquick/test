@@ -3,10 +3,18 @@
 # and we need to verify that testQuick properly tracks them.
 
 # Run all tests -- should pass.
-> test
+> testOnly com.example.CalcTest com.example.GoodCalcTest
 
 # testQuick should be a no-op since all tests passed.
 > testQuick
+
+# Verify testOnly picks up a good test.
+> testOnly com.example.GoodCalcTest
+
+# Copy in BadCalcTest and verify it fails.
+$ copy-file changed/BadCalcTest.java src/test/java/com/example/BadCalcTest.java
+> compile
+-> testOnly com.example.BadCalcTest
 
 # Introduce a bug in Calc.java (add -> multiply).
 $ copy-file changed/Calc.java src/main/java/com/example/Calc.java
