@@ -2,6 +2,8 @@ package lmcoursier.internal
 
 import coursier.{ Project, Resolution }
 import coursier.core.{ ArtifactSource, Configuration, Dependency, Info, Module }
+import coursier.version.VersionConstraint
+import scala.annotation.nowarn
 import scala.collection.immutable.Seq
 
 object ResolutionSerializer {
@@ -48,16 +50,20 @@ object ResolutionSerializer {
   ): Seq[DependencyLock] = {
     val dependencies = resolution.minDependencies
 
-    dependencies.toSeq.sortBy(d => (d.module.toString, d.version)).map { dep =>
+    dependencies.toSeq.sortBy(d => (d.module.toString, d.versionConstraint.asString)).map { dep =>
       val resolvedVersion: String = resolution.retainedVersions
         .get(dep.module) match {
         case Some(v) => s"$v"
-        case None    => s"${dep.version}"
+        case None    => s"${dep.versionConstraint.asString}"
       }
 
       val transitives = resolution
-        .dependenciesOf(dep, withRetainedVersions = true)
-        .map(d => s"${d.module.organization.value}:${d.module.name.value}:${d.version}")
+        .dependenciesOf0(dep, withRetainedVersions = true)
+        .toTry
+        .get
+        .map(d =>
+          s"${d.module.organization.value}:${d.module.name.value}:${d.versionConstraint.asString}"
+        )
         .sorted
 
       val artifacts = artifactMap.getOrElse(dep, Seq.empty).map { case (url, classifier, ext) =>
@@ -73,7 +79,7 @@ object ResolutionSerializer {
         organization = dep.module.organization.value,
         name = dep.module.name.value,
         version = resolvedVersion,
-        configuration = dep.configuration.value,
+        configuration = dep.variantSelector.repr,
         classifier = dep.attributes.classifier.value match {
           case "" => None
           case c  => Some(c)
@@ -120,7 +126,7 @@ object ResolutionSerializer {
           coursier.ModuleName(depLock.name),
           Map.empty[String, String]
         ),
-        depLock.version
+        VersionConstraint(depLock.version),
       )
     }.toSet
 
@@ -131,7 +137,7 @@ object ResolutionSerializer {
           coursier.ModuleName(depLock.name),
           Map.empty[String, String]
         )
-        val project = Project(
+        val project = (Project(
           module = module,
           version = depLock.version,
           dependencies = Seq.empty,
@@ -147,15 +153,15 @@ object ResolutionSerializer {
           actualVersionOpt = None,
           publications = Seq.empty,
           info = Info.empty
-        )
+        ): @nowarn)
         (module, depLock.version) -> (EmptyArtifactSource, project)
       }.toMap
 
-    Resolution()
+    (Resolution()
       .withRootDependencies(rootDeps)
       .withDependencies(dependencies)
       .withForceVersions(forceVersions ++ params.params.forceVersion)
-      .withProjectCache(projectCache)
+      .withProjectCache(projectCache): @nowarn)
   }
 
   private object EmptyArtifactSource extends ArtifactSource {

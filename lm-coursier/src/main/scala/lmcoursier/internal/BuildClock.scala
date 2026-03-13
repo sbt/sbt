@@ -14,14 +14,15 @@ object BuildClock {
   ): String = {
     val digest = MessageDigest.getInstance("SHA-1")
 
-    dependencies.sortBy(d => (d._1.value, d._2.module.toString, d._2.version)).foreach {
-      case (config, dep) =>
+    dependencies
+      .sortBy(d => (d._1.value, d._2.module.toString, d._2.versionConstraint.asString))
+      .foreach { case (config, dep) =>
         digest.update(config.value.getBytes("UTF-8"))
         digest.update(dep.module.organization.value.getBytes("UTF-8"))
         digest.update(dep.module.name.value.getBytes("UTF-8"))
-        digest.update(dep.version.getBytes("UTF-8"))
-        digest.update(dep.configuration.value.getBytes("UTF-8"))
-    }
+        digest.update(dep.versionConstraint.asString.getBytes("UTF-8"))
+        digest.update(dep.variantSelector.repr.getBytes("UTF-8"))
+      }
 
     repositories.foreach { repo =>
       digest.update(repo.toString.getBytes("UTF-8"))
@@ -33,9 +34,9 @@ object BuildClock {
 
     digest.update(params.params.maxIterations.toString.getBytes("UTF-8"))
 
-    params.params.forceVersion.toSeq.sortBy(_._1.toString).foreach { case (mod, ver) =>
+    params.params.forceVersion0.toSeq.sortBy(_._1.toString).foreach { case (mod, ver) =>
       digest.update(mod.toString.getBytes("UTF-8"))
-      digest.update(ver.getBytes("UTF-8"))
+      digest.update(ver.asString.getBytes("UTF-8"))
     }
 
     params.params.exclusions.toSeq.sortBy(e => (e._1.value, e._2.value)).foreach {

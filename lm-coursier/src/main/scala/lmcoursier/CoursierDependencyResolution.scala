@@ -27,7 +27,7 @@ import lmcoursier.internal.{
 import lmcoursier.syntax.*
 import sbt.librarymanagement.*
 import sbt.util.Logger
-import coursier.core.{ BomDependency, Dependency, Publication, VariantPublication }
+import coursier.core.BomDependency
 import scala.annotation.nowarn
 import scala.util.control.NonFatal
 import scala.util.{ Try, Failure }
@@ -365,7 +365,7 @@ class CoursierDependencyResolution(
         conf.lockFile,
         conf.scalaVersion
       )
-      artifactResult <- lockDataOpt match {
+      artifactResult0 <- lockDataOpt match {
         case Some(lockData) =>
           LockedArtifactsRun.fetchFromLockFile(lockData, cache0, verbosityLevel, log) match {
             case Right(arts) => Right(arts)
@@ -381,6 +381,11 @@ class CoursierDependencyResolution(
             .map(_.fullDetailedArtifacts0)
       }
     } yield {
+      val artifactResult = artifactResult0.map {
+        case (d, p: Publication, a, o) =>
+          (d, (Right(p): Either[VariantPublication, Publication]), a, o)
+        case (d, p: Either[VariantPublication, Publication], a, o) => (d, p, a, o)
+      }
       val updateParams0 = updateParams(resolutions, artifactResult)
       val report = UpdateRun.update(updateParams0, verbosityLevel, log)
       if (lockDataOpt.isEmpty) {
@@ -388,10 +393,13 @@ class CoursierDependencyResolution(
           val artifactMap = artifactResult
             .groupBy(_._1)
             .view
-            .mapValues(_.map { case (_, Right(pub), art, _) =>
-              val originalUrl =
-                lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(art.url, cache)
-              (originalUrl, pub.classifier.value, pub.ext.value)
+            .mapValues(_.map {
+              case (_, Right(pub), art, _) =>
+                val originalUrl =
+                  lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(art.url, cache)
+                (originalUrl, pub.classifier.value, pub.ext.value)
+              case (_, Left(pub), art, _) =>
+                sys.error("unspported")
             })
             .toMap
           val lockData = ResolutionSerializer.extractLockFileData(
@@ -416,25 +424,30 @@ class CoursierDependencyResolution(
   private type DependencyKey = (coursier.core.Module, String)
 
   private def dependencyKey(dependency: Dependency): DependencyKey =
-    dependency.module -> dependency.version
+    dependency.module -> dependency.versionConstraint.asString
 
   private def sortDependencies(dependencies: Seq[Dependency]): Vector[Dependency] =
     dependencies.toVector.sortBy { dep =>
-      (dep.module.organization.value, dep.module.name.value, dep.version)
+      (dep.module.organization.value, dep.module.name.value, dep.versionConstraint.asString)
     }
 
   private def safeDependenciesOf(
       resolution: Resolution,
       dependency: Dependency
   ): Vector[Dependency] =
-    try sortDependencies(resolution.dependenciesOf(dependency, false, false))
+    try
+      resolution.dependenciesOf0(dependency, false, false) match
+        case Right(deps) => sortDependencies(deps)
+        case Left(_)     => Vector.empty
     catch {
       case NonFatal(_) => Vector.empty
     }
 
   private def pathScore(path: Vector[Dependency]): (Int, String) =
     path.size -> path
-      .map(dep => s"${dep.module.organization.value}:${dep.module.name.value}:${dep.version}")
+      .map(dep =>
+        s"${dep.module.organization.value}:${dep.module.name.value}:${dep.versionConstraint.asString}"
+      )
       .mkString("->")
 
   private def betterPath(
@@ -494,7 +507,9 @@ class CoursierDependencyResolution(
       }
       .getOrElse(Vector(failedDependency))
 
-    normalizedRootModule +: resolvedPath.map(dep => toModuleId(dep.module, dep.version))
+    normalizedRootModule +: resolvedPath.map(dep =>
+      toModuleId(dep.module, dep.versionConstraint.asString)
+    )
   }
 
   private def failedPaths(
@@ -503,8 +518,8 @@ class CoursierDependencyResolution(
       downloadErrors: Seq[coursier.error.ResolutionError.CantDownloadModule]
   ): Map[ModuleID, Seq[ModuleID]] =
     downloadErrors.map { err =>
-      val failedDependency = Dependency(err.module, err.version)
-      val failedModule = toModuleId(err.module, err.version)
+      val failedDependency = (Dependency(err.module, err.versionConstraint.asString): @nowarn)
+      val failedModule = toModuleId(err.module, err.versionConstraint.asString)
       failedModule -> resolvePath(resolution, failedDependency, rootModule)
     }.toMap
 

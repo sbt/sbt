@@ -2,6 +2,7 @@ package lmcoursier.internal
 
 import coursier.cache.FileCache
 import coursier.core.{ Classifier, Dependency, Extension, Publication, Type }
+import coursier.version.VersionConstraint
 import coursier.util.Artifact
 import sbt.util.Logger
 
@@ -36,7 +37,7 @@ object LockedArtifactsRun {
 
       val dependency = Dependency(
         module = module,
-        version = depLock.version
+        version = VersionConstraint(depLock.version)
       )
 
       val classifier = Classifier(artLock.classifier.getOrElse(""))
