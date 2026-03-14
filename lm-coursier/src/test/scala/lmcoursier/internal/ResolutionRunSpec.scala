@@ -2,6 +2,7 @@ package lmcoursier.internal
 
 import coursier.core.{ Module, ModuleName, Organization, Resolution }
 import coursier.error.ResolutionError.CantDownloadModule
+import coursier.version.VersionConstraint
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 
@@ -11,7 +12,7 @@ class ResolutionRunSpec extends AnyFunSuite with Matchers:
     new CantDownloadModule(
       Resolution(),
       Module(Organization("org"), ModuleName("mod"), Map.empty),
-      "1.0",
+      VersionConstraint("1.0"),
       errors.toSeq
     )
 
