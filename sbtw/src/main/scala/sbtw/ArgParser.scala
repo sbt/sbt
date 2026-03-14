@@ -53,5 +53,6 @@ object ArgParser:
       .parse(parser, args, LauncherOptions())
       .map: opts =>
         val sbtNew = opts.residual.contains("new") || opts.residual.contains("init")
-        opts.copy(sbtNew = sbtNew)
+        val isScript = opts.residual.exists(_.startsWith("-Dsbt.main.class=sbt.ScriptMain"))
+        opts.copy(sbtNew = sbtNew, allowEmpty = opts.allowEmpty || isScript)
 end ArgParser

@@ -184,6 +184,7 @@ final class ScriptMain extends xsbti.AppMain {
 private[sbt] object ScriptMain {
   private[sbt] def run(configuration: xsbti.AppConfiguration): xsbti.MainResult = {
     import BasicCommandStrings.runEarly
+    Plugins.defaultRequires = sbt.plugins.JvmPlugin
     val state = StandardMain.initialState(
       xMain.dealiasBaseDirectory(configuration),
       BuiltinCommands.ScriptCommands,
