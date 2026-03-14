@@ -389,7 +389,7 @@ class CoursierDependencyResolution(
       val updateParams0 = updateParams(resolutions, artifactResult)
       val report = UpdateRun.update(updateParams0, verbosityLevel, log)
       if (lockDataOpt.isEmpty) {
-        conf.lockFile.foreach { lockFile =>
+        conf.lockFile.foreach: lockFile =>
           val artifactMap = artifactResult
             .groupBy(_._1)
             .view
@@ -399,18 +399,18 @@ class CoursierDependencyResolution(
                   lmcoursier.internal.CacheUrlConversion.cacheFileToOriginalUrl(art.url, cache)
                 (originalUrl, pub.classifier.value, pub.ext.value)
               case (_, Left(pub), art, _) =>
-                sys.error("unspported")
+                sys.error("unsupported")
             })
             .toMap
-          val lockData = ResolutionSerializer.extractLockFileData(
+          ResolutionSerializer.extractLockFileData(
             resolutions,
             resolutionParams,
             conf.scalaVersion,
             "2.0.0",
             artifactMap
-          )
-          LockFile.write(lockFile, lockData)
-        }
+          ) match
+            case Right(lockData) => LockFile.write(lockFile, lockData)
+            case Left(err)       => throw err
       }
       report
     }
