@@ -89,7 +89,7 @@ object ConsoleProject:
     val imports = BuildUtil.getImports(unit.unit) ++ BuildUtil.importAll(bindings.map(_._1))
     val importString = imports.mkString("", ";\n", ";\n\n")
     val initCommands = importString + extra
-    val loader = ClasspathUtil.makeLoader(unit.classpath, si, tempDir)
+    val loader = ClasspathUtil.makeLoader(unit.classpath, si.loaderLibraryOnly, si, tempDir)
     val terminal = Terminal.get
     // TODO - Hook up dsl classpath correctly...
     (new Console(compiler))(

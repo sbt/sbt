@@ -108,6 +108,16 @@ object LMCoursier {
         (o.value, n.value)
       }
       .sorted
+    // When scalaOrganization differs from default, automatically exclude
+    // org.scala-lang Scala artifacts to prevent classpath conflicts (#8821)
+    val scalaOrgExclusions: Vector[(String, String)] =
+      if (scalaOrg != ScalaArtifacts.Organization) {
+        Vector(
+          "scala-library", "scala-compiler", "scala-reflect",
+          "scala3-library_3", "scala3-compiler_3", "scala3-interfaces",
+          "tasty-core_3"
+        ).map(n => (ScalaArtifacts.Organization, n))
+      } else Vector.empty
     val autoScala = autoScalaLib && scalaModInfo.forall(
       _.overrideScalaVersion
     )
@@ -127,7 +137,7 @@ object LMCoursier {
       .withInterProjectDependencies(interProjectDependencies.toVector)
       .withExtraProjects(extraProjects.toVector)
       .withFallbackDependencies(fallbackDeps.toVector)
-      .withExcludeDependencies(coursierExcludeDeps)
+      .withExcludeDependencies(coursierExcludeDeps ++ scalaOrgExclusions)
       .withAutoScalaLibrary(autoScala)
       .withSbtScalaJars(sbtBootJars.toVector)
       .withSbtScalaVersion(sbtScalaVersion)
