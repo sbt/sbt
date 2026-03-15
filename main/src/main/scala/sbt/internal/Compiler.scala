@@ -334,7 +334,7 @@ object Compiler:
       val cpFiles = cp.map(converter.toPath).map(_.toFile())
       val fullcp = (cpFiles ++ si.allJars).distinct
       val tempDir = IO.createUniqueDirectory((task / Keys.taskTemporaryDirectory).value).toPath
-      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si, tempDir)
+      val loader = ClasspathUtil.makeLoader(fullcp.map(_.toPath), si.loaderLibraryOnly, si, tempDir)
       val compiler =
         (task / Keys.compilers).value.scalac match
           case ac: AnalyzingCompiler => ac.onArgs(exported(s, "scala"))
