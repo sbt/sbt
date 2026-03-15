@@ -431,7 +431,7 @@ private[sbt] object Load {
                 yield ((ref / ConfigKey(c.name) / configuration) :== c)
             val builtin: Seq[Setting[?]] =
               (thisProject :== project) +: (thisProjectRef :== ref) +: defineConfig
-            val settings = builtin ++ injectSettings.project ++ project.settings
+            val settings = builtin ++ project.settings ++ injectSettings.project
             // map This to thisScope, Select(p) to mapRef(uri, rootProject, p)
             val transformed = transformSettings(projectScope(ref), uri, rootProject, settings)
             transformed.partition { s =>
