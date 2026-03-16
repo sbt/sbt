@@ -1,0 +1,11 @@
+# Generate docs initially
+> doc
+> checkApiDirExists
+
+# Delete the output directory
+> deleteApiDir
+> checkApiDirAbsent
+
+# Running doc again should regenerate
+> doc
+> checkApiDirExists
