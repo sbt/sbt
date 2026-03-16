@@ -16,7 +16,11 @@ import sbt.internal.util.EmptyCacheError
 
 import sjsonnew.{ JsonFormat, JsonWriter }
 import sjsonnew.support.murmurhash.Hasher
-import scala.annotation.nowarn
+import scala.annotation.{ nowarn, tailrec }
+import sbt.io.syntax.*
+import sbt.util.CacheImplicits.*
+import sbt.util.FileInfo.{ exists, hash, lastModified }
+import sbt.internal.util.ManagedLogger
 
 object Tracked {
 
@@ -310,6 +314,73 @@ object Tracked {
 
   private[sbt] def isStrictMode: Boolean =
     java.lang.Boolean.getBoolean("sbt.strict")
+
+  /**
+   * Extracts files referenced by file-taking options (e.g. `-doc-root-content path`).
+   * For each option name in `fileInputOpts`, looks for a following argument
+   * that is a path to an existing file.
+   */
+  def optionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] =
+    @tailrec
+    def loop(opt: List[String], result: List[File]): List[File] =
+      opt.dropWhile(!fileInputOpts.contains(_)) match
+        case List(_, fileOpt, tail*) =>
+          val file = new File(fileOpt)
+          if file.isFile then loop(tail.toList, file :: result)
+          else loop(tail.toList, result)
+        case _ => result
+    loop(options.toList, Nil)
+
+  /**
+   * Creates a cached version of a source-to-output-directory transformation (e.g. compilation,
+   * doc generation). The action only runs if the inputs (source hashes, classpath timestamps,
+   * output directory, or options) or the output files have changed.
+   *
+   * This is the shared caching pattern used by both `RawCompileLike.cached` and `Compiler.cachedDoc`.
+   *
+   * @param cacheStoreFactory factory for creating cache stores
+   * @param sources source files to track by content hash
+   * @param classpath classpath entries to track by modification time
+   * @param outputDirectory the output directory; tracked via `FileInfo.exists`
+   * @param options compiler/doc options
+   * @param fileInputOpts option names that take a file path argument (e.g. `-doc-root-content`)
+   * @param log logger for debug messages
+   * @param action the work to perform when inputs or outputs have changed
+   */
+  def cachedTransform(
+      cacheStoreFactory: CacheStoreFactory,
+      sources: Seq[File],
+      classpath: Seq[File],
+      outputDirectory: File,
+      options: Seq[String],
+      fileInputOpts: Seq[String],
+      log: ManagedLogger,
+  )(action: => Unit): Unit =
+    val optFiles = optionFiles(options, fileInputOpts)
+    type Inputs = (
+        FilesInfo[HashFileInfo],
+        FilesInfo[ModifiedFileInfo],
+        File,
+        Seq[String],
+    )
+    val inputs: Inputs = (
+      hash(sources.toSet ++ optFiles),
+      FilesInfo[ModifiedFileInfo](classpath.toSet.map(lastModified.fileOrDirectoryMax)),
+      outputDirectory,
+      options,
+    )
+    val cached =
+      inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
+        inputChanged(cacheStoreFactory.make("output")) {
+          (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
+            println(
+              s"[cachedTransform] inChanged=$inChanged outChanged=$outChanged outputDirectory=$outputDirectory"
+            )
+            if inChanged || outChanged then action
+            else log.debug("Uptodate: " + outputDirectory.getAbsolutePath)
+        }
+      }
+    cached(inputs)(exists(outputDirectory.allPaths.get().toSet))
 }
 
 trait Tracked {

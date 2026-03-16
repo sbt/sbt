@@ -529,56 +529,26 @@ object Compiler:
       converter: xsbti.FileConverter,
       scalac: AnalyzingCompiler,
   ): Unit =
-    import sbt.io.syntax.*
-    import sbt.util.CacheImplicits.*
-    import sbt.util.Tracked.inputChanged
-    import sbt.util.{ FilesInfo, HashFileInfo, ModifiedFileInfo, PlainFileInfo }
-    import sbt.util.FileInfo.{ exists, hash, lastModified }
     val cpFiles = cp.map(converter.toPath(_).toFile)
-    val optFiles = optionFiles(options, fileInputOpts)
-    type Inputs = (
-        FilesInfo[HashFileInfo],
-        FilesInfo[ModifiedFileInfo],
-        File,
-        Seq[String],
-    )
-    val inputs: Inputs = (
-      hash(docSrcFiles.toSet ++ optFiles),
-      FilesInfo[ModifiedFileInfo](cpFiles.toSet.map(lastModified.fileOrDirectoryMax)),
+    sbt.util.Tracked.cachedTransform(
+      s.cacheStoreFactory,
+      docSrcFiles,
+      cpFiles,
       out,
       options,
-    )
-    val cacheStoreFactory = s.cacheStoreFactory
-    val cachedComp =
-      inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
-        inputChanged(cacheStoreFactory.make("output")) {
-          (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
-            if inChanged || outChanged then
-              IO.delete(out)
-              IO.createDirectory(out)
-              scalac.doc(
-                docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
-                converter,
-                out.toPath(),
-                options,
-                maxErrors,
-                s.log,
-              )
-            else s.log.debug("Uptodate: " + out.getAbsolutePath)
-        }
-      }
-    cachedComp(inputs)(exists(out.allPaths.get().toSet))
-
-  private def optionFiles(options: Seq[String], fileInputOpts: Seq[String]): List[File] =
-    import scala.annotation.tailrec
-    @tailrec
-    def loop(opt: List[String], result: List[File]): List[File] =
-      opt.dropWhile(!fileInputOpts.contains(_)) match
-        case List(_, fileOpt, tail*) =>
-          val file = new File(fileOpt)
-          if file.isFile then loop(tail.toList, file :: result)
-          else loop(tail.toList, result)
-        case _ => result
-    loop(options.toList, Nil)
+      fileInputOpts,
+      s.log,
+    ) {
+      IO.delete(out)
+      IO.createDirectory(out)
+      scalac.doc(
+        docSrcFiles.map(_.toPath()).map(new sbt.internal.inc.PlainVirtualFile(_)),
+        cp.map(converter.toPath).map(new sbt.internal.inc.PlainVirtualFile(_)),
+        converter,
+        out.toPath(),
+        options,
+        maxErrors,
+        s.log,
+      )
+    }
 end Compiler

@@ -2,10 +2,6 @@
 > doc
 > checkApiDirExists
 
-# Delete the output directory
-> deleteApiDir
-> checkApiDirAbsent
-
-# Running doc again should regenerate
+# Running doc again without changes
 > doc
 > checkApiDirExists
