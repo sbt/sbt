@@ -373,9 +373,6 @@ object Tracked {
       inputChanged(cacheStoreFactory.make("inputs")) { (inChanged, in: Inputs) =>
         inputChanged(cacheStoreFactory.make("output")) {
           (outChanged, outputs: FilesInfo[PlainFileInfo]) =>
-            println(
-              s"[cachedTransform] inChanged=$inChanged outChanged=$outChanged outputDirectory=$outputDirectory"
-            )
             if inChanged || outChanged then action
             else log.debug("Uptodate: " + outputDirectory.getAbsolutePath)
         }
