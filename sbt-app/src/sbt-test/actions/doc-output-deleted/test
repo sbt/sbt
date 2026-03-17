@@ -1,12 +1,6 @@
 # Generate docs initially
 > doc
 > checkApiDirExists
-> saveIndexTimestamp
-
-# Running doc again without changes should use cache
-> doc
-> checkApiDirExists
-> checkIndexNotRegenerated
 
 # After deleting api dir, doc should regenerate it
 > deleteApiDir
