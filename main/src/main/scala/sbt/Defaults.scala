@@ -603,6 +603,11 @@ object Defaults extends BuildCommon {
         .map(d => Globs(d.toPath, recursive = true, filter)) ++ baseSources
     },
     unmanagedSources := Def.uncached((unmanagedSources / inputFileStamps).value.map(_._1.toFile)),
+    unmanagedSourcesVF := Def.uncached {
+      val conv = fileConverter.value
+      unmanagedSources.value.toVector.map: x =>
+        (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     managedSourceDirectories := Seq(sourceManaged.value),
     managedSources := {
       val stamper = inputFileStamper.value
@@ -613,13 +618,23 @@ object Defaults extends BuildCommon {
       }
       Def.uncached(res)
     },
+    managedSourcesVF := Def.uncached {
+      val conv = fileConverter.value
+      managedSources.value.toVector.map: x =>
+        (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     managedSourcePaths / outputFileStamper := sbt.nio.FileStamper.Hash,
     managedSourcePaths := managedSources.value.map(_.toPath),
     sourceGenerators :== Nil,
     sourceDirectories := Classpaths
       .concatSettings(unmanagedSourceDirectories, managedSourceDirectories)
       .value,
-    sources := Classpaths.concatDistinct(unmanagedSources, managedSources).value
+    sources := Classpaths.concatDistinct(unmanagedSources, managedSources).value,
+    sourcesVF := Def.uncached {
+      val conv = fileConverter.value
+      sources.value.toVector.map: x =>
+        (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
   )
   lazy val resourceConfigPaths = Seq(
     resourceDirectory := sourceDirectory.value / "resources",
@@ -641,12 +656,25 @@ object Defaults extends BuildCommon {
     unmanagedResources := Def.uncached(
       (unmanagedResources / inputFileStamps).value.map(_._1.toFile)
     ),
+    unmanagedResourcesVF := Def.uncached {
+      val conv = fileConverter.value
+      unmanagedResources.value.toVector.map: x =>
+        (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     resourceGenerators :== Nil,
     resourceGenerators += (Def.task {
       PluginDiscovery.writeDescriptors(discoveredSbtPlugins.value, resourceManaged.value)
     }).taskValue,
     managedResources := generate(resourceGenerators).value,
+    managedResourcesVF := Def.uncached {
+      val conv = fileConverter.value
+      managedResources.value.toVector.map: x =>
+        (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+    },
     resources := Classpaths.concat(managedResources, unmanagedResources).value,
+    resourcesVF := Def.uncached(
+      managedResourcesVF.value ++ unmanagedResourcesVF.value
+    ),
     resourceDigests := Def.uncached {
       val uifs = (unmanagedResources / inputFileStamps).value
       val mifs = (managedResources / inputFileStamps).value
@@ -976,6 +1004,11 @@ object Defaults extends BuildCommon {
           tastyFiles.map(_.getAbsoluteFile)
         } else Nil
       }.value,
+      tastyFilesVF := Def.uncached {
+        val conv = fileConverter.value
+        tastyFiles.value.map: x =>
+          (conv.toVirtualFile(x.toPath()): HashedVirtualFileRef)
+      },
       clean := {
         (compileOutputs / clean).value
         (products / clean).value
@@ -2118,7 +2151,12 @@ object Defaults extends BuildCommon {
             case _ => () // do nothing
           }
           out
-        }
+        },
+        (TaskZero / docVF) := Def.uncached {
+          val conv = fileConverter.value
+          val orig = (TaskZero / key).value
+          (conv.toVirtualFile(orig.toPath()): HashedVirtualFileRef)
+        },
       ) ++ compilersSetting
     )
 
@@ -2339,9 +2377,9 @@ object Defaults extends BuildCommon {
         val cp0 = classpathTask.value
         val cp1 = backendOutput.value +: data(cp0)
         val cp = cp1.map(c.toPath).map(c.toVirtualFile)
-        val vs = sources.value.toVector map { x =>
-          c.toVirtualFile(x.toPath)
-        }
+        val vs0 = sourcesVF.value
+        val vs = vs0.toVector.map: x =>
+          c.toVirtualFile(c.toPath(x))
         val eo = CompileOutput(c.toPath(earlyOutput.value))
         val eoOpt =
           if (exportPipelining.value) Some(eo)
@@ -2388,7 +2426,7 @@ object Defaults extends BuildCommon {
         val c = fileConverter.value
         CompileInputs2(
           data(cp0).toVector,
-          inputs.options.sources.toVector,
+          sourcesVF.value,
           scalacOptions.value.toVector,
           javacOptions.value.toVector,
           c.toVirtualFile(inputs.options.classesDirectory),

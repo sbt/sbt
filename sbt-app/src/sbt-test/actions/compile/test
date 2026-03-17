@@ -1,5 +1,5 @@
 -> compile
 
-> 'set Compile / compile / sources := Def.uncached { val src = (Compile / compile / sources).value; src.filterNot(_.getName contains "C") }'
+> 'set Compile / compile / sourcesVF := { val src = (Compile / compile / sourcesVF).value; src.filterNot(_.name contains "C") }'
 
 > compile
