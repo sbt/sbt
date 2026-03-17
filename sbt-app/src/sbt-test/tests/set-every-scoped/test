@@ -1,0 +1,10 @@
+# set every with a scoped key should only affect that scope across all projects
+> set every Test / sources := Nil
+
+# Compile / sources should still be non-empty for all projects
+> a/checkCompileSourcesNonEmpty
+> b/checkCompileSourcesNonEmpty
+
+# Test / sources should be empty for all projects
+> a/checkTestSourcesEmpty
+> b/checkTestSourcesEmpty

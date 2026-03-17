@@ -55,12 +55,33 @@ private[sbt] object SettingCompletions {
     def resolve(s: Setting[?]): Seq[Setting[?]] =
       Load.transformSettings(projectScope, currentRef.build, rootProject, s :: Nil)
 
+    def thisToZero[T](axis: ScopeAxis[T]): ScopeAxis[T] =
+      axis match
+        case This => Zero
+        case a    => a
+
+    def axisMatches[T](user: ScopeAxis[T], existing: ScopeAxis[T]): Boolean =
+      user match
+        case Zero | This => true
+        case Select(_)   => user == existing
+
     def rescope[T](setting: Setting[T]): Seq[Setting[?]] = {
       val akey = setting.key.key
-      val global = ScopedKey(Global, akey)
+      val userScope = setting.key.scope
+      val baseScope = Scope(
+        Zero,
+        thisToZero(userScope.config),
+        thisToZero(userScope.task),
+        thisToZero(userScope.extra),
+      )
+      val global = ScopedKey(baseScope, akey)
       val globalSetting = resolve(Def.setting(global, setting.init, setting.pos))
       globalSetting ++ allDefs.flatMap { d =>
-        if d.key == akey then Seq((d.scope / SettingKey(akey)) := global.value)
+        if d.key == akey
+          && axisMatches(userScope.config, d.scope.config)
+          && axisMatches(userScope.task, d.scope.task)
+          && axisMatches(userScope.extra, d.scope.extra)
+        then Seq((d.scope / SettingKey(akey)) := global.value)
         else Nil
       }
     }
