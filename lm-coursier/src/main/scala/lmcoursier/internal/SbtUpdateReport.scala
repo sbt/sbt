@@ -361,6 +361,22 @@ private[internal] object SbtUpdateReport {
       classLoaders: Seq[ClassLoader],
   ): UpdateReport = {
 
+    val skipConflictDetail: Map[Configuration, Boolean] =
+      resolutions.map { case (cfg, subRes) =>
+        cfg -> RelocationCycleDetector.hasRelocationCycle(subRes)
+      }.toMap
+    val configsWithRelocationCycle =
+      skipConflictDetail.collect { case (cfg, true) => cfg.value }.toSeq.sorted
+    if (configsWithRelocationCycle.nonEmpty) {
+      log.warn(
+        "Skipping dependency conflict detail for configuration(s) " +
+          configsWithRelocationCycle.mkString(", ") +
+          ": cyclic Maven or Gradle relocations in the resolved graph. " +
+          "Resolution succeeded; eviction detail may be incomplete. " +
+          "See https://github.com/sbt/sbt/issues/8917"
+      )
+    }
+
     val configReports = resolutions.map { (config, subRes) =>
       val reports = moduleReports(
         thisModule,
@@ -396,7 +412,9 @@ private[internal] object SbtUpdateReport {
       }
 
       def conflicts: Seq[coursier.graph.Conflict] =
-        try coursier.graph.Conflict(subRes)
+        try
+          if (skipConflictDetail.getOrElse(config, false)) Nil
+          else coursier.graph.Conflict(subRes)
         catch case e: Throwable if missingOk => Nil
       val evicted = for {
         c <- conflicts

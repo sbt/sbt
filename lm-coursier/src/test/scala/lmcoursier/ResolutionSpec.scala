@@ -296,6 +296,19 @@ final class ResolutionSpec extends AnyPropSpec with Matchers {
     assert(resolution.isRight)
   }
 
+  property("resolve sbt-site 1.4.1 (sbt #8917)") {
+    val pluginAttributes = Map("scalaVersion" -> "2.12", "sbtVersion" -> "1.0")
+    val dependencies =
+      Vector(("com.typesafe.sbt" % "sbt-site" % "1.4.1").withExtraAttributes(pluginAttributes))
+    val coursierModule = module(lmEngine, stubModule, dependencies, Some("2.12.4"))
+    val resolution =
+      lmEngine.update(coursierModule, UpdateConfiguration(), UnresolvedWarningConfiguration(), log)
+    assert(resolution.isRight)
+    val compileConfig =
+      resolution.toOption.get.configurations.find(_.configuration == Compile.toConfigRef).get
+    compileConfig.modules.map(_.module.name) should not be empty
+  }
+
   property("resolve licenses from parent poms") {
     val dependencies =
       Vector(("org.apache.commons" % "commons-compress" % "1.26.2"))
