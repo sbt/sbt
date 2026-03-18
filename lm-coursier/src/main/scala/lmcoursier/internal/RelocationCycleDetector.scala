@@ -6,12 +6,13 @@ import coursier.{ Dependency, Resolution }
 
 import scala.annotation.tailrec
 
-/** Detects cyclic Maven / Gradle relocation chains that make
-  * `coursier.graph.DependencyTree` loop forever (see sbt#8917, coursier#3578).
-  *
-  * Mirrors one step of `coursier.graph.DependencyTree.Node.relocation` so we
-  * only skip `Conflict` when Coursier would spin on the same graph.
-  */
+/**
+ * Detects cyclic Maven / Gradle relocation chains that make
+ * `coursier.graph.DependencyTree` loop forever (see sbt#8917, coursier#3578).
+ *
+ * Mirrors one step of `coursier.graph.DependencyTree.Node.relocation` so we
+ * only skip `Conflict` when Coursier would spin on the same graph.
+ */
 private[internal] object RelocationCycleDetector {
 
   type Mvc = CoreResolution.ModuleVersionConstraint
