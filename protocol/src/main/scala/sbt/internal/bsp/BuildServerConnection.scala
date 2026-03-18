@@ -26,42 +26,48 @@ object BuildServerConnection {
 
   private[sbt] def writeConnectionFile(sbtVersion: String, baseDir: File): Unit = {
     val bspConnectionFile = new File(baseDir, ".bsp/sbt.json")
-    val javaHome = Util.javaHome
-    val classPath = System.getProperty("java.class.path")
 
     val sbtScript = Option(System.getProperty("sbt.script"))
+      .map(_.replace("%20", " "))
+      .filter(_.nonEmpty)
       .orElse(sbtScriptInPath)
-      .map(script => s"-Dsbt.script=$script")
 
-    val sbtOptsArgs = parseSbtOpts(sys.env.get("SBT_OPTS"))
-
-    val sbtLaunchJar = classPath
-      .split(File.pathSeparator)
-      .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
-      .map(_.replace(" ", "%20"))
-      .map(jar => s"--sbt-launch-jar=$jar")
-
-    val argv =
-      Vector(
-        s"$javaHome/bin/java",
-        "-Xms100m",
-        "-Xmx100m",
-      ) ++
-        sbtOptsArgs ++
-        Vector(
-          "-classpath",
-          classPath,
-        ) ++
-        sbtScript ++
-        Vector("xsbt.boot.Boot", "-bsp") ++
-        (if (sbtScript.isEmpty) sbtLaunchJar else None)
+    val argv = sbtScript match
+      case Some(script) =>
+        Vector(script, "bsp")
+      case None =>
+        buildFallbackArgv
 
     val details = BspConnectionDetails(name, sbtVersion, bspVersion, languages, argv)
     val json = Converter.toJson(details).get
     IO.write(bspConnectionFile, CompactPrinter(json), append = false)
   }
 
-  private def sbtScriptInPath: Option[String] = {
+  private[sbt] def buildFallbackArgv: Vector[String] = {
+    val javaHome = Util.javaHome
+    val classPath = System.getProperty("java.class.path")
+    val sbtOptsArgs = parseSbtOpts(sys.env.get("SBT_OPTS"))
+    val sbtLaunchJar = classPath
+      .split(File.pathSeparator)
+      .find(jar => SbtLaunchJar.findFirstIn(jar).nonEmpty)
+      .map(_.replace(" ", "%20"))
+      .map(jar => s"--sbt-launch-jar=$jar")
+
+    Vector(
+      s"$javaHome/bin/java",
+      "-Xms100m",
+      "-Xmx100m",
+    ) ++
+      sbtOptsArgs ++
+      Vector(
+        "-classpath",
+        classPath,
+      ) ++
+      Vector("xsbt.boot.Boot", "-bsp") ++
+      sbtLaunchJar
+  }
+
+  private[sbt] def sbtScriptInPath: Option[String] = {
     val fileName = if (Properties.isWin) "sbt.bat" else "sbt"
     val envPath = sys.env.collectFirst {
       case (k, v) if k.toUpperCase() == "PATH" => v
@@ -72,7 +78,7 @@ object BuildServerConnection {
     allPaths
       .map(_.resolve(fileName))
       .find(file => Files.exists(file) && Files.isExecutable(file))
-      .map(_.toString.replace(" ", "%20"))
+      .map(_.toString)
   }
 
   private[sbt] def parseSbtOpts(sbtOpts: Option[String]): Vector[String] =

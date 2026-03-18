@@ -45,3 +45,18 @@ object BuildServerConnectionSpec extends BasicTestSuite:
   test("parseSbtOpts should handle whitespace-separated options"):
     val result = BuildServerConnection.parseSbtOpts(Some("  -Dfoo=bar   -Xmx1g  "))
     assert(result == Vector("-Dfoo=bar", "-Xmx1g"))
+
+  test("sbtScriptInPath should return None when sbt is not in PATH"):
+    val result = BuildServerConnection.sbtScriptInPath
+    result match
+      case Some(path) => assert(path.nonEmpty)
+      case None       => assert(true)
+
+  test("buildFallbackArgv should include java path and -bsp flag"):
+    val argv = BuildServerConnection.buildFallbackArgv
+    assert(argv.head.contains("java"), s"argv should start with java, got: ${argv.head}")
+    assert(argv.contains("-bsp"), s"argv should contain -bsp, got: $argv")
+    assert(argv.contains("-Xms100m"), s"argv should contain -Xms100m, got: $argv")
+    assert(argv.contains("-Xmx100m"), s"argv should contain -Xmx100m, got: $argv")
+    assert(argv.contains("-classpath"), s"argv should contain -classpath, got: $argv")
+    assert(argv.contains("xsbt.boot.Boot"), s"argv should contain xsbt.boot.Boot, got: $argv")

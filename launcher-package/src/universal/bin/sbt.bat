@@ -442,6 +442,11 @@ if "%~0" == "shutdownall" (
   goto args_loop
 )
 
+if "%~0" == "bsp" (
+  set sbt_args_client=0
+  goto args_loop
+)
+
 if "%~0" == "--script-version" (
   set sbt_args_print_sbt_script_version=1
   goto args_loop

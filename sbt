@@ -826,6 +826,7 @@ process_args () {
  -Dsbt.color=never|-Dsbt.log.noformat=true) addJava "$1" && use_colors=0 && shift ;;
                   "-D*"|-D*) addJava "$1" && shift ;;
                         -J*) addJava "${1:2}" && shift ;;
+                        bsp) use_sbtn=0 && addResidual "-bsp" && shift ;;
                           *) addResidual "$1" && shift ;;
     esac
   done

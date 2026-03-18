@@ -51,8 +51,11 @@ object Main:
       else System.err.println("[error] sbt requires at least JDK 8+, you have " + javaVer)
       return 1
 
+    val bspMode = opts.residual.exists(a => a == "bsp" || a == "-bsp" || a == "--bsp")
     val clientOpt = opts.client || sys.env.get("SBT_NATIVE_CLIENT").contains("true")
-    val useNativeClient = shouldRunNativeClient(opts.copy(client = clientOpt), buildPropsVersion)
+    val useNativeClient =
+      if bspMode then false
+      else shouldRunNativeClient(opts.copy(client = clientOpt), buildPropsVersion)
 
     if useNativeClient then
       val scriptPath = sbtBinDir.getAbsolutePath.replace("\\", "/") + "/sbt.bat"

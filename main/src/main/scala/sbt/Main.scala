@@ -75,7 +75,7 @@ private[sbt] object xMain:
         .map(_.trim)
         .filterNot(_ == DashDashServer)
       val isClient: String => Boolean = cmd => (cmd == JavaClient) || (cmd == DashDashClient)
-      val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp")
+      val isBsp: String => Boolean = cmd => (cmd == "-bsp") || (cmd == "--bsp") || (cmd == "bsp")
       val isNew: String => Boolean = cmd => (cmd == "new") || (cmd == "init")
       lazy val isServer = !userCommands.exists(c => isBsp(c) || isClient(c))
       // keep this lazy to prevent project directory created prematurely

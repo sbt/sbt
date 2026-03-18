@@ -49,8 +49,14 @@ object BspConfigTest extends BasicTestSuite:
 
       // Verify argv structure
       assert(argv.nonEmpty, "argv should not be empty")
-      assert(argv.head.contains("java"), s"argv should start with java command, got: ${argv.head}")
-      assert(argv.contains("-bsp"), s"argv should contain -bsp flag, got: $argv")
+      // When sbt script is available, argv uses the sbt script with "bsp" command.
+      // When not, argv falls back to direct java invocation with "-bsp" flag.
+      val usesSbtScript = argv.last == "bsp" && !argv.head.contains("java")
+      val usesJavaDirect = argv.head.contains("java") && argv.contains("-bsp")
+      assert(
+        usesSbtScript || usesJavaDirect,
+        s"argv should either use sbt script with 'bsp' command or java with '-bsp' flag, got: $argv"
+      )
 
       // Test execution of the generated argv
       // Run the BSP command with a very short timeout to verify it starts correctly
