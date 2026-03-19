@@ -41,9 +41,11 @@ private[sbt] object IvyUtil {
     private val _r = """.*HTTP response code: (5\d{2}|408|429).*""".r
 
     @inline private def check(s: String): Boolean = {
-      if (s == null) return false
-
-      _r.pattern.matcher(s).matches()
+      if (s == null) {
+        false
+      } else {
+        _r.pattern.matcher(s).matches()
+      }
     }
 
     def apply(t: Throwable): Boolean = t match {

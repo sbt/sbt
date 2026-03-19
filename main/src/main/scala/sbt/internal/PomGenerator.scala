@@ -240,6 +240,7 @@ private[sbt] object PomGenerator:
         (scope, optional)
 
   /** Convert Ivy-style dynamic versions to Maven range format. */
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   private def convertVersion(version: String): String =
     if version == null then null
     else if version.endsWith("+") then

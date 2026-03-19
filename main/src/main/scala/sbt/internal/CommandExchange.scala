@@ -516,6 +516,8 @@ private[sbt] final class CommandExchange {
   private def notifyOtherServers(): Unit = {
     val thread = new Thread("sbt-notify-other-servers") {
       setDaemon(true)
+
+      @SuppressWarnings(Array("scalafix:DisableSyntax"))
       override def run(): Unit = {
         val procDir = SysProp.globalLocalCache / "proc"
         if (!procDir.exists) return

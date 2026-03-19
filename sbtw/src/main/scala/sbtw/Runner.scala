@@ -70,6 +70,7 @@ object Runner:
     if opts.jvmClient then s = s :+ "--client"
     s
 
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def runNativeClient(sbtBinDir: File, scriptPath: String, opts: LauncherOptions): Int =
     val sbtn = new File(sbtBinDir, "sbtn-x86_64-pc-win32.exe")
     if !sbtn.isFile then

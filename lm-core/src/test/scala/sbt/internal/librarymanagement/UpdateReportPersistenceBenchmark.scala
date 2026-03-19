@@ -31,6 +31,7 @@ final case class BenchmarkResult(
 
 object UpdateReportPersistenceBenchmark:
 
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def run(
       iterations: Int = 500,
       configs: Seq[String] = Seq("compile", "test"),

@@ -111,14 +111,17 @@ private[sbt] case class SbtChainResolver(
 
     /* Copy pasted from `IvyStringUtils` to handle `Throwable` */
     private def getStackTrace(e: Throwable): String = {
-      if (e == null) return ""
-      val baos = new ByteArrayOutputStream()
-      val printWriter = new PrintWriter(baos)
-      e.printStackTrace(printWriter)
-      printWriter.flush()
-      val stackTrace = new String(baos.toByteArray)
-      printWriter.close()
-      stackTrace
+      if (e == null) {
+        ""
+      } else {
+        val baos = new ByteArrayOutputStream()
+        val printWriter = new PrintWriter(baos)
+        e.printStackTrace(printWriter)
+        printWriter.flush()
+        val stackTrace = new String(baos.toByteArray)
+        printWriter.close()
+        stackTrace
+      }
     }
 
     /** If None, module was not found. Otherwise, hit. */

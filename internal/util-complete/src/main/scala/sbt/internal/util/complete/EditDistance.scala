@@ -18,6 +18,7 @@ object EditDistance {
    * Translated from the java version at http://www.merriampark.com/ld.htm which is declared to be
    * public domain.
    */
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def levenshtein(
       s: String,
       t: String,

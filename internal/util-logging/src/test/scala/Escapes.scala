@@ -67,6 +67,7 @@ object Escapes extends Properties("Escapes") {
           (original == removed)
     }
 
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def diffIndex(expect: String, original: String): String = {
     var i = 0;
     while (i < expect.length && i < original.length) {

@@ -30,6 +30,7 @@ object CacheUrlConversion {
       withForwardSlash
   }
 
+  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String = {
     if (!fileUrl.startsWith(FileUrlPrefix)) return fileUrl
     val filePath = normalizedFilePath(fileUrl)
