@@ -16,7 +16,7 @@ object Dependencies {
 
   private val sbtIO = "org.scala-sbt" %% "io" % ioVersion
 
-  val launcherVersion = "1.6.0"
+  val launcherVersion = "1.6.1"
   val launcherInterface = "org.scala-sbt" % "launcher-interface" % launcherVersion
   val rawLauncher = "org.scala-sbt" % "launcher" % launcherVersion
   val testInterface = "org.scala-sbt" % "test-interface" % "1.0"
