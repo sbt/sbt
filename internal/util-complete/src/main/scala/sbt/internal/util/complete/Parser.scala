@@ -460,7 +460,14 @@ trait ParserMain {
   object ~ {
 
     /** Convenience for destructuring a tuple that mirrors the `~` combinator. */
-    def unapply[A, B](t: (A, B)): Some[(A, B)] = Some(t)
+    def unapply[A, B](t: (A, B)): (A, B) = t
+
+    /**
+     * for binary compatibility
+     */
+    @annotation.targetName("unapply")
+    @deprecated("Use unapply instead", "2.0.0")
+    private[sbt] def unapplyDeprecated[A, B](t: (A, B)): Some[(A, B)] = Some(t)
 
   }
 
