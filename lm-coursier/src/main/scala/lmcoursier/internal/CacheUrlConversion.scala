@@ -30,34 +30,36 @@ object CacheUrlConversion {
       withForwardSlash
   }
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def cacheFileToOriginalUrl(fileUrl: String, cacheDir: File): String = {
-    if (!fileUrl.startsWith(FileUrlPrefix)) return fileUrl
-    val filePath = normalizedFilePath(fileUrl)
-    val cachePaths = Seq(
-      cacheDir.getAbsolutePath,
-      cacheDir.getCanonicalPath
-    ).distinct.map(p =>
-      normalizePathForComparison(if (p.endsWith("/") || p.endsWith("\\")) p else p + "/")
-    )
+    if (!fileUrl.startsWith(FileUrlPrefix)) {
+      fileUrl
+    } else {
+      val filePath = normalizedFilePath(fileUrl)
+      val cachePaths = Seq(
+        cacheDir.getAbsolutePath,
+        cacheDir.getCanonicalPath
+      ).distinct.map(p =>
+        normalizePathForComparison(if (p.endsWith("/") || p.endsWith("\\")) p else p + "/")
+      )
 
-    def extractHttpUrl(relativePath: String): Option[String] = {
-      val protocolSepIndex = relativePath.indexOf('/')
-      if (protocolSepIndex > 0) {
-        val protocol = relativePath.substring(0, protocolSepIndex)
-        val rest = relativePath.substring(protocolSepIndex + 1)
-        Some(s"$protocol://$rest")
-      } else None
-    }
-
-    cachePaths
-      .collectFirst {
-        case cachePath if filePath.startsWith(cachePath) =>
-          val relativePath = filePath.stripPrefix(cachePath)
-          extractHttpUrl(relativePath)
+      def extractHttpUrl(relativePath: String): Option[String] = {
+        val protocolSepIndex = relativePath.indexOf('/')
+        if (protocolSepIndex > 0) {
+          val protocol = relativePath.substring(0, protocolSepIndex)
+          val rest = relativePath.substring(protocolSepIndex + 1)
+          Some(s"$protocol://$rest")
+        } else None
       }
-      .flatten
-      .getOrElse(s"$UnconvertiblePrefix$filePath")
+
+      cachePaths
+        .collectFirst {
+          case cachePath if filePath.startsWith(cachePath) =>
+            val relativePath = filePath.stripPrefix(cachePath)
+            extractHttpUrl(relativePath)
+        }
+        .flatten
+        .getOrElse(s"$UnconvertiblePrefix$filePath")
+    }
   }
 
   def isPortableUrl(url: String): Boolean =

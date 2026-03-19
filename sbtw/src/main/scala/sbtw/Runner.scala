@@ -70,21 +70,21 @@ object Runner:
     if opts.jvmClient then s = s :+ "--client"
     s
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def runNativeClient(sbtBinDir: File, scriptPath: String, opts: LauncherOptions): Int =
     val sbtn = new File(sbtBinDir, "sbtn-x86_64-pc-win32.exe")
     if !sbtn.isFile then
       System.err.println("[error] sbtn-x86_64-pc-win32.exe not found in " + sbtBinDir)
-      return 1
-    val args = Seq("--sbt-script=" + scriptPath.replace(" ", "%20")) ++
-      (if opts.verbose then Seq("-v") else Nil) ++
-      opts.residual
-    val cmd = sbtn.getAbsolutePath +: args
-    if opts.verbose then
-      System.err.println("# running native client")
-      cmd.foreach(a => System.err.println(a))
-    val proc = Process(cmd, None, "SBT_SCRIPT" -> scriptPath)
-    proc.!
+      1
+    else
+      val args = Seq("--sbt-script=" + scriptPath.replace(" ", "%20")) ++
+        (if opts.verbose then Seq("-v") else Nil) ++
+        opts.residual
+      val cmd = sbtn.getAbsolutePath +: args
+      if opts.verbose then
+        System.err.println("# running native client")
+        cmd.foreach(a => System.err.println(a))
+      val proc = Process(cmd, None, "SBT_SCRIPT" -> scriptPath)
+      proc.!
 
   def runJvm(
       javaCmd: String,

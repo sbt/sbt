@@ -240,18 +240,19 @@ private[sbt] object PomGenerator:
         (scope, optional)
 
   /** Convert Ivy-style dynamic versions to Maven range format. */
-  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   private def convertVersion(version: String): String =
     if version == null then null
     else if version.endsWith("+") then
       val base = version.stripSuffix("+").stripSuffix(".")
       val parts = base.split('.')
       if parts.nonEmpty then
-        val last =
-          try parts.last.toInt + 1
-          catch case _: NumberFormatException => return version
-        val upper = (parts.init :+ last.toString).mkString(".")
-        s"[$base,$upper)"
+        parts.last.toIntOption.map(_ + 1) match {
+          case Some(last) =>
+            val upper = (parts.init :+ last.toString).mkString(".")
+            s"[$base,$upper)"
+          case None =>
+            version
+        }
       else version
     else if version == "latest.integration" || version == "latest.release" then ""
     else version
