@@ -2,7 +2,7 @@ scalaVersion := "2.12.8"
 
 resolvers += Resolver.url(
   "jitpack",
-  new URL("https://jitpack.io")
+  new URI("https://jitpack.io").toURL
 )(
   // patterns should be ignored - and the repo be considered a maven one - because
   // isMavenCompatible is true
