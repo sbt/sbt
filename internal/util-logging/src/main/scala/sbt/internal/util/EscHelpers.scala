@@ -145,7 +145,7 @@ object EscHelpers {
    *   the length of the output string (which may be smaller than the returned array)
    */
   def strip(bytes: Array[Byte], stripAnsi: Boolean, stripColor: Boolean): (Array[Byte], Int) = {
-    val res = Array.fill[Byte](bytes.length)(0)
+    val res = new Array[Byte](bytes.length)
     var index = 0
     var state = 0
     var limit = 0
@@ -201,7 +201,7 @@ object EscHelpers {
    */
   def stripColorsAndMoves(s: String): String = {
     val bytes = s.getBytes
-    val res = Array.fill[Byte](bytes.length)(0)
+    val res = new Array[Byte](bytes.length)
     var index = 0
     var state = 0
     var limit = 0

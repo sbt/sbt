@@ -15,7 +15,7 @@ libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.41" from {
     val os = new java.io.FileOutputStream(f)
 
     var read = -1
-    val b = Array.fill[Byte](16*1024)(0)
+    val b = new Array[Byte](16*1024)
     while ({
       read = is.read(b)
       read >= 0
