@@ -62,8 +62,7 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
     UpdateReport(cachedDescriptor, Vector(configReport), stats, stamps)
 
   "UpdateReportPersistence.toCache and fromCache" should "preserve stats and stamps" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val original = buildTestReport(baseDir)
       val cache = UpdateReportPersistence.toCache(original)
       val restored = UpdateReportPersistence.fromCache(cache)
@@ -74,11 +73,9 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       restored.stats.stamp.shouldBe(original.stats.stamp)
       restored.stamps.shouldBe(original.stamps)
       restored.cachedDescriptor.shouldBe(original.cachedDescriptor)
-    finally IO.delete(baseDir)
 
   it should "preserve all modules without filtering" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val original = buildTestReport(baseDir)
       val cache = UpdateReportPersistence.toCache(original)
       val restored = UpdateReportPersistence.fromCache(cache)
@@ -86,11 +83,9 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       restored.configurations.size.shouldBe(original.configurations.size)
       restored.configurations.head.modules.size.shouldBe(original.configurations.head.modules.size)
       restored.allFiles.size.shouldBe(original.allFiles.size)
-    finally IO.delete(baseDir)
 
   it should "preserve modules when details are stripped from the report" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val original = buildTestReport(baseDir)
       val withoutDetails = original.withConfigurations(
         original.configurations.map(_.withDetails(Vector.empty))
@@ -102,11 +97,9 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       restored.configurations.head.modules.size
         .shouldBe(withoutDetails.configurations.head.modules.size)
       restored.allFiles.size.shouldBe(withoutDetails.allFiles.size)
-    finally IO.delete(baseDir)
 
   "UpdateReportPersistence.readFrom and writeTo" should "round-trip correctly" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val original = buildTestReport(baseDir)
       val store = CacheStore(new File(baseDir, "cache.json"))
 
@@ -117,19 +110,15 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
       val restored = UpdateReportPersistence.fromCache(readBack.get)
       restored.stats.stamp.shouldBe(original.stats.stamp)
       restored.stamps.shouldBe(original.stamps)
-    finally IO.delete(baseDir)
 
   it should "return None for missing cache file" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val store = CacheStore(new File(baseDir, "nonexistent.json"))
       val result = UpdateReportPersistence.readFrom(store)
       result.shouldBe(None)
-    finally IO.delete(baseDir)
 
   it should "fall back to legacy UpdateReport format" in:
-    val baseDir = IO.createTemporaryDirectory
-    try
+    IO.withTemporaryDirectory: baseDir =>
       val original = buildTestReport(baseDir)
       val store = CacheStore(new File(baseDir, "legacy.json"))
 
@@ -140,7 +129,6 @@ class UpdateReportPersistenceSpec extends AnyFlatSpec with Matchers:
 
       val restored = UpdateReportPersistence.fromCache(readBack.get)
       restored.configurations.size.shouldBe(original.configurations.size)
-    finally IO.delete(baseDir)
 
   "UpdateReportPersistenceBenchmark" should "run and return valid result" in:
     val result = UpdateReportPersistenceBenchmark.run(
