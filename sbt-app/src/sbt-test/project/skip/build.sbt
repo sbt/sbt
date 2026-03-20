@@ -1,5 +1,3 @@
-publish / skip := true
-
 lazy val check = taskKey[Unit]("check")
 
 lazy val a = project
@@ -17,12 +15,15 @@ lazy val c = project
     publish / skip := true
   )
 
-check := {
-  assert((publishLocal / skip).value, "Expected true, got false")
-  assert((a / publishLocal / skip).value, "Expected true, got false")
-  assert(!(a / publish / skip).value, "Expected false, got true")
-  assert(!(b / publish / skip).value, "Expected false, got true")
-  assert(!(b / publishLocal / skip).value, "Expected false, got true")
-  assert((c / publishLocal / skip).value, "Expected true, got false")
-  assert((c / publish / skip ).value, "Expected true, got false")
-}
+lazy val root = rootProject.settings(
+  publish / skip := true,
+  check := {
+    assert((publishLocal / skip).value, "Expected true, got false")
+    assert((a / publishLocal / skip).value, "Expected true, got false")
+    assert(!(a / publish / skip).value, "Expected false, got true")
+    assert(!(b / publish / skip).value, "Expected false, got true")
+    assert(!(b / publishLocal / skip).value, "Expected false, got true")
+    assert((c / publishLocal / skip).value, "Expected true, got false")
+    assert((c / publish / skip ).value, "Expected true, got false")
+  }
+)
