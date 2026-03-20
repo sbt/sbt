@@ -14,6 +14,8 @@ import Gen.{ listOf, oneOf }
 
 import EscHelpers.{ ESC, hasEscapeSequence, isEscapeTerminator, removeEscapeSequences }
 
+import scala.annotation.tailrec
+
 object Escapes extends Properties("Escapes") {
   property("genTerminator only generates terminators") =
     forAllNoShrink(genTerminator)((c: Char) => isEscapeTerminator(c))
@@ -67,17 +69,29 @@ object Escapes extends Properties("Escapes") {
           (original == removed)
     }
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def diffIndex(expect: String, original: String): String = {
-    var i = 0;
-    while (i < expect.length && i < original.length) {
-      if (expect.charAt(i) != original.charAt(i))
-        return ("Differing character, idx: " + i + ", char: " + original.charAt(i) +
-          ", expected: " + expect.charAt(i))
-      i += 1
+    @tailrec
+    def loop(i: Int): Option[String] = {
+      if (i < expect.length && i < original.length) {
+        if (expect.charAt(i) != original.charAt(i)) {
+          Some(
+            "Differing character, idx: " + i + ", char: " + original.charAt(i) +
+              ", expected: " + expect.charAt(i)
+          )
+        } else {
+          loop(i + 1)
+        }
+      } else {
+        None
+      }
     }
-    if (expect.length != original.length) return s"Strings are different lengths!"
-    "No differences found"
+    loop(0).getOrElse(
+      if (expect.length != original.length) {
+        "Strings are different lengths!"
+      } else {
+        "No differences found"
+      }
+    )
   }
 
   final case class EscapeAndNot(escape: EscapeSequence, notEscape: String) {
