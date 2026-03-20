@@ -7,7 +7,6 @@ import coursier.{ Organization, Resolution }
 import coursier.core.{ Classifier, Configuration, Dependency, VariantPublication, Publication }
 import coursier.cache.CacheDefaults
 import coursier.util.Artifact
-import coursier.internal.Typelevel
 import lmcoursier.definitions.ToCoursier
 import lmcoursier.internal.{
   ArtifactsParams,
@@ -147,10 +146,11 @@ class CoursierDependencyResolution(
         }
     }
 
-    val so = conf.scalaOrganization
+    val soOpt = conf.scalaOrganization
       .map(Organization(_))
       .orElse(module0.scalaModuleInfo.map(m => Organization(m.scalaOrganization)))
-      .getOrElse(Organization("org.scala-lang"))
+
+    val so = soOpt.getOrElse(Organization("org.scala-lang"))
     val sv = conf.scalaVersion
       .orElse(module0.scalaModuleInfo.map(_.scalaFullVersion))
       // FIXME Manage to do stuff below without a scala version?
@@ -259,8 +259,6 @@ class CoursierDependencyResolution(
         (ToCoursier.configuration(config), extends0.map(ToCoursier.configuration))
       }
 
-    val typelevel = so == Typelevel.typelevelOrg
-
     val cache0 = coursier.cache
       .FileCache()
       .withLocation(cache)
@@ -299,7 +297,7 @@ class CoursierDependencyResolution(
               (ToCoursier.module(k), ToCoursier.versionConstraint(v))
             .toMap
         )
-        .withTypelevel(typelevel)
+        .withScalaOrganizationOverride(soOpt)
         .withReconciliation0(conf.reconciliation.map: (k, v) =>
           ToCoursier.moduleMatchers(k) -> ToCoursier.constraintReconciliation(v))
         .withExclusions(excludeDependencies)
