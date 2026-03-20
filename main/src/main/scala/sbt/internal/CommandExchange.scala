@@ -517,38 +517,37 @@ private[sbt] final class CommandExchange {
     val thread = new Thread("sbt-notify-other-servers") {
       setDaemon(true)
 
-      @SuppressWarnings(Array("scalafix:DisableSyntax"))
       override def run(): Unit = {
         val procDir = SysProp.globalLocalCache / "proc"
-        if (!procDir.exists) return
-        val myPid = ProcessHandle.current().pid()
-        val files = procDir.listFiles
-        if (files == null) return
-        for (f <- files if f.getName.endsWith(".json")) {
-          val pidStr = f.getName.stripSuffix(".json")
-          val pid =
-            try pidStr.toLong
-            catch { case _: NumberFormatException => -1L }
-          if (pid != myPid) {
-            try {
-              val (socket, _) = sbt.protocol.ClientSocket.socket(f)
+        if (procDir.exists) {
+          val myPid = ProcessHandle.current().pid()
+          val files = Option(procDir.listFiles).toSeq.flatten
+          for (f <- files if f.getName.endsWith(".json")) {
+            val pidStr = f.getName.stripSuffix(".json")
+            val pid =
+              try pidStr.toLong
+              catch { case _: NumberFormatException => -1L }
+            if (pid != myPid) {
               try {
-                val notification = sbt.internal.protocol.JsonRpcNotificationMessage(
-                  "2.0",
-                  sbt.protocol.Serialization.dropIfIdle,
-                  None
-                )
-                val bytes = sbt.protocol.Serialization.serializeNotificationMessage(notification)
-                socket.getOutputStream.write(bytes)
-                socket.getOutputStream.flush()
-              } finally {
-                socket.close()
+                val (socket, _) = sbt.protocol.ClientSocket.socket(f)
+                try {
+                  val notification = sbt.internal.protocol.JsonRpcNotificationMessage(
+                    "2.0",
+                    sbt.protocol.Serialization.dropIfIdle,
+                    None
+                  )
+                  val bytes = sbt.protocol.Serialization.serializeNotificationMessage(notification)
+                  socket.getOutputStream.write(bytes)
+                  socket.getOutputStream.flush()
+                } finally {
+                  socket.close()
+                }
+              } catch {
+                case scala.util.control.NonFatal(_) =>
+                  // Server unreachable - clean up stale proc file
+                  try IO.delete(f)
+                  catch { case scala.util.control.NonFatal(_) => }
               }
-            } catch {
-              case scala.util.control.NonFatal(_) =>
-                // Server unreachable - clean up stale proc file
-                try IO.delete(f)
-                catch { case scala.util.control.NonFatal(_) => }
             }
           }
         }
