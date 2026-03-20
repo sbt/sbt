@@ -5,7 +5,7 @@ lazy val root = (project in file("."))
     Compile / scalacOptions += "multi-project",
     check := {
       val xs = (Compile / scalacOptions).value
-      assert(xs.toList == List("multi-project", "a", "b", "bare", "c"), s"$xs")
+      assert(xs.toList == List("a", "b", "bare", "c", "multi-project"), s"$xs")
     }
   )
 
