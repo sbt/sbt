@@ -31,60 +31,61 @@ final case class BenchmarkResult(
 
 object UpdateReportPersistenceBenchmark:
 
-  @SuppressWarnings(Array("scalafix:DisableSyntax"))
   def run(
       iterations: Int = 500,
       configs: Seq[String] = Seq("compile", "test"),
       modulesPerConfig: Int = 50,
       warmupIterations: Int = 10
   ): Either[String, BenchmarkResult] =
-    if iterations <= 0 then return Left("iterations must be positive")
-    if configs.isEmpty then return Left("configs must be non-empty")
-    if modulesPerConfig <= 0 then return Left("modulesPerConfig must be positive")
-    if warmupIterations < 0 then return Left("warmupIterations must be non-negative")
+    for {
+      _ <- Either.cond(iterations > 0, (), "iterations must be positive")
+      _ <- Either.cond(configs.nonEmpty, (), "configs must be non-empty")
+      _ <- Either.cond(modulesPerConfig > 0, (), "modulesPerConfig must be positive")
+      _ <- Either.cond(warmupIterations >= 0, (), "warmupIterations must be non-negative")
+      baseDir = IO.createTemporaryDirectory
+      result <-
+        try
+          val report = buildSampleReport(baseDir, configs, modulesPerConfig)
+          val fullStore = CacheStore(new File(baseDir, "full-format.json"))
+          val cacheStore = CacheStore(new File(baseDir, "cache-format.json"))
 
-    val baseDir = IO.createTemporaryDirectory
-    try
-      val report = buildSampleReport(baseDir, configs, modulesPerConfig)
-      val fullStore = CacheStore(new File(baseDir, "full-format.json"))
-      val cacheStore = CacheStore(new File(baseDir, "cache-format.json"))
+          fullStore.write(report)
+          UpdateReportPersistence.writeTo(cacheStore, UpdateReportPersistence.toCache(report))
 
-      fullStore.write(report)
-      UpdateReportPersistence.writeTo(cacheStore, UpdateReportPersistence.toCache(report))
+          for _ <- 0 until warmupIterations do
+            fullStore.read[UpdateReport]()
+            UpdateReportPersistence
+              .readFrom(cacheStore)
+              .map(UpdateReportPersistence.fromCache)
+              .getOrElse(sys.error("Expected cache report during warmup"))
 
-      for _ <- 0 until warmupIterations do
-        fullStore.read[UpdateReport]()
-        UpdateReportPersistence
-          .readFrom(cacheStore)
-          .map(UpdateReportPersistence.fromCache)
-          .getOrElse(sys.error("Expected cache report during warmup"))
+          val fullStart = System.currentTimeMillis()
+          for _ <- 0 until iterations do fullStore.read[UpdateReport]()
+          val fullEnd = System.currentTimeMillis()
 
-      val fullStart = System.currentTimeMillis()
-      for _ <- 0 until iterations do fullStore.read[UpdateReport]()
-      val fullEnd = System.currentTimeMillis()
+          val cacheStart = System.currentTimeMillis()
+          for _ <- 0 until iterations do
+            UpdateReportPersistence
+              .readFrom(cacheStore)
+              .map(UpdateReportPersistence.fromCache)
+              .getOrElse(sys.error("Expected cache report during benchmark"))
+          val cacheEnd = System.currentTimeMillis()
 
-      val cacheStart = System.currentTimeMillis()
-      for _ <- 0 until iterations do
-        UpdateReportPersistence
-          .readFrom(cacheStore)
-          .map(UpdateReportPersistence.fromCache)
-          .getOrElse(sys.error("Expected cache report during benchmark"))
-      val cacheEnd = System.currentTimeMillis()
+          val fullSize = new File(baseDir, "full-format.json").length()
+          val cacheSize = new File(baseDir, "cache-format.json").length()
 
-      val fullSize = new File(baseDir, "full-format.json").length()
-      val cacheSize = new File(baseDir, "cache-format.json").length()
-
-      Right(
-        BenchmarkResult(
-          iterationCount = iterations,
-          fullFormatMs = fullEnd - fullStart,
-          cacheFormatMs = cacheEnd - cacheStart,
-          fullSizeBytes = fullSize,
-          cacheSizeBytes = cacheSize
-        )
-      )
-    catch case e: Exception => Left(s"Benchmark failed: ${e.getMessage}")
-    finally IO.delete(baseDir)
+          Right(
+            BenchmarkResult(
+              iterationCount = iterations,
+              fullFormatMs = fullEnd - fullStart,
+              cacheFormatMs = cacheEnd - cacheStart,
+              fullSizeBytes = fullSize,
+              cacheSizeBytes = cacheSize
+            )
+          )
+        catch case e: Exception => Left(s"Benchmark failed: ${e.getMessage}")
+        finally IO.delete(baseDir)
+    } yield result
 
   def buildSampleReport(
       baseDir: File,
