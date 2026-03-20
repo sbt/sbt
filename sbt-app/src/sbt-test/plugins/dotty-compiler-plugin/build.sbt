@@ -1,4 +1,4 @@
-ThisBuild / scalaVersion := "3.1.3"
+ThisBuild / scalaVersion := "3.3.7"
 
 lazy val plugin = project
   .in(file("plugin"))
@@ -18,12 +18,6 @@ lazy val plugin = project
 
 lazy val app = project
   .in(file("app"))
-  .settings(
-    scalaVersion := dottyVersion
-  )
 
 lazy val appOk = project
   .in(file("appOk"))
-  .settings(
-    scalaVersion := dottyVersion
-  )
