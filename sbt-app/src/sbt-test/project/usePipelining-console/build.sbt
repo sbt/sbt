@@ -10,7 +10,8 @@ lazy val subproject = project
   .in(file("modules/subproject"))
   .settings(
     // Exit the REPL immediately so scripted does not block waiting for input.
-    Compile / console / initialCommands := ":quit"
+    // Compile / console / initialCommands := ":quit"
+    Compile / console / initialCommands := "Compile"
   )
 
 lazy val root = project

@@ -23,69 +23,86 @@ import hedgehog.runner.*
  */
 object DefaultsDropPipeliningOptsTest extends Properties:
   override def tests: List[Test] = List(
-
     // ── deterministic unit cases ──────────────────────────────────────────────
 
-    example("empty list stays empty",
-      check(Seq.empty, Seq.empty)),
-
-    example("list with no pipelining flags is unchanged",
-      check(Seq("-deprecation", "-feature"), Seq("-deprecation", "-feature"))),
-
-    example("-Ypickle-java alone is removed",
-      check(Seq("-Ypickle-java"), Seq.empty)),
-
-    example("-Ypickle-java at the start is removed",
-      check(Seq("-Ypickle-java", "-deprecation"), Seq("-deprecation"))),
-
-    example("-Ypickle-java at the end is removed",
-      check(Seq("-feature", "-Ypickle-java"), Seq("-feature"))),
-
-    example("-Ypickle-java in the middle is removed",
-      check(Seq("-deprecation", "-Ypickle-java", "-feature"), Seq("-deprecation", "-feature"))),
-
-    example("-Ypickle-write with its argument are both removed",
-      check(Seq("-Ypickle-write", "/tmp/early.jar"), Seq.empty)),
-
-    example("-Ypickle-write at start removes flag and argument, keeps tail",
-      check(Seq("-Ypickle-write", "/tmp/early.jar", "-deprecation"), Seq("-deprecation"))),
-
-    example("-Ypickle-write at end removes flag and argument",
-      check(Seq("-feature", "-Ypickle-write", "/tmp/early.jar"), Seq("-feature"))),
-
-    example("-Ypickle-write in the middle removes flag and argument",
+    example("empty list stays empty", check(Seq.empty, Seq.empty)),
+    example(
+      "list with no pipelining flags is unchanged",
+      check(Seq("-deprecation", "-feature"), Seq("-deprecation", "-feature"))
+    ),
+    example("-Ypickle-java alone is removed", check(Seq("-Ypickle-java"), Seq.empty)),
+    example(
+      "-Ypickle-java at the start is removed",
+      check(Seq("-Ypickle-java", "-deprecation"), Seq("-deprecation"))
+    ),
+    example(
+      "-Ypickle-java at the end is removed",
+      check(Seq("-feature", "-Ypickle-java"), Seq("-feature"))
+    ),
+    example(
+      "-Ypickle-java in the middle is removed",
+      check(Seq("-deprecation", "-Ypickle-java", "-feature"), Seq("-deprecation", "-feature"))
+    ),
+    example(
+      "-Ypickle-write with its argument are both removed",
+      check(Seq("-Ypickle-write", "/tmp/early.jar"), Seq.empty)
+    ),
+    example(
+      "-Ypickle-write at start removes flag and argument, keeps tail",
+      check(Seq("-Ypickle-write", "/tmp/early.jar", "-deprecation"), Seq("-deprecation"))
+    ),
+    example(
+      "-Ypickle-write at end removes flag and argument",
+      check(Seq("-feature", "-Ypickle-write", "/tmp/early.jar"), Seq("-feature"))
+    ),
+    example(
+      "-Ypickle-write in the middle removes flag and argument",
       check(
         Seq("-deprecation", "-Ypickle-write", "/tmp/early.jar", "-feature"),
-        Seq("-deprecation", "-feature"))),
-
-    example("-Ypickle-write without argument (trailing flag) is removed safely",
-      check(Seq("-deprecation", "-Ypickle-write"), Seq("-deprecation"))),
-
-    example("both pipelining flags together are removed",
-      check(
-        Seq("-Ypickle-java", "-Ypickle-write", "/tmp/early.jar"),
-        Seq.empty)),
-
-    example("both pipelining flags with surrounding options",
+        Seq("-deprecation", "-feature")
+      )
+    ),
+    example(
+      "-Ypickle-write without argument (trailing flag) is removed safely",
+      check(Seq("-deprecation", "-Ypickle-write"), Seq("-deprecation"))
+    ),
+    example(
+      "both pipelining flags together are removed",
+      check(Seq("-Ypickle-java", "-Ypickle-write", "/tmp/early.jar"), Seq.empty)
+    ),
+    example(
+      "both pipelining flags with surrounding options",
       check(
         Seq("-encoding", "utf8", "-Ypickle-java", "-Ypickle-write", "/tmp/early.jar", "-feature"),
-        Seq("-encoding", "utf8", "-feature"))),
-
-    example("multiple occurrences of -Ypickle-java are all removed",
-      check(
-        Seq("-Ypickle-java", "-opt:l:inline", "-Ypickle-java"),
-        Seq("-opt:l:inline"))),
-
-    example("multiple -Ypickle-write occurrences are all removed with their args",
+        Seq("-encoding", "utf8", "-feature")
+      )
+    ),
+    example(
+      "multiple occurrences of -Ypickle-java are all removed",
+      check(Seq("-Ypickle-java", "-opt:l:inline", "-Ypickle-java"), Seq("-opt:l:inline"))
+    ),
+    example(
+      "multiple -Ypickle-write occurrences are all removed with their args",
       check(
         Seq("-Ypickle-write", "/a.jar", "-deprecation", "-Ypickle-write", "/b.jar"),
-        Seq("-deprecation"))),
-
-    example("real-world pipelining option list is cleaned",
+        Seq("-deprecation")
+      )
+    ),
+    example(
+      "real-world pipelining option list is cleaned",
       check(
-        Seq("-Ypickle-java", "-Ypickle-write", "/target/early/early.jar",
-          "-encoding", "utf8", "-deprecation", "-feature"),
-        Seq("-encoding", "utf8", "-deprecation", "-feature"))),
+        Seq(
+          "-Ypickle-java",
+          "-Ypickle-write",
+          "/target/early/early.jar",
+          "-encoding",
+          "utf8",
+          "-deprecation",
+          "-feature"
+        ),
+        Seq("-encoding", "utf8", "-deprecation", "-feature")
+      )
+    ),
 
     // ── property-based cases ──────────────────────────────────────────────────
 
@@ -93,12 +110,10 @@ object DefaultsDropPipeliningOptsTest extends Properties:
       "result never contains -Ypickle-java or -Ypickle-write",
       propNoPipeliningFlagsInResult
     ),
-
     property(
       "non-pipelining options are always preserved",
       propNonPipeliningOptionsPreserved
     ),
-
     property(
       "idempotent: applying twice gives the same result as applying once",
       propIdempotent
@@ -109,7 +124,8 @@ object DefaultsDropPipeliningOptsTest extends Properties:
 
   private def check(input: Seq[String], expected: Seq[String]): Result =
     val got = Defaults.dropPipeliningScalacOptions(input)
-    Result.assert(got == expected)
+    Result
+      .assert(got == expected)
       .log(s"input:    $input")
       .log(s"expected: $expected")
       .log(s"got:      $got")
@@ -119,8 +135,15 @@ object DefaultsDropPipeliningOptsTest extends Properties:
   /** Generate an arbitrary scalac-option token (flag or path-like argument). */
   private def genOption: Gen[String] =
     Gen.frequency1(
-      7 -> Gen.element1("-deprecation", "-feature", "-encoding", "utf8",
-                         "-opt:l:inline", "-Xfatal-warnings", "-unchecked"),
+      7 -> Gen.element1(
+        "-deprecation",
+        "-feature",
+        "-encoding",
+        "utf8",
+        "-opt:l:inline",
+        "-Xfatal-warnings",
+        "-unchecked"
+      ),
       1 -> Gen.element1("-Ypickle-java"),
       1 -> Gen.element1("-Ypickle-write"),
       1 -> Gen.string(Gen.alphaNum, Range.linear(1, 30)).map("/" + _ + ".jar"),
@@ -155,7 +178,7 @@ object DefaultsDropPipeliningOptsTest extends Properties:
   def propIdempotent: Property =
     for options <- genOptions.forAll
     yield
-      val once  = Defaults.dropPipeliningScalacOptions(options)
+      val once = Defaults.dropPipeliningScalacOptions(options)
       val twice = Defaults.dropPipeliningScalacOptions(once)
       Result
         .assert(once == twice)

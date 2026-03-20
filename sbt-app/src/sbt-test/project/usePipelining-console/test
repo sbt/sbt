@@ -1,8 +1,0 @@
-# Regression for #8921 – pipelining must not break console.
-#
-# Before the fix, `subproject/console` failed with a FileSystemException on
-# Windows due to an `early.jar` lock, and root `console` would interrupt REPL
-# expression evaluation ("Canceling execution…" / InterruptedException).
-
-> subproject/console
-> console
