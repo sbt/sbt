@@ -1,4 +1,5 @@
 package lmcoursier.definitions
+
 import dataclass.data
 
 @data class Module(

@@ -7,6 +7,7 @@
  */
 
 package sbt
+
 import sbt.internal.util.RMap
 
 /**

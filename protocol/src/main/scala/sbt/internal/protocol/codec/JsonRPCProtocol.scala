@@ -7,6 +7,7 @@
  */
 
 package sbt.internal.protocol.codec
+
 trait JsonRPCProtocol
     extends sbt.internal.util.codec.JValueFormats
     with sjsonnew.BasicJsonProtocol

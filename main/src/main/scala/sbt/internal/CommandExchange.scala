@@ -9,6 +9,7 @@
 package sbt
 
 package internal
+
 import java.io.{ File, IOException }
 import java.net.Socket
 import java.util.concurrent.atomic.*

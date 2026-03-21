@@ -1,4 +1,5 @@
 package sbt.internal.librarymanagement
+
 sealed abstract class SemSelOperator {
   override def toString: String = this match {
     case SemSelOperator.Lte => "<="

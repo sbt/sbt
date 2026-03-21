@@ -6,6 +6,7 @@
  */
 
 package sbt.internal.util
+
 import scala.collection.parallel.CollectionConverters.*
 import scala.collection.parallel.ParSeq
 
