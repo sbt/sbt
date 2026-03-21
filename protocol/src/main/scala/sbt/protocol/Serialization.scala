@@ -93,6 +93,12 @@ object Serialization {
     }
   }
 
+  private[sbt] def serializeJsonRpcRequest(id: String, method: String, params: String): String =
+    s"""{ "jsonrpc": "2.0", "id": "$id", "method": "$method", "params": $params }"""
+
+  private[sbt] def serializeJsonRpcNotification(method: String, params: String): String =
+    s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params }"""
+
   def serializeEventMessage(event: EventMessage): Array[Byte] = {
     import codec.JsonProtocol.given
     val json: JValue = Converter.toJson[EventMessage](event).get

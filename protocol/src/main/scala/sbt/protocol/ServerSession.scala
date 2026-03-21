@@ -30,17 +30,33 @@ import sjsonnew.{ JsonReader, JsonWriter }
  */
 trait ServerSession extends AutoCloseable {
 
-  /** Allocates the next sequential JSON-RPC request ID. */
-  def nextId(): Int
+  /** Allocates the next sequential JSON-RPC request ID (as a string). */
+  def nextId(): String
 
   /** Returns `true` if the session is still actively reading from the socket. */
   def isRunning: Boolean
 
-  /** Sends a JSON-RPC request with raw JSON `params` string. */
-  def sendJsonRpc(id: Int, method: String, params: String): Try[Unit]
-
   /** Sends a JSON-RPC request, serializing `params` via its [[JsonWriter]]. */
-  def sendJsonRpc[A: JsonWriter](id: Int, method: String, params: A): Try[Unit]
+  def sendJsonRpc[A: JsonWriter](id: String, method: String, params: A): Try[Unit]
+
+  /** Sends a pre-built [[JsonRpcRequestMessage]]. */
+  def sendJsonRpc(message: JsonRpcRequestMessage): Try[Unit]
+
+  /** Sends a JSON-RPC notification serializing `params` via its [[JsonWriter]]. */
+  def sendJsonRpcNotification[A: JsonWriter](method: String, params: A): Try[Unit]
+
+  /** Sends a JSON-RPC response with the given `id` and `result`. */
+  def sendJsonRpcResponse[A: JsonWriter](id: String, result: A): Try[Unit]
+
+  /** Sends a JSON-RPC notification with raw JSON `params` string. */
+  private[sbt] def sendJsonRpcNotificationRaw(method: String, params: String): Try[Unit]
+
+  /** Sends a JSON-RPC request with raw JSON `params` string. */
+  private[sbt] def sendJsonRpcRaw(id: String, method: String, params: String): Try[Unit]
+
+  /** Sends a [[CommandMessage]] as a JSON-RPC request. */
+  // TODO: probably should be refactored to fit JsonRpcRequest, but that's not so easy
+  private[sbt] def sendCommand(command: CommandMessage): Try[Unit]
 
   /**
    * Sends a JSON-RPC request and waits for the typed result in a single call.
@@ -48,7 +64,7 @@ trait ServerSession extends AutoCloseable {
    * The result type `R` must be specified explicitly; the params type `A` is
    * inferred from the argument:
    * {{{
-   *   session.sendJsonRpcAwaitResult[CompletionResponse]("sbt/completion", CompletionParams("tes"))
+   *   session.sendJsonRpcAwaitResult[CompletionResponse]("sbt/completion", CompletionParams(""))
    * }}}
    */
   def sendJsonRpcAwaitResult[R: JsonReader]: ServerSession.SendAwaitResult[R]
@@ -72,7 +88,7 @@ trait ServerSession extends AutoCloseable {
   ): Try[JsonRpcResponseMessage]
 
   /** Waits for a [[JsonRpcResponseMessage]] with the given request `id`. */
-  def waitForResponseMsg(duration: FiniteDuration, id: Int): Try[JsonRpcResponseMessage]
+  def waitForResponseMsg(duration: FiniteDuration, id: String): Try[JsonRpcResponseMessage]
 
   /**
    * Waits for a response whose `result` field deserializes to `T` and matches
@@ -89,7 +105,7 @@ trait ServerSession extends AutoCloseable {
    * Waits for a response with the given request `id` and extracts its
    * `result` as `T`. Returns `Failure` if the response has no `result` field.
    */
-  def waitForResultInResponseMsg[T: JsonReader](duration: FiniteDuration, id: Int): Try[T]
+  def waitForResultInResponseMsg[T: JsonReader](duration: FiniteDuration, id: String): Try[T]
 
   /** Waits for a [[JsonRpcNotificationMessage]] matching the predicate. */
   def waitForNotificationMsg(
@@ -134,10 +150,6 @@ object ServerSession {
 
   /**
    * Connects to a running sbt server using the given portfile.
-   *
-   * The portfile (typically `project/target/active.json`) contains the socket
-   * address written by the sbt server on startup. A background read thread is
-   * started immediately upon connection.
    *
    * @param portfile the `active.json` portfile created by the sbt server
    * @return a connected [[ServerSession]] ready for `initialize`

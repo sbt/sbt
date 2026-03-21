@@ -13,7 +13,9 @@ import sbt.internal.client.NetworkClient
 import sbt.internal.util.Util
 import scala.collection.mutable
 
-class ClientTest extends AbstractServerTest {
+import org.scalatest.BeforeAndAfterEach
+
+class ClientTest extends AbstractServerTest with BeforeAndAfterEach {
   override val testDirectory: String = "client"
   object NullInputStream extends InputStream {
     override def read(): Int = {
@@ -44,19 +46,34 @@ class ClientTest extends AbstractServerTest {
       } else -1
     }
   }
+
+  override def afterEach(): Unit = {
+    // Wait between tests so the server can clean up the previous client connection.
+    // TODO: probably sometimes NetworkClient doesn't close correclty.
+    //   Maybe it should be refactored to use `ServerSession.shutdown`
+    //   instead of its' own shutdown logic
+    super.afterEach()
+    Thread.sleep(500)
+  }
+
   private def background[R](f: => R): R = {
-    val result = new LinkedBlockingQueue[R]
+    val result = new LinkedBlockingQueue[Either[Throwable, R]]
     val thread = new Thread("client-bg-thread") {
       setDaemon(true)
       start()
-      override def run(): Unit = result.put(f)
+      override def run(): Unit =
+        result.put(
+          try Right(f)
+          catch { case e: Throwable => Left(e) }
+        )
     }
     result.poll(1, TimeUnit.MINUTES) match {
       case null =>
         thread.interrupt()
-        thread.join(5000)
-        throw new TimeoutException
-      case r => r
+        thread.join(10000)
+        throw new TimeoutException("background task did not complete within 1 minute")
+      case Left(e)  => throw e
+      case Right(r) => r
     }
   }
   private def client(args: String*): Int =

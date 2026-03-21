@@ -89,7 +89,7 @@ class ResponseTest extends AbstractServerTest {
       case Failure(e)                   => throw e
     }
 
-  private def neverReceiveResponseWithId(duration: FiniteDuration, id: Int): Unit =
+  private def neverReceiveResponseWithId(duration: FiniteDuration, id: String): Unit =
     svr.session.waitForResponseMsg(duration, id) match {
       case Success(matched) =>
         fail(s"Expected no response for request $id, but received: $matched")

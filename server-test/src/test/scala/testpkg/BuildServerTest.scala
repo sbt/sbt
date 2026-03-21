@@ -709,7 +709,7 @@ class BuildServerTest extends AbstractServerTest {
   }
    */
 
-  private def initializeRequest(): Int = {
+  private def initializeRequest(): String = {
     val params = InitializeBuildParams(
       "test client",
       "1.0.0",
@@ -728,39 +728,39 @@ class BuildServerTest extends AbstractServerTest {
       }
       .get
 
-  private def reloadWorkspace(): Int =
+  private def reloadWorkspace(): String =
     sendRequest("workspace/reload")
 
-  private def compile(buildTarget: URI): Int = {
+  private def compile(buildTarget: URI): String = {
     val params =
       CompileParams(targets = Vector(BuildTargetIdentifier(buildTarget)), None, Vector.empty)
     sendRequest("buildTarget/compile", params)
   }
 
-  private def scalacOptions(buildTargets: Seq[URI]): Int = {
+  private def scalacOptions(buildTargets: Seq[URI]): String = {
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
   }
 
   // sbt serves javac options via buildTarget/scalacOptions (no separate javacOptions endpoint)
-  private def javacOptions(buildTargets: Seq[URI]): Int = {
+  private def javacOptions(buildTargets: Seq[URI]): String = {
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/scalacOptions", ScalacOptionsParams(targets))
   }
 
-  private def buildTargetSources(buildTargets: Seq[URI]): Int = {
+  private def buildTargetSources(buildTargets: Seq[URI]): String = {
     val targets = buildTargets.map(BuildTargetIdentifier.apply).toVector
     sendRequest("buildTarget/sources", SourcesParams(targets))
   }
 
-  private def sendRequest(method: String): Int = {
+  private def sendRequest(method: String): String = {
     val id = svr.session.nextId()
     svr.session.sendJsonRpc(id, method, "{}").get
     if (method != "build/initialize") assertProcessing(method)
     id
   }
 
-  private def sendRequest[T: JsonWriter](method: String, params: T): Int = {
+  private def sendRequest[T: JsonWriter](method: String, params: T): String = {
     val id = svr.session.nextId()
     svr.session.sendJsonRpc(id, method, params).get
     if (method != "build/initialize") assertProcessing(method)

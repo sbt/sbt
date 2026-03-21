@@ -11,7 +11,7 @@ package sbt.protocol
 import java.io.IOException
 import java.net.{ Socket, SocketTimeoutException }
 import java.util.concurrent.{ LinkedBlockingQueue, TimeUnit }
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger }
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 import scala.annotation.tailrec
 import scala.concurrent.duration.*
@@ -22,8 +22,9 @@ import sbt.internal.protocol.codec.JsonRPCProtocol.given
 import sbt.internal.protocol.*
 import sbt.internal.util.JoinThread.*
 import sjsonnew.{ JsonReader, JsonWriter }
-import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter, Parser }
+import sjsonnew.support.scalajson.unsafe.{ CompactPrinter, Converter }
 import scala.util.{ Failure, Success, Try }
+import java.util.UUID
 
 /**
  * Internal implementation of the [[ServerSession]] trait.
@@ -59,7 +60,6 @@ private[sbt] class ServerSessionImpl(
 
   private val responses = new LinkedBlockingQueue[JsonRpcResponseMessage]
   private val notifications = new LinkedBlockingQueue[JsonRpcNotificationMessage]
-  private val requestId = new AtomicInteger(1)
 
   /** Called when the read thread receives a [[JsonRpcRequestMessage]]. */
   protected def onRequest(msg: JsonRpcRequestMessage): Unit = ()
@@ -144,27 +144,51 @@ private[sbt] class ServerSessionImpl(
       readThread.joinFor(ServerSessionImpl.ReadThreadDestroyTimeout)
   }
 
-  override def nextId(): Int = requestId.getAndIncrement()
+  override def nextId(): String = UUID.randomUUID.toString
 
-  override def sendJsonRpc(id: Int, method: String, params: String): Try[Unit] =
-    for {
-      parsed <- Parser.parseFromString(params)
-      _ <- sendJsonRpc(JsonRpcRequestMessage("2.0", id.toString, method, parsed))
-    } yield ()
-
-  override def sendJsonRpc[A: JsonWriter](id: Int, method: String, params: A): Try[Unit] =
+  override def sendJsonRpc[A: JsonWriter](id: String, method: String, params: A): Try[Unit] =
     for {
       converted <- Converter.toJson(params)
-      _ <- sendJsonRpc(JsonRpcRequestMessage("2.0", id.toString, method, converted))
+      _ <- sendJsonRpc(JsonRpcRequestMessage("2.0", id, method, converted))
     } yield ()
 
-  /** Sends a raw JSON-RPC message string over the wire. */
-  private def sendJsonRpc(message: String): Try[Unit] =
-    Try(JsonRpcWriter.write(out, message))
+  override def sendJsonRpc(message: JsonRpcRequestMessage): Try[Unit] =
+    for {
+      converted <- Converter.toJson(message)
+      _ <- sendJsonRpcRaw(CompactPrinter(converted))
+    } yield ()
 
-  /** Sends a pre-built [[JsonRpcRequestMessage]]. */
-  private def sendJsonRpc(message: JsonRpcRequestMessage): Try[Unit] =
-    sendJsonRpc(CompactPrinter(Converter.toJson(message).get))
+  override def sendJsonRpcNotification[A: JsonWriter](method: String, params: A): Try[Unit] =
+    for {
+      converted <- Converter.toJson(params)
+      _ <- sendJsonRpcRaw(
+        CompactPrinter(
+          Converter.toJson(JsonRpcNotificationMessage("2.0", method, converted)).get
+        )
+      )
+    } yield ()
+
+  override def sendJsonRpcResponse[A: JsonWriter](id: String, result: A): Try[Unit] =
+    for {
+      convertedResult <- Converter.toJson(result)
+      convertedResponse <- Converter.toJson(
+        JsonRpcResponseMessage("2.0", id, Some(convertedResult), None)
+      )
+      _ <- sendJsonRpcRaw(CompactPrinter(convertedResponse))
+    } yield ()
+
+  override def sendJsonRpcRaw(id: String, method: String, params: String): Try[Unit] =
+    sendJsonRpcRaw(Serialization.serializeJsonRpcRequest(id, method, params))
+
+  override def sendJsonRpcNotificationRaw(method: String, params: String): Try[Unit] =
+    sendJsonRpcRaw(Serialization.serializeJsonRpcNotification(method, params))
+
+  override def sendCommand(command: CommandMessage): Try[Unit] =
+    sendJsonRpcRaw(Serialization.serializeCommandAsJsonMessage(command))
+
+  /** Sends a raw JSON-RPC message string over the wire. */
+  private def sendJsonRpcRaw(message: String): Try[Unit] =
+    Try(JsonRpcWriter.write(out, message))
 
   override def sendJsonRpcAwaitResult[R: JsonReader]: ServerSession.SendAwaitResult[R] =
     new ServerSession.SendAwaitResult[R] {
@@ -249,9 +273,9 @@ private[sbt] class ServerSessionImpl(
 
   override def waitForResponseMsg(
       duration: FiniteDuration,
-      id: Int
+      id: String
   ): Try[JsonRpcResponseMessage] =
-    waitForResponseMsg(duration)(_.id == id.toString)
+    waitForResponseMsg(duration)(_.id == id)
 
   override def waitForResultInResponseMsg[T: JsonReader](
       duration: FiniteDuration
@@ -268,7 +292,7 @@ private[sbt] class ServerSessionImpl(
 
   override def waitForResultInResponseMsg[T: JsonReader](
       duration: FiniteDuration,
-      id: Int
+      id: String
   ): Try[T] =
     waitForResponseMsg(duration, id).flatMap { response =>
       response.result match {

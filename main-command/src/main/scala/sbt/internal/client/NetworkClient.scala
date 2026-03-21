@@ -143,7 +143,7 @@ class NetworkClient(
   private val pendingCompletions = new ConcurrentHashMap[String, CompletionResponse => Unit]
   private val attached = new AtomicBoolean(false)
   private val attachUUID = new AtomicReference[String](null)
-  private val connectionHolder = new AtomicReference[ServerConnection]
+  private val connectionHolder = new AtomicReference[ServerSession]
   private val batchMode = new AtomicBoolean(false)
   private val interactiveThread = new AtomicReference[Thread](null)
   private val rebooting = new AtomicBoolean(false)
@@ -158,7 +158,7 @@ class NetworkClient(
 
   private def portfile = arguments.baseDirectory / "project" / "target" / "active.json"
 
-  def connection: ServerConnection = connectionHolder.synchronized {
+  def connection: ServerSession = connectionHolder.synchronized {
     connectionHolder.get match {
       case null => init(promptCompleteUsers = false, retry = true)
       case c    => c
@@ -244,10 +244,10 @@ class NetworkClient(
     }
 
   // Open server connection based on the portfile
-  def init(promptCompleteUsers: Boolean, retry: Boolean): ServerConnection = {
+  def init(promptCompleteUsers: Boolean, retry: Boolean): ServerSession = {
     val (sk, tkn) = connectOrStartServerAndConnect(promptCompleteUsers, retry)
-    val conn = new ServerConnection(sk) {
-      override def onNotification(msg: JsonRpcNotificationMessage): Unit = {
+    val conn = new ServerSessionImpl(sk, s"sbt-serverconnection-${sk.getPort}") {
+      override protected def onNotification(msg: JsonRpcNotificationMessage): Unit = {
         msg.method match {
           case `Shutdown` =>
             val (log, rebootCommands) = msg.params match {
@@ -262,7 +262,7 @@ class NetworkClient(
               attached.set(false)
               connectionHolder.getAndSet(null) match {
                 case null =>
-                case c    => c.shutdown()
+                case c    => c.close()
               }
               waitForServer(portfile, true, false)
               init(promptCompleteUsers = false, retry = false)
@@ -276,7 +276,7 @@ class NetworkClient(
                       s"received request to re-run unknown command '$cmd' after reboot"
                     )
                   } else if (cmd.nonEmpty) {
-                    if (batchMode.get) sendCommand(ExecCommand(cmd, execId))
+                    if (batchMode.get) self.sendCommand(ExecCommand(cmd, execId))
                     else
                       inLock.synchronized {
                         val toSend = cmd.getBytes :+ '\r'.toByte
@@ -307,9 +307,9 @@ class NetworkClient(
           case _ => self.onNotification(msg)
         }
       }
-      override def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
-      override def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
-      override def onShutdown(): Unit = if (!rebooting.get) {
+      override protected def onRequest(msg: JsonRpcRequestMessage): Unit = self.onRequest(msg)
+      override protected def onResponse(msg: JsonRpcResponseMessage): Unit = self.onResponse(msg)
+      override protected def onClose(): Unit = if (!rebooting.get) {
         if (exitClean.get != false) exitClean.set(!running.get)
         running.set(false)
         Option(interactiveThread.get).foreach(_.interrupt())
@@ -330,7 +330,7 @@ class NetworkClient(
       skipAnalysis = Some(skipAnalysis), // duplicated with opts for compatibility
       initializationOptions = Some(opts),
     )
-    conn.sendString(Serialization.serializeCommandAsJsonMessage(initCommand))
+    conn.sendCommand(initCommand)
     connectionHolder.set(conn)
     conn
   }
@@ -1061,8 +1061,7 @@ class NetworkClient(
 
   def sendCommand(command: CommandMessage): Unit = {
     try {
-      val s = Serialization.serializeCommandAsJsonMessage(command)
-      connection.sendString(s)
+      connection.sendCommand(command)
       lock.synchronized {
         status.set("Processing")
       }
@@ -1074,10 +1073,9 @@ class NetworkClient(
     }
   }
   def sendCommandResponse(method: String, command: EventMessage, id: String): Unit = {
+    import sbt.protocol.codec.JsonProtocol.given
     try {
-      val s = new String(Serialization.serializeEventMessage(command))
-      val msg = s"""{ "jsonrpc": "2.0", "id": "$id", "result": $s }"""
-      connection.sendString(msg)
+      connection.sendJsonRpcResponse(id, command)
     } catch {
       case e: IOException =>
         errorStream.println(s"Caught exception writing command to server: $e")
@@ -1090,12 +1088,11 @@ class NetworkClient(
     uuid
   }
   def sendJson(method: String, params: String, uuid: String): Unit = {
-    val msg = s"""{ "jsonrpc": "2.0", "id": "$uuid", "method": "$method", "params": $params }"""
-    connection.sendString(msg)
+    connection.sendJsonRpcRaw(uuid, method, params)
   }
 
   def sendNotification(method: String, params: String): Unit = {
-    connection.sendString(s"""{ "jsonrpc": "2.0", "method": "$method", "params": $params }""")
+    connection.sendJsonRpcNotificationRaw(method, params)
   }
 
   override def close(): Unit =
@@ -1108,7 +1105,7 @@ class NetworkClient(
         case null =>
         case c =>
           try sendExecCommand("exit")
-          finally c.shutdown()
+          finally c.close()
       }
       Option(inputThread.get).foreach(_.interrupt())
     } catch {
