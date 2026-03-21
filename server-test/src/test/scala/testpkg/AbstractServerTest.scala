@@ -5,12 +5,15 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package testpkg
 
 import java.io.File
 import java.nio.file.{ Files, Path }
+import scala.concurrent.duration.*
 import sbt.io.IO
-import sbt.protocol.{ ServerSession, ServerSessionClient }
+import sbt.io.syntax.*
+import sbt.protocol.ServerSession
+import sbt.{ ForkOptions, OutputStrategy, RunFromSourceMain }
 
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.BeforeAndAfterAll
@@ -20,7 +23,7 @@ import org.scalatest.BeforeAndAfterAll
  * the base directory of the test build, and the forked process handle.
  */
 final class SbtServer(
-    val session: ServerSessionClient,
+    val session: ServerSession,
     val baseDirectory: File,
     private val process: scala.sys.process.Process
 ) {
@@ -80,7 +83,7 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     ServerSession.waitForPortfile(portfile, process.isAlive)
 
     val session = ServerSession.connect(portfile)
-    session.initialize(subscribeToAll = subscribeToAllForTest)
+    session.initialize(10.seconds, subscribeToAllForTest)
 
     svr = new SbtServer(session, buildDir, process)
   }

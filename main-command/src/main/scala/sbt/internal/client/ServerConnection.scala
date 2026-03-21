@@ -14,40 +14,25 @@ import java.io.IOException
 import java.net.Socket
 
 import sbt.protocol.*
-import sbt.internal.protocol.*
 
 /**
- * A server connection that extends [[ServerSession]] with immediate frame
+ * A server connection that extends [[ServerSessionBase]] with immediate frame
  * dispatching. Incoming messages are deserialized and dispatched to
- * handlers ([[onRequest]], [[onResponse]], [[onNotification]]) on the
- * read thread.
+ * abstract handlers ([[onRequest]], [[onResponse]], [[onNotification]])
+ * on the read thread.
  *
  * @param connection the connected socket to the sbt server
  */
+// TODO: should be probably deleted in favor of ServerSessionImpl
 abstract class ServerConnection(connection: Socket)
-    extends ServerSession(connection, s"sbt-serverconnection-${connection.getPort}") {
+    extends ServerSessionImpl(connection, s"sbt-serverconnection-${connection.getPort}") {
 
-  /**
-   * Deserializes each incoming frame and dispatches to the appropriate
-   * typed handler. Invalid frames are logged to stdout.
-   */
-  override protected def onFrame(frame: Seq[Byte]): Unit =
-    Serialization
-      .deserializeJsonMessage(frame)
-      .fold(
-        { errorDesc =>
-          val s = new String(frame.toArray, "UTF-8")
-          println(s"Got invalid chunk from server: $s \n" + errorDesc)
-        },
-        _ match {
-          case msg: JsonRpcRequestMessage      => onRequest(msg)
-          case msg: JsonRpcResponseMessage     => onResponse(msg)
-          case msg: JsonRpcNotificationMessage => onNotification(msg)
-        }
-      )
-
-  /** Called when [[close]] completes — triggers [[onShutdown]]. */
   override protected def onClose(): Unit = onShutdown()
+
+  override protected def onInvalidFrame(frame: Seq[Byte], errorDesc: String): Unit = {
+    val s = new String(frame.toArray, "UTF-8")
+    println(s"Got invalid chunk from server: $s \n" + errorDesc)
+  }
 
   /** Sends a raw JSON-RPC message string. Synchronized and shuts down on I/O failure. */
   def sendString(message: String): Unit = this.synchronized {
@@ -70,14 +55,9 @@ abstract class ServerConnection(connection: Socket)
         throw e
     }
 
-  def onRequest(msg: JsonRpcRequestMessage): Unit
-  def onResponse(msg: JsonRpcResponseMessage): Unit
-  def onNotification(msg: JsonRpcNotificationMessage): Unit
-
   /** Called exactly once when the connection is closed. */
   def onShutdown(): Unit
 
   /** Closes the connection. Delegates to [[close]]. */
   def shutdown(): Unit = close()
-
 }

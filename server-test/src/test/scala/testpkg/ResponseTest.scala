@@ -5,7 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package testpkg
 
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*

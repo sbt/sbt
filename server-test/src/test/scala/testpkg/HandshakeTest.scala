@@ -5,7 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package testpkg
 
 import sbt.protocol.SettingQuery
 import sbt.protocol.codec.JsonProtocol.given

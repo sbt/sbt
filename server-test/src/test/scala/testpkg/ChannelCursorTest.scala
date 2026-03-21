@@ -6,7 +6,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package testpkg
 
 import scala.concurrent.duration.*
 import sbt.protocol.{ ExecStatusEvent, ServerSession }
@@ -21,7 +21,7 @@ class ChannelCursorTest extends AbstractServerTest {
     val portfile = testPath.resolve("project/target/active.json").toFile
     val session2 = ServerSession.connect(portfile)
     try {
-      session2.initialize(subscribeToAll = false)
+      session2.initialize(10.seconds, subscribeToAll = false)
 
       val switchToAResult = svr.session
         .sendJsonRpcAwaitResult[ExecStatusEvent](

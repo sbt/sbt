@@ -9,130 +9,145 @@
 package sbt.protocol
 
 import java.io.{ File, IOException }
-import java.net.{ Socket, SocketTimeoutException }
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.TimeoutException
 import scala.concurrent.duration.*
+import scala.util.Try
 import sbt.io.IO
-import sbt.internal.util.JoinThread.*
+import sbt.internal.langserver.InitializeResult
+import sbt.internal.protocol.*
+import sjsonnew.{ JsonReader, JsonWriter }
 
 /**
- * Base class for JSON-RPC communication over a socket. Manages a background
- * read thread that continuously reads frames and delegates them to [[onFrame]].
+ * Public API for a client session with a running sbt server.
  *
- * @param socket     the connected socket
- * @param threadName name for the background read thread
+ * Obtain an instance via [[ServerSession.connect]]:
+ * {{{
+ *   val session = ServerSession.connect(portfile)
+ *   session.initialize(10.seconds, subscribeToAll = false)
+ *   val result = session.sendJsonRpcAwaitResult[CompletionResponse]("sbt/completion", CompletionParams(""))
+ *   session.shutdown(process.isAlive, () => process.destroy())
+ * }}}
  */
-abstract class ServerSession private[sbt] (
-    socket: Socket,
-    threadName: String
-) extends AutoCloseable {
+trait ServerSession extends AutoCloseable {
 
-  /** Controls the read loop; set to `false` to stop reading from the socket. */
-  private val running = new AtomicBoolean(true)
-
-  /** Guards [[close]] idempotency — ensures cleanup runs exactly once. */
-  private val closed = new AtomicBoolean(false)
-
-  /** Output stream for sending messages. Protected for subclass access. */
-  protected final val out = socket.getOutputStream
-
-  /**
-   * Called by the read thread for each incoming frame.
-   * Default is a no-op; subclasses override to enqueue or dispatch.
-   */
-  protected def onFrame(frame: Seq[Byte]): Unit
-
-  /**
-   * Called exactly once during [[close]], after the socket and output stream
-   * have been closed but before the read thread is joined.
-   */
-  protected def onClose(): Unit = ()
-
-  /**
-   * Background thread that continuously reads JSON-RPC frames from the socket
-   * and passes them to [[onFrame]]. Uses a 5-second socket timeout so the
-   * thread periodically re-checks the [[running]] flag.
-   */
-  private val readThread = new Thread(threadName) {
-    setDaemon(true)
-    override def run(): Unit = {
-      try {
-        val in = socket.getInputStream
-        socket.setSoTimeout(5000)
-        while (running.get) {
-          try {
-            val frame = JsonRpcReader.read(in, running, onHeader = None)
-            if (running.get) onFrame(frame)
-          } catch {
-            case _: SocketTimeoutException => // re-check running
-            case _: IOException            => running.set(false)
-          }
-        }
-      } finally {
-        close()
-      }
-    }
-  }
-  readThread.start()
+  /** Allocates the next sequential JSON-RPC request ID. */
+  def nextId(): Int
 
   /** Returns `true` if the session is still actively reading from the socket. */
-  final def isRunning: Boolean = running.get
+  def isRunning: Boolean
+
+  /** Sends a JSON-RPC request with raw JSON `params` string. */
+  def sendJsonRpc(id: Int, method: String, params: String): Try[Unit]
+
+  /** Sends a JSON-RPC request, serializing `params` via its [[JsonWriter]]. */
+  def sendJsonRpc[A: JsonWriter](id: Int, method: String, params: A): Try[Unit]
 
   /**
-   * Closes the socket connection and stops the read thread.
+   * Sends a JSON-RPC request and waits for the typed result in a single call.
    *
-   * Idempotent — safe to call multiple times. Calls [[onClose]] after closing
-   * I/O and before joining the read thread. When called from the read thread
-   * itself (via the `finally` block), skips the thread join to avoid deadlock.
+   * The result type `R` must be specified explicitly; the params type `A` is
+   * inferred from the argument:
+   * {{{
+   *   session.sendJsonRpcAwaitResult[CompletionResponse]("sbt/completion", CompletionParams("tes"))
+   * }}}
    */
-  override def close(): Unit = if (closed.compareAndSet(false, true)) {
-    running.set(false)
-    try {
-      out.close()
-      socket.close()
-    } catch { case _: IOException => }
-    onClose()
-    if (Thread.currentThread() != readThread)
-      readThread.joinFor(ServerSession.ThreadDestroyTimeout)
-  }
+  def sendJsonRpcAwaitResult[R: JsonReader]: ServerSession.SendAwaitResult[R]
+
+  /**
+   * Performs the LSP `initialize` handshake with the sbt server.
+   *
+   * Sends an `initialize` request and blocks until the server responds with
+   * an [[InitializeResult]]. Should be called exactly once after connecting.
+   *
+   * @param timeout        maximum time to wait for the server response
+   * @param subscribeToAll whether this client subscribes to all build events
+   */
+  def initialize(timeout: FiniteDuration, subscribeToAll: Boolean): Try[InitializeResult]
+
+  /** Waits for a [[JsonRpcResponseMessage]] matching the predicate. */
+  def waitForResponseMsg(
+      duration: FiniteDuration
+  )(
+      predicate: JsonRpcResponseMessage => Boolean
+  ): Try[JsonRpcResponseMessage]
+
+  /** Waits for a [[JsonRpcResponseMessage]] with the given request `id`. */
+  def waitForResponseMsg(duration: FiniteDuration, id: Int): Try[JsonRpcResponseMessage]
+
+  /**
+   * Waits for a response whose `result` field deserializes to `T` and matches
+   * the predicate. Responses without a `result` field or whose result doesn't
+   * deserialize are skipped.
+   */
+  def waitForResultInResponseMsg[T: JsonReader](
+      duration: FiniteDuration
+  )(
+      predicate: T => Boolean
+  ): Try[T]
+
+  /**
+   * Waits for a response with the given request `id` and extracts its
+   * `result` as `T`. Returns `Failure` if the response has no `result` field.
+   */
+  def waitForResultInResponseMsg[T: JsonReader](duration: FiniteDuration, id: Int): Try[T]
+
+  /** Waits for a [[JsonRpcNotificationMessage]] matching the predicate. */
+  def waitForNotificationMsg(
+      duration: FiniteDuration
+  )(
+      predicate: JsonRpcNotificationMessage => Boolean
+  ): Try[JsonRpcNotificationMessage]
+
+  /**
+   * Waits for a notification whose `params` field deserializes to `T` and
+   * matches the predicate. Notifications without `params` or whose params
+   * don't deserialize are skipped.
+   */
+  def waitForParamsInNotificationMsg[T: JsonReader](
+      duration: FiniteDuration
+  )(
+      predicate: T => Boolean
+  ): Try[T]
+
+  /**
+   * Gracefully shuts down the sbt server and closes this session.
+   *
+   * @param isAlive check whether the server process is still running
+   * @param destroy forcefully terminate the server process
+   */
+  def shutdown(isAlive: => Boolean, destroy: () => Unit): Try[Unit]
 }
 
 object ServerSession {
 
-  /** Default timeout for awaiting a JSON-RPC response. */
-  private[sbt] val ResponseTimeout: FiniteDuration = 1.minutes
+  trait SendAwaitResult[R] {
 
-  /** Timeout for waiting for the sbt portfile to be created. */
-  private[sbt] val PortfileTimeout: FiniteDuration = 1.minute
+    /** Sends a request and awaits the result using the default timeout. */
+    def apply[A: JsonWriter](method: String, params: A): Try[R]
 
-  /** Timeout for the initialize handshake with the sbt server. */
-  private[sbt] val InitializeTimeout: FiniteDuration = 10.seconds
+    /** Sends a request and awaits the result within the given `timeout`. */
+    def apply[A: JsonWriter](method: String, params: A, timeout: FiniteDuration): Try[R]
+  }
 
-  /** Time to wait for the sbt process to exit gracefully after sending shutdown. */
-  private[sbt] val GracefulShutdownTimeout: FiniteDuration = 5.seconds
-
-  /** Time to wait for the sbt process to exit after calling destroy(). */
-  private[sbt] val DestroyTimeout: FiniteDuration = 10.seconds
-
-  /** Time to wait for the read thread to finish when closing the session. */
-  private[sbt] val ThreadDestroyTimeout: FiniteDuration = 5.seconds
-
-  /** Interval between progress log messages while waiting for the portfile. */
-  private[sbt] val PortfileLogInterval: FiniteDuration = 10.seconds
+  private val PortfileTimeout: FiniteDuration = 1.minute
+  private val PortfileLogInterval: FiniteDuration = 10.seconds
 
   /**
    * Connects to a running sbt server using the given portfile.
    *
+   * The portfile (typically `project/target/active.json`) contains the socket
+   * address written by the sbt server on startup. A background read thread is
+   * started immediately upon connection.
+   *
    * @param portfile the `active.json` portfile created by the sbt server
-   * @return a connected [[ServerSessionClient]] ready for [[ServerSessionClient.initialize]]
+   * @return a connected [[ServerSession]] ready for `initialize`
    */
-  def connect(portfile: File): ServerSessionClient = {
+  def connect(portfile: File): ServerSession = {
     val (socket, _) = ClientSocket.socket(portfile, false)
-    new ServerSessionClient(socket)
+    new ServerSessionImpl(socket)
   }
 
-  /** Waits for the portfile using [[PortfileTimeout]] and no logging. */
+  /** Waits for the portfile using the default timeout and no logging. */
   def waitForPortfile(portfile: File, isAlive: => Boolean): Unit =
     waitForPortfile(portfile, isAlive, PortfileTimeout, _ => ())
 

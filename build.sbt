@@ -847,7 +847,7 @@ lazy val serverTestProj = (project in file("server-test"))
         else rawClasspath
       val content = {
         s"""|
-            |package sbt
+            |package testpkg
             |
             |object TestProperties {
             |  val classpath = "$cp"
@@ -857,7 +857,7 @@ lazy val serverTestProj = (project in file("server-test"))
           """.stripMargin
       }
       val file =
-        (Test / target).value / "generated" / "src" / "test" / "scala" / "sbt" / "TestProperties.scala"
+        (Test / target).value / "generated" / "src" / "test" / "scala" / "testpkg" / "TestProperties.scala"
       IO.write(file, content)
       file :: Nil
     },

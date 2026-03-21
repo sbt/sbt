@@ -5,7 +5,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package testpkg
 
 import scala.concurrent.duration.*
 import sbt.protocol.ExecStatusEvent
