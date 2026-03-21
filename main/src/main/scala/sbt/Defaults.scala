@@ -2065,6 +2065,7 @@ object Defaults extends BuildCommon with DefExtra {
           if autoAPIMappings.value then APIMappings.extract(dependencyCp, log).toMap
           else Map.empty[HashedVirtualFileRef, URI]
         },
+        javacOptions := Nil,
         fileInputOptions := Seq("-doc-root-content", "-diagrams-dot-path"),
         scalacOptions ++= {
           val sv = scalaVersion.value

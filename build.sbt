@@ -24,7 +24,6 @@ ThisBuild / organization := "org.scala-sbt"
 ThisBuild / description := "sbt is an interactive build tool"
 ThisBuild / licenses := List("Apache-2.0" -> url("https://github.com/sbt/sbt/blob/develop/LICENSE"))
 ThisBuild / javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
-ThisBuild / Compile / doc / javacOptions := Nil
 ThisBuild / developers := List(
   Developer("harrah", "Mark Harrah", "@harrah", url("https://github.com/harrah")),
   Developer("eed3si9n", "Eugene Yokota", "@eed3si9n", url("https://github.com/eed3si9n")),
@@ -232,7 +231,6 @@ lazy val bundledLauncherProj =
       description := "sbt application launcher",
       autoScalaLibrary := false,
       crossPaths := false,
-      Compile / doc / javacOptions := Nil,
       Compile / packageBin := sbtLaunchJar.value,
       mimaSettings,
       mimaPreviousArtifacts := Set()
@@ -284,7 +282,6 @@ lazy val utilInterface = (project in file("internal") / "util-interface").settin
   Utils.javaOnlySettings,
   crossPaths := false,
   autoScalaLibrary := false,
-  Compile / doc / javacOptions := Nil,
   name := "Util Interface",
   exportJars := true,
   mimaSettings,
@@ -446,7 +443,6 @@ lazy val workerProj = (project in file("worker"))
   .settings(
     name := "worker",
     testedBaseSettings,
-    Compile / doc / javacOptions := Nil,
     crossPaths := false,
     autoScalaLibrary := false,
     libraryDependencies ++= Seq(gson, testInterface),
