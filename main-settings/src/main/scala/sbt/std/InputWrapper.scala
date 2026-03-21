@@ -59,7 +59,7 @@ object InputWrapper:
   def `wrapInputTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
   @compileTimeOnly(
-    "`value` can only be called on an input task within a task definition macro, such as := or Def.inputTask."
+    "`evaluated` can only be called on an input task within a task definition macro, such as := or Def.inputTask. To use an input task from a regular task, use `.toTask(\" <args>\").value` instead."
   )
   def `wrapInitInputTask_\u2603\u2603`[T](@deprecated("unused", "") in: Any): T = implDetailError
 
