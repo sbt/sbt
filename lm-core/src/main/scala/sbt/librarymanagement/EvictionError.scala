@@ -89,18 +89,18 @@ object EvictionError {
       VersionSchemes.validateScheme(s.revision)
       val versionScheme = s.revision
       (s.crossVersion, sbvOpt) match {
-        case (_: Binary, Some("2.13")) =>
+        case (b: Binary, Some("2.13")) =>
           List(
-            (s.organization, s"${s.name}_2.13") -> versionScheme,
-            (s.organization, s"${s.name}_3") -> versionScheme
+            (s.organization, s"${s.name}${b.suffix}_2.13") -> versionScheme,
+            (s.organization, s"${s.name}${b.suffix}_3") -> versionScheme
           )
-        case (_: Binary, Some(sbv)) if sbv.startsWith("3.0") || sbv == "3" =>
+        case (b: Binary, Some(sbv)) if sbv.startsWith("3.0") || sbv == "3" =>
           List(
-            (s.organization, s"${s.name}_$sbv") -> versionScheme,
-            (s.organization, s"${s.name}_2.13") -> versionScheme
+            (s.organization, s"${s.name}${b.suffix}_$sbv") -> versionScheme,
+            (s.organization, s"${s.name}${b.suffix}_2.13") -> versionScheme
           )
-        case (_: Binary, Some(sbv)) =>
-          List((s.organization, s"${s.name}_$sbv") -> versionScheme)
+        case (b: Binary, Some(sbv)) =>
+          List((s.organization, s"${s.name}${b.suffix}_$sbv") -> versionScheme)
         case _ =>
           List((s.organization, s.name) -> versionScheme)
       }

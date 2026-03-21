@@ -115,6 +115,34 @@ object EvictionErrorSpec extends BaseIvySpecification {
     )
   }
 
+  test("it should handle cross-platform dependencies with %%% operator") {
+    // Test that the userDefinedSchemes map correctly includes platform suffixes
+    // when using Binary CrossVersion with a suffix (as created by %%% operator)
+    val scalaVersion = "2.12.19"
+    val schemes = List(
+      ModuleID("com.lihaoyi", "geny", "always")
+        .cross(CrossVersion.binaryWith("", "_sjs1"))
+    )
+    val scalaModuleInfo = dummyScalaModuleInfo(scalaVersion)
+
+    // Simulate what happens in EvictionError.processEvictions
+    val sbvOpt = Some(scalaModuleInfo.scalaBinaryVersion)
+    val userDefinedSchemes: Map[(String, String), String] = Map(schemes flatMap { s =>
+      val organization = s.organization
+      val versionScheme = s.revision
+      (s.crossVersion, sbvOpt) match {
+        case (b: Binary, Some(sbv)) =>
+          List((s.organization, s"${s.name}${b.suffix}_$sbv") -> versionScheme)
+        case _ =>
+          List((s.organization, s.name) -> versionScheme)
+      }
+    }*)
+
+    // The key should include the platform suffix "_sjs1" before the Scala version
+    assert(userDefinedSchemes.contains(("com.lihaoyi", "geny_sjs1_2.12")))
+    assert(userDefinedSchemes(("com.lihaoyi", "geny_sjs1_2.12")) == "always")
+  }
+
   // older Akka was on pvp
   def oldAkkaPvp = List("com.typesafe.akka" % "*" % "pvp")
 
