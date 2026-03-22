@@ -440,6 +440,7 @@ object Keys {
   val dependencyPicklePath = taskKey[Classpath]("The classpath consisting of internal pickles and external, managed and unmanaged dependencies. This task is promise-blocked.")
   val internalDependencyPicklePath = taskKey[Classpath]("The internal (inter-project) pickles. This task is promise-blocked.")
   val fullClasspath = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.").withRank(BPlusTask)
+  val dependencyMode = settingKey[DependencyMode]("Controls which managed dependencies appear on the classpath: Transitive (all), Direct (only direct + scala-library), or PlusOne (direct + their immediate deps + scala-library).").withRank(BSetting)
   val trackInternalDependencies = settingKey[TrackLevel]("The level of tracking for the internal (inter-project) dependency.").withRank(BSetting)
   val exportToInternal = settingKey[TrackLevel]("The level of tracking for this project by the internal callers.").withRank(BSetting)
   val exportedProductJars = taskKey[Classpath]("Build products that go on the exported classpath as JARs.")

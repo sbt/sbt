@@ -1,0 +1,12 @@
+# Default mode is transitive
+> checkTransitive
+
+# Direct mode: only declared deps + scala-library
+> set dependencyMode := DependencyMode.Direct
+> checkDirect
+> checkDirectTest
+> checkDirectJava
+
+# PlusOne mode: direct deps + their immediate transitive deps
+> set dependencyMode := DependencyMode.PlusOne
+> checkPlusOne

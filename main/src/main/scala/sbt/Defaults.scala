@@ -248,6 +248,7 @@ object Defaults extends BuildCommon with DefExtra {
       internalConfigurationMap :== Configurations.internalMap,
       credentials :== SysProp.sbtCredentialsEnv.toList,
       exportJars :== true,
+      dependencyMode :== DependencyMode.Transitive,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
       retrieveManaged :== false,
@@ -2661,26 +2662,30 @@ object Classpaths {
         ClasspathImpl.internalDependencyClasspathTask.value
       ),
       unmanagedClasspath := Def.uncached(ClasspathImpl.unmanagedDependenciesTask.value),
-      managedClasspath := Def.uncached {
-        val converter = fileConverter.value
-        val isMeta = isMetaBuild.value
-        val force = reresolveSbtArtifacts.value
-        val app = appConfiguration.value
-        def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
-        val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
-        val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
-          .map(_.toPath)
-          .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
-          .map(Attributed.blank)
-        val mjars = managedJars(
-          classpathConfiguration.value,
-          classpathTypes.value,
-          update.value,
-          converter,
-        )
-        if isMeta && !force then (mjars ++ sbtCp).distinct
-        else mjars
-      },
+      managedClasspath := Def
+        .uncached(Def.taskDyn {
+          val mode = dependencyMode.value
+          mode match
+            case DependencyMode.Transitive => managedClasspathTask
+            case DependencyMode.Direct =>
+              Def.task {
+                val mjars = managedClasspathTask.value
+                filterByDirectDeps(allDependencies.value, mjars)
+              }
+            case DependencyMode.PlusOne =>
+              Def.task {
+                val mjars = managedClasspathTask.value
+                val cpConfig = classpathConfiguration.value
+                filterByPlusOne(
+                  allDependencies.value,
+                  projectID.value,
+                  cpConfig,
+                  updateFull.value,
+                  mjars,
+                )
+              }
+        })
+        .value,
       exportedProducts := Def.uncached(
         ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value
       ),
@@ -4434,6 +4439,94 @@ object Classpaths {
         )
       }
       .distinct
+
+  private lazy val managedClasspathTask: Initialize[Task[Classpath]] = Def.task {
+    val converter = fileConverter.value
+    val isMeta = isMetaBuild.value
+    val force = reresolveSbtArtifacts.value
+    val app = appConfiguration.value
+    def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
+    val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+    val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
+      .map(_.toPath)
+      .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+      .map(Attributed.blank)
+    val cpConfig = classpathConfiguration.value
+    val up = update.value
+    val mjars = managedJars(cpConfig, classpathTypes.value, up, converter)
+    if isMeta && !force then (mjars ++ sbtCp).distinct
+    else mjars
+  }
+
+  private def isScalaLibraryModule(mid: ModuleID): Boolean =
+    import sbt.librarymanagement.ScalaArtifacts
+    mid.organization == ScalaArtifacts.Organization &&
+    (mid.name == ScalaArtifacts.LibraryID ||
+      mid.name == ScalaArtifacts.Scala3LibraryID ||
+      mid.name.startsWith(ScalaArtifacts.Scala3LibraryPrefix))
+
+  /** Build a lookup from org -> Set[baseName] for cross-version aware matching. */
+  private def directDepIndex(
+      directDeps: Seq[ModuleID],
+  ): Map[String, Set[String]] =
+    directDeps.groupMap(_.organization)(_.name).map((k, v) => k -> v.toSet)
+
+  /** Check if a resolved module matches any direct dep, accounting for cross-version suffixes. */
+  private def matchesDirectDep(
+      mid: ModuleID,
+      index: Map[String, Set[String]],
+  ): Boolean =
+    index.get(mid.organization) match
+      case None => false
+      case Some(names) =>
+        names.exists(n => mid.name == n || mid.name.startsWith(n + "_"))
+
+  private[sbt] def filterByDirectDeps(
+      directDeps: Seq[ModuleID],
+      jars: Classpath,
+  ): Classpath =
+    val index = directDepIndex(directDeps)
+    jars.filter: entry =>
+      entry.get(Keys.moduleIDStr) match
+        case Some(str) =>
+          val mid = moduleIdJsonKeyFormat.read(str)
+          matchesDirectDep(mid, index) || isScalaLibraryModule(mid)
+        case None => true
+
+  private[sbt] def filterByPlusOne(
+      directDeps: Seq[ModuleID],
+      projectId: ModuleID,
+      config: Configuration,
+      fullReport: UpdateReport,
+      jars: Classpath,
+  ): Classpath =
+    val index = directDepIndex(directDeps)
+    val rootKey = (projectId.organization, projectId.name)
+    fullReport.configuration(ConfigRef(config.name)) match
+      case None => jars
+      case Some(configReport) =>
+        val modules = configReport.modules
+        // Callers use resolved names (e.g., cats-core_3).
+        // Build the set of resolved direct dep keys from the full report.
+        val resolvedDirectKeys: Set[(String, String)] = modules
+          .filter(mr => matchesDirectDep(mr.module, index))
+          .map(mr => (mr.module.organization, mr.module.name))
+          .toSet
+        val plusOneKeys: Set[(String, String)] = modules
+          .filter: mr =>
+            mr.callers.exists: c =>
+              val ck = (c.caller.organization, c.caller.name)
+              resolvedDirectKeys.contains(ck) || ck == rootKey
+          .map(mr => (mr.module.organization, mr.module.name))
+          .toSet
+        val allowedKeys = resolvedDirectKeys ++ plusOneKeys
+        jars.filter: entry =>
+          entry.get(Keys.moduleIDStr) match
+            case Some(str) =>
+              val mid = moduleIdJsonKeyFormat.read(str)
+              allowedKeys.contains((mid.organization, mid.name)) ||
+              isScalaLibraryModule(mid)
+            case None => true
 
   def findUnmanagedJars(
       config: Configuration,
