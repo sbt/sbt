@@ -758,6 +758,7 @@ object Keys {
   type Streams = std.Streams[ScopedKey[?]]
   type TaskStreams = std.TaskStreams[ScopedKey[?]]
   type AppenderSupplier = sbt.internal.AppenderSupplier
+  type Appender = sbt.internal.util.Appender
 }
 
 // format: on

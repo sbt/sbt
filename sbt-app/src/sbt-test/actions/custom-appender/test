@@ -1,0 +1,13 @@
+# Test that custom appenders work with public API
+
+# Test 1: Basic logging with custom appender
+> checkLogging
+
+# Test 2: Verify public API can create appenders without internal imports
+> verifyPublicAPI
+
+# Test 3: Verify custom appender works with multiple tasks
+> verifyMultipleTasks
+
+# Test 4: Verify output file was created by custom appender
+$ exists target/appender-output.txt
