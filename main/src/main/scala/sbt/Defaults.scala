@@ -251,6 +251,7 @@ object Defaults extends BuildCommon {
       internalConfigurationMap :== Configurations.internalMap,
       credentials :== SysProp.sbtCredentialsEnv.toList,
       exportJars :== true,
+      dependencyMode :== DependencyMode.Transitive,
       trackInternalDependencies :== TrackLevel.TrackAlways,
       exportToInternal :== TrackLevel.TrackAlways,
       retrieveManaged :== false,
@@ -2710,26 +2711,30 @@ object Classpaths {
         ClasspathImpl.internalDependencyClasspathTask.value
       ),
       unmanagedClasspath := Def.uncached(ClasspathImpl.unmanagedDependenciesTask.value),
-      managedClasspath := Def.uncached {
-        val converter = fileConverter.value
-        val isMeta = isMetaBuild.value
-        val force = reresolveSbtArtifacts.value
-        val app = appConfiguration.value
-        def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
-        val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
-        val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
-          .map(_.toPath)
-          .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
-          .map(Attributed.blank)
-        val mjars = managedJars(
-          classpathConfiguration.value,
-          classpathTypes.value,
-          update.value,
-          converter,
-        )
-        if isMeta && !force then (mjars ++ sbtCp).distinct
-        else mjars
-      },
+      managedClasspath := Def
+        .uncached(Def.taskDyn {
+          val mode = dependencyMode.value
+          mode match
+            case DependencyMode.Transitive => managedClasspathTask
+            case DependencyMode.Direct =>
+              Def.task {
+                val mjars = managedClasspathTask.value
+                ClasspathImpl.filterByDirectDeps(allDependencies.value, mjars)
+              }
+            case DependencyMode.PlusOne =>
+              Def.task {
+                val mjars = managedClasspathTask.value
+                val cpConfig = classpathConfiguration.value
+                ClasspathImpl.filterByPlusOne(
+                  allDependencies.value,
+                  projectID.value,
+                  cpConfig,
+                  updateFull.value,
+                  mjars,
+                )
+              }
+        })
+        .value,
       exportedProducts := Def.uncached(
         ClasspathImpl.trackedExportedProducts(TrackLevel.TrackAlways).value
       ),
@@ -4489,6 +4494,24 @@ object Classpaths {
         )
       }
       .distinct
+
+  private lazy val managedClasspathTask: Initialize[Task[Classpath]] = Def.task {
+    val converter = fileConverter.value
+    val isMeta = isMetaBuild.value
+    val force = reresolveSbtArtifacts.value
+    val app = appConfiguration.value
+    def isJansiOrJLine(f: File) = f.getName.contains("jline") || f.getName.contains("jansi")
+    val scalaInstanceJars = app.provider.scalaProvider.jars.filterNot(isJansiOrJLine)
+    val sbtCp = (scalaInstanceJars ++ app.provider.mainClasspath)
+      .map(_.toPath)
+      .map(p => converter.toVirtualFile(p): HashedVirtualFileRef)
+      .map(Attributed.blank)
+    val cpConfig = classpathConfiguration.value
+    val up = update.value
+    val mjars = managedJars(cpConfig, classpathTypes.value, up, converter)
+    if isMeta && !force then (mjars ++ sbtCp).distinct
+    else mjars
+  }
 
   def findUnmanagedJars(
       config: Configuration,

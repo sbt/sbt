@@ -941,7 +941,13 @@ lazy val upperModules = (project in (file("internal") / "upper"))
   )
 
 lazy val sbtIgnoredProblems = {
+  import com.typesafe.tools.mima.core.*
   Vector(
+    // Adding DependencyMode to Import trait (new abstract members)
+    ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.Import.DependencyMode"),
+    ProblemFilters.exclude[ReversedMissingMethodProblem](
+      "sbt.Import.sbt$Import$_setter_$DependencyMode_="
+    ),
   )
 }
 
