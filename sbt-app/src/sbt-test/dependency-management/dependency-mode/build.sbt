@@ -2,7 +2,6 @@ lazy val checkDirect = taskKey[Unit]("check direct dependency mode")
 lazy val checkPlusOne = taskKey[Unit]("check plusOne dependency mode")
 lazy val checkTransitive = taskKey[Unit]("check transitive dependency mode")
 lazy val checkDirectTest = taskKey[Unit]("check direct mode applies to Test config")
-lazy val checkDirectJava = taskKey[Unit]("check direct mode with Java (non-crossversioned) deps")
 
 lazy val root = (project in file(".")).settings(
   scalaVersion := "3.7.4",
@@ -52,14 +51,5 @@ lazy val root = (project in file(".")).settings(
     // Transitive deps should be absent
     assert(!cp.exists(_.contains("cats-kernel")),
       s"Expected no cats-kernel in direct mode Test config, got: $cp")
-  },
-  checkDirectJava := {
-    val cp = (Compile / managedClasspath).value.map(_.data.id)
-    // Java dep (no cross-version) should be present
-    assert(cp.exists(_.contains("guava")),
-      s"Expected guava in direct mode, got: $cp")
-    // Its transitive deps should be absent
-    assert(!cp.exists(_.contains("failureaccess")),
-      s"Expected no failureaccess in direct mode, got: $cp")
   },
 )

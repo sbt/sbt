@@ -273,6 +273,8 @@ trait Import {
   val CrossVersion = sbt.librarymanagement.CrossVersion
   type CrossVersion = sbt.librarymanagement.CrossVersion
   val DefaultMavenRepository = sbt.librarymanagement.Resolver.DefaultMavenRepository
+  type DependencyMode = sbt.librarymanagement.DependencyMode
+  val DependencyMode = sbt.librarymanagement.DependencyMode
   val Developer = sbt.librarymanagement.Developer
   type Developer = sbt.librarymanagement.Developer
   val Disabled = sbt.librarymanagement.Disabled

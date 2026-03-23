@@ -6,7 +6,7 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package sbt.librarymanagement
 
 /**
  * Controls which managed dependencies appear on the classpath.

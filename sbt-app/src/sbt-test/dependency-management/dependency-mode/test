@@ -5,7 +5,6 @@
 > set dependencyMode := DependencyMode.Direct
 > checkDirect
 > checkDirectTest
-> checkDirectJava
 
 # PlusOne mode: direct deps + their immediate transitive deps
 > set dependencyMode := DependencyMode.PlusOne

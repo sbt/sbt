@@ -2670,13 +2670,13 @@ object Classpaths {
             case DependencyMode.Direct =>
               Def.task {
                 val mjars = managedClasspathTask.value
-                filterByDirectDeps(allDependencies.value, mjars)
+                ClasspathImpl.filterByDirectDeps(allDependencies.value, mjars)
               }
             case DependencyMode.PlusOne =>
               Def.task {
                 val mjars = managedClasspathTask.value
                 val cpConfig = classpathConfiguration.value
-                filterByPlusOne(
+                ClasspathImpl.filterByPlusOne(
                   allDependencies.value,
                   projectID.value,
                   cpConfig,
@@ -4457,76 +4457,6 @@ object Classpaths {
     if isMeta && !force then (mjars ++ sbtCp).distinct
     else mjars
   }
-
-  private def isScalaLibraryModule(mid: ModuleID): Boolean =
-    import sbt.librarymanagement.ScalaArtifacts
-    mid.organization == ScalaArtifacts.Organization &&
-    (mid.name == ScalaArtifacts.LibraryID ||
-      mid.name == ScalaArtifacts.Scala3LibraryID ||
-      mid.name.startsWith(ScalaArtifacts.Scala3LibraryPrefix))
-
-  /** Build a lookup from org -> Set[baseName] for cross-version aware matching. */
-  private def directDepIndex(
-      directDeps: Seq[ModuleID],
-  ): Map[String, Set[String]] =
-    directDeps.groupMap(_.organization)(_.name).map((k, v) => k -> v.toSet)
-
-  /** Check if a resolved module matches any direct dep, accounting for cross-version suffixes. */
-  private def matchesDirectDep(
-      mid: ModuleID,
-      index: Map[String, Set[String]],
-  ): Boolean =
-    index.get(mid.organization) match
-      case None => false
-      case Some(names) =>
-        names.exists(n => mid.name == n || mid.name.startsWith(n + "_"))
-
-  private[sbt] def filterByDirectDeps(
-      directDeps: Seq[ModuleID],
-      jars: Classpath,
-  ): Classpath =
-    val index = directDepIndex(directDeps)
-    jars.filter: entry =>
-      entry.get(Keys.moduleIDStr) match
-        case Some(str) =>
-          val mid = moduleIdJsonKeyFormat.read(str)
-          matchesDirectDep(mid, index) || isScalaLibraryModule(mid)
-        case None => true
-
-  private[sbt] def filterByPlusOne(
-      directDeps: Seq[ModuleID],
-      projectId: ModuleID,
-      config: Configuration,
-      fullReport: UpdateReport,
-      jars: Classpath,
-  ): Classpath =
-    val index = directDepIndex(directDeps)
-    val rootKey = (projectId.organization, projectId.name)
-    fullReport.configuration(ConfigRef(config.name)) match
-      case None => jars
-      case Some(configReport) =>
-        val modules = configReport.modules
-        // Callers use resolved names (e.g., cats-core_3).
-        // Build the set of resolved direct dep keys from the full report.
-        val resolvedDirectKeys: Set[(String, String)] = modules
-          .filter(mr => matchesDirectDep(mr.module, index))
-          .map(mr => (mr.module.organization, mr.module.name))
-          .toSet
-        val plusOneKeys: Set[(String, String)] = modules
-          .filter: mr =>
-            mr.callers.exists: c =>
-              val ck = (c.caller.organization, c.caller.name)
-              resolvedDirectKeys.contains(ck) || ck == rootKey
-          .map(mr => (mr.module.organization, mr.module.name))
-          .toSet
-        val allowedKeys = resolvedDirectKeys ++ plusOneKeys
-        jars.filter: entry =>
-          entry.get(Keys.moduleIDStr) match
-            case Some(str) =>
-              val mid = moduleIdJsonKeyFormat.read(str)
-              allowedKeys.contains((mid.organization, mid.name)) ||
-              isScalaLibraryModule(mid)
-            case None => true
 
   def findUnmanagedJars(
       config: Configuration,
