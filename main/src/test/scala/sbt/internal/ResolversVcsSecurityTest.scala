@@ -79,7 +79,8 @@ object ResolversVcsSecurityTest extends Properties:
     finally IO.delete(staging)
 
   private def testProcessBuilderKeepsMetacharactersInSingleArgument: Result =
-    val argv = new ProcessBuilder("git", "fetch", "origin", "topic&injection").command().asScala.toList
+    val argv =
+      new ProcessBuilder("git", "fetch", "origin", "topic&injection").command().asScala.toList
     Result.assert(argv == List("git", "fetch", "origin", "topic&injection"))
 
 end ResolversVcsSecurityTest
