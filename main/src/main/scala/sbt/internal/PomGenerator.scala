@@ -221,6 +221,7 @@ private[sbt] object PomGenerator:
         {versionNode}
         {scopeElem(scope)}
         {optionalElem(optional)}
+        {typeElem(dep)}
         {classifierElem(dep)}
         {exclusions(dep)}
       </dependency>
@@ -264,6 +265,11 @@ private[sbt] object PomGenerator:
 
   private def optionalElem(opt: Boolean): NodeSeq =
     if opt then <optional>true</optional> else NodeSeq.Empty
+
+  private def typeElem(dep: ModuleID): NodeSeq =
+    dep.explicitArtifacts.find(_.classifier.isEmpty).map(_.`type`) match
+      case Some(t) if t != Artifact.DefaultType => <type>{t}</type>
+      case _                                    => NodeSeq.Empty
 
   private def classifierElem(dep: ModuleID): NodeSeq =
     dep.explicitArtifacts.headOption.flatMap(_.classifier) match
