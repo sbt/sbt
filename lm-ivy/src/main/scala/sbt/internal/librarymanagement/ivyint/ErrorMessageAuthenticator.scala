@@ -1,7 +1,6 @@
 package sbt.internal.librarymanagement
 package ivyint
 
-import java.lang.reflect.InvocationTargetException
 import java.net.{ Authenticator, PasswordAuthentication }
 
 import org.apache.ivy.util.Message
@@ -14,42 +13,8 @@ import org.apache.ivy.util.url.IvyAuthenticator
 object ErrorMessageAuthenticator {
   private var securityWarningLogged = false
 
-  private def originalAuthenticator: Option[Authenticator] = {
-    if (LMSysProp.isJavaVersion9Plus) getDefaultAuthenticator
-    else getTheAuthenticator
-  }
-
-  private def getTheAuthenticator: Option[Authenticator] = {
-    withJavaReflectErrorHandling {
-      val field = classOf[Authenticator].getDeclaredField("theAuthenticator")
-      field.setAccessible(true)
-      Option(field.get(null).asInstanceOf[Authenticator])
-    }
-  }
-
-  private def getDefaultAuthenticator: Option[Authenticator] =
-    withJavaReflectErrorHandling {
-      val method = classOf[Authenticator].getDeclaredMethod("getDefault")
-      Option(method.invoke(null).asInstanceOf[Authenticator])
-    }
-
-  private def withJavaReflectErrorHandling[A](t: => Option[A]): Option[A] = {
-    try t
-    catch {
-      case e: ReflectiveOperationException => handleReflectionException(e)
-      case e: SecurityException            => handleReflectionException(e)
-      case e: InvocationTargetException    => handleReflectionException(e)
-      case e: ExceptionInInitializerError  => handleReflectionException(e)
-      case e: IllegalArgumentException     => handleReflectionException(e)
-      case e: NullPointerException         => handleReflectionException(e)
-      case e: ClassCastException           => handleReflectionException(e)
-    }
-  }
-
-  private def handleReflectionException(t: Throwable) = {
-    Message.debug("Error occurred while getting the original authenticator: " + t.getMessage)
-    None
-  }
+  private def originalAuthenticator: Option[Authenticator] =
+    Option(Authenticator.getDefault())
 
   private lazy val ivyOriginalField = {
     val field = classOf[IvyAuthenticator].getDeclaredField("original")
