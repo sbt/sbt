@@ -9,10 +9,10 @@
 package sbt
 package internal
 
-import hedgehog.*
-import hedgehog.runner.*
+import hedgehog._
+import hedgehog.runner._
 
-object VcsUriFragmentTest extends Properties:
+object VcsUriFragmentTest extends Properties {
   override def tests: List[Test] = List(
     example("accepts typical branch and tag names", testAcceptsSafe),
     example("accepts hex commit id fragment", testAcceptsHexSha),
@@ -27,16 +27,18 @@ object VcsUriFragmentTest extends Properties:
     example("rejects DEL", testRejectsDel),
   )
 
-  def testAcceptsSafe: Result =
+  def testAcceptsSafe: Result = {
     VcsUriFragment.validate("develop")
     VcsUriFragment.validate("v1.2.3")
     VcsUriFragment.validate("feature/foo-bar")
     VcsUriFragment.validate("release/1.0.0+build")
     Result.success
+  }
 
-  def testAcceptsHexSha: Result =
+  def testAcceptsHexSha: Result = {
     VcsUriFragment.validate("abc123def4567890abcdef1234567890abcdef12")
     Result.success
+  }
 
   def testRejectsEmpty: Result =
     interceptIllegal("")
@@ -66,9 +68,11 @@ object VcsUriFragmentTest extends Properties:
     interceptIllegal("a\u007fb")
 
   private def interceptIllegal(s: String): Result =
-    try
+    try {
       VcsUriFragment.validate(s)
       Result.failure.log(s"expected failure for ${s.map(_.toInt).mkString(",")}")
-    catch case _: IllegalArgumentException => Result.success
+    } catch {
+      case _: IllegalArgumentException => Result.success
+    }
 
-end VcsUriFragmentTest
+}

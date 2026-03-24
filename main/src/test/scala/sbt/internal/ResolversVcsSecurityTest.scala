@@ -9,17 +9,17 @@
 package sbt
 package internal
 
-import hedgehog.*
-import hedgehog.runner.*
+import hedgehog._
+import hedgehog.runner._
 
 import java.net.URI
-import scala.jdk.CollectionConverters.*
+import scala.jdk.CollectionConverters._
 
 import _root_.sbt.Resolvers
 import _root_.sbt.io.IO
 import _root_.sbt.internal.BuildLoader.ResolveInfo
 
-object ResolversVcsSecurityTest extends Properties:
+object ResolversVcsSecurityTest extends Properties {
 
   override def tests: List[Test] = List(
     example(
@@ -55,31 +55,37 @@ object ResolversVcsSecurityTest extends Properties:
   private def vcsUri(scheme: String, path: String, fragment: String): URI =
     new URI(scheme, null, "example.com", -1, path, null, fragment)
 
-  private def testResolverRejects(resolver: Resolvers.Resolver, uri: URI): Result =
+  private def testResolverRejects(resolver: Resolvers.Resolver, uri: URI): Result = {
     val staging = IO.createTemporaryDirectory
-    try
+    try {
       val info = new ResolveInfo(uri, staging, null, null)
-      try
+      try {
         resolver(info)
         Result.failure.log(s"expected IllegalArgumentException for $uri")
-      catch case _: IllegalArgumentException => Result.success
-    finally IO.delete(staging)
+      } catch {
+        case _: IllegalArgumentException => Result.success
+      }
+    } finally IO.delete(staging)
+  }
 
-  private def testResolverAccepts(resolver: Resolvers.Resolver, uri: URI): Result =
+  private def testResolverAccepts(resolver: Resolvers.Resolver, uri: URI): Result = {
     val staging = IO.createTemporaryDirectory
-    try
+    try {
       val info = new ResolveInfo(uri, staging, null, null)
-      try
-        resolver(info) match
-          case Some(_) => Result.success
-          case None    => Result.failure.log(s"expected Some for $uri")
-      catch
+      try resolver(info) match {
+        case Some(_) => Result.success
+        case None    => Result.failure.log(s"expected Some for $uri")
+      } catch {
         case e: IllegalArgumentException =>
           Result.failure.log(s"unexpected IllegalArgumentException for $uri: ${e.getMessage}")
-    finally IO.delete(staging)
+      }
+    } finally IO.delete(staging)
+  }
 
-  private def testProcessBuilderKeepsMetacharactersInSingleArgument: Result =
-    val argv = new ProcessBuilder("git", "fetch", "origin", "topic&injection").command().asScala.toList
+  private def testProcessBuilderKeepsMetacharactersInSingleArgument: Result = {
+    val argv =
+      new ProcessBuilder("git", "fetch", "origin", "topic&injection").command().asScala.toList
     Result.assert(argv == List("git", "fetch", "origin", "topic&injection"))
+  }
 
-end ResolversVcsSecurityTest
+}
