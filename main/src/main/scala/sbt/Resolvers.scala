@@ -138,7 +138,7 @@ object Resolvers {
     run(None, command: _*)
 
   def run(cwd: Option[File], command: String*): Unit =
-    run(None, None, command: _*)
+    run(cwd, None, command: _*)
 
   private def run(cwd: Option[File], log: Option[Logger], command: String*): Unit = {
     val process = Process(command, cwd)
