@@ -313,7 +313,7 @@ object EvictionWarning {
       reports: Seq[OrganizationArtifactReport]
   ): EvictionWarning = {
     val directDependencies = module.directDependencies
-    val pairs = reports map { detail =>
+    val pairs = (reports map { detail =>
       val evicteds = detail.modules filter { _.evicted }
       val winner = (detail.modules filterNot { _.evicted }).headOption
       val includesDirect: Boolean =
@@ -329,7 +329,7 @@ object EvictionWarning {
         includesDirect,
         options.showCallers
       )
-    }
+    }).sortBy(p => (p.organization, p.name))
     val scalaEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
     val directEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
     val transitiveEvictions: mutable.ListBuffer[EvictionPair] = mutable.ListBuffer()
