@@ -221,8 +221,7 @@ private[sbt] object PomGenerator:
         {versionNode}
         {scopeElem(scope)}
         {optionalElem(optional)}
-        {typeElem(dep)}
-        {classifierElem(dep)}
+        {typeAndClassifierElems(dep)}
         {exclusions(dep)}
       </dependency>
     result
@@ -266,15 +265,19 @@ private[sbt] object PomGenerator:
   private def optionalElem(opt: Boolean): NodeSeq =
     if opt then <optional>true</optional> else NodeSeq.Empty
 
-  private def typeElem(dep: ModuleID): NodeSeq =
-    dep.explicitArtifacts.find(_.classifier.isEmpty).map(_.`type`) match
-      case Some(t) if t != Artifact.DefaultType => <type>{t}</type>
-      case _                                    => NodeSeq.Empty
-
-  private def classifierElem(dep: ModuleID): NodeSeq =
-    dep.explicitArtifacts.headOption.flatMap(_.classifier) match
-      case Some(c) => <classifier>{c}</classifier>
-      case None    => NodeSeq.Empty
+  private def typeAndClassifierElems(dep: ModuleID): NodeSeq =
+    dep.explicitArtifacts.headOption match
+      case None => NodeSeq.Empty
+      case Some(art) =>
+        val classifier = art.classifier
+        val baseType = Option(art.`type`).filter(_ != Artifact.DefaultType)
+        val tpe = (classifier, baseType) match
+          case (Some(c), Some(t)) if Artifact.classifierType(c) == t => None
+          case _                                                     => baseType
+        val typeNode = tpe.map(t => <type>{t}</type>).getOrElse(NodeSeq.Empty)
+        val classifierNode =
+          classifier.map(c => <classifier>{c}</classifier>).getOrElse(NodeSeq.Empty)
+        typeNode ++ classifierNode
 
   private def exclusions(dep: ModuleID): NodeSeq =
     if dep.exclusions.isEmpty then NodeSeq.Empty
