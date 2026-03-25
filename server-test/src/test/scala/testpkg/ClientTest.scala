@@ -139,6 +139,12 @@ class ClientTest extends AbstractServerTest with BeforeAndAfterEach {
   test("three commands with middle failure") {
     assert(client("compile;willFail;willSucceed") == 1)
   }
+  test("multi-arg commands") {
+    assert(client("compile", "willSucceed") == 0)
+  }
+  test("multi-arg commands stop on first failure") {
+    assert(client("willFail", "willSucceed") == 1)
+  }
   test("run") {
     val (exitCode, lines) = clientWithStdoutLines("run")
     assert(exitCode == 0)
