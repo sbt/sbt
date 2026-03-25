@@ -15,7 +15,8 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     check := {
        assert(platformTest.value.endsWith("-platform"))
-       assert(projectMatrixBaseDirectory.value == file("core"))
+       assert(projectMatrixBaseDirectory.value == (ThisBuild / baseDirectory).value / "core",
+         s"projectMatrixBaseDirectory is ${projectMatrixBaseDirectory.value}")
     },
   )
   .jvmPlatform(scalaVersions = Seq(scala213, scala212))

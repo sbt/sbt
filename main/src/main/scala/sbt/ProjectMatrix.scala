@@ -366,11 +366,13 @@ object ProjectMatrix {
     private lazy val noScalaLibrary: Seq[Def.Setting[?]] =
       Seq(autoScalaLibrary := false, crossPaths := false)
 
+    // Resolve the matrix base against the build root rather than using getAbsoluteFile,
+    // which resolves against CWD and breaks source dependencies (issue #8971).
     private lazy val baseSettings: Seq[Def.Setting[?]] = Def.settings(
       name := self.id,
-      sourceDirectory := base.getAbsoluteFile / "src",
-      unmanagedBase := base.getAbsoluteFile / "lib",
-      projectMatrixBaseDirectory := base,
+      projectMatrixBaseDirectory := IO.resolve((ThisBuild / baseDirectory).value, base),
+      sourceDirectory := projectMatrixBaseDirectory.value / "src",
+      unmanagedBase := projectMatrixBaseDirectory.value / "lib",
     )
 
     private def rowSettings(r: ProjectRow): Seq[Def.Setting[?]] =

@@ -25,7 +25,8 @@ lazy val core = (projectMatrix in file("core"))
   .settings(
     check := {
       assert(moduleName.value == "core", s"moduleName is ${moduleName.value}")
-      assert(projectMatrixBaseDirectory.value == file("core"))
+      assert(projectMatrixBaseDirectory.value == (ThisBuild / baseDirectory).value / "core",
+        s"projectMatrixBaseDirectory is ${projectMatrixBaseDirectory.value}")
       assert(projectID.value.crossVersion == CrossVersion.full, s"crossVersion is ${projectID.value.crossVersion}")
     },
   )
@@ -38,7 +39,8 @@ lazy val intf = (projectMatrix in file("intf"))
   .settings(
     check := {
       assert(moduleName.value == "intf", s"moduleName is ${moduleName.value}")
-      assert(projectMatrixBaseDirectory.value == file("intf"))
+      assert(projectMatrixBaseDirectory.value == (ThisBuild / baseDirectory).value / "intf",
+        s"projectMatrixBaseDirectory is ${projectMatrixBaseDirectory.value}")
     },
   )
   .jvmPlatform(
