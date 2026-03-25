@@ -958,8 +958,12 @@ class NetworkClient(
     }
 
   def batchExecute(userCommands: List[String]): Int = {
-    val cmd = userCommands.mkString(" ")
-    sendAndWait(cmd, None)
+    var res = 0
+    val it = userCommands.iterator
+    while (it.hasNext && res == 0) {
+      res = sendAndWait(it.next(), None)
+    }
+    res
   }
 
   def getCompletions(query: String): Seq[String] = {
