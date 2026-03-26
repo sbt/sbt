@@ -170,7 +170,12 @@ private[sbt] class TaskProgress(
       val currentTasksCount = currentTasks.size
       def event(tasks: Vector[(TaskId[?], Long)]): ProgressEvent = {
         if (tasks.nonEmpty) nextReport.set(Deadline.now + sleepDuration)
-        val toWrite = tasks.sortBy(_._2)
+        // Sort by elapsed seconds (rounded down), then by name for stability.
+        // Without rounding, microsecond jitter causes tasks with similar start times
+        // to swap positions on every refresh, making the display hard to read. See #5466.
+        val toWrite = tasks.sortBy { (task, elapsed) =>
+          (elapsed / 1000000L, taskName(task))
+        }
         val distinct = new java.util.LinkedHashMap[String, ProgressItem]
         toWrite.foreach { (task, elapsed) =>
           val name = taskName(task)
