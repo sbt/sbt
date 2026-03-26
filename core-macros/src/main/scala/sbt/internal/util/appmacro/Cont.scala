@@ -110,9 +110,39 @@ trait Cont:
         s"given evidence sjsonnew.JsonFormat[${TypeRepr.of[A].show}] is not found; " +
           "opt out of caching by annotating the key with @transient, or as " +
           "foo := Def.uncached(...), or provide a given value"
-      Expr
-        .summon[JsonFormat[A]]
-        .getOrElse(report.errorAndAbort(msg))
+
+      // First try to summon an existing JsonFormat
+      Expr.summon[JsonFormat[A]].getOrElse {
+        // If not found, try to derive one automatically
+        tryDeriveJsonFormat[A].getOrElse(report.errorAndAbort(msg))
+      }
+
+    def tryDeriveJsonFormat[A: Type]: Option[Expr[JsonFormat[A]]] =
+      import conv.qctx
+      import qctx.reflect.*
+      given qctx.type = qctx
+
+      val tpe = TypeRepr.of[A]
+      val sym = tpe.typeSymbol
+
+      // Helper method to detect singleton objects
+      def isSingletonObject(sym: Symbol): Boolean =
+        sym.isTerm && (sym.isValDef || sym.isDefDef) ||
+          (sym.isClassDef && sym.flags.is(Flags.Module))
+
+      def deriveSingletonJsonFormat(sym: Symbol): Option[Expr[JsonFormat[A]]] =
+        try {
+          // Use the asSingleton function from sjsonnew.BasicJsonProtocol
+          Some('{
+            sjsonnew.BasicJsonProtocol.asSingleton(${ Ref(sym.companionModule).asExprOf[A] })
+          }.asExprOf[JsonFormat[A]])
+        } catch {
+          case _: Exception => None
+        }
+
+      // Try to derive for singleton objects (most common case)
+      if isSingletonObject(sym) then deriveSingletonJsonFormat(sym)
+      else None
 
     def summonClassTag[A: Type]: Expr[ClassTag[A]] =
       import conv.qctx
