@@ -1,6 +1,6 @@
 package lmcoursier.definitions
 
-import dataclass.data
+import dataclass.{ data, since }
 
 @data class Project(
     module: Module,
@@ -10,5 +10,6 @@ import dataclass.data
     properties: Seq[(String, String)],
     packagingOpt: Option[Type],
     publications: Seq[(Configuration, Publication)],
-    info: Info
+    info: Info,
+    @since privateConfigs: Set[Configuration] = Set.empty
 )

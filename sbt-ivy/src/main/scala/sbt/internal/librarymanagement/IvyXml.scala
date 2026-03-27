@@ -127,7 +127,9 @@ object IvyXml {
     val confElems = project.configurations.toVector.collect {
       case (name, extends0) if !shadedConfigOpt.exists(_.value == name.value) =>
         val extends1 = shadedConfigOpt.fold(extends0)(c => extends0.filter(_.value != c.value))
-        val n = <conf name={name.value} visibility="public" description="" />
+        val visibility =
+          if (project.privateConfigs.contains(name)) "private" else "public"
+        val n = <conf name={name.value} visibility={visibility} description="" />
         if (extends1.nonEmpty)
           n % <x extends={extends1.map(_.value).mkString(",")} />.attributes
         else

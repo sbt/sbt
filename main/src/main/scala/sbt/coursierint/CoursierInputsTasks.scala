@@ -37,15 +37,18 @@ object CoursierInputsTasks {
   ): CProject = {
 
     val configMap = Inputs.configExtendsSeq(configurations).toMap
+    val privConfigs = Inputs.privateConfigs(configurations)
 
-    val proj0 = FromSbt.project(
-      projId,
-      dependencies,
-      configMap,
-      sv,
-      sbv,
-      projectPlatform,
-    )
+    val proj0 = FromSbt
+      .project(
+        projId,
+        dependencies,
+        configMap,
+        sv,
+        sbv,
+        projectPlatform,
+      )
+      .withPrivateConfigs(privConfigs)
     val proj1 = auOpt match {
       case Some(au) =>
         proj0.withProperties(proj0.properties :+ (SbtPomExtraProperties.POM_API_KEY -> au.toString))

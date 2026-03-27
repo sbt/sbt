@@ -63,7 +63,8 @@ object IvyXml {
     } % infoAttrs
 
     val confElems = project.configurations.toVector.collect { (name, extends0) =>
-      val n = <conf name={name.value} visibility="public" description="" />
+      val visibility = if (project.privateConfigs.contains(name)) "private" else "public"
+      val n = <conf name={name.value} visibility={visibility} description="" />
       if (extends0.nonEmpty)
         n % <x extends={extends0.map(_.value).mkString(",")} />.attributes
       else

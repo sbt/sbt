@@ -21,6 +21,11 @@ object Inputs {
     configurations
       .map(cfg => Configuration(cfg.name) -> cfg.extendsConfigs.map(c => Configuration(c.name)))
 
+  def privateConfigs(
+      configurations: Seq[sbt.librarymanagement.Configuration]
+  ): Set[Configuration] =
+    configurations.filterNot(_.isPublic).map(cfg => Configuration(cfg.name)).toSet
+
   def coursierConfigurationsMap(
       configurations: Seq[sbt.librarymanagement.Configuration]
   ): Map[Configuration, Set[Configuration]] = {
