@@ -225,6 +225,27 @@ final class ScriptedTests(
     val seqHandlers = handlers.values.toList
     runner.initStates(states, seqHandlers)
 
+    // Delete test contents between runs, but preserve global dirs.
+    // Uses manual recursion to avoid following symlinks (sbt/sbt#7331).
+    val view = sbt.nio.file.FileTreeView.default
+    val base = tempTestDir.getCanonicalFile.toGlob
+    val global = base / "global"
+    val globalLogging = base / ** / "global-logging"
+    def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
+    val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
+    def deleteContents(dir: java.nio.file.Path): Unit =
+      view
+        .list(Glob(dir, AnyPath), !keep)
+        .foreach:
+          case (p, attrs) if attrs.isDirectory && !attrs.isSymbolicLink =>
+            deleteContents(p)
+            try Files.deleteIfExists(p)
+            catch { case _: IOException => }
+          case (p, _) =>
+            try Files.deleteIfExists(p)
+            catch { case _: IOException => }
+    val tempTestPath = tempTestDir.getCanonicalFile.toPath
+
     def runBatchTests = {
       groupedTests.map { case ((group, name), originalDir) =>
         val label = s"$group/$name"
@@ -261,19 +282,7 @@ final class ScriptedTests(
 
         // Run the test and delete files (except global that holds local scala jars)
         val result = runOrHandleDisabled(label, tempTestDir, runTest, buffer)
-        if (!keepTempDirectory) {
-          val view = sbt.nio.file.FileTreeView.default
-          val base = tempTestDir.getCanonicalFile.toGlob
-          val global = base / "global"
-          val globalLogging = base / ** / "global-logging"
-          def recursiveFilter(glob: Glob): PathFilter = (glob: PathFilter) || glob / **
-          val keep: PathFilter = recursiveFilter(global) || recursiveFilter(globalLogging)
-          val toDelete = view.list(base / **, !keep).map(_._1).sorted.reverse
-          toDelete.foreach { p =>
-            try Files.deleteIfExists(p)
-            catch { case _: IOException => }
-          }
-        }
+        if (!keepTempDirectory) deleteContents(tempTestPath)
         result
       }
     }
