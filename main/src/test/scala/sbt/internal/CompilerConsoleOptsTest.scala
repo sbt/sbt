@@ -1,25 +1,10 @@
-/*
- * sbt
- * Copyright 2023, Scala center
- * Copyright 2011 - 2022, Lightbend, Inc.
- * Copyright 2008 - 2010, Mark Harrah
- * Licensed under Apache License 2.0 (see LICENSE)
- */
-
 package sbt.internal
 
 import hedgehog.*
 import hedgehog.runner.*
 
-/**
- * Unit tests for [[Compiler.toConsoleScalacOptions]] (issue #8921).
- *
- * When `usePipelining := true` sbt adds `-Ypickle-java -Ypickle-write <path>`
- * to `scalacOptions`. These flags must be stripped before the option list is
- * forwarded to the Scala REPL (console / consoleQuick), otherwise:
- *  - On Windows the REPL tries to delete/recreate the locked `early.jar`.
- *  - On all platforms the REPL's future-based evaluator gets disrupted and
- *    produces spurious `InterruptedException` / "Canceling execution…".
+/** Tests for [[Compiler.toConsoleScalacOptions]] — pipelining flags must be
+ *  stripped before reaching the REPL (#8921).
  */
 object CompilerConsoleOptsTest extends Properties:
   override def tests: List[Test] = List(

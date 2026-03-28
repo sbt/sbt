@@ -1,9 +1,4 @@
-// Regression test for #8921: console must work in a pipelined multi-project build.
-// Before the fix, subproject/console threw a FileSystemException on Windows because
-// the REPL driver tried to open early.jar while the pipelining build still held a lock.
-// The root console would start but then print "Canceling execution..." on any input.
-// We cannot run console non-interactively (the REPL blocks on stdin), so we verify
-// the fix by asserting that pipelining flags are absent from console/scalacOptions.
+// Regression test for #8921: pipelining flags must not leak into console/scalacOptions.
 
 ThisBuild / usePipelining := true
 ThisBuild / scalaVersion  := "3.8.1"

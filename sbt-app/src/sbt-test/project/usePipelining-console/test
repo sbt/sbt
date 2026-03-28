@@ -1,9 +1,4 @@
-# Regression test for #8921: pipelining must not break console.
-# Before the fix, subproject/console failed with a FileSystemException on
-# Windows (early.jar lock), and root console would interrupt REPL evaluation
-# ("Canceling execution..." / InterruptedException) on all platforms.
-# We cannot run console non-interactively (the REPL blocks on stdin), so
-# we assert the option list directly via a custom task instead.
+# Verify pipelining flags are stripped from console/scalacOptions (#8921).
 
 > compile
 > subproject/checkConsoleScalacOptions
