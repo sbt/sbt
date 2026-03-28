@@ -9,9 +9,7 @@ ThisBuild / scalaVersion := "3.8.1"
 lazy val subproject = project
   .in(file("modules/subproject"))
   .settings(
-    // Exit the REPL immediately so scripted does not block waiting for input.
-    // Compile / console / initialCommands := ":quit"
-    Compile / console / initialCommands := "Compile"
+    console / initialCommands := ":quit"
   )
 
 lazy val root = project
@@ -19,5 +17,5 @@ lazy val root = project
   .dependsOn(subproject)
   .aggregate(subproject)
   .settings(
-    Compile / console / initialCommands := ":quit"
+    console / initialCommands := ":quit"
   )
