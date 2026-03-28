@@ -145,11 +145,11 @@ object Defaults extends BuildCommon with DefExtra {
    */
   private[sbt] def dropPipeliningScalacOptions(options: Seq[String]): Seq[String] =
     options match
-      case "-Ypickle-write" :: _ :: rest => dropPipeliningScalacOptions(rest)
-      case "-Ypickle-write" :: Nil       => Nil
-      case "-Ypickle-java" :: rest       => dropPipeliningScalacOptions(rest)
-      case head :: rest                  => head +: dropPipeliningScalacOptions(rest)
-      case Nil                           => Nil
+      case "-Ypickle-write" +: (_ +: rest) => dropPipeliningScalacOptions(rest)
+      case "-Ypickle-write" +: _           => Seq.empty
+      case "-Ypickle-java" +: rest         => dropPipeliningScalacOptions(rest)
+      case head +: rest                    => head +: dropPipeliningScalacOptions(rest)
+      case _                               => Seq.empty
 
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {

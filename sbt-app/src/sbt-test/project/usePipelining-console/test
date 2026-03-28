@@ -1,0 +1,17 @@
+# Regression test for #8921
+# Verify that console works in a pipelined multi-project build.
+# Before the fix, subproject/console threw FileSystemException (Windows) and
+# all platforms got "Canceling execution..." / InterruptedException in the REPL.
+
+# First compile the project normally to ensure pipelining works
+> compile
+
+# Verify pipelining flags are present in compile scope (pipelining is active)
+> subproject/show scalacOptions
+
+# Verify pipelining flags are ABSENT in console scope (fix is working)
+> subproject/show console/scalacOptions
+
+# Verify console opens without error (the main fix)
+> subproject/console
+> console

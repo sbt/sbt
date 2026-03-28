@@ -103,6 +103,19 @@ object DefaultsDropPipeliningOptsTest extends Properties:
         Seq("-encoding", "utf8", "-deprecation", "-feature")
       )
     ),
+    example(
+      "Vector input (as produced by sbt pipelining) is handled correctly",
+      check(
+        Vector(
+          "-Ypickle-java",
+          "-Ypickle-write",
+          "/target/out/early/subproject_3-0.1.0-SNAPSHOT.jar",
+          "-encoding",
+          "utf8"
+        ),
+        Seq("-encoding", "utf8")
+      )
+    ),
 
     // ── property-based cases ──────────────────────────────────────────────────
 
