@@ -2662,26 +2662,21 @@ object Classpaths {
         ClasspathImpl.internalDependencyClasspathTask.value
       ),
       unmanagedClasspath := Def.uncached(ClasspathImpl.unmanagedDependenciesTask.value),
-      managedClasspath := Def
+      managedClasspath := Def.uncached(managedClasspathTask).value,
+      filteredDependencyClasspath := Def
         .uncached(Def.taskDyn {
-          val mode = dependencyMode.value
-          mode match
-            case DependencyMode.Transitive => managedClasspathTask
-            case DependencyMode.Direct =>
+          dependencyMode.value match
+            case DependencyMode.Transitive =>
+              Def.task { dependencyClasspath.value }
+            case _ =>
               Def.task {
-                val mjars = managedClasspathTask.value
-                ClasspathImpl.filterByDirectDeps(allDependencies.value, mjars)
-              }
-            case DependencyMode.PlusOne =>
-              Def.task {
-                val mjars = managedClasspathTask.value
-                val cpConfig = classpathConfiguration.value
-                ClasspathImpl.filterByPlusOne(
+                ClasspathImpl.filterByDependencyMode(
+                  dependencyMode.value,
                   allDependencies.value,
                   projectID.value,
-                  cpConfig,
+                  classpathConfiguration.value,
                   updateFull.value,
-                  mjars,
+                  dependencyClasspath.value,
                 )
               }
         })
@@ -2742,15 +2737,23 @@ object Classpaths {
       },
       // Note: invoking this task from shell would block indefinitely because it will
       // wait for the upstream compilation to start.
-      dependencyPicklePath := {
+      dependencyPicklePath := Def.uncached {
         // This is a conditional task. Do not refactor.
         if (incOptions.value.pipelining) {
-          concat(
+          val cp = concat(
             internalDependencyPicklePath,
             externalDependencyClasspath,
           ).value
+          ClasspathImpl.filterByDependencyMode(
+            dependencyMode.value,
+            allDependencies.value,
+            projectID.value,
+            classpathConfiguration.value,
+            updateFull.value,
+            cp,
+          )
         } else {
-          dependencyClasspath.value
+          filteredDependencyClasspath.value
         }
       },
       internalDependencyPicklePath := ClasspathImpl.internalDependencyPicklePathTask.value,

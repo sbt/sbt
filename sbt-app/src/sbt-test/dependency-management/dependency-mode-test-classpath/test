@@ -1,0 +1,5 @@
+# Verify Test classpath includes transitive deps even with Direct mode
+> checkTestClasspath
+
+# Verify tests can actually run (hamcrest-core needed at runtime)
+> test

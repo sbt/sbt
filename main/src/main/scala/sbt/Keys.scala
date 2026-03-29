@@ -437,6 +437,7 @@ object Keys {
   val internalDependencyClasspath = taskKey[Classpath]("The internal (inter-project) classpath.").withRank(CTask)
   val externalDependencyClasspath = taskKey[Classpath]("The classpath consisting of library dependencies, both managed and unmanaged.").withRank(BMinusTask)
   val dependencyClasspath = taskKey[Classpath]("The classpath consisting of internal and external, managed and unmanaged dependencies.").withRank(BPlusTask)
+  val filteredDependencyClasspath = taskKey[Classpath]("The dependency classpath filtered by dependencyMode. Only affects compilation, not runtime classpaths.").withRank(BMinusTask)
   val dependencyPicklePath = taskKey[Classpath]("The classpath consisting of internal pickles and external, managed and unmanaged dependencies. This task is promise-blocked.")
   val internalDependencyPicklePath = taskKey[Classpath]("The internal (inter-project) pickles. This task is promise-blocked.")
   val fullClasspath = taskKey[Classpath]("The exported classpath, consisting of build products and unmanaged and managed, internal and external dependencies.").withRank(BPlusTask)
