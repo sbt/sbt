@@ -161,7 +161,7 @@ jobs:
         if: ${{ matrix.jobtype == 4 }}
         shell: bash
         run: |
-          ./sbt -v "repoOverrideTest:scripted force-proxy-repos-file/*"
+          ./sbt -v "RepoOverrideTest/scripted force-proxy-repos-file/*"
           ./sbt -v "scripted source-dependencies/*"
       - name: Build and test (5)
         if: ${{ matrix.jobtype == 5 }}
