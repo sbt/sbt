@@ -362,10 +362,10 @@ defaults
     s"""$SwitchCommand <scala-version>[!] [-v] [<command>]
 	Changes the Scala version and runs a command.
 
-	Sets the `scalaVersion` of all projects that define a Scala cross version that is binary
-  compatible with <scala-version> and reloads the build.  If ! is supplied, then the
-  version is forced on all projects regardless of whether they are binary compatible or
-  not.
+	<scala-version> may be an actual Scala version such as 3.1.3, or a Semantic Version selector
+  pattern such as 2.13.x. Only subprojects whose crossScalaVersions match the version pattern
+  have their Scala version switched.  If ! is supplied, then all projects have
+  their Scala version switched.
 
   If -v is supplied, verbose logging of the Scala version switching is done.
 
