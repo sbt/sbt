@@ -123,7 +123,7 @@ def testedBaseSettings: Seq[Setting[?]] =
 
 val sbt20Plus =
   Seq(
-    "2.0.0-RC9",
+    "2.0.0-RC10",
   )
 val mimaSettings = mimaSettingsSince(sbt20Plus)
 def mimaSettingsSince(versions: Seq[String]): Seq[Def.Setting[?]] = Def settings (
@@ -477,12 +477,6 @@ lazy val taskProj = (project in file("tasks"))
     name := "Tasks",
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      ProblemFilters.exclude[MissingTypesProblem]("sbt.Execute$State$"),
-      ProblemFilters.exclude[DirectMissingMethodProblem]("sbt.Execute#State.this"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Pending"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Running"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Calling"),
-      ProblemFilters.exclude[IncompatibleResultTypeProblem]("sbt.Execute#State.Done"),
     )
   )
 
@@ -686,7 +680,6 @@ lazy val zincLmIntegrationProj = (project in file("zinc-lm-integration"))
       Tests.Argument(TestFrameworks.ScalaTest, s"-Dsbt.zinc.version=$zincVersion"),
     mimaSettings,
     mimaBinaryIssueFilters ++= Seq(
-      exclude[DirectMissingMethodProblem]("sbt.internal.inc.ZincLmUtil.*"),
     ),
     libraryDependencies += launcherInterface,
   )
@@ -998,11 +991,6 @@ lazy val upperModules = (project in (file("internal") / "upper"))
 lazy val sbtIgnoredProblems = {
   import com.typesafe.tools.mima.core.*
   Vector(
-    // Adding DependencyMode to Import trait (new abstract members)
-    ProblemFilters.exclude[ReversedMissingMethodProblem]("sbt.Import.DependencyMode"),
-    ProblemFilters.exclude[ReversedMissingMethodProblem](
-      "sbt.Import.sbt$Import$_setter_$DependencyMode_="
-    ),
   )
 }
 
