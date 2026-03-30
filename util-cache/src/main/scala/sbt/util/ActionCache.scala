@@ -340,44 +340,9 @@ class BuildWideCacheConfiguration(
     val fileConverter: FileConverter,
     val logger: Logger,
     val cacheEventLog: CacheEventLog,
-    val localDigestCacheByteSize: Long,
-    val cacheVersion: Long,
+    val localDigestCacheByteSize: Long = CacheImplicits.defaultLocalDigestCacheByteSize,
+    val cacheVersion: Long = 0L,
 ):
-  def this(
-      store: ActionCacheStore,
-      outputDirectory: Path,
-      fileConverter: FileConverter,
-      logger: Logger,
-      cacheEventLog: CacheEventLog
-  ) =
-    this(
-      store,
-      outputDirectory,
-      fileConverter,
-      logger,
-      cacheEventLog,
-      CacheImplicits.defaultLocalDigestCacheByteSize,
-      0L,
-    )
-
-  def this(
-      store: ActionCacheStore,
-      outputDirectory: Path,
-      fileConverter: FileConverter,
-      logger: Logger,
-      cacheEventLog: CacheEventLog,
-      localDigestCacheByteSize: Long,
-  ) =
-    this(
-      store,
-      outputDirectory,
-      fileConverter,
-      logger,
-      cacheEventLog,
-      localDigestCacheByteSize,
-      0L,
-    )
-
   override def toString(): String =
     s"BuildWideCacheConfiguration(store = $store, outputDirectory = $outputDirectory)"
 end BuildWideCacheConfiguration

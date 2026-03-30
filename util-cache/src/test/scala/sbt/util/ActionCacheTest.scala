@@ -259,6 +259,36 @@ object ActionCacheTest extends BasicTestSuite:
     assert(v2 == 42)
     assert(called == 2)
 
+  test("Changing cacheVersion invalidates the cache"):
+    withDiskCache(testCacheVersionInvalidation)
+
+  def testCacheVersionInvalidation(cache: ActionCacheStore): Unit =
+    import sjsonnew.BasicJsonProtocol.*
+    var called = 0
+    val action: ((Int, Int)) => InternalActionResult[Int] = { (a, b) =>
+      called += 1
+      InternalActionResult(a + b, Nil)
+    }
+    IO.withTemporaryDirectory: tempDir =>
+      val config0 = getCacheConfig(cache, tempDir)
+      // First call: computes the result
+      val v1 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config0)(action)
+      assert(v1 == 2)
+      assert(called == 1)
+      // Second call with same config: hits cache
+      val v2 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config0)(action)
+      assert(v2 == 2)
+      assert(called == 1)
+      // Third call with different cacheVersion: cache miss, recomputes
+      val config1 = getCacheConfig(cache, tempDir, cacheVersion = 1L)
+      val v3 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config1)(action)
+      assert(v3 == 2)
+      assert(called == 2)
+      // Fourth call with same cacheVersion=1: hits cache again
+      val v4 = ActionCache.cache((1, 1), Digest.zero, Digest.zero, tags, config1)(action)
+      assert(v4 == 2)
+      assert(called == 2)
+
   def withInMemoryCache(f: InMemoryActionCacheStore => Unit): Unit =
     val cache = InMemoryActionCacheStore()
     f(cache)
@@ -273,12 +303,23 @@ object ActionCacheTest extends BasicTestSuite:
       keepDirectory = false
     )
 
-  def getCacheConfig(cache: ActionCacheStore, outputDir: File): BuildWideCacheConfiguration =
+  def getCacheConfig(
+      cache: ActionCacheStore,
+      outputDir: File,
+      cacheVersion: Long = 0L,
+  ): BuildWideCacheConfiguration =
     val logger = new Logger:
       override def trace(t: => Throwable): Unit = ()
       override def success(message: => String): Unit = ()
       override def log(level: Level.Value, message: => String): Unit = ()
-    BuildWideCacheConfiguration(cache, outputDir.toPath(), fileConverter, logger, CacheEventLog())
+    BuildWideCacheConfiguration(
+      cache,
+      outputDir.toPath(),
+      fileConverter,
+      logger,
+      CacheEventLog(),
+      cacheVersion = cacheVersion,
+    )
 
   def fileConverter = new FileConverter:
     override def toPath(ref: VirtualFileRef): Path = Paths.get(ref.id)
