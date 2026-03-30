@@ -457,6 +457,7 @@ object Keys {
   val allowZombieClassLoaders = settingKey[Boolean]("Allow a classloader that has previously been closed by `run` or `test` to continue loading classes.")
   val localCacheDirectory = settingKey[File]("Operating system specific cache directory.")
   val localDigestCacheByteSize = SettingKey[Long](BasicKeys.localDigestCacheByteSize).withRank(DSetting)
+  val cacheVersion = SettingKey[Long](BasicKeys.cacheVersion).withRank(BSetting)
   val usePipelining = settingKey[Boolean]("Use subproject pipelining for compilation.").withRank(BSetting)
   val exportPipelining = settingKey[Boolean]("Produce early output so downstream subprojects can do pipelining.").withRank(BSetting)
 

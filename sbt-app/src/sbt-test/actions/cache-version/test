@@ -1,0 +1,14 @@
+# First compile: should be onsite (no cache)
+> compile
+
+# Second compile: should hit disk cache
+> compile
+
+# Change cacheVersion to invalidate all caches
+> set Global / cacheVersion := 1L
+
+# Third compile: should recompute (cache invalidated by version change)
+> compile
+
+# Fourth compile: should hit disk cache again
+> compile

@@ -41,9 +41,10 @@ object ActionCache:
    *   all we need from the input is to generate some hash value.
    * - codeContentHash: This hash represents the Scala code of the task.
    *   Even if the input tasks are the same, the code part needs to be tracked.
-   * - extraHash: Reserved for later, which we might use to invalidate the cache.
+   * - extraHash: Extra hash for cache invalidation (combined with config.cacheVersion).
    * - tags: Tags to track cache level.
    * - config: The configuration that's used to store where the cache backends are.
+   *   config.cacheVersion is incorporated into the cache key to allow global invalidation.
    * - action: The actual action to be cached.
    */
   def cache[I: HashWriter, O: JsonFormat](
@@ -62,7 +63,7 @@ object ActionCache:
       // This fixes https://github.com/sbt/sbt/issues/7662
       // Use the same input digest as success, distinguished by exitCode
       cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-      val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+      val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
       val cachedFailure = CachedCompileFailure.fromException(e)
       val json = Converter.toJsonUnsafe(cachedFailure)
       val failureFile = StringVirtualFile1(valuePath, CompactPrinter(json))
@@ -101,7 +102,7 @@ object ActionCache:
         result
       else
         cacheEventLog.append(ActionCacheEvent.OnsiteTask)
-        val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+        val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
         val valueFile = StringVirtualFile1(valuePath, CompactPrinter(json))
         val newOutputs = Vector(valueFile) ++ outputs.toVector
         try
@@ -160,7 +161,7 @@ object ActionCache:
       catch case _: Exception => None
 
     // Optimization: Check if we can read directly from symlinked value file
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
     val resolvedValuePath = config.fileConverter.toPath(VirtualFileRef.of(valuePath))
 
     def readFromSymlink(): Option[Either[Option[CachedCompileFailure], O]] =
@@ -240,7 +241,7 @@ object ActionCache:
   ): Either[Throwable, ActionResult] =
     // val logger = config.logger
     CacheImplicits.setCacheSize(config.localDigestCacheByteSize)
-    val (input, valuePath) = mkInput(key, codeContentHash, extraHash)
+    val (input, valuePath) = mkInput(key, codeContentHash, extraHash, config.cacheVersion)
     val getRequest =
       GetActionResultRequest(input, inlineStdout = false, inlineStderr = false, Vector(valuePath))
     config.store.get(getRequest)
@@ -248,10 +249,18 @@ object ActionCache:
   private inline def mkInput[I: HashWriter](
       key: I,
       codeContentHash: Digest,
-      extraHash: Digest
+      extraHash: Digest,
+      cacheVersion: Long,
   ): (Digest, String) =
+    val effectiveExtraHash =
+      if cacheVersion != 0L then Digest.sha256Hash(extraHash, Digest.dummy(cacheVersion))
+      else extraHash
     val input =
-      Digest.sha256Hash(codeContentHash, extraHash, Digest.dummy(Hasher.hashUnsafe[I](key)))
+      Digest.sha256Hash(
+        codeContentHash,
+        effectiveExtraHash,
+        Digest.dummy(Hasher.hashUnsafe[I](key))
+      )
     (input, s"$${OUT}/value/$input.json")
 
   def manifestFromFile(manifest: Path): Manifest =
@@ -332,6 +341,7 @@ class BuildWideCacheConfiguration(
     val logger: Logger,
     val cacheEventLog: CacheEventLog,
     val localDigestCacheByteSize: Long,
+    val cacheVersion: Long,
 ):
   def this(
       store: ActionCacheStore,
@@ -346,7 +356,26 @@ class BuildWideCacheConfiguration(
       fileConverter,
       logger,
       cacheEventLog,
-      CacheImplicits.defaultLocalDigestCacheByteSize
+      CacheImplicits.defaultLocalDigestCacheByteSize,
+      0L,
+    )
+
+  def this(
+      store: ActionCacheStore,
+      outputDirectory: Path,
+      fileConverter: FileConverter,
+      logger: Logger,
+      cacheEventLog: CacheEventLog,
+      localDigestCacheByteSize: Long,
+  ) =
+    this(
+      store,
+      outputDirectory,
+      fileConverter,
+      logger,
+      cacheEventLog,
+      localDigestCacheByteSize,
+      0L,
     )
 
   override def toString(): String =

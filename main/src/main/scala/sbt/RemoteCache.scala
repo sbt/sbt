@@ -30,6 +30,7 @@ object RemoteCache:
   lazy val globalSettings: Seq[Def.Setting[?]] = Seq(
     localCacheDirectory :== defaultCacheLocation,
     localDigestCacheByteSize :== CacheImplicits.defaultLocalDigestCacheByteSize,
+    cacheVersion :== sys.props.get("sbt.cacheversion").flatMap(_.toLongOption).getOrElse(0L),
     rootOutputDirectory := {
       appConfiguration.value.baseDirectory
         .toPath()

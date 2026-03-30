@@ -129,6 +129,12 @@ object BasicKeys {
     10000
   )
 
+  val cacheVersion = AttributeKey[Long](
+    "cacheVersion",
+    "A version number that invalidates all task caches when changed.",
+    10000
+  )
+
   // Unlike other BasicKeys, this is not used directly as a setting key,
   // and severLog / logLevel is used instead.
   private[sbt] val serverLogLevel =
