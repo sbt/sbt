@@ -19,4 +19,4 @@ lazy val plugin = (projectMatrix in file("plugin"))
         case _      => "2.0.0-RC3"
     },
   )
-  .jvmPlatform(scalaVersions = Seq("3.8.2", "2.12.21"))
+  .jvmPlatform(scalaVersions = Seq("3.8.3", "2.12.21"))

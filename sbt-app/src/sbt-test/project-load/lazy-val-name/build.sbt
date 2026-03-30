@@ -1,6 +1,6 @@
 lazy val `a + b` = "2.13.18"
 
-// https://github.com/scala/scala3/blob/3.8.2/library/src/scala/reflect/NameTransformer.scala#L47-L64
+// https://github.com/scala/scala3/blob/3.8.3/library/src/scala/reflect/NameTransformer.scala#L47-L64
 lazy val ~=<>!#%^&|*/+-:\\?@ = "my-name"
 
 scalaVersion := `a + b`

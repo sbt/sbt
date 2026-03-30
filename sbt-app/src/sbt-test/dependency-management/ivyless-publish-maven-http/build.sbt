@@ -1,7 +1,7 @@
 ThisBuild / csrCacheDirectory := (ThisBuild / baseDirectory).value / "coursier-cache"
 ThisBuild / organization := "com.example"
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 
 val publishRepoBase = settingKey[File]("Base directory for Maven publish repo (HTTP server writes here)")
 ThisBuild / publishRepoBase := (ThisBuild / baseDirectory).value / "repo"

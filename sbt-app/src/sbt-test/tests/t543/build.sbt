@@ -6,7 +6,7 @@ val marker = new File("marker")
 val check = TaskKey[Unit]("check", "Check correct error has been returned.")
 val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
 
-ThisBuild / scalaVersion := "3.8.2"
+ThisBuild / scalaVersion := "3.8.3"
 
 lazy val root = (project in file(".")).
   settings(

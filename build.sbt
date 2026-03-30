@@ -1022,7 +1022,7 @@ lazy val sbtwProj = (project in file("sbtw"))
     commonSettings,
     name := "sbtw",
     description := "Windows drop-in launcher for sbt (replaces sbt.bat)",
-    scalaVersion := "3.8.2",
+    scalaVersion := "3.8.3",
     crossPaths := false,
     Compile / scalafix / unmanagedSources := {
       // https://github.com/scalameta/scalameta/issues/4531
