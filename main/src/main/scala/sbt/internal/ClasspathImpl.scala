@@ -19,6 +19,7 @@ import sbt.librarymanagement.{
   ConfigRef,
   Configuration,
   CrossVersion,
+  DependencyMode,
   ModuleID,
   ScalaArtifacts,
   TrackLevel,
@@ -540,5 +541,22 @@ private[sbt] object ClasspathImpl {
               allowedKeys.contains((mid.organization, mid.name)) ||
               isScalaLibraryModule(mid)
             case None => true
+
+  /**
+   * Apply dependencyMode filtering to a classpath. Entries without moduleIDStr metadata
+   * (e.g. internal project outputs) pass through unchanged.
+   */
+  def filterByDependencyMode(
+      mode: DependencyMode,
+      directDeps: Seq[ModuleID],
+      projectId: ModuleID,
+      config: Configuration,
+      fullReport: UpdateReport,
+      cp: Classpath,
+  ): Classpath =
+    mode match
+      case DependencyMode.Transitive => cp
+      case DependencyMode.Direct     => filterByDirectDeps(directDeps, cp)
+      case DependencyMode.PlusOne => filterByPlusOne(directDeps, projectId, config, fullReport, cp)
 
 }
