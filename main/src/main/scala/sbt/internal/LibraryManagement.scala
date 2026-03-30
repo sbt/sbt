@@ -872,6 +872,35 @@ private[sbt] object LibraryManagement {
           writeChecksumsForFile(targetFile, checksumAlgorithms, log)
         else log.warn(s"$targetFile already exists, skipping (overwrite=$overwrite)")
 
+    if version.endsWith("-SNAPSHOT") then
+      writeMavenMetadataLocal(versionDir, groupId, artifactId, version, log)
+
+  private def writeMavenMetadataLocal(
+      versionDir: File,
+      groupId: String,
+      artifactId: String,
+      version: String,
+      log: Logger
+  ): Unit =
+    val timestamp = new java.text.SimpleDateFormat("yyyyMMddHHmmss").format(new java.util.Date())
+    val metadata =
+      s"""|<?xml version="1.0" encoding="UTF-8"?>
+          |<metadata modelVersion="1.1.0">
+          |  <groupId>$groupId</groupId>
+          |  <artifactId>$artifactId</artifactId>
+          |  <version>$version</version>
+          |  <versioning>
+          |    <snapshot>
+          |      <localCopy>true</localCopy>
+          |    </snapshot>
+          |    <lastUpdated>$timestamp</lastUpdated>
+          |  </versioning>
+          |</metadata>
+          |""".stripMargin
+    val metadataFile = new File(versionDir, "maven-metadata-local.xml")
+    IO.write(metadataFile, metadata)
+    log.info(s"Published $metadataFile")
+
   /**
    * Publishes artifacts to a remote Maven repo (HTTP) without using Apache Ivy.
    * Same layout as ivylessPublishMavenToFile; uses HTTP PUT with optional Basic auth.
