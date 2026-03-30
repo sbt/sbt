@@ -66,17 +66,19 @@ trait Init:
     def values: Iterable[Any] = data.values
 
     def get[A](key: ScopedKey[A]): Option[A] =
-      delegates(key).flatMap(data.get).nextOption.asInstanceOf[Option[A]]
+      delegates(key).flatMap(data.get).nextOption().asInstanceOf[Option[A]]
 
     def definingKey[A](key: ScopedKey[A]): Option[ScopedKey[A]] =
       delegates(key).find(data.contains)
 
     def getKeyValue[A](key: ScopedKey[A]): Option[(ScopedKey[A], A)] =
-      delegates(key).flatMap { k =>
-        data.get(k) match
-          case None    => None
-          case Some(v) => Some(k -> v.asInstanceOf[A])
-      }.nextOption
+      delegates(key)
+        .flatMap { k =>
+          data.get(k) match
+            case None    => None
+            case Some(v) => Some(k -> v.asInstanceOf[A])
+        }
+        .nextOption()
 
     def getDirect[A](key: ScopedKey[A]): Option[A] = data.get(key).asInstanceOf[Option[A]]
 
