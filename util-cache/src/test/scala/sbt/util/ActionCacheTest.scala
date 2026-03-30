@@ -318,7 +318,8 @@ object ActionCacheTest extends BasicTestSuite:
       fileConverter,
       logger,
       CacheEventLog(),
-      cacheVersion = cacheVersion,
+      CacheImplicits.defaultLocalDigestCacheByteSize,
+      cacheVersion,
     )
 
   def fileConverter = new FileConverter:
