@@ -67,7 +67,7 @@ final class SbtHandler(remoteSbtCreator: RemoteSbtCreator) extends StatementHand
       } catch {
         case _: IOException => process.destroy()
       } finally {
-        if (process.isAlive) process.destroy()
+        if (process.isAlive()) process.destroy()
         RunningProcesses.remove(process)
       }
   }

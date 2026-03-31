@@ -503,7 +503,7 @@ private[sbt] object Continuous {
              * increase in latency.
              */
             @tailrec def aggregate(res: Seq[Event]): Seq[Event] =
-              if (limit.isOverdue) res
+              if (limit.isOverdue()) res
               else {
                 monitor.poll(antiEntropyPollPeriod) match {
                   case s if s.nonEmpty => aggregate(res ++ s)

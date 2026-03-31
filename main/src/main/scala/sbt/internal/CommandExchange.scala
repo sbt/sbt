@@ -101,7 +101,7 @@ private[sbt] final class CommandExchange {
           Option(deadline match {
             case Some(d: Deadline) =>
               commandQueue.poll(d.timeLeft.toMillis + 1, TimeUnit.MILLISECONDS) match {
-                case null if idleDeadline.fold(false)(_.isOverdue) =>
+                case null if idleDeadline.fold(false)(_.isOverdue()) =>
                   state.foreach { s =>
                     s.get(BasicKeys.serverIdleTimeout) match {
                       case Some(Some(d)) => s.log.info(s"sbt idle timeout of $d expired")

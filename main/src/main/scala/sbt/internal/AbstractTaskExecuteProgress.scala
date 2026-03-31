@@ -68,7 +68,7 @@ private[sbt] abstract class AbstractTaskExecuteProgress(
     timings.forEach { (task, timing) =>
       if (timing.isActive) result += task -> (now - timing.startNanos).nanos
     }
-    result.result
+    result.result()
   }
 
   override def afterRegistered(

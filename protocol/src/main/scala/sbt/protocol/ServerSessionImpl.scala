@@ -256,7 +256,7 @@ private[sbt] class ServerSessionImpl(
           f(msg) match {
             case Some(result) => result
             case None =>
-              if (deadline.isOverdue)
+              if (deadline.isOverdue())
                 throw new TimeoutException(s"Timeout waiting for response after $duration")
               else impl()
           }
@@ -324,7 +324,7 @@ private[sbt] class ServerSessionImpl(
   override def shutdown(isAlive: => Boolean, destroy: () => Unit): Try[Unit] = {
     def waitForExit(isAlive: => Boolean, timeout: FiniteDuration): Unit = {
       val deadline = timeout.fromNow
-      while (!deadline.isOverdue && isAlive) Thread.sleep(10)
+      while (!deadline.isOverdue() && isAlive) Thread.sleep(10)
     }
 
     val result = for {

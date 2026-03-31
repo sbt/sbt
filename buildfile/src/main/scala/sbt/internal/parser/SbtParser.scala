@@ -236,7 +236,7 @@ private[sbt] case class SbtParser(path: VirtualFileRef, lines: Seq[String])
                       |$code
                       |}""".stripMargin
     val fileName = path.id
-    val reporterId = s"$fileName-${Random.nextInt}"
+    val reporterId = s"$fileName-${Random.nextInt()}"
     val sourceFile = SourceFile(
       VirtualFile(reporterId, wrapCode.getBytes(StandardCharsets.UTF_8)),
       scala.io.Codec.UTF8

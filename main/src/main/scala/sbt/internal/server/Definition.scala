@@ -219,7 +219,7 @@ private[sbt] object Definition {
   }
 
   private[sbt] def getAnalyses: Future[Seq[Analysis]] = {
-    val result = Promise[Seq[Analysis]]
+    val result = Promise[Seq[Analysis]]()
 
     new Thread("sbt-get-analysis-thread") {
       setDaemon(true)

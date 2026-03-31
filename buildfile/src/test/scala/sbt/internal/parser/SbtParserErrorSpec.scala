@@ -29,7 +29,7 @@ object SbtParserErrorSpec extends AbstractSpec {
       print(s"Processing ${file.getFileName}: ")
 
       val vf = converter.toVirtualFile(file)
-      val buildSbt = Source.fromFile(file.toUri).getLines.toSeq
+      val buildSbt = Source.fromFile(file.toUri).getLines().toSeq
       val message = interceptMessageException(SbtParser(vf, buildSbt))
       println(message)
       assert(message.contains(file.getFileName.toString))

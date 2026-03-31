@@ -179,9 +179,9 @@ trait ShellScriptUtil extends BasicTestSuite {
                 BasicIO.processFully(processLine)
               )
             )
-          if p.exitValue != 0 then
+          if p.exitValue() != 0 then
             lines.foreach(l => Console.err.println(l))
-            sys.error(s"process exit with ${p.exitValue}")
+            sys.error(s"process exit with ${p.exitValue()}")
           f(lines.toList)
           ()
         finally

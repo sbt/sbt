@@ -28,7 +28,7 @@ final class SbtServer(
     private val process: scala.sys.process.Process
 ) {
   def close(): Unit =
-    session.shutdown(process.isAlive, () => process.destroy()).get
+    session.shutdown(process.isAlive(), () => process.destroy()).get
 }
 
 trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
@@ -80,7 +80,7 @@ trait AbstractServerTest extends AnyFunSuite with BeforeAndAfterAll {
     )
 
     val portfile = buildDir / "project" / "target" / "active.json"
-    ServerSession.waitForPortfile(portfile, process.isAlive)
+    ServerSession.waitForPortfile(portfile, process.isAlive())
 
     val session = ServerSession.connect(portfile)
     session.initialize(10.seconds, subscribeToAllForTest)

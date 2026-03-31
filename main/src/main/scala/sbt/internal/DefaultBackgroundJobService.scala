@@ -194,7 +194,7 @@ private[sbt] abstract class AbstractBackgroundJobService extends BackgroundJobSe
   override final def close(): Unit = shutdown()
   override def shutdown(): Unit = {
     val deadline = 10.seconds.fromNow
-    while (jobSet.nonEmpty && !deadline.isOverdue) {
+    while (jobSet.nonEmpty && !deadline.isOverdue()) {
       jobSet.headOption.foreach { handle =>
         if (handle.job.isRunning()) {
           handle.job.shutdown()

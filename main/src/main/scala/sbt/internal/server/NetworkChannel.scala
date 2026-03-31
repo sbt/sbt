@@ -766,7 +766,7 @@ final class NetworkChannel(
     private def empty = TerminalPropertiesResponse(0, 0, false, false, false, false)
     def getProperties(block: Boolean): Unit = {
       if (alive.get) {
-        if (!pending.get && Option(lastUpdate.get).fold(true)(d => (d + 1.second).isOverdue)) {
+        if (!pending.get && Option(lastUpdate.get).fold(true)(d => (d + 1.second).isOverdue())) {
           pending.set(true)
           val queue = VirtualTerminal.sendTerminalPropertiesQuery(term.name, jsonRpcRequest)
           val update: Runnable = () => {

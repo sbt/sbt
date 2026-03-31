@@ -86,7 +86,7 @@ private[sbt] class TaskProgress(
 
   private def doReport(): Unit = {
     val runnable: Runnable = () => {
-      if (nextReport.get.isOverdue) {
+      if (nextReport.get.isOverdue()) {
         report()
       }
     }

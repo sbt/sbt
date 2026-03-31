@@ -192,15 +192,15 @@ object ServerSession {
     val deadline = duration.fromNow
     var nextLog = PortfileLogInterval.fromNow
 
-    while (portfileIsEmpty() && !deadline.isOverdue && isAlive) {
-      if (nextLog.isOverdue) {
+    while (portfileIsEmpty() && !deadline.isOverdue() && isAlive) {
+      if (nextLog.isOverdue()) {
         log("Still waiting for sbt ...")
         nextLog = PortfileLogInterval.fromNow
       }
       Thread.sleep(10)
     }
 
-    if (deadline.isOverdue)
+    if (deadline.isOverdue())
       throw new TimeoutException(
         s"${portfile.getAbsolutePath} was not created within $duration"
       )

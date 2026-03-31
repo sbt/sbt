@@ -245,7 +245,7 @@ private[sbt] object Settings {
     val created = createdBuilder.result()
     val modified = modifiedBuilder.result()
     if (created.isEmpty && deleted.isEmpty && modified.isEmpty) {
-      FileChanges.unmodified(unmodifiedBuilder.result)
+      FileChanges.unmodified(unmodifiedBuilder.result())
     } else {
       FileChanges(created, deleted, modified, unmodified)
     }
