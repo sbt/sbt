@@ -9,7 +9,7 @@
 package sbt
 
 import java.io.File
-import BuildPaths.{ expandTildePrefix, defaultGlobalBase, GlobalBaseProperty }
+import BuildPaths.{ expandTildePrefix, defaultGlobalBase, getFileProperty, GlobalBaseProperty }
 
 object BuildPathsTest extends verify.BasicTestSuite:
 
@@ -54,4 +54,22 @@ object BuildPathsTest extends verify.BasicTestSuite:
 
   test("it should expand ~-/foo/bar to $OLDPWD/foo/bar"):
     assertEquals(sys.env.getOrElse("OLDPWD", "") + "/foo/bar", expandTildePrefix("~-/foo/bar"))
+  test("getFileProperty resolves relative paths to absolute"):
+    val prop = "sbt.test.relative.path"
+    try
+      sys.props(prop) = "../relative/dir"
+      val result = getFileProperty(prop)
+      assert(result.isDefined)
+      assert(result.get.isAbsolute, s"Expected absolute path, got: ${result.get}")
+    finally sys.props.remove(prop)
+
+  test("getFileProperty preserves absolute paths"):
+    val prop = "sbt.test.absolute.path"
+    try
+      sys.props(prop) = "/absolute/path"
+      val result = getFileProperty(prop)
+      assert(result.isDefined)
+      assert(result.get.getPath == "/absolute/path")
+    finally sys.props.remove(prop)
+
 end BuildPathsTest
