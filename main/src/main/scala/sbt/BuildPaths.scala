@@ -92,7 +92,7 @@ object BuildPaths:
           val tildePath = expandTildePrefix(path)
           Some(new File(tildePath))
         } else {
-          Some(new File(path))
+          Some(new File(path).getAbsoluteFile)
         }
       }
   }
