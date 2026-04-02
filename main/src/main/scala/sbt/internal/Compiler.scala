@@ -558,7 +558,9 @@ object Compiler:
       )
       .withEnvVars(sys.env)
   }
-  /** Strips `-Ypickle-java` and `-Ypickle-write <path>` from scalac options
+
+  /**
+   * Strips `-Ypickle-java` and `-Ypickle-write <path>` from scalac options
    *  so they don't reach the REPL, where they cause file-lock errors on Windows
    *  and spurious `InterruptedException`s on all platforms (see #8921).
    */
