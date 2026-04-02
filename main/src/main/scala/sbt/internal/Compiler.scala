@@ -558,22 +558,9 @@ object Compiler:
       )
       .withEnvVars(sys.env)
   }
-  /**
-   * Strips pipelining-specific scalac options that must not be forwarded to the REPL.
-   *
-   * When `usePipelining := true`, the compile configuration appends
-   * `-Ypickle-java -Ypickle-write <path>/early.jar` to `scalacOptions`. Forwarding
-   * these options to the Scala REPL causes two separate failures (issue #8921):
-   *
-   *  - On Windows, the REPL driver tries to delete/recreate `early.jar` on startup
-   *    while the pipelining build still holds a file-system lock on it, resulting in
-   *    a `FileSystemException`.
-   *  - On all platforms, the REPL's future-based expression evaluator is disrupted
-   *    by pickle-write activity, producing a spurious `InterruptedException`
-   *    ("Canceling execution…").
-   *
-   * `-Ypickle-write` takes one positional argument (the output path), so both the
-   * flag and its argument are removed. `-Ypickle-java` takes no argument.
+  /** Strips `-Ypickle-java` and `-Ypickle-write <path>` from scalac options
+   *  so they don't reach the REPL, where they cause file-lock errors on Windows
+   *  and spurious `InterruptedException`s on all platforms (see #8921).
    */
   private[sbt] def toConsoleScalacOptions(options: Seq[String]): Seq[String] =
     options match
