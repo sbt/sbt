@@ -1144,7 +1144,7 @@ private[sbt] object Load {
                 )
               val existingIds = otherProjects.projects.map(_.id)
               val refs = existingIds.map(id => ProjectRef(buildUri, id))
-              (root.aggregate(refs*), false, Nil, otherProjects)
+              (root.aggregate(refs*), true, Nil, otherProjects)
         val (finalRoot, projectLevelExtra) =
           timed(s"Load.loadTransitive: processProject($root)", log) {
             processProject(root, files, extraFiles, expand)
