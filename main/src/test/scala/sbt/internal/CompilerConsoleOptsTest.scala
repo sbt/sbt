@@ -6,13 +6,13 @@
  * Licensed under Apache License 2.0 (see LICENSE)
  */
 
-package sbt
+package sbt.internal
 
 import hedgehog.*
 import hedgehog.runner.*
 
 /**
- * Unit tests for [[Defaults.dropPipeliningScalacOptions]] (issue #8921).
+ * Unit tests for [[Compiler.toConsoleScalacOptions]] (issue #8921).
  *
  * When `usePipelining := true` sbt adds `-Ypickle-java -Ypickle-write <path>`
  * to `scalacOptions`. These flags must be stripped before the option list is
@@ -21,7 +21,7 @@ import hedgehog.runner.*
  *  - On all platforms the REPL's future-based evaluator gets disrupted and
  *    produces spurious `InterruptedException` / "Canceling execution…".
  */
-object DefaultsDropPipeliningOptsTest extends Properties:
+object CompilerConsoleOptsTest extends Properties:
   override def tests: List[Test] = List(
     // ── deterministic unit cases ──────────────────────────────────────────────
 
@@ -136,7 +136,7 @@ object DefaultsDropPipeliningOptsTest extends Properties:
   // ── helpers ───────────────────────────────────────────────────────────────
 
   private def check(input: Seq[String], expected: Seq[String]): Result =
-    val got = Defaults.dropPipeliningScalacOptions(input)
+    val got = Compiler.toConsoleScalacOptions(input)
     Result
       .assert(got == expected)
       .log(s"input:    $input")
@@ -168,7 +168,7 @@ object DefaultsDropPipeliningOptsTest extends Properties:
   def propNoPipeliningFlagsInResult: Property =
     for options <- genOptions.forAll
     yield
-      val result = Defaults.dropPipeliningScalacOptions(options)
+      val result = Compiler.toConsoleScalacOptions(options)
       Result
         .assert(!result.contains("-Ypickle-java"))
         .and(Result.assert(!result.contains("-Ypickle-write")))
@@ -182,7 +182,7 @@ object DefaultsDropPipeliningOptsTest extends Properties:
       clean = options.filterNot(pipeliningFlags.contains)
     yield
       // inject the clean options as-is (no pipelining flags) and verify they survive
-      val result = Defaults.dropPipeliningScalacOptions(clean)
+      val result = Compiler.toConsoleScalacOptions(clean)
       Result
         .assert(result == clean)
         .log(s"clean input: $clean")
@@ -191,12 +191,12 @@ object DefaultsDropPipeliningOptsTest extends Properties:
   def propIdempotent: Property =
     for options <- genOptions.forAll
     yield
-      val once = Defaults.dropPipeliningScalacOptions(options)
-      val twice = Defaults.dropPipeliningScalacOptions(once)
+      val once = Compiler.toConsoleScalacOptions(options)
+      val twice = Compiler.toConsoleScalacOptions(once)
       Result
         .assert(once == twice)
         .log(s"input: $options")
         .log(s"once:  $once")
         .log(s"twice: $twice")
 
-end DefaultsDropPipeliningOptsTest
+end CompilerConsoleOptsTest

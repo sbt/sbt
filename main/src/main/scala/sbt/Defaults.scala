@@ -126,31 +126,6 @@ import xsbti.compile.{
 object Defaults extends BuildCommon with DefExtra {
   final val CacheDirectoryName = "cache"
 
-  /**
-   * Strips pipelining-specific scalac options that must not be forwarded to the REPL.
-   *
-   * When `usePipelining := true`, the compile configuration appends
-   * `-Ypickle-java -Ypickle-write <path>/early.jar` to `scalacOptions`. Forwarding
-   * these options to the Scala REPL causes two separate failures (issue #8921):
-   *
-   *  - On Windows, the REPL driver tries to delete/recreate `early.jar` on startup
-   *    while the pipelining build still holds a file-system lock on it, resulting in
-   *    a `FileSystemException`.
-   *  - On all platforms, the REPL's future-based expression evaluator is disrupted
-   *    by pickle-write activity, producing a spurious `InterruptedException`
-   *    ("Canceling execution…").
-   *
-   * `-Ypickle-write` takes one positional argument (the output path), so both the
-   * flag and its argument are removed. `-Ypickle-java` takes no argument.
-   */
-  private[sbt] def dropPipeliningScalacOptions(options: Seq[String]): Seq[String] =
-    options match
-      case "-Ypickle-write" +: (_ +: rest) => dropPipeliningScalacOptions(rest)
-      case "-Ypickle-write" +: _           => Seq.empty
-      case "-Ypickle-java" +: rest         => dropPipeliningScalacOptions(rest)
-      case head +: rest                    => head +: dropPipeliningScalacOptions(rest)
-      case _                               => Seq.empty
-
   def configSrcSub(key: SettingKey[File]): Initialize[File] =
     Def.setting {
       (ThisScope.copy(config = Zero) / key).value / nameForSrc(configuration.value.name)
@@ -1088,11 +1063,7 @@ object Defaults extends BuildCommon with DefExtra {
           )
           if (shouldApplyFlags)
             Def.uncached(
-              Vector(
-                "-Ypickle-java",
-                "-Ypickle-write",
-                fileConverter.value.toPath(earlyOutput.value).toString
-              ) ++ old
+              Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.toString) ++ old
             )
           else Def.uncached(old)
         } else Def.uncached(old)
@@ -1117,13 +1088,13 @@ object Defaults extends BuildCommon with DefExtra {
       // because they cause file-locking failures on Windows (#8921) and trigger
       // spurious InterruptedExceptions in the REPL's expression evaluator.
       console / scalacOptions := Def.uncached {
-        dropPipeliningScalacOptions(scalacOptions.value)
+        Compiler.toConsoleScalacOptions(scalacOptions.value)
       },
       console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
       consoleQuick / scalacOptions := Def.uncached {
-        dropPipeliningScalacOptions(scalacOptions.value)
+        Compiler.toConsoleScalacOptions(scalacOptions.value)
       },
       consoleQuick / forkOptions := Def.uncached((console / forkOptions).value),
       discoveredMainClasses := compile
