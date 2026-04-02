@@ -1120,11 +1120,11 @@ private[sbt] object Load {
           buildBase
         )
         val discoveredIdsStr = discovered.map(_.id).mkString(",")
-        val (root, expand, moreProjects, otherProjects) =
+        val (root, moreProjects, otherProjects) =
           rootOpt match
             case Some(root) =>
               log.debug(s"[Loading] Found root project ${root.id} w/ remaining $discoveredIdsStr")
-              (root, true, discovered, LoadedProjects(Nil, Nil))
+              (root, discovered, LoadedProjects(Nil, Nil))
             case None =>
               log.debug(s"[Loading] Found non-root projects $discoveredIdsStr")
               // Here we do something interesting... We need to create an aggregate root project
@@ -1144,10 +1144,10 @@ private[sbt] object Load {
                 )
               val existingIds = otherProjects.projects.map(_.id)
               val refs = existingIds.map(id => ProjectRef(buildUri, id))
-              (root.aggregate(refs*), true, Nil, otherProjects)
+              (root.aggregate(refs*), Nil, otherProjects)
         val (finalRoot, projectLevelExtra) =
           timed(s"Load.loadTransitive: processProject($root)", log) {
-            processProject(root, files, extraFiles, expand)
+            processProject(root, files, extraFiles, true)
           }
         val newProjects = moreProjects ++ projectLevelExtra
         val newAcc = finalRoot +: (acc ++ otherProjects.projects)
