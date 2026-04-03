@@ -3,8 +3,9 @@ package sbt.internal
 import hedgehog.*
 import hedgehog.runner.*
 
-/** Tests for [[Compiler.toConsoleScalacOptions]] — pipelining flags must be
- *  stripped before reaching the REPL (#8921).
+/**
+ * Tests for [[Compiler.toConsoleScalacOptions]] — pipelining flags must be stripped before
+ * reaching the REPL (#8921).
  */
 object CompilerConsoleOptsTest extends Properties:
   override def tests: List[Test] = List(
