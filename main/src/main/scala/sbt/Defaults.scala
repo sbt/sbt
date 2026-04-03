@@ -1085,7 +1085,11 @@ object Defaults extends BuildCommon {
           )
           if (shouldApplyFlags)
             Def.uncached(
-              Vector("-Ypickle-java", "-Ypickle-write", earlyOutput.value.toString) ++ old
+              Vector(
+                "-Ypickle-java",
+                "-Ypickle-write",
+                fileConverter.value.toPath(earlyOutput.value).toString
+              ) ++ old
             )
           else Def.uncached(old)
         } else Def.uncached(old)
