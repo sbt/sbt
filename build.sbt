@@ -1320,6 +1320,8 @@ lazy val lmCoursier = project
   )
   .dependsOn(lmCore)
 
+lazy val checkLmcoursierPackage = taskKey[Unit]("")
+
 lazy val lmCoursierShaded = project
   .in(file("lm-coursier/target/shaded-module"))
   .settings(
@@ -1336,6 +1338,20 @@ lazy val lmCoursierShaded = project
     ),
     assembly / assemblyOption ~= { _.withIncludeScala(false) },
     conflictWarning := ConflictWarning.disable,
+    checkLmcoursierPackage := {
+      val jarFile = assembly.value
+      IO.withTemporaryDirectory { tmp =>
+        val notLmcoursierPackageClasses = IO
+          .unzip(jarFile, tmp, _.endsWith(".class"))
+          .toSeq
+          .map(f => IO.relativize(tmp, f).getOrElse(sys.error(s"invalid path ${f}")))
+          .filterNot(f => f.startsWith("lmcoursier") || f.startsWith("META-INF"))
+          .sorted
+        notLmcoursierPackageClasses.foreach(println)
+        assert(notLmcoursierPackageClasses.isEmpty)
+      }
+    },
+    Test / test := (Test / test).dependsOn(checkLmcoursierPackage).value,
     Utils.noPublish,
     assemblyShadeRules := {
       val namespacesToShade = Seq(
