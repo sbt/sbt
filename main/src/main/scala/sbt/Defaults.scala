@@ -1088,9 +1088,18 @@ object Defaults extends BuildCommon with DefExtra {
       },
       compileIncSetup := Def.uncached(compileIncSetupTask.value),
       console := Compiler.consoleTask.value,
+      // Pipelining flags (-Ypickle-java / -Ypickle-write) must not reach the REPL
+      // because they cause file-locking failures on Windows (#8921) and trigger
+      // spurious InterruptedExceptions in the REPL's expression evaluator.
+      console / scalacOptions := Def.uncached {
+        Compiler.toConsoleScalacOptions(scalacOptions.value)
+      },
       console / forkOptions := Def.uncached(Compiler.consoleForkOptions.value),
       collectAnalyses := Definition.collectAnalysesTask.map(_ => ()).value,
       consoleQuick := consoleQuickTask.value,
+      consoleQuick / scalacOptions := Def.uncached {
+        Compiler.toConsoleScalacOptions(scalacOptions.value)
+      },
       consoleQuick / forkOptions := Def.uncached((console / forkOptions).value),
       discoveredMainClasses := compile
         .map(discoverMainClasses)
