@@ -83,7 +83,17 @@ object Dependencies {
   val jline3Native = "org.jline" % "jline-native" % jline3Version
   val jline3Reader = "org.jline" % "jline-reader" % jline3Version
   val jline3Builtins = "org.jline" % "jline-builtins" % jline3Version
-  val scalatest = "org.scalatest" %% "scalatest" % "3.2.19"
+  val scalatest = Seq(
+    "scalatest-diagrams",
+    "scalatest-flatspec",
+    "scalatest-freespec",
+    "scalatest-funspec",
+    "scalatest-funsuite",
+    "scalatest-propspec",
+    "scalatest-shouldmatchers",
+  ).map(
+    "org.scalatest" %% _ % "3.2.20" % Test
+  )
   val scalacheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
   val junit = "junit" % "junit" % "4.13.2"
   val scalaVerify = "com.eed3si9n.verify" %% "verify" % "1.0.0"

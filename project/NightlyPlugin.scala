@@ -14,10 +14,9 @@ object NightlyPlugin extends AutoPlugin {
         Seq(
           scalacheck % Test,
           junit % Test,
-          scalatest % Test,
           scalaVerify % Test,
           hedgehog % Test
-        )
+        ) ++ scalatest
       else Seq()
     )
   }

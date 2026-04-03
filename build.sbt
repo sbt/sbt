@@ -879,7 +879,7 @@ lazy val sbtClientProj = (project in file("client"))
     bspEnabled := false,
     crossPaths := false,
     exportJars := true,
-    libraryDependencies += scalatest % Test,
+    libraryDependencies ++= scalatest,
     Compile / mainClass := Some("sbt.client.Client"),
     nativeImageReady := { () =>
       ()
@@ -1206,11 +1206,11 @@ lazy val lmCore = (project in file("lm-core"))
       scalaXml,
       sjsonNewScalaJson.value % Optional,
       sjsonNewCore.value % Optional,
-      scalatest % Test,
       scalacheck % Test,
       scalaVerify % Test,
       hedgehog % Test,
     ),
+    libraryDependencies ++= scalatest,
     Compile / resourceGenerators += Def
       .task(
         Utils.generateVersionFile(
@@ -1249,11 +1249,11 @@ lazy val lmIvy = (project in file("lm-ivy"))
       ivy,
       sjsonNewScalaJson.value,
       sjsonNewCore.value,
-      scalatest % Test,
       scalacheck % Test,
       scalaVerify % Test,
       hedgehog % Test,
     ),
+    libraryDependencies ++= scalatest,
     contrabandSettings,
     Test / classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat,
     mimaSettings,
@@ -1300,8 +1300,8 @@ lazy val lmCoursierDependencies = Def.settings(
     coursierSbtMavenRepo,
     "io.get-coursier.jniutils" % "windows-jni-utils-lmcoursier" % jniUtilsVersion,
     "net.hamnaberg" %% "dataclass-annotation" % dataclassScalafixVersion % Provided,
-    "org.scalatest" %% "scalatest" % "3.2.19" % Test,
   ),
+  libraryDependencies ++= Dependencies.scalatest,
   excludeDependencies ++= Seq(
     ExclusionRule("org.scala-lang.modules", "scala-xml_2.13"),
   ),
