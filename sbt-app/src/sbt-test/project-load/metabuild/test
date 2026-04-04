@@ -1,0 +1,9 @@
+> foo
+> reload plugins
+> check -build
+> foo
+> reload plugins
+> reload return
+> reload return
+> compile
+> foo

@@ -54,12 +54,15 @@ object PluginManagement {
   val emptyContext: Context = Context(false, 0)
 
   def apply(initialLoader: ClassLoader): PluginManagement =
+    PluginManagement(initialLoader, emptyContext)
+
+  def apply(initialLoader: ClassLoader, context: Context): PluginManagement =
     PluginManagement(
       Set.empty,
       Set.empty,
       new PluginClassLoader(initialLoader),
       initialLoader,
-      emptyContext
+      context
     )
 
   def extractOverrides(classpath: Classpath): Set[ModuleID] =

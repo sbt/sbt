@@ -74,10 +74,10 @@ private[sbt] object Load {
     val launcher = scalaProvider.launcher
     val stagingDirectory = getStagingDirectory(state, globalBase).getCanonicalFile
     val javaHome = Util.javaHome
-    val out = baseDirectory.toPath.resolve("target").resolve("out")
+    val out = app.baseDirectory.toPath.resolve("target").resolve("out")
     val rootPaths = Map(
       "OUT" -> out,
-      "BASE" -> baseDirectory.toPath,
+      "BASE" -> app.baseDirectory.toPath,
       "SBT_BOOT" -> launcher.bootDirectory.toPath,
       "IVY_HOME" -> launcher.ivyHome.toPath,
       "JAVA_HOME" -> javaHome,
@@ -116,7 +116,9 @@ private[sbt] object Load {
     )
     val evalPluginDef: (BuildStructure, State) => PluginData = EvaluateTask.evalPluginDef
     val delegates = defaultDelegates
-    val pluginMgmt = PluginManagement(loader)
+    import sbt.ProjectExtra.projectReturn
+    val pluginContext = PluginManagement.Context(false, Project.projectReturn(state).size - 1)
+    val pluginMgmt = PluginManagement(loader, pluginContext)
     val inject = InjectSettings(injectGlobal(state), Nil, const(Nil))
     SysProp.setSwovalTempDir()
     SysProp.setIpcSocketTempDir()
