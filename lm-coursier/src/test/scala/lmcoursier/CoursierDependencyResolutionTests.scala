@@ -92,7 +92,9 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             m.revision
-        } should (contain(conf211.scalaVersion.get) and have length 1) // from config
+        } should (
+          contain(scalaModuleInfo213.scalaFullVersion) and have length 1
+        ) // from autoScalaLib
     }
   }
 
@@ -111,7 +113,7 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             m.revision
-        } should (contain(conf211.scalaVersion.get) and have length 1) // from config
+        } should (contain(scalaModule212.revision) and have length 1) // from dependency
     }
   }
 
@@ -133,7 +135,9 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
             m.revision
-        } should (contain(conf211.scalaVersion.get) and have length 1) // from config
+        } should (
+          contain(scalaModuleInfo213.scalaFullVersion) and have length 1
+        ) // from autoScalaLib
     }
   }
 
@@ -154,8 +158,8 @@ class CoursierDependencyResolutionTests extends AnyPropSpec with Matchers {
       case Right(x) =>
         x.allModules.collect {
           case m: ModuleID if m.organization == scalaModule212.organization && m.name == m.name =>
-            m.revision
-        } should (contain(conf211.scalaVersion.get) and have length 1) // from config
+            CrossVersion.binaryScalaVersion(m.revision)
+        } should (contain("2.12") and have length 1) // from transitive dependency
     }
   }
 
