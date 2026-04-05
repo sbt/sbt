@@ -18,7 +18,6 @@ import org.apache.ivy.core.module.id.ModuleRevisionId
 import Def.Setting
 import sbt.Keys.{ csrProject, csrPublications, publishLocalConfiguration, publishConfiguration }
 import sbt.ProjectExtra.*
-import sbt.librarymanagement.PublishConfiguration
 import scala.jdk.CollectionConverters.*
 import scala.xml.{ Node, PrefixedAttribute }
 
@@ -233,23 +232,12 @@ object IvyXml {
       )
     }.value)
 
-  private lazy val needsIvyXmlLocal = Seq(publishLocalConfiguration) ++ getPubConf(
-    "makeIvyXmlLocalConfiguration"
+  private lazy val needsIvyXmlLocal = Seq(publishLocalConfiguration) ++ List(
+    sbt.Keys.makeIvyXmlLocalConfiguration
   )
-  private lazy val needsIvyXml = Seq(publishConfiguration) ++ getPubConf(
-    "makeIvyXmlConfiguration"
+  private lazy val needsIvyXml = Seq(publishConfiguration) ++ List(
+    sbt.Keys.makeIvyXmlConfiguration
   )
-
-  private def getPubConf(method: String): List[TaskKey[PublishConfiguration]] =
-    try {
-      val cls = sbt.Keys.getClass
-      val m = cls.getMethod(method)
-      val task = m.invoke(sbt.Keys).asInstanceOf[TaskKey[PublishConfiguration]]
-      List(task)
-    } catch {
-      case _: Throwable => // FIXME Too wide
-        Nil
-    }
 
   def generateIvyXmlSettings(
       shadedConfigOpt: Option[Configuration] = None
