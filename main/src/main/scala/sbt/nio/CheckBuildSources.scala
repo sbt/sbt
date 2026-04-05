@@ -10,6 +10,7 @@ package sbt
 package internal.nio
 
 import java.nio.file.Path
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
 import sbt.BasicCommandStrings.{ RebootCommand, Shutdown, TerminateAction }
 import sbt.Keys.{ baseDirectory, pollInterval, state }
@@ -65,7 +66,9 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   }
   private def reset(state: State): Unit = {
     val extracted = Project.extract(state)
-    val interval = extracted.get(checkBuildSources / pollInterval)
+    val interval = extracted
+      .getOpt(checkBuildSources / pollInterval)
+      .getOrElse(CheckBuildSources.defaultPollInterval)
     val newSources = extracted.get(Global / checkBuildSources / fileInputs).distinct
     if (interval >= 0.seconds || "polling" == SysProp.watchMode) {
       Option(repository.getAndSet(null)).foreach(_.close())
@@ -174,7 +177,9 @@ private[sbt] class CheckBuildSources extends AutoCloseable {
   override def close(): Unit = {}
 }
 
-private[sbt] object CheckBuildSources {
+private[sbt] object CheckBuildSources:
+  val defaultPollInterval: FiniteDuration = FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS)
+
   private[sbt] val CheckBuildSourcesKey =
     AttributeKey[CheckBuildSources]("check-build-source", "", KeyRanks.Invisible)
   /*
@@ -219,4 +224,4 @@ private[sbt] object CheckBuildSources {
       projectGlobs(projectDir, baseDir.toGlob / "*.sbt" :: Nil)
     } else Nil
   }
-}
+end CheckBuildSources

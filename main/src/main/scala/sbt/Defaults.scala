@@ -418,6 +418,7 @@ object Defaults extends BuildCommon with DefExtra {
       terminal := Def.uncached(state.value.get(terminalKey).getOrElse(Terminal(ITerminal.get))),
       InstallSbtn.installSbtn := InstallSbtn.installSbtnImpl.evaluated,
       InstallSbtn.installSbtn / aggregate := false,
+      checkBuildSources / pollInterval :== CheckBuildSources.defaultPollInterval,
     ) ++ LintUnused.lintSettings
       ++ DefaultBackgroundJobService.backgroundJobServiceSettings
       ++ RemoteCache.globalSettings
@@ -553,8 +554,6 @@ object Defaults extends BuildCommon with DefExtra {
     sourceManaged := target.value / "src_managed",
     resourceManaged := target.value / "resource_managed",
     // Adds subproject build.sbt files to the global list of build files to monitor
-    Scope.Global / checkBuildSources / pollInterval :==
-      new FiniteDuration(Int.MinValue, TimeUnit.MILLISECONDS),
     Scope.Global / checkBuildSources / fileInputs ++= {
       if ((Scope.Global / onChangedBuildSource).value != IgnoreSourceChanges)
         Seq(baseDirectory.value.toGlob / "*.sbt")
@@ -3387,7 +3386,7 @@ object Classpaths {
     maybeUpdateRemoteProjects := Def.uncached(Def.taskDyn {
       val buildDeps = buildDependencies.value
       val thisRef = thisProjectRef.value
-      val lb = Project.extract(state.value).get(Keys.loadedBuild)
+      val lb = loadedBuild.value
       val vcsRootRefs = Resolvers.transitiveVcsRootRefs(thisRef, buildDeps, lb)
       if (vcsRootRefs.isEmpty) Def.task(())
       else Def.sequential(vcsRootRefs.map(_ / fetchSource).toSeq)
