@@ -9,8 +9,6 @@
 package sbt
 package std
 
-import scala.language.experimental.macros
-
 import scala.annotation.compileTimeOnly
 
 /** Implementation detail.  The wrap methods temporarily hold inputs (as a Tree, at compile time) until a task or setting macro processes it. */

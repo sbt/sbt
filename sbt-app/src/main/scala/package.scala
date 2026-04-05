@@ -11,7 +11,6 @@ import sjsonnew.JsonFormat
 import java.nio.file.{ Path as NioPath }
 
 import sbt.librarymanagement.{ Configuration, ConfigurationMacro }
-import scala.language.experimental.macros
 
 package object sbt
     extends sbt.IOSyntax0
