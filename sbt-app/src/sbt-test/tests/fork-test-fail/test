@@ -1,0 +1,10 @@
+# Forked test that fails must report failure, not success.
+# Batch mode: test must fail with exit code non-zero.
+-> test
+# Shell mode: after the failure, sbt shell must not crash.
+> about
+# Repeated failure must still be reported correctly
+-> test
+> about
+# Non-fork tasks must not be affected by lastForkExitCode
+> compile

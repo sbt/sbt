@@ -1,0 +1,19 @@
+# Forked run that fails must report failure, not success.
+# Batch mode: run must fail with exit code non-zero.
+-> run
+# Shell mode: after the failure, sbt shell must not crash.
+> about
+# System.exit(1) must also report failure
+$ copy-file changes/ExitFail.scala src/main/scala/Fail.scala
+> compile
+-> run
+> about
+# Successful run after prior failures (lastForkExitCode reset)
+$ copy-file changes/Success.scala src/main/scala/Fail.scala
+> run
+# Back to failing to confirm repeated failure reporting
+$ copy-file changes/ExitFail.scala src/main/scala/Fail.scala
+> compile
+-> run
+# Non-fork tasks must not be affected by lastForkExitCode
+> compile

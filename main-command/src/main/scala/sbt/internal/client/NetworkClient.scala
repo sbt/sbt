@@ -15,7 +15,7 @@ import java.lang.ProcessBuilder.Redirect
 import java.net.{ Socket, SocketException }
 import java.nio.file.Files
 import java.util.UUID
-import java.util.concurrent.atomic.{ AtomicBoolean, AtomicReference }
+import java.util.concurrent.atomic.{ AtomicBoolean, AtomicInteger, AtomicReference }
 import java.util.concurrent.{ ConcurrentHashMap, LinkedBlockingQueue, TimeUnit }
 
 import sbt.BasicCommandStrings.{ DashDashDetachStdio, DashDashServer, Shutdown, TerminateAction }
@@ -147,6 +147,7 @@ class NetworkClient(
   private val batchMode = new AtomicBoolean(false)
   private val interactiveThread = new AtomicReference[Thread](null)
   private val rebooting = new AtomicBoolean(false)
+  private val lastForkExitCode = new AtomicInteger(0)
   private lazy val noTab = arguments.completionArguments.contains("--no-tab")
   private lazy val noStdErr = arguments.completionArguments.contains("--no-stderr") &&
     !sys.env.contains("SBTN_AUTO_COMPLETE") && !sys.env.contains("SBTC_AUTO_COMPLETE")
@@ -607,16 +608,20 @@ class NetworkClient(
       ()
   }
   def completeExec(execId: String, exitCode: Int) = {
+    // The server doesn't know the fork's exit code (it's a notification),
+    // so override with the client-side result when available.
+    val forkCode = lastForkExitCode.get
+    val effectiveExitCode = NetworkClient.effectiveExitCode(exitCode, forkCode)
     pendingResults.remove(execId) match {
       case null => ()
       case (q, startTime, name) =>
         val now = System.currentTimeMillis
         val message = NetworkClient.elapsedString(startTime, now)
         if (batchMode.get || !attached.get) {
-          if (exitCode == 0) console.success(message)
+          if (effectiveExitCode == 0) console.success(message)
           else console.appendLog(Level.Error, message)
         }
-        Util.ignoreResult(q.offer(exitCode))
+        Util.ignoreResult(q.offer(effectiveExitCode))
     }
   }
   private val onExecResponse: PartialFunction[JsonRpcResponseMessage, Unit] = {
@@ -683,7 +688,17 @@ class NetworkClient(
         case (`systemOut`, Some(json)) =>
           Converter.fromJson[Array[Byte]](json) match {
             case Success(bytes) if bytes.nonEmpty && attached.get =>
-              synchronized(printStream.write(bytes))
+              if lastForkExitCode.get != 0 && NetworkClient.containsSuccess(bytes) then
+                // Drop the server's [success] and emit [error] via console instead
+                val stripped = NetworkClient.stripAnsi(new String(bytes, "UTF-8"))
+                val message = stripped.linesIterator
+                  .map(_.trim)
+                  .filter(_.nonEmpty)
+                  .map(_.replaceFirst("^\\[success\\] ?", ""))
+                  .mkString("\n")
+                console.appendLog(Level.Error, message)
+                lastForkExitCode.set(0)
+              else synchronized(printStream.write(bytes))
             case _ =>
           }
           Vector.empty
@@ -712,8 +727,15 @@ class NetworkClient(
         case (`clientJob`, Some(json)) =>
           import sbt.internal.worker.codec.JsonProtocol.given
           Converter.fromJson[ClientJobParams](json) match {
-            case Success(params) => clientSideRun(params).get; Vector.empty
-            case Failure(_)      => Vector.empty
+            case Success(params) =>
+              clientSideRun(params) match {
+                case Success(_) => lastForkExitCode.set(0)
+                case Failure(_) => lastForkExitCode.set(1)
+              }
+              Vector.empty
+            case Failure(_) =>
+              lastForkExitCode.set(1)
+              Vector.empty
           }
         case (`Shutdown`, Some(_))                => Vector.empty
         case (msg, _) if msg.startsWith("build/") => Vector.empty
@@ -1143,6 +1165,21 @@ class NetworkClient(
 }
 
 object NetworkClient {
+
+  /** When the server reports success but the client-side fork failed, use the fork's exit code. */
+  private[client] def effectiveExitCode(serverExitCode: Int, forkExitCode: Int): Int =
+    if (serverExitCode == 0 && forkExitCode != 0) forkExitCode else serverExitCode
+
+  private val AnsiPattern = "\u001b\\[[0-9;]*[A-Za-z]".r
+
+  /** Strip ANSI escape codes from text. */
+  private[client] def stripAnsi(text: String): String =
+    AnsiPattern.replaceAllIn(text, "")
+
+  /** Check if bytes contain a `[success]` status line (ignoring ANSI codes). */
+  private[client] def containsSuccess(bytes: Array[Byte]): Boolean =
+    stripAnsi(new String(bytes, "UTF-8")).contains("[success]")
+
   private[sbt] val CancelAll = "__CancelAll"
   private def consoleAppenderInterface(printStream: PrintStream): ConsoleInterface = {
     val appender = ConsoleAppender("thin", ConsoleOut.printStreamOut(printStream))
