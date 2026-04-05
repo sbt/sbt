@@ -19,13 +19,21 @@ import scala.quoted.*
 import sbt.util.BuildWideCacheConfiguration
 
 object TaskMacro:
+  @deprecated("will be removed", "2.0.0")
   final val AssignInitName = "set"
+  @deprecated("will be removed", "2.0.0")
   final val Append1InitName = "append1"
+  @deprecated("will be removed", "2.0.0")
   final val AppendNInitName = "appendN"
+  @deprecated("will be removed", "2.0.0")
   final val Remove1InitName = "remove1"
+  @deprecated("will be removed", "2.0.0")
   final val RemoveNInitName = "removeN"
+  @deprecated("will be removed", "2.0.0")
   final val TransformInitName = "transform"
+  @deprecated("will be removed", "2.0.0")
   final val InputTaskCreateDynName = "createDyn"
+  @deprecated("will be removed", "2.0.0")
   final val InputTaskCreateFreeName = "createFree"
   final val append1Migration =
     "`<+=` operator is removed. Try `lhs += { x.value }`\n  or see https://www.scala-sbt.org/1.x/docs/Migrating-from-sbt-013x.html."
