@@ -1,5 +1,6 @@
 import java.nio.file.{ Files, Path }
 
+@transient
 val outputTask = taskKey[Seq[Path]]("A task that generates outputs")
 outputTask := {
   val dir = Files.createDirectories(streams.value.cacheDirectory.toPath)

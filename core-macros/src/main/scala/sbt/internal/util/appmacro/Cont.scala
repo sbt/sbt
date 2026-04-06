@@ -3,6 +3,8 @@ package internal
 package util
 package appmacro
 
+import java.io.File
+import java.nio.file.{ Path as NioPath }
 import scala.collection.mutable.ListBuffer
 import scala.reflect.ClassTag
 import scala.quoted.*
@@ -177,11 +179,11 @@ trait Cont:
       val (expr, treeType) = eitherTree match
         case Left(l)  => (l, TypeRepr.of[Effect[A]])
         case Right(r) => (r, faTpe)
-
+      val fileRepr = TypeRepr.of[File]
+      val pathRepr = TypeRepr.of[NioPath]
       def containsFileType[A1: Type]: Boolean =
-        val fileRepr = TypeRepr.of[java.io.File]
         def containsFile(tpe: TypeRepr): Boolean =
-          if tpe =:= fileRepr then true
+          if tpe =:= fileRepr || tpe =:= pathRepr then true
           else
             tpe.dealias match
               case AppliedType(_, args) => args.exists(containsFile)
@@ -354,7 +356,7 @@ trait Cont:
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
         if containsFileType[A1] then
           report.errorAndAbort(
-            s"""java.io.File is not a valid output type for a cached task.
+            s"""java.io.File and Path are not valid output types for a cached task.
                |Consider using one of the following alternatives:
                |  - xsbti.HashedVirtualFileRef
                |  - xsbti.VirtualFileRef

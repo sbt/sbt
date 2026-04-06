@@ -1,6 +1,7 @@
 import java.nio.file.{ Path, Paths }
 import sbt.internal.FileChangesMacro.inputFiles
 
+@transient
 val foo = taskKey[Seq[Path]]("Copy files")
 foo / fileInputs += baseDirectory.value.toGlob / "base" / "*.txt"
 foo / target := baseDirectory.value / "out"
