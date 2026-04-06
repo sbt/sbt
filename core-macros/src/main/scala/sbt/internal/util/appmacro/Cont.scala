@@ -356,7 +356,7 @@ trait Cont:
       )(body: Expr[A1], input: Expr[A2]): Expr[A1] =
         if containsFileType[A1] then
           report.errorAndAbort(
-            s"""java.io.File and Path are not a valid output type for a cached task.
+            s"""java.io.File and Path are not valid output types for a cached task.
                |Consider using one of the following alternatives:
                |  - xsbti.HashedVirtualFileRef
                |  - xsbti.VirtualFileRef
