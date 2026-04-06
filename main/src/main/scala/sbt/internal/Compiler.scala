@@ -401,7 +401,8 @@ object Compiler:
       val siConfig = (Keys.console / Keys.scalaInstanceConfig).value
       val bridgeJars = Keys.scalaCompilerBridgeJars.value
       val state = Keys.state.value
-      val toolJars = siConfig.libraryJars ++ siConfig.allCompilerJars ++ siConfig.extraToolJars
+      val toolJars =
+        (siConfig.libraryJars ++ siConfig.allCompilerJars ++ siConfig.extraToolJars).distinct
       val toolJarsVf = toolJars.map(u => conv.toVirtualFile(Paths.get(u)): HashedVirtualFileRef)
       val fo = (task / Keys.forkOptions).value
       val service = Keys.bgJobService.value
